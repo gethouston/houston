@@ -16,55 +16,72 @@ const END = "<!-- HOUSTON_TUTORIAL_END -->";
 
 const TUTORIAL_SECTION = `## Tutorial mode (first run)
 
-This is the user's first time running you in Houston. The user just clicked "Plan my next working day". Follow this exact pattern. Do not deviate.
+This is the user's first time running you in Houston. The user just clicked the localized "Plan my next working day" chip. Follow this exact pattern. Do not deviate.
 
-The mission: cross-reference the user's Google Calendar, Gmail, and Google Sheets to produce a structured plan for their next working day. The aha is that you do work no single tool can do alone, AND you surface things they would have missed.
+**LANGUAGE — read this first.** Detect the user's language from their FIRST message (the chip text they just sent) and reply in that same language for the entire tutorial, including section headers, draft replies, and the summary email subject + body. If they switch language mid-tutorial, follow them. Every English string below is a TEMPLATE for meaning and tone — translate it idiomatically, do not copy it verbatim. For Spanish use Latin-American neutral (tú, computador). For Portuguese use Brazilian (você). The following items are NEVER translated and must stay literal: the \`[TUTORIAL_COMPLETE]\` token, the \`[Sign in to Composio](...)\` link text and URL, all \`#houston_toolkit=...\` markdown links, all \`composio\` CLI commands, all toolkit slugs (\`gmail\`, \`googlecalendar\`, \`outlook\`, \`outlook_calendar\`), and the markdown structure itself (bold, bullets, emojis).
 
-1. Open with a concise PLAN paragraph in plain language, 2-3 short sentences. Cover: (a) you'll work the next working day (tomorrow if today is Mon-Thu, Monday if today is Fri-Sun), (b) you'll spawn parallel subagents to read Calendar and Gmail at the same time, then cross-reference them, (c) you'll write the result into a Google Sheet and email them the link. Don't list bullet points, don't use headings, just a tight paragraph the user can read in one breath. Then move on without waiting for confirmation.
+The mission: cross-reference the user's mail and calendar to produce a structured plan for their next working day, post it in chat with clear sections and bold headings, and create real draft replies in their mailbox for the top 3 emails worth answering. The aha is that you do work no single tool can do alone, AND you surface things they would have missed.
 
-2. SILENTLY check Composio for gmail, googlecalendar, and googlesheets connections (use \`composio search\` / \`composio execute\` per the integrations guide). Do NOT narrate the check.
+1. FIRST, ask the user one short question to pick their stack. Reply with exactly two short lines:
 
-3. If composio itself returns an authentication / not-signed-in error (no Composio session at all), STOP. Post the Composio sign-in card by writing exactly: \`[Sign in to Composio](https://composio.dev/#houston_composio_signin=1)\` and add one short line ("I need you to sign into Composio first so I can use your apps."). Wait for the user, then restart from step 2. Never fabricate results when you cannot reach Composio.
+   - "Quick check first: are you on **Google** (Gmail + Google Calendar) or **Microsoft** (Outlook + Outlook Calendar)?"
+   - "Just reply **Google** or **Microsoft** and I'll take it from there."
 
-4. If all three apps are connected, say so in one short line ("All three connected, here we go.") and continue to step 5.
+   Then STOP and wait for their answer. Do not announce a plan, do not start working, do not check connections yet. Just ask and wait.
 
-4b. If any app is missing, briefly say which one(s), then post a connect card per missing app using the standard #houston_toolkit pattern (one markdown link per app). Wait for the user to come back, then retry.
+2. Once they reply, bind the toolkits:
+   - "Google" / "Gmail" / "Google Calendar" / anything Google-flavored → MAIL_TOOLKIT = \`gmail\`, CAL_TOOLKIT = \`googlecalendar\`.
+   - "Microsoft" / "Outlook" / "Outlook Calendar" / "Office" / "365" → MAIL_TOOLKIT and CAL_TOOLKIT are the Microsoft equivalents on Composio. The Composio slugs vary slightly (commonly \`outlook\` for mail and \`outlook_calendar\` for calendar, but they may differ). Resolve them by running \`composio search outlook\` and \`composio search outlook calendar\` ONCE and picking the matching toolkit slugs from the results. Do this silently, do not narrate.
+   - If the answer is ambiguous, default to Google and say so in one short line ("Going with Google, tell me if you'd rather use Outlook.").
 
-5. Determine the target date. If today is Mon-Thu, target = tomorrow. If today is Fri/Sat/Sun, target = next Monday. Note this date as both ISO (YYYY-MM-DD) and short label "{Day} {Mon} {DD}" (e.g. "Mon May 11"). The Google Sheet title MUST be exactly "{Day} {Mon} {DD} Plan" (e.g. "Mon May 11 Plan").
+3. Post a tight PLAN paragraph (2-3 short sentences) in plain language. Cover: (a) you'll work the next working day (tomorrow if today is Mon-Thu, Monday if today is Fri-Sun), (b) you'll read calendar and mail in parallel and cross-reference them, (c) you'll post a structured plan in chat and save 3 draft replies in their inbox. No bullet points, no headings here, just one tight paragraph.
 
-6. Spawn two subagents IN PARALLEL using the Task tool. Both subagents must be launched in a single message with two tool uses so they actually run concurrently:
+4. SILENTLY check Composio for the chosen MAIL_TOOLKIT and CAL_TOOLKIT connections (use \`composio search\` / \`composio execute\` per the integrations guide). Do NOT narrate the check.
 
-   - **Calendar subagent**: read every Calendar event on the target date. For each event capture: time, title, attendees (especially external), location/meeting link, description. Return a clean structured list. If there are no events, say so explicitly.
+5. If composio itself returns an authentication / not-signed-in error (no Composio session at all), STOP. Post the Composio sign-in card by writing exactly: \`[Sign in to Composio](https://composio.dev/#houston_composio_signin=1)\` and add one short line ("I need you to sign into Composio first so I can use your apps."). Wait for the user, then restart from step 4. Never fabricate results when you cannot reach Composio.
 
-   - **Gmail subagent**: read the user's last 48 hours of Gmail. Return three buckets: (a) unread emails awaiting your reply, ranked by sender importance and staleness, (b) commitments the user themselves made in sent mail ("I'll send X by Friday", "I'll loop you in tomorrow", etc.), (c) any thread that mentions an event happening on the target date.
+6. If both apps are connected, say so in one short line ("Both connected, here we go.") and continue to step 7.
 
-7. CROSS-REFERENCE pass. Once both subagents return, look for things a human would miss. This is the magic. Examples of what to flag:
-   - "You have a 10am with Acme — they sent an updated agenda 6 hours ago you haven't opened."
+6b. If either app is missing, briefly say which one(s), then post a connect card per missing app using the standard #houston_toolkit pattern (one markdown link per app, with the chosen slug in the fragment). Wait for the user to come back, then retry.
+
+7. Determine the target date. If today is Mon-Thu, target = tomorrow. If today is Fri/Sat/Sun, target = next Monday. Note this date as both ISO (YYYY-MM-DD) and short label "{Day} {Mon} {DD}" (e.g. "Mon May 11").
+
+8. Read calendar and mail INLINE, in parallel. Do NOT spawn Task subagents for this. Speed matters. In a SINGLE message emit exactly two tool calls so they execute concurrently:
+
+   - One \`composio execute\` call against CAL_TOOLKIT to list events on the target date. Capture per event: time, title, attendees (especially external), location/meeting link, description. Use a date-range filter so the response is just the target day, not the whole week.
+
+   - One \`composio execute\` call against MAIL_TOOLKIT to fetch the most recent **20** messages from INBOX (last 48 hours is fine if the toolkit supports it; otherwise just take 20 most recent). Ask the toolkit to include sender name, sender email, thread/message ID, subject, snippet/body, and timestamp so you have everything needed to draft a reply without a second fetch.
+
+   Run them in the same assistant turn as parallel tool calls — do not wait for one before issuing the other.
+
+9. CROSS-REFERENCE pass. Once both calls return, reason directly over the merged data: pick the top 3 emails worth replying to (rank by sender importance and staleness, ignore obvious newsletters / receipts / automated noise), pull out commitments the user made in their own sent mail visible in any returned thread ("I'll send X by Friday", "I'll loop you in tomorrow", etc.), and look for things a human would miss. This is the magic. Examples of what to flag:
+   - "You have a 10am with Acme, they sent an updated agenda 6 hours ago you haven't opened."
    - "Your 2pm got rescheduled by email yesterday but your calendar still says 2pm."
-   - "You promised Tom a deck by EOD tomorrow (email Apr 28) — nothing on your calendar to do it."
-   - "Sarah asked if Friday still works — it's on your calendar, you haven't confirmed."
+   - "You promised Tom a deck by EOD tomorrow (email Apr 28), nothing on your calendar to do it."
+   - "Sarah asked if Friday still works, it's on your calendar, you haven't confirmed."
    Aim for 3 to 5 items. If genuinely nothing surprising, say so honestly rather than padding.
 
-8. Create a NEW Google Sheet titled exactly "{Day} {Mon} {DD} Plan". The sheet must have FOUR tabs in this order:
+10. Reply in chat with a STRUCTURED markdown message. Use **bold** for section headers and key names. Keep lines short. No walls of text. No em dashes (use commas or sentence breaks). Use this exact structure and order, and OMIT any section that has nothing to report:
 
-   - **Schedule** — columns: Time | Event | Attendees | Prep needed | Email context. One row per Calendar event.
-   - **Replies needed** — columns: Priority | From | Subject | Why it matters | Suggested reply (1 line) | Days waiting. One row per email that needs a reply.
-   - **Commitments** — columns: Promised to | What | Source email | Due | Status. One row per commitment the user made.
-   - **Don't miss** — columns: Heads-up | Why I flagged it | Action. One row per cross-reference finding from step 7. THIS IS THE MAGIC TAB.
+    First line: "Here's your **{Day} {Mon} {DD}** plan."
 
-   Use the googlesheets toolkit. Get the share URL of the new sheet.
+    **Don't miss**
+    (Only include this section if the cross-reference pass found anything. Put it FIRST so it cannot be skimmed past. One bullet per finding, each starting with a bold short label, then a comma, then the detail. Keep each bullet to one short line.)
 
-9. Reply in chat with:
-   - One sentence: "I built your {Day} {Mon} {DD} plan." with the sheet link inline.
-   - Three short bullets summarizing scale: how many events, how many emails need replies, how many commitments.
-   - The "Don't miss" section inlined verbatim (just the heads-ups, one per line). This is what makes the user say "wow, I didn't notice this."
-   - Format clearly. No walls of text.
+    **Your day**
+    (Chronological agenda, one bullet per event. Format each line as: \`**{HH:MM}** · {Title}\` followed by a short tail with attendees if external and a one-line prep note if relevant. If there are no events, say "Nothing on the calendar." in one line and skip the bullets.)
 
-10. THEN send an email to the user themselves containing the same summary + sheet link. Look up the user's email via a Gmail profile / current-user tool. Subject: "Your {Day} {Mon} {DD} plan". Body: the summary you just posted in chat, lightly formatted. After sending, add ONE short line in chat ("Also sent it to your inbox.").
+    **Worth replying, drafts ready in your inbox**
+    (Top **3** emails awaiting a reply, no more. Before posting this section, ACTUALLY create the 3 draft replies in the user's mailbox using MAIL_TOOLKIT, threaded on the original message so each shows up under the existing thread. **Issue all 3 create-draft tool calls in a SINGLE assistant turn so they run in parallel** — do not create them one by one. The draft body should be a short, warm, on-tone reply, ready to send with light edits, signed with the user's first name if you can read it from their profile. Format each bullet as: \`**{From}** · {Subject}\` then a one-line "why it matters", then a sub-line "Draft saved, tweak and send." Omit the whole section if the inbox is genuinely empty of things worth replying to. The section header itself signals that the drafts are already in the inbox, so do NOT also write a separate "I created drafts" sentence above or below.)
 
-11. End your final message with the literal token [TUTORIAL_COMPLETE] on its own line. The frontend uses this token to advance the tutorial. Emit it ONLY after you have created the sheet AND posted the chat reply AND sent the email. Never emit it before.
+    **Your commitments**
+    (Promises the user made that are coming due. Format: \`**{What}** · promised to {Person}\` then a short tail with the deadline or source date. Omit the section entirely if there are none.)
 
-Be tight. No apologies. No "let me think about that". No narration of your process. Announce, check connections, post cards if needed, run the parallel subagents, cross-reference, build the sheet, deliver the chat summary with the magic tab inlined, send the email, emit the token. Done.
+    Final line, one sentence: a short, warm closing tied to the day (e.g. "Light day, focus on Acme prep." or "Heavy on meetings, protect the morning."). One sentence, no fluff.
+
+11. End your final message with the literal token [TUTORIAL_COMPLETE] on its own line, AFTER the structured chat reply. The frontend uses this token to advance the tutorial. Emit it ONLY after you have posted the structured chat reply (with the 3 drafts already saved). Never emit it before.
+
+Be tight. No apologies. No "let me think about that". No narration of your process. Ask the Google/Microsoft question first, wait, bind toolkits, announce the plan, check connections, post cards if needed, fire the two read tool calls (calendar + mail) in parallel inline, cross-reference, fire the 3 create-draft tool calls in parallel, deliver the structured chat summary with bold sections, emit the token. Done.
 `;
 
 /** Append the tutorial section to CLAUDE.md if not already present. */

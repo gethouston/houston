@@ -36,7 +36,8 @@
     "toolkits": {
       "gmail": "Gmail",
       "googlecalendar": "Google Calendar",
-      "googlesheets": "Google Sheets"
+      "outlook": "Outlook",
+      "outlook_calendar": "Outlook Calendar"
     },
     "defaults": {
       "workspaceName": "Personal",
@@ -60,7 +61,7 @@
       },
       "tools": {
         "title": "Dale tus propias herramientas",
-        "body": "Houston se conecta con Gmail, Calendar y más de 1000 apps a través de tu proveedor de integraciones. Por defecto usamos Composio. Inicia sesión una vez para que tu asistente pueda trabajar con tus apps reales.",
+        "body": "Houston se conecta con tu correo, calendario y más de 1000 apps a través de tu proveedor de integraciones. Por defecto usamos Composio. Inicia sesión una vez para que tu asistente pueda trabajar con tus apps reales.",
         "cardTitle": "Proveedor de integraciones",
         "cardBody": "Inicia sesión para que tu asistente use tus apps. Proveedor por defecto: Composio.",
         "cardSignedInBody": "Tu asistente ya puede usar tus apps",
@@ -71,21 +72,20 @@
       },
       "try": {
         "title": "Prueba una misión real",
-        "body": "Chat real con tu asistente. Haz clic en la misión para empezar. Tu asistente te pedirá Gmail, Calendar o Sheets aquí mismo si los necesita.",
+        "body": "Chat real con tu asistente. Haz clic en la misión para empezar. Tu asistente te preguntará si usas Google o Microsoft y luego pedirá acceso a tu correo y calendario aquí mismo en el chat si los necesita.",
         "tipTitle": "Este es el chat real",
         "tipBody": "El mismo chat que usarás después del tutorial. Haz clic en la misión para empezar y responde con naturalidad. Las solicitudes de conexión aparecen como tarjetas que tu asistente publica en el chat.",
         "workingTitle": "Trabajando en ello",
         "workingBody": "Responde en el chat como lo harías normalmente. El tutorial continuará automáticamente cuando tu asistente termine.",
         "doneTitle": "Lo lograste. Primera misión completada.",
-        "doneBody": "Tu asistente acaba de hacer trabajo real con tus apps reales. Toma un tour rápido de Houston y listo.",
         "placeholder": "Responde a tu asistente...",
         "skill": {
           "title": "Planea mi siguiente día de trabajo",
-          "description": "Lee tu Calendar y Gmail en paralelo, los cruza para encontrar cosas que se te escaparían y escribe un plan estructurado en un Google Sheet."
+          "description": "Lee tu calendario y correo en paralelo, los cruza para encontrar cosas que se te escaparían y publica un plan estructurado con lo urgente, tu agenda y a quién responder."
         },
         "chip": "Planea mi siguiente día de trabajo",
         "composerHint": "Haz clic para empezar la misión.",
-        "continueChip": "Hacer el tour"
+        "continueChip": "Entra a Houston"
       }
     }
   }

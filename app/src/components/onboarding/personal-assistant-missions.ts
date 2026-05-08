@@ -10,6 +10,6 @@ export interface MissionTemplate {
 export const TUTORIAL_MISSION: MissionTemplate = {
   id: "plan-next-workday",
   skillName: "plan-my-next-working-day",
-  integrations: ["gmail", "googlecalendar", "googlesheets"],
+  integrations: ["gmail", "googlecalendar"],
   image: "spiral-notepad",
 };

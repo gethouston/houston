@@ -6,13 +6,12 @@ import {
 } from "./personal-assistant-artifacts.ts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions.ts";
 
-test("tutorial mission is the single Plan-my-next-working-day skill with three integrations", () => {
+test("tutorial mission is the single Plan-my-next-working-day skill with mail + calendar integrations", () => {
   assert.equal(TUTORIAL_MISSION.id, "plan-next-workday");
   assert.equal(TUTORIAL_MISSION.skillName, "plan-my-next-working-day");
   assert.deepEqual(TUTORIAL_MISSION.integrations, [
     "gmail",
     "googlecalendar",
-    "googlesheets",
   ]);
 });
 

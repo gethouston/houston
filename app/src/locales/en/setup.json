@@ -36,7 +36,8 @@
     "toolkits": {
       "gmail": "Gmail",
       "googlecalendar": "Google Calendar",
-      "googlesheets": "Google Sheets"
+      "outlook": "Outlook",
+      "outlook_calendar": "Outlook Calendar"
     },
     "defaults": {
       "workspaceName": "Personal",
@@ -60,7 +61,7 @@
       },
       "tools": {
         "title": "Give it your own tools",
-        "body": "Houston connects to Gmail, Calendar and 1000+ apps through your integrations provider. We use Composio by default. Sign in once so your assistant can actually do work with your real apps.",
+        "body": "Houston connects to your mail, calendar and 1000+ apps through your integrations provider. We use Composio by default. Sign in once so your assistant can actually do work with your real apps.",
         "cardTitle": "Integrations provider",
         "cardBody": "Sign in to let your assistant use your apps. Default provider: Composio.",
         "cardSignedInBody": "Your assistant can now use your apps",
@@ -71,21 +72,20 @@
       },
       "try": {
         "title": "Try a real mission",
-        "body": "Real chat with your assistant. Click the mission to start. Your assistant will ask for Gmail, Calendar, or Sheets right here in the chat if it needs them.",
+        "body": "Real chat with your assistant. Click the mission to start. Your assistant will ask whether you use Google or Microsoft, then request mail and calendar access right here in the chat if it needs them.",
         "tipTitle": "This is the real chat",
         "tipBody": "Same chat you'll use after the tutorial. Click the mission to start, then reply naturally. Connection requests show up as cards your assistant posts in the chat.",
         "workingTitle": "Working on it",
         "workingBody": "Reply in the chat as you would normally. The tutorial will continue automatically once your assistant finishes.",
         "doneTitle": "You did it. First mission complete.",
-        "doneBody": "Your assistant just did real work with your real apps. Take a quick tour of Houston, then you're free.",
         "placeholder": "Reply to your assistant...",
         "skill": {
           "title": "Plan my next working day",
-          "description": "Read your Calendar and Gmail in parallel, cross-reference them for things you'd miss, and write a structured plan into a Google Sheet."
+          "description": "Read your calendar and inbox in parallel, cross-reference them for things you'd miss, and post a structured plan with what's urgent, your agenda and what to reply."
         },
         "chip": "Plan my next working day",
         "composerHint": "Click to start the mission.",
-        "continueChip": "Take the tour"
+        "continueChip": "Enter Houston"
       }
     }
   }
