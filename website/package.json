@@ -6,7 +6,7 @@
   "scripts": {
     "build": "npx @11ty/eleventy",
     "dev": "npx @11ty/eleventy --serve",
-    "deploy": "npm run build && npx wrangler pages deploy _site --branch=main --commit-dirty=true"
+    "deploy": "npm run build && npx wrangler pages deploy _site --project-name=houston-site --branch=main --commit-dirty=true"
   },
   "dependencies": {
     "@11ty/eleventy": "^3.1.5",
