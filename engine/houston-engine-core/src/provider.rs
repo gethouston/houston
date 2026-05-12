@@ -390,12 +390,22 @@ async fn check_codex_status() -> ProviderStatus {
 /// `cfg(target_os = "windows")`.
 #[cfg(target_os = "windows")]
 fn find_git_bash_windows() -> Option<PathBuf> {
+    // 1. Explicit user override always wins.
     if let Ok(p) = std::env::var("CLAUDE_CODE_GIT_BASH_PATH") {
         let pb = PathBuf::from(p);
         if pb.is_file() {
             return Some(pb);
         }
     }
+    // 2. Houston-bundled PortableGit — first launch extracts the SFX
+    //    into %LOCALAPPDATA%\Programs\Houston\runtime\git-bash-<arch>\.
+    //    Preferring this over the user's system Git keeps Claude's
+    //    bash version pinned across the Houston install base, which
+    //    matches what Claude Code's QA tests against.
+    if let Some(bundled) = crate::git_bash::ensure_bundled_bash() {
+        return Some(bundled);
+    }
+    // 3. Standard Git for Windows install locations.
     for candidate in [
         "C:\\Program Files\\Git\\bin\\bash.exe",
         "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
@@ -405,6 +415,7 @@ fn find_git_bash_windows() -> Option<PathBuf> {
             return Some(pb);
         }
     }
+    // 4. Anywhere on PATH (covers chocolatey / scoop / portable installs).
     if let Ok(paths) = std::env::var("PATH") {
         for dir in std::env::split_paths(&paths) {
             let bash = dir.join("bash.exe");

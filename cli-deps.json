@@ -80,5 +80,21 @@
         "$artifact_basename_comment": "Bun appends `.exe` automatically for Windows targets; the staged binary is `dist/binaries/composio-windows-arm64.exe` and companions live under `dist/binaries/companions/`. The codex-acp companion shipped is the `win32-arm64` build; all other arches are pruned."
       }
     }
+  },
+  "git-bash": {
+    "version": "2.54.0",
+    "bundled": true,
+    "binary_name": "bash",
+    "license": "GPL-2.0",
+    "ship_layout": "sfx-extract-on-first-launch",
+    "$comment": "Claude Code on Windows requires Git Bash (bash.exe + msys2 runtime). Without it `claude auth login --claudeai` exits 1 with stderr 'requires git-bash'. Houston bundles PortableGit's self-extracting 7z so the user never sees that error: the engine's first-launch hook extracts the SFX into %LOCALAPPDATA%\\Programs\\Houston\\runtime\\git-{x86_64|aarch64}\\ and sets CLAUDE_CODE_GIT_BASH_PATH on every claude.exe spawn. Per-arch because the host's native arch matters for shell perf (and because PortableGit-arm64 dropped in git-for-windows 2.40+). We ship the SFX rather than the 410MB extracted tree because MSI compression of binary content is much worse than 7z's. First-launch cost: ~3-5s. See houston-engine-core::git_bash for the resolver + extractor.",
+    "urls": {
+      "windows-x64": "https://github.com/git-for-windows/git/releases/download/v{version}.windows.1/PortableGit-{version}-64-bit.7z.exe",
+      "windows-arm64": "https://github.com/git-for-windows/git/releases/download/v{version}.windows.1/PortableGit-{version}-arm64.7z.exe"
+    },
+    "checksums": {
+      "windows-x64": "bea006a6cc69673f27b1647e84ab3a68e912fbc175ab6320c5987e012897f311",
+      "windows-arm64": "f8e92cd3359fcbb96998cfd606a536ccc6dbfb23c04e12b29042f9ba45b6b0c7"
+    }
   }
 }

@@ -130,6 +130,22 @@ pub fn bundled_composio_binary() -> Option<PathBuf> {
     }
 }
 
+/// Per-arch PortableGit self-extracting 7z. The SFX itself never
+/// runs on the host that built the bundle — it's a Windows PE meant
+/// to be extracted on the user's machine on first launch (see
+/// houston-engine-core::git_bash). Returns `None` on macOS / Linux
+/// or when the bundle wasn't staged with `windows-{x64,arm64}` modes.
+#[cfg(target_os = "windows")]
+pub fn bundled_git_bash_sfx() -> Option<PathBuf> {
+    let arch = host_arch_for_composio();
+    let p = bundled_bin_dir()?.join(format!("git-bash-{arch}.7z.exe"));
+    if p.is_file() {
+        Some(p)
+    } else {
+        None
+    }
+}
+
 /// Path to the bundled `cli-deps.json` manifest, or `None`.
 pub fn bundled_cli_deps_manifest() -> Option<PathBuf> {
     let p = bundled_bin_dir()?.join(CLI_DEPS_MANIFEST);

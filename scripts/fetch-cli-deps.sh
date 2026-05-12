@@ -417,6 +417,49 @@ stage_codex_windows() {
   echo "  Installed: $out_path ($(du -sh "$out_path" | cut -f1))"
 }
 
+# Stage the Git for Windows PortableGit self-extracting 7z so Houston
+# can give Claude Code a working bash.exe without the user installing
+# Git separately. Layout: resources/bin/git-bash-{x86_64|aarch64}.7z.exe
+# — first-launch extraction into %LOCALAPPDATA% happens in
+# houston-engine-core::git_bash at runtime.
+stage_git_bash_windows() {
+  local arch="$1"
+  local platform="windows-$arch"
+  local version url_template expected url tmp out_path
+  version=$(jq -r '."git-bash".version' "$DEPS_FILE")
+  url_template=$(jq -r ".\"git-bash\".urls[\"$platform\"] // empty" "$DEPS_FILE")
+  expected=$(jq -r ".\"git-bash\".checksums[\"$platform\"] // empty" "$DEPS_FILE")
+
+  if [ -z "$url_template" ]; then
+    echo "ERROR: cli-deps.json missing git-bash URL for $platform" >&2
+    exit 1
+  fi
+
+  # Bun-style template substitution — keeps cli-deps.json terse.
+  url="${url_template//\{version\}/$version}"
+  echo "FETCH git-bash v$version ($platform PortableGit SFX)"
+  echo "  URL: $url"
+
+  local rust_arch
+  case "$arch" in
+    arm64) rust_arch="aarch64" ;;
+    x64)   rust_arch="x86_64" ;;
+    *)     echo "ERROR: unknown arch '$arch' for git-bash" >&2; exit 1 ;;
+  esac
+
+  tmp=$(mktemp)
+  download "$url" "$tmp" || { echo "ERROR: git-bash download failed for $platform" >&2; rm -f "$tmp"; exit 1; }
+  verify_or_print_checksum "$tmp" "$expected" "git-bash/$platform" || { rm -f "$tmp"; exit 1; }
+
+  # Bundle path matches the per-arch convention used by composio
+  # (composio-{x86_64,aarch64}/) so the runtime resolver can find both
+  # with the same arch-string derivation.
+  out_path="$OUT_DIR/git-bash-$rust_arch.7z.exe"
+  rm -f "$out_path"
+  mv "$tmp" "$out_path"
+  echo "  Installed: $out_path ($(du -sh "$out_path" | cut -f1))"
+}
+
 # Build composio for Windows from the Houston-maintained fork. Upstream
 # ComposioHQ/composio does not yet publish a Windows artifact — see the
 # `$build_comment` in cli-deps.json for the full reasoning. The build is
@@ -581,6 +624,7 @@ case "$TARGET_OS" in
     for arch in "${ARCHES[@]}"; do
       stage_codex_windows "$arch"
       build_composio_windows "$arch"
+      stage_git_bash_windows "$arch"
     done
     ;;
   *)

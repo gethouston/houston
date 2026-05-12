@@ -10,6 +10,7 @@ pub mod agents_crud;
 pub mod attachments;
 pub mod conversations;
 pub mod error;
+pub mod git_bash;
 pub mod paths;
 pub mod preferences;
 pub mod provider;
