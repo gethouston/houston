@@ -662,9 +662,15 @@ case "$TARGET_OS" in
     # `windows-arm64` (and any future single-arch mode) fail at the
     # tail check even when the requested arch built cleanly.
     for arch in "${ARCHES[@]}"; do
+      # ARCHES holds the mode-arg arch names: `x64` / `arm64` (NOT
+      # `x86_64` / `aarch64` — see the case block at the top of this
+      # file). The staged composio dir uses Rust-style arch names
+      # (matching build_composio_windows' `dest_dir`), and the
+      # codex-acp adapter dir is `win32-<mode-arch>` to match
+      # prune_acp_adapters' `win32-$arch` keep_platform string.
       case "$arch" in
-        x86_64)  bun_dir="composio-x86_64";  acp_target="win32-x64"  ;;
-        aarch64) bun_dir="composio-aarch64"; acp_target="win32-arm64" ;;
+        x64)   bun_dir="composio-x86_64";  acp_target="win32-x64"   ;;
+        arm64) bun_dir="composio-aarch64"; acp_target="win32-arm64" ;;
         *) echo "ERROR: unknown windows arch '$arch' in verification block" >&2; exit 1 ;;
       esac
       [ -f "$OUT_DIR/$bun_dir/composio.exe" ] || missing+=("$bun_dir/composio.exe")
