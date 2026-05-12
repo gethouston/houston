@@ -99,7 +99,7 @@ export function KanbanCard({
           "group/card relative rounded-xl bg-background p-3 cursor-pointer transition-all duration-200",
           isRunning
             ? "card-running-glow shadow-[0_2px_12px_rgba(59,130,246,0.12)]"
-            : "border border-black/[0.04] shadow-[0_1px_2px_rgba(0,0,0,0.04)] hover:shadow-[0_2px_6px_rgba(0,0,0,0.08)]",
+            : "border border-border/20 shadow-sm hover:shadow-md",
         )}
       >
         {/* Top row: agent info + action buttons */}

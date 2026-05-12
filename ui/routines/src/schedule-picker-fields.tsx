@@ -4,9 +4,9 @@
 import { cn } from "@houston-ai/core"
 
 const inputClass = cn(
-  "px-3 py-2 rounded-lg border border-black/[0.04] bg-background",
+  "px-3 py-2 rounded-lg border border-border/20 bg-background",
   "text-sm text-foreground",
-  "focus:outline-none focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition-shadow",
+  "focus:outline-none focus:shadow-sm transition-shadow",
 )
 
 const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
@@ -60,7 +60,7 @@ export function DayOfWeekPicker({
               "size-8 rounded-lg text-xs font-medium transition-colors",
               value === day.value
                 ? "bg-primary text-primary-foreground"
-                : "bg-background border border-black/[0.04] text-muted-foreground hover:text-foreground",
+                : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
             )}
           >
             {day.label}

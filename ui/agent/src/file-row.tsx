@@ -69,9 +69,9 @@ export function FolderSection({
           <FolderIcon />
           <span className="text-[13px] truncate">{node.name}</span>
         </div>
-        <span className="text-[11px] text-[#6d6d6d] truncate px-2">{"\u2014"}</span>
-        <span className="text-[11px] text-[#6d6d6d] text-right px-2">--</span>
-        <span className="text-[11px] text-[#6d6d6d] truncate px-2">Folder</span>
+        <span className="text-[11px] text-muted-foreground truncate px-2">{"\u2014"}</span>
+        <span className="text-[11px] text-muted-foreground text-right px-2">--</span>
+        <span className="text-[11px] text-muted-foreground truncate px-2">Folder</span>
       </div>
       {open &&
         node.children.map((child) =>
@@ -119,7 +119,7 @@ export function FileRow({
   const renameRef = useRef<HTMLInputElement>(null)
   const padLeft = BASE_INDENT + depth * DEPTH_INDENT + TRIANGLE_AREA
   const hasMenu = onOpen || onReveal || onDelete
-  const sec = selected ? "text-white/80" : "text-[#6d6d6d]"
+  const sec = selected ? "text-primary-foreground/80" : "text-muted-foreground"
 
   const startRename = () => {
     if (!onRename) return

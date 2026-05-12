@@ -39,7 +39,7 @@ export function UserAttachmentBadge({
   if (files.length === 0) return null;
   return (
     <div
-      className="inline-flex max-w-full items-center gap-2 rounded-full border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-foreground shadow-[0_1px_0_rgba(0,0,0,0.04)]"
+      className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/50 bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
       title={files.map((file) => file.name).join(", ")}
     >
       <Paperclip className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />

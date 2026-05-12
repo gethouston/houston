@@ -158,7 +158,7 @@ function DisclaimerOverlay({
               variant="outline"
               onClick={handleDecline}
               disabled={busy !== null}
-              className="rounded-full border-black/15 bg-white text-foreground hover:bg-gray-50"
+              className="rounded-full border-border/50 bg-card text-foreground hover:bg-muted"
             >
               {busy === "decline" ? t("buttons.decline_busy") : t("buttons.decline")}
             </Button>

@@ -81,7 +81,7 @@ export interface AttachmentChipProps {
 export function AttachmentChip({ name, onRemove }: AttachmentChipProps) {
   const ext = getExt(name);
   return (
-    <div className="relative flex items-center gap-2.5 rounded-xl border border-black/[0.08] bg-white pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
+    <div className="relative flex items-center gap-2.5 rounded-xl border border-black/[0.08] bg-background pl-2.5 pr-8 py-2 min-w-0 shrink-0 max-w-[240px] shadow-sm">
       <AttachmentIcon ext={ext} />
       <div className="min-w-0">
         <p className="text-xs font-medium text-foreground truncate leading-tight">
@@ -94,7 +94,7 @@ export function AttachmentChip({ name, onRemove }: AttachmentChipProps) {
       <button
         type="button"
         onClick={onRemove}
-        className="absolute top-1.5 right-1.5 size-4 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+        className="absolute top-1.5 right-1.5 size-4 rounded-full bg-foreground/60 text-background flex items-center justify-center hover:bg-foreground/80 transition-colors"
         aria-label={`Remove ${name}`}
       >
         <XIcon className="size-2.5" strokeWidth={3} />

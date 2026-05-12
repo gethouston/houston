@@ -8,7 +8,7 @@ export function ChatDropOverlay({ visible }: ChatDropOverlayProps) {
   if (!visible) return null;
   return (
     <div
-      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-white/80 backdrop-blur-sm"
+      className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center bg-background/80 backdrop-blur-sm"
       aria-hidden="true"
     >
       <div className="flex w-full max-w-sm -translate-y-12 flex-col items-center gap-3 px-6 text-center">

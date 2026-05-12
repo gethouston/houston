@@ -143,10 +143,10 @@ export function FilesBrowser({
 
   return (
     <div
-      className="relative flex flex-col overflow-hidden bg-white border border-[#e0e0e0] rounded-xl h-full"
+      className="relative flex flex-col overflow-hidden bg-background border border-border rounded-xl h-full"
       {...(onFilesDropped || onMove ? dragHandlers : {})}
     >
-      <div className="h-[24px] shrink-0 border-b border-[#e5e5e5] bg-[#fafafa] select-none flex items-center rounded-t-xl">
+      <div className="h-[24px] shrink-0 border-b border-border bg-muted/40 select-none flex items-center rounded-t-xl">
         <div className="flex-1 min-w-0 items-center h-full" style={{ display: "grid", gridTemplateColumns: COL_GRID }}>
           <HeaderCell label={l.columnName} col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="pl-7" />
           <HeaderCell label={l.columnDateModified} col="dateModified" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
@@ -180,7 +180,7 @@ export function FilesBrowser({
           </div>
         ) : (
           <>
-            <div className="shrink-0 [&>:nth-child(even)]:bg-[#f5f5f5] [&>:nth-child(even)]:rounded-lg">
+            <div className="shrink-0 [&>:nth-child(even)]:bg-muted/30 [&>:nth-child(even)]:rounded-lg">
               {creatingFolder && (
                 <NewFolderInput
                   onConfirm={(n) => { onCreateFolder?.(n); setCreatingFolder(false) }}
@@ -221,8 +221,8 @@ export function FilesBrowser({
         )}
       </div>
 
-      <div className="h-[22px] shrink-0 border-t border-[#e5e5e5] bg-[#fafafa] select-none flex items-center justify-between px-3 rounded-b-xl">
-        <span className="text-[11px] text-[#6d6d6d]">
+      <div className="h-[22px] shrink-0 border-t border-border bg-muted/40 select-none flex items-center justify-between px-3 rounded-b-xl">
+        <span className="text-[11px] text-muted-foreground">
           {fileCount} {fileCount === 1 ? "item" : "items"}
         </span>
         {statusBarAction}
@@ -266,7 +266,7 @@ function FillerStripes({ startIndex, onDeselect, onContextMenu }: {
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
-          className={cn("h-[24px]", (startIndex + i) % 2 === 1 && "bg-[#f5f5f5] rounded-lg")}
+          className={cn("h-[24px]", (startIndex + i) % 2 === 1 && "bg-muted/30 rounded-lg")}
           onClick={onDeselect}
           onContextMenu={onContextMenu}
         />
@@ -284,12 +284,12 @@ function BgContextMenu({ position, onNewFolder, onClose }: {
     <>
       <div className="fixed inset-0 z-50" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }} />
       <div
-        className="fixed z-50 bg-white/95 backdrop-blur-xl border border-black/10 rounded-lg shadow-lg py-1 min-w-[160px]"
+        className="fixed z-50 bg-popover/95 backdrop-blur-xl border border-border rounded-lg shadow-lg py-1 min-w-[160px]"
         style={{ left: position.x, top: position.y }}
       >
         <button
           onClick={onNewFolder}
-          className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-[#2068d0] hover:text-white rounded-md mx-0.5"
+          className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-primary hover:text-primary-foreground rounded-md mx-0.5"
           style={{ width: "calc(100% - 4px)" }}
         >
           New Folder
@@ -314,8 +314,8 @@ function HeaderCell({ label, col, sortKey, sortDir, onSort, className, last }: {
     <button
       onClick={() => onSort(col)}
       className={cn(
-        "flex items-center justify-between h-full px-2 text-[11px] font-medium text-[#6d6d6d] hover:bg-[#eaeaea] transition-colors",
-        !last && "border-r border-[#e5e5e5]",
+        "flex items-center justify-between h-full px-2 text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors",
+        !last && "border-r border-border",
         className,
       )}
     >
@@ -325,7 +325,7 @@ function HeaderCell({ label, col, sortKey, sortDir, onSort, className, last }: {
           className="size-[8px] shrink-0"
           viewBox="0 0 8 6"
           fill="none"
-          stroke="#6d6d6d"
+          stroke="currentColor"
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"

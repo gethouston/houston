@@ -30,7 +30,7 @@ export function LoadingState() {
       <div className="w-48 h-[2px] rounded-full bg-black/10 overflow-hidden">
         <div
           ref={barRef}
-          className="h-full bg-black rounded-full"
+          className="h-full bg-foreground rounded-full"
           style={{ width: "0%", transition: "width 5s linear" }}
         />
       </div>

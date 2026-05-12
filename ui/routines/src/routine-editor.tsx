@@ -124,10 +124,10 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
 }
 
 const baseFieldClass = cn(
-  "w-full rounded-lg border border-black/[0.04] bg-background px-3 py-2 text-sm",
+  "w-full rounded-lg border border-border/20 bg-background px-3 py-2 text-sm",
   "text-foreground placeholder:text-muted-foreground/60",
   "transition-shadow duration-200",
-  "focus:outline-none focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
+  "focus:outline-none focus:shadow-sm",
 )
 
 // ----- Main -----

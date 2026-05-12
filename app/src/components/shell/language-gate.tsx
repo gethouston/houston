@@ -96,7 +96,7 @@ function LanguageOverlay({
                 type="button"
                 onClick={() => handlePick(loc)}
                 disabled={pending !== null}
-                className="flex h-11 w-full items-center justify-center rounded-full border border-black/15 bg-white text-sm font-medium text-foreground transition-colors hover:bg-gray-50 disabled:opacity-60"
+                className="flex h-11 w-full items-center justify-center rounded-full border border-border/50 bg-card text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60"
               >
                 {busy ? "…" : DISPLAY_NAMES[loc]}
               </button>
