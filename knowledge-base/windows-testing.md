@@ -279,7 +279,9 @@ Houston ships claude.exe but didn't bundle, detect, or warn about
 Git Bash. **Fixed** in `engine/houston-engine-core/src/provider.rs`:
 
 - `find_git_bash_windows()` probes `CLAUDE_CODE_GIT_BASH_PATH`
-  env override → `C:\Program Files\Git\bin\bash.exe` →
+  env override → the Houston-bundled extraction
+  (`%LOCALAPPDATA%\Programs\Houston\runtime\git-bash-<arch>\usr\bin\bash.exe`)
+  → `C:\Program Files\Git\bin\bash.exe` →
   `C:\Program Files (x86)\Git\bin\bash.exe` → PATH search.
 - `launch_login` for Anthropic on Windows sets
   `CLAUDE_CODE_GIT_BASH_PATH` to the found path automatically.
@@ -289,8 +291,18 @@ Git Bash. **Fixed** in `engine/houston-engine-core/src/provider.rs`:
   auto-detect it on next launch."` — the dialog shows this BEFORE
   spawning claude.exe.
 
-User still has to install Git for Windows once. After that
-Houston Just Works without setting any env vars.
+Since v0.4.11 the bundle is enough — the user never has to install
+Git for Windows separately. The PortableGit `.7z.exe` ships inside
+the MSI and the engine extracts it in-process via `sevenz-rust2`
+(see `engine/houston-engine-core/src/git_bash.rs`). The earlier
+SFX-subprocess approach in v0.4.10 caused a Windows crash loop —
+the SFX's GUI progress dialog couldn't be hidden, the subprocess
+blocked engine startup, and Tauri's 5s health-check timeout killed
+the engine mid-extract on every launch. v0.4.11 decodes the
+embedded 7z payload directly (skipping the PE stub), runs the
+provisioning as a fire-and-forget background task so engine HTTP
+comes up immediately, and uses a temp-dir + atomic-rename so a
+partial extraction can never poison the install.
 
 ### 5. Custom `composio.exe` install path is x64-only
 

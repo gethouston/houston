@@ -220,7 +220,16 @@ pub fn run() {
                     .handshake
                     .clone()
             };
-            wait_until_healthy(&handshake, Duration::from_secs(5))
+            // 30s matches the banner timeout above. On first launch the
+            // engine has to import the bundled certificates, run a
+            // login-shell PATH probe, and (on Windows) kick off
+            // PortableGit extraction in the background. The shorter
+            // 5s budget we used before turned out to be the trigger
+            // for a Windows crash loop: any startup path that crossed
+            // it killed the engine subprocess, which on Windows meant
+            // an in-flight PortableGit extraction was never finalized
+            // and re-fired identically on every relaunch.
+            wait_until_healthy(&handshake, Duration::from_secs(30))
                 .expect("engine did not pass /v1/health in time");
 
             // Stash the handshake so the frontend can pull it via

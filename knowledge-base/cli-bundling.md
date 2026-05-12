@@ -18,13 +18,14 @@ opening a shell.
 
 ### Windows (x64 only in v1)
 
-| CLI         | License       | Distribution                | Where it lives                                                                          |
-|-------------|---------------|-----------------------------|------------------------------------------------------------------------------------------|
-| codex       | Apache-2.0    | Bundled (single arch)       | `<install>\resources\bin\codex.exe` — downloaded + zstd-decoded from upstream            |
-| composio    | MIT           | **Built from source (fork)** | `<install>\resources\bin\composio-x86_64\composio.exe`                                   |
-| claude-code | PROPRIETARY   | Runtime download            | `%LOCALAPPDATA%\Programs\claude\claude.exe`                                              |
+| CLI         | License       | Distribution                       | Where it lives                                                                          |
+|-------------|---------------|------------------------------------|------------------------------------------------------------------------------------------|
+| codex       | Apache-2.0    | Bundled (single arch)              | `<install>\resources\bin\codex.exe` — downloaded + zstd-decoded from upstream            |
+| composio    | MIT           | **Built from source (fork)**       | `<install>\resources\bin\composio-x86_64\composio.exe`                                   |
+| claude-code | PROPRIETARY   | Runtime download                   | `%LOCALAPPDATA%\Programs\claude\claude.exe`                                              |
+| git-bash    | GPL-2.0       | Bundled (compressed, decoded in-process) | `%LOCALAPPDATA%\Programs\Houston\runtime\git-bash-<arch>\usr\bin\bash.exe` (extracted on first launch) |
 
-Three notes on Windows:
+Four notes on Windows:
 
 1. **codex** ships a single per-arch binary on Windows because there is
    no `lipo` equivalent — Windows binaries from openai/codex come as
@@ -57,6 +58,26 @@ Three notes on Windows:
    bundled `cli-deps.json`, and writes to
    `%LOCALAPPDATA%\Programs\claude\claude.exe` (matching the upstream
    PowerShell installer).
+
+4. **git-bash** ships as PortableGit's `.7z.exe` archive (~57 MB per
+   arch) under `resources\bin\git-bash-<arch>.7z.exe`. Claude Code's
+   `claude.exe` refuses to run without `bash.exe` + the msys2 POSIX
+   runtime, so the engine extracts the archive on first launch into
+   `%LOCALAPPDATA%\Programs\Houston\runtime\git-bash-<arch>\` and
+   exports `CLAUDE_CODE_GIT_BASH_PATH` for every later claude.exe
+   spawn. **Extraction is done in-process** by `sevenz-rust2`,
+   skipping the SFX's PE stub and decoding the embedded 7z payload
+   directly. The SFX is never executed — running it would pop the
+   GUI progress dialog that Igor Pavlov's `7zSD` SFX module always
+   shows regardless of CreateProcess flags, and would also gate
+   engine boot on a CPU-bound subprocess we cannot kill cleanly. The
+   in-process decoder runs on a fire-and-forget background task so
+   `axum::serve` comes up immediately; a concurrent on-demand caller
+   from a route handler blocks on the same `Mutex` inside
+   `git_bash::ensure_bundled_bash` instead of double-extracting.
+   First-launch cost is ~5-10s (CPU-bound LZMA2 decode) and the
+   marker file at `.sfx-marker` (mtime+size of the SFX archive)
+   makes every subsequent launch a no-op.
 
 claude-code's license doesn't permit redistribution, so we can't
 bundle it on either OS. Instead the engine downloads + sha256-verifies

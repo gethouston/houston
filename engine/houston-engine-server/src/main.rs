@@ -38,27 +38,38 @@ async fn main() {
         houston_terminal_manager::claude_path::init();
     });
 
-    // Provision Git Bash on Windows BEFORE any spawn site needs it.
-    // Claude Code's claude.exe refuses to run without bash.exe; we
-    // bundle PortableGit-<arch>.7z.exe and extract it on first launch,
-    // then export CLAUDE_CODE_GIT_BASH_PATH so every child process
-    // (the provider auth probe, the login flow, the summarize call,
-    // the chat-session runner) inherits the path without each
-    // call-site having to know. Runs concurrently with claude_path
-    // init so first-boot extraction (~3-5s) overlaps with the
-    // login-shell PATH probe instead of stacking serially. Awaited
-    // before `axum::serve` so no route handler can read a
-    // half-provisioned env var.
+    // Provision Git Bash on Windows in the background.
+    //
+    // Claude Code's claude.exe refuses to run without bash.exe, so on
+    // first launch we extract the bundled PortableGit archive into
+    // `%LOCALAPPDATA%\Programs\Houston\runtime\git-bash-<arch>\` and
+    // export `CLAUDE_CODE_GIT_BASH_PATH` so every later child process
+    // (provider auth probe, login flow, summarize call, chat-session
+    // runner) inherits the path.
+    //
+    // This task is intentionally fire-and-forget: we do NOT await it
+    // before `axum::serve`. First-launch extraction is CPU-bound
+    // (~5-10s LZMA2 decode) and a Tauri supervisor with a tight
+    // health-check timeout would otherwise kill the engine
+    // mid-extract, leaving the user in a crash loop with no
+    // PortableGit and no Houston. By the time a route handler that
+    // actually needs bash runs, either the boot-time task has
+    // already populated the env var or `find_git_bash_windows()` in
+    // provider.rs calls `ensure_bundled_bash()` on-demand. Both
+    // paths share a Mutex inside
+    // `houston_engine_core::git_bash::ensure_bundled_bash`, so a
+    // concurrent on-demand caller blocks on the same extraction the
+    // boot task is performing instead of starting a second one.
     #[cfg(target_os = "windows")]
-    let git_bash_init = tokio::task::spawn_blocking(|| {
+    tokio::task::spawn_blocking(|| {
         if let Some(bash) = houston_engine_core::git_bash::ensure_bundled_bash() {
             tracing::info!("[boot] CLAUDE_CODE_GIT_BASH_PATH={}", bash.display());
-            // SAFETY: this thread is the sole writer to this env var
-            // for the engine's lifetime, and we await this task
-            // before `axum::serve` starts so no route handler reads
-            // it concurrently. set_var's `unsafe` marker exists to
-            // make readers-during-write the caller's problem; we
-            // serialize.
+            // SAFETY: the cache mutex inside `ensure_bundled_bash`
+            // guarantees only one writer at a time reaches this
+            // line for the lifetime of the process. set_var's
+            // `unsafe` marker exists to make readers-during-write
+            // the caller's problem; serialization through the cache
+            // is that contract.
             unsafe {
                 std::env::set_var("CLAUDE_CODE_GIT_BASH_PATH", bash);
             }
@@ -141,12 +152,11 @@ async fn main() {
     // If PATH init panicked, log and continue with whatever the OnceLock
     // holds — routes fall back to the process PATH, which is degraded
     // but not fatal.
+    //
+    // The Windows git-bash task is NOT awaited here on purpose — see
+    // the comment at its spawn site above.
     if let Err(e) = path_init.await {
         tracing::warn!("[boot] claude_path::init panicked: {e}");
-    }
-    #[cfg(target_os = "windows")]
-    if let Err(e) = git_bash_init.await {
-        tracing::warn!("[boot] git_bash provisioning panicked: {e}");
     }
 
     if let Err(err) = axum::serve(listener, app).await {

@@ -54,6 +54,27 @@ only touch the engine note the engine crate version in parentheses.
   must humanize cleanly; no insider acronyms; no `display_name`
   override; descriptions and form labels are user-facing copy.
 
+### Fixed
+- **Windows: black-screen + small-loading-window crash loop on first
+  launch (engine 0.4.11).** The bundled PortableGit `.7z.exe` was
+  previously extracted by invoking the SFX as a subprocess. Igor
+  Pavlov's GUI SFX module always renders its own progress dialog
+  (this was the "small loading window" users reported), and the
+  blocking extraction sat between engine bind and `axum::serve`. On
+  every launch the engine missed Tauri's 5s `/v1/health` deadline,
+  the supervisor `expect()`-panicked the main window closed, the
+  SFX was killed mid-extract, no marker file was written, and the
+  next launch produced the same sequence. Houston now extracts the
+  embedded 7z archive in-process via `sevenz-rust2` (skipping the
+  PE stub), runs the provisioning as a fire-and-forget background
+  task so engine HTTP comes up immediately, and uses a temp-dir +
+  atomic-rename so a partial extraction never poisons the install.
+  Tauri's `wait_until_healthy` budget also bumped from 5s to 30s as
+  defense-in-depth against other slow first-boot paths
+  (`engine/houston-engine-core/src/git_bash.rs`,
+  `engine/houston-engine-server/src/main.rs`,
+  `app/src-tauri/src/lib.rs`).
+
 ## [0.3.2] — 2026-04-21 (engine 0.4.0)
 
 ### Added
