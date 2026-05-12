@@ -72,8 +72,15 @@ impl EngineSubprocess {
         env: &[(String, String)],
     ) -> Result<Self, String> {
         let mut cmd = Command::new(binary);
+        // Pipe stderr so we can forward it to both the parent's tracing
+        // sink AND an on-disk `engine.log` next to backend.log. On
+        // Windows GUI builds the parent has no console, so inherited
+        // stderr disappears into NUL and the engine's tracing output —
+        // including panic messages — is lost. The on-disk capture is
+        // what `Report bug` ships back to us when an engine subprocess
+        // crashes.
         cmd.stdout(Stdio::piped())
-            .stderr(Stdio::inherit())
+            .stderr(Stdio::piped())
             // Piped stdin we never write to: when this supervisor
             // process exits (or crashes), the write-end drops and the
             // child's `read(stdin)` returns EOF. The engine's
@@ -117,7 +124,45 @@ impl EngineSubprocess {
         // engine's parent watchdog the moment we start reaping.
         let stdin = child.stdin.take();
         let stdout = child.stdout.take().ok_or("no stdout from engine")?;
+        let stderr = child.stderr.take().ok_or("no stderr from engine")?;
         let mut reader = BufReader::new(stdout);
+
+        // Forward engine stderr (its tracing sink) to:
+        //   1. an on-disk `engine.log` daily-rolled file alongside
+        //      `backend.log`, so bug reports include engine traces, and
+        //   2. the supervisor's tracing sink as `[engine:stderr] ...`.
+        // Without (1), Windows GUI builds discard engine stderr to NUL.
+        let stderr_reader = BufReader::new(stderr);
+        thread::spawn(move || {
+            let logs_dir = houston_tauri::houston_db::db::houston_dir().join("logs");
+            let _ = std::fs::create_dir_all(&logs_dir);
+            let today = chrono::Local::now().format("%Y-%m-%d").to_string();
+            let log_path = logs_dir.join(format!("engine.log.{today}"));
+            let mut file = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_path)
+                .ok();
+            use std::io::Write;
+            let mut reader = stderr_reader;
+            let mut line = String::new();
+            loop {
+                line.clear();
+                match reader.read_line(&mut line) {
+                    Ok(0) | Err(_) => break,
+                    Ok(_) => {
+                        let trimmed = line.trim_end();
+                        if !trimmed.is_empty() {
+                            tracing::debug!("[engine:stderr] {trimmed}");
+                            if let Some(f) = file.as_mut() {
+                                let _ = writeln!(f, "{trimmed}");
+                                let _ = f.flush();
+                            }
+                        }
+                    }
+                }
+            }
+        });
 
         let deadline = Instant::now() + timeout;
         let handshake: EngineHandshake = {

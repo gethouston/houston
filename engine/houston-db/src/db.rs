@@ -132,13 +132,13 @@ pub fn houston_dir() -> PathBuf {
     if let Ok(override_path) = std::env::var("HOUSTON_HOME") {
         return PathBuf::from(override_path);
     }
-    let home = std::env::var("HOME").unwrap_or_else(|_| ".".into());
+    let home = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
     let subdir = if cfg!(debug_assertions) {
         ".dev-houston"
     } else {
         ".houston"
     };
-    PathBuf::from(home).join(subdir)
+    home.join(subdir)
 }
 
 #[cfg(test)]

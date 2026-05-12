@@ -12,7 +12,6 @@ use engine_supervisor::{
 use houston_tauri::houston_db::Database;
 use houston_tauri::state::AppState;
 use houston_ui_events::HoustonEvent;
-use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{Emitter, Manager};
@@ -394,9 +393,9 @@ fn migrate_all_agents(workspaces_root: &std::path::Path) {
 /// On any error we log + bail; the engine will still run against the new
 /// empty path. Original legacy dir is left in place as manual rollback.
 fn migrate_legacy_docs_dir(houston: &std::path::Path) {
-    let home = match std::env::var("HOME") {
-        Ok(h) => PathBuf::from(h),
-        Err(_) => return,
+    let home = match dirs::home_dir() {
+        Some(h) => h,
+        None => return,
     };
     let legacy = home.join("Documents").join("Houston");
     let new_root = houston.join("workspaces");

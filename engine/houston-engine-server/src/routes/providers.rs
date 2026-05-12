@@ -33,7 +33,7 @@ async fn login(
     Path(name): Path<String>,
 ) -> Result<(), ApiError> {
     let p = provider::parse(&name)?;
-    provider::launch_login(p)?;
+    provider::launch_login(p).await?;
     Ok(())
 }
 

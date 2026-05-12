@@ -2461,6 +2461,7 @@ version = "0.4.9"
 dependencies = [
  "anyhow",
  "chrono",
+ "dirs 5.0.1",
  "libsql",
  "serde",
  "tokio",

@@ -54,11 +54,14 @@
 #   ./scripts/fetch-cli-deps.sh arm64          # macOS arm64 only (dev)
 #   ./scripts/fetch-cli-deps.sh x64            # macOS x64 only (dev)
 #   ./scripts/fetch-cli-deps.sh windows-x64    # Windows x64 (production)
+#   ./scripts/fetch-cli-deps.sh windows-arm64  # Windows ARM64 (production)
+#   ./scripts/fetch-cli-deps.sh windows-both   # both Windows arches
 #   ./scripts/fetch-cli-deps.sh host           # auto-detect host OS + arch
 #
-# CI uses the no-arg form on macOS runners and `windows-x64` on Windows
-# runners. Local dev can use `host` to skip cross-arch slices the
-# developer doesn't need.
+# CI uses the no-arg form on macOS runners and `windows-both` on Windows
+# runners (the MSI ships both arches alongside each other and the
+# runtime picker chooses based on IsWow64Process2). Local dev can use
+# `host` to skip cross-arch slices the developer doesn't need.
 #
 # Strict mode: any download or checksum failure is fatal (set -euo pipefail).
 # Partial bundles are unacceptable — we'd ship a broken .app / .msi to
@@ -112,6 +115,8 @@ case "$MODE" in
   arm64)           TARGET_OS="darwin"; ARCHES=("arm64") ;;
   x64)             TARGET_OS="darwin"; ARCHES=("x64") ;;
   windows-x64)     TARGET_OS="windows"; ARCHES=("x64") ;;
+  windows-arm64)   TARGET_OS="windows"; ARCHES=("arm64") ;;
+  windows-both)    TARGET_OS="windows"; ARCHES=("x64" "arm64") ;;
   host)
     HOST_OS=$(detect_host_os)
     HOST_ARCH=$(detect_host_arch)
@@ -120,7 +125,7 @@ case "$MODE" in
       windows) TARGET_OS="windows"; ARCHES=("$HOST_ARCH") ;;
       *) echo "ERROR: host mode does not yet support $HOST_OS" >&2; exit 1 ;;
     esac ;;
-  *) echo "ERROR: unknown mode '$MODE' (expected: both|arm64|x64|windows-x64|host)" >&2; exit 1 ;;
+  *) echo "ERROR: unknown mode '$MODE' (expected: both|arm64|x64|windows-x64|windows-arm64|windows-both|host)" >&2; exit 1 ;;
 esac
 
 mkdir -p "$OUT_DIR"

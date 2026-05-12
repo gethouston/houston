@@ -123,7 +123,11 @@ pub async fn start_login() -> Result<StartLoginResponse, String> {
                 .map_err(|e| format!("Failed to spawn composio login: {e}"))?;
 
             if !status.success() {
-                return Err(format!("composio login --no-wait exited with {status}"));
+                return Err(decorate_windows_exit(
+                    "composio login --no-wait",
+                    &format!("{status}"),
+                    status.code(),
+                ));
             }
 
             let stdout = std::fs::read_to_string(&tmp)
@@ -495,4 +499,63 @@ async fn list_connected_toolkits_inner() -> Result<Vec<String>, String> {
         .map_err(|e| format!("Failed to parse connected toolkits: {e}"))?;
 
     Ok(result.toolkits)
+}
+
+/// Turn a cryptic Windows process exit (e.g. `0xc000001d`) into a
+/// human-actionable error message. On non-Windows or unrecognized
+/// codes we return the original status verbatim.
+fn decorate_windows_exit(command: &str, status_display: &str, exit_code: Option<i32>) -> String {
+    // i32 sign-extended NTSTATUS values that appear in process exits.
+    // Tests pass these as the canonical u32 NTSTATUS hex form so we
+    // compare on the lower 32 bits.
+    let nt = exit_code.map(|c| c as u32);
+    let hint = match nt {
+        Some(0xC000_001D) => Some(
+            "STATUS_ILLEGAL_INSTRUCTION (0xc000001d): the bundled x64 \
+             binary uses CPU instructions not supported by this CPU. \
+             On Windows-on-ARM laptops the x64 emulator does not \
+             implement every instruction set — Composio needs a \
+             native aarch64 build (tracked in gethouston/composio). \
+             On native x64 hardware this usually means a corrupted \
+             binary; reinstall Houston.",
+        ),
+        Some(0xC000_0135) => Some(
+            "STATUS_DLL_NOT_FOUND (0xc0000135): a runtime DLL the CLI \
+             needs is missing. Reinstall Houston or check the install \
+             directory for missing files.",
+        ),
+        Some(0xC000_0139) => Some(
+            "STATUS_ENTRYPOINT_NOT_FOUND (0xc0000139): a DLL is present \
+             but the wrong version. Reinstall Houston.",
+        ),
+        _ => None,
+    };
+    match hint {
+        Some(h) => format!("{command} exited with {status_display}. {h}"),
+        None => format!("{command} exited with {status_display}"),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn decorates_illegal_instruction() {
+        let msg = decorate_windows_exit("composio whoami", "exit code: 0xc000001d", Some(0xC000_001D_u32 as i32));
+        assert!(msg.contains("STATUS_ILLEGAL_INSTRUCTION"));
+        assert!(msg.contains("aarch64"));
+    }
+
+    #[test]
+    fn passes_through_unknown_codes() {
+        let msg = decorate_windows_exit("composio login", "exit code: 1", Some(1));
+        assert_eq!(msg, "composio login exited with exit code: 1");
+    }
+
+    #[test]
+    fn passes_through_when_code_unavailable() {
+        let msg = decorate_windows_exit("composio login", "signal: 9", None);
+        assert_eq!(msg, "composio login exited with signal: 9");
+    }
 }

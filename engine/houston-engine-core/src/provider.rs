@@ -69,45 +69,148 @@ pub async fn check_status(provider: Provider) -> CoreResult<ProviderStatus> {
     })
 }
 
-/// Launch the provider's login flow in the background (opens the user's
-/// browser for OAuth). Returns immediately — the frontend polls
-/// `check_status` to observe completion.
-pub fn launch_login(provider: Provider) -> CoreResult<()> {
-    let command = login_command(provider)?;
+/// Launch the provider's login flow. Spawns the CLI as a subprocess
+/// and waits up to 3 seconds for early failure: real OAuth flows take
+/// minutes (the user has to complete sign-in in the browser), but
+/// fast-failing CLIs (missing dependency, illegal instruction on
+/// emulated platforms) crash in milliseconds. We surface those to the
+/// caller as a real error containing the CLI's stderr — the frontend
+/// then shows an actionable message instead of letting the user sit
+/// forever on a "waiting" dialog.
+///
+/// If the CLI is still running after the 3-second probe window, we
+/// detach it: the OAuth flow continues in the background and the
+/// frontend polls `check_status` to observe completion, as before.
+pub async fn launch_login(provider: Provider) -> CoreResult<()> {
+    let ProviderCliCommand {
+        cli_name,
+        path,
+        args,
+        shell_path,
+    } = login_command(provider)?;
 
-    tokio::spawn(async move {
-        let ProviderCliCommand {
-            cli_name,
-            path,
-            args,
-            shell_path,
-        } = command;
-        let result = tokio::time::timeout(
-            Duration::from_secs(120),
-            tokio::process::Command::new(&path)
-                .args(&args)
-                .env("PATH", shell_path)
-                .stdin(std::process::Stdio::null())
-                .stdout(std::process::Stdio::null())
-                .stderr(std::process::Stdio::null())
-                .kill_on_drop(true)
-                .status(),
-        )
-        .await;
+    let mut cmd = tokio::process::Command::new(&path);
+    cmd.args(&args)
+        .env("PATH", shell_path)
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
+        .kill_on_drop(false);
 
-        match result {
-            Ok(Ok(status)) => {
-                tracing::info!("[houston:provider] {cli_name} login exited: {status}")
+    // Windows: Claude Code requires Git Bash and looks for it at
+    // `CLAUDE_CODE_GIT_BASH_PATH` (env var) or hardcoded paths. We
+    // probe well-known install locations + PATH and pass the env
+    // var so the user doesn't have to set it themselves. If we
+    // can't find bash.exe at all, we surface a single actionable
+    // error instead of letting claude.exe exit code 1 with cryptic
+    // stderr.
+    #[cfg(target_os = "windows")]
+    if matches!(provider, Provider::Anthropic) {
+        match find_git_bash_windows() {
+            Some(bash) => {
+                tracing::info!(
+                    "[houston:provider] claude: setting CLAUDE_CODE_GIT_BASH_PATH={}",
+                    bash.display()
+                );
+                cmd.env("CLAUDE_CODE_GIT_BASH_PATH", bash);
             }
-            Ok(Err(e)) => tracing::warn!(
-                "[houston:provider] {cli_name} login failed at {}: {e}",
-                path.display()
-            ),
-            Err(_) => tracing::warn!("[houston:provider] {cli_name} login timed out after 120s"),
+            None => {
+                return Err(CoreError::BadRequest(
+                    "Claude Code on Windows requires Git Bash. Install Git for Windows from \
+                     https://git-scm.com/downloads/win — Houston will auto-detect it on next launch."
+                        .into(),
+                ));
+            }
         }
-    });
+    }
 
-    Ok(())
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| CoreError::Internal(format!("failed to spawn {cli_name} login: {e}")))?;
+
+    // Probe window: if the CLI exits within 3 seconds, the OAuth flow
+    // couldn't have completed — that's a real failure to surface.
+    let probe = tokio::time::timeout(Duration::from_secs(3), child.wait()).await;
+
+    match probe {
+        Ok(Ok(status)) if !status.success() => {
+            let mut stderr_buf = String::new();
+            let mut stdout_buf = String::new();
+            if let Some(mut err) = child.stderr.take() {
+                use tokio::io::AsyncReadExt;
+                let _ = err.read_to_string(&mut stderr_buf).await;
+            }
+            if let Some(mut out) = child.stdout.take() {
+                use tokio::io::AsyncReadExt;
+                let _ = out.read_to_string(&mut stdout_buf).await;
+            }
+            let stderr = stderr_buf.trim();
+            let stdout = stdout_buf.trim();
+            tracing::warn!(
+                "[houston:provider] {cli_name} login exited early: {status} stdout={stdout:?} stderr={stderr:?}"
+            );
+            let detail = if !stderr.is_empty() {
+                stderr.to_string()
+            } else if !stdout.is_empty() {
+                stdout.to_string()
+            } else {
+                decorate_windows_exit(cli_name, &format!("{status}"), status.code())
+            };
+            Err(CoreError::Internal(format!("{cli_name} login: {detail}")))
+        }
+        Ok(Ok(status)) => {
+            // Exited cleanly within 3s — unusual but possible if the CLI
+            // already had a cached session or printed a "done" message.
+            tracing::info!(
+                "[houston:provider] {cli_name} login completed in <3s: {status}"
+            );
+            Ok(())
+        }
+        Ok(Err(e)) => {
+            tracing::warn!(
+                "[houston:provider] {cli_name} login wait failed at {}: {e}",
+                path.display()
+            );
+            Err(CoreError::Internal(format!(
+                "{cli_name} login wait: {e}"
+            )))
+        }
+        Err(_) => {
+            // Still running after 3s — detach and let the OAuth flow
+            // continue. Frontend polls check_status to observe success.
+            tracing::info!(
+                "[houston:provider] {cli_name} login still running after 3s probe; detaching"
+            );
+            tokio::spawn(async move {
+                let result =
+                    tokio::time::timeout(Duration::from_secs(120), child.wait_with_output()).await;
+                match result {
+                    Ok(Ok(output)) => {
+                        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+                        if output.status.success() {
+                            tracing::info!(
+                                "[houston:provider] {cli_name} login exited: {}",
+                                output.status
+                            );
+                        } else {
+                            tracing::warn!(
+                                "[houston:provider] {cli_name} login exited: {} stdout={stdout:?} stderr={stderr:?}",
+                                output.status
+                            );
+                        }
+                    }
+                    Ok(Err(e)) => tracing::warn!(
+                        "[houston:provider] {cli_name} login wait failed: {e}"
+                    ),
+                    Err(_) => tracing::warn!(
+                        "[houston:provider] {cli_name} login timed out after 120s"
+                    ),
+                }
+            });
+            Ok(())
+        }
+    }
 }
 
 /// Run the provider's logout flow synchronously. Unlike login (which
@@ -262,7 +365,9 @@ async fn check_codex_status() -> ProviderStatus {
     let (install_source, cli_path) = resolve_codex();
     let cli_installed = !matches!(install_source, InstallSource::Missing);
     let auth_state = if let Some(path) = cli_path.as_deref() {
-        let home = std::env::var("HOME").unwrap_or_default();
+        let home = dirs::home_dir()
+            .map(|p| p.to_string_lossy().into_owned())
+            .unwrap_or_default();
         probe_codex_auth_status(path, &home).await
     } else {
         ProviderAuthState::Unauthenticated
@@ -275,6 +380,72 @@ async fn check_codex_status() -> ProviderStatus {
         cli_name: "codex".into(),
         install_source,
         cli_path: cli_path.map(|p| p.to_string_lossy().into_owned()),
+    }
+}
+
+/// Locate Git for Windows' `bash.exe` so Claude Code can use it. Probes
+/// the user override env var, the two standard Git for Windows install
+/// locations, and PATH. Returns `None` if Git for Windows is not
+/// installed. Windows-only by construction; the caller is gated on
+/// `cfg(target_os = "windows")`.
+#[cfg(target_os = "windows")]
+fn find_git_bash_windows() -> Option<PathBuf> {
+    if let Ok(p) = std::env::var("CLAUDE_CODE_GIT_BASH_PATH") {
+        let pb = PathBuf::from(p);
+        if pb.is_file() {
+            return Some(pb);
+        }
+    }
+    for candidate in [
+        "C:\\Program Files\\Git\\bin\\bash.exe",
+        "C:\\Program Files (x86)\\Git\\bin\\bash.exe",
+    ] {
+        let pb = PathBuf::from(candidate);
+        if pb.is_file() {
+            return Some(pb);
+        }
+    }
+    if let Ok(paths) = std::env::var("PATH") {
+        for dir in std::env::split_paths(&paths) {
+            let bash = dir.join("bash.exe");
+            if bash.is_file() {
+                return Some(bash);
+            }
+        }
+    }
+    None
+}
+
+/// Turn a cryptic Windows process exit (e.g. `0xc000001d`) into a
+/// human-actionable error message. On non-Windows or unrecognized
+/// codes we return the original status verbatim. Kept in sync with
+/// the copy in `houston-composio::cli` — these two are the only
+/// Houston modules that spawn third-party CLIs the user might see
+/// crash with NT status codes.
+fn decorate_windows_exit(command: &str, status_display: &str, exit_code: Option<i32>) -> String {
+    let nt = exit_code.map(|c| c as u32);
+    let hint = match nt {
+        Some(0xC000_001D) => Some(
+            "STATUS_ILLEGAL_INSTRUCTION (0xc000001d): the binary uses CPU \
+             instructions not supported by this CPU. On Windows-on-ARM \
+             laptops the x64 emulator does not implement every instruction \
+             set — the CLI needs a native aarch64 build. On native x64 \
+             hardware this usually means a corrupted install; reinstall \
+             Houston.",
+        ),
+        Some(0xC000_0135) => Some(
+            "STATUS_DLL_NOT_FOUND (0xc0000135): a runtime DLL is missing. \
+             Reinstall Houston.",
+        ),
+        Some(0xC000_0139) => Some(
+            "STATUS_ENTRYPOINT_NOT_FOUND (0xc0000139): a DLL is the wrong \
+             version. Reinstall Houston.",
+        ),
+        _ => None,
+    };
+    match hint {
+        Some(h) => format!("{command} exited with {status_display}. {h}"),
+        None => format!("{command} exited with {status_display}"),
     }
 }
 

@@ -353,8 +353,105 @@ fn composio_binary_name() -> &'static str {
 /// names ("aarch64", "x86_64") so the runtime resolver doesn't need a
 /// translation table from upstream's "arm64"/"x64" naming. Matches the
 /// directory layout produced by `scripts/fetch-cli-deps.sh`.
+///
+/// **Windows-on-ARM exception**: when an x64 Houston binary runs under
+/// Microsoft's x64 emulator on an ARM64 Windows host, `consts::ARCH`
+/// returns "x86_64" because the running process IS x86_64. But the
+/// emulator does not implement every x86 instruction set, so x64
+/// Composio crashes with `STATUS_ILLEGAL_INSTRUCTION` (0xc000001d) on
+/// real ARM laptops. We detect this case via `IsWow64Process2` and
+/// prefer the native `composio-aarch64/` directory when it's present
+/// in the bundle. Falls back to `composio-x86_64/` if the aarch64
+/// build hasn't been bundled (which is the case until the
+/// gethouston/composio fork ships an ARM build).
 fn host_arch_for_composio() -> &'static str {
-    std::env::consts::ARCH
+    #[cfg(target_os = "windows")]
+    {
+        let probe = windows_native_arch_under_emulation();
+        let bin = bundled_bin_dir();
+        tracing::info!(
+            "[composio:arch] windows probe: native_under_emulation={:?} bundled_bin_dir={:?}",
+            probe,
+            bin.as_deref().map(|p| p.display().to_string())
+        );
+        if let Some(native) = probe {
+            if let Some(bin) = bin {
+                let native_dir = bin.join(format!("composio-{native}"));
+                let exists = native_dir.is_dir();
+                tracing::info!(
+                    "[composio:arch] checking native dir {} exists={}",
+                    native_dir.display(),
+                    exists
+                );
+                if exists {
+                    return native;
+                }
+            }
+        }
+    }
+    let fallback = std::env::consts::ARCH;
+    #[cfg(target_os = "windows")]
+    tracing::info!("[composio:arch] falling back to consts::ARCH = {}", fallback);
+    fallback
+}
+
+/// Detect Windows-on-ARM running an x64 process under emulation.
+/// Returns the native architecture name ("aarch64") when the current
+/// process is being emulated; `None` when running natively on
+/// whatever architecture matches the binary. Uses `IsWow64Process2`
+/// available since Windows 10 1709 — Houston's minimum supported
+/// Windows is 10, so the lookup never fails on unsupported OS.
+#[cfg(target_os = "windows")]
+fn windows_native_arch_under_emulation() -> Option<&'static str> {
+    // Avoid pulling in the `windows` crate for one syscall.
+    type Handle = *mut std::ffi::c_void;
+    #[link(name = "kernel32")]
+    extern "system" {
+        fn GetCurrentProcess() -> Handle;
+        fn IsWow64Process2(
+            h_process: Handle,
+            p_process_machine: *mut u16,
+            p_native_machine: *mut u16,
+        ) -> i32;
+    }
+    const IMAGE_FILE_MACHINE_UNKNOWN: u16 = 0x0000;
+    const IMAGE_FILE_MACHINE_ARM64: u16 = 0xAA64;
+    const IMAGE_FILE_MACHINE_AMD64: u16 = 0x8664;
+
+    let mut process_machine: u16 = 0;
+    let mut native_machine: u16 = 0;
+    let ok = unsafe {
+        IsWow64Process2(
+            GetCurrentProcess(),
+            &mut process_machine,
+            &mut native_machine,
+        )
+    };
+    tracing::info!(
+        "[composio:arch] IsWow64Process2 ok={} process_machine=0x{:04x} native_machine=0x{:04x}",
+        ok,
+        process_machine,
+        native_machine
+    );
+    if ok == 0 {
+        return None;
+    }
+    // `native_machine` is always populated with the host's true arch
+    // regardless of emulation status, so use IT as the source of truth.
+    // The earlier "process_machine == UNKNOWN means native" check was
+    // wrong for the Houston-on-ARM case: Microsoft's x64-on-ARM
+    // emulator reports `process_machine == AMD64` correctly on most
+    // SKUs, but there's an edge where the OS reports UNKNOWN even
+    // under emulation. Trusting `native_machine` directly is robust
+    // either way — if the host is ARM64, we want native ARM; if the
+    // host is x64, we want x64 (which `consts::ARCH` would have given
+    // us anyway since the binary is x64).
+    match native_machine {
+        IMAGE_FILE_MACHINE_ARM64 => Some("aarch64"),
+        IMAGE_FILE_MACHINE_AMD64 => Some("x86_64"),
+        IMAGE_FILE_MACHINE_UNKNOWN => None,
+        _ => None,
+    }
 }
 
 // ---------------------------------------------------------------------------

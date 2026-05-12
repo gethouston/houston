@@ -51,8 +51,8 @@ pub struct RunShellRequest {
 
 fn expand_tilde(path: &Path) -> PathBuf {
     if path.starts_with("~") {
-        if let Ok(home) = std::env::var("HOME") {
-            return PathBuf::from(home).join(path.strip_prefix("~").unwrap_or(path));
+        if let Some(home) = dirs::home_dir() {
+            return home.join(path.strip_prefix("~").unwrap_or(path));
         }
     }
     path.to_path_buf()

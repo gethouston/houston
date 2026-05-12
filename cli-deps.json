@@ -48,7 +48,7 @@
     "binary_name": "composio",
     "license": "MIT",
     "ship_layout": "per-arch-dir",
-    "$ship_layout_comment": "Composio is a Bun-bundled JS app with arch-specific runtime + sibling .mjs/services files; cannot lipo. Each arch ships at resources/bin/composio-{aarch64|x86_64}/ on macOS and resources/bin/composio-x86_64/ on Windows (no aarch64 Windows build in v1) and the engine resolves at runtime via std::env::consts::ARCH. Cross-platform acp-adapters that the resolved arch can never execute are pruned at fetch time to keep the bundle honest in size.",
+    "$ship_layout_comment": "Composio is a Bun-bundled JS app with arch-specific runtime + sibling .mjs/services files; cannot lipo. Each arch ships at resources/bin/composio-{aarch64|x86_64}/ on every supported OS. The engine resolves at runtime via std::env::consts::ARCH, with a `IsWow64Process2` shim that prefers `composio-aarch64/` when an x64 process is running under Windows-on-ARM emulation (see houston-cli-bundle::host_arch_for_composio). Cross-platform acp-adapters that the resolved arch can never execute are pruned at fetch time to keep the bundle honest in size.",
     "urls": {
       "darwin-arm64": "https://github.com/ComposioHQ/composio/releases/download/@composio/cli@{version}/composio-darwin-aarch64.zip",
       "darwin-x64": "https://github.com/ComposioHQ/composio/releases/download/@composio/cli@{version}/composio-darwin-x64.zip"
@@ -57,7 +57,7 @@
       "darwin-arm64": "fba0a57788ea50335507b2a38eccc67ebc051272f8393284b239875c4fdff8ef",
       "darwin-x64": "94af160e5bb10be80218dd9377c79a72d5c5ab7e172a65da0607ec4ee4d019c6"
     },
-    "$build_comment": "Upstream ComposioHQ/composio does not yet publish Windows artifacts (issue #3057, closed: 'use WSL'). Until that ships, we build composio.exe from a fork at gethouston/composio that adds Windows targets to TARGET_MAP, win32 entries to RUN_CODEX_ACP_BINARY_TARGETS, and a Windows Credential Manager backend in cli-keyring. Builds are reproducible: pinned commit SHA, pinned Bun version, pinned bun_target. The `pnpm` package manager + Bun runtime installed on the build host must match the values in the fork's `package.json#packageManager` and `.bun-version` respectively.",
+    "$build_comment": "Upstream ComposioHQ/composio does not yet publish Windows artifacts (issue #3057, closed: 'use WSL'). Until that ships, we build composio.exe from a fork at gethouston/composio that adds Windows targets to TARGET_MAP, win32 entries to RUN_CODEX_ACP_BINARY_TARGETS, and a Windows Credential Manager backend in cli-keyring. The `windows-arm64` build additionally needs the bun:ffi fallback from `houston-windows-arm64` branch — Bun 1.3.10's windows-arm64 target ships without TinyCC so the FFI keyring store has to downshift to NoStorageAccess at import time. Builds are reproducible: pinned commit SHA, pinned Bun version, pinned bun_target. The `pnpm` package manager + Bun runtime installed on the build host must match the values in the fork's `package.json#packageManager` and `.bun-version` respectively.",
     "build": {
       "windows-x64": {
         "source_repo": "https://github.com/gethouston/composio.git",
@@ -68,6 +68,16 @@
         "bun_version": "1.3.10",
         "artifact_basename": "composio-windows-x64",
         "$artifact_basename_comment": "Bun appends `.exe` automatically for Windows targets; the staged binary is `dist/binaries/composio-windows-x64.exe` and companions live under `dist/binaries/companions/`."
+      },
+      "windows-arm64": {
+        "source_repo": "https://github.com/gethouston/composio.git",
+        "source_ref": "houston-windows-arm64",
+        "source_sha": "c17c8fb88d4d771666e4b2d70ec9a61169758317",
+        "package_path": "ts/packages/cli",
+        "bun_target": "bun-windows-arm64",
+        "bun_version": "1.3.10",
+        "artifact_basename": "composio-windows-arm64",
+        "$artifact_basename_comment": "Bun appends `.exe` automatically for Windows targets; the staged binary is `dist/binaries/composio-windows-arm64.exe` and companions live under `dist/binaries/companions/`. The codex-acp companion shipped is the `win32-arm64` build; all other arches are pruned."
       }
     }
   }

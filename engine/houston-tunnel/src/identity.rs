@@ -39,6 +39,14 @@ pub fn invalidate(home_dir: &Path) {
 }
 
 /// First-boot: POST {relay_base}/allocate → allocate tunnel. Cached afterwards.
+///
+/// On 429 (Too Many Requests) we honor the server's `Retry-After`
+/// header and try once more before giving up. Without the retry, an
+/// engine restart loop (e.g. caused by an unrelated crash) hammers
+/// `/allocate` with one request per restart, which the relay sees as a
+/// burst from one client and bans for the rest of the boot. With the
+/// retry — and the cache that the successful call writes — we settle
+/// on a single tunnel ID within seconds of the first allowed request.
 pub async fn ensure(
     home_dir: &Path,
     relay_base: &str,
@@ -47,12 +55,32 @@ pub async fn ensure(
         return Ok(id);
     }
     let url = format!("{}/allocate", relay_base.trim_end_matches('/'));
-    let resp = reqwest::Client::new()
-        .post(&url)
-        .send()
-        .await?
-        .error_for_status()?;
-    let id: TunnelIdentity = resp.json().await?;
+    let client = reqwest::Client::new();
+
+    let mut attempt = 0;
+    let id: TunnelIdentity = loop {
+        attempt += 1;
+        let resp = client.post(&url).send().await?;
+        let status = resp.status();
+        if status == reqwest::StatusCode::TOO_MANY_REQUESTS && attempt == 1 {
+            // Server-suggested wait, capped at 30s so a misbehaving
+            // upstream can't stall engine startup indefinitely.
+            let wait_secs = resp
+                .headers()
+                .get(reqwest::header::RETRY_AFTER)
+                .and_then(|h| h.to_str().ok())
+                .and_then(|s| s.parse::<u64>().ok())
+                .unwrap_or(5)
+                .min(30);
+            tracing::warn!(
+                "tunnel allocation 429 — retrying once in {wait_secs}s per Retry-After"
+            );
+            tokio::time::sleep(std::time::Duration::from_secs(wait_secs)).await;
+            continue;
+        }
+        let resp = resp.error_for_status()?;
+        break resp.json().await?;
+    };
     save(home_dir, &id)?;
     Ok(id)
 }
