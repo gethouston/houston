@@ -1,6 +1,6 @@
 [package]
 name = "houston-terminal-manager"
-version = "0.4.17"
+version = "0.4.18"
 edition = "2021"
 description = "Terminal/CLI subprocess manager for Claude, Codex, and other CLI-based AI agents"
 license = "MIT"
