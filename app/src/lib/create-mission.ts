@@ -6,6 +6,7 @@
 
 import { tauriActivity, tauriChat } from "./tauri";
 import { logger } from "./logger";
+import { analytics } from "./analytics";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
 
 /** Build a session key for a given activity id. */
@@ -127,6 +128,8 @@ export async function createMission(
       modelOverride: opts.modelOverride,
       effortOverride: opts.effortOverride,
     });
+
+    analytics.track("mission_created", { agent_mode: opts.agentMode });
 
     if (!opts.title) {
       void refreshMissionTitle({

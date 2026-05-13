@@ -4,6 +4,7 @@ import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
+import { analytics } from "../lib/analytics";
 
 /**
  * App initialization hook. Called once in App.tsx.
@@ -78,7 +79,8 @@ export function useHoustonInit() {
           const status = await tauriProvider.checkStatus(defaultProv);
           setClaudeAvailable(status.cli_installed && status.authenticated);
         } else {
-          // No provider configured — wizard will handle this
+          // No provider configured — track as activation drop-off signal
+          analytics.track("provider_not_configured");
           setClaudeAvailable(false);
         }
       } catch {

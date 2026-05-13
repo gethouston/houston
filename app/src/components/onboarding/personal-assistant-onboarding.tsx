@@ -59,6 +59,7 @@ export function PersonalAssistantOnboarding({
   // whose first paint briefly falls through `workspaces.length === 0` is not
   // trapped here once their real workspaces arrive.
   const startTutorial = () => {
+    analytics.track("onboarding_started", { source: "tutorial" });
     setTutorialActive(true);
     setStep("meet");
   };
@@ -100,6 +101,7 @@ export function PersonalAssistantOnboarding({
   const handleSkip = async () => {
     // Skip path: create the workspace + assistant, but no UI tour and no
     // tutorial artifacts. User lands directly in the workspace shell.
+    analytics.track("onboarding_started", { source: "skip" });
     setTutorialActive(true);
     try {
       const fallbackProvider = provider ?? "anthropic";

@@ -22,6 +22,11 @@ function applySessionToCache(session: Session | null): void {
 // it to the running app. See website/src/auth/callback/index.html.
 const REDIRECT_URI = "https://gethouston.ai/auth/callback/";
 
+// Track which provider initiated the current OAuth flow so the deep-link
+// callback can tag the user_signed_in event with the correct provider.
+// Set before the browser opens; read and cleared on successful session.
+let pendingProvider: "google" | "azure" | null = null;
+
 /**
  * Kick off an OAuth flow for the given provider. Supabase generates a
  * fresh PKCE verifier (stored in Keychain via our storage adapter),
@@ -39,6 +44,8 @@ async function signInWithProvider(
   if (!isAuthConfigured()) {
     throw new Error("Auth not configured");
   }
+
+  pendingProvider = provider;
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,
@@ -101,8 +108,8 @@ export const signInWithMicrosoft = (): Promise<void> => signInWithProvider("azur
 
 /**
  * Sign out: clear the Supabase session (our Keychain storage adapter
- * removes the tokens) and reset PostHog's distinct_id so subsequent
- * anonymous events don't accrue to the prior user.
+ * removes the tokens), fire the sign-out event, and reset PostHog's
+ * distinct_id so subsequent anonymous events don't accrue to the prior user.
  */
 export async function signOut(): Promise<void> {
   try {
@@ -110,6 +117,7 @@ export async function signOut(): Promise<void> {
   } catch (e) {
     logger.warn(`[auth] signOut failed: ${e}`);
   }
+  analytics.track("user_signed_out");
   analytics.reset();
 }
 
@@ -174,6 +182,8 @@ export function installDeepLinkListener(): () => void {
           return;
         }
         applySessionToCache(data.session ?? null);
+        analytics.track("user_signed_in", { provider: pendingProvider ?? "unknown" });
+        pendingProvider = null;
         logger.info(`[auth] session established (pkce) for ${data.user?.email}`);
         return;
       }
@@ -199,6 +209,8 @@ export function installDeepLinkListener(): () => void {
         // cache key directly here makes the UI transition deterministic
         // regardless of whether the listener fires.
         applySessionToCache(data.session ?? null);
+        analytics.track("user_signed_in", { provider: pendingProvider ?? "unknown" });
+        pendingProvider = null;
         logger.info(
           `[auth] session established (implicit) for ${data.user?.email}`,
         );

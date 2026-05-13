@@ -16,11 +16,16 @@ export type AnalyticsEventName =
   | "install_created"
   | "workspace_created"
   | "provider_configured"
+  | "provider_not_configured"
   | "agent_created"
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
+  | "onboarding_started"
   | "onboarding_completed"
+  | "user_signed_in"
+  | "user_signed_out"
+  | "session_completed"
   | "session_failed"
   | "app_error_shown";
 
@@ -32,7 +37,9 @@ type AnalyticsProperty =
   | "integrations_skipped"
   | "tutorial_run"
   | "source"
-  | "error_kind";
+  | "error_kind"
+  | "workspace_count"
+  | "agent_count";
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserProfile = {
   email?: string | null;
@@ -50,6 +57,8 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "tutorial_run",
   "source",
   "error_kind",
+  "workspace_count",
+  "agent_count",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

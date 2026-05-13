@@ -33,6 +33,9 @@ export function useAnalyticsSubscriber() {
 
         case "SessionStatus": {
           const { status, error } = p.data;
+          if (status === "completed") {
+            analytics.track("session_completed");
+          }
           if (status === "error" && error) {
             const error_kind = classifyAnalyticsError(error);
             analytics.track("session_failed", { error_kind });
