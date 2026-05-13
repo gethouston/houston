@@ -105,6 +105,20 @@ pub(crate) async fn run_cli_process(
         Ok(status) => {
             tracing::info!("[houston:session] process exited with {status}");
             let is_sigterm = status.code() == Some(143);
+            // On Windows, `sessions::cancel` calls `taskkill /F /T /PID` to
+            // tear down the codex / claude process tree when the user
+            // clicks Stop. TerminateProcess sets the killed process's exit
+            // code to 1 by default and produces no stderr — there is no
+            // "graceful sigterm" equivalent on Windows. Without this
+            // branch the failure path below would emit a `ToolRuntimeError`
+            // ("A local tool failed to start.") on every user-initiated
+            // Stop, sitting next to the "Stopped by user" system message
+            // that `sessions::cancel` emits. Real provider failures
+            // essentially always print at least one stderr line (a panic,
+            // an HTTP error, a model error), so empty-stderr-with-exit-1
+            // on Windows is a reliable user-stop signal.
+            let likely_user_stop_windows =
+                cfg!(windows) && status.code() == Some(1) && stderr_lines.is_empty();
             let malformed_provider_json = provider == Provider::Anthropic
                 && (stdout_report.malformed_provider_json
                     || stderr_lines
@@ -113,7 +127,12 @@ pub(crate) async fn run_cli_process(
             if malformed_provider_json {
                 tracing::warn!("[houston:session] claude failed with malformed provider JSON");
                 CliRunOutcome::ProviderRequestMalformedJson
-            } else if status.success() || is_sigterm {
+            } else if status.success() || is_sigterm || likely_user_stop_windows {
+                if likely_user_stop_windows {
+                    tracing::info!(
+                        "[houston:session] {cli_name} exited with code 1 + empty stderr — treating as user-initiated stop"
+                    );
+                }
                 let _ = tx.send(SessionUpdate::Status(SessionStatus::Completed));
                 CliRunOutcome::Completed
             } else {
