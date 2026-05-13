@@ -175,6 +175,10 @@ function ProviderCard({
           loginError={loginError}
           onSignIn={() => void handleSignIn()}
           onRefresh={() => void onRefresh()}
+          onCancelWaiting={() => {
+            setLoginLaunched(false);
+            setLoginError(null);
+          }}
         />
       )}
       {selected && connected && (
@@ -243,6 +247,7 @@ function SetupHint({
   loginError,
   onSignIn,
   onRefresh,
+  onCancelWaiting,
 }: {
   provider: ProviderInfo;
   installed: boolean;
@@ -250,6 +255,7 @@ function SetupHint({
   loginError: string | null;
   onSignIn: () => void;
   onRefresh: () => void;
+  onCancelWaiting: () => void;
 }) {
   const { t } = useTranslation(["setup", "providers"]);
   return (
@@ -283,9 +289,23 @@ function SetupHint({
         </Button>
       )}
       {installed && loginLaunched && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Loader2 className="size-3.5 animate-spin" />
-          <span>{t("providers:setup.waiting")}</span>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <Loader2 className="size-3.5 animate-spin" />
+            <span>{t("providers:setup.waiting")}</span>
+          </div>
+          {/* Escape hatch — if the user closed the browser or the sign-in
+           * stalled, the only signal the UI had until now was a forever
+           * spinner. Real users hit this and reported being "stuck."
+           * `onCancelWaiting` flips loginLaunched back to false so the
+           * Sign-in button reappears and they can re-launch the flow. */}
+          <button
+            type="button"
+            onClick={onCancelWaiting}
+            className="self-start text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+          >
+            {t("providers:setup.cancelWaiting")}
+          </button>
         </div>
       )}
       {!installed && (

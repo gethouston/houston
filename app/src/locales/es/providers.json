@@ -1,9 +1,18 @@
 {
   "card": {
     "connected": "Conectado",
+    "notConnected": "Sin conexión",
     "comingSoon": "Próximamente",
     "connectTitle": "Conectar {{name}}",
     "signOutTitle": "Cerrar sesión de {{name}}"
+  },
+  "setup": {
+    "installHint": "Instala la CLI de {{cli}} en tu computador. Houston la detecta sola.",
+    "installGuide": "Guía de instalación",
+    "signInWith": "Iniciar sesión con {{provider}}",
+    "waiting": "Esperando a que termines de iniciar sesión en tu navegador...",
+    "cancelWaiting": "Cancelar e intentar de nuevo",
+    "installedCheckAgain": "¿Ya la instalaste? Reintentar"
   },
   "signOutConfirm": {
     "title": "¿Cerrar sesión de {{provider}}?",

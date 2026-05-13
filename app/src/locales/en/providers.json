@@ -1,9 +1,18 @@
 {
   "card": {
     "connected": "Connected",
+    "notConnected": "Not connected",
     "comingSoon": "Coming soon",
     "connectTitle": "Connect {{name}}",
     "signOutTitle": "Sign out of {{name}}"
+  },
+  "setup": {
+    "installHint": "Install the {{cli}} CLI on your machine. Houston will pick it up automatically.",
+    "installGuide": "Install guide",
+    "signInWith": "Sign in with {{provider}}",
+    "waiting": "Waiting for the sign-in to finish in your browser...",
+    "cancelWaiting": "Cancel and try again",
+    "installedCheckAgain": "Already installed? Check again"
   },
   "signOutConfirm": {
     "title": "Sign out of {{provider}}?",
