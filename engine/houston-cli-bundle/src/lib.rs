@@ -292,6 +292,16 @@ pub fn host_platform_key() -> &'static str {
     {
         "windows-x64"
     }
+    // Windows ARM64. Required since v0.4.10 shipped the ARM64 MSI — without
+    // this branch the engine binary running natively on Snapdragon /
+    // Surface laptops returns "unknown" here, and houston-claude-installer
+    // bails with `no claude-code URL for platform 'unknown'` instead of
+    // downloading the arm64 claude.exe. cli-deps.json has the URL
+    // (`windows-arm64`), the engine just never asked for it.
+    #[cfg(all(target_os = "windows", target_arch = "aarch64"))]
+    {
+        "windows-arm64"
+    }
     #[cfg(all(target_os = "linux", target_arch = "x86_64"))]
     {
         "linux-x64"
@@ -304,6 +314,7 @@ pub fn host_platform_key() -> &'static str {
         all(target_os = "macos", target_arch = "aarch64"),
         all(target_os = "macos", target_arch = "x86_64"),
         all(target_os = "windows", target_arch = "x86_64"),
+        all(target_os = "windows", target_arch = "aarch64"),
         all(target_os = "linux", target_arch = "x86_64"),
         all(target_os = "linux", target_arch = "aarch64"),
     )))]
@@ -717,7 +728,7 @@ mod tests {
         // catches regressions on dev machines.
         let k = host_platform_key();
         assert!(
-            matches!(k, "darwin-arm64" | "darwin-x64" | "windows-x64" | "linux-x64" | "linux-arm64"),
+            matches!(k, "darwin-arm64" | "darwin-x64" | "windows-x64" | "windows-arm64" | "linux-x64" | "linux-arm64"),
             "unknown host platform: {k}"
         );
     }
