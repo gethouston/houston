@@ -70,10 +70,13 @@ async fn activity_lifecycle_over_http() {
         .await
         .unwrap();
     assert_eq!(act["title"], "first");
-    assert_eq!(act["status"], "running");
+    // Activities are born `queued`; `sessions::start` promotes to `running`.
+    assert_eq!(act["status"], "queued");
     let id = act["id"].as_str().unwrap().to_string();
 
-    // Update.
+    // Update. `"completed"` is accepted as a legacy alias for back-compat
+    // with on-disk activity.json files written by older builds; the
+    // canonical wire form is `"done"`, which is what writes normalise to.
     let updated: serde_json::Value = c
         .patch(format!("http://{addr}/v1/agents/activities/{id}"))
         .query(&[("agent_path", &agent_path)])
@@ -85,14 +88,17 @@ async fn activity_lifecycle_over_http() {
         .json()
         .await
         .unwrap();
-    assert_eq!(updated["status"], "completed");
+    assert_eq!(updated["status"], "done");
 
-    // Update missing → 404.
+    // Update missing → 404. Status must be a valid wire value; invalid
+    // strings now fail at serde with 422 before reaching the handler,
+    // so this test specifically uses a valid status to exercise the
+    // NotFound path inside the route.
     let missing = c
         .patch(format!("http://{addr}/v1/agents/activities/does-not-exist"))
         .query(&[("agent_path", &agent_path)])
         .bearer_auth(&tok)
-        .json(&serde_json::json!({ "status": "failed" }))
+        .json(&serde_json::json!({ "status": "cancelled" }))
         .send()
         .await
         .unwrap();

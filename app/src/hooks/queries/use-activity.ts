@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import type { ActivityUpdate } from "../../data/activity";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriActivity, tauriAttachments } from "../../lib/tauri";
 import { useDraftStore } from "../../stores/drafts";
@@ -39,7 +40,7 @@ export function useCreateActivity(agentPath: string | undefined) {
 export function useUpdateActivity(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ activityId, update }: { activityId: string; update: { status?: string; title?: string; description?: string } }) =>
+    mutationFn: ({ activityId, update }: { activityId: string; update: ActivityUpdate }) =>
       tauriActivity.update(agentPath!, activityId, update),
     onSuccess: () => {
       if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });

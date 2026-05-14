@@ -11,6 +11,27 @@ use houston_terminal_manager::provider_auth::{probe_claude_auth_status, Provider
 use houston_terminal_manager::{FeedItem, Provider, SessionManager, SessionStatus, SessionUpdate};
 use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+/// Persist the CLI subprocess PID somewhere durable so a future engine
+/// instance can identify and reap orphans.
+///
+/// The session_runner crate doesn't know where Houston's home directory
+/// lives or what file format to use — that's an engine-core concern.
+/// By accepting an opaque trait object, the runner stays
+/// transport-neutral while the engine wires its `runtime_pids` module in.
+///
+/// Methods are intentionally non-async (file IO is fast; we don't want
+/// to add tokio plumbing through this path) and return no Result —
+/// failures are logged at the implementation layer, and a missed
+/// register doesn't break the session (the reaper still catches
+/// orphans via lease expiry, just with a longer wait).
+pub trait PidRecorder: Send + Sync + 'static {
+    fn record(&self, session_key: &str, pid: u32);
+    fn release(&self, session_key: &str);
+}
+
+pub type DynPidRecorder = Arc<dyn PidRecorder>;
 
 /// Result of a completed session.
 pub struct SessionResult {
@@ -75,6 +96,7 @@ pub fn spawn_and_monitor(
     session_id_handle: Option<SessionIdHandle>,
     persist: Option<PersistOptions>,
     pid_map: Option<SessionPidMap>,
+    pid_recorder: Option<DynPidRecorder>,
     provider: Provider,
     model: Option<String>,
     effort: Option<String>,
@@ -117,6 +139,9 @@ pub fn spawn_and_monitor(
                 SessionUpdate::ProcessPid(pid) => {
                     if let Some(ref pm) = pid_map {
                         pm.insert(key.clone(), pid).await;
+                    }
+                    if let Some(ref rec) = pid_recorder {
+                        rec.record(&key, pid);
                     }
                     continue;
                 }
@@ -355,6 +380,9 @@ pub fn spawn_and_monitor(
         // Clean up PID tracking on completion
         if let Some(ref pm) = pid_map {
             pm.remove(&key).await;
+        }
+        if let Some(ref rec) = pid_recorder {
+            rec.release(&key);
         }
 
         SessionResult {

@@ -23,6 +23,8 @@ export interface AIBoardProps {
   onSelect?: (id: string | null) => void
   onDelete?: (item: KanbanItem) => void
   onApprove?: (item: KanbanItem) => void
+  /** Called when the user clicks Resume on an interrupted mission card. */
+  onResume?: (item: KanbanItem) => void
   /** Called when user sends the first message in a new conversation. Should return the created activity ID. */
   onCreateConversation?: (text: string, files: File[]) => Promise<string>
   /** Called when user sends a follow-up message in an existing conversation. */
@@ -37,6 +39,9 @@ export interface AIBoardProps {
   sessionKeyFor?: (activityId: string) => string
   runningStatuses?: string[]
   approveStatuses?: string[]
+  /** Statuses that show the Resume affordance. Empty by default — set to
+   *  e.g. `["interrupted"]` to surface a Resume button on those cards. */
+  resumeStatuses?: string[]
   /** Load persisted chat history for a session. Called once per session key when selected. */
   onLoadHistory?: (sessionKey: string) => Promise<FeedItem[]>
   /** Called with the loaded history so the parent can merge it into its
@@ -158,6 +163,7 @@ export function AIBoard({
   onSelect: onSelectProp,
   onDelete,
   onApprove,
+  onResume,
   onCreateConversation,
   onSendMessage,
   feedItems = {},
@@ -166,6 +172,7 @@ export function AIBoard({
   sessionKeyFor = defaultSessionKey,
   runningStatuses = ["running"],
   approveStatuses = ["needs_you"],
+  resumeStatuses = [],
   onLoadHistory,
   onHistoryLoaded,
   onNewPanelOpenerReady,
@@ -393,9 +400,11 @@ export function AIBoard({
         selectedId={selectedId}
         runningStatuses={runningStatuses}
         approveStatuses={approveStatuses}
+        resumeStatuses={resumeStatuses}
         onSelect={handleCardSelect}
         onDelete={onDelete ? handleDelete : undefined}
         onApprove={onApprove}
+        onResume={onResume}
         onRename={onRename}
         emptyState={emptyState}
         actions={actions}

@@ -8,11 +8,34 @@
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
 
+/**
+ * Mirrors the engine's `ActivityStatus` enum (engine/houston-engine-core
+ * /src/agents/status.rs). Authoritative source is the Rust side; this
+ * union exists so the typechecker catches drift at compile time.
+ */
+export type ActivityStatus =
+  | "queued"
+  | "running"
+  | "needs_you"
+  | "done"
+  | "error"
+  | "cancelled"
+  | "interrupted";
+
+// Lease metadata (lease_id, owner_pid, expires_at) lives in the
+// engine-owned runtime store at ~/.houston/runtime/leases.json — NOT
+// on the activity row. The UI doesn't need it for display, and putting
+// it inside the agent-writable `.houston/activity/activity.json` would
+// let a buggy or malicious agent forge `expires_at` and become
+// un-reapable. If the UI ever needs to surface "this mission has an
+// active lease", expose a dedicated endpoint rather than putting the
+// raw token back on the activity record.
+
 export interface Activity {
   id: string;
   title: string;
   description: string;
-  status: string;
+  status: ActivityStatus;
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
@@ -27,7 +50,7 @@ export interface Activity {
 export interface ActivityUpdate {
   title?: string;
   description?: string;
-  status?: string;
+  status?: ActivityStatus;
   claude_session_id?: string | null;
   session_key?: string;
   agent?: string;
@@ -59,7 +82,10 @@ export async function create(
     id: newId(),
     title,
     description,
-    status: "running",
+    // Born `queued` so the engine's reaper never sees a `running` row
+    // without an attached lease — `sessions::start` is responsible for
+    // promoting to `running` and minting the lease at the same time.
+    status: "queued",
     claude_session_id: null,
     agent,
     worktree_path: worktreePath ?? null,

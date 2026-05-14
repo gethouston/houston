@@ -1,5 +1,6 @@
 //! RoutineRun CRUD — per-routine history, auto-pruned to `MAX_RUNS_PER_ROUTINE`.
 
+use crate::agents::RoutineRunStatus;
 use crate::error::{CoreError, CoreResult};
 use crate::routines::types::{RoutineRun, RoutineRunUpdate};
 use crate::routines::{ensure_houston_dir, read_json, write_json};
@@ -31,7 +32,7 @@ pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     let run = RoutineRun {
         id,
         routine_id: routine_id.to_string(),
-        status: "running".into(),
+        status: RoutineRunStatus::Running,
         session_key,
         activity_id: None,
         summary: None,
@@ -112,21 +113,21 @@ mod tests {
         let d = TempDir::new().unwrap();
         let run = create(d.path(), "rid").unwrap();
         assert_eq!(run.routine_id, "rid");
-        assert_eq!(run.status, "running");
+        assert_eq!(run.status, RoutineRunStatus::Running);
         assert!(run.session_key.contains("routine-rid-run-"));
 
         let done = update(
             d.path(),
             &run.id,
             RoutineRunUpdate {
-                status: Some("silent".into()),
+                status: Some(RoutineRunStatus::Silent),
                 summary: Some("nothing new".into()),
                 completed_at: Some(chrono::Utc::now().to_rfc3339()),
                 ..Default::default()
             },
         )
         .unwrap();
-        assert_eq!(done.status, "silent");
+        assert_eq!(done.status, RoutineRunStatus::Silent);
         assert!(done.completed_at.is_some());
     }
 

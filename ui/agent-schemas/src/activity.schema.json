@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Activity",
-  "description": "List of board items for a Houston agent.",
+  "description": "List of board items for a Houston agent. Status is the engine-owned lifecycle enum. Lease metadata is stored separately in ~/.houston/runtime/leases.json (engine-only, outside agent-writable space) so it can't be forged from inside the agent's working tree.",
   "type": "array",
   "items": {
     "type": "object",
@@ -10,7 +10,11 @@
       "id": { "type": "string" },
       "title": { "type": "string" },
       "description": { "type": "string" },
-      "status": { "type": "string", "enum": ["running", "needs_you", "done", "error"] },
+      "status": {
+        "description": "queued: created, no CLI yet. running: engine has an active lease in the runtime store, CLI streaming. needs_you: stream ended cleanly, awaiting user. done: closed by user. error: stream ended with error. cancelled: user clicked Stop. interrupted: reaper found a stale lease, click Resume to continue.",
+        "type": "string",
+        "enum": ["queued", "running", "needs_you", "done", "error", "cancelled", "interrupted"]
+      },
       "claude_session_id": { "type": ["string", "null"] },
       "session_key": { "type": "string" },
       "agent": { "type": "string" },

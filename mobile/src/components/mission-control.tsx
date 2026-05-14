@@ -31,6 +31,27 @@ const SECTIONS: Array<{ id: string; label: string }> = [
 
 const ALL_AGENTS = "__all__";
 
+/**
+ * Bucket a raw activity status into one of the rendered sections. Keeps
+ * interrupted/cancelled/error missions visible on mobile — without this,
+ * an interrupted mission falls into an unmapped `"other"` bucket and the
+ * row literally disappears from the UI (the exact bug we're shipping a
+ * fix for). Interrupted goes under "Needs You" because the user must
+ * tap in and send a message to resume; terminal failure states join
+ * "Done" so the list isn't infinitely dominated by failures.
+ */
+function sectionFor(status: string | undefined | null): string {
+  switch (status) {
+    case "interrupted":
+      return "needs_you";
+    case "cancelled":
+    case "error":
+      return "done";
+    default:
+      return status ?? "other";
+  }
+}
+
 export function MissionControl() {
   const nav = useNavigate();
   const ws = useCurrentWorkspace();
@@ -56,7 +77,7 @@ export function MissionControl() {
   const grouped = useMemo(() => {
     const map = new Map<string, ConversationEntry[]>();
     for (const c of visibleConversations) {
-      const key = c.status ?? "other";
+      const key = sectionFor(c.status);
       const arr = map.get(key) ?? [];
       arr.push(c);
       map.set(key, arr);
@@ -234,6 +255,16 @@ function ConversationRow({
           <p className="truncate text-sm font-medium">{convo.title}</p>
           <p className="truncate text-xs text-muted-foreground">
             {convo.agent_name}
+            {convo.status === "interrupted" && (
+              // TODO(i18n): mobile/ doesn't yet wire react-i18next.
+              // Once it does, route this through t() — the desktop
+              // app already has translations for board:resume.* in
+              // app/src/locales/{en,es,pt}/board.json that we can
+              // reuse verbatim.
+              <span className="ml-1.5 inline-flex items-center rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                Interrupted, tap to resume
+              </span>
+            )}
           </p>
         </div>
       </button>

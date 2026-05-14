@@ -559,6 +559,13 @@ export const tauriActivity = {
   ) => activityData.update(agentPath, activityId, update).then(() => undefined),
   delete: (agentPath: string, activityId: string) =>
     activityData.remove(agentPath, activityId),
+  // Resume routes through the engine because the transition isn't a
+  // plain file write — the engine validates current status and emits
+  // an ActivityChanged event so every WS subscriber refreshes.
+  resume: (agentPath: string, activityId: string) =>
+    call<void>("resume_activity", () =>
+      getEngine().resumeActivity(agentPath, activityId).then(() => undefined),
+    ),
 };
 
 // ─── Worktrees & shell ────────────────────────────────────────────────

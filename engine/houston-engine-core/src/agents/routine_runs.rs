@@ -2,6 +2,7 @@
 //!
 //! Auto-prunes to keep at most `MAX_RUNS_PER_ROUTINE` runs per routine.
 
+use super::routine_run_status::RoutineRunStatus;
 use super::store::{read_json, write_json};
 use super::types::{RoutineRun, RoutineRunUpdate};
 use crate::error::{CoreError, CoreResult};
@@ -28,7 +29,7 @@ pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     let run = RoutineRun {
         id,
         routine_id: routine_id.to_string(),
-        status: "running".to_string(),
+        status: RoutineRunStatus::Running,
         session_key,
         activity_id: None,
         summary: None,

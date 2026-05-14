@@ -60,3 +60,9 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 # file is useless to another user. See `src/auth.rs` storage module.
 [target."cfg(target_os = \"windows\")".dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
+
+# `libc::SIGTERM` + `libc::killpg` from the engine supervisor's
+# Unix process-group kill on Drop. Replaces a hand-rolled extern shim
+# so SIGTERM-15 isn't a magic number duplicated across files.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

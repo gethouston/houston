@@ -1,12 +1,6 @@
 import { useState, useRef, useEffect } from "react"
-import {
-  cn,
-  ConfirmDialog,
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@houston-ai/core"
-import { Trash2, Check, Pencil } from "lucide-react"
+import { cn, ConfirmDialog } from "@houston-ai/core"
+import { KanbanCardActions } from "./kanban-card-actions"
 import type { KanbanItem } from "./types"
 
 export interface KanbanCardLabels {
@@ -16,6 +10,7 @@ export interface KanbanCardLabels {
   approveTooltip?: string
   renameTooltip?: string
   deleteTooltip?: string
+  resumeTooltip?: string
   /** Delete confirm title, `{name}` substituted with `item.title`. */
   deleteTitle?: (name: string) => string
   deleteDescription?: string
@@ -26,6 +21,7 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   approveTooltip: "Move to done",
   renameTooltip: "Change title",
   deleteTooltip: "Delete",
+  resumeTooltip: "Resume",
   deleteTitle: (name) => `Delete "${name}"?`,
   deleteDescription: "This item and its history will be permanently removed.",
 }
@@ -35,9 +31,11 @@ export interface KanbanCardProps {
   onSelect: () => void
   onDelete?: () => void
   onApprove?: () => void
+  onResume?: () => void
   onRename?: (newTitle: string) => void
   runningStatuses?: string[]
   approveStatuses?: string[]
+  resumeStatuses?: string[]
   actions?: React.ReactNode
   avatar?: React.ReactNode
   labels?: KanbanCardLabels
@@ -48,9 +46,11 @@ export function KanbanCard({
   onSelect,
   onDelete,
   onApprove,
+  onResume,
   onRename,
   runningStatuses = ["running"],
   approveStatuses = ["needs_you"],
+  resumeStatuses = [],
   actions,
   avatar,
   labels,
@@ -58,6 +58,7 @@ export function KanbanCard({
   const l = { ...DEFAULT_LABELS, ...labels }
   const isRunning = runningStatuses.includes(item.status)
   const isNeedsApproval = approveStatuses.includes(item.status)
+  const isResumable = resumeStatuses.includes(item.status)
   const [showConfirm, setShowConfirm] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.title)
@@ -67,20 +68,9 @@ export function KanbanCard({
     if (editing) inputRef.current?.focus()
   }, [editing])
 
-  const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setShowConfirm(true)
-  }
-
   const confirmDelete = () => {
     onDelete?.()
     setShowConfirm(false)
-  }
-
-  const handleRenameClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setEditValue(item.title)
-    setEditing(true)
   }
 
   const commitRename = () => {
@@ -118,50 +108,20 @@ export function KanbanCard({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-0.5 shrink-0">
-            {!actions && isNeedsApproval && onApprove && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); onApprove() }}
-                    className="p-1 rounded-md text-muted-foreground/40 hover:text-[#00a240] hover:bg-[#00a240]/10 transition-colors duration-200"
-                    aria-label={l.approveTooltip}
-                  >
-                    <Check className="size-3" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{l.approveTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-            {onRename && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleRenameClick}
-                    className="p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-accent transition-colors duration-200"
-                    aria-label={l.renameTooltip}
-                  >
-                    <Pencil className="size-3" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{l.renameTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-            {onDelete && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={handleDeleteClick}
-                    className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors duration-200"
-                    aria-label={l.deleteTooltip}
-                  >
-                    <Trash2 className="size-3" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent side="top">{l.deleteTooltip}</TooltipContent>
-              </Tooltip>
-            )}
-          </div>
+          <KanbanCardActions
+            showApprove={!actions && isNeedsApproval}
+            showResume={!actions && isResumable}
+            onApprove={onApprove}
+            onResume={onResume}
+            onRename={onRename ? () => { setEditValue(item.title); setEditing(true) } : undefined}
+            onDelete={onDelete ? () => setShowConfirm(true) : undefined}
+            labels={{
+              approveTooltip: l.approveTooltip,
+              resumeTooltip: l.resumeTooltip,
+              renameTooltip: l.renameTooltip,
+              deleteTooltip: l.deleteTooltip,
+            }}
+          />
         </div>
 
         {/* Title */}

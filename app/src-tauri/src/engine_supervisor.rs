@@ -26,7 +26,7 @@
 
 use std::io::{BufRead, BufReader};
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{Child, ChildStdin, Command, ExitStatus, Stdio};
 use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
@@ -203,23 +203,14 @@ impl EngineSubprocess {
         };
 
         // Keep draining stdout so the engine never blocks on a full pipe
-        // buffer or sees EPIPE from tracing. Tracing already goes to
-        // stderr, but this is defense-in-depth and forwards any stray
-        // println! from the engine to our tracing sink.
+        // buffer or sees EPIPE from tracing. The engine emits its normal
+        // tracing output here (after the banner); this thread forwards it
+        // to our log file. Stderr is already drained above into both the
+        // tracing sink and the on-disk `engine.log`.
         thread::spawn(move || {
-            let mut line = String::new();
-            loop {
-                line.clear();
-                match reader.read_line(&mut line) {
-                    Ok(0) | Err(_) => break,
-                    Ok(_) => {
-                        let trimmed = line.trim_end();
-                        if !trimmed.is_empty() {
-                            tracing::debug!("[engine:stdout] {trimmed}");
-                        }
-                    }
-                }
-            }
+            drain_pipe(reader, |line| {
+                tracing::debug!("[engine:stdout] {line}");
+            });
         });
 
         Ok(Self {
@@ -245,7 +236,7 @@ impl EngineSubprocess {
                     // Kill the whole process group so tokio workers + any
                     // grandchildren die with the parent.
                     let pid = child.id() as i32;
-                    libc::killpg(pid, libc_sigterm());
+                    libc::killpg(pid, libc::SIGTERM);
                 }
                 let _ = child.kill();
                 let _ = child.wait();
@@ -451,7 +442,12 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
                 guard.and_then(|g| g.as_ref().map(|s| s.wait())).flatten()
             };
 
-            tracing::warn!("[engine] subprocess exited: {:?}", exit);
+            let formatted = format_exit_status(exit.as_ref());
+            if exit_was_crash(exit.as_ref()) {
+                tracing::error!("[engine] subprocess exited: {formatted}");
+            } else {
+                tracing::warn!("[engine] subprocess exited: {formatted}");
+            }
 
             // Drop the exited handle.
             if let Ok(mut guard) = slot_clone.lock() {
@@ -477,6 +473,74 @@ pub fn spawn_supervisor<C: SupervisorCallbacks>(
     });
 
     Ok(slot)
+}
+
+/// Read lines from `reader` and hand each non-empty trimmed line to
+/// `emit` until EOF or read error. Defined as a free function so unit
+/// tests can drive it with a `Cursor` instead of a real pipe — production
+/// uses it with `ChildStdout` / `BufReader<ChildStderr>`.
+fn drain_pipe<R: BufRead, F: FnMut(&str)>(mut reader: R, mut emit: F) {
+    let mut line = String::new();
+    loop {
+        line.clear();
+        match reader.read_line(&mut line) {
+            Ok(0) | Err(_) => break,
+            Ok(_) => {
+                let trimmed = line.trim_end();
+                if !trimmed.is_empty() {
+                    emit(trimmed);
+                }
+            }
+        }
+    }
+}
+
+/// Format an engine subprocess `ExitStatus` for the supervisor log.
+///
+/// Unix: `code=<i32 or "?"> signal=<i32 or "none"> core_dumped=<bool>`.
+/// Windows: `code=<i32 (0xHEX) or "?">`. NTSTATUS codes (e.g.
+/// `0xC000013A` for Ctrl-C) are useful in hex.
+fn format_exit_status(status: Option<&ExitStatus>) -> String {
+    let Some(status) = status else {
+        return "status=<unavailable>".into();
+    };
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        let code = status
+            .code()
+            .map(|c| c.to_string())
+            .unwrap_or_else(|| "?".into());
+        let signal = status
+            .signal()
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "none".into());
+        let core_dumped = status.core_dumped();
+        format!("code={code} signal={signal} core_dumped={core_dumped}")
+    }
+    #[cfg(windows)]
+    {
+        let code = status
+            .code()
+            .map(|c| format!("{c} (0x{:08x})", c as u32))
+            .unwrap_or_else(|| "?".into());
+        format!("code={code}")
+    }
+}
+
+/// `true` if the exit looks like a crash: killed by a signal, or non-zero
+/// exit code, or status unavailable. Decides whether the supervisor logs
+/// the exit at `error` vs `warn`.
+fn exit_was_crash(status: Option<&ExitStatus>) -> bool {
+    let Some(status) = status else { return true };
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::ExitStatusExt;
+        if status.signal().is_some() {
+            return true;
+        }
+    }
+    !status.success()
 }
 
 fn parse_banner(line: &str) -> Option<EngineHandshake> {
@@ -505,20 +569,6 @@ fn libc_setpgid() -> std::io::Result<()> {
         }
     }
     Ok(())
-}
-
-#[cfg(unix)]
-fn libc_sigterm() -> i32 {
-    15
-}
-
-#[cfg(unix)]
-#[allow(dead_code)]
-mod libc {
-    extern "C" {
-        pub fn setpgid(pid: i32, pgid: i32) -> i32;
-        pub fn killpg(pgrp: i32, sig: i32) -> i32;
-    }
 }
 
 /// Poll `/v1/health` until a 2xx response, or timeout. Uses bearer auth.
@@ -563,5 +613,95 @@ mod tests {
     #[test]
     fn rejects_unknown_line() {
         assert!(parse_banner("hello world").is_none());
+    }
+
+    #[test]
+    fn format_exit_status_handles_missing() {
+        let s = format_exit_status(None);
+        assert!(s.contains("unavailable"), "got: {s}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn format_exit_status_signal_kill() {
+        use std::os::unix::process::ExitStatusExt;
+        // Raw 9 = killed by SIGKILL, no core dump.
+        let status = std::process::ExitStatus::from_raw(9);
+        let s = format_exit_status(Some(&status));
+        assert!(s.contains("signal=9"), "got: {s}");
+        assert!(s.contains("core_dumped=false"), "got: {s}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn format_exit_status_signal_kill_with_core() {
+        use std::os::unix::process::ExitStatusExt;
+        // Bit 0x80 in the low byte = WCOREDUMP. 11 | 0x80 = SIGSEGV + core.
+        let status = std::process::ExitStatus::from_raw(11 | 0x80);
+        let s = format_exit_status(Some(&status));
+        assert!(s.contains("signal=11"), "got: {s}");
+        assert!(s.contains("core_dumped=true"), "got: {s}");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn format_exit_status_normal_zero() {
+        use std::os::unix::process::ExitStatusExt;
+        // Raw 0 = clean exit with code 0.
+        let status = std::process::ExitStatus::from_raw(0);
+        let s = format_exit_status(Some(&status));
+        assert!(s.contains("code=0"), "got: {s}");
+        assert!(s.contains("signal=none"), "got: {s}");
+    }
+
+    #[test]
+    fn exit_was_crash_missing_treated_as_crash() {
+        assert!(exit_was_crash(None));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn exit_was_crash_signal_yes() {
+        use std::os::unix::process::ExitStatusExt;
+        let status = std::process::ExitStatus::from_raw(11); // SIGSEGV
+        assert!(exit_was_crash(Some(&status)));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn exit_was_crash_zero_no() {
+        use std::os::unix::process::ExitStatusExt;
+        let status = std::process::ExitStatus::from_raw(0);
+        assert!(!exit_was_crash(Some(&status)));
+    }
+
+    #[test]
+    fn drain_pipe_emits_each_non_empty_line() {
+        use std::io::Cursor;
+        let reader = Cursor::new(b"first line\nsecond\n\n  third  \n" as &[u8]);
+        let mut captured: Vec<String> = Vec::new();
+        drain_pipe(reader, |line| captured.push(line.to_string()));
+        // Blank lines are skipped; trailing whitespace is trimmed by
+        // `trim_end` but leading whitespace stays (it's meaningful in
+        // engine tracing output).
+        assert_eq!(captured, vec!["first line", "second", "  third"]);
+    }
+
+    #[test]
+    fn drain_pipe_handles_no_trailing_newline() {
+        use std::io::Cursor;
+        let reader = Cursor::new(b"no newline at end" as &[u8]);
+        let mut captured = Vec::new();
+        drain_pipe(reader, |line| captured.push(line.to_string()));
+        assert_eq!(captured, vec!["no newline at end"]);
+    }
+
+    #[test]
+    fn drain_pipe_stops_at_eof_with_no_panic() {
+        use std::io::Cursor;
+        let reader = Cursor::new(b"" as &[u8]);
+        let mut captured = Vec::new();
+        drain_pipe(reader, |line| captured.push(line.to_string()));
+        assert!(captured.is_empty());
     }
 }

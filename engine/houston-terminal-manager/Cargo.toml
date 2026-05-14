@@ -20,3 +20,10 @@ dirs = "5"
 # so subprocess spawns of `claude`/`codex`/`composio` find them without
 # any user-side shell config.
 houston-cli-bundle = { workspace = true }
+
+# `libc::SIGTERM` for detecting user-initiated Stop on Unix: the CLI is
+# killed by SIGTERM (signal 15) from `sessions::cancel` and `ExitStatus::
+# code()` returns `None` for signal-killed processes, so we check
+# `signal() == Some(SIGTERM)` directly.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

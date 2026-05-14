@@ -4,6 +4,7 @@ mod commands;
 mod engine_supervisor;
 mod houston_prompt;
 mod logging;
+mod panic_hook;
 
 use engine_supervisor::{
     resolve_engine_binary, spawn_supervisor, wait_until_healthy, EngineHandshake,
@@ -69,6 +70,14 @@ pub fn run() {
     // from an installed release of Houston.
     let houston = houston_tauri::houston_db::db::houston_dir();
     logging::init(&houston);
+
+    // Route every panic (main thread + background threads, including the
+    // engine supervisor loop) through `tracing::error!` BEFORE the default
+    // handler aborts. Without this, panics in shipped bundles vanish into
+    // os_log instead of the user's submitted log file. Installed after
+    // `logging::init` so the tracing subscriber is live, and before any
+    // builder code that might panic during plugin init.
+    panic_hook::install();
 
     // Sentry: initialize before the builder so it catches panics in plugin inits.
     // The guard must live for the lifetime of the app to flush events on shutdown.

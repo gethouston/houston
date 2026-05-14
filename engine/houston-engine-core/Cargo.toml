@@ -37,5 +37,10 @@ chrono-tz = "0.9"
 # boot.
 sevenz-rust2 = "0.18"
 
+# `libc::kill` for `runtime_pids::is_alive` (POSIX kill(pid, 0) probe)
+# and `libc::killpg` for orphan-CLI termination on engine boot.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 tempfile = "3"

@@ -8,6 +8,7 @@
 
 use crate::error::{CoreError, CoreResult};
 use crate::routines::runs as routine_runs;
+use crate::agents::RoutineRunStatus;
 use crate::routines::types::{Routine, RoutineRun, RoutineRunUpdate};
 use crate::routines::{self, ensure_houston_dir};
 use async_trait::async_trait;
@@ -121,7 +122,7 @@ pub async fn run_routine(
             &working_dir,
             &run.id,
             RoutineRunUpdate {
-                status: Some("silent".into()),
+                status: Some(RoutineRunStatus::Silent),
                 summary: Some(extract_summary(&response)),
                 completed_at: Some(now),
                 ..Default::default()
@@ -132,7 +133,7 @@ pub async fn run_routine(
             &working_dir,
             &run.id,
             RoutineRunUpdate {
-                status: Some("error".into()),
+                status: Some(RoutineRunStatus::Error),
                 summary: Some(err),
                 completed_at: Some(now),
                 ..Default::default()
@@ -159,7 +160,7 @@ pub async fn run_routine(
             &working_dir,
             &run.id,
             RoutineRunUpdate {
-                status: Some("surfaced".into()),
+                status: Some(RoutineRunStatus::Surfaced),
                 activity_id: Some(activity_id),
                 completed_at: Some(now),
                 ..Default::default()
@@ -300,7 +301,7 @@ mod tests {
 
         let runs = routine_runs::list(d.path()).unwrap();
         assert_eq!(runs.len(), 1);
-        assert_eq!(runs[0].status, "silent");
+        assert_eq!(runs[0].status, RoutineRunStatus::Silent);
         assert!(runs[0].completed_at.is_some());
         assert!(surface.calls.lock().unwrap().is_empty());
     }
@@ -328,7 +329,7 @@ mod tests {
         .unwrap();
 
         let runs = routine_runs::list(d.path()).unwrap();
-        assert_eq!(runs[0].status, "error");
+        assert_eq!(runs[0].status, RoutineRunStatus::Error);
         assert_eq!(runs[0].summary.as_deref(), Some("boom"));
     }
 
@@ -360,7 +361,7 @@ mod tests {
         assert!(calls[0].0.contains("Two PRs need review"));
 
         let runs = routine_runs::list(d.path()).unwrap();
-        assert_eq!(runs[0].status, "surfaced");
+        assert_eq!(runs[0].status, RoutineRunStatus::Surfaced);
         assert_eq!(runs[0].activity_id.as_deref(), Some("act-1"));
     }
 

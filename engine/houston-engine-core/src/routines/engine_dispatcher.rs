@@ -8,6 +8,7 @@
 use crate::agents::{
     self, prompt as agent_prompt,
     store::ensure_houston_dir,
+    status::ActivityStatus,
     types::{ActivityUpdate, NewActivity},
 };
 use crate::routines::runner::{
@@ -94,6 +95,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
                 claude_session_id: None,
             }),
             Some(self.rt.pid_map.clone()),
+            self.rt.pid_recorder.clone(),
             resolved.provider,
             resolved.model,
             None,
@@ -142,7 +144,7 @@ impl ActivitySurface for EngineActivitySurface {
             working_dir,
             &activity.id,
             ActivityUpdate {
-                status: Some("needs_you".into()),
+                status: Some(ActivityStatus::NeedsYou),
                 session_key: Some(session_key.to_string()),
                 routine_id: Some(routine_id.to_string()),
                 routine_run_id: Some(routine_run_id.to_string()),

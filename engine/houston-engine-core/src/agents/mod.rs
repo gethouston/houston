@@ -15,13 +15,20 @@
 pub mod activity;
 pub mod config;
 pub mod files;
+pub mod lease;
 mod learnings_context;
+pub mod lifecycle;
 pub mod prompt;
+pub mod routine_run_status;
 pub mod routine_runs;
 pub mod routines;
+pub mod status;
 pub mod store;
 pub mod types;
 
+pub use lease::Lease;
+pub use routine_run_status::RoutineRunStatus;
+pub use status::ActivityStatus;
 pub use types::*;
 
 use crate::error::CoreResult;
@@ -129,18 +136,21 @@ mod tests {
             })
             .unwrap();
         assert_eq!(a.title, "first");
-        assert_eq!(a.status, "running");
+        // Newly-created activities start `Queued`; `sessions::start` is
+        // what promotes them to `Running` and attaches a lease in the
+        // engine-owned runtime store (not on the activity row itself).
+        assert_eq!(a.status, ActivityStatus::Queued);
         assert!(s.list_activity().unwrap().len() == 1);
         let updated = s
             .update_activity(
                 &a.id,
                 ActivityUpdate {
-                    status: Some("completed".into()),
+                    status: Some(ActivityStatus::Done),
                     ..Default::default()
                 },
             )
             .unwrap();
-        assert_eq!(updated.status, "completed");
+        assert_eq!(updated.status, ActivityStatus::Done);
         s.delete_activity(&a.id).unwrap();
         assert!(s.list_activity().unwrap().is_empty());
     }
@@ -216,12 +226,12 @@ mod tests {
             .update_routine_run(
                 &run.id,
                 RoutineRunUpdate {
-                    status: Some("surfaced".into()),
+                    status: Some(RoutineRunStatus::Surfaced),
                     ..Default::default()
                 },
             )
             .unwrap();
-        assert_eq!(upd.status, "surfaced");
+        assert_eq!(upd.status, RoutineRunStatus::Surfaced);
 
         s.delete_routine(&r.id).unwrap();
         assert!(s.list_routines().unwrap().is_empty());

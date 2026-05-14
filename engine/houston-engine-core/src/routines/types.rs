@@ -1,5 +1,11 @@
 //! Routine + RoutineRun DTOs — the wire shape for `.houston/routines/*`.
+//!
+//! NOTE: there is a parallel `super::super::agents::types::{RoutineRun,
+//! RoutineRunUpdate}` pair used by the older agents-tree routes. Both
+//! expose identical-by-shape JSON. Consolidation is tracked separately;
+//! for now both share `RoutineRunStatus` so type safety is uniform.
 
+use crate::agents::RoutineRunStatus;
 use serde::{Deserialize, Serialize};
 
 fn default_true() -> bool {
@@ -65,8 +71,7 @@ pub struct RoutineUpdate {
 pub struct RoutineRun {
     pub id: String,
     pub routine_id: String,
-    /// `"running" | "silent" | "surfaced" | "error"`.
-    pub status: String,
+    pub status: RoutineRunStatus,
     /// Session key for chat history lookup (`"routine-{rid}-run-{id}"`).
     pub session_key: String,
     /// If surfaced, the activity ID created on the board.
@@ -81,7 +86,7 @@ pub struct RoutineRun {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct RoutineRunUpdate {
-    pub status: Option<String>,
+    pub status: Option<RoutineRunStatus>,
     pub activity_id: Option<String>,
     pub summary: Option<String>,
     pub completed_at: Option<String>,

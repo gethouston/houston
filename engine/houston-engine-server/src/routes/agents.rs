@@ -8,12 +8,12 @@ use crate::routes::error::ApiError;
 use crate::state::ServerState;
 use axum::{
     extract::{Path as AxPath, Query, State},
-    routing::{get, patch},
+    routing::{get, patch, post},
     Json, Router,
 };
 use houston_engine_core::agents::{
-    activity, config, routine_runs, routines, Activity, ActivityUpdate, NewActivity, NewRoutine,
-    ProjectConfig, Routine, RoutineRun, RoutineRunUpdate, RoutineUpdate,
+    activity, config, routine_runs, routines, Activity, ActivityStatus, ActivityUpdate,
+    NewActivity, NewRoutine, ProjectConfig, Routine, RoutineRun, RoutineRunUpdate, RoutineUpdate,
 };
 use houston_engine_core::paths::expand_tilde;
 use houston_engine_core::CoreError;
@@ -30,6 +30,7 @@ pub fn router() -> Router<Arc<ServerState>> {
             "/agents/activities/:id",
             patch(update_activity).delete(delete_activity),
         )
+        .route("/agents/activities/:id/resume", post(resume_activity))
         // Routines
         .route("/agents/routines", get(list_routines).post(create_routine))
         .route(
@@ -138,6 +139,44 @@ async fn delete_activity(
         },
     );
     Ok(())
+}
+
+/// Transition an `Interrupted` activity back to `NeedsYou` so the user
+/// can send the next message — which will pick up the persisted
+/// provider session_id and resume the CLI conversation in place. Any
+/// other status returns 409: Resume is only valid from `Interrupted`,
+/// and silently coercing terminal rows would be a footgun.
+async fn resume_activity(
+    State(st): State<Arc<ServerState>>,
+    AxPath(id): AxPath<String>,
+    Query(q): Query<AgentQuery>,
+) -> Result<Json<Activity>, ApiError> {
+    let root = resolve_root(&q.agent_path)?;
+    let current = activity::list(&root)?
+        .into_iter()
+        .find(|a| a.id == id)
+        .ok_or_else(|| CoreError::NotFound(format!("activity {id}")))?;
+    if current.status != ActivityStatus::Interrupted {
+        return Err(ApiError::from(CoreError::Conflict(format!(
+            "activity {id} is {} — only `interrupted` can be resumed",
+            current.status
+        ))));
+    }
+    let updated = activity::update(
+        &root,
+        &id,
+        ActivityUpdate {
+            status: Some(ActivityStatus::NeedsYou),
+            ..Default::default()
+        },
+    )?;
+    emit(
+        &st,
+        HoustonEvent::ActivityChanged {
+            agent_path: q.agent_path.clone(),
+        },
+    );
+    Ok(Json(updated))
 }
 
 // ---------------------------------------------------------------------------

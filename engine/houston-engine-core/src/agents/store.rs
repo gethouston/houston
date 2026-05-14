@@ -27,6 +27,13 @@ fn rel_path(name: &str) -> String {
     format!(".houston/{name}/{name}.json")
 }
 
+/// Absolute path to `.houston/<name>/<name>.json` under `root`. Used as
+/// the key into [`crate::file_mutex::with_file_lock`] so concurrent
+/// read-modify-write callsites on the same file serialize.
+pub fn file_path(root: &Path, name: &str) -> PathBuf {
+    root.join(".houston").join(name).join(format!("{name}.json"))
+}
+
 /// Read and deserialize `.houston/<name>/<name>.json`.
 /// Returns `T::default()` if the file does not exist or is empty.
 pub fn read_json<T: DeserializeOwned + Default>(root: &Path, name: &str) -> CoreResult<T> {

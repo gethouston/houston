@@ -145,6 +145,39 @@ async fn main() {
     // pinned manifest in cli-deps.json.
     spawn_cli_lifecycles(state.clone());
 
+    // Orphan-CLI reap: kill any `claude` / `codex` subprocesses the
+    // previous engine instance left running. Their parent died but on
+    // Unix they get reparented to launchd / systemd and keep streaming
+    // until they SIGPIPE-die — which can mean tens of seconds of
+    // wasted API quota and confusing dual-write to `chat_feed`. Run
+    // BEFORE the activity reconciliation so the activity rows are
+    // already corpse-free when the reaper marks them Interrupted.
+    match houston_engine_core::runtime_pids::reap_orphans(&state.config.home_dir) {
+        Ok(0) => {}
+        Ok(n) => tracing::info!("[runtime_pids] reaped {n} orphan CLI subprocess(es)"),
+        Err(e) => tracing::warn!("[runtime_pids] orphan reap failed: {e}"),
+    }
+
+    // Reaper: boot-time reconciliation (transition every stale in-flight
+    // activity that the previous engine instance left behind) plus a
+    // periodic sweep so any future death heals within ~10s without a
+    // restart. Boot reconciliation runs BEFORE serving so the very first
+    // HTTP request sees the post-reconcile state instead of an orphan
+    // `running` row.
+    let docs_for_reaper = state.config.docs_dir.clone();
+    let home_for_reaper = state.config.home_dir.clone();
+    let events_for_reaper = state.engine.events.clone();
+    match houston_engine_core::reaper::reconcile_on_boot(
+        &home_for_reaper,
+        &docs_for_reaper,
+        &events_for_reaper,
+    ) {
+        Ok(0) => {}
+        Ok(n) => tracing::info!("[reaper] boot reconciliation: {n} activity(s) → interrupted"),
+        Err(e) => tracing::warn!("[reaper] boot reconciliation failed: {e}"),
+    }
+    spawn_reaper_loop(state.clone());
+
     let app = build_router(state);
 
     // Block on PATH resolution just before serving. DB init usually
@@ -159,6 +192,10 @@ async fn main() {
         tracing::warn!("[boot] claude_path::init panicked: {e}");
     }
 
+    // SIGTERM lands here ungracefully. The reaper's boot reconciliation
+    // catches any in-flight rows when the next engine instance starts —
+    // we don't need a custom drain. axum's default `serve` exits when
+    // the listener closes; the supervisor sees the exit and restarts.
     if let Err(err) = axum::serve(listener, app).await {
         tracing::error!("server error: {err}");
         std::process::exit(1);
@@ -189,6 +226,17 @@ fn spawn_cli_lifecycles(state: Arc<ServerState>) {
             houston_claude_installer::ensure_and_upgrade(sink, db).await;
         });
     }
+}
+
+/// Spawn the background reaper sweep. Runs forever; uses the same
+/// event sink as everything else so transitions fan out to WS clients.
+fn spawn_reaper_loop(state: Arc<ServerState>) {
+    let home_dir = state.config.home_dir.clone();
+    let docs_dir = state.config.docs_dir.clone();
+    let events = state.engine.events.clone();
+    tokio::spawn(async move {
+        houston_engine_core::reaper::run_reaper_loop(home_dir, docs_dir, events).await;
+    });
 }
 
 fn spawn_tunnel_if_allocated(state: Arc<ServerState>, engine_port: u16) {

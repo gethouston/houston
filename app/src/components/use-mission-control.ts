@@ -106,6 +106,16 @@ export function useMissionControl(agents: Agent[]) {
     [],
   );
 
+  const handleResume = useCallback(
+    async (item: KanbanItem) => {
+      const agentPath = pathMapRef.current[item.id];
+      if (!agentPath) return;
+      await tauriActivity.resume(agentPath, item.id);
+      setSelectedId(item.id);
+    },
+    [],
+  );
+
   const handleRename = useCallback(
     async (item: KanbanItem, newTitle: string) => {
       const agentPath = pathMapRef.current[item.id];
@@ -212,6 +222,7 @@ export function useMissionControl(agents: Agent[]) {
     handleHistoryLoaded,
     handleDelete,
     handleApprove,
+    handleResume,
     handleRename,
     handleSendMessage,
     handleCreate,

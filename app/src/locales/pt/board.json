@@ -4,8 +4,12 @@
     "openTerminal": "Abrir o terminal no worktree",
     "approve": "Mover para Pronto",
     "approveTooltip": "Mover para Pronto",
+    "resumeTooltip": "Retomar",
     "renameTooltip": "Mudar título",
     "deleteTooltip": "Excluir"
+  },
+  "resume": {
+    "failedTitle": "Não foi possível retomar a missão"
   },
   "deleteCard": {
     "titleWithName": "Excluir \"{{name}}\"?",

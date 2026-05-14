@@ -311,6 +311,15 @@ export class HoustonClient {
       agent_path: agentPath,
     });
   }
+  // Resume an interrupted activity. Server validates status == "interrupted"
+  // and 409s otherwise — caller doesn't need to pre-check. Resume flips
+  // status to "needs_you"; the next user message will re-spawn the CLI
+  // with `--resume <session_id>` and continue the conversation in place.
+  resumeActivity(agentPath: string, id: string): Promise<Activity> {
+    return this.request("POST", `/agents/activities/${this.seg(id)}/resume`, undefined, {
+      agent_path: agentPath,
+    });
+  }
 
   // ---------- agents: routines ----------
 

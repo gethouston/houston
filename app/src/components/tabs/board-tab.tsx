@@ -50,6 +50,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
   const cardLabels = {
     approve: t("board:cardActions.approve"),
     approveTooltip: t("board:cardActions.approveTooltip"),
+    resumeTooltip: t("board:cardActions.resumeTooltip"),
     renameTooltip: t("board:cardActions.renameTooltip"),
     deleteTooltip: t("board:cardActions.deleteTooltip"),
     deleteTitle: (name: string) => t("board:deleteCard.titleWithName", { name }),
@@ -327,6 +328,26 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     [updateActivity],
   );
 
+  // Resume an interrupted mission: server flips it to "needs_you" and we
+  // open its panel so the user can type the next message. The next send
+  // re-spawns the CLI with `--resume <session_id>` (the .sid file on
+  // disk is untouched by the interruption) and continues in place.
+  const handleResume = useCallback(
+    async (item: KanbanItem) => {
+      try {
+        await tauriActivity.resume(path, item.id);
+        setSelectedId(item.id);
+      } catch (e) {
+        addToast({
+          title: t("resume.failedTitle"),
+          description: String(e),
+          variant: "error",
+        });
+      }
+    },
+    [path, addToast, t],
+  );
+
   const handleCreateConversation = useCallback(
     async (text: string, files: File[]) => {
       const agentMode = pendingAgentMode ?? agentModes?.[0]?.id;
@@ -578,6 +599,8 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           sessionKeyFor={sessionKeyFor}
           onDelete={handleDelete}
           onApprove={handleApprove}
+          onResume={handleResume}
+          resumeStatuses={["interrupted"]}
           onRename={(item, newTitle) => {
             tauriActivity.update(path, item.id, { title: newTitle }).catch(console.error);
           }}

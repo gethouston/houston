@@ -38,6 +38,7 @@ export function Dashboard() {
   const cardLabels = {
     approve: t("board:cardActions.approve"),
     approveTooltip: t("board:cardActions.approveTooltip"),
+    resumeTooltip: t("board:cardActions.resumeTooltip"),
     renameTooltip: t("board:cardActions.renameTooltip"),
     deleteTooltip: t("board:cardActions.deleteTooltip"),
     deleteTitle: (name: string) => t("board:deleteCard.titleWithName", { name }),
@@ -304,6 +305,8 @@ export function Dashboard() {
           isLoading={mc.loading}
           onDelete={mc.handleDelete}
           onApprove={mc.handleApprove}
+          onResume={mc.handleResume}
+          resumeStatuses={["interrupted"]}
           onRename={mc.handleRename}
           onSendMessage={handleSendMessage}
           queuedMessages={queuedMessages}

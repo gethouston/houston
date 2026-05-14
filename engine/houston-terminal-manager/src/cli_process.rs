@@ -104,7 +104,16 @@ pub(crate) async fn run_cli_process(
     match child.wait().await {
         Ok(status) => {
             tracing::info!("[houston:session] process exited with {status}");
-            let is_sigterm = status.code() == Some(143);
+            // Detect user-initiated Stop. On Unix the CLI dies via SIGTERM
+            // from `sessions::cancel` → `kill -TERM -pid`; `ExitStatus::code()`
+            // returns `None` for signal-killed processes, so the previous
+            // `code() == Some(143)` check was dead code on macOS/Linux (143
+            // is the *shell* convention for "128 + signal", not what the
+            // syscall layer reports). We check `signal() == Some(SIGTERM)`
+            // directly. The CLI's own SIGTERM-trap path (if it installs one
+            // and exits 143 voluntarily, like some npm wrappers) is still
+            // caught via `code() == Some(143)` as a belt-and-suspenders.
+            let is_sigterm = is_user_stop_unix(&status);
             // On Windows, `sessions::cancel` calls `taskkill /F /T /PID` to
             // tear down the codex / claude process tree when the user
             // clicks Stop. TerminateProcess sets the killed process's exit
@@ -191,6 +200,21 @@ fn handle_failed_exit(
     CliRunOutcome::Failed
 }
 
+/// `true` when the CLI exit looks like a user-initiated Stop on Unix —
+/// either killed by SIGTERM (the path `sessions::cancel` takes), or
+/// voluntarily exited with code 143 (some CLIs install their own SIGTERM
+/// handler and exit via `process::exit(128 + sig)`).
+#[cfg(unix)]
+fn is_user_stop_unix(status: &std::process::ExitStatus) -> bool {
+    use std::os::unix::process::ExitStatusExt;
+    status.signal() == Some(libc::SIGTERM) || status.code() == Some(143)
+}
+
+#[cfg(not(unix))]
+fn is_user_stop_unix(_status: &std::process::ExitStatus) -> bool {
+    false
+}
+
 #[cfg(unix)]
 fn configure_process_group(cmd: &mut Command) {
     unsafe {
@@ -212,4 +236,54 @@ fn configure_process_group(_cmd: &mut Command) {}
 #[cfg(unix)]
 extern "C" {
     fn setpgid(pid: i32, pgid: i32) -> i32;
+}
+
+#[cfg(test)]
+#[cfg(unix)]
+mod tests {
+    use super::is_user_stop_unix;
+    use std::os::unix::process::ExitStatusExt;
+    use std::process::ExitStatus;
+
+    #[test]
+    fn sigterm_killed_process_is_user_stop() {
+        // Raw status with the low byte = signal number (no WIFEXITED).
+        // SIGTERM = 15. This is what `kill -TERM` produces and what
+        // `sessions::cancel` triggers — the previous `code() == Some(143)`
+        // check missed it entirely.
+        let status = ExitStatus::from_raw(libc::SIGTERM);
+        assert!(is_user_stop_unix(&status));
+    }
+
+    #[test]
+    fn voluntary_exit_143_is_user_stop() {
+        // Some CLIs install their own SIGTERM trap and exit with
+        // `process::exit(128 + sig)`. The low byte being 0 indicates
+        // a normal (WIFEXITED) exit; the high byte carries the code.
+        // 143 << 8 = 0x8F00.
+        let status = ExitStatus::from_raw(143 << 8);
+        assert_eq!(status.code(), Some(143));
+        assert!(is_user_stop_unix(&status));
+    }
+
+    #[test]
+    fn clean_zero_exit_is_not_user_stop() {
+        let status = ExitStatus::from_raw(0);
+        assert!(!is_user_stop_unix(&status));
+    }
+
+    #[test]
+    fn sigkill_is_not_treated_as_user_stop() {
+        // SIGKILL (9) means something else killed the CLI — OOM killer,
+        // external `kill -9`. Don't conflate that with a user click.
+        let status = ExitStatus::from_raw(libc::SIGKILL);
+        assert!(!is_user_stop_unix(&status));
+    }
+
+    #[test]
+    fn arbitrary_nonzero_exit_is_not_user_stop() {
+        // 1 << 8 = exit code 1 (normal failure). Not a Stop.
+        let status = ExitStatus::from_raw(1 << 8);
+        assert!(!is_user_stop_unix(&status));
+    }
 }

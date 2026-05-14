@@ -15,11 +15,22 @@ export function buildMissionBoardColumns(
     {
       id: "running",
       label: labels.running,
-      statuses: ["running"],
+      statuses: ["queued", "running"],
       onAdd: onNewMission,
       addLabel: labels.newMission,
     },
-    { id: "needs_you", label: labels.needsYou, statuses: ["needs_you"] },
-    { id: "done", label: labels.done, statuses: ["done", "cancelled"] },
+    {
+      id: "needs_you",
+      label: labels.needsYou,
+      // `interrupted` belongs here: the user must Resume or Cancel before
+      // anything else can happen. The card renders a Resume affordance so
+      // the user can recover work the engine couldn't finish on its own.
+      statuses: ["needs_you", "interrupted"],
+    },
+    {
+      id: "done",
+      label: labels.done,
+      statuses: ["done", "cancelled", "error"],
+    },
   ];
 }
