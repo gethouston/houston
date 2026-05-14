@@ -121,7 +121,7 @@ pub fn reap_orphans(home_dir: &Path) -> CoreResult<usize> {
     let entries = read(home_dir)?;
     let mut killed = 0usize;
     for e in &entries {
-        if !is_alive(e.pid) {
+        if !crate::process_probe::is_alive(e.pid) {
             continue;
         }
         // Don't kill ourselves — sanity check against a corrupt file or
@@ -162,26 +162,8 @@ pub fn reap_orphans(home_dir: &Path) -> CoreResult<usize> {
     Ok(killed)
 }
 
-#[cfg(unix)]
-fn is_alive(pid: u32) -> bool {
-    // POSIX: kill(pid, 0) returns 0 if signal could be sent (i.e. the
-    // process exists and we have permission). ESRCH means no such pid.
-    // EPERM means it exists but we can't signal it (still "alive").
-    let r = unsafe { libc::kill(pid as libc::pid_t, 0) };
-    if r == 0 {
-        return true;
-    }
-    let err = std::io::Error::last_os_error();
-    err.raw_os_error() == Some(libc::EPERM)
-}
-
-#[cfg(windows)]
-fn is_alive(_pid: u32) -> bool {
-    // Without OpenProcess scaffolding, return `true` so we always
-    // attempt the kill. On Windows `taskkill` exits 128 (not found)
-    // for dead PIDs which we treat as harmless — no false positives.
-    true
-}
+// `is_alive` lives in `crate::process_probe` so the lease reaper
+// (`agents::lifecycle::sweep_stale`) can share the same probe.
 
 #[cfg(unix)]
 fn terminate(pid: u32) -> Result<(), String> {
@@ -323,16 +305,8 @@ mod tests {
         assert!(listed.is_empty());
     }
 
-    #[cfg(unix)]
-    #[test]
-    fn is_alive_for_init_pid_or_self() {
-        // PID 1 (init) is alive on every Unix.
-        assert!(is_alive(1));
-        // Our own pid is alive.
-        assert!(is_alive(std::process::id()));
-        // A pid that's almost certainly out of range.
-        assert!(!is_alive(999_999_999));
-    }
+    // `is_alive` tests live in `crate::process_probe` since the probe
+    // moved there to be shared with the lease reaper.
 
     #[cfg(unix)]
     #[test]

@@ -112,24 +112,78 @@ pub fn clear_lease_and_set_status(
     Ok(updated)
 }
 
+/// Decide what to do with a single in-flight activity row at sweep time.
+///
+/// Split out from [`sweep_stale`] so the rule can be unit-tested in
+/// isolation without touching the filesystem.
+///
+/// The rule has three branches:
+/// - No lease at all → interrupt. This is the legacy-data path: a row
+///   that was already `Running` when the engine started before leases
+///   existed. Heals on first sweep after upgrade.
+/// - Lease present and not yet expired → leave alone.
+/// - Lease expired:
+///   - Owned by **us** (`owner_pid == self_pid`) → leave alone. The
+///     heartbeat task that owns this lease is just delayed. Concrete
+///     cause: laptop sleep/wake — tokio's `interval` ticker was paused
+///     while the wall clock advanced past `expires_at`, so we observe
+///     "expired" at the reaper's first wake-up tick microseconds before
+///     the heartbeat's first wake-up tick. False-positive interrupting
+///     here makes every sleep/wake a mission loss, which is the bug
+///     this branch fixes.
+///   - Owned by another process that is **alive** (`is_alive(pid)
+///     == true`) → leave alone. Some other engine instance owns it
+///     (multi-engine handoff, e.g. during update). Two engines stealing
+///     leases from each other is worse than letting a stranger's
+///     mission run.
+///   - Owned by another process that is **dead** → interrupt. The
+///     classic orphan case: prior engine died, its mission can't
+///     progress, user needs the Resume affordance.
+///
+/// `is_alive` is plumbed via a fn pointer so tests can inject a stub —
+/// otherwise we'd have to spawn real processes to exercise the
+/// "lease owned by an alive non-us process" branch.
+fn decide_sweep(
+    lease: Option<&Lease>,
+    self_pid: u32,
+    is_alive: fn(u32) -> bool,
+) -> SweepAction {
+    let Some(lease) = lease else {
+        return SweepAction::Interrupt;
+    };
+    if !lease.is_expired() {
+        return SweepAction::Skip;
+    }
+    if lease.owner_pid == self_pid {
+        return SweepAction::Skip;
+    }
+    if is_alive(lease.owner_pid) {
+        return SweepAction::Skip;
+    }
+    SweepAction::Interrupt
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SweepAction {
+    Skip,
+    Interrupt,
+}
+
 /// Sweep the agent's activity file for in-flight rows whose lease is
-/// expired (or missing entirely, which is the case for any row that
-/// was already in `Running` when the engine restarted before leases
-/// existed). Each such row gets `status = Interrupted` and `lease =
-/// None`, the row's `updated_at` bumped, and is returned so the caller
-/// can emit `ActivityChanged` for the agent.
+/// stale per [`decide_sweep`]. Each transitioned row gets `status =
+/// Interrupted` and `lease = None`, the row's `updated_at` bumped, and
+/// is returned so the caller can emit `ActivityChanged` for the agent.
 pub fn sweep_stale(root: &Path) -> CoreResult<Vec<Activity>> {
+    let self_pid = std::process::id();
     let mut items: Vec<Activity> = read_json(root, FILE)?;
     let mut transitioned = Vec::new();
     for item in items.iter_mut() {
         if !item.status.is_in_flight() {
             continue;
         }
-        let stale = match &item.lease {
-            None => true,
-            Some(l) => l.is_expired(),
-        };
-        if !stale {
+        if decide_sweep(item.lease.as_ref(), self_pid, crate::process_probe::is_alive)
+            != SweepAction::Interrupt
+        {
             continue;
         }
         item.status = ActivityStatus::Interrupted;
@@ -165,6 +219,8 @@ mod tests {
                 description: String::new(),
                 agent: None,
                 worktree_path: None,
+                provider: None,
+                model: None,
             },
         )
         .unwrap()
@@ -231,10 +287,14 @@ mod tests {
         let a = make_activity(&root, "x");
         let sk = a.session_key.clone().unwrap();
         let (_, _) = attach_lease(&root, &sk).unwrap().unwrap();
-        // Forcibly expire the lease by rewriting the file with a past expiry.
+        // Forcibly expire the lease AND rewrite owner_pid to a definitely-
+        // dead value so `decide_sweep` falls into the Interrupt branch
+        // (self-owned and live-other-owned leases are intentionally
+        // skipped now to fix the sleep/wake false-positive bug).
         let mut items: Vec<Activity> = read_json(&root, FILE).unwrap();
-        items[0].lease.as_mut().unwrap().expires_at =
-            Utc::now() - chrono::Duration::seconds(1);
+        let lease = items[0].lease.as_mut().unwrap();
+        lease.expires_at = Utc::now() - chrono::Duration::seconds(1);
+        lease.owner_pid = u32::MAX - 1; // out of range → process_probe::is_alive == false
         write_json(&root, FILE, &items).unwrap();
 
         let transitioned = sweep_stale(&root).unwrap();
@@ -267,5 +327,104 @@ mod tests {
         let _ = a;
         let transitioned = sweep_stale(&root).unwrap();
         assert!(transitioned.is_empty(), "Queued is not in-flight");
+    }
+
+    fn make_expired_lease(owner_pid: u32) -> Lease {
+        Lease {
+            lease_id: "test".into(),
+            owner_pid,
+            expires_at: Utc::now() - chrono::Duration::seconds(1),
+        }
+    }
+
+    fn make_fresh_lease(owner_pid: u32) -> Lease {
+        Lease {
+            lease_id: "test".into(),
+            owner_pid,
+            expires_at: Utc::now() + chrono::Duration::seconds(30),
+        }
+    }
+
+    fn never_alive(_: u32) -> bool {
+        false
+    }
+    fn always_alive(_: u32) -> bool {
+        true
+    }
+
+    #[test]
+    fn decide_sweep_no_lease_interrupts() {
+        assert_eq!(
+            decide_sweep(None, 100, never_alive),
+            SweepAction::Interrupt
+        );
+    }
+
+    #[test]
+    fn decide_sweep_fresh_lease_skips_regardless_of_owner() {
+        let l = make_fresh_lease(999);
+        assert_eq!(decide_sweep(Some(&l), 100, never_alive), SweepAction::Skip);
+    }
+
+    #[test]
+    fn decide_sweep_expired_lease_owned_by_self_skips() {
+        // The sleep/wake fix: when our own heartbeat task is delayed and
+        // the lease ticked past expires_at, we must NOT interrupt — the
+        // heartbeat is microseconds from catching up.
+        let l = make_expired_lease(100);
+        assert_eq!(
+            decide_sweep(Some(&l), 100, never_alive),
+            SweepAction::Skip,
+            "expired lease owned by self must not interrupt the live mission"
+        );
+    }
+
+    #[test]
+    fn decide_sweep_expired_lease_owned_by_alive_other_skips() {
+        // Multi-engine handoff: some other live engine owns this lease.
+        // Don't steal its mission.
+        let l = make_expired_lease(999);
+        assert_eq!(
+            decide_sweep(Some(&l), 100, always_alive),
+            SweepAction::Skip
+        );
+    }
+
+    #[test]
+    fn decide_sweep_expired_lease_owned_by_dead_other_interrupts() {
+        // The classic orphan: prior engine crashed, mission stuck.
+        // Surface Resume to the user.
+        let l = make_expired_lease(999);
+        assert_eq!(
+            decide_sweep(Some(&l), 100, never_alive),
+            SweepAction::Interrupt
+        );
+    }
+
+    #[test]
+    fn sweep_stale_skips_when_lease_owned_by_self() {
+        // End-to-end version: build a real activity with a self-owned
+        // expired lease and assert sweep_stale leaves it untouched.
+        // This is the laptop-sleep-wake scenario in integration form.
+        let (_d, root) = make_root();
+        let a = make_activity(&root, "x");
+        let sk = a.session_key.clone().unwrap();
+        attach_lease(&root, &sk).unwrap().unwrap();
+        // Force lease expiry while keeping owner_pid = ours.
+        let mut items: Vec<Activity> = read_json(&root, FILE).unwrap();
+        let lease = items[0].lease.as_mut().unwrap();
+        assert_eq!(lease.owner_pid, std::process::id());
+        lease.expires_at = Utc::now() - chrono::Duration::seconds(60);
+        write_json(&root, FILE, &items).unwrap();
+
+        let transitioned = sweep_stale(&root).unwrap();
+        assert!(
+            transitioned.is_empty(),
+            "self-owned expired lease must not be interrupted (sleep/wake)"
+        );
+        // Row still Running, lease still attached (heartbeat will refresh).
+        let after: Vec<Activity> = read_json(&root, FILE).unwrap();
+        assert_eq!(after[0].status, ActivityStatus::Running);
+        assert!(after[0].lease.is_some());
     }
 }

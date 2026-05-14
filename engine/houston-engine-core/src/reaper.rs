@@ -165,15 +165,21 @@ mod tests {
                 description: String::new(),
                 agent: None,
                 worktree_path: None,
+                provider: None,
+                model: None,
             },
         )
         .unwrap();
         let sk = a.session_key.unwrap();
         attach_lease(agent, &sk).unwrap().unwrap();
-        // Expire the lease in place.
+        // Expire the lease AND rewrite owner_pid to an out-of-range value
+        // so the sweep_stale rule reaches the Interrupt branch. Without
+        // the pid rewrite, `decide_sweep` (rightly) skips self-owned
+        // expired leases because that's the laptop-sleep/wake case.
         let mut items: Vec<Activity> = read_json(agent, "activity").unwrap();
-        items[0].lease.as_mut().unwrap().expires_at =
-            chrono::Utc::now() - chrono::Duration::seconds(1);
+        let lease = items[0].lease.as_mut().unwrap();
+        lease.expires_at = chrono::Utc::now() - chrono::Duration::seconds(1);
+        lease.owner_pid = u32::MAX - 1;
         write_json(agent, "activity", &items).unwrap();
     }
 

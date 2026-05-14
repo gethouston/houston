@@ -13,6 +13,7 @@ pub mod error;
 pub mod git_bash;
 pub mod paths;
 pub mod preferences;
+pub mod process_probe;
 pub mod provider;
 pub mod reaper;
 pub mod routines;
