@@ -1,10 +1,10 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
-import { Button, DialogTitle, Spinner, cn } from "@houston-ai/core";
+import { Button, DialogTitle, Spinner } from "@houston-ai/core";
 import type { SuggestedIntegration, SuggestedRoutine } from "@houston-ai/engine-client";
 import { tauriAgents } from "../../lib/tauri";
-import { AiAssistResult } from "./ai-assist-result";
+import { AgentSetupForm, serializeFormValues, type AgentSetupFormValues } from "./agent-setup-form";
 
 interface AiAssistStepProps {
   provider: string;
@@ -19,48 +19,39 @@ interface AiAssistStepProps {
   ) => void;
 }
 
+const DEFAULT_FORM: AgentSetupFormValues = {
+  focus: "",
+  traits: [],
+  verbosity: 3,
+  askFirst: false,
+  extra: "",
+};
+
 export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistStepProps) {
   const { t } = useTranslation("shell");
-  const [description, setDescription] = useState("");
-  const [validationError, setValidationError] = useState<string | null>(null);
+  const [form, setForm] = useState<AgentSetupFormValues>(DEFAULT_FORM);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [suggestedName, setSuggestedName] = useState("");
-  const [instructions, setInstructions] = useState<string | null>(null);
-  const [suggestedIntegrations, setSuggestedIntegrations] = useState<SuggestedIntegration[]>([]);
-  const [suggestedRoutine, setSuggestedRoutine] = useState<SuggestedRoutine | null>(null);
 
-  const handleGenerate = async (e: FormEvent) => {
-    e.preventDefault();
-    const trimmed = description.trim();
-    if (!trimmed) {
-      setValidationError(t("aiAssist.descriptionRequired"));
-      return;
-    }
-    setValidationError(null);
+  const canGenerate = !!form.focus && !generating;
+
+  const handleGenerate = async () => {
+    const description = serializeFormValues(form);
     setError(null);
     setGenerating(true);
-    setInstructions(null);
-    setSuggestedIntegrations([]);
-    setSuggestedRoutine(null);
     try {
-      const result = await tauriAgents.generateInstructions(trimmed, { provider, model });
-      setSuggestedName(result.name);
-      setInstructions(result.instructions);
-      setSuggestedIntegrations(result.suggestedIntegrations);
-      setSuggestedRoutine(result.suggestedRoutine ?? null);
+      const result = await tauriAgents.generateInstructions(description, { provider, model });
+      onContinue(
+        result.instructions,
+        result.name ?? "",
+        result.suggestedIntegrations,
+        result.suggestedRoutine ?? null,
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setGenerating(false);
     }
-  };
-
-  const handleContinue = () => {
-    if (instructions === null) return;
-    const name = suggestedName.trim();
-    const heading = name ? `# ${name}\n\n` : "";
-    onContinue(`${heading}${instructions}`, name, suggestedIntegrations, suggestedRoutine);
   };
 
   return (
@@ -83,39 +74,20 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
             <p className="text-sm text-muted-foreground">{t("aiAssist.cardDescription")}</p>
           </div>
 
-          <form onSubmit={handleGenerate} className="space-y-3">
-            <label className="block text-sm font-medium">{t("aiAssist.descriptionLabel")}</label>
-            <textarea
-              value={description}
-              onChange={(e) => {
-                setDescription(e.target.value);
-                if (validationError) setValidationError(null);
-              }}
-              placeholder={t("aiAssist.descriptionPlaceholder")}
-              rows={4}
-              disabled={generating}
-              className={cn(
-                "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
-                "placeholder:text-muted-foreground/60",
-                "bg-secondary border border-black/[0.04] rounded-xl",
-                "outline-none resize-none transition-shadow duration-200",
-                "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
-                "disabled:opacity-60 disabled:cursor-not-allowed",
-              )}
-            />
-            {validationError && <p className="text-xs text-destructive">{validationError}</p>}
-            <Button
-              type="submit"
-              disabled={generating || !description.trim()}
-              className="mx-auto w-fit rounded-full"
-            >
-              {generating ? (
-                <><Spinner className="size-4" />{t("aiAssist.generatingMessage")}</>
-              ) : (
-                instructions !== null ? t("aiAssist.retryButton") : t("aiAssist.generateButton")
-              )}
-            </Button>
-          </form>
+          <AgentSetupForm values={form} onChange={setForm} disabled={generating} />
+
+          <Button
+            type="button"
+            onClick={handleGenerate}
+            disabled={!canGenerate}
+            className="mx-auto w-fit rounded-full"
+          >
+            {generating ? (
+              <><Spinner className="size-4" />{t("aiAssist.generatingMessage")}</>
+            ) : (
+              t("aiAssist.generateButton")
+            )}
+          </Button>
 
           {error && !generating && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-1">
@@ -123,16 +95,6 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
               <p className="text-xs text-muted-foreground">{t("aiAssist.errorDescription")}</p>
               <p className="text-xs font-mono text-muted-foreground/80 break-words whitespace-pre-wrap">{error}</p>
             </div>
-          )}
-
-          {instructions !== null && !generating && (
-            <AiAssistResult
-              name={suggestedName}
-              onNameChange={setSuggestedName}
-              instructions={instructions}
-              onInstructionsChange={setInstructions}
-              onContinue={handleContinue}
-            />
           )}
         </div>
       </div>

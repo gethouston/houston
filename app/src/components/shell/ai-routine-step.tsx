@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, CalendarClock, AlertTriangle } from "lucide-react";
+import { ArrowLeft, AlertTriangle } from "lucide-react";
 import { Button, DialogTitle, Input, Switch, cn } from "@houston-ai/core";
 import { ScheduleBuilder } from "@houston-ai/routines";
 import type { SchedulePreset, RoutineFormData } from "@houston-ai/routines";
@@ -42,14 +42,9 @@ export function AiRoutineStep({
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-14">
         <div className="max-w-2xl mx-auto space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0">
-              <CalendarClock className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold">{t("aiRoutine.stepTitle")}</h2>
-              <p className="text-sm text-muted-foreground">{t("aiRoutine.stepDescription")}</p>
-            </div>
+          <div>
+            <h2 className="text-base font-semibold">{t("aiRoutine.stepTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("aiRoutine.stepDescription")}</p>
           </div>
 
           <div className="space-y-1.5">

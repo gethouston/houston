@@ -175,21 +175,64 @@
   },
   "aiAssist": {
     "cardTitle": "Create with AI",
-    "cardDescription": "Describe what you want your agent to do and we'll write the job description for you",
-    "stepTitle": "Describe your agent",
-    "descriptionLabel": "What should this agent do?",
-    "descriptionPlaceholder": "e.g. An agent that monitors my Gmail inbox, summarizes emails, and drafts replies for my review",
+    "cardDescription": "Answer a few quick questions and we'll write the job description for you",
+    "stepTitle": "Set up your agent",
     "generateButton": "Generate instructions",
     "generatingMessage": "Writing your agent's job description...",
     "generatedTitle": "Here's your agent's job description",
     "generatedHelper": "Review and edit the instructions below, then continue when ready",
     "nameLabel": "Agent name",
     "namePlaceholder": "e.g. Email Inbox Manager",
-    "continueButton": "Continue",
-    "retryButton": "Try again",
     "errorTitle": "Generation failed",
     "errorDescription": "Could not generate instructions. Make sure your AI provider is connected and try again.",
-    "descriptionRequired": "Please describe what you want your agent to do"
+    "form": {
+      "focusLabel": "What should this agent help with?",
+      "focusRequired": "Pick a focus area to continue",
+      "traitsLabel": "Pick up to 3 traits",
+      "traitsHint": "{{selected}}/{{max}} selected",
+      "verbosityLabel": "How detailed should responses be?",
+      "verbosityMin": "Brief",
+      "verbosityMax": "Exhaustive",
+      "askFirstLabel": "Should it ask questions before answering?",
+      "askFirstHint": "The agent will clarify your request before diving in",
+      "extraLabel": "Additional instructions",
+      "extraOptional": "optional",
+      "extraPlaceholder": "Any other preferences, rules, or context for this agent..."
+    },
+    "focus": {
+      "personalProductivity": "Personal productivity",
+      "workBusiness": "Work and business",
+      "researchLearning": "Research and learning",
+      "writingEditing": "Writing and editing",
+      "codingDev": "Coding and development",
+      "customerSupport": "Customer support",
+      "dataAnalysis": "Data and analysis",
+      "creativeDesign": "Creative and design"
+    },
+    "traits": {
+      "concise": "Concise",
+      "thorough": "Thorough",
+      "friendly": "Friendly",
+      "professional": "Professional",
+      "creative": "Creative",
+      "analytical": "Analytical",
+      "proactive": "Proactive",
+      "cautious": "Cautious",
+      "structured": "Structured",
+      "casual": "Casual"
+    },
+    "verbosity": {
+      "1": "Very brief",
+      "2": "Brief",
+      "3": "Balanced",
+      "4": "Detailed",
+      "5": "Very detailed"
+    }
+  },
+  "aiReview": {
+    "stepTitle": "Review your agent",
+    "instructionsLabel": "Agent instructions",
+    "instructionsHelper": "Review and edit the job description below"
   },
   "aiIntegrations": {
     "stepTitle": "Connect your apps",

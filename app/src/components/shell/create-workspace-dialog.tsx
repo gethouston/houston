@@ -19,8 +19,11 @@ import { getDefaultModel } from "../../lib/providers";
 import { StoreStep } from "./store-step";
 import { NamingStep } from "./naming-step";
 import { AiAssistStep } from "./ai-assist-step";
+import { AiReviewStep } from "./ai-review-step";
 import { AiRoutineStep } from "./ai-routine-step";
 import { AiIntegrationsStep } from "./ai-integrations-step";
+
+type Step = 1 | "ai-assist" | "ai-integrations" | "ai-routine" | "ai-review" | 2;
 
 export function CreateAgentDialog() {
   const { t } = useTranslation("shell");
@@ -33,7 +36,7 @@ export function CreateAgentDialog() {
   const createAgent = useAgentStore((s) => s.create);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
-  const [step, setStep] = useState<1 | "ai-assist" | "ai-routine" | "ai-integrations" | 2>(1);
+  const [step, setStep] = useState<Step>(1);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const [generatedClaudeMd, setGeneratedClaudeMd] = useState<string | undefined>(undefined);
   const [suggestedIntegrations, setSuggestedIntegrations] = useState<SuggestedIntegration[]>([]);
@@ -76,10 +79,10 @@ export function CreateAgentDialog() {
     setOpen(false);
   };
 
-  const handleSubmit = async (e: FormEvent) => {
-    e.preventDefault();
+  const handleCreateAgent = async () => {
     const trimmed = name.trim();
     if (!trimmed || !selectedConfigId || !currentWorkspace) return;
+    setError(null);
     // AI-generated instructions take priority over the template's claudeMd.
     const claudeMd = generatedClaudeMd ?? selectedDef?.config.claudeMd;
     try {
@@ -134,11 +137,23 @@ export function CreateAgentDialog() {
     }
   };
 
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault();
+    await handleCreateAgent();
+  };
+
   const handleInstall = async (listing: StoreListing) => {
     await installAgent(listing);
   };
 
   const selectedDef = agentDefs.find((d) => d.config.id === selectedConfigId);
+
+  const aiReviewBackStep = (): Step =>
+    routineForm
+      ? "ai-routine"
+      : suggestedIntegrations.length > 0
+        ? "ai-integrations"
+        : "ai-assist";
 
   return (
     <Dialog
@@ -216,7 +231,7 @@ export function CreateAgentDialog() {
                   ? "ai-integrations"
                   : routine
                     ? "ai-routine"
-                    : 2,
+                    : "ai-review",
               );
             }}
           />
@@ -224,7 +239,7 @@ export function CreateAgentDialog() {
           <AiIntegrationsStep
             suggestedIntegrations={suggestedIntegrations}
             onBack={() => setStep("ai-assist")}
-            onContinue={() => setStep(routineForm ? "ai-routine" : 2)}
+            onContinue={() => setStep(routineForm ? "ai-routine" : "ai-review")}
           />
         ) : step === "ai-routine" && routineForm ? (
           <AiRoutineStep
@@ -235,7 +250,19 @@ export function CreateAgentDialog() {
             onBack={() =>
               setStep(suggestedIntegrations.length > 0 ? "ai-integrations" : "ai-assist")
             }
-            onContinue={() => setStep(2)}
+            onContinue={() => setStep("ai-review")}
+          />
+        ) : step === "ai-review" ? (
+          <AiReviewStep
+            name={name}
+            color={color}
+            instructions={generatedClaudeMd ?? ""}
+            onNameChange={setName}
+            onColorChange={setColor}
+            onInstructionsChange={setGeneratedClaudeMd}
+            onBack={() => setStep(aiReviewBackStep())}
+            onSubmit={handleCreateAgent}
+            error={error}
           />
         ) : (
           <NamingStep
@@ -251,19 +278,7 @@ export function CreateAgentDialog() {
             onColorChange={setColor}
             onExistingPathChange={setExistingPath}
             onProviderChange={(p, m) => { setProvider(p); setModel(m); }}
-            onBack={() => {
-              if (generatedClaudeMd !== undefined) {
-                setStep(
-                  routineForm
-                    ? "ai-routine"
-                    : suggestedIntegrations.length > 0
-                      ? "ai-integrations"
-                      : "ai-assist",
-                );
-              } else {
-                setStep(1);
-              }
-            }}
+            onBack={() => setStep(1)}
             onSubmit={handleSubmit}
           />
         )}

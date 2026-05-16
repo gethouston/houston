@@ -175,21 +175,64 @@
   },
   "aiAssist": {
     "cardTitle": "Criar com IA",
-    "cardDescription": "Descreva o que você quer que seu agente faça e nós escreveremos a descrição do cargo para você",
-    "stepTitle": "Descreva seu agente",
-    "descriptionLabel": "O que este agente deve fazer?",
-    "descriptionPlaceholder": "ex. Um agente que monitora minha caixa de entrada do Gmail, resume os e-mails e rascunha respostas para minha revisão",
+    "cardDescription": "Responda algumas perguntas rápidas e nós escreveremos a descrição do cargo para você",
+    "stepTitle": "Configure seu agente",
     "generateButton": "Gerar instruções",
     "generatingMessage": "Escrevendo a descrição do cargo do seu agente...",
     "generatedTitle": "Aqui está a descrição do cargo do seu agente",
     "generatedHelper": "Revise e edite as instruções abaixo, depois continue quando estiver pronto",
     "nameLabel": "Nome do agente",
     "namePlaceholder": "ex. Gerenciador de caixa de entrada",
-    "continueButton": "Continuar",
-    "retryButton": "Tentar de novo",
     "errorTitle": "Falha na geração",
     "errorDescription": "Não foi possível gerar as instruções. Verifique se seu provedor de IA está conectado e tente de novo.",
-    "descriptionRequired": "Por favor descreva o que você quer que seu agente faça"
+    "form": {
+      "focusLabel": "Com o que este agente deve ajudar?",
+      "focusRequired": "Escolha uma área de foco para continuar",
+      "traitsLabel": "Escolha até 3 características",
+      "traitsHint": "{{selected}}/{{max}} selecionadas",
+      "verbosityLabel": "Quao detalhadas devem ser as respostas?",
+      "verbosityMin": "Breve",
+      "verbosityMax": "Exaustivo",
+      "askFirstLabel": "Deve fazer perguntas antes de responder?",
+      "askFirstHint": "O agente vai esclarecer sua solicitacao antes de comecar",
+      "extraLabel": "Instrucoes adicionais",
+      "extraOptional": "opcional",
+      "extraPlaceholder": "Outras preferencias, regras ou contexto para este agente..."
+    },
+    "focus": {
+      "personalProductivity": "Produtividade pessoal",
+      "workBusiness": "Trabalho e negocios",
+      "researchLearning": "Pesquisa e aprendizado",
+      "writingEditing": "Escrita e edicao",
+      "codingDev": "Programacao e desenvolvimento",
+      "customerSupport": "Suporte ao cliente",
+      "dataAnalysis": "Dados e analise",
+      "creativeDesign": "Criatividade e design"
+    },
+    "traits": {
+      "concise": "Conciso",
+      "thorough": "Detalhado",
+      "friendly": "Amigavel",
+      "professional": "Profissional",
+      "creative": "Criativo",
+      "analytical": "Analitico",
+      "proactive": "Proativo",
+      "cautious": "Cauteloso",
+      "structured": "Estruturado",
+      "casual": "Informal"
+    },
+    "verbosity": {
+      "1": "Muito breve",
+      "2": "Breve",
+      "3": "Equilibrado",
+      "4": "Detalhado",
+      "5": "Muito detalhado"
+    }
+  },
+  "aiReview": {
+    "stepTitle": "Revise seu agente",
+    "instructionsLabel": "Instrucoes do agente",
+    "instructionsHelper": "Revise e edite a descricao do cargo abaixo"
   },
   "aiIntegrations": {
     "stepTitle": "Conecte seus aplicativos",

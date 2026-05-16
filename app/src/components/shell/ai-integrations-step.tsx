@@ -1,6 +1,6 @@
 import { useMemo, useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ArrowLeft, Puzzle, Check, Loader2 } from "lucide-react";
+import { ArrowLeft, Check, Loader2 } from "lucide-react";
 import { Button, DialogTitle } from "@houston-ai/core";
 import type { SuggestedIntegration } from "@houston-ai/engine-client";
 import {
@@ -89,14 +89,9 @@ export function AiIntegrationsStep({
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-14">
         <div className="max-w-2xl mx-auto space-y-6">
-          <div className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0">
-              <Puzzle className="w-4 h-4 text-primary" />
-            </div>
-            <div>
-              <h2 className="text-base font-semibold">{t("aiIntegrations.stepTitle")}</h2>
-              <p className="text-sm text-muted-foreground">{t("aiIntegrations.stepDescription")}</p>
-            </div>
+          <div>
+            <h2 className="text-base font-semibold">{t("aiIntegrations.stepTitle")}</h2>
+            <p className="text-sm text-muted-foreground">{t("aiIntegrations.stepDescription")}</p>
           </div>
 
           {!isLoading && result?.status === "not_installed" && (
