@@ -21,11 +21,11 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
+use houston_composio::toolkit_display_name;
 use houston_engine_core::sessions::{
     self, generate_instructions, history, resolve_agent_dir, resolve_provider, summarize,
     SessionRuntime, StartParams,
 };
-use houston_composio;
 use houston_engine_core::CoreError;
 use houston_terminal_manager::Provider;
 use serde::{Deserialize, Serialize};
@@ -223,7 +223,7 @@ struct SuggestedIntegration {
 
 fn resolve_suggested_integration(raw: String) -> SuggestedIntegration {
     let slug = raw.to_lowercase();
-    let display_name = houston_composio::toolkit_display_name(&slug).to_string();
+    let display_name = toolkit_display_name(&slug).to_string();
     SuggestedIntegration { slug, display_name }
 }
 

@@ -5,13 +5,12 @@
 //! agent description. Unlike `summarize`, failures surface as `CoreError` so
 //! the caller can show a toast — there is no silent fallback.
 
+use super::provider_oneshot;
 use crate::error::CoreResult;
-use houston_terminal_manager::{claude_path, Provider};
+use houston_terminal_manager::Provider;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::time::Duration;
-use tokio::io::AsyncWriteExt;
-use tokio::time::timeout;
 
 const GENERATE_TIMEOUT: Duration = Duration::from_secs(60);
 const CLAUDE_GEN_MODEL: &str = "sonnet";
@@ -68,98 +67,11 @@ async fn run_provider_generate(
     model: Option<&str>,
 ) -> Result<String, String> {
     let prompt = build_prompt(description);
-    match provider {
-        Provider::Anthropic => run_claude_generate(&prompt, model).await,
-        Provider::OpenAI => run_codex_generate(&prompt, model).await,
-    }
-}
-
-async fn run_claude_generate(prompt: &str, model: Option<&str>) -> Result<String, String> {
-    let mut cmd = tokio::process::Command::new("claude");
-    cmd.env("PATH", claude_path::shell_path());
-    cmd.env_remove("CLAUDE_CODE_ENTRYPOINT");
-    cmd.env_remove("CLAUDECODE");
-    cmd.arg("-p")
-        .arg("--model")
-        .arg(model.unwrap_or(CLAUDE_GEN_MODEL))
-        .arg("--output-format")
-        .arg("text")
-        .arg("--allowedTools")
-        .arg("");
-    run_command_with_prompt(cmd, prompt).await
-}
-
-async fn run_codex_generate(prompt: &str, model: Option<&str>) -> Result<String, String> {
-    let bin = houston_cli_bundle::bundled_codex_path()
-        .unwrap_or_else(|| std::path::PathBuf::from("codex"));
-    let mut cmd = tokio::process::Command::new(&bin);
-    cmd.env("PATH", claude_path::shell_path());
-    cmd.arg("exec")
-        .arg("--json")
-        .arg("--dangerously-bypass-approvals-and-sandbox")
-        .arg("--skip-git-repo-check")
-        .arg("-c")
-        .arg("model_reasoning_effort=\"low\"")
-        .arg("--model")
-        .arg(model.unwrap_or(CODEX_GEN_MODEL))
-        .arg("-");
-    let stdout = run_command_with_prompt(cmd, prompt).await?;
-    extract_codex_text(&stdout)
-}
-
-async fn run_command_with_prompt(
-    mut cmd: tokio::process::Command,
-    prompt: &str,
-) -> Result<String, String> {
-    cmd.kill_on_drop(true);
-    cmd.stdin(std::process::Stdio::piped());
-    cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::piped());
-
-    let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
-
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(prompt.as_bytes())
-            .await
-            .map_err(|e| format!("stdin write failed: {e}"))?;
-        drop(stdin);
-    }
-
-    let output = match timeout(GENERATE_TIMEOUT, child.wait_with_output()).await {
-        Ok(Ok(output)) => output,
-        Ok(Err(e)) => return Err(format!("process failed: {e}")),
-        Err(_) => return Err("process timed out after 60 s".to_string()),
+    let model = match provider {
+        Provider::Anthropic => model.unwrap_or(CLAUDE_GEN_MODEL),
+        Provider::OpenAI => model.unwrap_or(CODEX_GEN_MODEL),
     };
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("process exited {}: {}", output.status, stderr.trim()));
-    }
-
-    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
-}
-
-fn extract_codex_text(stdout: &str) -> Result<String, String> {
-    let mut latest = String::new();
-    for line in stdout.lines() {
-        let Ok(event) = serde_json::from_str::<Value>(line.trim()) else {
-            continue;
-        };
-        let Some(item) = event.get("item") else {
-            continue;
-        };
-        if item.get("type").and_then(Value::as_str) == Some("agent_message") {
-            if let Some(text) = item.get("text").and_then(Value::as_str) {
-                latest = text.to_string();
-            }
-        }
-    }
-    if latest.trim().is_empty() {
-        Err("codex output had no agent_message text".to_string())
-    } else {
-        Ok(latest)
-    }
+    provider_oneshot::run_provider_oneshot(&prompt, provider, model, GENERATE_TIMEOUT).await
 }
 
 fn parse_result(raw: &str) -> Result<GenerateInstructionsResult, String> {
