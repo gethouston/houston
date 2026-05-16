@@ -9,8 +9,8 @@ interface AiAssistStepProps {
   provider: string;
   model: string;
   onBack: () => void;
-  /** Called with the final CLAUDE.md content (heading prepended) and suggested name. */
-  onContinue: (instructions: string, suggestedName: string) => void;
+  /** Called with the final CLAUDE.md content, suggested name, and suggested integrations. */
+  onContinue: (instructions: string, suggestedName: string, integrations: { slug: string; displayName: string }[]) => void;
 }
 
 export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistStepProps) {
@@ -51,7 +51,7 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
     if (instructions === null) return;
     const name = suggestedName.trim();
     const heading = name ? `# ${name}\n\n` : "";
-    onContinue(`${heading}${instructions}`, name);
+    onContinue(`${heading}${instructions}`, name, suggestedIntegrations);
   };
 
   return (
@@ -124,7 +124,6 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
               onNameChange={setSuggestedName}
               instructions={instructions}
               onInstructionsChange={setInstructions}
-              suggestedIntegrations={suggestedIntegrations}
               onContinue={handleContinue}
             />
           )}

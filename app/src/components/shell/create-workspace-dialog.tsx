@@ -16,6 +16,7 @@ import { getDefaultModel } from "../../lib/providers";
 import { StoreStep } from "./store-step";
 import { NamingStep } from "./naming-step";
 import { AiAssistStep } from "./ai-assist-step";
+import { AiIntegrationsStep } from "./ai-integrations-step";
 
 export function CreateAgentDialog() {
   const { t } = useTranslation("shell");
@@ -28,9 +29,10 @@ export function CreateAgentDialog() {
   const createAgent = useAgentStore((s) => s.create);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
-  const [step, setStep] = useState<1 | "ai-assist" | 2>(1);
+  const [step, setStep] = useState<1 | "ai-assist" | "ai-integrations" | 2>(1);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const [generatedClaudeMd, setGeneratedClaudeMd] = useState<string | undefined>(undefined);
+  const [suggestedIntegrations, setSuggestedIntegrations] = useState<{ slug: string; displayName: string }[]>([]);
   const [name, setName] = useState("");
   const [color, setColor] = useState<string | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
@@ -46,6 +48,7 @@ export function CreateAgentDialog() {
       setStep(1);
       setSelectedConfigId(null);
       setGeneratedClaudeMd(undefined);
+      setSuggestedIntegrations([]);
       setName("");
       setColor(undefined);
       setError(null);
@@ -148,11 +151,18 @@ export function CreateAgentDialog() {
             provider={provider}
             model={model}
             onBack={() => setStep(1)}
-            onContinue={(instructions, suggestedName) => {
+            onContinue={(instructions, suggestedName, integrations) => {
               setGeneratedClaudeMd(instructions);
+              setSuggestedIntegrations(integrations);
               if (!name.trim()) setName(suggestedName);
-              setStep(2);
+              setStep(integrations.length > 0 ? "ai-integrations" : 2);
             }}
+          />
+        ) : step === "ai-integrations" ? (
+          <AiIntegrationsStep
+            suggestedIntegrations={suggestedIntegrations}
+            onBack={() => setStep("ai-assist")}
+            onContinue={() => setStep(2)}
           />
         ) : (
           <NamingStep
@@ -168,7 +178,13 @@ export function CreateAgentDialog() {
             onColorChange={setColor}
             onExistingPathChange={setExistingPath}
             onProviderChange={(p, m) => { setProvider(p); setModel(m); }}
-            onBack={() => generatedClaudeMd !== undefined ? setStep("ai-assist") : setStep(1)}
+            onBack={() => {
+              if (generatedClaudeMd !== undefined) {
+                setStep(suggestedIntegrations.length > 0 ? "ai-integrations" : "ai-assist");
+              } else {
+                setStep(1);
+              }
+            }}
             onSubmit={handleSubmit}
           />
         )}

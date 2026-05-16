@@ -182,7 +182,7 @@
     "generateButton": "Gerar instruções",
     "generatingMessage": "Escrevendo a descrição do cargo do seu agente...",
     "generatedTitle": "Aqui está a descrição do cargo do seu agente",
-    "generatedHelper": "Revise e edite as instruções abaixo, depois continue para nomear seu agente",
+    "generatedHelper": "Revise e edite as instruções abaixo, depois continue quando estiver pronto",
     "nameLabel": "Nome do agente",
     "namePlaceholder": "ex. Gerenciador de caixa de entrada",
     "suggestedIntegrationsTitle": "Integrações sugeridas",
@@ -192,6 +192,16 @@
     "errorTitle": "Falha na geração",
     "errorDescription": "Não foi possível gerar as instruções. Verifique se seu provedor de IA está conectado e tente de novo.",
     "descriptionRequired": "Por favor descreva o que você quer que seu agente faça"
+  },
+  "aiIntegrations": {
+    "stepTitle": "Conecte seus aplicativos",
+    "stepDescription": "Esses aplicativos funcionam bem com seu agente. Conecte-os agora ou faça isso depois na aba Integrações.",
+    "notInstalledNote": "Você pode conectar integrações na aba Integrações depois de criar seu agente.",
+    "needsAuthNote": "Entre no Composio para conectar aplicativos agora, ou faça isso depois de criar seu agente.",
+    "signIn": "Entrar",
+    "connected": "Conectado",
+    "connect": "Conectar",
+    "continueButton": "Continuar"
   },
   "engineGate": {
     "starting": "Iniciando o motor do Houston…"

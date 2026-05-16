@@ -1,13 +1,11 @@
 import { useTranslation } from "react-i18next";
 import { Button, Input, cn } from "@houston-ai/core";
-import { IntegrationLogos } from "../integration-logos";
 
 interface AiAssistResultProps {
   name: string;
   onNameChange: (v: string) => void;
   instructions: string;
   onInstructionsChange: (v: string) => void;
-  suggestedIntegrations: { slug: string; displayName: string }[];
   onContinue: () => void;
 }
 
@@ -16,7 +14,6 @@ export function AiAssistResult({
   onNameChange,
   instructions,
   onInstructionsChange,
-  suggestedIntegrations,
   onContinue,
 }: AiAssistResultProps) {
   const { t } = useTranslation("shell");
@@ -53,29 +50,6 @@ export function AiAssistResult({
           />
         </section>
       </div>
-
-      {/* Suggested integrations */}
-      {suggestedIntegrations.length > 0 && (
-        <div className="space-y-2">
-          <div>
-            <p className="text-sm font-medium">{t("aiAssist.suggestedIntegrationsTitle")}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {t("aiAssist.suggestedIntegrationsHelper")}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {suggestedIntegrations.map(({ slug, displayName }) => (
-              <span
-                key={slug}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary px-3 py-1 text-xs font-medium"
-              >
-                <IntegrationLogos toolkits={[slug]} small={true} />
-                {displayName}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
 
       <Button onClick={onContinue} className="w-full rounded-full">
         {t("aiAssist.continueButton")}

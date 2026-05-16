@@ -143,4 +143,31 @@ mod tests {
         assert_eq!(result.name, "");
         assert!(result.suggested_integrations.is_empty());
     }
+
+    #[test]
+    fn null_suggested_integrations_returns_empty_vec() {
+        // Models sometimes emit `null` instead of `[]`.
+        let raw = r#"{"name": "Bot", "instructions": "Do things.", "suggestedIntegrations": null}"#;
+        let result = parse_result(raw).unwrap();
+        assert!(result.suggested_integrations.is_empty());
+    }
+
+    #[test]
+    fn non_string_entries_in_integrations_are_filtered() {
+        // Malformed model output with mixed types must not panic.
+        let raw = r#"{"name": "Bot", "instructions": "Do things.", "suggestedIntegrations": ["GMAIL", 42, null, "SLACK"]}"#;
+        let result = parse_result(raw).unwrap();
+        assert_eq!(result.suggested_integrations, vec!["GMAIL", "SLACK"]);
+    }
+
+    #[test]
+    fn missing_instructions_returns_error() {
+        let raw = r#"{"name": "Bot", "suggestedIntegrations": []}"#;
+        assert!(parse_result(raw).is_err());
+    }
+
+    #[test]
+    fn invalid_json_returns_error() {
+        assert!(parse_result("not json at all").is_err());
+    }
 }

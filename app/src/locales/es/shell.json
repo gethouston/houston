@@ -182,7 +182,7 @@
     "generateButton": "Generar instrucciones",
     "generatingMessage": "Escribiendo la descripción del puesto de tu agente...",
     "generatedTitle": "Aquí está la descripción del puesto de tu agente",
-    "generatedHelper": "Revisa y edita las instrucciones abajo, luego continúa para nombrar tu agente",
+    "generatedHelper": "Revisa y edita las instrucciones abajo, luego continúa cuando estés listo",
     "nameLabel": "Nombre del agente",
     "namePlaceholder": "p. ej. Gestor de bandeja de entrada",
     "suggestedIntegrationsTitle": "Integraciones sugeridas",
@@ -192,6 +192,16 @@
     "errorTitle": "Error en la generación",
     "errorDescription": "No se pudieron generar las instrucciones. Asegúrate de que tu proveedor de IA esté conectado e intenta de nuevo.",
     "descriptionRequired": "Por favor describe lo que quieres que haga tu agente"
+  },
+  "aiIntegrations": {
+    "stepTitle": "Conecta tus aplicaciones",
+    "stepDescription": "Estas aplicaciones funcionan bien con tu agente. Conéctalas ahora o desde la pestaña Integraciones después.",
+    "notInstalledNote": "Puedes conectar integraciones desde la pestaña Integraciones después de crear tu agente.",
+    "needsAuthNote": "Inicia sesión en Composio para conectar aplicaciones ahora, o hazlo después de crear tu agente.",
+    "signIn": "Iniciar sesión",
+    "connected": "Conectado",
+    "connect": "Conectar",
+    "continueButton": "Continuar"
   },
   "engineGate": {
     "starting": "Iniciando el motor de Houston…"

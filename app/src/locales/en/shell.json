@@ -182,7 +182,7 @@
     "generateButton": "Generate instructions",
     "generatingMessage": "Writing your agent's job description...",
     "generatedTitle": "Here's your agent's job description",
-    "generatedHelper": "Review and edit the instructions below, then continue to name your agent",
+    "generatedHelper": "Review and edit the instructions below, then continue when ready",
     "nameLabel": "Agent name",
     "namePlaceholder": "e.g. Email Inbox Manager",
     "suggestedIntegrationsTitle": "Suggested integrations",
@@ -192,6 +192,16 @@
     "errorTitle": "Generation failed",
     "errorDescription": "Could not generate instructions. Make sure your AI provider is connected and try again.",
     "descriptionRequired": "Please describe what you want your agent to do"
+  },
+  "aiIntegrations": {
+    "stepTitle": "Connect your apps",
+    "stepDescription": "These apps work well with your agent. Connect them now or do it later from the Integrations tab.",
+    "notInstalledNote": "You can connect integrations from the Integrations tab after creating your agent.",
+    "needsAuthNote": "Sign in to Composio to connect apps now, or do it after creating your agent.",
+    "signIn": "Sign in",
+    "connected": "Connected",
+    "connect": "Connect",
+    "continueButton": "Continue"
   },
   "engineGate": {
     "starting": "Starting Houston engine…"
