@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { Button, DialogTitle, Spinner, cn } from "@houston-ai/core";
-import type { SuggestedIntegration } from "@houston-ai/engine-client";
+import type { SuggestedIntegration, SuggestedRoutine } from "@houston-ai/engine-client";
 import { tauriAgents } from "../../lib/tauri";
 import { AiAssistResult } from "./ai-assist-result";
 
@@ -10,8 +10,13 @@ interface AiAssistStepProps {
   provider: string;
   model: string;
   onBack: () => void;
-  /** Called with the final CLAUDE.md content, suggested name, and suggested integrations. */
-  onContinue: (instructions: string, suggestedName: string, integrations: SuggestedIntegration[]) => void;
+  /** Called with the final CLAUDE.md content, suggested name, integrations, and an optional routine. */
+  onContinue: (
+    instructions: string,
+    suggestedName: string,
+    integrations: SuggestedIntegration[],
+    routine: SuggestedRoutine | null,
+  ) => void;
 }
 
 export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistStepProps) {
@@ -23,6 +28,7 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
   const [suggestedName, setSuggestedName] = useState("");
   const [instructions, setInstructions] = useState<string | null>(null);
   const [suggestedIntegrations, setSuggestedIntegrations] = useState<SuggestedIntegration[]>([]);
+  const [suggestedRoutine, setSuggestedRoutine] = useState<SuggestedRoutine | null>(null);
 
   const handleGenerate = async (e: FormEvent) => {
     e.preventDefault();
@@ -36,11 +42,13 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
     setGenerating(true);
     setInstructions(null);
     setSuggestedIntegrations([]);
+    setSuggestedRoutine(null);
     try {
       const result = await tauriAgents.generateInstructions(trimmed, { provider, model });
       setSuggestedName(result.name);
       setInstructions(result.instructions);
       setSuggestedIntegrations(result.suggestedIntegrations);
+      setSuggestedRoutine(result.suggestedRoutine ?? null);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
@@ -52,7 +60,7 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
     if (instructions === null) return;
     const name = suggestedName.trim();
     const heading = name ? `# ${name}\n\n` : "";
-    onContinue(`${heading}${instructions}`, name, suggestedIntegrations);
+    onContinue(`${heading}${instructions}`, name, suggestedIntegrations, suggestedRoutine);
   };
 
   return (

@@ -23,6 +23,7 @@ pub mod generate_instructions;
 pub mod history;
 mod provider_oneshot;
 pub mod provider;
+pub mod suggested_routine;
 pub mod summarize;
 mod summary_text;
 mod workdir_locks;

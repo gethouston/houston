@@ -233,6 +233,9 @@ struct GenerateInstructionsResponse {
     name: String,
     instructions: String,
     suggested_integrations: Vec<SuggestedIntegration>,
+    // Passthrough: core already built + validated the cron, no resolution needed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    suggested_routine: Option<generate_instructions::SuggestedRoutine>,
 }
 
 async fn generate_agent_instructions(
@@ -258,6 +261,7 @@ async fn generate_agent_instructions(
         name: result.name,
         instructions: result.instructions,
         suggested_integrations,
+        suggested_routine: result.suggested_routine,
     }))
 }
 

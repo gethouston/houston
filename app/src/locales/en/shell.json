@@ -201,6 +201,20 @@
     "connect": "Connect",
     "continueButton": "Continue"
   },
+  "aiRoutine": {
+    "stepTitle": "Set up automatic runs",
+    "stepDescription": "Based on what you described, this agent can run on a schedule by itself. Edit anything before you turn it on.",
+    "nameLabel": "Routine name",
+    "promptLabel": "What it should do each time",
+    "scheduleLabel": "When it runs",
+    "consentTitle": "Before you turn this on",
+    "consentScheduled": "It runs by itself on a schedule.",
+    "consentUsage": "Every run uses AI, so it counts toward your usage.",
+    "consentNeedsApp": "If it uses an app, that app must be connected or the routine can't run.",
+    "laterNote": "You can create, change, or turn off routines anytime in the agent's Routines tab.",
+    "enableLabel": "Set up this automatic run",
+    "continueButton": "Continue"
+  },
   "engineGate": {
     "starting": "Starting Houston engine…"
   }

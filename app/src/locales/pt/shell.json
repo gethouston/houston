@@ -201,6 +201,20 @@
     "connect": "Conectar",
     "continueButton": "Continuar"
   },
+  "aiRoutine": {
+    "stepTitle": "Configure execuções automáticas",
+    "stepDescription": "Com base no que você descreveu, este agente pode rodar sozinho em um horário. Edite o que quiser antes de ativar.",
+    "nameLabel": "Nome da rotina",
+    "promptLabel": "O que ele deve fazer a cada vez",
+    "scheduleLabel": "Quando ele roda",
+    "consentTitle": "Antes de ativar",
+    "consentScheduled": "Ele roda sozinho em um horário.",
+    "consentUsage": "Cada execução usa IA, então conta para o seu uso.",
+    "consentNeedsApp": "Se usar um aplicativo, esse aplicativo precisa estar conectado ou a rotina não poderá rodar.",
+    "laterNote": "Você pode criar, alterar ou desativar rotinas quando quiser na aba Rotinas do agente.",
+    "enableLabel": "Configurar esta execução automática",
+    "continueButton": "Continuar"
+  },
   "engineGate": {
     "starting": "Iniciando o motor do Houston…"
   }

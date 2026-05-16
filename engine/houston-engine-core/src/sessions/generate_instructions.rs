@@ -6,6 +6,8 @@
 //! the caller can show a toast — there is no silent fallback.
 
 use super::provider_oneshot;
+use super::suggested_routine::build_routine;
+pub use super::suggested_routine::SuggestedRoutine;
 use crate::error::CoreResult;
 use houston_terminal_manager::Provider;
 use serde::{Deserialize, Serialize};
@@ -22,6 +24,8 @@ pub struct GenerateInstructionsResult {
     pub name: String,
     pub instructions: String,
     pub suggested_integrations: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub suggested_routine: Option<SuggestedRoutine>,
 }
 
 pub async fn generate_instructions(
@@ -59,9 +63,12 @@ Also suggest:
 - A short agent name (2-4 words, title case, no generic words like "Agent" or "Assistant" unless truly fitting, e.g. "Email Inbox Manager", "Quant Analyst", "Sales Pipeline Bot")
 - 1-4 relevant Composio integrations (toolkit names) that this agent would benefit from.
 Common toolkits: GMAIL, GOOGLECALENDAR, GOOGLESHEETS, GOOGLEDOCS, SLACK, NOTION, GITHUB, JIRA, TRELLO, ASANA, HUBSPOT, SALESFORCE, SHOPIFY, STRIPE, TWITTER, LINKEDIN, DISCORD, AIRTABLE, EXCEL, GOOGLEDRIVE
+- Optionally, exactly ONE routine, but ONLY if the agent's job clearly involves a recurring scheduled task (e.g. a daily inbox digest, a weekly report). If the agent is reactive / on-demand / one-off, set suggestedRoutine to null. Do not invent a schedule just to fill the field.
+  Allowed scheduleType values ONLY: "daily", "weekdays", "weekly". Give timeOfDay as 24h "HH:MM". For "weekly" also give dayOfWeek (0=Sunday .. 6=Saturday). Keep the routine prompt to one sentence describing what it should do each run.
 
 Return ONLY valid JSON (no markdown fences):
-{{"name": "...", "instructions": "...", "suggestedIntegrations": ["TOOLKIT1", "TOOLKIT2"]}}"#
+{{"name": "...", "instructions": "...", "suggestedIntegrations": ["TOOLKIT1", "TOOLKIT2"], "suggestedRoutine": {{"name": "...", "prompt": "...", "scheduleType": "daily", "timeOfDay": "08:00", "dayOfWeek": 1}}}}
+Set "suggestedRoutine" to null when no recurring schedule is appropriate."#
     )
 }
 
@@ -115,6 +122,7 @@ fn parse_result(raw: &str) -> Result<GenerateInstructionsResult, String> {
         name,
         instructions,
         suggested_integrations,
+        suggested_routine: build_routine(v.get("suggestedRoutine")),
     })
 }
 
@@ -173,6 +181,19 @@ mod tests {
     #[test]
     fn invalid_json_returns_error() {
         assert!(parse_result("not json at all").is_err());
+    }
+
+    // Routine *parsing* edge cases live in `suggested_routine` unit tests;
+    // here we only assert `parse_result` wires the value through correctly.
+    #[test]
+    fn parse_result_wires_routine_through() {
+        let raw = r#"{"name":"Bot","instructions":"Do.","suggestedRoutine":{"name":"Morning digest","prompt":"Summarize new emails.","scheduleType":"daily","timeOfDay":"08:00"}}"#;
+        let r = parse_result(raw).unwrap().suggested_routine.unwrap();
+        assert_eq!(r.name, "Morning digest");
+        assert_eq!(r.schedule, "0 8 * * *");
+
+        let none = r#"{"name":"B","instructions":"D","suggestedRoutine":null}"#;
+        assert!(parse_result(none).unwrap().suggested_routine.is_none());
     }
 
     #[test]

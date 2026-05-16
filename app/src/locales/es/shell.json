@@ -201,6 +201,20 @@
     "connect": "Conectar",
     "continueButton": "Continuar"
   },
+  "aiRoutine": {
+    "stepTitle": "Configura ejecuciones automáticas",
+    "stepDescription": "Según lo que describiste, este agente puede ejecutarse solo según un horario. Edita lo que quieras antes de activarlo.",
+    "nameLabel": "Nombre de la rutina",
+    "promptLabel": "Qué debe hacer cada vez",
+    "scheduleLabel": "Cuándo se ejecuta",
+    "consentTitle": "Antes de activarlo",
+    "consentScheduled": "Se ejecuta solo según un horario.",
+    "consentUsage": "Cada ejecución usa IA, así que cuenta para tu uso.",
+    "consentNeedsApp": "Si usa una aplicación, esa aplicación debe estar conectada o la rutina no podrá ejecutarse.",
+    "laterNote": "Puedes crear, cambiar o desactivar rutinas cuando quieras desde la pestaña Rutinas del agente.",
+    "enableLabel": "Configurar esta ejecución automática",
+    "continueButton": "Continuar"
+  },
   "engineGate": {
     "starting": "Iniciando el motor de Houston…"
   }
