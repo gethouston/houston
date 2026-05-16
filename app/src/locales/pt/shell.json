@@ -185,8 +185,6 @@
     "generatedHelper": "Revise e edite as instruções abaixo, depois continue quando estiver pronto",
     "nameLabel": "Nome do agente",
     "namePlaceholder": "ex. Gerenciador de caixa de entrada",
-    "suggestedIntegrationsTitle": "Integrações sugeridas",
-    "suggestedIntegrationsHelper": "Este agente funcionaria bem com esses aplicativos. Você pode conectá-los depois de criar o agente.",
     "continueButton": "Continuar",
     "retryButton": "Tentar de novo",
     "errorTitle": "Falha na geração",

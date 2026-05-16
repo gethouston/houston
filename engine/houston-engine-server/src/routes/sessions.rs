@@ -236,7 +236,6 @@ struct GenerateInstructionsResponse {
 }
 
 async fn generate_agent_instructions(
-    State(_st): State<Arc<ServerState>>,
     Json(req): Json<GenerateInstructionsRequest>,
 ) -> Result<Json<GenerateInstructionsResponse>, ApiError> {
     let (provider, model) = if let Some(p_str) = req.provider.as_deref() {

@@ -185,8 +185,6 @@
     "generatedHelper": "Revisa y edita las instrucciones abajo, luego continúa cuando estés listo",
     "nameLabel": "Nombre del agente",
     "namePlaceholder": "p. ej. Gestor de bandeja de entrada",
-    "suggestedIntegrationsTitle": "Integraciones sugeridas",
-    "suggestedIntegrationsHelper": "Este agente funcionaría bien con estas aplicaciones. Puedes conectarlas después de crear el agente.",
     "continueButton": "Continuar",
     "retryButton": "Intentar de nuevo",
     "errorTitle": "Error en la generación",

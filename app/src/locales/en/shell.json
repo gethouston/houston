@@ -185,8 +185,6 @@
     "generatedHelper": "Review and edit the instructions below, then continue when ready",
     "nameLabel": "Agent name",
     "namePlaceholder": "e.g. Email Inbox Manager",
-    "suggestedIntegrationsTitle": "Suggested integrations",
-    "suggestedIntegrationsHelper": "This agent would work well with these apps. You can connect them after creating the agent.",
     "continueButton": "Continue",
     "retryButton": "Try again",
     "errorTitle": "Generation failed",

@@ -51,7 +51,7 @@ export function AiIntegrationsStep({
           toolkit: slug,
           name: fromApi?.name ?? displayName,
           description: fromApi?.description ?? "",
-          logoUrl: fromApi?.logo_url || `https://www.google.com/s2/favicons?domain=${slug}.com&sz=128`,
+          logoUrl: fromApi?.logo_url ?? "",
         };
       }),
     [suggestedIntegrations, apiApps],
@@ -161,10 +161,11 @@ function IntegrationCard({
   const { t } = useTranslation("shell");
   const [imgError, setImgError] = useState(false);
   const initial = app.name.charAt(0).toUpperCase();
+  const showAvatar = imgError || !app.logoUrl;
 
   return (
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary">
-      {imgError ? (
+      {showAvatar ? (
         <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
           <span className="text-xs font-semibold text-muted-foreground">{initial}</span>
         </div>

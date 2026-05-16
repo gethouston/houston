@@ -1,10 +1,3 @@
-//! AI-assisted agent instruction generator.
-//!
-//! Shells out to the user's configured provider CLI to generate CLAUDE.md
-//! content and a list of suggested Composio integrations from a user-supplied
-//! agent description. Unlike `summarize`, failures surface as `CoreError` so
-//! the caller can show a toast — there is no silent fallback.
-
 use super::provider_oneshot;
 use crate::error::CoreResult;
 use houston_terminal_manager::Provider;

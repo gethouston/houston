@@ -1,13 +1,3 @@
-//! Shared one-shot provider CLI invocation.
-//!
-//! Spawns `claude -p` or the bundled codex binary, writes a prompt to stdin,
-//! and returns the full stdout as a string. Used by `summarize` and
-//! `generate_instructions` — both need a single prompt→text round-trip with no
-//! streaming and no session state.
-//!
-//! Callers are responsible for resolving the model default before calling
-//! `run_provider_oneshot`, since each use case has different model preferences.
-
 use houston_terminal_manager::{claude_path, Provider};
 use serde_json::Value;
 use std::time::Duration;
