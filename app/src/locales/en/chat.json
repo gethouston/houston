@@ -1,6 +1,9 @@
 {
   "composer": {
-    "placeholder": "Ask anything..."
+    "placeholder": "Ask anything...",
+    "fileAlreadyInChat": "File already in chat",
+    "dropTitle": "Drop your file",
+    "dropDescription": "Drop your files in here to add it to the conversation"
   },
   "queue": {
     "title": "Queued",

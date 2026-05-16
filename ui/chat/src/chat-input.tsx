@@ -20,6 +20,12 @@ import { useControllable, mergeUniqueFiles } from "./use-file-drop-zone";
 
 type InputStatus = "ready" | "streaming" | "submitted";
 
+export interface ChatComposerLabels {
+  fileAlreadyInChat?: string;
+  dropTitle?: string;
+  dropDescription?: string;
+}
+
 export interface ChatInputProps {
   /** Controlled text. Omit to use internal state. */
   value?: string;
@@ -49,6 +55,7 @@ export interface ChatInputProps {
   queuedLabels?: QueuedMessageLabels;
   /** Enables submit even when text/files are empty. */
   canSendEmpty?: boolean;
+  labels?: ChatComposerLabels;
 }
 
 export function ChatInput({
@@ -69,6 +76,7 @@ export function ChatInput({
   onRemoveQueuedMessage,
   queuedLabels,
   canSendEmpty = false,
+  labels,
 }: ChatInputProps) {
   const [text, setText] = useControllable(value, onValueChange, "");
   const [files, setFiles] = useControllable<File[]>(
@@ -90,11 +98,11 @@ export function ChatInput({
       }
       const merged = mergeUniqueFiles(files, prepared.accepted);
       if (merged.length < files.length + prepared.accepted.length) {
-        onNotice?.("File already in chat");
+        onNotice?.(labels?.fileAlreadyInChat ?? "File already in chat");
       }
       setFiles(merged);
     },
-    [files, setFiles, onNotice, prepareAttachments, onAttachmentRejections],
+    [files, setFiles, onNotice, prepareAttachments, onAttachmentRejections, labels],
   );
 
   const handleTextChange = useCallback(

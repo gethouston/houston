@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatMessagesProps } from "./chat-messages";
 import type { ChatMessage } from "./feed-to-messages";
+import type { ChatComposerLabels } from "./chat-input";
 import type { QueuedChatMessage, QueuedMessageLabels } from "./queued-message-list";
 import type { FeedItem } from "./types";
 
@@ -59,4 +60,5 @@ export interface ChatPanelProps {
   onOpenLink?: (url: string) => void;
   renderLink?: ChatMessagesProps["renderLink"];
   composerOverride?: ReactNode;
+  composerLabels?: ChatComposerLabels;
 }

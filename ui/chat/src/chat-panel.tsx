@@ -59,6 +59,7 @@ export function ChatPanel({
   queuedLabels,
   canSendEmpty,
   composerOverride,
+  composerLabels,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const status = statusProp ?? deriveStatus(feedItems, isLoading);
@@ -84,11 +85,11 @@ export function ChatPanel({
       }
       const merged = mergeUniqueFiles(files, prepared.accepted);
       if (merged.length < files.length + prepared.accepted.length) {
-        onNotice?.("File already in chat");
+        onNotice?.(composerLabels?.fileAlreadyInChat ?? "File already in chat");
       }
       setFiles(merged);
     },
-    [files, setFiles, onNotice, prepareAttachments, onAttachmentRejections],
+    [files, setFiles, onNotice, composerLabels, prepareAttachments, onAttachmentRejections],
   );
   const { isDraggingOver, dropProps } = useFileDropZone(addDroppedFiles);
 
@@ -115,7 +116,11 @@ export function ChatPanel({
       className="relative flex flex-1 flex-col min-h-0 overflow-hidden"
       {...dropProps}
     >
-      <ChatDropOverlay visible={isDraggingOver} />
+      <ChatDropOverlay
+        visible={isDraggingOver}
+        title={composerLabels?.dropTitle}
+        description={composerLabels?.dropDescription}
+      />
       {onBack && (
         <div className="max-w-3xl mx-auto w-full px-4 pt-3">
           <button
@@ -174,6 +179,7 @@ export function ChatPanel({
           onRemoveQueuedMessage={onRemoveQueuedMessage}
           queuedLabels={queuedLabels}
           canSendEmpty={canSendEmpty}
+          labels={composerLabels}
         />
       )}
     </div>

@@ -2,9 +2,15 @@ import { FilesIcon } from "lucide-react";
 
 export interface ChatDropOverlayProps {
   visible: boolean;
+  title?: string;
+  description?: string;
 }
 
-export function ChatDropOverlay({ visible }: ChatDropOverlayProps) {
+export function ChatDropOverlay({
+  visible,
+  title = "Drop your file",
+  description = "Drop your files in here to add it to the conversation",
+}: ChatDropOverlayProps) {
   if (!visible) return null;
   return (
     <div
@@ -17,10 +23,10 @@ export function ChatDropOverlay({ visible }: ChatDropOverlayProps) {
           strokeWidth={1.5}
         />
         <div className="text-2xl font-semibold tracking-tight text-foreground">
-          Add anything
+          {title}
         </div>
         <p className="text-sm/relaxed text-muted-foreground">
-          Drop your files in here to add it to the conversation
+          {description}
         </p>
       </div>
     </div>

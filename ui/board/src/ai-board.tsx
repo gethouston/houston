@@ -141,6 +141,8 @@ export interface AIBoardProps {
    * focused interaction surface (e.g. an action-input form).
    */
   composerOverride?: ReactNode
+  /** Translated labels for the file-drop overlay and composer notices. Forwarded to ChatPanel. */
+  composerLabels?: ChatPanelProps["composerLabels"]
 }
 
 const DEFAULT_COLUMNS: KanbanColumn[] = [
@@ -206,6 +208,7 @@ export function AIBoard({
   onComposerSubmit,
   cardLabels,
   composerOverride,
+  composerLabels,
 }: AIBoardProps) {
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null)
   const [newPanelOpen, setNewPanelOpen] = useState(false)
@@ -456,6 +459,7 @@ export function AIBoard({
           composerHeader={typeof composerHeader === "function" ? composerHeader({ hasMessages: activeFeed.length > 0 }) : composerHeader}
           canSendEmpty={canSendEmpty}
           composerOverride={composerOverride}
+          composerLabels={composerLabels}
         />
       </div>
     </KanbanDetailPanel>

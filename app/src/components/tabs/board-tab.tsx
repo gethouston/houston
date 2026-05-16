@@ -584,6 +584,11 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           drafts={boardDrafts}
           onDraftChange={handleDraftChange}
           onNotice={handleNotice}
+          composerLabels={{
+            fileAlreadyInChat: t("chat:composer.fileAlreadyInChat"),
+            dropTitle: t("chat:composer.dropTitle"),
+            dropDescription: t("chat:composer.dropDescription"),
+          }}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}

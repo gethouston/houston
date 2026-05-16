@@ -281,6 +281,11 @@ export default function ChatTab({ agent }: TabProps) {
         attachments={composerFiles}
         onAttachmentsChange={setComposerFiles}
         onNotice={handleNotice}
+        composerLabels={{
+          fileAlreadyInChat: t("composer.fileAlreadyInChat"),
+          dropTitle: t("composer.dropTitle"),
+          dropDescription: t("composer.dropDescription"),
+        }}
         prepareAttachments={attachmentValidation.prepareAttachments}
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}
         queuedMessages={messageQueue.queuedMessages}
