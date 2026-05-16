@@ -599,13 +599,15 @@ export class HoustonClient {
 
   generateAgentInstructions(
     description: string,
-    opts: { provider?: string; model?: string } = {},
+    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
   ): Promise<GenerateInstructionsResult> {
-    return this.request("POST", "/sessions/generate-instructions", {
-      description,
-      provider: opts.provider,
-      model: opts.model,
-    });
+    return this.request(
+      "POST",
+      "/sessions/generate-instructions",
+      { description, provider: opts.provider, model: opts.model },
+      undefined,
+      opts.signal,
+    );
   }
 
   // ---------- routine scheduler ----------

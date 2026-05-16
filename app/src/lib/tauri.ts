@@ -146,7 +146,7 @@ export const tauriAgents = {
     ),
   generateInstructions: (
     description: string,
-    opts: { provider?: string; model?: string } = {},
+    opts: { provider?: string; model?: string; signal?: AbortSignal } = {},
   ) =>
     call<GenerateInstructionsResult>(
       "generate_agent_instructions",

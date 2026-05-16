@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowLeft } from "lucide-react";
 import { Button, DialogTitle, Spinner } from "@houston-ai/core";
@@ -33,15 +33,28 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
   const [form, setForm] = useState<AgentSetupFormValues>(DEFAULT_FORM);
   const [generating, setGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
 
   const canGenerate = !!form.focus && !generating;
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+    abortRef.current = null;
+    setGenerating(false);
+  };
 
   const handleGenerate = async () => {
     const description = serializeFormValues(form);
     setError(null);
     setGenerating(true);
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
-      const result = await tauriAgents.generateInstructions(description, { provider, model });
+      const result = await tauriAgents.generateInstructions(description, {
+        provider,
+        model,
+        signal: controller.signal,
+      });
       const name = result.name ?? "";
       // Ensure a # Name heading is always present. The engine sometimes includes
       // it and sometimes doesn't, so we add it only when it's missing.
@@ -56,8 +69,10 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
         result.suggestedRoutine ?? null,
       );
     } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") return;
       setError(err instanceof Error ? err.message : String(err));
     } finally {
+      abortRef.current = null;
       setGenerating(false);
     }
   };
@@ -84,18 +99,30 @@ export function AiAssistStep({ provider, model, onBack, onContinue }: AiAssistSt
 
           <AgentSetupForm values={form} onChange={setForm} disabled={generating} />
 
-          <Button
-            type="button"
-            onClick={handleGenerate}
-            disabled={!canGenerate}
-            className="mx-auto w-fit rounded-full"
-          >
-            {generating ? (
-              <><Spinner className="size-4" />{t("aiAssist.generatingMessage")}</>
-            ) : (
-              t("aiAssist.generateButton")
+          <div className="flex items-center justify-center gap-2">
+            <Button
+              type="button"
+              onClick={handleGenerate}
+              disabled={!canGenerate}
+              className="w-fit rounded-full"
+            >
+              {generating ? (
+                <><Spinner className="size-4" />{t("aiAssist.generatingMessage")}</>
+              ) : (
+                t("aiAssist.generateButton")
+              )}
+            </Button>
+            {generating && (
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={handleCancel}
+                className="w-fit rounded-full"
+              >
+                {t("aiAssist.cancelButton")}
+              </Button>
             )}
-          </Button>
+          </div>
 
           {error && !generating && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-1">

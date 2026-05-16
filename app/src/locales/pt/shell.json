@@ -175,11 +175,12 @@
   },
   "aiAssist": {
     "cardTitle": "Criar com IA",
-    "cardDescription": "Responda algumas perguntas rápidas e nós escreveremos a descrição do cargo para você",
+    "cardDescription": "Responda algumas perguntas rápidas e escreveremos as instruções do seu agente",
     "stepTitle": "Configure seu agente",
     "generateButton": "Gerar instruções",
-    "generatingMessage": "Escrevendo a descrição do cargo do seu agente...",
-    "generatedTitle": "Aqui está a descrição do cargo do seu agente",
+    "generatingMessage": "Escrevendo as instruções do seu agente...",
+    "cancelButton": "Cancelar",
+    "generatedTitle": "Aqui estão as instruções do seu agente",
     "generatedHelper": "Revise e edite as instruções abaixo, depois continue quando estiver pronto",
     "nameLabel": "Nome do agente",
     "namePlaceholder": "ex. Gerenciador de caixa de entrada",
@@ -231,8 +232,8 @@
   },
   "aiReview": {
     "stepTitle": "Revise seu agente",
-    "instructionsLabel": "Instrucoes do agente",
-    "instructionsHelper": "Revise e edite a descricao do cargo abaixo"
+    "instructionsLabel": "Instruções do agente",
+    "instructionsHelper": "Revise e edite as instruções abaixo"
   },
   "aiIntegrations": {
     "stepTitle": "Conecte seus aplicativos",
@@ -246,7 +247,7 @@
   },
   "aiRoutine": {
     "stepTitle": "Configure execuções automáticas",
-    "stepDescription": "Com base no que você descreveu, este agente pode rodar sozinho em um horário. Edite o que quiser antes de ativar.",
+    "stepDescription": "Seu agente pode rodar em automático em um horário. Ajuste os detalhes e ative quando estiver pronto.",
     "nameLabel": "Nome da rotina",
     "promptLabel": "O que ele deve fazer a cada vez",
     "scheduleLabel": "Quando ele roda",
@@ -255,7 +256,7 @@
     "consentUsage": "Cada execução usa IA, então conta para o seu uso.",
     "consentNeedsApp": "Se usar um aplicativo, esse aplicativo precisa estar conectado ou a rotina não poderá rodar.",
     "laterNote": "Você pode criar, alterar ou desativar rotinas quando quiser na aba Rotinas do agente.",
-    "enableLabel": "Configurar esta execução automática",
+    "enableLabel": "Ativar esta rotina",
     "continueButton": "Continuar"
   },
   "engineGate": {

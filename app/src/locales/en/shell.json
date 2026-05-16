@@ -175,11 +175,12 @@
   },
   "aiAssist": {
     "cardTitle": "Create with AI",
-    "cardDescription": "Answer a few quick questions and we'll write the job description for you",
+    "cardDescription": "Answer a few quick questions and we'll write your agent's instructions",
     "stepTitle": "Set up your agent",
     "generateButton": "Generate instructions",
-    "generatingMessage": "Writing your agent's job description...",
-    "generatedTitle": "Here's your agent's job description",
+    "generatingMessage": "Writing your agent's instructions...",
+    "cancelButton": "Cancel",
+    "generatedTitle": "Here are your agent's instructions",
     "generatedHelper": "Review and edit the instructions below, then continue when ready",
     "nameLabel": "Agent name",
     "namePlaceholder": "e.g. Email Inbox Manager",
@@ -232,7 +233,7 @@
   "aiReview": {
     "stepTitle": "Review your agent",
     "instructionsLabel": "Agent instructions",
-    "instructionsHelper": "Review and edit the job description below"
+    "instructionsHelper": "Review and edit the instructions below"
   },
   "aiIntegrations": {
     "stepTitle": "Connect your apps",
@@ -255,7 +256,7 @@
     "consentUsage": "Every run uses AI, so it counts toward your usage.",
     "consentNeedsApp": "If it uses an app, that app must be connected or the routine can't run.",
     "laterNote": "You can create, change, or turn off routines anytime in the agent's Routines tab.",
-    "enableLabel": "Set up this automatic run",
+    "enableLabel": "Enable this routine",
     "continueButton": "Continue"
   },
   "engineGate": {

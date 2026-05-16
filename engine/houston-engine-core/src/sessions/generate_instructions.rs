@@ -16,7 +16,7 @@ use std::time::Duration;
 
 const GENERATE_TIMEOUT: Duration = Duration::from_secs(60);
 const CLAUDE_GEN_MODEL: &str = "sonnet";
-const CODEX_GEN_MODEL: &str = "gpt-4.1";
+const CODEX_GEN_MODEL: &str = "gpt-5.5-codex";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
