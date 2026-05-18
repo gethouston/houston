@@ -1,8 +1,18 @@
+use std::time::Duration;
+
 use serde::{Deserialize, Serialize};
 
-use super::format::{format_issue_description, format_issue_title};
+use super::format::{format_issue_description, format_issue_title, Audience};
 use super::linear_graphql::post_graphql;
 use super::BugReportPayload;
+
+/// Hard ceiling on a single Linear request. Linear is the authoritative
+/// sink and its result blocks the user's "Report bug" toast, so an
+/// unbounded reqwest default would let a hung connection visibly stall
+/// the UI. 15s is comfortably above Linear's p99 and short enough that
+/// the user gets a clear failure toast (with the Sentry-bundled error)
+/// instead of a spinner that never resolves.
+const HTTP_TIMEOUT: Duration = Duration::from_secs(15);
 
 const ISSUE_CREATE_MUTATION: &str = r#"
 mutation HoustonBugReportCreate($input: IssueCreateInput!) {
@@ -37,7 +47,10 @@ pub(super) async fn send_bug_report_to(
     label_name: &str,
     payload: &BugReportPayload,
 ) -> Result<Option<String>, String> {
-    let client = reqwest::Client::new();
+    let client = reqwest::Client::builder()
+        .timeout(HTTP_TIMEOUT)
+        .build()
+        .map_err(|e| format!("Failed to build Linear HTTP client: {e}"))?;
     let label_id = resolve_label_id(&client, api_url, api_key, team_id, label_name).await?;
 
     let data = post_graphql::<LinearIssueCreateData, _>(
@@ -129,7 +142,7 @@ impl LinearIssueCreateInput {
         Self {
             team_id: team_id.to_string(),
             title: format_issue_title(payload),
-            description: format_issue_description(payload),
+            description: format_issue_description(payload, Audience::Internal),
             label_ids: vec![label_id],
         }
     }

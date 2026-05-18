@@ -25,6 +25,7 @@
 #   SUPABASE_ANON_KEY                  — Supabase anon key (client-side, RLS-gated)
 #   LINEAR_API_KEY                     — Linear API key for in-app "Report bug" issue creation
 #   LINEAR_TEAM_ID                     — Linear team UUID for in-app "Report bug" issues
+#   BUG_REPORT_GITHUB_TOKEN            — fine-grained PAT (Issues R/W on gethouston/houston only); sanitized public mirror of "Report bug"
 #   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built
 #   SENTRY_DSN                         — Sentry crash reporting DSN
 
@@ -376,6 +377,10 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          # Sanitized public-mirror sink. Secret can't be named GITHUB_*
+          # (reserved prefix), so it maps the BUG_REPORT_GITHUB_TOKEN
+          # secret onto the GITHUB_BUG_TOKEN build env option_env! reads.
+          GITHUB_BUG_TOKEN: ${{ secrets.BUG_REPORT_GITHUB_TOKEN }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Locate build artifacts
@@ -912,6 +917,10 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
           LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
           LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          # Sanitized public-mirror sink. Secret can't be named GITHUB_*
+          # (reserved prefix), so it maps the BUG_REPORT_GITHUB_TOKEN
+          # secret onto the GITHUB_BUG_TOKEN build env option_env! reads.
+          GITHUB_BUG_TOKEN: ${{ secrets.BUG_REPORT_GITHUB_TOKEN }}
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
 
       - name: Locate MSI + updater signature artifacts

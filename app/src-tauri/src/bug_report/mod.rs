@@ -1,15 +1,24 @@
 mod format;
+mod github;
+#[cfg(test)]
+mod github_tests;
 mod linear;
 mod linear_graphql;
 #[cfg(test)]
 mod linear_tests;
+#[cfg(test)]
+mod test_support;
 
 use serde::Deserialize;
 
 const LINEAR_API_URL: &str = "https://api.linear.app/graphql";
 const DEFAULT_BUG_LABEL_NAME: &str = "User Bug";
 
-#[derive(Debug, Deserialize)]
+const GITHUB_API_BASE: &str = "https://api.github.com";
+const GITHUB_REPO: &str = "gethouston/houston";
+const GITHUB_LABEL: &str = "user-bug";
+
+#[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BugReportPayload {
     pub(super) command: String,
@@ -22,33 +31,85 @@ pub struct BugReportPayload {
     pub(super) logs: BugReportLogs,
 }
 
-#[derive(Debug, Deserialize)]
+// `Clone` is needed so we can hand a copy to the spawned GitHub mirror
+// task without keeping the user's toast waiting on the await.
+#[derive(Debug, Clone, Deserialize)]
 pub(super) struct BugReportLogs {
     pub(super) backend: String,
     pub(super) frontend: String,
 }
 
-struct LinearBugReportConfig {
+struct LinearConfig {
     api_key: String,
     team_id: String,
     label_name: String,
+}
+
+struct GithubConfig {
+    token: String,
+}
+
+struct BugReportConfig {
+    linear: LinearConfig,
+    /// `None` when the GitHub mirror is unconfigured (dev builds without a
+    /// token). Deliberately not an error: the mirror is best-effort and the
+    /// authoritative Linear sink still runs.
+    github: Option<GithubConfig>,
 }
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn report_bug(payload: BugReportPayload) -> Result<Option<String>, String> {
     let config = bug_report_config()?;
 
-    linear::send_bug_report_to(
+    // Authoritative sink. Its result is the BUG-xxx reference the user sees
+    // and what gates overall success/failure.
+    let identifier = linear::send_bug_report_to(
         LINEAR_API_URL,
-        &config.api_key,
-        &config.team_id,
-        &config.label_name,
+        &config.linear.api_key,
+        &config.linear.team_id,
+        &config.linear.label_name,
         &payload,
     )
-    .await
+    .await?;
+
+    // Best-effort sanitized public mirror. Spawned, not awaited: a slow or
+    // hung GitHub call must NEVER inflate the user's toast latency (the
+    // authoritative Linear result is already in `identifier`). User-approved
+    // carve-out from the "no silent failures" rule, and NOT truly silent:
+    // a real runtime failure still reaches the dev team via tracing::error!
+    // + Sentry, so a quietly-rotting mirror stays detectable.
+    if let Some(github) = config.github {
+        let payload = payload.clone();
+        tokio::spawn(async move {
+            match github::send_bug_report_to(
+                GITHUB_API_BASE,
+                &github.token,
+                GITHUB_REPO,
+                GITHUB_LABEL,
+                &payload,
+            )
+            .await
+            {
+                Ok(issue) => tracing::info!(
+                    github_issue = issue.number,
+                    github_issue_url = %issue.html_url,
+                    "GitHub bug-report mirror created"
+                ),
+                Err(error) => {
+                    tracing::error!(%error, "GitHub bug-report mirror failed");
+                    sentry::capture_message(
+                        &format!("GitHub bug-report mirror failed: {error}"),
+                        sentry::Level::Error,
+                    );
+                }
+            }
+        });
+    }
+
+    Ok(identifier)
 }
 
-fn bug_report_config() -> Result<LinearBugReportConfig, String> {
+fn bug_report_config() -> Result<BugReportConfig, String> {
     let api_key = configured_value(
         std::env::var("LINEAR_API_KEY").ok(),
         option_env!("LINEAR_API_KEY"),
@@ -64,18 +125,33 @@ fn bug_report_config() -> Result<LinearBugReportConfig, String> {
     )
     .unwrap_or_else(|| DEFAULT_BUG_LABEL_NAME.to_string());
 
-    match (api_key, team_id) {
-        (Some(api_key), Some(team_id)) => Ok(LinearBugReportConfig {
+    let linear = match (api_key, team_id) {
+        (Some(api_key), Some(team_id)) => LinearConfig {
             api_key,
             team_id,
             label_name,
-        }),
-        (None, None) => Err(
-            "Bug reporting not configured (missing LINEAR_API_KEY and LINEAR_TEAM_ID)".to_string(),
-        ),
-        (None, Some(_)) => Err("Bug reporting not configured (missing LINEAR_API_KEY)".to_string()),
-        (Some(_), None) => Err("Bug reporting not configured (missing LINEAR_TEAM_ID)".to_string()),
-    }
+        },
+        (None, None) => {
+            return Err(
+                "Bug reporting not configured (missing LINEAR_API_KEY and LINEAR_TEAM_ID)"
+                    .to_string(),
+            )
+        }
+        (None, Some(_)) => {
+            return Err("Bug reporting not configured (missing LINEAR_API_KEY)".to_string())
+        }
+        (Some(_), None) => {
+            return Err("Bug reporting not configured (missing LINEAR_TEAM_ID)".to_string())
+        }
+    };
+
+    let github = configured_value(
+        std::env::var("GITHUB_BUG_TOKEN").ok(),
+        option_env!("GITHUB_BUG_TOKEN"),
+    )
+    .map(|token| GithubConfig { token });
+
+    Ok(BugReportConfig { linear, github })
 }
 
 fn configured_value(runtime: Option<String>, compiled: Option<&'static str>) -> Option<String> {

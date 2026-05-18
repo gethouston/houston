@@ -88,12 +88,17 @@ PostHog → BigQuery plugin → target GCP project (burns credits). SQL-queryabl
 - **Rust panics:** Captured via sentry panic handler.
 - **Check:** User reports crash or weird behavior → Sentry dashboard BEFORE local logs.
 
-## In-app bug reports (Linear issue creation)
+## In-app bug reports (dual sink: Linear + sanitized GitHub mirror)
 
-- **Frontend:** `app/src/lib/error-toast.ts` shows the "Report bug" action. `app/src/lib/bug-report.ts` sends a provider-neutral bug report object with recent frontend + backend logs.
-- **Native delivery:** `app/src-tauri/src/bug_report/` creates a Linear issue with `reqwest` against `https://api.linear.app/graphql`. Do not post from the webview; the Linear API key does not belong in the JS bundle.
-- **Config:** `LINEAR_API_KEY` + `LINEAR_TEAM_ID` are read from runtime env, `app/.env.local`, `app/src-tauri/.env.local`, and `option_env!()` for release builds. CI passes them in `.github/workflows/release.yml`. Release builds embed the key in the native app, so never use a broad Linear key. Use a key restricted to "Create issues" and the target team only. Bug reports look up and apply the `User Bug` label; override with optional `LINEAR_BUG_LABEL_NAME`.
-- **Local smoke:** `cd app/src-tauri && LINEAR_API_KEY=... LINEAR_TEAM_ID=... cargo test creates_real_linear_issue_when_env_is_set -- --ignored` creates one real Linear issue.
+- **Frontend:** `app/src/lib/error-toast.ts` shows the "Report bug" action. `app/src/lib/bug-report.ts` sends a provider-neutral bug report object with recent frontend + backend logs. The frontend stays dumb: it always sends the full payload (including `userEmail`); the native layer decides what each sink gets.
+- **Native delivery:** `app/src-tauri/src/bug_report/` fans one report out to two sinks via `reqwest`. Do not post from the webview; neither token belongs in the JS bundle.
+  - **Linear (authoritative).** `https://api.linear.app/graphql`. Gets the **full** payload (`Audience::Internal`): user email + backend/frontend logs included. Its `BUG-xxx` identifier is what the user sees in the success toast, and it gates overall success — a Linear failure surfaces to the user as today.
+  - **GitHub (best-effort public mirror).** `POST https://api.github.com/repos/gethouston/houston/issues`, labelled `user-bug`. Gets a **sanitized** body (`Audience::PublicMirror`): the `User` context line is dropped and **the log blocks are omitted entirely** (logs routinely embed emails + OS home paths; the public repo is world-readable). A GitHub Project board picks the issue up via a GitHub-side "auto-add to project" workflow filtered on `label:user-bug` — Houston code never touches the Projects API.
+- **Sanitization scope (known residual):** only the structured `User` line + the logs are stripped for the mirror. The free-form `error` text and the user-chosen `space`/`workspace` names pass through to the public issue as-is. Free-text PII there is an accepted limitation; logs are the big lever and they are gone.
+- **Failure semantics:** the GitHub mirror is deliberately fire-and-forget from the user's POV. A non-technical customer never sees a mirror error (it isn't their action's outcome — Linear is). It is **not** truly silent: a real runtime failure goes to `tracing::error!` + `sentry::capture_message`, so a quietly-rotting mirror is still detectable by the dev team. A missing `GITHUB_BUG_TOKEN` (dev builds) skips the mirror with no noise — that is "not configured", not a failure.
+- **Config:** `LINEAR_API_KEY` + `LINEAR_TEAM_ID` (+ optional `LINEAR_BUG_LABEL_NAME`, default `User Bug`) and `GITHUB_BUG_TOKEN` are read from runtime env, `app/.env.local`, `app/src-tauri/.env.local`, and `option_env!()` for release builds. CI passes them in `.github/workflows/release.yml`. Both tokens are embedded in the native app, so keep them narrow: a Linear key restricted to "Create issues" on the target team; a **fine-grained** GitHub PAT scoped to **Issues: Read and write on `gethouston/houston` only**. GitHub reserves the `GITHUB_` secret-name prefix, so the CI **secret** is `BUG_REPORT_GITHUB_TOKEN`, mapped onto the `GITHUB_BUG_TOKEN` build env in the workflow.
+- **One-time GitHub setup:** the `user-bug` label must exist on `gethouston/houston` (issue creation fails otherwise), and the Project board needs a Workflows → "Auto-add to project" rule filtered on `is:issue label:user-bug`.
+- **Local smoke:** `cd app/src-tauri && LINEAR_API_KEY=... LINEAR_TEAM_ID=... cargo test creates_real_linear_issue_when_env_is_set -- --ignored` creates one real Linear issue. `GITHUB_BUG_TOKEN=... cargo test creates_real_github_issue_when_env_is_set -- --ignored` creates one real **public** issue on `gethouston/houston`.
 
 ## Required env vars
 
@@ -113,6 +118,7 @@ Shell (local builds) AND GitHub Secrets (CI):
 | `SUPABASE_ANON_KEY` | Supabase anon key (public-safe, RLS-gated) | Supabase → Project settings → API → Project API keys → `anon` `public` |
 | `LINEAR_API_KEY` | Create in-app bug-report issues | Linear → Settings → Account → Security & Access → Personal API keys |
 | `LINEAR_TEAM_ID` | Target team for in-app bug-report issues | Linear command menu → Copy model UUID on the target team |
+| `GITHUB_BUG_TOKEN` | Sanitized public-mirror of bug reports → GitHub issues on `gethouston/houston` | Fine-grained PAT, Issues R/W on `gethouston/houston` only. CI secret name: `BUG_REPORT_GITHUB_TOKEN` (GITHUB_ prefix is reserved) |
 | `SENTRY_DSN` | Crash reporting DSN | sentry.io project settings |
 
 CI also needs as Secrets:

@@ -3,6 +3,18 @@ use super::BugReportPayload;
 const MAX_ERROR_CHARS: usize = 6_000;
 const MAX_LOG_CHARS: usize = 8_000;
 
+/// Which sink an issue body is destined for.
+///
+/// `Internal` (Linear) gets the full payload. `PublicMirror` (the public
+/// GitHub repo) drops the user-identifying context line and omits the log
+/// blocks entirely: logs routinely embed emails and OS home paths, so a
+/// public mirror must never carry them.
+#[derive(Clone, Copy)]
+pub(super) enum Audience {
+    Internal,
+    PublicMirror,
+}
+
 pub(super) fn format_issue_title(payload: &BugReportPayload) -> String {
     let command = collapse_whitespace(&payload.command);
     let summary = collapse_whitespace(payload.error.lines().next().unwrap_or(""));
@@ -13,7 +25,7 @@ pub(super) fn format_issue_title(payload: &BugReportPayload) -> String {
     }
 }
 
-pub(super) fn format_issue_description(payload: &BugReportPayload) -> String {
+pub(super) fn format_issue_description(payload: &BugReportPayload, audience: Audience) -> String {
     let mut description = String::new();
     description.push_str("## Error\n\n");
     description.push_str(&markdown_code_block(
@@ -24,14 +36,16 @@ pub(super) fn format_issue_description(payload: &BugReportPayload) -> String {
     push_context_line(&mut description, "Command", Some(&payload.command));
     push_context_line(&mut description, "Timestamp", Some(&payload.timestamp));
     push_context_line(&mut description, "App Version", Some(&payload.app_version));
-    push_context_line(
-        &mut description,
-        "User",
-        payload
-            .user_email
-            .as_deref()
-            .filter(|value| !value.is_empty()),
-    );
+    if matches!(audience, Audience::Internal) {
+        push_context_line(
+            &mut description,
+            "User",
+            payload
+                .user_email
+                .as_deref()
+                .filter(|value| !value.is_empty()),
+        );
+    }
     push_context_line(
         &mut description,
         "Space",
@@ -48,16 +62,18 @@ pub(super) fn format_issue_description(payload: &BugReportPayload) -> String {
             .as_deref()
             .filter(|value| !value.is_empty()),
     );
-    description.push_str("\n## Backend Logs (last 50 lines)\n\n");
-    description.push_str(&markdown_code_block(
-        "text",
-        &truncate_start(&payload.logs.backend, MAX_LOG_CHARS),
-    ));
-    description.push_str("\n## Frontend Logs (last 50 lines)\n\n");
-    description.push_str(&markdown_code_block(
-        "text",
-        &truncate_start(&payload.logs.frontend, MAX_LOG_CHARS),
-    ));
+    if matches!(audience, Audience::Internal) {
+        description.push_str("\n## Backend Logs (last 50 lines)\n\n");
+        description.push_str(&markdown_code_block(
+            "text",
+            &truncate_start(&payload.logs.backend, MAX_LOG_CHARS),
+        ));
+        description.push_str("\n## Frontend Logs (last 50 lines)\n\n");
+        description.push_str(&markdown_code_block(
+            "text",
+            &truncate_start(&payload.logs.frontend, MAX_LOG_CHARS),
+        ));
+    }
     description
 }
 
@@ -124,9 +140,9 @@ mod tests {
     }
 
     #[test]
-    fn issue_description_includes_context_and_logs() {
+    fn internal_description_includes_context_and_logs() {
         let payload = sample_payload();
-        let description = format_issue_description(&payload);
+        let description = format_issue_description(&payload, Audience::Internal);
         assert!(description.contains("## Error"));
         assert!(description.contains("Error: no workspace found"));
         assert!(description.contains("- Command: list_workspaces"));
@@ -136,9 +152,67 @@ mod tests {
     }
 
     #[test]
+    fn public_mirror_description_omits_user_and_logs() {
+        let payload = sample_payload();
+        let description = format_issue_description(&payload, Audience::PublicMirror);
+        // Still useful for triage.
+        assert!(description.contains("## Error"));
+        assert!(description.contains("Error: no workspace found"));
+        assert!(description.contains("- Command: list_workspaces"));
+        assert!(description.contains("- Workspace: Houston"));
+        // Sanitized: no identifying user line, no logs (logs leak email + paths).
+        assert!(!description.contains("- User:"));
+        assert!(!description.contains("user@example.com"));
+        assert!(!description.contains("Backend Logs"));
+        assert!(!description.contains("Frontend Logs"));
+        assert!(!description.contains("backend log line"));
+        assert!(!description.contains("frontend log line"));
+    }
+
+    #[test]
     fn markdown_code_block_expands_fence_for_backticks() {
         let block = markdown_code_block("text", "before ``` after");
         assert!(block.starts_with("````text\n"));
         assert!(block.ends_with("\n````\n"));
+    }
+
+    #[test]
+    fn truncate_chars_returns_input_at_or_below_limit() {
+        assert_eq!(truncate_chars("hello", 10), "hello");
+        assert_eq!(truncate_chars("hello", 5), "hello"); // exact boundary
+    }
+
+    #[test]
+    fn truncate_chars_appends_ellipsis_when_over_limit() {
+        // keep = max - 3 → "hello" + "..."
+        assert_eq!(truncate_chars("hello world", 8), "hello...");
+    }
+
+    #[test]
+    fn truncate_chars_is_multibyte_safe() {
+        // 6 crab emoji (each is a single char, 4 bytes). A naive byte
+        // slice at index 4 would panic mid-codepoint.
+        let input = "🦀🦀🦀🦀🦀🦀";
+        let result = truncate_chars(input, 4);
+        assert_eq!(result, "🦀..."); // 1 kept + 3 dots = 4 chars
+    }
+
+    #[test]
+    fn truncate_start_returns_input_at_or_below_limit() {
+        assert_eq!(truncate_start("hello", 10), "hello");
+        assert_eq!(truncate_start("hello", 5), "hello"); // exact boundary
+    }
+
+    #[test]
+    fn truncate_start_keeps_tail_with_marker_when_over_limit() {
+        // keep = 6 - 4 = 2 → last 2 chars "89", prefixed with "...\n"
+        assert_eq!(truncate_start("0123456789", 6), "...\n89");
+    }
+
+    #[test]
+    fn truncate_start_is_multibyte_safe() {
+        // keep = 5 - 4 = 1 → last crab. Byte-slicing would panic.
+        let input = "🦀🦀🦀🦀🦀🦀";
+        assert_eq!(truncate_start(input, 5), "...\n🦀");
     }
 }

@@ -3,9 +3,8 @@ use super::linear_graphql::{
     linear_graphql_error_message, linear_http_error_message, LinearGraphqlError,
 };
 use super::sample_payload;
+use super::test_support::serve_sequence;
 use reqwest::StatusCode;
-use std::io::{Read, Write};
-use std::net::TcpListener;
 
 #[test]
 fn linear_http_error_message_keeps_status_and_body() {
@@ -43,7 +42,7 @@ async fn send_bug_report_posts_linear_issue_create_mutation() {
     ]);
 
     let identifier = send_bug_report_to(
-        &url,
+        &format!("{url}/graphql"),
         "test-api-key",
         "team-id",
         "User Bug",
@@ -78,7 +77,7 @@ async fn send_bug_report_surfaces_graphql_errors() {
     )]);
 
     let error = send_bug_report_to(
-        &url,
+        &format!("{url}/graphql"),
         "test-api-key",
         "team-id",
         "User Bug",
@@ -102,7 +101,7 @@ async fn send_bug_report_fails_when_label_is_missing() {
     )]);
 
     let error = send_bug_report_to(
-        &url,
+        &format!("{url}/graphql"),
         "test-api-key",
         "team-id",
         "User Bug",
@@ -128,60 +127,4 @@ async fn creates_real_linear_issue_when_env_is_set() {
     super::report_bug(payload)
         .await
         .expect("create real Linear issue");
-}
-
-fn serve_sequence(
-    responses: Vec<(&'static str, &'static str)>,
-) -> (String, std::thread::JoinHandle<Vec<String>>) {
-    let listener = TcpListener::bind("127.0.0.1:0").expect("bind test server");
-    let addr = listener.local_addr().expect("read listener address");
-    let server = std::thread::spawn(move || {
-        let mut requests = Vec::new();
-        for (status, body) in responses {
-            let (mut stream, _) = listener.accept().expect("accept request");
-            let request = read_request(&mut stream);
-            let response = format!(
-                "HTTP/1.1 {status}\r\nContent-Type: application/json\r\nContent-Length: {}\r\n\r\n{body}",
-                body.len()
-            );
-            stream
-                .write_all(response.as_bytes())
-                .expect("write response");
-            requests.push(String::from_utf8(request).expect("request is utf8"));
-        }
-        requests
-    });
-    (format!("http://{addr}/graphql"), server)
-}
-
-fn read_request(stream: &mut std::net::TcpStream) -> Vec<u8> {
-    let mut request = Vec::new();
-    let mut buffer = [0; 1024];
-    loop {
-        let read = stream.read(&mut buffer).expect("read request");
-        if read == 0 {
-            break;
-        }
-        request.extend_from_slice(&buffer[..read]);
-        if let Some(header_end) = find_header_end(&request) {
-            let headers = String::from_utf8_lossy(&request[..header_end]);
-            let content_length = headers
-                .lines()
-                .find_map(|line| {
-                    let (name, value) = line.split_once(':')?;
-                    name.eq_ignore_ascii_case("content-length")
-                        .then(|| value.trim())
-                })
-                .and_then(|value| value.parse::<usize>().ok())
-                .unwrap_or(0);
-            if request.len() >= header_end + 4 + content_length {
-                break;
-            }
-        }
-    }
-    request
-}
-
-fn find_header_end(request: &[u8]) -> Option<usize> {
-    request.windows(4).position(|window| window == b"\r\n\r\n")
 }

@@ -67,7 +67,12 @@ fn parse_dotenv_line(line: &str) -> Option<(String, String)> {
 }
 
 fn configure_bug_report_env(dotenv_pairs: &[(String, String)]) {
-    for key in ["LINEAR_API_KEY", "LINEAR_TEAM_ID", "LINEAR_BUG_LABEL_NAME"] {
+    for key in [
+        "LINEAR_API_KEY",
+        "LINEAR_TEAM_ID",
+        "LINEAR_BUG_LABEL_NAME",
+        "GITHUB_BUG_TOKEN",
+    ] {
         println!("cargo:rerun-if-env-changed={key}");
         if let Some(value) = env_value(key, dotenv_pairs) {
             println!("cargo:rustc-env={key}={value}");
