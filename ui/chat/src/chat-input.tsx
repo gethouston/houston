@@ -1,6 +1,10 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 import type { ReactNode } from "react";
-import type { AttachmentRejection, PrepareAttachments } from "./chat-panel-types";
+import type {
+  AttachmentRejection,
+  ChatComposerLabels,
+  PrepareAttachments,
+} from "./chat-panel-types";
 import type { PromptInputMessage } from "./ai-elements/prompt-input";
 import {
   PromptInput,
@@ -13,18 +17,14 @@ import {
   ChatInputAttachButton,
   ChatInputAttachments,
 } from "./chat-input-attachments";
-import { filesFromClipboardData } from "./clipboard-files";
 import { QueuedMessageList } from "./queued-message-list";
 import type { QueuedChatMessage, QueuedMessageLabels } from "./queued-message-list";
-import { useControllable, mergeUniqueFiles } from "./use-file-drop-zone";
+import { useControllable } from "./use-file-drop-zone";
+import { useComposerAttachments } from "./use-composer-attachments";
 
 type InputStatus = "ready" | "streaming" | "submitted";
 
-export interface ChatComposerLabels {
-  fileAlreadyInChat?: string;
-  dropTitle?: string;
-  dropDescription?: string;
-}
+export type { ChatComposerLabels } from "./chat-panel-types";
 
 export interface ChatInputProps {
   /** Controlled text. Omit to use internal state. */
@@ -79,31 +79,24 @@ export function ChatInput({
   labels,
 }: ChatInputProps) {
   const [text, setText] = useControllable(value, onValueChange, "");
-  const [files, setFiles] = useControllable<File[]>(
+  const isTextControlled = value !== undefined;
+  const {
+    files,
+    setFiles,
+    isFilesControlled,
+    fileInputRef,
+    handleFileChange,
+    handlePaste,
+    openFilePicker,
+    removeFile,
+  } = useComposerAttachments({
     attachments,
     onAttachmentsChange,
-    [],
-  );
-  const isTextControlled = value !== undefined;
-  const isFilesControlled = attachments !== undefined;
-
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const addFiles = useCallback(
-    (incoming: File[]) => {
-      const prepared = prepareAttachments
-        ? prepareAttachments(incoming, files)
-        : { accepted: incoming, rejected: [] };
-      if (prepared.rejected.length > 0) {
-        onAttachmentRejections?.(prepared.rejected);
-      }
-      const merged = mergeUniqueFiles(files, prepared.accepted);
-      if (merged.length < files.length + prepared.accepted.length) {
-        onNotice?.(labels?.fileAlreadyInChat ?? "File already in chat");
-      }
-      setFiles(merged);
-    },
-    [files, setFiles, onNotice, prepareAttachments, onAttachmentRejections, labels],
-  );
+    prepareAttachments,
+    onAttachmentRejections,
+    onNotice,
+    labels,
+  });
 
   const handleTextChange = useCallback(
     (e: React.ChangeEvent<HTMLTextAreaElement>) => setText(e.target.value),
@@ -131,39 +124,6 @@ export function ChatInput({
       if (!isFilesControlled) setFiles([]);
     },
     [onSend, files, canSendEmpty, isTextControlled, isFilesControlled, setText, setFiles],
-  );
-
-  const handleFileChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      if (!e.target.files || e.target.files.length === 0) return;
-      addFiles(Array.from(e.target.files));
-      e.target.value = "";
-    },
-    [addFiles],
-  );
-
-  const handlePaste = useCallback(
-    (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
-      const pasted = filesFromClipboardData(e.clipboardData);
-      if (pasted.length === 0) return;
-      e.preventDefault();
-      addFiles(pasted);
-    },
-    [addFiles],
-  );
-
-  const openFilePicker = useCallback(() => {
-    const input = fileInputRef.current;
-    if (!input) return;
-    // Reset BEFORE click so the same file can be re-picked and so WKWebView
-    // doesn't hold onto stale state between invocations.
-    input.value = "";
-    input.click();
-  }, []);
-
-  const removeFile = useCallback(
-    (index: number) => setFiles(files.filter((_, i) => i !== index)),
-    [files, setFiles],
   );
 
   const hasContent = canSendEmpty || text.trim().length > 0 || files.length > 0;

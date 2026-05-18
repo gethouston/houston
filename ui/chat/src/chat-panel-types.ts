@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatMessagesProps } from "./chat-messages";
 import type { ChatMessage } from "./feed-to-messages";
-import type { ChatComposerLabels } from "./chat-input";
 import type { QueuedChatMessage, QueuedMessageLabels } from "./queued-message-list";
 import type { FeedItem } from "./types";
 
@@ -19,6 +18,17 @@ export interface PreparedAttachments {
 }
 
 export type PrepareAttachments = (incoming: File[], existing: File[]) => PreparedAttachments;
+
+/** Translated strings the composer surfaces to the user. English defaults
+ *  live in the components; the app passes `t()` results in. */
+export interface ChatComposerLabels {
+  fileAlreadyInChat?: string;
+  dropTitle?: string;
+  dropDescription?: string;
+  /** Shown when an image was on the clipboard but the webview never
+   *  handed over the bytes (Linux Wayland WebKitGTK). */
+  imagePasteUnavailable?: string;
+}
 
 export interface ChatPanelProps {
   sessionKey: string;

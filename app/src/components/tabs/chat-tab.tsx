@@ -285,6 +285,7 @@ export default function ChatTab({ agent }: TabProps) {
           fileAlreadyInChat: t("composer.fileAlreadyInChat"),
           dropTitle: t("composer.dropTitle"),
           dropDescription: t("composer.dropDescription"),
+          imagePasteUnavailable: t("composer.imagePasteUnavailable"),
         }}
         prepareAttachments={attachmentValidation.prepareAttachments}
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}

@@ -2,8 +2,9 @@
   "composer": {
     "placeholder": "Ask anything...",
     "fileAlreadyInChat": "File already in chat",
-    "dropTitle": "Drop your file",
-    "dropDescription": "Drop your files in here to add it to the conversation"
+    "dropTitle": "Drop your files",
+    "dropDescription": "Drop them here to add them to the conversation",
+    "imagePasteUnavailable": "Couldn't read the pasted image. Try dragging the file in instead."
   },
   "queue": {
     "title": "Queued",

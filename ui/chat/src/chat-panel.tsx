@@ -11,7 +11,8 @@ import { ChatMessages } from "./chat-messages";
 import type { ChatPanelProps } from "./chat-panel-types";
 import { deriveStatus } from "./chat-status";
 import { Shimmer } from "./ai-elements/shimmer";
-import { useFileDropZone, useControllable, mergeUniqueFiles } from "./use-file-drop-zone";
+import { useFileDropZone, useControllable } from "./use-file-drop-zone";
+import { useAttachmentIntake } from "./use-attachment-intake";
 
 export type { ChatPanelProps } from "./chat-panel-types";
 
@@ -75,22 +76,14 @@ export function ChatPanel({
     [],
   );
   const isFilesControlled = attachments !== undefined;
-  const addDroppedFiles = useCallback(
-    (dropped: File[]) => {
-      const prepared = prepareAttachments
-        ? prepareAttachments(dropped, files)
-        : { accepted: dropped, rejected: [] };
-      if (prepared.rejected.length > 0) {
-        onAttachmentRejections?.(prepared.rejected);
-      }
-      const merged = mergeUniqueFiles(files, prepared.accepted);
-      if (merged.length < files.length + prepared.accepted.length) {
-        onNotice?.(composerLabels?.fileAlreadyInChat ?? "File already in chat");
-      }
-      setFiles(merged);
-    },
-    [files, setFiles, onNotice, composerLabels, prepareAttachments, onAttachmentRejections],
-  );
+  const addDroppedFiles = useAttachmentIntake({
+    files,
+    setFiles,
+    prepareAttachments,
+    onAttachmentRejections,
+    onNotice,
+    duplicateNotice: composerLabels?.fileAlreadyInChat,
+  });
   const { isDraggingOver, dropProps } = useFileDropZone(addDroppedFiles);
 
   useEffect(() => {

@@ -4,6 +4,8 @@ import {
   filesFromClipboardData,
   filesFromClipboardItems,
   ensureFileName,
+  clipboardSignalsImage,
+  resolveClipboardPaste,
 } from "../src/clipboard-files.ts";
 
 test("extracts file items from clipboard data", () => {
@@ -130,4 +132,88 @@ test("multiple unnamed images in one paste get distinct names", () => {
   assert.match(out[0].name, /^pasted-\d+-0\.png$/);
   assert.match(out[1].name, /^pasted-\d+-1\.jpg$/);
   assert.notEqual(out[0].name, out[1].name);
+});
+
+test("filesFromClipboardData tolerates null and undefined", () => {
+  assert.deepEqual(filesFromClipboardData(null), []);
+  assert.deepEqual(filesFromClipboardData(undefined), []);
+});
+
+test("dedupe keeps distinct unnamed images that share size and mtime", () => {
+  // Same byte length + same lastModified + empty name: only the MIME type
+  // tells them apart. The shared identity triple alone would over-merge.
+  const png = new File(["x"], "", { type: "image/png", lastModified: 7 });
+  const jpg = new File(["x"], "", { type: "image/jpeg", lastModified: 7 });
+
+  const out = filesFromClipboardData({ files: [png], items: [{ kind: "file", getAsFile: () => jpg }] });
+
+  assert.equal(out.length, 2);
+  assert.match(out[0].name, /^pasted-\d+-0\.png$/);
+  assert.match(out[1].name, /^pasted-\d+-1\.jpg$/);
+});
+
+test("dedupe still collapses the same unnamed file exposed via both APIs", () => {
+  const img = new File(["x"], "", { type: "image/png", lastModified: 7 });
+
+  assert.deepEqual(
+    filesFromClipboardData({ files: [img], items: [{ kind: "file", getAsFile: () => img }] }).length,
+    1,
+  );
+});
+
+test("ensureFileName strips MIME parameters and suffixes from the extension", () => {
+  const parametrized = ensureFileName(
+    new File(["x"], "", { type: "text/plain;charset=utf-8" }),
+  );
+  assert.match(parametrized.name, /^pasted-\d+-0\.plain$/);
+  assert.doesNotMatch(parametrized.name, /[;=+]/);
+
+  // Dotted vendor subtype is not a clean token -> fall back to bin.
+  assert.match(
+    ensureFileName(new File(["x"], "", { type: "application/vnd.api+json" })).name,
+    /^pasted-\d+-0\.bin$/,
+  );
+});
+
+test("clipboardSignalsImage detects an advertised but unreadable image", () => {
+  assert.equal(
+    clipboardSignalsImage({
+      items: [{ kind: "file", type: "image/png", getAsFile: () => null }],
+    }),
+    true,
+  );
+  assert.equal(
+    clipboardSignalsImage({
+      items: [{ kind: "string", type: "text/plain", getAsFile: () => null }],
+    }),
+    false,
+  );
+  assert.equal(clipboardSignalsImage(null), false);
+});
+
+test("resolveClipboardPaste returns files when an image is readable", () => {
+  const image = new File(["png"], "shot.png", { type: "image/png" });
+  const outcome = resolveClipboardPaste({
+    items: [{ kind: "file", type: "image/png", getAsFile: () => image }],
+  });
+
+  assert.equal(outcome.kind, "files");
+  assert.deepEqual(outcome.kind === "files" && outcome.files, [image]);
+});
+
+test("resolveClipboardPaste flags unreadable images instead of swallowing them", () => {
+  const outcome = resolveClipboardPaste({
+    items: [{ kind: "file", type: "image/png", getAsFile: () => null }],
+  });
+  assert.equal(outcome.kind, "unavailable");
+});
+
+test("resolveClipboardPaste ignores text-only and empty clipboards", () => {
+  assert.equal(
+    resolveClipboardPaste({
+      items: [{ kind: "string", type: "text/plain", getAsFile: () => null }],
+    }).kind,
+    "ignore",
+  );
+  assert.equal(resolveClipboardPaste(null).kind, "ignore");
 });

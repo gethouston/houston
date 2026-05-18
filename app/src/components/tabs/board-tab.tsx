@@ -588,6 +588,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
             fileAlreadyInChat: t("chat:composer.fileAlreadyInChat"),
             dropTitle: t("chat:composer.dropTitle"),
             dropDescription: t("chat:composer.dropDescription"),
+            imagePasteUnavailable: t("chat:composer.imagePasteUnavailable"),
           }}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}

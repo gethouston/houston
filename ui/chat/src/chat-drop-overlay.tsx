@@ -8,8 +8,8 @@ export interface ChatDropOverlayProps {
 
 export function ChatDropOverlay({
   visible,
-  title = "Drop your file",
-  description = "Drop your files in here to add it to the conversation",
+  title = "Drop your files",
+  description = "Drop them here to add them to the conversation",
 }: ChatDropOverlayProps) {
   if (!visible) return null;
   return (
