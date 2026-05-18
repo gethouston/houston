@@ -167,5 +167,70 @@
   },
   "engineGate": {
     "starting": "Iniciando el motor de Houston…"
+  },
+  "providerError": {
+    "rateLimited": {
+      "title": "Alcanzaste un límite de velocidad",
+      "body": "La API de {{provider}} está limitando las solicitudes. Espera un momento e inténtalo de nuevo.",
+      "bodyWithRetry": "La API de {{provider}} está limitando las solicitudes. Vuelve a intentar en {{seconds}}s.",
+      "retry": "Reintentar",
+      "switchModel": "Cambiar de modelo"
+    },
+    "quotaExhausted": {
+      "title": "Sin capacidad disponible",
+      "body": "Tu plan de {{provider}} llegó al límite. Mejora tu plan o cambia de proveedor para continuar.",
+      "upgrade": "Mejorar plan",
+      "switchProvider": "Cambiar de proveedor",
+      "useApiKey": "Usar clave de API en su lugar"
+    },
+    "modelUnavailable": {
+      "title": "Modelo no disponible",
+      "body": "{{model}} no está disponible en tu cuenta de {{provider}}.",
+      "switchToFallback": "Cambiar a {{model}}",
+      "pickAnother": "Elegir otro modelo"
+    },
+    "unauthenticated": {
+      "title": "Conéctate a {{provider}} de nuevo",
+      "bodyTokenExpired": "Tu sesión de {{provider}} expiró. Vuelve a conectarte para continuar.",
+      "bodyNoCredentials": "Houston necesita que inicies sesión en {{provider}} antes de responder.",
+      "bodyInvalidApiKey": "La clave de API de {{provider}} que tiene Houston ya no es válida. Actualízala y vuelve a intentar.",
+      "bodyTokenRevoked": "Se revocó tu acceso a {{provider}}. Inicia sesión de nuevo para continuar.",
+      "bodyUnknown": "Houston no pudo autenticarse con {{provider}}. Vuelve a conectarte e inténtalo de nuevo.",
+      "reconnect": "Reconectar"
+    },
+    "networkUnreachable": {
+      "title": "No se puede conectar con {{provider}}",
+      "body": "Houston no pudo conectarse a la API de {{provider}}. Verifica tu conexión y vuelve a intentar.",
+      "retry": "Reintentar",
+      "checkStatus": "Ver página de estado"
+    },
+    "providerInternal": {
+      "title": "{{provider}} está teniendo un problema",
+      "body": "La API de {{provider}} devolvió un error desde su lado. Inténtalo de nuevo en unos minutos.",
+      "retry": "Reintentar",
+      "checkStatus": "Ver página de estado"
+    },
+    "sessionResumeMissing": {
+      "title": "No se puede retomar esta sesión",
+      "body": "La sesión anterior de {{provider}} ya no existe. Inicia una misión nueva para continuar.",
+      "startFresh": "Empezar de nuevo"
+    },
+    "malformedResponse": {
+      "title": "Respuesta dañada",
+      "body": "La respuesta de {{provider}} no se pudo leer. Vuelve a intentar, esto suele ser temporal.",
+      "retry": "Reintentar"
+    },
+    "spawnFailed": {
+      "title": "No se pudo iniciar {{provider}}",
+      "body": "Houston no pudo iniciar {{provider}}. Reinstala e infórmanos si el problema continúa.",
+      "reinstall": "Reinstalar {{provider}}",
+      "reportBug": "Reportar problema"
+    },
+    "unknown": {
+      "title": "Pasó algo inesperado",
+      "body": "Houston no pudo clasificar este error de {{provider}}. Reporta el problema para que aprendamos a manejarlo.",
+      "reportBug": "Reportar problema",
+      "rawLabel": "Salida cruda"
+    }
   }
 }

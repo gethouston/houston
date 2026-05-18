@@ -14,6 +14,7 @@ opening a shell.
 |-------------|---------------|-------------------|------------------------------------------------------------------------|
 | codex       | Apache-2.0    | Bundled (universal) | `Houston.app/Contents/Resources/bin/codex` — single Mach-O fat binary |
 | composio    | MIT           | Bundled (per-arch)  | `Resources/bin/composio-aarch64/`, `Resources/bin/composio-x86_64/`   |
+| gemini      | Apache-2.0    | Bundled (per-arch)  | `Resources/bin/gemini-aarch64/gemini`, `Resources/bin/gemini-x86_64/gemini` (Node SEA, single Mach-O each) |
 | claude-code | PROPRIETARY   | Runtime download    | `~/.local/bin/claude`                                                  |
 
 ### Windows (x64 only in v1)
@@ -22,6 +23,7 @@ opening a shell.
 |-------------|---------------|------------------------------------|------------------------------------------------------------------------------------------|
 | codex       | Apache-2.0    | Bundled (single arch)              | `<install>\resources\bin\codex.exe` — downloaded + zstd-decoded from upstream            |
 | composio    | MIT           | **Built from source (fork)**       | `<install>\resources\bin\composio-x86_64\composio.exe`                                   |
+| gemini      | Apache-2.0    | **NOT BUNDLED in v1**              | No upstream Windows binary published by google-gemini/gemini-cli (verified across last 100 releases). Phase 2 will mirror the composio fork-build pattern using upstream's `scripts/build_binary.js` (already has win32 branches via Node SEA + postject). Until then, Gemini-backed agents are macOS-only. |
 | claude-code | PROPRIETARY   | Runtime download                   | `%LOCALAPPDATA%\Programs\claude\claude.exe`                                              |
 | git-bash    | GPL-2.0       | Bundled (compressed, decoded in-process) | `%LOCALAPPDATA%\Programs\Houston\runtime\git-bash-<arch>\usr\bin\bash.exe` (extracted on first launch) |
 
@@ -268,13 +270,15 @@ three status fields beyond provider + CLI name:
 
 ## DMG size
 
-Bundled CLIs add ~700 MB to `Resources/`:
+Bundled CLIs add ~940 MB to `Resources/`:
 
-- codex universal: 340 MB
+- codex universal:  340 MB
 - composio-aarch64: ~180 MB
 - composio-x86_64:  ~190 MB
+- gemini-aarch64:   ~115 MB
+- gemini-x86_64:    ~118 MB
 
-DMG compression brings the user-facing download to ~350-450 MB. This is
+DMG compression brings the user-facing download to ~450-560 MB. This is
 a deliberate trade — the target user is non-technical and would not
 successfully run a separate installer for each provider CLI.
 

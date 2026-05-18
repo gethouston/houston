@@ -133,6 +133,37 @@ pub fn bundled_composio_binary() -> Option<PathBuf> {
     }
 }
 
+/// Per-arch gemini directory inside the bundle.
+///
+/// Gemini's Node SEA binary is arch-specific: the Mach-O has the
+/// injected `NODE_SEA` segment baked at fixed offsets per arch (with a
+/// sentinel fuse string the runtime scans for at boot), so we ship
+/// per-arch directories the same way composio does. Unlike composio
+/// there are no `.mjs` / `services/` companions today (everything is
+/// embedded in the SEA blob), but the per-arch dir leaves room for
+/// future vendored sidecars (upstream's `scripts/build_binary.js`
+/// already references a `vendor/ripgrep/` tree that may eventually
+/// escape the SEA on first launch).
+pub fn bundled_gemini_dir() -> Option<PathBuf> {
+    let arch = std::env::consts::ARCH;
+    let p = bundled_bin_dir()?.join(format!("gemini-{arch}"));
+    if p.is_dir() {
+        Some(p)
+    } else {
+        None
+    }
+}
+
+/// Per-arch gemini binary, or `None`.
+pub fn bundled_gemini_path() -> Option<PathBuf> {
+    let p = bundled_gemini_dir()?.join(gemini_binary_name());
+    if p.is_file() {
+        Some(p)
+    } else {
+        None
+    }
+}
+
 /// Per-arch PortableGit self-extracting 7z. The SFX itself never
 /// runs on the host that built the bundle — it's a Windows PE meant
 /// to be extracted on the user's machine on first launch (see
@@ -168,16 +199,29 @@ pub fn bundled_cli_deps_manifest() -> Option<PathBuf> {
 /// Order:
 ///   1. `<bundle>/bin/`                  — codex (and any future single-file CLIs)
 ///   2. `<bundle>/bin/composio-<arch>/`  — composio (multi-file bundle)
+///   3. `<bundle>/bin/gemini-<arch>/`    — gemini (per-arch Node SEA)
+///
+/// Gemini uses `std::env::consts::ARCH` directly — no Windows-on-ARM
+/// emulation override is needed in phase 1 because we don't ship a
+/// Windows gemini at all (Google publishes only macOS binaries). When
+/// the Windows fork-build lands, the resolver should adopt the same
+/// `host_arch_for_composio` pattern; ideally the helper gets extracted
+/// into a shared `host_arch_for_node_sea` so both consult one probe.
 pub fn bundled_path_entries() -> Vec<PathBuf> {
     let Some(bin) = bundled_bin_dir() else {
         return Vec::new();
     };
-    let mut out = Vec::with_capacity(2);
+    let mut out = Vec::with_capacity(3);
     out.push(bin.clone());
     let arch = host_arch_for_composio();
     let composio_dir = bin.join(format!("composio-{arch}"));
     if composio_dir.is_dir() {
         out.push(composio_dir);
+    }
+    let gemini_arch = std::env::consts::ARCH;
+    let gemini_dir = bin.join(format!("gemini-{gemini_arch}"));
+    if gemini_dir.is_dir() {
+        out.push(gemini_dir);
     }
     out
 }
@@ -423,6 +467,14 @@ fn composio_binary_name() -> &'static str {
         "composio.exe"
     } else {
         "composio"
+    }
+}
+
+fn gemini_binary_name() -> &'static str {
+    if cfg!(windows) {
+        "gemini.exe"
+    } else {
+        "gemini"
     }
 }
 
@@ -719,6 +771,34 @@ mod tests {
         );
         assert_eq!(entry.checksum_for("darwin-x64"), Some("cafebabe"));
         assert!(manifest.entry("does-not-exist").is_none());
+    }
+
+    #[test]
+    fn detects_bundled_gemini_per_arch() {
+        // Build a fake .app with the per-arch gemini layout and assert
+        // the resolver finds the binary at
+        // `Resources/bin/gemini-<arch>/gemini`. We can't unit-test
+        // `bundled_gemini_path()` directly because it consults
+        // `std::env::current_exe()`; instead test the underlying layout
+        // via `bundled_bin_dir_for(&exe)` and trust the public function
+        // (same pattern as the codex/composio tests above).
+        let tmp = tempfile::tempdir().unwrap();
+        let app = tmp.path().join("Houston.app");
+        let macos = app.join("Contents").join("MacOS");
+        let bin = app.join("Contents").join("Resources").join(BIN_SUBDIR);
+        let gemini_arch = bin.join(format!("gemini-{}", std::env::consts::ARCH));
+        fs::create_dir_all(&macos).unwrap();
+        fs::create_dir_all(&gemini_arch).unwrap();
+        let exe = macos.join("houston-engine");
+        fs::write(&exe, b"").unwrap();
+        let gemini = gemini_arch.join(gemini_binary_name());
+        fs::write(&gemini, b"").unwrap();
+
+        let bin_resolved = bundled_bin_dir_for(&exe).unwrap();
+        let gemini_resolved = bin_resolved
+            .join(format!("gemini-{}", std::env::consts::ARCH))
+            .join(gemini_binary_name());
+        assert!(gemini_resolved.is_file());
     }
 
     #[test]

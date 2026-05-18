@@ -20,3 +20,9 @@ dirs = "5"
 # so subprocess spawns of `claude`/`codex`/`composio` find them without
 # any user-side shell config.
 houston-cli-bundle = { workspace = true }
+
+[dev-dependencies]
+# Used by the Gemini adapter tests to build throwaway
+# `~/.gemini/{settings,google_accounts}.json` fixtures without touching
+# the developer's real home directory.
+tempfile = "3"

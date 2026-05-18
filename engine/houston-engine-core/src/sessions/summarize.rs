@@ -15,9 +15,19 @@ use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
 use tokio::time::timeout;
 
-const SUMMARY_TIMEOUT: Duration = Duration::from_secs(12);
+// Bumped from 12s → 30s so titles still generate when the model is briefly
+// rate-limited and gemini-cli's internal retry kicks in (typical backoff
+// waits 8-11s). 12s was tight enough that ~half of free-tier Gemini users
+// hit "title summary fallback" on first message. 30s is well under the
+// user's "this conversation feels stuck" threshold but long enough to
+// absorb one quota retry. The deterministic local fallback still fires
+// for the unrecoverable cases.
+const SUMMARY_TIMEOUT: Duration = Duration::from_secs(30);
 const CLAUDE_TITLE_MODEL: &str = "haiku";
 const CODEX_TITLE_MODEL: &str = "gpt-5.5-mini";
+/// Gemini title-summary model. Flash-Lite is the cheapest/fastest GA tier
+/// and gives us a JSON object in well under the 12s SUMMARY_TIMEOUT.
+const GEMINI_TITLE_MODEL: &str = "gemini-3.1-flash-lite";
 
 pub use super::summary_text::SummarizeResult;
 
@@ -61,9 +71,15 @@ async fn run_provider_summary(
     model: Option<&str>,
 ) -> Result<String, String> {
     let prompt = title_prompt(message);
-    match provider {
-        Provider::Anthropic => run_claude_summary(&prompt, model).await,
-        Provider::OpenAI => run_codex_summary(&prompt, model).await,
+    // Same dispatch shape as the session runner: each provider has its
+    // own short-prompt invocation profile (different stdout shape, model
+    // name conventions, env scrubbing). Adding a provider = one new arm
+    // pointing at a new `run_<provider>_summary` helper.
+    match provider.id() {
+        "anthropic" => run_claude_summary(&prompt, model).await,
+        "openai" => run_codex_summary(&prompt, model).await,
+        "gemini" => run_gemini_summary(&prompt, model).await,
+        unknown => Err(format!("no title summarizer wired up for provider {unknown:?}")),
     }
 }
 
@@ -105,6 +121,58 @@ async fn run_codex_summary(prompt: &str, model: Option<&str>) -> Result<String, 
         .arg("-");
     let stdout = run_command_with_prompt(cmd, prompt).await?;
     extract_codex_text(&stdout)
+}
+
+async fn run_gemini_summary(prompt: &str, model: Option<&str>) -> Result<String, String> {
+    // Prefer the bundled gemini SEA for the same reason codex does:
+    // a stale npm-global install on the user's PATH could emit a
+    // different output format and break the parser. The summarizer
+    // asks for plain text (`--output-format text`) so we don't have
+    // to thread through a second NDJSON parser just for titles.
+    let bin = houston_cli_bundle::bundled_gemini_path()
+        .unwrap_or_else(|| std::path::PathBuf::from("gemini"));
+    let mut cmd = tokio::process::Command::new(&bin);
+    cmd.env("PATH", claude_path::shell_path());
+
+    // Same HOME isolation the chat runner uses — see
+    // `houston-terminal-manager::gemini_home`. Without it, the
+    // user's accumulated `~/.gemini/GEMINI.md` memories bleed into
+    // title generation prompts and produce confused titles like
+    // "Alpine.js Component Refactor" for Houston tasks that have
+    // nothing to do with the user's other projects.
+    let houston_data = houston_terminal_manager::gemini_home::houston_data_root();
+    let real_home = houston_terminal_manager::gemini_home::resolve_real_home()
+        .map_err(|e| format!("failed to resolve real home for gemini runtime: {e}"))?;
+    let runtime_home = houston_terminal_manager::gemini_home::ensure_gemini_runtime_home(
+        &houston_data,
+        &real_home,
+    )
+    .map_err(|e| format!("failed to prepare gemini runtime home: {e}"))?;
+    cmd.env("HOME", &runtime_home);
+    #[cfg(windows)]
+    cmd.env("USERPROFILE", &runtime_home);
+
+    // Run the summarizer FROM the runtime HOME so gemini-cli's
+    // project-discovery walk finds nothing. Without setting cwd, gemini
+    // inherits the engine process's cwd — which in `pnpm tauri dev`
+    // is the Houston source repo. The model then picks up signals
+    // ("houston", "vilnius" in the path) and emits titles like
+    // "Houston Vilnius CLI Development" for unrelated user prompts.
+    // The runtime HOME has no project files at all, so titles depend
+    // only on the user's message body — which is what we want for a
+    // 6-word summary.
+    cmd.current_dir(&runtime_home);
+
+    // `--skip-trust` mirrors gemini_runner: gemini-cli's trusted-folders
+    // check otherwise refuses to run in Houston-managed workspace dirs
+    // and the summary never completes. See gemini_runner::build_gemini_args.
+    cmd.arg("--output-format")
+        .arg("text")
+        .arg("--yolo")
+        .arg("--skip-trust")
+        .arg("--model")
+        .arg(model.unwrap_or(GEMINI_TITLE_MODEL));
+    run_command_with_prompt(cmd, prompt).await
 }
 
 async fn run_command_with_prompt(mut cmd: Command, prompt: &str) -> Result<String, String> {

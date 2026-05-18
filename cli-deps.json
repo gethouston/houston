@@ -81,6 +81,22 @@
       }
     }
   },
+  "gemini": {
+    "version": "0.42.0",
+    "bundled": true,
+    "binary_name": "gemini",
+    "license": "Apache-2.0",
+    "ship_layout": "per-arch-binary",
+    "$ship_layout_comment": "Gemini CLI is a Node SEA — single per-arch Mach-O on macOS (arm64 + x86_64). Cannot lipo a Node SEA (the embedded NODE_SEA segment + sentinel fuse are arch-specific Mach-O segments and lipo would corrupt the postject injection). Each arch ships at resources/bin/gemini-{aarch64|x86_64}/gemini on macOS, mirroring the per-arch composio layout. Windows artifact NOT yet shipped — Google publishes only macOS binaries (verified across last 100 releases). When Windows demand justifies the work, build from source via gethouston/gemini-cli fork using upstream's `scripts/build_binary.js` (already has win32 branches, uses postject + Node SEA fuse).",
+    "urls": {
+      "darwin-arm64": "https://github.com/google-gemini/gemini-cli/releases/download/v{version}/gemini-darwin-arm64-unsigned.zip",
+      "darwin-x64": "https://github.com/google-gemini/gemini-cli/releases/download/v{version}/gemini-darwin-x64-unsigned.zip"
+    },
+    "checksums": {
+      "darwin-arm64": "98212f9047fd7c945ed54467d1af86229cb99084648126cc5e207f6678d49199",
+      "darwin-x64": "c1c8a72be76b9e3a208f2d676450dda3ccc6ee38a4c011b63ab66d2f946c4a44"
+    }
+  },
   "git-bash": {
     "version": "2.54.0",
     "bundled": true,

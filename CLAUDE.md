@@ -67,6 +67,7 @@ Need specific knowledge? Load on demand:
 - Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
 - Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
 - Engine wire protocol (REST + WS) → `knowledge-base/engine-protocol.md`
+- Provider error taxonomy + classifier contract → `knowledge-base/provider-errors.md`
 - `houston-engine` binary ops → `knowledge-base/engine-server.md`
 - Bundled CLIs (codex universal, composio per-arch) + runtime claude-code installer → `knowledge-base/cli-bundling.md`
 - Windows testing loop from a Mac (UTM VM, SSH bridge, cross-compile, log fetch) → `knowledge-base/windows-testing.md`
@@ -165,6 +166,13 @@ Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, co
 ### Engine boundary
 - `engine/` = frontend-agnostic. No Tauri. No React. No webview assumption.
 - Tauri-specific code → `app/houston-tauri/` (the adapter).
+
+### Adding a provider
+New AI provider = one new adapter file in `engine/houston-terminal-manager/src/provider/<name>.rs` implementing `ProviderAdapter`, one entry in `REGISTRY`, three dispatch arms (runner spawn in `session_dispatch.rs`, NDJSON parser in `session_io.rs`, title summarizer in `sessions/summarize.rs`). All other call sites pick the new provider up automatically through `Provider::from_str` and the registry. `Provider` is a `Copy` newtype around `&'static dyn ProviderAdapter`, NOT an enum, so no variant additions are needed.
+
+**Error classification** is part of the adapter — implement `classify_stderr` and `classify_result_error` to map this provider's failure patterns to the shared `ProviderError` taxonomy (`RateLimited`, `QuotaExhausted`, `Unauthenticated`, ...). Real CLI fixtures > guessed regex; unit-test each classifier with verbatim stderr / NDJSON snippets. The frontend already renders every variant (`app/src/components/shell/provider-error-card.tsx`) — no UI work unless you need a custom status-page URL or a provider-specific reconnect flow.
+
+See `knowledge-base/architecture.md` (engine crates), `knowledge-base/agent-manifest.md` (provider/model table), and `knowledge-base/provider-errors.md` (full taxonomy + classifier contract) for the full picture.
 
 ### AI-native reactivity
 - Every `.houston/` data surface must react to file changes regardless of who wrote (user via UI, agent via file write, external edit).

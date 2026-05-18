@@ -4,8 +4,21 @@
 //! so the rest of the stack (session_runner, frontend) is provider-agnostic.
 
 use super::auth_error::{is_auth_retry_noise, AUTH_RETRY_MARKER};
+use super::provider::Provider;
+use super::provider_error_kind::ProviderError;
 use super::types::FeedItem;
 use serde::Deserialize;
+use std::str::FromStr;
+
+/// Run the OpenAI / Codex stderr classifier against a Codex
+/// `turn.failed.error.message` payload. The message shape mirrors what
+/// the CLI prints to stderr (e.g. `unexpected status 401 Unauthorized`),
+/// so the same patterns apply.
+fn classify_codex_error_message(message: &str) -> Option<ProviderError> {
+    Provider::from_str("openai")
+        .ok()
+        .and_then(|p| p.classify_stderr(message))
+}
 
 /// Top-level Codex NDJSON event envelope.
 #[derive(Debug, Clone, Deserialize)]
@@ -193,7 +206,15 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                 // Return a marker so session_runner can track it, but don't show raw noise.
                 items.push(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
             } else {
-                items.push(FeedItem::SystemMessage(format!("Error: {msg}")));
+                // Try the typed classifier first — Codex's
+                // `turn.failed.error.message` is the same shape its
+                // stderr produces, so the OpenAI stderr classifier
+                // covers it.
+                if let Some(typed) = classify_codex_error_message(&msg) {
+                    items.push(FeedItem::ProviderError(typed));
+                } else {
+                    items.push(FeedItem::SystemMessage(format!("Error: {msg}")));
+                }
             }
             items
         }
@@ -562,11 +583,24 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_event() {
+    fn parse_error_event_classifies_to_typed_provider_error() {
+        // Rate-limit phrasing now flows through the typed classifier;
+        // the SystemMessage branch only fires when no classifier matches.
         let line = r#"{"type":"error","message":"Rate limit exceeded"}"#;
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
-        assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Rate limit")));
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::RateLimited { .. })
+        ));
+    }
+
+    #[test]
+    fn parse_error_event_unrecognised_falls_back_to_system_message() {
+        let line = r#"{"type":"error","message":"Context window exceeded for model"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Context window")));
     }
 
     #[test]
@@ -578,13 +612,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_codex_auth_failure_remains_detectable() {
+    fn parse_codex_auth_failure_classifies_as_typed_unauthenticated() {
         let line = r#"{"type":"turn.failed","error":{"message":"unexpected status 401 Unauthorized: Missing bearer"}}"#;
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
-        assert!(
-            matches!(&items[0], FeedItem::SystemMessage(m) if crate::auth_error::is_auth_error(m))
-        );
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
+        ));
     }
 
     #[test]

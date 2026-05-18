@@ -296,7 +296,9 @@ jobs:
           BIN=app/src-tauri/resources/bin
           for f in "$BIN/codex" \
                    "$BIN/composio-aarch64/composio" \
-                   "$BIN/composio-x86_64/composio"; do
+                   "$BIN/composio-x86_64/composio" \
+                   "$BIN/gemini-aarch64/gemini" \
+                   "$BIN/gemini-x86_64/gemini"; do
             echo "=== Signing $f ==="
             codesign --force --options runtime --timestamp \
               --sign "$APPLE_SIGNING_IDENTITY" "$f"
@@ -452,6 +454,8 @@ jobs:
           test -x "$BIN/codex" || { echo "::error::Resources/bin/codex missing or not executable"; exit 1; }
           test -x "$BIN/composio-aarch64/composio" || { echo "::error::composio-aarch64/composio missing"; exit 1; }
           test -x "$BIN/composio-x86_64/composio"  || { echo "::error::composio-x86_64/composio missing"; exit 1; }
+          test -x "$BIN/gemini-aarch64/gemini"     || { echo "::error::gemini-aarch64/gemini missing"; exit 1; }
+          test -x "$BIN/gemini-x86_64/gemini"      || { echo "::error::gemini-x86_64/gemini missing"; exit 1; }
           test -f "$BIN/cli-deps.json" || { echo "::error::cli-deps.json manifest missing"; exit 1; }
           ls -lah "$BIN"
 

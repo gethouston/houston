@@ -156,7 +156,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     selectedSessionKey,
     onSelectSession: setSelectedId,
   });
-  const { chatProvider, chatModel } = panel;
+  const { chatProvider, chatModel, effectiveProvider, effectiveModel } = panel;
 
   // Scope to this agent only — cross-agent bleeding is structurally blocked
   // because AIBoard can only see this agent's slice of the feed store.
@@ -365,8 +365,11 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           agentMode,
           worktreePath,
           promptFile: mode?.promptFile,
-          providerOverride: chatProvider ?? undefined,
-          modelOverride: chatModel ?? undefined,
+          // Mirror displayed dropdown (effectiveProvider) so the engine
+          // doesn't fall back to its own resolution chain and silently
+          // route to a different provider than the UI shows.
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
           titleText: visible,
           buildPrompt: async (activityId) => {
             const saved = await tauriAttachments.save(`activity-${activityId}`, files);
@@ -419,8 +422,9 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
         await tauriChat.send(path, prompt, sessionKey, {
           mode: mode?.promptFile,
           workingDirOverride: activity?.worktree_path ?? undefined,
-          providerOverride: chatProvider ?? undefined,
-          modelOverride: chatModel ?? undefined,
+          // Effective values mirror the dropdown; see send sites above.
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
         });
         pushFeedItem(path, sessionKey, { feed_type: "user_message", data: prompt });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));

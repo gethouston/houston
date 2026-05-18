@@ -167,5 +167,70 @@
   },
   "engineGate": {
     "starting": "Iniciando o motor do Houston…"
+  },
+  "providerError": {
+    "rateLimited": {
+      "title": "Atingiu um limite de uso",
+      "body": "A API do {{provider}} está limitando as requisições. Aguarde um momento e tente novamente.",
+      "bodyWithRetry": "A API do {{provider}} está limitando as requisições. Tente novamente em {{seconds}}s.",
+      "retry": "Tentar de novo",
+      "switchModel": "Trocar de modelo"
+    },
+    "quotaExhausted": {
+      "title": "Sem capacidade disponível",
+      "body": "Seu plano do {{provider}} chegou ao limite. Faça upgrade ou troque de provedor para continuar.",
+      "upgrade": "Fazer upgrade",
+      "switchProvider": "Trocar de provedor",
+      "useApiKey": "Usar chave de API no lugar"
+    },
+    "modelUnavailable": {
+      "title": "Modelo não disponível",
+      "body": "O modelo {{model}} não está disponível na sua conta {{provider}}.",
+      "switchToFallback": "Trocar para {{model}}",
+      "pickAnother": "Escolher outro modelo"
+    },
+    "unauthenticated": {
+      "title": "Conecte-se ao {{provider}} novamente",
+      "bodyTokenExpired": "Sua sessão do {{provider}} expirou. Reconecte para continuar.",
+      "bodyNoCredentials": "O Houston precisa que você entre no {{provider}} antes de responder.",
+      "bodyInvalidApiKey": "A chave de API do {{provider}} que o Houston tem não é mais válida. Atualize e tente de novo.",
+      "bodyTokenRevoked": "Seu acesso ao {{provider}} foi revogado. Entre novamente para continuar.",
+      "bodyUnknown": "O Houston não conseguiu se autenticar no {{provider}}. Reconecte e tente novamente.",
+      "reconnect": "Reconectar"
+    },
+    "networkUnreachable": {
+      "title": "Não foi possível alcançar o {{provider}}",
+      "body": "O Houston não conseguiu acessar a API do {{provider}}. Verifique sua internet e tente de novo.",
+      "retry": "Tentar de novo",
+      "checkStatus": "Ver página de status"
+    },
+    "providerInternal": {
+      "title": "{{provider}} está com um problema",
+      "body": "A API do {{provider}} retornou um erro do lado deles. Tente de novo em alguns minutos.",
+      "retry": "Tentar de novo",
+      "checkStatus": "Ver página de status"
+    },
+    "sessionResumeMissing": {
+      "title": "Não dá para retomar esta sessão",
+      "body": "A sessão anterior do {{provider}} não existe mais. Comece uma missão nova para continuar.",
+      "startFresh": "Recomeçar"
+    },
+    "malformedResponse": {
+      "title": "Resposta corrompida",
+      "body": "A resposta do {{provider}} não pôde ser lida. Tente de novo, isso costuma ser temporário.",
+      "retry": "Tentar de novo"
+    },
+    "spawnFailed": {
+      "title": "Não foi possível iniciar o {{provider}}",
+      "body": "O Houston não conseguiu iniciar {{provider}}. Tente reinstalar e nos avise se continuar.",
+      "reinstall": "Reinstalar {{provider}}",
+      "reportBug": "Relatar problema"
+    },
+    "unknown": {
+      "title": "Aconteceu algo inesperado",
+      "body": "O Houston não conseguiu classificar este erro do {{provider}}. Relate para que possamos aprender a tratar.",
+      "reportBug": "Relatar problema",
+      "rawLabel": "Saída bruta"
+    }
   }
 }

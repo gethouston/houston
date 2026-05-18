@@ -1,9 +1,10 @@
 use super::session_io;
-use super::types::{FeedItem, Provider, SessionStatus, ToolRuntimeErrorKind};
-use crate::auth_error::is_auth_error;
+use super::types::{FeedItem, SessionStatus};
 use crate::codex_command;
-use crate::provider_error::is_malformed_provider_json_error;
+use crate::provider::detect_malformed_provider_json;
+use crate::provider_error_kind::ProviderError;
 use crate::session_update::SessionUpdate;
+use crate::Provider;
 use std::process::Stdio;
 use tokio::io::AsyncWriteExt;
 use tokio::process::Command;
@@ -30,10 +31,7 @@ pub(crate) async fn run_cli_process(
     prompt: &str,
     provider: Provider,
 ) -> CliRunOutcome {
-    let cli_name = match provider {
-        Provider::Anthropic => "claude",
-        Provider::OpenAI => "codex",
-    };
+    let cli_name = provider.cli_name();
 
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
@@ -74,7 +72,7 @@ pub(crate) async fn run_cli_process(
     if let Some(stderr) = stderr {
         let tx2 = tx.clone();
         io_set.spawn(async move {
-            CliIoReport::Stderr(session_io::read_stderr_lines(stderr, tx2).await)
+            CliIoReport::Stderr(session_io::read_stderr_lines(stderr, tx2, provider).await)
         });
     }
     if let Some(stdout) = stdout {
@@ -119,11 +117,15 @@ pub(crate) async fn run_cli_process(
             // on Windows is a reliable user-stop signal.
             let likely_user_stop_windows =
                 cfg!(windows) && status.code() == Some(1) && stderr_lines.is_empty();
-            let malformed_provider_json = provider == Provider::Anthropic
-                && (stdout_report.malformed_provider_json
-                    || stderr_lines
-                        .iter()
-                        .any(|line| is_malformed_provider_json_error(line)));
+            // The malformed-JSON outcome is provider-agnostic at the
+            // detection level (any provider could in principle emit
+            // truncated JSON), but only Anthropic's runner currently
+            // knows how to retry. We use the shared detector here and
+            // let `claude_runner` gate the retry on its own logic.
+            let malformed_provider_json = stdout_report.malformed_provider_json
+                || stderr_lines
+                    .iter()
+                    .any(|line| detect_malformed_provider_json(line));
             if malformed_provider_json {
                 tracing::warn!("[houston:session] claude failed with malformed provider JSON");
                 CliRunOutcome::ProviderRequestMalformedJson
@@ -132,6 +134,22 @@ pub(crate) async fn run_cli_process(
                     tracing::info!(
                         "[houston:session] {cli_name} exited with code 1 + empty stderr — treating as user-initiated stop"
                     );
+                }
+                // SIGTERM (143) and the Windows-stop heuristic both
+                // indicate user-initiated cancellation. Emit a typed
+                // `Cancelled` feed item BEFORE Completed so the chat
+                // history carries the structured marker (the dispatcher
+                // intentionally renders nothing for `Cancelled`, but
+                // analytics / debug surfaces / future "show stopped
+                // sessions" filters all key off the typed variant).
+                // A clean exit (`status.success()`) is NOT cancellation,
+                // so we only emit when one of the stop signals fired.
+                if is_sigterm || likely_user_stop_windows {
+                    let _ = tx.send(SessionUpdate::Feed(FeedItem::ProviderError(
+                        ProviderError::Cancelled {
+                            provider: provider.id().to_string(),
+                        },
+                    )));
                 }
                 let _ = tx.send(SessionUpdate::Status(SessionStatus::Completed));
                 CliRunOutcome::Completed
@@ -154,7 +172,13 @@ fn handle_failed_exit(
     provider: Provider,
     stderr_lines: &[String],
 ) -> CliRunOutcome {
-    if provider == Provider::OpenAI
+    // Codex resume-rollout-missing is a control-flow signal (the runner
+    // restarts fresh) rather than a user-visible error, so keep it
+    // checked here rather than promoting it to a typed feed item. The
+    // typed `SessionResumeMissing` variant DOES fire from the
+    // line-by-line classifier in `read_stderr_lines`, but that surface
+    // is an information panel; the retry routing belongs here.
+    if provider.id() == "openai"
         && stderr_lines
             .iter()
             .any(|line| codex_command::is_missing_rollout_error(line))
@@ -163,28 +187,39 @@ fn handle_failed_exit(
         return CliRunOutcome::CodexResumeMissing;
     }
 
-    let has_auth_error = stderr_lines.iter().any(|l| is_auth_error(l));
-    if has_auth_error {
-        let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(
-            "Authentication expired — sign in again to continue".to_string(),
-        )));
-        return CliRunOutcome::Failed;
+    // If a typed classifier matched any stderr line we've already
+    // emitted that variant from `read_stderr_lines`. Skip the catch-all
+    // emit so the user doesn't see two cards. We don't rely on the
+    // already-emitted bookkeeping there because the channel is
+    // fire-and-forget; instead we reclassify the lines here. Cheap:
+    // classification is substring matching.
+    let already_emitted_typed = stderr_lines
+        .iter()
+        .any(|line| provider.classify_stderr(line).is_some());
+
+    if !already_emitted_typed {
+        let stderr_summary = if stderr_lines.is_empty() {
+            "no stderr output captured".to_string()
+        } else {
+            stderr_lines.join("\n")
+        };
+        // Only emit a fallback typed error if the line wasn't already
+        // surfaced as a local-tool runtime error (codex_core router
+        // failures), which keep their dedicated card.
+        if !stderr_lines
+            .iter()
+            .any(|line| crate::stderr_filter::is_tool_runtime_stderr(line))
+        {
+            // Use the spawn-failure classifier as the umbrella for
+            // "process exited non-zero with no recognised pattern". It
+            // defaults to ProviderError::SpawnFailed; providers can
+            // override for spawn-specific patterns. Truncate to keep
+            // the wire frame small; full stderr stays in engine logs.
+            let err: ProviderError = provider.classify_spawn_failure(None, &stderr_summary);
+            let _ = tx.send(SessionUpdate::Feed(FeedItem::ProviderError(err)));
+        }
     }
 
-    let stderr_summary = if stderr_lines.is_empty() {
-        "no stderr output captured".to_string()
-    } else {
-        stderr_lines.join("\n")
-    };
-    if !stderr_lines
-        .iter()
-        .any(|line| crate::stderr_filter::is_tool_runtime_stderr(line))
-    {
-        let _ = tx.send(SessionUpdate::Feed(FeedItem::ToolRuntimeError {
-            kind: ToolRuntimeErrorKind::ProviderProcess,
-            details: stderr_summary,
-        }));
-    }
     let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
         "{cli_name} hit a runtime error"
     ))));

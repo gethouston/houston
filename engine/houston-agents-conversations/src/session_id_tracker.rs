@@ -5,7 +5,7 @@
 //! The legacy flat `.houston/sessions/{session_key}.sid` path is still read as a
 //! fallback for existing user data.
 
-use houston_terminal_manager::Provider;
+use houston_terminal_manager::{provider as provider_registry, Provider};
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::io;
@@ -13,7 +13,12 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 
-const PROVIDERS: [Provider; 2] = [Provider::Anthropic, Provider::OpenAI];
+/// Iterate every registered provider. Used by history reads that need to
+/// sweep all on-disk session-id directories regardless of which provider
+/// the user is currently on.
+fn all_providers() -> impl Iterator<Item = Provider> {
+    provider_registry::all().iter().copied().map(Provider::from)
+}
 
 fn sessions_dir(agent_dir: &Path) -> PathBuf {
     agent_dir.join(".houston").join("sessions")
@@ -59,7 +64,7 @@ pub fn session_ids_for_history(agent_dir: &Path, session_key: &str) -> Vec<Strin
         &legacy_session_id_path(agent_dir, session_key),
     );
 
-    for provider in PROVIDERS {
+    for provider in all_providers() {
         push_unique_file_id(
             &mut ids,
             &mut seen,
@@ -296,16 +301,23 @@ mod tests {
         fs::write(path, body).unwrap();
     }
 
+    fn anthropic() -> Provider {
+        "anthropic".parse().unwrap()
+    }
+    fn openai() -> Provider {
+        "openai".parse().unwrap()
+    }
+
     #[test]
     fn provider_paths_are_distinct() {
         let dir = TempDir::new().unwrap();
 
-        let anthropic = session_id_path(dir.path(), Provider::Anthropic, "chat");
-        let openai = session_id_path(dir.path(), Provider::OpenAI, "chat");
+        let anthropic_path = session_id_path(dir.path(), anthropic(), "chat");
+        let openai_path = session_id_path(dir.path(), openai(), "chat");
 
-        assert_ne!(anthropic, openai);
-        assert!(anthropic.ends_with(".houston/sessions/anthropic/chat.sid"));
-        assert!(openai.ends_with(".houston/sessions/openai/chat.sid"));
+        assert_ne!(anthropic_path, openai_path);
+        assert!(anthropic_path.ends_with(".houston/sessions/anthropic/chat.sid"));
+        assert!(openai_path.ends_with(".houston/sessions/openai/chat.sid"));
     }
 
     #[tokio::test]
@@ -315,7 +327,7 @@ mod tests {
 
         let tracker = SessionIdTracker::default();
         let handle = tracker
-            .get_for_session("agent:openai:chat", dir.path(), "chat", Provider::OpenAI)
+            .get_for_session("agent:openai:chat", dir.path(), "chat", openai())
             .await;
 
         assert_eq!(handle.get().await, Some("legacy-id".to_string()));
@@ -326,16 +338,15 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let tracker = SessionIdTracker::default();
         let handle = tracker
-            .get_for_session("agent:openai:chat", dir.path(), "chat", Provider::OpenAI)
+            .get_for_session("agent:openai:chat", dir.path(), "chat", openai())
             .await;
 
         handle.set("openai-id".to_string()).await;
         handle.set("openai-id".to_string()).await;
 
-        let sid =
-            fs::read_to_string(session_id_path(dir.path(), Provider::OpenAI, "chat")).unwrap();
+        let sid = fs::read_to_string(session_id_path(dir.path(), openai(), "chat")).unwrap();
         let history =
-            fs::read_to_string(session_history_path(dir.path(), Provider::OpenAI, "chat")).unwrap();
+            fs::read_to_string(session_history_path(dir.path(), openai(), "chat")).unwrap();
 
         assert_eq!(sid, "openai-id");
         assert_eq!(history, "openai-id\n");
@@ -347,18 +358,18 @@ mod tests {
         let dir = TempDir::new().unwrap();
         let tracker = SessionIdTracker::default();
         let handle = tracker
-            .get_for_session("agent:openai:chat", dir.path(), "chat", Provider::OpenAI)
+            .get_for_session("agent:openai:chat", dir.path(), "chat", openai())
             .await;
 
         handle.set("bad-id".to_string()).await;
         handle.clear_current_preserving_history().await;
 
         assert_eq!(handle.get().await, None);
-        assert!(!session_id_path(dir.path(), Provider::OpenAI, "chat").exists());
+        assert!(!session_id_path(dir.path(), openai(), "chat").exists());
         let history =
-            fs::read_to_string(session_history_path(dir.path(), Provider::OpenAI, "chat")).unwrap();
+            fs::read_to_string(session_history_path(dir.path(), openai(), "chat")).unwrap();
         let invalid =
-            fs::read_to_string(session_invalid_path(dir.path(), Provider::OpenAI, "chat")).unwrap();
+            fs::read_to_string(session_invalid_path(dir.path(), openai(), "chat")).unwrap();
         assert_eq!(history, "bad-id\n");
         assert_eq!(invalid, "bad-id\n");
     }
@@ -370,7 +381,7 @@ mod tests {
 
         let tracker = SessionIdTracker::default();
         let handle = tracker
-            .get_for_session("agent:openai:chat", dir.path(), "chat", Provider::OpenAI)
+            .get_for_session("agent:openai:chat", dir.path(), "chat", openai())
             .await;
         assert_eq!(handle.get().await, Some("legacy-id".to_string()));
 
@@ -378,15 +389,10 @@ mod tests {
 
         let restarted_tracker = SessionIdTracker::default();
         let openai_handle = restarted_tracker
-            .get_for_session("agent:openai:chat", dir.path(), "chat", Provider::OpenAI)
+            .get_for_session("agent:openai:chat", dir.path(), "chat", openai())
             .await;
         let anthropic_handle = restarted_tracker
-            .get_for_session(
-                "agent:anthropic:chat",
-                dir.path(),
-                "chat",
-                Provider::Anthropic,
-            )
+            .get_for_session("agent:anthropic:chat", dir.path(), "chat", anthropic())
             .await;
 
         assert_eq!(openai_handle.get().await, None);
@@ -398,19 +404,19 @@ mod tests {
         let dir = TempDir::new().unwrap();
         write_file(&legacy_session_id_path(dir.path(), "chat"), "legacy\n");
         write_file(
-            &session_id_path(dir.path(), Provider::Anthropic, "chat"),
+            &session_id_path(dir.path(), anthropic(), "chat"),
             "claude-current\n",
         );
         write_file(
-            &session_id_path(dir.path(), Provider::OpenAI, "chat"),
+            &session_id_path(dir.path(), openai(), "chat"),
             "codex-current\n",
         );
         write_file(
-            &session_history_path(dir.path(), Provider::Anthropic, "chat"),
+            &session_history_path(dir.path(), anthropic(), "chat"),
             "legacy\nclaude-old\n",
         );
         write_file(
-            &session_history_path(dir.path(), Provider::OpenAI, "chat"),
+            &session_history_path(dir.path(), openai(), "chat"),
             "codex-old\ncodex-current\n",
         );
 

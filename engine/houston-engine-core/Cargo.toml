@@ -29,6 +29,12 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-feature
 async-trait = { workspace = true }
 cron = "0.12"
 chrono-tz = "0.9"
+# Gemini OAuth flow — PKCE (rand + sha2) + redirect URI query encoding (base64 for the
+# verifier challenge). All three already in use elsewhere in the workspace; we just
+# need them here so the OAuth module is self-contained.
+rand = "0.8"
+sha2 = "0.10"
+base64 = "0.22"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # Native 7z decoder used to extract the bundled PortableGit archive

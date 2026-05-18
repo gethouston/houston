@@ -19,7 +19,7 @@ pub struct ResolvedProvider {
 impl Default for ResolvedProvider {
     fn default() -> Self {
         Self {
-            provider: Provider::Anthropic,
+            provider: Provider::default(),
             model: None,
         }
     }
@@ -39,7 +39,7 @@ struct AgentConfig {
 /// 1. `agent_dir/.houston/config/config.json` — per-agent override.
 /// 2. Workspace entry (workspace dir = parent of agent dir, workspaces root =
 ///    parent of workspace dir OR `paths.docs()`).
-/// 3. `Provider::Anthropic`, no model (factory default).
+/// 3. `Provider::default()` (Anthropic), no model (factory default).
 pub fn resolve_provider(paths: &EnginePaths, agent_dir: &Path) -> ResolvedProvider {
     if let Some(from_agent) = read_agent_config(agent_dir) {
         // Agent-level config exists — but model can come from workspace if
@@ -93,7 +93,7 @@ fn resolve_workspace(paths: &EnginePaths, agent_dir: &Path) -> ResolvedProvider 
                 .provider
                 .as_deref()
                 .and_then(|p| p.parse::<Provider>().ok())
-                .unwrap_or(Provider::Anthropic);
+                .unwrap_or_default();
             return ResolvedProvider {
                 provider,
                 model: ws.model.clone(),
@@ -113,6 +113,13 @@ mod tests {
         std::fs::write(path, body).unwrap();
     }
 
+    fn anthropic() -> Provider {
+        "anthropic".parse().unwrap()
+    }
+    fn openai() -> Provider {
+        "openai".parse().unwrap()
+    }
+
     #[test]
     fn default_when_no_config() {
         let d = TempDir::new().unwrap();
@@ -120,7 +127,7 @@ mod tests {
         std::fs::create_dir_all(&agent).unwrap();
         let paths = EnginePaths::new(d.path().to_path_buf(), d.path().to_path_buf());
         let r = resolve_provider(&paths, &agent);
-        assert_eq!(r.provider, Provider::Anthropic);
+        assert_eq!(r.provider, anthropic());
         assert!(r.model.is_none());
     }
 
@@ -134,7 +141,7 @@ mod tests {
         );
         let paths = EnginePaths::new(d.path().to_path_buf(), d.path().to_path_buf());
         let r = resolve_provider(&paths, &agent);
-        assert_eq!(r.provider, Provider::OpenAI);
+        assert_eq!(r.provider, openai());
         assert_eq!(r.model.as_deref(), Some("gpt-5.5"));
     }
 
@@ -150,7 +157,7 @@ mod tests {
         std::fs::create_dir_all(&agent).unwrap();
         let paths = EnginePaths::new(d.path().to_path_buf(), d.path().to_path_buf());
         let r = resolve_provider(&paths, &agent);
-        assert_eq!(r.provider, Provider::OpenAI);
+        assert_eq!(r.provider, openai());
         assert_eq!(r.model.as_deref(), Some("gpt-5"));
     }
 
@@ -168,7 +175,7 @@ mod tests {
         );
         let paths = EnginePaths::new(d.path().to_path_buf(), d.path().to_path_buf());
         let r = resolve_provider(&paths, &agent);
-        assert_eq!(r.provider, Provider::OpenAI);
+        assert_eq!(r.provider, openai());
         assert_eq!(r.model.as_deref(), Some("sonnet"));
     }
 }

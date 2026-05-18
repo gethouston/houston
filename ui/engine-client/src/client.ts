@@ -436,6 +436,25 @@ export class HoustonClient {
   providerLogout(name: string): Promise<void> {
     return this.request("POST", `/providers/${this.seg(name)}/logout`);
   }
+  /**
+   * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
+   * the key shape, writes atomically, and chmods 0600 on Unix. The
+   * next `providerStatus("gemini")` poll will return `Authenticated`
+   * without requiring a Houston restart.
+   *
+   * Gemini-specific: other providers use the CLI's own OAuth flow via
+   * `providerLogin`. Do NOT generalize this route until a second
+   * provider needs it.
+   */
+  setGeminiApiKey(apiKey: string): Promise<void> {
+    return this.request("POST", "/providers/gemini/credentials", { apiKey });
+  }
+  // "Sign in with Google" for Gemini goes through the standard
+  // `providerLogin("gemini")` call — the engine detects the gemini id
+  // and delegates to gemini-cli's own OAuth via the ACP `authenticate`
+  // JSON-RPC method. gemini-cli opens the browser with its own Google
+  // app identity and writes its own credential files. Same shape as
+  // `claude auth login --claudeai` and `codex login`.
 
   // ---------- store ----------
 

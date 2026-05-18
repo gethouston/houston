@@ -167,5 +167,70 @@
   },
   "engineGate": {
     "starting": "Starting Houston engine…"
+  },
+  "providerError": {
+    "rateLimited": {
+      "title": "Hit a rate limit",
+      "body": "The {{provider}} API is throttling requests. Wait a moment and try again.",
+      "bodyWithRetry": "The {{provider}} API is throttling requests. Try again in {{seconds}}s.",
+      "retry": "Try again",
+      "switchModel": "Switch model"
+    },
+    "quotaExhausted": {
+      "title": "Out of capacity",
+      "body": "Your {{provider}} plan reached its quota. Upgrade or switch to a different provider to keep going.",
+      "upgrade": "Upgrade plan",
+      "switchProvider": "Switch provider",
+      "useApiKey": "Use API key instead"
+    },
+    "modelUnavailable": {
+      "title": "Model not available",
+      "body": "{{model}} is not available on your {{provider}} account.",
+      "switchToFallback": "Switch to {{model}}",
+      "pickAnother": "Pick another model"
+    },
+    "unauthenticated": {
+      "title": "Sign in to {{provider}} again",
+      "bodyTokenExpired": "Your {{provider}} session expired. Reconnect to continue.",
+      "bodyNoCredentials": "Houston needs you to sign in to {{provider}} before it can answer.",
+      "bodyInvalidApiKey": "The {{provider}} API key Houston has is no longer valid. Update it and try again.",
+      "bodyTokenRevoked": "Your {{provider}} access was revoked. Sign in again to continue.",
+      "bodyUnknown": "Houston could not authenticate with {{provider}}. Reconnect and try again.",
+      "reconnect": "Reconnect"
+    },
+    "networkUnreachable": {
+      "title": "Cannot reach {{provider}}",
+      "body": "Houston could not reach the {{provider}} API. Check your internet, then try again.",
+      "retry": "Try again",
+      "checkStatus": "Check status page"
+    },
+    "providerInternal": {
+      "title": "{{provider}} is having a problem",
+      "body": "The {{provider}} API returned an error on its side. Try again in a moment.",
+      "retry": "Try again",
+      "checkStatus": "Check status page"
+    },
+    "sessionResumeMissing": {
+      "title": "Cannot resume this session",
+      "body": "The previous {{provider}} session is gone. Start a fresh mission to continue.",
+      "startFresh": "Start fresh"
+    },
+    "malformedResponse": {
+      "title": "Got a broken response",
+      "body": "The {{provider}} response was not readable. Try again, this is usually temporary.",
+      "retry": "Try again"
+    },
+    "spawnFailed": {
+      "title": "Could not start {{provider}}",
+      "body": "Houston could not start {{provider}}. Try reinstalling, then report it if it keeps happening.",
+      "reinstall": "Reinstall {{provider}}",
+      "reportBug": "Report bug"
+    },
+    "unknown": {
+      "title": "Something unexpected happened",
+      "body": "Houston could not classify this {{provider}} error. Report it so we can teach Houston to handle it next time.",
+      "reportBug": "Report bug",
+      "rawLabel": "Raw output"
+    }
   }
 }

@@ -579,7 +579,7 @@ mod tests {
                     prompt: "hello".to_string(),
                     system_prompt: None,
                     source: Some("test".to_string()),
-                    provider: Provider::OpenAI,
+                    provider: "openai".parse().unwrap(),
                     model: None,
                     effort: None,
                 },

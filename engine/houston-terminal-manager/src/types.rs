@@ -1,37 +1,5 @@
+use crate::provider_error_kind::ProviderError;
 use serde::{Deserialize, Serialize};
-use std::fmt;
-use std::str::FromStr;
-
-/// Which AI provider backend to use for a session.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[serde(rename_all = "snake_case")]
-pub enum Provider {
-    /// Anthropic Claude (via `claude` CLI)
-    #[default]
-    Anthropic,
-    /// OpenAI Codex (via `codex` CLI)
-    OpenAI,
-}
-
-impl fmt::Display for Provider {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Provider::Anthropic => write!(f, "anthropic"),
-            Provider::OpenAI => write!(f, "openai"),
-        }
-    }
-}
-
-impl FromStr for Provider {
-    type Err = String;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "anthropic" | "claude" => Ok(Provider::Anthropic),
-            "openai" | "codex" => Ok(Provider::OpenAI),
-            other => Err(format!("Unknown provider: {other}")),
-        }
-    }
-}
 
 /// Events parsed from Claude's `--output-format stream-json` NDJSON output.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -183,10 +151,21 @@ pub enum FeedItem {
     /// Message from the user (follow-up prompt).
     UserMessage(String),
     /// A local/provider runtime failure. Details are diagnostic-only.
+    ///
+    /// Kept for LOCAL TOOL failures only (the codex_core exec_command
+    /// path that fires for missing tools on the user's machine). For
+    /// upstream provider failures, prefer the typed
+    /// [`Self::ProviderError`] variant which carries actionable metadata.
     ToolRuntimeError {
         kind: ToolRuntimeErrorKind,
         details: String,
     },
+    /// Typed provider failure (rate-limited, quota-exhausted, auth
+    /// expired, ...). Replaces the historical
+    /// `ToolRuntimeError { kind: ProviderProcess, ... }` blob with a
+    /// discriminated union so the UI can render variant-specific cards
+    /// and CTAs.
+    ProviderError(ProviderError),
     /// Tool call made by the assistant.
     ToolCall {
         name: String,

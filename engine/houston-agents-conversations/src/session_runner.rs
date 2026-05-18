@@ -7,10 +7,10 @@ use crate::session_id_tracker::SessionIdHandle;
 use crate::session_pids::SessionPidMap;
 use houston_db::Database;
 use houston_terminal_manager::auth_error::{is_auth_error, is_auth_retry_marker};
-use houston_terminal_manager::provider_auth::{probe_claude_auth_status, ProviderAuthState};
+use houston_terminal_manager::provider_auth::ProviderAuthState;
 use houston_terminal_manager::{FeedItem, Provider, SessionManager, SessionStatus, SessionUpdate};
 use houston_ui_events::{DynEventSink, HoustonEvent};
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 /// Result of a completed session.
 pub struct SessionResult {
@@ -53,9 +53,13 @@ fn classify_auth_feed_message(provider: Provider, message: &str) -> AuthFeedActi
 }
 
 async fn provider_auth_state(provider: Provider) -> ProviderAuthState {
-    match provider {
-        Provider::Anthropic => probe_claude_auth_status(Path::new("claude")).await,
-        Provider::OpenAI => ProviderAuthState::Unknown,
+    // Probe via the resolved CLI path so each provider's auth check is
+    // colocated with its adapter. Providers without a resolvable CLI
+    // return `Unknown`, matching the pre-refactor codex behavior.
+    let (_, cli_path) = provider.resolve();
+    match cli_path {
+        Some(path) => provider.probe_auth(&path).await,
+        None => ProviderAuthState::Unknown,
     }
 }
 
@@ -402,6 +406,12 @@ fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
             Some(("file_changes".into(), data.to_string()))
         }
         FeedItem::Thinking(t) => Some(("thinking".into(), json_str(t))),
+        FeedItem::ProviderError(err) => {
+            // Persist the typed wire shape so resumed conversations
+            // re-render the same card.
+            let data = serde_json::to_string(err).unwrap_or_else(|_| "null".into());
+            Some(("provider_error".into(), data))
+        }
         // Skip streaming items — they get replaced by finals.
         FeedItem::AssistantTextStreaming(_) | FeedItem::ThinkingStreaming(_) => None,
     }
@@ -412,7 +422,7 @@ fn json_str(s: &str) -> String {
 }
 
 fn is_opaque_claude_auth_error(provider: Provider, message: &str) -> bool {
-    provider == Provider::Anthropic && message.trim() == "Error: Unknown error"
+    provider.id() == "anthropic" && message.trim() == "Error: Unknown error"
 }
 
 fn restore_pending_user_message(current: &mut Option<String>, original: &Option<String>) {
@@ -425,10 +435,17 @@ fn restore_pending_user_message(current: &mut Option<String>, original: &Option<
 mod tests {
     use super::*;
 
+    fn anthropic() -> Provider {
+        "anthropic".parse().unwrap()
+    }
+    fn openai() -> Provider {
+        "openai".parse().unwrap()
+    }
+
     #[test]
     fn opaque_claude_result_error_requires_status_verification() {
         assert_eq!(
-            classify_auth_feed_message(Provider::Anthropic, "Error: Unknown error"),
+            classify_auth_feed_message(anthropic(), "Error: Unknown error"),
             AuthFeedAction::VerifyProviderStatus
         );
     }
@@ -436,7 +453,7 @@ mod tests {
     #[test]
     fn identifies_opaque_claude_auth_error_shape() {
         assert!(is_opaque_claude_auth_error(
-            Provider::Anthropic,
+            anthropic(),
             "Error: Unknown error"
         ));
     }
@@ -444,7 +461,7 @@ mod tests {
     #[test]
     fn does_not_treat_codex_unknown_error_as_auth() {
         assert!(!is_opaque_claude_auth_error(
-            Provider::OpenAI,
+            openai(),
             "Error: Unknown error"
         ));
     }
@@ -452,7 +469,7 @@ mod tests {
     #[test]
     fn codex_retry_marker_defers_auth_required_until_exit() {
         assert_eq!(
-            classify_auth_feed_message(Provider::OpenAI, "__auth_retry__"),
+            classify_auth_feed_message(openai(), "__auth_retry__"),
             AuthFeedAction::DeferUntilExit
         );
     }
@@ -461,7 +478,7 @@ mod tests {
     fn codex_terminal_auth_message_requires_auth_now() {
         assert_eq!(
             classify_auth_feed_message(
-                Provider::OpenAI,
+                openai(),
                 "Error: unexpected status 401 Unauthorized: Missing bearer"
             ),
             AuthFeedAction::RequireNow

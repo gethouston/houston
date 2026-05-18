@@ -355,6 +355,7 @@ export interface PreferenceValue {
   value: string | null;
 }
 
+
 /**
  * Known preference keys. Free-form strings are still allowed — this alias
  * just documents the well-known keys and gives consumers completion.

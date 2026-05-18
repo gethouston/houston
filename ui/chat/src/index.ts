@@ -1,5 +1,13 @@
 // === Types ===
-export type { FeedItem, RunStatus, ToolRuntimeErrorEntry } from "./types";
+export type {
+  FeedItem,
+  RunStatus,
+  ToolRuntimeErrorEntry,
+  ProviderError,
+  QuotaScope,
+  ModelUnavailableReason,
+  AuthFailureCause,
+} from "./types";
 export type {
   ToolEntry,
   ChatMessage,
