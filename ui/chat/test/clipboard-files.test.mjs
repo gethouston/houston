@@ -142,10 +142,17 @@ test("filesFromClipboardData tolerates null and undefined", () => {
 test("dedupe keeps distinct unnamed images that share size and mtime", () => {
   // Same byte length + same lastModified + empty name: only the MIME type
   // tells them apart. The shared identity triple alone would over-merge.
+  // Both files arrive via items (the primary source) — realistic when a
+  // clipboard entry exposes multiple image formats simultaneously.
   const png = new File(["x"], "", { type: "image/png", lastModified: 7 });
   const jpg = new File(["x"], "", { type: "image/jpeg", lastModified: 7 });
 
-  const out = filesFromClipboardData({ files: [png], items: [{ kind: "file", getAsFile: () => jpg }] });
+  const out = filesFromClipboardData({
+    items: [
+      { kind: "file", getAsFile: () => png },
+      { kind: "file", getAsFile: () => jpg },
+    ],
+  });
 
   assert.equal(out.length, 2);
   assert.match(out[0].name, /^pasted-\d+-0\.png$/);
@@ -216,4 +223,20 @@ test("resolveClipboardPaste ignores text-only and empty clipboards", () => {
     "ignore",
   );
   assert.equal(resolveClipboardPaste(null).kind, "ignore");
+});
+
+test("filesFromClipboardItems skips items where getAsFile() returns null", () => {
+  const image = new File(["png"], "shot.png", { type: "image/png" });
+  assert.deepEqual(
+    filesFromClipboardItems([
+      { kind: "file", getAsFile: () => null },
+      { kind: "file", getAsFile: () => image },
+    ]),
+    [image],
+  );
+});
+
+test("filesFromClipboardData falls back to files when items is null", () => {
+  const image = new File(["jpg"], "photo.jpg", { type: "image/jpeg" });
+  assert.deepEqual(filesFromClipboardData({ files: [image], items: null }), [image]);
 });

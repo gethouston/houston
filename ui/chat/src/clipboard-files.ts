@@ -71,14 +71,16 @@ export function filesFromClipboardData(
   data: ClipboardFileData | null | undefined,
 ): File[] {
   if (!data) return [];
-  // Dedupe before naming: the same pasted file is commonly exposed via BOTH
-  // `files` and `items`; naming first would mask that overlap. The index is
-  // the post-dedupe position, so multiple unnamed files in one paste get
-  // distinct generated names instead of colliding.
-  return uniqueFiles([
-    ...filesFromClipboardList(data.files),
-    ...filesFromClipboardItems(data.items),
-  ]).map((file, index) => ensureFileName(file, index));
+  // `items` is the primary source: it's a superset of `files` and the two
+  // often expose the same clipboard entry as different File objects with
+  // different `lastModified` timestamps, causing dedup to fail and the same
+  // image to appear twice. Use `items` when it yields anything; fall back to
+  // `files` only for environments that don't support the items API.
+  const candidates = filesFromClipboardItems(data.items);
+  const raw = candidates.length > 0 ? candidates : filesFromClipboardList(data.files);
+  // Index is post-dedupe so multiple unnamed files in one paste get distinct
+  // generated names instead of colliding.
+  return uniqueFiles(raw).map((file, index) => ensureFileName(file, index));
 }
 
 const EXT_FROM_MIME: Record<string, string> = {
