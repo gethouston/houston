@@ -9,6 +9,7 @@
 //! operations. Mirrors the existing `pick_directory` pattern in `os.rs`.
 
 use std::path::PathBuf;
+#[cfg(any(target_os = "macos", target_os = "windows"))]
 use tokio::process::Command;
 
 #[cfg(target_os = "macos")]
