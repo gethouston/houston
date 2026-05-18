@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Houston Engine Design — The Guide</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html" class="active"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content hero">
+    <div class="content-label">Houston · Engine Design Guide</div>
+    <h1>How the engine actually works.</h1>
+    <p class="lead">
+      A walkthrough of every piece of Houston, what it does today, what it
+      will do tomorrow, and the reason for every decision in between. Read
+      it, present it, edit it as we go.
+    </p>
+
+    <div class="hero-actions">
+      <a class="btn btn-primary" href="01-three-layers.html">Start reading</a>
+      <a class="btn btn-secondary" href="11-roadmap.html">Jump to roadmap</a>
+    </div>
+
+    <h2 style="margin-top: 80px">Reading legend</h2>
+    <p>Each chapter has a status pill. Three states, color-coded.</p>
+    <ul>
+      <li><span class="status shipped">Shipped</span> already in the codebase today.</li>
+      <li><span class="status partial">Partial</span> some of it works, the rest is on the plan.</li>
+      <li><span class="status planned">Planned</span> the design is decided, the code is not yet written.</li>
+      <li><span class="status progress">In progress</span> actively being built right now.</li>
+    </ul>
+
+    <h2>The chapters</h2>
+
+    <div class="chapter-grid">
+      <a class="chapter-card" href="01-three-layers.html">
+        <div class="chapter-num">01 <span class="status shipped">Shipped</span></div>
+        <div class="chapter-title">The three layers</div>
+        <div class="chapter-desc">Desktop app, engine, agents. Three pieces, one architecture.</div>
+      </a>
+
+      <a class="chapter-card" href="02-agent-folder.html">
+        <div class="chapter-num">02 <span class="status shipped">Shipped</span></div>
+        <div class="chapter-title">An agent is a folder</div>
+        <div class="chapter-desc">No databases, no proprietary formats. Just files on disk.</div>
+      </a>
+
+      <a class="chapter-card" href="03-where-engine-lives.html">
+        <div class="chapter-num">03 <span class="status planned">Planned</span></div>
+        <div class="chapter-title">Where the engine lives</div>
+        <div class="chapter-desc">Inside a Linux microVM. Same on your laptop and in our cloud.</div>
+      </a>
+
+      <a class="chapter-card" href="04-message-flow.html">
+        <div class="chapter-num">04 <span class="status partial">Partial</span></div>
+        <div class="chapter-title">How a message flows through</div>
+        <div class="chapter-desc">The full chat-turn sequence. The most important diagram.</div>
+      </a>
+
+      <a class="chapter-card" href="05-conversations-die.html">
+        <div class="chapter-num">05 <span class="status planned">Planned</span></div>
+        <div class="chapter-title">Why conversations die today</div>
+        <div class="chapter-desc">Four failure modes. Same root cause.</div>
+      </a>
+
+      <a class="chapter-card" href="06-four-tables.html">
+        <div class="chapter-num">06 <span class="status planned">Planned</span></div>
+        <div class="chapter-title">The four tables that save everything</div>
+        <div class="chapter-desc">The whole reliability story. Not Temporal. Just SQLite.</div>
+      </a>
+
+      <a class="chapter-card" href="07-keeping-agents-apart.html">
+        <div class="chapter-num">07 <span class="status planned">Planned</span></div>
+        <div class="chapter-title">Keeping agents apart</div>
+        <div class="chapter-desc">Three independent walls. Kernel-enforced isolation.</div>
+      </a>
+
+      <a class="chapter-card" href="08-login.html">
+        <div class="chapter-num">08 <span class="status partial">Partial</span></div>
+        <div class="chapter-title">Logging in (still one click)</div>
+        <div class="chapter-desc">Per-agent OAuth without breaking the UX.</div>
+      </a>
+
+      <a class="chapter-card" href="09-external-triggers.html">
+        <div class="chapter-num">09 <span class="status partial">Partial</span></div>
+        <div class="chapter-title">External triggers</div>
+        <div class="chapter-desc">Messages, crons, webhooks. Three ways to wake an agent.</div>
+      </a>
+
+      <a class="chapter-card" href="10-deployment.html">
+        <div class="chapter-num">10 <span class="status planned">Planned</span></div>
+        <div class="chapter-title">Deployment: one binary, two homes</div>
+        <div class="chapter-desc">Same engine on your laptop and in Houston Cloud.</div>
+      </a>
+
+      <a class="chapter-card" href="11-roadmap.html">
+        <div class="chapter-num">11 <span class="status progress">In progress</span></div>
+        <div class="chapter-title">The roadmap</div>
+        <div class="chapter-desc">Three milestones from MVP to Houston Cloud.</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document · Edit as decisions get made.</div>
+</footer>
+
+</body>
+</html>

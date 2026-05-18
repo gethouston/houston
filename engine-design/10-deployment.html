@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deployment — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html" class="active"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 10
+      <span class="status planned">Planned · M3</span>
+    </div>
+    <h1>Deployment: one binary, two homes.</h1>
+    <p class="lead">
+      Same engine binary. Two deployment modes. Almost zero divergence
+      between them. The only difference is whose computer the VM runs on.
+    </p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+graph LR
+  subgraph Desktop["Desktop Mode"]
+    DS["Desktop Shell"]
+    DV["Linux microVM"]
+    DE["houston-engine"]
+    DS --> DV --> DE
+  end
+
+  subgraph Cloud["Cloud Mode"]
+    Relay["Houston Relay<br/>(CF Worker + DO)"]
+    Fly["Fly Machine<br/>(Linux microVM)"]
+    CE["houston-engine"]
+    Relay --> Fly --> CE
+  end
+
+  DE -.same binary.-> CE
+      </pre>
+      <div class="caption">The engine binary is byte-for-byte the same. Only the host changes.</div>
+    </div>
+
+    <h2>Desktop mode</h2>
+    <p>
+      Inside a Linux microVM on your laptop. The microVM lives next to
+      your desktop shell. They talk over local networking. The engine
+      never crosses the VM boundary unless the shell explicitly bridges
+      something (file picker, OAuth callback, system browser).
+    </p>
+
+    <h2>Cloud mode</h2>
+    <p>
+      Inside a Linux microVM on Fly Machines (or similar). Each paying
+      customer gets their own VM. A relay outside knows how to wake a
+      sleeping VM when a user message, webhook, or scheduled cron
+      arrives.
+    </p>
+    <p>
+      The relay is the same one Houston already uses for mobile traffic
+      (<code>houston-relay/</code>, a Cloudflare Worker plus Durable
+      Objects on <code>tunnel.gethouston.ai</code>). Extending it to also
+      proxy general engine traffic and to dispatch wake-ups is the bulk
+      of M3.
+    </p>
+
+    <h2>What you get</h2>
+    <ul>
+      <li>One engine codebase, no forks, no per-platform builds beyond the small desktop shell.</li>
+      <li>Same tests, same behavior, same bugs and same fixes.</li>
+      <li>"Run your engine in our cloud" is literally <code>fly machines start</code>.</li>
+      <li>"Move from our cloud to your own VPS" is <code>docker pull && docker run</code>. Same image.</li>
+      <li>Pricing aligns if you bill per VM-hour: cloud customers pay you, desktop users pay their own machine, you meter the same unit.</li>
+    </ul>
+
+    <h2>Sleeping engines</h2>
+    <p>
+      For cloud mode, engines sleep after N idle minutes. They exit 0
+      gracefully. The relay holds the connection from the next inbound
+      request, calls the platform's start API, polls
+      <code>/v1/health</code>, then proxies through. Cold start: ~2
+      seconds. Acceptable for crons and webhooks; for active human chats,
+      engines stay sticky-hot during a session window.
+    </p>
+
+    <div class="callout callout-success">
+      <div class="callout-label">The killer property</div>
+      <p>You can no longer have a "works on my Mac" bug, because there is no Mac engine. Every engine is the same Linux engine.</p>
+    </div>
+
+    <div class="tech-box">
+      <div class="label">What's there already</div>
+      <p>Always-on Docker recipe: <code>always-on/Dockerfile</code> and <code>docker-compose.yml</code>. Relay: <code>houston-relay/</code>. Tunnel client crate: <code>engine/houston-tunnel</code>. What's missing: VM-management code in the desktop shell, wake API in the relay, idle-exit logic in the engine.</p>
+    </div>
+
+    <div class="pager">
+      <a href="09-external-triggers.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">External triggers</div>
+      </a>
+      <a href="11-roadmap.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">The roadmap</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#ffffff',
+      primaryTextColor: '#0d0d0d',
+      primaryBorderColor: '#cdcdcd',
+      lineColor: '#676767',
+      mainBkg: '#ffffff',
+      secondBkg: '#f9f9f9',
+      tertiaryBkg: '#ececec'
+    }
+  });
+</script>
+
+</body>
+</html>

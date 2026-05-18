@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Logging in — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html" class="active"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 08
+      <span class="status partial">Partial</span>
+    </div>
+    <h1>Logging in (still one click).</h1>
+    <p class="lead">
+      Per-agent credentials sound expensive in clicks. They aren't. The
+      user clicks once per agent. The OAuth dance happens under the hood.
+    </p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+sequenceDiagram
+  autonumber
+  actor User
+  participant UI as Desktop UI
+  participant Shell as Desktop Shell
+  participant E as Engine (in VM)
+  participant CLI as claude login<br/>(as hou_sales)
+  participant Browser as System Browser
+  participant Anthropic
+
+  User->>UI: click "Log into Claude for Sales"
+  UI->>E: POST /v1/agents/Sales/providers/anthropic/login
+  E->>CLI: spawn as hou_sales
+  CLI-->>E: print login URL
+  E-->>Shell: open URL via deep-link bridge
+  Shell->>Browser: open URL
+  User->>Anthropic: log in
+  Anthropic-->>Browser: redirect houston://anthropic-callback?code=...
+  Browser-->>Shell: deep link delivered
+  Shell->>E: POST callback code
+  E->>CLI: pass code
+  CLI->>Anthropic: exchange for token
+  CLI->>CLI: save to /home/hou_sales/.claude/
+  E-->>UI: WS event "Sales logged in"
+      </pre>
+      <div class="caption">One click for the user. About three redirects under the hood.</div>
+    </div>
+
+    <h2>The pattern is already in Houston</h2>
+    <p>
+      This is the exact pattern Houston already uses for Google sign-in
+      via Supabase. A click in the UI starts an OAuth flow. The system
+      browser does the work. A custom URL scheme
+      (<code>houston://...</code>) brings the result back into the app.
+    </p>
+    <p>
+      The only new piece for the VM-based architecture is the
+      <strong>deep-link bridge</strong> between the desktop shell and the
+      VM. The shell catches the redirect, then posts the code over the
+      VM's local network to the engine.
+    </p>
+
+    <h2>Per agent vs broker</h2>
+    <p>
+      Two flavors of UX, both compatible with the same plumbing.
+    </p>
+    <ul>
+      <li><strong>Strict:</strong> log into Claude once per agent. Strongest isolation. Costs you N clicks for N agents.</li>
+      <li><strong>Broker:</strong> log into Claude once for the whole machine. The engine brokers tokens to individual agents. One click forever. Slightly weaker isolation because the broker has all tokens.</li>
+    </ul>
+    <p>
+      Which one ships first is an open question. The strict path is
+      simpler to build and the broker can be added later without breaking
+      the strict mode.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">What works today</div>
+      <p>Single-account Anthropic, OpenAI, and Composio logins all work today, but they're machine-wide, not per-agent. Once Chapter 7 ships (per-agent UIDs), per-agent logins land naturally.</p>
+    </div>
+
+    <div class="pager">
+      <a href="07-keeping-agents-apart.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Keeping agents apart</div>
+      </a>
+      <a href="09-external-triggers.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">External triggers</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#ffffff',
+      primaryTextColor: '#0d0d0d',
+      primaryBorderColor: '#cdcdcd',
+      lineColor: '#676767',
+      actorBkg: '#ffffff',
+      actorBorder: '#cdcdcd',
+      actorTextColor: '#0d0d0d',
+      labelBoxBkgColor: '#f9f9f9',
+      labelBoxBorderColor: '#cdcdcd'
+    }
+  });
+</script>
+
+</body>
+</html>

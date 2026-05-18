@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The four tables — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html" class="active"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 06
+      <span class="status planned">Planned · M1</span>
+    </div>
+    <h1>The four tables that save everything.</h1>
+    <p class="lead">
+      Four new SQLite tables. That's the entire reliability story. Not
+      Temporal, not a workflow engine. Just four tables and one rule:
+      write the row before doing the work.
+    </p>
+
+    <h2>The tables</h2>
+    <table>
+      <thead>
+        <tr><th>Table</th><th>What it holds</th><th>What it fixes</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>turns</code></td>
+          <td>Every chat turn, with status</td>
+          <td>Crash before CLI spawns. Retry is idempotent via <code>turn_id</code>.</td>
+        </tr>
+        <tr>
+          <td><code>turn_stream</code></td>
+          <td>Every assistant token chunk, with seq</td>
+          <td>Reconnect with <code>since_seq</code>, perfect replay.</td>
+        </tr>
+        <tr>
+          <td><code>events_outbox</code></td>
+          <td>Every event with a monotonic seq</td>
+          <td>WS clients reconnect and get the gap they missed.</td>
+        </tr>
+        <tr>
+          <td><code>cron_runs</code></td>
+          <td>Every cron fire (or missed fire)</td>
+          <td>Missed at 7am, caught up on next boot.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h2>The rule</h2>
+    <p>
+      Write the row before doing the work. Mark it complete after. Here is
+      what that looks like for a single chat turn.
+    </p>
+
+<pre><code>1. Accept message       → INSERT turns (status: queued)
+2. Start CLI            → UPDATE turns SET status = running
+3. Stream chunk         → INSERT turn_stream row, then broadcast
+4. CLI done             → UPDATE turns SET status = completed
+5. Engine boots         → SELECT * FROM turns WHERE status = running
+                          → mark orphaned, surface retry</code></pre>
+
+    <p>
+      Step 5 is the magic. On every boot, the engine looks for turns that
+      were "running" when the previous engine died. Those are orphans. The
+      user sees a retry button. They click it. The same <code>turn_id</code>
+      goes back into the system. We never accidentally cook the same dish
+      twice because the engine recognizes the ID and resumes.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">Why this isn't Temporal</div>
+      <p>Temporal is a workflow engine for orchestrating long-running multi-step business processes with replay semantics. Houston has one activity: run a CLI turn, capture the stream. That's a job, not a saga. Four tables are enough.</p>
+    </div>
+
+    <h2>The one architectural piece</h2>
+    <p>
+      Everything above is just "add a table". One piece is genuinely
+      harder. Today the CLI subprocess is a child of the engine process,
+      so killing the engine kills the CLI. To survive engine restart
+      <strong>mid-stream</strong> (not just on the next turn), we need a
+      small <code>houston-turn-worker</code> binary.
+    </p>
+    <p>
+      The engine spawns it detached. The worker writes streaming output to
+      SQLite directly. The engine bounces, a new engine starts up,
+      reattaches via Unix socket, conversation never blinks.
+    </p>
+    <p>
+      This piece is M3. Until then, the cheap fallback (orphan + retry)
+      gets you 70% of the user experience for 10% of the work.
+    </p>
+
+    <div class="tech-box">
+      <div class="label">Migration order</div>
+      <p>SQLite migrations live in <code>engine/houston-db/src/migrations.rs</code>. New tables drop in next to existing <code>chat_feed</code>, <code>preferences</code>, and <code>engine_tokens</code>. Each gets a numbered migration file; existing data is preserved.</p>
+    </div>
+
+    <div class="pager">
+      <a href="05-conversations-die.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Why conversations die today</div>
+      </a>
+      <a href="07-keeping-agents-apart.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">Keeping agents apart</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

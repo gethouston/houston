@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Keeping agents apart — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html" class="active"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 07
+      <span class="status planned">Planned · M2</span>
+    </div>
+    <h1>Keeping agents apart.</h1>
+    <p class="lead">
+      Three independent walls between agents. Each one is enough to stop a
+      curious agent from snooping. Together, they make accidental and
+      adversarial cross-agent reads impossible.
+    </p>
+
+    <div class="walls">
+      <div class="agent-col">
+        <h4>Sales agent</h4>
+        <ul>
+          <li>Linux user: <code>hou_sales</code></li>
+          <li>Folder: <code>/agents/sales/</code> (mode 0700)</li>
+          <li>Claude login: <code>/home/hou_sales/.claude/</code></li>
+          <li>Composio: <code>/home/hou_sales/.composio/</code></li>
+          <li>Tools: Slack, CRM, Email</li>
+        </ul>
+      </div>
+      <div class="wall">
+        <span>NO ACCESS</span>
+      </div>
+      <div class="agent-col">
+        <h4>HR agent</h4>
+        <ul>
+          <li>Linux user: <code>hou_hr</code></li>
+          <li>Folder: <code>/agents/hr/</code> (mode 0700)</li>
+          <li>Claude login: <code>/home/hou_hr/.claude/</code></li>
+          <li>Composio: <code>/home/hou_hr/.composio/</code></li>
+          <li>Tools: Payroll, Benefits, Workday</li>
+        </ul>
+      </div>
+    </div>
+
+    <h2>Wall 1: per-agent Linux user</h2>
+    <p>
+      Each agent gets its own Linux user inside the VM. Their folders are
+      owned by them, mode 0700. When you send a message to the Sales
+      agent, the CLI runs as <code>hou_sales</code>. It physically cannot
+      read <code>hou_hr</code>'s files. The kernel says no.
+    </p>
+    <p>
+      Even if a clever prompt asks the Sales agent to read HR salary data,
+      the agent has no permission. There is no jailbreak that gets around
+      <code>chmod</code>.
+    </p>
+
+    <h2>Wall 2: per-agent credentials</h2>
+    <p>
+      Each agent has its own <code>~/.claude</code>, its own
+      <code>~/.composio</code>, its own everything. When Sales logs into
+      Anthropic, the token sits in <code>/home/hou_sales/.claude/</code>.
+      HR can't see it.
+    </p>
+    <p>
+      Even if Sales gets compromised, its blast radius is bounded by what
+      it had access to. It can't social-engineer its way to HR data
+      because it doesn't have the keys to start with.
+    </p>
+
+    <h2>Wall 3: engine-level scope checks</h2>
+    <p>
+      On top of the file walls, every HTTP route checks "does this user's
+      token have scope for this agent?" before doing anything. A user
+      with Sales access trying to query HR's data gets a 403 before the
+      engine even reaches for the filesystem.
+    </p>
+    <p>
+      Tokens become typed:
+      <code>(token_id, principal_id, scope: ["WorkspaceX/Sales/**"])</code>.
+      Middleware enforces. New tables: <code>principals</code> and
+      <code>principal_tokens</code> in <code>houston-db</code>.
+    </p>
+
+    <div class="callout callout-success">
+      <div class="callout-label">The headline</div>
+      <p>"My HR agent literally cannot leak salaries to my Sales agent, even if jailbroken." That isn't marketing copy. That's what the kernel enforces.</p>
+    </div>
+
+    <h2>Where this matters</h2>
+    <p>
+      This is a real positioning win for regulated industries. ChatGPT
+      Enterprise and Claude Teams put everyone in one tenant with one set
+      of permissions. Houston's per-agent isolation is something they
+      don't offer.
+    </p>
+
+    <div class="tech-box">
+      <div class="label">What changes in code</div>
+      <p>New auth middleware in <code>engine/houston-engine-server</code>. New tables in <code>engine/houston-db</code>. CLI spawn in <code>engine/houston-terminal-manager</code> gains a <code>setuid</code> step (Linux only; gated by <code>HOUSTON_ISOLATE_BY_UID=1</code>). Per-agent home dir resolution in <code>houston-agent-files</code>.</p>
+    </div>
+
+    <div class="pager">
+      <a href="06-four-tables.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">The four tables</div>
+      </a>
+      <a href="08-login.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">Logging in</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

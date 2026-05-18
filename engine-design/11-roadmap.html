@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The roadmap — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html" class="active"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 11
+      <span class="status progress">In progress</span>
+    </div>
+    <h1>The roadmap.</h1>
+    <p class="lead">
+      Three milestones. Each one roughly two to four weeks at current
+      shipping pace. Each one ships before the next one starts.
+    </p>
+
+    <h2>M1 — Reliability</h2>
+    <p>
+      <strong>Goal:</strong> conversations never drop bytes. The "my
+      message disappeared" failure mode goes away. Every byte the user
+      sees is journaled before broadcast.
+    </p>
+    <ul>
+      <li>Add four SQLite tables: <code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, <code>cron_runs</code>.</li>
+      <li>Write rows BEFORE doing work. Sweep orphans on boot.</li>
+      <li>WebSocket replay by sequence number on reconnect.</li>
+      <li>Cron audit log plus missed-fire catch-up policy.</li>
+    </ul>
+    <p>
+      Mostly inserts and middleware. No architectural change. About 2-3
+      weeks.
+    </p>
+
+    <h2>M2 — Auth and isolation</h2>
+    <p>
+      <strong>Goal:</strong> multi-tenant safety. Two humans can share an
+      engine without leaking into each other. Per-agent credentials.
+    </p>
+    <ul>
+      <li>Typed tokens with scope: <code>(principal_id, scope)</code> on every route.</li>
+      <li>Per-agent Linux users inside the VM (one-time automated <code>useradd</code>).</li>
+      <li>Per-agent credentials (per-agent <code>.claude</code>, <code>.composio</code>).</li>
+      <li>VM-based desktop spin-up, replacing the native sidecar model.</li>
+    </ul>
+    <p>
+      Middleware plus a new system layer. About 3-4 weeks.
+    </p>
+
+    <h2>M3 — Cloud and detached workers</h2>
+    <p>
+      <strong>Goal:</strong> Houston Cloud is shippable. Engine bounces
+      don't kill conversations. Sleeping engines wake on demand.
+    </p>
+    <ul>
+      <li>Detached <code>houston-turn-worker</code> binary so engine restart doesn't kill in-flight turns.</li>
+      <li><code>POST /v1/hooks/&lt;route_token&gt;</code> wired to the event queue.</li>
+      <li>Engine knows how to exit gracefully on idle.</li>
+      <li>Relay knows how to wake a dormant engine via Fly Machines API.</li>
+      <li>Cron moves to a central scheduler service for hosted mode.</li>
+      <li>Per-customer Fly Machine provisioning and onboarding.</li>
+    </ul>
+    <p>
+      The only milestone with real architectural risk (the detached
+      worker). About 4 weeks.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">Open questions to settle before each milestone</div>
+      <p><strong>Before M2:</strong> per-agent Claude logins, or a credentials broker for one-login-many-agents?</p>
+      <p><strong>Before M3:</strong> cron in-engine forever, or move to a central scheduler even for self-hosters? Where does the OSS-vs-cloud line sit for the relay code?</p>
+    </div>
+
+    <h2>After M3</h2>
+    <p>
+      Houston Cloud private beta is shippable. The desktop story is the
+      same architecture as the cloud story, just running on the user's
+      hardware. Pricing aligns (per VM-hour or per agent-month, decide
+      then). Teams becomes a thin layer on top of the per-customer-VM
+      story.
+    </p>
+
+    <div class="pager">
+      <a href="10-deployment.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Deployment</div>
+      </a>
+      <a href="index.html" class="next">
+        <div class="pager-label">Back to start</div>
+        <div class="pager-title">Overview</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

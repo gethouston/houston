@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>External triggers — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html" class="active"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 09
+      <span class="status partial">Partial</span>
+    </div>
+    <h1>External triggers.</h1>
+    <p class="lead">
+      Three ways something outside Houston can wake up an agent. Two of
+      them work today. One is half-built.
+    </p>
+
+    <h2>1. The user sends a message</h2>
+    <p>
+      Standard chat. The desktop UI calls
+      <code>POST /v1/agents/&lt;path&gt;/sessions</code>. The engine
+      spawns a CLI subprocess, the response streams back. This is what
+      Chapter 4 covers. Works today.
+    </p>
+
+    <h2>2. A cron fires</h2>
+    <p>
+      Each agent has routines. <code>0 7 * * *</code> runs at 7am every
+      day. Today the cron lives inside the engine. A tokio task sleeps
+      until the fire time, then pushes a <code>HoustonInput::Cron</code>
+      onto the event queue, which dispatches to the same chat-turn path.
+    </p>
+    <p>
+      This works as long as the engine is up. For sleeping cloud engines
+      (Chapter 10), the cron will move to a central scheduler that wakes
+      the engine when the time comes.
+    </p>
+
+    <h2>3. A webhook arrives</h2>
+    <p>
+      Stripe sends a payment event. Slack sends a message. GitHub sends a
+      PR notification. Each one routed to a specific agent.
+    </p>
+    <p>
+      The plumbing exists. The engine has a typed
+      <code>HoustonInput::Webhook</code> enum, and the dispatcher knows
+      how to route it. What's missing is the HTTP route that constructs
+      one. Adding <code>POST /v1/hooks/&lt;route_token&gt;</code> is small
+      work that unlocks a huge surface.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">Per-hook tokens, not the bearer token</div>
+      <p>Each webhook gets its own route token, separate from the engine bearer. Stripe's token only fires the Stripe hook. A compromised Stripe token lets the attacker fake payment events but doesn't let them read your chat history.</p>
+    </div>
+
+    <h2>Wake-on-event for sleeping engines</h2>
+    <p>
+      Once the engine learns to sleep (Chapter 10), the relay in front
+      will catch inbound triggers, wake the engine via the platform API
+      (Fly Machines, systemd socket activation, etc), wait for
+      <code>/v1/health</code> to respond, then proxy the request through.
+    </p>
+    <p>
+      Cron, user message, and webhook all share that same wake-up path.
+      One mechanism, three triggers.
+    </p>
+
+    <div class="tech-box">
+      <div class="label">Where to look in the code</div>
+      <p>Webhook input type: <code>engine/houston-events/src/queue.rs:25-104</code>. Cron implementation: <code>engine/houston-scheduler/src/cron_job.rs</code>. Missing piece for webhooks: a <code>routes/hooks.rs</code> file in <code>engine/houston-engine-server/</code>.</p>
+    </div>
+
+    <div class="pager">
+      <a href="08-login.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Logging in</div>
+      </a>
+      <a href="10-deployment.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">Deployment</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

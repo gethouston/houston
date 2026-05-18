@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Where the engine lives — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html" class="active"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 03
+      <span class="status planned">Planned</span>
+    </div>
+    <h1>Where the engine lives.</h1>
+    <p class="lead">
+      Today the engine runs natively on Mac, Windows, and Linux. Three
+      builds. Three sandboxing models. Going forward, the engine always
+      runs inside a Linux microVM.
+    </p>
+
+    <h2>The shift</h2>
+    <p>
+      When you install Houston on your Mac, the desktop app spins up a
+      tiny Linux VM and runs the engine inside it. When you sign up for
+      Houston Cloud, a tiny Linux VM is provisioned for you in the cloud
+      and the same engine runs inside it.
+    </p>
+    <p>
+      The engine binary is byte-for-byte the same. The only difference is
+      whose computer the VM runs on.
+    </p>
+
+    <div class="diagram">
+      <pre class="mermaid">
+graph TB
+  subgraph Host["Your Mac / Windows / Linux"]
+    Shell["Desktop Shell<br/>(Tauri, ~2k LOC per OS)"]
+    subgraph VM["Linux microVM"]
+      Engine["houston-engine<br/>(one Linux binary)"]
+      A1["Agent A"]
+      A2["Agent B"]
+      Engine --> A1
+      Engine --> A2
+    end
+    Shell -.HTTP+WS.-> Engine
+  end
+      </pre>
+      <div class="caption">Same picture for desktop and cloud. Only "Host" changes.</div>
+    </div>
+
+    <h2>Why a VM. Four reasons.</h2>
+    <ol>
+      <li><strong>One binary.</strong> No more Mac, Windows, and Linux builds of the engine. Linux only.</li>
+      <li><strong>One sandbox model.</strong> Linux primitives. <code>landlock</code>, namespaces, per-user permissions. No more <code>sandbox-exec</code> on Mac and AppContainer on Windows.</li>
+      <li><strong>Identical to production.</strong> What runs on your laptop is bit-identical to what runs in our cloud. Zero "works on my machine".</li>
+      <li><strong>Strong isolation.</strong> A VM is a kernel-level wall between Houston and the rest of your computer. Your kid can't accidentally delete the wrong file. An accidentally-installed agent can't read your bank statements.</li>
+    </ol>
+
+    <h2>The cost</h2>
+    <p>
+      About 2 seconds of cold start when you open the app, and roughly
+      100MB of extra memory. We think it's worth it for the simplicity and
+      the security story.
+    </p>
+
+    <h2>Files live inside the VM</h2>
+    <p>
+      The VM has its own disk volume. All agent files, project files,
+      everything lives inside the VM. The host doesn't see them. No
+      virtio-fs file sharing, no performance penalty.
+    </p>
+    <p>
+      To import a folder, you drop it in via the app. It copies in once.
+      To export, you download via the app. To back up, you snapshot the
+      volume.
+    </p>
+
+    <div class="callout callout-success">
+      <div class="callout-label">The big simplification</div>
+      <p>Desktop and cloud become the same architecture. The only difference is whose computer the VM runs on.</p>
+    </div>
+
+    <div class="tech-box">
+      <div class="label">VM hypervisors per host OS</div>
+      <p>macOS: Apple <code>Virtualization.framework</code>. Windows: Hyper-V or Windows Hypervisor Platform. Linux: KVM via libvirt. Each is wrapped behind a small platform-specific helper in the desktop shell.</p>
+    </div>
+
+    <div class="pager">
+      <a href="02-agent-folder.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">An agent is a folder</div>
+      </a>
+      <a href="04-message-flow.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">How a message flows through</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    themeVariables: {
+      primaryColor: '#ffffff',
+      primaryTextColor: '#0d0d0d',
+      primaryBorderColor: '#cdcdcd',
+      lineColor: '#676767',
+      mainBkg: '#ffffff',
+      secondBkg: '#f9f9f9',
+      tertiaryBkg: '#ececec',
+      actorBkg: '#ffffff',
+      actorBorder: '#cdcdcd',
+      actorTextColor: '#0d0d0d'
+    }
+  });
+</script>
+
+</body>
+</html>
