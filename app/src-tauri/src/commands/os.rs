@@ -149,8 +149,14 @@ pub async fn open_file(agent_path: String, relative_path: String) -> Result<(), 
     if !full.exists() {
         return Err(format!("File does not exist: {}", full.display()));
     }
-    spawn_default_open(&full.to_string_lossy())
-        .map_err(|e| format!("Failed to open file: {e}"))
+    // Relative paths arrive forward-slash per the engine's ProjectFile.path
+    // contract, and Path::join keeps them when appended to a backslash agent
+    // root. Some Windows shell handlers (notably Office) reject the mixed
+    // form, so normalize before handing off to `cmd /C start`.
+    let target = full.to_string_lossy();
+    #[cfg(target_os = "windows")]
+    let target = target.replace('/', "\\");
+    spawn_default_open(&target).map_err(|e| format!("Failed to open file: {e}"))
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -185,16 +191,21 @@ fn reveal_in_file_manager(path: &Path) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         // explorer.exe /select,<path> opens the parent folder with the
-        // file highlighted. Note: no quotes around the path arg — explorer
-        // parses the comma + path as a single token, and quoting it
-        // breaks the selection. Explorer also refuses mixed separators, so
-        // normalize / to \ first (relative paths arrive as forward-slash
-        // per the engine's ProjectFile.path contract, and Path::join keeps
-        // them when appended to a backslash agent root).
+        // file highlighted. Two Windows quirks to handle:
+        //   1. Explorer refuses mixed separators. Relative paths arrive
+        //      forward-slash per the engine's ProjectFile.path contract,
+        //      and Path::join keeps them when appended to a backslash
+        //      agent root, so the joined string is mixed. Normalize to \.
+        //   2. Command::arg auto-wraps any arg containing spaces in double
+        //      quotes on Windows. Explorer can't parse `"/select,...` —
+        //      the leading quote makes it ignore the verb and open the
+        //      default folder (Documents). Use raw_arg so the cmdline goes
+        //      out exactly as `/select,C:\path with space\file.txt`.
+        use std::os::windows::process::CommandExt;
         let native = path.to_string_lossy().replace('/', "\\");
         let select_arg = format!("/select,{native}");
         std::process::Command::new("explorer")
-            .arg(select_arg)
+            .raw_arg(&select_arg)
             .spawn()
             .map(|_| ())
             .map_err(|e| e.to_string())

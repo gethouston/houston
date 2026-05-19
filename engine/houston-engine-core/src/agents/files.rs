@@ -150,11 +150,6 @@ fn modified_millis(metadata: &std::fs::Metadata) -> Option<i64> {
     i64::try_from(since_epoch.as_millis()).ok()
 }
 
-fn modified_millis_of(path: &Path) -> Option<i64> {
-    let metadata = std::fs::metadata(path).ok()?;
-    modified_millis(&metadata)
-}
-
 /// List user-facing files in an agent folder. Returns an empty vec if the
 /// folder doesn't exist (matches legacy Tauri behaviour).
 pub fn list_project_files(agent_root: &Path) -> CoreResult<Vec<ProjectFile>> {
@@ -358,7 +353,7 @@ fn collect_files(root: &Path, dir: &Path, out: &mut Vec<ProjectFile>) {
                 continue;
             }
             let relative = relative_path_string(root, &path);
-            let date_modified = modified_millis_of(&path);
+            let date_modified = entry.metadata().ok().as_ref().and_then(modified_millis);
             out.push(ProjectFile {
                 path: relative,
                 name,
