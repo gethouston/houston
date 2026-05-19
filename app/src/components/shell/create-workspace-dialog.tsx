@@ -225,6 +225,7 @@ export function CreateAgentDialog() {
                         schedule: routine.schedule,
                         suppress_when_silent: true,
                         timezone: null,
+                        integrations: [],
                       }
                     : null,
                 );
