@@ -1,10 +1,11 @@
 import { useMemo } from "react";
 import { Input } from "@houston-ai/core";
-import { Search } from "lucide-react";
+import { Gift, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AgentDefinition, StoreListing } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { AgentCard, StoreAgentCard } from "./experience-card";
+import { useUIStore } from "../../stores/ui";
 
 interface StoreStepProps {
   search: string;
@@ -25,7 +26,9 @@ export function StoreStep({
   onInstall,
   onCreateWithAi,
 }: StoreStepProps) {
-  const { t } = useTranslation("shell");
+  const { t } = useTranslation(["shell", "portable"]);
+  const setImportOpen = useUIStore((s) => s.setImportFromFriendOpen);
+  const setCreateOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
 
   const storeIds = useMemo(
     () => new Set(storeCatalog.map((listing) => listing.id)),
@@ -90,7 +93,25 @@ export function StoreStep({
         data-tour-target="agentStore"
         className="flex-1 min-h-0 overflow-y-auto px-6 pb-6"
       >
-        {totalResults > 0 || !query ? (
+        <button
+          type="button"
+          onClick={() => {
+            setCreateOpen(false);
+            setImportOpen(true);
+          }}
+          className="w-full mb-3 rounded-xl border border-border/40 bg-secondary px-4 py-3 text-left hover:bg-accent transition-colors flex items-start gap-3"
+        >
+          <Gift className="size-5 text-foreground mt-0.5 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {t("portable:newAgent.fromFriendCard")}
+            </p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              {t("portable:newAgent.fromFriendDescription")}
+            </p>
+          </div>
+        </button>
+        {totalResults > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {!query && (
               <SkillCard

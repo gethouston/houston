@@ -149,3 +149,121 @@ pub fn set_status_by_session_key(
     write_json(root, FILE, &items)?;
     Ok(Some(result))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn seed_activity(root: &Path, session_key: Option<&str>, status: &str) -> Activity {
+        let activity = create(
+            root,
+            NewActivity {
+                title: "Test mission".into(),
+                description: String::new(),
+                agent: None,
+                worktree_path: None,
+                provider: None,
+                model: None,
+            },
+        )
+        .expect("create activity");
+        let updates = ActivityUpdate {
+            status: Some(status.to_string()),
+            session_key: session_key.map(str::to_string),
+            ..ActivityUpdate::default()
+        };
+        update(root, &activity.id, updates).expect("seed status")
+    }
+
+    #[test]
+    fn flips_running_to_needs_you_when_queued_turn_cancelled() {
+        // Repro of the "stuck on running" bug: the desktop UI optimistically
+        // writes status=running on send, then the queued turn is cancelled
+        // before run_start spawns the subprocess. set_status_by_session_key
+        // must reset the row to a terminal status so the board doesn't show
+        // a permanently-spinning mission.
+        let dir = tempfile::TempDir::new().unwrap();
+        let seeded = seed_activity(dir.path(), Some("chat-abc"), "running");
+
+        let result = set_status_by_session_key(dir.path(), "chat-abc", "needs_you")
+            .expect("status flip");
+
+        let updated = result.expect("matching activity found");
+        assert_eq!(updated.id, seeded.id);
+        assert_eq!(updated.status, "needs_you");
+
+        let persisted = list(dir.path()).unwrap();
+        assert_eq!(persisted.len(), 1);
+        assert_eq!(persisted[0].status, "needs_you");
+    }
+
+    #[test]
+    fn flips_running_to_error_when_start_fails_early() {
+        // Repro of the "stuck on running" bug on the early-failure path:
+        // run_start returns Err before reaching its end-flip, the outer
+        // wrapper must surface that as status=error on the activity row.
+        let dir = tempfile::TempDir::new().unwrap();
+        let seeded = seed_activity(dir.path(), Some("chat-xyz"), "running");
+
+        let result =
+            set_status_by_session_key(dir.path(), "chat-xyz", "error").expect("status flip");
+
+        let updated = result.expect("matching activity found");
+        assert_eq!(updated.id, seeded.id);
+        assert_eq!(updated.status, "error");
+    }
+
+    #[test]
+    fn matches_legacy_activity_id_when_session_key_missing() {
+        // Legacy rows created before `session_key` was persisted are
+        // addressable via the `activity-{id}` convention. The session
+        // lifecycle relies on this fallback to flip those rows out of
+        // their stale boot status.
+        let dir = tempfile::TempDir::new().unwrap();
+        let seeded = seed_activity(dir.path(), None, "running");
+        let legacy_key = format!("activity-{}", seeded.id);
+
+        let result = set_status_by_session_key(dir.path(), &legacy_key, "needs_you")
+            .expect("status flip");
+
+        let updated = result.expect("matching activity found via legacy id");
+        assert_eq!(updated.status, "needs_you");
+        // The fallback opportunistically backfills session_key so the next
+        // lookup hits the fast path.
+        assert_eq!(updated.session_key.as_deref(), Some(legacy_key.as_str()));
+    }
+
+    #[test]
+    fn returns_none_for_ad_hoc_session_with_no_board_row() {
+        // Ad-hoc sessions (no associated activity row) must not error —
+        // the lifecycle code paths interpret Ok(None) as "no row to
+        // flip" and continue.
+        let dir = tempfile::TempDir::new().unwrap();
+        seed_activity(dir.path(), Some("chat-other"), "running");
+
+        let result = set_status_by_session_key(dir.path(), "chat-nonexistent", "error")
+            .expect("call succeeds");
+
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn updates_timestamp_on_status_flip() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let seeded = seed_activity(dir.path(), Some("chat-ts"), "running");
+        let before = seeded.updated_at.clone().expect("seeded timestamp");
+
+        // chrono RFC3339 has millisecond precision; nudge the clock so the
+        // comparison is meaningful even on fast machines.
+        std::thread::sleep(std::time::Duration::from_millis(5));
+
+        let result = set_status_by_session_key(dir.path(), "chat-ts", "needs_you")
+            .expect("status flip")
+            .expect("matching activity");
+        let after = result.updated_at.expect("post-flip timestamp");
+        assert!(
+            after > before,
+            "updated_at should advance on status change: before={before} after={after}"
+        );
+    }
+}

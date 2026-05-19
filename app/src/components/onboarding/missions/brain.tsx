@@ -34,11 +34,10 @@ export function BrainMission({
   const [submitting, setSubmitting] = useState(false);
 
   const refresh = useCallback(async () => {
-    const [openai, anthropic] = await Promise.all([
-      tauriProvider.checkStatus("openai"),
-      tauriProvider.checkStatus("anthropic"),
-    ]);
-    setStatuses({ openai, anthropic });
+    const entries = await Promise.all(
+      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+    );
+    setStatuses(Object.fromEntries(entries));
     setLoading(false);
   }, []);
 

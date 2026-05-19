@@ -325,6 +325,8 @@ pub fn run() {
             commands::os::reveal_agent,
             commands::terminal::open_terminal,
             commands::os::check_claude_cli,
+            commands::portable::save_portable_agent,
+            commands::portable::open_portable_agent,
             commands::update::current_app_bundle_path,
             commands::update::relaunch_app_from_path,
             // Logging (writes to local log files).

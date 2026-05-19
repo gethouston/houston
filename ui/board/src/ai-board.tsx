@@ -37,6 +37,7 @@ export interface AIBoardProps {
   sessionKeyFor?: (activityId: string) => string
   runningStatuses?: string[]
   approveStatuses?: string[]
+  errorStatuses?: string[]
   /** Load persisted chat history for a session. Called once per session key when selected. */
   onLoadHistory?: (sessionKey: string) => Promise<FeedItem[]>
   /** Called with the loaded history so the parent can merge it into its
@@ -141,6 +142,8 @@ export interface AIBoardProps {
    * focused interaction surface (e.g. an action-input form).
    */
   composerOverride?: ReactNode
+  /** Translated labels for the file-drop overlay and composer notices. Forwarded to ChatPanel. */
+  composerLabels?: ChatPanelProps["composerLabels"]
 }
 
 const DEFAULT_COLUMNS: KanbanColumn[] = [
@@ -166,6 +169,7 @@ export function AIBoard({
   sessionKeyFor = defaultSessionKey,
   runningStatuses = ["running"],
   approveStatuses = ["needs_you"],
+  errorStatuses = ["error"],
   onLoadHistory,
   onHistoryLoaded,
   onNewPanelOpenerReady,
@@ -206,6 +210,7 @@ export function AIBoard({
   onComposerSubmit,
   cardLabels,
   composerOverride,
+  composerLabels,
 }: AIBoardProps) {
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null)
   const [newPanelOpen, setNewPanelOpen] = useState(false)
@@ -243,6 +248,18 @@ export function AIBoard({
 
   // Hydrate on mount if there's an initial controlled selection
   useEffect(() => { if (selectedId) hydrateSession(selectedId) }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // When the selection changes from OUTSIDE (e.g. arrow-key navigation
+  // sets selectedId via the controlled prop, or session-notifications
+  // jumps to a different mission), hydrate the new session, close any
+  // "new mission" panel, and bump the composer focus token so the user
+  // can start typing immediately without reaching for the mouse.
+  useEffect(() => {
+    if (!selectedId) return
+    hydrateSession(selectedId)
+    setNewPanelOpen(false)
+    setComposerFocusToken((prev) => (prev ?? 0) + 1)
+  }, [selectedId, hydrateSession])
 
   const selectedItem = items.find((i) => i.id === selectedId) ?? null
 
@@ -393,6 +410,7 @@ export function AIBoard({
         selectedId={selectedId}
         runningStatuses={runningStatuses}
         approveStatuses={approveStatuses}
+        errorStatuses={errorStatuses}
         onSelect={handleCardSelect}
         onDelete={onDelete ? handleDelete : undefined}
         onApprove={onApprove}
@@ -434,9 +452,7 @@ export function AIBoard({
           value={drafts ? (drafts[activeDraftKey] ?? "") : undefined}
           onValueChange={onDraftChange ? (text: string) => onDraftChange(activeDraftKey, text) : undefined}
           composerFocusToken={
-            newPanelOpen && !selectedItem && composerFocusToken !== null
-              ? composerFocusToken
-              : undefined
+            composerFocusToken !== null ? composerFocusToken : undefined
           }
           isSpecialTool={isSpecialTool}
           renderToolResult={renderToolResult}
@@ -456,6 +472,7 @@ export function AIBoard({
           composerHeader={typeof composerHeader === "function" ? composerHeader({ hasMessages: activeFeed.length > 0 }) : composerHeader}
           canSendEmpty={canSendEmpty}
           composerOverride={composerOverride}
+          composerLabels={composerLabels}
         />
       </div>
     </KanbanDetailPanel>

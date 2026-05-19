@@ -3,6 +3,8 @@
   "nav": {
     "account": "Conta",
     "workspace": "Espaço de trabalho",
+    "workspaceContext": "Contexto do espaço",
+    "userContext": "Contexto do usuário",
     "provider": "Provedor de IA",
     "phone": "Conectar celular",
     "reportBug": "Reportar bug"
@@ -15,6 +17,24 @@
   "workspace": {
     "title": "Espaço de trabalho",
     "nameLabel": "Nome"
+  },
+  "workspaceContext": {
+    "emptyTitle": "Conte para todo agente sobre este espaço",
+    "emptyDescription": "A empresa, o produto, os clientes. Entra em cada conversa nova deste espaço.",
+    "writeButton": "Escrever contexto do espaço",
+    "helper": "Compartilhado por todos os agentes deste espaço. Entra em cada conversa nova. Os agentes podem atualizar quando você contar algo novo.",
+    "placeholder": "ex. Acme Corp, fintech B2B, Série A. Os clientes são CFOs de empresas médias.",
+    "saving": "Salvando…",
+    "saved": "Salvo"
+  },
+  "userContext": {
+    "emptyTitle": "Conte para todo agente sobre você",
+    "emptyDescription": "Seu papel, o que importa pra você, como prefere trabalhar. Entra em cada conversa nova deste espaço.",
+    "writeButton": "Escrever contexto do usuário",
+    "helper": "Entra em cada conversa nova deste espaço. Os agentes podem atualizar quando você contar algo novo.",
+    "placeholder": "ex. Sou o Juan, líder de vendas. Me importo com velocidade de pipeline e prefiro respostas curtas.",
+    "saving": "Salvando…",
+    "saved": "Salvo"
   },
   "provider": {
     "title": "Provedor de IA",
@@ -78,9 +98,12 @@
       "errorTitle": "Não foi possível enviar o reporte"
     }
   },
+  "version": "Versão {{version}}",
   "toasts": {
     "workspaceRenamed": "Espaço de trabalho renomeado",
     "providerSwitched": "Mudou para {{provider}} ({{model}})",
-    "timezoneSet": "Fuso horário definido como {{zone}}"
+    "timezoneSet": "Fuso horário definido como {{zone}}",
+    "versionCopied": "Versão copiada",
+    "versionCopyFailed": "Não foi possível copiar a versão"
   }
 }

@@ -6,7 +6,7 @@
  * their corresponding tool_result items.
  */
 
-import type { FeedItem, ToolRuntimeErrorEntry } from "./types";
+import type { FeedItem, ProviderError, ToolRuntimeErrorEntry } from "./types";
 
 export interface ToolEntry {
   name: string;
@@ -27,6 +27,12 @@ export interface ChatMessage {
   reasoning?: { content: string; isStreaming: boolean };
   tools: ToolEntry[];
   runtimeError?: ToolRuntimeErrorEntry;
+  /**
+   * Typed provider failure (rate-limited, auth-expired, quota-exhausted,
+   * etc). When set, the consumer should render a variant-specific card
+   * instead of plain text.
+   */
+  providerError?: ProviderError;
   fileChanges: FileChangeEntry[];
   /** Source channel if the message came from an external channel. */
   source?: string;
@@ -187,6 +193,27 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           content: "A local tool failed to start.",
           isStreaming: false,
           runtimeError: item.data,
+          tools: [],
+          fileChanges: [],
+        });
+        break;
+      }
+
+      case "provider_error": {
+        // Cancellation has no UI surface — the runner already signalled
+        // SessionStatus::Cancelled via a separate channel, and a card
+        // here would feel like a real error. Drop it.
+        if (item.data.kind === "cancelled") break;
+        flush();
+        messages.push({
+          key: `provider-error-${messages.length}-${item.data.kind}`,
+          from: "system",
+          // Empty content so the rendered message body collapses to the
+          // typed card. The consumer (renderSystemMessage in the app)
+          // detects providerError and routes to ProviderErrorCard.
+          content: "",
+          isStreaming: false,
+          providerError: item.data,
           tools: [],
           fileChanges: [],
         });

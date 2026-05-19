@@ -17,7 +17,7 @@ export interface FileMenuLabels {
 const DEFAULT_LABELS: Required<FileMenuLabels> = {
   open: "Open",
   rename: "Rename",
-  reveal: "Show in Finder",
+  reveal: "Show in File Manager",
   delete: "Move to Trash",
 }
 

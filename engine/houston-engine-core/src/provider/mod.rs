@@ -4,43 +4,29 @@
 //! Default-provider persistence reuses `crate::preferences` (generic
 //! key/value store), so `DEFAULT_PROVIDER_KEY` is exposed for callers
 //! that want to `get`/`set` the preference directly.
+//!
+//! API-key providers (Gemini today) write the key to a provider-specific
+//! dotfile from the engine, so the picker can flip to "Connected" on the
+//! next status poll without asking the user to restart Houston. See
+//! [`gemini_credentials`].
+
+mod gemini_credentials;
+mod gemini_login;
+
+pub use gemini_credentials::set_gemini_api_key;
 
 use crate::error::{CoreError, CoreResult};
-use houston_terminal_manager::provider_auth::{
-    probe_claude_auth_status, probe_codex_auth_status, ProviderAuthState,
-};
-use houston_terminal_manager::{claude_path, Provider};
+use houston_terminal_manager::provider_auth::ProviderAuthState;
+use houston_terminal_manager::{claude_path, InstallSource, Provider};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
 use std::path::PathBuf;
 use std::time::Duration;
 
-mod resolve;
-use resolve::{resolve_claude, resolve_codex};
+// `InstallSource` (imported above) lives in `houston-terminal-manager`
+// now, next to the adapter trait that produces it.
 
 pub const DEFAULT_PROVIDER_KEY: &str = "default_provider";
-
-/// Where the resolved CLI binary came from. Surfaced to the UI so users
-/// understand which version of `claude` / `codex` is in play (matches
-/// the "bundled by Houston vs. your existing install" UX clarification
-/// users have asked for).
-#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
-#[serde(rename_all = "lowercase")]
-pub enum InstallSource {
-    /// Shipped inside the Houston `.app` (`Contents/Resources/bin/`).
-    /// Codex falls in this bucket on production builds; composio too;
-    /// claude-code never (proprietary license).
-    Bundled,
-    /// Downloaded by Houston at runtime to a Houston-managed location
-    /// (`~/.local/bin/claude` etc.). Claude-code falls in this bucket
-    /// after the first-launch installer completes.
-    Managed,
-    /// Found on the user's PATH outside Houston's control (homebrew,
-    /// npm, manual install, …). Houston uses it as-is.
-    Path,
-    /// Not installed anywhere Houston knows about.
-    Missing,
-}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
@@ -63,9 +49,20 @@ pub fn parse(s: &str) -> CoreResult<Provider> {
 }
 
 pub async fn check_status(provider: Provider) -> CoreResult<ProviderStatus> {
-    Ok(match provider {
-        Provider::Anthropic => check_claude_status().await,
-        Provider::OpenAI => check_codex_status().await,
+    let (install_source, cli_path) = provider.resolve();
+    let cli_installed = !matches!(install_source, InstallSource::Missing);
+    let auth_state = if let Some(path) = cli_path.as_deref() {
+        provider.probe_auth(path).await
+    } else {
+        ProviderAuthState::Unauthenticated
+    };
+    Ok(ProviderStatus {
+        provider: provider.id().to_string(),
+        cli_installed,
+        auth_state,
+        cli_name: provider.cli_name().to_string(),
+        install_source,
+        cli_path: cli_path.map(|p| p.to_string_lossy().into_owned()),
     })
 }
 
@@ -82,6 +79,23 @@ pub async fn check_status(provider: Provider) -> CoreResult<ProviderStatus> {
 /// detach it: the OAuth flow continues in the background and the
 /// frontend polls `check_status` to observe completion, as before.
 pub async fn launch_login(provider: Provider) -> CoreResult<()> {
+    // Gemini has no `gemini auth login` subcommand. Instead, gemini-cli
+    // exposes an `authenticate` JSON-RPC method over its `--acp` mode
+    // (Agent Communication Protocol) that triggers Google's OAuth flow
+    // via the user's browser, using gemini-cli's own app identity. We
+    // delegate there rather than spawning gemini with positional args.
+    // See `gemini_login.rs` for the protocol details + rationale.
+    if provider.id() == "gemini" {
+        let (_, gemini_path) = provider.resolve();
+        let path = gemini_path.ok_or_else(|| {
+            CoreError::BadRequest(
+                "Gemini CLI binary not found. Reinstall Houston to restore the bundled CLI."
+                    .into(),
+            )
+        })?;
+        return gemini_login::launch_login(path).await;
+    }
+
     let ProviderCliCommand {
         cli_name,
         path,
@@ -105,7 +119,7 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
     // error instead of letting claude.exe exit code 1 with cryptic
     // stderr.
     #[cfg(target_os = "windows")]
-    if matches!(provider, Provider::Anthropic) {
+    if provider.id() == "anthropic" {
         match find_git_bash_windows() {
             Some(bash) => {
                 tracing::info!(
@@ -117,7 +131,7 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
             None => {
                 return Err(CoreError::BadRequest(
                     "Claude Code on Windows requires Git Bash. Install Git for Windows from \
-                     https://git-scm.com/downloads/win — Houston will auto-detect it on next launch."
+                     https://git-scm.com/downloads/win and Houston will auto-detect it on next launch."
                         .into(),
                 ));
             }
@@ -181,6 +195,7 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
             tracing::info!(
                 "[houston:provider] {cli_name} login still running after 3s probe; detaching"
             );
+            let cli_name_owned = cli_name.to_string();
             tokio::spawn(async move {
                 let result =
                     tokio::time::timeout(Duration::from_secs(120), child.wait_with_output()).await;
@@ -190,21 +205,21 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
                         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
                         if output.status.success() {
                             tracing::info!(
-                                "[houston:provider] {cli_name} login exited: {}",
+                                "[houston:provider] {cli_name_owned} login exited: {}",
                                 output.status
                             );
                         } else {
                             tracing::warn!(
-                                "[houston:provider] {cli_name} login exited: {} stdout={stdout:?} stderr={stderr:?}",
+                                "[houston:provider] {cli_name_owned} login exited: {} stdout={stdout:?} stderr={stderr:?}",
                                 output.status
                             );
                         }
                     }
                     Ok(Err(e)) => tracing::warn!(
-                        "[houston:provider] {cli_name} login wait failed: {e}"
+                        "[houston:provider] {cli_name_owned} login wait failed: {e}"
                     ),
                     Err(_) => tracing::warn!(
-                        "[houston:provider] {cli_name} login timed out after 120s"
+                        "[houston:provider] {cli_name_owned} login timed out after 120s"
                     ),
                 }
             });
@@ -281,31 +296,40 @@ struct ProviderCliCommand {
 }
 
 fn login_command(provider: Provider) -> CoreResult<ProviderCliCommand> {
-    let resolved_path = match provider {
-        Provider::Anthropic => resolve_claude().1,
-        Provider::OpenAI => resolve_codex().1,
-    };
-    build_login_command(provider, resolved_path, claude_path::shell_path())
+    let resolved_path = provider.resolve().1;
+    let args = provider
+        .login_args()
+        .ok_or_else(|| {
+            CoreError::BadRequest(format!(
+                "{} has no CLI login flow. Connect via settings instead.",
+                provider.cli_name()
+            ))
+        })?
+        .to_vec();
+    build_cli_command(provider, args, resolved_path, claude_path::shell_path())
 }
 
 fn logout_command(provider: Provider) -> CoreResult<ProviderCliCommand> {
-    let resolved_path = match provider {
-        Provider::Anthropic => resolve_claude().1,
-        Provider::OpenAI => resolve_codex().1,
-    };
-    build_logout_command(provider, resolved_path, claude_path::shell_path())
+    let resolved_path = provider.resolve().1;
+    let args = provider
+        .logout_args()
+        .ok_or_else(|| {
+            CoreError::BadRequest(format!(
+                "{} has no CLI logout flow. Disconnect via settings instead.",
+                provider.cli_name()
+            ))
+        })?
+        .to_vec();
+    build_cli_command(provider, args, resolved_path, claude_path::shell_path())
 }
 
-fn build_login_command(
+fn build_cli_command(
     provider: Provider,
+    args: Vec<&'static str>,
     resolved_path: Option<PathBuf>,
     shell_path: OsString,
 ) -> CoreResult<ProviderCliCommand> {
-    let (cli_name, args): (&'static str, Vec<&'static str>) = match provider {
-        Provider::Anthropic => ("claude", vec!["auth", "login", "--claudeai"]),
-        Provider::OpenAI => ("codex", vec!["login"]),
-    };
-
+    let cli_name = provider.cli_name();
     let path = resolved_path
         .ok_or_else(|| CoreError::BadRequest(format!("{cli_name} CLI is not installed")))?;
 
@@ -315,72 +339,6 @@ fn build_login_command(
         args,
         shell_path,
     })
-}
-
-fn build_logout_command(
-    provider: Provider,
-    resolved_path: Option<PathBuf>,
-    shell_path: OsString,
-) -> CoreResult<ProviderCliCommand> {
-    // `claude auth logout` clears the macOS Keychain entry (service
-    // `claude-code`) on Mac and `~/.claude/.credentials.json` on Linux.
-    // `codex logout` revokes the ChatGPT refresh token server-side then
-    // deletes `~/.codex/auth.json`. Both are documented top-level
-    // commands — see knowledge-base/auth.md.
-    let (cli_name, args): (&'static str, Vec<&'static str>) = match provider {
-        Provider::Anthropic => ("claude", vec!["auth", "logout"]),
-        Provider::OpenAI => ("codex", vec!["logout"]),
-    };
-
-    let path = resolved_path
-        .ok_or_else(|| CoreError::BadRequest(format!("{cli_name} CLI is not installed")))?;
-
-    Ok(ProviderCliCommand {
-        cli_name,
-        path,
-        args,
-        shell_path,
-    })
-}
-
-async fn check_claude_status() -> ProviderStatus {
-    let (install_source, cli_path) = resolve_claude();
-    let cli_installed = !matches!(install_source, InstallSource::Missing);
-    let auth_state = if let Some(path) = cli_path.as_deref() {
-        probe_claude_auth_status(path).await
-    } else {
-        ProviderAuthState::Unauthenticated
-    };
-    ProviderStatus {
-        provider: "anthropic".into(),
-        cli_installed,
-        auth_state,
-        cli_name: "claude".into(),
-        install_source,
-        cli_path: cli_path.map(|p| p.to_string_lossy().into_owned()),
-    }
-}
-
-async fn check_codex_status() -> ProviderStatus {
-    let (install_source, cli_path) = resolve_codex();
-    let cli_installed = !matches!(install_source, InstallSource::Missing);
-    let auth_state = if let Some(path) = cli_path.as_deref() {
-        let home = dirs::home_dir()
-            .map(|p| p.to_string_lossy().into_owned())
-            .unwrap_or_default();
-        probe_codex_auth_status(path, &home).await
-    } else {
-        ProviderAuthState::Unauthenticated
-    };
-
-    ProviderStatus {
-        provider: "openai".into(),
-        cli_installed,
-        auth_state,
-        cli_name: "codex".into(),
-        install_source,
-        cli_path: cli_path.map(|p| p.to_string_lossy().into_owned()),
-    }
 }
 
 /// Locate Git for Windows' `bash.exe` so Claude Code can use it. Probes
@@ -440,7 +398,7 @@ fn decorate_windows_exit(command: &str, status_display: &str, exit_code: Option<
             "STATUS_ILLEGAL_INSTRUCTION (0xc000001d): the binary uses CPU \
              instructions not supported by this CPU. On Windows-on-ARM \
              laptops the x64 emulator does not implement every instruction \
-             set — the CLI needs a native aarch64 build. On native x64 \
+             set, so the CLI needs a native aarch64 build. On native x64 \
              hardware this usually means a corrupted install; reinstall \
              Houston.",
         ),
@@ -466,7 +424,7 @@ mod tests {
 
     #[test]
     fn parse_rejects_unknown() {
-        assert!(parse("gemini").is_err());
+        assert!(parse("nonexistent-provider").is_err());
         assert!(parse("anthropic").is_ok());
         assert!(parse("openai").is_ok());
     }
@@ -485,9 +443,11 @@ mod tests {
 
     #[test]
     fn login_command_uses_resolved_cli_path() {
+        let provider = parse("anthropic").unwrap();
         let path = PathBuf::from("/tmp/houston-test-claude");
-        let command = build_login_command(
-            Provider::Anthropic,
+        let command = build_cli_command(
+            provider,
+            provider.login_args().unwrap().to_vec(),
             Some(path.clone()),
             OsString::from("/not/on/path"),
         )
@@ -499,9 +459,11 @@ mod tests {
 
     #[test]
     fn logout_command_claude_uses_auth_logout() {
+        let provider = parse("anthropic").unwrap();
         let path = PathBuf::from("/tmp/houston-test-claude");
-        let command = build_logout_command(
-            Provider::Anthropic,
+        let command = build_cli_command(
+            provider,
+            provider.logout_args().unwrap().to_vec(),
             Some(path.clone()),
             OsString::from("/not/on/path"),
         )
@@ -513,9 +475,11 @@ mod tests {
 
     #[test]
     fn logout_command_codex_uses_top_level_logout() {
+        let provider = parse("openai").unwrap();
         let path = PathBuf::from("/tmp/houston-test-codex");
-        let command = build_logout_command(
-            Provider::OpenAI,
+        let command = build_cli_command(
+            provider,
+            provider.logout_args().unwrap().to_vec(),
             Some(path.clone()),
             OsString::from("/not/on/path"),
         )
@@ -527,8 +491,10 @@ mod tests {
 
     #[test]
     fn logout_command_errors_when_cli_missing() {
-        let err = build_logout_command(
-            Provider::OpenAI,
+        let provider = parse("openai").unwrap();
+        let err = build_cli_command(
+            provider,
+            provider.logout_args().unwrap().to_vec(),
             None,
             OsString::from("/not/on/path"),
         )

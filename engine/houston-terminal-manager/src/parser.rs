@@ -1,6 +1,10 @@
 use std::collections::HashMap;
 
+use super::provider::anthropic_classify;
+use super::provider_error_kind::{truncate_excerpt, ProviderError};
 use super::types::{AssistantMessage, ClaudeEvent, ContentBlock, FeedItem, UserMessage};
+
+const ANTHROPIC: &str = "anthropic";
 
 /// Accumulates stream_event fragments across multiple lines.
 /// Text deltas are accumulated into a running buffer and emitted progressively.
@@ -163,10 +167,21 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
             ..
         } => {
             if subtype.as_deref() == Some("error") || is_error == Some(true) {
-                return vec![FeedItem::SystemMessage(format!(
-                    "Error: {}",
-                    result.unwrap_or_else(|| "Unknown error".to_string()),
-                ))];
+                // Route through the typed classifier so the frontend
+                // gets a real `ProviderError` card instead of a generic
+                // `SystemMessage("Error: ...")` toast. The classifier
+                // can promote known patterns (auth, quota, internal) to
+                // dedicated variants; everything else falls through to
+                // `Unknown` so the user gets a "Report bug" CTA rather
+                // than a dead-end string.
+                let message = result.unwrap_or_else(|| "Unknown error".to_string());
+                let subtype_str = subtype.as_deref().unwrap_or("error");
+                let typed = anthropic_classify::classify_result_error(subtype_str, &message)
+                    .unwrap_or_else(|| ProviderError::Unknown {
+                        provider: ANTHROPIC.into(),
+                        raw_excerpt: truncate_excerpt(&message),
+                    });
+                return vec![FeedItem::ProviderError(typed)];
             }
             vec![FeedItem::FinalResult {
                 result: result.unwrap_or_default(),
@@ -175,8 +190,43 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
             }]
         }
         ClaudeEvent::StreamEvent { event: inner, .. } => acc.handle(inner),
-        ClaudeEvent::RateLimitEvent { .. } => vec![],
+        ClaudeEvent::RateLimitEvent { extra } => parse_rate_limit_event(extra),
     }
+}
+
+/// Parse Claude's `rate_limit_event` into a typed [`ProviderError`].
+///
+/// Replaces the historical silent drop. The CLI emits these events when
+/// the Anthropic API throttles the request — `rate_limit_info.status` is
+/// `"allowed"` for routine heartbeat events (no UI needed) and one of
+/// `"rate_limited"` / `"throttled"` / `"queued"` when the user should be
+/// told to wait. We only emit a feed item for the throttled cases so a
+/// healthy stream stays quiet.
+fn parse_rate_limit_event(extra: serde_json::Value) -> Vec<FeedItem> {
+    let info = extra.get("rate_limit_info").unwrap_or(&extra);
+    let status = info.get("status").and_then(|v| v.as_str()).unwrap_or("");
+    if status.is_empty() || status == "allowed" {
+        return vec![];
+    }
+    let retry_after_seconds = info
+        .get("reset_in_seconds")
+        .or_else(|| info.get("retry_after_seconds"))
+        .or_else(|| info.get("retry_after"))
+        .and_then(|v| v.as_u64())
+        .and_then(|n| u32::try_from(n).ok());
+    let message = info
+        .get("message")
+        .and_then(|v| v.as_str())
+        .map(truncate_excerpt)
+        .unwrap_or_else(|| {
+            format!("Anthropic rate-limit signal: {status}")
+        });
+    vec![FeedItem::ProviderError(ProviderError::RateLimited {
+        provider: ANTHROPIC.into(),
+        model: None,
+        retry_after_seconds,
+        message,
+    })]
 }
 
 fn parse_assistant_event(
@@ -306,11 +356,21 @@ mod tests {
     }
 
     #[test]
-    fn parse_result_error_as_system_message() {
+    fn parse_result_error_routes_auth_through_typed_classifier() {
+        // Pre-fix: this emitted FeedItem::SystemMessage("Error: Claude
+        // Code is not authenticated...") which the user couldn't act on.
+        // Post-fix: classify_result_error sees the auth phrasing in the
+        // result body and promotes it to ProviderError::Unauthenticated,
+        // so the frontend renders the reconnect card.
         let line = r#"{"type":"result","subtype":"error","is_error":true,"result":"Claude Code is not authenticated. Run claude auth login"}"#;
         let items = parse_event(line, &mut acc());
         assert_eq!(items.len(), 1);
-        assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("not authenticated")));
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::Unauthenticated { provider, .. }) => {
+                assert_eq!(provider, "anthropic");
+            }
+            other => panic!("expected Unauthenticated, got {other:?}"),
+        }
     }
 
     #[test]
@@ -476,8 +536,47 @@ mod tests {
     }
 
     #[test]
-    fn parse_rate_limit_event_ignored() {
+    fn rate_limit_event_with_allowed_status_is_silent() {
+        // Heartbeat-style "you're not throttled" event — must NOT raise
+        // a card or the user sees noise on healthy streams.
         let line = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"allowed"},"uuid":"u1","session_id":"s1"}"#;
         assert!(parse_event(line, &mut acc()).is_empty());
+    }
+
+    #[test]
+    fn rate_limit_event_with_throttled_status_emits_typed_error() {
+        // Throttled event — historically silently dropped. Now lifted to
+        // a typed `ProviderError::RateLimited` feed item so the UI can
+        // render the countdown card.
+        let line = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"rate_limited","reset_in_seconds":42,"message":"slow down"},"uuid":"u1","session_id":"s1"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::RateLimited {
+                provider,
+                retry_after_seconds,
+                message,
+                ..
+            }) => {
+                assert_eq!(provider, "anthropic");
+                assert_eq!(*retry_after_seconds, Some(42));
+                assert!(message.contains("slow down"));
+            }
+            other => panic!("expected RateLimited, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn result_with_is_error_emits_typed_provider_error() {
+        // Pre-fix: emitted FeedItem::SystemMessage("Error: ..."); the
+        // user got a generic, untyped string. Post-fix: typed card with
+        // a Report-bug CTA via Unknown variant when no specific match.
+        let line = r#"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"unanticipated failure"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(_) => {}
+            other => panic!("expected ProviderError, got {other:?}"),
+        }
     }
 }

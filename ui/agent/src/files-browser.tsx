@@ -48,7 +48,7 @@ export interface FilesBrowserProps {
   onBrowse?: () => void
   emptyTitle?: string
   emptyDescription?: string
-  /** Optional action rendered in the bottom status bar (e.g. "Open in Finder" link) */
+  /** Optional action rendered in the bottom status bar (e.g. "Open in File Manager" link) */
   statusBarAction?: React.ReactNode
   /** Overrides for chrome labels (column headers, loading, browse CTA). */
   labels?: FilesBrowserLabels

@@ -1,6 +1,10 @@
 {
   "composer": {
-    "placeholder": "Pergunte qualquer coisa..."
+    "placeholder": "Pergunte qualquer coisa...",
+    "fileAlreadyInChat": "Arquivo já está no chat",
+    "dropTitle": "Solte seus arquivos",
+    "dropDescription": "Solte-os aqui para adicioná-los à conversa",
+    "imagePasteUnavailable": "Não foi possível ler a imagem colada. Tente arrastar o arquivo."
   },
   "queue": {
     "title": "Na fila",

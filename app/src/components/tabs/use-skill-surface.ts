@@ -1,6 +1,7 @@
 import { useCallback, useMemo, useState } from "react";
 import type { CommunitySkill, RepoSkill, Skill } from "@houston-ai/skills";
 import {
+  useCreateSkill,
   useDeleteSkill,
   useInstallCommunitySkill,
   useInstallSkillFromRepo,
@@ -22,6 +23,7 @@ export function useSkillSurface(agentPath: string) {
   );
   const saveSkill = useSaveSkill(agentPath);
   const deleteSkill = useDeleteSkill(agentPath);
+  const createSkill = useCreateSkill(agentPath);
   const installCommunity = useInstallCommunitySkill(agentPath);
   const listFromRepo = useListSkillsFromRepo();
   const installFromRepo = useInstallSkillFromRepo(agentPath);
@@ -98,6 +100,14 @@ export function useSkillSurface(agentPath: string) {
     [installFromRepo],
   );
 
+  const handleCreateFromScratch = useCallback(
+    async (input: { name: string; description: string; content: string }) => {
+      await createSkill.mutateAsync(input);
+      return input.name;
+    },
+    [createSkill],
+  );
+
   return {
     skillDetailLabels,
     skills: summaries ?? [],
@@ -112,6 +122,7 @@ export function useSkillSurface(agentPath: string) {
     handleInstallCommunity,
     handleListFromRepo,
     handleInstallFromRepo,
+    handleCreateFromScratch,
     installedSkillNames,
   };
 }

@@ -3,6 +3,8 @@
   "nav": {
     "account": "Cuenta",
     "workspace": "Espacio de trabajo",
+    "workspaceContext": "Contexto del espacio",
+    "userContext": "Contexto del usuario",
     "provider": "Proveedor de IA",
     "phone": "Conectar celular",
     "reportBug": "Reportar bug"
@@ -15,6 +17,24 @@
   "workspace": {
     "title": "Espacio de trabajo",
     "nameLabel": "Nombre"
+  },
+  "workspaceContext": {
+    "emptyTitle": "Cuéntale a todo agente sobre este espacio",
+    "emptyDescription": "La empresa, el producto, los clientes. Se carga en cada chat nuevo de este espacio.",
+    "writeButton": "Escribir contexto del espacio",
+    "helper": "Compartido por todos los agentes de este espacio. Se carga en cada chat nuevo. Los agentes pueden actualizarlo cuando les cuentes algo nuevo.",
+    "placeholder": "p. ej. Acme Corp, fintech B2B, Serie A. Los clientes son CFOs de empresas medianas.",
+    "saving": "Guardando…",
+    "saved": "Guardado"
+  },
+  "userContext": {
+    "emptyTitle": "Cuéntale a todo agente sobre ti",
+    "emptyDescription": "Tu rol, lo que te importa, cómo prefieres trabajar. Se carga en cada chat nuevo de este espacio.",
+    "writeButton": "Escribir contexto del usuario",
+    "helper": "Se carga en cada chat nuevo de este espacio. Los agentes pueden actualizarlo cuando les cuentes algo nuevo.",
+    "placeholder": "p. ej. Soy Juan, líder de ventas. Me importa la velocidad del pipeline y prefiero respuestas cortas.",
+    "saving": "Guardando…",
+    "saved": "Guardado"
   },
   "provider": {
     "title": "Proveedor de IA",
@@ -78,9 +98,12 @@
       "errorTitle": "No se pudo enviar el reporte"
     }
   },
+  "version": "Versión {{version}}",
   "toasts": {
     "workspaceRenamed": "Espacio de trabajo renombrado",
     "providerSwitched": "Cambiaste a {{provider}} ({{model}})",
-    "timezoneSet": "Zona horaria establecida en {{zone}}"
+    "timezoneSet": "Zona horaria establecida en {{zone}}",
+    "versionCopied": "Versión copiada",
+    "versionCopyFailed": "No se pudo copiar la versión"
   }
 }

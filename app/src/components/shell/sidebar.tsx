@@ -12,9 +12,10 @@ import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { buildAgentSidebarItems } from "./agent-sidebar-items";
+import { orderAgents } from "../../lib/agent-order";
 
 export function Sidebar({ children }: { children: ReactNode }) {
-  const { t } = useTranslation(["shell", "common"]);
+  const { t } = useTranslation(["shell", "common", "portable"]);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
@@ -34,11 +35,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
 
-  const sorted = [...agents].sort((a, b) => {
-    const aTime = a.lastOpenedAt ?? a.createdAt;
-    const bTime = b.lastOpenedAt ?? b.createdAt;
-    return bTime.localeCompare(aTime);
-  });
+  const sorted = orderAgents(agents);
   const activitySummaries = useAgentActivitySummaries(agents);
 
   const items = buildAgentSidebarItems({
@@ -51,6 +48,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onChangeColor: (agentId, color) => {
       void handleChangeColor(agentId, color);
     },
+    onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
+    shareLabel: t("portable:shareMenu"),
   });
   const isTopLevel = viewMode === "dashboard" || viewMode === "connections" || viewMode === "settings";
 

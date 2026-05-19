@@ -84,6 +84,19 @@ export const tauriWorkspaces = {
     call<Workspace>("update_workspace_provider", () =>
       getEngine().setWorkspaceProvider(id, { provider, model }),
     ),
+  getContext: (id: string) =>
+    call<import("@houston-ai/engine-client").WorkspaceContext>(
+      "get_workspace_context",
+      () => getEngine().getWorkspaceContext(id),
+    ),
+  setContext: (
+    id: string,
+    body: import("@houston-ai/engine-client").WorkspaceContext,
+  ) =>
+    call<import("@houston-ai/engine-client").WorkspaceContext>(
+      "set_workspace_context",
+      () => getEngine().setWorkspaceContext(id, body),
+    ),
 };
 
 // ─── Agents ───────────────────────────────────────────────────────────
@@ -666,6 +679,16 @@ export const tauriProvider = {
     call<void>("launch_provider_login", () => getEngine().providerLogin(provider)),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
+  /**
+   * Save a Gemini API key to `~/.gemini/.env` via the engine. Errors
+   * surface through `call`'s standard rejection path; the caller is
+   * expected to render them with `errorMessage(err)` + `addToast`.
+   *
+   * Gemini-only by design (other providers use OAuth via launchLogin).
+   * Never log `apiKey` — it's a SECRET.
+   */
+  setGeminiApiKey: (apiKey: string) =>
+    call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────

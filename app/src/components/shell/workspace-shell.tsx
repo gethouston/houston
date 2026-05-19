@@ -8,8 +8,12 @@ import {
   EmptyHeader,
   EmptyTitle,
   ToastContainer,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
   type Toast,
 } from "@houston-ai/core";
+import { shortcutLabel } from "../../lib/shortcuts";
 import { TabBar } from "@houston-ai/layout";
 import { useActivity } from "../../hooks/queries";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
@@ -22,10 +26,15 @@ import { SettingsView } from "../settings/settings-view";
 import { Sidebar } from "./sidebar";
 import { HoustonLogo } from "./experience-card";
 import { CreateAgentDialog } from "./create-workspace-dialog";
+import { ExportAgentWizard } from "../portable/export-wizard";
+import { ImportAgentWizard } from "../portable/import-wizard";
 import { AgentUpdateBanner } from "./agent-update-banner";
 import { DetailPanelProvider } from "./detail-panel-context";
 import { MissionSearchInput } from "../mission-search-input";
 import { UiTour } from "./ui-tour";
+import { CommandPalette } from "../command-palette";
+import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
+import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { cn } from "@houston-ai/core";
 
 interface WorkspaceShellProps {
@@ -72,6 +81,8 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
       setViewMode(agentDef?.config.defaultTab ?? tabs[0].id);
     }
   }, [agentDef, isAgentView, setViewMode, tabs, viewMode]);
+
+  useKeyboardShortcuts();
 
   return (
     <DetailPanelProvider value={panelContainer}>
@@ -135,18 +146,25 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
                           <Compass className="size-4" />
                         </Button>
                         {onStartMission && (
-                          <Button
-                            data-tour-target="newMission"
-                            onClick={() => {
-                              setViewMode("activity");
-                              setTimeout(() => {
-                                useUIStore.getState().onStartMission?.();
-                              }, 50);
-                            }}
-                          >
-                            <HoustonLogo size={16} />
-                            {t("shell:tabActions.newMission")}
-                          </Button>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button
+                                data-tour-target="newMission"
+                                onClick={() => {
+                                  setViewMode("activity");
+                                  setTimeout(() => {
+                                    useUIStore.getState().onStartMission?.();
+                                  }, 50);
+                                }}
+                              >
+                                <HoustonLogo size={16} />
+                                {t("shell:tabActions.newMission")}
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom">
+                              {shortcutLabel("newMission")}
+                            </TooltipContent>
+                          </Tooltip>
                         )}
                         {boardActions.map((action) => (
                           <Button
@@ -201,7 +219,11 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
           </div>
         </Sidebar>
         <CreateAgentDialog />
+        <ExportAgentWizard />
+        <ImportAgentWizard />
         <AgentUpdateBanner />
+        <CommandPalette />
+        <ShortcutCheatsheet />
         <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
       </div>
       {uiTourActive && (

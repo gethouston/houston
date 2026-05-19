@@ -1,0 +1,138 @@
+{
+  "shareMenu": "Compartilhar com um amigo",
+  "newAgent": {
+    "fromFriendCard": "De um amigo",
+    "fromFriendDescription": "Envie um arquivo que alguém te compartilhou e traga o agente para seu espaço."
+  },
+  "flagged": "Houston marcou este para você dar uma olhada.",
+  "export": {
+    "eyebrow": "Compartilhando {{name}}",
+    "loading": "Carregando seu agente.",
+    "step1": {
+      "title": "O que vamos compartilhar?",
+      "body": "Escolha o que seu amigo leva. As instruções do agente sempre vão junto.",
+      "instructionsLabel": "Instruções",
+      "instructionsRow": "Descrição do trabalho e regras",
+      "noInstructions": "Este agente ainda não tem instruções.",
+      "skillsLabel": "Habilidades",
+      "routinesLabel": "Rotinas",
+      "learningsLabel": "Aprendizados"
+    },
+    "step2": {
+      "title": "Quer anonimizar antes?",
+      "body": "Houston pode remover informações pessoais óbvias como e-mails e caminhos. Você vê o que mudou antes de salvar.",
+      "asIsTitle": "Compartilhar como está",
+      "asIsBody": "Manter tudo como está.",
+      "anonymizeTitle": "Me ajude a anonimizar",
+      "anonymizeBody": "Remove e-mails, caminhos e outros dados pessoais óbvios.",
+      "reviewLabel": "Veja o que mudou",
+      "working": "Houston está revisando seu conteúdo.",
+      "diffInstructions": "Instruções",
+      "before": "Antes",
+      "after": "Depois",
+      "keep": "Manter as mudanças",
+      "skip": "Usar o original",
+      "becameEmpty": "Quase tudo foi redigido. Você pode deixar este de fora.",
+      "routineTitle": "Rotina {{id}}",
+      "learningTitle": "Aprendizado"
+    },
+    "step3": {
+      "title": "Pronto para compartilhar",
+      "body": "Houston empacota {{name}} em um arquivo único que você pode enviar por qualquer app.",
+      "skillsLabel": "Habilidades",
+      "routinesLabel": "Rotinas",
+      "learningsLabel": "Aprendizados",
+      "anonymizedLabel": "Anonimizado",
+      "yes": "Sim",
+      "no": "Não"
+    },
+    "actions": {
+      "back": "Voltar",
+      "cancel": "Cancelar",
+      "next": "Continuar",
+      "save": "Salvar arquivo",
+      "saving": "Salvando."
+    },
+    "errors": {
+      "previewFailed": "Não consegui ler seu agente.",
+      "anonymizeFailed": "Falha na anonimização.",
+      "saveFailed": "Não consegui salvar o arquivo.",
+      "noPreview": "Sem prévia."
+    },
+    "toasts": {
+      "savedTitle": "Arquivo salvo",
+      "savedDescription": "Salvo em {{path}}"
+    }
+  },
+  "import": {
+    "eyebrow": "De um amigo",
+    "flagged": "Houston marcou este para você dar uma olhada.",
+    "step1": {
+      "title": "Envie o arquivo que seu amigo mandou",
+      "body": "Houston lê na sua máquina. Nada é enviado para a internet.",
+      "pickFile": "Escolher arquivo",
+      "uploadedFrom": "Compartilhado por {{name}}",
+      "anonymous": "seu amigo",
+      "counts": "{{skills}} habilidades, {{routines}} rotinas, {{learnings}} aprendizados",
+      "anonymizedFlag": "Anonimizado antes do compartilhamento.",
+      "scanChoiceLabel": "Quer que o Houston dê uma olhada?",
+      "scanYesTitle": "Sim, revisar primeiro",
+      "scanYesBody": "Houston procura riscos óbvios. Não é garantia, é uma leitura atenta.",
+      "scanNoTitle": "Não, confio",
+      "scanNoBody": "Pular a revisão e continuar.",
+      "scanning": "Revisando o pacote.",
+      "scanClean": "Houston não marcou nada.",
+      "scanFlagged": "Houston marcou {{count}} item(ns). Revise enquanto continua."
+    },
+    "step2": {
+      "title": "Dê um nome ao novo agente",
+      "body": "Escolha um nome e uma cor. Você pode mudar os dois depois.",
+      "nameLabel": "Nome",
+      "colorLabel": "Cor",
+      "namePlaceholder": "Dê um nome ao agente",
+      "placeholderName": "Seu agente",
+      "tagline": "Pronto para ajudar"
+    },
+    "step3": {
+      "title": "Escolha quais habilidades trazer",
+      "body": "Desmarque o que não quer trazer.",
+      "empty": "Sem habilidades neste pacote."
+    },
+    "step4": {
+      "title": "Escolha quais rotinas trazer",
+      "body": "Rotinas rodam em horário. Esperam até suas integrações estarem conectadas.",
+      "empty": "Sem rotinas neste pacote."
+    },
+    "step5": {
+      "title": "Escolha quais aprendizados manter",
+      "body": "Aprendizados são notas que o agente usa como contexto. Você pode deixar pessoais de fora.",
+      "empty": "Sem aprendizados neste pacote."
+    },
+    "step6": {
+      "title": "O agente precisa de alguns apps",
+      "body": "Conecte agora pela página de Conexões ou pule e conecte depois.",
+      "none": "Nada para conectar. Seu agente está pronto.",
+      "connected": "Conectado",
+      "needsConnection": "Conectar depois",
+      "connectLater": "Rotinas que precisem de um app esperam até você conectá-lo."
+    },
+    "actions": {
+      "back": "Voltar",
+      "cancel": "Cancelar",
+      "next": "Continuar",
+      "install": "Trazer agente",
+      "installing": "Trazendo.",
+      "selectAll": "Selecionar tudo",
+      "clearAll": "Limpar"
+    },
+    "errors": {
+      "uploadFailed": "Não consegui ler esse arquivo.",
+      "installFailed": "Não consegui instalar o agente.",
+      "nameRequired": "Dê um nome ao agente."
+    },
+    "toasts": {
+      "installedTitle": "Agente pronto",
+      "installedDescription": "{{name}} está no seu espaço."
+    }
+  }
+}

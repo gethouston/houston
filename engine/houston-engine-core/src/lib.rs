@@ -12,6 +12,7 @@ pub mod conversations;
 pub mod error;
 pub mod git_bash;
 pub mod paths;
+pub mod portable;
 pub mod preferences;
 pub mod provider;
 pub mod routines;
@@ -20,6 +21,7 @@ pub mod skills;
 pub mod state;
 pub mod store;
 pub mod worktree;
+pub mod workspace_context;
 pub mod workspaces;
 
 pub use error::{CoreError, CoreResult};

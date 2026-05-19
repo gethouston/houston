@@ -13,7 +13,7 @@ export function formatSize(bytes: number): string {
 }
 
 /** Format a timestamp like Finder: "Today at 3:24 PM", "Yesterday", "Apr 3 at 2:30 PM". */
-export function formatFinderDate(timestamp?: number): string {
+export function formatFileManagerDate(timestamp?: number): string {
   if (!timestamp) return "\u2014"
   const date = new Date(timestamp)
   const now = new Date()

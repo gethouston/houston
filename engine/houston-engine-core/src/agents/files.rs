@@ -13,7 +13,7 @@
 //!
 //! Relocated from `app/houston-tauri/src/agent_files.rs` and the FS-ops chunk
 //! of `app/houston-tauri/src/agent_commands.rs` as part of the engine-standalone
-//! migration. OS-native commands (open in Finder, open URL, file pickers) stay
+//! migration. OS-native commands (open in file manager, open URL, file pickers) stay
 //! in the Tauri adapter — they have no meaning when the engine runs remotely.
 
 use crate::error::{CoreError, CoreResult};

@@ -36,7 +36,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), tailwindcss()],
     define: {
-      __APP_VERSION__: JSON.stringify(version),
+      __APP_VERSION__: JSON.stringify(mode === "production" ? version : `${version}-dev`),
       __POSTHOG_KEY__: JSON.stringify(env.POSTHOG_KEY ?? ""),
       __POSTHOG_HOST__: JSON.stringify(
         env.POSTHOG_HOST ?? "https://us.i.posthog.com",

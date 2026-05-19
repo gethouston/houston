@@ -70,6 +70,7 @@ pub fn create(root: &Path, input: NewRoutine) -> CoreResult<Routine> {
         enabled: input.enabled,
         suppress_when_silent: input.suppress_when_silent,
         timezone: input.timezone,
+        integrations: input.integrations,
         created_at: now.clone(),
         updated_at: now,
     };
@@ -106,6 +107,9 @@ pub fn update(root: &Path, id: &str, updates: RoutineUpdate) -> CoreResult<Routi
     if let Some(tz) = updates.timezone {
         routine.timezone = tz;
     }
+    if let Some(integrations) = updates.integrations {
+        routine.integrations = integrations;
+    }
     routine.updated_at = Utc::now().to_rfc3339();
 
     let result = routine.clone();
@@ -137,6 +141,7 @@ mod tests {
             enabled: true,
             suppress_when_silent: true,
             timezone: None,
+            integrations: vec![],
         }
     }
 

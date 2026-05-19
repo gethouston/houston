@@ -15,6 +15,7 @@ export interface KanbanColumnProps {
   onRename?: (item: KanbanItem, newTitle: string) => void
   runningStatuses?: string[]
   approveStatuses?: string[]
+  errorStatuses?: string[]
   renderCard?: (item: KanbanItem) => React.ReactNode
   actions?: (item: KanbanItem) => React.ReactNode
   avatar?: React.ReactNode
@@ -24,6 +25,7 @@ export interface KanbanColumnProps {
 export function KanbanColumn({
   label,
   items,
+  selectedId,
   onAdd,
   addLabel = "Add item",
   onSelect,
@@ -32,6 +34,7 @@ export function KanbanColumn({
   onRename,
   runningStatuses,
   approveStatuses,
+  errorStatuses,
   renderCard,
   actions,
   avatar,
@@ -51,8 +54,9 @@ export function KanbanColumn({
         </div>
       </div>
 
-      {/* Cards */}
-      <div className="flex-1 px-1.5 pb-1.5 space-y-1.5 overflow-y-auto">
+      {/* Cards. `pt-1` so the selected ring on the first card isn't
+          clipped by the scroll container's top edge. */}
+      <div className="flex-1 px-1.5 pt-1 pb-1.5 space-y-1.5 overflow-y-auto">
         <AnimatePresence mode="popLayout">
           {items.map((item) => (
             <motion.div
@@ -68,12 +72,14 @@ export function KanbanColumn({
               ) : (
                 <KanbanCard
                   item={item}
+                  selected={selectedId === item.id}
                   onSelect={() => onSelect(item)}
                   onDelete={onDelete ? () => onDelete(item) : undefined}
                   onApprove={onApprove ? () => onApprove(item) : undefined}
                   onRename={onRename ? (title) => onRename(item, title) : undefined}
                   runningStatuses={runningStatuses}
                   approveStatuses={approveStatuses}
+                  errorStatuses={errorStatuses}
                   actions={actions?.(item)}
                   avatar={avatar}
                   labels={cardLabels}

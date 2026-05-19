@@ -3,15 +3,30 @@ import type { MissionMeta } from "./mission-frame";
 /**
  * Onboarding state machine. `welcome` sits OUTSIDE the mission counter — it's
  * the decision point ("do the tutorial or skip"). Once the user starts, the
- * 7 mission stages drive the HUD `Mission N of 7` counter.
+ * mission stages drive the HUD `Mission N of N` counter.
  */
 export type OnboardingStep = "welcome" | TutorialStep;
 
-export type TutorialStep = "meet" | "brain" | "tools" | "try";
+export type TutorialStep =
+  | "meet"
+  | "brain"
+  | "tools"
+  | "try"
+  | "skill"
+  | "routine"
+  | "summary";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
-export const TUTORIAL_STEPS: TutorialStep[] = ["meet", "brain", "tools", "try"];
+export const TUTORIAL_STEPS: TutorialStep[] = [
+  "meet",
+  "brain",
+  "tools",
+  "try",
+  "skill",
+  "routine",
+  "summary",
+];
 
 export function buildMissionMeta(t: Translate, step: TutorialStep): MissionMeta {
   const index = TUTORIAL_STEPS.indexOf(step);

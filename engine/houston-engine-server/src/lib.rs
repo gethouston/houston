@@ -41,6 +41,7 @@ pub fn build_router(state: Arc<ServerState>) -> Router {
         .merge(routes::claude::router())
         .merge(routes::tunnel::router())
         .merge(routes::watcher::router())
+        .merge(routes::portable::router())
         .layer(middleware::from_fn_with_state(
             state.clone(),
             auth::require_bearer,

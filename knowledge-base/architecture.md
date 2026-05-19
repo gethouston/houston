@@ -44,7 +44,7 @@ Houston = open platform. Organized as **6 products + 3 code libraries**.
 the workspace root `Cargo.toml`.
 
 - `houston-db` — libSQL. `chat_feed`, `preferences`, `engine_tokens` tables.
-- `houston-terminal-manager` — Claude/Codex subprocess manager, parser, streaming
+- `houston-terminal-manager` — Claude/Codex/Gemini subprocess manager, parser, streaming. Houses the `ProviderAdapter` trait + static `REGISTRY` under `src/provider/{anthropic,openai,gemini}.rs`. `Provider` is a `Copy` newtype around `&'static dyn ProviderAdapter`; new providers register one adapter file + one entry in the registry. Three narrow dispatch sites by `provider.id()` remain (runner spawn, NDJSON parser, title summarizer); everything else picks the new provider up automatically through `Provider::from_str`. Failure handling flows through the typed `ProviderError` enum (`provider_error_kind.rs`) — every adapter classifies its stderr / result-error patterns into shared variants (`RateLimited`, `QuotaExhausted`, `Unauthenticated`, ...) that the frontend renders with variant-specific cards. See `knowledge-base/provider-errors.md` for the full taxonomy + classifier contract.
 - `houston-events` — hook/webhook/lifecycle queue
 - `houston-scheduler` — cron + heartbeat
 - `houston-agent-files` — `.houston/` file I/O, schemas, migration
@@ -56,15 +56,18 @@ the workspace root `Cargo.toml`.
 - `houston-claude-installer` — runtime download of Claude Code CLI (proprietary license, can't bundle); pinned URL + sha256 verification, atomic install, progress events
 - `houston-tunnel` — outbound reverse tunnel client; desktop engine dials the relay so mobile can reach it through NAT. Heartbeat + watchdog; tunnel identity stays stable across normal network failures and only re-allocates on relay auth rejection.
 - `houston-skills` — skill discovery + management
+- `houston-agent-portable` — `.houstonagent` package format (zip writer/reader, manifest schema, selection model). See `knowledge-base/portable-agents.md`.
 - `houston-engine-core` — runtime container (`EngineState`, paths, `workspaces::*`, `agents::{activity,routines,routine_runs,config,conversations,files,prompt,self_improvement}`, `sessions::{history,provider,summarize}`, `routines::{runner,runs,scheduler,engine_dispatcher}`, `store`, `sync`, `worktree`, `provider`, `attachments`, `preferences`, `conversations`, `skills`, `agent_configs`). Domain logic relocated from the Tauri adapter.
 - `houston-engine-protocol` — wire types (REST DTOs, WS envelope, error codes, `PROTOCOL_VERSION`). Matches `ui/engine-client/src/types.ts`.
 - `houston-engine-server` — axum HTTP+WS binary `houston-engine`. The process every client talks to. Full REST surface live — 17 route modules covering workspaces, agents CRUD, sessions, agent data + files, routines + scheduler, skills, store, composio, claude (runtime install), tunnel + pairing, worktrees, shell, attachments, preferences, providers, agent-configs, conversations, watcher. See `knowledge-base/engine-protocol.md` for the complete table.
 
-**Bundled provider CLIs:** Houston ships the codex CLI (Apache-2.0) and
-composio CLI (MIT) inside the signed/notarized `.app` so non-technical
-users get them preinstalled. The proprietary Claude Code CLI is
-downloaded on first launch with sha256 verification. Resolution + install
-flow detailed in `knowledge-base/cli-bundling.md`.
+**Bundled provider CLIs:** Houston ships the codex CLI (Apache-2.0),
+composio CLI (MIT), and gemini CLI (Apache-2.0, macOS-only in v1)
+inside the signed/notarized `.app` so non-technical users get them
+preinstalled. The proprietary Claude Code CLI is downloaded on first
+launch with sha256 verification. Gemini on Windows is a phase-2
+fork-build (no upstream Windows artifact). Resolution + install flow
+detailed in `knowledge-base/cli-bundling.md`.
 
 **Standalone engine, shipped:** the desktop app spawns `houston-engine`
 as a subprocess on startup (sidecar via Tauri `externalBin`), parses

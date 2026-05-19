@@ -14,6 +14,13 @@
       "schedule": { "type": "string", "description": "Cron expression (e.g. '0 9 * * 1-5')." },
       "enabled": { "type": "boolean" },
       "suppress_when_silent": { "type": "boolean", "description": "If true, runs that respond ROUTINE_OK are silent." },
+      "integrations": {
+        "type": "array",
+        "items": { "type": "string" },
+        "default": [],
+        "description": "Composio toolkit slugs this routine uses (e.g. ['gmail', 'slack'])."
+      },
+      "timezone": { "type": ["string", "null"], "description": "IANA tz override; null means use account default." },
       "created_at": { "type": "string", "format": "date-time" },
       "updated_at": { "type": "string", "format": "date-time" }
     },

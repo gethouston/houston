@@ -16,7 +16,10 @@ import {
   stripTutorialSection,
 } from "../tutorial-system-prompt";
 import { useFeedStore } from "../../../stores/feeds";
-import { useSessionStatus, isActiveSessionStatus } from "../../../stores/session-status";
+import {
+  useSessionStatus,
+  isActiveSessionStatus,
+} from "../../../stores/session-status";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
 import {
   ComposioLinkCard,
@@ -28,23 +31,20 @@ import {
 } from "../../composio-signin-card";
 import type { Agent } from "../../../lib/types";
 import type { MissionMeta } from "../mission-frame";
-import { MissionWithChatFrame } from "../mission-with-chat-frame";
+import { MissionChatFrame } from "../mission-chat-frame";
+import { MissionIntroModal } from "../mission-intro-modal";
 import { TryDoneScreen } from "../try-done-screen";
 
 /**
  * Magic word the agent emits to signal "tutorial step done, frontend may
  * advance". Stripped from display via `transformContent`. Detected via a
- * feed scan in `tutorialDone`.
- *
- * The detection regex is intentionally lenient: codex's gpt-5.5 sometimes
- * wraps the token in markdown (`**[TUTORIAL_COMPLETE]**`), escapes the
- * underscore (`[TUTORIAL\_COMPLETE]`), capitalizes a different way, or
- * tacks on "D" (`[TUTORIAL_COMPLETED]`). The display-stripping replace
- * uses the same regex so whatever shape lands gets removed from the
- * final card.
+ * feed scan in `tutorialDone`. The regex is intentionally lenient because
+ * codex's gpt-5.5 sometimes wraps the token in markdown
+ * (`**[TUTORIAL_COMPLETE]**`), escapes the underscore, or pluralizes.
  */
 const TUTORIAL_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
-const TUTORIAL_END_STRIP_RE = /\*{0,2}\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]\*{0,2}/gi;
+const TUTORIAL_END_STRIP_RE =
+  /\*{0,2}\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]\*{0,2}/gi;
 
 interface FrameLabels {
   brandLabel: string;
@@ -59,20 +59,35 @@ interface TryMissionProps {
   assistantColor: string;
   provider: string;
   model: string;
+  /**
+   * Reports the activity session key up to the orchestrator the moment
+   * `createMission` mints it. The follow-up Skill and Routine missions
+   * mount fresh `ChatPanel`s against the SAME session so the chat history
+   * (the day-plan report) carries over without a re-fetch.
+   */
+  onSessionKey: (sessionKey: string) => void;
   onContinue: () => void;
+  /**
+   * Always-on escape hatch wired to the orchestrator. Bypasses the rest
+   * of the tutorial and lands the user in the workspace shell. Separate
+   * from `onContinue` because the latter advances to the next mission,
+   * not the workspace.
+   */
+  onSkip: () => void;
 }
 
 /**
- * "Try a mission" — the AHA. The user clicks the single chip; we create a
- * real Activity Board mission via `createMission` and run the chat on the
- * resulting `activity-${id}` session key. After graduation the user lands on
- * the board and finds this conversation as a mission card they can scroll
- * back through.
+ * Onboarding mission 4. A single-sentence intro modal explains that
+ * Houston agents connect to real tools, the CTA both dismisses the modal
+ * and kicks off the day-plan mission via `createMission`. From there the
+ * full screen is the chat: the user replies naturally, the agent runs
+ * the structured day-plan flow, and we advance when the agent emits the
+ * `[TUTORIAL_COMPLETE]` token.
  *
- * The composer is the workspace's `ChatPanel` (queue, attachments, Composio
- * cards — all free), so once the mission is going the user can reply in the
- * normal chat. Pre-pick the right column shows a centered prompt with the
- * single chip; post-pick it switches to the live chat layout.
+ * Why a modal instead of an inline tip card: the previous split-screen
+ * put instructions to the LEFT of the chat. Users read the chat and
+ * missed the left rail entirely. The modal forces the explanation in
+ * front of the chat for one beat, then gets out of the way.
  */
 export function TryMission({
   meta,
@@ -81,15 +96,17 @@ export function TryMission({
   assistantColor,
   provider,
   model,
+  onSessionKey,
   onContinue,
+  onSkip,
 }: TryMissionProps) {
   const { t } = useTranslation(["setup", "chat"]);
   const agentPath = agent.folderPath;
   const missionTitle = t("setup:tutorial.missions.try.skill.title");
 
-  // The session key is null until the user picks a chip and `createMission`
-  // mints the activity. Pre-pick everything that depends on it just no-ops.
-  const [missionSessionKey, setMissionSessionKey] = useState<string | null>(null);
+  const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
+    null,
+  );
   const sessionKeyForHooks = missionSessionKey ?? "";
   const feedItems = useFeedStore(
     (s) => s.items[agentPath]?.[sessionKeyForHooks],
@@ -101,6 +118,14 @@ export function TryMission({
 
   const [composerText, setComposerText] = useState("");
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
+  /**
+   * `introDismissed` flips to true the moment the user clicks the modal's
+   * "Got it" / "Let's try that out" CTA. The chip in the chat area is
+   * gated on this so we never show two competing CTAs (modal + chip) at
+   * the same time. `pickedAny` then flips when the chip itself is clicked,
+   * which is what actually fires `createMission`.
+   */
+  const [introDismissed, setIntroDismissed] = useState(false);
   const [pickedAny, setPickedAny] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -112,19 +137,17 @@ export function TryMission({
     [connectedList],
   );
 
-  // Append the tutorial directive to CLAUDE.md while this mission is mounted;
-  // strip on unmount. Agent picks it up at session start so the tutorial flow
-  // is enforced via system prompt, not user-visible postscripts.
+  // Append the tutorial directive to CLAUDE.md while this mission is
+  // mounted; strip on unmount. Agent reads the augmented file at session
+  // start so the directive lives in the system context, not in any
+  // visible chat bubble.
   //
-  // The write is async, but the chip click that spawns the chat session is
+  // The write is async, but the modal CTA that spawns the chat session is
   // synchronous from the user's POV. If the user clicks before this write
-  // lands on disk the engine reads the un-augmented CLAUDE.md, the tutorial
-  // directive never reaches the agent, and the agent reverts to its base
-  // "look at local files, ask one missing-piece question" behavior — what
-  // a real user saw on Windows after a wipe + fresh boot (NTFS + AV scan
-  // make the race fat). We expose the prep promise via a ref so
-  // `handlePick` can await it before firing `createMission`. Already-done
-  // prep resolves instantly.
+  // lands on disk the engine reads the un-augmented CLAUDE.md and the
+  // tutorial directive never reaches the agent. We expose the prep
+  // promise via a ref so `handlePick` can await it before firing
+  // `createMission`.
   const tutorialPrepRef = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
     let cancelled = false;
@@ -154,9 +177,9 @@ export function TryMission({
     };
   }, [agentPath]);
 
-  // Magic-word completion signal. Restricted to `assistant_text` (the agent's
-  // final visible reply) so reasoning / tool plumbing that incidentally
-  // mentions the marker doesn't false-positive.
+  // Magic-word completion signal. Restricted to `assistant_text` so
+  // reasoning / tool plumbing that incidentally mentions the marker
+  // doesn't false-positive.
   const finalReportMarkdown = useMemo(() => {
     for (let i = (feedItems ?? []).length - 1; i >= 0; i--) {
       const item = (feedItems ?? [])[i];
@@ -197,12 +220,11 @@ export function TryMission({
   }, []);
 
   // Free-typing path. Wrapped by `useSessionMessageQueue` so messages typed
-  // while the agent is mid-stream get queued instead of dropped — same
-  // behavior as the workspace chat tab.
+  // while the agent is mid-stream get queued instead of dropped.
   //
   // Force `effort: "medium"` for both providers. Without it, Codex inherits
   // whatever sits in `~/.codex/config.toml`, and newer Codex builds happily
-  // write `model_reasoning_effort = "xhigh"` — which the bundled Codex CLI
+  // write `model_reasoning_effort = "xhigh"` which the bundled Codex CLI
   // rejects, killing the tutorial with "A local tool failed to start".
   const sendNow = useCallback(
     async (text: string, _files: File[]) => {
@@ -251,23 +273,24 @@ export function TryMission({
 
   /**
    * Escape hatch when the agent stalls and never emits the completion
-   * token — observed real users sitting on step 4 for minutes when codex
-   * + gpt-5.5 wraps the marker in markdown or just decides not to emit
-   * it. Stop the in-flight session so the agent doesn't keep producing
-   * output behind the user's back, then call `onContinue` so the parent
-   * advances to the workspace shell. The `useEffect` cleanup that strips
-   * the tutorial section from CLAUDE.md still runs on unmount.
+   * token — observed real users sitting for minutes when codex + gpt-5.5
+   * wraps the marker in markdown or just decides not to emit it. Stops
+   * the in-flight session, then calls `onSkip` so the parent lands the
+   * user in the workspace shell (bypassing Skill and Routine entirely).
+   * The `useEffect` cleanup still strips the tutorial section from
+   * CLAUDE.md on unmount.
    */
   const handleSkipTutorial = useCallback(() => {
     if (missionSessionKey) {
       tauriChat.stop(agentPath, missionSessionKey).catch(console.error);
     }
-    onContinue();
-  }, [agentPath, missionSessionKey, onContinue]);
+    onSkip();
+  }, [agentPath, missionSessionKey, onSkip]);
 
-  // Chip click → `createMission` mints an activity, sends the chip text as
-  // the first user prompt, and returns the session key. From then on the
-  // chat lives on `activity-${id}` so it shows up as a mission card on the
+  // Modal CTA + initial-message handler. Same flow as before: mint an
+  // activity, send the chip text as the first user prompt, and let the
+  // engine stream the response into the chat. From then on the chat
+  // lives on `activity-${id}` so it shows up as a mission card on the
   // Activity Board after graduation.
   const handlePick = useCallback(
     async (chipLabel: string) => {
@@ -275,8 +298,6 @@ export function TryMission({
       setPickedAny(true);
       // Wait for the tutorial-section append to land on disk so the engine
       // reads the augmented CLAUDE.md when it spawns the chat session.
-      // No-op once the mount-time prep is already done; one short await
-      // on a fast click after a fresh boot.
       await tutorialPrepRef.current;
       try {
         const result = await createMission(
@@ -296,26 +317,31 @@ export function TryMission({
         );
         // Mirror the regular composer-send path: push the chip text as
         // the user_message into the feed the instant we have a session
-        // key. `createMission` already forwarded the same prompt to the
-        // engine — the engine does not re-emit it as a feed event, so
-        // this is not a duplicate, it is the only user-visible bubble
-        // for this turn. Without this push the ChatPanel mounts with
-        // an empty feed and `deriveStatus` skips straight past
-        // "submitted", so the pulsing-logo thinking indicator never
-        // gets a chance to render before codex starts streaming items
-        // 1-2s later. End result on Windows: a dead silent gap between
-        // chip click and "Mission in progress" that reads as a crash.
+        // key. Without this push the ChatPanel mounts with an empty feed
+        // and the thinking indicator never gets a chance to render
+        // before codex starts streaming items 1-2s later.
         pushFeedItem(agent.folderPath, result.sessionKey, {
           feed_type: "user_message",
           data: chipLabel,
         });
         setMissionSessionKey(result.sessionKey);
+        onSessionKey(result.sessionKey);
       } catch (e) {
         setPickedAny(false);
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [agent.id, agent.name, agent.color, agent.folderPath, provider, model, pickedAny, pushFeedItem],
+    [
+      agent.id,
+      agent.name,
+      agent.color,
+      agent.folderPath,
+      provider,
+      model,
+      pickedAny,
+      pushFeedItem,
+      onSessionKey,
+    ],
   );
 
   const visibleFeed = (feedItems ?? []) as FeedItem[];
@@ -330,54 +356,21 @@ export function TryMission({
         reportMarkdown={finalReportMarkdown}
         continueLabel={t("setup:tutorial.missions.try.continueChip")}
         onContinue={onContinue}
+        skipLabel={t("setup:tutorial.missions.try.skip")}
+        onSkip={handleSkipTutorial}
       />
     );
   }
 
   return (
-    <MissionWithChatFrame
-      meta={meta}
-      {...frame}
-      left={
-        <div className="flex flex-1 flex-col gap-4">
-          <div className="rounded-xl border border-black/5 bg-secondary/40 p-4">
-            <p className="text-sm font-medium">
-              {t("setup:tutorial.missions.try.tipTitle")}
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              {t("setup:tutorial.missions.try.tipBody")}
-            </p>
-          </div>
-          {pickedAny && (
-            <div className="rounded-xl border border-black/5 bg-secondary/40 p-4">
-              <p className="text-sm font-medium">
-                {t("setup:tutorial.missions.try.workingTitle")}
-              </p>
-              <p className="mt-2 text-sm text-muted-foreground">
-                {t("setup:tutorial.missions.try.workingBody")}
-              </p>
-              {/* Escape hatch — only visible once the mission has started,
-               * so it doesn't compete with the chip CTA on the empty
-               * left panel. Hard-coded EN/ES copy because adding i18n
-               * keys for a single line during a hotfix isn't worth the
-               * locale churn. */}
-              <button
-                type="button"
-                onClick={handleSkipTutorial}
-                className="mt-3 text-xs text-muted-foreground underline-offset-2 hover:underline"
-              >
-                Skip tutorial / Saltar tutorial
-              </button>
-            </div>
-          )}
-          {error && (
-            <p className="rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-        </div>
-      }
-      right={
+    <>
+      <MissionChatFrame
+        meta={meta}
+        brandLabel={frame.brandLabel}
+        counterLabel={frame.counterLabel}
+        skipLabel={t("setup:tutorial.missions.try.skip")}
+        onSkip={handleSkipTutorial}
+      >
         <div className="flex h-full min-h-0 flex-col">
           <header className="flex shrink-0 items-center gap-3 border-b border-black/5 pb-4">
             <HoustonAvatar
@@ -394,6 +387,11 @@ export function TryMission({
               )}
             </div>
           </header>
+          {error && (
+            <p className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
           {missionSessionKey ? (
             <div className="flex min-h-0 flex-1 flex-col pt-4">
               <ChatPanel
@@ -418,26 +416,38 @@ export function TryMission({
               />
             </div>
           ) : (
-            <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-4 px-4 text-center">
-              <p className="text-sm text-muted-foreground">
-                {t("setup:tutorial.missions.try.composerHint")}
-              </p>
-              <button
-                type="button"
-                onClick={() =>
-                  void handlePick(t("setup:tutorial.missions.try.chip"))
-                }
-                disabled={pickedAny}
-                className={cn(
-                  "h-9 rounded-full border border-black/15 bg-background px-4 text-sm font-medium text-foreground transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50",
-                )}
-              >
-                {t("setup:tutorial.missions.try.chip")}
-              </button>
+            // Pre-pick state. After the modal dismisses, the user lands on
+            // a centered chip showing the actual prompt that's about to fly
+            // — they click it themselves, so the next chat bubble feels like
+            // their own action rather than something the modal auto-fired.
+            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
+              {introDismissed && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    void handlePick(t("setup:tutorial.missions.try.chip"))
+                  }
+                  disabled={pickedAny}
+                  className={cn(
+                    "h-10 rounded-full border border-black/15 bg-background px-5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                >
+                  {t("setup:tutorial.missions.try.chip")}
+                </button>
+              )}
             </div>
           )}
         </div>
-      }
-    />
+      </MissionChatFrame>
+      <MissionIntroModal
+        open={!introDismissed}
+        header={t("setup:tutorial.missionLabel", {
+          title: t("setup:tutorial.missions.try.intro.title"),
+        })}
+        body={t("setup:tutorial.missions.try.intro.body")}
+        ctaLabel={t("setup:tutorial.missions.try.intro.cta")}
+        onCta={() => setIntroDismissed(true)}
+      />
+    </>
   );
 }

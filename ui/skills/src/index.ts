@@ -13,6 +13,7 @@ export { CATEGORY_LABELS } from "./types"
 // Components
 export { AddSkillDialog } from "./add-skill-dialog"
 export type { AddSkillDialogLabels, AddSkillDialogProps } from "./add-skill-dialog"
+export type { ScratchViewLabels } from "./add-skill-dialog-scratch-view"
 export { SkillsGrid } from "./skills-grid"
 export type { SkillsGridProps } from "./skills-grid"
 export type { SkillsGridLabels } from "./skills-grid-labels"

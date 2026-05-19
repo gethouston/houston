@@ -8,6 +8,7 @@
 
 import { useCallback, useRef, useState } from "react";
 import type { DragEvent, DragEventHandler } from "react";
+import { fileIdentityKey } from "./clipboard-files";
 
 /**
  * Append `incoming` to `existing`, skipping files already present. Two files
@@ -15,11 +16,10 @@ import type { DragEvent, DragEventHandler } from "react";
  * standard identity triple for user-attached File objects.
  */
 export function mergeUniqueFiles(existing: File[], incoming: File[]): File[] {
-  const key = (f: File) => `${f.name}::${f.size}::${f.lastModified}`;
-  const seen = new Set(existing.map(key));
+  const seen = new Set(existing.map(fileIdentityKey));
   const merged = [...existing];
   for (const file of incoming) {
-    const k = key(file);
+    const k = fileIdentityKey(file);
     if (seen.has(k)) continue;
     seen.add(k);
     merged.push(file);

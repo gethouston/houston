@@ -13,6 +13,8 @@ export interface Routine {
   suppress_when_silent: boolean
   /** IANA timezone override; absent means use the user's account timezone. */
   timezone?: string | null
+  /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
+  integrations: string[]
   created_at: string
   updated_at: string
 }

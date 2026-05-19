@@ -40,6 +40,8 @@ export interface RoutineFormData {
   suppress_when_silent: boolean
   /** IANA timezone override. `null`/empty means use the account default. */
   timezone?: string | null
+  /** Composio toolkit slugs this routine uses. */
+  integrations: string[]
 }
 
 export interface RoutineEditorProps {

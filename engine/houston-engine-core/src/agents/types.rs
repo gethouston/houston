@@ -88,6 +88,11 @@ pub struct Routine {
     /// silently (no activity created on the board).
     #[serde(default = "default_true")]
     pub suppress_when_silent: bool,
+    /// Composio toolkit slugs this routine uses (e.g. `["gmail", "slack"]`).
+    /// Mirrors the same field on Skills; surfaced by the share/import flow so
+    /// the recipient can wire up the integrations before enabling the routine.
+    #[serde(default)]
+    pub integrations: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -104,6 +109,7 @@ pub struct RoutineUpdate {
     pub schedule: Option<String>,
     pub enabled: Option<bool>,
     pub suppress_when_silent: Option<bool>,
+    pub integrations: Option<Vec<String>>,
 }
 
 /// Fields for creating a new routine (no id — generated server-side).
@@ -118,6 +124,8 @@ pub struct NewRoutine {
     pub enabled: bool,
     #[serde(default = "default_true")]
     pub suppress_when_silent: bool,
+    #[serde(default)]
+    pub integrations: Vec<String>,
 }
 
 // -- Routine Runs --

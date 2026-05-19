@@ -8,8 +8,8 @@ import { cn } from "@houston-ai/core"
 import type { FileEntry } from "./types"
 import type { FolderNode } from "./tree"
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone"
-import { FolderIcon, DisclosureChevron, getFileIcon } from "./finder-icons"
-import { formatSize, formatFinderDate, getKind } from "./utils"
+import { FolderIcon, DisclosureChevron, getFileIcon } from "./file-manager-icons"
+import { formatSize, formatFileManagerDate, getKind } from "./utils"
 import { FileMenu, type FileMenuLabels } from "./file-menu"
 
 const DEPTH_INDENT = 20
@@ -186,7 +186,7 @@ export function FileRow({
             <span className="text-[13px] truncate">{file.name}</span>
           )}
         </div>
-        <span className={cn("text-[11px] truncate px-2", sec)}>{formatFinderDate(file.dateModified)}</span>
+        <span className={cn("text-[11px] truncate px-2", sec)}>{formatFileManagerDate(file.dateModified)}</span>
         <span className={cn("text-[11px] text-right px-2", sec)}>{formatSize(file.size)}</span>
         <span className={cn("text-[11px] truncate px-2", sec)}>{getKind(file.extension)}</span>
       </div>

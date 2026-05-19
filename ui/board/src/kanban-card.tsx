@@ -38,9 +38,12 @@ export interface KanbanCardProps {
   onRename?: (newTitle: string) => void
   runningStatuses?: string[]
   approveStatuses?: string[]
+  errorStatuses?: string[]
   actions?: React.ReactNode
   avatar?: React.ReactNode
   labels?: KanbanCardLabels
+  /** Mark this card as the currently-open one in the right panel. */
+  selected?: boolean
 }
 
 export function KanbanCard({
@@ -51,13 +54,16 @@ export function KanbanCard({
   onRename,
   runningStatuses = ["running"],
   approveStatuses = ["needs_you"],
+  errorStatuses = ["error"],
   actions,
   avatar,
   labels,
+  selected = false,
 }: KanbanCardProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
   const isRunning = runningStatuses.includes(item.status)
   const isNeedsApproval = approveStatuses.includes(item.status)
+  const isError = errorStatuses.includes(item.status)
   const [showConfirm, setShowConfirm] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.title)
@@ -95,11 +101,43 @@ export function KanbanCard({
     <>
       <div
         onClick={(e) => { e.stopPropagation(); onSelect() }}
+        aria-selected={selected || undefined}
+        // For running + selected, override the running-glow inner
+        // fill (--glow-bg) so the selection is visible through the
+        // rotating border. The accent token is a translucent overlay
+        // (rgba), which would let the conic gradient bleed through —
+        // flatten it via color-mix to a solid tint that matches what
+        // bg-accent looks like rendered over the card background.
+        style={
+          selected && isRunning
+            ? ({
+                "--glow-bg":
+                  "color-mix(in srgb, var(--color-background) 93%, currentColor 7%)",
+              } as React.CSSProperties)
+            : undefined
+        }
         className={cn(
-          "group/card relative rounded-xl bg-background p-3 cursor-pointer transition-all duration-200",
+          // `transition-all` would also try to animate the
+          // running-glow's `linear-gradient(--glow-bg, --glow-bg)`
+          // background-image layer when --glow-bg flips on selection,
+          // colliding with the conic-gradient keyframe animation.
+          // Restrict transitions to the safe properties we actually
+          // care about.
+          "group/card relative rounded-xl p-3 cursor-pointer transition-[background-color,box-shadow,border-color] duration-200",
+          selected ? "bg-accent shadow-md" : "bg-background",
+          // Running cards keep their own animated border untouched —
+          // setting Tailwind's `border` would override the
+          // `border-style: solid` from card-running-glow's shorthand
+          // and kill the rotating gradient. For everything else, the
+          // border is always 1px (transparent when selected, gray
+          // otherwise) so toggling selection doesn't shift layout.
           isRunning
             ? "card-running-glow shadow-[0_2px_12px_rgba(59,130,246,0.12)]"
-            : "border border-border/20 shadow-sm hover:shadow-md",
+            : isError
+              ? "border border-destructive/60 shadow-sm hover:shadow-md"
+              : selected
+                ? "border border-transparent"
+                : "border border-border/20 shadow-sm hover:shadow-md",
         )}
       >
         {/* Top row: agent info + action buttons */}

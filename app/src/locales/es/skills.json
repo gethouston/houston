@@ -15,6 +15,7 @@
     "description": "Instala procedimientos reutilizables para tu agente.",
     "storeTab": "Skills.sh",
     "repoTab": "GitHub",
+    "scratchTab": "Desde cero",
     "store": {
       "searchPlaceholder": "Busca entre más de 90K skills...",
       "popularHeading": "Populares en Skills.sh",
@@ -56,6 +57,23 @@
       "installedSummary_one": "Se instaló 1 skill: {{names}}",
       "installedSummary_other": "Se instalaron {{count}} skills: {{names}}",
       "installAnotherRepo": "Instalar desde otro repositorio"
+    },
+    "scratch": {
+      "titleLabel": "¿Qué debería hacer esta skill?",
+      "titlePlaceholder": "Redactar un contrato",
+      "titleHint": "Usa la frase que dirías en el chat. Houston la convierte en un slug.",
+      "slugPreviewPrefix": "Se guarda como",
+      "descriptionLabel": "Descripción en una línea",
+      "descriptionPlaceholder": "Redacta un borrador de contrato que puedes revisar y firmar.",
+      "descriptionHint": "Se muestra en la tarjeta. Di qué obtiene el usuario, no cómo funciona.",
+      "bodyLabel": "Instrucciones para el agente",
+      "bodyPlaceholder": "## Procedimiento\n\n1. Pregunta al usuario qué tipo de contrato.\n2. Trae la última versión desde Drive.\n3. Complétalo y compártelo para revisión.\n",
+      "bodyHint": "Markdown. El agente lo lee cuando se ejecuta la skill.",
+      "submit": "Crear skill",
+      "submitting": "Creando...",
+      "errorTitleRequired": "Dale un título a tu skill.",
+      "errorBodyRequired": "Agrega al menos un paso.",
+      "errorSlugTaken": "Ya existe una skill con este nombre."
     }
   },
   "detail": {

@@ -95,6 +95,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
               onInstallCommunity={surface.handleInstallCommunity}
               onListFromRepo={surface.handleListFromRepo}
               onInstallFromRepo={surface.handleInstallFromRepo}
+              onCreateFromScratch={surface.handleCreateFromScratch}
               installedSkillNames={surface.installedSkillNames}
             />
           </div>

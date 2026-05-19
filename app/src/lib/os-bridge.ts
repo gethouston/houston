@@ -5,7 +5,7 @@
  * `invoke(...)`. Two classes of calls live here:
  *
  *  1. **OS-native helpers** (`osRevealFile`, `osPickDirectory`, …). These
- *     probe the user's local machine (Finder, open URL, terminal, local
+ *     probe the user's local machine (file manager, open URL, terminal, local
  *     Claude CLI, local log writes) and will NEVER move to the engine —
  *     the engine may run on a remote VPS.
  *

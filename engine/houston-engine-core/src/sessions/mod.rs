@@ -114,6 +114,7 @@ pub async fn start(
     params: StartParams,
 ) -> Result<String, crate::CoreError> {
     let session_key = params.session_key.clone();
+    let agent_dir = params.agent_dir.clone();
     let agent_path = params.agent_dir.to_string_lossy().to_string();
     let identity = SessionIdentity::new(agent_path.clone(), session_key.clone());
     let generation = rt.control.register(&identity).await;
@@ -138,6 +139,30 @@ pub async fn start(
             {
                 rt.control.finish(&identity).await;
                 tracing::warn!("[sessions] queued start failed: {e}");
+                // The optimistic UI flip already wrote `running` to the
+                // activity row when the user pressed send. If `run_start`
+                // bails before reaching its end-flip (e.g., `create_dir_all`
+                // failed, `seed_agent` failed), the row would stay stuck on
+                // `running` forever — visible as a permanently-spinning
+                // mission. Flip to `error` here so the board reflects the
+                // real terminal state.
+                match crate::agents::activity::set_status_by_session_key(
+                    &agent_dir,
+                    &session_key,
+                    "error",
+                ) {
+                    Ok(Some(_)) => {
+                        events.emit(HoustonEvent::ActivityChanged {
+                            agent_path: agent_path.clone(),
+                        });
+                    }
+                    Ok(None) => { /* ad-hoc session, no board row to flip */ }
+                    Err(activity_err) => {
+                        tracing::warn!(
+                            "[sessions] failed to flip activity on start failure: {activity_err} (session_key={session_key})"
+                        );
+                    }
+                }
                 events.emit(HoustonEvent::SessionStatus {
                     agent_path,
                     session_key,
@@ -179,6 +204,31 @@ async fn run_start(
     let _turn_guard = rt.acquire_turn(&identity).await;
     if rt.control.is_stale(&identity, generation).await {
         tracing::info!("[sessions] skipping cancelled queued turn session_key={session_key}");
+        // The desktop UI optimistically wrote `running` to the activity
+        // row when the user pressed send (see the comment at the
+        // `set_status_by_session_key("running")` call below). If we exit
+        // here without resetting, the row stays stuck on `running`
+        // forever — the kanban "running" column shows a permanently
+        // spinning mission for work that never actually started, because
+        // `cancel()` only kills the process / dequeues the turn and
+        // doesn't touch the activity file. Flip to `needs_you` so the
+        // user can retry, edit, or move to done.
+        let agent_path = agent_dir.to_string_lossy().to_string();
+        match crate::agents::activity::set_status_by_session_key(
+            &agent_dir,
+            &session_key,
+            "needs_you",
+        ) {
+            Ok(Some(_)) => {
+                events.emit(HoustonEvent::ActivityChanged { agent_path });
+            }
+            Ok(None) => { /* ad-hoc session, no board row to flip */ }
+            Err(e) => {
+                tracing::warn!(
+                    "[sessions] failed to flip cancelled queued activity: {e} (session_key={session_key})"
+                );
+            }
+        }
         rt.control.finish(&identity).await;
         return Ok(());
     }
@@ -582,7 +632,7 @@ mod tests {
                     prompt: "hello".to_string(),
                     system_prompt: None,
                     source: Some("test".to_string()),
-                    provider: Provider::OpenAI,
+                    provider: "openai".parse().unwrap(),
                     model: None,
                     effort: None,
                 },

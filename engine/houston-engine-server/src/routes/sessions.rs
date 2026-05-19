@@ -197,7 +197,7 @@ async fn summarize_activity(
         let resolved = resolve_provider(&st.engine.paths, &agent_dir);
         (resolved.provider, req.model.or(resolved.model))
     } else {
-        (Provider::Anthropic, req.model)
+        (Provider::default(), req.model)
     };
     Ok(Json(
         summarize::summarize(&req.message, provider, model.as_deref()).await?,

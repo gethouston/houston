@@ -24,6 +24,7 @@ export function SkillsContent({
   onInstallCommunity,
   onListFromRepo,
   onInstallFromRepo,
+  onCreateFromScratch,
   installedSkillNames,
 }: {
   skills: SkillSummary[];
@@ -37,6 +38,11 @@ export function SkillsContent({
   ) => Promise<string>;
   onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
   onInstallFromRepo?: (source: string, skills: RepoSkill[]) => Promise<string[]>;
+  onCreateFromScratch?: (input: {
+    name: string;
+    description: string;
+    content: string;
+  }) => Promise<string>;
   installedSkillNames?: Set<string>;
 }) {
   const { t } = useTranslation("skills");
@@ -54,6 +60,7 @@ export function SkillsContent({
           onInstallCommunity,
           onListFromRepo,
           onInstallFromRepo,
+          onCreateFromScratch,
           installedSkillNames,
         }
       : null;

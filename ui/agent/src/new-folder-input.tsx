@@ -2,7 +2,7 @@
  * Inline new-folder input, styled as a selected folder row.
  */
 import { useRef, useState } from "react"
-import { FolderIcon, DisclosureChevron } from "./finder-icons"
+import { FolderIcon, DisclosureChevron } from "./file-manager-icons"
 import { COL_GRID } from "./file-row"
 
 export function NewFolderInput({ onConfirm, onCancel }: {

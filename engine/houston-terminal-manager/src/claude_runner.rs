@@ -1,8 +1,9 @@
-use super::types::{Provider, SessionStatus};
+use super::types::SessionStatus;
 use crate::claude_install_path;
 use crate::cli_process::{run_cli_process, CliRunOutcome};
 use crate::provider_error::MALFORMED_PROVIDER_JSON_MESSAGE;
 use crate::session_update::SessionUpdate;
+use crate::Provider;
 use std::ffi::OsString;
 use tokio::process::Command;
 use tokio::sync::mpsc;
@@ -29,8 +30,10 @@ fn claude_command_name() -> OsString {
 }
 
 /// Spawn a Claude CLI session (`claude -p --output-format stream-json`).
+#[allow(clippy::too_many_arguments)]
 pub(crate) async fn spawn_claude(
     tx: &mpsc::UnboundedSender<SessionUpdate>,
+    provider: Provider,
     prompt: String,
     resume_session_id: Option<String>,
     working_dir: Option<std::path::PathBuf>,
@@ -68,7 +71,7 @@ pub(crate) async fn spawn_claude(
         disable_builtin_tools,
         disable_all_tools,
     );
-    let outcome = run_cli_process(tx, &mut cmd, &prompt, Provider::Anthropic).await;
+    let outcome = run_cli_process(tx, &mut cmd, &prompt, provider).await;
     if should_retry_malformed_provider_json(outcome, resume_session_id.as_deref()) {
         tracing::warn!(
             "[houston:session] claude resume failed with malformed provider JSON; retrying fresh"
@@ -76,6 +79,7 @@ pub(crate) async fn spawn_claude(
         let _ = tx.send(SessionUpdate::ResumeInvalid);
         retry_fresh(
             tx,
+            provider,
             &prompt,
             working_dir.as_deref(),
             model.as_deref(),
@@ -94,6 +98,7 @@ pub(crate) async fn spawn_claude(
 #[allow(clippy::too_many_arguments)]
 async fn retry_fresh(
     tx: &mpsc::UnboundedSender<SessionUpdate>,
+    provider: Provider,
     prompt: &str,
     working_dir: Option<&std::path::Path>,
     model: Option<&str>,
@@ -115,7 +120,7 @@ async fn retry_fresh(
         disable_builtin_tools,
         disable_all_tools,
     );
-    let retry_outcome = run_cli_process(tx, &mut fresh_cmd, prompt, Provider::Anthropic).await;
+    let retry_outcome = run_cli_process(tx, &mut fresh_cmd, prompt, provider).await;
     if retry_outcome == CliRunOutcome::ProviderRequestMalformedJson {
         send_malformed_provider_json_status(tx);
     }

@@ -7,6 +7,15 @@
 use houston_ui_events::HoustonEvent;
 use serde::{Deserialize, Serialize};
 
+/// Re-export the typed [`ProviderError`] taxonomy so every protocol
+/// consumer (engine-server, ui/engine-client, third-party clients) can
+/// import the wire shape from one place. The enum lives in
+/// `houston-terminal-manager` because the per-provider classifiers
+/// construct it; serialising it is the same JSON either way.
+pub use houston_terminal_manager::{
+    AuthFailureCause, ModelUnavailableReason, ProviderError, QuotaScope,
+};
+
 /// Protocol major version. Incremented on breaking changes.
 pub const PROTOCOL_VERSION: u8 = 1;
 

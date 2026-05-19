@@ -19,6 +19,17 @@ export interface PreparedAttachments {
 
 export type PrepareAttachments = (incoming: File[], existing: File[]) => PreparedAttachments;
 
+/** Translated strings the composer surfaces to the user. English defaults
+ *  live in the components; the app passes `t()` results in. */
+export interface ChatComposerLabels {
+  fileAlreadyInChat?: string;
+  dropTitle?: string;
+  dropDescription?: string;
+  /** Shown when an image was on the clipboard but the webview never
+   *  handed over the bytes (Linux Wayland WebKitGTK). */
+  imagePasteUnavailable?: string;
+}
+
 export interface ChatPanelProps {
   sessionKey: string;
   feedItems: FeedItem[];
@@ -59,4 +70,5 @@ export interface ChatPanelProps {
   onOpenLink?: (url: string) => void;
   renderLink?: ChatMessagesProps["renderLink"];
   composerOverride?: ReactNode;
+  composerLabels?: ChatComposerLabels;
 }

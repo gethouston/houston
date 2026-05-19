@@ -106,6 +106,11 @@ You are a helpful AI assistant.
 pub fn seed_agent(dir: &Path) -> Result<(), String> {
     seed_file(dir, "CLAUDE.md", DEFAULT_CLAUDE_MD)?;
 
+    // Codex (`codex`) reads `AGENTS.md` from project memory; Gemini-cli
+    // reads `GEMINI.md`. Houston has one canonical agent role file —
+    // `CLAUDE.md` — and exposes it to the other CLIs via symlink so all
+    // three providers see the same per-agent instructions without us
+    // having to duplicate file content (drift-free).
     let agents_md = dir.join("AGENTS.md");
     if !agents_md.exists() {
         #[cfg(unix)]
@@ -115,6 +120,18 @@ pub fn seed_agent(dir: &Path) -> Result<(), String> {
         #[cfg(windows)]
         {
             let _ = std::os::windows::fs::symlink_file("CLAUDE.md", &agents_md);
+        }
+    }
+
+    let gemini_md = dir.join("GEMINI.md");
+    if !gemini_md.exists() {
+        #[cfg(unix)]
+        {
+            let _ = std::os::unix::fs::symlink("CLAUDE.md", &gemini_md);
+        }
+        #[cfg(windows)]
+        {
+            let _ = std::os::windows::fs::symlink_file("CLAUDE.md", &gemini_md);
         }
     }
 
@@ -182,6 +199,12 @@ pub fn build_agent_context(
         }
     }
 
+    if let Some(workspace_dir) = dir.parent() {
+        if let Some(section) = crate::workspace_context::build_prompt_section(workspace_dir) {
+            parts.push(section);
+        }
+    }
+
     let integrations_path = dir.join(".houston/integrations.json");
     if let Ok(content) = fs::read_to_string(&integrations_path) {
         let names: Vec<String> =
@@ -229,12 +252,18 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
-    fn seed_agent_exposes_claude_md_to_codex() {
+    fn seed_agent_exposes_claude_md_to_other_clis() {
         let d = TempDir::new().unwrap();
         seed_agent(d.path()).unwrap();
 
+        // Codex reads AGENTS.md, Gemini reads GEMINI.md — both must
+        // resolve to the canonical CLAUDE.md so all three CLIs see the
+        // same per-agent role description.
         let agents_md = d.path().join("AGENTS.md");
         assert_eq!(fs::read_link(agents_md).unwrap(), Path::new("CLAUDE.md"));
+
+        let gemini_md = d.path().join("GEMINI.md");
+        assert_eq!(fs::read_link(gemini_md).unwrap(), Path::new("CLAUDE.md"));
     }
 
     #[test]
@@ -274,6 +303,34 @@ mod tests {
         assert!(out.contains("# Persistent Learnings - Frozen Snapshot"));
         assert!(out.contains("User calls this contact Mr. Perkins."));
         assert!(!out.contains("2026-01-01"));
+    }
+
+    #[test]
+    fn build_agent_context_injects_workspace_and_user_context() {
+        let ws = TempDir::new().unwrap();
+        // Mark the parent as a real workspace by creating its `.houston/` dir.
+        fs::create_dir_all(ws.path().join(".houston")).unwrap();
+        fs::write(ws.path().join("WORKSPACE.md"), "Acme Corp, B2B fintech.").unwrap();
+        fs::write(ws.path().join("USER.md"), "Juan, head of sales.").unwrap();
+
+        let agent_dir = ws.path().join("juan-agent");
+        fs::create_dir_all(&agent_dir).unwrap();
+
+        let out = build_agent_context(&agent_dir, None, None);
+
+        assert!(out.contains("# Workspace Context"));
+        assert!(out.contains("Acme Corp, B2B fintech."));
+        assert!(out.contains("# User Context"));
+        assert!(out.contains("Juan, head of sales."));
+    }
+
+    #[test]
+    fn build_agent_context_skips_workspace_section_when_no_workspace_marker() {
+        let d = TempDir::new().unwrap();
+        // No `.houston/` in parent => not a workspace child.
+        let out = build_agent_context(d.path(), None, None);
+        assert!(!out.contains("# Workspace Context"));
+        assert!(!out.contains("# User Context"));
     }
 
     #[test]

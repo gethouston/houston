@@ -3,6 +3,8 @@
   "nav": {
     "account": "Account",
     "workspace": "Workspace",
+    "workspaceContext": "Workspace context",
+    "userContext": "User context",
     "provider": "AI provider",
     "phone": "Connect phone",
     "reportBug": "Report bug"
@@ -15,6 +17,24 @@
   "workspace": {
     "title": "Workspace",
     "nameLabel": "Name"
+  },
+  "workspaceContext": {
+    "emptyTitle": "Tell every agent about this workspace",
+    "emptyDescription": "The company, the product, the customers. Loaded into every new chat in this workspace.",
+    "writeButton": "Write workspace context",
+    "helper": "Shared by every agent in this workspace. Loaded into each new chat. Agents can update this when you tell them something new.",
+    "placeholder": "e.g. Acme Corp, B2B fintech, Series A. Customers are CFOs at mid-market companies.",
+    "saving": "Saving…",
+    "saved": "Saved"
+  },
+  "userContext": {
+    "emptyTitle": "Tell every agent about you",
+    "emptyDescription": "Your role, what you care about, how you like to work. Loaded into every new chat in this workspace.",
+    "writeButton": "Write user context",
+    "helper": "Loaded into each new chat in this workspace. Agents can update this when you tell them something new.",
+    "placeholder": "e.g. I'm Juan, head of sales. I care about pipeline velocity and prefer short replies.",
+    "saving": "Saving…",
+    "saved": "Saved"
   },
   "provider": {
     "title": "AI provider",
@@ -78,9 +98,12 @@
       "errorTitle": "Couldn't send report"
     }
   },
+  "version": "Version {{version}}",
   "toasts": {
     "workspaceRenamed": "Workspace renamed",
     "providerSwitched": "Switched to {{provider}} ({{model}})",
-    "timezoneSet": "Timezone set to {{zone}}"
+    "timezoneSet": "Timezone set to {{zone}}",
+    "versionCopied": "Version copied",
+    "versionCopyFailed": "Couldn't copy version"
   }
 }

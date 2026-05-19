@@ -1,3 +1,4 @@
+import { DropdownMenuItem } from "@houston-ai/core";
 import type { SidebarItem } from "@houston-ai/layout";
 import type { Agent } from "../../lib/types";
 import { AgentSidebarColorMenu } from "./agent-sidebar-color-menu";
@@ -10,6 +11,8 @@ interface BuildAgentSidebarItemsArgs {
   runningLabel: (count: number) => string;
   needsYouLabel: (count: number) => string;
   onChangeColor: (agentId: string, color: string) => void;
+  onShareAgent: (agentId: string) => void;
+  shareLabel: string;
 }
 
 export function buildAgentSidebarItems({
@@ -18,6 +21,8 @@ export function buildAgentSidebarItems({
   runningLabel,
   needsYouLabel,
   onChangeColor,
+  onShareAgent,
+  shareLabel,
 }: BuildAgentSidebarItemsArgs): SidebarItem[] {
   return agents.map((agent) => {
     const summary = summaries[agent.id] ?? {
@@ -44,10 +49,15 @@ export function buildAgentSidebarItems({
           />
         ) : undefined,
       menuContent: (
-        <AgentSidebarColorMenu
-          color={agent.color}
-          onChange={(color) => onChangeColor(agent.id, color)}
-        />
+        <>
+          <AgentSidebarColorMenu
+            color={agent.color}
+            onChange={(color) => onChangeColor(agent.id, color)}
+          />
+          <DropdownMenuItem onClick={() => onShareAgent(agent.id)}>
+            {shareLabel}
+          </DropdownMenuItem>
+        </>
       ),
     };
   });

@@ -1,0 +1,138 @@
+{
+  "shareMenu": "Share with a friend",
+  "newAgent": {
+    "fromFriendCard": "From a friend",
+    "fromFriendDescription": "Drop a file someone shared with you and bring their agent into your workspace."
+  },
+  "flagged": "Houston flagged this one for a closer look.",
+  "export": {
+    "eyebrow": "Sharing {{name}}",
+    "loading": "Loading your agent.",
+    "step1": {
+      "title": "What should we share?",
+      "body": "Pick what your friend gets. The agent's instructions always come along.",
+      "instructionsLabel": "Instructions",
+      "instructionsRow": "Job description and rules",
+      "noInstructions": "This agent has no instructions yet.",
+      "skillsLabel": "Skills",
+      "routinesLabel": "Routines",
+      "learningsLabel": "Learnings"
+    },
+    "step2": {
+      "title": "Want to anonymize first?",
+      "body": "Houston can remove obvious personal info like emails and paths. You'll see exactly what changed before saving.",
+      "asIsTitle": "Share as is",
+      "asIsBody": "Keep everything exactly the way it is.",
+      "anonymizeTitle": "Help me anonymize",
+      "anonymizeBody": "Strip emails, paths and other obvious personal details.",
+      "reviewLabel": "Review what changed",
+      "working": "Houston is reviewing your content.",
+      "diffInstructions": "Instructions",
+      "before": "Before",
+      "after": "After",
+      "keep": "Keep the changes",
+      "skip": "Use the original",
+      "becameEmpty": "Almost everything got redacted. You can leave this out instead.",
+      "routineTitle": "Routine {{id}}",
+      "learningTitle": "Learning"
+    },
+    "step3": {
+      "title": "Ready to share",
+      "body": "Houston will package {{name}} into a single file you can send through any app.",
+      "skillsLabel": "Skills",
+      "routinesLabel": "Routines",
+      "learningsLabel": "Learnings",
+      "anonymizedLabel": "Anonymized",
+      "yes": "Yes",
+      "no": "No"
+    },
+    "actions": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "next": "Continue",
+      "save": "Save file",
+      "saving": "Saving."
+    },
+    "errors": {
+      "previewFailed": "Could not read your agent.",
+      "anonymizeFailed": "Anonymize step failed.",
+      "saveFailed": "Could not save the file.",
+      "noPreview": "No preview available."
+    },
+    "toasts": {
+      "savedTitle": "File saved",
+      "savedDescription": "Saved to {{path}}"
+    }
+  },
+  "import": {
+    "eyebrow": "From a friend",
+    "flagged": "Houston flagged this one for a closer look.",
+    "step1": {
+      "title": "Drop the file your friend sent",
+      "body": "Houston reads it on your machine. Nothing is uploaded.",
+      "pickFile": "Choose a file",
+      "uploadedFrom": "Shared by {{name}}",
+      "anonymous": "your friend",
+      "counts": "{{skills}} skills, {{routines}} routines, {{learnings}} learnings",
+      "anonymizedFlag": "Anonymized before sharing.",
+      "scanChoiceLabel": "Should Houston take a quick look?",
+      "scanYesTitle": "Yes, review it first",
+      "scanYesBody": "Houston scans for obvious risks. Not a guarantee, just a careful read.",
+      "scanNoTitle": "No, I trust them",
+      "scanNoBody": "Skip the review and continue.",
+      "scanning": "Reviewing the package.",
+      "scanClean": "Houston did not flag anything.",
+      "scanFlagged": "Houston flagged {{count}} item(s). Review them as you continue."
+    },
+    "step2": {
+      "title": "Name your new agent",
+      "body": "Pick a name and a color. You can change either one later.",
+      "nameLabel": "Name",
+      "colorLabel": "Color",
+      "namePlaceholder": "Name your agent",
+      "placeholderName": "Your agent",
+      "tagline": "Ready to help"
+    },
+    "step3": {
+      "title": "Pick which skills to bring along",
+      "body": "Uncheck anything you don't want.",
+      "empty": "No skills in this package."
+    },
+    "step4": {
+      "title": "Pick which routines to bring along",
+      "body": "Routines run on a schedule. They wait until their integrations are connected.",
+      "empty": "No routines in this package."
+    },
+    "step5": {
+      "title": "Pick which learnings to keep",
+      "body": "Learnings are notes the agent uses as background context. Personal items can be left out.",
+      "empty": "No learnings in this package."
+    },
+    "step6": {
+      "title": "The agent needs a few apps",
+      "body": "Connect them now from the connections page, or skip and connect later.",
+      "none": "Nothing to connect. Your agent is ready.",
+      "connected": "Connected",
+      "needsConnection": "Connect later",
+      "connectLater": "Routines that need a missing app wait until you connect it."
+    },
+    "actions": {
+      "back": "Back",
+      "cancel": "Cancel",
+      "next": "Continue",
+      "install": "Bring agent in",
+      "installing": "Bringing it in.",
+      "selectAll": "Select all",
+      "clearAll": "Clear"
+    },
+    "errors": {
+      "uploadFailed": "Could not read that file.",
+      "installFailed": "Could not install the agent.",
+      "nameRequired": "Give the agent a name."
+    },
+    "toasts": {
+      "installedTitle": "Agent ready",
+      "installedDescription": "{{name}} is in your workspace."
+    }
+  }
+}

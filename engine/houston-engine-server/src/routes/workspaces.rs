@@ -8,6 +8,7 @@ use axum::{
     Json, Router,
 };
 use houston_engine_core::agents_crud::{self, Agent, CreateAgent, CreateAgentResult, UpdateAgent};
+use houston_engine_core::workspace_context::{self, WorkspaceContext};
 use houston_engine_core::workspaces::{
     self, CreateWorkspace, RenameWorkspace, UpdateProvider, Workspace,
 };
@@ -20,6 +21,10 @@ pub fn router() -> Router<Arc<ServerState>> {
         .route("/workspaces/:id", delete(remove))
         .route("/workspaces/:id/rename", post(rename))
         .route("/workspaces/:id/provider", patch(set_provider))
+        .route(
+            "/workspaces/:id/context",
+            get(get_context).put(put_context),
+        )
         // Workspace-scoped agents CRUD.
         .route(
             "/workspaces/:id/agents",
@@ -72,6 +77,24 @@ async fn set_provider(
         &id,
         req,
     )?))
+}
+
+async fn get_context(
+    State(st): State<Arc<ServerState>>,
+    Path(id): Path<String>,
+) -> Result<Json<WorkspaceContext>, ApiError> {
+    let dir = workspace_context::resolve_dir(st.engine.paths.docs(), &id)?;
+    Ok(Json(workspace_context::read(&dir)?))
+}
+
+async fn put_context(
+    State(st): State<Arc<ServerState>>,
+    Path(id): Path<String>,
+    Json(body): Json<WorkspaceContext>,
+) -> Result<Json<WorkspaceContext>, ApiError> {
+    let dir = workspace_context::resolve_dir(st.engine.paths.docs(), &id)?;
+    workspace_context::write(&dir, &body)?;
+    Ok(Json(workspace_context::read(&dir)?))
 }
 
 // -- Workspace-scoped agent CRUD --

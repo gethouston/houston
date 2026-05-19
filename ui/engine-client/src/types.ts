@@ -84,6 +84,11 @@ export interface UpdateProvider {
   model?: string;
 }
 
+export interface WorkspaceContext {
+  workspace: string;
+  user: string;
+}
+
 // ---------- Workspace-scoped agent CRUD ----------
 
 export interface Agent {
@@ -165,6 +170,8 @@ export interface Routine {
   suppress_when_silent: boolean;
   /** IANA timezone override; absent means use the user's preference. */
   timezone?: string | null;
+  /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
+  integrations: string[];
   created_at: string;
   updated_at: string;
 }
@@ -178,6 +185,8 @@ export interface NewRoutine {
   suppress_when_silent?: boolean;
   /** IANA timezone override (e.g. "America/Bogota"). Falls back to user pref. */
   timezone?: string | null;
+  /** Composio toolkit slugs this routine uses. */
+  integrations?: string[];
 }
 
 export interface RoutineUpdate {
@@ -189,6 +198,7 @@ export interface RoutineUpdate {
   suppress_when_silent?: boolean;
   /** Set to a string to override, `null` to clear, omit to leave unchanged. */
   timezone?: string | null;
+  integrations?: string[];
 }
 
 export type RoutineRunStatus = "running" | "silent" | "surfaced" | "error";
@@ -354,6 +364,7 @@ export interface ProviderStatus {
 export interface PreferenceValue {
   value: string | null;
 }
+
 
 /**
  * Known preference keys. Free-form strings are still allowed — this alias
@@ -598,4 +609,187 @@ export interface ComposioStartLinkResponse {
   redirect_url: string;
   connected_account_id: string;
   toolkit: string;
+}
+
+// ────────────────────────────────────────────────────────────────────────
+// Portable agent (share / import "from a friend")
+// ────────────────────────────────────────────────────────────────────────
+
+export interface PortableClaudeMdPreview {
+  byteCount: number;
+  excerpt: string;
+}
+
+export interface PortableSkillPreview {
+  slug: string;
+  description: string;
+  category: string | null;
+  image: string | null;
+  integrations: string[];
+  featured: boolean;
+}
+
+export interface PortableRoutinePreview {
+  id: string;
+  name: string;
+  description: string;
+  promptExcerpt: string;
+  schedule: string;
+  enabled: boolean;
+  integrations: string[];
+  timezone: string | null;
+}
+
+export interface PortableLearningPreview {
+  id: string;
+  text: string;
+  createdAt: string;
+}
+
+export interface PortableInventoryPreview {
+  claudeMd: PortableClaudeMdPreview | null;
+  skills: PortableSkillPreview[];
+  routines: PortableRoutinePreview[];
+  learnings: PortableLearningPreview[];
+}
+
+export interface PortableExportSelection {
+  includeClaudeMd: boolean;
+  includeSkillSlugs: string[];
+  includeRoutineIds: string[];
+  includeLearningIds: string[];
+}
+
+export interface PortableRoutineFieldOverride {
+  name?: string | null;
+  description?: string | null;
+  prompt?: string | null;
+}
+
+export interface PortableExportOverrides {
+  claudeMd?: string | null;
+  skillBodies?: Record<string, string>;
+  routineFields?: Record<string, PortableRoutineFieldOverride>;
+  learningTexts?: Record<string, string>;
+}
+
+export interface PortableExportMeta {
+  agentId: string;
+  agentName: string;
+  description?: string | null;
+  exporter?: string | null;
+  anonymized: boolean;
+}
+
+export interface PortableExportRequest {
+  selection: PortableExportSelection;
+  overrides?: PortableExportOverrides;
+  meta: PortableExportMeta;
+}
+
+export interface PortableAnonymizeRequest {
+  claudeMd: boolean;
+  skillSlugs: string[];
+  routineIds: string[];
+  learningIds: string[];
+}
+
+export interface PortableAnonymizedString {
+  before: string;
+  after: string;
+  summary: string;
+  becameEmpty: boolean;
+}
+
+export interface PortableAnonymizedItem {
+  id: string;
+  before: string;
+  after: string;
+  summary: string;
+  becameEmpty: boolean;
+}
+
+export interface PortableRoutineFieldDiff {
+  field: string;
+  before: string;
+  after: string;
+}
+
+export interface PortableAnonymizedRoutine {
+  id: string;
+  fieldDiffs: PortableRoutineFieldDiff[];
+  overridePayload: PortableRoutineFieldOverride;
+}
+
+export interface PortableAnonymizeResponse {
+  claudeMd: PortableAnonymizedString | null;
+  skills: PortableAnonymizedItem[];
+  routines: PortableAnonymizedRoutine[];
+  learnings: PortableAnonymizedItem[];
+}
+
+export interface PortableManifestSummary {
+  agentId: string;
+  agentName: string;
+  description: string | null;
+  exporter: string | null;
+  houstonVersion: string;
+  createdAt: string;
+  anonymized: boolean;
+  formatVersion: number;
+}
+
+export interface PortableUploadPreviewResponse {
+  packageId: string;
+  manifest: PortableManifestSummary;
+  preview: PortableInventoryPreview;
+}
+
+export type PortableScanCategory =
+  | "exfiltration"
+  | "prompt_injection"
+  | "tool_abuse"
+  | "suspicious_shell"
+  | "external_callback";
+export type PortableScanSeverity = "low" | "medium" | "high";
+export type PortableScanItemKind = "claude_md" | "skill" | "routine" | "learning";
+
+export interface PortableScanFinding {
+  category: PortableScanCategory;
+  severity: PortableScanSeverity;
+  excerpt: string;
+  why: string;
+}
+
+export interface PortableScanItem {
+  kind: PortableScanItemKind;
+  id: string;
+  findings: PortableScanFinding[];
+}
+
+export interface PortableScanResponse {
+  disclaimer: string;
+  items: PortableScanItem[];
+}
+
+export interface PortableInstallSelection {
+  includeClaudeMd: boolean;
+  includeSkillSlugs: string[];
+  includeRoutineIds: string[];
+  includeLearningIds: string[];
+}
+
+export interface PortableInstallRequest {
+  packageId: string;
+  workspaceName: string;
+  agentName: string;
+  agentColor?: string | null;
+  selection: PortableInstallSelection;
+}
+
+export interface PortableInstalledAgent {
+  agentPath: string;
+  agentName: string;
+  workspaceName: string;
+  requiredIntegrations: string[];
 }

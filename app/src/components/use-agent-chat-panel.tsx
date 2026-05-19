@@ -300,8 +300,14 @@ export function useAgentChatPanel({
         const mode = agentModes?.find((m) => m.id === undefined); // default mode
         await tauriChat.send(path, encodedWithAttachments, sessionKey, {
           mode: mode?.promptFile,
-          providerOverride: chatProvider ?? undefined,
-          modelOverride: chatModel ?? undefined,
+          // Pass the EFFECTIVE values, not just `chatProvider`. The dropdown
+          // displays `effectiveProvider` (chatProvider ?? activityProvider ??
+          // agentProvider ?? wsProvider), so the send must mirror it.
+          // Passing only `chatProvider` lets the engine fall back to its own
+          // resolution chain (which doesn't consult activity records),
+          // producing the "dropdown says Gemini, response from Claude" bug.
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
         });
         pushFeedItem(path, sessionKey, {
           feed_type: "user_message",
@@ -344,8 +350,9 @@ export function useAgentChatPanel({
             agentMode,
             worktreePath,
             promptFile: mode?.promptFile,
-            providerOverride: chatProvider ?? undefined,
-            modelOverride: chatModel ?? undefined,
+            // See note above re: effectiveProvider over chatProvider.
+            providerOverride: effectiveProvider,
+            modelOverride: effectiveModel,
             buildPrompt: async (activityId) => {
               const paths = await tauriAttachments.save(`activity-${activityId}`, files);
               const prompt = withAttachmentPaths(claudePrompt, paths);
@@ -428,8 +435,10 @@ export function useAgentChatPanel({
               if (!path || !selectedSessionKey) return;
               const text = t("chat:toolRuntimeError.retryPrompt");
               await tauriChat.send(path, text, selectedSessionKey, {
-                providerOverride: chatProvider ?? undefined,
-                modelOverride: chatModel ?? undefined,
+                // Retry mirrors the displayed dropdown values, not just
+                // the in-memory chatProvider — see send sites above.
+                providerOverride: effectiveProvider,
+                modelOverride: effectiveModel,
               });
               pushFeedItem(path, selectedSessionKey, {
                 feed_type: "user_message",

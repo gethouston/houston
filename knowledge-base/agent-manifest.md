@@ -103,19 +103,60 @@ Seeds agent CLAUDE.md from manifest `claudeMd` field or manifest's `CLAUDE.md` f
 
 Every newly-created workspace gets a `Personal assistant` instance from the
 built-in `personal-assistant` config. Users do not create it manually.
-First-run onboarding is a minimal guided setup, not a static tour or dense HUD:
+First-run onboarding is a seven-mission guided setup driven by
+`app/src/components/onboarding/personal-assistant-onboarding.tsx` and the
+`TUTORIAL_STEPS` machine in `tutorial-copy.ts`:
 
-1. Welcome screen shows the Houston logo and two cards: start tutorial or skip.
-2. Tutorial card goes straight to creating the Personal assistant.
-3. User connects OpenAI or Claude Code, the agent's brain.
-4. User picks one real mission.
-5. User connects Composio apps, the agent's hands.
-6. Houston writes one Skill and one Routine, then starts real work when apps
-   are ready.
-7. Normal UI opens with a command-center coach explaining parallel missions,
-   multiple agents, library installs, and Routines.
+1. Welcome screen offers start vs. skip.
+2. **Meet** — name + color the assistant.
+3. **Brain** — pick provider (OpenAI / Anthropic) and create the workspace +
+   assistant.
+4. **Tools** — sign into Composio so the agent has hands.
+5. **Try** — one real mission (`Plan my next working day`). The agent reads
+   inbox + calendar in parallel, cross-references them, posts a structured
+   plan with bold sections, and saves three draft replies. Ends with the
+   literal `[TUTORIAL_COMPLETE]` token. CLAUDE.md is augmented with the
+   tutorial directive while this step is mounted, stripped on unmount.
+6. **Skill** — same chat, one chip. The user clicks "Save this as a Skill"
+   and the agent writes `.agents/skills/plan-my-working-day/SKILL.md`
+   (frontmatter + procedure body) in a single shot. Ends with
+   `[SKILL_COMPLETE]`. Detection prefers the on-disk `useSkills()` lookup
+   (skill `name === ONBOARDING_SKILL_SLUG`) over the token. The done
+   screen is a full-page `MissionDoneScreen` showing the resulting
+   `SkillCard` — same component the user sees in the chat empty state.
+7. **Routine** — same chat, one chip. The user clicks "Make it a routine"
+   and the agent asks for one thing (the time), confirms, then appends a
+   new entry to `.houston/routines/routines.json` whose `prompt` simply
+   says `Run the \`plan-my-working-day\` skill.` (the procedure lives in
+   the Skill from M5, the routine just schedules it). Ends with
+   `[ROUTINE_COMPLETE]`. Done screen is a full-page `MissionDoneScreen`
+   showing the routine name, "Every weekday at HH:MM", and which Skill
+   it runs.
+8. **Summary** — final celebratory screen with the assistant's avatar /
+   name and the two cards (Skill + Routine) read live from
+   `useSkills` + `useRoutines`. The "Enter Houston" CTA fires
+   `finishOnboarding`, which arms the UI tour and clears
+   `tutorialActive` so the workspace shell takes over.
 
-Skipping onboarding still creates the default Personal assistant, but skips the tutorial Skill/Routine/run artifacts.
+**Always-on Skip.** Missions 4-7 each render a small "Skip tutorial" link
+wired to `finishOnboarding` directly (not through the per-step
+`onContinue`). If the model wedges or the user changes their mind, one
+click stops any in-flight session and lands them in the workspace shell
+with the default Personal assistant still created in M3. The Skip is
+deliberately separate from `onContinue` because the latter advances
+mission-by-mission.
+
+**CLAUDE.md augmentation pattern.** Try, Skill, and Routine each append a
+uniquely-marked section to the agent's `CLAUDE.md` on mount and strip it
+on unmount via `tutorial-system-prompt.ts`, `skill-system-prompt.ts`,
+`routine-system-prompt.ts`. Each mount-time write also strips any prior
+sibling sections, and each unmount-time strip is a no-op when nothing
+matches, so concurrent unmount-of-prev / mount-of-next writes converge
+cleanly no matter which write lands last.
+
+Skipping onboarding at the welcome screen still creates the default Personal
+assistant, but skips every tutorial artifact: no Try mission, no Skill,
+no Routine, no Summary, no UI tour.
 
 ## Workspace templates
 
@@ -169,10 +210,34 @@ and keyboard focus. It keeps the count chip hidden while open. The first-level
 menu shows Rename, Change color, Delete; Change color opens the color picker
 submenu.
 
+## Provider + model wiring
+
+Each workspace pins a provider + model. Set via `PATCH /v1/workspaces/:id/provider`,
+read by every session start. Frontend catalog: `app/src/lib/providers.ts`.
+Backend registry: `engine/houston-terminal-manager/src/provider/` (one file per
+adapter, see `knowledge-base/architecture.md`).
+
+| Provider id | CLI | Default model | Premium model | Login flow |
+|---|---|---|---|---|
+| `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-5` | `claude-opus-4-1` | OAuth via `claude auth login --claudeai` |
+| `openai` (alias `codex`) | `codex` (bundled) | `gpt-5` | `gpt-5-codex` | OAuth via `codex login` |
+| `gemini` (alias `google`) | `gemini` (bundled, macOS only) | `gemini-2.5-flash` | `gemini-2.5-pro` | API key, no CLI login (see `knowledge-base/auth.md`) |
+
+Notes:
+- Gemini has no `gemini login`. The picker short-circuits on
+  `loginKind === "apiKey"` and opens the Connect-API-Key dialog
+  (`app/src/components/shell/api-key-connect-dialog.tsx`). Calling
+  `/v1/providers/gemini/login` directly returns `BadRequest`.
+- Gemini is macOS-only in v1; Windows users see it as unavailable until
+  the phase-2 fork-build lands (see `knowledge-base/cli-bundling.md`).
+- Adding a fourth provider = one new adapter file + one registry entry +
+  three dispatch arms (runner, parser, summarizer). See "Engine boundary"
+  in `CLAUDE.md`.
+
 ## Workspace
 - Storage: `~/.houston/workspaces/workspaces.json` (index) + one dir per workspace `~/.houston/workspaces/{Name}/`. `HOUSTON_DOCS` env var overrides the root.
 - First launch: welcome screen, create first workspace
-- Engine routes: `GET /v1/workspaces`, `POST /v1/workspaces`, `POST /v1/workspaces/:id/rename`, `DELETE /v1/workspaces/:id`, `PATCH /v1/workspaces/:id/provider` (`engine/houston-engine-server/src/routes/workspaces.rs`). Frontend reaches them via `@houston-ai/engine-client` — no Tauri commands in the path.
+- Engine routes: `GET /v1/workspaces`, `POST /v1/workspaces`, `POST /v1/workspaces/:id/rename`, `DELETE /v1/workspaces/:id`, `PATCH /v1/workspaces/:id/provider`, `GET|PUT /v1/workspaces/:id/context` (`engine/houston-engine-server/src/routes/workspaces.rs`). Frontend reaches them via `@houston-ai/engine-client` — no Tauri commands in the path.
 - Store: `useWorkspaceStore` — `loadWorkspaces()`, `setCurrent()`, `create()`, `rename()`, `delete()`
 
 ## Prompt assembly
@@ -186,12 +251,13 @@ Built in `engine/houston-engine-core/src/agents/prompt.rs::build_agent_context`:
 1. **Working directory block** — hard rules scoping file I/O to `<agent-root>`.
 2. Mode file `.houston/prompts/modes/<mode>.md` (optional, user-editable).
 3. Learnings snapshot — `.houston/learnings/learnings.json`, text fields only, rendered as bounded background context. IDs/timestamps stay storage/UI-only.
-4. Skills index — `.agents/skills/` via `houston_skills::build_skills_index`.
-5. Integrations block — based on `.houston/integrations.json` if present.
+4. **Workspace context block** — assembled from `<workspace>/WORKSPACE.md` + `<workspace>/USER.md` (the agent's parent dir) by `workspace_context::build_prompt_section`. Always included for any agent whose parent dir has a `.houston/`. Files are NOT seeded — they only exist once the user or an agent writes them; until then the section renders an "(empty so far, ask the user when relevant)" marker so the agent knows the slot exists. Section explicitly authorizes the agent to read/write these two files (carve-out from the working-directory rule) and tells it that edits take effect on the **next** chat.
+5. Skills index — `.agents/skills/` via `houston_skills::build_skills_index`.
+6. Integrations block — based on `.houston/integrations.json` if present.
 
 `CLAUDE.md` is read by the CLI (claude/codex) itself at startup, not injected by the engine.
 
-Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides).
+Users cannot edit the product prompt — it's compiled into the app binary. Per-agent surfaces that ARE user-editable: `CLAUDE.md` (job description), `.agents/skills/` (skills), `.houston/learnings/learnings.json` (learnings), `.houston/prompts/modes/*.md` (mode overrides). Per-workspace surfaces (shared by every agent in the workspace): `WORKSPACE.md` (about the company/project), `USER.md` (about the human running it). Both edited from Settings → Workspace → Shared context, or directly by agents when the user shares new info.
 
 ## Board / Activity tab
 `@houston-ai/board::AIBoard` = `KanbanBoard` + `KanbanDetailPanel` + `ChatPanel`. Each card = activity from `.houston/activity/activity.json`. Click → opens chat w/ conversation history. App `board-tab.tsx` ~140 lines, thin store wrapper.

@@ -27,6 +27,12 @@ pub struct Routine {
     /// scheduler falls back to the user's `timezone` preference, then UTC.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timezone: Option<String>,
+    /// Composio toolkit slugs this routine uses (e.g. `["gmail", "slack"]`).
+    /// Mirrors the same field on Skills. Surfaced by the share/import flow so
+    /// the recipient can see which integrations a routine needs before they
+    /// install it. Defaults to empty for existing routines on disk.
+    #[serde(default)]
+    pub integrations: Vec<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -44,6 +50,8 @@ pub struct NewRoutine {
     pub suppress_when_silent: bool,
     #[serde(default)]
     pub timezone: Option<String>,
+    #[serde(default)]
+    pub integrations: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -57,6 +65,8 @@ pub struct RoutineUpdate {
     /// `Some(Some("..."))` sets a tz override, `Some(None)` clears it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timezone: Option<Option<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub integrations: Option<Vec<String>>,
 }
 
 // -- RoutineRun --

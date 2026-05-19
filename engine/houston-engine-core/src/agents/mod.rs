@@ -203,6 +203,7 @@ mod tests {
                 schedule: "0 9 * * *".into(),
                 enabled: true,
                 suppress_when_silent: true,
+                integrations: vec![],
             })
             .unwrap();
         assert_eq!(s.list_routines().unwrap().len(), 1);

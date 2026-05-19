@@ -1,5 +1,13 @@
 // === Types ===
-export type { FeedItem, RunStatus, ToolRuntimeErrorEntry } from "./types";
+export type {
+  FeedItem,
+  RunStatus,
+  ToolRuntimeErrorEntry,
+  ProviderError,
+  QuotaScope,
+  ModelUnavailableReason,
+  AuthFailureCause,
+} from "./types";
 export type {
   ToolEntry,
   ChatMessage,
@@ -172,7 +180,7 @@ export type {
 export type { ChatProcessLabels } from "./chat-process-block";
 
 export { ChatInput } from "./chat-input";
-export type { ChatInputProps } from "./chat-input";
+export type { ChatInputProps, ChatComposerLabels } from "./chat-input";
 export type { AttachMenuItem } from "./chat-input-parts";
 export { QueuedMessageList } from "./queued-message-list";
 export type {

@@ -69,7 +69,16 @@ import type {
   UpdateProvider,
   VersionResponse,
   Workspace,
+  WorkspaceContext,
   WorktreeInfo,
+  PortableInventoryPreview,
+  PortableExportRequest,
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
+  PortableUploadPreviewResponse,
+  PortableScanResponse,
+  PortableInstallRequest,
+  PortableInstalledAgent,
 } from "./types";
 import { planAttachmentUploadBatches } from "./attachments";
 
@@ -184,6 +193,12 @@ export class HoustonClient {
   }
   installWorkspaceFromGithub(req: InstallFromGithub): Promise<ImportedWorkspace> {
     return this.request("POST", "/workspaces/install-from-github", req);
+  }
+  getWorkspaceContext(id: string): Promise<WorkspaceContext> {
+    return this.request("GET", `/workspaces/${this.seg(id)}/context`);
+  }
+  setWorkspaceContext(id: string, body: WorkspaceContext): Promise<WorkspaceContext> {
+    return this.request("PUT", `/workspaces/${this.seg(id)}/context`, body);
   }
 
   // ---------- workspace-scoped agents ----------
@@ -437,6 +452,25 @@ export class HoustonClient {
   providerLogout(name: string): Promise<void> {
     return this.request("POST", `/providers/${this.seg(name)}/logout`);
   }
+  /**
+   * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
+   * the key shape, writes atomically, and chmods 0600 on Unix. The
+   * next `providerStatus("gemini")` poll will return `Authenticated`
+   * without requiring a Houston restart.
+   *
+   * Gemini-specific: other providers use the CLI's own OAuth flow via
+   * `providerLogin`. Do NOT generalize this route until a second
+   * provider needs it.
+   */
+  setGeminiApiKey(apiKey: string): Promise<void> {
+    return this.request("POST", "/providers/gemini/credentials", { apiKey });
+  }
+  // "Sign in with Google" for Gemini goes through the standard
+  // `providerLogin("gemini")` call — the engine detects the gemini id
+  // and delegates to gemini-cli's own OAuth via the ACP `authenticate`
+  // JSON-RPC method. gemini-cli opens the browser with its own Google
+  // app identity and writes its own credential files. Same shape as
+  // `claude auth login --claudeai` and `codex login`.
 
   // ---------- store ----------
 
@@ -673,6 +707,56 @@ export class HoustonClient {
    */
   composioWatchConnection(toolkit: string): Promise<void> {
     return this.request("POST", "/composio/connections/watch", { toolkit });
+  }
+
+  // ---------- portable agent share / import ----------
+
+  portablePreview(agentPath: string): Promise<PortableInventoryPreview> {
+    return this.request("GET", "/agents/portable/preview", undefined, {
+      agentPath,
+    });
+  }
+  async portablePackage(
+    agentPath: string,
+    req: PortableExportRequest,
+  ): Promise<ArrayBuffer> {
+    const res = await fetch(
+      `${this.baseUrl}/v1/agents/portable/package?agentPath=${encodeURIComponent(agentPath)}`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(req),
+      },
+    );
+    if (!res.ok) throw await this.toError(res);
+    return await res.arrayBuffer();
+  }
+  portableAnonymize(
+    agentPath: string,
+    req: PortableAnonymizeRequest,
+  ): Promise<PortableAnonymizeResponse> {
+    return this.request("POST", "/agents/portable/anonymize", req, {
+      agentPath,
+    });
+  }
+  async importPreview(
+    bytes: ArrayBuffer | Uint8Array,
+  ): Promise<PortableUploadPreviewResponse> {
+    return this.rawRequest(
+      "POST",
+      "/store/imports/preview",
+      bytes as BodyInit,
+      "application/zip",
+    );
+  }
+  importScan(packageId: string): Promise<PortableScanResponse> {
+    return this.request("POST", "/store/imports/scan", { packageId });
+  }
+  importInstall(req: PortableInstallRequest): Promise<PortableInstalledAgent> {
+    return this.request("POST", "/store/imports/install", req);
   }
 
   // ---------- WebSocket access (see ws.ts) ----------

@@ -91,7 +91,7 @@
   "files": {
     "emptyTitle": "Aún no hay archivos",
     "emptyDescription": "Los archivos creados por tu asistente aparecerán aquí.",
-    "openInFinder": "Abrir en Finder",
+    "openInFileManager": "Abrir en el Explorador de Archivos",
     "loading": "Cargando…",
     "browseFiles": "Elegir archivos",
     "columns": {
@@ -103,7 +103,7 @@
     "menu": {
       "open": "Abrir",
       "rename": "Cambiar nombre",
-      "reveal": "Mostrar en Finder",
+      "reveal": "Mostrar en el Explorador de Archivos",
       "delete": "Mover a la Papelera"
     }
   }

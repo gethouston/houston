@@ -4,9 +4,21 @@
 //! so the rest of the stack (session_runner, frontend) is provider-agnostic.
 
 use super::auth_error::{is_auth_retry_noise, AUTH_RETRY_MARKER};
-use super::types::{FeedItem, ToolRuntimeErrorKind};
-use crate::provider_error::is_codex_model_unsupported_chatgpt_error;
+use super::provider::Provider;
+use super::provider_error_kind::ProviderError;
+use super::types::FeedItem;
 use serde::Deserialize;
+use std::str::FromStr;
+
+/// Run the OpenAI / Codex stderr classifier against a Codex
+/// `turn.failed.error.message` payload. The message shape mirrors what
+/// the CLI prints to stderr (e.g. `unexpected status 401 Unauthorized`),
+/// so the same patterns apply.
+fn classify_codex_error_message(message: &str) -> Option<ProviderError> {
+    Provider::from_str("openai")
+        .ok()
+        .and_then(|p| p.classify_stderr(message))
+}
 
 /// Top-level Codex NDJSON event envelope.
 #[derive(Debug, Clone, Deserialize)]
@@ -193,17 +205,14 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                 tracing::info!("[codex] auth retry detected — suppressing raw error");
                 // Return a marker so session_runner can track it, but don't show raw noise.
                 items.push(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
-            } else if is_codex_model_unsupported_chatgpt_error(&msg) {
-                // OpenAI rejected the configured model for this ChatGPT plan.
-                // Surface as a dedicated card with a one-click "switch model"
-                // action instead of dumping the raw 400 JSON into the feed.
-                tracing::warn!(
-                    "[codex] model not supported on this ChatGPT account — emitting card"
-                );
-                items.push(FeedItem::ToolRuntimeError {
-                    kind: ToolRuntimeErrorKind::ProviderModelUnsupported,
-                    details: msg,
-                });
+            } else if let Some(typed) = classify_codex_error_message(&msg) {
+                // Typed classifier path. Covers ProviderModelUnsupported
+                // (the "is not supported when using Codex with a ChatGPT
+                // account" pattern → `ModelUnavailable` with a
+                // gpt-5.5 fallback), auth, rate-limit, quota, internal
+                // 5xx, resume-rollout-missing, etc. — all in
+                // `provider/openai_classify.rs`.
+                items.push(FeedItem::ProviderError(typed));
             } else {
                 items.push(FeedItem::SystemMessage(format!("Error: {msg}")));
             }
@@ -574,11 +583,24 @@ mod tests {
     }
 
     #[test]
-    fn parse_error_event() {
+    fn parse_error_event_classifies_to_typed_provider_error() {
+        // Rate-limit phrasing now flows through the typed classifier;
+        // the SystemMessage branch only fires when no classifier matches.
         let line = r#"{"type":"error","message":"Rate limit exceeded"}"#;
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
-        assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Rate limit")));
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::RateLimited { .. })
+        ));
+    }
+
+    #[test]
+    fn parse_error_event_unrecognised_falls_back_to_system_message() {
+        let line = r#"{"type":"error","message":"Context window exceeded for model"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Context window")));
     }
 
     #[test]
@@ -590,13 +612,14 @@ mod tests {
     }
 
     #[test]
-    fn parse_codex_auth_failure_remains_detectable() {
+    fn parse_codex_auth_failure_classifies_as_typed_unauthenticated() {
         let line = r#"{"type":"turn.failed","error":{"message":"unexpected status 401 Unauthorized: Missing bearer"}}"#;
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
-        assert!(
-            matches!(&items[0], FeedItem::SystemMessage(m) if crate::auth_error::is_auth_error(m))
-        );
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
+        ));
     }
 
     #[test]
@@ -608,16 +631,28 @@ mod tests {
     }
 
     #[test]
-    fn parse_turn_failed_model_unsupported_emits_card() {
+    fn parse_turn_failed_model_unsupported_emits_typed_card() {
+        // Routes through the typed classifier (provider/openai_classify.rs)
+        // — the "is not supported when using Codex with a ChatGPT account"
+        // pattern → ProviderError::ModelUnavailable with gpt-5.5 as the
+        // suggested fallback. Replaces the legacy ToolRuntimeErrorKind
+        // ::ProviderModelUnsupported emission.
+        use crate::provider_error_kind::ProviderError;
         let line = r#"{"type":"turn.failed","error":{"message":"The 'gpt-5.5-codex' model is not supported when using Codex with a ChatGPT account."}}"#;
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
-            FeedItem::ToolRuntimeError { kind, details } => {
-                assert_eq!(*kind, ToolRuntimeErrorKind::ProviderModelUnsupported);
-                assert!(details.contains("gpt-5.5-codex"));
+            FeedItem::ProviderError(ProviderError::ModelUnavailable {
+                provider,
+                model,
+                suggested_fallback,
+                ..
+            }) => {
+                assert_eq!(provider, "openai");
+                assert_eq!(model, "gpt-5.5-codex");
+                assert_eq!(suggested_fallback.as_deref(), Some("gpt-5.5"));
             }
-            other => panic!("expected ProviderModelUnsupported card, got {other:?}"),
+            other => panic!("expected ModelUnavailable, got {other:?}"),
         }
     }
 

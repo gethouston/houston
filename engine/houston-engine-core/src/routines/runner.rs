@@ -273,6 +273,7 @@ mod tests {
             enabled: true,
             suppress_when_silent: true,
             timezone: None,
+            integrations: vec![],
         }
     }
 

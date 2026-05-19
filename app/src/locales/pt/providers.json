@@ -23,5 +23,24 @@
   "toast": {
     "signInFailed": "Não foi possível abrir o login de {{provider}}",
     "signOutFailed": "Não foi possível sair de {{provider}}"
+  },
+  "geminiConnect": {
+    "title": "Conectar {{name}}",
+    "description": "Entre com sua conta Google para usar o plano gratuito do Gemini, o mesmo que a CLI gemini usa fora do Houston.",
+    "signInWithGoogle": "Entrar com Google",
+    "signingIn": "Abrindo o navegador...",
+    "signInFailed": "Não foi possível iniciar o login de {{name}}",
+    "signInRecommended": "Recomendado. Usa o plano pessoal gratuito, sem pagamento.",
+    "or": "ou",
+    "useApiKeyAdvanced": "Usar uma chave de API (avançado)",
+    "openConsole": "Abrir o console do {{name}}",
+    "openConsoleFailed": "Não foi possível abrir o console do {{name}}",
+    "placeholder": "Cole sua chave aqui",
+    "show": "Mostrar a chave",
+    "hide": "Ocultar a chave",
+    "saveKey": "Salvar e conectar",
+    "saving": "Salvando...",
+    "saveFailed": "Não foi possível salvar sua chave do {{name}}",
+    "cancel": "Cancelar"
   }
 }

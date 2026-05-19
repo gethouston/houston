@@ -1,6 +1,6 @@
 [package]
 name = "houston-engine-server"
-version = "0.4.19"
+version = "0.4.10"
 edition = "2021"
 description = "Houston Engine HTTP+WS server — axum binary speaking the Houston wire protocol"
 license = "MIT"
@@ -45,3 +45,4 @@ tokio-tungstenite = "0.24"
 tempfile = "3"
 urlencoding = "2"
 base64 = "0.22"
+houston-agent-portable = { workspace = true }

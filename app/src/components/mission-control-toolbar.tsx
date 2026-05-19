@@ -5,12 +5,16 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@houston-ai/core";
 import { ChevronDown } from "lucide-react";
 import { HoustonLogo } from "./shell/experience-card";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 import type { Agent } from "../lib/types";
 import { MissionSearchInput } from "./mission-search-input";
+import { shortcutLabel } from "../lib/shortcuts";
 
 interface MissionControlToolbarProps {
   agents: Agent[];
@@ -76,10 +80,17 @@ export function MissionControlToolbar({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button data-keep-panel-open onClick={onNewMission}>
-              <HoustonLogo size={16} />
-              {t("empty.newMission")}
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button data-keep-panel-open onClick={onNewMission}>
+                  <HoustonLogo size={16} />
+                  {t("empty.newMission")}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {shortcutLabel("newMission")}
+              </TooltipContent>
+            </Tooltip>
           </div>
         </div>
       </div>

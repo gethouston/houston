@@ -22,7 +22,14 @@ const EMPTY_FORM: RoutineFormData = {
   schedule: "0 9 * * *",
   suppress_when_silent: true,
   timezone: null,
+  integrations: [],
 };
+
+function sameStringList(a: string[], b: string[]): boolean {
+  if (a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 
 function formMatchesRoutine(
   form: RoutineFormData,
@@ -34,7 +41,8 @@ function formMatchesRoutine(
     form.prompt === source.prompt &&
     form.schedule === source.schedule &&
     form.suppress_when_silent === source.suppress_when_silent &&
-    (form.timezone ?? null) === (source.timezone ?? null)
+    (form.timezone ?? null) === (source.timezone ?? null) &&
+    sameStringList(form.integrations, source.integrations)
   );
 }
 
@@ -84,6 +92,7 @@ export default function RoutinesTab({ agent }: TabProps) {
         schedule: r.schedule,
         suppress_when_silent: r.suppress_when_silent,
         timezone: r.timezone ?? null,
+        integrations: r.integrations ?? [],
       };
       setForm(next);
       setBaseline(next);
@@ -107,6 +116,7 @@ export default function RoutinesTab({ agent }: TabProps) {
         schedule: updated.schedule,
         suppress_when_silent: updated.suppress_when_silent,
         timezone: updated.timezone ?? null,
+        integrations: updated.integrations ?? [],
       });
     } else {
       await createRoutine.mutateAsync(form);

@@ -32,8 +32,10 @@ import type { TabProps } from "../../lib/types";
 import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { ChatModelSelector } from "../chat-model-selector";
 import { useChatDisplayLabels } from "../use-chat-display-labels";
-import { getDefaultModel } from "../../lib/providers";
+import { getDefaultModel, PROVIDERS } from "../../lib/providers";
+import type { ProviderError } from "@houston-ai/chat";
 import { ProviderReconnectCard } from "../shell/provider-reconnect-card";
+import { ProviderErrorCard } from "../shell/provider-error-card";
 import { ToolRuntimeErrorCard } from "../shell/tool-runtime-error-card";
 import { isToolRuntimeErrorMessage } from "../tool-runtime-feed";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
@@ -129,6 +131,28 @@ export default function ChatTab({ agent }: TabProps) {
     setChatModel(mod);
   }, []);
 
+  // Variant-aware model switcher fed to ProviderErrorCard.
+  // - ModelUnavailable with `suggested_fallback`: stay in same provider,
+  //   switch to the suggested model (e.g. preview-gated → GA fallback).
+  // - RateLimited / QuotaExhausted / everything else: cycle to a
+  //   different provider entirely (the current one is the bottleneck).
+  // The result is the user always gets a meaningful "switch and retry"
+  // action, not a button that does nothing.
+  const handleSwitchModel = useCallback(
+    (err: ProviderError) => {
+      if (err.kind === "model_unavailable" && err.suggested_fallback) {
+        handleModelSelect(err.provider, err.suggested_fallback);
+        return;
+      }
+      const fallback =
+        PROVIDERS.find((p) => p.id !== effectiveProvider) ?? PROVIDERS[0];
+      if (fallback) {
+        handleModelSelect(fallback.id, fallback.defaultModel);
+      }
+    },
+    [effectiveProvider, handleModelSelect],
+  );
+
   useEffect(() => {
     if (loadedRef.current === agent.id) return;
     loadedRef.current = agent.id;
@@ -194,8 +218,12 @@ export default function ChatTab({ agent }: TabProps) {
         const paths = await tauriAttachments.save(attachmentScope, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey, {
-          providerOverride: chatProvider ?? undefined,
-          modelOverride: chatModel ?? undefined,
+          // Mirror the displayed dropdown (effectiveProvider), not just
+          // chatProvider. Otherwise the dropdown can show Gemini while
+          // the engine falls back to its own resolution chain and routes
+          // to Anthropic.
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
         });
         started = true;
         pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
@@ -244,6 +272,17 @@ export default function ChatTab({ agent }: TabProps) {
         getThinkingMessage={getThinkingMessage}
         renderTurnSummary={renderTurnSummary}
         renderSystemMessage={(msg) => {
+          if (msg.providerError) {
+            return (
+              <ProviderErrorCard
+                error={msg.providerError}
+                onRetry={() =>
+                  messageQueue.sendOrQueue(t("toolRuntimeError.retryPrompt"), [])
+                }
+                onSwitchModel={() => handleSwitchModel(msg.providerError!)}
+              />
+            );
+          }
           if (isToolRuntimeErrorMessage(msg)) {
             const isModelUnsupported =
               msg.runtimeError.kind === "provider_model_unsupported";
@@ -300,6 +339,12 @@ export default function ChatTab({ agent }: TabProps) {
         attachments={composerFiles}
         onAttachmentsChange={setComposerFiles}
         onNotice={handleNotice}
+        composerLabels={{
+          fileAlreadyInChat: t("composer.fileAlreadyInChat"),
+          dropTitle: t("composer.dropTitle"),
+          dropDescription: t("composer.dropDescription"),
+          imagePasteUnavailable: t("composer.imagePasteUnavailable"),
+        }}
         prepareAttachments={attachmentValidation.prepareAttachments}
         onAttachmentRejections={attachmentValidation.onAttachmentRejections}
         queuedMessages={messageQueue.queuedMessages}

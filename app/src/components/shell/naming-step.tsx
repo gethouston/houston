@@ -181,7 +181,7 @@ export function NamingStep({
 }
 
 /** Bigger model selector for the agent creation dialog. */
-function InlineModelSelector({
+export function InlineModelSelector({
   provider,
   model,
   onSelect,
@@ -195,11 +195,10 @@ function InlineModelSelector({
   const [open, setOpen] = useState(false);
 
   const loadStatuses = useCallback(async () => {
-    const [openai, anthropic] = await Promise.all([
-      tauriProvider.checkStatus("openai"),
-      tauriProvider.checkStatus("anthropic"),
-    ]);
-    setStatuses({ openai, anthropic });
+    const entries = await Promise.all(
+      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+    );
+    setStatuses(Object.fromEntries(entries));
   }, []);
 
   useEffect(() => {

@@ -300,6 +300,7 @@ mod tests {
             enabled,
             suppress_when_silent: true,
             timezone: tz.map(str::to_string),
+            integrations: vec![],
         }
     }
 
@@ -340,6 +341,7 @@ mod tests {
                 enabled: true,
                 suppress_when_silent: true,
                 timezone: None,
+                integrations: vec![],
             },
         )
         .unwrap();

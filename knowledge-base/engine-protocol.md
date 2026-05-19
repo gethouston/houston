@@ -95,6 +95,8 @@ module.
 | DELETE | `/v1/workspaces/:id` | Delete |
 | POST | `/v1/workspaces/:id/rename` | Rename |
 | PATCH | `/v1/workspaces/:id/provider` | Set provider/model |
+| GET | `/v1/workspaces/:id/context` | Read shared `WORKSPACE.md` + `USER.md` |
+| PUT | `/v1/workspaces/:id/context` | Write shared `WORKSPACE.md` + `USER.md` |
 | GET | `/v1/workspaces/:id/agents` | List agents in workspace |
 | POST | `/v1/workspaces/:id/agents` | Create agent |
 | DELETE | `/v1/workspaces/:id/agents/:agent_id` | Delete agent |
@@ -205,7 +207,8 @@ not user-facing copy.
 |---|---|---|
 | GET/PUT | `/v1/preferences/:key` | String KV (DB-backed) |
 | GET | `/v1/providers/:name/status` | `{cliInstalled, authState, installSource, cliPath}` |
-| POST | `/v1/providers/:name/login` | Launch CLI login |
+| POST | `/v1/providers/:name/login` | Launch CLI login. Returns `BAD_REQUEST` for providers without an OAuth flow (e.g. `gemini`); callers must use the credentials route instead. |
+| POST | `/v1/providers/gemini/credentials` | Write `GEMINI_API_KEY` to `~/.gemini/.env` (atomic, mode 0600). Body: `{ apiKey }`. Provider-specific because Gemini is the only provider with file-backed credentials today. |
 | GET | `/v1/agent-configs` | List installed agent definitions |
 
 **Composio (MCP integrations)**

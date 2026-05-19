@@ -369,6 +369,84 @@ fetch_composio_arch_darwin() {
   echo "  Installed: $dest_dir/ ($(du -sh "$dest_dir" | cut -f1))"
 }
 
+# Stage gemini for macOS. Upstream google-gemini/gemini-cli publishes
+# per-arch Node SEA binaries as `gemini-darwin-{arm64,x64}-unsigned.zip`
+# on every release — one Mach-O each, ~120 MB. Cannot be lipo'd (the
+# embedded NODE_SEA segment + sentinel fuse are arch-specific Mach-O
+# segments; `lipo -create` would corrupt the postject injection). Each
+# arch ships at resources/bin/gemini-{aarch64,x86_64}/gemini, mirroring
+# the per-arch composio layout. The upstream archive name literally
+# carries `-unsigned` because Google ships ad-hoc Mach-Os; Houston's
+# release.yml pre-signs them with Developer ID + hardened runtime
+# before tauri-action notarizes the .app.
+stage_gemini_arch_darwin() {
+  local arch="$1"
+  local platform="darwin-$arch"
+  local version url_template expected url tmp extract_dir bin_path dest_dir
+  version=$(jq -r '.gemini.version' "$DEPS_FILE")
+  url_template=$(jq -r ".gemini.urls[\"$platform\"] // empty" "$DEPS_FILE")
+  expected=$(jq -r ".gemini.checksums[\"$platform\"] // empty" "$DEPS_FILE")
+
+  if [ -z "$url_template" ]; then
+    echo "ERROR: cli-deps.json missing gemini URL for $platform" >&2
+    exit 1
+  fi
+
+  url="${url_template//\{version\}/$version}"
+  echo "FETCH gemini v$version ($platform)"
+  echo "  URL: $url"
+
+  tmp=$(mktemp)
+  download "$url" "$tmp" || { echo "ERROR: gemini download failed for $platform" >&2; rm -f "$tmp"; exit 1; }
+  verify_or_print_checksum "$tmp" "$expected" "gemini/$platform" || { rm -f "$tmp"; exit 1; }
+
+  extract_dir=$(mktemp -d)
+  unzip -q "$tmp" -d "$extract_dir"
+  rm -f "$tmp"
+
+  bin_path=$(find_binary "$extract_dir" "gemini")
+  if [ -z "$bin_path" ]; then
+    echo "ERROR: gemini binary not found in archive for $platform" >&2
+    find "$extract_dir" -type f | head -20 >&2
+    rm -rf "$extract_dir"
+    exit 1
+  fi
+
+  local rust_arch
+  case "$arch" in
+    arm64) rust_arch="aarch64" ;;
+    x64)   rust_arch="x86_64" ;;
+  esac
+  dest_dir="$OUT_DIR/gemini-$rust_arch"
+  rm -rf "$dest_dir"
+  mkdir -p "$dest_dir"
+  cp "$bin_path" "$dest_dir/gemini"
+  chmod +x "$dest_dir/gemini"
+  rm -rf "$extract_dir"
+
+  # Verify slice — protect against a mislabeled URL (Apple silicon
+  # binary served from the x64 URL, etc.).
+  local lipo_info
+  lipo_info=$(lipo -info "$dest_dir/gemini" 2>&1 || echo "")
+  case "$arch" in
+    arm64) echo "$lipo_info" | grep -q 'arm64'  || { echo "ERROR: gemini-$arch is not arm64: $lipo_info" >&2; exit 1; } ;;
+    x64)   echo "$lipo_info" | grep -q 'x86_64' || { echo "ERROR: gemini-$arch is not x86_64: $lipo_info" >&2; exit 1; } ;;
+  esac
+
+  # Ad-hoc sign for DEV USE. Upstream's *-unsigned.zip ships a Node SEA
+  # Mach-O with no signature, and macOS hardened-runtime + library
+  # validation kills unsigned Mach-Os with SIGKILL (exit 137) the moment
+  # Houston tries to exec them in `pnpm tauri dev`. Production CI
+  # replaces this with a real Developer ID signature in
+  # `.github/workflows/release.yml#Pre-sign bundled CLI binaries`. The
+  # ad-hoc signature here is enough to satisfy the loader in unsigned
+  # dev builds and gets overwritten by the CI step on release.
+  codesign --force --sign - "$dest_dir/gemini" 2>/dev/null \
+    || { echo "ERROR: ad-hoc codesign failed for $dest_dir/gemini" >&2; exit 1; }
+
+  echo "  Installed: $dest_dir/ ($(du -sh "$dest_dir" | cut -f1))"
+}
+
 # ---------------------------------------------------------------------------
 # Windows code path — codex via download, composio via build-from-source
 # ---------------------------------------------------------------------------
@@ -601,6 +679,7 @@ build_composio_windows() {
 rm -rf "$OUT_DIR/.staging" \
        "$OUT_DIR/codex" "$OUT_DIR/codex.exe" \
        "$OUT_DIR/composio-"* \
+       "$OUT_DIR/gemini-"* \
        "$OUT_DIR/cli-deps.json"
 
 # ---------------------------------------------------------------------------
@@ -612,6 +691,7 @@ case "$TARGET_OS" in
     for arch in "${ARCHES[@]}"; do
       stage_codex_arch_darwin "$arch"
       fetch_composio_arch_darwin "$arch"
+      stage_gemini_arch_darwin "$arch"
     done
 
     if [ "${#ARCHES[@]}" -eq 2 ]; then
@@ -653,6 +733,8 @@ case "$TARGET_OS" in
     if [ "${#ARCHES[@]}" -eq 2 ]; then
       [ -x "$OUT_DIR/composio-aarch64/composio" ] || missing+=("composio-aarch64/composio")
       [ -x "$OUT_DIR/composio-x86_64/composio" ]  || missing+=("composio-x86_64/composio")
+      [ -x "$OUT_DIR/gemini-aarch64/gemini" ]     || missing+=("gemini-aarch64/gemini")
+      [ -x "$OUT_DIR/gemini-x86_64/gemini" ]      || missing+=("gemini-x86_64/gemini")
     fi
     ;;
   windows)

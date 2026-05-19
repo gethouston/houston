@@ -15,6 +15,7 @@ export interface KanbanBoardProps {
   renderCard?: (item: KanbanItem) => React.ReactNode
   runningStatuses?: string[]
   approveStatuses?: string[]
+  errorStatuses?: string[]
   actions?: (item: KanbanItem) => React.ReactNode
   avatar?: React.ReactNode
   cardLabels?: KanbanCardLabels
@@ -23,6 +24,7 @@ export interface KanbanBoardProps {
 export function KanbanBoard({
   columns,
   items,
+  selectedId,
   onSelect,
   onDelete,
   onApprove,
@@ -31,6 +33,7 @@ export function KanbanBoard({
   renderCard,
   runningStatuses,
   approveStatuses,
+  errorStatuses,
   actions,
   avatar,
   cardLabels,
@@ -63,6 +66,7 @@ export function KanbanBoard({
           key={col.id}
           label={col.label}
           items={col.items}
+          selectedId={selectedId}
           onAdd={col.onAdd}
           addLabel={col.addLabel}
           onSelect={onSelect ?? (() => {})}
@@ -72,6 +76,7 @@ export function KanbanBoard({
           renderCard={renderCard}
           runningStatuses={runningStatuses}
           approveStatuses={approveStatuses}
+          errorStatuses={errorStatuses}
           actions={actions}
           avatar={avatar}
           cardLabels={cardLabels}

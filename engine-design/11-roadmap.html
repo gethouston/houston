@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The roadmap — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html" class="active"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 11
+      <span class="status progress">In progress</span>
+    </div>
+    <h1>The roadmap.</h1>
+    <p class="lead">
+      Four milestones. Realistic sizes. Two of them run in parallel
+      because they're independent. Two of them are heavier than they
+      look. One parallel track starts on day one and has nothing to do
+      with code (Apple paperwork).
+    </p>
+
+    <h2>The shape</h2>
+<pre><code>Week                  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24
+                      |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
+M1 Reliability        [============ ~4 weeks ============]
+M2 Auth + credentials [======== ~3 weeks ========]
+                                                          (M1 + M2 ship together as a release)
+M3 Linux runtime                                          [================== ~3 months ==================]
+M4 Cloud foundation                                                                                       [================ ~3 months ================]
+Apple entitlement     [........................... weeks to months, asynchronous ...........................]
+VZ.framework spike    [===]   ← do this BEFORE locking M3 dates</code></pre>
+
+    <h2>M1 — Reliability (~4 weeks)</h2>
+    <p>
+      <strong>Goal:</strong> conversations never drop bytes. The "my
+      message disappeared" failure mode goes away. Every byte the user
+      sees is journaled before broadcast.
+    </p>
+    <ul>
+      <li>Add the four SQLite tables: <code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, <code>cron_runs</code>. Concrete schemas in Chapter 6.</li>
+      <li>Write rows BEFORE doing work. Sweep orphans on boot.</li>
+      <li>Client-supplied <code>turnId</code> with idempotent server semantics. Protocol bump.</li>
+      <li>WebSocket replay by sequence number on reconnect. New <code>since_seq</code> on subscribe.</li>
+      <li>Cron audit log plus missed-fire catch-up policy.</li>
+      <li>Bounded event queue with per-source drop rules.</li>
+      <li>Coexistence with <code>chat_feed</code>: double-write for this release, drop in the next.</li>
+    </ul>
+    <p>
+      Mostly inserts and middleware. No architectural change. The 4-week
+      number assumes the schema is locked on day one. Slips to 5-6 weeks
+      if we discover the WS protocol bump rippling through more clients
+      than expected.
+    </p>
+
+    <h2>M2 — Auth and credentials (~3 weeks, in parallel with M1)</h2>
+    <p>
+      <strong>Goal:</strong> Walls 2 and 3 from Chapter 7. No VM
+      required. Owned by a different engineer so M1 and M2 ship as one
+      release.
+    </p>
+    <ul>
+      <li>Typed tokens: <code>(principal_id, scopes)</code>. New tables: <code>principals</code> and <code>principal_tokens</code> in <code>houston-db</code>.</li>
+      <li><code>require_scope(token, agent_path)</code> middleware on every route that touches an agent.</li>
+      <li>Per-agent credentials: CLI spawn overrides <code>HOME</code> to a per-agent path under the agent's folder.</li>
+      <li>Migration: today's single device-bearer becomes one principal with full scope. No UX change for solo users.</li>
+    </ul>
+    <p>
+      Middleware plus a few new tables. About 3 weeks. Does not require
+      Chapter 3, does not require a VM. Real isolation win shipped without
+      waiting for M3.
+    </p>
+
+    <h2>M3 — Linux runtime everywhere (~3 months)</h2>
+    <p>
+      <strong>Goal:</strong> Wall 1 from Chapter 7. The whole desktop now
+      runs the same Linux engine as Cloud. Per-agent Linux UIDs become
+      possible.
+    </p>
+    <ul>
+      <li>Runtime supervisor at <code>app/houston-tauri/runtime/</code>.</li>
+      <li>macOS: Apple <code>Virtualization.framework</code> wrapper with a slim Linux guest image.</li>
+      <li>Windows: WSL2 detect/install/register/start.</li>
+      <li>Linux: passthrough, no runtime.</li>
+      <li>Per-agent <code>useradd</code> automation inside the runtime.</li>
+      <li>CLI spawn as <code>hou_&lt;agent&gt;</code>.</li>
+      <li>Import and Download routes for file flow in and out of the runtime.</li>
+      <li>Apple <code>com.apple.security.virtualization</code> entitlement in the signed app.</li>
+    </ul>
+    <p>
+      Honest scoping: this is two new pieces of infrastructure (a Linux
+      guest image we build in CI, and a Tauri-side runtime supervisor) on
+      top of changes throughout the engine to assume per-agent UIDs.
+      Three months is the optimistic end. Could slip to four if VZ
+      cold-start or WSL2 corp-IT issues bite.
+    </p>
+
+    <h2>M4 — Cloud foundation (~3 months)</h2>
+    <p>
+      <strong>Goal:</strong> Houston Cloud is shippable. Engine bounces
+      don't kill conversations. Sleeping engines wake on demand. Paying
+      customers can sign up.
+    </p>
+    <ul>
+      <li>Detached <code>houston-turn-worker</code> binary so engine restart doesn't kill in-flight turns. (The architectural risk piece.)</li>
+      <li><code>POST /v1/hooks/&lt;route_token&gt;</code> wired to the event queue.</li>
+      <li>Engine learns to exit gracefully on idle.</li>
+      <li>Relay learns to wake a dormant engine via Fly Machines API.</li>
+      <li>Cron moves to a central scheduler service for hosted mode (in-engine cron stays for desktop and self-host).</li>
+      <li>Per-customer Fly Machine provisioning, region picker, onboarding.</li>
+      <li>Control plane: signup, billing, admin, observability. Lives at <code>cloud/</code>.</li>
+      <li>Storage strategy: pinned host with R2/S3 nightly snapshot fallback.</li>
+    </ul>
+    <p>
+      Heaviest milestone. Detached worker alone is 3-4 weeks if it goes
+      well. Control plane is its own product. Three months is realistic
+      only with two engineers on it; one engineer is closer to five.
+    </p>
+
+    <h2>Parallel track: Apple entitlement paperwork</h2>
+    <p>
+      <strong>Start day one of M1. Do not wait for M3.</strong> Using
+      <code>Virtualization.framework</code> in a Developer ID app
+      requires the <code>com.apple.security.virtualization</code>
+      entitlement, which Apple grants by request. Timeline: a few weeks
+      if clean, longer if Apple has questions. Filing late blocks the
+      entire M3 release.
+    </p>
+    <p>
+      Action: open a ticket at developer.apple.com (Code Signing &amp;
+      Entitlements). Describe Houston as a desktop app that runs
+      user-owned agent workloads inside a Linux guest for isolation.
+      Reference VZ.framework. Wait. Then add the entitlement to
+      <code>app/src-tauri/entitlements.plist</code> the moment it's
+      granted.
+    </p>
+
+    <h2>Parallel track: VZ.framework cold-start spike</h2>
+    <p>
+      Before locking M3 dates, build a 1-week spike: bundle a minimal
+      Alpine guest image with the engine binary, boot it via
+      <code>objc2-virtualization</code> on a representative Mac, measure
+      cold start (target ≤ 2s on Apple Silicon, ≤ 3s on Intel), measure
+      resident memory (target ≤ 300MB), measure battery drain over a
+      4-hour idle session (target ≤ 10% extra vs native).
+    </p>
+    <p>
+      If the numbers come back outside those budgets, M3 needs a design
+      rethink. Knowing this in week 0 is cheap. Discovering it in month
+      3 is not.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">Open questions to settle before each milestone</div>
+      <p><strong>Before M1:</strong> double-write or hard-migrate <code>chat_feed</code> in the first release? Recommendation: double-write.</p>
+      <p><strong>Before M2:</strong> per-agent OAuth broker for desktop solo users (1 click, weaker iso) or strict per-agent (N clicks, stronger iso)? Recommendation: broker for desktop default, strict for Teams default.</p>
+      <p><strong>Before M3:</strong> what's the fallback when a Windows machine has virtualization disabled in BIOS? Recommendation: clear install-time check, link to IT-admin docs, no native fallback (to keep one operating profile).</p>
+      <p><strong>Before M4:</strong> pinned-host Fly Machines or active-active multi-region from day one? Recommendation: pinned + nightly snapshot, upgrade later. Also: where does the OSS-vs-Cloud line sit for the control plane? Cloud-only is the obvious answer.</p>
+    </div>
+
+    <h2>What "shipped" looks like at the end of M4</h2>
+    <ul>
+      <li>Houston desktop on Mac, Windows, Linux, all running the same Linux engine inside a host runtime.</li>
+      <li>Per-agent isolation on every OS. The consultant-with-two-clients case is bulletproof.</li>
+      <li>Conversations survive engine bounces, app closes, network blips. Crons never silently drop.</li>
+      <li>Houston Cloud private beta: signup, per-customer Fly Machine, sleep/wake, billing, region picker.</li>
+      <li>Self-host story unchanged. <code>docker pull && docker run</code> still works.</li>
+      <li>Webhooks live. Five trigger sources (chat, mobile, Slack, cron, webhook) all routed through the same path.</li>
+    </ul>
+    <p>
+      Total elapsed: ~7-8 months from kickoff. Two engineers is enough
+      for M1+M2 in parallel. Three is enough to run M3 and M4 in parallel
+      after M2 lands. Anything less and the schedule stretches linearly.
+    </p>
+
+    <div class="pager">
+      <a href="10-deployment.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Deployment</div>
+      </a>
+      <a href="index.html" class="next">
+        <div class="pager-label">Back to start</div>
+        <div class="pager-title">Overview</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

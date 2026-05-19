@@ -77,7 +77,9 @@ from being retried by the provider that rejected it.
 All writes: temp file + rename. Path-traversal safe via `houston-agent-files::safe_relative`.
 
 ## Activity statuses
-`queue` · `running` · `needs_you` · `done` · `cancelled`
+`running` · `needs_you` · `done` · `error`
+
+Source of truth: `ui/agent-schemas/src/activity.schema.json`. The board renders `error` inside the **needs you** column with a red border so failed sessions don't vanish. Any code path that may have flipped a row to `running` (optimistic UI write, engine `set_status_by_session_key("running")`) MUST guarantee a terminal status on exit — including cancel-of-queued and early start-failure, both handled in `engine/houston-engine-core/src/sessions/mod.rs`. Skipping the terminal flip leaves missions visibly stuck on "running" forever.
 
 ## Skills discovery
 Skills live at `.agents/skills/<name>/SKILL.md`. Houston mirrors to `.claude/skills/<name>` via symlink (Claude Code reads). Flat `.md` under `.agents/skills/` auto-migrated to `<name>/SKILL.md` on next `list_skills`.

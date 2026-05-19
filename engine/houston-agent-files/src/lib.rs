@@ -222,6 +222,52 @@ pub fn migrate_agent_data(agent_root: &Path) -> Result<()> {
         }
     }
 
+    // Backfill the GEMINI.md → CLAUDE.md symlink for agents created
+    // before Houston started seeding it. Same shape as the AGENTS.md
+    // symlink in `houston-engine-core::agents::prompt::seed_agent`:
+    // gemini-cli walks UP from cwd looking for `GEMINI.md` as project
+    // memory, so without this the agent's role/instructions never reach
+    // the model. Idempotent: only runs when CLAUDE.md exists AND
+    // GEMINI.md is absent. We deliberately do NOT replace an existing
+    // GEMINI.md (user may have hand-authored a gemini-specific file).
+    let claude_md = agent_root.join("CLAUDE.md");
+    let gemini_md = agent_root.join("GEMINI.md");
+    // `symlink_metadata` so we treat broken/dangling symlinks as
+    // "exists" — replacing them would silently swap user config.
+    let gemini_present = fs::symlink_metadata(&gemini_md).is_ok();
+    if claude_md.exists() && !gemini_present {
+        #[cfg(unix)]
+        {
+            if let Err(e) = std::os::unix::fs::symlink("CLAUDE.md", &gemini_md) {
+                tracing::warn!(
+                    agent_root = %agent_root.display(),
+                    error = %e,
+                    "failed to backfill GEMINI.md symlink"
+                );
+            } else {
+                tracing::info!(
+                    agent_root = %agent_root.display(),
+                    "backfilled GEMINI.md → CLAUDE.md symlink"
+                );
+            }
+        }
+        #[cfg(windows)]
+        {
+            if let Err(e) = std::os::windows::fs::symlink_file("CLAUDE.md", &gemini_md) {
+                tracing::warn!(
+                    agent_root = %agent_root.display(),
+                    error = %e,
+                    "failed to backfill GEMINI.md symlink"
+                );
+            } else {
+                tracing::info!(
+                    agent_root = %agent_root.display(),
+                    "backfilled GEMINI.md → CLAUDE.md symlink"
+                );
+            }
+        }
+    }
+
     // Seed schemas at the end so every migrated agent has them available.
     seed_schemas(agent_root)?;
     Ok(())
@@ -314,6 +360,57 @@ mod tests {
 
         // Running again must be idempotent (no-op, no error).
         migrate_agent_data(dir.path()).unwrap();
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn migrate_backfills_gemini_md_symlink_for_existing_agents() {
+        let dir = TempDir::new().unwrap();
+        // Pre-existing agent dir from before the GEMINI.md change: only
+        // CLAUDE.md exists, no GEMINI.md.
+        fs::write(dir.path().join("CLAUDE.md"), "agent role").unwrap();
+
+        migrate_agent_data(dir.path()).unwrap();
+
+        let gemini_md = dir.path().join("GEMINI.md");
+        assert_eq!(
+            fs::read_link(&gemini_md).unwrap(),
+            Path::new("CLAUDE.md"),
+            "migration must create GEMINI.md → CLAUDE.md symlink",
+        );
+
+        // Idempotent: running again leaves the symlink in place.
+        migrate_agent_data(dir.path()).unwrap();
+        assert_eq!(fs::read_link(&gemini_md).unwrap(), Path::new("CLAUDE.md"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn migrate_does_not_overwrite_existing_gemini_md() {
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("CLAUDE.md"), "claude content").unwrap();
+        fs::write(dir.path().join("GEMINI.md"), "user-authored gemini content").unwrap();
+
+        migrate_agent_data(dir.path()).unwrap();
+
+        // User's hand-authored GEMINI.md must survive — we only
+        // backfill when GEMINI.md is absent.
+        assert!(!dir.path().join("GEMINI.md").is_symlink());
+        assert_eq!(
+            fs::read_to_string(dir.path().join("GEMINI.md")).unwrap(),
+            "user-authored gemini content"
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn migrate_skips_gemini_md_when_claude_md_missing() {
+        let dir = TempDir::new().unwrap();
+        // No CLAUDE.md → nothing to point at. We must NOT create a
+        // dangling symlink.
+        migrate_agent_data(dir.path()).unwrap();
+        assert!(!dir.path().join("GEMINI.md").exists());
+        assert!(fs::symlink_metadata(dir.path().join("GEMINI.md")).is_err());
     }
 
     #[test]

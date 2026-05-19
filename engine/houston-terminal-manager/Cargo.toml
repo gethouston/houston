@@ -1,6 +1,6 @@
 [package]
 name = "houston-terminal-manager"
-version = "0.4.19"
+version = "0.4.10"
 edition = "2021"
 description = "Terminal/CLI subprocess manager for Claude, Codex, and other CLI-based AI agents"
 license = "MIT"
@@ -20,3 +20,9 @@ dirs = "5"
 # so subprocess spawns of `claude`/`codex`/`composio` find them without
 # any user-side shell config.
 houston-cli-bundle = { workspace = true }
+
+[dev-dependencies]
+# Used by the Gemini adapter tests to build throwaway
+# `~/.gemini/{settings,google_accounts}.json` fixtures without touching
+# the developer's real home directory.
+tempfile = "3"

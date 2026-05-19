@@ -47,7 +47,7 @@ In Houston → Settings → Connect to remote engine, paste:
 - URL: `https://houston.example.com`
 - Token: `$HOUSTON_ENGINE_TOKEN`
 
-Local OS-native features (reveal in Finder, file pickers) stay disabled
+Local OS-native features (reveal in file manager, file pickers) stay disabled
 when you're connected to a remote engine.
 
 ## Environment

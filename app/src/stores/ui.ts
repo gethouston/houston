@@ -29,6 +29,13 @@ interface UIState {
   agentMissionSearchLoading: Record<string, boolean>;
   /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
   missionPanelOpen: boolean;
+  /** Whether the global command palette (⌘K) is open. */
+  paletteOpen: boolean;
+  /** Whether the keyboard shortcut cheatsheet (?) is open. */
+  cheatsheetOpen: boolean;
+  /** Arrow-key kanban navigator registered by whichever board is on
+   *  screen (Mission Control or an agent's Activity tab). */
+  onBoardNavigate: ((dir: "up" | "down" | "left" | "right") => void) | null;
   jobDescriptionTarget: JobDescriptionTarget | null;
   /** Pin the first-run tutorial UI in front of the workspace shell. Set true
    * while the orchestrator is mid-flight, cleared on graduation or skip. */
@@ -37,6 +44,10 @@ interface UIState {
    * Set when the user completes M3 Try and clicks "Tutorial complete";
    * cleared when the user dismisses the final tour step. */
   uiTourActive: boolean;
+  /** Agent id queued for the "Share with a friend" wizard, or null. */
+  shareAgentId: string | null;
+  /** Whether the "From a friend" import wizard is open. */
+  importFromFriendOpen: boolean;
   setViewMode: (mode: string) => void;
   setAssistantPanelOpen: (open: boolean) => void;
   setActivityPanelId: (id: string | null) => void;
@@ -50,9 +61,14 @@ interface UIState {
   setAgentMissionSearchQuery: (agentPath: string, query: string) => void;
   setAgentMissionSearchLoading: (agentPath: string, loading: boolean) => void;
   setMissionPanelOpen: (open: boolean) => void;
+  setPaletteOpen: (open: boolean) => void;
+  setCheatsheetOpen: (open: boolean) => void;
+  setOnBoardNavigate: (cb: ((dir: "up" | "down" | "left" | "right") => void) | null) => void;
   setJobDescriptionTarget: (target: JobDescriptionTarget | null) => void;
   setTutorialActive: (active: boolean) => void;
   setUiTourActive: (active: boolean) => void;
+  setShareAgentId: (agentId: string | null) => void;
+  setImportFromFriendOpen: (open: boolean) => void;
 }
 
 let toastCounter = 0;
@@ -70,9 +86,14 @@ export const useUIStore = create<UIState>((set) => ({
   agentMissionSearchQueries: {},
   agentMissionSearchLoading: {},
   missionPanelOpen: false,
+  paletteOpen: false,
+  cheatsheetOpen: false,
+  onBoardNavigate: null,
   jobDescriptionTarget: null,
   tutorialActive: false,
   uiTourActive: false,
+  shareAgentId: null,
+  importFromFriendOpen: false,
 
   setViewMode: (viewMode) => set({ viewMode }),
   setAssistantPanelOpen: (assistantPanelOpen) => set({ assistantPanelOpen }),
@@ -124,7 +145,13 @@ export const useUIStore = create<UIState>((set) => ({
       return { agentMissionSearchLoading: next };
     }),
   setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
+  setPaletteOpen: (paletteOpen) => set({ paletteOpen }),
+  setCheatsheetOpen: (cheatsheetOpen) => set({ cheatsheetOpen }),
+  setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
   setJobDescriptionTarget: (jobDescriptionTarget) => set({ jobDescriptionTarget }),
   setTutorialActive: (tutorialActive) => set({ tutorialActive }),
   setUiTourActive: (uiTourActive) => set({ uiTourActive }),
+  setShareAgentId: (shareAgentId) => set({ shareAgentId }),
+  setImportFromFriendOpen: (importFromFriendOpen) =>
+    set({ importFromFriendOpen }),
 }));

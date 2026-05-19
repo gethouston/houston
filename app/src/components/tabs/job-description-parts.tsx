@@ -13,14 +13,35 @@ export type SubTab = "instructions" | "skills" | "learnings";
 
 type SaveState = "idle" | "saving" | "saved";
 
+export interface InstructionsContentLabels {
+  emptyTitle: string;
+  emptyDescription: string;
+  writeButton: string;
+  helper: string;
+  saving: string;
+  saved: string;
+  placeholder: string;
+}
+
 export function InstructionsContent({
   content,
   onSave,
+  labels,
 }: {
   content: string;
   onSave: (content: string) => Promise<unknown>;
+  labels?: InstructionsContentLabels;
 }) {
   const { t } = useTranslation("agents");
+  const resolved: InstructionsContentLabels = labels ?? {
+    emptyTitle: t("instructions.emptyTitle"),
+    emptyDescription: t("instructions.emptyDescription"),
+    writeButton: t("instructions.writeButton"),
+    helper: t("instructions.helper"),
+    saving: t("instructions.saving"),
+    saved: t("instructions.saved"),
+    placeholder: t("instructions.placeholder"),
+  };
   const [value, setValue] = useState(content);
   const [editing, setEditing] = useState(false);
   const [state, setState] = useState<SaveState>("idle");
@@ -48,12 +69,12 @@ export function InstructionsContent({
     return (
       <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
         <EmptyHeader>
-          <EmptyTitle>{t("instructions.emptyTitle")}</EmptyTitle>
-          <EmptyDescription>{t("instructions.emptyDescription")}</EmptyDescription>
+          <EmptyTitle>{resolved.emptyTitle}</EmptyTitle>
+          <EmptyDescription>{resolved.emptyDescription}</EmptyDescription>
         </EmptyHeader>
         <Button onClick={() => setEditing(true)}>
           <FileText className="size-4" />
-          {t("instructions.writeButton")}
+          {resolved.writeButton}
         </Button>
       </div>
     );
@@ -63,7 +84,7 @@ export function InstructionsContent({
     <div className="max-w-3xl mx-auto w-full px-6 pb-12 pt-2">
       <div className="flex items-baseline justify-between gap-4 mb-4">
         <p className="text-xs text-muted-foreground max-w-md">
-          {t("instructions.helper")}
+          {resolved.helper}
         </p>
         <span
           className={cn(
@@ -72,7 +93,7 @@ export function InstructionsContent({
           )}
           aria-live="polite"
         >
-          {state === "saving" ? t("instructions.saving") : state === "saved" ? t("instructions.saved") : ""}
+          {state === "saving" ? resolved.saving : state === "saved" ? resolved.saved : ""}
         </span>
       </div>
       <section className="rounded-xl bg-secondary p-3">
@@ -81,7 +102,7 @@ export function InstructionsContent({
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onBlur={handleBlur}
-          placeholder={t("instructions.placeholder")}
+          placeholder={resolved.placeholder}
           rows={Math.max(12, value.split("\n").length + 2)}
           className={cn(
             "w-full px-4 py-3 text-sm text-foreground leading-relaxed",

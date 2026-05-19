@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Why conversations die today — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html" class="active"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 05
+      <span class="status planned">Diagnosis · feeds M1</span>
+    </div>
+    <h1>Why conversations die today.</h1>
+    <p class="lead">
+      The engine writes to disk only after the work is done. Everything in
+      flight lives in memory. In-memory means it dies when the process
+      dies, when the user closes the app, when the network blips. Five
+      failure modes. Same root cause.
+    </p>
+
+    <div class="fail-grid">
+      <div class="fail-card">
+        <div class="label">Failure mode #1</div>
+        <p><strong>User closes the app mid-stream.</strong> This is the most common one and it has nothing to do with crashes. The user clicks the red button, the app exits, the engine subprocess exits with it, the in-flight assistant tokens vanish. The user reopens Houston and the message is gone. Today this happens dozens of times a day in the dev loop alone.</p>
+      </div>
+
+      <div class="fail-card">
+        <div class="label">Failure mode #2</div>
+        <p><strong>Engine crashes between "accept message" and "spawn CLI".</strong> Your message disappears. No record anywhere. You click send again, the engine has no memory of the first attempt. Rare but ugly when it happens.</p>
+      </div>
+
+      <div class="fail-card">
+        <div class="label">Failure mode #3</div>
+        <p><strong>Engine crashes mid-stream.</strong> Whatever the assistant had already streamed: gone. Database has nothing. The user thinks the agent is broken.</p>
+      </div>
+
+      <div class="fail-card">
+        <div class="label">Failure mode #4</div>
+        <p><strong>WebSocket reconnects after a network blip.</strong> Server has no record of what events it pushed during the disconnect. The frontend has to refetch state and pray nothing slipped through.</p>
+      </div>
+
+      <div class="fail-card">
+        <div class="label">Failure mode #5</div>
+        <p><strong>Cron fires while engine is restarting.</strong> The 7am alarm rings, the engine is rebooting, the fire is dropped silently. No log, no alert, no catch-up. Verified in <code>engine/houston-scheduler/src/cron_job.rs</code>: missed crons fire once on next boot if the schedule is past-due, but there's no record of how many fires were missed.</p>
+      </div>
+
+      <div class="fail-card">
+        <div class="label">Failure mode #6 (the one most people miss)</div>
+        <p><strong>CLI subprocess hangs without exiting.</strong> Provider gateway flakes, network stalls, model returns nothing. The CLI sits there for 20 minutes. Engine has no timeout, no <code>started_at</code> heartbeat, no idea anything is wrong. UI shows "thinking" forever.</p>
+      </div>
+    </div>
+
+    <h2>The pattern</h2>
+    <p>
+      Notice the common thread. The engine writes to the database
+      <strong>after</strong> doing work, not <strong>before</strong>. So
+      anything happening between "before" and "after" lives only in
+      memory, and that memory belongs to a process that can die or a
+      socket that can disconnect.
+    </p>
+    <p>
+      The fix is boring but life-changing. Flip the order. Add timestamps.
+      Add sequence numbers. Sweep orphans on boot. Chapter 6 covers how.
+    </p>
+
+    <div class="callout callout-warning">
+      <div class="callout-label">"Why hasn't this been fixed yet?"</div>
+      <p>Because in the happy path it works. Engines don't crash often. The team shipped features. The pain falls on users in the long tail: someone with a flaky home network, someone who closes the app to take a call, someone whose engine got OOM-killed in dev. The redesign moves us from "works most of the time" to "designed for the times it doesn't." That's the line between a beta and a product.</p>
+    </div>
+
+    <div class="pager">
+      <a href="04-message-flow.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">How a message flows through</div>
+      </a>
+      <a href="06-four-tables.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">The four tables that save everything</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

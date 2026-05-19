@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The four tables — Houston Engine Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Engine Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Engine Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-three-layers.html"><span class="num">01</span>The three layers<span class="sb-status shipped"></span></a></li>
+      <li><a href="02-agent-folder.html"><span class="num">02</span>An agent is a folder<span class="sb-status shipped"></span></a></li>
+      <li><a href="03-where-engine-lives.html"><span class="num">03</span>Where the engine lives<span class="sb-status planned"></span></a></li>
+      <li><a href="04-message-flow.html"><span class="num">04</span>How a message flows<span class="sb-status partial"></span></a></li>
+      <li><a href="05-conversations-die.html"><span class="num">05</span>Why conversations die today<span class="sb-status planned"></span></a></li>
+      <li><a href="06-four-tables.html" class="active"><span class="num">06</span>The four tables<span class="sb-status planned"></span></a></li>
+      <li><a href="07-keeping-agents-apart.html"><span class="num">07</span>Keeping agents apart<span class="sb-status planned"></span></a></li>
+      <li><a href="08-login.html"><span class="num">08</span>Logging in<span class="sb-status partial"></span></a></li>
+      <li><a href="09-external-triggers.html"><span class="num">09</span>External triggers<span class="sb-status partial"></span></a></li>
+      <li><a href="10-deployment.html"><span class="num">10</span>Deployment<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 06
+      <span class="status planned">Planned · M1 · ~4 weeks</span>
+    </div>
+    <h1>The four tables that save everything.</h1>
+    <p class="lead">
+      Four new SQLite tables. That's the entire reliability story (almost,
+      see the worker section below). Not Temporal. Not a workflow engine.
+      Just four tables and one rule: write the row before doing the work.
+    </p>
+
+    <h2>The tables, with columns</h2>
+
+    <h3><code>turns</code></h3>
+    <pre><code>CREATE TABLE turns (
+  turn_id        TEXT PRIMARY KEY,        -- UUID v4, client-supplied
+  session_key    TEXT NOT NULL,           -- the conversation slot
+  agent_path     TEXT NOT NULL,           -- workspace/agent
+  principal_id   TEXT NOT NULL,           -- who initiated, see Ch7
+  status         TEXT NOT NULL,           -- queued | running | completed | cancelled | failed | timed_out
+  user_message   TEXT NOT NULL,           -- the input
+  result         TEXT,                    -- final assistant text or error code
+  error_code     TEXT,                    -- when status = failed
+  created_at     INTEGER NOT NULL,        -- unix ms
+  started_at     INTEGER,                 -- when CLI spawned
+  completed_at   INTEGER                  -- when terminal
+);
+CREATE INDEX turns_session_idx ON turns(session_key, created_at);
+CREATE INDEX turns_status_idx  ON turns(status) WHERE status IN ('queued', 'running');</code></pre>
+
+    <h3><code>turn_stream</code></h3>
+    <pre><code>CREATE TABLE turn_stream (
+  turn_id        TEXT NOT NULL REFERENCES turns(turn_id),
+  seq            INTEGER NOT NULL,        -- per-turn monotonic
+  kind           TEXT NOT NULL,           -- assistant_delta | thinking_delta | tool_call | tool_result | ...
+  data_json      TEXT NOT NULL,
+  ts             INTEGER NOT NULL,
+  PRIMARY KEY (turn_id, seq)
+);</code></pre>
+
+    <h3><code>events_outbox</code></h3>
+    <pre><code>CREATE TABLE events_outbox (
+  seq            INTEGER PRIMARY KEY AUTOINCREMENT,   -- global monotonic
+  topic          TEXT NOT NULL,           -- session:X, agent:Y, scheduler, ...
+  event_type     TEXT NOT NULL,
+  payload_json   TEXT NOT NULL,
+  ts             INTEGER NOT NULL
+);
+CREATE INDEX events_topic_idx ON events_outbox(topic, seq);</code></pre>
+
+    <h3><code>cron_runs</code></h3>
+    <pre><code>CREATE TABLE cron_runs (
+  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+  routine_id     TEXT NOT NULL,
+  scheduled_at   INTEGER NOT NULL,        -- when it was supposed to fire
+  fired_at       INTEGER,                 -- when we actually fired (null if missed and we don't intend to catch up)
+  status         TEXT NOT NULL,           -- fired | missed | caught_up | skipped
+  turn_id        TEXT REFERENCES turns(turn_id),
+  notes          TEXT
+);
+CREATE INDEX cron_runs_routine_idx ON cron_runs(routine_id, scheduled_at);</code></pre>
+
+    <h2>The rule</h2>
+    <p>
+      Write the row before doing the work. Mark it complete after. Here is
+      what that looks like for a single chat turn.
+    </p>
+
+<pre><code>1. Accept message       → INSERT turns (status: queued)
+2. Start CLI            → UPDATE turns SET status = running, started_at
+3. Stream chunk         → INSERT turn_stream row(s), then broadcast
+4. CLI done             → UPDATE turns SET status = completed, completed_at
+5. Engine boots         → SELECT * FROM turns WHERE status IN ('queued','running')
+                          → mark orphaned (status = 'failed', error_code = 'engine_restart')
+                          → surface retry button to the user</code></pre>
+
+    <p>
+      Step 5 is the magic. On every boot, the engine looks for turns that
+      were "running" when the previous engine died. Those are orphans. The
+      user sees a retry button. They click it. The same <code>turn_id</code>
+      goes back into the system. The server recognizes the ID is terminal
+      and returns its outcome; the client decides to mint a new
+      <code>turn_id</code> and try again. Idempotency is at the server,
+      retry policy is at the client.
+    </p>
+
+    <h2>What four tables alone fix, and what they don't</h2>
+    <p>
+      Be honest about scope. These tables alone fix:
+    </p>
+    <ul>
+      <li>Crash <strong>between</strong> turns. The orphan sweep finds it.</li>
+      <li>User closing the app mid-stream. On reopen, the engine is still running, the turn is still streaming, the client just reconnects to the WS with <code>since_seq</code> and replays from <code>events_outbox</code>.</li>
+      <li>Network blips during streaming. Same path: replay from outbox.</li>
+      <li>Missed crons. The next boot reads <code>cron_runs</code>, sees the missed fire, decides whether to catch up.</li>
+      <li>Client retry safety. The <code>turnId</code> is idempotent.</li>
+      <li>CLI subprocess hang. A sweep job checks <code>turns WHERE status = 'running' AND started_at &lt; now() - 10min</code> and surfaces a "still running, cancel?" prompt.</li>
+    </ul>
+    <p>
+      What four tables do NOT fix on their own: <strong>engine crash MID-stream
+      while a CLI subprocess is still running</strong>. Today the CLI
+      subprocess is a child of the engine process, so killing the engine
+      kills the CLI. The four tables let the engine recover state on the
+      next boot, but the in-flight CLI is dead and the user has to retry.
+    </p>
+
+    <h2>The detached worker (required to fully close the gap)</h2>
+    <p>
+      To survive engine restart MID-stream without retry, the CLI must
+      live longer than the engine. That means a small detached binary,
+      <code>houston-turn-worker</code>, spawned by the engine but not
+      parented to it. The worker writes streaming output directly to
+      SQLite. The engine bounces, a new engine starts, attaches via Unix
+      socket, picks up where the stream left off. The user never notices.
+    </p>
+    <p>
+      This is the architectural piece. Without it, "conversations never
+      die" is "conversations rarely die." With it, the promise is real.
+      It belongs in M4 because it's the riskiest piece; the four tables
+      get us 80% of the value first.
+    </p>
+
+    <h2>Coexistence with <code>chat_feed</code></h2>
+    <p>
+      Today's <code>chat_feed</code> holds final feed items keyed by the
+      provider session id. After M1, the same data lives in
+      <code>turn_stream</code> (deltas) and the final items derived on
+      read. Two paths:
+    </p>
+    <ul>
+      <li><strong>Migrate then delete.</strong> One-shot migration copies <code>chat_feed</code> into <code>turn_stream</code> as kind <code>final</code>. New writes only go to <code>turn_stream</code>. Cleaner long-term.</li>
+      <li><strong>Double-write for a release.</strong> Both tables get the data, reads check <code>turn_stream</code> first, fall back to <code>chat_feed</code>. Safer for rollback.</li>
+    </ul>
+    <p>
+      Pick double-write for the first M1 release, drop <code>chat_feed</code>
+      writes in the next release once we're confident, drop the table in
+      the release after. Three-release deprecation, standard playbook.
+    </p>
+
+    <h2>Backpressure and the bounded queue</h2>
+    <p>
+      Today the event queue in <code>engine/houston-events/src/queue.rs</code>
+      is an <code>mpsc::unbounded_channel</code>. A webhook flood or a
+      runaway cron could balloon memory. M1 switches this to a bounded
+      channel with capacity 1024 and a documented drop policy:
+    </p>
+    <ul>
+      <li>Inputs whose source is <code>cron</code> coalesce: if two fires for the same <code>routine_id</code> are in flight, log a "skipped" row in <code>cron_runs</code> and drop the second.</li>
+      <li>Inputs whose source is <code>user</code> never drop. If the queue is full, return <code>503 UNAVAILABLE</code> with <code>Retry-After</code>.</li>
+      <li>Inputs whose source is <code>webhook</code> get a small per-source bucket (token bucket, 10/min default) and a <code>cron_runs</code>-style audit table.</li>
+    </ul>
+    <p>
+      Same write-before-do principle: refusing the request is fine,
+      silently dropping it is not.
+    </p>
+
+    <h2>Retention</h2>
+    <p>
+      <code>turn_stream</code> grows fast. A two-hour Codex marathon
+      writes thousands of rows. Default retention: keep raw deltas for 7
+      days, then compact to one <code>final</code> row per turn and drop
+      the deltas. <code>events_outbox</code> retention: 24 hours
+      (replay window for reconnecting clients). <code>cron_runs</code>:
+      keep forever, it's an audit log and it's small.
+    </p>
+    <p>
+      A nightly background task does the compaction. Configurable via
+      env vars for self-hosters and Cloud admins.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">Why this isn't Temporal</div>
+      <p>Temporal is a workflow engine for orchestrating long-running multi-step business processes with replay semantics across many activities. Houston has one activity: run a CLI turn, capture the stream. That's a job, not a saga. Four tables are enough.</p>
+    </div>
+
+    <div class="tech-box">
+      <div class="label">Migration order</div>
+      <p>SQLite migrations live in <code>engine/houston-db/src/migrations.rs</code>. New migrations drop in next to the existing four (<code>chat_feed</code>, <code>chat_feed_fts</code>, <code>engine_tokens</code>, <code>phone_access</code>). Each gets its own numbered migration file; existing data is preserved. Repos go in <code>engine/houston-db/src/repo_turns.rs</code>, <code>repo_turn_stream.rs</code>, <code>repo_events_outbox.rs</code>, <code>repo_cron_runs.rs</code>. Boot sweep job in <code>engine/houston-engine-server/src/main.rs</code> startup, just after migrations run.</p>
+    </div>
+
+    <div class="pager">
+      <a href="05-conversations-die.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Why conversations die today</div>
+      </a>
+      <a href="07-keeping-agents-apart.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">Keeping agents apart</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Engine Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

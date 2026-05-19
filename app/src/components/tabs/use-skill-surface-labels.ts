@@ -27,6 +27,7 @@ export function useSkillDialogLabels() {
     description: t("addDialog.description"),
     storeTab: t("addDialog.storeTab"),
     repoTab: t("addDialog.repoTab"),
+    scratchTab: t("addDialog.scratchTab"),
     store: {
       searchPlaceholder: t("addDialog.store.searchPlaceholder"),
       popularHeading: t("addDialog.store.popularHeading"),
@@ -70,6 +71,23 @@ export function useSkillDialogLabels() {
       installedSummary: (count: number, names: string) =>
         t("addDialog.repo.installedSummary", { count, names }),
       installAnotherRepo: t("addDialog.repo.installAnotherRepo"),
+    },
+    scratch: {
+      titleLabel: t("addDialog.scratch.titleLabel"),
+      titlePlaceholder: t("addDialog.scratch.titlePlaceholder"),
+      titleHint: t("addDialog.scratch.titleHint"),
+      slugPreviewPrefix: t("addDialog.scratch.slugPreviewPrefix"),
+      descriptionLabel: t("addDialog.scratch.descriptionLabel"),
+      descriptionPlaceholder: t("addDialog.scratch.descriptionPlaceholder"),
+      descriptionHint: t("addDialog.scratch.descriptionHint"),
+      bodyLabel: t("addDialog.scratch.bodyLabel"),
+      bodyPlaceholder: t("addDialog.scratch.bodyPlaceholder"),
+      bodyHint: t("addDialog.scratch.bodyHint"),
+      submit: t("addDialog.scratch.submit"),
+      submitting: t("addDialog.scratch.submitting"),
+      errorTitleRequired: t("addDialog.scratch.errorTitleRequired"),
+      errorBodyRequired: t("addDialog.scratch.errorBodyRequired"),
+      errorSlugTaken: t("addDialog.scratch.errorSlugTaken"),
     },
   };
 }

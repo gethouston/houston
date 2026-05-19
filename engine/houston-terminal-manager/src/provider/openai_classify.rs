@@ -1,0 +1,280 @@
+//! OpenAI / Codex stderr classifier.
+//!
+//! Replaces the standalone `codex_command::is_missing_rollout_error`
+//! check on the runner side with a typed [`ProviderError`] variant. The
+//! standalone function is kept (still used by `cli_process` for the
+//! resume-retry decision flow) but the user-facing surface is now typed.
+
+use crate::auth_error::is_auth_error;
+use crate::codex_command;
+use crate::provider_error_kind::{
+    truncate_excerpt, AuthFailureCause, ModelUnavailableReason, ProviderError, QuotaScope,
+};
+
+const PROVIDER: &str = "openai";
+
+pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
+    let lower = line.to_lowercase();
+
+    // Resume-rollout-missing. The session_id we tried to resume isn't
+    // anywhere in the codex history. UI prompts the user to start fresh.
+    if codex_command::is_missing_rollout_error(line) {
+        let session_id = extract_thread_id_from_rollout_error(line)
+            .unwrap_or_else(|| "unknown".to_string());
+        return Some(ProviderError::SessionResumeMissing {
+            provider: PROVIDER.into(),
+            session_id,
+        });
+    }
+
+    // OpenAI rejects coding-specialised models (gpt-5.5-codex, gpt-5-codex)
+    // with a 400 when the user is authenticated via a ChatGPT account
+    // whose plan does not include them. Surface as a typed
+    // ModelUnavailable card with a "switch model" CTA rather than dumping
+    // the raw 400 JSON into the feed.
+    if lower.contains("is not supported when using codex with a chatgpt account") {
+        let model = extract_quoted_model(line).unwrap_or_else(|| "this model".into());
+        return Some(ProviderError::ModelUnavailable {
+            provider: PROVIDER.into(),
+            model,
+            reason: ModelUnavailableReason::PreviewGated,
+            suggested_fallback: Some("gpt-5.5".into()),
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
+    // Auth — the codex CLI prints "Please run codex login" and 401s.
+    if is_auth_error(line) {
+        let cause = if lower.contains("expired") {
+            AuthFailureCause::TokenExpired
+        } else if lower.contains("invalid") && lower.contains("api key") {
+            AuthFailureCause::InvalidApiKey
+        } else if lower.contains("not authenticated")
+            || lower.contains("not logged in")
+            || lower.contains("please run codex login")
+            || lower.contains("codex login")
+            || lower.contains("no auth credentials")
+        {
+            AuthFailureCause::NoCredentials
+        } else if lower.contains("revoked") {
+            AuthFailureCause::TokenRevoked
+        } else {
+            AuthFailureCause::Unknown
+        };
+        return Some(ProviderError::Unauthenticated {
+            provider: PROVIDER.into(),
+            cause,
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
+    // Rate limit — codex / OpenAI surface 429 with optional retry-after.
+    if lower.contains("429")
+        || lower.contains("rate_limit_exceeded")
+        || lower.contains("rate limit")
+    {
+        return Some(ProviderError::RateLimited {
+            provider: PROVIDER.into(),
+            model: None,
+            retry_after_seconds: parse_retry_after_seconds(line),
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
+    // Quota exhausted — paid plan / org quota.
+    if lower.contains("quota") && (lower.contains("exceed") || lower.contains("exhaust")) {
+        return Some(ProviderError::QuotaExhausted {
+            provider: PROVIDER.into(),
+            model: None,
+            scope: QuotaScope::Unknown,
+            message: truncate_excerpt(line.trim()),
+            upgrade_url: Some("https://platform.openai.com/account/billing".into()),
+        });
+    }
+
+    // Server-side. Codex prints `unexpected status 5XX` on the failure path.
+    if let Some(status) = parse_http_5xx(line) {
+        return Some(ProviderError::ProviderInternal {
+            provider: PROVIDER.into(),
+            http_status: Some(status),
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
+    // Network.
+    if lower.contains("econnrefused")
+        || lower.contains("econnreset")
+        || lower.contains("enotfound")
+        || lower.contains("etimedout")
+        || lower.contains("connection refused")
+    {
+        return Some(ProviderError::NetworkUnreachable {
+            provider: PROVIDER.into(),
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
+    None
+}
+
+/// Codex doesn't currently emit a structured `result.error.type` field
+/// — its NDJSON `result {status:"error"}` is detected via `is_error`
+/// at the parser level. Stub kept so the trait stays uniform.
+pub(crate) fn classify_result_error(
+    _error_type: &str,
+    _error_message: &str,
+) -> Option<ProviderError> {
+    None
+}
+
+/// Try to lift the thread/session UUID out of the
+/// `no rollout found for thread id <uuid>` line.
+fn extract_thread_id_from_rollout_error(line: &str) -> Option<String> {
+    const MARKER: &str = "thread id ";
+    let lower = line.to_lowercase();
+    let idx = lower.find(MARKER)?;
+    let tail = line[idx + MARKER.len()..].trim();
+    let id: String = tail
+        .chars()
+        .take_while(|c| c.is_ascii_hexdigit() || *c == '-')
+        .collect();
+    if id.is_empty() {
+        None
+    } else {
+        Some(id)
+    }
+}
+
+/// Pull a model name out of the "The 'gpt-5.5-codex' model is not
+/// supported when using Codex with a ChatGPT account" pattern. Falls
+/// back to None when no single-quoted token is present.
+fn extract_quoted_model(line: &str) -> Option<String> {
+    let first = line.find('\'')?;
+    let rest = &line[first + 1..];
+    let end = rest.find('\'')?;
+    let model = rest[..end].trim();
+    if model.is_empty() {
+        None
+    } else {
+        Some(model.to_string())
+    }
+}
+
+fn parse_retry_after_seconds(line: &str) -> Option<u32> {
+    let lower = line.to_lowercase();
+    for marker in ["retry-after:", "retry after", "retry_after"] {
+        if let Some(idx) = lower.find(marker) {
+            let tail = &lower[idx + marker.len()..];
+            let mut digits = String::new();
+            for c in tail.chars() {
+                if c.is_ascii_digit() {
+                    digits.push(c);
+                } else if !digits.is_empty() {
+                    break;
+                }
+            }
+            if let Ok(n) = digits.parse::<u32>() {
+                return Some(n);
+            }
+        }
+    }
+    None
+}
+
+fn parse_http_5xx(line: &str) -> Option<u16> {
+    for token in line.split(|c: char| !c.is_ascii_digit()) {
+        if token.len() == 3 {
+            if let Ok(n) = token.parse::<u16>() {
+                if (500..600).contains(&n) {
+                    return Some(n);
+                }
+            }
+        }
+    }
+    None
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn missing_rollout_classified_as_session_resume_missing() {
+        let line = "Error: thread/resume: thread/resume failed: no rollout found for thread id 1088f5a4-c484-44d4-b594-585b74a8f859";
+        match classify_stderr(line).unwrap() {
+            ProviderError::SessionResumeMissing { session_id, .. } => {
+                assert_eq!(session_id, "1088f5a4-c484-44d4-b594-585b74a8f859");
+            }
+            other => panic!("expected SessionResumeMissing, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn please_run_codex_login_classified_as_no_credentials() {
+        let line = "Please run codex login";
+        match classify_stderr(line).unwrap() {
+            ProviderError::Unauthenticated { cause, .. } => {
+                assert_eq!(cause, AuthFailureCause::NoCredentials);
+            }
+            other => panic!("expected Unauthenticated, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unexpected_status_401_classified_as_unauthenticated() {
+        let line = "unexpected status 401 Unauthorized: Missing bearer";
+        match classify_stderr(line).unwrap() {
+            ProviderError::Unauthenticated { .. } => {}
+            other => panic!("expected Unauthenticated, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rate_limit_extracts_retry_after() {
+        let line = "429 rate_limit_exceeded retry-after: 12";
+        match classify_stderr(line).unwrap() {
+            ProviderError::RateLimited {
+                retry_after_seconds: Some(12),
+                ..
+            } => {}
+            other => panic!("expected RateLimited(12), got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn quota_exhausted_includes_billing_url() {
+        let line = "Quota exceeded for this account";
+        match classify_stderr(line).unwrap() {
+            ProviderError::QuotaExhausted { upgrade_url, .. } => {
+                assert!(upgrade_url.unwrap().contains("openai.com"));
+            }
+            other => panic!("expected QuotaExhausted, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn http_503_classified_as_provider_internal() {
+        let line = "unexpected status 503 service unavailable";
+        match classify_stderr(line).unwrap() {
+            ProviderError::ProviderInternal {
+                http_status: Some(503),
+                ..
+            } => {}
+            other => panic!("expected ProviderInternal 503, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn unrelated_log_returns_none() {
+        assert!(classify_stderr("Reading prompt from stdin").is_none());
+    }
+
+    #[test]
+    fn extract_thread_id_pulls_uuid() {
+        let line = "no rollout found for thread id deadbeef-1234-5678-9abc-def012345678";
+        assert_eq!(
+            extract_thread_id_from_rollout_error(line),
+            Some("deadbeef-1234-5678-9abc-def012345678".to_string())
+        );
+    }
+}

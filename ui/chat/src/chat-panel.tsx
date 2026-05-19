@@ -11,7 +11,8 @@ import { ChatMessages } from "./chat-messages";
 import type { ChatPanelProps } from "./chat-panel-types";
 import { deriveStatus } from "./chat-status";
 import { Shimmer } from "./ai-elements/shimmer";
-import { useFileDropZone, useControllable, mergeUniqueFiles } from "./use-file-drop-zone";
+import { useFileDropZone, useControllable } from "./use-file-drop-zone";
+import { useAttachmentIntake } from "./use-attachment-intake";
 
 export type { ChatPanelProps } from "./chat-panel-types";
 
@@ -59,6 +60,7 @@ export function ChatPanel({
   queuedLabels,
   canSendEmpty,
   composerOverride,
+  composerLabels,
 }: ChatPanelProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const status = statusProp ?? deriveStatus(feedItems, isLoading);
@@ -74,22 +76,14 @@ export function ChatPanel({
     [],
   );
   const isFilesControlled = attachments !== undefined;
-  const addDroppedFiles = useCallback(
-    (dropped: File[]) => {
-      const prepared = prepareAttachments
-        ? prepareAttachments(dropped, files)
-        : { accepted: dropped, rejected: [] };
-      if (prepared.rejected.length > 0) {
-        onAttachmentRejections?.(prepared.rejected);
-      }
-      const merged = mergeUniqueFiles(files, prepared.accepted);
-      if (merged.length < files.length + prepared.accepted.length) {
-        onNotice?.("File already in chat");
-      }
-      setFiles(merged);
-    },
-    [files, setFiles, onNotice, prepareAttachments, onAttachmentRejections],
-  );
+  const addDroppedFiles = useAttachmentIntake({
+    files,
+    setFiles,
+    prepareAttachments,
+    onAttachmentRejections,
+    onNotice,
+    duplicateNotice: composerLabels?.fileAlreadyInChat,
+  });
   const { isDraggingOver, dropProps } = useFileDropZone(addDroppedFiles);
 
   useEffect(() => {
@@ -115,7 +109,11 @@ export function ChatPanel({
       className="relative flex flex-1 flex-col min-h-0 overflow-hidden"
       {...dropProps}
     >
-      <ChatDropOverlay visible={isDraggingOver} />
+      <ChatDropOverlay
+        visible={isDraggingOver}
+        title={composerLabels?.dropTitle}
+        description={composerLabels?.dropDescription}
+      />
       {onBack && (
         <div className="max-w-3xl mx-auto w-full px-4 pt-3">
           <button
@@ -174,6 +172,7 @@ export function ChatPanel({
           onRemoveQueuedMessage={onRemoveQueuedMessage}
           queuedLabels={queuedLabels}
           canSendEmpty={canSendEmpty}
+          labels={composerLabels}
         />
       )}
     </div>

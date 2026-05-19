@@ -24,6 +24,7 @@ pub fn create(root: &Path, input: NewRoutine) -> CoreResult<Routine> {
         schedule: input.schedule,
         enabled: input.enabled,
         suppress_when_silent: input.suppress_when_silent,
+        integrations: input.integrations,
         created_at: now.clone(),
         updated_at: now,
     };
@@ -56,6 +57,9 @@ pub fn update(root: &Path, id: &str, updates: RoutineUpdate) -> CoreResult<Routi
     }
     if let Some(suppress) = updates.suppress_when_silent {
         routine.suppress_when_silent = suppress;
+    }
+    if let Some(integrations) = updates.integrations {
+        routine.integrations = integrations;
     }
     routine.updated_at = Utc::now().to_rfc3339();
 

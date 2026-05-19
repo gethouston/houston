@@ -9,6 +9,7 @@ pub mod composio;
 pub mod conversations;
 pub mod error;
 pub mod health;
+pub mod portable;
 pub mod preferences;
 pub mod providers;
 pub mod routines;

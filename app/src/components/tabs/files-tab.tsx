@@ -47,7 +47,7 @@ export default function FilesTab({ agent }: TabProps) {
             className="flex items-center gap-1 text-[11px] text-[#6d6d6d] hover:text-[#0d0d0d] transition-colors"
           >
             <FolderOpen className="size-3" />
-            {t("files.openInFinder")}
+            {t("files.openInFileManager")}
           </button>
         }
       />

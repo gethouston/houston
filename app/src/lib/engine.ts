@@ -7,7 +7,7 @@
  * `initializationScript` (see `app/src-tauri/tauri.conf.json`).
  *
  * Frontend code should prefer this `engine` singleton over raw Tauri IPC.
- * OS-native calls (file pickers, reveal-in-finder) still live on
+ * OS-native calls (file pickers, reveal-in-file-manager) still live on
  * `@tauri-apps/api` — everything else flows through the engine wire.
  */
 

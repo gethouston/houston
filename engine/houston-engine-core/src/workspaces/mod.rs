@@ -1,12 +1,18 @@
 //! Workspace CRUD — relocated from `app/src-tauri/src/commands/workspaces.rs`.
 //!
 //! Transport-neutral: operates on a filesystem root. HTTP routes call these
-//! functions; so do tests and CLI tools.
+//! functions; so do tests and CLI tools. File I/O lives in [`io`], which
+//! also owns the self-healing read used to recover `workspaces.json` files
+//! corrupted by the 0.4.19 concurrent-writer race.
+
+mod io;
+
+pub use io::read_all;
 
 use crate::error::{CoreError, CoreResult};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
@@ -43,31 +49,8 @@ pub struct RenameWorkspace {
     pub new_name: String,
 }
 
-fn json_path(root: &Path) -> PathBuf {
-    root.join("workspaces.json")
-}
-
 fn now_iso() -> String {
     chrono::Utc::now().to_rfc3339()
-}
-
-pub fn read_all(root: &Path) -> CoreResult<Vec<Workspace>> {
-    let path = json_path(root);
-    if !path.exists() {
-        return Ok(Vec::new());
-    }
-    let contents = fs::read_to_string(&path)?;
-    serde_json::from_str(&contents).map_err(Into::into)
-}
-
-fn write_all(root: &Path, workspaces: &[Workspace]) -> CoreResult<()> {
-    let target = json_path(root);
-    let tmp = root.join("workspaces.json.tmp");
-    fs::create_dir_all(root)?;
-    let json = serde_json::to_string_pretty(workspaces)?;
-    fs::write(&tmp, &json)?;
-    fs::rename(&tmp, &target)?;
-    Ok(())
 }
 
 pub fn list(root: &Path) -> CoreResult<Vec<Workspace>> {
@@ -98,7 +81,7 @@ pub fn create(root: &Path, req: CreateWorkspace) -> CoreResult<Workspace> {
         fs::write(&connections, "[]")?;
     }
     workspaces.push(ws.clone());
-    write_all(root, &workspaces)?;
+    io::write_all(root, &workspaces)?;
     Ok(ws)
 }
 
@@ -127,7 +110,7 @@ pub fn rename(root: &Path, id: &str, req: RenameWorkspace) -> CoreResult<Workspa
     }
     ws.name = req.new_name;
     let updated = ws.clone();
-    write_all(root, &workspaces)?;
+    io::write_all(root, &workspaces)?;
     Ok(updated)
 }
 
@@ -144,7 +127,7 @@ pub fn delete(root: &Path, id: &str) -> CoreResult<()> {
     }
     let ws_dir = root.join(&ws.name);
     let remaining: Vec<Workspace> = workspaces.iter().filter(|w| w.id != id).cloned().collect();
-    write_all(root, &remaining)?;
+    io::write_all(root, &remaining)?;
     if ws_dir.exists() {
         fs::remove_dir_all(&ws_dir)?;
     }
@@ -162,7 +145,7 @@ pub fn update_provider(root: &Path, id: &str, req: UpdateProvider) -> CoreResult
         ws.model = Some(m);
     }
     let updated = ws.clone();
-    write_all(root, &workspaces)?;
+    io::write_all(root, &workspaces)?;
     Ok(updated)
 }
 
@@ -215,5 +198,47 @@ mod tests {
         assert_eq!(renamed.name, "b");
         delete(d.path(), &ws.id).unwrap();
         assert!(list(d.path()).unwrap().is_empty());
+    }
+
+    /// Concurrent writers must not corrupt the target. With the shared
+    /// `workspaces.json.tmp` path this test produced trailing-garbage files;
+    /// with per-call tmp paths every read parses cleanly.
+    #[test]
+    fn concurrent_update_provider_never_corrupts() {
+        use std::sync::Arc;
+        use std::thread;
+        let d = tmp();
+        let ws = create(
+            d.path(),
+            CreateWorkspace { name: "alpha".into(), provider: Some("anthropic".into()), model: None },
+        )
+        .unwrap();
+        let root = Arc::new(d.path().to_path_buf());
+        let id = Arc::new(ws.id.clone());
+        let mut handles = Vec::new();
+        for i in 0..16 {
+            let root = root.clone();
+            let id = id.clone();
+            handles.push(thread::spawn(move || {
+                let provider = if i % 2 == 0 { "anthropic" } else { "openai" };
+                let _ = update_provider(
+                    &root,
+                    &id,
+                    UpdateProvider { provider: provider.into(), model: None },
+                );
+            }));
+        }
+        for h in handles {
+            h.join().unwrap();
+        }
+        let raw = fs::read_to_string(d.path().join("workspaces.json")).unwrap();
+        let parsed: Vec<Workspace> = serde_json::from_str(&raw)
+            .expect("concurrent writes left a non-parseable workspaces.json");
+        assert_eq!(parsed.len(), 1);
+        for entry in fs::read_dir(d.path()).unwrap() {
+            let name = entry.unwrap().file_name();
+            let s = name.to_string_lossy();
+            assert!(!s.ends_with(".tmp"), "leftover tmp file: {s}");
+        }
     }
 }

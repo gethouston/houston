@@ -19,7 +19,7 @@ export function buildMissionBoardColumns(
       onAdd: onNewMission,
       addLabel: labels.newMission,
     },
-    { id: "needs_you", label: labels.needsYou, statuses: ["needs_you"] },
+    { id: "needs_you", label: labels.needsYou, statuses: ["needs_you", "error"] },
     { id: "done", label: labels.done, statuses: ["done", "cancelled"] },
   ];
 }

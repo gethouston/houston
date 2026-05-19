@@ -91,7 +91,7 @@
   "files": {
     "emptyTitle": "No files yet",
     "emptyDescription": "Files created by your assistant will appear here.",
-    "openInFinder": "Open in Finder",
+    "openInFileManager": "Open in File Manager",
     "loading": "Loading…",
     "browseFiles": "Browse files",
     "columns": {
@@ -103,7 +103,7 @@
     "menu": {
       "open": "Open",
       "rename": "Rename",
-      "reveal": "Show in Finder",
+      "reveal": "Show in File Manager",
       "delete": "Move to Trash"
     }
   }

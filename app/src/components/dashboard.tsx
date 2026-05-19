@@ -29,6 +29,7 @@ import { MissionControlToolbar } from "./mission-control-toolbar";
 import { MissionBoardEmptyState } from "./mission-board-empty-state";
 import { useMissionSearch } from "./use-mission-search";
 import { buildMissionBoardColumns } from "./mission-board-columns";
+import { navigateBoard } from "../lib/board-navigate";
 
 export function Dashboard() {
   const { t } = useTranslation(["dashboard", "board", "common"]);
@@ -49,6 +50,8 @@ export function Dashboard() {
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
+  const setOnStartMission = useUIStore((s) => s.setOnStartMission);
+  const setOnBoardNavigate = useUIStore((s) => s.setOnBoardNavigate);
   const addToast = useUIStore((s) => s.addToast);
 
   const [filterPath, setFilterPath] = useState("");
@@ -62,6 +65,10 @@ export function Dashboard() {
   const openerRef = useRef<NewPanelOpener | null>(null);
   const emptyAutoOpenKeyRef = useRef<string | null>(null);
   const openNewMission = useCallback(() => setAgentPickerOpen(true), [setAgentPickerOpen]);
+  useEffect(() => {
+    setOnStartMission(openNewMission);
+    return () => setOnStartMission(null);
+  }, [openNewMission, setOnStartMission]);
   const MC_COLUMNS: KanbanColumnConfig[] = buildMissionBoardColumns(
     {
       running: t("dashboard:columns.running"),
@@ -74,6 +81,29 @@ export function Dashboard() {
 
   const mc = useMissionControl(agents);
   const setMissionControlSelectedId = mc.setSelectedId;
+
+  // Refs hold the latest snapshot so the navigator we register in the
+  // UI store stays stable while always reading the current items,
+  // selection, and column config.
+  const navItemsRef = useRef(mc.items);
+  const navColumnsRef = useRef(MC_COLUMNS);
+  const selectedIdRef = useRef(mc.selectedId);
+  selectedIdRef.current = mc.selectedId;
+  navColumnsRef.current = MC_COLUMNS;
+  useEffect(() => {
+    setOnBoardNavigate((dir) => {
+      const next = navigateBoard(
+        {
+          items: navItemsRef.current,
+          columns: navColumnsRef.current,
+          selectedId: selectedIdRef.current,
+        },
+        dir,
+      );
+      if (next) setMissionControlSelectedId(next);
+    });
+    return () => setOnBoardNavigate(null);
+  }, [setOnBoardNavigate, setMissionControlSelectedId]);
 
   // Picking an agent from the "New mission" modal stays on Mission
   // Control: we set the pending agent so the right panel scopes its
@@ -136,6 +166,10 @@ export function Dashboard() {
     loadHistory: mc.loadHistory,
     onHistoryLoadError: handleMissionSearchError,
   });
+  // Keep the navigator's items ref aligned with what the board
+  // actually renders (filtered + searched), so arrows move through
+  // visible cards only.
+  navItemsRef.current = missionSearch.items;
 
   useEffect(() => {
     if (!mc.isLoaded) return;

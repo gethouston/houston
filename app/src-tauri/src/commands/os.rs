@@ -2,7 +2,7 @@
 //! sense on the user's local machine.
 //!
 //! The engine may run on a remote VPS for Houston Always On / Teams /
-//! Cloud; these commands (folder picker, Finder reveal, URL open, terminal
+//! Cloud; these commands (folder picker, file-manager reveal, URL open, terminal
 //! launch, local CLI probes) would be meaningless there and stay
 //! desktop-only.
 
