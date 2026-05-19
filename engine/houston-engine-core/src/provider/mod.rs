@@ -11,9 +11,11 @@
 //! [`gemini_credentials`].
 
 mod gemini_credentials;
+mod gemini_disconnect;
 mod gemini_login;
 
 pub use gemini_credentials::set_gemini_api_key;
+pub use gemini_disconnect::disconnect_gemini;
 
 use crate::error::{CoreError, CoreResult};
 use houston_terminal_manager::provider_auth::ProviderAuthState;
@@ -235,6 +237,17 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
 /// then deletes the local credential file. We await it so the UI can
 /// flip the card to disconnected as soon as it's actually done.
 pub async fn launch_logout(provider: Provider) -> CoreResult<()> {
+    // Gemini has no CLI logout subcommand. The interactive `/auth logout`
+    // slash command added in gemini-cli PR #13383 strips internal
+    // "thoughts" from conversation history as a side effect, which
+    // Houston must NOT do — sessions are user data. Clear the same
+    // credential files that command clears, directly from the engine.
+    // See `gemini_disconnect` for the full set of files touched (and
+    // not touched).
+    if provider.id() == "gemini" {
+        return disconnect_gemini().await;
+    }
+
     let ProviderCliCommand {
         cli_name,
         path,

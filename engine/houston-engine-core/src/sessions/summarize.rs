@@ -23,7 +23,7 @@ const SUMMARY_TIMEOUT: Duration = Duration::from_secs(30);
 const CLAUDE_TITLE_MODEL: &str = "haiku";
 const CODEX_TITLE_MODEL: &str = "gpt-5.5-mini";
 /// Gemini title-summary model. Flash-Lite is the cheapest/fastest GA tier
-/// and gives us a JSON object in well under the 12s SUMMARY_TIMEOUT.
+/// and gives us a JSON object in well under the 30s SUMMARY_TIMEOUT.
 const GEMINI_TITLE_MODEL: &str = "gemini-3.1-flash-lite";
 
 pub use super::summary_text::SummarizeResult;
@@ -61,141 +61,65 @@ fn title_prompt(message: &str) -> String {
     )
 }
 
+/// Pick the default title-summary model for a provider, honoring an
+/// explicit override. Returns `None` for providers we haven't wired a
+/// default model for — the caller treats that as "fall back to the
+/// deterministic local title" rather than spawning a CLI we can't drive.
+fn default_title_model<'a>(provider: Provider, model_override: Option<&'a str>) -> Option<&'a str> {
+    let default = match provider.id() {
+        "anthropic" => CLAUDE_TITLE_MODEL,
+        "openai" => CODEX_TITLE_MODEL,
+        "gemini" => GEMINI_TITLE_MODEL,
+        _ => return None,
+    };
+    Some(model_override.unwrap_or(default))
+}
+
 async fn run_provider_summary(
     message: &str,
     provider: Provider,
     model: Option<&str>,
 ) -> Result<String, String> {
     let prompt = title_prompt(message);
-    let model = match provider {
-        Provider::Anthropic => model.unwrap_or(CLAUDE_TITLE_MODEL),
-        Provider::OpenAI => model.unwrap_or(CODEX_TITLE_MODEL),
-    // Same dispatch shape as the session runner: each provider has its
-    // own short-prompt invocation profile (different stdout shape, model
-    // name conventions, env scrubbing). Adding a provider = one new arm
-    // pointing at a new `run_<provider>_summary` helper.
-    match provider.id() {
-        "anthropic" => run_claude_summary(&prompt, model).await,
-        "openai" => run_codex_summary(&prompt, model).await,
-        "gemini" => run_gemini_summary(&prompt, model).await,
-        unknown => Err(format!("no title summarizer wired up for provider {unknown:?}")),
-    }
-}
-
-async fn run_claude_summary(prompt: &str, model: Option<&str>) -> Result<String, String> {
-    let mut cmd = tokio::process::Command::new("claude");
-    cmd.env("PATH", claude_path::shell_path());
-    cmd.env_remove("CLAUDE_CODE_ENTRYPOINT");
-    cmd.env_remove("CLAUDECODE");
-    cmd.arg("-p")
-        .arg("--model")
-        .arg(model.unwrap_or(CLAUDE_TITLE_MODEL))
-        .arg("--output-format")
-        .arg("text")
-        .arg("--allowedTools")
-        .arg("");
-    run_command_with_prompt(cmd, prompt).await
-}
-
-async fn run_codex_summary(prompt: &str, model: Option<&str>) -> Result<String, String> {
-    // Prefer the bundled codex (pinned in `cli-deps.json`) so the title
-    // summarizer can't get sabotaged by a stale `nvm`/`brew` codex on the
-    // user's PATH that doesn't recognize the model we picked.
-    let bin = houston_cli_bundle::bundled_codex_path()
-        .unwrap_or_else(|| std::path::PathBuf::from("codex"));
-    let mut cmd = tokio::process::Command::new(&bin);
-    cmd.env("PATH", claude_path::shell_path());
-    cmd.arg("exec")
-        .arg("--json")
-        .arg("--dangerously-bypass-approvals-and-sandbox")
-        .arg("--skip-git-repo-check")
-        // Override `model_reasoning_effort` so a stale global
-        // `~/.codex/config.toml` (newer Codex CLIs allow `xhigh`, older ones
-        // reject it) can't kill title generation. We don't need much thought
-        // here — it's a 6-word title.
-        .arg("-c")
-        .arg("model_reasoning_effort=\"low\"")
-        .arg("--model")
-        .arg(model.unwrap_or(CODEX_TITLE_MODEL))
-        .arg("-");
-    let stdout = run_command_with_prompt(cmd, prompt).await?;
-    extract_codex_text(&stdout)
-}
-
-async fn run_gemini_summary(prompt: &str, model: Option<&str>) -> Result<String, String> {
-    // Prefer the bundled gemini SEA for the same reason codex does:
-    // a stale npm-global install on the user's PATH could emit a
-    // different output format and break the parser. The summarizer
-    // asks for plain text (`--output-format text`) so we don't have
-    // to thread through a second NDJSON parser just for titles.
-    let bin = houston_cli_bundle::bundled_gemini_path()
-        .unwrap_or_else(|| std::path::PathBuf::from("gemini"));
-    let mut cmd = tokio::process::Command::new(&bin);
-    cmd.env("PATH", claude_path::shell_path());
-
-    // Same HOME isolation the chat runner uses — see
-    // `houston-terminal-manager::gemini_home`. Without it, the
-    // user's accumulated `~/.gemini/GEMINI.md` memories bleed into
-    // title generation prompts and produce confused titles like
-    // "Alpine.js Component Refactor" for Houston tasks that have
-    // nothing to do with the user's other projects.
-    let houston_data = houston_terminal_manager::gemini_home::houston_data_root();
-    let real_home = houston_terminal_manager::gemini_home::resolve_real_home()
-        .map_err(|e| format!("failed to resolve real home for gemini runtime: {e}"))?;
-    let runtime_home = houston_terminal_manager::gemini_home::ensure_gemini_runtime_home(
-        &houston_data,
-        &real_home,
-    )
-    .map_err(|e| format!("failed to prepare gemini runtime home: {e}"))?;
-    cmd.env("HOME", &runtime_home);
-    #[cfg(windows)]
-    cmd.env("USERPROFILE", &runtime_home);
-
-    // Run the summarizer FROM the runtime HOME so gemini-cli's
-    // project-discovery walk finds nothing. Without setting cwd, gemini
-    // inherits the engine process's cwd — which in `pnpm tauri dev`
-    // is the Houston source repo. The model then picks up signals
-    // ("houston", "vilnius" in the path) and emits titles like
-    // "Houston Vilnius CLI Development" for unrelated user prompts.
-    // The runtime HOME has no project files at all, so titles depend
-    // only on the user's message body — which is what we want for a
-    // 6-word summary.
-    cmd.current_dir(&runtime_home);
-
-    // `--skip-trust` mirrors gemini_runner: gemini-cli's trusted-folders
-    // check otherwise refuses to run in Houston-managed workspace dirs
-    // and the summary never completes. See gemini_runner::build_gemini_args.
-    cmd.arg("--output-format")
-        .arg("text")
-        .arg("--yolo")
-        .arg("--skip-trust")
-        .arg("--model")
-        .arg(model.unwrap_or(GEMINI_TITLE_MODEL));
-    run_command_with_prompt(cmd, prompt).await
-}
-
-async fn run_command_with_prompt(mut cmd: Command, prompt: &str) -> Result<String, String> {
-    cmd.kill_on_drop(true);
-    cmd.stdin(std::process::Stdio::piped());
-    cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::piped());
-
-    let mut child = cmd.spawn().map_err(|e| format!("spawn failed: {e}"))?;
-
-    if let Some(mut stdin) = child.stdin.take() {
-        stdin
-            .write_all(prompt.as_bytes())
-            .await
-            .map_err(|e| format!("stdin write failed: {e}"))?;
-        drop(stdin);
-    }
-
-    let output = match timeout(SUMMARY_TIMEOUT, child.wait_with_output()).await {
-        Ok(Ok(output)) => output,
-        Ok(Err(e)) => return Err(format!("process failed: {e}")),
-        Err(_) => return Err("process timed out".to_string()),
-    };
+    let model = default_title_model(provider, model).ok_or_else(|| {
+        format!("no title model wired up for provider {:?}", provider.id())
+    })?;
     provider_oneshot::run_provider_oneshot(&prompt, provider, model, SUMMARY_TIMEOUT)
         .await
         .map_err(|e| truncate_chars(&normalize_spaces(&e), DESCRIPTION_MAX_CHARS))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_title_model_picks_per_provider() {
+        let a: Provider = "anthropic".parse().unwrap();
+        let o: Provider = "openai".parse().unwrap();
+        let g: Provider = "gemini".parse().unwrap();
+        assert_eq!(default_title_model(a, None), Some(CLAUDE_TITLE_MODEL));
+        assert_eq!(default_title_model(o, None), Some(CODEX_TITLE_MODEL));
+        assert_eq!(default_title_model(g, None), Some(GEMINI_TITLE_MODEL));
+    }
+
+    #[test]
+    fn default_title_model_respects_override() {
+        let a: Provider = "anthropic".parse().unwrap();
+        assert_eq!(default_title_model(a, Some("sonnet")), Some("sonnet"));
+        let g: Provider = "gemini".parse().unwrap();
+        assert_eq!(
+            default_title_model(g, Some("gemini-3.1-pro")),
+            Some("gemini-3.1-pro")
+        );
+    }
+
+    #[test]
+    fn title_prompt_includes_user_message_and_format_hints() {
+        let p = title_prompt("Fix the login bug");
+        assert!(p.contains("Fix the login bug"));
+        assert!(p.contains("max 6 words"));
+        assert!(p.contains("\"title\""));
+        assert!(p.contains("\"description\""));
+    }
 }

@@ -123,7 +123,7 @@ fn merge_env_contents(existing: &str, new_value: &str) -> String {
     out
 }
 
-fn is_gemini_api_key_line(line: &str) -> bool {
+pub(super) fn is_gemini_api_key_line(line: &str) -> bool {
     let trimmed = line.trim_start();
     // Accept `GEMINI_API_KEY=...` and `export GEMINI_API_KEY=...` forms.
     let body = trimmed.strip_prefix("export ").unwrap_or(trimmed);
@@ -134,7 +134,7 @@ fn is_gemini_api_key_line(line: &str) -> bool {
 /// filesystem (POSIX + Windows ReplaceFile semantics), so a crash mid-
 /// write can never leave the user with an empty `.env` and a broken
 /// Gemini install.
-async fn write_atomic(final_path: &std::path::Path, bytes: &[u8]) -> CoreResult<()> {
+pub(super) async fn write_atomic(final_path: &std::path::Path, bytes: &[u8]) -> CoreResult<()> {
     let tmp_path = tmp_path_for(final_path);
     {
         let mut f = tokio::fs::File::create(&tmp_path).await.map_err(|e| {

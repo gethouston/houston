@@ -1,14 +1,24 @@
 //! Shared one-shot provider CLI invocation.
 //!
-//! Spawns `claude -p` or the bundled codex binary, writes a prompt to stdin,
-//! and returns the full stdout as a string. Used by `summarize` and
-//! `generate_instructions` — both need a single prompt→text round-trip with no
-//! streaming and no session state.
+//! Spawns the provider CLI (Claude / Codex / Gemini), writes a prompt to
+//! stdin, and returns the full stdout as a string. Used by `summarize` and
+//! `generate_instructions` — both need a single prompt→text round-trip with
+//! no streaming and no session state.
 //!
 //! Callers are responsible for resolving the model default before calling
-//! `run_provider_oneshot`, since each use case has different model preferences.
+//! `run_provider_oneshot`, since each use case has different model
+//! preferences (see `default_title_model` in `summarize`, `default_gen_model`
+//! in `generate_instructions`).
+//!
+//! Dispatch is by `provider.id()` against the trait/registry `Provider`
+//! newtype (see `houston-terminal-manager::provider`). Adding a provider
+//! here = one new match arm + one new `run_<id>` helper. The per-arm
+//! binary resolution (claude on PATH, bundled codex, bundled gemini) is
+//! intentionally NOT routed through `Provider::resolve()` because each
+//! CLI has provider-specific spawn quirks (env scrubbing, args, HOME
+//! isolation) that the trait doesn't model.
 
-use houston_terminal_manager::{claude_path, Provider};
+use houston_terminal_manager::{claude_path, gemini_home, Provider};
 use serde_json::Value;
 use std::time::Duration;
 use tokio::io::AsyncWriteExt;
@@ -23,9 +33,13 @@ pub async fn run_provider_oneshot(
     model: &str,
     time_limit: Duration,
 ) -> Result<String, String> {
-    match provider {
-        Provider::Anthropic => run_claude(prompt, model, time_limit).await,
-        Provider::OpenAI => run_codex(prompt, model, time_limit).await,
+    match provider.id() {
+        "anthropic" => run_claude(prompt, model, time_limit).await,
+        "openai" => run_codex(prompt, model, time_limit).await,
+        "gemini" => run_gemini(prompt, model, time_limit).await,
+        unknown => Err(format!(
+            "no one-shot invocation wired up for provider {unknown:?}"
+        )),
     }
 }
 
@@ -45,6 +59,9 @@ async fn run_claude(prompt: &str, model: &str, time_limit: Duration) -> Result<S
 }
 
 async fn run_codex(prompt: &str, model: &str, time_limit: Duration) -> Result<String, String> {
+    // Prefer the bundled codex (pinned in `cli-deps.json`) so one-shot
+    // generation can't get sabotaged by a stale `nvm`/`brew` codex on the
+    // user's PATH that doesn't recognize the model we picked.
     let bin = houston_cli_bundle::bundled_codex_path()
         .unwrap_or_else(|| std::path::PathBuf::from("codex"));
     let mut cmd = tokio::process::Command::new(&bin);
@@ -53,6 +70,10 @@ async fn run_codex(prompt: &str, model: &str, time_limit: Duration) -> Result<St
         .arg("--json")
         .arg("--dangerously-bypass-approvals-and-sandbox")
         .arg("--skip-git-repo-check")
+        // Override `model_reasoning_effort` so a stale global
+        // `~/.codex/config.toml` (newer Codex CLIs allow `xhigh`, older
+        // ones reject it) can't kill one-shot generation. Callers needing
+        // depth pick the model accordingly; we don't bake an effort here.
         .arg("-c")
         .arg("model_reasoning_effort=\"low\"")
         .arg("--model")
@@ -60,6 +81,53 @@ async fn run_codex(prompt: &str, model: &str, time_limit: Duration) -> Result<St
         .arg("-");
     let stdout = run_command(cmd, prompt, time_limit).await?;
     extract_codex_text(&stdout)
+}
+
+async fn run_gemini(prompt: &str, model: &str, time_limit: Duration) -> Result<String, String> {
+    // Prefer the bundled gemini SEA for the same reason codex does: a
+    // stale npm-global install on the user's PATH could emit a different
+    // output format and break parsers. The one-shot path asks for plain
+    // text (`--output-format text`) so we don't have to thread through a
+    // second NDJSON parser just for this call.
+    let bin = houston_cli_bundle::bundled_gemini_path()
+        .unwrap_or_else(|| std::path::PathBuf::from("gemini"));
+    let mut cmd = tokio::process::Command::new(&bin);
+    cmd.env("PATH", claude_path::shell_path());
+
+    // Same HOME isolation the chat runner uses — see
+    // `houston-terminal-manager::gemini_home`. Without it, the user's
+    // accumulated `~/.gemini/GEMINI.md` memories bleed into the prompt
+    // and produce confused outputs like "Alpine.js Component Refactor"
+    // titles for Houston tasks that have nothing to do with the user's
+    // other projects.
+    let houston_data = gemini_home::houston_data_root();
+    let real_home = gemini_home::resolve_real_home()
+        .map_err(|e| format!("failed to resolve real home for gemini runtime: {e}"))?;
+    let runtime_home = gemini_home::ensure_gemini_runtime_home(&houston_data, &real_home)
+        .map_err(|e| format!("failed to prepare gemini runtime home: {e}"))?;
+    cmd.env("HOME", &runtime_home);
+    #[cfg(windows)]
+    cmd.env("USERPROFILE", &runtime_home);
+
+    // Run FROM the runtime HOME so gemini-cli's project-discovery walk
+    // finds nothing. Without setting cwd, gemini inherits the engine's
+    // cwd — which in `pnpm tauri dev` is the Houston source repo. The
+    // model then picks up signals ("houston", "vilnius" in the path)
+    // and emits titles like "Houston Vilnius CLI Development" for
+    // unrelated user prompts. The runtime HOME has no project files at
+    // all, so output depends only on the user's prompt body.
+    cmd.current_dir(&runtime_home);
+
+    // `--skip-trust` mirrors gemini_runner: gemini-cli's trusted-folders
+    // check otherwise refuses to run in Houston-managed workspace dirs
+    // and the call never completes. See gemini_runner::build_gemini_args.
+    cmd.arg("--output-format")
+        .arg("text")
+        .arg("--yolo")
+        .arg("--skip-trust")
+        .arg("--model")
+        .arg(model);
+    run_command(cmd, prompt, time_limit).await
 }
 
 async fn run_command(

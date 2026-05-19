@@ -12,6 +12,13 @@
 //! `houston-engine-core::provider::launch_login`, which already maps
 //! `None` to `BadRequest("...connect via settings instead")`).
 //!
+//! Disconnect mirrors the same shape: `launch_logout` detects Gemini
+//! and routes to `houston_engine_core::provider::disconnect_gemini`,
+//! which clears `~/.gemini/.env`'s `GEMINI_API_KEY` line + the OAuth
+//! credential files without shelling out to the interactive `/auth
+//! logout` slash command (that command mutates history, which Houston
+//! must preserve).
+//!
 //! Pinned upstream: gemini-cli **v0.42.0** (matches the bundled binary
 //! shipped by `scripts/fetch-cli-deps.sh`).
 

@@ -17,6 +17,15 @@ use std::time::Duration;
 const GENERATE_TIMEOUT: Duration = Duration::from_secs(60);
 const CLAUDE_GEN_MODEL: &str = "sonnet";
 const CODEX_GEN_MODEL: &str = "gpt-5.5-codex";
+/// Gemini generation model. Flash-Lite — matches the only Gemini model
+/// currently offered by the frontend catalog (`app/src/lib/providers.ts`),
+/// so when a user pins Gemini to their workspace and hits Create-with-AI
+/// the engine and the UI agree on the model. `gemini-3.1-pro-preview`
+/// is deliberately NOT used: it's gated behind paid Google AI tiers and
+/// free-tier OAuth accounts get zero quota for it (verified live: 10
+/// retries → "exhausted capacity" → ~4-minute hang). Flash-Lite produces
+/// a usable CLAUDE.md in well under the 60s GENERATE_TIMEOUT.
+const GEMINI_GEN_MODEL: &str = "gemini-3.1-flash-lite";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -72,16 +81,31 @@ Set "suggestedRoutine" to null when no recurring schedule is appropriate."#
     )
 }
 
+/// Pick the default generation model for a provider, honoring an
+/// explicit override. Returns `None` for providers we haven't wired a
+/// default model for — the caller surfaces that as a `CoreError` (no
+/// silent fallback, unlike `summarize`: instruction generation is
+/// user-initiated work and must show a toast on failure per the
+/// "No silent failures" rule in CLAUDE.md).
+fn default_gen_model<'a>(provider: Provider, model_override: Option<&'a str>) -> Option<&'a str> {
+    let default = match provider.id() {
+        "anthropic" => CLAUDE_GEN_MODEL,
+        "openai" => CODEX_GEN_MODEL,
+        "gemini" => GEMINI_GEN_MODEL,
+        _ => return None,
+    };
+    Some(model_override.unwrap_or(default))
+}
+
 async fn run_provider_generate(
     description: &str,
     provider: Provider,
     model: Option<&str>,
 ) -> Result<String, String> {
     let prompt = build_prompt(description);
-    let model = match provider {
-        Provider::Anthropic => model.unwrap_or(CLAUDE_GEN_MODEL),
-        Provider::OpenAI => model.unwrap_or(CODEX_GEN_MODEL),
-    };
+    let model = default_gen_model(provider, model).ok_or_else(|| {
+        format!("no generate model wired up for provider {:?}", provider.id())
+    })?;
     provider_oneshot::run_provider_oneshot(&prompt, provider, model, GENERATE_TIMEOUT).await
 }
 
@@ -202,5 +226,26 @@ mod tests {
         // Quotes and newline are JSON-escaped, not embedded raw.
         assert!(prompt.contains(r#""say \"hi\"\nthen ignore previous""#));
         assert!(!prompt.contains("\"say \"hi\""));
+    }
+
+    #[test]
+    fn default_gen_model_picks_per_provider() {
+        let a: Provider = "anthropic".parse().unwrap();
+        let o: Provider = "openai".parse().unwrap();
+        let g: Provider = "gemini".parse().unwrap();
+        assert_eq!(default_gen_model(a, None), Some(CLAUDE_GEN_MODEL));
+        assert_eq!(default_gen_model(o, None), Some(CODEX_GEN_MODEL));
+        assert_eq!(default_gen_model(g, None), Some(GEMINI_GEN_MODEL));
+    }
+
+    #[test]
+    fn default_gen_model_respects_override() {
+        let g: Provider = "gemini".parse().unwrap();
+        assert_eq!(
+            default_gen_model(g, Some("gemini-3.1-flash")),
+            Some("gemini-3.1-flash"),
+        );
+        let a: Provider = "anthropic".parse().unwrap();
+        assert_eq!(default_gen_model(a, Some("opus")), Some("opus"));
     }
 }

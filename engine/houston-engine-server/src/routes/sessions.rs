@@ -247,7 +247,9 @@ async fn generate_agent_instructions(
             .map_err(|e: String| CoreError::BadRequest(e))?;
         (provider, req.model)
     } else {
-        (Provider::Anthropic, req.model)
+        // `Provider::default()` is anthropic — same fallback the
+        // `summarize_activity` handler above uses for the no-override case.
+        (Provider::default(), req.model)
     };
     let result =
         generate_instructions::generate_instructions(&req.description, provider, model.as_deref())
