@@ -55,7 +55,12 @@ const OUTPUT_PATH = join(
 
 const COMPOSIO_BASE = "https://backend.composio.dev";
 const CONCURRENCY = 5;
-const MAX_OUTPUT_TOKENS = 800;
+// 1500 tokens fits the multilingual enrichment (English oneLiner +
+// Spanish + Portuguese translation, ~7 useCases mixed, ~25 keywords
+// in three languages, alternatives + combos + metadata) without
+// truncation. Keep an eye on costs: at gemini-3.1-flash-lite pricing
+// (~$1.50/1M output) this is ~$1.50 for a full 1000-toolkit run.
+const MAX_OUTPUT_TOKENS = 1500;
 
 const ANTHROPIC_MODEL = "claude-haiku-4-5";
 const ANTHROPIC_BASE = "https://api.anthropic.com/v1/messages";
@@ -124,7 +129,11 @@ async function fetchCatalog() {
 // ---------------------------------------------------------------------------
 
 function buildPrompt(toolkit) {
-  return `You are enriching a software integration catalog entry.
+  return `You are enriching a software integration catalog entry that will be
+used by a multilingual semantic recommender for Spanish, English and
+Portuguese speaking users. The recommender matches user intents in any
+of those three languages against these entries via embedding similarity,
+so the enriched fields MUST cover vocabulary in all three languages.
 
 Toolkit slug: ${toolkit.slug}
 Display name: ${toolkit.name}
@@ -133,13 +142,13 @@ Categories: ${toolkit.categories.join(", ") || "(none)"}
 
 Generate a JSON object with these exact fields and nothing else:
 {
-  "oneLiner": "Single plain-English sentence (max 20 words) describing what this tool does for an end user. No marketing fluff.",
-  "useCases": ["3 to 5 short phrases (max 8 words each) describing what people hire this tool to do"],
-  "keywords": ["8 to 15 lowercase synonyms or task-words a non-technical user might say when wanting this tool's job done. Include verbs (send, notify, schedule), object nouns (email, invoice, ticket), and common informal names. IMPORTANT: include BOTH singular AND plural forms of important nouns (lead/leads, ticket/tickets, invoice/invoices, etc.) so the matcher catches either phrasing"],
-  "typicalCombos": ["slugs of 1-4 other tools commonly used WITH this one in a workflow. Lowercase slugs only. Empty array if none obvious."],
-  "alternatives": ["slugs of 1-4 tools that DO THE SAME JOB. Lowercase slugs only. Empty array if it's truly unique."],
+  "oneLiner": "Single plain-English sentence (max 25 words) describing what this tool does for an end user. No marketing fluff. After the English sentence, append a Spanish translation and a Brazilian Portuguese translation separated by ' / ' (slash spaces). Example: 'GitHub hosts code and manages pull requests. / GitHub aloja código y gestiona pull requests. / GitHub hospeda código e gerencia pull requests.'",
+  "useCases": ["5 to 7 short phrases (max 8 words each) describing what people hire this tool to do. Mix English, Spanish, and Portuguese phrasings — at least 2 entries in Spanish and 1 in Portuguese, the rest in English. Use natural everyday phrasing, not literal translations."],
+  "keywords": ["18 to 30 lowercase one-or-two-word terms a non-technical user might say. CRITICAL: for every important term include English + Spanish + Portuguese variants AND singular + plural forms when applicable. Include verbs (send, enviar, mandar, schedule, agendar, programar), object nouns (email, correo, mensaje, lead, leads, invoice, factura, ticket, ticket), abbreviations (pr, prs, pull request, msg), and informal names. Examples: ['email','emails','correo','correos','mail','enviar','send','mandar','mensaje','message','mensagem','revisar','review','checar','revisão']."],
+  "typicalCombos": ["slugs of 1-4 other Composio toolkits commonly used WITH this one in a workflow. Lowercase slugs only. Empty array if none obvious."],
+  "alternatives": ["slugs of 1-4 Composio toolkits that DO THE SAME JOB. Lowercase slugs only. Empty array if it's truly unique."],
   "pricingTier": "free | freemium | paid",
-  "primaryCategory": "single lowercase-dashed canonical category like crm, email-marketing, transactional-email, form-builder, lead-enrichment, analytics, project-management, code-hosting, file-storage, calendar, scheduling, communication, ai-llm, payment, accounting, hr-payroll, customer-support, marketing-automation, social-media, e-commerce, database, devops-monitoring, etc."
+  "primaryCategory": "single lowercase-dashed canonical category in English like crm, email, code-hosting, file-storage, calendar, communication, ai-llm, payment, accounting, hr-payroll, customer-support, marketing-automation, social-media, e-commerce, database, devops-monitoring, form-builder, lead-enrichment, etc."
 }
 
 Return ONLY valid JSON, no markdown fences, no commentary.`;
@@ -211,8 +220,8 @@ function parseEnrichment(raw, toolkit) {
   // Validate shape and coerce.
   return {
     oneLiner: String(parsed.oneLiner ?? toolkit.description ?? "").trim(),
-    useCases: toStringArray(parsed.useCases, 5),
-    keywords: toStringArray(parsed.keywords, 15).map((s) => s.toLowerCase()),
+    useCases: toStringArray(parsed.useCases, 7),
+    keywords: toStringArray(parsed.keywords, 30).map((s) => s.toLowerCase()),
     typicalCombos: toStringArray(parsed.typicalCombos, 4).map((s) =>
       s.toLowerCase(),
     ),

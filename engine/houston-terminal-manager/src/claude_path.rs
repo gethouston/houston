@@ -40,6 +40,10 @@ const COMMON_CLAUDE_DIRS: &[&str] = &[
 const COMMON_CLAUDE_DIRS: &[&str] = &[
     "~\\.cargo\\bin",
     "~\\.composio",
+    // `~\.local\bin\` mirrors the Unix convention; some installers
+    // (pipx-style, manual user installs) drop `claude.exe` here on
+    // Windows even though it's not a Microsoft-blessed location.
+    "~\\.local\\bin",
     "~\\AppData\\Roaming\\npm",
     "~\\AppData\\Local\\Programs\\claude",
 ];

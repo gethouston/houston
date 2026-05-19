@@ -21,3 +21,10 @@ app/src-tauri/resources/bin/
 
 # Houston engine sidecar staged by build.rs (built from source in CI, not committed)
 app/src-tauri/binaries/
+
+# fastembed model cache (~448MB, downloaded at runtime)
+.fastembed_cache/
+**/.fastembed_cache/
+
+# Per-user Claude settings (local overrides)
+.claude/settings.local.json

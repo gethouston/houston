@@ -94,4 +94,33 @@ pub struct RecommendResult {
     /// available or the call timed out — frontends can show a softer
     /// confidence indicator in that case.
     pub llm_picked: bool,
+    /// Optional diagnostic block populated for in-app debugging. Always
+    /// safe to inspect from the network tab. Hidden when None.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub debug: Option<RecommendDebug>,
+}
+
+/// Per-request diagnostic info. Surfaces what the recommender actually
+/// did (embed status, candidate list, LLM call outcome) so issues can
+/// be diagnosed from the browser network tab without needing engine
+/// log access.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecommendDebug {
+    /// Number of toolkits in the bundled enriched catalog.
+    pub catalog_size: usize,
+    /// Number of precomputed embeddings successfully loaded.
+    pub embeddings_loaded: usize,
+    /// True if the user intent was embedded successfully.
+    pub intent_embedded: bool,
+    /// Milliseconds spent embedding the intent (0 if not embedded).
+    pub embed_ms: u64,
+    /// Top-30 candidate slugs (in score order) that were handed to the
+    /// LLM pick step.
+    pub top_candidate_slugs: Vec<String>,
+    /// Milliseconds spent in the LLM pick CLI call (0 if not called).
+    pub llm_pick_ms: u64,
+    /// Last error string from the LLM pick step, if it failed.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub llm_pick_error: Option<String>,
 }
