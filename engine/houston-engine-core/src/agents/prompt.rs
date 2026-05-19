@@ -97,6 +97,45 @@ You are a helpful AI assistant.
 - Explain your reasoning when making decisions
 "#;
 
+/// Expose `CLAUDE.md` to a sibling CLI's project-memory filename
+/// (`AGENTS.md` for codex, `GEMINI.md` for gemini-cli). First tries a
+/// relative symlink so the file stays drift-free; on Windows without
+/// Developer Mode that returns "A required privilege is not held by
+/// the client" (os error 1314), so we fall back to a regular file copy.
+/// Idempotent: returns Ok and does nothing if `link_name` already
+/// exists (a previous run staged it, or a user hand-authored a
+/// CLI-specific override we must not clobber).
+fn link_or_copy_role_file(dir: &Path, link_name: &str) -> std::io::Result<()> {
+    let link_path = dir.join(link_name);
+    // `symlink_metadata` so a dangling symlink still counts as "exists"
+    // — replacing it could silently swap user config.
+    if fs::symlink_metadata(&link_path).is_ok() {
+        return Ok(());
+    }
+    let claude_md = dir.join("CLAUDE.md");
+    #[cfg(unix)]
+    {
+        if std::os::unix::fs::symlink("CLAUDE.md", &link_path).is_ok() {
+            return Ok(());
+        }
+    }
+    #[cfg(windows)]
+    {
+        if std::os::windows::fs::symlink_file("CLAUDE.md", &link_path).is_ok() {
+            return Ok(());
+        }
+    }
+    // Symlink denied (Windows without Dev Mode, restricted filesystem,
+    // ...). Copy the canonical file so the sibling CLI still finds an
+    // agent role file. Stale-content risk: if the user edits CLAUDE.md
+    // later this copy goes out of date, but seed_agent only runs on
+    // first creation so this is the documented behavior — the symlink
+    // path would have the same single-snapshot relationship if the
+    // user hand-deleted the link.
+    fs::copy(&claude_md, &link_path)?;
+    Ok(())
+}
+
 /// Seed the Houston agent skeleton into an agent directory.
 ///
 /// Creates `CLAUDE.md` (user-editable job description) and the
@@ -108,32 +147,14 @@ pub fn seed_agent(dir: &Path) -> Result<(), String> {
 
     // Codex (`codex`) reads `AGENTS.md` from project memory; Gemini-cli
     // reads `GEMINI.md`. Houston has one canonical agent role file —
-    // `CLAUDE.md` — and exposes it to the other CLIs via symlink so all
-    // three providers see the same per-agent instructions without us
-    // having to duplicate file content (drift-free).
-    let agents_md = dir.join("AGENTS.md");
-    if !agents_md.exists() {
-        #[cfg(unix)]
-        {
-            let _ = std::os::unix::fs::symlink("CLAUDE.md", &agents_md);
-        }
-        #[cfg(windows)]
-        {
-            let _ = std::os::windows::fs::symlink_file("CLAUDE.md", &agents_md);
-        }
-    }
-
-    let gemini_md = dir.join("GEMINI.md");
-    if !gemini_md.exists() {
-        #[cfg(unix)]
-        {
-            let _ = std::os::unix::fs::symlink("CLAUDE.md", &gemini_md);
-        }
-        #[cfg(windows)]
-        {
-            let _ = std::os::windows::fs::symlink_file("CLAUDE.md", &gemini_md);
-        }
-    }
+    // `CLAUDE.md` — and exposes it to the other CLIs so all three
+    // providers see the same per-agent instructions. Prefer a symlink
+    // (drift-free), fall back to a file copy on Windows installs that
+    // lack Developer Mode (symlink_file returns os error 1314 there).
+    link_or_copy_role_file(dir, "AGENTS.md")
+        .map_err(|e| format!("Failed to seed AGENTS.md: {e}"))?;
+    link_or_copy_role_file(dir, "GEMINI.md")
+        .map_err(|e| format!("Failed to seed GEMINI.md: {e}"))?;
 
     let prompts_dir = dir.join(".houston/prompts");
     let modes_dir = prompts_dir.join("modes");
@@ -264,6 +285,37 @@ mod tests {
 
         let gemini_md = d.path().join("GEMINI.md");
         assert_eq!(fs::read_link(gemini_md).unwrap(), Path::new("CLAUDE.md"));
+    }
+
+    #[test]
+    fn seed_agent_role_files_contain_claude_md_content() {
+        // Platform-agnostic check: regardless of whether the role files
+        // ended up as symlinks (Unix, Windows with Dev Mode) or copies
+        // (Windows without Dev Mode), reading them must yield the
+        // CLAUDE.md content so gemini-cli + codex see the agent role.
+        let d = TempDir::new().unwrap();
+        seed_agent(d.path()).unwrap();
+
+        let claude_body = fs::read_to_string(d.path().join("CLAUDE.md")).unwrap();
+        let agents_body = fs::read_to_string(d.path().join("AGENTS.md")).unwrap();
+        let gemini_body = fs::read_to_string(d.path().join("GEMINI.md")).unwrap();
+        assert_eq!(agents_body, claude_body);
+        assert_eq!(gemini_body, claude_body);
+    }
+
+    #[test]
+    fn link_or_copy_role_file_preserves_existing_override() {
+        // If the user hand-authored a CLI-specific override, seed_agent
+        // must not clobber it. Pre-stage GEMINI.md with bespoke content
+        // and confirm the helper leaves it alone.
+        let d = TempDir::new().unwrap();
+        fs::write(d.path().join("CLAUDE.md"), "houston role").unwrap();
+        fs::write(d.path().join("GEMINI.md"), "user override").unwrap();
+        link_or_copy_role_file(d.path(), "GEMINI.md").unwrap();
+        assert_eq!(
+            fs::read_to_string(d.path().join("GEMINI.md")).unwrap(),
+            "user override"
+        );
     }
 
     #[test]

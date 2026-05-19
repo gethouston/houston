@@ -16,10 +16,10 @@
 
 use crate::cli_process::run_cli_process;
 use crate::gemini_home;
+use crate::provider::InstallSource;
 use crate::session_update::SessionUpdate;
 use crate::types::SessionStatus;
 use crate::Provider;
-use houston_cli_bundle::bundled_gemini_path;
 use std::ffi::OsString;
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
@@ -52,7 +52,27 @@ pub(crate) async fn spawn_gemini(
         }
     }
 
+    // Resolve via the adapter so the same code path covers both the
+    // bundled .app/MSI binary and the `gemini` PATH lookup developers
+    // rely on in dev mode. When neither exists we must NOT fall through
+    // to `Command::new("gemini")` — on Windows that surfaces as the
+    // generic "Failed to spawn gemini: program not found" toast, which
+    // doesn't tell the user that Gemini is not yet bundled on Windows
+    // (see knowledge-base/cli-bundling.md, phase-2 note). Emit a
+    // platform-aware error and bail.
+    let (install_source, gemini_path) = provider.resolve();
+    let bin = match (install_source, gemini_path) {
+        (InstallSource::Missing, _) | (_, None) => {
+            let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(
+                gemini_missing_message().to_string(),
+            )));
+            return;
+        }
+        (_, Some(path)) => path,
+    };
+
     let mut cmd = build_gemini_command(
+        &bin,
         resume_session_id.as_deref(),
         working_dir.as_deref(),
         model.as_deref(),
@@ -103,23 +123,73 @@ pub(crate) async fn spawn_gemini(
 }
 
 fn build_gemini_command(
+    bin: &Path,
     resume_session_id: Option<&str>,
     working_dir: Option<&Path>,
     model: Option<&str>,
 ) -> Command {
-    // Prefer the bundled gemini SEA over whatever happens to be on the
-    // user's PATH. The user might have an older `npm i -g @google/gemini-cli`
-    // that doesn't recognize `--yolo` or has a different stream-json
-    // shape. We pin the bundled binary so the schema in
-    // `gemini_parser.rs` always matches what gets spawned.
-    let bin = bundled_gemini_path().unwrap_or_else(|| PathBuf::from("gemini"));
-    let mut cmd = Command::new(&bin);
+    // The caller resolved `bin` via `provider.resolve()` so this is
+    // either the bundled SEA (preferred — we pin the version so the
+    // schema in `gemini_parser.rs` matches what gets spawned) or a
+    // gemini found on the user's PATH. Old PATH installs that don't
+    // recognise `--yolo` / `--skip-trust` will fail visibly in dev mode,
+    // which is acceptable because production builds ship the bundled
+    // version.
+    let mut cmd = Command::new(bin);
     cmd.env("PATH", super::claude_path::shell_path());
     cmd.args(build_gemini_args(resume_session_id, working_dir, model));
     if let Some(dir) = working_dir {
-        cmd.current_dir(dir);
+        // Strip the `\\?\` extended-length prefix on Windows for the
+        // same reason as the `--include-directories` arg: Node's
+        // path-resolution stack inside gemini-cli misparses the prefix.
+        // The cwd ends up surfaced to the model as well (gemini emits
+        // it back in tool messages) so passing a clean path keeps the
+        // whole stack consistent.
+        cmd.current_dir(gemini_compatible_path(dir));
     }
     cmd
+}
+
+/// Make `path` safe to hand to gemini-cli as a directory argument.
+///
+/// On Windows, `std::fs::canonicalize` returns the extended-length
+/// prefix form (`\\?\C:\Users\...`). Node.js's `fs.realpathSync`
+/// (used inside gemini-cli's `WorkspaceContext.resolveAndValidateDir`)
+/// chokes on that prefix and crashes with
+/// `EISDIR: illegal operation on a directory, lstat 'C:'` — it tries
+/// to lstat each path component and parses `C:` as a directory entry
+/// rather than the drive letter. Strip the prefix so gemini sees a
+/// plain `C:\Users\...` path. UNC variant (`\\?\UNC\server\share`) is
+/// rewritten back to the standard UNC form (`\\server\share`).
+///
+/// No-op on Unix. The kernel never produces the `\\?\` prefix there.
+fn gemini_compatible_path(path: &Path) -> PathBuf {
+    #[cfg(windows)]
+    {
+        if let Some(s) = path.to_str() {
+            if let Some(rest) = s.strip_prefix(r"\\?\UNC\") {
+                return PathBuf::from(format!(r"\\{rest}"));
+            }
+            if let Some(rest) = s.strip_prefix(r"\\?\") {
+                return PathBuf::from(rest);
+            }
+        }
+    }
+    path.to_path_buf()
+}
+
+/// User-visible explanation when `provider.resolve()` reports the
+/// gemini binary is missing. Tailored per platform: Windows has no
+/// upstream gemini binary in v1, so users there get a "not yet
+/// supported" message; macOS / Linux builds ship the binary inside
+/// the bundle and a Missing result means the bundle is broken.
+fn gemini_missing_message() -> &'static str {
+    if cfg!(windows) {
+        "Gemini is not available on Windows yet. Switch to Anthropic or OpenAI \
+         for now, or follow Houston's Windows release notes for when Gemini lands."
+    } else {
+        "Gemini CLI binary missing. Reinstall Houston to restore the bundled CLI."
+    }
 }
 
 /// Build the argv for `gemini`. Kept pure so it can be unit-tested
@@ -171,7 +241,7 @@ fn build_gemini_args(
     }
     if let Some(dir) = working_dir {
         args.push(OsString::from("--include-directories"));
-        args.push(dir.as_os_str().to_os_string());
+        args.push(gemini_compatible_path(dir).into_os_string());
     }
     if let Some(sid) = resume_session_id {
         args.push(OsString::from("--resume"));
@@ -255,6 +325,55 @@ mod tests {
         let args = strings(build_gemini_args(None, Some(&dir), None));
         let pos = args.iter().position(|a| a == "--include-directories").unwrap();
         assert_eq!(args[pos + 1], "/tmp/work");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_extended_length_prefix_stripped_from_include_directories() {
+        // std::fs::canonicalize on Windows returns the `\\?\` prefixed
+        // extended-length form. gemini-cli's Node-based
+        // `WorkspaceContext.resolveAndValidateDir` crashes on it:
+        //   Error: EISDIR: illegal operation on a directory, lstat 'C:'
+        // We strip the prefix before handing the path to gemini.
+        let dir = PathBuf::from(r"\\?\C:\Users\danie\workspace\agent");
+        let args = strings(build_gemini_args(None, Some(&dir), None));
+        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        assert_eq!(args[pos + 1], r"C:\Users\danie\workspace\agent");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_extended_unc_prefix_normalized() {
+        // `\\?\UNC\server\share\path` is the extended-length form of
+        // `\\server\share\path`. Same Node parse failure; rewrite back
+        // to the standard UNC form.
+        let dir = PathBuf::from(r"\\?\UNC\server\share\agent");
+        let args = strings(build_gemini_args(None, Some(&dir), None));
+        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        assert_eq!(args[pos + 1], r"\\server\share\agent");
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_plain_path_unchanged() {
+        // Only `\\?\` prefixed paths get rewritten — plain `C:\` paths
+        // pass through verbatim.
+        let dir = PathBuf::from(r"C:\Users\danie\workspace\agent");
+        let args = strings(build_gemini_args(None, Some(&dir), None));
+        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        assert_eq!(args[pos + 1], r"C:\Users\danie\workspace\agent");
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn unix_path_unchanged_through_compatibility_helper() {
+        // The Windows-only `\\?\` rewrite must be a strict no-op on
+        // Unix — the kernel never produces that prefix and any
+        // Unix-y path must reach gemini-cli byte-identical.
+        let dir = PathBuf::from("/Users/danie/workspace/agent");
+        let args = strings(build_gemini_args(None, Some(&dir), None));
+        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        assert_eq!(args[pos + 1], "/Users/danie/workspace/agent");
     }
 
     #[test]

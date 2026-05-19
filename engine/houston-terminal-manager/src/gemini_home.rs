@@ -84,17 +84,33 @@ fn ensure_symlink(target: &Path, link: &Path) -> io::Result<()> {
 /// (small JSON, only re-copied on drift). Atomic in both branches:
 /// build at a sibling temp path, then `rename` over (Rust's `fs::rename`
 /// atomically replaces an existing entry on Windows since 1.45).
+///
+/// Tolerates a missing `target`: Unix's `symlink(2)` creates dangling
+/// links and reads start working once the user logs in. The Windows
+/// `symlink_file` permission-denied path falls through to `fs::copy`,
+/// which fails with ENOENT (os error 2) on a missing source — that
+/// would break first-time gemini users who have not written
+/// `~/.gemini/.env` or completed OAuth yet. Treat the missing source
+/// as "skip this entry": remove any stale entry at `link` so a
+/// previous run's content isn't mistaken for current state.
 #[cfg(windows)]
 fn ensure_symlink(target: &Path, link: &Path) -> io::Result<()> {
     use std::os::windows::fs::symlink_file;
     let tmp = tmp_sibling(link)?;
     let _ = fs::remove_file(&tmp);
-    if symlink_file(target, &tmp).is_err() {
-        // Fallback: bytewise copy when symlinks are denied (no Dev Mode,
-        // no admin, ReFS quirks). Same atomic-rename pattern.
-        fs::copy(target, &tmp)?;
+    if symlink_file(target, &tmp).is_ok() {
+        return fs::rename(&tmp, link);
     }
-    fs::rename(&tmp, link)
+    // Symlink denied. Try copy. If the source is missing, drop any stale
+    // entry at `link` and return Ok — there is nothing to point at yet.
+    match fs::copy(target, &tmp) {
+        Ok(_) => fs::rename(&tmp, link),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            let _ = fs::remove_file(link);
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }
 
 /// Atomic write-then-rename. Skips the write when content already
@@ -231,6 +247,7 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    #[cfg(unix)]
     fn fake_home_with_gemini(tmp: &TempDir, settings: Option<&str>) -> PathBuf {
         let home = tmp.path().join("real-home");
         let gemini = home.join(".gemini");
@@ -391,6 +408,39 @@ mod tests {
             fs::read_to_string(&env).unwrap(),
             "GEMINI_API_KEY=test-key-value\n"
         );
+    }
+
+    #[test]
+    fn ensure_runtime_home_tolerates_missing_credential_files() {
+        // First-time gemini users do not yet have `~/.gemini/oauth_creds.json`,
+        // `google_accounts.json`, or `.env`. On Unix the symlinks dangle and
+        // reads fail with ENOENT; on Windows without Dev Mode the copy
+        // fallback would error with ENOENT and abort the whole runtime-home
+        // prep — exactly the "Failed to prepare gemini runtime home" toast
+        // the user reported. Both platforms must succeed without those
+        // source files, and on Windows the runtime entries must simply be
+        // absent (no stale content masquerading as fresh state).
+        let tmp = TempDir::new().unwrap();
+        let home = tmp.path().join("real-home");
+        let gemini = home.join(".gemini");
+        fs::create_dir_all(&gemini).unwrap();
+        // Note: NO oauth_creds.json, google_accounts.json, or .env written.
+        let houston_data = tmp.path().join("houston-data");
+
+        let runtime_home = ensure_gemini_runtime_home(&houston_data, &home).unwrap();
+
+        // settings.json must still exist (Houston-written, not symlinked).
+        assert!(runtime_home.join(".gemini/settings.json").exists());
+
+        #[cfg(windows)]
+        {
+            // Copy fallback on Windows: missing source → no entry. Reads
+            // by gemini-cli will return ENOENT, matching Unix's dangling
+            // symlink behavior at read time.
+            assert!(!runtime_home.join(".gemini/oauth_creds.json").exists());
+            assert!(!runtime_home.join(".gemini/google_accounts.json").exists());
+            assert!(!runtime_home.join(".gemini/.env").exists());
+        }
     }
 
     #[cfg(unix)]

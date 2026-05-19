@@ -47,6 +47,17 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
   const currentModel = getModel(provider, model);
   const displayLabel = currentModel?.label ?? currentProvider?.subtitle ?? t("modelSelector.selectModel");
 
+  // Honour `lockedProvider` only when that provider is still installed.
+  // If the chat was created against a provider that the engine now
+  // reports as missing (e.g. Gemini on a Windows install that does not
+  // ship the binary in v1), the user must be able to switch to an
+  // installed alternative — otherwise every send routes back to the
+  // missing CLI and fails. Drop the lock in that case so other
+  // connected providers appear in the dropdown.
+  const lockedStatus = lockedProvider ? statuses[lockedProvider] : undefined;
+  const lockedProviderInstalled = lockedStatus?.cli_installed ?? true;
+  const effectiveLock = lockedProvider && lockedProviderInstalled ? lockedProvider : null;
+
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
     // from interpreting dropdown clicks as "click outside → close panel".
@@ -72,8 +83,11 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
             const connected = (status?.cli_installed && status?.authenticated) ?? false;
             // Hide disconnected providers that aren't active
             if (!connected && prov.id !== provider) return null;
-            // When provider is locked, only show the locked provider's models
-            if (lockedProvider && prov.id !== lockedProvider) return null;
+            // When provider is locked AND still installed, only show the
+            // locked provider's models. When the locked provider is
+            // uninstalled, `effectiveLock` is null so other connected
+            // providers stay visible — see the lock-override comment above.
+            if (effectiveLock && prov.id !== effectiveLock) return null;
             return (
               <ProviderModelGroup
                 key={prov.id}
@@ -82,7 +96,7 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
                 isActiveProvider={prov.id === provider}
                 activeModel={prov.id === provider ? model : null}
                 onSelect={onSelect}
-                showSeparator={idx > 0 && !lockedProvider}
+                showSeparator={idx > 0 && !effectiveLock}
               />
             );
           })}

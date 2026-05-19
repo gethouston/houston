@@ -27,7 +27,28 @@ both.
 - **Symlinks**: `std::os::unix::fs::symlink` on Unix,
   `std::os::windows::fs::symlink_file` / `symlink_dir` on Windows.
   Both branches wired in `agents_crud.rs`, `agents/prompt.rs`,
-  `skills.rs`.
+  `skills.rs`. Windows symlink creation needs Developer Mode or
+  admin; stock installs fail with os error 1314 ("A required
+  privilege is not held by the client"). Call sites that expose
+  agent-role content to a sibling CLI (AGENTS.md/GEMINI.md in
+  `agents/prompt.rs` and `houston-agent-files::migrate_agent_data`)
+  fall back to `fs::copy` so non-admin Windows users still see the
+  role file. The gemini runtime-home staging
+  (`houston-terminal-manager::gemini_home::ensure_symlink`) also
+  tolerates a missing source on the copy fallback so first-time
+  gemini users without `~/.gemini/.env` or OAuth files do not hit
+  "Failed to prepare gemini runtime home".
+- **PATH lookup**: `houston-terminal-manager::provider::which_on_path`
+  walks each PATH directory. On Windows it checks
+  `.exe` / `.cmd` / `.bat` / `.ps1` variants BEFORE the bare filename
+  in each directory so npm-global CLIs (which ship both `<name>` —
+  Unix script — and `<name>.cmd` — Windows shim — in the same dir)
+  resolve to the executable shim instead of the unexecutable script.
+  Without that, `Command::new(...)` later fails with os error 193
+  ("%1 is not a valid Win32 application"). Inner pure helper
+  `which_in_dirs(command, iter)` is exposed for tests so the
+  per-platform priority can be verified without mutating
+  process-global PATH.
 - **PTY**: `portable-pty` (used in `houston-terminal-manager::manager`)
   — ConPTY-backed on Windows 10+, no code change needed.
 - **File watcher**: `notify` — native backends on each OS.
@@ -44,6 +65,7 @@ both.
 | Login-shell PATH probe | `houston-terminal-manager/src/claude_path.rs` | `/bin/zsh -l -c 'echo $PATH'`, fallback `/bin/bash -l`, `-i` | skipped — inherited process PATH is already the user PATH |
 | Common-install-dir probe | same | `~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/.cargo/bin`, `~/.composio`, nvm node dirs | `~\.cargo\bin`, `~\.composio`, `~\AppData\Roaming\npm`, `~\AppData\Local\Programs\claude` |
 | Command-exists check | same `is_command_available` | bare filename | bare + `.exe`/`.cmd`/`.bat`/`.ps1` variants |
+| Gemini CLI spawn | `houston-terminal-manager/src/gemini_runner.rs` + `houston-engine-core/src/sessions/provider_oneshot.rs::run_gemini` | bundled SEA per arch (`Resources/bin/gemini-<arch>/gemini`) | bundled binary not shipped in v1; falls back to user-installed gemini-cli on PATH (e.g. `npm i -g @google/gemini-cli`). Two Windows-specific quirks make this work: (a) `which_on_path` prefers `.exe`/`.cmd`/`.bat`/`.ps1` variants over the bare filename so the npm-global `.cmd` shim wins over the unexecutable Unix script that ships in the same dir (avoids os error 193, "%1 is not a valid Win32 application"); (b) `gemini_compatible_path` strips the `\\?\` extended-length prefix from canonicalized agent paths before they hit `--include-directories` because gemini-cli's Node-based `fs.realpathSync` parses each component and crashes with `EISDIR: illegal operation on a directory, lstat 'C:'`. If neither bundled nor PATH-installed, both call sites short-circuit with a platform-aware "not available yet" toast. UI also unlocks the chat-model dropdown when the locked provider has `cli_installed=false` (`chat-model-selector.tsx`). |
 
 ## Known gaps — Windows needs a follow-up
 

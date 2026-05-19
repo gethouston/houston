@@ -89,8 +89,30 @@ async fn run_gemini(prompt: &str, model: &str, time_limit: Duration) -> Result<S
     // output format and break parsers. The one-shot path asks for plain
     // text (`--output-format text`) so we don't have to thread through a
     // second NDJSON parser just for this call.
-    let bin = houston_cli_bundle::bundled_gemini_path()
-        .unwrap_or_else(|| std::path::PathBuf::from("gemini"));
+    //
+    // On Windows there is no upstream gemini binary in v1 (see
+    // knowledge-base/cli-bundling.md, phase-2 note), so `bundled_gemini_path`
+    // returns None AND there's nothing on PATH. Surface a clear error
+    // instead of falling through to `Command::new("gemini")` which would
+    // fail with "program not found" and confuse the caller.
+    let bin = match houston_cli_bundle::bundled_gemini_path() {
+        Some(p) => p,
+        None => match houston_terminal_manager::provider::which_on_path("gemini") {
+            Some(p) => p,
+            None => {
+                return Err(if cfg!(windows) {
+                    "Gemini is not available on Windows yet. Switch to Anthropic \
+                     or OpenAI for now, or follow Houston's Windows release notes \
+                     for when Gemini lands."
+                        .into()
+                } else {
+                    "Gemini CLI binary missing. Reinstall Houston to restore the \
+                     bundled CLI."
+                        .into()
+                });
+            }
+        },
+    };
     let mut cmd = tokio::process::Command::new(&bin);
     cmd.env("PATH", claude_path::shell_path());
 

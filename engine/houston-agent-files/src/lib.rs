@@ -222,55 +222,76 @@ pub fn migrate_agent_data(agent_root: &Path) -> Result<()> {
         }
     }
 
-    // Backfill the GEMINI.md → CLAUDE.md symlink for agents created
-    // before Houston started seeding it. Same shape as the AGENTS.md
-    // symlink in `houston-engine-core::agents::prompt::seed_agent`:
-    // gemini-cli walks UP from cwd looking for `GEMINI.md` as project
-    // memory, so without this the agent's role/instructions never reach
-    // the model. Idempotent: only runs when CLAUDE.md exists AND
-    // GEMINI.md is absent. We deliberately do NOT replace an existing
-    // GEMINI.md (user may have hand-authored a gemini-specific file).
+    // Backfill `GEMINI.md` for agents created before Houston started
+    // seeding it. gemini-cli walks UP from cwd looking for `GEMINI.md`
+    // as project memory; without this the agent's role/instructions
+    // never reach the model. Idempotent: only runs when CLAUDE.md
+    // exists AND GEMINI.md is absent. We deliberately do NOT replace
+    // an existing GEMINI.md (user may have hand-authored a
+    // gemini-specific file).
+    //
+    // Prefer a relative symlink (drift-free). On Windows without
+    // Developer Mode `symlink_file` returns os error 1314 ("A required
+    // privilege is not held by the client"); fall back to a regular
+    // file copy so the agent role still reaches gemini-cli.
     let claude_md = agent_root.join("CLAUDE.md");
     let gemini_md = agent_root.join("GEMINI.md");
     // `symlink_metadata` so we treat broken/dangling symlinks as
     // "exists" — replacing them would silently swap user config.
     let gemini_present = fs::symlink_metadata(&gemini_md).is_ok();
     if claude_md.exists() && !gemini_present {
-        #[cfg(unix)]
-        {
-            if let Err(e) = std::os::unix::fs::symlink("CLAUDE.md", &gemini_md) {
-                tracing::warn!(
-                    agent_root = %agent_root.display(),
-                    error = %e,
-                    "failed to backfill GEMINI.md symlink"
-                );
-            } else {
-                tracing::info!(
-                    agent_root = %agent_root.display(),
-                    "backfilled GEMINI.md → CLAUDE.md symlink"
-                );
-            }
-        }
-        #[cfg(windows)]
-        {
-            if let Err(e) = std::os::windows::fs::symlink_file("CLAUDE.md", &gemini_md) {
-                tracing::warn!(
-                    agent_root = %agent_root.display(),
-                    error = %e,
-                    "failed to backfill GEMINI.md symlink"
-                );
-            } else {
-                tracing::info!(
-                    agent_root = %agent_root.display(),
-                    "backfilled GEMINI.md → CLAUDE.md symlink"
-                );
-            }
+        match link_or_copy_role_file(&claude_md, &gemini_md) {
+            Ok(Backfill::Symlinked) => tracing::info!(
+                agent_root = %agent_root.display(),
+                "backfilled GEMINI.md → CLAUDE.md symlink"
+            ),
+            Ok(Backfill::Copied) => tracing::info!(
+                agent_root = %agent_root.display(),
+                "backfilled GEMINI.md from CLAUDE.md (copy fallback)"
+            ),
+            Err(e) => tracing::warn!(
+                agent_root = %agent_root.display(),
+                error = %e,
+                "failed to backfill GEMINI.md"
+            ),
         }
     }
 
     // Seed schemas at the end so every migrated agent has them available.
     seed_schemas(agent_root)?;
     Ok(())
+}
+
+/// Outcome of [`link_or_copy_role_file`]: which path the OS accepted.
+/// Reported back to the caller so it can log the right line — copies
+/// drift if `CLAUDE.md` is edited later, symlinks don't.
+enum Backfill {
+    Symlinked,
+    Copied,
+}
+
+/// Create `link_path` so it exposes the content of `target_path`.
+/// Prefers a relative symlink (drift-free); falls back to a regular
+/// file copy when the OS denies symlink creation (Windows without
+/// Developer Mode returns os error 1314).
+fn link_or_copy_role_file(target_path: &Path, link_path: &Path) -> std::io::Result<Backfill> {
+    let target_name = target_path
+        .file_name()
+        .ok_or_else(|| std::io::Error::new(std::io::ErrorKind::InvalidInput, "target has no file name"))?;
+    #[cfg(unix)]
+    {
+        if std::os::unix::fs::symlink(target_name, link_path).is_ok() {
+            return Ok(Backfill::Symlinked);
+        }
+    }
+    #[cfg(windows)]
+    {
+        if std::os::windows::fs::symlink_file(target_name, link_path).is_ok() {
+            return Ok(Backfill::Symlinked);
+        }
+    }
+    fs::copy(target_path, link_path)?;
+    Ok(Backfill::Copied)
 }
 
 #[cfg(test)]
@@ -411,6 +432,25 @@ mod tests {
         migrate_agent_data(dir.path()).unwrap();
         assert!(!dir.path().join("GEMINI.md").exists());
         assert!(fs::symlink_metadata(dir.path().join("GEMINI.md")).is_err());
+    }
+
+    #[test]
+    fn migrate_gemini_md_backfill_reflects_claude_md_content() {
+        // Platform-agnostic check: whether the OS accepted a symlink
+        // (Unix, Windows with Dev Mode) or fell back to a copy
+        // (Windows without Dev Mode), `read_to_string` on GEMINI.md
+        // must yield the CLAUDE.md content. Regression guard for the
+        // Windows "failed to backfill GEMINI.md symlink: A required
+        // privilege is not held by the client (os error 1314)" path.
+        let dir = TempDir::new().unwrap();
+        fs::write(dir.path().join("CLAUDE.md"), "agent role body").unwrap();
+
+        migrate_agent_data(dir.path()).unwrap();
+
+        assert_eq!(
+            fs::read_to_string(dir.path().join("GEMINI.md")).unwrap(),
+            "agent role body",
+        );
     }
 
     #[test]

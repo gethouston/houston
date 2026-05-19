@@ -205,11 +205,23 @@ etc.) and answers Houston tasks with the wrong context.
 `houston-terminal-manager::gemini_home::ensure_gemini_runtime_home`
 builds a Houston-managed HOME at `~/.houston/runtime/gemini-home/`
 containing only `.gemini/oauth_creds.json` + `google_accounts.json`
-symlinked from the real home (so OAuth still works without re-auth)
-plus a minimal `.gemini/settings.json` that mirrors the user's
-`selectedType`. No `GEMINI.md` is present, so global memory discovery
-finds nothing. Per-agent context still flows because gemini-cli walks
-UP from `cwd` and the agent dir contains `GEMINI.md → CLAUDE.md`
-seeded by `seed_agent`. Both `gemini_runner::spawn_gemini` and
++ `.env` symlinked from the real home (so OAuth and API-key auth
+both keep working without re-auth) plus a minimal
+`.gemini/settings.json` that mirrors the user's `selectedType`. No
+`GEMINI.md` is present, so global memory discovery finds nothing.
+Per-agent context still flows because gemini-cli walks UP from
+`cwd` and the agent dir contains `GEMINI.md → CLAUDE.md` seeded by
+`seed_agent`. Both `gemini_runner::spawn_gemini` and
 `sessions::summarize::run_gemini_summary` set `cmd.env("HOME", ...)`
 to this runtime path before spawning.
+
+**Windows symlink fallback.** Stock Windows installs reject
+`symlink_file` (os error 1314, "A required privilege is not held by
+the client") unless Developer Mode or admin is on. `ensure_symlink`
+falls back to `fs::copy`. If the real-home source file does not
+exist yet — common for first-time gemini users who have not
+completed OAuth or pasted an API key — the Windows path treats the
+missing source as "skip this entry" instead of erroring. Without
+that, the user-visible toast was: _"Failed to prepare gemini
+runtime home: The system cannot find the file specified. (os
+error 2). Houston cannot spawn gemini safely without it."_
