@@ -35,116 +35,163 @@
   <main class="content">
     <div class="content-label">
       Chapter 11
-      <span class="status progress">In progress</span>
+      <span class="status progress">Gate plan</span>
     </div>
     <h1>The roadmap.</h1>
     <p class="lead">
-      Four milestones. Realistic sizes. Two of them run in parallel
-      because they're independent. Two of them are heavier than they
-      look. One parallel track starts on day one and has nothing to do
-      with code (Apple paperwork).
+      This roadmap separates reliability, isolation, runtime, triggers, and
+      Cloud. It does not hide risky work inside optimistic dates. Every big
+      promise has a gate and a test contract.
     </p>
 
     <h2>The shape</h2>
-<pre><code>Week                  0   1   2   3   4   5   6   7   8   9  10  11  12  13  14  15  16  17  18  19  20  21  22  23  24
-                      |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |   |
-M1 Reliability        [============ ~4 weeks ============]
-M2 Auth + credentials [======== ~3 weeks ========]
-                                                          (M1 + M2 ship together as a release)
-M3 Linux runtime                                          [================== ~3 months ==================]
-M4 Cloud foundation                                                                                       [================ ~3 months ================]
-Apple entitlement     [........................... weeks to months, asynchronous ...........................]
-VZ.framework spike    [===]   ← do this BEFORE locking M3 dates</code></pre>
+<pre><code>Track                         Gate / estimate
+M0 Plan cleanup               1 week
+M1a Durable turns             4-6 weeks after schema lock
+M1b Detached turn worker      3-4 weeks if "never die" is a product promise
+M2 Scopes + credentials       3-5 weeks, can overlap M1 with separate owner
+M3a Runtime spike             1-2 weeks before any M3 date is promised
+M3b Runtime build             3-4 months only if spike passes
+M4 Inbound triggers           after M1a, before Cloud
+M5 Cloud private beta         3-5 months with 2 engineers, separate RFC
+Apple entitlement             start immediately, async weeks to months</code></pre>
 
-    <h2>M1 — Reliability (~4 weeks)</h2>
+    <h2>M0 — Make the plan true (1 week)</h2>
+    <ul>
+      <li>Update design docs to match current repo facts.</li>
+      <li>Name shipped, partial, and proposed work separately.</li>
+      <li>Add acceptance tests for current weak spots before refactors: session start, stream persistence, WS reconnect, routine fire, auth token use.</li>
+      <li>Decide exact schema for <code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, and <code>trigger_runs</code>.</li>
+      <li>Decide whether <code>chat_feed</code> migrates hard or gets one-release read fallback. Recommendation: canonical <code>turn_stream</code> writes, one-release read fallback only.</li>
+    </ul>
+
+    <h2>M1a — Durable turn acceptance and replay (4-6 weeks)</h2>
     <p>
-      <strong>Goal:</strong> conversations never drop bytes. The "my
-      message disappeared" failure mode goes away. Every byte the user
-      sees is journaled before broadcast.
+      <strong>Promise after M1a:</strong> accepted turns are recorded before
+      side effects. Committed stream chunks replay after refresh or network
+      reconnect. Stale work surfaces retry/cancel instead of disappearing.
     </p>
     <ul>
-      <li>Add the four SQLite tables: <code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, <code>cron_runs</code>. Concrete schemas in Chapter 6.</li>
-      <li>Write rows BEFORE doing work. Sweep orphans on boot.</li>
-      <li>Client-supplied <code>turnId</code> with idempotent server semantics. Protocol bump.</li>
-      <li>WebSocket replay by sequence number on reconnect. New <code>since_seq</code> on subscribe.</li>
-      <li>Cron audit log plus missed-fire catch-up policy.</li>
-      <li>Bounded event queue with per-source drop rules.</li>
-      <li>Coexistence with <code>chat_feed</code>: double-write for this release, drop in the next.</li>
+      <li>Add checked SQLite migrations. Stop swallowing reliability migration failures with <code>.ok()</code>.</li>
+      <li>Add <code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, and <code>trigger_runs</code>.</li>
+      <li>Add client-supplied <code>turnId</code> to session start request and idempotent server handling.</li>
+      <li>Insert the turn row before spawning Claude, Codex, Gemini, or any provider.</li>
+      <li>Write stream chunks before broadcasting them.</li>
+      <li>Add WS replay with <code>sinceSeq</code> and authorization checks on replay.</li>
+      <li>Add boot sweep: queued turns resume, stale running turns become interrupted unless a worker heartbeat owns them.</li>
+      <li>Add routine missed-fire policy through <code>trigger_runs</code>.</li>
+      <li>Add bounded intake for real trigger paths, not only the old unbounded event queue.</li>
     </ul>
     <p>
-      Mostly inserts and middleware. No architectural change. The 4-week
-      number assumes the schema is locked on day one. Slips to 5-6 weeks
-      if we discover the WS protocol bump rippling through more clients
-      than expected.
+      This is not "conversations never die." It is "Houston never lies about
+      accepted work, committed chunks, or retry state."
     </p>
 
-    <h2>M2 — Auth and credentials (~3 weeks, in parallel with M1)</h2>
+    <h2>M1b — Detached turn worker (3-4 weeks)</h2>
     <p>
-      <strong>Goal:</strong> Walls 2 and 3 from Chapter 7. No VM
-      required. Owned by a different engineer so M1 and M2 ship as one
-      release.
+      <strong>Promise after M1b:</strong> app close, engine restart, and
+      engine bounce do not kill an in-flight provider turn.
     </p>
     <ul>
-      <li>Typed tokens: <code>(principal_id, scopes)</code>. New tables: <code>principals</code> and <code>principal_tokens</code> in <code>houston-db</code>.</li>
-      <li><code>require_scope(token, agent_path)</code> middleware on every route that touches an agent.</li>
-      <li>Per-agent credentials: CLI spawn overrides <code>HOME</code> to a per-agent path under the agent's folder.</li>
-      <li>Migration: today's single device-bearer becomes one principal with full scope. No UX change for solo users.</li>
+      <li>Add <code>houston-turn-worker</code> as a small detached binary.</li>
+      <li>Worker owns provider subprocess and writes stream chunks directly to SQLite.</li>
+      <li>Engine attaches to worker by turn id after restart.</li>
+      <li>Worker heartbeat updates <code>last_heartbeat_at</code>.</li>
+      <li>Cancel is durable: set <code>cancel_requested_at</code>, worker cooperatively stops provider process.</li>
+      <li>Crash tests kill app, engine, worker, and provider process separately and assert visible state.</li>
     </ul>
     <p>
-      Middleware plus a few new tables. About 3 weeks. Does not require
-      Chapter 3, does not require a VM. Real isolation win shipped without
-      waiting for M3.
+      If the product says "conversations never die," M1b is mandatory. If
+      not, make the promise weaker and ship M1a first.
     </p>
 
-    <h2>M3 — Linux runtime everywhere (~3 months)</h2>
+    <h2>M2 — Scopes and per-agent credentials (3-5 weeks)</h2>
     <p>
-      <strong>Goal:</strong> Wall 1 from Chapter 7. The whole desktop now
-      runs the same Linux engine as Cloud. Per-agent Linux UIDs become
-      possible.
+      <strong>Promise after M2:</strong> engine API calls are scoped, and
+      provider credentials are separated per agent. This still is not kernel
+      filesystem isolation.
     </p>
     <ul>
-      <li>Runtime supervisor at <code>app/houston-tauri/runtime/</code>.</li>
-      <li>macOS: Apple <code>Virtualization.framework</code> wrapper with a slim Linux guest image.</li>
-      <li>Windows: WSL2 detect/install/register/start.</li>
-      <li>Linux: passthrough, no runtime.</li>
-      <li>Per-agent <code>useradd</code> automation inside the runtime.</li>
-      <li>CLI spawn as <code>hou_&lt;agent&gt;</code>.</li>
-      <li>Import and Download routes for file flow in and out of the runtime.</li>
-      <li>Apple <code>com.apple.security.virtualization</code> entitlement in the signed app.</li>
+      <li>Add <code>principals</code> and <code>principal_tokens</code>.</li>
+      <li>Migrate today's device bearer into <code>local:local</code> with full local scope.</li>
+      <li>Add <code>require_scope</code> middleware to every route touching agent data.</li>
+      <li>Add route-audit tests so new path-touching routes cannot skip scope checks.</li>
+      <li>Override provider homes per agent on native hosts: Claude, Codex, Gemini, Composio.</li>
+      <li>Add strict per-agent login mode for desktop workspaces that represent separate clients.</li>
+      <li>Keep brokered convenience as a solo-desktop default, but label the weaker isolation honestly.</li>
+    </ul>
+
+    <h2>M3a — Runtime spike (1-2 weeks)</h2>
+    <p>
+      <strong>Gate:</strong> do this before promising Linux runtime dates.
+    </p>
+    <ul>
+      <li>Bundle a minimal Linux guest image with <code>houston-engine</code>.</li>
+      <li>Boot through macOS <code>Virtualization.framework</code> on Apple Silicon and Intel if supported.</li>
+      <li>Measure cold start target: 2s Apple Silicon, 3s Intel, or write down why target changes.</li>
+      <li>Measure resident memory target: 300MB or less idle.</li>
+      <li>Measure battery: 4-hour idle session, target 10% or less extra drain versus native.</li>
+      <li>Test file import/download latency with realistic workspace size.</li>
+      <li>Test entitlement path on signed Developer ID build.</li>
+      <li>Test WSL2 install/start on clean Windows and corp-locked Windows.</li>
     </ul>
     <p>
-      Honest scoping: this is two new pieces of infrastructure (a Linux
-      guest image we build in CI, and a Tauri-side runtime supervisor) on
-      top of changes throughout the engine to assume per-agent UIDs.
-      Three months is the optimistic end. Could slip to four if VZ
-      cold-start or WSL2 corp-IT issues bite.
+      Fail gate means do not build M3b yet. Keep native engine and ship M1/M2
+      wins.
     </p>
 
-    <h2>M4 — Cloud foundation (~3 months)</h2>
+    <h2>M3b — Runtime build (3-4 months, only if spike passes)</h2>
     <p>
-      <strong>Goal:</strong> Houston Cloud is shippable. Engine bounces
-      don't kill conversations. Sleeping engines wake on demand. Paying
-      customers can sign up.
+      <strong>Promise after M3b:</strong> per-agent Linux users provide real
+      filesystem isolation on supported machines.
     </p>
     <ul>
-      <li>Detached <code>houston-turn-worker</code> binary so engine restart doesn't kill in-flight turns. (The architectural risk piece.)</li>
-      <li><code>POST /v1/hooks/&lt;route_token&gt;</code> wired to the event queue.</li>
-      <li>Engine learns to exit gracefully on idle.</li>
-      <li>Relay learns to wake a dormant engine via Fly Machines API.</li>
-      <li>Cron moves to a central scheduler service for hosted mode (in-engine cron stays for desktop and self-host).</li>
-      <li>Per-customer Fly Machine provisioning, region picker, onboarding.</li>
-      <li>Control plane: signup, billing, admin, observability. Lives at <code>cloud/</code>.</li>
-      <li>Storage strategy: pinned host with R2/S3 nightly snapshot fallback.</li>
+      <li>Runtime supervisor under Tauri adapter code.</li>
+      <li>macOS VZ wrapper, guest image build, update path, logs, recovery.</li>
+      <li>Windows WSL2 detect/install/register/start, with clear unsupported state for blocked machines.</li>
+      <li>Linux passthrough path.</li>
+      <li>Workspace migration into runtime storage with checksum, rollback marker, and host copy preserved until verified.</li>
+      <li>Import, download, export, reveal, and logs flows.</li>
+      <li>Per-agent <code>useradd</code>, folder ownership, 0700 modes.</li>
+      <li>Provider CLI spawn as <code>hou_&lt;agent&gt;</code>.</li>
+      <li>Full permission-denied test: Sales agent cannot read HR folder.</li>
     </ul>
+
+    <h2>M4 — Inbound triggers (after M1a)</h2>
     <p>
-      Heaviest milestone. Detached worker alone is 3-4 weeks if it goes
-      well. Control plane is its own product. Three months is realistic
-      only with two engineers on it; one engineer is closer to five.
+      <strong>Promise after M4:</strong> external systems can safely start
+      agent turns without opening a memory DoS or bypassing scopes.
     </p>
+    <ul>
+      <li>Add <code>POST /v1/hooks/&lt;route_token&gt;</code>.</li>
+      <li>Add hook token table, rotation, revoke, last-used, and scope.</li>
+      <li>Add provider signature verification for each supported webhook source.</li>
+      <li>Insert <code>trigger_runs</code> before dispatch.</li>
+      <li>Use bounded intake and per-source rate limits.</li>
+      <li>Add Slack-style inbound adapter only when route, auth, and dispatch are done.</li>
+      <li>Add replay and audit UI for accepted, rejected, skipped, and failed triggers.</li>
+    </ul>
+
+    <h2>M5 — Cloud private beta (3-5 months, 2 engineers)</h2>
+    <p>
+      <strong>Promise after M5:</strong> Cloud can host private-beta
+      customers with provisioning, wake, backup, restore, billing, support,
+      and observability.
+    </p>
+    <ul>
+      <li>Write Cloud RFC before platform choice. Fly Machines are a candidate, not a done decision.</li>
+      <li>Build control plane: signup, billing, provisioning, admin, support, observability.</li>
+      <li>Add per-customer or per-workspace runtime provisioning.</li>
+      <li>Add idle exit and wake path after M1b exists.</li>
+      <li>Add hosted scheduler for routines.</li>
+      <li>Add quota controls for provider spend, trigger volume, storage, and runtime hours.</li>
+      <li>Backup every workspace. Run restore drills before charging users.</li>
+      <li>Define region, data residency, legal, and vendor-exit story.</li>
+    </ul>
 
     <h2>Parallel track: Apple entitlement paperwork</h2>
     <p>
-      <strong>Start day one of M1. Do not wait for M3.</strong> Using
+      <strong>Start immediately. Do not wait for M3.</strong> Using
       <code>Virtualization.framework</code> in a Developer ID app
       requires the <code>com.apple.security.virtualization</code>
       entitlement, which Apple grants by request. Timeline: a few weeks
@@ -160,42 +207,29 @@ VZ.framework spike    [===]   ← do this BEFORE locking M3 dates</code></pre>
       granted.
     </p>
 
-    <h2>Parallel track: VZ.framework cold-start spike</h2>
-    <p>
-      Before locking M3 dates, build a 1-week spike: bundle a minimal
-      Alpine guest image with the engine binary, boot it via
-      <code>objc2-virtualization</code> on a representative Mac, measure
-      cold start (target ≤ 2s on Apple Silicon, ≤ 3s on Intel), measure
-      resident memory (target ≤ 300MB), measure battery drain over a
-      4-hour idle session (target ≤ 10% extra vs native).
-    </p>
-    <p>
-      If the numbers come back outside those budgets, M3 needs a design
-      rethink. Knowing this in week 0 is cheap. Discovering it in month
-      3 is not.
-    </p>
-
     <div class="callout callout-info">
-      <div class="callout-label">Open questions to settle before each milestone</div>
-      <p><strong>Before M1:</strong> double-write or hard-migrate <code>chat_feed</code> in the first release? Recommendation: double-write.</p>
-      <p><strong>Before M2:</strong> per-agent OAuth broker for desktop solo users (1 click, weaker iso) or strict per-agent (N clicks, stronger iso)? Recommendation: broker for desktop default, strict for Teams default.</p>
-      <p><strong>Before M3:</strong> what's the fallback when a Windows machine has virtualization disabled in BIOS? Recommendation: clear install-time check, link to IT-admin docs, no native fallback (to keep one operating profile).</p>
-      <p><strong>Before M4:</strong> pinned-host Fly Machines or active-active multi-region from day one? Recommendation: pinned + nightly snapshot, upgrade later. Also: where does the OSS-vs-Cloud line sit for the control plane? Cloud-only is the obvious answer.</p>
+      <div class="callout-label">Decisions that must be explicit</div>
+      <p><strong>M1:</strong> canonical <code>turn_stream</code> writes with one-release read fallback, or hard migration only?</p>
+      <p><strong>M1b:</strong> do we make "never die" a product promise now, or delay it and say "retryable" after engine crash?</p>
+      <p><strong>M2:</strong> brokered desktop default plus strict mode, or strict per-agent by default everywhere?</p>
+      <p><strong>M3:</strong> what happens when Windows virtualization is disabled by BIOS or corporate policy?</p>
+      <p><strong>M5:</strong> which Cloud platform, backup objective, region promise, support SLA, and vendor-exit plan?</p>
     </div>
 
-    <h2>What "shipped" looks like at the end of M4</h2>
+    <h2>What "shipped" means by milestone</h2>
     <ul>
-      <li>Houston desktop on Mac, Windows, Linux, all running the same Linux engine inside a host runtime.</li>
-      <li>Per-agent isolation on every OS. The consultant-with-two-clients case is bulletproof.</li>
-      <li>Conversations survive engine bounces, app closes, network blips. Crons never silently drop.</li>
-      <li>Houston Cloud private beta: signup, per-customer Fly Machine, sleep/wake, billing, region picker.</li>
-      <li>Self-host story unchanged. <code>docker pull && docker run</code> still works.</li>
-      <li>Webhooks live. Five trigger sources (chat, mobile, Slack, cron, webhook) all routed through the same path.</li>
+      <li><strong>After M1a:</strong> accepted turns, committed chunks, reconnect replay, and retry state are durable.</li>
+      <li><strong>After M1b:</strong> app close and engine bounce do not kill in-flight provider turns.</li>
+      <li><strong>After M2:</strong> engine API scopes and per-agent provider homes exist.</li>
+      <li><strong>After M3b:</strong> supported desktops get kernel-backed per-agent filesystem isolation.</li>
+      <li><strong>After M4:</strong> public hooks and Slack-style inbound channels use bounded durable trigger dispatch.</li>
+      <li><strong>After M5:</strong> Cloud is private-beta ready, with backups and restore already tested.</li>
     </ul>
     <p>
-      Total elapsed: ~7-8 months from kickoff. Two engineers is enough
-      for M1+M2 in parallel. Three is enough to run M3 and M4 in parallel
-      after M2 lands. Anything less and the schedule stretches linearly.
+      Minimum serious schedule: M1a and M2 can overlap with two engineers.
+      M1b, M3b, and M5 each need focused ownership. One engineer stretches
+      the plan linearly and should not promise Cloud plus runtime in the same
+      half-year.
     </p>
 
     <div class="pager">

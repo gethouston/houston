@@ -81,20 +81,21 @@
       <code>~/.houston/workspaces/...</code>. You can open it in Finder.
     </p>
     <p>
-      After Chapter 3 lands: inside a Linux runtime that runs alongside
-      the desktop app. On Linux, that's the host filesystem (same as
-      today). On Windows, it's the WSL2 filesystem, which Windows Explorer
-      exposes natively at <code>\\wsl$\Houston\...</code>. On Mac, it
-      lives inside the VM's disk image and is reached through the app's
-      Files panel, with an explicit Import and Download flow.
+      If Chapter 3 ships: inside a Linux runtime that runs alongside the
+      desktop app. On Linux, that's the host filesystem (same as today). On
+      Windows, it's the WSL2 filesystem, which Windows Explorer exposes at
+      <code>\\wsl$\Houston\...</code>. On Mac, it lives inside the VM's disk
+      image and is reached through the app's Files panel, with explicit
+      Import, Download, and Export flows.
     </p>
     <p>
-      The reason the folder moves is in Chapter 3. The short version: most
-      real users keep their data in Drive, Slack, Notion, and Gmail. They
-      don't browse <code>~/Documents</code>. Putting agents inside a Linux
-      runtime gives us per-agent isolation and ends the Windows tooling
-      tax. The cost is that "open in Finder" stops working uniformly. The
-      Files panel and the Download flow replace it.
+      The reason the folder might move is in Chapter 3. The short version:
+      most real users keep their data in Drive, Slack, Notion, and Gmail.
+      They don't browse <code>~/Documents</code>. Putting agents inside a
+      Linux runtime could give us per-agent isolation and reduce Windows
+      tooling differences. The cost is that host file access stops working
+      uniformly. The Files panel, Import, Download, and Export flows replace
+      direct host access where needed.
     </p>
 
     <h2>Schemas as source of truth</h2>

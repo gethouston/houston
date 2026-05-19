@@ -35,14 +35,14 @@
   <main class="content">
     <div class="content-label">
       Chapter 10
-      <span class="status planned">Planned · M4 · ~3 months</span>
+      <span class="status planned">Candidate · M4+ · separate product</span>
     </div>
-    <h1>Deployment: one binary, two homes.</h1>
+    <h1>Deployment: one engine contract, three homes.</h1>
     <p class="lead">
-      Same Linux engine binary. Three deployment surfaces (desktop,
-      self-hosted, Cloud). Almost zero divergence. The only difference is
-      whose computer the Linux runtime runs on, and whether there's a
-      control plane in front.
+      Desktop, self-hosted, and Cloud should share the same engine protocol
+      and core behavior. They will not be literally byte-for-byte identical:
+      desktop runtime packaging, self-host Docker/systemd, and Cloud control
+      plane all have different operational edges.
     </p>
 
     <div class="diagram">
@@ -67,19 +67,19 @@
           <div class="deploy-arrow">↓</div>
           <div class="deploy-layer">Houston Relay (wake on demand)</div>
           <div class="deploy-arrow">↓</div>
-          <div class="deploy-layer">Fly Machine (Linux microVM)</div>
+          <div class="deploy-layer">Linux runtime (candidate: Fly Machine)</div>
           <div class="deploy-arrow">↓</div>
           <div class="deploy-layer engine">houston-engine</div>
         </div>
       </div>
-      <div class="caption">The engine binary is byte-for-byte the same in all three.</div>
+      <div class="caption">Same engine contract. Different packaging and operations.</div>
     </div>
 
     <h2>Desktop mode</h2>
     <p>
-      The Linux engine binary, inside the host's Linux runtime (Chapter
-      3). Desktop shell talks to it over local networking on a loopback
-      port. No control plane, no relay.
+      Today desktop runs a native sidecar. If Chapter 3 passes its gates,
+      desktop can move the engine into the host's Linux runtime. The desktop
+      shell talks over local loopback. No control plane. No Cloud dependency.
     </p>
 
     <h2>Self-host mode (Always On)</h2>
@@ -88,24 +88,25 @@
       (<code>always-on/Dockerfile</code>) or systemd
       (<code>always-on/houston-engine.service</code>). The user puts a
       reverse proxy in front and binds <code>HOUSTON_BIND_ALL=1</code>.
-      Already shipped as scaffolding for power users; see
+      Shipped as scaffolding for power users; see
       <code>always-on/README.md</code>.
     </p>
 
     <h2>Cloud mode (Houston Cloud)</h2>
     <p>
-      The Linux engine binary, inside a Fly Machine per customer. A
-      control plane in front handles signup, billing, admin, and
-      provisioning. The relay routes inbound user traffic to the right
-      machine and wakes sleeping machines on demand.
+      Cloud is not implemented. <code>cloud/</code> is placeholder/TBD
+      today. The likely shape is one isolated Linux runtime per customer or
+      workspace, with a control plane in front for signup, billing, admin,
+      provisioning, wake, backup, and support.
     </p>
 
-    <h3>Why Fly Machines</h3>
+    <h3>Fly Machines are a candidate, not a decision</h3>
     <p>
-      Fly Machines are already Linux microVMs with first-class start and
-      stop APIs, per-region placement, and sub-second wake. We can move
-      to another platform later, but committing now means we can ship.
-      Hedging delays decisions; pick one and move.
+      Fly Machines fit the shape: Linux microVMs, start/stop APIs,
+      per-region placement, and wake-on-demand. But Cloud needs an RFC before
+      committing to a vendor. The decision must include volume behavior,
+      backup restore drills, region guarantees, cost under idle/active load,
+      support burden, and exit path.
     </p>
 
     <h3>The control plane</h3>
@@ -114,35 +115,39 @@
     </p>
     <ul>
       <li><strong>Signup and billing.</strong> Supabase Auth (already wired for desktop SSO) + Stripe for subscriptions.</li>
-      <li><strong>Provisioning.</strong> A small service that, on first login, creates a Fly Machine for the customer, mints their bearer token, and writes initial workspace state.</li>
+      <li><strong>Provisioning.</strong> A small service that, on first login, creates the customer's runtime, mints their bearer token, and writes initial workspace state.</li>
       <li><strong>Admin.</strong> Support tools: see a customer's recent errors, restart their machine, rotate their token.</li>
       <li><strong>Observability.</strong> Sentry (already used in desktop) gets a Cloud-scoped project. Per-machine log retention via Fly's built-in log shipping or BetterStack.</li>
+      <li><strong>Backups and restore.</strong> Automated snapshots are not enough. Restore must be rehearsed and timed.</li>
+      <li><strong>Abuse and quota controls.</strong> Public triggers, model spend, and long-running agents need rate limits from day one.</li>
+      <li><strong>Incident operations.</strong> A person must be able to answer: which customer is down, why, since when, and what changed?</li>
     </ul>
     <p>
-      Lives at <code>cloud/</code> (new). Probably TypeScript on Cloudflare Workers + Supabase for parity with the rest of our stack.
+      This belongs behind a separate Cloud design RFC. Do not hide it inside
+      engine runtime work.
     </p>
 
     <h3>Storage when machines sleep across hosts</h3>
     <p>
-      Fly volumes are pinned to a host. If a customer machine sleeps and
-      wakes on a different physical host, the volume needs to follow.
-      Two paths:
+      Any candidate platform has storage locality rules. On Fly, volumes are
+      pinned to a host. If a customer runtime sleeps and wakes elsewhere, the
+      volume needs to follow. Two paths:
     </p>
     <ul>
       <li><strong>Pinned host (default).</strong> Each customer's machine has one home host. Wake is fast, no copy needed. Cost: that host becomes a single point of failure for that customer.</li>
       <li><strong>Cold storage in R2/S3 (failover).</strong> A nightly snapshot of the volume into object storage. If the home host is unavailable, we restore on a new host. Cost: ~30 seconds of cold-start when failover triggers.</li>
     </ul>
     <p>
-      Ship with pinned host. Add the snapshot path the moment we have
-      paying customers.
+      Do not take paying Cloud customers until backup and restore are proven.
+      Pinned host can be the first private-beta path, but failover limits
+      must be explicit.
     </p>
 
     <h3>Data residency</h3>
     <p>
-      Each customer picks a region at signup (us-east, eu-west, ap-south).
-      Their Fly Machine and snapshots live there. The control plane is
-      global; only metadata (account, billing) lives outside the
-      customer's region.
+      Each customer picks a region at signup. Their runtime and snapshots
+      live there. The control plane may be global; only metadata such as
+      account and billing should live outside the customer's region.
     </p>
 
     <h3>Backups</h3>
@@ -153,38 +158,35 @@
 
     <h2>Sleeping engines</h2>
     <p>
-      For Cloud mode, engines sleep after N idle minutes (default 10).
-      They exit 0 gracefully. The relay holds the connection from the
-      next inbound request, calls Fly's start API, polls
-      <code>/v1/health</code>, then proxies through. Cold start target:
-      ~2 seconds. Acceptable for crons and webhooks; for active human
-      chats, engines stay sticky-hot during a session window.
+      For Cloud mode, engines may sleep after N idle minutes. The relay can
+      hold the next inbound request, call the platform start API, poll
+      <code>/v1/health</code>, then proxy through. This is only safe for
+      active chats after M1 durable replay and M1b detached workers exist.
     </p>
     <p>
-      All four trigger sources from Chapter 9 (chat, mobile, Slack
-      inbound, webhook) share the same wake-up path. Cron uses a slightly
-      different path: a central scheduler service decides when to wake
+      Planned trigger sources from Chapter 9 should share the same durable
+      wake-and-accept path. Routines use a central scheduler service to wake
       a machine, instead of the relay reacting to inbound traffic.
     </p>
 
     <h2>Pricing</h2>
     <p>
       Per VM-hour, or per agent-month. Either aligns with cost. The
-      Cloud product is "rent a Fly Machine that runs Houston Engine plus
-      our control plane around it." Self-hosters pay nothing to Houston
-      and run the same engine themselves. Desktop users pay nothing and
-      run the engine on their own laptop. All three meters touch the
-      same engine binary.
+      Cloud product is "rent a managed Houston runtime plus the control
+      plane around it." Self-hosters pay nothing to Houston and run the same
+      engine themselves. Desktop users pay nothing and run the engine on
+      their own laptop. All three meters touch the same engine protocol and
+      core code, with deployment-specific packaging.
     </p>
 
     <div class="callout callout-success">
       <div class="callout-label">The killer property</div>
-      <p>You can no longer have a "works on my Mac" bug, because there is no Mac engine. Every engine is the same Linux engine. The desktop just hosts the runtime.</p>
+      <p>The useful property is narrower and still valuable: fewer engine behavior differences across deployment targets. Runtime, packaging, networking, and operations still need platform-specific tests.</p>
     </div>
 
     <div class="tech-box">
       <div class="label">What's there already</div>
-      <p>Always-on Docker recipe: <code>always-on/Dockerfile</code> and <code>docker-compose.yml</code>, builds the engine from source. Relay: <code>houston-relay/</code>, a production Cloudflare Worker + Durable Object at <code>tunnel.gethouston.ai</code>. Tunnel client crate: <code>engine/houston-tunnel</code>. What's missing: Linux runtime supervisor on desktop (Chapter 3), control-plane app at <code>cloud/</code>, idle-exit logic in the engine, wake API in the relay, Fly Machines integration.</p>
+      <p>Always-on Docker recipe: <code>always-on/Dockerfile</code> and <code>docker-compose.yml</code>, builds the engine from source. Relay: <code>houston-relay/</code>, a Cloudflare Worker + Durable Object for mobile tunnel. Tunnel client crate: <code>engine/houston-tunnel</code>. <code>cloud/</code> is placeholder today. Missing: desktop Linux runtime supervisor, control-plane RFC and implementation, idle-exit logic, wake API, Cloud provisioning, backups, restore drills, quota controls, and operations runbooks.</p>
     </div>
 
     <div class="pager">

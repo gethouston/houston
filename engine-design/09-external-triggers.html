@@ -35,13 +35,13 @@
   <main class="content">
     <div class="content-label">
       Chapter 09
-      <span class="status partial">Webhooks in M4 · ~1 week</span>
+      <span class="status partial">Webhooks after M1 queue/replay</span>
     </div>
     <h1>External triggers.</h1>
     <p class="lead">
-      Five ways something outside Houston can wake up an agent. Four work
-      today in some form. One is mostly scaffolding waiting on a single
-      route.
+      Five trigger paths matter. Desktop chat, mobile chat, and routines are
+      real today. Slack-style inbound messages and public webhooks are
+      product work, not shipped features.
     </p>
 
     <h2>1. The user sends a message from the desktop</h2>
@@ -61,26 +61,33 @@
       Same engine route as desktop chat. Shipped.
     </p>
 
-    <h2>3. A Slack message arrives</h2>
+    <h2>3. A Slack-style inbound message arrives</h2>
     <p>
-      Houston supports two-way Slack sync. An incoming Slack thread maps
-      to an agent session; messages create user messages on the same
-      <code>POST /v1/agents/&lt;path&gt;/sessions</code> path under the
-      hood. The integration is shipped.
+      This is not shipped today. Houston can let agents use Slack through
+      Composio tools, and the UI has generic channel concepts, but there is
+      no dedicated engine Slack crate, route, or two-way sync handler in the
+      current repo.
+    </p>
+    <p>
+      Future shape: an inbound channel event maps to one agent session,
+      writes a <code>trigger_runs</code> row, starts a turn through the same
+      durable turn path as chat, and posts the answer back through the
+      channel adapter.
     </p>
 
     <h2>4. A cron fires</h2>
     <p>
       Each agent has routines. <code>0 7 * * *</code> runs at 7am every
-      day. Today the cron lives inside the engine as a tokio task that
-      sleeps until the fire time, then pushes a
-      <code>HoustonInput::Cron</code> onto the event queue, which
-      dispatches to the same chat-turn path.
+      day. Today the active scheduler lives inside
+      <code>engine/houston-engine-core/src/routines/scheduler.rs</code>.
+      It sleeps until the fire time and calls <code>run_routine</code>
+      through a <code>RoutineDispatcher</code>.
     </p>
     <p>
-      Verified in <code>engine/houston-scheduler/src/cron_job.rs:76-125</code>.
-      Today there is no persistent <code>cron_runs</code> table; missed
-      fires are dropped silently. Chapter 6 fixes that.
+      Current routine run history exists in the routines data model, but
+      there is no global SQL <code>trigger_runs</code> ledger tied to durable
+      turn replay. Chapter 6 adds that ledger and makes missed-fire policy
+      explicit.
     </p>
 
     <h2>5. A webhook arrives</h2>
@@ -89,20 +96,17 @@
       one routed to a specific agent.
     </p>
     <p>
-      Honest status: the typed <code>HoustonInput::Webhook</code> variant
-      and the dispatcher infrastructure exist in
-      <code>engine/houston-events/src/queue.rs</code> and
-      <code>engine/houston-events/src/dispatcher.rs</code>. But there is
-      <strong>no <code>InputHandler</code> registered for it</strong>,
-      and there is <strong>no HTTP route that constructs one</strong>.
-      Two-thirds of the plumbing is in place; the last third is the
-      route plus the handler.
+      Honest status: <code>engine/houston-events</code> has typed input
+      scaffolding, including <code>Webhook</code>, plus an unbounded queue.
+      That crate is not the central path for current chat or routines. There
+      is no public HTTP route, webhook token table, signature verification,
+      handler, durable trigger row, or session dispatch integration.
     </p>
     <p>
       The route: <code>POST /v1/hooks/&lt;route_token&gt;</code> in a new
       <code>engine/houston-engine-server/src/routes/hooks.rs</code>. The
-      handler: a small <code>WebhookHandler</code> that maps an incoming
-      payload to an agent session start.
+      handler must verify the hook token and provider signature, insert
+      <code>trigger_runs</code>, then start a durable turn.
     </p>
 
     <div class="callout callout-info">
@@ -112,12 +116,13 @@
 
     <h2>Bounded queue (M1 prerequisite)</h2>
     <p>
-      Today's event queue is unbounded
+      The old event queue is unbounded
       (<code>mpsc::unbounded_channel</code> at
       <code>engine/houston-events/src/queue.rs:36</code>). A webhook
-      flood would balloon memory. M1 switches this to bounded with
-      explicit drop policies (Chapter 6 covers the rules per source).
-      Without that change, opening
+      flood must never be allowed to balloon memory. M1 either wires a
+      bounded queue into the real trigger path or implements bounded intake
+      at the route layer, with explicit accept/reject audit rows. Without
+      that change, opening
       <code>POST /v1/hooks/...</code> to the world is a DoS waiting to
       happen.
     </p>
@@ -131,13 +136,15 @@
       through.
     </p>
     <p>
-      All five trigger sources share that same wake-up path. One
-      mechanism, five triggers.
+      Human chat, mobile chat, Slack-style inbound, webhook, and scheduled
+      routines should converge on the same durable acceptance path. Routines
+      may be woken by a central scheduler instead of a relay request, but
+      they still need the same <code>trigger_runs</code> and turn ledger.
     </p>
 
     <div class="tech-box">
       <div class="label">Where to look in the code</div>
-      <p>Webhook input type: <code>engine/houston-events/src/types.rs:12</code>. Convenience constructor: <code>types.rs:145-154</code>. Dispatcher: <code>engine/houston-events/src/dispatcher.rs</code>. Queue (unbounded today): <code>engine/houston-events/src/queue.rs:36</code>. Cron implementation: <code>engine/houston-scheduler/src/cron_job.rs:76-125</code>. Slack integration: <code>engine/houston-slack</code> (or its current name). Relay: <code>houston-relay/</code>. Missing piece for webhooks: new <code>engine/houston-engine-server/src/routes/hooks.rs</code> plus a registered <code>InputHandler</code>.</p>
+      <p>Webhook input scaffolding: <code>engine/houston-events/src/types.rs</code>. Old queue, unbounded today: <code>engine/houston-events/src/queue.rs:36</code>. Active routines scheduler: <code>engine/houston-engine-core/src/routines/scheduler.rs</code>. Routine runner: <code>engine/houston-engine-core/src/routines/runner.rs</code>. Relay: <code>houston-relay/</code>. Missing pieces for webhooks: route, token model, signature verification, bounded intake, <code>trigger_runs</code>, and durable session dispatch.</p>
     </div>
 
     <div class="pager">

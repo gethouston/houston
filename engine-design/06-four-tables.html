@@ -35,31 +35,40 @@
   <main class="content">
     <div class="content-label">
       Chapter 06
-      <span class="status planned">Planned · M1 · ~4 weeks</span>
+      <span class="status planned">M1a · 4-6 weeks</span>
     </div>
-    <h1>The four tables that save everything.</h1>
+    <h1>The four tables that make reliability explicit.</h1>
     <p class="lead">
-      Four new SQLite tables. That's the entire reliability story (almost,
-      see the worker section below). Not Temporal. Not a workflow engine.
-      Just four tables and one rule: write the row before doing the work.
+      Four new SQLite tables give Houston a durable turn ledger, durable
+      stream replay, a WS replay outbox, and a trigger audit log. They do
+      not magically keep a dead subprocess alive. That requires the detached
+      worker below.
     </p>
 
     <h2>The tables, with columns</h2>
 
     <h3><code>turns</code></h3>
     <pre><code>CREATE TABLE turns (
-  turn_id        TEXT PRIMARY KEY,        -- UUID v4, client-supplied
-  session_key    TEXT NOT NULL,           -- the conversation slot
-  agent_path     TEXT NOT NULL,           -- workspace/agent
-  principal_id   TEXT NOT NULL,           -- who initiated, see Ch7
-  status         TEXT NOT NULL,           -- queued | running | completed | cancelled | failed | timed_out
-  user_message   TEXT NOT NULL,           -- the input
-  result         TEXT,                    -- final assistant text or error code
-  error_code     TEXT,                    -- when status = failed
-  created_at     INTEGER NOT NULL,        -- unix ms
-  started_at     INTEGER,                 -- when CLI spawned
-  completed_at   INTEGER                  -- when terminal
-);
+	  turn_id        TEXT PRIMARY KEY,        -- UUID v4, client-supplied
+	  session_key    TEXT NOT NULL,           -- the conversation slot
+	  agent_path     TEXT NOT NULL,           -- workspace/agent
+	  principal_id   TEXT NOT NULL,           -- who initiated, see Ch7
+	  provider       TEXT NOT NULL,           -- claude | codex | gemini | ...
+	  model          TEXT,                    -- selected model, nullable only if provider default
+	  source         TEXT NOT NULL,           -- user | routine | webhook | mobile
+	  working_dir    TEXT NOT NULL,
+	  app_prompt_hash TEXT,                   -- prompt version used by app, not owned by engine
+	  trigger_run_id INTEGER,                 -- nullable, links automated starts
+	  status         TEXT NOT NULL,           -- queued | running | completed | cancelled | failed | timed_out
+	  user_message   TEXT NOT NULL,           -- the input
+	  result         TEXT,                    -- final assistant text or error code
+	  error_code     TEXT,                    -- when status = failed
+	  created_at     INTEGER NOT NULL,        -- unix ms
+	  started_at     INTEGER,                 -- when CLI spawned
+	  last_heartbeat_at INTEGER,              -- worker/engine liveness
+	  cancel_requested_at INTEGER,            -- cooperative cancel marker
+	  completed_at   INTEGER                  -- when terminal
+	);
 CREATE INDEX turns_session_idx ON turns(session_key, created_at);
 CREATE INDEX turns_status_idx  ON turns(status) WHERE status IN ('queued', 'running');</code></pre>
 
@@ -75,25 +84,29 @@ CREATE INDEX turns_status_idx  ON turns(status) WHERE status IN ('queued', 'runn
 
     <h3><code>events_outbox</code></h3>
     <pre><code>CREATE TABLE events_outbox (
-  seq            INTEGER PRIMARY KEY AUTOINCREMENT,   -- global monotonic
-  topic          TEXT NOT NULL,           -- session:X, agent:Y, scheduler, ...
-  event_type     TEXT NOT NULL,
-  payload_json   TEXT NOT NULL,
-  ts             INTEGER NOT NULL
-);
-CREATE INDEX events_topic_idx ON events_outbox(topic, seq);</code></pre>
+	  seq            INTEGER PRIMARY KEY AUTOINCREMENT,   -- global monotonic
+	  topic          TEXT NOT NULL,           -- session:X, agent:Y, scheduler, ...
+	  event_type     TEXT NOT NULL,
+	  scope_json     TEXT NOT NULL,           -- replay authorization scope
+	  payload_json   TEXT NOT NULL,
+	  ts             INTEGER NOT NULL
+	);
+	CREATE INDEX events_topic_idx ON events_outbox(topic, seq);</code></pre>
 
-    <h3><code>cron_runs</code></h3>
-    <pre><code>CREATE TABLE cron_runs (
-  id             INTEGER PRIMARY KEY AUTOINCREMENT,
-  routine_id     TEXT NOT NULL,
-  scheduled_at   INTEGER NOT NULL,        -- when it was supposed to fire
-  fired_at       INTEGER,                 -- when we actually fired (null if missed and we don't intend to catch up)
-  status         TEXT NOT NULL,           -- fired | missed | caught_up | skipped
-  turn_id        TEXT REFERENCES turns(turn_id),
-  notes          TEXT
-);
-CREATE INDEX cron_runs_routine_idx ON cron_runs(routine_id, scheduled_at);</code></pre>
+    <h3><code>trigger_runs</code></h3>
+    <pre><code>CREATE TABLE trigger_runs (
+	  id             INTEGER PRIMARY KEY AUTOINCREMENT,
+	  trigger_type   TEXT NOT NULL,           -- routine | webhook | mobile_push | ...
+	  trigger_id     TEXT NOT NULL,           -- routine id, webhook id, etc.
+	  scheduled_at   INTEGER,                 -- for routine triggers
+	  received_at    INTEGER NOT NULL,        -- when Houston accepted/refused it
+	  fired_at       INTEGER,                 -- when we actually fired (null if missed and we don't intend to catch up)
+	  status         TEXT NOT NULL,           -- accepted | fired | missed | caught_up | skipped | rejected
+	  turn_id        TEXT REFERENCES turns(turn_id),
+	  error_code     TEXT,
+	  notes          TEXT
+	);
+	CREATE INDEX trigger_runs_idx ON trigger_runs(trigger_type, trigger_id, received_at);</code></pre>
 
     <h2>The rule</h2>
     <p>
@@ -106,17 +119,17 @@ CREATE INDEX cron_runs_routine_idx ON cron_runs(routine_id, scheduled_at);</code
 3. Stream chunk         → INSERT turn_stream row(s), then broadcast
 4. CLI done             → UPDATE turns SET status = completed, completed_at
 5. Engine boots         → SELECT * FROM turns WHERE status IN ('queued','running')
-                          → mark orphaned (status = 'failed', error_code = 'engine_restart')
-                          → surface retry button to the user</code></pre>
+                          → queued turns resume
+                          → stale running turns become interrupted, unless a worker heartbeat proves they still live
+                          → surface retry/cancel/reattach in the UI</code></pre>
 
     <p>
-      Step 5 is the magic. On every boot, the engine looks for turns that
-      were "running" when the previous engine died. Those are orphans. The
-      user sees a retry button. They click it. The same <code>turn_id</code>
-      goes back into the system. The server recognizes the ID is terminal
-      and returns its outcome; the client decides to mint a new
-      <code>turn_id</code> and try again. Idempotency is at the server,
-      retry policy is at the client.
+      Step 5 is the contract. On every boot, the engine reconciles durable
+      state against real process liveness. Queued work can run. Completed
+      work can replay. Stale running work becomes interrupted unless the
+      detached worker proves it still owns the turn. Retrying an interrupted
+      turn must create a new <code>turn_id</code>; the old one remains an
+      audit record.
     </p>
 
     <h2>What four tables alone fix, and what they don't</h2>
@@ -124,12 +137,12 @@ CREATE INDEX cron_runs_routine_idx ON cron_runs(routine_id, scheduled_at);</code
       Be honest about scope. These tables alone fix:
     </p>
     <ul>
-      <li>Crash <strong>between</strong> turns. The orphan sweep finds it.</li>
-      <li>User closing the app mid-stream. On reopen, the engine is still running, the turn is still streaming, the client just reconnects to the WS with <code>since_seq</code> and replays from <code>events_outbox</code>.</li>
-      <li>Network blips during streaming. Same path: replay from outbox.</li>
-      <li>Missed crons. The next boot reads <code>cron_runs</code>, sees the missed fire, decides whether to catch up.</li>
+      <li>Crash before a turn spawns. The queued row is still present and can resume.</li>
+      <li>Refresh during streaming. Already-committed chunks replay from <code>turn_stream</code> and <code>events_outbox</code>.</li>
+      <li>Network blips during streaming. Same path: reconnect with <code>sinceSeq</code>, scope-check, replay.</li>
+      <li>Missed routines. The next boot reads <code>trigger_runs</code>, sees the missed fire, and decides whether to catch up.</li>
       <li>Client retry safety. The <code>turnId</code> is idempotent.</li>
-      <li>CLI subprocess hang. A sweep job checks <code>turns WHERE status = 'running' AND started_at &lt; now() - 10min</code> and surfaces a "still running, cancel?" prompt.</li>
+      <li>CLI subprocess hang. A sweep job checks <code>last_heartbeat_at</code> and surfaces a visible "still running, cancel?" state.</li>
     </ul>
     <p>
       What four tables do NOT fix on their own: <strong>engine crash MID-stream
@@ -150,39 +163,39 @@ CREATE INDEX cron_runs_routine_idx ON cron_runs(routine_id, scheduled_at);</code
     </p>
     <p>
       This is the architectural piece. Without it, "conversations never
-      die" is "conversations rarely die." With it, the promise is real.
-      It belongs in M4 because it's the riskiest piece; the four tables
-      get us 80% of the value first.
+      die" is false. With it, the promise becomes defensible. If product
+      wants app-close or engine-bounce survival in M1, the worker cannot wait
+      behind Cloud work. Make it M1b and test it directly.
     </p>
 
     <h2>Coexistence with <code>chat_feed</code></h2>
     <p>
-      Today's <code>chat_feed</code> holds final feed items keyed by the
-      provider session id. After M1, the same data lives in
-      <code>turn_stream</code> (deltas) and the final items derived on
-      read. Two paths:
+      Today's <code>chat_feed</code> holds feed items keyed by the provider
+      session id. M1 must avoid a permanent double-write system. Pick one
+      canonical table and make rollback explicit.
     </p>
     <ul>
-      <li><strong>Migrate then delete.</strong> One-shot migration copies <code>chat_feed</code> into <code>turn_stream</code> as kind <code>final</code>. New writes only go to <code>turn_stream</code>. Cleaner long-term.</li>
-      <li><strong>Double-write for a release.</strong> Both tables get the data, reads check <code>turn_stream</code> first, fall back to <code>chat_feed</code>. Safer for rollback.</li>
+      <li><strong>Canonical write path.</strong> New writes go only to <code>turn_stream</code>.</li>
+      <li><strong>Migration.</strong> Existing <code>chat_feed</code> rows migrate into <code>turn_stream</code> as committed items, with idempotent markers.</li>
+      <li><strong>Fallback window.</strong> Reads may fall back to <code>chat_feed</code> for one release if migration markers are missing. No indefinite compatibility layer.</li>
+      <li><strong>FTS.</strong> Search indexes rebuild from the canonical stream-derived feed, not two sources.</li>
     </ul>
     <p>
-      Pick double-write for the first M1 release, drop <code>chat_feed</code>
-      writes in the next release once we're confident, drop the table in
-      the release after. Three-release deprecation, standard playbook.
+      Do not ship long-lived double-write. It creates split-brain bugs and
+      makes replay hard to trust.
     </p>
 
     <h2>Backpressure and the bounded queue</h2>
     <p>
       Today the event queue in <code>engine/houston-events/src/queue.rs</code>
       is an <code>mpsc::unbounded_channel</code>. A webhook flood or a
-      runaway cron could balloon memory. M1 switches this to a bounded
+      runaway routine trigger could balloon memory. M1 switches this to a bounded
       channel with capacity 1024 and a documented drop policy:
     </p>
     <ul>
-      <li>Inputs whose source is <code>cron</code> coalesce: if two fires for the same <code>routine_id</code> are in flight, log a "skipped" row in <code>cron_runs</code> and drop the second.</li>
+      <li>Inputs whose source is <code>routine</code> coalesce: if two fires for the same <code>routine_id</code> are in flight, log a <code>skipped</code> row in <code>trigger_runs</code> and drop the second.</li>
       <li>Inputs whose source is <code>user</code> never drop. If the queue is full, return <code>503 UNAVAILABLE</code> with <code>Retry-After</code>.</li>
-      <li>Inputs whose source is <code>webhook</code> get a small per-source bucket (token bucket, 10/min default) and a <code>cron_runs</code>-style audit table.</li>
+      <li>Inputs whose source is <code>webhook</code> get a small per-source bucket (token bucket, 10/min default) and a <code>trigger_runs</code> audit row for each accepted or rejected attempt.</li>
     </ul>
     <p>
       Same write-before-do principle: refusing the request is fine,
@@ -195,7 +208,7 @@ CREATE INDEX cron_runs_routine_idx ON cron_runs(routine_id, scheduled_at);</code
       writes thousands of rows. Default retention: keep raw deltas for 7
       days, then compact to one <code>final</code> row per turn and drop
       the deltas. <code>events_outbox</code> retention: 24 hours
-      (replay window for reconnecting clients). <code>cron_runs</code>:
+      (replay window for reconnecting clients). <code>trigger_runs</code>:
       keep forever, it's an audit log and it's small.
     </p>
     <p>
@@ -205,12 +218,12 @@ CREATE INDEX cron_runs_routine_idx ON cron_runs(routine_id, scheduled_at);</code
 
     <div class="callout callout-info">
       <div class="callout-label">Why this isn't Temporal</div>
-      <p>Temporal is a workflow engine for orchestrating long-running multi-step business processes with replay semantics across many activities. Houston has one activity: run a CLI turn, capture the stream. That's a job, not a saga. Four tables are enough.</p>
+      <p>Temporal is a workflow engine for orchestrating long-running multi-step business processes with replay semantics across many activities. Houston's first reliability problem is narrower: accept a turn, run a CLI, capture the stream, recover honestly. SQLite plus a worker is enough until Houston has multi-step external workflows.</p>
     </div>
 
     <div class="tech-box">
       <div class="label">Migration order</div>
-      <p>SQLite migrations live in <code>engine/houston-db/src/migrations.rs</code>. New migrations drop in next to the existing four (<code>chat_feed</code>, <code>chat_feed_fts</code>, <code>engine_tokens</code>, <code>phone_access</code>). Each gets its own numbered migration file; existing data is preserved. Repos go in <code>engine/houston-db/src/repo_turns.rs</code>, <code>repo_turn_stream.rs</code>, <code>repo_events_outbox.rs</code>, <code>repo_cron_runs.rs</code>. Boot sweep job in <code>engine/houston-engine-server/src/main.rs</code> startup, just after migrations run.</p>
+      <p>SQLite migrations live in <code>engine/houston-db/src/migrations.rs</code>. First fix: reliability migrations must be checked and observable, not swallowed with <code>.ok()</code>. Add <code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, and <code>trigger_runs</code>. Repos go in <code>engine/houston-db/src/repo_turns.rs</code>, <code>repo_turn_stream.rs</code>, <code>repo_events_outbox.rs</code>, and <code>repo_trigger_runs.rs</code>. Boot sweep belongs in server startup after migrations, before accepting new starts.</p>
     </div>
 
     <div class="pager">

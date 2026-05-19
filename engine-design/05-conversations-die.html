@@ -39,16 +39,16 @@
     </div>
     <h1>Why conversations die today.</h1>
     <p class="lead">
-      The engine writes to disk only after the work is done. Everything in
-      flight lives in memory. In-memory means it dies when the process
-      dies, when the user closes the app, when the network blips. Five
-      failure modes. Same root cause.
+      Today too much session state is either in memory or persisted after
+      the user already saw it. In-memory state dies when the process dies.
+      Late persistence means accepted work can disappear. Six failure
+      modes, two fixes: durable turn records now, detached workers later.
     </p>
 
     <div class="fail-grid">
       <div class="fail-card">
         <div class="label">Failure mode #1</div>
-        <p><strong>User closes the app mid-stream.</strong> This is the most common one and it has nothing to do with crashes. The user clicks the red button, the app exits, the engine subprocess exits with it, the in-flight assistant tokens vanish. The user reopens Houston and the message is gone. Today this happens dozens of times a day in the dev loop alone.</p>
+        <p><strong>User closes the app mid-stream.</strong> This is common and it is not a crash. The desktop exits, the supervised engine exits, the provider CLI dies with it. Four tables alone can preserve accepted input and streamed chunks already committed, but they cannot keep the CLI alive. Full survival needs the detached worker.</p>
       </div>
 
       <div class="fail-card">
@@ -58,17 +58,17 @@
 
       <div class="fail-card">
         <div class="label">Failure mode #3</div>
-        <p><strong>Engine crashes mid-stream.</strong> Whatever the assistant had already streamed: gone. Database has nothing. The user thinks the agent is broken.</p>
+        <p><strong>Engine crashes mid-stream.</strong> Committed chunks can be replayed after M1. The in-flight provider process still dies unless the worker owns it. User should see "interrupted, retry" with preserved partial output, not a blank disappearance.</p>
       </div>
 
       <div class="fail-card">
         <div class="label">Failure mode #4</div>
-        <p><strong>WebSocket reconnects after a network blip.</strong> Server has no record of what events it pushed during the disconnect. The frontend has to refetch state and pray nothing slipped through.</p>
+        <p><strong>WebSocket reconnects after a network blip.</strong> Current clients refetch active queries after reconnect because events are not replayed. That is good as a safety net, but not enough for exact stream continuity. M1 adds an outbox and sequence-based replay.</p>
       </div>
 
       <div class="fail-card">
         <div class="label">Failure mode #5</div>
-        <p><strong>Cron fires while engine is restarting.</strong> The 7am alarm rings, the engine is rebooting, the fire is dropped silently. No log, no alert, no catch-up. Verified in <code>engine/houston-scheduler/src/cron_job.rs</code>: missed crons fire once on next boot if the schedule is past-due, but there's no record of how many fires were missed.</p>
+        <p><strong>Cron fires while engine is restarting.</strong> Current active routines scheduler is in-process. A sleeping or restarting engine has no durable due-work ledger. M1 needs an audit table and explicit catch-up/skip policy for every scheduled trigger.</p>
       </div>
 
       <div class="fail-card">
@@ -79,15 +79,16 @@
 
     <h2>The pattern</h2>
     <p>
-      Notice the common thread. The engine writes to the database
-      <strong>after</strong> doing work, not <strong>before</strong>. So
-      anything happening between "before" and "after" lives only in
-      memory, and that memory belongs to a process that can die or a
-      socket that can disconnect.
+      Notice the common thread. Work acceptance, stream delivery, and
+      trigger firing need durable records before side effects. Anything
+      accepted but not recorded can disappear. Anything delivered but not
+      recorded cannot be replayed. Anything running without heartbeat or
+      lease cannot be diagnosed.
     </p>
     <p>
-      The fix is boring but life-changing. Flip the order. Add timestamps.
-      Add sequence numbers. Sweep orphans on boot. Chapter 6 covers how.
+      The fix is boring but life-changing. Flip the order. Add timestamps,
+      leases, sequence numbers, and replay windows. Sweep orphans on boot.
+      Make retry explicit. Chapter 6 covers how.
     </p>
 
     <div class="callout callout-warning">
@@ -102,7 +103,7 @@
       </a>
       <a href="06-four-tables.html" class="next">
         <div class="pager-label">Next →</div>
-        <div class="pager-title">The four tables that save everything</div>
+        <div class="pager-title">The reliability tables</div>
       </a>
     </div>
   </main>

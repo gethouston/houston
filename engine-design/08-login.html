@@ -35,14 +35,13 @@
   <main class="content">
     <div class="content-label">
       Chapter 08
-      <span class="status partial">Partial · finishes in M3</span>
+      <span class="status partial">Partial · M2 native homes, M3 runtime users</span>
     </div>
     <h1>Logging in (still one click).</h1>
     <p class="lead">
-      Per-agent credentials sound expensive in clicks. They aren't. For
-      solo desktop users, one click logs in once and Houston brokers
-      tokens to agents. For Teams and Cloud, each agent gets its own
-      login by default for stronger isolation.
+      Per-agent credentials sound expensive in clicks. They do not have to
+      be. Solo desktop can default to brokered convenience. Strict agents,
+      Teams, and Cloud should default to separate provider homes.
     </p>
 
     <div class="flow-list">
@@ -57,7 +56,7 @@
         <div class="num">02</div>
         <div>
           <div class="from-to"><span class="actor">Desktop UI</span><span class="arrow">→</span><span class="actor">Engine</span></div>
-          <div class="action"><code>POST /v1/agents/Sales/providers/anthropic/login</code>.</div>
+          <div class="action"><code>POST /v1/agents/Sales/providers/anthropic/login</code> (new scoped route).</div>
         </div>
       </div>
       <div class="flow-step">
@@ -98,71 +97,76 @@
       <div class="flow-step">
         <div class="num">08</div>
         <div>
-          <div class="from-to"><span class="actor">Anthropic</span><span class="arrow">→</span><span class="actor">Browser</span></div>
-          <div class="action">Redirects to <code>houston://anthropic-callback?code=...</code>.</div>
+          <div class="from-to"><span class="actor">Anthropic</span><span class="arrow">→</span><span class="actor">Provider callback</span></div>
+          <div class="action">Completes the CLI-owned OAuth flow. Houston does not control this callback.</div>
         </div>
       </div>
       <div class="flow-step">
         <div class="num">09</div>
         <div>
-          <div class="from-to"><span class="actor">Browser</span><span class="arrow">→</span><span class="actor">Desktop shell</span></div>
-          <div class="action">Deep link delivered to the host shell (the OS routes <code>houston://</code> to the registered app).</div>
+          <div class="from-to"><span class="actor">Provider</span><span class="arrow">→</span><span class="actor">claude CLI</span></div>
+          <div class="action">CLI detects completion through its own callback or polling path.</div>
         </div>
       </div>
       <div class="flow-step">
         <div class="num">10</div>
         <div>
-          <div class="from-to"><span class="actor">Desktop shell</span><span class="arrow">→</span><span class="actor">Engine</span></div>
-          <div class="action">POSTs the OAuth code over the runtime's loopback port. <strong>The new piece.</strong></div>
+          <div class="from-to"><span class="actor">claude CLI</span><span class="arrow">→</span><span class="actor">Anthropic</span></div>
+          <div class="action">Exchanges provider-owned code and saves token in the agent provider home.</div>
         </div>
       </div>
       <div class="flow-step">
         <div class="num">11</div>
         <div>
-          <div class="from-to"><span class="actor">Engine</span><span class="arrow">→</span><span class="actor">claude CLI</span></div>
-          <div class="action">Hands the code back to the waiting CLI subprocess.</div>
+          <div class="from-to"><span class="actor">Engine</span><span class="arrow">→</span><span class="actor">Login state</span></div>
+          <div class="action">Observes CLI success, verifies provider status, records login state.</div>
         </div>
       </div>
       <div class="flow-step">
         <div class="num">12</div>
         <div>
-          <div class="from-to"><span class="actor">claude CLI</span><span class="arrow">→</span><span class="actor">Anthropic</span></div>
-          <div class="action">Exchanges the code for a token. Saves to <code>/home/hou_sales/.claude/</code>.</div>
+          <div class="from-to"><span class="actor">Engine</span><span class="arrow">→</span><span class="actor">Desktop UI</span></div>
+          <div class="action">WS event "Sales logged in". UI updates.</div>
         </div>
       </div>
       <div class="flow-step">
         <div class="num">13</div>
         <div>
-          <div class="from-to"><span class="actor">Engine</span><span class="arrow">→</span><span class="actor">Desktop UI</span></div>
-          <div class="action">WS event "Sales logged in". UI updates.</div>
+          <div class="from-to"><span class="actor">Houston OAuth</span><span class="arrow">→</span><span class="actor">Desktop shell</span></div>
+          <div class="action">Only Houston-owned OAuth flows use <code>houston://...</code> deep links.</div>
         </div>
       </div>
     </div>
-    <p style="font-size: 13px; color: var(--gray-500); text-align: center; margin-top: -16px; margin-bottom: 32px;">One click for the user. The new piece is steps 5 and 10, the host-to-runtime bridge.</p>
+    <p style="font-size: 13px; color: var(--gray-500); text-align: center; margin-top: -16px; margin-bottom: 32px;">One click for the user. Provider tokens stay inside the provider CLI flow. Houston only forwards the login URL out of the runtime and observes success.</p>
 
     <h2>What you already have</h2>
     <p>
-      This is the exact pattern Houston uses today for Google sign-in via
-      Supabase. A click in the UI starts an OAuth flow. The system
-      browser does the work. A custom URL scheme
+      Houston already has host-side OAuth plumbing for Google sign-in via
+      Supabase. A click in the UI starts a Houston-owned OAuth flow. The
+      system browser does the work. A custom URL scheme
       (<code>houston://...</code>) brings the result back into the app.
-      Same plumbing extends to per-provider logins.
+    </p>
+    <p>
+      Provider CLI logins are different. The current provider login route is
+      global (<code>/v1/providers/:name/login</code>). The future scoped
+      route should start a provider login for one agent home, but it should
+      not pretend Houston owns Anthropic or OpenAI callback URLs.
     </p>
 
     <h2>The new piece: host-to-runtime bridge</h2>
     <p>
-      When the engine lives inside a Linux runtime (Chapter 3), the OAuth
-      callback can't reach it directly. The browser redirects to
-      <code>houston://anthropic-callback?code=...</code>, which the Tauri
-      shell on the host catches. The shell then POSTs the code to the
-      engine over the runtime's localhost port.
+      When the engine lives inside a Linux runtime (Chapter 3), the host UI
+      must bridge two things: opening provider login URLs printed by a CLI,
+      and delivering Houston-owned deep links back to the engine. Do not mix
+      those flows.
     </p>
     <p>
       Two things to get right:
     </p>
     <ul>
-      <li><strong>Only loopback.</strong> The runtime's HTTP port is bound to the host's loopback interface only. Other apps on the host cannot reach it, the network cannot reach it. Same posture as today's native engine.</li>
-      <li><strong>One-time auth code, not a long-lived token.</strong> The deep link carries an OAuth code that's only useful for the immediate exchange. The actual provider token never crosses the bridge in plaintext.</li>
+      <li><strong>Only loopback.</strong> The runtime's HTTP port is bound to host loopback only. Same posture as today's native engine.</li>
+      <li><strong>Provider token stays in the provider home.</strong> Houston forwards provider login URLs and observes status. It does not shuttle provider tokens over the bridge.</li>
+      <li><strong>Houston-owned OAuth still uses deep links.</strong> Supabase and future Houston-branded OAuth can pass short-lived codes through <code>houston://...</code>. That is not the provider CLI path.</li>
     </ul>
 
     <h2>What about provider CLI callback URLs?</h2>
@@ -177,9 +181,9 @@
       <li>Waiting for the CLI subprocess to finish the exchange.</li>
     </ol>
     <p>
-      No <code>houston://</code> hijack needed in the common path; the
-      CLI handles its own callback. The deep link is only used for our
-      own OAuth flows (Supabase, anything Houston-branded).
+      No <code>houston://</code> hijack belongs in the common provider path;
+      the CLI handles its own callback. The deep link is only for Houston
+      OAuth flows such as Supabase.
     </p>
 
     <h2>Per agent vs broker</h2>
@@ -190,24 +194,27 @@
 
     <h3>Desktop solo user: broker by default</h3>
     <p>
-      One Claude login for the whole machine. Houston brokers tokens to
-      individual agents. The user clicks once. This is the right default
-      because nobody in practice wants to OAuth ten times for ten agents,
-      and the threat model (one human, the agents are slices of their
-      own work) is bounded.
+      One provider login for the whole desktop profile. Houston can seed or
+      broker agent provider homes for convenience. This is acceptable for a
+      solo user who treats agents as slices of one trust boundary.
+    </p>
+    <p>
+      It is not acceptable for "two clients, two legal boundaries." Desktop
+      needs a visible strict mode per agent or per workspace, before Teams
+      exists.
     </p>
 
     <h3>Teams or Cloud: per-agent by default</h3>
     <p>
-      Each agent gets its own Claude account. Strongest isolation. Costs
-      N clicks for N agents, but in a Teams context different humans own
-      different agents anyway, so the click cost is distributed. This is
-      the mode the regulated-industry pitch leans on.
+      Each agent gets its own provider home and its own login state. It may
+      still be the same human account, but tokens and tool grants are not
+      shared by default. This is the mode the regulated-industry pitch leans
+      on.
     </p>
 
     <div class="callout callout-info">
       <div class="callout-label">What works today</div>
-      <p>Single-account Anthropic, OpenAI, and Composio logins all work today, but they're machine-wide. The broker model is essentially what we have, minus the per-agent indirection. The work in M3 is the runtime-side plumbing (spawning the CLI as <code>hou_sales</code> inside the runtime) and the deep-link bridge.</p>
+      <p>Single-account Anthropic, OpenAI, and Composio logins work today, but they are machine-wide. The current engine route is global, not agent-scoped. M2 should add per-agent provider homes on native hosts. M3 should move those homes under per-agent Linux users if the runtime ships.</p>
     </div>
 
     <div class="tech-box">

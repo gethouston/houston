@@ -35,14 +35,21 @@
   <main class="content">
     <div class="content-label">
       Chapter 04
-      <span class="status partial">Partial · finishes in M1</span>
+      <span class="status partial">Target · M1a reliability</span>
     </div>
     <h1>How a message flows through.</h1>
     <p class="lead">
       This is the most important diagram in the guide. If you remember
-      only one thing, remember this one. The flow shown here is the
-      <em>target</em> flow, with reliability tables in place.
+      only one thing, remember this one: accept work durably first, then
+      run it. The flow shown here is the <em>target</em> flow for M1
+      reliability. It does not claim app-close survival until the detached
+      worker exists.
     </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">Reliability contract</div>
+      <p>M1 guarantees accepted turns are recorded, reconnects can replay recent stream events, engine crashes produce visible retry state, and scheduled triggers are audited. M1 does not guarantee an in-flight CLI keeps running after the engine process dies. That needs the worker in Chapter 6.</p>
+    </div>
 
     <div class="flow-list">
       <div class="flow-step">
@@ -116,7 +123,7 @@
           <div class="num">09</div>
           <div>
             <div class="from-to"><span class="actor">Engine</span><span class="arrow">→</span><span class="actor">Desktop UI</span></div>
-            <div class="action">Broadcasts the chunk over the WebSocket. UI renders it live. Broadcast happens immediately, even before the batched DB flush.</div>
+            <div class="action">Broadcasts the chunk over the WebSocket only after the batch that contains it has been accepted by SQLite. The batch window is small, but durability still comes before user-visible delivery.</div>
           </div>
         </div>
       </div>
@@ -146,15 +153,16 @@
       </div>
     </div>
 
-    <p style="font-size: 13px; color: var(--gray-500); text-align: center; margin-top: -16px; margin-bottom: 32px;">Green steps are SQLite writes. Every byte the user sees is journaled to disk first.</p>
+    <p style="font-size: 13px; color: var(--gray-500); text-align: center; margin-top: -16px; margin-bottom: 32px;">Green steps are SQLite writes. Anything rendered as durable must be written first.</p>
 
     <h2>The key insight</h2>
     <p>
       <strong>Writes to the database happen BEFORE the work, not
       AFTER.</strong> The turn row is inserted the moment the user's
       message is accepted, well before the CLI subprocess is even spawned.
-      Each streaming chunk is logged before being broadcast (batched, but
-      committed within ~50ms).
+      Each streaming chunk is assigned a sequence number and written in a
+      small batch before broadcast. If SQLite is backpressured, the stream
+      slows down; it does not pretend data is durable before it is.
     </p>
     <p>
       That single ordering decision is what makes everything else work.
@@ -162,17 +170,18 @@
 
     <h2>What this buys you</h2>
     <ul>
-      <li><strong>Refresh mid-stream.</strong> The next page load replays from <code>turn_stream</code>. The user sees the streaming response continue.</li>
-      <li><strong>Engine crash between turns.</strong> The restarted engine sweeps the <code>turns</code> table, finds the orphan, surfaces a retry. The user clicks once and continues.</li>
-      <li><strong>Network blip during streaming.</strong> The client reconnects with <code>since_seq</code> and gets the gap from <code>events_outbox</code>.</li>
-      <li><strong>Cron fires at 7am while engine is restarting.</strong> The <code>cron_runs</code> audit log catches up on the next boot.</li>
-      <li><strong>Safe retry from the client.</strong> The same <code>turnId</code> won't run the turn twice. The server treats it as idempotent.</li>
+      <li><strong>Refresh mid-stream.</strong> The next page load replays committed chunks from <code>turn_stream</code>.</li>
+      <li><strong>Engine crash before spawn.</strong> The restarted engine sweeps <code>turns</code>, finds queued/running orphans, and surfaces retry.</li>
+      <li><strong>Network blip during streaming.</strong> The client reconnects with <code>sinceSeq</code> and gets recent gaps from <code>events_outbox</code>.</li>
+      <li><strong>Cron fires while engine is restarting.</strong> <code>trigger_runs</code> records due work and catch-up policy decides whether to run or mark skipped.</li>
+      <li><strong>Safe client retry.</strong> Same <code>turnId</code> cannot create duplicate work.</li>
     </ul>
     <p>
-      What this does NOT buy you on its own: engine restart MID-stream
-      survives the bounce. The CLI subprocess is a child of the engine,
-      so killing the engine kills the CLI. To survive that, we need the
-      detached <code>houston-turn-worker</code> from Chapter 6.
+      What this does NOT buy you on its own: engine restart mid-stream
+      survives the bounce. Today the CLI subprocess is a child of the
+      engine, so killing the engine kills the CLI. To survive that, we
+      need the detached <code>houston-turn-worker</code> from Chapter 6
+      or a different process-lifecycle contract.
     </p>
 
     <h2>Protocol changes you need to know</h2>
@@ -193,9 +202,10 @@
         with <code>{ turnId, fromSeq, items }</code> for replay.
       </li>
       <li>
-        <strong>WS subscription gains <code>since_seq</code>:</strong>
-        client reconnect sends the last seen sequence number, server
-        replays from <code>events_outbox</code>.
+        <strong>WS subscription gains <code>sinceSeq</code>:</strong>
+        client reconnect sends the last seen global event sequence number,
+        server replays authorized events from <code>events_outbox</code>.
+        Replay must run the same scope checks as fresh events.
       </li>
     </ul>
 
@@ -206,7 +216,7 @@
       What's missing:
     </p>
     <ul>
-      <li>The four SQLite tables (<code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, <code>cron_runs</code>). See Chapter 6.</li>
+      <li>The four SQLite tables (<code>turns</code>, <code>turn_stream</code>, <code>events_outbox</code>, <code>trigger_runs</code>). See Chapter 6.</li>
       <li>The rule of writing before doing. Today persistence is async, fire-and-forget via <code>tokio::spawn</code>.</li>
       <li>Streaming deltas are explicitly dropped from persist today (<code>engine/houston-agents-conversations/src/session_runner.rs:405-406</code>) because they get replaced by their finals. The redesign keeps them in <code>turn_stream</code> for replay. Different problem, different table. The UI behavior stays the same.</li>
       <li>Client-supplied <code>turnId</code> + retry semantics.</li>
@@ -216,11 +226,10 @@
     <h2>The five failure modes this prevents</h2>
     <p>
       Chapter 5 walks through what goes wrong because these tables aren't
-      there. Chapter 6 covers the fix. The fifth one is the one most
-      people miss: the CLI subprocess hangs without exiting. Without a
-      <code>started_at</code> timestamp and a sweep job, the engine has
-      no way to know a turn has been "running" for an hour with no
-      output.
+      there. Chapter 6 covers the fix. The one people miss: the CLI
+      subprocess hangs without exiting. Without <code>started_at</code>,
+      <code>last_heartbeat_at</code>, and a sweep job, the engine has no
+      way to know a turn has been running for an hour with no output.
     </p>
 
     <div class="tech-box">

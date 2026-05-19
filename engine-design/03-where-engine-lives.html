@@ -35,16 +35,22 @@
   <main class="content">
     <div class="content-label">
       Chapter 03
-      <span class="status planned">Planned · M3 · ~3 months</span>
+      <span class="status planned">Spike-gated · M3 candidate</span>
     </div>
     <h1>Where the engine lives.</h1>
     <p class="lead">
       Today the engine runs natively on Mac, Windows, and Linux. Three
-      builds. Three sandboxing stories. Going forward, the engine always
-      runs inside a Linux runtime. One engine binary. Three host
-      runtimes: Apple <code>Virtualization.framework</code> on Mac, WSL2
-      on Windows, native Linux everywhere else.
+      builds. Three sandboxing stories. The proposed next step is a
+      Linux-runtime engine on Mac and Windows, native Linux everywhere
+      else. This is not a committed migration yet. It is a high-leverage
+      isolation bet that must pass hard measurements before we move user
+      data into it.
     </p>
+
+    <div class="callout callout-warning">
+      <div class="callout-label">Commitment rule</div>
+      <p>Do not schedule this as build work until the spike proves startup, memory, battery, entitlement, WSL install, migration, import/download, and support-story risks. If any one fails, redesign before building.</p>
+    </div>
 
     <h2>Why we're moving. Three concrete reasons.</h2>
 
@@ -96,11 +102,12 @@
       Linux and Mac first, Windows months later if at all.
     </p>
     <p>
-      A Linux runtime on Windows means we ship the Linux build of every
-      tool. The fork dies. Future tooling just works.
+      A Linux runtime on Windows means we can ship the Linux build of most
+      tools. That reduces fork pressure and Windows-specific patching. It
+      does not remove the need to test every bundled CLI on Windows hosts.
     </p>
 
-    <h2>The answer: one engine binary, three host runtimes</h2>
+    <h2>The target: one Linux operating profile</h2>
 
     <div class="diagram">
       <div class="host-grid">
@@ -120,12 +127,12 @@
           <div class="engine-pill">houston-engine<div class="engine-sub">Linux build</div></div>
         </div>
         <div class="host-card">
-          <div class="host-name">Cloud (Fly Machine)</div>
+          <div class="host-name">Cloud runtime</div>
           <div class="runtime-pill">Linux microVM</div>
           <div class="engine-pill">houston-engine<div class="engine-sub">Linux build</div></div>
         </div>
       </div>
-      <div class="caption">Same Linux binary every place. Only the host runtime changes.</div>
+      <div class="caption">Same Linux operating profile every place. Separate artifacts still exist for CPU architecture and packaging.</div>
     </div>
 
     <h2>Why not a custom hypervisor</h2>
@@ -138,13 +145,17 @@
         <strong>macOS:</strong> Apple
         <code>Virtualization.framework</code>. Ships with the OS since
         macOS 11. Boots a Linux guest in 1-3 seconds on Apple Silicon
-        with a slim image. Apple owns the kernel-side work. We own the
-        wrapper.
+        with a slim image if our measurements prove it. Apple owns the
+        kernel-side work. We own the wrapper, image, persistence, updates,
+        logs, and failure UX.
       </li>
       <li>
         <strong>Windows:</strong> WSL2. Pre-installed on Windows 11.
-        One-command install on Windows 10 (<code>wsl --install</code>).
-        File Explorer mounts the guest filesystem at
+        Usually present on Windows 11. One-command install on many
+        Windows 10 machines (<code>wsl --install</code>), but corporate
+        laptops may block virtualization, Store installs, or WSL distro
+        registration.
+        File Explorer can mount the guest filesystem at
         <code>\\wsl$\Houston\</code> without us doing anything. Microsoft
         owns the kernel-side work. We own the registration.
       </li>
@@ -153,8 +164,8 @@
         natively. Per-agent UIDs work directly.
       </li>
       <li>
-        <strong>Cloud:</strong> a Fly Machine (or equivalent) is already
-        a Linux microVM. The engine runs natively inside it.
+        <strong>Cloud:</strong> candidate platforms such as Fly Machines
+        already provide Linux microVMs. The engine runs natively inside them.
       </li>
     </ul>
     <p>
@@ -163,10 +174,11 @@
       guest containing the engine binary.
     </p>
 
-    <h2>File flow</h2>
+    <h2>File flow, migration, and rollback</h2>
     <p>
-      The agent folder lives inside the Linux runtime. Bytes get in and
-      out through three paths.
+      If this ships, the agent folder lives inside the Linux runtime.
+      That changes a user-data root, so it needs an idempotent migration
+      and an escape hatch. Bytes get in and out through four paths.
     </p>
     <ol>
       <li>
@@ -186,14 +198,28 @@
         reads the file inside the runtime, streams it to Tauri, Tauri
         writes it to the host's Downloads folder and reveals it.
       </li>
+      <li>
+        <strong>Migration/export.</strong> First launch after upgrade copies
+        existing <code>~/.houston/workspaces</code> into the runtime, verifies
+        checksums, leaves the host copy untouched, and records a reversible
+        migration marker. Export produces a normal folder backup.
+      </li>
     </ol>
     <p>
       On Windows specifically, WSL2 also exposes the guest filesystem at
       <code>\\wsl$\Houston\</code> in Explorer. Users can browse it
       natively if they want. That is a bonus, not a contract: the canonical
-      path on every OS is Import and Download, and Houston does not depend
-      on host filesystem visibility.
+      path on every OS is Import, Download, and Export. Houston must not
+      depend on host filesystem visibility for correctness.
     </p>
+
+    <h2>What must stay native-host owned</h2>
+    <ul>
+      <li><strong>OS pickers and reveal-in-file-manager.</strong> Tauri host shell still owns them.</li>
+      <li><strong>Crash reporting and logs.</strong> Host must collect both app logs and runtime engine logs for Report bug.</li>
+      <li><strong>Updates.</strong> App update must update runtime image, engine binary, and bundled CLIs as one signed unit.</li>
+      <li><strong>Recovery.</strong> If runtime fails to boot, user sees a visible recovery screen with export/repair options.</li>
+    </ul>
 
     <h2>The new pieces of code</h2>
     <table>
@@ -228,8 +254,8 @@
         </tr>
         <tr>
           <td>Download / Import routes</td>
-          <td><code>engine/houston-engine-server/src/routes/files.rs</code></td>
-          <td>Already partly there for project files. Needs binary download (the project file route is text-only today; see the engine-protocol KB).</td>
+          <td><code>engine/houston-engine-server/src/routes/agent_files.rs</code></td>
+          <td>Import-bytes exists. Project read is text-only today. Runtime mode needs binary download, folder export, checksum verification, and host-side save/reveal.</td>
         </tr>
       </tbody>
     </table>
@@ -247,10 +273,10 @@
     </p>
     <p>
       Timeline is usually a few weeks if the request is clean, longer if
-      Apple has follow-up questions. <strong>Open the ticket the moment
-      M3 is greenlit, not when the code is written.</strong> Without it,
-      the runtime startup call returns an error and the app silently
-      fails to boot.
+      Apple has follow-up questions. <strong>Open the ticket early, while
+      M3 is still being validated, not when the code is written.</strong> Without it,
+      the runtime startup call returns an error. That error must be visible
+      and reportable, never a silent boot failure.
     </p>
 
     <h2>Numbers we need to confirm before committing</h2>
@@ -282,16 +308,17 @@
     <h2>Open question: Windows machines without virtualization</h2>
     <p>
       Some corporate laptops have virtualization disabled in BIOS. Some
-      older CPUs lack the required extensions. Houston needs a clear
-      install-time check: if the host cannot run WSL2, show a one-screen
-      explanation and a link to the IT-admin instructions. We do not try
-      to run the engine natively as a fallback. That preserves a single
-      operating profile.
+      older CPUs lack the required extensions. Some IT policies block WSL
+      registration. Houston needs an install-time check and an upgrade-time
+      check before moving data. Recommended default for beta: keep native
+      engine available as a visible fallback until runtime success rates
+      are measured. Remove fallback only after data says support cost is
+      lower than divergence cost.
     </p>
 
     <div class="callout callout-success">
       <div class="callout-label">The big simplification</div>
-      <p>Desktop and cloud become the same engine. Per-agent isolation becomes possible on every OS. The Windows tooling fork goes away. The cost is a runtime supervisor we don't fully own (Apple's and Microsoft's), an entitlement we have to ask for, and a Download flow we have to build first-class.</p>
+      <p>Desktop and Cloud move toward one Linux operating profile. Per-agent kernel isolation becomes possible on supported machines. Windows-specific tool patches shrink. The cost is a runtime supervisor we do not fully own, an entitlement we have to win, and Import/Download/Export flows we have to build first-class.</p>
     </div>
 
     <div class="tech-box">

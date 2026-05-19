@@ -37,7 +37,7 @@
     <h1>How the engine actually works.</h1>
     <p class="lead">
       A walkthrough of every piece of Houston, what it does today, what it
-      will do tomorrow, and the reason for every decision in between. If
+      should do next, and the reason for every decision in between. If
       you are a new hire, you should be able to read this top to bottom
       and start building. If you need more, the code is linked at the
       bottom of each chapter.
@@ -53,12 +53,12 @@
     <ul>
       <li><span class="status shipped">Shipped</span> already in the codebase today.</li>
       <li><span class="status partial">Partial</span> some of it works, the rest is on the plan.</li>
-      <li><span class="status planned">Planned</span> the design is decided, the code is not yet written.</li>
-      <li><span class="status progress">In progress</span> actively being built right now.</li>
+      <li><span class="status planned">Planned</span> proposed design, code not written yet. Some planned work is gated.</li>
+      <li><span class="status progress">Gate plan</span> sequencing, decisions, and acceptance gates.</li>
     </ul>
     <p>
       Each planned chapter also lists which milestone it belongs to
-      (M1, M2, M3, M4) and a rough size in weeks or months. Sizes are
+      (M1a, M1b, M2, M3, M4, M5) and a rough size in weeks or months. Sizes are
       honest estimates, not commitments. Where the work depends on
       something else landing first, the chapter says so.
     </p>
@@ -67,14 +67,13 @@
     <p>
       Houston is a desktop app, an engine, and folders on disk. The
       desktop app is what users click. The engine is a Rust binary that
-      does the work. The folders are where the agents and their data
-      live. The desktop talks to the engine over HTTP. The engine spawns
-      provider CLIs (Claude Code, Codex) and watches files. After the
-      redesign, the engine runs inside a Linux runtime on every host
-      (Apple <code>Virtualization.framework</code> on Mac,
-      <code>WSL2</code> on Windows, native on Linux and in the cloud),
-      so per-agent isolation can be enforced by the kernel and the
-      tooling story stops being three different stories.
+      does the work. The folders are where agents and their data live.
+      The desktop talks to the engine over HTTP. The engine spawns
+      provider CLIs (Claude Code, Codex, Gemini) and watches files. This
+      guide separates shipped truth from proposed work: reliability and
+      scoped auth can improve the native engine now; Linux runtime
+      isolation is a later, spike-gated bet that only ships after cold
+      start, migration, support, and entitlement risks are proven.
     </p>
 
     <h2>The chapters</h2>
@@ -89,17 +88,17 @@
       <a class="chapter-card" href="02-agent-folder.html">
         <div class="chapter-num">02 <span class="status shipped">Shipped</span></div>
         <div class="chapter-title">An agent is a folder</div>
-        <div class="chapter-desc">No databases, no proprietary formats. Just files on disk, inside a Linux runtime.</div>
+        <div class="chapter-desc">No proprietary formats. Just files on disk today, with runtime relocation only if Chapter 3 ships.</div>
       </a>
 
       <a class="chapter-card" href="03-where-engine-lives.html">
-        <div class="chapter-num">03 <span class="status planned">Planned · M3 · ~3 months</span></div>
+        <div class="chapter-num">03 <span class="status planned">Spike-gated · M3 candidate</span></div>
         <div class="chapter-title">Where the engine lives</div>
-        <div class="chapter-desc">One Linux engine binary. Three host runtimes: Apple VZ, WSL2, native Linux.</div>
+        <div class="chapter-desc">Linux runtime is the isolation bet. Useful, expensive, and not committed until measurements pass.</div>
       </a>
 
       <a class="chapter-card" href="04-message-flow.html">
-        <div class="chapter-num">04 <span class="status partial">Partial · finishes in M1</span></div>
+        <div class="chapter-num">04 <span class="status partial">Target · M1a</span></div>
         <div class="chapter-title">How a message flows through</div>
         <div class="chapter-desc">The full chat-turn sequence. The most important diagram.</div>
       </a>
@@ -111,39 +110,39 @@
       </a>
 
       <a class="chapter-card" href="06-four-tables.html">
-        <div class="chapter-num">06 <span class="status planned">Planned · M1 · ~4 weeks</span></div>
-        <div class="chapter-title">The four tables that save everything</div>
-        <div class="chapter-desc">The whole reliability story. Not Temporal. Just SQLite.</div>
+        <div class="chapter-num">06 <span class="status planned">M1a · 4-6 weeks</span></div>
+        <div class="chapter-title">The reliability tables</div>
+        <div class="chapter-desc">The reliability floor: durable turns, replay, audits, and explicit retry semantics.</div>
       </a>
 
       <a class="chapter-card" href="07-keeping-agents-apart.html">
-        <div class="chapter-num">07 <span class="status planned">Walls 2+3 in M2 · ~3 weeks. Wall 1 in M3.</span></div>
+        <div class="chapter-num">07 <span class="status planned">M2 guards · M3 kernel wall</span></div>
         <div class="chapter-title">Keeping agents apart</div>
-        <div class="chapter-desc">Three independent walls. The "Sales agent can't read HR data" story.</div>
+        <div class="chapter-desc">Three walls for three attack paths. Only kernel wall stops direct filesystem snooping.</div>
       </a>
 
       <a class="chapter-card" href="08-login.html">
-        <div class="chapter-num">08 <span class="status partial">Partial · finishes in M3</span></div>
+        <div class="chapter-num">08 <span class="status partial">M2 native homes · M3 runtime users</span></div>
         <div class="chapter-title">Logging in (still one click)</div>
         <div class="chapter-desc">Per-agent OAuth without breaking the UX.</div>
       </a>
 
       <a class="chapter-card" href="09-external-triggers.html">
-        <div class="chapter-num">09 <span class="status partial">Partial · webhooks in M4 · ~1 week</span></div>
+        <div class="chapter-num">09 <span class="status partial">Triggers after M1a</span></div>
         <div class="chapter-title">External triggers</div>
-        <div class="chapter-desc">Five ways to wake an agent. User chat, mobile, Slack, cron, webhook.</div>
+        <div class="chapter-desc">User chat and mobile ship. Cron ships in-app. Webhooks and Slack-style inbound channels need more work.</div>
       </a>
 
       <a class="chapter-card" href="10-deployment.html">
-        <div class="chapter-num">10 <span class="status planned">Planned · M4 · ~3 months</span></div>
-        <div class="chapter-title">Deployment: one binary, two homes</div>
-        <div class="chapter-desc">Same engine on your laptop and in Houston Cloud.</div>
+        <div class="chapter-num">10 <span class="status planned">Candidate · M4+</span></div>
+        <div class="chapter-title">Deployment: desktop, self-host, cloud</div>
+        <div class="chapter-desc">Always On exists. Cloud is a separate product with unresolved control-plane choices.</div>
       </a>
 
       <a class="chapter-card" href="11-roadmap.html">
-        <div class="chapter-num">11 <span class="status progress">In progress</span></div>
+        <div class="chapter-num">11 <span class="status progress">Gate plan</span></div>
         <div class="chapter-title">The roadmap</div>
-        <div class="chapter-desc">Four milestones. Realistic timelines. What ships in parallel vs in sequence.</div>
+        <div class="chapter-desc">Milestones with gates, test contracts, and promises we are allowed to make.</div>
       </a>
     </div>
   </main>
