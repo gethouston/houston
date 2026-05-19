@@ -1,7 +1,7 @@
 {
   "name": "houston-app",
   "private": true,
-  "version": "0.4.20",
+  "version": "0.4.12",
   "type": "module",
   "scripts": {
     "dev": "vite",
