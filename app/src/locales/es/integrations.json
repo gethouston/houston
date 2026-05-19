@@ -27,6 +27,20 @@
     "manageOn": "Gestionar {{name}}",
     "dotAria": "Conectado"
   },
+  "discover": {
+    "title": "Describe lo que quieres lograr",
+    "subtitle": "Conocemos las más de 1000 herramientas. Cuéntanos tu objetivo y elegimos el stack ideal.",
+    "placeholder": "ej. validar los leads de mi formulario antes de pasarlos a ventas",
+    "submit": "Recomendar stack",
+    "thinking": "Pensando…",
+    "error": "No se pudo generar la recomendación. Verifica que tu proveedor de IA esté conectado e intenta de nuevo.",
+    "empty": "No encontramos herramientas para ese objetivo. Intenta con otras palabras.",
+    "fallbackNote": "El ranking con IA no está disponible ahora. Mostramos las mejores coincidencias por palabras clave.",
+    "missingTitle": "Lo que no pudimos cubrir",
+    "altPrefix": "Alternativas:",
+    "connect": "Conectar",
+    "alreadyConnected": "Conectada"
+  },
   "browse": {
     "title": "Explorar todas las apps",
     "count_one": "{{count}} app",

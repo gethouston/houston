@@ -73,4 +73,30 @@ async fn composio_routes_smoke() {
         .await
         .unwrap();
     assert_eq!(st["status"], "not_installed");
+
+    // /composio/recommend: empty intent → 400.
+    let bad = c
+        .post(format!("http://{addr}/v1/composio/recommend"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "intent": "   " }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(bad.status(), 400);
+
+    // /composio/recommend: with stub catalog (no enriched toolkits in
+    // this build) → 503 Unavailable. Once the enrichment script has run
+    // and the bundled JSON is populated, the same call returns 200 with
+    // a stack instead.
+    let unavail = c
+        .post(format!("http://{addr}/v1/composio/recommend"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({
+            "intent": "validate leads from a form",
+            "alreadyConnected": [],
+        }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(unavail.status(), 503);
 }

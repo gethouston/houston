@@ -1,9 +1,10 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Input } from "@houston-ai/core";
 import { Gift, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { AgentDefinition, StoreListing } from "../../lib/types";
 import { AgentCard, StoreAgentCard } from "./experience-card";
+import { StoreStepDiscover } from "./store-step-discover";
 import { useUIStore } from "../../stores/ui";
 
 interface StoreStepProps {
@@ -13,6 +14,10 @@ interface StoreStepProps {
   storeCatalog: StoreListing[];
   onSelect: (id: string) => void;
   onInstall: (listing: StoreListing) => Promise<void>;
+  /** Slugs of toolkits the user has already authorized. Passed through
+   *  to the discover disclosure so the recommender can mark them as
+   *  connected and bias toward reuse. Defaults to empty. */
+  connectedToolkits?: string[];
 }
 
 export function StoreStep({
@@ -22,10 +27,16 @@ export function StoreStep({
   storeCatalog,
   onSelect,
   onInstall,
+  connectedToolkits = [],
 }: StoreStepProps) {
   const { t } = useTranslation(["shell", "portable"]);
   const setImportOpen = useUIStore((s) => s.setImportFromFriendOpen);
   const setCreateOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
+  const [recommendedSlugs, setRecommendedSlugs] = useState<string[]>([]);
+  const recommendedSet = useMemo(
+    () => new Set(recommendedSlugs),
+    [recommendedSlugs],
+  );
 
   const storeIds = useMemo(
     () => new Set(storeCatalog.map((listing) => listing.id)),
@@ -33,33 +44,37 @@ export function StoreStep({
   );
   const query = search.trim().toLowerCase();
 
-  const filteredAgents = useMemo(
-    () =>
-      agents.filter((d) => {
-        if (d.source === "installed" && d.config.author === "Houston") {
-          return false;
-        }
-        if (storeIds.has(d.config.id)) return false;
-        if (!query) return true;
-        return matchesAgent(d, query);
-      }),
-    [agents, query, storeIds],
-  );
+  const filteredAgents = useMemo(() => {
+    const filtered = agents.filter((d) => {
+      if (d.source === "installed" && d.config.author === "Houston") {
+        return false;
+      }
+      if (storeIds.has(d.config.id)) return false;
+      if (!query) return true;
+      return matchesAgent(d, query);
+    });
+    return rankByToolkitOverlap(filtered, recommendedSet, (d) =>
+      d.config.integrations ?? [],
+    );
+  }, [agents, query, storeIds, recommendedSet]);
 
-  const filteredStore = useMemo(
-    () =>
-      storeCatalog.filter((listing) => {
-        if (!query) return true;
-        return matchesListing(listing, query);
-      }),
-    [query, storeCatalog],
-  );
+  const filteredStore = useMemo(() => {
+    const filtered = storeCatalog.filter((listing) => {
+      if (!query) return true;
+      return matchesListing(listing, query);
+    });
+    return rankByToolkitOverlap(filtered, recommendedSet, (l) => l.integrations ?? []);
+  }, [query, storeCatalog, recommendedSet]);
 
   const totalResults = filteredAgents.length + filteredStore.length;
 
   return (
     <>
-      <div className="shrink-0 px-6 pb-4">
+      <div className="shrink-0 px-6 pb-4 space-y-3">
+        <StoreStepDiscover
+          connectedToolkits={connectedToolkits}
+          onStackRecommended={setRecommendedSlugs}
+        />
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
@@ -121,6 +136,35 @@ export function StoreStep({
       </div>
     </>
   );
+}
+
+/**
+ * Stable sort that floats items with the highest toolkit overlap to the
+ * top. Items with zero overlap keep their original relative order so
+ * the un-recommended list stays predictable.
+ */
+function rankByToolkitOverlap<T>(
+  items: T[],
+  recommended: Set<string>,
+  getIntegrations: (item: T) => string[],
+): T[] {
+  if (recommended.size === 0) return items;
+  return [...items]
+    .map((item, idx) => ({
+      item,
+      idx,
+      overlap: overlapCount(getIntegrations(item), recommended),
+    }))
+    .sort((a, b) => b.overlap - a.overlap || a.idx - b.idx)
+    .map(({ item }) => item);
+}
+
+function overlapCount(toolkits: string[], recommended: Set<string>): number {
+  let n = 0;
+  for (const t of toolkits) {
+    if (recommended.has(t.toLowerCase())) n++;
+  }
+  return n;
 }
 
 function matchesAgent(def: AgentDefinition, query: string): boolean {

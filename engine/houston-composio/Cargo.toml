@@ -15,9 +15,11 @@ uuid = { workspace = true }
 reqwest = { version = "0.12", features = ["json"] }
 base64 = "0.22"
 sha2 = "0.10"
+thiserror = "1"
 houston-ui-events = { workspace = true }
 houston-db = { workspace = true }
 houston-cli-bundle = { workspace = true }
+houston-terminal-manager = { workspace = true }
 # Cross-platform home-directory resolution (used by install.rs to locate
 # `~/.composio/composio[.exe]` on macOS/Linux and `%USERPROFILE%\.composio\…`
 # on Windows).

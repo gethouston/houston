@@ -27,6 +27,7 @@ import type {
   ComposioStatus as EngineComposioStatus,
   ProviderAuthState,
   ProviderStatus as EngineProviderStatus,
+  RecommendStackResponse,
 } from "@houston-ai/engine-client";
 import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
@@ -402,6 +403,16 @@ export const tauriConnections = {
   isCliInstalled: () =>
     call<boolean>("is_composio_cli_installed", () => getEngine().composioCliInstalled()),
   installCli: () => call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
+  recommendStack: (
+    intent: string,
+    alreadyConnected: string[],
+    provider?: "anthropic" | "openai",
+  ) =>
+    call<RecommendStackResponse>(
+      "recommend_composio_stack",
+      () => getEngine().composioRecommendStack({ intent, alreadyConnected, provider }),
+      { intent, alreadyConnected, provider },
+    ),
 };
 
 // ─── Project files (browser) ──────────────────────────────────────────

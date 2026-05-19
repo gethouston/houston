@@ -162,6 +162,16 @@
     "searchPlaceholder": "Buscar na loja...",
     "noResults": "Nenhum agente corresponde à sua busca"
   },
+  "storeDiscover": {
+    "title": "Não sabe qual agente? Descreva seu objetivo",
+    "subtitle": "Listamos as ferramentas que seu objetivo precisa e destacamos o agente que melhor as cobre.",
+    "placeholder": "ex. validar os leads do meu formulário antes de mandar para vendas",
+    "submit": "Recomendar tools",
+    "thinking": "Pensando…",
+    "error": "Não foi possível gerar a recomendação. Verifique que seu provedor de IA está conectado.",
+    "stackLabel": "Ferramentas que você vai precisar",
+    "rankedHint": "Ordenamos os agentes abaixo por quão bem cobrem este stack."
+  },
   "naming": {
     "dialogTitle": "Dê um nome ao seu agente",
     "newAgentFallback": "Novo agente",

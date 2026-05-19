@@ -1,9 +1,14 @@
-import { useCallback, useState } from "react";
-import { useConnections, useInvalidateConnections } from "../../hooks/queries";
+import { useCallback, useMemo, useState } from "react";
+import {
+  useConnectedToolkits,
+  useConnections,
+  useInvalidateConnections,
+} from "../../hooks/queries";
 import { tauriConnections, tauriSystem } from "../../lib/tauri";
 import { useComposioAuth } from "../../hooks/use-composio-auth";
 import { ComposioAuthDialog } from "../composio-auth-dialog";
 import { BrowseAppsSection } from "./browse-apps-section";
+import { StackDiscoverPanel } from "./stack-discover-panel";
 import {
   LoadingState,
   NotInstalledState,
@@ -20,6 +25,14 @@ export default function ConnectionsTab(_props: TabProps) {
   const auth = useComposioAuth(() => invalidate());
   const [installing, setInstalling] = useState(false);
   const [installError, setInstallError] = useState<string | null>(null);
+
+  const { data: connectedToolkits } = useConnectedToolkits(
+    result?.status === "ok",
+  );
+  const connectedToolkitsSet = useMemo<Set<string>>(
+    () => new Set<string>(connectedToolkits ?? []),
+    [connectedToolkits],
+  );
 
   const handleManage = useCallback(() => {
     tauriSystem.openUrl(COMPOSIO_DASHBOARD_URL);
@@ -66,7 +79,10 @@ export default function ConnectionsTab(_props: TabProps) {
         )}
 
         {!loading && result?.status === "ok" && (
-          <BrowseAppsSection connectedToolkits={new Set()} />
+          <>
+            <StackDiscoverPanel connectedToolkits={connectedToolkitsSet} />
+            <BrowseAppsSection connectedToolkits={connectedToolkitsSet} />
+          </>
         )}
       </div>
 

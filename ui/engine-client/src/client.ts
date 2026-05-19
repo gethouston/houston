@@ -44,6 +44,8 @@ import type {
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  RecommendStackRequest,
+  RecommendStackResponse,
   RemoveWorktreeRequest,
   RenameWorkspace,
   RepoSkill,
@@ -693,6 +695,30 @@ export class HoustonClient {
    */
   composioWatchConnection(toolkit: string): Promise<void> {
     return this.request("POST", "/composio/connections/watch", { toolkit });
+  }
+  /**
+   * Recommend a Composio toolkit stack for a plain-language goal.
+   *
+   * The engine runs a keyword pre-filter against the bundled enriched
+   * catalog, then asks the workspace's provider CLI (Claude `-p` /
+   * Codex `exec`) to pick the final stack with role + reason for each
+   * entry. End users never need API keys — this reuses the CLI they
+   * already authenticated for chat.
+   *
+   * Errors:
+   *  - 400 if `intent` is empty
+   *  - 503 if the bundled catalog has not been enriched yet (dev
+   *    forgot to run scripts/enrich-composio-catalog.mjs)
+   *  - 404 if no candidate toolkits matched the intent
+   *
+   * Behavior when CLI is unavailable: the engine falls back to a
+   * deterministic top-K result with `llmPicked: false`. UI should
+   * render a softer confidence indicator in that case.
+   */
+  composioRecommendStack(
+    req: RecommendStackRequest,
+  ): Promise<RecommendStackResponse> {
+    return this.request("POST", "/composio/recommend", req);
   }
 
   // ---------- portable agent share / import ----------

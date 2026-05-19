@@ -10,6 +10,7 @@ import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
+import { useConnectedToolkits, useConnections } from "../../hooks/queries";
 import { tauriConfig } from "../../lib/tauri";
 import type { StoreListing } from "../../lib/types";
 import { getDefaultModel } from "../../lib/providers";
@@ -38,6 +39,15 @@ export function CreateAgentDialog() {
   const wsModel = currentWorkspace?.model ?? getDefaultModel(wsProvider);
   const [provider, setProvider] = useState(wsProvider);
   const [model, setModel] = useState(wsModel);
+
+  // Pull connected toolkits so the discover disclosure inside StoreStep
+  // can bias the recommender toward apps the user has already authorized.
+  // Only enabled when the modal is open and Composio is set up — avoids
+  // spinning up the query for users with no integrations provider.
+  const { data: composioStatus } = useConnections();
+  const { data: connectedToolkits } = useConnectedToolkits(
+    open && composioStatus?.status === "ok",
+  );
 
   useEffect(() => {
     if (!open) {
@@ -130,6 +140,7 @@ export function CreateAgentDialog() {
                 setStep(2);
               }}
               onInstall={handleInstall}
+              connectedToolkits={connectedToolkits ?? []}
             />
           </>
         ) : (

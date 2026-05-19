@@ -27,6 +27,20 @@
     "manageOn": "Manage {{name}}",
     "dotAria": "Connected"
   },
+  "discover": {
+    "title": "Describe what you want to do",
+    "subtitle": "We know all 1000+ tools. Tell us your goal and we'll pick the right stack.",
+    "placeholder": "e.g. validate leads from my form before sending them to sales",
+    "submit": "Recommend stack",
+    "thinking": "Thinking…",
+    "error": "Couldn't get a recommendation. Check that your AI provider is connected and try again.",
+    "empty": "Couldn't find tools for that goal. Try different wording.",
+    "fallbackNote": "AI ranking unavailable right now. Showing best keyword matches.",
+    "missingTitle": "What we couldn't cover",
+    "altPrefix": "Alternatives:",
+    "connect": "Connect",
+    "alreadyConnected": "Connected"
+  },
   "browse": {
     "title": "Browse all apps",
     "count_one": "{{count}} app",

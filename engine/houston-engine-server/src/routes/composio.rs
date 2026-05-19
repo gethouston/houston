@@ -15,8 +15,11 @@ use houston_composio::apps::ComposioAppEntry;
 use houston_composio::cli::{ComposioStatus, StartLinkResponse, StartLoginResponse};
 use houston_composio::commands as inner;
 use houston_composio::connection_watcher;
+use houston_composio::recommender::{self, RecommendError, RecommendResult};
 use houston_engine_core::CoreError;
+use houston_terminal_manager::Provider;
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 use std::sync::Arc;
 
 pub fn router() -> Router<Arc<ServerState>> {
@@ -32,6 +35,7 @@ pub fn router() -> Router<Arc<ServerState>> {
             get(list_connections).post(connect_app),
         )
         .route("/composio/connections/watch", post(watch_connection))
+        .route("/composio/recommend", post(recommend_stack))
 }
 
 #[derive(Serialize)]
@@ -53,6 +57,20 @@ struct ConnectApp {
 #[derive(Deserialize)]
 struct WatchConnection {
     toolkit: String,
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RecommendStackRequest {
+    intent: String,
+    #[serde(default)]
+    already_connected: Vec<String>,
+    /// Provider hint. Defaults to Anthropic. Accepts "anthropic" /
+    /// "claude" / "openai" / "codex". Frontend should pass the
+    /// workspace's configured provider so the LLM pick step uses the
+    /// CLI the user has already logged into.
+    #[serde(default)]
+    provider: Option<String>,
 }
 
 fn lift(e: String) -> ApiError {
@@ -124,4 +142,41 @@ async fn watch_connection(
     }
     connection_watcher::watch(toolkit, Arc::new(st.events.clone()));
     Ok(())
+}
+
+/// Recommend a Composio toolkit stack for a user's plain-language goal.
+///
+/// Body: `{ intent: string, alreadyConnected: string[], provider?: "anthropic"|"openai" }`.
+/// Returns a `RecommendResult` (see `houston_composio::recommender::types`).
+/// Errors map cleanly: empty intent → 400, catalog not enriched → 503,
+/// no candidates matched → 404.
+async fn recommend_stack(
+    State(_st): State<Arc<ServerState>>,
+    Json(req): Json<RecommendStackRequest>,
+) -> Result<Json<RecommendResult>, ApiError> {
+    let provider = req
+        .provider
+        .as_deref()
+        .and_then(|s| Provider::from_str(s).ok())
+        .unwrap_or_default();
+
+    match recommender::recommend(&req.intent, &req.already_connected, provider).await {
+        Ok(result) => Ok(Json(result)),
+        Err(e) => Err(map_recommend_error(e)),
+    }
+}
+
+fn map_recommend_error(e: RecommendError) -> ApiError {
+    match e {
+        RecommendError::EmptyIntent => {
+            ApiError(CoreError::BadRequest("intent must not be empty".into()))
+        }
+        RecommendError::CatalogEmpty => ApiError(CoreError::Unavailable(
+            "catalog not yet enriched — engine binary missing data/catalog-enriched.json contents"
+                .into(),
+        )),
+        RecommendError::NoMatches => {
+            ApiError(CoreError::NotFound("no toolkits matched the intent".into()))
+        }
+    }
 }

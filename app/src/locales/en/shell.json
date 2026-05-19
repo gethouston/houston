@@ -162,6 +162,16 @@
     "searchPlaceholder": "Search the store...",
     "noResults": "No agents match your search"
   },
+  "storeDiscover": {
+    "title": "Not sure which agent? Describe your goal",
+    "subtitle": "We'll list the tools your goal needs and surface the agent that best covers them.",
+    "placeholder": "e.g. validate leads from my form before sending them to sales",
+    "submit": "Recommend tools",
+    "thinking": "Thinking…",
+    "error": "Couldn't get a recommendation. Check that your AI provider is connected.",
+    "stackLabel": "Tools you'll need",
+    "rankedHint": "We've ranked the agents below by how well they cover this stack."
+  },
   "naming": {
     "dialogTitle": "Name your Agent",
     "newAgentFallback": "New Agent",

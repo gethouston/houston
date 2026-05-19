@@ -778,3 +778,42 @@ export interface PortableInstalledAgent {
   workspaceName: string;
   requiredIntegrations: string[];
 }
+
+// ────────────────────────────────────────────────────────────────────────
+// Stack recommender (POST /v1/composio/recommend)
+// ────────────────────────────────────────────────────────────────────────
+
+export interface RecommendStackRequest {
+  /** Plain-language goal, e.g. "validate leads from my form". */
+  intent: string;
+  /** Toolkit slugs the user has already connected. Used both to bias
+   *  the recommendation toward reuse AND to set `connected` flags. */
+  alreadyConnected?: string[];
+  /** Provider hint. Defaults server-side to "anthropic". */
+  provider?: "anthropic" | "openai";
+}
+
+export interface StackEntry {
+  toolkit: string;
+  name: string;
+  /** The job this toolkit does in the recommended workflow
+   *  (e.g. "lead capture", "CRM sink"). */
+  role: string;
+  /** One-sentence justification tied to the user's intent. */
+  reason: string;
+  connected: boolean;
+  logoUrl: string;
+}
+
+export interface RecommendStackResponse {
+  primaryStack: StackEntry[];
+  /** Map of slug → equivalent toolkit slugs the user could swap in. */
+  alternatives: Record<string, string[]>;
+  /** Capabilities the user asked for that no toolkit covers — surfaced
+   *  honestly so the UI can warn instead of pretending. */
+  missingCapabilities: string[];
+  /** False when the LLM-pick step did not run (CLI unavailable,
+   *  timeout, etc.) and the response is a deterministic top-K fallback.
+   *  Frontends should show a softer confidence indicator in that case. */
+  llmPicked: boolean;
+}
