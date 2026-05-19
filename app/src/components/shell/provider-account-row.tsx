@@ -1,13 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
-import type { ProviderInfo, ComingSoonProviderInfo } from "../../lib/providers";
-import {
-  ClaudeLogo,
-  OpenAILogo,
-  GeminiLogo,
-  DeepSeekLogo,
-  MiniMaxLogo,
-} from "./provider-logos";
+import type { ProviderInfo } from "../../lib/providers";
+import { ClaudeLogo, OpenAILogo, GeminiLogo } from "./provider-logos";
 
 function ProviderLogo({ provider }: { provider: ProviderInfo }) {
   switch (provider.id) {
@@ -21,21 +15,6 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
           {provider.name.slice(0, 1).toUpperCase()}
-        </span>
-      );
-  }
-}
-
-function ComingSoonLogo({ provider }: { provider: ComingSoonProviderInfo }) {
-  switch (provider.id) {
-    case "deepseek":
-      return <DeepSeekLogo />;
-    case "minimax":
-      return <MiniMaxLogo />;
-    default:
-      return (
-        <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
-          {provider.mark}
         </span>
       );
   }
@@ -56,16 +35,36 @@ export function ProviderAccountRow({
 }) {
   const { t } = useTranslation("providers");
 
+  // Disconnected rows get a faded background via the `bg-secondary/40` alpha
+  // modifier AND a CSS-opacity dim on the identity cluster (logo + name +
+  // subtitle). The button is kept OUTSIDE the inner opacity wrapper and
+  // uses a non-opacity-derived background, so it pops at full strength —
+  // same visual weight as the Sign out button on a connected row.
+  //
+  // Why a Tailwind alpha modifier instead of `opacity-40` on the outer div:
+  // CSS opacity cascades to descendants and can't be undone by a child
+  // class, which would mute the button too. `bg-secondary/40` only thins
+  // the bg color, leaving children rendering at their own colors.
   return (
-    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary">
-      <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
-        <ProviderLogo provider={provider} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
-        <p className="text-[11px] text-muted-foreground truncate">
-          {connected ? t("card.connected") : provider.subtitle}
-        </p>
+    <div
+      className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+        connected ? "bg-secondary" : "bg-secondary/40"
+      }`}
+    >
+      <div
+        className={`flex items-center gap-3 flex-1 min-w-0 transition-opacity ${
+          connected ? "" : "opacity-50"
+        }`}
+      >
+        <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
+          <ProviderLogo provider={provider} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {connected ? t("card.connected") : provider.subtitle}
+          </p>
+        </div>
       </div>
       <button
         type="button"
@@ -81,27 +80,6 @@ export function ProviderAccountRow({
           t("row.connect")
         )}
       </button>
-    </div>
-  );
-}
-
-export function ComingSoonRow({ provider }: { provider: ComingSoonProviderInfo }) {
-  const { t } = useTranslation("providers");
-  return (
-    <div
-      aria-disabled="true"
-      className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary opacity-60 cursor-not-allowed select-none"
-    >
-      <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
-        <ComingSoonLogo provider={provider} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
-        <p className="text-[11px] text-muted-foreground truncate">{provider.subtitle}</p>
-      </div>
-      <span className="rounded-full bg-foreground/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
-        {t("card.comingSoon")}
-      </span>
     </div>
   );
 }

@@ -1,16 +1,12 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
 import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
-import {
-  PROVIDERS,
-  COMING_SOON_PROVIDERS,
-  type ProviderInfo,
-} from "../../lib/providers";
+import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { GeminiConnectDialog } from "./gemini-connect-dialog";
-import { ProviderAccountRow, ComingSoonRow } from "./provider-account-row";
+import { ProviderAccountRow } from "./provider-account-row";
 
 /**
  * Settings-screen variant of the AI provider UI: accounts only.
@@ -124,6 +120,22 @@ export function ProviderSettings() {
     }
   };
 
+  // Connected providers float to the top so the user lands on what's
+  // already working. Within each group we preserve `PROVIDERS` order — the
+  // catalog is the source of truth for "which brand should be more prominent
+  // when nothing is connected yet," and we don't want connect/disconnect to
+  // shuffle siblings around each other.
+  const orderedProviders = useMemo(() => {
+    const connected: ProviderInfo[] = [];
+    const disconnected: ProviderInfo[] = [];
+    for (const p of PROVIDERS) {
+      const s = statuses[p.id];
+      if (s?.cli_installed && s?.authenticated) connected.push(p);
+      else disconnected.push(p);
+    }
+    return [...connected, ...disconnected];
+  }, [statuses]);
+
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -135,7 +147,7 @@ export function ProviderSettings() {
   return (
     <>
       <div className="grid grid-cols-1 gap-2">
-        {PROVIDERS.map((prov) => {
+        {orderedProviders.map((prov) => {
           const status = statuses[prov.id];
           const connected = (status?.cli_installed && status?.authenticated) ?? false;
           return (
@@ -149,9 +161,6 @@ export function ProviderSettings() {
             />
           );
         })}
-        {COMING_SOON_PROVIDERS.map((prov) => (
-          <ComingSoonRow key={prov.id} provider={prov} />
-        ))}
       </div>
 
       <ConfirmDialog
