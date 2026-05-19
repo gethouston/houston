@@ -1,6 +1,6 @@
 {
   "name": "houston-ai",
-  "version": "0.4.20",
+  "version": "0.4.12",
   "private": true,
   "type": "module",
   "scripts": {
