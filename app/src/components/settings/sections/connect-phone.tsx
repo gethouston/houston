@@ -134,7 +134,7 @@ export function ConnectPhoneSection() {
         )}
 
         <p className="text-[11px] text-muted-foreground leading-relaxed text-center max-w-[260px]">
-          {t("settings:connectPhone.keepMacAwake")}
+          {t("settings:connectPhone.keepComputerAwake")}
           <br />
           <Trans
             i18nKey="settings:connectPhone.alwaysOnHint"
