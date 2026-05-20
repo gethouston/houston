@@ -41,7 +41,7 @@ export const ConversationContent = ({
     // library binds its scrollRef to). The `conversation-scroll-pane`
     // marker class is the stable selector the keyboard-shortcut layer
     // uses to step-scroll the log with arrow keys.
-    scrollClassName="conversation-scroll-pane [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+    scrollClassName="conversation-scroll-pane"
     className={cn("flex flex-col gap-8 p-4", className)}
     {...props}
   />
