@@ -49,22 +49,11 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     installUrl: "https://github.com/openai/codex",
     loginCommand: "codex login",
     cost: "Your ChatGPT subscription",
-    // `gpt-5.5` is the default because the `-codex` variant is not granted
-    // on every ChatGPT plan (Business / Enterprise users hit a hard 400
-    // "model is not supported when using Codex with a ChatGPT account").
-    // Plain `gpt-5.5` works on every plan that Codex accepts at all, so we
-    // default there and let users opt into `-codex` via the picker if their
-    // plan allows it.
     models: [
       {
         id: "gpt-5.5",
         label: "GPT-5.5",
-        description: "Works on every ChatGPT plan. Recommended default.",
-      },
-      {
-        id: "gpt-5.5-codex",
-        label: "GPT-5.5 Codex",
-        description: "Coding-tuned. Some ChatGPT plans (e.g. Business) do not include it.",
+        description: "OpenAI's frontier model.",
       },
     ],
     defaultModel: "gpt-5.5",
@@ -143,6 +132,20 @@ export function getDefaultModel(providerId: string): string {
  */
 export function validProviderOrNull(providerId: string | null | undefined): string | null {
   return providerId && getProvider(providerId) ? providerId : null;
+}
+
+/**
+ * Return `modelId` only when it names a model currently listed in `PROVIDERS`
+ * for `providerId`. Stored configs can point at retired SKUs (e.g. the
+ * phantom `gpt-5.5-codex` that ChatGPT never shipped); chain with `??
+ * getDefaultModel(provider)` so the picker and the wire call agree on a
+ * model the server will actually accept.
+ */
+export function validModelOrNull(
+  providerId: string | null | undefined,
+  modelId: string | null | undefined,
+): string | null {
+  return providerId && modelId && getModel(providerId, modelId) ? modelId : null;
 }
 
 export interface ComingSoonProviderInfo {

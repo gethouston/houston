@@ -490,6 +490,25 @@ mod tests {
     }
 
     #[test]
+    fn login_command_codex_includes_reasoning_effort_override() {
+        let provider = parse("openai").unwrap();
+        let path = PathBuf::from("/tmp/houston-test-codex");
+        let command = build_cli_command(
+            provider,
+            provider.login_args().unwrap().to_vec(),
+            Some(path.clone()),
+            OsString::from("/not/on/path"),
+        )
+        .unwrap();
+        assert_eq!(command.cli_name, "codex");
+        assert_eq!(command.path, path);
+        assert_eq!(
+            command.args,
+            vec!["login", "-c", "model_reasoning_effort=high"]
+        );
+    }
+
+    #[test]
     fn logout_command_claude_uses_auth_logout() {
         let provider = parse("anthropic").unwrap();
         let path = PathBuf::from("/tmp/houston-test-claude");
@@ -518,7 +537,10 @@ mod tests {
         .unwrap();
         assert_eq!(command.cli_name, "codex");
         assert_eq!(command.path, path);
-        assert_eq!(command.args, vec!["logout"]);
+        assert_eq!(
+            command.args,
+            vec!["logout", "-c", "model_reasoning_effort=high"]
+        );
     }
 
     #[test]

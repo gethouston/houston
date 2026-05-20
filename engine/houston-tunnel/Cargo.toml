@@ -1,6 +1,6 @@
 [package]
 name = "houston-tunnel"
-version = "0.4.10"
+version = "0.4.12"
 edition = "2021"
 description = "Outbound reverse tunnel client — engine dials Houston relay, multiplexes mobile HTTP+WS"
 license = "MIT"

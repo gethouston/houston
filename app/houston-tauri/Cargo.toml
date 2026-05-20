@@ -1,6 +1,6 @@
 [package]
 name = "houston-tauri"
-version = "0.4.11"
+version = "0.4.12"
 edition = "2021"
 description = "Thin Tauri adapter for the Houston desktop app. Owns the event-sink bridge, tray UI, path helpers, and shared state. All domain logic lives in the engine crates."
 license = "MIT"

@@ -16,7 +16,7 @@ use std::time::Duration;
 
 const GENERATE_TIMEOUT: Duration = Duration::from_secs(60);
 const CLAUDE_GEN_MODEL: &str = "sonnet";
-const CODEX_GEN_MODEL: &str = "gpt-5.5-codex";
+const CODEX_GEN_MODEL: &str = "gpt-5.5";
 /// Gemini generation model. Flash-Lite — matches the only Gemini model
 /// currently offered by the frontend catalog (`app/src/lib/providers.ts`),
 /// so when a user pins Gemini to their workspace and hits Create-with-AI

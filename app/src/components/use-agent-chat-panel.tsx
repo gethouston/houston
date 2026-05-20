@@ -66,7 +66,7 @@ import {
   isComposioSigninHref,
 } from "./composio-signin-card";
 import { ChatModelSelector } from "./chat-model-selector";
-import { getDefaultModel } from "../lib/providers";
+import { getDefaultModel, validModelOrNull } from "../lib/providers";
 import { analytics } from "../lib/analytics";
 import {
   buildSkillClaudePrompt,
@@ -183,7 +183,10 @@ export function useAgentChatPanel({
   const selectedActivityId = selectedActivity?.id ?? null;
 
   const effectiveProvider = activityProvider ?? agentProvider ?? "anthropic";
-  const effectiveModel = activityModel ?? agentModel ?? getDefaultModel(effectiveProvider);
+  const effectiveModel =
+    validModelOrNull(effectiveProvider, activityModel) ??
+    validModelOrNull(effectiveProvider, agentModel) ??
+    getDefaultModel(effectiveProvider);
   const handleModelSelect = useCallback(
     async (prov: string, mod: string) => {
       // Optimistic UI: the picker flips instantly while the writes fan out.

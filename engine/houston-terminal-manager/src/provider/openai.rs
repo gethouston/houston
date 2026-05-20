@@ -44,13 +44,25 @@ impl ProviderAdapter for OpenAiAdapter {
     }
 
     fn login_args(&self) -> Option<&'static [&'static str]> {
-        Some(&["login"])
+        // Same `xhigh` guard as `logout_args` and the runner: codex loads
+        // `~/.codex/config.toml` before any subcommand, and a stale
+        // `model_reasoning_effort = "xhigh"` written by a newer CLI makes
+        // the bundled one bail out before the OAuth flow can even start.
+        Some(&["login", "-c", "model_reasoning_effort=high"])
     }
 
     fn logout_args(&self) -> Option<&'static [&'static str]> {
         // `codex logout` revokes the ChatGPT refresh token server-side
         // then deletes `~/.codex/auth.json`.
-        Some(&["logout"])
+        //
+        // Codex loads `~/.codex/config.toml` before running any subcommand,
+        // including `logout`. Newer Codex CLIs write
+        // `model_reasoning_effort = "xhigh"`, which the bundled CLI rejects
+        // ("unknown variant `xhigh`"), so logout exits 1 with a config error
+        // and the user is stuck signed in. Force a known-good value, same
+        // trick `provider_auth::probe_codex_auth_status` uses for
+        // `login status`.
+        Some(&["logout", "-c", "model_reasoning_effort=high"])
     }
 
     fn classify_stderr(&self, line: &str) -> Option<ProviderError> {
