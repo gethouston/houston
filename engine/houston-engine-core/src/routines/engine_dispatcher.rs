@@ -13,12 +13,15 @@ use crate::agents::{
 use crate::routines::runner::{
     ActivitySurface, DispatchContext, DispatchOutcome, RoutineDispatcher,
 };
+use crate::routines::runs as routine_runs;
+use crate::routines::types::RoutineRunUpdate;
 use crate::sessions::{self, SessionRuntime};
 use async_trait::async_trait;
-use houston_agents_conversations::session_runner::{self, PersistOptions};
+use houston_agents_conversations::session_runner::{self, PersistOptions, SessionLifecycle};
 use houston_db::Database;
-use houston_ui_events::DynEventSink;
-use std::path::Path;
+use houston_ui_events::{DynEventSink, HoustonEvent};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
 /// Dispatcher that spawns a real session via `houston-agents-conversations`
 /// and waits for completion.
@@ -92,6 +95,12 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
                 source: "routine".into(),
                 user_message: Some(ctx.prompt.to_string()),
                 claude_session_id: None,
+                lifecycle: Some(Arc::new(RoutineRunLifecycle {
+                    root: ctx.working_dir.to_path_buf(),
+                    run_id: ctx.run.id.clone(),
+                    agent_path: ctx.agent_path.to_string(),
+                    events: self.events.clone(),
+                })),
             }),
             Some(self.rt.pid_map.clone()),
             resolved.provider,
@@ -109,6 +118,123 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
                 error: Some(format!("session task failed: {e}")),
             },
         }
+    }
+}
+
+/// Persist `routine_run.paused_until` when the underlying CLI sleeps on a
+/// usage-limit window, and clear it when output resumes. `tracing::error!`
+/// is the right surface on failure here: this hook runs inside the event
+/// loop with no UI thread to toast on (the documented carve-out to the
+/// otherwise-banned silent-failure pattern). The persisted state is a
+/// hint; a missed write degrades to "we'll just show Running" rather
+/// than corrupting anything.
+struct RoutineRunLifecycle {
+    root: PathBuf,
+    run_id: String,
+    agent_path: String,
+    events: DynEventSink,
+}
+
+impl RoutineRunLifecycle {
+    fn write(&self, paused: Option<Option<String>>) {
+        if let Err(e) = routine_runs::update(
+            &self.root,
+            &self.run_id,
+            RoutineRunUpdate {
+                paused_until: paused,
+                ..Default::default()
+            },
+        ) {
+            tracing::error!(
+                "[routines] failed to persist paused_until for run {}: {e}",
+                self.run_id
+            );
+            return;
+        }
+        self.events.emit(HoustonEvent::RoutineRunsChanged {
+            agent_path: self.agent_path.clone(),
+        });
+    }
+}
+
+impl SessionLifecycle for RoutineRunLifecycle {
+    fn on_paused(&self, resets_at: Option<String>, _message: String) {
+        self.write(Some(Some(resets_at.unwrap_or_else(|| "soon".into()))));
+    }
+
+    fn on_resumed(&self) {
+        self.write(Some(None));
+    }
+}
+
+#[cfg(test)]
+mod lifecycle_tests {
+    use super::*;
+    use crate::routines::{create, types::NewRoutine};
+    use houston_ui_events::NoopEventSink;
+    use tempfile::TempDir;
+
+    fn mk_routine() -> NewRoutine {
+        NewRoutine {
+            name: "n".into(),
+            description: "d".into(),
+            prompt: "p".into(),
+            schedule: "0 9 * * *".into(),
+            enabled: true,
+            suppress_when_silent: true,
+            timezone: None,
+            integrations: vec![],
+        }
+    }
+
+    #[test]
+    fn on_paused_writes_hint_then_on_resumed_clears() {
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), mk_routine()).unwrap();
+        let run = routine_runs::create(d.path(), &r.id).unwrap();
+        assert!(run.paused_until.is_none());
+
+        let lc = RoutineRunLifecycle {
+            root: d.path().to_path_buf(),
+            run_id: run.id.clone(),
+            agent_path: d.path().to_string_lossy().to_string(),
+            events: Arc::new(NoopEventSink),
+        };
+
+        lc.on_paused(
+            Some("5pm (America/Los_Angeles)".into()),
+            "banner".into(),
+        );
+        let after_pause = routine_runs::find_by_id(d.path(), &run.id).unwrap();
+        assert_eq!(
+            after_pause.paused_until.as_deref(),
+            Some("5pm (America/Los_Angeles)")
+        );
+
+        lc.on_resumed();
+        let after_resume = routine_runs::find_by_id(d.path(), &run.id).unwrap();
+        assert!(after_resume.paused_until.is_none());
+    }
+
+    #[test]
+    fn on_paused_falls_back_when_banner_has_no_hint() {
+        // Defensive: if the classifier couldn't extract a hint we still
+        // surface *something* so the UI can show "Paused" rather than
+        // pretending the run is making progress.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), mk_routine()).unwrap();
+        let run = routine_runs::create(d.path(), &r.id).unwrap();
+
+        let lc = RoutineRunLifecycle {
+            root: d.path().to_path_buf(),
+            run_id: run.id.clone(),
+            agent_path: d.path().to_string_lossy().to_string(),
+            events: Arc::new(NoopEventSink),
+        };
+        lc.on_paused(None, "raw banner".into());
+
+        let after = routine_runs::find_by_id(d.path(), &run.id).unwrap();
+        assert_eq!(after.paused_until.as_deref(), Some("soon"));
     }
 }
 

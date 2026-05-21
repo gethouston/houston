@@ -14,7 +14,11 @@
       "activity_id": { "type": "string" },
       "summary": { "type": "string" },
       "started_at": { "type": "string", "format": "date-time" },
-      "completed_at": { "type": "string", "format": "date-time" }
+      "completed_at": { "type": "string", "format": "date-time" },
+      "paused_until": {
+        "type": "string",
+        "description": "Human-readable reset hint while the provider CLI is sleeping on a usage-limit window. Only meaningful when status is 'running'."
+      }
     },
     "additionalProperties": false
   }

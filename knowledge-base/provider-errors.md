@@ -25,6 +25,7 @@ and mirrored in `ui/chat/src/types.ts`. The two MUST stay in sync.
 |----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------|
 | `RateLimited`              | Per-minute / short-window throttle. Wait helps.                                         | Retry, Switch model, optional `retry_after_seconds`. |
 | `QuotaExhausted`           | Long-window / billing-period limit. Wait won't help.                                    | Upgrade plan (`upgrade_url`), Switch provider.       |
+| `UsageLimitPaused`         | CLI is sleeping internally until the plan-window reset (today: Anthropic claude-code).  | None — non-terminal. Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
 | `ModelUnavailable`         | The requested model isn't available to this account (preview, deprecated, regioned).    | Switch to `suggested_fallback`, Pick another model.  |
 | `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect (drives `tauriProvider.launchLogin`).      |
 | `NetworkUnreachable`       | Cannot reach the provider's API (DNS, connect refused, ECONNRESET).                     | Retry, Check status page.                            |

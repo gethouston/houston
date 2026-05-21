@@ -36,6 +36,7 @@ const STATUS_DOT: Record<string, string> = {
   surfaced: "bg-foreground",
   running: "bg-blue-500",
   error: "bg-red-500",
+  cancelled: "bg-gray-400",
 }
 
 function lastRunLabel(lastRun: RoutineRun | undefined, now: Date): string | null {
@@ -63,6 +64,7 @@ export function RoutineRow({
   const next = routine.enabled ? nextFire(routine.schedule, tz, now) : null
   const nextDescr = next ? describeNextFire(next, tz, now) : null
   const lastLabel = lastRunLabel(lastRun, now)
+  const isPaused = lastRun?.status === "running" && !!lastRun.paused_until
 
   return (
     <div
@@ -83,14 +85,18 @@ export function RoutineRow({
         !routine.enabled && "opacity-55",
       )}
     >
-      {/* Status dot — small but always present */}
+      {/* Status dot — small but always present. Amber when the in-flight run
+          is sleeping on a usage-limit window so the row reads as "waiting"
+          rather than "thrashing". */}
       <div
         className={cn(
           "size-2 rounded-full shrink-0",
-          routine.enabled
-            ? STATUS_DOT[lastRun?.status ?? "silent"] ?? "bg-gray-300"
-            : "bg-gray-300",
-          lastRun?.status === "running" && "animate-pulse",
+          !routine.enabled
+            ? "bg-gray-300"
+            : isPaused
+              ? "bg-amber-500"
+              : STATUS_DOT[lastRun?.status ?? "silent"] ?? "bg-gray-300",
+          lastRun?.status === "running" && !isPaused && "animate-pulse",
         )}
         aria-hidden
       />
@@ -124,10 +130,16 @@ export function RoutineRow({
         ) : (
           <p className="text-xs text-muted-foreground">Paused</p>
         )}
-        {lastLabel && (
-          <p className="text-[11px] text-muted-foreground/70 mt-0.5 tabular-nums">
-            {lastLabel}
+        {isPaused ? (
+          <p className="text-[11px] text-amber-700 mt-0.5 tabular-nums">
+            Waiting · resumes at {lastRun?.paused_until}
           </p>
+        ) : (
+          lastLabel && (
+            <p className="text-[11px] text-muted-foreground/70 mt-0.5 tabular-nums">
+              {lastLabel}
+            </p>
+          )
         )}
       </div>
 

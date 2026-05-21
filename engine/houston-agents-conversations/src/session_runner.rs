@@ -8,9 +8,22 @@ use crate::session_pids::SessionPidMap;
 use houston_db::Database;
 use houston_terminal_manager::auth_error::{is_auth_error, is_auth_retry_marker};
 use houston_terminal_manager::provider_auth::ProviderAuthState;
+use houston_terminal_manager::provider_error_kind::ProviderError;
 use houston_terminal_manager::{FeedItem, Provider, SessionManager, SessionStatus, SessionUpdate};
 use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::PathBuf;
+use std::sync::Arc;
+
+/// Hook into provider-emitted lifecycle signals the generic session loop
+/// can't act on directly. Today fires on `UsageLimitPaused` (the CLI
+/// went to sleep waiting for its plan-window reset) and again when
+/// output resumes — so the embedder can persist run-specific state
+/// (e.g. `routine_run.paused_until`) without `agents-conversations`
+/// needing to know about routines.
+pub trait SessionLifecycle: Send + Sync {
+    fn on_paused(&self, resets_at: Option<String>, message: String);
+    fn on_resumed(&self);
+}
 
 /// Result of a completed session.
 pub struct SessionResult {
@@ -30,6 +43,11 @@ pub struct PersistOptions {
     /// Set automatically once the session reports its ID via
     /// SessionUpdate::SessionId. Do not set manually.
     pub claude_session_id: Option<String>,
+    /// Optional lifecycle hook for pause/resume signals. Currently used by
+    /// the routine dispatcher to flip a `routine_run.paused_until` field on
+    /// disk when the Anthropic CLI sleeps on a plan-window usage limit.
+    #[allow(clippy::type_complexity)]
+    pub lifecycle: Option<Arc<dyn SessionLifecycle>>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -115,6 +133,7 @@ pub fn spawn_and_monitor(
         let mut saw_auth_error = false;
         let mut sent_auth_checking = false;
         let mut sent_auth_required = false;
+        let mut paused_signaled = false;
 
         while let Some(update) = rx.recv().await {
             match update {
@@ -128,6 +147,16 @@ pub fn spawn_and_monitor(
                     if let FeedItem::AssistantText(text) = item {
                         response_text = Some(text.clone());
                     }
+
+                    // Lifecycle hook: usage-limit pause/resume. The CLI
+                    // sleeps internally until its reset window, so the
+                    // stream stays open but goes quiet. Notify the
+                    // embedder so it can flip persisted state (e.g.
+                    // `routine_run.paused_until`). Any subsequent
+                    // assistant/tool output is treated as the resume.
+                    let lifecycle_ref =
+                        persist.as_ref().and_then(|p| p.lifecycle.as_deref());
+                    notify_lifecycle(item, lifecycle_ref, &mut paused_signaled);
                     // Collapse ALL auth-flavored system messages into a single
                     // "Checking connection..." banner. Covers three shapes we've
                     // seen in the wild:
@@ -425,6 +454,47 @@ fn is_opaque_claude_auth_error(provider: Provider, message: &str) -> bool {
     provider.id() == "anthropic" && message.trim() == "Error: Unknown error"
 }
 
+/// Dispatch a feed item to the optional `SessionLifecycle` hook.
+///
+/// Two transitions are interesting:
+/// - `UsageLimitPaused` → call `on_paused` and remember the paused state.
+/// - When `paused_signaled` is set and any assistant/tool/thinking item
+///   arrives, the CLI has resumed → call `on_resumed` and clear the flag.
+///
+/// Everything else is a no-op. Extracted as a free function so the
+/// transition table is testable without driving a real subprocess.
+fn notify_lifecycle(
+    item: &FeedItem,
+    lifecycle: Option<&dyn SessionLifecycle>,
+    paused_signaled: &mut bool,
+) {
+    if let FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+        resets_at, message, ..
+    }) = item
+    {
+        if let Some(lc) = lifecycle {
+            lc.on_paused(resets_at.clone(), message.clone());
+        }
+        *paused_signaled = true;
+        return;
+    }
+
+    let is_progress = matches!(
+        item,
+        FeedItem::AssistantText(_)
+            | FeedItem::AssistantTextStreaming(_)
+            | FeedItem::ToolCall { .. }
+            | FeedItem::Thinking(_)
+            | FeedItem::ThinkingStreaming(_)
+    );
+    if *paused_signaled && is_progress {
+        if let Some(lc) = lifecycle {
+            lc.on_resumed();
+        }
+        *paused_signaled = false;
+    }
+}
+
 fn restore_pending_user_message(current: &mut Option<String>, original: &Option<String>) {
     if current.is_none() {
         *current = original.clone();
@@ -503,6 +573,88 @@ mod tests {
         restore_pending_user_message(&mut current, &original);
 
         assert_eq!(current.as_deref(), Some("current"));
+    }
+
+    #[derive(Default)]
+    struct RecordingLifecycle {
+        paused_calls: std::sync::Mutex<Vec<(Option<String>, String)>>,
+        resume_calls: std::sync::Mutex<u32>,
+    }
+
+    impl SessionLifecycle for RecordingLifecycle {
+        fn on_paused(&self, resets_at: Option<String>, message: String) {
+            self.paused_calls.lock().unwrap().push((resets_at, message));
+        }
+        fn on_resumed(&self) {
+            *self.resume_calls.lock().unwrap() += 1;
+        }
+    }
+
+    #[test]
+    fn notify_lifecycle_fires_on_usage_limit_paused() {
+        let lc = RecordingLifecycle::default();
+        let mut paused = false;
+        let item = FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+            provider: "anthropic".into(),
+            resets_at: Some("5pm".into()),
+            message: "banner".into(),
+        });
+        notify_lifecycle(&item, Some(&lc), &mut paused);
+        assert!(paused);
+        assert_eq!(lc.paused_calls.lock().unwrap().len(), 1);
+        assert_eq!(*lc.resume_calls.lock().unwrap(), 0);
+    }
+
+    #[test]
+    fn notify_lifecycle_fires_resumed_only_after_pause() {
+        let lc = RecordingLifecycle::default();
+        let mut paused = false;
+        // Plain content before any pause → no resume call.
+        notify_lifecycle(
+            &FeedItem::AssistantText("hi".into()),
+            Some(&lc),
+            &mut paused,
+        );
+        assert!(!paused);
+        assert_eq!(*lc.resume_calls.lock().unwrap(), 0);
+
+        // Pause.
+        notify_lifecycle(
+            &FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+                provider: "anthropic".into(),
+                resets_at: None,
+                message: "b".into(),
+            }),
+            Some(&lc),
+            &mut paused,
+        );
+        assert!(paused);
+
+        // Content after pause → resume fires once.
+        notify_lifecycle(
+            &FeedItem::AssistantText("hello again".into()),
+            Some(&lc),
+            &mut paused,
+        );
+        assert!(!paused);
+        assert_eq!(*lc.resume_calls.lock().unwrap(), 1);
+    }
+
+    #[test]
+    fn notify_lifecycle_ignored_when_no_handler() {
+        let mut paused = false;
+        notify_lifecycle(
+            &FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+                provider: "anthropic".into(),
+                resets_at: None,
+                message: "b".into(),
+            }),
+            None,
+            &mut paused,
+        );
+        // Without a handler we still track the paused flag so the next
+        // resume signal doesn't fire spuriously when one is installed.
+        assert!(paused);
     }
 
     #[test]

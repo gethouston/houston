@@ -313,6 +313,7 @@ async fn run_start(
         source,
         user_message: Some(prompt.clone()),
         claude_session_id: None,
+        lifecycle: None,
     });
 
     let events_for_end = events.clone();

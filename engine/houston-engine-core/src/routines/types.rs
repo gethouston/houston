@@ -90,6 +90,13 @@ pub struct RoutineRun {
     pub started_at: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<String>,
+    /// Human-readable reset hint captured from the provider CLI's
+    /// usage-limit-paused banner (e.g. `"5pm (America/Los_Angeles)"`).
+    /// Set while `status == "running"` to indicate the subprocess is
+    /// sleeping until the reset window. Irrelevant once the run reaches
+    /// a terminal state; consumers should treat it as a hint only.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub paused_until: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -98,4 +105,7 @@ pub struct RoutineRunUpdate {
     pub activity_id: Option<String>,
     pub summary: Option<String>,
     pub completed_at: Option<String>,
+    /// `Some(Some("..."))` sets the hint; `Some(None)` clears it.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub paused_until: Option<Option<String>>,
 }

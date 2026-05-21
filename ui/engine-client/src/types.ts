@@ -201,7 +201,12 @@ export interface RoutineUpdate {
   integrations?: string[];
 }
 
-export type RoutineRunStatus = "running" | "silent" | "surfaced" | "error";
+export type RoutineRunStatus =
+  | "running"
+  | "silent"
+  | "surfaced"
+  | "error"
+  | "cancelled";
 
 export interface RoutineRun {
   id: string;
@@ -212,6 +217,9 @@ export interface RoutineRun {
   summary?: string;
   started_at: string;
   completed_at?: string;
+  /** Human-readable reset hint while the provider CLI is sleeping on a
+   *  usage-limit window. Only meaningful when status is `running`. */
+  paused_until?: string;
 }
 
 export interface RoutineRunUpdate {
@@ -219,6 +227,8 @@ export interface RoutineRunUpdate {
   activity_id?: string;
   summary?: string;
   completed_at?: string;
+  /** Pass `string` to set the hint, `null` to clear, omit to leave alone. */
+  paused_until?: string | null;
 }
 
 export interface ProjectConfig {

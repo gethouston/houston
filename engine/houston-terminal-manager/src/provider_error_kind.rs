@@ -101,6 +101,20 @@ pub enum ProviderError {
         message: String,
         upgrade_url: Option<String>,
     },
+    /// Plan-window usage limit the CLI auto-recovers from by sleeping
+    /// internally until the reset window. The CLI subprocess is still
+    /// alive — Houston should surface this as a non-terminal "paused"
+    /// state, NOT an error. Today this only fires for the Anthropic
+    /// claude-code CLI's "Claude usage limit reached. Your limit will
+    /// reset at HH:MM (TZ)" banner.
+    UsageLimitPaused {
+        provider: String,
+        /// Human-readable reset hint extracted from the banner
+        /// (e.g. `"5pm (America/Los_Angeles)"`). `None` if the banner
+        /// didn't include a parseable hint.
+        resets_at: Option<String>,
+        message: String,
+    },
     /// Model the user requested isn't available to this account.
     ModelUnavailable {
         provider: String,
@@ -166,6 +180,7 @@ impl ProviderError {
         match self {
             Self::RateLimited { provider, .. }
             | Self::QuotaExhausted { provider, .. }
+            | Self::UsageLimitPaused { provider, .. }
             | Self::ModelUnavailable { provider, .. }
             | Self::Unauthenticated { provider, .. }
             | Self::NetworkUnreachable { provider, .. }
@@ -185,6 +200,7 @@ impl ProviderError {
         match self {
             Self::RateLimited { .. } => "rate_limited",
             Self::QuotaExhausted { .. } => "quota_exhausted",
+            Self::UsageLimitPaused { .. } => "usage_limit_paused",
             Self::ModelUnavailable { .. } => "model_unavailable",
             Self::Unauthenticated { .. } => "unauthenticated",
             Self::NetworkUnreachable { .. } => "network_unreachable",
@@ -228,6 +244,20 @@ mod tests {
         let json = serde_json::to_string(&e).unwrap();
         assert!(json.contains(r#""kind":"quota_exhausted""#));
         assert!(json.contains(r#""scope":"free_tier""#));
+        let back: ProviderError = serde_json::from_str(&json).unwrap();
+        assert_eq!(e, back);
+    }
+
+    #[test]
+    fn round_trip_usage_limit_paused() {
+        let e = ProviderError::UsageLimitPaused {
+            provider: "anthropic".into(),
+            resets_at: Some("5pm (America/Los_Angeles)".into()),
+            message: "Claude usage limit reached. Your limit will reset at 5pm (America/Los_Angeles)".into(),
+        };
+        let json = serde_json::to_string(&e).unwrap();
+        assert!(json.contains(r#""kind":"usage_limit_paused""#));
+        assert!(json.contains(r#""resets_at":"5pm (America/Los_Angeles)""#));
         let back: ProviderError = serde_json::from_str(&json).unwrap();
         assert_eq!(e, back);
     }

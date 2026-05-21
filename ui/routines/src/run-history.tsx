@@ -5,7 +5,7 @@
  * get a "View" affordance that links back to the activity board.
  */
 import { cn, Button } from "@houston-ai/core"
-import { ArrowUpRight, Square } from "lucide-react"
+import { ArrowUpRight, PauseCircle, Square } from "lucide-react"
 import type { RoutineRun } from "./types"
 
 export interface RunHistoryProps {
@@ -76,6 +76,16 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
       {sorted.map((run) => {
         const duration = formatDuration(run.started_at, run.completed_at)
         const isSurfaced = run.status === "surfaced" && run.activity_id && onViewActivity
+        const isPaused = run.status === "running" && !!run.paused_until
+        // While paused, the CLI is sleeping — show an amber dot instead of
+        // the blue pulse so a long-running routine reads as "waiting" not
+        // "thrashing", and overwrite the summary slot with the reset hint.
+        const dotClass = isPaused
+          ? "bg-amber-500"
+          : (STATUS_DOT[run.status] ?? "bg-gray-300")
+        const statusLabel = isPaused
+          ? "Paused"
+          : (STATUS_LABEL[run.status] ?? run.status)
         return (
           <li
             key={run.id}
@@ -87,10 +97,7 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
             )}
           >
             <span
-              className={cn(
-                "size-1.5 rounded-full shrink-0",
-                STATUS_DOT[run.status] ?? "bg-gray-300",
-              )}
+              className={cn("size-1.5 rounded-full shrink-0", dotClass)}
               aria-hidden
             />
             <span className="text-xs text-muted-foreground tabular-nums w-36 shrink-0">
@@ -99,16 +106,33 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
             <span
               className={cn(
                 "text-xs w-16 shrink-0",
-                run.status === "error" ? "text-red-500" : "text-muted-foreground",
+                run.status === "error"
+                  ? "text-red-500"
+                  : isPaused
+                    ? "text-amber-600"
+                    : "text-muted-foreground",
               )}
             >
-              {STATUS_LABEL[run.status] ?? run.status}
+              {statusLabel}
             </span>
             <span className="text-[11px] text-muted-foreground tabular-nums w-12 shrink-0">
               {duration ?? "—"}
             </span>
-            <span className="text-xs text-muted-foreground/80 truncate flex-1 min-w-0">
-              {run.summary ?? ""}
+            <span
+              className={cn(
+                "text-xs truncate flex-1 min-w-0 flex items-center gap-1",
+                isPaused ? "text-amber-700" : "text-muted-foreground/80",
+              )}
+            >
+              {isPaused && (
+                <PauseCircle
+                  className="size-3 shrink-0 text-amber-600"
+                  aria-hidden
+                />
+              )}
+              {isPaused
+                ? `Waiting for usage limit — resumes at ${run.paused_until}`
+                : (run.summary ?? "")}
             </span>
             {isSurfaced && (
               <button

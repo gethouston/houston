@@ -70,6 +70,20 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
         });
     }
 
+    // Plan-window usage limit the CLI auto-recovers from. claude-code prints
+    // a banner like "Claude usage limit reached. Your limit will reset at
+    // 5pm (America/Los_Angeles)" then sleeps internally until the reset
+    // window. Must precede the QuotaExhausted branch below, which would
+    // otherwise swallow the substring "usage limit" as a terminal error.
+    if lower.contains("usage limit") && lower.contains("reset") {
+        let resets_at = parse_resets_at_hint(line);
+        return Some(ProviderError::UsageLimitPaused {
+            provider: PROVIDER.into(),
+            resets_at,
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
     // Long-window quota — the user needs a plan upgrade, not a wait.
     if (lower.contains("quota") && lower.contains("exhaust"))
         || lower.contains("usage limit")
@@ -139,6 +153,27 @@ pub(crate) fn classify_result_error(
     // the same auth/quota/rate-limit phrasing the CLI prints to stderr,
     // so we get exhaustive coverage from one set of patterns.
     classify_stderr(error_message)
+}
+
+/// Extract the human-readable reset hint from a claude-code usage-limit
+/// banner like `"Claude usage limit reached. Your limit will reset at
+/// 5pm (America/Los_Angeles)"`. Returns the substring after `reset at`
+/// trimmed of trailing punctuation, or `None` if the marker isn't present.
+fn parse_resets_at_hint(line: &str) -> Option<String> {
+    let lower = line.to_lowercase();
+    let marker_idx = lower
+        .find("reset at ")
+        .map(|i| i + "reset at ".len())
+        .or_else(|| lower.find("resets at ").map(|i| i + "resets at ".len()))?;
+    let hint = line[marker_idx..]
+        .trim()
+        .trim_end_matches(|c: char| c == '.' || c == ',')
+        .trim();
+    if hint.is_empty() {
+        None
+    } else {
+        Some(hint.to_string())
+    }
 }
 
 /// Pull `N` from "retry after N seconds" / "retry-after: N" patterns.
@@ -238,6 +273,46 @@ mod tests {
             } => {}
             other => panic!("expected RateLimited with retry_after=30, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn usage_limit_with_reset_classified_as_paused_with_hint() {
+        let line = "Claude usage limit reached. Your limit will reset at 5pm (America/Los_Angeles).";
+        match classify_stderr(line).unwrap() {
+            ProviderError::UsageLimitPaused { resets_at, .. } => {
+                assert_eq!(resets_at.as_deref(), Some("5pm (America/Los_Angeles)"));
+            }
+            other => panic!("expected UsageLimitPaused, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn usage_limit_with_resets_at_phrasing_classified_as_paused() {
+        let line = "Claude usage limit reached. Your limit resets at 11:30am UTC";
+        match classify_stderr(line).unwrap() {
+            ProviderError::UsageLimitPaused { resets_at, .. } => {
+                assert_eq!(resets_at.as_deref(), Some("11:30am UTC"));
+            }
+            other => panic!("expected UsageLimitPaused, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn usage_limit_paused_wins_over_quota_exhausted_for_same_phrase() {
+        // "usage limit" alone (no reset) is still quota-exhausted — but with
+        // a reset hint it must be paused, not exhausted. Guards against the
+        // ordering of the two branches in `classify_stderr` regressing.
+        let with_reset =
+            "Claude usage limit reached. Your limit will reset at 9am (Europe/London)";
+        let without_reset = "Monthly usage limit exhausted for your plan";
+        assert!(matches!(
+            classify_stderr(with_reset).unwrap(),
+            ProviderError::UsageLimitPaused { .. }
+        ));
+        assert!(matches!(
+            classify_stderr(without_reset).unwrap(),
+            ProviderError::QuotaExhausted { .. }
+        ));
     }
 
     #[test]

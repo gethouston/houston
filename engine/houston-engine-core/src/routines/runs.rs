@@ -44,6 +44,7 @@ pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
         summary: None,
         started_at: Utc::now().to_rfc3339(),
         completed_at: None,
+        paused_until: None,
     };
     runs.push(run.clone());
     prune(&mut runs);
@@ -69,6 +70,9 @@ pub fn update(root: &Path, id: &str, updates: RoutineRunUpdate) -> CoreResult<Ro
     }
     if let Some(completed_at) = updates.completed_at {
         run.completed_at = Some(completed_at);
+    }
+    if let Some(paused) = updates.paused_until {
+        run.paused_until = paused;
     }
 
     let result = run.clone();
@@ -172,6 +176,67 @@ mod tests {
             find_by_id(d.path(), "nope").unwrap_err(),
             CoreError::NotFound(_)
         ));
+    }
+
+    #[test]
+    fn paused_until_set_and_clear() {
+        let d = TempDir::new().unwrap();
+        let run = create(d.path(), "rid").unwrap();
+        assert!(run.paused_until.is_none());
+
+        // Set
+        let after_set = update(
+            d.path(),
+            &run.id,
+            RoutineRunUpdate {
+                paused_until: Some(Some("5pm (America/Los_Angeles)".into())),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            after_set.paused_until.as_deref(),
+            Some("5pm (America/Los_Angeles)")
+        );
+
+        // Clear via Some(None)
+        let after_clear = update(
+            d.path(),
+            &run.id,
+            RoutineRunUpdate {
+                paused_until: Some(None),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(after_clear.paused_until.is_none());
+    }
+
+    #[test]
+    fn paused_until_untouched_when_omitted() {
+        // None (outer) on RoutineRunUpdate.paused_until must leave the
+        // persisted value alone — the field is opt-in PATCH semantics.
+        let d = TempDir::new().unwrap();
+        let run = create(d.path(), "rid").unwrap();
+        let _ = update(
+            d.path(),
+            &run.id,
+            RoutineRunUpdate {
+                paused_until: Some(Some("9am UTC".into())),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let after = update(
+            d.path(),
+            &run.id,
+            RoutineRunUpdate {
+                summary: Some("noise".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(after.paused_until.as_deref(), Some("9am UTC"));
     }
 
     #[test]
