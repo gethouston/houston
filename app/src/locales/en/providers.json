@@ -26,7 +26,22 @@
   },
   "toast": {
     "signInFailed": "Couldn't open {{provider}} sign-in",
-    "signOutFailed": "Couldn't sign out of {{provider}}"
+    "signOutFailed": "Couldn't sign out of {{provider}}",
+    "signInSucceeded": "Signed in to {{provider}}"
+  },
+  "providerLogin": {
+    "title": "Finish signing in to {{name}}",
+    "description": "Open the URL below in your browser, complete sign-in, then paste the verification code back here.",
+    "openUrl": "Open URL",
+    "copyUrl": "Copy URL",
+    "urlCopied": "URL copied to clipboard",
+    "urlCopyFailed": "Couldn't copy the URL",
+    "codeLabel": "Verification code",
+    "codePlaceholder": "Paste the code from your browser",
+    "codeRequired": "Enter the verification code first.",
+    "submit": "Submit code",
+    "submitting": "Submitting...",
+    "cancel": "Cancel"
   },
   "geminiConnect": {
     "title": "Connect {{name}}",

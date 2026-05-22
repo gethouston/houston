@@ -25,6 +25,15 @@ pub fn router() -> Router<Arc<ServerState>> {
         // `claude auth login --claudeai` and `codex login` for the
         // other providers.
         .route("/providers/:name/login", post(login))
+        // POST /providers/:name/login/code submits the OAuth
+        // verification code the user pasted from their browser.
+        // Required for remote/headless engines (container, Always-On)
+        // where the CLI can't open the user's browser itself; the
+        // engine then surfaces the sign-in URL via the WebSocket
+        // `ProviderLoginUrl` event, the UI shows it + a paste-code
+        // input, and the submitted code is written back to the CLI's
+        // stdin so it can exchange for an OAuth token.
+        .route("/providers/:name/login/code", post(login_code))
         .route("/providers/:name/logout", post(logout))
         // Gemini-only: persist an API key the user pasted in the picker
         // dialog to `~/.gemini/.env`. Alternative to the OAuth flow for
@@ -44,11 +53,27 @@ async fn status(
 }
 
 async fn login(
-    State(_st): State<Arc<ServerState>>,
+    State(st): State<Arc<ServerState>>,
     Path(name): Path<String>,
 ) -> Result<(), ApiError> {
     let p = provider::parse(&name)?;
-    provider::launch_login(p).await?;
+    provider::launch_login(p, st.engine.events.clone()).await?;
+    Ok(())
+}
+
+#[derive(serde::Deserialize)]
+struct LoginCode {
+    /// Verification code the user pasted from the OAuth callback page.
+    code: String,
+}
+
+async fn login_code(
+    State(_st): State<Arc<ServerState>>,
+    Path(name): Path<String>,
+    Json(body): Json<LoginCode>,
+) -> Result<(), ApiError> {
+    let p = provider::parse(&name)?;
+    provider::submit_login_code(p, &body.code).await?;
     Ok(())
 }
 

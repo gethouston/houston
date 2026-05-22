@@ -157,6 +157,29 @@ pub enum HoustonEvent {
     /// Claude Code CLI install or upgrade failed. `message` is intended
     /// to be user-readable (network/region/permissions/disk-space hints).
     ClaudeCliFailed { message: String },
+
+    // ----- Provider OAuth login (URL relay) -----
+    //
+    // When the engine runs in a remote/headless context (container,
+    // Always-On VPS, future Cloud), the CLI can't open the user's
+    // browser — the browser is on a different machine entirely. Each
+    // CLI prints a fallback OAuth URL to stdout and waits for the
+    // verification code on stdin. These events surface that URL to
+    // the UI so the user can open it in their own browser and paste
+    // the code back through `POST /v1/providers/:name/login/code`.
+
+    /// A provider's OAuth login subprocess produced a sign-in URL.
+    /// Frontend should display it (and optionally `window.open` it)
+    /// plus a paste-code input that submits to the code-relay route.
+    ProviderLoginUrl { provider: String, url: String },
+    /// The OAuth subprocess exited. `success` reflects the exit
+    /// status; on failure, `error` is best-effort stderr/stdout.
+    /// Frontend closes the dialog and re-fetches `providerStatus`.
+    ProviderLoginComplete {
+        provider: String,
+        success: bool,
+        error: Option<String>,
+    },
 }
 
 // ---------------------------------------------------------------------------

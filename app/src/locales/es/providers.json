@@ -26,7 +26,22 @@
   },
   "toast": {
     "signInFailed": "No se pudo abrir el inicio de sesión de {{provider}}",
-    "signOutFailed": "No se pudo cerrar sesión de {{provider}}"
+    "signOutFailed": "No se pudo cerrar sesión de {{provider}}",
+    "signInSucceeded": "Sesión iniciada en {{provider}}"
+  },
+  "providerLogin": {
+    "title": "Termina de iniciar sesión en {{name}}",
+    "description": "Abre la URL de abajo en tu navegador, completa el inicio de sesión y luego pega aquí el código de verificación.",
+    "openUrl": "Abrir URL",
+    "copyUrl": "Copiar URL",
+    "urlCopied": "URL copiada al portapapeles",
+    "urlCopyFailed": "No se pudo copiar la URL",
+    "codeLabel": "Código de verificación",
+    "codePlaceholder": "Pega el código de tu navegador",
+    "codeRequired": "Primero ingresa el código de verificación.",
+    "submit": "Enviar código",
+    "submitting": "Enviando...",
+    "cancel": "Cancelar"
   },
   "geminiConnect": {
     "title": "Conectar {{name}}",

@@ -160,6 +160,9 @@ pub fn event_topic(event: &HoustonEvent) -> String {
         HoustonEvent::ClaudeCliInstalling { .. }
         | HoustonEvent::ClaudeCliReady
         | HoustonEvent::ClaudeCliFailed { .. } => "claude".into(),
+        HoustonEvent::ProviderLoginUrl { .. } | HoustonEvent::ProviderLoginComplete { .. } => {
+            "providers".into()
+        }
     }
 }
 

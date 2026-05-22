@@ -119,4 +119,24 @@ export type HoustonEvent =
   | {
       type: "ComposioConnectionAdded";
       data: { toolkit: string };
+    }
+  | {
+      type: "ClaudeCliInstalling";
+      data: { progress_pct: number };
+    }
+  | {
+      type: "ClaudeCliReady";
+      data: Record<string, never>;
+    }
+  | {
+      type: "ClaudeCliFailed";
+      data: { message: string };
+    }
+  | {
+      type: "ProviderLoginUrl";
+      data: { provider: string; url: string };
+    }
+  | {
+      type: "ProviderLoginComplete";
+      data: { provider: string; success: boolean; error: string | null };
     };

@@ -453,6 +453,21 @@ export class HoustonClient {
     return this.request("POST", `/providers/${this.seg(name)}/logout`);
   }
   /**
+   * Submit the OAuth verification code the user pasted from their
+   * browser. Required for remote/headless engines (container,
+   * Always-On VPS, future Cloud) where the CLI can't open the user's
+   * browser itself: the engine surfaces the sign-in URL via the WS
+   * `ProviderLoginUrl` event, the UI displays it + a paste-code
+   * input, and this call writes the code back to the CLI's stdin so
+   * it can exchange for an OAuth token. The engine emits
+   * `ProviderLoginComplete` when the CLI exits.
+   */
+  submitProviderLoginCode(name: string, code: string): Promise<void> {
+    return this.request("POST", `/providers/${this.seg(name)}/login/code`, {
+      code,
+    });
+  }
+  /**
    * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
    * the key shape, writes atomically, and chmods 0600 on Unix. The
    * next `providerStatus("gemini")` poll will return `Authenticated`
