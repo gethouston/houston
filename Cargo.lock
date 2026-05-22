@@ -2583,6 +2583,7 @@ dependencies = [
  "chrono",
  "futures-util",
  "houston-agent-portable",
+ "houston-beltic",
  "houston-claude-installer",
  "houston-cli-bundle",
  "houston-composio",
