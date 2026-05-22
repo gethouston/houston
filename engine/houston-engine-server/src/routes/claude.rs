@@ -74,13 +74,27 @@ async fn status(State(st): State<Arc<ServerState>>) -> Json<ClaudeStatus> {
     let pinned_version = houston_cli_bundle::load_bundled_manifest()
         .and_then(|m| m.entry("claude-code").map(|e| e.version));
 
-    let installed_version = st
+    // allow-silent-failure: the /v1/claude/status endpoint is read-only
+    // diagnostic data for the UI panel. A DB error here downgrades to
+    // "no installed version known" (None), which matches the first-boot
+    // path. We log so the failure is diagnosable; we don't fail the
+    // request because the UI also reads `installed: bool` (the
+    // authoritative answer about whether the binary is usable).
+    let installed_version = match st
         .engine
         .db
-        .get_preference("claude_code_installed_version")
+        .get_preference(houston_claude_installer::PREF_INSTALLED_VERSION)
         .await
-        .ok()
-        .flatten();
+    {
+        Ok(v) => v,
+        Err(e) => {
+            tracing::warn!(
+                "[claude:status] failed to read pref '{}': {e}; returning None",
+                houston_claude_installer::PREF_INSTALLED_VERSION
+            );
+            None
+        }
+    };
 
     Json(ClaudeStatus {
         installed,
@@ -95,8 +109,9 @@ async fn status(State(st): State<Arc<ServerState>>) -> Json<ClaudeStatus> {
 /// `HoustonEvent::ClaudeCliInstalling` / `ClaudeCliReady` /
 /// `ClaudeCliFailed` over the WebSocket firehose.
 async fn install(State(st): State<Arc<ServerState>>) -> Result<(), ApiError> {
-    let manifest = houston_cli_bundle::load_bundled_manifest()
-        .ok_or_else(|| lift("cli-deps.json manifest not available — install pinned manifest first".into()))?;
+    let manifest = houston_cli_bundle::load_bundled_manifest().ok_or_else(|| {
+        lift("cli-deps.json manifest not available; install pinned manifest first".into())
+    })?;
     let entry = manifest
         .entry("claude-code")
         .ok_or_else(|| lift("cli-deps.json missing 'claude-code' entry".into()))?;
@@ -120,12 +135,15 @@ async fn install(State(st): State<Arc<ServerState>>) -> Result<(), ApiError> {
             .await;
         match result {
             Ok(_) => {
-                if let Err(e) = db
-                    .set_preference("claude_code_installed_version", &pinned_version)
-                    .await
-                {
-                    tracing::warn!("[claude:install] failed to persist version marker: {e}");
-                }
+                // Lifecycle parity: same persistence policy as
+                // `houston_claude_installer::ensure_and_upgrade`. The
+                // install succeeded on disk, so emit `ClaudeCliReady`
+                // (the binary is usable); marker-persist failure is
+                // surfaced inside the helper as a secondary
+                // `ClaudeCliFailed` so the user sees a toast warning
+                // about the next-launch redownload.
+                houston_claude_installer::persist_version_or_warn(&db, &pinned_version, &sink)
+                    .await;
                 sink.emit(houston_ui_events::HoustonEvent::ClaudeCliReady);
             }
             Err(e) => {
