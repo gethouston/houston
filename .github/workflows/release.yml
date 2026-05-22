@@ -50,7 +50,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
@@ -142,7 +142,7 @@ jobs:
       # finalize, updater-manifest builder in build-macos) without each of
       # them re-running the notes-resolution logic on its own runner.
       - name: Upload release-notes.md artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: release-notes
           path: release-notes.md
@@ -154,7 +154,7 @@ jobs:
     timeout-minutes: 60
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           # Full history + all tags so the release-notes step can diff
           # against the previous release tag (`git log <prev>..HEAD`).
@@ -164,10 +164,10 @@ jobs:
           fetch-tags: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -181,7 +181,7 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -625,7 +625,7 @@ jobs:
       # step embeds the notes verbatim into latest.json so existing users
       # see the new-version description on the auto-update prompt.
       - name: Download release-notes.md artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-notes
 
@@ -771,16 +771,16 @@ jobs:
             runner: windows-11-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: pnpm
@@ -794,7 +794,7 @@ jobs:
           targets: ${{ matrix.target }}
 
       - name: Cache Rust artifacts
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             ~/.cargo/registry
@@ -998,7 +998,7 @@ jobs:
       GH_REPO: ${{ github.repository }}
     steps:
       - name: Download release-notes.md artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
         with:
           name: release-notes
 
