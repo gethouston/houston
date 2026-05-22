@@ -142,7 +142,7 @@ Three tiers:
 
 ## Monorepo layout
 
-Organized as **6 end-user products + 3 code libraries**.
+Cargo workspace (**17 Rust crates** in `engine/`) plus pnpm workspace (**11 `@houston-ai/*` React packages** in `ui/`), alongside the desktop, mobile, store, website, and always-on products.
 
 ```
 houston/
@@ -150,16 +150,21 @@ houston/
 │   ├── src/                 React frontend
 │   ├── src-tauri/           Tauri binary
 │   └── houston-tauri/       Tauri adapter (applies Engine to desktop)
-├── mobile/                  Houston Mobile companion
-├── desktop-mobile-bridge/   Cloudflare Worker — pairs Desktop ↔ Mobile
+├── mobile/                  Houston Mobile companion (PWA)
+├── houston-relay/           Cloudflare Worker — pairs Desktop ↔ Mobile
 ├── store/                   Houston Store — agent registry
 ├── website/                 Houston Website — gethouston.ai
 ├── always-on/               Houston Always On — VPS deploy (Dockerfile + compose + systemd)
 ├── teams/                   Houston Teams (TBD — hosted multi-tenant)
 │
-├── ui/                      Houston UI — @houston-ai/* React packages
-├── engine/                  Houston Engine — Rust crates (frontend-agnostic)
+├── ui/                      Houston UI — 11 @houston-ai/* React packages
+├── engine/                  Houston Engine — 17 Rust crates (frontend-agnostic)
 ├── cloud/                   Houston Cloud (TBD — managed Engine hosting)
+│
+├── supabase/                Auth + storage — config.toml + migrations (Google SSO, Keychain)
+├── skills/                  Repo-level Claude skills (build-app-local, debug, release)
+├── knowledge-base/          Load-on-demand contributor docs (architecture, design-system, …)
+├── engine-design/           Engine architecture explainers (HTML)
 │
 └── examples/                Reference consumers of houston-engine
     └── smartbooks/            Bookkeeping app built on a custom React frontend
