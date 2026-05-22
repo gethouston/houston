@@ -135,20 +135,20 @@ Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, co
 
 | Area | TS | Rust | Full build |
 |------|----|------|------------|
-| ui/ | `pnpm typecheck` | — | — |
+| ui/ | `bun run typecheck` | — | — |
 | engine/ | — | `cargo test --workspace` | `cargo build --workspace` |
 | engine/ Win check | — | `cargo check --target x86_64-pc-windows-gnu -p houston-engine-server` (needs mingw-w64) | — |
-| app/ | `cd app && pnpm tsc --noEmit` | `cd app/src-tauri && cargo check` | `cd app && pnpm tauri build` |
-| app/ Win MSI | — | — | `cd app && pnpm tauri build --target x86_64-pc-windows-msvc` (needs Windows host or `xwin` SDK) |
-| app/ i18n | `cd app && pnpm check-locales` | — | — |
+| app/ | `cd app && bunx tsc --noEmit` | `cd app/src-tauri && cargo check` | `cd app && bun run tauri build` |
+| app/ Win MSI | — | — | `cd app && bun run tauri build --target x86_64-pc-windows-msvc` (needs Windows host or `xwin` SDK) |
+| app/ i18n | `cd app && bun run check-locales` | — | — |
 | CLI bundle (mac) | — | — | `./scripts/fetch-cli-deps.sh both` |
 | CLI bundle (win) | — | — | `./scripts/fetch-cli-deps.sh windows-x64` (Bun + jq + zstd required) |
 
 ### Engine sidecar staleness (dev only)
 
-`pnpm tauri dev` spawns the engine as a subprocess from `app/src-tauri/binaries/houston-engine-<triple>`, which `build.rs` stages from `target/{debug,release}/houston-engine`. Tauri does NOT rebuild the engine on its own — frontend HMR works fine but the sidecar is whatever binary was last compiled.
+`bun run tauri dev` spawns the engine as a subprocess from `app/src-tauri/binaries/houston-engine-<triple>`, which `build.rs` stages from `target/{debug,release}/houston-engine`. Tauri does NOT rebuild the engine on its own — frontend HMR works fine but the sidecar is whatever binary was last compiled.
 
-**Rule**: any time a PR touches `engine/**` (including merges that bring engine changes from `main`), run `cargo build -p houston-engine-server` BEFORE the next `pnpm tauri dev` and restart it. Symptoms of a stale sidecar: 404s on routes that exist in the current source, missing event types, schema mismatches. Production users never hit this — release CI builds the engine from scratch on every tag.
+**Rule**: any time a PR touches `engine/**` (including merges that bring engine changes from `main`), run `cargo build -p houston-engine-server` BEFORE the next `bun run tauri dev` and restart it. Symptoms of a stale sidecar: 404s on routes that exist in the current source, missing event types, schema mismatches. Production users never hit this — release CI builds the engine from scratch on every tag.
 
 ---
 
@@ -188,7 +188,7 @@ See `knowledge-base/architecture.md` (engine crates), `knowledge-base/agent-mani
 - **No em dashes (`—`)** in user-facing copy. Commas or sentence breaks. Validator enforces this.
 - Spanish = Latin-American neutral (computador, tú). Portuguese = Brazilian (você).
 - Keys are type-checked via `app/src/types/react-i18next.d.ts` augmentation — typos fail at compile time.
-- Pre-commit: `pnpm tsc --noEmit` AND `pnpm check-locales` (catches missing keys, shape drift, placeholder parity, em dashes).
+- Pre-commit: `bunx tsc --noEmit` AND `bun run check-locales` (catches missing keys, shape drift, placeholder parity, em dashes).
 - See `knowledge-base/i18n.md` for patterns, glossary, and the wiring checklist.
 
 ### Internal code = no backwards compat

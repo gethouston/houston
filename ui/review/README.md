@@ -5,7 +5,7 @@ Code review and deliverables UI. Split-pane review interface with sidebar naviga
 ## Install
 
 ```bash
-pnpm add @houston-ai/review
+bun add @houston-ai/review
 ```
 
 ## Usage

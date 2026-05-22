@@ -52,7 +52,7 @@ Duration: ~15-20 min (2-arch compile).
 
 ## Full checklist
 
-1. **Verify:** `cargo check --workspace && cd app && pnpm tsc --noEmit`
+1. **Verify:** `cargo check --workspace && cd app && bunx tsc --noEmit`
 2. **Commit all changes** to `main`
 3. **Bump:** `./scripts/version.sh 0.3.X` (patch default)
 4. **Write notes:** `.github/release-notes/0.3.X.md` — narrative, not a commit dump. Cover: what changed for the user, before-you-upgrade caveats (always include the macOS drag-install reminder), known limitations. Pattern from `.github/release-notes/0.4.0.md`. Skip only for trivial hotfixes.
@@ -73,7 +73,7 @@ Duration: ~15-20 min (2-arch compile).
 - **`bundle_dmg.sh` failed** — flaky CI runner. `gh run rerun <id>`.
 - **Missing env var at compile time** — new `env!()` added. Add secret to GitHub AND workflow YAML.
 - **Notarization failed** — Apple servers slow. Rerun fixes.
-- **TS errors** — run `pnpm tsc --noEmit` locally BEFORE tagging.
+- **TS errors** — run `bunx tsc --noEmit` locally BEFORE tagging.
 
 ## Env vars required
 

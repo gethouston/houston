@@ -133,7 +133,7 @@ async fn run_gemini(prompt: &str, model: &str, time_limit: Duration) -> Result<S
 
     // Run FROM the runtime HOME so gemini-cli's project-discovery walk
     // finds nothing. Without setting cwd, gemini inherits the engine's
-    // cwd — which in `pnpm tauri dev` is the Houston source repo. The
+    // cwd — which in `bun run tauri dev` is the Houston source repo. The
     // model then picks up signals ("houston", "vilnius" in the path)
     // and emits titles like "Houston Vilnius CLI Development" for
     // unrelated user prompts. The runtime HOME has no project files at

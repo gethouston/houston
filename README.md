@@ -42,8 +42,8 @@
 ```bash
 git clone https://github.com/gethouston/houston.git
 cd houston
-pnpm install
-cd app && pnpm tauri dev
+bun install
+cd app && bun run tauri dev
 ```
 
 ### Build your first agent
@@ -185,8 +185,8 @@ things, ship your own AI-native product.
 
 ```bash
 cd examples/smartbooks
-pnpm install
-pnpm dev
+bun install
+bun run dev
 ```
 
 Full walkthrough + architecture diagram + custom-frontend gotchas in

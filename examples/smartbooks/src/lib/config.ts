@@ -7,7 +7,7 @@
  *    env, for customers wiring SmartBooks into their own deploy pipeline.
  * 3. Demo defaults (`http://127.0.0.1:7777` + `dev-token`) — match exactly
  *    what the README tells you to start the engine with, so cloning +
- *    `pnpm dev` opens straight into the chat.
+ *    `bun run dev` opens straight into the chat.
  *
  * `smartbooks.agent` caches the resolved `{ workspaceId, agentPath,
  * sessionKey }` so we don't recreate on every reload.

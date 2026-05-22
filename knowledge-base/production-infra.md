@@ -105,7 +105,7 @@ Shell (local builds) AND GitHub Secrets (CI):
 | `APPLE_API_KEY` | App Store Connect key ID | ASC → Users → Keys |
 | `APPLE_API_KEY_PATH` | Path to `.p8` key | Downloaded when creating key |
 | `APPLE_API_ISSUER` | ASC issuer UUID | ASC → Users → Keys |
-| `TAURI_SIGNING_PRIVATE_KEY` | Ed25519 key for update signing | `pnpm tauri signer generate` |
+| `TAURI_SIGNING_PRIVATE_KEY` | Ed25519 key for update signing | `bun run tauri signer generate` |
 | `TAURI_SIGNING_PRIVATE_KEY_PASSWORD` | Password for above | Set during gen |
 | `POSTHOG_KEY` | PostHog project API key (client-side, public-safe) | PostHog → Project settings → Project API key |
 | `POSTHOG_HOST` | PostHog ingest host | `https://us.i.posthog.com` (or EU equivalent) |
@@ -158,12 +158,12 @@ Houston ships ONE DMG that runs natively on Apple Silicon AND Intel. Same app, s
 rustup target add aarch64-apple-darwin x86_64-apple-darwin
 cargo build --release --target aarch64-apple-darwin -p houston-engine-server
 cargo build --release --target x86_64-apple-darwin -p houston-engine-server
-cd app && pnpm tauri build --target universal-apple-darwin
+cd app && bun run tauri build --target universal-apple-darwin
 ```
 Output: `target/universal-apple-darwin/release/bundle/{macos,dmg}/`.
 
 ### Dev is single-arch
-`pnpm tauri dev` stays single-triple (whatever the host is). `build.rs` falls back to `target/release/` when a per-triple path is missing, so nothing breaks.
+`bun run tauri dev` stays single-triple (whatever the host is). `build.rs` falls back to `target/release/` when a per-triple path is missing, so nothing breaks.
 
 ### Do NOT break Intel without warning
 Removing an arch from `release.yml` (or dropping `darwin-x86_64*` keys from `latest.json`) strands every Intel user silently. Migrate with a deprecation release first.

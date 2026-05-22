@@ -3,14 +3,23 @@
   "version": "0.4.12",
   "private": true,
   "type": "module",
+  "workspaces": [
+    "ui/*",
+    "app",
+    "mobile",
+    "houston-relay",
+    "examples/*"
+  ],
   "scripts": {
-    "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck"
+    "build": "bun run --filter '*' build",
+    "typecheck": "bun run --filter '*' typecheck"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "typescript": "^6.0.2"
   },
-  "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
+  "engines": {
+    "bun": ">=1.3.10"
+  }
 }

@@ -264,9 +264,9 @@ impl Drop for EngineSubprocess {
 ///
 /// Resolution order:
 /// 1. `HOUSTON_ENGINE_BIN` env var (dev override / SSH deploy).
-/// 2. Debug builds: cargo workspace target (freshest during `pnpm tauri
-///    dev` — the staged sidecar can be stale if you rebuild just the
-///    engine crate).
+/// 2. Debug builds: cargo workspace target (freshest during `bun run
+///    tauri dev` — the staged sidecar can be stale if you rebuild just
+///    the engine crate).
 /// 3. Sibling of the current executable — this is where Tauri's
 ///    `externalBin` places sidecars in shipped app bundles:
 ///      - macOS: `Houston.app/Contents/MacOS/houston-engine`

@@ -65,7 +65,7 @@ impl SupervisorCallbacks for TauriSupervisorCallbacks {
 
 pub fn run() {
     // Initialize logging before anything else. `houston_dir()` flips to
-    // `~/.dev-houston/` in debug builds so `pnpm tauri dev` stays isolated
+    // `~/.dev-houston/` in debug builds so `bun run tauri dev` stays isolated
     // from an installed release of Houston.
     let houston = houston_tauri::houston_db::db::houston_dir();
     logging::init(&houston);

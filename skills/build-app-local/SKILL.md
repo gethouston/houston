@@ -1,6 +1,6 @@
 ---
 name: build-app-local
-description: Build Houston App locally (macOS). Clean stale artifacts, pnpm tauri build, notarize DMG manually (Tauri skips), staple, verify, copy to ~/Desktop/Houston-{version}.dmg. Fallback when CI broken.
+description: Build Houston App locally (macOS). Clean stale artifacts, bun run tauri build, notarize DMG manually (Tauri skips), staple, verify, copy to ~/Desktop/Houston-{version}.dmg. Fallback when CI broken.
 ---
 
 # /build-app-local
@@ -34,7 +34,7 @@ cargo build --release --target x86_64-apple-darwin -p houston-engine-server
 
 # 3. Build + auto-sign the app (universal fat binary)
 cd app
-pnpm tauri build --target universal-apple-darwin
+bun run tauri build --target universal-apple-darwin
 ```
 
 Tauri signs `.app`. Does NOT notarize DMG. Must do manually:

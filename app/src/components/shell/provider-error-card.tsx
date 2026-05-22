@@ -13,7 +13,7 @@
  *      en/es/pt.
  *   4. Add a renderer in the right `provider-error-cards/<file>.tsx`
  *      and a `case` in the dispatcher below.
- *   5. Run `pnpm check-locales` and the engine tests.
+ *   5. Run `bun run check-locales` and the engine tests.
  *
  * RULE 0 — every variant MUST resolve to a concrete CTA the user can
  * act on, even Unknown (Report bug). Don't ship a card with no buttons.

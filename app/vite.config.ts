@@ -29,7 +29,7 @@ function resolveAuthStorageMode(
 
 // Pick from either the shell or a local `.env.local` (gitignored). CI sets
 // the vars in the shell via GitHub Secrets; locally you drop them in
-// `app/.env.local` so `pnpm tauri dev` picks them up without exports.
+// `app/.env.local` so `bun run tauri dev` picks them up without exports.
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
   const authStorageMode = resolveAuthStorageMode(mode, env);

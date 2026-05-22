@@ -5,7 +5,7 @@ Full-featured AI chat interface. Streaming markdown, grouped technical details, 
 ## Install
 
 ```bash
-pnpm add @houston-ai/chat
+bun add @houston-ai/chat
 ```
 
 ## Usage

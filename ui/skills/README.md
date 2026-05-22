@@ -5,7 +5,7 @@ Skills management UI backed by Houston skill files. Browse installed skills, vie
 ## Install
 
 ```bash
-pnpm add @houston-ai/skills
+bun add @houston-ai/skills
 ```
 
 ## Usage

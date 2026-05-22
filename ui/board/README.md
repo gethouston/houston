@@ -5,7 +5,7 @@ Kanban board for AI agent task management. Cards glow with a rotating conic-grad
 ## Install
 
 ```bash
-pnpm add @houston-ai/board
+bun add @houston-ai/board
 ```
 
 ## Usage
