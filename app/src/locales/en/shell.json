@@ -264,6 +264,9 @@
   "engineGate": {
     "starting": "Starting Houston engine…"
   },
+  "claudeCli": {
+    "installFailedTitle": "Couldn't install Claude Code"
+  },
   "providerError": {
     "rateLimited": {
       "title": "Hit a rate limit",

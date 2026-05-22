@@ -123,4 +123,21 @@ export type HoustonEvent =
   | {
       type: "ComposioConnectionAdded";
       data: { toolkit: string };
+    }
+  // ----- Claude Code CLI lifecycle -----
+  // Mirror of houston_ui_events::HoustonEvent::{ClaudeCli*} in Rust.
+  // claude-code is proprietary and downloaded at runtime; these events
+  // drive the install-progress UI and surface install failures to the
+  // user (see app/src/hooks/use-claude-cli-events.ts).
+  | {
+      type: "ClaudeCliInstalling";
+      data: { progress_pct: number };
+    }
+  | {
+      type: "ClaudeCliReady";
+      data: Record<string, never>;
+    }
+  | {
+      type: "ClaudeCliFailed";
+      data: { message: string };
     };
