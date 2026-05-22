@@ -12,6 +12,8 @@ Load on demand. Style: caveman.
 | [engine-protocol.md](engine-protocol.md) | HTTP + WS wire contract every client speaks (REST, envelope, auth) |
 | [engine-server.md](engine-server.md) | `houston-engine` binary — config, startup handshake, supervision, deployment |
 | [production-infra.md](production-infra.md) | Auto-updater, analytics, Sentry, env vars, CI/CD |
+| [quality-and-release.md](quality-and-release.md) | Monorepo hooks, cargo-sync-check, Changesets, verify-all Makefile target |
+
 
 Mobile-specific docs live under `/docs/`: [mobile-architecture.md](../docs/mobile-architecture.md), [relay-operations.md](../docs/relay-operations.md).
 
