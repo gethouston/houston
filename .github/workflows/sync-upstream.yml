@@ -1,0 +1,60 @@
+# Sync this fork's `main` branch from `gethouston/houston:main` on a daily
+# cadence (plus manual dispatch). Implements the policy documented in
+# BROOMVA.md §"Sync policy".
+#
+# Fork-only workflow — never appears on `gethouston/houston:main`. Lives
+# here because every branch off `fork/main` already inherits it, but it
+# is excluded from upstream PRs by branching discipline (upstream-bound
+# work branches off `origin/main`, not `fork/main`).
+
+name: Sync upstream
+
+on:
+  schedule:
+    # 09:00 UTC daily — chosen so it runs before US morning sessions and
+    # picks up any overnight upstream merges from the maintainer fleet.
+    - cron: '0 9 * * *'
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Fast-forward main from gethouston/houston
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Trigger merge-upstream
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # GitHub's `merge-upstream` API is the same thing the "Sync fork"
+        # button on the repo page triggers. It returns 200 on success
+        # (fast-forward or already-in-sync) and 409 on conflict — we let
+        # the action fail in the conflict case so a maintainer notices
+        # and resolves by hand. Curl is fine here; no need for actions/.
+        run: |
+          set -euo pipefail
+          RESPONSE=$(gh api repos/${{ github.repository }}/merge-upstream \
+            -X POST \
+            -f branch=main 2>&1)
+          echo "$RESPONSE"
+          echo "$RESPONSE" | grep -qE 'fast-forward|already in sync' || {
+            echo "::error::merge-upstream did not return a clean sync state"
+            exit 1
+          }
+
+      - name: Report new HEAD
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          FORK=$(gh api repos/${{ github.repository }}/branches/main --jq '.commit.sha')
+          UP=$(gh api repos/gethouston/houston/branches/main --jq '.commit.sha')
+          echo "Fork main:     $FORK"
+          echo "Upstream main: $UP"
+          if [ "$FORK" = "$UP" ]; then
+            echo "::notice::Fork is in sync with upstream"
+          else
+            echo "::warning::Fork ($FORK) drifted from upstream ($UP) — investigate"
+          fi
