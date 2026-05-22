@@ -31,6 +31,12 @@ pub struct WebhookVerifier {
 }
 
 impl WebhookVerifier {
+    /// Same value as the free `SIGNATURE_HEADER` constant — duplicated as
+    /// an associated constant for ergonomic `WebhookVerifier::SIGNATURE_HEADER`
+    /// access from route handlers that hold the type but not the module path.
+    pub const SIGNATURE_HEADER: &'static str = SIGNATURE_HEADER;
+    pub const TIMESTAMP_HEADER: &'static str = TIMESTAMP_HEADER;
+
     pub fn new(secret: impl Into<Vec<u8>>) -> BelticResult<Self> {
         let secret = secret.into();
         if secret.is_empty() {

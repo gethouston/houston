@@ -59,7 +59,7 @@ pub struct Credential {
 /// union types explicitly — that lives in the schemas package on the Beltic
 /// side. We do validate the `self_attestation_complete` gate + the FinCEN
 /// delegation requirement client-side.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct IssueRequest {
     pub credential_type: String,
     pub self_attestation_complete: bool,
