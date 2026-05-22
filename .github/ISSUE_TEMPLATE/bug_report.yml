@@ -1,0 +1,98 @@
+name: "🐛 Bug Report"
+description: "Report a bug or unexpected behavior in Houston App, Engine, or libraries"
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for reporting a bug! Please provide as much context as possible to help us reproduce and resolve the issue quickly.
+  - type: textarea
+    id: description
+    attributes:
+      label: "Description of the Bug"
+      description: "A clear and concise description of what the bug is."
+      placeholder: "e.g., When I attempt to run the custom agent, the terminal displays an authentication error..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction-steps
+    attributes:
+      label: "Steps to Reproduce"
+      description: "How did you encounter this bug? Please be detailed."
+      placeholder: |
+        1. Open the Houston App
+        2. Go to 'Agent Settings'
+        3. Click on 'Sync and Restart'
+        4. See the error toast in the top right
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: "Expected & Actual Behavior"
+      description: "What did you expect to happen, and what actually happened?"
+      placeholder: "Expected the agent configuration to reload cleanly. Instead, it showed a connection failure."
+    validations:
+      required: true
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: "Operating System"
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Windows
+        - Linux (Ubuntu/Debian)
+        - Other (Specify in context)
+    validations:
+      required: true
+  - type: input
+    id: version-info
+    attributes:
+      label: "Houston Engine & App Version"
+      description: "The version number of Houston you are running (e.g., 0.4.12)."
+      placeholder: "e.g., v0.4.12"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: "AI Provider"
+      description: "Which provider / model was active when the bug occurred?"
+      options:
+        - Anthropic (Claude)
+        - OpenAI (GPT)
+        - Google (Gemini)
+        - Universal Codex (Ollama/Local)
+        - Not Applicable
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: "System Logs / Terminal Output"
+      description: "Paste any relevant stderr, stack traces, or console logs from the app or engine. (Wrap in code blocks)."
+      placeholder: "```\n[ERROR] CoreError: RateLimited: Provider Anthropic rate limit exceeded\n```"
+    validations:
+      required: false
+  - type: textarea
+    id: agent-config
+    attributes:
+      label: "Agent Settings / Schema (CLAUDE.md / manifest)"
+      description: "If this relates to a specific agent, please share its configuration or the `.houston/agent.json` details."
+      placeholder: "```json\n{\n  \"name\": \"my-agent\",\n  \"tier\": \"hobby\"\n}\n```"
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Diagnostics Check"
+      description: "Please confirm these steps before submitting."
+      options:
+        - label: "I have checked for existing issues and did not find a duplicate."
+          required: true
+        - label: "I am running the latest version of Houston."
+          required: true
+        - label: "This error was initiated by a user action and did not fail silently."
+          required: true
