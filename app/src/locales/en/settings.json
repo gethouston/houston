@@ -78,6 +78,12 @@
     "title": "Advanced",
     "description": "Power-user capabilities. These are off by default, enable only what you need.",
     "empty": "No advanced capabilities available in this version. Future updates will surface them here.",
+    "flags": {
+      "worktrees": {
+        "label": "Worktrees",
+        "description": "Show the Worktree mode setting on each agent so missions can run in isolated git worktrees."
+      }
+    },
     "resetAll": "Reset all advanced settings",
     "resetConfirmTitle": "Reset all advanced settings?",
     "resetConfirmDescription": "Every advanced toggle will return to default. No data is deleted.",

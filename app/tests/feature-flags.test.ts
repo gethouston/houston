@@ -115,11 +115,42 @@ test("getFlagDefault matches FlagDef.default when key is in registry", () => {
 
 // ---------- FLAG_REGISTRY shape invariants ----------
 
-test("phase 0 ships FLAG_REGISTRY empty by design", () => {
-  assert.equal(Object.keys(FLAG_REGISTRY).length, 0);
+test("FLAG_REGISTRY contains advanced.worktrees with the expected shape", () => {
+  const flag = FLAG_REGISTRY["advanced.worktrees"];
+  assert.ok(flag, "advanced.worktrees must be registered (Phase 1 of RFC #248)");
+  assert.equal(flag.key, "advanced.worktrees");
+  assert.equal(flag.category, "advanced");
+  assert.equal(flag.default, false, "new advanced flags ship default off (rule 4)");
+  assert.equal(flag.enforcementSurface, "ui");
+  assert.equal(flag.status, "beta");
+  assert.equal(flag.labelKey, "advanced.flags.worktrees.label");
+  assert.equal(flag.descriptionKey, "advanced.flags.worktrees.description");
+  assert.equal(flag.graduationTarget, "permanent");
 });
 
-test("phase 0 ships FLAG_MIGRATIONS empty by design", () => {
+test("every FLAG_REGISTRY entry has the required FlagDef fields", () => {
+  for (const [key, flag] of Object.entries(FLAG_REGISTRY)) {
+    assert.equal(flag.key, key, `key field must match registry key: ${key}`);
+    assert.ok(["advanced"].includes(flag.category), `unknown category for ${key}`);
+    assert.equal(typeof flag.default, "boolean", `${key}.default must be boolean`);
+    assert.ok(flag.labelKey.startsWith("advanced.flags."), `${key}.labelKey shape`);
+    assert.ok(
+      flag.descriptionKey.startsWith("advanced.flags."),
+      `${key}.descriptionKey shape`,
+    );
+    assert.ok(
+      ["ui", "engine", "both"].includes(flag.enforcementSurface),
+      `${key}.enforcementSurface`,
+    );
+    assert.ok(
+      ["beta", "stable", "graduating", "retiring"].includes(flag.status),
+      `${key}.status`,
+    );
+    assert.equal(typeof flag.since, "string", `${key}.since must be a string`);
+  }
+});
+
+test("FLAG_MIGRATIONS empty until a flag rename or retirement is needed", () => {
   assert.equal(FLAG_MIGRATIONS.length, 0);
 });
 
