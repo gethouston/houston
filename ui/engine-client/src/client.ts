@@ -79,6 +79,9 @@ import type {
   PortableScanResponse,
   PortableInstallRequest,
   PortableInstalledAgent,
+  VerifiableCredential,
+  IssueCredentialRequest,
+  VerifyCredentialResult,
 } from "./types";
 import { planAttachmentUploadBatches } from "./attachments";
 
@@ -380,6 +383,41 @@ export class HoustonClient {
   }
   setAgentConfig(agentPath: string, config: ProjectConfig): Promise<ProjectConfig> {
     return this.request("PUT", "/agents/config", config, { agent_path: agentPath });
+  }
+
+  // ---------- agents: Beltic credentials ----------
+
+  listAgentCredentials(agentPath: string): Promise<VerifiableCredential[]> {
+    return this.request("GET", "/agents/credentials", undefined, { agent_path: agentPath });
+  }
+  issueAgentCredential(
+    agentPath: string,
+    input: IssueCredentialRequest,
+  ): Promise<VerifiableCredential> {
+    return this.request("POST", "/agents/credentials", input, { agent_path: agentPath });
+  }
+  revokeAgentCredential(
+    agentPath: string,
+    credentialId: string,
+  ): Promise<VerifiableCredential> {
+    return this.request(
+      "POST",
+      `/agents/credentials/${this.seg(credentialId)}/revoke`,
+      undefined,
+      { agent_path: agentPath },
+    );
+  }
+  verifyAgentCredential(
+    agentPath: string,
+    credentialId: string,
+    context: unknown,
+  ): Promise<VerifyCredentialResult> {
+    return this.request(
+      "POST",
+      `/agents/credentials/${this.seg(credentialId)}/verify`,
+      { context },
+      { agent_path: agentPath },
+    );
   }
 
   // ---------- agent configs (installed manifests) ----------

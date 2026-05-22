@@ -65,6 +65,16 @@ export function useAgentInvalidation() {
         case "ComposioConnectionAdded":
           qc.invalidateQueries({ queryKey: queryKeys.connectedToolkits() });
           break;
+        // Beltic credential lifecycle — issued/revoked/suspended all
+        // flip the per-agent credentials list and the verified-status
+        // badges that depend on it.
+        case "CredentialIssued":
+        case "CredentialRevoked":
+        case "CredentialSuspended":
+          qc.invalidateQueries({
+            queryKey: ["agent-credentials", p.data.agent_path],
+          });
+          break;
       }
     });
 
