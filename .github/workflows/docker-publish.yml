@@ -1,0 +1,64 @@
+name: Docker Publish
+
+# Manual publish of the houston-engine container image to GHCR.
+#
+# Trigger from the Actions tab → "Docker Publish" → "Run workflow", pick a
+# branch, set the tag (e.g. "latest", "dev", "v0.1.0"). Image is always
+# also tagged with the short commit SHA for traceability.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Primary image tag (e.g. latest, dev, v0.1.0)'
+        required: true
+        default: 'latest'
+      extra_tag:
+        description: 'Optional additional tag (leave blank to skip)'
+        required: false
+        default: ''
+
+jobs:
+  publish:
+    name: Build & push houston-engine
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Compute short SHA
+        id: vars
+        run: echo "sha_short=$(git rev-parse --short HEAD)" >> "$GITHUB_OUTPUT"
+
+      - name: Assemble tag list
+        id: tags
+        run: |
+          {
+            echo "list<<EOF"
+            echo "ghcr.io/gethouston/houston-engine:${{ inputs.tag }}"
+            echo "ghcr.io/gethouston/houston-engine:sha-${{ steps.vars.outputs.sha_short }}"
+            if [ -n "${{ inputs.extra_tag }}" ]; then
+              echo "ghcr.io/gethouston/houston-engine:${{ inputs.extra_tag }}"
+            fi
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: always-on/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.tags.outputs.list }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
