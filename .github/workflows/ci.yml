@@ -1,0 +1,271 @@
+# Houston PR CI Workflow
+#
+# Runs on every PR (any target branch — supports stacked PR workflows
+# off claude/<worktree-name> branches per CLAUDE.md §Git) and every
+# push to main. Enforces the contributor checks already listed in
+# CONTRIBUTING.md (`pnpm typecheck`, `cargo check --workspace`,
+# `cargo test --workspace`) plus the i18n parity check from
+# knowledge-base/i18n.md (`pnpm check-locales` — en/es/pt key +
+# placeholder + em-dash drift).
+#
+# Two parallel jobs run on ubuntu-latest; a final `CI Success`
+# aggregator gives maintainers a single required check to point branch
+# protection at. The Tauri app release build (macOS .app + Windows
+# .msi) stays in release.yml — PR CI doesn't produce release artifacts,
+# but it DOES run app/src-tauri's build.rs as part of
+# `cargo check --workspace`, which is why the Rust job stages the
+# engine sidecar (`cargo build --release -p houston-engine-server`)
+# before checks: `tauri-build` reads the `externalBin` entry in
+# tauri.conf.json:47 (`binaries/houston-engine`) unconditionally on
+# every cargo invocation, and the stager at app/src-tauri/build.rs
+# falls back to `target/release/houston-engine` when no --target is
+# set.
+#
+# Action-version conventions match release.yml and engine-release.yml:
+#   actions/checkout@v4, pnpm/action-setup@v4 (auto-reads packageManager
+#   pin from root package.json), actions/setup-node@v4 with node 20 +
+#   cache: pnpm, dtolnay/rust-toolchain@stable, actions/cache@v4.
+#
+# `cargo fmt --check` and `cargo clippy` are intentionally NOT gating
+# in this initial workflow because a local `cargo fmt --check` against
+# current main reports extensive drift across many crates (engine
+# subcrates + app/src-tauri); verifiable by running
+# `cargo fmt --all -- --check` locally. Landing a `cargo fmt --all`
+# baseline is itself a substantial diff and belongs in its own PR.
+# A follow-up PR can land that baseline and flip fmt + clippy into
+# gating steps; CLAUDE.md §"No silent failures" banned patterns
+# (`let _ = <fallible>`, `.ok()` to drop a Result, log-and-continue
+# match arms) are the obvious first home for the initial clippy
+# lint set.
+
+name: CI
+
+on:
+  # No `branches:` filter on `pull_request` so stacked PRs based on
+  # `claude/<worktree-name>` branches (per CLAUDE.md §Git worktree
+  # workflow) also trigger CI. PRs are gated by their target branch
+  # via branch protection, not by trigger filter.
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  # Cancel stale runs on PR rapid-iteration only. Main pushes always
+  # get a definitive green/red — a partial-pipeline cancellation on
+  # main would obscure the head-commit signal that release builds
+  # and rollback decisions rely on.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Read-only. CI never writes to the repo. Tighter perms = smaller
+# blast radius if a third-party action is ever compromised.
+permissions:
+  contents: read
+
+jobs:
+  # =========================================================================
+  # TypeScript / frontend checks. Mirrors `pnpm typecheck` from
+  # CONTRIBUTING.md and `cd app && pnpm check-locales` from
+  # CLAUDE.md §Internationalization (verbatim form — same command a
+  # contributor runs locally).
+  #
+  # Coverage caveat: `pnpm -r typecheck` silently skips workspace
+  # packages that have no `typecheck` script (currently
+  # `@houston-ai/agent-schemas`). Adding `typecheck` scripts to those
+  # packages is left to a follow-up — out of scope for the CI gap
+  # this PR fills.
+  typescript:
+    name: TypeScript
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # pnpm/action-setup@v4 reads `packageManager` from the root
+      # package.json (currently pinned at pnpm@10.32.1). No `version:`
+      # flag here so CI stays locked to whatever contributors get from
+      # `corepack enable` locally — bumping pnpm becomes a single root
+      # package.json edit instead of a coordinated CI+local change.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      # Plain `pnpm install` matches release.yml:176 and :789. A
+      # follow-up PR can standardize both this workflow and the
+      # release workflow on `--frozen-lockfile` together — diverging
+      # silently here would create the "different commands locally
+      # vs in CI" failure mode CLAUDE.md RULE 0 warns against.
+      - name: Install dependencies
+        run: pnpm install
+
+      # CONTRIBUTING.md "TypeScript check" command. Runs the typecheck
+      # script in every workspace package that defines one.
+      - name: Typecheck (workspace)
+        run: pnpm -r typecheck
+
+      # i18n parity. Houston ships en/es/pt and CLAUDE.md §i18n mandates
+      # placeholder parity, key parity, and no em-dashes in user-facing
+      # copy. `check-locales` enforces all three. Promoted from app/'s
+      # local pre-commit set to PR CI so missing-key drift is caught
+      # before review instead of at release time. Form matches CLAUDE.md
+      # §Test commands verbatim: `cd app && pnpm check-locales`.
+      - name: Verify i18n locales (en/es/pt parity)
+        working-directory: app
+        run: pnpm check-locales
+
+  # =========================================================================
+  # Rust / backend checks. Mirrors `cargo check --workspace` and
+  # `cargo test --workspace` from CONTRIBUTING.md.
+  #
+  # See header comment for why the engine sidecar is built BEFORE
+  # `cargo check` (tauri-build's externalBin requirement).
+  rust:
+    name: Rust
+    runs-on: ubuntu-latest
+    # 45 min budget. A cold-cache run of `cargo build --release
+    # -p houston-engine-server` + workspace check + workspace tests
+    # against tauri-runtime-wry's transitive deps lands around 25-30
+    # min empirically; 45 leaves headroom for slow runners without
+    # producing phantom timeouts that look like real failures.
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Tauri 2 Linux system dependencies. `houston-app` and
+      # `houston-tauri` both depend on `tauri = "2"`, which pulls
+      # `tauri-runtime-wry` → `webkit2gtk-4.1` + `libsoup-3` +
+      # `libjavascriptcoregtk-4.1` on Linux. Without these headers
+      # `cargo check --workspace` fails at the pkg-config probe step,
+      # and missing `libsoup-3.0-dev` specifically is silent on
+      # ubuntu-24.04 (transitively pulled by webkit2gtk-4.1) but
+      # breaks on ubuntu-22.04 — `ubuntu-latest` flips between the
+      # two on GitHub Actions image rollouts, so we name every
+      # dependency explicitly rather than relying on transitive
+      # closure.
+      #
+      # The release workflow runs the actual Tauri builds on macOS +
+      # Windows — Linux Tauri isn't a release target. Here we only
+      # need the headers + pkg-config so the type-check + unit tests
+      # pass against the Tauri-dependent crates.
+      - name: Install Tauri 2 Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            pkg-config \
+            libwebkit2gtk-4.1-dev \
+            libjavascriptcoregtk-4.1-dev \
+            libsoup-3.0-dev \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libxdo-dev \
+            libssl-dev \
+            build-essential \
+            curl \
+            wget \
+            file
+
+      # Same toolchain choice as release.yml + engine-release.yml.
+      # No rustfmt/clippy components requested — fmt/clippy gates
+      # land in a follow-up PR alongside the baseline (see header).
+      - name: Setup Rust (stable)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          # Shared `<os>-cargo-<hash>` key + `<os>-cargo-` restore-key
+          # prefix lets PR CI partial-restore from release.yml's
+          # `<os>-cargo-universal-<hash>` and `<os>-cargo-<arch>-<hash>`
+          # caches (release.yml:190 + 804) and vice versa. The Cargo
+          # registry + git index slice of the cache is content-identical
+          # across release builds and PR checks, so cross-pollination
+          # saves a clean ~3-4 min on every cold-cache run.
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-
+
+      # Stage the engine sidecar BEFORE cargo check. tauri-build at
+      # app/src-tauri/build.rs:29 invokes `tauri_build::build()`
+      # unconditionally on every cargo invocation against
+      # `houston-app`, and tauri-build reads the `externalBin` entry
+      # in tauri.conf.json:47 (`binaries/houston-engine`) to copy the
+      # resolved binary into the bundle. The stager at
+      # build.rs::stage_engine_sidecar walks
+      # `target/<triple>/release/`, `target/release/`,
+      # `target/<triple>/debug/`, `target/debug/` in that order — a
+      # plain `cargo build --release -p houston-engine-server` (no
+      # --target) populates `target/release/houston-engine` which
+      # the second-position candidate finds.
+      #
+      # We build the sidecar at --release because that's the layout
+      # release.yml:320-328 uses (matching is cheaper than
+      # diverging) and because release builds let the cargo cache
+      # share artifacts with future per-arch jobs added by the
+      # maintainer.
+      - name: Build houston-engine sidecar (for tauri-build externalBin)
+        run: cargo build --release -p houston-engine-server
+
+      # CONTRIBUTING.md "Rust check" command. `--all-targets` covers
+      # lib + bin + tests + examples + benches so a missing import in
+      # a test file is caught at PR time, not at release time.
+      - name: cargo check --workspace
+        run: cargo check --workspace --all-targets
+
+      # CONTRIBUTING.md "Rust tests" command + CLAUDE.md §"Tests
+      # mandatory". `--all-features` deliberately omitted — only
+      # `houston-skills` defines optional features
+      # (`engine/houston-skills/Cargo.toml [features] remote = ...`)
+      # and `houston-engine-server` already enables it via
+      # `features = ["remote"]`, so `--all-features` would re-build
+      # the same code paths without adding meaningful coverage to
+      # the other 16 crates.
+      - name: cargo test --workspace
+        run: cargo test --workspace
+
+  # =========================================================================
+  # Aggregator job — succeeds only when both `typescript` and `rust`
+  # succeed. Branch protection rules can require this single check
+  # instead of having to track each job individually, and if the job
+  # matrix expands in a future PR (adding e.g. a macOS or Windows
+  # build) the maintainer only updates the `needs:` list here rather
+  # than touching every required-check setting in the GitHub UI.
+  #
+  # `if: ${{ !cancelled() }}` (rather than `if: always()`) means a
+  # PR cancelled by the concurrency: cancel-in-progress hook above
+  # short-circuits this job too — so a rapid follow-up push doesn't
+  # leave a phantom red `CI Success` check on the older SHA.
+  ci-success:
+    name: CI Success
+    if: ${{ !cancelled() }}
+    needs: [typescript, rust]
+    runs-on: ubuntu-latest
+    timeout-minutes: 1
+
+    steps:
+      - name: Verify all CI jobs succeeded
+        run: |
+          set -euo pipefail
+          ts="${{ needs.typescript.result }}"
+          rs="${{ needs.rust.result }}"
+          echo "TypeScript: $ts"
+          echo "Rust:       $rs"
+          if [ "$ts" != "success" ] || [ "$rs" != "success" ]; then
+            echo "::error::One or more CI jobs failed (typescript=$ts rust=$rs)"
+            exit 1
+          fi
+          echo "All CI jobs passed."
