@@ -123,3 +123,36 @@ Our core planning, issue tracking, and roadmap management are handled internally
 4. Verify your work using `make verify-all`.
 5. Push your branch and open a Pull Request targeting `main`.
 6. Ensure the automated GitHub Actions CI/CD check passes completely.
+
+## Dogfooding Houston (validating from the client POV)
+
+Before merging substantive feature PRs, exercise the change against the running
+app — not just against `cargo check` and `pnpm typecheck`. Houston is a Tauri +
+sidecar app, so the canonical interaction surfaces are hybrid (engine API,
+WebView via `cliclick`, real Chrome at `:1420` via Interceptor for the vite
+frontend). Full pattern + surfaces matrix + canonical arc + gotchas at:
+
+- **`docs/development/dogfood-pattern.html`** — the canonical Houston dogfood
+  loop, captured from a real PR (the Tauri + sidecar worked example)
+
+The shape of a Dogfood Plan to include in your PR body (or `docs/dogfood-
+plan.md` if you prefer a file):
+
+```markdown
+**Dogfood Plan** (stack: tauri-sidecar)
+
+- **Entry surface**: <route, window, CLI command, or API endpoint changed>
+- **Driver**: <engine API curl, cliclick coords, Interceptor at :1420, screencapture>
+- **Evidence**: <screenshot path, response body, log line, recording>
+- **Smoke**: <one-line "didn't obviously break" check>
+- **End-to-end**: <multi-step user flow the change is supposed to support>
+- **Receipt anchor**: <PR comment, file, or message-id where evidence lives>
+```
+
+The Dogfood Plan is the *upstream* of the Dogfood Receipt (the evidence
+table you produce before claiming the work complete). Reasoning isn't
+validation; interaction is.
+
+Related: this pattern composes with the [bstack P11 cookbook](https://github.com/broomva/bstack/blob/main/references/dogfood-patterns.md)
+which generalizes the same shape across other stacks (Next.js, Expo RN, Rust
+CLI, REST API, MCP server). RFC tracking: [#243](https://github.com/gethouston/houston/issues/243).
