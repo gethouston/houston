@@ -78,6 +78,12 @@
     "title": "Avançado",
     "description": "Recursos para usuários avançados. Vêm desativados por padrão, ative só o que você precisar.",
     "empty": "Nenhum recurso avançado disponível nesta versão. As próximas atualizações vão liberar mais aqui.",
+    "flags": {
+      "worktrees": {
+        "label": "Worktrees",
+        "description": "Mostra a opção Modo worktree em cada agente para que as missões possam rodar em worktrees do git separados."
+      }
+    },
     "resetAll": "Redefinir todas as configurações avançadas",
     "resetConfirmTitle": "Redefinir todas as configurações avançadas?",
     "resetConfirmDescription": "Cada interruptor avançado volta ao padrão. Nenhum dado é apagado.",
