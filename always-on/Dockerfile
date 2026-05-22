@@ -23,6 +23,17 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Cache the dependency compile by copying the manifests first.
 COPY Cargo.toml Cargo.lock ./
 COPY engine/ engine/
+# Workspace lists `app/houston-tauri` and `app/src-tauri` as members, so their
+# manifests must exist for cargo to load the workspace — even though `-p
+# houston-engine-server` will not compile them (no path in its dep tree).
+COPY app/houston-tauri/ app/houston-tauri/
+COPY app/src-tauri/ app/src-tauri/
+# `houston-agent-files` embeds the `@houston-ai/agent-schemas` JSON files
+# (activity / routines / routine_runs / config / learnings) at compile time via
+# `include_str!("../../../ui/agent-schemas/src/*.schema.json")` — that subtree
+# is the source of truth for the `.houston/*` data layout, see
+# `knowledge-base/architecture.md`.
+COPY ui/agent-schemas/ ui/agent-schemas/
 
 # Only build the engine server binary — excludes the desktop app crates.
 RUN cargo build --release -p houston-engine-server --bin houston-engine
@@ -32,7 +43,9 @@ FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
  && rm -rf /var/lib/apt/lists/* \
- && useradd --system --create-home --home-dir /data houston
+ && useradd --system --create-home --home-dir /data houston \
+ && mkdir -p /data/.houston /data/Houston \
+ && chown -R houston:houston /data
 
 COPY --from=build /src/target/release/houston-engine /usr/local/bin/houston-engine
 
