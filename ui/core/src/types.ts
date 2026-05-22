@@ -73,6 +73,10 @@ export type HoustonEvent =
       data: { job_id: string; job_name: string; prompt: string };
     }
   | {
+      type: "PreferenceChanged";
+      data: { key: string; value: string | null };
+    }
+  | {
       type: "RoutinesChanged";
       data: { agent_path: string };
     }

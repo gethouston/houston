@@ -77,6 +77,15 @@ pub enum HoustonEvent {
 
     // ----- Routines -----
 
+    /// Preference key was set. Emitted by `PUT /v1/preferences/:key` so
+    /// other tabs / clients / mobile companions can invalidate their cached
+    /// preference reads. `value` is `None` when the key was cleared (stored
+    /// as an empty string today; reserved for a future explicit DELETE).
+    PreferenceChanged {
+        key: String,
+        value: Option<String>,
+    },
+
     /// Routines list changed (.houston/routines.json).
     RoutinesChanged {
         agent_path: String,
