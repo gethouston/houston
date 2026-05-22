@@ -18,7 +18,7 @@
 //!
 //! Every function in this crate returns `Option<PathBuf>` and is `None`
 //! when not running inside a recognizable bundle layout. That keeps dev
-//! builds (`pnpm tauri dev`, `cargo run -p houston-engine-server`)
+//! builds (`bun run tauri dev`, `cargo run -p houston-engine-server`)
 //! working unchanged — callers fall back to PATH lookup or a one-time
 //! `~/.composio` install.
 //!
@@ -408,7 +408,7 @@ fn sibling_bin_dir(exe: &Path) -> Option<PathBuf> {
 }
 
 /// Dev fallback: when the engine is running from `<workspace>/target/{debug,
-/// release}/houston-engine` (i.e. `pnpm tauri dev` or `cargo run`), the
+/// release}/houston-engine` (i.e. `bun run tauri dev` or `cargo run`), the
 /// bundled CLIs aren't staged next to the binary. Instead they live in
 /// `<workspace>/app/src-tauri/resources/bin/` after the user runs
 /// `./scripts/fetch-cli-deps.sh host`. Resolve that layout so dev sessions
@@ -423,7 +423,7 @@ fn dev_workspace_bin_dir(exe: &Path) -> Option<PathBuf> {
     // smoke test) start failing whenever a developer has run
     // `./scripts/fetch-cli-deps.sh`. Restricting to the canonical engine
     // binary name keeps test isolation intact while still serving real
-    // `pnpm tauri dev` / `cargo run -p houston-engine-server` invocations.
+    // `bun run tauri dev` / `cargo run -p houston-engine-server` invocations.
     let file_name = exe.file_name().and_then(|n| n.to_str())?;
     let expected = if cfg!(windows) {
         "houston-engine.exe"

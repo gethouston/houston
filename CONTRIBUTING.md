@@ -7,7 +7,7 @@ Thanks for your interest in contributing to Houston!
 ```bash
 git clone https://github.com/gethouston/houston.git
 cd houston
-pnpm install
+bun install
 cargo check --workspace
 ```
 
@@ -15,13 +15,13 @@ cargo check --workspace
 
 ```bash
 # Run the Houston app
-cd app && pnpm tauri dev
+cd app && bun run tauri dev
 
 # Run the showcase
-cd showcase && pnpm dev
+cd showcase && bun run dev
 
 # TypeScript check
-pnpm typecheck
+bun run typecheck
 
 # Rust check
 cargo check --workspace
@@ -45,7 +45,7 @@ cargo test --workspace
 
 1. Create a feature branch from `main`
 2. Make your changes
-3. Run `pnpm typecheck` and `cargo check --workspace`
+3. Run `bun run typecheck` and `cargo check --workspace`
 4. Open a PR to `main`
 
 ## Commit Messages

@@ -1,5 +1,5 @@
 name = "houston-companion"
-# Deploy: cd mobile && pnpm build && npx wrangler pages deploy dist --project-name houston-companion
+# Deploy: cd mobile && bun run build && npx wrangler pages deploy dist --project-name houston-companion
 # Custom domain: companion.gethouston.ai (set in Cloudflare dashboard)
 
 # Headers for PWA + caching

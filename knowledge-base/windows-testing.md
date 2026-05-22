@@ -123,15 +123,15 @@ same reason.
 Tauri 2.x's `tauri-build` crate emits `cargo:rustc-cfg=dev` based on
 `!has_feature("custom-protocol")`. With dev cfg on, the webview tries
 to load `tauri.conf.json::devUrl` (i.e. `http://localhost:1420`),
-which obviously doesn't exist in the VM. `pnpm tauri build` handles
+which obviously doesn't exist in the VM. `bun run tauri build` handles
 this by passing `--features tauri/custom-protocol` to cargo; raw
 `cargo build --release` doesn't. The `win.sh` build helper now passes
-that flag, AND runs `pnpm build` in `app/` first so the frontend
+that flag, AND runs `bun run build` in `app/` first so the frontend
 assets exist for the bundler to embed. If you ever invoke cargo
 directly for `houston-app`, remember:
 
 ```
-pnpm build       # in app/, produces app/dist/
+bun run build       # in app/, produces app/dist/
 cargo build --release --target x86_64-pc-windows-gnu \
   -p houston-app --features tauri/custom-protocol
 ```

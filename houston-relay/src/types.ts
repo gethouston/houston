@@ -13,7 +13,7 @@ export interface Env {
   /** Static-asset binding that serves the mobile PWA bundle from the
    * same origin as the tunnel API. Routed via `env.ASSETS.fetch(req)`
    * for any path the Worker doesn't claim. Lives in `mobile/dist/`
-   * after `pnpm --filter mobile build`. */
+   * after `bun run --filter mobile build`. */
   ASSETS: { fetch: (req: Request) => Promise<Response> };
   RELAY_PUBLIC_HOST: string;
 

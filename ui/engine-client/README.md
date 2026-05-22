@@ -7,7 +7,7 @@ integrations.
 ## Install
 
 ```bash
-pnpm add @houston-ai/engine-client
+bun add @houston-ai/engine-client
 ```
 
 ## Usage

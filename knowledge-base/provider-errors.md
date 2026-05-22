@@ -90,15 +90,15 @@ Resist if `Unknown` covers it. If you must:
 1. Add the variant to `ProviderError` (Rust) + `ui/chat/src/types.ts`
    (TypeScript). Same `kind` discriminant.
 2. Add an i18n keyset under `shell:providerError.<variant>` for en, es,
-   pt. Run `pnpm check-locales` to verify parity.
+   pt. Run `bun run check-locales` to verify parity.
 3. Add a renderer file under
    `app/src/components/shell/provider-error-cards/<group>.tsx`. Pick
    the group by recovery shape (transient, auth, quota, terminal).
 4. Add a `case` in `provider-error-card.tsx`'s dispatcher.
 5. Update this doc's table.
 6. Add the classifier(s) that produce the new variant.
-7. `cargo test --workspace`, `pnpm tsc --noEmit`, `pnpm check-locales`,
-   `pnpm vite build` — every gate green before committing.
+7. `cargo test --workspace`, `bunx tsc --noEmit`, `bun run check-locales`,
+   `bunx vite build` — every gate green before committing.
 
 ## File map
 

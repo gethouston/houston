@@ -6,15 +6,15 @@ The Houston relay (`houston-relay/`) is a single Cloudflare Worker + Durable Obj
 
 Staging:
 ```
-cd mobile && pnpm build
-cd ../houston-relay && pnpm dlx wrangler deploy --env staging
+cd mobile && bun run build
+cd ../houston-relay && bunx wrangler deploy --env staging
 # → tunnel-staging.gethouston.ai
 ```
 
 Production:
 ```
-cd mobile && pnpm build
-cd ../houston-relay && pnpm dlx wrangler deploy
+cd mobile && bun run build
+cd ../houston-relay && bunx wrangler deploy
 # → tunnel.gethouston.ai
 ```
 
@@ -83,8 +83,8 @@ Failure in any step blocks release.
 Point the engine at a local relay instead of production:
 
 ```
-cd houston-relay && pnpm dlx wrangler dev    # → http://localhost:8787
-cd ../app && HOUSTON_TUNNEL_URL=http://localhost:8787 pnpm tauri dev
+cd houston-relay && bunx wrangler dev    # → http://localhost:8787
+cd ../app && HOUSTON_TUNNEL_URL=http://localhost:8787 bun run tauri dev
 ```
 
 The engine auto-switches WS scheme from `wss://` to `ws://` when `HOUSTON_TUNNEL_URL` uses `http://`.

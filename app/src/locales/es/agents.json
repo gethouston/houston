@@ -78,9 +78,9 @@
       "worktreeMode": "Modo worktree",
       "worktreeModeDescription": "Crear un worktree de git aparte para cada misión",
       "installCommand": "Comando de instalación",
-      "installCommandPlaceholder": "p. ej. pnpm install, npm install, cargo build",
+      "installCommandPlaceholder": "p. ej. bun install, npm install, cargo build",
       "devCommand": "Comando de desarrollo",
-      "devCommandPlaceholder": "p. ej. pnpm dev, npm run dev, cargo run"
+      "devCommandPlaceholder": "p. ej. bun run dev, npm run dev, cargo run"
     }
   },
   "promptCards": {

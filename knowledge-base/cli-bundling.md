@@ -385,7 +385,7 @@ when the new MSI runs until SignPath integration ships.
 - `app/src-tauri/tauri.conf.json#bundle.{resources,windows}` — Tauri
   side: bundle resources, MSI target, WiX config, WebView2 install
   mode.
-- `app/src-tauri/build.rs` — ensures the staging dir exists for `pnpm tauri dev`.
+- `app/src-tauri/build.rs` — ensures the staging dir exists for `bun run tauri dev`.
 - `engine/houston-cli-bundle/` — resolver crate (Windows-aware).
 - `engine/houston-claude-installer/` — runtime download crate
   (Windows install dir at `%LOCALAPPDATA%\Programs\claude\`).

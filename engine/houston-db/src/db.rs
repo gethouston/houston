@@ -122,7 +122,7 @@ impl Database {
 /// Returns the Houston data root.
 ///
 /// - Release builds: `~/.houston/` — what real users see.
-/// - Debug builds (`pnpm tauri dev`, `cargo run`): `~/.dev-houston/` — keeps
+/// - Debug builds (`bun run tauri dev`, `cargo run`): `~/.dev-houston/` — keeps
 ///   development state isolated so you can install a real release of Houston
 ///   alongside without clobbering each other.
 ///

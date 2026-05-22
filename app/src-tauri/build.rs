@@ -20,7 +20,7 @@ fn main() {
     // directory is missing entirely (a real config error would still surface
     // — empty walks are silent). CI populates this dir via
     // `scripts/fetch-cli-deps.sh both` before invoking the bundler. Local
-    // `pnpm tauri dev` builds don't strictly need bundled CLIs (engine
+    // `bun run tauri dev` builds don't strictly need bundled CLIs (engine
     // falls back to PATH lookup / `~/.composio` install), so we create
     // an empty dir here to keep the config valid without forcing every
     // developer to fetch ~700 MB of binaries on first checkout.

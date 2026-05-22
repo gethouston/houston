@@ -86,8 +86,8 @@ for sessions to run. `which claude` should resolve. Codex works too.
 
 ```bash
 cd examples/smartbooks
-pnpm install
-pnpm dev
+bun install
+bun run dev
 # → http://localhost:5177
 ```
 

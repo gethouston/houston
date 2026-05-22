@@ -5,7 +5,7 @@ Foundation layer for Houston UI. 37 shadcn/ui components, design tokens, CSS ani
 ## Install
 
 ```bash
-pnpm add @houston-ai/core
+bun add @houston-ai/core
 ```
 
 ## Usage

@@ -1,6 +1,0 @@
-packages:
-  - "ui/*"
-  - "app"
-  - "mobile"
-  - "houston-relay"
-  - "examples/*"

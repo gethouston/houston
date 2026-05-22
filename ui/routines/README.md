@@ -5,7 +5,7 @@ Automated routine management. Create, edit, run, and review recurring agent task
 ## Install
 
 ```bash
-pnpm add @houston-ai/routines
+bun add @houston-ai/routines
 ```
 
 ## Usage

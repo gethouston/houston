@@ -11,7 +11,7 @@
 #   5. All artifacts uploaded to a draft GitHub Release (publish manually after QA)
 #
 # Required secrets:
-#   TAURI_SIGNING_PRIVATE_KEY          — Tauri updater key (generate: `pnpm tauri signer generate`)
+#   TAURI_SIGNING_PRIVATE_KEY          — Tauri updater key (generate: `bun run tauri signer generate`)
 #   TAURI_SIGNING_PRIVATE_KEY_PASSWORD — Password for the updater key
 #   APPLE_CERTIFICATE                  — Base64-encoded .p12 certificate
 #   APPLE_CERTIFICATE_PASSWORD         — Password for the .p12
@@ -163,17 +163,18 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install
 
       - name: Setup Rust (universal macOS targets)
         uses: dtolnay/rust-toolchain@stable
@@ -730,7 +731,7 @@ jobs:
   #      Tauri's externalBin picks it up at `binaries/houston-engine.exe`
   #      (build.rs::stage_engine_sidecar names it
   #      `houston-engine-<target>.exe` per Tauri's per-target convention).
-  #   3. Run `pnpm tauri build --target <matrix.target>` to produce the
+  #   3. Run `bun run tauri build --target <matrix.target>` to produce the
   #      MSI under `target/<matrix.target>/release/bundle/msi/*.msi`.
   #   4. Upload the per-arch MSI + .sig to the draft release. `finalize`
   #      then merges both into a single latest.json with separate
@@ -776,17 +777,18 @@ jobs:
           fetch-depth: 0
           fetch-tags: true
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: ".bun-version"
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 20
-          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: bun install
 
       - name: Setup Rust (windows-msvc target)
         uses: dtolnay/rust-toolchain@stable

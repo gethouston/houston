@@ -5,7 +5,7 @@ App-level layout primitives. Sidebar for navigation, tab bar for view switching,
 ## Install
 
 ```bash
-pnpm add @houston-ai/layout
+bun add @houston-ai/layout
 ```
 
 ## Usage
