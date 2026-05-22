@@ -33,8 +33,9 @@ impl CronRunner {
         shutdown: watch::Receiver<bool>,
     ) -> anyhow::Result<tokio::task::JoinHandle<()>> {
         // Validate the expression eagerly so callers get a clear error.
-        Schedule::from_str(&config.expression)
-            .map_err(|e| anyhow::anyhow!("Invalid cron expression '{}': {}", config.expression, e))?;
+        Schedule::from_str(&config.expression).map_err(|e| {
+            anyhow::anyhow!("Invalid cron expression '{}': {}", config.expression, e)
+        })?;
 
         let handle = tokio::spawn(async move {
             Self::run(config, queue_handle, shutdown).await;

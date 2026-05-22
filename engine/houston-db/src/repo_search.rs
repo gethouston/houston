@@ -73,26 +73,16 @@ impl Database {
         // Build query conditionally to avoid NULL parameter issues.
         let mut sessions = match exclude_session_id {
             Some(exclude_id) => {
-                self.search_sessions_excluding(
-                    &fts_query,
-                    exclude_id,
-                    max_sessions,
-                )
-                .await?
+                self.search_sessions_excluding(&fts_query, exclude_id, max_sessions)
+                    .await?
             }
-            None => {
-                self.search_sessions_all(&fts_query, max_sessions).await?
-            }
+            None => self.search_sessions_all(&fts_query, max_sessions).await?,
         };
 
         // Step 2: Fetch top snippets for each session.
         for session in &mut sessions {
-            self.fill_session_snippets(
-                &fts_query,
-                session,
-                max_snippets_per_session,
-            )
-            .await?;
+            self.fill_session_snippets(&fts_query, session, max_snippets_per_session)
+                .await?;
         }
 
         Ok(sessions)
@@ -157,9 +147,7 @@ impl Database {
         Self::collect_session_rows(&mut rows).await
     }
 
-    async fn collect_session_rows(
-        rows: &mut libsql::Rows,
-    ) -> Result<Vec<SessionSearchResult>> {
+    async fn collect_session_rows(rows: &mut libsql::Rows) -> Result<Vec<SessionSearchResult>> {
         let mut sessions = Vec::new();
         while let Some(row) = rows.next().await? {
             sessions.push(SessionSearchResult {
@@ -205,10 +193,7 @@ impl Database {
     }
 
     /// List recent sessions (no search). Returns metadata only.
-    pub async fn list_recent_sessions(
-        &self,
-        limit: usize,
-    ) -> Result<Vec<SessionMetadata>> {
+    pub async fn list_recent_sessions(&self, limit: usize) -> Result<Vec<SessionMetadata>> {
         let mut rows = self
             .conn()
             .query(
@@ -363,7 +348,10 @@ mod tests {
 
     #[test]
     fn test_sanitize_fts_query_strips_metacharacters() {
-        assert_eq!(sanitize_fts_query("hello* +world -bad"), "\"hello\" \"world\" \"bad\"");
+        assert_eq!(
+            sanitize_fts_query("hello* +world -bad"),
+            "\"hello\" \"world\" \"bad\""
+        );
     }
 
     #[test]

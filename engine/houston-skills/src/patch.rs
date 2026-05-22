@@ -43,7 +43,11 @@ pub fn fuzzy_find(haystack: &str, needle: &str) -> Option<std::ops::Range<usize>
     }
 
     // Skip leading space in norm_chars for matching (trim effect)
-    let start_offset = if norm_chars.first().map(|c| c.0) == Some(' ') { 1 } else { 0 };
+    let start_offset = if norm_chars.first().map(|c| c.0) == Some(' ') {
+        1
+    } else {
+        0
+    };
 
     let needle_chars: Vec<char> = norm_needle.chars().collect();
     let search_slice = &norm_chars[start_offset..];
@@ -128,7 +132,8 @@ mod tests {
     #[test]
     fn replace_fuzzy_whitespace() {
         let content = "1. Check docker\n2. Run compose";
-        let result = fuzzy_replace(content, "Check docker 2. Run", "Check docker\n2. Execute").unwrap();
+        let result =
+            fuzzy_replace(content, "Check docker 2. Run", "Check docker\n2. Execute").unwrap();
         assert_eq!(result, "1. Check docker\n2. Execute compose");
     }
 

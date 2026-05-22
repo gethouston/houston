@@ -100,11 +100,7 @@ pub async fn launch_login(gemini_path: PathBuf) -> CoreResult<()> {
     // Drive the handshake on a background task so we can apply a
     // timeout. The task owns stdin + stdout; on success it returns Ok,
     // on failure it returns the JSON-RPC error or an io::Error.
-    let handshake = tokio::time::timeout(
-        INIT_TIMEOUT,
-        run_handshake(stdin, stdout),
-    )
-    .await;
+    let handshake = tokio::time::timeout(INIT_TIMEOUT, run_handshake(stdin, stdout)).await;
 
     match handshake {
         Ok(Ok(())) => {
@@ -165,9 +161,10 @@ async fn run_handshake(
         .write_all(init_line.as_bytes())
         .await
         .map_err(|e| CoreError::Internal(format!("gemini --acp stdin write (init): {e}")))?;
-    stdin.flush().await.map_err(|e| {
-        CoreError::Internal(format!("gemini --acp stdin flush (init): {e}"))
-    })?;
+    stdin
+        .flush()
+        .await
+        .map_err(|e| CoreError::Internal(format!("gemini --acp stdin flush (init): {e}")))?;
 
     // 2. Read initialize response. We only need to confirm success;
     //    the response body lists supported authMethods (we already
@@ -192,9 +189,10 @@ async fn run_handshake(
         .write_all(auth_line.as_bytes())
         .await
         .map_err(|e| CoreError::Internal(format!("gemini --acp stdin write (auth): {e}")))?;
-    stdin.flush().await.map_err(|e| {
-        CoreError::Internal(format!("gemini --acp stdin flush (auth): {e}"))
-    })?;
+    stdin
+        .flush()
+        .await
+        .map_err(|e| CoreError::Internal(format!("gemini --acp stdin flush (auth): {e}")))?;
 
     // The authenticate request returns when gemini-cli has acknowledged
     // the request and started its OAuth flow. The actual browser-side

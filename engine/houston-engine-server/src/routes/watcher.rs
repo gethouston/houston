@@ -31,8 +31,8 @@ async fn start(
 ) -> Result<(), ApiError> {
     let mut guard = st.watcher.0.lock().await;
     *guard = None; // stop any existing watcher
-    let watcher = start_watching(st.engine.events.clone(), req.agent_path)
-        .map_err(CoreError::Internal)?;
+    let watcher =
+        start_watching(st.engine.events.clone(), req.agent_path).map_err(CoreError::Internal)?;
     *guard = Some(watcher);
     Ok(())
 }

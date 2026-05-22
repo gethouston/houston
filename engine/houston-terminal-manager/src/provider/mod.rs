@@ -147,11 +147,8 @@ pub trait ProviderAdapter: Send + Sync + 'static {
 /// All registered providers. Add a new provider by importing its module
 /// above and pushing its singleton here. No other call site needs to
 /// change.
-const REGISTRY: &[&dyn ProviderAdapter] = &[
-    &anthropic::ANTHROPIC,
-    &openai::OPENAI,
-    &gemini::GEMINI,
-];
+const REGISTRY: &[&dyn ProviderAdapter] =
+    &[&anthropic::ANTHROPIC, &openai::OPENAI, &gemini::GEMINI];
 
 /// Default provider used when nothing else is configured. Stays Anthropic
 /// to match historical behavior.

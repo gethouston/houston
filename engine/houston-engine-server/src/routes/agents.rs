@@ -25,7 +25,10 @@ use std::sync::Arc;
 pub fn router() -> Router<Arc<ServerState>> {
     Router::new()
         // Activities
-        .route("/agents/activities", get(list_activities).post(create_activity))
+        .route(
+            "/agents/activities",
+            get(list_activities).post(create_activity),
+        )
         .route(
             "/agents/activities/:id",
             patch(update_activity).delete(delete_activity),

@@ -20,9 +20,9 @@ pub mod sessions;
 pub mod skills;
 pub mod state;
 pub mod store;
-pub mod worktree;
 pub mod workspace_context;
 pub mod workspaces;
+pub mod worktree;
 
 pub use error::{CoreError, CoreResult};
 pub use state::EngineState;

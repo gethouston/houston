@@ -59,12 +59,11 @@ pub(crate) async fn read_or_warn(db: &Database) -> String {
 /// context so the user sees a toast warning that subsequent boots will
 /// redownload until the DB is reachable. The user can either fix the
 /// DB or accept the per-boot cost.
-pub async fn persist_version_or_warn(
-    db: &Database,
-    pinned_version: &str,
-    sink: &DynEventSink,
-) {
-    if let Err(e) = db.set_preference(PREF_INSTALLED_VERSION, pinned_version).await {
+pub async fn persist_version_or_warn(db: &Database, pinned_version: &str, sink: &DynEventSink) {
+    if let Err(e) = db
+        .set_preference(PREF_INSTALLED_VERSION, pinned_version)
+        .await
+    {
         // Per CLAUDE.md §"No silent failures": surface, don't swallow.
         let msg = format!(
             "claude-code v{pinned_version}: installed successfully, but the version marker \

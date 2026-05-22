@@ -2,7 +2,9 @@
 //! the engine on 127.0.0.1:<port>. We go through the real HTTP stack
 //! (not router::oneshot) so middleware, auth, CORS all just work.
 
-use crate::frame::{HttpRequestFrame, HttpResponseFrame, TunnelFrame, WsMessageFrame, WsOpenAckFrame, WsOpenFrame};
+use crate::frame::{
+    HttpRequestFrame, HttpResponseFrame, TunnelFrame, WsMessageFrame, WsOpenAckFrame, WsOpenFrame,
+};
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine as _};
 use futures_util::{SinkExt, StreamExt};
 use std::collections::HashMap;
@@ -63,8 +65,14 @@ pub async fn proxy_http(
         let lc = k.to_ascii_lowercase();
         if matches!(
             lc.as_str(),
-            "host" | "connection" | "upgrade" | "keep-alive" | "transfer-encoding"
-                | "te" | "trailer" | "proxy-connection"
+            "host"
+                | "connection"
+                | "upgrade"
+                | "keep-alive"
+                | "transfer-encoding"
+                | "te"
+                | "trailer"
+                | "proxy-connection"
         ) {
             continue;
         }
@@ -147,9 +155,9 @@ pub async fn proxy_ws_open(
             continue;
         }
         if let Ok(hv) = HeaderValue::from_str(v) {
-            if let Ok(hn) = tokio_tungstenite::tungstenite::http::HeaderName::from_bytes(
-                k.as_bytes(),
-            ) {
+            if let Ok(hn) =
+                tokio_tungstenite::tungstenite::http::HeaderName::from_bytes(k.as_bytes())
+            {
                 request.headers_mut().insert(hn, hv);
             }
         }
@@ -158,8 +166,7 @@ pub async fn proxy_ws_open(
     match tokio_tungstenite::connect_async(request).await {
         Ok((stream, _res)) => {
             let ws_id = frame.ws_id.clone();
-            let (tx_local, mut rx_local) =
-                tokio::sync::mpsc::unbounded_channel::<WsMsg>();
+            let (tx_local, mut rx_local) = tokio::sync::mpsc::unbounded_channel::<WsMsg>();
             legs.lock().await.insert(ws_id.clone(), tx_local);
 
             let (mut sink, mut src) = stream.split();
@@ -190,13 +197,11 @@ pub async fn proxy_ws_open(
                         binary,
                     }));
                 }
-                let _ = outbound2.send(TunnelFrame::WsClose(
-                    crate::frame::WsCloseFrame {
-                        ws_id: ws_id2.clone(),
-                        code: None,
-                        reason: None,
-                    },
-                ));
+                let _ = outbound2.send(TunnelFrame::WsClose(crate::frame::WsCloseFrame {
+                    ws_id: ws_id2.clone(),
+                    code: None,
+                    reason: None,
+                }));
                 legs2.lock().await.remove(&ws_id2);
             });
 
@@ -222,7 +227,9 @@ pub type LegsMap = Arc<Mutex<HashMap<String, tokio::sync::mpsc::UnboundedSender<
 /// Forward a c2s (mobile → engine) message onto the local leg.
 pub async fn forward_c2s(legs: &LegsMap, frame: WsMessageFrame) {
     let guard = legs.lock().await;
-    let Some(tx) = guard.get(&frame.ws_id) else { return };
+    let Some(tx) = guard.get(&frame.ws_id) else {
+        return;
+    };
     let msg = if let Some(t) = frame.text {
         WsMsg::Text(t.into())
     } else if let Some(b) = frame.binary.and_then(|s| BASE64.decode(s).ok()) {

@@ -162,7 +162,10 @@ async fn gemini_credentials_writes_to_home_dot_env() {
         None => std::env::remove_var("HOME"),
     }
 
-    assert!(status.is_success(), "expected 2xx, got {status} body={body}");
+    assert!(
+        status.is_success(),
+        "expected 2xx, got {status} body={body}"
+    );
     let env_file = tmp.path().join(".gemini").join(".env");
     let contents = std::fs::read_to_string(&env_file).unwrap_or_else(|e| {
         panic!(

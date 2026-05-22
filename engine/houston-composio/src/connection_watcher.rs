@@ -130,7 +130,10 @@ async fn run_watch(slug: String, sink: DynEventSink) {
 
         let connected = normalize_toolkit_slugs(cli::list_connected_toolkits().await);
         if connected.iter().any(|s| s == &slug) {
-            tracing::info!("[composio:watch] {} connection landed — emitting event", slug);
+            tracing::info!(
+                "[composio:watch] {} connection landed — emitting event",
+                slug
+            );
             sink.emit(HoustonEvent::ComposioConnectionAdded {
                 toolkit: slug.clone(),
             });

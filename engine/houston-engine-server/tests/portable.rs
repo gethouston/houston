@@ -79,12 +79,10 @@ async fn preview_returns_summary_for_seeded_agent() {
         .unwrap();
 
     assert!(r["claudeMd"]["byteCount"].as_u64().unwrap() > 0);
-    assert!(
-        r["claudeMd"]["excerpt"]
-            .as_str()
-            .unwrap()
-            .contains("Help out")
-    );
+    assert!(r["claudeMd"]["excerpt"]
+        .as_str()
+        .unwrap()
+        .contains("Help out"));
     let skills = r["skills"].as_array().unwrap();
     assert_eq!(skills.len(), 1);
     assert_eq!(skills[0]["slug"], "draft-email");
@@ -136,7 +134,11 @@ async fn package_returns_zip_bytes_excluding_sessions() {
     let parsed = houston_agent_portable::parse_package(&bytes).unwrap();
     assert_eq!(parsed.manifest.agent_id, "beta");
     assert_eq!(parsed.manifest.counts.skills, 1);
-    assert!(parsed.inventory.skills.iter().any(|s| s.slug == "draft-email"));
+    assert!(parsed
+        .inventory
+        .skills
+        .iter()
+        .any(|s| s.slug == "draft-email"));
 
     // Confirm at the HTTP layer that no session secret slipped into the body.
     let payload = String::from_utf8_lossy(&bytes);
@@ -230,7 +232,9 @@ async fn import_round_trip_with_scan() {
         .unwrap();
 
     let agent_path: String = installed["agentPath"].as_str().unwrap().to_string();
-    assert!(std::path::PathBuf::from(&agent_path).join("CLAUDE.md").exists());
+    assert!(std::path::PathBuf::from(&agent_path)
+        .join("CLAUDE.md")
+        .exists());
     assert!(std::path::PathBuf::from(&agent_path)
         .join(".agents/skills/draft-email/SKILL.md")
         .exists());
@@ -345,10 +349,7 @@ async fn anonymize_redacts_pii_in_learnings() {
     let learnings = r["learnings"].as_array().unwrap();
     assert_eq!(learnings.len(), 1);
     assert_eq!(learnings[0]["id"], "l1");
-    assert!(learnings[0]["after"]
-        .as_str()
-        .unwrap()
-        .contains("<email>"));
+    assert!(learnings[0]["after"].as_str().unwrap().contains("<email>"));
 }
 
 #[tokio::test]

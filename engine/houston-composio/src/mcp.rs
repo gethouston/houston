@@ -140,9 +140,7 @@ fn read_oauth_token_with_expiry() -> (Option<String>, bool) {
         Ok(o) => o,
         Err(_) => return (None, false),
     };
-    let username = String::from_utf8_lossy(&whoami.stdout)
-        .trim()
-        .to_string();
+    let username = String::from_utf8_lossy(&whoami.stdout).trim().to_string();
 
     let output = match std::process::Command::new("security")
         .args([
@@ -327,7 +325,11 @@ fn parse_composio_json(
         // Prefer catalog metadata (covers all 982 toolkits with real names/logos).
         // Fall back to hardcoded metadata for toolkits not in the catalog.
         let (display_name, logo, description) = if let Some(entry) = catalog.get(toolkit) {
-            (entry.name.clone(), entry.logo_url.clone(), entry.description.clone())
+            (
+                entry.name.clone(),
+                entry.logo_url.clone(),
+                entry.description.clone(),
+            )
         } else {
             let (name, icon_url, fallback_domain) = toolkit_meta(toolkit);
             let logo = if icon_url.is_empty() {
@@ -359,16 +361,36 @@ fn parse_composio_json(
 /// Fallback list used only when the full 982-app catalog fetch fails.
 /// Covers the most common user connections as a safety net.
 const FALLBACK_TOOLKITS: &[&str] = &[
-    "gmail", "googledrive", "googlecalendar", "googlesheets", "googledocs",
-    "outlook", "microsoft_teams", "onedrive",
-    "slack", "discord", "telegram",
-    "linkedin", "twitter",
-    "github", "gitlab", "notion", "airtable",
-    "linear", "jira", "asana", "trello",
-    "hubspot", "salesforce",
-    "stripe", "shopify",
-    "dropbox", "figma",
-    "exa", "tavily", "firecrawl",
+    "gmail",
+    "googledrive",
+    "googlecalendar",
+    "googlesheets",
+    "googledocs",
+    "outlook",
+    "microsoft_teams",
+    "onedrive",
+    "slack",
+    "discord",
+    "telegram",
+    "linkedin",
+    "twitter",
+    "github",
+    "gitlab",
+    "notion",
+    "airtable",
+    "linear",
+    "jira",
+    "asana",
+    "trello",
+    "hubspot",
+    "salesforce",
+    "stripe",
+    "shopify",
+    "dropbox",
+    "figma",
+    "exa",
+    "tavily",
+    "firecrawl",
 ];
 
 pub fn toolkit_display_name(slug: &str) -> &str {

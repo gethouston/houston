@@ -80,13 +80,19 @@ fn round_trip_all_items() {
     assert_eq!(parsed.manifest.counts.learnings, 2);
     assert!(!parsed.manifest.anonymized);
 
-    assert_eq!(parsed.inventory.claude_md.as_deref(), Some("# Job\nDo research."));
+    assert_eq!(
+        parsed.inventory.claude_md.as_deref(),
+        Some("# Job\nDo research.")
+    );
     assert_eq!(parsed.inventory.skills.len(), 2);
     // Skills sorted by slug on read.
     assert_eq!(parsed.inventory.skills[0].slug, "draft-email");
     assert_eq!(parsed.inventory.skills[1].slug, "research-company");
     assert_eq!(parsed.inventory.routines, inv.routines);
-    assert_eq!(parsed.inventory.routines[0].integrations, vec!["gmail", "slack"]);
+    assert_eq!(
+        parsed.inventory.routines[0].integrations,
+        vec!["gmail", "slack"]
+    );
     assert_eq!(
         parsed.inventory.routines[0].timezone.as_deref(),
         Some("America/Bogota")
@@ -306,7 +312,8 @@ fn skill_path_with_nested_dir_is_rejected() {
             "counts": { "claude_md": 0, "skills": 0, "routines": 0, "learnings": 0 }
         });
         zip.write_all(body.to_string().as_bytes()).unwrap();
-        zip.start_file(".agents/skills/evil/nested/SKILL.md", opts).unwrap();
+        zip.start_file(".agents/skills/evil/nested/SKILL.md", opts)
+            .unwrap();
         zip.write_all(b"body").unwrap();
         zip.finish().unwrap();
     }

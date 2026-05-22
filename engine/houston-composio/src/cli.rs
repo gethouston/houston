@@ -218,7 +218,11 @@ pub async fn start_link(toolkit: &str) -> Result<StartLinkResponse, String> {
             "composio link --no-wait failed (exit {}): {}{}",
             output.status,
             stderr,
-            if stdout.is_empty() { String::new() } else { format!("\nstdout: {stdout}") }
+            if stdout.is_empty() {
+                String::new()
+            } else {
+                format!("\nstdout: {stdout}")
+            }
         ));
     }
 
@@ -240,9 +244,7 @@ pub async fn start_link(toolkit: &str) -> Result<StartLinkResponse, String> {
     }
 
     let payload: Payload = serde_json::from_str(stdout_trimmed).map_err(|e| {
-        format!(
-            "Unexpected composio link --no-wait output: {e}\nstdout was: {stdout_trimmed}"
-        )
+        format!("Unexpected composio link --no-wait output: {e}\nstdout was: {stdout_trimmed}")
     })?;
 
     Ok(StartLinkResponse {
@@ -391,11 +393,7 @@ async fn run_cli_with_timeout(
             }
         }
         Err(e) => {
-            tracing::error!(
-                "[composio:cli] ← error in {:?}: {}",
-                elapsed,
-                e
-            );
+            tracing::error!("[composio:cli] ← error in {:?}: {}", elapsed, e);
         }
     }
     result
@@ -460,7 +458,10 @@ async fn list_connected_toolkits_inner() -> Result<Vec<String>, String> {
         .map_err(|e| format!("Consumer project resolve failed: {e}"))?;
 
     if !resolve_resp.status().is_success() {
-        return Err(format!("Consumer project resolve returned {}", resolve_resp.status()));
+        return Err(format!(
+            "Consumer project resolve returned {}",
+            resolve_resp.status()
+        ));
     }
 
     #[derive(Deserialize)]
@@ -485,7 +486,10 @@ async fn list_connected_toolkits_inner() -> Result<Vec<String>, String> {
         .map_err(|e| format!("Connected toolkits request failed: {e}"))?;
 
     if !toolkits_resp.status().is_success() {
-        return Err(format!("Connected toolkits returned {}", toolkits_resp.status()));
+        return Err(format!(
+            "Connected toolkits returned {}",
+            toolkits_resp.status()
+        ));
     }
 
     #[derive(Deserialize)]
@@ -542,7 +546,11 @@ mod tests {
 
     #[test]
     fn decorates_illegal_instruction() {
-        let msg = decorate_windows_exit("composio whoami", "exit code: 0xc000001d", Some(0xC000_001D_u32 as i32));
+        let msg = decorate_windows_exit(
+            "composio whoami",
+            "exit code: 0xc000001d",
+            Some(0xC000_001D_u32 as i32),
+        );
         assert!(msg.contains("STATUS_ILLEGAL_INSTRUCTION"));
         assert!(msg.contains("aarch64"));
     }

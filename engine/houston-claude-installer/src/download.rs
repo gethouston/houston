@@ -76,7 +76,14 @@ pub async fn install_to(
     tracing::info!("[claude-installer] GET {url}");
 
     tokio::fs::create_dir_all(install_dir).await.map_err(|e| {
-        install_err("create install dir", version, &url, &target_display, None, &e)
+        install_err(
+            "create install dir",
+            version,
+            &url,
+            &target_display,
+            None,
+            &e,
+        )
     })?;
 
     // Temp path on the same filesystem so the final rename is atomic
@@ -94,11 +101,25 @@ pub async fn install_to(
         .connect_timeout(std::time::Duration::from_secs(15))
         .build()
         .map_err(|e| {
-            install_err("build HTTP client", version, &url, &target_display, None, &e)
+            install_err(
+                "build HTTP client",
+                version,
+                &url,
+                &target_display,
+                None,
+                &e,
+            )
         })?;
 
     let resp = client.get(&url).send().await.map_err(|e| {
-        install_err("send download request", version, &url, &target_display, None, &e)
+        install_err(
+            "send download request",
+            version,
+            &url,
+            &target_display,
+            None,
+            &e,
+        )
     })?;
 
     if !resp.status().is_success() {
@@ -137,11 +158,25 @@ pub async fn install_to(
 
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.map_err(|e| {
-            install_err("read download stream", version, &url, &target_display, None, &e)
+            install_err(
+                "read download stream",
+                version,
+                &url,
+                &target_display,
+                None,
+                &e,
+            )
         })?;
         hasher.update(&chunk);
         tmp_file.write_all(&chunk).await.map_err(|e| {
-            install_err("write download chunk", version, &url, &target_display, None, &e)
+            install_err(
+                "write download chunk",
+                version,
+                &url,
+                &target_display,
+                None,
+                &e,
+            )
         })?;
         downloaded = downloaded.saturating_add(chunk.len() as u64);
 
@@ -160,9 +195,10 @@ pub async fn install_to(
         }
     }
 
-    tmp_file.flush().await.map_err(|e| {
-        install_err("flush temp file", version, &url, &target_display, None, &e)
-    })?;
+    tmp_file
+        .flush()
+        .await
+        .map_err(|e| install_err("flush temp file", version, &url, &target_display, None, &e))?;
     drop(tmp_file);
 
     // Always emit a final 100% so the UI can transition out of

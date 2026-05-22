@@ -13,4 +13,4 @@ pub mod types;
 pub use dispatcher::EventDispatcher;
 pub use handler::{HandlerResponse, InputHandler};
 pub use queue::{EventQueue, EventQueueHandle};
-pub use types::{HookEvent, InputSource, InputType, HoustonInput};
+pub use types::{HookEvent, HoustonInput, InputSource, InputType};

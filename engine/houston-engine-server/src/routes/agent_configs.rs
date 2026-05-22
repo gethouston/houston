@@ -10,8 +10,6 @@ pub fn router() -> Router<Arc<ServerState>> {
     Router::new().route("/agent-configs", get(list))
 }
 
-async fn list(
-    State(st): State<Arc<ServerState>>,
-) -> Result<Json<Vec<InstalledConfig>>, ApiError> {
+async fn list(State(st): State<Arc<ServerState>>) -> Result<Json<Vec<InstalledConfig>>, ApiError> {
     Ok(Json(agent_configs::list_installed(st.engine.paths.home())?))
 }

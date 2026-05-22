@@ -104,7 +104,11 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     tracing::info!(
         "[claude-installer] installing claude-code v{} ({} -> {})",
         pinned_version,
-        if last_version.is_empty() { "none" } else { &last_version },
+        if last_version.is_empty() {
+            "none"
+        } else {
+            &last_version
+        },
         pinned_version
     );
 
@@ -139,6 +143,11 @@ mod tests {
     fn cli_path_is_under_install_dir() {
         let cli = cli_path();
         let dir = install_dir();
-        assert!(cli.starts_with(&dir), "{} not under {}", cli.display(), dir.display());
+        assert!(
+            cli.starts_with(&dir),
+            "{} not under {}",
+            cli.display(),
+            dir.display()
+        );
     }
 }

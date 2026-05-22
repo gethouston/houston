@@ -47,10 +47,7 @@ pub fn invalidate(home_dir: &Path) {
 /// burst from one client and bans for the rest of the boot. With the
 /// retry — and the cache that the successful call writes — we settle
 /// on a single tunnel ID within seconds of the first allowed request.
-pub async fn ensure(
-    home_dir: &Path,
-    relay_base: &str,
-) -> anyhow::Result<TunnelIdentity> {
+pub async fn ensure(home_dir: &Path, relay_base: &str) -> anyhow::Result<TunnelIdentity> {
     if let Some(id) = load(home_dir) {
         return Ok(id);
     }
@@ -72,9 +69,7 @@ pub async fn ensure(
                 .and_then(|s| s.parse::<u64>().ok())
                 .unwrap_or(5)
                 .min(30);
-            tracing::warn!(
-                "tunnel allocation 429 — retrying once in {wait_secs}s per Retry-After"
-            );
+            tracing::warn!("tunnel allocation 429 — retrying once in {wait_secs}s per Retry-After");
             tokio::time::sleep(std::time::Duration::from_secs(wait_secs)).await;
             continue;
         }

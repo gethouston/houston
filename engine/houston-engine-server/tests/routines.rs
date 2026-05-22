@@ -182,7 +182,10 @@ async fn routine_runs_create_update_filter() {
     // Filter by routineId.
     let filtered: serde_json::Value = c
         .get(format!("http://{addr}/v1/routine-runs"))
-        .query(&[("agentPath", &agent_path), ("routineId", &rid_a.to_string())])
+        .query(&[
+            ("agentPath", &agent_path),
+            ("routineId", &rid_a.to_string()),
+        ])
         .bearer_auth(&tok)
         .send()
         .await
@@ -291,9 +294,7 @@ async fn cancel_run_marks_cancelled_then_409_on_repeat() {
 
     // Missing run: 404.
     let missing = c
-        .post(format!(
-            "http://{addr}/v1/routines/{rid}/runs/nope:cancel"
-        ))
+        .post(format!("http://{addr}/v1/routines/{rid}/runs/nope:cancel"))
         .query(&[("agentPath", &agent_path)])
         .bearer_auth(&tok)
         .send()

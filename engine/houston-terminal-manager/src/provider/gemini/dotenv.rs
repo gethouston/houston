@@ -138,19 +138,14 @@ mod tests {
     #[test]
     fn extract_dotenv_value_strips_quotes_and_trims() {
         assert_eq!(
-            extract_dotenv_value("GEMINI_API_KEY=  \"hello\"  \n", "GEMINI_API_KEY")
-                .as_deref(),
+            extract_dotenv_value("GEMINI_API_KEY=  \"hello\"  \n", "GEMINI_API_KEY").as_deref(),
             Some("hello")
         );
         assert_eq!(
-            extract_dotenv_value("GEMINI_API_KEY='single'\n", "GEMINI_API_KEY")
-                .as_deref(),
+            extract_dotenv_value("GEMINI_API_KEY='single'\n", "GEMINI_API_KEY").as_deref(),
             Some("single")
         );
-        assert_eq!(
-            extract_dotenv_value("OTHER=foo\n", "GEMINI_API_KEY"),
-            None
-        );
+        assert_eq!(extract_dotenv_value("OTHER=foo\n", "GEMINI_API_KEY"), None);
         assert_eq!(
             extract_dotenv_value("GEMINI_API_KEY=\n", "GEMINI_API_KEY"),
             None

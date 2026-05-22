@@ -130,10 +130,7 @@ pub enum ProviderError {
         message: String,
     },
     /// Network can't reach the provider's API.
-    NetworkUnreachable {
-        provider: String,
-        message: String,
-    },
+    NetworkUnreachable { provider: String, message: String },
     /// Provider-side server error (5xx, transient infra failure).
     ProviderInternal {
         provider: String,
@@ -148,10 +145,7 @@ pub enum ProviderError {
     /// CLI emitted malformed JSON the runner can't parse mid-stream.
     /// Anthropic's "no low surrogate in string" case today; could fire
     /// for any provider on truncated network responses.
-    MalformedResponse {
-        provider: String,
-        message: String,
-    },
+    MalformedResponse { provider: String, message: String },
     /// CLI binary couldn't even spawn (not bundled, killed by OS, missing
     /// dependency).
     SpawnFailed {
@@ -253,7 +247,9 @@ mod tests {
         let e = ProviderError::UsageLimitPaused {
             provider: "anthropic".into(),
             resets_at: Some("5pm (America/Los_Angeles)".into()),
-            message: "Claude usage limit reached. Your limit will reset at 5pm (America/Los_Angeles)".into(),
+            message:
+                "Claude usage limit reached. Your limit will reset at 5pm (America/Los_Angeles)"
+                    .into(),
         };
         let json = serde_json::to_string(&e).unwrap();
         assert!(json.contains(r#""kind":"usage_limit_paused""#));
@@ -284,7 +280,9 @@ mod tests {
                 retry_after_seconds: None,
                 message: "".into(),
             },
-            ProviderError::Cancelled { provider: "p".into() },
+            ProviderError::Cancelled {
+                provider: "p".into(),
+            },
             ProviderError::Unknown {
                 provider: "p".into(),
                 raw_excerpt: "".into(),

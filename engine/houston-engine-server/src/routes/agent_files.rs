@@ -238,8 +238,7 @@ async fn import(
     Json(body): Json<ImportBody>,
 ) -> Result<Json<Vec<files::ProjectFile>>, ApiError> {
     let root = resolve_root(&body.agent_path)?;
-    let imported =
-        files::import_files(&root, &body.file_paths, body.target_folder.as_deref())?;
+    let imported = files::import_files(&root, &body.file_paths, body.target_folder.as_deref())?;
     if !imported.is_empty() {
         emit(
             &st,

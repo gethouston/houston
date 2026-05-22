@@ -295,16 +295,14 @@ mod tests {
             saw_model_unsupported_error: false,
         };
 
-        let outcome =
-            handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
+        let outcome = handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
         assert_eq!(outcome, CliRunOutcome::Failed);
 
         let updates = drain(&mut rx);
         assert!(
-            !updates.iter().any(|u| matches!(
-                u,
-                SessionUpdate::Feed(FeedItem::ToolRuntimeError { .. })
-            )),
+            !updates
+                .iter()
+                .any(|u| matches!(u, SessionUpdate::Feed(FeedItem::ToolRuntimeError { .. }))),
             "should not emit ToolRuntimeError when auth was seen on stdout: {updates:?}"
         );
         assert!(
@@ -328,8 +326,7 @@ mod tests {
         let (tx, mut rx) = mpsc::unbounded_channel();
         let stdout_report = session_io::StdoutReadReport::default();
 
-        let outcome =
-            handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
+        let outcome = handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
         assert_eq!(outcome, CliRunOutcome::Failed);
 
         let updates = drain(&mut rx);

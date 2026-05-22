@@ -11,9 +11,13 @@ use axum::{
     Json, Router,
 };
 use houston_engine_core::paths::expand_tilde;
-use houston_engine_core::portable::anonymize::{anonymize_agent, AnonymizeRequest, AnonymizeResponse};
+use houston_engine_core::portable::anonymize::{
+    anonymize_agent, AnonymizeRequest, AnonymizeResponse,
+};
 use houston_engine_core::portable::export::{self, ExportRequest, InventoryPreview};
-use houston_engine_core::portable::import::{self, InstallRequest, InstalledAgent, UploadPreviewResponse};
+use houston_engine_core::portable::import::{
+    self, InstallRequest, InstalledAgent, UploadPreviewResponse,
+};
 use houston_engine_core::portable::scan::{scan_package, ScanResponse};
 use houston_engine_core::CoreError;
 use houston_engine_protocol::ENGINE_VERSION;
@@ -104,9 +108,7 @@ async fn import_preview(
     body: Bytes,
 ) -> Result<Json<UploadPreviewResponse>, ApiError> {
     if body.is_empty() {
-        return Err(ApiError::from(CoreError::BadRequest(
-            "empty upload".into(),
-        )));
+        return Err(ApiError::from(CoreError::BadRequest("empty upload".into())));
     }
     Ok(Json(import::register_upload(&body)?))
 }

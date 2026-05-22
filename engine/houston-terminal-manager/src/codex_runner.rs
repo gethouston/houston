@@ -56,7 +56,9 @@ pub(crate) async fn spawn_codex(
 
     let outcome = run_cli_process(tx, &mut cmd, &prompt, provider).await;
     if outcome == CliRunOutcome::CodexResumeMissing && resume_session_id.is_some() {
-        tracing::warn!("[houston:session] codex resume rollout missing; retrying with fresh thread");
+        tracing::warn!(
+            "[houston:session] codex resume rollout missing; retrying with fresh thread"
+        );
         let _ = tx.send(SessionUpdate::ResumeInvalid);
         let mut fresh_cmd = build_codex_command(
             None,

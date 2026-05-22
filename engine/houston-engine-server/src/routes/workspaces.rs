@@ -18,10 +18,7 @@ pub fn router() -> Router<Arc<ServerState>> {
         .route("/workspaces", get(list).post(create))
         .route("/workspaces/:id", delete(remove))
         .route("/workspaces/:id/rename", post(rename))
-        .route(
-            "/workspaces/:id/context",
-            get(get_context).put(put_context),
-        )
+        .route("/workspaces/:id/context", get(get_context).put(put_context))
         // Workspace-scoped agents CRUD.
         .route(
             "/workspaces/:id/agents",

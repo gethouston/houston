@@ -122,10 +122,11 @@ fn parse_toolkits(body: &serde_json::Value) -> Result<Vec<ComposioAppEntry>, Str
 
     let mut apps = Vec::with_capacity(items.len());
     for item in items {
-        let slug = normalize_toolkit_slug(item
-            .get("slug")
-            .and_then(|v| v.as_str())
-            .unwrap_or_default());
+        let slug = normalize_toolkit_slug(
+            item.get("slug")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default(),
+        );
         if slug.is_empty() {
             continue;
         }

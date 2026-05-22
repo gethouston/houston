@@ -710,6 +710,18 @@ export const tauriProvider = {
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
   /**
+   * Submit the OAuth verification code the user pasted from their
+   * browser. Only meaningful for remote/headless engines (container,
+   * Always-On VPS) where the CLI can't open the user's browser
+   * directly — the engine surfaces the sign-in URL via the
+   * `ProviderLoginUrl` WS event, the UI shows the dialog, and this
+   * call relays the code back to the CLI's stdin.
+   */
+  submitLoginCode: (provider: string, code: string) =>
+    call<void>("submit_provider_login_code", () =>
+      getEngine().submitProviderLoginCode(provider, code),
+    ),
+  /**
    * Save a Gemini API key to `~/.gemini/.env` via the engine. Errors
    * surface through `call`'s standard rejection path; the caller is
    * expected to render them with `errorMessage(err)` + `addToast`.

@@ -45,7 +45,9 @@ impl ServerConfig {
             .and_then(|s| s.parse().ok())
             .unwrap_or_else(|| "127.0.0.1:0".parse().unwrap());
 
-        if bind.ip().is_unspecified() && std::env::var("HOUSTON_BIND_ALL").ok().as_deref() != Some("1") {
+        if bind.ip().is_unspecified()
+            && std::env::var("HOUSTON_BIND_ALL").ok().as_deref() != Some("1")
+        {
             panic!("Refusing to bind 0.0.0.0 without HOUSTON_BIND_ALL=1");
         }
 

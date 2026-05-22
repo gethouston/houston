@@ -83,7 +83,11 @@ if ($dialog.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
     {
         // Linux: zenity is the lowest-common-denominator GTK picker.
         let output = Command::new("zenity")
-            .args(["--file-selection", "--directory", "--title=Select your project directory"])
+            .args([
+                "--file-selection",
+                "--directory",
+                "--title=Select your project directory",
+            ])
             .output()
             .await
             .map_err(|e| format!("Failed to open folder picker (install zenity): {e}"))?;
@@ -172,8 +176,7 @@ pub async fn reveal_file(agent_path: String, relative_path: String) -> Result<()
 #[tauri::command(rename_all = "snake_case")]
 pub async fn reveal_agent(agent_path: String) -> Result<(), String> {
     let root = expand(&agent_path);
-    spawn_default_open(&root.to_string_lossy())
-        .map_err(|e| format!("Failed to open folder: {e}"))
+    spawn_default_open(&root.to_string_lossy()).map_err(|e| format!("Failed to open folder: {e}"))
 }
 
 /// Reveal an arbitrary absolute path in the OS file manager. Used by flows

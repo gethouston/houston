@@ -139,12 +139,8 @@ pub fn event_topic(event: &HoustonEvent) -> String {
         | HoustonEvent::SessionStatus { session_key, .. } => format!("session:{session_key}"),
         HoustonEvent::AuthRequired { .. } => "auth".into(),
         HoustonEvent::Toast { .. } | HoustonEvent::CompletionToast { .. } => "toast".into(),
-        HoustonEvent::EventReceived { .. } | HoustonEvent::EventProcessed { .. } => {
-            "events".into()
-        }
-        HoustonEvent::HeartbeatFired { .. } | HoustonEvent::CronFired { .. } => {
-            "scheduler".into()
-        }
+        HoustonEvent::EventReceived { .. } | HoustonEvent::EventProcessed { .. } => "events".into(),
+        HoustonEvent::HeartbeatFired { .. } | HoustonEvent::CronFired { .. } => "scheduler".into(),
         HoustonEvent::RoutinesChanged { agent_path }
         | HoustonEvent::RoutineRunsChanged { agent_path } => format!("routines:{agent_path}"),
         HoustonEvent::ActivityChanged { agent_path }
@@ -161,6 +157,9 @@ pub fn event_topic(event: &HoustonEvent) -> String {
         | HoustonEvent::ClaudeCliReady
         | HoustonEvent::ClaudeCliFailed { .. } => "claude".into(),
         HoustonEvent::PreferenceChanged { .. } => "preferences".into(),
+        HoustonEvent::ProviderLoginUrl { .. } | HoustonEvent::ProviderLoginComplete { .. } => {
+            "providers".into()
+        }
     }
 }
 
@@ -236,7 +235,10 @@ mod tests {
 
     #[test]
     fn event_topic_singletons() {
-        let ev = HoustonEvent::Toast { message: "x".into(), variant: "info".into() };
+        let ev = HoustonEvent::Toast {
+            message: "x".into(),
+            variant: "info".into(),
+        };
         assert_eq!(event_topic(&ev), "toast");
         assert_eq!(event_topic(&HoustonEvent::ComposioCliReady), "composio");
     }
@@ -244,8 +246,12 @@ mod tests {
     #[test]
     fn low_severity_feed_detection() {
         use houston_terminal_manager::FeedItem;
-        assert!(is_low_severity_feed(&FeedItem::AssistantTextStreaming("x".into())));
-        assert!(is_low_severity_feed(&FeedItem::ThinkingStreaming("x".into())));
+        assert!(is_low_severity_feed(&FeedItem::AssistantTextStreaming(
+            "x".into()
+        )));
+        assert!(is_low_severity_feed(&FeedItem::ThinkingStreaming(
+            "x".into()
+        )));
         assert!(!is_low_severity_feed(&FeedItem::AssistantText("x".into())));
     }
 }

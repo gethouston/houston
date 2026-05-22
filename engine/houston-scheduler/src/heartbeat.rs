@@ -84,9 +84,7 @@ impl HeartbeatRunner {
                 if !in_window {
                     debug!(
                         current_hour = hour,
-                        start,
-                        end,
-                        "Outside active hours, skipping heartbeat"
+                        start, end, "Outside active hours, skipping heartbeat"
                     );
                     continue;
                 }

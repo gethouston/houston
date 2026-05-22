@@ -13,13 +13,16 @@
 mod gemini_credentials;
 mod gemini_disconnect;
 mod gemini_login;
+mod login_relay;
 
 pub use gemini_credentials::set_gemini_api_key;
 pub use gemini_disconnect::disconnect_gemini;
+pub use login_relay::submit_login_code;
 
 use crate::error::{CoreError, CoreResult};
 use houston_terminal_manager::provider_auth::ProviderAuthState;
 use houston_terminal_manager::{claude_path, InstallSource, Provider};
+use houston_ui_events::DynEventSink;
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -78,9 +81,16 @@ pub async fn check_status(provider: Provider) -> CoreResult<ProviderStatus> {
 /// forever on a "waiting" dialog.
 ///
 /// If the CLI is still running after the 3-second probe window, we
-/// detach it: the OAuth flow continues in the background and the
-/// frontend polls `check_status` to observe completion, as before.
-pub async fn launch_login(provider: Provider) -> CoreResult<()> {
+/// stash its stdin handle in [`LOGIN_SESSIONS`] and spawn a background
+/// task that reads stdout line-by-line. The first HTTPS URL we see
+/// goes out as a [`HoustonEvent::ProviderLoginUrl`] so the frontend
+/// can show it to the user. When the child eventually exits (after
+/// the user pastes their verification code via [`submit_login_code`]),
+/// we emit [`HoustonEvent::ProviderLoginComplete`] with the exit
+/// status. This makes "click Connect → OAuth in browser → done" work
+/// for remote/headless engines (containers, Always-On) where the CLI
+/// can't open the user's browser itself.
+pub async fn launch_login(provider: Provider, sink: DynEventSink) -> CoreResult<()> {
     // Gemini has no `gemini auth login` subcommand. Instead, gemini-cli
     // exposes an `authenticate` JSON-RPC method over its `--acp` mode
     // (Agent Communication Protocol) that triggers Google's OAuth flow
@@ -91,8 +101,7 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
         let (_, gemini_path) = provider.resolve();
         let path = gemini_path.ok_or_else(|| {
             CoreError::BadRequest(
-                "Gemini CLI binary not found. Reinstall Houston to restore the bundled CLI."
-                    .into(),
+                "Gemini CLI binary not found. Reinstall Houston to restore the bundled CLI.".into(),
             )
         })?;
         return gemini_login::launch_login(path).await;
@@ -108,7 +117,12 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
     let mut cmd = tokio::process::Command::new(&path);
     cmd.args(&args)
         .env("PATH", shell_path)
-        .stdin(std::process::Stdio::null())
+        // Piped (was `null`) because remote/headless engines need to
+        // write the user's OAuth verification code back into the CLI
+        // after the user completes the browser flow. On desktop this
+        // pipe is never used — claude finishes via its 127.0.0.1
+        // callback before we'd ever write — but harmless either way.
+        .stdin(std::process::Stdio::piped())
         .stdout(std::process::Stdio::piped())
         .stderr(std::process::Stdio::piped())
         .kill_on_drop(false);
@@ -144,6 +158,14 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
         .spawn()
         .map_err(|e| CoreError::Internal(format!("failed to spawn {cli_name} login: {e}")))?;
 
+    // Take stdin BEFORE the probe. `tokio::process::Child::wait` calls
+    // `drop(self.stdin.take())` internally to avoid the classic
+    // deadlock where the parent waits for exit while the child is
+    // blocked on stdin. If we don't lift the handle out first,
+    // `child.stdin.take()` returns `None` after the probe and the
+    // URL-relay branch can't write the user's verification code back.
+    let stdin = child.stdin.take();
+
     // Probe window: if the CLI exits within 3 seconds, the OAuth flow
     // couldn't have completed — that's a real failure to surface.
     let probe = tokio::time::timeout(Duration::from_secs(3), child.wait()).await;
@@ -177,9 +199,7 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
         Ok(Ok(status)) => {
             // Exited cleanly within 3s — unusual but possible if the CLI
             // already had a cached session or printed a "done" message.
-            tracing::info!(
-                "[houston:provider] {cli_name} login completed in <3s: {status}"
-            );
+            tracing::info!("[houston:provider] {cli_name} login completed in <3s: {status}");
             Ok(())
         }
         Ok(Err(e)) => {
@@ -187,44 +207,37 @@ pub async fn launch_login(provider: Provider) -> CoreResult<()> {
                 "[houston:provider] {cli_name} login wait failed at {}: {e}",
                 path.display()
             );
-            Err(CoreError::Internal(format!(
-                "{cli_name} login wait: {e}"
-            )))
+            Err(CoreError::Internal(format!("{cli_name} login wait: {e}")))
         }
         Err(_) => {
-            // Still running after 3s — detach and let the OAuth flow
-            // continue. Frontend polls check_status to observe success.
+            // Still running after 3s — the OAuth flow is in progress.
+            // Hand the stdin handle off to the session map and the
+            // stdout/stderr handles off to the relay task. Insert is
+            // exclusive: a duplicate Connect click on the same
+            // provider while one is pending is rejected here, so the
+            // first subprocess can't be orphaned by overwrite. The
+            // relay task emits ProviderLoginUrl + ProviderLoginComplete
+            // and removes the session on child exit.
             tracing::info!(
-                "[houston:provider] {cli_name} login still running after 3s probe; detaching"
+                "[houston:provider] {cli_name} login still running after 3s probe; relaying URL"
             );
+            let provider_id = provider.id().to_string();
             let cli_name_owned = cli_name.to_string();
-            tokio::spawn(async move {
-                let result =
-                    tokio::time::timeout(Duration::from_secs(120), child.wait_with_output()).await;
-                match result {
-                    Ok(Ok(output)) => {
-                        let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-                        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-                        if output.status.success() {
-                            tracing::info!(
-                                "[houston:provider] {cli_name_owned} login exited: {}",
-                                output.status
-                            );
-                        } else {
-                            tracing::warn!(
-                                "[houston:provider] {cli_name_owned} login exited: {} stdout={stdout:?} stderr={stderr:?}",
-                                output.status
-                            );
-                        }
-                    }
-                    Ok(Err(e)) => tracing::warn!(
-                        "[houston:provider] {cli_name_owned} login wait failed: {e}"
-                    ),
-                    Err(_) => tracing::warn!(
-                        "[houston:provider] {cli_name_owned} login timed out after 120s"
-                    ),
-                }
-            });
+
+            let stdin = stdin.ok_or_else(|| {
+                CoreError::Internal(format!(
+                    "{cli_name} login: stdin handle missing (Stdio::piped wasn't applied?)"
+                ))
+            })?;
+            let stdout = child.stdout.take().ok_or_else(|| {
+                CoreError::Internal(format!(
+                    "{cli_name} login: child stdout was unexpectedly None"
+                ))
+            })?;
+            let stderr = child.stderr.take();
+
+            login_relay::insert_session(&provider_id, cli_name, stdin).await?;
+            login_relay::spawn_relay(provider_id, cli_name_owned, child, stdout, stderr, sink);
             Ok(())
         }
     }
@@ -281,7 +294,11 @@ pub async fn launch_logout(provider: Provider) -> CoreResult<()> {
             );
             Err(CoreError::Internal(format!(
                 "{cli_name} logout failed: {}",
-                if stderr.is_empty() { "no stderr".into() } else { stderr }
+                if stderr.is_empty() {
+                    "no stderr".into()
+                } else {
+                    stderr
+                }
             )))
         }
         Ok(Err(e)) => {
@@ -289,7 +306,9 @@ pub async fn launch_logout(provider: Provider) -> CoreResult<()> {
                 "[houston:provider] {cli_name} logout failed at {}: {e}",
                 path.display()
             );
-            Err(CoreError::Internal(format!("{cli_name} logout failed: {e}")))
+            Err(CoreError::Internal(format!(
+                "{cli_name} logout failed: {e}"
+            )))
         }
         Err(_) => {
             tracing::warn!("[houston:provider] {cli_name} logout timed out after 10s");
@@ -453,6 +472,9 @@ mod tests {
         let s = serde_json::to_string(&InstallSource::Missing).unwrap();
         assert_eq!(s, "\"missing\"");
     }
+
+    // URL-relay tests live in `provider/login_relay.rs` alongside
+    // the regex + session map they exercise.
 
     #[test]
     fn login_command_uses_resolved_cli_path() {

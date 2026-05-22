@@ -127,12 +127,11 @@ async fn install(State(st): State<Arc<ServerState>>) -> Result<(), ApiError> {
     tokio::spawn(async move {
         sink.emit(houston_ui_events::HoustonEvent::ClaudeCliInstalling { progress_pct: 0 });
         let sink_for_progress = sink.clone();
-        let result =
-            houston_claude_installer::install(&entry, move |pct| {
-                sink_for_progress
-                    .emit(houston_ui_events::HoustonEvent::ClaudeCliInstalling { progress_pct: pct });
-            })
-            .await;
+        let result = houston_claude_installer::install(&entry, move |pct| {
+            sink_for_progress
+                .emit(houston_ui_events::HoustonEvent::ClaudeCliInstalling { progress_pct: pct });
+        })
+        .await;
         match result {
             Ok(_) => {
                 // Lifecycle parity: same persistence policy as

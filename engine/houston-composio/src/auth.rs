@@ -67,7 +67,10 @@ pub async fn begin_oauth_flow() -> Result<(), String> {
         .as_deref()
         .ok_or("Server does not support dynamic client registration")?;
     let registration = register_client(reg_endpoint, &redirect_uri).await?;
-    tracing::debug!("[composio:auth] Registered client: {}", registration.client_id);
+    tracing::debug!(
+        "[composio:auth] Registered client: {}",
+        registration.client_id
+    );
 
     let verifier = generate_verifier();
     let challenge = compute_challenge(&verifier);
@@ -103,7 +106,9 @@ pub async fn begin_oauth_flow() -> Result<(), String> {
 
     // Set up the manual-completion channel. Guard dropped at end of block.
     let (tx, mut rx) = mpsc::unbounded_channel::<()>();
-    { *MANUAL_DONE_TX.lock().unwrap() = Some(tx); }
+    {
+        *MANUAL_DONE_TX.lock().unwrap() = Some(tx);
+    }
 
     // Block until EITHER the TCP callback arrives OR the paste-URL path signals.
     let result = tokio::select! {
@@ -118,7 +123,9 @@ pub async fn begin_oauth_flow() -> Result<(), String> {
     };
 
     // Clean up — guard dropped at end of block.
-    { *MANUAL_DONE_TX.lock().unwrap() = None; }
+    {
+        *MANUAL_DONE_TX.lock().unwrap() = None;
+    }
 
     if result.is_ok() {
         tracing::info!("[composio:auth] OAuth completed successfully");
@@ -162,10 +169,9 @@ pub async fn complete_oauth_from_url(callback_url: &str) -> Result<(), String> {
 
 /// Silently refresh the access token using a stored refresh token.
 pub async fn refresh_access_token() -> Result<String, String> {
-    let refresh_token = read_refresh_token()
-        .ok_or("No refresh token stored — full re-auth required")?;
-    let client_id = read_client_id()
-        .ok_or("No stored client_id — full re-auth required")?;
+    let refresh_token =
+        read_refresh_token().ok_or("No refresh token stored — full re-auth required")?;
+    let client_id = read_client_id().ok_or("No stored client_id — full re-auth required")?;
 
     let discovery = discover_oauth_metadata().await?;
 
@@ -211,13 +217,11 @@ async fn run_callback_listener() -> Result<(), String> {
         .await
         .map_err(|e| format!("Failed to bind port {CALLBACK_PORT}: {e}"))?;
 
-    let (mut stream, _) = tokio::time::timeout(
-        std::time::Duration::from_secs(300),
-        listener.accept(),
-    )
-    .await
-    .map_err(|_| "OAuth timed out — no response within 5 minutes".to_string())?
-    .map_err(|e| format!("Failed to accept callback: {e}"))?;
+    let (mut stream, _) =
+        tokio::time::timeout(std::time::Duration::from_secs(300), listener.accept())
+            .await
+            .map_err(|_| "OAuth timed out — no response within 5 minutes".to_string())?
+            .map_err(|e| format!("Failed to accept callback: {e}"))?;
 
     let mut buf = vec![0u8; 8192];
     let n = stream.read(&mut buf).await.map_err(|e| e.to_string())?;
@@ -231,8 +235,7 @@ async fn run_callback_listener() -> Result<(), String> {
         return Err(format!("OAuth error: {desc}"));
     }
 
-    let code = extract_param(path, "code")
-        .ok_or("No authorization code in callback")?;
+    let code = extract_param(path, "code").ok_or("No authorization code in callback")?;
 
     send_response(
         &mut stream,
@@ -249,7 +252,9 @@ async fn run_callback_listener() -> Result<(), String> {
 async fn exchange_and_store(code: &str) -> Result<(), String> {
     let (verifier, client_id, redirect_uri, token_endpoint, auth_server_url, resource_metadata_url) = {
         let pending = PENDING.lock().unwrap();
-        let p = pending.as_ref().ok_or("No pending OAuth flow to complete")?;
+        let p = pending
+            .as_ref()
+            .ok_or("No pending OAuth flow to complete")?;
         (
             p.verifier.clone(),
             p.client_id.clone(),
@@ -271,7 +276,9 @@ async fn exchange_and_store(code: &str) -> Result<(), String> {
     )?;
 
     // Clear pending state
-    { *PENDING.lock().unwrap() = None; }
+    {
+        *PENDING.lock().unwrap() = None;
+    }
 
     tracing::info!("[composio] OAuth flow completed successfully");
     Ok(())
@@ -524,8 +531,7 @@ async fn register_client(
         return Err(format!("Client registration returned {status}: {text}"));
     }
 
-    serde_json::from_str(&text)
-        .map_err(|e| format!("Invalid registration response: {e}"))
+    serde_json::from_str(&text).map_err(|e| format!("Invalid registration response: {e}"))
 }
 
 // -- PKCE --
@@ -606,11 +612,7 @@ fn pct_decode(s: &str) -> String {
 
 // -- HTTP response to browser --
 
-async fn send_response(
-    stream: &mut tokio::net::TcpStream,
-    title: &str,
-    message: &str,
-) {
+async fn send_response(stream: &mut tokio::net::TcpStream, title: &str, message: &str) {
     let html = format!(
         concat!(
             "<!DOCTYPE html><html><head><style>",
@@ -671,8 +673,7 @@ async fn exchange_code(
         return Err(format!("Token exchange returned {status}: {body}"));
     }
 
-    serde_json::from_str(&body)
-        .map_err(|e| format!("Invalid token response: {e}"))
+    serde_json::from_str(&body).map_err(|e| format!("Invalid token response: {e}"))
 }
 
 // -- Update keychain --
@@ -731,10 +732,7 @@ fn update_keychain_token(
     // If nothing exists yet, seed Houston's own entry — otherwise Claude
     // Code's spawned MCP clients would have nothing to read.
     let target_keys: Vec<String> = if existing_keys.is_empty() {
-        mcp_oauth.insert(
-            HOUSTON_COMPOSIO_KEY.to_string(),
-            serde_json::json!({}),
-        );
+        mcp_oauth.insert(HOUSTON_COMPOSIO_KEY.to_string(), serde_json::json!({}));
         vec![HOUSTON_COMPOSIO_KEY.to_string()]
     } else {
         existing_keys
@@ -849,16 +847,11 @@ fn read_keychain(username: &str) -> Result<serde_json::Value, String> {
     }
 
     let json_str = String::from_utf8_lossy(&output.stdout);
-    serde_json::from_str(json_str.trim())
-        .map_err(|e| format!("Invalid keychain JSON: {e}"))
+    serde_json::from_str(json_str.trim()).map_err(|e| format!("Invalid keychain JSON: {e}"))
 }
 
-fn write_keychain(
-    username: &str,
-    data: &serde_json::Value,
-) -> Result<(), String> {
-    let json = serde_json::to_string(data)
-        .map_err(|e| format!("Failed to serialize: {e}"))?;
+fn write_keychain(username: &str, data: &serde_json::Value) -> Result<(), String> {
+    let json = serde_json::to_string(data).map_err(|e| format!("Failed to serialize: {e}"))?;
 
     let status = std::process::Command::new("security")
         .args([

@@ -84,9 +84,7 @@ fn urlencoding_decode(s: &str) -> String {
             let h1 = bytes.next();
             let h2 = bytes.next();
             if let (Some(a), Some(b)) = (h1, h2) {
-                if let (Some(x), Some(y)) =
-                    (hex_digit(a), hex_digit(b))
-                {
+                if let (Some(x), Some(y)) = (hex_digit(a), hex_digit(b)) {
                     out.push(x << 4 | y);
                     continue;
                 }

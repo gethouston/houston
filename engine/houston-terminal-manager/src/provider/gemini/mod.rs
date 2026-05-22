@@ -164,9 +164,7 @@ async fn classify_selected_type(selected: &str, gemini_dir: &Path) -> ProviderAu
             // check), so we know the key is absent here.
             ProviderAuthState::Unauthenticated
         }
-        "oauth-personal" | "oauth-google" => {
-            check_active_google_account(gemini_dir).await
-        }
+        "oauth-personal" | "oauth-google" => check_active_google_account(gemini_dir).await,
         // Unknown / unset value — be honest, don't guess.
         _ => ProviderAuthState::Unknown,
     }
@@ -325,5 +323,4 @@ mod tests {
         assert!(a.login_args().is_none());
         assert!(a.logout_args().is_none());
     }
-
 }

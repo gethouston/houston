@@ -115,10 +115,7 @@ mod tests {
         let s = ScheduleType::Weekdays {
             time_of_day: "17:00".to_string(),
         };
-        assert_eq!(
-            s.to_cron_expression(),
-            Some("0 0 17 * * 1-5".to_string())
-        );
+        assert_eq!(s.to_cron_expression(), Some("0 0 17 * * 1-5".to_string()));
     }
 
     #[test]

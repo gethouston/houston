@@ -471,7 +471,9 @@ mod tests {
         let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
         let items = parse_codex_event(r#"{"type":"turn.completed"}"#, &mut a);
         assert!(
-            items.iter().any(|i| matches!(i, FeedItem::Thinking(t) if t.is_empty())),
+            items
+                .iter()
+                .any(|i| matches!(i, FeedItem::Thinking(t) if t.is_empty())),
             "expected an empty Thinking() to close the placeholder, got {items:?}"
         );
     }

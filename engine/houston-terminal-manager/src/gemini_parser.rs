@@ -157,9 +157,7 @@ pub struct ModelStreamStats {
 // translator — kept separate to stay under the 200-line limit per file).
 // ---------------------------------------------------------------------------
 
-pub use crate::gemini_parser_state::{
-    extract_session_id, parse_gemini_event, GeminiAccumulator,
-};
+pub use crate::gemini_parser_state::{extract_session_id, parse_gemini_event, GeminiAccumulator};
 
 #[cfg(test)]
 mod wire_tests {
@@ -170,7 +168,9 @@ mod wire_tests {
         let line = r#"{"type":"init","timestamp":"2025-10-10T12:00:00.000Z","session_id":"s1","model":"gemini-2.5-pro"}"#;
         let ev: GeminiEvent = serde_json::from_str(line).unwrap();
         match ev {
-            GeminiEvent::Init { session_id, model, .. } => {
+            GeminiEvent::Init {
+                session_id, model, ..
+            } => {
                 assert_eq!(session_id, "s1");
                 assert_eq!(model, "gemini-2.5-pro");
             }
@@ -180,10 +180,16 @@ mod wire_tests {
 
     #[test]
     fn deserializes_message_assistant_delta() {
-        let line = r#"{"type":"message","timestamp":"t","role":"assistant","content":"4","delta":true}"#;
+        let line =
+            r#"{"type":"message","timestamp":"t","role":"assistant","content":"4","delta":true}"#;
         let ev: GeminiEvent = serde_json::from_str(line).unwrap();
         match ev {
-            GeminiEvent::Message { role, content, delta, .. } => {
+            GeminiEvent::Message {
+                role,
+                content,
+                delta,
+                ..
+            } => {
                 assert_eq!(role, GeminiMessageRole::Assistant);
                 assert_eq!(content, "4");
                 assert!(delta);
@@ -197,7 +203,12 @@ mod wire_tests {
         let line = r#"{"type":"tool_use","timestamp":"t","tool_name":"Read","tool_id":"r1","parameters":{"file_path":"/x"}}"#;
         let ev: GeminiEvent = serde_json::from_str(line).unwrap();
         match ev {
-            GeminiEvent::ToolUse { tool_name, tool_id, parameters, .. } => {
+            GeminiEvent::ToolUse {
+                tool_name,
+                tool_id,
+                parameters,
+                ..
+            } => {
                 assert_eq!(tool_name, "Read");
                 assert_eq!(tool_id, "r1");
                 assert_eq!(parameters.get("file_path").unwrap().as_str(), Some("/x"));
@@ -218,7 +229,9 @@ mod wire_tests {
         let line = r#"{"type":"result","timestamp":"t","status":"success","stats":{"total_tokens":10,"input_tokens":5,"output_tokens":5,"cached":0,"input":5,"duration_ms":100,"tool_calls":0,"models":{"gemini-2.5-pro":{"total_tokens":10,"input_tokens":5,"output_tokens":5,"cached":0,"input":5}}}}"#;
         let ev: GeminiEvent = serde_json::from_str(line).unwrap();
         match ev {
-            GeminiEvent::Result { stats: Some(stats), .. } => {
+            GeminiEvent::Result {
+                stats: Some(stats), ..
+            } => {
                 assert_eq!(stats.total_tokens, 10);
                 assert!(stats.models.contains_key("gemini-2.5-pro"));
             }
@@ -232,7 +245,9 @@ mod wire_tests {
         let line = r#"{"type":"result","timestamp":"t","status":"success","stats":{"total_tokens":10,"input_tokens":5,"output_tokens":5,"cached":0,"input":5,"duration_ms":100,"tool_calls":0}}"#;
         let ev: GeminiEvent = serde_json::from_str(line).unwrap();
         match ev {
-            GeminiEvent::Result { stats: Some(stats), .. } => {
+            GeminiEvent::Result {
+                stats: Some(stats), ..
+            } => {
                 assert!(stats.models.is_empty());
             }
             other => panic!("expected Result with stats, got {other:?}"),

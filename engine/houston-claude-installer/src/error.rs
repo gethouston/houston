@@ -72,7 +72,10 @@ mod tests {
         assert!(s.contains("(HTTP 404"), "missing HTTP clause: {s}");
         assert!(s.contains("Not Found"), "missing reason phrase: {s}");
         assert!(s.contains("v9.9.9"), "missing version: {s}");
-        assert!(s.contains("source https://example.test/claude"), "missing source: {s}");
+        assert!(
+            s.contains("source https://example.test/claude"),
+            "missing source: {s}"
+        );
         assert!(s.contains("target \"/tmp/claude\""), "missing target: {s}");
     }
 

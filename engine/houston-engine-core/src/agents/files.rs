@@ -183,8 +183,7 @@ pub fn rename_file(agent_root: &Path, rel_path: &str, new_name: &str) -> CoreRes
 /// Delete a file from the agent.
 pub fn delete_file(agent_root: &Path, rel_path: &str) -> CoreResult<()> {
     let full = resolve_existing(agent_root, rel_path)?;
-    std::fs::remove_file(&full)
-        .map_err(|e| CoreError::Internal(format!("failed to delete: {e}")))
+    std::fs::remove_file(&full).map_err(|e| CoreError::Internal(format!("failed to delete: {e}")))
 }
 
 /// Create a folder inside the agent. Accepts a relative path (e.g., `docs`
@@ -264,9 +263,8 @@ pub fn import_files(
     let dest_dir = match target_folder {
         Some(folder) => {
             let d = agent_root.join(folder);
-            std::fs::create_dir_all(&d).map_err(|e| {
-                CoreError::Internal(format!("failed to create directory: {e}"))
-            })?;
+            std::fs::create_dir_all(&d)
+                .map_err(|e| CoreError::Internal(format!("failed to create directory: {e}")))?;
             d
         }
         None => agent_root.to_path_buf(),
@@ -438,7 +436,10 @@ mod tests {
         let res = write_agent_file(d.path(), "/a", "../escape.txt", "x");
         match res {
             Err(CoreError::BadRequest(_)) => {}
-            other => panic!("expected BadRequest, got {:?}", other.err().map(|e| e.to_string())),
+            other => panic!(
+                "expected BadRequest, got {:?}",
+                other.err().map(|e| e.to_string())
+            ),
         }
     }
 

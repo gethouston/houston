@@ -323,7 +323,10 @@ mod tests {
     fn working_dir_becomes_include_directories() {
         let dir = PathBuf::from("/tmp/work");
         let args = strings(build_gemini_args(None, Some(&dir), None));
-        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        let pos = args
+            .iter()
+            .position(|a| a == "--include-directories")
+            .unwrap();
         assert_eq!(args[pos + 1], "/tmp/work");
     }
 
@@ -337,7 +340,10 @@ mod tests {
         // We strip the prefix before handing the path to gemini.
         let dir = PathBuf::from(r"\\?\C:\Users\danie\workspace\agent");
         let args = strings(build_gemini_args(None, Some(&dir), None));
-        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        let pos = args
+            .iter()
+            .position(|a| a == "--include-directories")
+            .unwrap();
         assert_eq!(args[pos + 1], r"C:\Users\danie\workspace\agent");
     }
 
@@ -349,7 +355,10 @@ mod tests {
         // to the standard UNC form.
         let dir = PathBuf::from(r"\\?\UNC\server\share\agent");
         let args = strings(build_gemini_args(None, Some(&dir), None));
-        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        let pos = args
+            .iter()
+            .position(|a| a == "--include-directories")
+            .unwrap();
         assert_eq!(args[pos + 1], r"\\server\share\agent");
     }
 
@@ -360,7 +369,10 @@ mod tests {
         // pass through verbatim.
         let dir = PathBuf::from(r"C:\Users\danie\workspace\agent");
         let args = strings(build_gemini_args(None, Some(&dir), None));
-        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        let pos = args
+            .iter()
+            .position(|a| a == "--include-directories")
+            .unwrap();
         assert_eq!(args[pos + 1], r"C:\Users\danie\workspace\agent");
     }
 
@@ -372,7 +384,10 @@ mod tests {
         // Unix-y path must reach gemini-cli byte-identical.
         let dir = PathBuf::from("/Users/danie/workspace/agent");
         let args = strings(build_gemini_args(None, Some(&dir), None));
-        let pos = args.iter().position(|a| a == "--include-directories").unwrap();
+        let pos = args
+            .iter()
+            .position(|a| a == "--include-directories")
+            .unwrap();
         assert_eq!(args[pos + 1], "/Users/danie/workspace/agent");
     }
 
@@ -382,7 +397,11 @@ mod tests {
         // Houston's system-prompt slot is handled by compose_gemini_prompt,
         // not by an argv entry. Regression guard against re-introducing
         // the bug.
-        let args = strings(build_gemini_args(Some("x"), Some(Path::new("/tmp")), Some("m")));
+        let args = strings(build_gemini_args(
+            Some("x"),
+            Some(Path::new("/tmp")),
+            Some("m"),
+        ));
         assert!(!args.iter().any(|a| a == "--system"));
         assert!(!args.iter().any(|a| a == "--system-prompt"));
     }
@@ -391,7 +410,11 @@ mod tests {
     fn yolo_always_present_for_houston_sessions() {
         // Houston manages permission elsewhere; the CLI must never
         // prompt for tool approval inside a Houston session.
-        let args = strings(build_gemini_args(Some("x"), Some(Path::new("/tmp")), Some("m")));
+        let args = strings(build_gemini_args(
+            Some("x"),
+            Some(Path::new("/tmp")),
+            Some("m"),
+        ));
         assert!(args.iter().any(|a| a == "--yolo"));
     }
 
@@ -411,10 +434,7 @@ mod tests {
 
     #[test]
     fn compose_prompt_wraps_system_in_xml_tags() {
-        let composed = compose_gemini_prompt(
-            Some("You are a friendly assistant."),
-            "What is 2+2?",
-        );
+        let composed = compose_gemini_prompt(Some("You are a friendly assistant."), "What is 2+2?");
         assert_eq!(
             composed,
             "<system>\nYou are a friendly assistant.\n</system>\n\nWhat is 2+2?",

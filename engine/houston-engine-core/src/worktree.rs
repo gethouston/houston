@@ -84,7 +84,9 @@ pub async fn create_worktree(req: CreateWorktreeRequest) -> CoreResult<WorktreeI
 
     std::fs::create_dir_all(&wt_dir)?;
 
-    let branch_name = req.branch.unwrap_or_else(|| format!("houston/{}", req.name));
+    let branch_name = req
+        .branch
+        .unwrap_or_else(|| format!("houston/{}", req.name));
 
     let output = Command::new("git")
         .args(["worktree", "add", "-b", &branch_name])
@@ -200,10 +202,7 @@ pub async fn run_shell(req: RunShellRequest) -> CoreResult<String> {
     let output = Command::new("sh")
         .args(["-c", &req.command])
         .current_dir(&dir)
-        .env(
-            "PATH",
-            houston_terminal_manager::claude_path::shell_path(),
-        )
+        .env("PATH", houston_terminal_manager::claude_path::shell_path())
         .output()
         .await
         .map_err(|e| CoreError::Internal(format!("failed to run command: {e}")))?;
@@ -230,7 +229,11 @@ mod tests {
             .output()
             .await
             .unwrap();
-        assert!(out.status.success(), "git {args:?}: {}", String::from_utf8_lossy(&out.stderr));
+        assert!(
+            out.status.success(),
+            "git {args:?}: {}",
+            String::from_utf8_lossy(&out.stderr)
+        );
     }
 
     async fn init_repo(tmp: &TempDir) -> PathBuf {
@@ -263,9 +266,11 @@ mod tests {
         assert!(!info.is_main);
         assert!(PathBuf::from(&info.path).exists());
 
-        let list = list_worktrees(ListWorktreesRequest { repo_path: repo_str.clone() })
-            .await
-            .unwrap();
+        let list = list_worktrees(ListWorktreesRequest {
+            repo_path: repo_str.clone(),
+        })
+        .await
+        .unwrap();
         // Two entries: the main repo + the new worktree.
         assert_eq!(list.len(), 2);
         assert!(list.iter().any(|w| w.is_main));

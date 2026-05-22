@@ -27,7 +27,10 @@ impl ProviderAdapter for AnthropicAdapter {
 
     fn resolve(&self) -> (InstallSource, Option<PathBuf>) {
         if claude_install_path::is_installed() {
-            return (InstallSource::Managed, Some(claude_install_path::cli_path()));
+            return (
+                InstallSource::Managed,
+                Some(claude_install_path::cli_path()),
+            );
         }
         if let Some(path) = which_on_path("claude") {
             return (InstallSource::Path, Some(path));

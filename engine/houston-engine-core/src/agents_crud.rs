@@ -363,7 +363,9 @@ mod tests {
     fn setup_ws(root: &Path) -> String {
         workspaces::create(
             root,
-            CreateWorkspace { name: "alpha".into() },
+            CreateWorkspace {
+                name: "alpha".into(),
+            },
         )
         .unwrap()
         .id

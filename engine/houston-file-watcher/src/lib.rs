@@ -96,10 +96,7 @@ fn classify_change(agent_path: &str, relative: &Path) -> Option<HoustonEvent> {
 
 /// Start watching an agent directory for file changes. Emits `HoustonEvent`
 /// variants into the injected sink.
-pub fn start_watching(
-    sink: DynEventSink,
-    agent_path: String,
-) -> Result<AgentWatcher, String> {
+pub fn start_watching(sink: DynEventSink, agent_path: String) -> Result<AgentWatcher, String> {
     let ws_path = agent_path.clone();
     let root = PathBuf::from(&agent_path);
 
@@ -125,7 +122,11 @@ pub fn start_watching(
                 let relative = match path.strip_prefix(&root) {
                     Ok(r) => r,
                     Err(_) => {
-                        tracing::warn!("[watcher] skip: cannot strip prefix {} from {}", root.display(), path.display());
+                        tracing::warn!(
+                            "[watcher] skip: cannot strip prefix {} from {}",
+                            root.display(),
+                            path.display()
+                        );
                         continue;
                     }
                 };

@@ -5,9 +5,7 @@
 //! captured from `claude` runs.
 
 use crate::auth_error::is_auth_error;
-use crate::provider_error_kind::{
-    truncate_excerpt, AuthFailureCause, ProviderError, QuotaScope,
-};
+use crate::provider_error_kind::{truncate_excerpt, AuthFailureCause, ProviderError, QuotaScope};
 
 const PROVIDER: &str = "anthropic";
 
@@ -18,8 +16,7 @@ const PROVIDER: &str = "anthropic";
 /// historical context.
 pub(crate) fn detect_malformed_provider_json(line: &str) -> bool {
     let lower = line.to_lowercase();
-    lower.contains("request body is not valid json")
-        && lower.contains("no low surrogate in string")
+    lower.contains("request body is not valid json") && lower.contains("no low surrogate in string")
 }
 
 pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
@@ -114,8 +111,7 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
         || lower.contains("etimedout")
         || lower.contains("network is unreachable")
         || lower.contains("connection refused")
-        || lower.contains("dns")
-            && (lower.contains("fail") || lower.contains("not found"))
+        || lower.contains("dns") && (lower.contains("fail") || lower.contains("not found"))
     {
         return Some(ProviderError::NetworkUnreachable {
             provider: PROVIDER.into(),
@@ -277,7 +273,8 @@ mod tests {
 
     #[test]
     fn usage_limit_with_reset_classified_as_paused_with_hint() {
-        let line = "Claude usage limit reached. Your limit will reset at 5pm (America/Los_Angeles).";
+        let line =
+            "Claude usage limit reached. Your limit will reset at 5pm (America/Los_Angeles).";
         match classify_stderr(line).unwrap() {
             ProviderError::UsageLimitPaused { resets_at, .. } => {
                 assert_eq!(resets_at.as_deref(), Some("5pm (America/Los_Angeles)"));
@@ -302,8 +299,7 @@ mod tests {
         // "usage limit" alone (no reset) is still quota-exhausted — but with
         // a reset hint it must be paused, not exhausted. Guards against the
         // ordering of the two branches in `classify_stderr` regressing.
-        let with_reset =
-            "Claude usage limit reached. Your limit will reset at 9am (Europe/London)";
+        let with_reset = "Claude usage limit reached. Your limit will reset at 9am (Europe/London)";
         let without_reset = "Monthly usage limit exhausted for your plan";
         assert!(matches!(
             classify_stderr(with_reset).unwrap(),

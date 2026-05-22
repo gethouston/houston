@@ -21,6 +21,8 @@
  * - `agent:{agent_path}` — ActivityChanged, SkillsChanged, FilesChanged,
  *    ConfigChanged, ContextChanged, LearningsChanged, ConversationsChanged
  * - `composio` — ComposioCliReady, ComposioCliFailed, ComposioConnectionAdded
+ * - `claude` — ClaudeCliInstalling, ClaudeCliReady, ClaudeCliFailed
+ * - `providers` — ProviderLoginUrl, ProviderLoginComplete
  *
  * (The legacy `sync` topic was removed — mobile now uses the same WS
  * directly through the reverse tunnel.)
@@ -44,6 +46,8 @@ export const topics = {
   events: "events",
   scheduler: "scheduler",
   composio: "composio",
+  claude: "claude",
+  providers: "providers",
 } as const;
 
 type ReconnectHandler = () => void;

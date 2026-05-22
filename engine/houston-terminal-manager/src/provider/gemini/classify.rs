@@ -6,9 +6,7 @@
 //! gemini-cli error class names that surface in
 //! `result {status:"error", error:{type, message}}` events.
 
-use crate::provider_error_kind::{
-    truncate_excerpt, AuthFailureCause, ProviderError, QuotaScope,
-};
+use crate::provider_error_kind::{truncate_excerpt, AuthFailureCause, ProviderError, QuotaScope};
 
 const PROVIDER: &str = "gemini";
 /// Plan-upgrade target for QuotaExhausted. The "Use API key instead"
@@ -199,12 +197,17 @@ mod tests {
     // Real fixtures lifted from ~/.dev-houston/logs/backend.log.2026-05-15.
     const ATTEMPT_RETRY_QUOTA_RESET: &str = "Attempt 1 failed: You have exhausted your capacity on this model. Your quota will reset after 7s.. Retrying after 8283ms...";
     const ATTEMPT_RETRY_PLAIN: &str = "Attempt 5 failed: You have exhausted your capacity on this model.. Retrying after 34847ms...";
-    const ATTEMPT_MAX_REACHED: &str = "Attempt 10 failed: You have exhausted your capacity on this model.. Max attempts reached";
+    const ATTEMPT_MAX_REACHED: &str =
+        "Attempt 10 failed: You have exhausted your capacity on this model.. Max attempts reached";
 
     #[test]
     fn attempt_max_reached_is_quota_exhausted() {
         match classify_stderr(ATTEMPT_MAX_REACHED).unwrap() {
-            ProviderError::QuotaExhausted { provider, upgrade_url, .. } => {
+            ProviderError::QuotaExhausted {
+                provider,
+                upgrade_url,
+                ..
+            } => {
                 assert_eq!(provider, "gemini");
                 assert_eq!(upgrade_url.as_deref(), Some(UPGRADE_URL));
             }
@@ -216,7 +219,10 @@ mod tests {
     fn attempt_retrying_extracts_retry_after_seconds() {
         // 8283ms → round to 8s
         match classify_stderr(ATTEMPT_RETRY_QUOTA_RESET).unwrap() {
-            ProviderError::RateLimited { retry_after_seconds: Some(8), .. } => {}
+            ProviderError::RateLimited {
+                retry_after_seconds: Some(8),
+                ..
+            } => {}
             other => panic!("expected RateLimited(8s), got {other:?}"),
         }
     }
@@ -225,7 +231,10 @@ mod tests {
     fn attempt_retrying_plain_also_classified_as_rate_limited() {
         // 34847ms → round to 35s
         match classify_stderr(ATTEMPT_RETRY_PLAIN).unwrap() {
-            ProviderError::RateLimited { retry_after_seconds: Some(35), .. } => {}
+            ProviderError::RateLimited {
+                retry_after_seconds: Some(35),
+                ..
+            } => {}
             other => panic!("expected RateLimited(35s), got {other:?}"),
         }
     }
@@ -257,8 +266,7 @@ mod tests {
 
     #[test]
     fn gaxios_401_classified_as_unauthenticated() {
-        match classify_result_error("GaxiosError", "Request failed with status code 401").unwrap()
-        {
+        match classify_result_error("GaxiosError", "Request failed with status code 401").unwrap() {
             ProviderError::Unauthenticated { .. } => {}
             other => panic!("expected Unauthenticated, got {other:?}"),
         }
@@ -266,17 +274,18 @@ mod tests {
 
     #[test]
     fn gaxios_503_classified_as_provider_internal() {
-        match classify_result_error("GaxiosError", "Request failed with status code 503").unwrap()
-        {
-            ProviderError::ProviderInternal { http_status: Some(503), .. } => {}
+        match classify_result_error("GaxiosError", "Request failed with status code 503").unwrap() {
+            ProviderError::ProviderInternal {
+                http_status: Some(503),
+                ..
+            } => {}
             other => panic!("expected ProviderInternal 503, got {other:?}"),
         }
     }
 
     #[test]
     fn gaxios_429_classified_as_rate_limited() {
-        match classify_result_error("GaxiosError", "Request failed with status code 429").unwrap()
-        {
+        match classify_result_error("GaxiosError", "Request failed with status code 429").unwrap() {
             ProviderError::RateLimited { .. } => {}
             other => panic!("expected RateLimited, got {other:?}"),
         }
@@ -287,7 +296,9 @@ mod tests {
         match classify_result_error("MaxSessionTurnsError", "Maximum session turns exceeded")
             .unwrap()
         {
-            ProviderError::ProviderInternal { http_status: None, .. } => {}
+            ProviderError::ProviderInternal {
+                http_status: None, ..
+            } => {}
             other => panic!("expected ProviderInternal None, got {other:?}"),
         }
     }

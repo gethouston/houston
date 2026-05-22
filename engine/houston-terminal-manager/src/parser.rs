@@ -218,9 +218,7 @@ fn parse_rate_limit_event(extra: serde_json::Value) -> Vec<FeedItem> {
         .get("message")
         .and_then(|v| v.as_str())
         .map(truncate_excerpt)
-        .unwrap_or_else(|| {
-            format!("Anthropic rate-limit signal: {status}")
-        });
+        .unwrap_or_else(|| format!("Anthropic rate-limit signal: {status}"));
     vec![FeedItem::ProviderError(ProviderError::RateLimited {
         provider: ANTHROPIC.into(),
         model: None,

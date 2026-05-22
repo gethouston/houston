@@ -206,7 +206,10 @@ async fn project_files_listing_and_mutations() {
     // Delete missing → 404.
     let miss = c
         .delete(format!("http://{addr}/v1/agents/files"))
-        .query(&[("agent_path", agent_path.as_str()), ("rel_path", "ghost.png")])
+        .query(&[
+            ("agent_path", agent_path.as_str()),
+            ("rel_path", "ghost.png"),
+        ])
         .bearer_auth(&tok)
         .send()
         .await

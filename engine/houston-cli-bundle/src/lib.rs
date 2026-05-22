@@ -293,8 +293,8 @@ impl CliDepsManifest {
     /// Parse a manifest from disk. Returns a structured error string if
     /// the file is missing or unparseable.
     pub fn load(path: &Path) -> Result<Self, String> {
-        let bytes = std::fs::read(path)
-            .map_err(|e| format!("failed to read {}: {e}", path.display()))?;
+        let bytes =
+            std::fs::read(path).map_err(|e| format!("failed to read {}: {e}", path.display()))?;
         let raw: serde_json::Value = serde_json::from_slice(&bytes)
             .map_err(|e| format!("invalid JSON in {}: {e}", path.display()))?;
         Ok(Self { raw })
@@ -520,7 +520,10 @@ fn host_arch_for_composio() -> &'static str {
     }
     let fallback = std::env::consts::ARCH;
     #[cfg(target_os = "windows")]
-    tracing::info!("[composio:arch] falling back to consts::ARCH = {}", fallback);
+    tracing::info!(
+        "[composio:arch] falling back to consts::ARCH = {}",
+        fallback
+    );
     fallback
 }
 
@@ -808,7 +811,15 @@ mod tests {
         // catches regressions on dev machines.
         let k = host_platform_key();
         assert!(
-            matches!(k, "darwin-arm64" | "darwin-x64" | "windows-x64" | "windows-arm64" | "linux-x64" | "linux-arm64"),
+            matches!(
+                k,
+                "darwin-arm64"
+                    | "darwin-x64"
+                    | "windows-x64"
+                    | "windows-arm64"
+                    | "linux-x64"
+                    | "linux-arm64"
+            ),
             "unknown host platform: {k}"
         );
     }

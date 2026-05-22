@@ -106,18 +106,14 @@ pub fn run() {
     // running app natively, no second instance is ever spawned.
     #[cfg(any(target_os = "windows", target_os = "linux"))]
     {
-        builder = builder.plugin(tauri_plugin_single_instance::init(
-            |app, _argv, _cwd| {
-                tracing::info!(
-                    "[single-instance] secondary launch routed to primary"
-                );
-                if let Some(window) = app.get_webview_window("main") {
-                    let _ = window.unminimize();
-                    let _ = window.show();
-                    let _ = window.set_focus();
-                }
-            },
-        ));
+        builder = builder.plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            tracing::info!("[single-instance] secondary launch routed to primary");
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }));
     }
 
     // Sentry plugin — only if DSN was provided
@@ -399,7 +395,10 @@ fn migrate_all_agents(workspaces_root: &std::path::Path) {
         let agent_entries = match std::fs::read_dir(&ws_path) {
             Ok(it) => it,
             Err(e) => {
-                tracing::warn!("[migrate-agents] read_dir({}) failed: {e}", ws_path.display());
+                tracing::warn!(
+                    "[migrate-agents] read_dir({}) failed: {e}",
+                    ws_path.display()
+                );
                 continue;
             }
         };
@@ -409,7 +408,10 @@ fn migrate_all_agents(workspaces_root: &std::path::Path) {
             if !agent_path.is_dir() {
                 continue;
             }
-            let agent_name = agent_path.file_name().and_then(|s| s.to_str()).unwrap_or("");
+            let agent_name = agent_path
+                .file_name()
+                .and_then(|s| s.to_str())
+                .unwrap_or("");
             if agent_name.starts_with('.') {
                 continue;
             }
@@ -459,7 +461,10 @@ fn migrate_legacy_docs_dir(houston: &std::path::Path) {
     }
 
     if let Err(e) = std::fs::create_dir_all(&new_root) {
-        tracing::warn!("[migrate] create_dir_all({}) failed: {e}", new_root.display());
+        tracing::warn!(
+            "[migrate] create_dir_all({}) failed: {e}",
+            new_root.display()
+        );
         return;
     }
 

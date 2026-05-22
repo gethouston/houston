@@ -19,8 +19,8 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
     // Resume-rollout-missing. The session_id we tried to resume isn't
     // anywhere in the codex history. UI prompts the user to start fresh.
     if codex_command::is_missing_rollout_error(line) {
-        let session_id = extract_thread_id_from_rollout_error(line)
-            .unwrap_or_else(|| "unknown".to_string());
+        let session_id =
+            extract_thread_id_from_rollout_error(line).unwrap_or_else(|| "unknown".to_string());
         return Some(ProviderError::SessionResumeMissing {
             provider: PROVIDER.into(),
             session_id,

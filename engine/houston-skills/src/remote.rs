@@ -124,11 +124,7 @@ impl SearchCache {
     fn reserve_request_slot(&mut self, min_interval: Duration) -> Duration {
         let now = Instant::now();
         let earliest = self.next_allowed_request.unwrap_or(now);
-        let target = if earliest <= now {
-            now
-        } else {
-            earliest
-        };
+        let target = if earliest <= now { now } else { earliest };
         let wait = target.saturating_duration_since(now);
         self.next_allowed_request = Some(target + min_interval);
         wait
@@ -424,9 +420,7 @@ pub async fn install_skill(
         }
     }
     let raw_md = raw_md.ok_or_else(|| {
-        SkillError::SkillNotInRepo(format!(
-            "Could not find '{skill_id}' in {source}"
-        ))
+        SkillError::SkillNotInRepo(format!("Could not find '{skill_id}' in {source}"))
     })?;
     let parsed = parse_skill_md(&raw_md, skill_id);
 

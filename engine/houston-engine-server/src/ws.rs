@@ -60,10 +60,7 @@ fn is_subscribed(subscriptions: &HashSet<String>, topic: &str) -> bool {
     subscriptions.contains(FIREHOSE) || subscriptions.contains(topic)
 }
 
-pub async fn ws_upgrade(
-    ws: WebSocketUpgrade,
-    State(state): State<Arc<ServerState>>,
-) -> Response {
+pub async fn ws_upgrade(ws: WebSocketUpgrade, State(state): State<Arc<ServerState>>) -> Response {
     ws.on_upgrade(move |socket| handle_socket(socket, state))
 }
 

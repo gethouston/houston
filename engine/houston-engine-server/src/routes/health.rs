@@ -1,9 +1,7 @@
 //! `/v1/health` and `/v1/version`.
 
 use axum::Json;
-use houston_engine_protocol::{
-    HealthResponse, VersionResponse, ENGINE_VERSION, PROTOCOL_VERSION,
-};
+use houston_engine_protocol::{HealthResponse, VersionResponse, ENGINE_VERSION, PROTOCOL_VERSION};
 
 pub async fn health() -> Json<HealthResponse> {
     Json(HealthResponse {

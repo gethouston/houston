@@ -54,7 +54,9 @@ fn split_frontmatter(content: &str) -> Result<(String, String), SkillError> {
     let frontmatter = after_first[..end_idx].to_string();
     let body_start = end_idx + 4; // "\n---"
     let body = if body_start < after_first.len() {
-        after_first[body_start..].trim_start_matches('\n').to_string()
+        after_first[body_start..]
+            .trim_start_matches('\n')
+            .to_string()
     } else {
         String::new()
     };
@@ -118,9 +120,8 @@ fn coerce_bool(v: &serde_yml::Value) -> bool {
 }
 
 fn parse_frontmatter(text: &str) -> Result<SkillSummary, SkillError> {
-    let fm: Frontmatter = serde_yml::from_str(text).map_err(|e| {
-        SkillError::Parse(format!("Frontmatter YAML invalid: {e}"))
-    })?;
+    let fm: Frontmatter = serde_yml::from_str(text)
+        .map_err(|e| SkillError::Parse(format!("Frontmatter YAML invalid: {e}")))?;
     if fm.name.trim().is_empty() {
         return Err(SkillError::Parse("Missing 'name' in frontmatter".into()));
     }
@@ -335,16 +336,12 @@ mod tests {
     #[test]
     fn parse_featured_accepts_variants() {
         for truthy in ["yes", "YES", "true", "1", "on"] {
-            let content = format!(
-                "---\nname: s\ndescription: d\nfeatured: {truthy}\n---\n"
-            );
+            let content = format!("---\nname: s\ndescription: d\nfeatured: {truthy}\n---\n");
             let (summary, _) = parse_content(&content).unwrap();
             assert!(summary.featured, "expected truthy for {truthy}");
         }
         for falsy in ["no", "false", "0", "maybe"] {
-            let content = format!(
-                "---\nname: s\ndescription: d\nfeatured: {falsy}\n---\n"
-            );
+            let content = format!("---\nname: s\ndescription: d\nfeatured: {falsy}\n---\n");
             let (summary, _) = parse_content(&content).unwrap();
             assert!(!summary.featured, "expected falsy for {falsy}");
         }
@@ -353,9 +350,7 @@ mod tests {
     #[test]
     fn parse_image_url_roundtrip() {
         let url = "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400";
-        let content = format!(
-            "---\nname: s\ndescription: d\nimage: {url}\n---\n"
-        );
+        let content = format!("---\nname: s\ndescription: d\nimage: {url}\n---\n");
         let (summary, _) = parse_content(&content).unwrap();
         assert_eq!(summary.image.as_deref(), Some(url));
 
@@ -365,7 +360,8 @@ mod tests {
 
     #[test]
     fn parse_integrations_list() {
-        let content = "---\nname: s\ndescription: d\nintegrations: [gmail, slack, googlecalendar]\n---\n";
+        let content =
+            "---\nname: s\ndescription: d\nintegrations: [gmail, slack, googlecalendar]\n---\n";
         let (summary, _) = parse_content(content).unwrap();
         assert_eq!(
             summary.integrations,
@@ -437,9 +433,7 @@ prompt_template: |
                     options: vec![],
                 },
             ],
-            prompt_template: Some(
-                "Research {{company_url}}.\nFocus: {{focus}}".into(),
-            ),
+            prompt_template: Some("Research {{company_url}}.\nFocus: {{focus}}".into()),
             ..fixture()
         };
         let serialized = serialize(&s, "body");
@@ -496,8 +490,7 @@ prompt_template: |
         // Older skills may still carry an `icon:` line. The parser must
         // ignore it gracefully so installs don't break after the field
         // was removed from the schema.
-        let content =
-            "---\nname: s\ndescription: d\nicon: shopping-cart\n---\n";
+        let content = "---\nname: s\ndescription: d\nicon: shopping-cart\n---\n";
         let (summary, _) = parse_content(content).unwrap();
         assert_eq!(summary.name, "s");
     }
@@ -505,8 +498,7 @@ prompt_template: |
     #[test]
     fn parse_legacy_starter_prompt_is_ignored() {
         // Older files used `starter_prompt`; it should still parse cleanly.
-        let content =
-            "---\nname: s\ndescription: d\nstarter_prompt: Hi there\n---\n";
+        let content = "---\nname: s\ndescription: d\nstarter_prompt: Hi there\n---\n";
         let (summary, _) = parse_content(content).unwrap();
         assert!(summary.prompt_template.is_none());
         assert!(summary.inputs.is_empty());

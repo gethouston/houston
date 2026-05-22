@@ -183,9 +183,7 @@ impl EngineSubprocess {
             loop {
                 if Instant::now() > deadline {
                     let _ = child.kill();
-                    return Err(format!(
-                        "engine did not emit banner within {timeout:?}"
-                    ));
+                    return Err(format!("engine did not emit banner within {timeout:?}"));
                 }
                 line.clear();
                 let n = reader
@@ -308,7 +306,10 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
         .join("..")
         .join("..");
     let target_debug = workspace_root.join("target").join("debug").join(bin_name());
-    let target_release = workspace_root.join("target").join("release").join(bin_name());
+    let target_release = workspace_root
+        .join("target")
+        .join("release")
+        .join(bin_name());
 
     // 2. Debug: prefer cargo target (freshest under `tauri dev`).
     #[cfg(debug_assertions)]
@@ -339,9 +340,10 @@ pub fn resolve_engine_binary(resource_dir: Option<&PathBuf>) -> Result<PathBuf, 
 
     // 4. Resources dir — legacy fallback.
     if let Some(resources) = resource_dir {
-        if let Some(hit) =
-            try_candidate(resources.join("binaries").join(bin_name_no_triple()), &mut tried)
-        {
+        if let Some(hit) = try_candidate(
+            resources.join("binaries").join(bin_name_no_triple()),
+            &mut tried,
+        ) {
             return Ok(hit);
         }
         if let Some(hit) = try_candidate(
@@ -522,10 +524,7 @@ mod libc {
 }
 
 /// Poll `/v1/health` until a 2xx response, or timeout. Uses bearer auth.
-pub fn wait_until_healthy(
-    handshake: &EngineHandshake,
-    timeout: Duration,
-) -> Result<(), String> {
+pub fn wait_until_healthy(handshake: &EngineHandshake, timeout: Duration) -> Result<(), String> {
     let client = reqwest::blocking::Client::new();
     let url = format!("{}/v1/health", handshake.base_url());
     let deadline = Instant::now() + timeout;

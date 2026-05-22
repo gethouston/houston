@@ -33,10 +33,7 @@ use std::sync::Arc;
 
 pub fn router() -> Router<Arc<ServerState>> {
     Router::new()
-        .route(
-            "/agents/:agent_path/sessions",
-            post(start_session),
-        )
+        .route("/agents/:agent_path/sessions", post(start_session))
         .route(
             "/agents/:agent_path/sessions/onboarding",
             post(start_onboarding),

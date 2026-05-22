@@ -63,7 +63,11 @@ async fn list_create_load_save_delete_skill() {
         .send()
         .await
         .unwrap();
-    assert!(create_res.status().is_success(), "create: {}", create_res.status());
+    assert!(
+        create_res.status().is_success(),
+        "create: {}",
+        create_res.status()
+    );
 
     // Duplicate → 409.
     let dup = c
@@ -137,7 +141,10 @@ async fn list_create_load_save_delete_skill() {
 
     // Claude symlink exists.
     assert!(
-        ws_dir.join(".claude/skills/my-skill").symlink_metadata().is_ok(),
+        ws_dir
+            .join(".claude/skills/my-skill")
+            .symlink_metadata()
+            .is_ok(),
         ".claude/skills/<name> symlink must be created"
     );
 
@@ -151,7 +158,10 @@ async fn list_create_load_save_delete_skill() {
         .unwrap();
     assert!(del.status().is_success());
     assert!(!ws_dir.join(".agents/skills/my-skill").exists());
-    assert!(ws_dir.join(".claude/skills/my-skill").symlink_metadata().is_err());
+    assert!(ws_dir
+        .join(".claude/skills/my-skill")
+        .symlink_metadata()
+        .is_err());
 
     // Load missing → 404.
     let nf = c

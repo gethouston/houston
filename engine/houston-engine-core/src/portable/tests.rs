@@ -214,7 +214,9 @@ fn anonymize_overrides_replace_bodies_and_set_flag() {
         .unwrap()
         .contains("<person>"));
     assert!(parsed.inventory.routines[0].prompt.contains("<person>"));
-    assert!(parsed.inventory.learnings[0].text.contains("<payment-processor>"));
+    assert!(parsed.inventory.learnings[0]
+        .text
+        .contains("<payment-processor>"));
 }
 
 #[test]

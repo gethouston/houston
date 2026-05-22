@@ -123,7 +123,10 @@ mod tests {
         // is reachable only for hand-edited configs.
         let d = TempDir::new().unwrap();
         let agent = d.path().join("ws").join("agent");
-        write_json(&agent.join(".houston/config/config.json"), r#"{"model":"sonnet"}"#);
+        write_json(
+            &agent.join(".houston/config/config.json"),
+            r#"{"model":"sonnet"}"#,
+        );
         let r = resolve_provider(&agent);
         assert_eq!(r.provider, anthropic());
         assert_eq!(r.model.as_deref(), Some("sonnet"));

@@ -1,0 +1,50 @@
+name: "🚀 Feature Proposal"
+description: "Propose a new feature, enhancement, or architectural refinement for Houston"
+title: "[Proposal]: "
+labels: ["enhancement", "discussion"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for suggesting a new idea for Houston! We love community input and look forward to refining this proposal together.
+  - type: textarea
+    id: problem
+    attributes:
+      label: "Is your feature request related to a problem?"
+      description: "A clear and concise description of what the problem or limitation is."
+      placeholder: "e.g., I'm always frustrated when I have to manually sync versions of internal crates..."
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: "Describe the Proposed Feature"
+      description: "Describe the feature or enhancement you would like to see added to Houston."
+      placeholder: "Provide a detailed explanation of the desired user experience, engine functionality, or developer utility."
+    validations:
+      required: true
+  - type: textarea
+    id: solution-design
+    attributes:
+      label: "Proposed Implementation Details (Optional)"
+      description: "Any technical details, architectural ideas, or UI designs you have in mind. (Applies to engine crates, Tauri interfaces, or UI packages)."
+      placeholder: "e.g., We could add a workspace watcher in `houston-file-watcher` that emits `WorkspaceEvent`..."
+    validations:
+      required: false
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: "Alternatives Considered"
+      description: "Any alternative solutions or workarounds you've tried or considered."
+      placeholder: "e.g., Running a cron job to check file modifications every 5 minutes..."
+    validations:
+      required: false
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: "Proposal Alignment"
+      options:
+        - label: "This aligns with Houston's AI-native reactivity and standalone engine design principles."
+          required: true
+        - label: "I am open to contributing this feature via a pull request if the plan is approved."
+          required: false

@@ -154,8 +154,7 @@ pub fn spawn_and_monitor(
                     // embedder so it can flip persisted state (e.g.
                     // `routine_run.paused_until`). Any subsequent
                     // assistant/tool output is treated as the resume.
-                    let lifecycle_ref =
-                        persist.as_ref().and_then(|p| p.lifecycle.as_deref());
+                    let lifecycle_ref = persist.as_ref().and_then(|p| p.lifecycle.as_deref());
                     notify_lifecycle(item, lifecycle_ref, &mut paused_signaled);
                     // Collapse ALL auth-flavored system messages into a single
                     // "Checking connection..." banner. Covers three shapes we've

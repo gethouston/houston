@@ -18,8 +18,8 @@ pub mod skills;
 pub mod store;
 pub mod tunnel;
 pub mod watcher;
-pub mod worktree;
 pub mod workspaces;
+pub mod worktree;
 
 use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Response};
 use houston_engine_protocol::{ENGINE_VERSION, HEADER_ENGINE_VERSION};

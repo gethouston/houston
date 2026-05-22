@@ -184,10 +184,7 @@ pub fn resolve_real_home() -> io::Result<PathBuf> {
 /// `real_home` is taken as a parameter so tests can stage a tempdir
 /// without mutating the process-global `HOME` env var (which races with
 /// parallel cargo tests). Production callers pass [`resolve_real_home`].
-pub fn ensure_gemini_runtime_home(
-    houston_data: &Path,
-    real_home: &Path,
-) -> io::Result<PathBuf> {
+pub fn ensure_gemini_runtime_home(houston_data: &Path, real_home: &Path) -> io::Result<PathBuf> {
     let real_gemini = real_home.join(".gemini");
 
     let runtime_home = houston_data.join("runtime").join("gemini-home");
@@ -219,10 +216,7 @@ pub fn ensure_gemini_runtime_home(
         &real_gemini.join("google_accounts.json"),
         &runtime_gemini.join("google_accounts.json"),
     )?;
-    ensure_symlink(
-        &real_gemini.join(".env"),
-        &runtime_gemini.join(".env"),
-    )?;
+    ensure_symlink(&real_gemini.join(".env"), &runtime_gemini.join(".env"))?;
 
     let selected = detect_selected_auth_type(&real_gemini);
     write_if_changed(
@@ -307,7 +301,10 @@ mod tests {
         let settings = runtime_home.join(".gemini/settings.json");
 
         assert!(oauth.is_symlink(), "oauth_creds.json must be a symlink");
-        assert!(accounts.is_symlink(), "google_accounts.json must be a symlink");
+        assert!(
+            accounts.is_symlink(),
+            "google_accounts.json must be a symlink"
+        );
         assert_eq!(
             fs::read_link(&oauth).unwrap(),
             home.join(".gemini/oauth_creds.json")
@@ -364,9 +361,8 @@ mod tests {
 
         ensure_gemini_runtime_home(&houston_data, &home).unwrap();
 
-        let s =
-            fs::read_to_string(houston_data.join("runtime/gemini-home/.gemini/settings.json"))
-                .unwrap();
+        let s = fs::read_to_string(houston_data.join("runtime/gemini-home/.gemini/settings.json"))
+            .unwrap();
         assert!(s.contains("\"gemini-api-key\""));
     }
 

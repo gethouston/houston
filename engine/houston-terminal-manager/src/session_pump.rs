@@ -23,7 +23,11 @@ pub async fn pump_session(
         match update {
             SessionUpdate::Feed(item) => {
                 // Detect output files from Write/Edit tool calls.
-                if let FeedItem::ToolCall { ref name, ref input } = item {
+                if let FeedItem::ToolCall {
+                    ref name,
+                    ref input,
+                } = item
+                {
                     if let Some(path) = extract_output_file(name, input) {
                         on_output_file(path);
                     }
@@ -34,10 +38,8 @@ pub async fn pump_session(
                 on_feed(item);
             }
             SessionUpdate::Status(status) => {
-                let is_terminal = matches!(
-                    status,
-                    SessionStatus::Completed | SessionStatus::Error(_)
-                );
+                let is_terminal =
+                    matches!(status, SessionStatus::Completed | SessionStatus::Error(_));
                 on_status(status);
                 if is_terminal {
                     got_terminal = true;
@@ -60,7 +62,8 @@ pub async fn pump_session(
         let sid_info = captured_session_id.as_deref().unwrap_or("unknown");
         tracing::warn!(
             "[houston:pump] channel closed without terminal status (key={}, session={})",
-            session_key, sid_info
+            session_key,
+            sid_info
         );
         on_status(SessionStatus::Error(
             "Session ended unexpectedly".to_string(),
@@ -91,10 +94,8 @@ mod tests {
         let items: Arc<Mutex<Vec<FeedItem>>> = Arc::new(Mutex::new(Vec::new()));
         let items2 = Arc::clone(&items);
 
-        tx.send(SessionUpdate::Feed(FeedItem::AssistantText(
-            "hello".into(),
-        )))
-        .unwrap();
+        tx.send(SessionUpdate::Feed(FeedItem::AssistantText("hello".into())))
+            .unwrap();
         tx.send(SessionUpdate::Status(SessionStatus::Completed))
             .unwrap();
         drop(tx);

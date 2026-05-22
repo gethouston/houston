@@ -10,7 +10,9 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
-use tokio_tungstenite::{connect_async, tungstenite::client::IntoClientRequest, tungstenite::Message};
+use tokio_tungstenite::{
+    connect_async, tungstenite::client::IntoClientRequest, tungstenite::Message,
+};
 
 async fn spawn_engine() -> (SocketAddr, String, Arc<ServerState>) {
     let token = "test-token".to_string();
@@ -122,7 +124,12 @@ async fn ws_only_delivers_subscribed_topics() {
         .filter(|e| e.kind == EnvelopeKind::Event)
         .filter(|e| e.payload.get("type").and_then(|v| v.as_str()) == Some("FeedItem"))
         .collect();
-    assert_eq!(events.len(), 1, "expected exactly one FeedItem, got {}", events.len());
+    assert_eq!(
+        events.len(),
+        1,
+        "expected exactly one FeedItem, got {}",
+        events.len()
+    );
     let data = events[0].payload.get("data").unwrap();
     assert_eq!(data["session_key"], "abc");
 }
@@ -132,7 +139,9 @@ async fn ws_unsub_stops_delivery() {
     let (addr, token, state) = spawn_engine().await;
     let mut ws = ws_connect(addr, &token).await;
 
-    ws.send(Message::Text(sub_frame(&["session:k"]))).await.unwrap();
+    ws.send(Message::Text(sub_frame(&["session:k"])))
+        .await
+        .unwrap();
     tokio::time::sleep(Duration::from_millis(50)).await;
 
     state.events.emit(HoustonEvent::SessionStatus {
@@ -170,7 +179,11 @@ async fn ws_unsub_stops_delivery() {
         .filter(|e| e.kind == EnvelopeKind::Event)
         .filter(|e| e.payload.get("type").and_then(|v| v.as_str()) == Some("SessionStatus"))
         .collect();
-    assert!(frames.is_empty(), "expected no SessionStatus after unsub, got {}", frames.len());
+    assert!(
+        frames.is_empty(),
+        "expected no SessionStatus after unsub, got {}",
+        frames.len()
+    );
 }
 
 #[tokio::test]
@@ -187,7 +200,9 @@ async fn ws_multi_client_same_session_bounded_memory() {
     let mut conns = Vec::with_capacity(CLIENTS);
     for _ in 0..CLIENTS {
         let mut ws = ws_connect(addr, &token).await;
-        ws.send(Message::Text(sub_frame(&["session:hot"]))).await.unwrap();
+        ws.send(Message::Text(sub_frame(&["session:hot"])))
+            .await
+            .unwrap();
         conns.push(ws);
     }
     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -264,7 +279,9 @@ async fn ws_low_severity_streaming_dropped_silently() {
     // doesn't need to refetch streaming deltas; finals will follow).
     let (addr, token, state) = spawn_engine().await;
     let mut ws = ws_connect(addr, &token).await;
-    ws.send(Message::Text(sub_frame(&["session:k"]))).await.unwrap();
+    ws.send(Message::Text(sub_frame(&["session:k"])))
+        .await
+        .unwrap();
     tokio::time::sleep(Duration::from_millis(100)).await;
 
     for i in 0..5000 {
@@ -325,7 +342,9 @@ async fn rest_cancel_existing_session_emits_events() {
         .await;
 
     let mut ws = ws_connect(addr, &token).await;
-    ws.send(Message::Text(sub_frame(&["session:k1"]))).await.unwrap();
+    ws.send(Message::Text(sub_frame(&["session:k1"])))
+        .await
+        .unwrap();
     tokio::time::sleep(Duration::from_millis(80)).await;
 
     let encoded_path = urlencoding::encode("/tmp/houston-fake");
@@ -353,7 +372,10 @@ async fn rest_cancel_existing_session_emits_events() {
                 .and_then(|s| s.as_str())
                 == Some("completed")
     });
-    assert!(has_status_completed, "expected completed status, got {events:?}");
+    assert!(
+        has_status_completed,
+        "expected completed status, got {events:?}"
+    );
 }
 
 #[tokio::test]

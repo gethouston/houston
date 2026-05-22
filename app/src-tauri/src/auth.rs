@@ -62,8 +62,7 @@ mod storage {
     };
 
     fn auth_dir() -> Result<PathBuf, String> {
-        let local =
-            dirs::data_local_dir().ok_or_else(|| "no LocalAppData dir".to_string())?;
+        let local = dirs::data_local_dir().ok_or_else(|| "no LocalAppData dir".to_string())?;
         let dir = local.join("com.houston.app").join("auth");
         std::fs::create_dir_all(&dir)
             .map_err(|e| format!("create auth dir {}: {e}", dir.display()))?;
@@ -102,14 +101,12 @@ mod storage {
             )
         };
         if ok == 0 {
-            return Err(format!(
-                "CryptProtectData failed (last error {})",
-                unsafe { windows_sys::Win32::Foundation::GetLastError() }
-            ));
+            return Err(format!("CryptProtectData failed (last error {})", unsafe {
+                windows_sys::Win32::Foundation::GetLastError()
+            }));
         }
-        let result = unsafe {
-            std::slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec()
-        };
+        let result =
+            unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec() };
         unsafe {
             LocalFree(output.pbData as _);
         }
@@ -139,9 +136,8 @@ mod storage {
                 unsafe { windows_sys::Win32::Foundation::GetLastError() }
             ));
         }
-        let result = unsafe {
-            std::slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec()
-        };
+        let result =
+            unsafe { std::slice::from_raw_parts(output.pbData, output.cbData as usize).to_vec() };
         unsafe {
             LocalFree(output.pbData as _);
         }
@@ -168,8 +164,7 @@ mod storage {
         // mid-write never leaves a half-encrypted blob that future
         // decrypt calls would barf on.
         let tmp = path.with_extension("dpapi.tmp");
-        std::fs::write(&tmp, &ciphertext)
-            .map_err(|e| format!("write {}: {e}", tmp.display()))?;
+        std::fs::write(&tmp, &ciphertext).map_err(|e| format!("write {}: {e}", tmp.display()))?;
         std::fs::rename(&tmp, &path)
             .map_err(|e| format!("rename {} -> {}: {e}", tmp.display(), path.display()))?;
         Ok(())
@@ -189,8 +184,8 @@ mod storage {
 mod storage {
     //! macOS Keychain / generic libsecret storage via the `keyring` crate.
 
-    use keyring::Entry;
     use super::SERVICE;
+    use keyring::Entry;
 
     fn entry(key: &str) -> Result<Entry, String> {
         Entry::new(SERVICE, key).map_err(|e| format!("keyring entry({key}): {e}"))

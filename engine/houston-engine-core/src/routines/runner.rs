@@ -338,10 +338,11 @@ mod tests {
             _routine_id: &str,
             _routine_run_id: &str,
         ) -> Result<String, String> {
-            self.calls
-                .lock()
-                .unwrap()
-                .push((title.to_string(), description.to_string(), "act-1".into()));
+            self.calls.lock().unwrap().push((
+                title.to_string(),
+                description.to_string(),
+                "act-1".into(),
+            ));
             Ok("act-1".into())
         }
     }

@@ -139,7 +139,11 @@ async fn update_run(
     Query(q): Query<AgentQuery>,
     Json(req): Json<houston_engine_core::routines::types::RoutineRunUpdate>,
 ) -> Result<Json<RoutineRun>, ApiError> {
-    Ok(Json(routine_runs::update(&agent_root(&q.agent_path), &id, req)?))
+    Ok(Json(routine_runs::update(
+        &agent_root(&q.agent_path),
+        &id,
+        req,
+    )?))
 }
 
 // -- Scheduler lifecycle --
@@ -159,8 +163,7 @@ async fn run_now(
     Path(id): Path<String>,
     Query(q): Query<AgentQuery>,
 ) -> Result<(), ApiError> {
-    let dispatcher: Arc<dyn routines::runner::RoutineDispatcher> =
-        Arc::new(make_dispatcher(&st));
+    let dispatcher: Arc<dyn routines::runner::RoutineDispatcher> = Arc::new(make_dispatcher(&st));
     let surface: Arc<dyn routines::runner::ActivitySurface> = Arc::new(EngineActivitySurface);
     run_routine(
         st.engine.events.clone(),
@@ -205,8 +208,7 @@ async fn scheduler_start(
     Query(q): Query<AgentQuery>,
 ) -> Result<(), ApiError> {
     let tz = preferences::timezone(&st.engine.db).await;
-    let dispatcher: Arc<dyn routines::runner::RoutineDispatcher> =
-        Arc::new(make_dispatcher(&st));
+    let dispatcher: Arc<dyn routines::runner::RoutineDispatcher> = Arc::new(make_dispatcher(&st));
     let surface: Arc<dyn routines::runner::ActivitySurface> = Arc::new(EngineActivitySurface);
     st.routine_scheduler
         .start_agent(

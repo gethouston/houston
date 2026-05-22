@@ -35,12 +35,11 @@ pub fn build_package(
         let mut zip = zip::ZipWriter::new(Cursor::new(&mut buf));
         let opts = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
 
-        let manifest_bytes = serde_json::to_vec_pretty(&manifest).map_err(|e| {
-            crate::PortableError::Json {
+        let manifest_bytes =
+            serde_json::to_vec_pretty(&manifest).map_err(|e| crate::PortableError::Json {
                 entry: "manifest.json".into(),
                 source: e,
-            }
-        })?;
+            })?;
         zip.start_file("manifest.json", opts)?;
         zip.write_all(&manifest_bytes)?;
 

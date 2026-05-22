@@ -66,11 +66,7 @@ pub struct HoustonInput {
 }
 
 impl HoustonInput {
-    pub fn new(
-        input_type: InputType,
-        source: InputSource,
-        payload: serde_json::Value,
-    ) -> Self {
+    pub fn new(input_type: InputType, source: InputSource, payload: serde_json::Value) -> Self {
         Self {
             id: uuid::Uuid::new_v4().to_string(),
             input_type,

@@ -1,11 +1,14 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import type { HoustonEvent } from "@houston-ai/core";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
 import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
+import { subscribeHoustonEvents } from "../../lib/events";
 import { GeminiConnectDialog } from "./gemini-connect-dialog";
+import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderAccountRow } from "./provider-account-row";
 
 /**
@@ -28,6 +31,13 @@ export function ProviderSettings() {
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
   const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
+  // OAuth URL surfaced by the engine when the CLI couldn't open the
+  // user's browser itself (remote/headless deployments). Cleared on
+  // ProviderLoginComplete or when the user closes the dialog.
+  const [loginDialog, setLoginDialog] = useState<{
+    provider: ProviderInfo;
+    url: string;
+  } | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   // First scan is treated as the baseline so opening Settings while a
@@ -81,6 +91,54 @@ export function ProviderSettings() {
       setPendingId(null);
     }
   }, [pendingId, statuses]);
+
+  // OAuth URL relay for remote/headless engines (Docker container,
+  // Always-On VPS). When the engine spawns claude/codex login and the
+  // CLI can't open the user's browser, it surfaces the fallback URL
+  // via `ProviderLoginUrl`. We show <ProviderLoginDialog> with the
+  // URL + a paste-code field. `ProviderLoginComplete` closes the
+  // dialog and refreshes provider status. The status-poll effect
+  // above flips the chip to Connected once the CLI's credential file
+  // lands. Functional setState avoids stale-closure reads on
+  // loginDialog / pendingId — multiple providers could fire events
+  // concurrently and we only want to clear state for the one the
+  // event names.
+  useEffect(() => {
+    const off = subscribeHoustonEvents((ev: HoustonEvent) => {
+      if (ev.type === "ProviderLoginUrl") {
+        const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        if (prov) {
+          setLoginDialog({ provider: prov, url: ev.data.url });
+        }
+      } else if (ev.type === "ProviderLoginComplete") {
+        const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        if (ev.data.success) {
+          addToast({
+            title: t("toast.signInSucceeded", { provider: prov?.name ?? ev.data.provider }),
+            variant: "success",
+          });
+        } else if (ev.data.error) {
+          addToast({
+            title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+            description: ev.data.error,
+            variant: "error",
+          });
+        }
+        // Only clear the dialog if it's showing THIS provider's URL —
+        // a completion for a different provider must not clobber an
+        // in-flight sign-in.
+        setLoginDialog((current) =>
+          current?.provider.id === ev.data.provider ? null : current,
+        );
+        // Same rule for the spinner-tracking pending id: on failure
+        // the status poll won't ever see authenticated, so without
+        // this clear the row would spin forever.
+        setPendingId((current) => (current === ev.data.provider ? null : current));
+        loadStatuses();
+      }
+    });
+    return off;
+  }, [addToast, loadStatuses, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
     if (provider.loginKind === "apiKey") {
@@ -192,6 +250,12 @@ export function ProviderSettings() {
         onLoginStarted={(providerId) => {
           setPendingId(providerId);
         }}
+      />
+
+      <ProviderLoginDialog
+        provider={loginDialog?.provider ?? null}
+        url={loginDialog?.url ?? null}
+        onClose={() => setLoginDialog(null)}
       />
     </>
   );

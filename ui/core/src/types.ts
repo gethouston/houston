@@ -140,4 +140,13 @@ export type HoustonEvent =
   | {
       type: "ClaudeCliFailed";
       data: { message: string };
+    }
+  | {
+      type: "ProviderLoginUrl";
+      data: { provider: string; url: string };
+    }
+  | {
+      type: "ProviderLoginComplete";
+      data: { provider: string; success: boolean; error: string | null };
     };
+

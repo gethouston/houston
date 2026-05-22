@@ -1,4 +1,4 @@
-use crate::types::{InputType, HoustonInput};
+use crate::types::{HoustonInput, InputType};
 
 /// Result of handling an input.
 #[derive(Debug)]

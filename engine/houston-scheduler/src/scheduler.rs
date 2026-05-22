@@ -35,11 +35,8 @@ impl Scheduler {
         let id = format!("heartbeat_{}", self.next_heartbeat_id);
         self.next_heartbeat_id += 1;
 
-        let handle = HeartbeatRunner::spawn(
-            config,
-            self.queue_handle.clone(),
-            self.shutdown_rx.clone(),
-        );
+        let handle =
+            HeartbeatRunner::spawn(config, self.queue_handle.clone(), self.shutdown_rx.clone());
 
         self.heartbeats.insert(id.clone(), handle);
         info!(heartbeat_id = %id, "Heartbeat added");
@@ -60,11 +57,8 @@ impl Scheduler {
     pub fn add_cron(&mut self, config: CronJobConfig) -> anyhow::Result<String> {
         let id = config.id.clone();
 
-        let handle = CronRunner::spawn(
-            config,
-            self.queue_handle.clone(),
-            self.shutdown_rx.clone(),
-        )?;
+        let handle =
+            CronRunner::spawn(config, self.queue_handle.clone(), self.shutdown_rx.clone())?;
 
         self.crons.insert(id.clone(), handle);
         info!(cron_id = %id, "Cron job added");
