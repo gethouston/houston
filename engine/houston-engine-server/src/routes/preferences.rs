@@ -8,6 +8,7 @@ use axum::{
     Json, Router,
 };
 use houston_engine_core::preferences;
+use houston_ui_events::HoustonEvent;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -46,5 +47,18 @@ async fn upsert(
     if key == preferences::TIMEZONE_KEY {
         st.routine_scheduler.update_default_tz(&req.value).await;
     }
+    // Broadcast so other tabs, the mobile companion, and any feature-flag
+    // listeners invalidate their cached read of this key. An empty `value`
+    // string represents "cleared"; we surface that as `None` to match the
+    // event's documented semantics.
+    let event_value = if req.value.is_empty() {
+        None
+    } else {
+        Some(req.value.clone())
+    };
+    st.engine.events.emit(HoustonEvent::PreferenceChanged {
+        key: key.clone(),
+        value: event_value,
+    });
     Ok(())
 }

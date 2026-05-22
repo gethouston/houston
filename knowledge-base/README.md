@@ -11,6 +11,7 @@ Load on demand. Style: caveman.
 | [agent-manifest.md](agent-manifest.md) | Three tiers, manifest shape, workspace templates, sidebar |
 | [engine-protocol.md](engine-protocol.md) | HTTP + WS wire contract every client speaks (REST, envelope, auth) |
 | [engine-server.md](engine-server.md) | `houston-engine` binary — config, startup handshake, supervision, deployment |
+| [feature-flags.md](feature-flags.md) | Advanced settings, flag registry, 12 rules, adding/migrating/graduating flags |
 | [production-infra.md](production-infra.md) | Auto-updater, analytics, Sentry, env vars, CI/CD |
 
 Mobile-specific docs live under `/docs/`: [mobile-architecture.md](../docs/mobile-architecture.md), [relay-operations.md](../docs/relay-operations.md).
