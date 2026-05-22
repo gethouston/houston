@@ -1,0 +1,677 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Houston Dogfood Loop — Hybrid Validation Pattern for Autonomous PR Arcs</title>
+<style>
+  :root {
+    --ink: #0b0b0d;
+    --paper: #fafafa;
+    --paper-2: #f1f1ef;
+    --line: #d8d5d0;
+    --accent: #1c4eea;
+    --green: #1d7c46;
+    --red: #bf3c2e;
+    --amber: #b06f12;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --serif: "New York", "Iowan Old Style", Georgia, serif;
+    --sans: -apple-system, "SF Pro Text", system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); }
+  body {
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.55;
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 48px 36px 72px;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 24px;
+    margin-bottom: 28px;
+  }
+  header .eyebrow {
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6b6b6b;
+  }
+  header h1 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 34px;
+    line-height: 1.15;
+    margin: 8px 0 6px;
+    letter-spacing: -0.01em;
+  }
+  header .meta {
+    font-size: 13px;
+    color: #6b6b6b;
+  }
+  header .meta a { color: var(--accent); text-decoration: none; }
+  header .meta a:hover { text-decoration: underline; }
+
+  h2 {
+    font-family: var(--serif);
+    font-weight: 500;
+    font-size: 24px;
+    margin: 40px 0 12px;
+    letter-spacing: -0.005em;
+  }
+  h3 {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 28px 0 8px;
+  }
+  p { margin: 0 0 14px; }
+  ul, ol { margin: 0 0 14px; padding-left: 22px; }
+  li { margin: 4px 0; }
+  code { font-family: var(--mono); font-size: 0.92em; background: var(--paper-2); padding: 1.5px 5px; border-radius: 3px; }
+  pre {
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.5;
+    background: #1a1a1c;
+    color: #e6e6e6;
+    padding: 14px 18px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0 0 16px;
+  }
+  pre .c { color: #7c7c7c; }
+  pre .k { color: #c084fc; }
+  pre .s { color: #fbbf24; }
+
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0 22px;
+    font-size: 14px;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  th { font-weight: 600; background: var(--paper-2); }
+  tr:hover td { background: #fcfcfc; }
+
+  .surfaces {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 14px;
+    margin: 18px 0 28px;
+  }
+  .surface {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 14px 16px;
+    background: white;
+  }
+  .surface h4 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-weight: 600;
+    margin: 0 0 6px;
+    color: var(--accent);
+  }
+  .surface .what { font-size: 13px; line-height: 1.45; color: #2a2a2a; }
+  .surface code { background: transparent; padding: 0; color: var(--ink); }
+  @media (max-width: 760px) {
+    .surfaces { grid-template-columns: 1fr 1fr; }
+  }
+
+  .arc {
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 16px 20px;
+    margin: 16px 0 24px;
+  }
+  .arc ol { padding-left: 22px; margin: 0; }
+  .arc li { margin: 6px 0; line-height: 1.45; }
+  .arc li b { font-weight: 600; }
+
+  .callout {
+    background: #fff9e6;
+    border-left: 3px solid var(--amber);
+    padding: 10px 14px;
+    margin: 14px 0 18px;
+    font-size: 14px;
+    border-radius: 0 4px 4px 0;
+  }
+  .callout.green { background: #ecfdf3; border-color: var(--green); }
+  .callout.red   { background: #fff4f1; border-color: var(--red); }
+  .callout b { font-weight: 600; }
+
+  .pill {
+    display: inline-block;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--paper-2);
+    color: #555;
+    margin-right: 6px;
+  }
+  .pill.green { background: #d1fadf; color: #064d2c; }
+  .pill.amber { background: #fef3c7; color: #6b4406; }
+  .pill.red   { background: #fee4e2; color: #781d12; }
+
+  footer {
+    margin-top: 56px;
+    padding-top: 22px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+    color: #6b6b6b;
+  }
+
+  svg.architecture {
+    width: 100%;
+    height: auto;
+    max-height: 360px;
+    background: white;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 12px;
+    margin: 14px 0 22px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="eyebrow">Pattern Documentation · P18 · Houston</div>
+  <h1>Houston Dogfood Loop — A Hybrid Validation Pattern for Autonomous PR Arcs</h1>
+  <div class="meta">
+    Author: <code>broomva</code> · Date: 2026-05-22 · For
+    <a href="https://github.com/gethouston/houston">gethouston/houston</a> ·
+    Tracks
+    <a href="https://github.com/gethouston/houston/issues/243">Issue #243</a>
+    (RFC: bstack primitives + control-metalayer)
+  </div>
+</header>
+
+<p>
+This document describes the validation loop a coding agent uses to confirm
+its changes work in the running Houston desktop app — from <em>cargo build</em>
+through <em>UI clicks like a real user</em>. The loop is hybrid because no single
+automation surface covers every assertion class:
+the <strong>engine HTTP API</strong> is the canonical state surface,
+<strong>cliclick</strong> drives the actual Tauri WKWebView the user sees,
+<strong>Interceptor</strong> drives Houston's vite frontend in real Chrome with full React DOM access,
+and <strong>vite HMR</strong> closes the iteration cycle on frontend code changes.
+</p>
+
+<h2>Why a dogfood loop matters for AI-agent PRs</h2>
+
+<p>
+Most agent-driven PRs fail in one of two ways: <em>typechecks pass but the
+runtime doesn't behave</em>, or <em>the agent claims a change works without
+running it</em>. Both are forms of CLAUDE.md §"No silent failures" — the policy
+that says reasoning is not validation, interaction is.
+</p>
+
+<p>
+For Houston specifically the surface is unusually rich (Tauri 2 desktop +
+frontend-agnostic Rust engine + 17 engine crates + 11 React packages). A single
+PR can touch any combination of HTTP routes, WS events, file watchers, sidecars,
+and React queries. The agent needs a way to <em>actually run the app it just
+changed</em>, drive it like a user, and read back state — without a human in
+the loop.
+</p>
+
+<h2>The four surfaces</h2>
+
+<div class="surfaces">
+  <div class="surface">
+    <h4>Engine HTTP API</h4>
+    <p class="what">
+      <code>curl -H "Authorization: Bearer $TOKEN" $BASE/v1/*</code>.
+      Source of truth. Every state mutation is API-addressable because the
+      Tauri frontend is itself a client over HTTP/WS. Used for state assertions
+      (workspaces, agents, preferences, providers, sessions).
+    </p>
+  </div>
+  <div class="surface">
+    <h4>cliclick on Tauri window</h4>
+    <p class="what">
+      <code>cliclick c:X,Y</code>, <code>cliclick t:"text"</code>,
+      <code>cliclick kp:tab kp:return</code>.
+      Macros logical-point coordinates to mouse + keyboard events on the real
+      Tauri WKWebView. Sidesteps WKWebView's opacity to macOS System Events.
+      Used for user-flow validation: clicking buttons, typing into inputs,
+      submitting forms — exactly what a user does.
+    </p>
+  </div>
+  <div class="surface">
+    <h4>Interceptor on <code>:1420</code></h4>
+    <p class="what">
+      <code>interceptor open</code>, <code>interceptor act eN</code>,
+      <code>interceptor read</code>, <code>interceptor screenshot</code>.
+      Chrome extension that drives the same vite-served frontend the Tauri
+      WebView loads. Full React DOM via semantic refs (<code>eN</code>).
+      Used for richer assertions (specific DOM element states, network log
+      capture, replayable session recordings) that <code>cliclick</code> can't observe.
+    </p>
+  </div>
+  <div class="surface">
+    <h4>vite HMR loop</h4>
+    <p class="what">
+      <code>Edit</code> a frontend source or locale JSON → vite pushes
+      <code>hmr update</code> within ~200ms → the running WebView re-renders.
+      Engine state is preserved across HMR. Used for fast frontend iteration
+      cycles; the cargo-build path is reserved for engine-side changes.
+    </p>
+  </div>
+</div>
+
+<h2>Architecture</h2>
+
+<svg class="architecture" viewBox="0 0 880 320" xmlns="http://www.w3.org/2000/svg">
+  <!-- nodes -->
+  <g font-family="ui-monospace, SF Mono, Menlo, monospace" font-size="12" fill="#0b0b0d">
+    <!-- Agent -->
+    <rect x="20" y="130" width="140" height="60" rx="6" fill="#fff" stroke="#0b0b0d" />
+    <text x="90" y="155" text-anchor="middle" font-weight="600">Coding agent</text>
+    <text x="90" y="175" text-anchor="middle" font-size="11" fill="#6b6b6b">(broomva)</text>
+
+    <!-- Engine -->
+    <rect x="380" y="50" width="160" height="70" rx="6" fill="#fff" stroke="#1c4eea" />
+    <text x="460" y="78" text-anchor="middle" font-weight="600">houston-engine</text>
+    <text x="460" y="98" text-anchor="middle" font-size="11">127.0.0.1:&lt;dynamic&gt;</text>
+    <text x="460" y="113" text-anchor="middle" font-size="11" fill="#6b6b6b">/v1/*  +  /v1/ws</text>
+
+    <!-- Tauri window -->
+    <rect x="380" y="140" width="160" height="70" rx="6" fill="#fff" stroke="#1d7c46" />
+    <text x="460" y="168" text-anchor="middle" font-weight="600">Tauri WebView</text>
+    <text x="460" y="186" text-anchor="middle" font-size="11">WKWebView · macOS</text>
+    <text x="460" y="201" text-anchor="middle" font-size="11" fill="#6b6b6b">(the app the user sees)</text>
+
+    <!-- vite -->
+    <rect x="380" y="230" width="160" height="70" rx="6" fill="#fff" stroke="#b06f12" />
+    <text x="460" y="258" text-anchor="middle" font-weight="600">vite dev :1420</text>
+    <text x="460" y="276" text-anchor="middle" font-size="11">React HMR</text>
+    <text x="460" y="291" text-anchor="middle" font-size="11" fill="#6b6b6b">browser-loadable</text>
+
+    <!-- Driving surfaces -->
+    <rect x="700" y="20"  width="160" height="50" rx="6" fill="#fff" stroke="#1c4eea" />
+    <text x="780" y="40"  text-anchor="middle" font-weight="600">curl + jq</text>
+    <text x="780" y="58"  text-anchor="middle" font-size="11" fill="#6b6b6b">state assertions</text>
+
+    <rect x="700" y="90"  width="160" height="50" rx="6" fill="#fff" stroke="#1d7c46" />
+    <text x="780" y="110" text-anchor="middle" font-weight="600">cliclick</text>
+    <text x="780" y="128" text-anchor="middle" font-size="11" fill="#6b6b6b">user-flow drive</text>
+
+    <rect x="700" y="160" width="160" height="50" rx="6" fill="#fff" stroke="#bf3c2e" />
+    <text x="780" y="180" text-anchor="middle" font-weight="600">screencapture</text>
+    <text x="780" y="198" text-anchor="middle" font-size="11" fill="#6b6b6b">visual evidence</text>
+
+    <rect x="700" y="230" width="160" height="50" rx="6" fill="#fff" stroke="#b06f12" />
+    <text x="780" y="250" text-anchor="middle" font-weight="600">interceptor</text>
+    <text x="780" y="268" text-anchor="middle" font-size="11" fill="#6b6b6b">React DOM drive</text>
+  </g>
+
+  <!-- arrows -->
+  <g stroke="#0b0b0d" stroke-width="1" fill="none">
+    <!-- agent → engine via curl -->
+    <path d="M 160 150 L 380 85" />
+    <!-- agent → Tauri via cliclick -->
+    <path d="M 160 160 L 380 170" />
+    <!-- agent → Tauri via screencapture -->
+    <path d="M 160 170 L 380 195" />
+    <!-- agent → vite via interceptor -->
+    <path d="M 160 180 L 380 255" />
+    <!-- engine ↔ Tauri -->
+    <path d="M 460 120 L 460 140" stroke="#999" stroke-dasharray="3,3" />
+    <!-- vite ↔ Tauri -->
+    <path d="M 460 230 L 460 210" stroke="#999" stroke-dasharray="3,3" />
+    <!-- driving boxes annotations: dotted arrows -->
+    <path d="M 700 45  L 540 85"  stroke="#1c4eea" stroke-dasharray="2,2" />
+    <path d="M 700 115 L 540 175" stroke="#1d7c46" stroke-dasharray="2,2" />
+    <path d="M 700 185 L 540 195" stroke="#bf3c2e" stroke-dasharray="2,2" />
+    <path d="M 700 255 L 540 265" stroke="#b06f12" stroke-dasharray="2,2" />
+  </g>
+</svg>
+
+<h2>When to use which surface</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Assertion class</th>
+      <th>Best surface</th>
+      <th>Why</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Workspace/agent/session state</td>
+      <td><span class="pill">Engine API</span></td>
+      <td>Canonical, fastest, deterministic. <code>GET /v1/workspaces</code>, <code>POST /v1/agents/.../sessions</code>.</td>
+    </tr>
+    <tr>
+      <td>Provider auth + CLI installation</td>
+      <td><span class="pill">Engine API</span></td>
+      <td><code>GET /v1/providers/:name/status</code> returns the same data the Settings UI shows.</td>
+    </tr>
+    <tr>
+      <td>Onboarding flow advance</td>
+      <td><span class="pill green">cliclick</span></td>
+      <td>Onboarding screens gate on user clicks, not state writes. <code>cliclick kp:tab kp:return</code> works.</td>
+    </tr>
+    <tr>
+      <td>UI button click (e.g. "New Mission")</td>
+      <td><span class="pill green">cliclick</span></td>
+      <td>Logical-point coords. Find via screenshot inspection; WKWebView accessibility is opaque to System Events.</td>
+    </tr>
+    <tr>
+      <td>Type into chat input + submit</td>
+      <td><span class="pill green">cliclick</span></td>
+      <td><code>cliclick c:X,Y</code> to focus, <code>cliclick t:"text"</code> to type, <code>cliclick kp:return</code> to send.</td>
+    </tr>
+    <tr>
+      <td>Specific React DOM element state</td>
+      <td><span class="pill amber">Interceptor</span></td>
+      <td>Drives the same vite frontend in Chrome. Semantic refs <code>eN</code>. Run after injecting <code>window.__HOUSTON_ENGINE__</code>.</td>
+    </tr>
+    <tr>
+      <td>Recording a user flow as a replay script</td>
+      <td><span class="pill amber">Interceptor</span></td>
+      <td><code>interceptor monitor start/stop/export --plan</code> → re-runnable plan, regression-checkable.</td>
+    </tr>
+    <tr>
+      <td>Network log capture (XHR/fetch)</td>
+      <td><span class="pill amber">Interceptor</span></td>
+      <td><code>interceptor net log</code> — always-on, no CDP fingerprint.</td>
+    </tr>
+    <tr>
+      <td>Visual evidence (before/after)</td>
+      <td><span class="pill red">screencapture</span></td>
+      <td><code>screencapture -x -t png $path</code>. <code>-R x,y,w,h</code> for regions. Output is Read-able into agent context.</td>
+    </tr>
+    <tr>
+      <td>Frontend code change → re-render</td>
+      <td><span class="pill">vite HMR</span></td>
+      <td>Edit any file under <code>app/src/**</code>, vite pushes <code>hmr update</code> in ~200ms. <code>main.tsx</code> can't fast-refresh → full reload.</td>
+    </tr>
+    <tr>
+      <td>Engine code change → restart</td>
+      <td><span class="pill">Tauri supervisor</span></td>
+      <td>Watches <code>engine/**/*.rs</code>. Kills/rebuilds/restarts sidecar with exponential backoff. Re-read <code>~/.dev-houston/engine.json</code> for new port after restart.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>The canonical arc — start to finish</h2>
+
+<div class="arc">
+<ol>
+  <li><b>Compile engine</b>: <code>cargo build -p houston-engine-server</code> (debug ~2-4 min cold; ~30s warm).</li>
+  <li><b>Launch app</b>: <code>HOUSTON_ENGINE_TOKEN=&lt;known&gt; pnpm tauri dev</code> from <code>app/</code>. Tauri spawns vite on <code>:1420</code> + builds <code>app/src-tauri</code> host (~46s warm) + spawns engine sidecar. The window opens.</li>
+  <li><b>Discover engine port</b>: <code>jq -r '.port' ~/.dev-houston/engine.json</code> (note: dev mode isolates to <code>~/.dev-houston/</code>, NOT <code>~/.houston/</code>). Bearer token is your known <code>HOUSTON_ENGINE_TOKEN</code> — sha256 will match <code>token_hash</code> field on disk.</li>
+  <li><b>Probe</b>: <code>curl -H "Authorization: Bearer $TOKEN" http://127.0.0.1:$PORT/v1/health</code> — expect <code>{"status":"ok",...}</code>. Without bearer: 401.</li>
+  <li><b>Drive engine state</b>: create workspaces, set preferences, query providers. All persist in the dev SQLite DB at <code>~/.dev-houston/db/houston.db</code>.</li>
+  <li><b>Drive UI flow</b>: <code>cliclick</code> for clicks and typing on the Tauri window. Use <code>screencapture -R</code> to zoom on a region when coords are ambiguous; map pixel coordinates from the cropped image back to logical screen points.</li>
+  <li><b>Capture evidence</b>: <code>screencapture -x -t png /tmp/houston-shots/&lt;label&gt;.png</code>. The agent <code>Read</code>s the PNG back into context to verify visual changes.</li>
+  <li><b>Iterate frontend</b>: Edit any file under <code>app/src/</code> or <code>app/src/locales/&lt;lang&gt;/*.json</code>. Vite logs <code>[vite] (client) hmr update &lt;paths&gt;</code> within ~200ms. The running WebView re-renders. Engine state survives.</li>
+  <li><b>Iterate engine</b>: Edit any <code>engine/**/*.rs</code>. Tauri's watcher kills the sidecar, rebuilds, and restarts at a NEW port. Re-read <code>engine.json</code>. Same token persists across restart because <code>HOUSTON_ENGINE_TOKEN</code> was set explicitly.</li>
+  <li><b>Tear down</b>: <code>kill $(cat /tmp/houston-tauri-dev.pid)</code> kills the top-level pnpm; supervisor cascades shutdown to engine + vite.</li>
+</ol>
+</div>
+
+<h2>Concrete bash snippets the agent re-uses</h2>
+
+<h3>Discover engine creds after each Tauri restart</h3>
+<pre>PORT=$(jq -r '.port' ~/.dev-houston/engine.json)
+TOKEN=$(cat /tmp/houston-dogfood-token.txt)
+BASE="http://127.0.0.1:$PORT"
+curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/v1/health"</pre>
+
+<h3>cliclick — click + type + submit</h3>
+<pre><span class="c"># Focus the Tauri window first (Houston is the macOS process name)</span>
+osascript -e 'tell application "Houston" to activate'
+<span class="c"># Click into the chat input field — find coords by capturing the right panel</span>
+<span class="c"># region and mapping cropped pixel y back to logical screen y.</span>
+cliclick c:1662,1090
+<span class="c"># Type the message</span>
+cliclick t:"My test mission"
+<span class="c"># Submit</span>
+cliclick kp:return</pre>
+
+<h3>Screenshot a region for finer coord finding</h3>
+<pre><span class="c"># Capture just the right panel (Houston's chat sidebar) at logical bounds</span>
+screencapture -x -t png -R 1480,200,470,980 /tmp/right-panel.png</pre>
+
+<h3>Inject engine creds into a Chrome session at <code>:1420</code> (Interceptor path)</h3>
+<pre><span class="c"># Before React mounts, set window.__HOUSTON_ENGINE__ so the SDK can connect</span>
+interceptor open "http://localhost:1420" --no-wait
+interceptor eval --main "window.__HOUSTON_ENGINE__ = { baseUrl: 'http://127.0.0.1:'+$PORT, token: '$TOKEN' }; location.reload()"
+interceptor wait-stable
+interceptor read   <span class="c"># tree + text of the loaded page</span></pre>
+
+<h2>Known gotchas (each cost time during validation)</h2>
+
+<table>
+  <thead>
+    <tr><th>Symptom</th><th>Cause</th><th>Fix</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>~/.houston/engine.json</code> missing after launch</td>
+      <td>Tauri dev sets <code>HOUSTON_HOME=~/.dev-houston</code> for isolation</td>
+      <td>Read <code>~/.dev-houston/engine.json</code> instead</td>
+    </tr>
+    <tr>
+      <td><code>cargo check --workspace</code> fails on CI</td>
+      <td><code>tauri-build</code> needs the engine sidecar at <code>binaries/houston-engine-&lt;triple&gt;</code></td>
+      <td>Run <code>cargo build --release -p houston-engine-server</code> before <code>cargo check</code> (this is what PR #242 wires into CI)</td>
+    </tr>
+    <tr>
+      <td>WKWebView accessibility returns <code>missing value</code> for all buttons</td>
+      <td>React DOM is opaque to macOS System Events; the only buttons exposed are the traffic-light window controls</td>
+      <td>Use <code>cliclick</code> with coords from screenshot inspection, OR drive <code>:1420</code> via Interceptor</td>
+    </tr>
+    <tr>
+      <td>Typing lands on a button instead of the input</td>
+      <td>Tab cycled focus to the wrong control (e.g. the microphone button next to the chat input)</td>
+      <td>Click the input directly with coords; verify with a zoomed region capture</td>
+    </tr>
+    <tr>
+      <td>Engine port changes mid-session</td>
+      <td>Tauri supervisor respawned the sidecar (CLAUDE.md §"Restart policy: exponential backoff 500ms → 30s cap")</td>
+      <td>Re-read <code>~/.dev-houston/engine.json</code>; same token persists if <code>HOUSTON_ENGINE_TOKEN</code> env var was set at launch</td>
+    </tr>
+    <tr>
+      <td><code>vite hmr invalidate /src/main.tsx "Could not Fast Refresh"</code></td>
+      <td>main.tsx exports non-component values (a known limitation of <code>@vitejs/plugin-react</code>)</td>
+      <td>Expect a full reload, not a fast refresh, when editing files that <code>main.tsx</code> imports</td>
+    </tr>
+    <tr>
+      <td>Frontend won't connect to engine when loaded from regular Chrome</td>
+      <td>Houston's <code>app/src/lib/engine.ts</code> reads <code>window.__HOUSTON_ENGINE__</code> only — no localStorage/env fallback like <code>examples/smartbooks</code> has</td>
+      <td>Inject the global via <code>interceptor eval --main</code> before React mounts, OR add a fallback path (would be a separate PR — see "Chrome path" below)</td>
+    </tr>
+    <tr>
+      <td>Click via <code>interceptor act e1</code> succeeds but UI doesn't advance</td>
+      <td>The clicked control fires a handler that calls the engine (e.g. <code>setPreference('locale','en')</code>); the engine call fails silently because <code>HoustonClient</code> wasn't bootstrapped (see row above). <code>interceptor diff</code> reports <code>changes: 0</code>.</td>
+      <td>Same fix as above. Until then, only state-independent UI surfaces (LanguageGate before EngineGate) are drivable from plain Chrome.</td>
+    </tr>
+    <tr>
+      <td><code>interceptor screenshot --save &lt;path&gt;</code> ignores <code>--save</code> path and writes to <code>app/interceptor-screenshot-&lt;ts&gt;.png</code></td>
+      <td>Bug or undocumented behavior in interceptor 0.14.2; the JSON response carries the actual <code>filePath</code></td>
+      <td>Read the <code>filePath</code> from JSON output (<code>--json</code>) or move from <code>$PWD/interceptor-screenshot-*.png</code> after each call</td>
+    </tr>
+    <tr>
+      <td><code>pnpm tauri dev</code> wrapper dies but child vite + engine survive</td>
+      <td>Node child processes outlive their pnpm parent on some signal paths; engine's <code>spawn_parent_watchdog</code> only triggers on stdin EOF which can be delayed</td>
+      <td>Before restarting <code>pnpm tauri dev</code>, kill <code>$(pgrep -f "target/debug/houston-engine")</code> AND <code>$(lsof -t -iTCP:1420)</code> — otherwise the new vite hits "Port 1420 already in use"</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>How this maps to bstack primitives</h2>
+
+<table>
+  <thead><tr><th>bstack primitive</th><th>Manifested in the loop</th></tr></thead>
+  <tbody>
+    <tr><td><b>P11 Empirical</b></td><td>Every assertion is an interaction — <code>curl</code>, <code>cliclick</code>, <code>screencapture</code>, <code>interceptor read</code> — not a reasoning claim.</td></tr>
+    <tr><td><b>P14 Dep-Chain</b></td><td>Each PR's validation enumerates upstream (engine routes, build.rs sidecar staging, vite HMR) and downstream (engine state, UI delta, visual evidence). The matrix above IS the enumeration.</td></tr>
+    <tr><td><b>P15 Snapshot</b></td><td><code>~/.dev-houston/engine.json</code> read + <code>curl /v1/health</code> + screenshot is the canonical pre-action snapshot.</td></tr>
+    <tr><td><b>P18 Audience</b></td><td>This very document. HTML for human-readable narrative; the agent-loadable form lives as markdown in <code>knowledge-base/agent-dogfood-loop.md</code> (if upstreamed).</td></tr>
+    <tr><td><b>P19 Orchestrate</b></td><td>The agent picks the surface (cube cell) per assertion class — not whatever's at hand.</td></tr>
+    <tr><td><b>P20 Cross-Review</b></td><td>Engine API drives state assertions independent of the UI surface; a UI bug can't paper over a backend bug, and vice versa.</td></tr>
+  </tbody>
+</table>
+
+<h2>Status of the Wave-A PRs (proof points)</h2>
+
+<table>
+  <thead><tr><th>PR</th><th>Title</th><th>State</th></tr></thead>
+  <tbody>
+    <tr><td><a href="https://github.com/gethouston/houston/pull/242">#242</a></td><td><code>chore(ci): add PR-time workflow</code></td><td><span class="pill green">OPEN · fork CI green</span></td></tr>
+    <tr><td><a href="https://github.com/gethouston/houston/pull/244">#244</a></td><td><code>feat(scripts): houston-doctor</code> (P15 port)</td><td><span class="pill green">OPEN</span></td></tr>
+    <tr><td><a href="https://github.com/gethouston/houston/pull/245">#245</a></td><td><code>chore(deps): check-cli-deps drift scout</code> (P7 port)</td><td><span class="pill green">OPEN · amended post-cross-review</span></td></tr>
+    <tr><td><a href="https://github.com/gethouston/houston/pull/246">#246</a></td><td><code>docs(readme): accurate monorepo layout</code></td><td><span class="pill green">OPEN</span></td></tr>
+    <tr><td><a href="https://github.com/gethouston/houston/pull/249">#249</a></td><td><code>feat(engine-client): non-Tauri engine config fallback via localStorage</code> (load-bearing for the Chrome path)</td><td><span class="pill green">OPEN · runtime-validated</span></td></tr>
+    <tr><td><a href="https://github.com/gethouston/houston/pull/250">#250</a></td><td><code>docs(knowledge-base): add agent-dogfood-loop guide</code> (~180 lines)</td><td><span class="pill green">OPEN</span></td></tr>
+    <tr><td><a href="https://github.com/gethouston/houston/issues/243">#243</a></td><td>RFC: bstack primitives + control-metalayer</td><td><span class="pill green">OPEN</span></td></tr>
+    <tr><td><a href="https://github.com/gethouston/houston/issues/251">#251</a></td><td>RFC: agent-driven development workflows on Houston — strategies, gotchas, and asks</td><td><span class="pill green">OPEN</span></td></tr>
+  </tbody>
+</table>
+
+<h2>End-to-end agent install — final proof</h2>
+
+<p>
+The loop is closed by an actual user-flow run, driven entirely from Interceptor against Chrome at <code>http://localhost:1420</code>, with the engine standalone on <code>:7777</code> and the dogfood bearer in <code>localStorage["houston.engine"]</code>:
+</p>
+
+<table>
+  <thead><tr><th>Step</th><th>Surface</th><th>Effect</th></tr></thead>
+  <tbody>
+    <tr><td><code>interceptor open http://localhost:1420</code></td><td>Browser extension</td><td>Houston frontend loads; LanguageGate visible (works without engine)</td></tr>
+    <tr><td><code>interceptor eval --main "localStorage.setItem('houston.engine', JSON.stringify({baseUrl, token})); location.reload()"</code></td><td>Browser extension</td><td>Page reloads with Tier-3 bootstrap; HoustonClient instantiated</td></tr>
+    <tr><td><code>interceptor act e1</code> (English)</td><td>Browser extension</td><td><code>PUT /v1/preferences/locale</code> recorded; UI advances to main app</td></tr>
+    <tr><td><code>interceptor act e8</code> (Nuevo agente)</td><td>Browser extension</td><td>Agent template picker opens with 13 templates (Personal assistant, Bookkeeping, Legal, …)</td></tr>
+    <tr><td><code>interceptor act e14</code> (Bookkeeping)</td><td>Browser extension</td><td>Name-your-agent step appears; e33 "Crear agente" disabled until name entered</td></tr>
+    <tr><td><code>interceptor act e31 "Bookkeeper-broomva"</code></td><td>Browser extension</td><td>Textbox value updates; e33 enables</td></tr>
+    <tr><td><code>interceptor act e33</code> (Crear agente)</td><td>Browser extension</td><td><code>POST</code> to create-agent route; engine records the agent</td></tr>
+    <tr><td><code>curl /v1/workspaces/&lt;id&gt;/agents</code></td><td>Engine HTTP API</td><td>Returns <code>length: 1</code> with the new agent (<code>id: ce67bb2d…</code>, <code>configId: bookkeeping</code>, <code>folderPath: ~/.dev-houston/workspaces/BstackPort/Bookkeeper-broomva</code>)</td></tr>
+    <tr><td><code>interceptor screenshot</code></td><td>Browser extension</td><td>Clean viewport capture of the agent dashboard — tabs (Actividad / Rutinas / Descripción del rol / Archivos / Integraciones), skill catalog (Categorize my transactions / Check my burn and runway / Close my month), chat input</td></tr>
+  </tbody>
+</table>
+
+<div class="callout green">
+  <b>End-state achieved.</b> The dogfood loop is closed for Houston: every UI assertion class has a working surface, every state mutation has an independent verification path, and the full compile-to-teardown arc was driven end-to-end without leaving the agent context. Screenshots banked at <code>/tmp/houston-shots/</code> (12 frames). The four-surface model has now produced its first concrete proof and lives upstream as <a href="https://github.com/gethouston/houston/pull/250">PR #250</a>'s knowledge-base entry.
+</div>
+
+<h2>Interceptor install state (as of 2026-05-22)</h2>
+
+<p>
+The skill is installed in "full computer-use mode" — daemon + bridge + native messaging are all live.
+Two macOS gates remain, both user-action; neither can be bypassed by automation (TCC and Chrome
+extension loading are deliberate security surfaces).
+</p>
+
+<table>
+  <thead>
+    <tr><th>Component</th><th>Status</th><th>Evidence</th></tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>interceptor</code> CLI</td>
+      <td><span class="pill green">INSTALLED</span></td>
+      <td>v0.14.2 at <code>/opt/homebrew/bin/interceptor</code></td>
+    </tr>
+    <tr>
+      <td><code>interceptor-daemon</code></td>
+      <td><span class="pill green">RUNNING</span></td>
+      <td>PID auto-spawned, socket <code>/tmp/interceptor.sock</code></td>
+    </tr>
+    <tr>
+      <td><code>interceptor-bridge</code></td>
+      <td><span class="pill green">RUNNING</span></td>
+      <td>LaunchAgent loaded, socket <code>/tmp/interceptor-bridge.sock</code>, bundle at <code>~/.local/share/interceptor/interceptor-bridge.app</code></td>
+    </tr>
+    <tr>
+      <td>Native messaging manifest</td>
+      <td><span class="pill green">REGISTERED</span></td>
+      <td>Symlink at <code>~/Library/Application Support/Google/Chrome/NativeMessagingHosts/com.interceptor.host.json</code></td>
+    </tr>
+    <tr>
+      <td>Bridge Accessibility (TCC)</td>
+      <td><span class="pill amber">USER-ACTION</span></td>
+      <td>System Settings → Privacy &amp; Security → Accessibility → toggle ON for <code>interceptor-bridge</code>. Without it, <code>macos tree/windows/click/type</code> return empty; <code>macos apps/frontmost</code> still work.</td>
+    </tr>
+    <tr>
+      <td>Bridge Screen Recording (TCC)</td>
+      <td><span class="pill amber">USER-ACTION</span></td>
+      <td>System Settings → Privacy &amp; Security → Screen Recording → toggle ON. Without it, <code>macos screenshot</code> errors explicitly with "Screen Recording permission required".</td>
+    </tr>
+    <tr>
+      <td>Chrome extension load</td>
+      <td><span class="pill amber">USER-ACTION</span></td>
+      <td>Branded Chrome rejects <code>--load-extension</code> CLI flag (security). Manual: open <code>chrome://extensions</code> → Developer Mode ON → <b>Load unpacked</b> → select <code>~/Projects/interceptor/extension/dist</code> → quit Chrome with ⌘Q and relaunch.</td>
+    </tr>
+  </tbody>
+</table>
+
+<div class="callout">
+  <b>Dev-build caveat for the bridge.</b> The Tauri dev build runs as a bare binary
+  (<code>target/debug/houston-app</code>), NOT a registered <code>.app</code> bundle.
+  <code>interceptor macos apps</code> doesn't list it because macOS treats it as a non-foreground process.
+  Even with full Accessibility granted, <code>macos tree --app Houston</code> may not resolve.
+  Workarounds: (1) run the release-built Houston (<code>pnpm tauri build</code>) which IS a <code>.app</code>;
+  (2) target by PID via <code>--pid &lt;N&gt;</code>; or (3) stay with <code>cliclick</code> for dev-build automation.
+</div>
+
+<h2>What works <em>right now</em> without further user action</h2>
+
+<ul>
+  <li><b>Engine API drive</b> — all <code>/v1/*</code> endpoints with the dogfood bearer.</li>
+  <li><b>cliclick on Tauri window</b> — coord-based click + type + keypress on the dev-built Houston (proven across the onboarding advance, New Mission button, chat input, Enter submit).</li>
+  <li><b>screencapture for visual evidence</b> — already has the perms it needs.</li>
+  <li><b>vite HMR loop</b> — frontend edits push within ~200ms.</li>
+  <li><b>Engine restart resilience</b> — Tauri supervisor respawns on Rust file change; same <code>HOUSTON_ENGINE_TOKEN</code> survives across restart; new port re-read from <code>~/.dev-houston/engine.json</code>.</li>
+  <li><b>Interceptor: app + frontmost queries</b> — <code>interceptor macos apps</code> and <code>macos frontmost</code> work without Accessibility (system process info only).</li>
+</ul>
+
+<h2>What's gated on user action</h2>
+
+<ul>
+  <li><b>Bridge accessibility tree on registered macOS apps</b> — needs Accessibility TCC grant. Once granted: <code>interceptor macos tree --app &lt;App&gt;</code> returns AX tree; <code>macos click eN</code> + <code>macos type &lt;ref&gt; "text"</code> drive UI without coord-finding.</li>
+  <li><b>Bridge screenshots</b> — needs Screen Recording TCC. Once granted: bridge can capture screens beyond Chrome's reach.</li>
+  <li><b>Chrome extension control of <code>:1420</code></b> — extension must be loaded manually. Once loaded: <code>interceptor open http://localhost:1420</code> + inject <code>window.__HOUSTON_ENGINE__</code> via <code>interceptor eval --main</code> + drive React DOM via <code>interceptor act eN</code>.</li>
+</ul>
+
+<h2>What's next</h2>
+
+<ul>
+  <li><b>Wave B</b> — port two Rust-touching PRs validated through this loop: a banned-patterns linter (PR #2) + a fix for the silent-failure-on-claude-install issue (PR #5, closes upstream issue #231). Both work with the surfaces already proven.</li>
+  <li><b>Grant the two TCC perms + load the Chrome extension</b> — unlocks the bridge tree + Chrome React-DOM path for richer assertions. Strictly optional; the cliclick + engine-API loop covers all current PR validation needs.</li>
+  <li><b>Optional upstream PR</b> — a markdown port of this doc to <code>knowledge-base/agent-dogfood-loop.md</code>, matching Houston's docs convention. Would be a docs-only PR.</li>
+  <li><b>Optional improvement to Houston</b> — add the SmartBooks-style 3-tier engine-config resolution (localStorage / Vite env / hardcoded fallback) to <code>app/src/lib/engine.ts</code> so the Houston frontend can connect from any browser without Tauri-side <code>window.__HOUSTON_ENGINE__</code> injection. Would unblock pure-browser dev workflows + simplify the Interceptor path.</li>
+</ul>
+
+<footer>
+  Files referenced in the running loop:
+  <ul>
+    <li><code>/Users/broomva/broomva/work/houston/</code> — Houston checkout, currently on <code>feat/ci-pr-workflow</code>.</li>
+    <li><code>~/.dev-houston/engine.json</code> — port + token_hash + pid of the live sidecar.</li>
+    <li><code>/tmp/houston-dogfood-token.txt</code> — the bearer token (mode 600).</li>
+    <li><code>/tmp/houston-engine-port.txt</code>, <code>/tmp/houston-engine-creds.txt</code> — convenience caches.</li>
+    <li><code>/tmp/houston-tauri-dev.log</code> — full dev-server log (engine + vite + cargo).</li>
+    <li><code>/tmp/houston-shots/*.png</code> — visual evidence trail, 9 frames as of writing.</li>
+  </ul>
+</footer>
+
+</body>
+</html>
