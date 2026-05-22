@@ -47,12 +47,24 @@ export interface FlagDef {
 }
 
 /**
- * The flag registry. Phase 0 ships this empty by design — every subsequent
- * phase adds exactly one entry here plus the locale strings under
- * `advanced.flags.<key>.{label,description}` in en/es/pt.
+ * The flag registry. Each entry pairs with locale strings under
+ * `advanced.flags.<key>.{label,description}` in en/es/pt and a knowledge-base
+ * write-up at `knowledge-base/advanced-<learnMoreSlug>.md`.
  */
-// biome-ignore lint/complexity/noBannedTypes: empty registry by design in phase 0
-export const FLAG_REGISTRY: Record<string, FlagDef> = {};
+export const FLAG_REGISTRY: Record<string, FlagDef> = {
+  "advanced.worktrees": {
+    key: "advanced.worktrees",
+    category: "advanced",
+    default: false,
+    labelKey: "advanced.flags.worktrees.label",
+    descriptionKey: "advanced.flags.worktrees.description",
+    enforcementSurface: "ui",
+    status: "beta",
+    learnMoreSlug: "worktrees",
+    since: "0.4.0",
+    graduationTarget: "permanent",
+  },
+};
 
 export type FlagMigration =
   | { type: "rename"; from: string; to: string; since: string }
