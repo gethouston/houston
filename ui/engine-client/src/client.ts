@@ -81,6 +81,7 @@ import type {
   PortableInstalledAgent,
   VerifiableCredential,
   IssueCredentialRequest,
+  IssueIdentityRequest,
   VerifyCredentialResult,
 } from "./types";
 import { planAttachmentUploadBatches } from "./attachments";
@@ -383,6 +384,18 @@ export class HoustonClient {
   }
   setAgentConfig(agentPath: string, config: ProjectConfig): Promise<ProjectConfig> {
     return this.request("PUT", "/agents/config", config, { agent_path: agentPath });
+  }
+
+  // ---------- workspace identity (Beltic user credential) ----------
+
+  getIdentity(): Promise<VerifiableCredential | null> {
+    return this.request("GET", "/identity");
+  }
+  issueIdentity(input: IssueIdentityRequest): Promise<VerifiableCredential> {
+    return this.request("POST", "/identity", input);
+  }
+  revokeIdentity(): Promise<VerifiableCredential | null> {
+    return this.request("POST", "/identity/revoke");
   }
 
   // ---------- agents: Beltic credentials ----------

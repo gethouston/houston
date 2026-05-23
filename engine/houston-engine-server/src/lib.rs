@@ -39,6 +39,7 @@ pub fn build_router(state: Arc<ServerState>) -> Router {
         .merge(routes::agent_files::router())
         .merge(routes::composio::router())
         .merge(routes::credentials::router())
+        .merge(routes::identity::router())
         .merge(routes::webhooks_beltic::router())
         .merge(routes::claude::router())
         .merge(routes::tunnel::router())

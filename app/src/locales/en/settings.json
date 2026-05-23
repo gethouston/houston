@@ -27,7 +27,27 @@
     "verifyCta": "Verify identity",
     "reverify": "Re-verify identity",
     "revokeCta": "Revoke credential",
-    "viewOnBeltic": "View on Beltic"
+    "revokeConfirm": "Revoke your Beltic identity credential? Every agent credential delegated by it will stop verifying until you re-issue.",
+    "viewOnBeltic": "View on Beltic",
+    "verify": {
+      "title": "Verify your identity",
+      "subtitle": "Beltic stores only what's needed to issue your credential. Cancel any time.",
+      "nationality": "Nationality",
+      "dob": "Date of birth",
+      "documentType": "Government ID type",
+      "documentTypeOptional": "Optional. Unlocks the idv_verified trust level.",
+      "documentCountry": "ID document country",
+      "documentNone": "None",
+      "documentPassport": "Passport",
+      "documentDriversLicense": "Driver's license",
+      "documentNationalId": "National ID",
+      "documentResidencePermit": "Residence permit",
+      "declaration": "I confirm the information above is accurate. I consent to Beltic issuing a Verifiable Credential. I understand it may be revoked if found inaccurate.",
+      "submit": "Issue credential",
+      "cancel": "Cancel",
+      "issuing": "Issuing…",
+      "missingFields": "Nationality and date of birth are required."
+    }
   },
   "agents": {
     "title": "Authorized agents",

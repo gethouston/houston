@@ -27,7 +27,27 @@
     "verifyCta": "Verificar identidad",
     "reverify": "Volver a verificar",
     "revokeCta": "Revocar credencial",
-    "viewOnBeltic": "Ver en Beltic"
+    "revokeConfirm": "¿Revocar tu credencial de identidad Beltic? Toda credencial de agente que delegó dejará de verificarse hasta que la emitas de nuevo.",
+    "viewOnBeltic": "Ver en Beltic",
+    "verify": {
+      "title": "Verificá tu identidad",
+      "subtitle": "Beltic guarda solo lo necesario para emitir tu credencial. Podés cancelar cuando quieras.",
+      "nationality": "Nacionalidad",
+      "dob": "Fecha de nacimiento",
+      "documentType": "Tipo de documento oficial",
+      "documentTypeOptional": "Opcional. Desbloquea el nivel idv_verified.",
+      "documentCountry": "País del documento",
+      "documentNone": "Ninguno",
+      "documentPassport": "Pasaporte",
+      "documentDriversLicense": "Licencia de conducir",
+      "documentNationalId": "DNI / cédula nacional",
+      "documentResidencePermit": "Residencia",
+      "declaration": "Confirmo que la información es correcta. Acepto que Beltic emita una Credencial Verificable. Entiendo que puede revocarse si no es exacta.",
+      "submit": "Emitir credencial",
+      "cancel": "Cancelar",
+      "issuing": "Emitiendo…",
+      "missingFields": "La nacionalidad y la fecha de nacimiento son obligatorias."
+    }
   },
   "agents": {
     "title": "Agentes autorizados",

@@ -853,3 +853,12 @@ export interface VerifyCredentialResult {
   credential_id: string | null;
   detail: string | null;
 }
+
+/** Request body for `POST /v1/identity` (user identity issuance). */
+export interface IssueIdentityRequest {
+  nationality?: string;
+  date_of_birth?: string;
+  id_document_type?: string;
+  id_document_country?: string;
+  self_attestation_complete: boolean;
+}

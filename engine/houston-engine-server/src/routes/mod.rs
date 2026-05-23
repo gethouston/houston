@@ -11,6 +11,7 @@ pub mod conversations;
 pub mod credentials;
 pub mod error;
 pub mod health;
+pub mod identity;
 pub mod portable;
 pub mod preferences;
 pub mod providers;
