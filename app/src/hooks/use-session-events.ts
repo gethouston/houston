@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
 import type { FeedItem } from "@houston-ai/chat";
 import { useFeedStore } from "../stores/feeds";
@@ -8,6 +9,7 @@ import { useAgentStore } from "../stores/agents";
 import { useSessionStatusStore } from "../stores/session-status";
 import { subscribeHoustonEvents, listenOsEvent } from "../lib/events";
 import { logger } from "../lib/logger";
+import { tauriClaude } from "../lib/tauri";
 import { hasToolRuntimeError } from "../components/tool-runtime-feed";
 import {
   consumePendingNav,
@@ -27,6 +29,7 @@ export function useSessionEvents() {
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
   const addToast = useUIStore((s) => s.addToast);
   const setAuthRequired = useUIStore((s) => s.setAuthRequired);
+  const { t } = useTranslation(["providers", "common"]);
 
   const handlersRef = useRef({
     pushFeedItem,
@@ -35,6 +38,7 @@ export function useSessionEvents() {
     setSessionStatus: useSessionStatusStore.getState().setStatus,
     getWorkspace: () => useWorkspaceStore.getState().current,
     getAgent: () => useAgentStore.getState().current,
+    t,
   });
   handlersRef.current = {
     pushFeedItem,
@@ -43,6 +47,7 @@ export function useSessionEvents() {
     setSessionStatus: useSessionStatusStore.getState().setStatus,
     getWorkspace: () => useWorkspaceStore.getState().current,
     getAgent: () => useAgentStore.getState().current,
+    t,
   };
 
   useEffect(() => {
@@ -127,6 +132,29 @@ export function useSessionEvents() {
         case "AuthRequired":
           logger.info(`[auth] AuthRequired received: provider=${payload.data.provider}`);
           h.setAuthRequired(payload.data.provider);
+          break;
+        case "ClaudeCliFailed":
+          // Per the beta-stage "no silent failures" rule, every install
+          // failure must reach the user somewhere — the onboarding card
+          // shows it inline but a user already past onboarding (e.g. on
+          // a Houston upgrade that re-downloads claude-code) would
+          // otherwise never know. Toast carries the engine's classified
+          // message verbatim because it's already user-readable (see
+          // `houston_claude_installer::classify_reqwest_error`).
+          logger.warn(`[claude-install] ClaudeCliFailed: ${payload.data.message}`);
+          h.addToast({
+            variant: "error",
+            title: h.t("providers:claudeInstall.failedTitle"),
+            description: payload.data.message,
+            action: {
+              label: h.t("providers:claudeInstall.retry"),
+              onClick: () => {
+                tauriClaude.install().catch((err: unknown) => {
+                  logger.warn(`[claude-install] retry from toast failed: ${String(err)}`);
+                });
+              },
+            },
+          });
           break;
       }
     });

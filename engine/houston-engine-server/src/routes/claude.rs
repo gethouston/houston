@@ -53,6 +53,13 @@ struct ClaudeStatus {
     /// Used by the lifecycle to decide whether to re-download on a
     /// Houston upgrade that bumps the pinned version.
     installed_version: Option<String>,
+    /// Last install failure reason, classified for end users (see
+    /// `houston_claude_installer::classify_reqwest_error`). `None` when
+    /// install has never failed, or when the most recent attempt
+    /// succeeded. The onboarding "Sign in with Anthropic" card reads
+    /// this so it can distinguish "Houston tried but the network was
+    /// down" from "the user hasn't connected yet" — issue #231.
+    last_install_error: Option<String>,
 }
 
 fn lift(e: String) -> ApiError {
@@ -77,16 +84,29 @@ async fn status(State(st): State<Arc<ServerState>>) -> Json<ClaudeStatus> {
     let installed_version = st
         .engine
         .db
-        .get_preference("claude_code_installed_version")
+        .get_preference(houston_claude_installer::PREF_INSTALLED_VERSION)
         .await
         .ok()
         .flatten();
+
+    // Empty string is the cleared sentinel — the installer writes "" on
+    // a successful retry rather than deleting the row, so we filter it
+    // here so the UI doesn't render an empty-string error card.
+    let last_install_error = st
+        .engine
+        .db
+        .get_preference(houston_claude_installer::PREF_LAST_INSTALL_ERROR)
+        .await
+        .ok()
+        .flatten()
+        .filter(|s| !s.is_empty());
 
     Json(ClaudeStatus {
         installed,
         install_path,
         pinned_version,
         installed_version,
+        last_install_error,
     })
 }
 
@@ -118,20 +138,13 @@ async fn install(State(st): State<Arc<ServerState>>) -> Result<(), ApiError> {
                     .emit(houston_ui_events::HoustonEvent::ClaudeCliInstalling { progress_pct: pct });
             })
             .await;
-        match result {
-            Ok(_) => {
-                if let Err(e) = db
-                    .set_preference("claude_code_installed_version", &pinned_version)
-                    .await
-                {
-                    tracing::warn!("[claude:install] failed to persist version marker: {e}");
-                }
-                sink.emit(houston_ui_events::HoustonEvent::ClaudeCliReady);
-            }
-            Err(e) => {
-                sink.emit(houston_ui_events::HoustonEvent::ClaudeCliFailed { message: e });
-            }
-        }
+        // Delegate to the shared finalizer so we write the same DB
+        // markers as the boot-time `ensure_and_upgrade` path. The
+        // alternative (in-lining the writes here) drifted in the past:
+        // the success branch persisted the version but neither branch
+        // touched `claude_code_last_install_error`, so a successful
+        // retry left a stale failure marker on disk.
+        houston_claude_installer::finalize_install(&db, &pinned_version, &sink, result).await;
     });
 
     Ok(())

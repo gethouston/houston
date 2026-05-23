@@ -597,6 +597,26 @@ export interface AttachmentManifest extends AttachmentUploadResult {
   createdAt: string;
 }
 
+// ---------- Claude Code installer ----------
+
+/**
+ * Snapshot of the runtime Claude Code install. Returned by
+ * `GET /v1/claude/status`.
+ *
+ * `lastInstallError` is the field the onboarding "Sign in with
+ * Anthropic" card reads when `installed` is `false` — it disambiguates
+ * "Houston tried to download Claude Code and failed (likely no
+ * internet)" from "Houston hasn't tried yet". See issue #231 for the
+ * UX bug this addresses.
+ */
+export interface ClaudeStatus {
+  installed: boolean;
+  installPath: string;
+  pinnedVersion: string | null;
+  installedVersion: string | null;
+  lastInstallError: string | null;
+}
+
 // ---------- Composio ----------
 
 export type ComposioStatus =

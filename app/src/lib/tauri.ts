@@ -752,6 +752,40 @@ export const tauriSystem = {
   openUrl: (url: string) => osOpenUrl(url),
 };
 
+// ─── Claude Code runtime installer ────────────────────────────────────
+
+import type { ClaudeStatus as EngineClaudeStatus } from "@houston-ai/engine-client";
+
+/** Mirror of the engine `ClaudeStatus` — re-exported so callers can
+ *  import from `lib/tauri.ts` like the other engine DTOs. */
+export type ClaudeStatus = EngineClaudeStatus;
+
+/** Runtime install bridge for the proprietary Claude Code CLI.
+ *
+ *  Distinct from `tauriProvider`: provider-level concerns (auth, CLI
+ *  spawn) sit on `tauriProvider`; the *install* of Anthropic's CLI is
+ *  Houston-managed (we download it because the license forbids
+ *  bundling) and exposed here so the onboarding card can show a
+ *  specific "couldn't reach Anthropic — Retry" affordance — issue #231.
+ */
+export const tauriClaude = {
+  status: () =>
+    call<ClaudeStatus>("claude_status", () => getEngine().claudeStatus()),
+  /**
+   * Triggers the background install. Errors are deliberately not
+   * auto-toasted by `call` — both callers (the onboarding card hook and
+   * the `ClaudeCliFailed` toast retry action) surface failures
+   * themselves, and double-toasting on a retry click is noisy.
+   */
+  install: () =>
+    call<void>(
+      "claude_install",
+      () => getEngine().claudeInstall(),
+      undefined,
+      { toast: false },
+    ),
+};
+
 // ─── Agent file watcher ───────────────────────────────────────────────
 
 export const tauriWatcher = {

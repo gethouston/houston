@@ -60,7 +60,15 @@ pub use houston_terminal_manager::claude_install_path::{
 /// Engine-DB preferences key holding the last successfully-installed
 /// claude-code version. Lifecycle compares it against the manifest's
 /// pinned version on every boot.
-const PREF_INSTALLED_VERSION: &str = "claude_code_installed_version";
+pub const PREF_INSTALLED_VERSION: &str = "claude_code_installed_version";
+
+/// Engine-DB preferences key holding the most recent install failure
+/// (empty string = no error). Read by `/v1/claude/status` so the
+/// onboarding UI can show a clear reason next to the disabled "Sign in
+/// with Anthropic" button instead of the misleading "install it
+/// yourself" hint that fires for every other `cli_installed=false`
+/// case.
+pub const PREF_LAST_INSTALL_ERROR: &str = "claude_code_last_install_error";
 
 /// CLI key inside `cli-deps.json`. Constant so we don't string-literal
 /// the same value across modules.
@@ -141,16 +149,38 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     })
     .await;
 
+    finalize_install(&db, &pinned_version, &sink, result).await;
+}
+
+/// Persist the outcome of an install attempt and emit the matching
+/// `ClaudeCliReady` / `ClaudeCliFailed` event. Shared between the
+/// lifecycle entry above and the `POST /v1/claude/install` route handler
+/// so both flows write the same DB markers and emit the same events.
+pub async fn finalize_install(
+    db: &Database,
+    pinned_version: &str,
+    sink: &DynEventSink,
+    result: Result<PathBuf, String>,
+) {
     match result {
         Ok(path) => {
             tracing::info!("[claude-installer] installed at {}", path.display());
-            if let Err(e) = db.set_preference(PREF_INSTALLED_VERSION, &pinned_version).await {
+            if let Err(e) = db.set_preference(PREF_INSTALLED_VERSION, pinned_version).await {
                 tracing::warn!("[claude-installer] failed to persist version marker: {e}");
+            }
+            // Clear the last-error marker so the UI stops surfacing a
+            // stale "couldn't reach Anthropic" message after a successful
+            // retry.
+            if let Err(e) = db.set_preference(PREF_LAST_INSTALL_ERROR, "").await {
+                tracing::warn!("[claude-installer] failed to clear last-error marker: {e}");
             }
             sink.emit(HoustonEvent::ClaudeCliReady);
         }
         Err(e) => {
             tracing::error!("[claude-installer] install failed: {e}");
+            if let Err(persist_err) = db.set_preference(PREF_LAST_INSTALL_ERROR, &e).await {
+                tracing::warn!("[claude-installer] failed to persist last-error marker: {persist_err}");
+            }
             sink.emit(HoustonEvent::ClaudeCliFailed { message: e });
         }
     }
@@ -234,11 +264,11 @@ pub async fn install_to(
         .get(&url)
         .send()
         .await
-        .map_err(|e| format!("download request failed: {e}"))?;
+        .map_err(|e| classify_reqwest_error(&e, &url))?;
 
     if !resp.status().is_success() {
         return Err(format!(
-            "download returned HTTP {}: {url}",
+            "Anthropic's download server returned HTTP {}. Try again in a few minutes; if it keeps happening, report it.",
             resp.status()
         ));
     }
@@ -254,7 +284,7 @@ pub async fn install_to(
         .map_err(|e| format!("failed to open temp file {}: {e}", tmp_path.display()))?;
 
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("download stream error: {e}"))?;
+        let chunk = chunk.map_err(|e| classify_reqwest_error(&e, &url))?;
         hasher.update(&chunk);
         tmp_file
             .write_all(&chunk)
@@ -290,9 +320,11 @@ pub async fn install_to(
     let actual_checksum = hex::encode(hasher.finalize());
     if !checksum_matches(&actual_checksum, &expected_checksum) {
         let _ = tokio::fs::remove_file(&tmp_path).await;
+        // Surface a user-readable summary and keep the technical detail
+        // appended so the engine logs / bug reports stay diagnosable.
         return Err(format!(
-            "claude-code checksum mismatch: expected {expected_checksum}, got {actual_checksum} \
-             — download may be tampered or the pinned manifest is stale"
+            "The downloaded Claude Code file looks corrupted. Check your internet connection and try again. \
+             (checksum mismatch: expected {expected_checksum}, got {actual_checksum})"
         ));
     }
 
@@ -332,6 +364,42 @@ pub async fn install_to(
 /// explicit about case folding.
 fn checksum_matches(actual: &str, expected: &str) -> bool {
     actual.eq_ignore_ascii_case(expected)
+}
+
+/// Translate a `reqwest::Error` into a message a non-technical user can
+/// act on. The default `Display` impl produces chains like
+/// `error sending request for url (...): error trying to connect:
+/// dns error: failed to lookup address information`, which is the
+/// "useless raw error" we surface in the onboarding card today and
+/// which prompted issue #231.
+///
+/// Bias toward the network-down case — that's what real users hit
+/// (laptop on a flaky cafe wifi, captive portal). The other branches
+/// (HTTP 5xx, response body decode) get their own user-readable
+/// wording.
+fn classify_reqwest_error(err: &reqwest::Error, url: &str) -> String {
+    if err.is_timeout() {
+        return "Timed out while downloading Claude Code. Check your internet connection and try again.".to_string();
+    }
+    if err.is_connect() {
+        return "Couldn't reach Anthropic to download Claude Code. Check your internet connection and try again.".to_string();
+    }
+    if err.is_body() || err.is_decode() {
+        return "Download interrupted while fetching Claude Code. Check your internet connection and try again.".to_string();
+    }
+    if err.is_request() {
+        // `is_request` catches the catch-all "request-level" failures
+        // (DNS lookup failure at the resolver layer, TLS handshake
+        // failure, etc.) that don't surface through the more specific
+        // predicates above. From the user's perspective these all mean
+        // "the network didn't cooperate", so collapse to the same
+        // wording rather than leaking the chain.
+        return "Couldn't reach Anthropic to download Claude Code. Check your internet connection and try again.".to_string();
+    }
+    // Unknown shape — keep the technical detail so bug reports stay
+    // actionable. Drops the URL because users don't need it inline.
+    let _ = url;
+    format!("Download failed: {err}")
 }
 
 #[cfg(test)]
@@ -493,8 +561,94 @@ mod tests {
 
         let err = result.expect_err("server 500 must error");
         assert!(
-            err.contains("HTTP") || err.contains("500"),
-            "unexpected error: {err}"
+            err.contains("500"),
+            "unexpected error (must mention status code): {err}"
+        );
+        assert!(
+            err.contains("Anthropic"),
+            "must name the upstream so users know who to blame: {err}"
+        );
+    }
+
+    /// Bad host = the realistic "no internet" scenario. Reqwest can't
+    /// resolve `nonexistent-host-for-houston-test.invalid` so the
+    /// failure surfaces through `is_request()` / `is_connect()`. Issue
+    /// #231: this used to dump the raw error chain at the user; verify
+    /// we collapse it to a one-line actionable message instead.
+    #[tokio::test]
+    async fn install_surfaces_network_failure_with_actionable_message() {
+        let manifest = serde_json::json!({
+            "claude-code": {
+                "version": "9.9.9",
+                "bundled": false,
+                "binary_name": "claude",
+                "urls": {
+                    houston_cli_bundle::host_platform_key():
+                        "http://nonexistent-host-for-houston-test.invalid/claude"
+                },
+                "checksums": {
+                    houston_cli_bundle::host_platform_key():
+                        "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+            }
+        });
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), serde_json::to_string(&manifest).unwrap()).unwrap();
+        let entry = houston_cli_bundle::CliDepsManifest::load(tmp.path())
+            .unwrap()
+            .entry("claude-code")
+            .unwrap();
+
+        let dest_dir = tempfile::tempdir().unwrap();
+        let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
+
+        let err = result.expect_err("bad host must error");
+        // The legacy message started with `download request failed:
+        // error sending request for url (...): error trying to connect:
+        // dns error: ...`. The new message is human-readable.
+        assert!(
+            err.contains("internet connection"),
+            "must coach user on internet connection: {err}"
+        );
+        assert!(
+            !err.contains("error sending request"),
+            "must not leak the reqwest error chain: {err}"
+        );
+    }
+
+    #[tokio::test]
+    async fn install_surfaces_stream_interruption() {
+        // Server promises 1 KB but closes the socket after a few bytes.
+        // Without classify_reqwest_error the user would see the raw
+        // `hyper::Error(IncompleteMessage)` chain.
+        let server = MockServer::start().await;
+        Mock::given(method("GET"))
+            .and(path("/claude"))
+            .respond_with(
+                ResponseTemplate::new(200)
+                    .insert_header("content-length", "1024")
+                    .set_body_bytes(b"short".to_vec()),
+            )
+            .mount(&server)
+            .await;
+
+        let entry = entry_for(&server.uri(), b"unused");
+        let dest_dir = tempfile::tempdir().unwrap();
+        let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
+
+        // The mock may complete the body OR cut the stream depending on
+        // wiremock internals. Both paths must produce a user-readable
+        // error, never the raw reqwest chain. If the stream completes
+        // cleanly the checksum mismatch fires instead — also acceptable
+        // and also user-readable.
+        let err = result.expect_err("undersized response must error somewhere");
+        assert!(
+            err.contains("internet connection") || err.contains("corrupted"),
+            "must collapse to a user-readable error: {err}"
+        );
+        assert!(
+            !err.contains("hyper::") && !err.contains("IncompleteMessage"),
+            "must not leak hyper internals: {err}"
         );
     }
 }

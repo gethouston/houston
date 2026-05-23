@@ -22,6 +22,13 @@
     "cancelWaiting": "Cancelar e tentar de novo",
     "installedCheckAgain": "Já está instalado? Verificar de novo"
   },
+  "claudeInstall": {
+    "installing": "Baixando Claude Code...",
+    "installingWithProgress": "Baixando Claude Code... {{progress}}%",
+    "failedTitle": "Houston não conseguiu baixar Claude Code",
+    "preparing": "Houston está baixando Claude Code em segundo plano. Se não começar, tente novamente abaixo.",
+    "retry": "Tentar baixar de novo"
+  },
   "signOutConfirm": {
     "title": "Sair de {{provider}}?",
     "description": "Houston vai parar de usar {{provider}} até você entrar de novo. As missões em andamento podem terminar o turno atual.",
