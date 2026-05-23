@@ -1,21 +1,24 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 
 import {
   useActiveAgentCredential,
   useRevokeAgentCredential,
 } from "../../../hooks/queries/use-agent-credentials";
+import { AuthorizeAgentDialog } from "./authorize-agent-dialog";
 
 interface Props {
+  agentId: string;
   agentName: string;
   agentPath: string;
 }
 
 /** One row in the Authorized agents list. */
-export function AgentCredentialsRow({ agentName, agentPath }: Props) {
+export function AgentCredentialsRow({ agentId, agentName, agentPath }: Props) {
   const { t } = useTranslation("settings");
   const credential = useActiveAgentCredential(agentPath);
   const revoke = useRevokeAgentCredential(agentPath);
+  const [authOpen, setAuthOpen] = useState(false);
 
   const shortId = useMemo(() => {
     if (!credential) return null;
@@ -51,11 +54,11 @@ export function AgentCredentialsRow({ agentName, agentPath }: Props) {
 
       {credential ? <StatusPill status={credential.status} /> : null}
 
-      {credential ? (
+      {credential && credential.status === "active" ? (
         <button
           type="button"
           className="rounded-full border border-black/15 px-3 h-8 text-xs font-medium hover:bg-gray-50 disabled:opacity-50"
-          disabled={revoke.isPending || credential.status !== "active"}
+          disabled={revoke.isPending}
           onClick={() => {
             if (window.confirm(t("agents.revokeConfirm"))) {
               revoke.mutate(credential.credential_id);
@@ -64,7 +67,23 @@ export function AgentCredentialsRow({ agentName, agentPath }: Props) {
         >
           {t("agents.revoke")}
         </button>
-      ) : null}
+      ) : (
+        <button
+          type="button"
+          className="rounded-full bg-gray-950 text-white px-3 h-8 text-xs font-medium hover:bg-gray-800"
+          onClick={() => setAuthOpen(true)}
+        >
+          {t("agents.authorize")}
+        </button>
+      )}
+
+      <AuthorizeAgentDialog
+        agentId={agentId}
+        agentName={agentName}
+        agentPath={agentPath}
+        open={authOpen}
+        onOpenChange={setAuthOpen}
+      />
     </li>
   );
 }

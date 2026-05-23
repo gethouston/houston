@@ -42,6 +42,7 @@ export function AgentsSection() {
         {agents.map((agent) => (
           <AgentCredentialsRow
             key={agent.id}
+            agentId={agent.id}
             agentName={agent.name}
             agentPath={agent.folderPath}
           />
