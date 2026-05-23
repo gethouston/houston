@@ -64,6 +64,18 @@ export const FLAG_REGISTRY: Record<string, FlagDef> = {
     since: "0.4.0",
     graduationTarget: "permanent",
   },
+  "advanced.context_meter": {
+    key: "advanced.context_meter",
+    category: "advanced",
+    default: false,
+    labelKey: "advanced.flags.context_meter.label",
+    descriptionKey: "advanced.flags.context_meter.description",
+    enforcementSurface: "ui",
+    status: "beta",
+    learnMoreSlug: "context-meter",
+    since: "0.4.1",
+    graduationTarget: "permanent",
+  },
 };
 
 export type FlagMigration =
