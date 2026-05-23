@@ -173,13 +173,20 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                 items.push(FeedItem::Thinking(String::new()));
             }
             acc.thinking_placeholder_open = false;
-            // Emit usage as FinalResult
+            // Emit usage as FinalResult. Token fields populate the
+            // `advanced.context_meter` wheel; codex doesn't emit
+            // cost_usd or duration_ms, and Anthropic-style prompt
+            // caching is not exposed by codex either.
             if let Some(usage) = &event.usage {
                 let total = usage.input_tokens.unwrap_or(0) + usage.output_tokens.unwrap_or(0);
                 items.push(FeedItem::FinalResult {
                     result: format!("{total} tokens used"),
                     cost_usd: None,
                     duration_ms: None,
+                    input_tokens: usage.input_tokens,
+                    output_tokens: usage.output_tokens,
+                    cache_creation_input_tokens: None,
+                    cache_read_input_tokens: usage.cached_input_tokens,
                 });
             }
             items

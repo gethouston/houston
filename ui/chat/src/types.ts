@@ -22,6 +22,14 @@ export type FeedItem =
         result: string;
         cost_usd: number | null;
         duration_ms: number | null;
+        /** Tokens the model saw in its context this turn (Anthropic-only on Claude; codex/gemini may be null). */
+        input_tokens: number | null;
+        /** Tokens the model generated this turn. */
+        output_tokens: number | null;
+        /** Tokens written to Anthropic prompt cache this turn. Null when caching is off. */
+        cache_creation_input_tokens: number | null;
+        /** Tokens served from Anthropic prompt cache this turn. Null when caching is off. */
+        cache_read_input_tokens: number | null;
       };
     };
 

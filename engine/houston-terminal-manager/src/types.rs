@@ -1,6 +1,21 @@
 use crate::provider_error_kind::ProviderError;
 use serde::{Deserialize, Serialize};
 
+/// Token usage info emitted on the Anthropic `result` envelope.
+///
+/// All fields are optional because (a) older claude-code versions may
+/// omit some and (b) Anthropic only populates cache fields when prompt
+/// caching is active for the request. Consumers should treat absent =
+/// unknown, not zero. The `advanced.context_meter` wheel uses
+/// `input_tokens` as the canonical "context fill" reading.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct UsageInfo {
+    pub input_tokens: Option<u64>,
+    pub output_tokens: Option<u64>,
+    pub cache_creation_input_tokens: Option<u64>,
+    pub cache_read_input_tokens: Option<u64>,
+}
+
 /// Events parsed from Claude's `--output-format stream-json` NDJSON output.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -34,6 +49,10 @@ pub enum ClaudeEvent {
         cost_usd: Option<f64>,
         duration_ms: Option<u64>,
         session_id: Option<String>,
+        /// Token usage emitted by claude-code's `result` event.
+        /// Used by `advanced.context_meter` to populate the in-composer
+        /// wheel. Optional because not every CLI version emits it.
+        usage: Option<UsageInfo>,
         #[serde(flatten)]
         extra: serde_json::Value,
     },
@@ -180,11 +199,19 @@ pub enum FeedItem {
     ToolResult { content: String, is_error: bool },
     /// System message (session start, etc.).
     SystemMessage(String),
-    /// Session completed — cost/duration summary.
+    /// Session completed — cost/duration/usage summary.
+    /// Token fields populate the `advanced.context_meter` wheel; all are
+    /// optional because not every provider emits them (gemini parses
+    /// stats per turn but doesn't always echo back in result; codex
+    /// emits via `turn.completed`).
     FinalResult {
         result: String,
         cost_usd: Option<f64>,
         duration_ms: Option<u64>,
+        input_tokens: Option<u64>,
+        output_tokens: Option<u64>,
+        cache_creation_input_tokens: Option<u64>,
+        cache_read_input_tokens: Option<u64>,
     },
     /// Visible files created or changed during the session.
     FileChanges(FileChanges),

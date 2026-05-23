@@ -60,6 +60,28 @@
     "model": "Model",
     "notConnected": "Not connected"
   },
+  "contextMeter": {
+    "title": "Context",
+    "tooltip": "{{used}} of {{max}} tokens ({{percent}}%)",
+    "estimatedNote": "Per-category counts are estimates. Total comes from the model.",
+    "breakdown": {
+      "free": "Free space",
+      "user_messages": "Your messages",
+      "assistant_messages": "Assistant messages",
+      "thinking": "Thinking",
+      "tool_input": "Tool calls",
+      "tool_output": "Tool results",
+      "system": "System"
+    },
+    "metrics": {
+      "turns": "Turns",
+      "duration": "Time",
+      "cost": "Cost",
+      "cacheHit": "Cache hit",
+      "toolCalls": "Tool calls",
+      "fileChanges": "Files changed"
+    }
+  },
   "reasoning": {
     "thinking": "Thinking...",
     "thoughtFor": "Thought for {{count}} seconds",

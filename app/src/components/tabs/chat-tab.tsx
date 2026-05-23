@@ -30,6 +30,8 @@ import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { ChatModelSelector } from "../chat-model-selector";
+import { ContextMeter } from "../context-meter";
+import { FeatureGate } from "../FeatureGate";
 import { Paperclip } from "lucide-react";
 import { useChatDisplayLabels } from "../use-chat-display-labels";
 import { getDefaultModel, PROVIDERS } from "../../lib/providers";
@@ -361,12 +363,21 @@ export default function ChatTab({ agent }: TabProps) {
         onRemoveQueuedMessage={messageQueue.removeQueuedMessage}
         queuedLabels={queuedLabels}
         footer={
-          <ChatModelSelector
-            provider={effectiveProvider}
-            model={effectiveModel}
-            onSelect={handleModelSelect}
-            lockedProvider={visibleFeedItems.length > 0 ? effectiveProvider : null}
-          />
+          <div className="flex items-center gap-1.5">
+            <ChatModelSelector
+              provider={effectiveProvider}
+              model={effectiveModel}
+              onSelect={handleModelSelect}
+              lockedProvider={visibleFeedItems.length > 0 ? effectiveProvider : null}
+            />
+            <FeatureGate flag="advanced.context_meter">
+              <ContextMeter
+                feedItems={visibleFeedItems}
+                provider={effectiveProvider}
+                model={effectiveModel}
+              />
+            </FeatureGate>
+          </div>
         }
         attachMenu={({ openFilePicker }) => (
           <div className="flex flex-col gap-0.5">
