@@ -109,10 +109,14 @@ export interface AIBoardProps {
   /** Custom renderer for markdown links. Forwarded to ChatPanel. */
   renderLink?: import("@houston-ai/chat").ChatPanelProps["renderLink"]
   /**
-   * Composer footer content. When a function, called with `{ hasMessages }` so
-   * the consumer can lock the provider for active conversations.
+   * Composer footer content. When a function, called with
+   * `{ hasMessages, feedItems }` so the consumer can both lock the provider
+   * for active conversations AND render derived widgets like a context meter
+   * that need access to the current session's items.
    */
-  footer?: ReactNode | ((ctx: { hasMessages: boolean }) => ReactNode)
+  footer?:
+    | ReactNode
+    | ((ctx: { hasMessages: boolean; feedItems: FeedItem[] }) => ReactNode)
   /** Content rendered inside the composer above the textarea. */
   composerHeader?: ReactNode | ((ctx: { hasMessages: boolean }) => ReactNode)
   /** Popover menu anchored to the composer's paperclip button. When a
@@ -530,7 +534,11 @@ export function AIBoard({
           onAttachmentRejections={onAttachmentRejections}
           onOpenLink={onOpenLink}
           renderLink={renderLink}
-          footer={typeof footer === "function" ? footer({ hasMessages: activeFeed.length > 0 }) : footer}
+          footer={
+            typeof footer === "function"
+              ? footer({ hasMessages: activeFeed.length > 0, feedItems: activeFeed })
+              : footer
+          }
           composerHeader={typeof composerHeader === "function" ? composerHeader({ hasMessages: activeFeed.length > 0 }) : composerHeader}
           attachMenu={
             typeof attachMenu === "function"

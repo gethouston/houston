@@ -27,6 +27,8 @@ export interface BreakdownRow {
     | "tool_output"
     | "system";
   tokens: number;
+  /** Percent of the model's context window (NOT of usedTokens) — so this
+   *  row plus `freePercent` plus the other rows sum to ~100%. */
   percent: number;
 }
 
@@ -139,10 +141,15 @@ export function useContextStats(
       { key: "tool_output", tokens: toolOutputTokens, percent: 0 },
       { key: "system", tokens: systemTokens, percent: 0 },
     ];
+    // Both Free and the per-category rows report `% of context window` so
+    // that they sum to ~100% in the popover (matches Claude Code's
+    // reference behavior in the user-supplied screenshot). Using % of
+    // `usedTokens` would have made small categories visually dominate and
+    // would have prevented Free + categories from sharing a y-axis.
     const breakdown: BreakdownRow[] = seeds.map((b) => ({
       key: b.key,
       tokens: b.tokens,
-      percent: usedTokens > 0 ? (b.tokens / usedTokens) * 100 : 0,
+      percent: maxTokens > 0 ? (b.tokens / maxTokens) * 100 : 0,
     }));
 
     const freeTokens = Math.max(0, maxTokens - usedTokens);
