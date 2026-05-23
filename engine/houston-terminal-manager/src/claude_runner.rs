@@ -149,6 +149,13 @@ fn configure_claude_command(
         cmd.arg("--allowedTools").arg("");
     } else {
         cmd.arg("--dangerously-skip-permissions");
+        // AskUserQuestion is Claude Code's stdin-driven interactive prompt
+        // tool. In `-p` (headless) mode there is no TTY, so the tool returns
+        // a no-op result and the user sees an empty tool block instead of
+        // the questions. Houston's UI has no bidirectional answer surface
+        // for it either — agents must ask via plain text in the assistant
+        // message, which is what the system prompt already instructs.
+        cmd.arg("--disallowedTools").arg("AskUserQuestion");
         if disable_builtin_tools {
             cmd.arg("--disallowedTools")
                 .arg("Edit")
@@ -220,5 +227,47 @@ mod tests {
             CliRunOutcome::Completed,
             Some("claude-session-id"),
         ));
+    }
+
+    fn collect_args(cmd: &Command) -> Vec<String> {
+        cmd.as_std()
+            .get_args()
+            .map(|a| a.to_string_lossy().into_owned())
+            .collect()
+    }
+
+    #[test]
+    fn disallows_ask_user_question_by_default() {
+        // Headless `-p` mode has no TTY for AskUserQuestion's stdin
+        // prompt; without this flag the tool returns a no-op result and
+        // the UI shows an empty tool block. Agents must ask via plain
+        // text in the assistant message instead.
+        let mut cmd = Command::new("dummy");
+        configure_claude_command(&mut cmd, None, None, None, None, None, None, false, false);
+        let args = collect_args(&cmd);
+        assert!(args.iter().any(|a| a == "--disallowedTools"));
+        assert!(args.iter().any(|a| a == "AskUserQuestion"));
+    }
+
+    #[test]
+    fn disallows_ask_user_question_when_builtin_tools_disabled() {
+        let mut cmd = Command::new("dummy");
+        configure_claude_command(&mut cmd, None, None, None, None, None, None, true, false);
+        let args = collect_args(&cmd);
+        assert!(args.iter().any(|a| a == "AskUserQuestion"));
+        assert!(args.iter().any(|a| a == "Edit"));
+        assert!(args.iter().any(|a| a == "Write"));
+        assert!(args.iter().any(|a| a == "NotebookEdit"));
+    }
+
+    #[test]
+    fn disable_all_tools_skips_disallowed_list() {
+        // `--allowedTools ""` blocks every tool including AskUserQuestion,
+        // so the disallow list is redundant and not emitted.
+        let mut cmd = Command::new("dummy");
+        configure_claude_command(&mut cmd, None, None, None, None, None, None, false, true);
+        let args = collect_args(&cmd);
+        assert!(args.iter().any(|a| a == "--allowedTools"));
+        assert!(!args.iter().any(|a| a == "--disallowedTools"));
     }
 }
