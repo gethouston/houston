@@ -246,20 +246,43 @@ Never "You're absolutely right!" if better approach exists. Say it.
 
 User ALWAYS runs Claude in a per-task worktree. Each task = isolated branch in `.claude/worktrees/<name>/`. Main stays clean.
 
-Branch model:
-- `main` — releasable, protected, PRs only
-- `claude/<worktree-name>` — the worktree's own branch (auto-created on worktree spawn); commits go here
+### Remotes (fork-first)
 
-End-to-end flow (run without asking, unless a step is destructive and not pre-authorized):
-1. `git branch --show-current` → confirm it's the worktree branch (e.g. `claude/crazy-pare-b3d43d`). Never switch to `claude/wip` or `main`.
-2. Stage specific files. Never `git add -A`.
+Houston is a friendly fork. We always have two remotes:
+- `origin` → `gethouston/houston` — upstream, broomva CANNOT push or merge directly.
+- `fork`   → `broomva/houston`   — broomva owns this; push + self-merge are allowed.
+
+The fork-first rule: **commit lands in the fork remote first via a self-merged fork PR, then a companion PR is opened against upstream `origin/main` for maintainer review.** Never push the worktree branch to `origin` directly — broomva doesn't have the permission and the push will 403.
+
+### Branch model
+
+- `main` — releasable, protected, PRs only (both on fork and upstream).
+- `<worktree-name>` — the worktree's own branch (auto-created on worktree spawn); upstream-facing PRs use this branch.
+- `fork/<worktree-name>` — fork-side companion branch, rebased on `fork/main` so it merges cleanly against the fork's extra commits. Use a slashed prefix so the fork commit-message convention (`Merge branch fork/<name>`) stays consistent with existing history.
+
+### End-to-end flow (fork-first, then upstream)
+
+Run without asking, unless a step is destructive and not pre-authorized.
+
+1. `git branch --show-current` → confirm it's the worktree branch. Never switch to `claude/wip` or `main`.
+2. Stage specific files (never `git add -A`).
 3. Conventional commit (`feat:` `fix:` `docs:` `chore:` `refactor:` `style:` `test:`).
-4. `git push -u origin <worktree-branch>`.
-5. `gh pr create --base main --title "…" --body "…"` — summarise changes, list affected files.
-6. Merge the PR yourself: `gh pr merge --squash --delete-branch`. User does NOT review — they rely on the phase protocol + tests + typecheck to catch issues before commit.
-7. Cleanup (from the main repo checkout, not the worktree): `git worktree remove <path>` is handled by the harness on exit; just ensure the remote branch is deleted by `--delete-branch`.
+4. **Fork side — push and self-merge first:**
+   a. `git fetch fork main`.
+   b. `git checkout -b fork/<worktree-name> fork/main`.
+   c. `git cherry-pick <commit-sha>` to bring the fix on top of `fork/main`. Cherry-pick beats rebase here: it avoids replaying upstream commits (e.g. `release.yml` bumps) that the fork already absorbed via merge commits and would otherwise conflict.
+   d. `git push -u fork fork/<worktree-name>`.
+   e. `gh pr create --repo broomva/houston --base main --head fork/<worktree-name> --title "<conventional-title> — fork-side companion to upstream #<n>" --body "..."`. Body includes a one-line "Fork-side companion to upstream PR" link (the upstream number may not exist yet — open the upstream PR right after and edit the body to add the link if so).
+   f. `gh pr merge <num> --repo broomva/houston --squash --delete-branch --auto`. Fork main is protected with required `CI Success`; `--auto` queues the merge to fire once CI passes. Don't poll — the harness notifies on completion or the next turn surfaces the merged state.
+5. **Upstream side — open the companion PR (no self-merge):**
+   a. The worktree branch is already based on `origin/main`, so it pushes cleanly to fork without rebasing.
+   b. `git push -u fork <worktree-branch>` — push the upstream-targeted branch into the fork (upstream PRs require the head ref to live in a repo broomva controls).
+   c. `gh pr create --repo gethouston/houston --base main --head broomva:<worktree-branch> --title "..." --body "..."`. The upstream PR awaits maintainer review + merge.
+6. Cleanup: `git worktree remove <path>` is handled by the harness on exit; the fork branch is deleted automatically by `--delete-branch`. The upstream branch on the fork stays until the upstream PR is closed/merged.
 
-Never `git reset --hard` on `main`, never force-push to `main`, never merge without the PR step (even for trivial changes — PR is the audit trail).
+### Hard prohibitions
+
+Never `git reset --hard` on either `main`, never force-push to either `main`, never merge a fork PR with `--admin` to bypass the `CI Success` check (CI is the only gate that catches regressions before the fork's `main` updates), never open a fork PR with `--head` pointing at an unrebased branch (the conflict between the fork's extra commits and upstream's release-CI bumps will block the merge — cherry-pick onto `fork/main` instead).
 
 ---
 
