@@ -4,32 +4,43 @@ This is a friendly fork of [`gethouston/houston`](https://github.com/gethouston/
 
 ## What this fork is (and isn't)
 
-**Is** — a tracking fork that lets us move at our own velocity for downstream consumers (our own builds, our own agent-driven workflows) while every patch is also being contributed back as an individual upstream PR. Diff against upstream stays small and recoverable.
+**Is** — a tracking fork that lets us move at our own velocity for downstream consumers (our own builds, our own agent-driven workflows) while most patches are also contributed back as individual upstream PRs. Diff against upstream stays as small and recoverable as the toolchain allows.
 
-**Is not** — a hard fork. We don't carry long-term divergent patches. If upstream rejects a change, the fork-side companion is closed too. The only fork-exclusive artifacts are:
+**Is not** — a hard fork. We carry as few divergent patches as possible. If upstream rejects a feature change, the fork-side companion is closed and the commit reverted. The fork-exclusive artifacts are:
 
 - `BROOMVA.md` (this file) — attribution + provenance
-- *(future)* `.github/workflows/sync-upstream.yml` — daily-sync automation
+- `.github/workflows/sync-upstream.yml` — daily-sync automation
+- **Package manager: `bun` instead of upstream's `pnpm`** — a deliberate, accepted divergence (not upstreamed; [#247](https://github.com/gethouston/houston/pull/247) closed). This is the one structural patch we maintain across every sync: it touches `package.json`, lockfiles, workspace scripts, husky, and CI. See **Sync policy** for the conflict playbook it requires.
+- Agent-harness gitignore entries + the fork-workflow docs (also fork-only).
 
 Everything else flows upstream eventually or is reverted.
 
 ## Patches currently on `main`
 
-| Local commit | Upstream PR | Upstream status |
+After a consolidation pass (19 scattered PRs → 8), the upstream-bound patches are:
+
+| Patch | Upstream PR | Status |
 |---|---|---|
-| `chore(ci): add PR-time workflow (typecheck + cargo check + tests)` | [#242](https://github.com/gethouston/houston/pull/242) | OPEN |
-| `feat(scripts): houston-doctor.sh pre-PR diagnostic snapshot` | [#244](https://github.com/gethouston/houston/pull/244) | OPEN |
-| `chore(deps): add check-cli-deps.sh drift scout` | [#245](https://github.com/gethouston/houston/pull/245) | OPEN |
-| `docs(readme): correct monorepo layout counts and missing directories` | [#246](https://github.com/gethouston/houston/pull/246) | OPEN |
-| `feat(engine-client): non-Tauri engine config fallback via localStorage` | [#249](https://github.com/gethouston/houston/pull/249) | OPEN |
-| `docs(knowledge-base): add agent-dogfood-loop guide` | [#250](https://github.com/gethouston/houston/pull/250) | OPEN |
+| `docs(readme): correct monorepo layout counts` | [#246](https://github.com/gethouston/houston/pull/246) | OPEN |
+| `feat(engine-client): non-Tauri config fallback` | [#249](https://github.com/gethouston/houston/pull/249) | OPEN |
+| `fix(installer): surface claude-code install failures (closes #231)` | [#258](https://github.com/gethouston/houston/pull/258) | OPEN |
+| `fix(claude-runner): disallow AskUserQuestion in headless -p` | [#263](https://github.com/gethouston/houston/pull/263) | OPEN |
+| `feat(settings): advanced mode — infra + worktrees (A1)` | [#267](https://github.com/gethouston/houston/pull/267) | OPEN |
+| `feat(settings): advanced mode — context meter (A2, stacks on #267)` | [#269](https://github.com/gethouston/houston/pull/269) | OPEN |
+| `feat(scripts): optional contributor tooling` | [#271](https://github.com/gethouston/houston/pull/271) | OPEN |
+| `chore: agent-driven dev workflow (RFC #243/#251 companion)` | [#272](https://github.com/gethouston/houston/pull/272) | OPEN |
+
+Fork-exclusive (not upstreamed): the **`bun`** package manager ([#247](https://github.com/gethouston/houston/pull/247) closed), `BROOMVA.md`, `sync-upstream.yml`, agent-harness gitignore entries, and the fork-workflow docs.
 
 Open RFC discussions on upstream (no code, soliciting maintainer signal):
 
-- [#243 — RFC: bstack primitives + control-metalayer for autonomous-agent dev workflows](https://github.com/gethouston/houston/issues/243)
-- [#251 — RFC: agent-driven development workflows on Houston — strategies, gotchas, and asks](https://github.com/gethouston/houston/issues/251)
+- [#243 — bstack primitives + control-metalayer for autonomous-agent dev workflows](https://github.com/gethouston/houston/issues/243)
+- [#248 — Advanced settings: feature-flag-gated developer capabilities](https://github.com/gethouston/houston/issues/248)
+- [#251 — agent-driven development workflows on Houston](https://github.com/gethouston/houston/issues/251)
+- [#255 — adopt bstack P11 Dogfood Pattern in CONTRIBUTING](https://github.com/gethouston/houston/issues/255)
+- [#256 — dogfood-validation pattern + Lexical-editor input gotcha](https://github.com/gethouston/houston/issues/256)
 
-When upstream merges any of these PRs, the local commit becomes redundant — it'll show up in the next upstream-sync as a duplicate and squash cleanly. When upstream closes a PR, we close the fork-side companion and revert the local commit.
+When upstream merges a PR, the local commit becomes redundant and drops out on the next sync. When upstream closes one, we close the fork-side companion and revert the local commit — except the accepted `bun` divergence, which we keep.
 
 ## Branching policy
 
@@ -61,7 +72,14 @@ Or click **Sync fork** on github.com/broomva/houston. We do this:
 - Weekly as a discipline
 - After any of our upstream PRs merge (so the fork picks up our work via the upstream-flow)
 
-If upstream and fork diverge non-trivially (which shouldn't happen under this policy), the sync API returns a conflict — at which point we hand-resolve and re-push.
+Because the fork runs `bun` while upstream runs `pnpm`, **every sync conflicts** on `package.json`, the lockfiles (`bun.lock` vs `pnpm-lock.yaml`), workspace scripts, husky, and CI. This is expected, not an anomaly. Resolve it the same way each time:
+
+1. Take the **fork** side for `package.json` `scripts` + `packageManager`, `bun.lock`, husky hooks, and any `bun`-based CI workflow.
+2. Take the **upstream** side for real dependency changes (added/removed/bumped packages in `dependencies` / `devDependencies`).
+3. Delete any reintroduced `pnpm-lock.yaml`; run `bun install` to regenerate `bun.lock` against the merged `package.json`.
+4. `bun run typecheck` + `cargo check` before pushing the resolved sync.
+
+Any sync that touches none of those files fast-forwards clean.
 
 ## Repo settings
 
@@ -75,11 +93,11 @@ The fork has been configured for the friendly-fork model:
 | `delete_branch_on_merge` | `false` | **Critical** — fork-merge must NOT delete the branch, because the same branch is also the head of the upstream PR. Delete would orphan upstream. |
 | `allow_update_branch` | `true` | UI option to refresh fork PRs against latest main |
 
-Branch protection on `main`: none currently. Could add a required `CI Success` check (from the ci.yml landed via #242) if we want fork-side CI to gate merges; until then, merges are immediate-on-clean.
+Branch protection on `main`: the `CI Success` check is **required**. Fork PRs merge with `gh pr merge --squash --auto`, which fires once CI passes — never `--admin` to bypass it. `ci.yml` already lives on fork `main` (that check is what gates merges); the upstream-bound copy rides in the consolidated #272.
 
 ## Building from the fork
 
-Same as upstream. The patches are additive; nothing in upstream's `pnpm tauri dev` or `cargo build` pipeline is altered. Two operational notes:
+The fork uses **`bun`** instead of upstream's `pnpm` (the one structural divergence — see above); the Rust / `cargo build` pipeline is unchanged. Two operational notes:
 
 - **Signing certs are NOT shared.** Apple Developer ID, App Store Connect API keys, Tauri updater signing keys — see upstream's `release.yml` for what you'd need to wire up for your own signed macOS / Windows builds.
 - **Service tokens are NOT shared.** PostHog, Supabase, Sentry, Linear — same story. The build will compile without them; features that depend on them degrade gracefully.
@@ -91,8 +109,8 @@ Treat it like any other GitHub fork:
 ```bash
 git clone https://github.com/broomva/houston.git
 cd houston
-pnpm install
-cd app && pnpm tauri dev
+bun install
+cd app && bun run tauri dev
 ```
 
 For agent-driven workflows on top of Houston, see `knowledge-base/agent-dogfood-loop.md` (added in [#250](https://github.com/gethouston/houston/pull/250) / local commit `7d6b4da`).
