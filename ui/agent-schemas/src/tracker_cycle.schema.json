@@ -1,0 +1,24 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrackerCycle",
+  "description": "Time-boxed iteration. Linear Cycle; Jira Sprint-equivalent. Capability-gated (`cycles` or `sprints`) — absent on GitHub and most other providers.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["provider", "provider_id", "number", "team_id", "starts_at", "ends_at"],
+    "properties": {
+      "provider": { "type": "string", "enum": ["linear"] },
+      "provider_id": { "type": "string" },
+      "number": { "type": "integer", "minimum": 0 },
+      "name": { "type": ["string", "null"] },
+      "description": { "type": ["string", "null"] },
+      "team_id": { "type": "string" },
+      "starts_at": { "type": "string", "format": "date-time" },
+      "ends_at": { "type": "string", "format": "date-time" },
+      "completed_at": { "type": ["string", "null"], "format": "date-time" },
+      "progress": { "type": ["number", "null"], "minimum": 0, "maximum": 1, "description": "0..1 fraction; null when provider does not expose." },
+      "url": { "type": ["string", "null"], "format": "uri" }
+    },
+    "additionalProperties": false
+  }
+}

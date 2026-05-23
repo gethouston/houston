@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrackerInitiative",
+  "description": "Top-level cross-team strategic container projected from the tracker. Linear Initiative; Jira Epic-equivalent (partial); GitHub: capability absent. Capability-gated — only populated when provider declares `initiatives` capability.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["provider", "provider_id", "name", "status", "created_at", "updated_at"],
+    "properties": {
+      "provider": { "type": "string", "enum": ["linear"] },
+      "provider_id": { "type": "string", "description": "Provider-native UUID." },
+      "name": { "type": "string" },
+      "description": { "type": ["string", "null"] },
+      "status": {
+        "type": "string",
+        "description": "Provider-native status string. Linear: Planned/Active/Completed/Cancelled. Captured verbatim to preserve fidelity."
+      },
+      "icon": { "type": ["string", "null"] },
+      "color": { "type": ["string", "null"] },
+      "owner_id": { "type": ["string", "null"] },
+      "target_date": { "type": ["string", "null"], "format": "date" },
+      "url": { "type": ["string", "null"], "format": "uri" },
+      "created_at": { "type": "string", "format": "date-time" },
+      "updated_at": { "type": "string", "format": "date-time" }
+    },
+    "additionalProperties": false
+  }
+}

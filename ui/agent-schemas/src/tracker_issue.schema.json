@@ -1,0 +1,67 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrackerIssue",
+  "description": "Atomic work unit projected from the tracker. Linear Issue; Jira Issue; GitHub Issue; Asana Task. Provider-native state captured verbatim; `state_type` is Linear's typed category and only populated when provider declares it.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": [
+      "provider",
+      "provider_id",
+      "identifier",
+      "title",
+      "state",
+      "team_id",
+      "created_at",
+      "updated_at"
+    ],
+    "properties": {
+      "provider": { "type": "string", "enum": ["linear"] },
+      "provider_id": { "type": "string" },
+      "identifier": {
+        "type": "string",
+        "description": "Human-readable identifier (Linear: 'ENG-123'; Jira: 'PROJ-45'; GitHub: '#123')."
+      },
+      "title": { "type": "string" },
+      "description": { "type": ["string", "null"] },
+      "state": {
+        "type": "string",
+        "description": "Provider-native state name (e.g. 'In Progress', 'Done', 'Triage')."
+      },
+      "state_type": {
+        "type": ["string", "null"],
+        "enum": [null, "triage", "backlog", "unstarted", "started", "completed", "canceled"],
+        "description": "Linear's typed state category. Null on providers that do not expose typed states (GitHub, Trello)."
+      },
+      "priority": {
+        "type": ["integer", "null"],
+        "minimum": 0,
+        "maximum": 4,
+        "description": "Linear priority: 0=none, 1=urgent, 2=high, 3=medium, 4=low."
+      },
+      "estimate": { "type": ["number", "null"] },
+      "team_id": { "type": "string" },
+      "project_id": { "type": ["string", "null"] },
+      "project_milestone_id": { "type": ["string", "null"] },
+      "cycle_id": { "type": ["string", "null"] },
+      "parent_id": {
+        "type": ["string", "null"],
+        "description": "Sub-issue parent reference."
+      },
+      "assignee_id": {
+        "type": ["string", "null"],
+        "description": "Provider-side assignee UUID (human user, or Houston AppUser when delegated)."
+      },
+      "assigned_houston_agent_id": {
+        "type": ["string", "null"],
+        "description": "Houston-side overlay — which Houston agent path this issue is routed to (per routing.json policy). Not synced to provider."
+      },
+      "label_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+      "url": { "type": ["string", "null"], "format": "uri" },
+      "created_at": { "type": "string", "format": "date-time" },
+      "updated_at": { "type": "string", "format": "date-time" },
+      "completed_at": { "type": ["string", "null"], "format": "date-time" }
+    },
+    "additionalProperties": false
+  }
+}

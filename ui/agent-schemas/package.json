@@ -11,6 +11,12 @@
     "./routines.schema.json": "./src/routines.schema.json",
     "./routine_runs.schema.json": "./src/routine_runs.schema.json",
     "./config.schema.json": "./src/config.schema.json",
-    "./learnings.schema.json": "./src/learnings.schema.json"
+    "./learnings.schema.json": "./src/learnings.schema.json",
+    "./tracker_connection.schema.json": "./src/tracker_connection.schema.json",
+    "./tracker_initiative.schema.json": "./src/tracker_initiative.schema.json",
+    "./tracker_project.schema.json": "./src/tracker_project.schema.json",
+    "./tracker_cycle.schema.json": "./src/tracker_cycle.schema.json",
+    "./tracker_issue.schema.json": "./src/tracker_issue.schema.json",
+    "./tracker_agent_session.schema.json": "./src/tracker_agent_session.schema.json"
   }
 }

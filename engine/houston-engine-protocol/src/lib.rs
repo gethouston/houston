@@ -114,6 +114,115 @@ pub struct VersionResponse {
     pub build: Option<String>,
 }
 
+// ─── Tracker integration (V1: Linear only) ──────────────────────────
+//
+// Provider-tagged from day one (forward-compatible — adding Jira /
+// GitHub / Asana later is a value added to `TrackerProvider` and a
+// new concrete engine crate; no URL or DTO migration).
+//
+// Spec: docs/specs/2026-05-23-tracker-integration.html
+
+/// Project-tracker provider id. Lower-case wire string. V1 has only
+/// `linear`; adding a new value requires a corresponding concrete
+/// `engine/houston-<provider>` crate + capability declaration.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum TrackerProvider {
+    Linear,
+}
+
+impl TrackerProvider {
+    /// Parse the URL-path form (`"linear"` → [`TrackerProvider::Linear`]).
+    pub fn from_path_str(s: &str) -> Option<Self> {
+        match s {
+            "linear" => Some(Self::Linear),
+            _ => None,
+        }
+    }
+
+    /// Wire string form.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Linear => "linear",
+        }
+    }
+}
+
+/// Request body for `POST /v1/trackers/:provider/connect`.
+///
+/// The engine pulls `LINEAR_CLIENT_ID` / `LINEAR_CLIENT_SECRET` from
+/// the surrounding env, OR the caller supplies them here (dev flow —
+/// useful when the OAuth-app credentials are not yet packaged into a
+/// release build).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackerConnectRequest {
+    /// Absolute path of the Houston workspace this connection binds to.
+    pub workspace_path: String,
+    /// OAuth client id (defaults to env `LINEAR_CLIENT_ID`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+    /// OAuth client secret (defaults to env `LINEAR_CLIENT_SECRET`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub client_secret: Option<String>,
+}
+
+/// Response from `POST /v1/trackers/:provider/connect`. The caller
+/// opens `authorize_url` in the user's default browser; the engine
+/// listens for the OAuth callback on its fixed loopback port and
+/// completes the dance asynchronously. Caller polls `status` (or
+/// subscribes to `tracker:<provider>:<workspace>` events when those
+/// land in a follow-up).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackerConnectResponse {
+    pub provider: TrackerProvider,
+    pub authorize_url: String,
+    /// CSRF token echoed back from Linear's redirect — surfaced for
+    /// diagnostics only; the engine validates it internally.
+    pub state: String,
+    /// Localhost port where the engine listens for the OAuth callback.
+    /// The Linear OAuth-app config MUST include
+    /// `http://localhost:<port>/callback` as an allowed redirect URI.
+    pub callback_port: u16,
+}
+
+/// Response from `GET /v1/trackers/:provider/status`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackerStatusResponse {
+    pub provider: TrackerProvider,
+    pub connected: bool,
+    pub state: TrackerConnectionState,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub org_name: Option<String>,
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub connected_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_sync_at: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_error: Option<String>,
+}
+
+/// Lifecycle of a tracker connection. Surfaced to UI to drive the
+/// Connect/Connecting/Connected visual states.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum TrackerConnectionState {
+    /// No connection attempt has been made (no connection.json on disk).
+    NotConnected,
+    /// OAuth flow in flight — engine is listening on the callback port.
+    Connecting,
+    /// Token exchange succeeded; mirror is operational.
+    Connected,
+    /// Last attempt produced an error; UI surfaces `last_error`.
+    Error,
+}
+
 /// Helper: build an event envelope from a HoustonEvent.
 pub fn event_envelope(event: &HoustonEvent) -> EngineEnvelope {
     EngineEnvelope {

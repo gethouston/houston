@@ -14,6 +14,7 @@ members = [
     "engine/houston-agents-conversations",
     "engine/houston-file-watcher",
     "engine/houston-composio",
+    "engine/houston-linear",
     "engine/houston-cli-bundle",
     "engine/houston-claude-installer",
     "engine/houston-engine-core",
@@ -46,6 +47,7 @@ houston-ui-events = { version = "0.4.12", path = "engine/houston-ui-events" }
 houston-agents-conversations = { version = "0.4.12", path = "engine/houston-agents-conversations" }
 houston-file-watcher = { version = "0.4.12", path = "engine/houston-file-watcher" }
 houston-composio = { version = "0.4.12", path = "engine/houston-composio" }
+houston-linear = { version = "0.4.12", path = "engine/houston-linear" }
 houston-cli-bundle = { version = "0.4.12", path = "engine/houston-cli-bundle" }
 houston-claude-installer = { version = "0.4.12", path = "engine/houston-claude-installer" }
 houston-engine-core = { version = "0.4.12", path = "engine/houston-engine-core" }

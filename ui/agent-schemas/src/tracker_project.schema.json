@@ -1,0 +1,35 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrackerProject",
+  "description": "Multi-month deliverable container. Linear Project; Jira Version-equivalent; GitHub Projects v2-equivalent. Capability presence (`projects`) varies by provider — each provider's shape is captured verbatim.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["provider", "provider_id", "name", "state", "team_ids", "created_at", "updated_at"],
+    "properties": {
+      "provider": { "type": "string", "enum": ["linear"] },
+      "provider_id": { "type": "string" },
+      "name": { "type": "string" },
+      "description": { "type": ["string", "null"] },
+      "state": {
+        "type": "string",
+        "description": "Provider-native state. Linear: backlog | planned | started | paused | completed | canceled."
+      },
+      "team_ids": {
+        "type": "array",
+        "items": { "type": "string" },
+        "description": "Linear teams this project belongs to."
+      },
+      "initiative_ids": { "type": "array", "items": { "type": "string" }, "default": [] },
+      "lead_id": { "type": ["string", "null"] },
+      "icon": { "type": ["string", "null"] },
+      "color": { "type": ["string", "null"] },
+      "start_date": { "type": ["string", "null"], "format": "date" },
+      "target_date": { "type": ["string", "null"], "format": "date" },
+      "url": { "type": ["string", "null"], "format": "uri" },
+      "created_at": { "type": "string", "format": "date-time" },
+      "updated_at": { "type": "string", "format": "date-time" }
+    },
+    "additionalProperties": false
+  }
+}

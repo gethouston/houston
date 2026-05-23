@@ -17,6 +17,7 @@ pub mod routines;
 pub mod sessions;
 pub mod skills;
 pub mod store;
+pub mod trackers;
 pub mod tunnel;
 pub mod watcher;
 pub mod workspaces;

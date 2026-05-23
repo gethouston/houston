@@ -28,6 +28,7 @@ futures-util = "0.3"
 houston-engine-protocol = { version = "0.4.12", path = "../houston-engine-protocol" }
 houston-engine-core = { version = "0.4.12", path = "../houston-engine-core" }
 houston-composio = { workspace = true }
+houston-linear = { workspace = true }
 houston-claude-installer = { workspace = true }
 houston-cli-bundle = { workspace = true }
 houston-tunnel = { workspace = true }

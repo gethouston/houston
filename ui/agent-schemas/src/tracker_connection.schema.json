@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrackerConnection",
+  "description": "Workspace ↔ external project tracker binding (OAuth state + provider capabilities). One object per connected provider per workspace. Provider-agnostic shape; tagged by `provider` field. V1 only emits `linear`.",
+  "type": "object",
+  "required": ["provider", "org_id", "org_name", "capabilities", "scopes", "connected_at"],
+  "properties": {
+    "provider": {
+      "type": "string",
+      "enum": ["linear"],
+      "description": "Tracker provider id. Add more enum values as `engine/houston-<provider>` crates ship."
+    },
+    "org_id": { "type": "string", "description": "Provider-side organization/workspace UUID." },
+    "org_name": { "type": "string", "description": "Human-readable org name for UI display." },
+    "app_user_id": {
+      "type": ["string", "null"],
+      "description": "Linear AppUser UUID — Houston-as-app identity in the connected org. Populated after first agentSessionRegister call."
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "Provider feature flags: issues, projects, initiatives, cycles, milestones, subtasks, webhooks, agent_session, custom_fields, etc. UI gates features on presence."
+    },
+    "oauth_access_token_ref": {
+      "type": ["string", "null"],
+      "description": "Opaque ref to macOS keychain entry. The token itself never lives on disk."
+    },
+    "oauth_refresh_token_ref": { "type": ["string", "null"] },
+    "oauth_token_expires_at": { "type": ["string", "null"], "format": "date-time" },
+    "webhook_secret_ref": {
+      "type": ["string", "null"],
+      "description": "Opaque ref to keychain entry for HMAC webhook secret."
+    },
+    "scopes": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "OAuth scopes granted. Linear: read, write, app:assignable, app:mentionable, webhook:write."
+    },
+    "connected_at": { "type": "string", "format": "date-time" },
+    "last_sync_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false
+}

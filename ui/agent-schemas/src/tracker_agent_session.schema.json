@@ -1,0 +1,55 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TrackerAgentSession",
+  "description": "Active AgentSession state. Linear's 2026 agent-delegation protocol. Capability-gated (`agent_session`) — Linear-only as of 2026; absent on Jira/GitHub/Asana/Trello. Append-only thread of ingress+egress events with a 5-second response budget enforced by the engine.",
+  "type": "object",
+  "required": ["provider", "session_id", "issue_id", "state", "thread", "created_at"],
+  "properties": {
+    "provider": { "type": "string", "enum": ["linear"] },
+    "session_id": {
+      "type": "string",
+      "description": "Linear AgentSession UUID — the conversation thread on Linear's side."
+    },
+    "issue_id": {
+      "type": "string",
+      "description": "Linear Issue UUID the session is operating on."
+    },
+    "houston_agent_path": {
+      "type": ["string", "null"],
+      "description": "Workspace-relative Houston agent path the session was routed to."
+    },
+    "houston_session_key": {
+      "type": ["string", "null"],
+      "description": "Internal Houston session key (links to chat_feed in houston-db for replay)."
+    },
+    "state": {
+      "type": "string",
+      "enum": ["initialized", "working", "thought", "action", "complete", "error", "stalled"],
+      "description": "AgentSessionEvent state machine. `working` must be emitted within 5s of receipt."
+    },
+    "thread": {
+      "type": "array",
+      "description": "Append-only event log — ingress (from Linear) + egress (to Linear).",
+      "items": {
+        "type": "object",
+        "required": ["direction", "kind", "ts"],
+        "properties": {
+          "direction": { "type": "string", "enum": ["ingress", "egress"] },
+          "kind": {
+            "type": "string",
+            "enum": ["working", "thought", "action", "complete", "error", "delegate", "mention"]
+          },
+          "ts": { "type": "string", "format": "date-time" },
+          "payload": {
+            "description": "Provider-native event body; shape varies by `kind`."
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "created_at": { "type": "string", "format": "date-time" },
+    "updated_at": { "type": ["string", "null"], "format": "date-time" },
+    "completed_at": { "type": ["string", "null"], "format": "date-time" }
+  },
+  "additionalProperties": false
+}
