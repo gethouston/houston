@@ -82,6 +82,10 @@
       "worktrees": {
         "label": "Worktrees",
         "description": "Show the Worktree mode setting on each agent so missions can run in isolated git worktrees."
+      },
+      "context_meter": {
+        "label": "Context meter",
+        "description": "Add a token-usage wheel to the chat composer so you can see how much of the model's context window is in use."
       }
     },
     "resetAll": "Reset all advanced settings",

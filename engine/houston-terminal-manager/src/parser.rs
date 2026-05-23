@@ -164,6 +164,7 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
             is_error,
             cost_usd,
             duration_ms,
+            usage,
             ..
         } => {
             if subtype.as_deref() == Some("error") || is_error == Some(true) {
@@ -183,10 +184,15 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
                     });
                 return vec![FeedItem::ProviderError(typed)];
             }
+            let usage = usage.unwrap_or_default();
             vec![FeedItem::FinalResult {
                 result: result.unwrap_or_default(),
                 cost_usd,
                 duration_ms,
+                input_tokens: usage.input_tokens,
+                output_tokens: usage.output_tokens,
+                cache_creation_input_tokens: usage.cache_creation_input_tokens,
+                cache_read_input_tokens: usage.cache_read_input_tokens,
             }]
         }
         ClaudeEvent::StreamEvent { event: inner, .. } => acc.handle(inner),
@@ -442,14 +448,42 @@ mod tests {
             FeedItem::FinalResult {
                 cost_usd,
                 duration_ms,
+                input_tokens,
+                output_tokens,
                 ..
             } => {
                 assert_eq!(*cost_usd, Some(0.05));
                 assert_eq!(*duration_ms, Some(1234));
+                // No `usage` block on this fixture — token fields stay None.
+                assert_eq!(*input_tokens, None);
+                assert_eq!(*output_tokens, None);
             }
             other => panic!("expected FinalResult, got {other:?}"),
         }
         assert_eq!(extract_session_id(line), Some("s1".to_string()));
+    }
+
+    #[test]
+    fn parse_result_event_with_usage_populates_context_meter_fields() {
+        // Real-shape claude-code envelope with prompt caching active.
+        let line = r#"{"type":"result","result":"Done","cost_usd":0.12,"duration_ms":4500,"session_id":"s2","usage":{"input_tokens":24500,"output_tokens":810,"cache_creation_input_tokens":1200,"cache_read_input_tokens":18000}}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::FinalResult {
+                input_tokens,
+                output_tokens,
+                cache_creation_input_tokens,
+                cache_read_input_tokens,
+                ..
+            } => {
+                assert_eq!(*input_tokens, Some(24500));
+                assert_eq!(*output_tokens, Some(810));
+                assert_eq!(*cache_creation_input_tokens, Some(1200));
+                assert_eq!(*cache_read_input_tokens, Some(18000));
+            }
+            other => panic!("expected FinalResult, got {other:?}"),
+        }
     }
 
     #[test]

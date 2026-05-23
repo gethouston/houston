@@ -420,9 +420,23 @@ fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
             result,
             cost_usd,
             duration_ms,
+            input_tokens,
+            output_tokens,
+            cache_creation_input_tokens,
+            cache_read_input_tokens,
         } => {
+            // Token fields feed the `advanced.context_meter` wheel; they
+            // are persisted even when null so resumed conversations can
+            // distinguish "unknown" from "actually zero." Anthropic + gemini
+            // populate; codex populates input/output/cache_read only.
             let data = serde_json::json!({
-                "result": result, "cost_usd": cost_usd, "duration_ms": duration_ms
+                "result": result,
+                "cost_usd": cost_usd,
+                "duration_ms": duration_ms,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cache_creation_input_tokens": cache_creation_input_tokens,
+                "cache_read_input_tokens": cache_read_input_tokens,
             });
             Some(("final_result".into(), data.to_string()))
         }

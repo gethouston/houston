@@ -128,6 +128,19 @@ test("FLAG_REGISTRY contains advanced.worktrees with the expected shape", () => 
   assert.equal(flag.graduationTarget, "permanent");
 });
 
+test("FLAG_REGISTRY contains advanced.context_meter with the expected shape", () => {
+  const flag = FLAG_REGISTRY["advanced.context_meter"];
+  assert.ok(flag, "advanced.context_meter must be registered (Phase 2 of RFC #248)");
+  assert.equal(flag.key, "advanced.context_meter");
+  assert.equal(flag.category, "advanced");
+  assert.equal(flag.default, false);
+  assert.equal(flag.enforcementSurface, "ui");
+  assert.equal(flag.status, "beta");
+  assert.equal(flag.labelKey, "advanced.flags.context_meter.label");
+  assert.equal(flag.descriptionKey, "advanced.flags.context_meter.description");
+  assert.equal(flag.graduationTarget, "permanent");
+});
+
 test("every FLAG_REGISTRY entry has the required FlagDef fields", () => {
   for (const [key, flag] of Object.entries(FLAG_REGISTRY)) {
     assert.equal(flag.key, key, `key field must match registry key: ${key}`);

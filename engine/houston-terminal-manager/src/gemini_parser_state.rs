@@ -167,11 +167,22 @@ fn handle_result(
     if status == GeminiStatus::Error {
         items.push(classify_result_error(error.as_ref()));
     }
+    // Gemini stats expose total_tokens / input_tokens / output_tokens /
+    // cached. Map into the FinalResult shape so the
+    // `advanced.context_meter` wheel has data on gemini turns too.
+    let (input_tokens, output_tokens, cache_read_input_tokens) = stats
+        .as_ref()
+        .map(|s| (Some(s.input_tokens), Some(s.output_tokens), Some(s.cached)))
+        .unwrap_or((None, None, None));
     items.push(FeedItem::FinalResult {
         result: result_summary(stats.as_ref()),
         // Gemini emits no cost field — see schema findings §3.
         cost_usd: None,
         duration_ms,
+        input_tokens,
+        output_tokens,
+        cache_creation_input_tokens: None,
+        cache_read_input_tokens,
     });
     items
 }
@@ -390,10 +401,17 @@ mod tests {
                 result,
                 cost_usd,
                 duration_ms,
+                input_tokens,
+                output_tokens,
+                cache_read_input_tokens,
+                ..
             } => {
                 assert_eq!(*duration_ms, Some(1200));
                 assert!(cost_usd.is_none(), "gemini emits no cost field");
                 assert!(result.contains("100 tokens"));
+                assert_eq!(*input_tokens, Some(50));
+                assert_eq!(*output_tokens, Some(50));
+                assert_eq!(*cache_read_input_tokens, Some(0));
             }
             other => panic!("expected FinalResult, got {other:?}"),
         }
