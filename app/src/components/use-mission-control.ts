@@ -9,6 +9,7 @@ import {
   useSessionStatusStore,
 } from "../stores/session-status";
 import { useAllConversations } from "../hooks/queries";
+import { useVerifiedAgentPaths } from "../hooks/queries/use-verified-agent-paths";
 import { tauriActivity, tauriChat, tauriAttachments } from "../lib/tauri";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import type { Agent } from "../lib/types";
@@ -45,6 +46,7 @@ export function useMissionControl(agents: Agent[]) {
   );
 
   const { data: convos, isFetched } = useAllConversations(paths);
+  const verifiedAgentPaths = useVerifiedAgentPaths(paths);
 
   const agentColorMap = useMemo(() => {
     const m: Record<string, string | undefined> = {};
@@ -59,6 +61,9 @@ export function useMissionControl(agents: Agent[]) {
       .filter((c) => c.type === "activity" && c.status)
       .map((c) => {
         map[c.id] = c.agent_path;
+        const tags = verifiedAgentPaths.has(c.agent_path)
+          ? ["Verified by Beltic"]
+          : undefined;
         return {
           id: c.id,
           title: c.title,
@@ -67,12 +72,13 @@ export function useMissionControl(agents: Agent[]) {
           icon: createElement(AgentCardAvatar, { color: agentColorMap[c.agent_path] }),
           status: c.status!,
           updatedAt: c.updated_at ?? new Date().toISOString(),
+          ...(tags ? { tags } : {}),
           metadata: { agentPath: c.agent_path, sessionKey: c.session_key },
         };
       });
     pathMapRef.current = map;
     return result;
-  }, [convos, agentColorMap]);
+  }, [convos, agentColorMap, verifiedAgentPaths]);
 
   const loadHistory = useCallback(
     async (sessionKey: string): Promise<FeedItem[]> => {
