@@ -1,0 +1,690 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Houston Tracker Integration — Architecture Spec (Linear V1)</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --fg: #e8e8ea;
+    --muted: #9a9aa1;
+    --accent: #7c5cff;
+    --accent-soft: #2b1f5a;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --rule: #2a2a30;
+    --code-bg: #18181b;
+    --table-stripe: #141418;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  .wrap {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 20px; margin: 48px 0 12px; padding-top: 16px; border-top: 1px solid var(--rule); letter-spacing: -0.005em; }
+  h3 { font-size: 16px; margin: 28px 0 8px; color: var(--accent); }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  p, li { color: var(--fg); }
+  .meta {
+    color: var(--muted);
+    font-size: 13px;
+    margin: 0 0 28px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .meta span { display: inline-block; margin-right: 18px; }
+  .meta b { color: var(--fg); font-weight: 500; }
+  .tag {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--fg);
+    border-radius: 4px;
+    padding: 2px 8px;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-right: 6px;
+  }
+  .tag.good { background: #16331f; color: var(--good); }
+  .tag.warn { background: #3a2d10; color: var(--warn); }
+  .tag.bad { background: #3b1a1a; color: var(--bad); }
+  code, pre {
+    font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13px;
+  }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre {
+    background: var(--code-bg);
+    padding: 14px 16px;
+    border-radius: 6px;
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    line-height: 1.5;
+  }
+  pre code { background: transparent; padding: 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 12px 0;
+    font-size: 13.5px;
+  }
+  th, td {
+    text-align: left;
+    padding: 8px 12px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  th { color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+  tbody tr:nth-child(even) { background: var(--table-stripe); }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .callout {
+    border-left: 3px solid var(--accent);
+    background: var(--accent-soft);
+    padding: 12px 16px;
+    margin: 16px 0;
+    border-radius: 0 6px 6px 0;
+  }
+  .callout.warn { border-color: var(--warn); background: #2a200a; }
+  .callout.good { border-color: var(--good); background: #122118; }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  details {
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin: 8px 0;
+  }
+  summary {
+    cursor: pointer;
+    font-weight: 500;
+    padding: 4px 0;
+  }
+  .diagram {
+    margin: 20px 0;
+    background: var(--code-bg);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 20px;
+    overflow-x: auto;
+  }
+  .diagram svg { display: block; margin: 0 auto; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 720px) { .grid-2 { grid-template-columns: 1fr; } }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .footnote { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Houston Tracker Integration — Architecture Spec</h1>
+<p class="meta">
+  <span><b>Slug:</b> 2026-05-23-tracker-integration</span>
+  <span><b>Status:</b> <span class="tag warn">Proposed</span></span>
+  <span><b>V1 scope:</b> Linear-only</span>
+  <span><b>Forward-compat:</b> Multi-provider</span>
+  <span><b>Effort:</b> ~8–10 weeks (V1)</span>
+</p>
+
+<h2>1. Executive summary</h2>
+<p>
+  Houston ships a <b>first-class integration with Linear</b> in V1, aligned to Linear's 2026
+  <b>AppUser + AgentSession</b> agent-delegation protocol. The integration lives as a dedicated
+  Rust engine crate (<code>engine/houston-linear</code>) that speaks GraphQL directly to
+  <code>api.linear.app</code> via the <code>cynic</code> codegen client, owns OAuth 2.0,
+  ingests webhooks through the existing <code>houston-relay</code> Cloudflare Worker, and
+  implements the AgentSession protocol natively. A new typed namespace
+  <code>.houston/trackers/linear/</code> stores a raw-plus-projection mirror; engine REST routes
+  live under <code>/v1/trackers/:provider/*</code> with <code>provider=linear</code> the only
+  value in V1.
+</p>
+<p>
+  The design is <b>Linear-native in implementation, provider-agnostic in shape</b>. Filesystem
+  layout, route URLs, event variants, and the <code>TrackerProvider</code> typed enum are
+  forward-compatible with adding Jira, GitHub Issues, Asana, or other trackers later — at zero
+  meaningful cost today. The <code>TicketProvider</code> trait itself is <b>deliberately not
+  extracted</b> until the rule of three triggers (concrete implementation #2 ships and #3 is on
+  the immediate roadmap). Until then, Houston-Linear is a concrete crate, not the first instance
+  of a framework.
+</p>
+
+<h2>2. Problem & scope</h2>
+<h3>Problem</h3>
+<p>
+  Houston's mission is to let non-technical users orchestrate teams of AI agents across hundreds
+  of tasks. Linear is the dominant issue tracker for the kind of company Houston targets.
+  Today the only Linear surface in Houston is a one-shot GraphQL mutation that creates a bug
+  report (<code>app/src-tauri/src/bug_report/linear_graphql.rs</code>), plus opaque MCP tool
+  access via the Composio integration. Neither supports structural orchestration: webhook
+  reactivity, agent dispatch on issue assignment, status reconciliation, or alignment to
+  Linear's AgentSession protocol.
+</p>
+
+<h3>In scope (V1)</h3>
+<ul>
+  <li>OAuth 2.0 install for end users (workspace-scoped, registers Houston as a Linear OAuth app)</li>
+  <li>Bidirectional sync: read mirror of Initiatives, Projects, Cycles, Issues, ProjectMilestones, WorkflowStates; writeback of state changes, comments, AgentSession events</li>
+  <li>Linear AgentSession protocol implementation (AppUser registration, <code>AgentSessionEvent</code> ingress/egress within 5s response budget)</li>
+  <li>Webhook ingress via extended <code>houston-relay</code> Cloudflare Worker; HMAC verify at edge; deliver to engine over existing reverse-tunnel WebSocket</li>
+  <li>Polling reconciliation as backup for missed webhook deliveries</li>
+  <li>Routing policy: <code>(team, label_set, project) → houston_agent_path</code></li>
+  <li>Board renders Linear issues with their own card variant (state pill, <code>TEAM-N</code> identifier, assignee, project chip, labels)</li>
+  <li>Connect-Linear dialog + Settings → Workspace → Linear UI (team binding, routing policy editor, sync status)</li>
+  <li>en/es/pt localization for every new user-facing string</li>
+</ul>
+
+<h3>Out of scope (V1, deferred)</h3>
+<ul>
+  <li>Cross-workspace Initiative orchestration UI (V4)</li>
+  <li>Public Linear app directory listing (V1.5 — private per-workspace OAuth first)</li>
+  <li>Tracker abstraction (<code>engine/houston-tracker-port</code> trait crate) — waits for rule-of-three</li>
+  <li>Canonical cross-provider view (<code>.houston/trackers/canonical/</code>) — appears only with ≥2 providers and proven query need</li>
+  <li>Jira, GitHub Issues, Asana, Trello adapters — separate concrete crates when business need arrives</li>
+</ul>
+
+<h2>3. Decisions log</h2>
+<table>
+  <thead><tr><th>Decision</th><th>Choice</th><th>Reasoning</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Entity model</td>
+      <td>New first-class entity types (Initiative, Project, Cycle, Issue, WorkflowState) under <code>.houston/trackers/linear/</code></td>
+      <td>Houston's 4-status activity model (<code>running|needs_you|done|error</code>) is lossy against Linear's 6-typed workflow states plus per-team custom states. First-class types preserve fidelity. Activities stay for ad-hoc/local work.</td>
+    </tr>
+    <tr>
+      <td>AgentSession alignment</td>
+      <td>Day-one alignment with Linear's 2026 AgentSession protocol</td>
+      <td>Linear's directional bet for the agent era. Devin and Cursor already adopted. Building the older MCP-pull pattern in May 2026 would choose the deprecated path on day one. Larger MVP (8–10 wks) but no rework.</td>
+    </tr>
+    <tr>
+      <td>Authentication</td>
+      <td>OAuth 2.0 install from day one (no PAT fallback for end users)</td>
+      <td>End-user friendly. Required anyway for AgentSession scopes (<code>app:assignable</code>, <code>app:mentionable</code>, <code>webhook:write</code>). PAT path retained only for the existing bug-report admin flow.</td>
+    </tr>
+    <tr>
+      <td>Identity in Linear</td>
+      <td>One AppUser per Houston workspace; internal routing maps to individual agents</td>
+      <td>Simpler auth lifecycle than one-AppUser-per-agent. Attribution at workspace granularity in Linear UI. Per-agent attribution surfaces via Linear comment prefix when needed.</td>
+    </tr>
+    <tr>
+      <td>Provider abstraction (when)</td>
+      <td>Rule-of-three. Concrete <code>engine/houston-linear</code> crate; <b>no <code>TicketProvider</code> trait until impl #2 ships</b> and #3 is on the immediate roadmap</td>
+      <td>Sandi Metz "Wrong Abstraction" (2016) and Fowler refactoring patterns. Premature abstraction over heterogeneous trackers (Linear cycles, Jira sprints, GitHub Projects v2) yields LCD collapse or <code>Option&lt;...&gt;</code> parameter pollution. Wait for the second real implementation to learn what's truly common.</td>
+    </tr>
+    <tr>
+      <td>Forward-compatibility seams</td>
+      <td>Provider-scoped filesystem subdirs, <code>/v1/trackers/:provider/*</code> route family, provider-tagged event variants, <code>TrackerProvider</code> typed enum, capability declaration in <code>connection.json</code></td>
+      <td>All six adjustments are zero-cost-now. Pays back the first time tracker #2 lands — no URL migration, no event-variant rename, no filesystem reshuffle. Capability declaration gates UI features cheaply without a trait downcast.</td>
+    </tr>
+    <tr>
+      <td>GraphQL client</td>
+      <td><code>cynic</code> codegen against Linear's introspected schema</td>
+      <td>Linear's GraphQL surface is large and well-shaped. Type-safety at compile time catches schema drift. Linear is explicitly cited in cynic's docs as a complex-API target. Hand-written queries (current bug-report pattern) don't scale past ~10 queries.</td>
+    </tr>
+    <tr>
+      <td>Webhook ingress</td>
+      <td>Cloud relay via extended <code>houston-relay</code> Cloudflare Worker; <b>not</b> polling-only</td>
+      <td>AgentSession's 5s response budget makes polling latency a real problem. <code>houston-relay</code> already exists for the mobile PWA — adding <code>/linear/webhook/{tunnelId}</code> is one Worker route, not a new piece of infrastructure. Polling reconciliation remains as backup for missed webhooks.</td>
+    </tr>
+    <tr>
+      <td>Sync model</td>
+      <td>Raw + projection on disk; Linear canonical, Houston mirror is projection; bidirectional through documented routes only</td>
+      <td>Anti-corruption layer (DDD, Evans) realized on disk. Webhook idempotency via re-projection from raw. Schema drift absorbed at the projection boundary. No CRDT machinery — Linear is canonical for state.</td>
+    </tr>
+    <tr>
+      <td>Spec format</td>
+      <td>HTML in <code>docs/specs/</code> (this file) + markdown KB in <code>knowledge-base/</code></td>
+      <td>P18 (Audience): substantive human-read artifact → HTML; agent-loaded reference → markdown. Both produced as chunk 0 of the implementation plan.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>4. Architecture overview</h2>
+
+<div class="diagram">
+<svg viewBox="0 0 980 580" xmlns="http://www.w3.org/2000/svg" width="100%" style="max-width:980px">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9a9aa1"/>
+    </marker>
+    <marker id="arrow-accent" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7c5cff"/>
+    </marker>
+  </defs>
+
+  <!-- Linear cloud -->
+  <rect x="370" y="20" width="240" height="80" rx="10" fill="#1a1a22" stroke="#7c5cff" stroke-width="1.5"/>
+  <text x="490" y="48" text-anchor="middle" fill="#e8e8ea" font-size="14" font-weight="600">User's Linear org</text>
+  <text x="490" y="68" text-anchor="middle" fill="#9a9aa1" font-size="11">api.linear.app · GraphQL · webhooks</text>
+  <text x="490" y="84" text-anchor="middle" fill="#9a9aa1" font-size="11">canonical source of truth</text>
+
+  <!-- houston-relay (Cloudflare Worker) -->
+  <rect x="40" y="160" width="220" height="80" rx="8" fill="#1a1a22" stroke="#2a2a30" stroke-width="1"/>
+  <text x="150" y="186" text-anchor="middle" fill="#e8e8ea" font-size="13" font-weight="600">houston-relay</text>
+  <text x="150" y="204" text-anchor="middle" fill="#9a9aa1" font-size="11">Cloudflare Worker + DO</text>
+  <text x="150" y="221" text-anchor="middle" fill="#9a9aa1" font-size="11">/linear/webhook/{tunnelId}</text>
+
+  <!-- Webhook arrow -->
+  <line x1="380" y1="100" x2="170" y2="160" stroke="#9a9aa1" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="265" y="125" text-anchor="middle" fill="#9a9aa1" font-size="10">webhook + HMAC</text>
+
+  <!-- houston-linear crate -->
+  <rect x="360" y="160" width="260" height="200" rx="8" fill="#1a1a22" stroke="#7c5cff" stroke-width="1.5"/>
+  <text x="490" y="184" text-anchor="middle" fill="#e8e8ea" font-size="13" font-weight="600">engine/houston-linear (new)</text>
+  <text x="490" y="202" text-anchor="middle" fill="#9a9aa1" font-size="11">concrete crate — no trait yet</text>
+  <line x1="380" y1="214" x2="600" y2="214" stroke="#2a2a30"/>
+  <text x="380" y="232" fill="#e8e8ea" font-size="11">• cynic GraphQL client</text>
+  <text x="380" y="248" fill="#e8e8ea" font-size="11">• OAuth 2.0 + macOS keychain</text>
+  <text x="380" y="264" fill="#e8e8ea" font-size="11">• Webhook HMAC verify + dedupe</text>
+  <text x="380" y="280" fill="#e8e8ea" font-size="11">• AgentSession protocol</text>
+  <text x="380" y="296" fill="#e8e8ea" font-size="11">• Polling reconcile</text>
+  <text x="380" y="312" fill="#e8e8ea" font-size="11">• Rate-limit budgeter</text>
+  <text x="380" y="328" fill="#e8e8ea" font-size="11">• Capability declaration</text>
+  <text x="380" y="344" fill="#9a9aa1" font-size="11" font-style="italic">writes raw/ + projection</text>
+
+  <!-- Relay -> engine arrow (reverse tunnel WS) -->
+  <line x1="260" y1="200" x2="360" y2="240" stroke="#7c5cff" stroke-width="1.5" marker-end="url(#arrow-accent)"/>
+  <text x="310" y="195" text-anchor="middle" fill="#7c5cff" font-size="10">reverse-tunnel WS</text>
+
+  <!-- GraphQL direct from engine -->
+  <line x1="490" y1="160" x2="490" y2="105" stroke="#7c5cff" stroke-width="1.5" stroke-dasharray="3,3" marker-end="url(#arrow-accent)"/>
+  <text x="500" y="135" fill="#7c5cff" font-size="10">GraphQL (cynic)</text>
+
+  <!-- Composio MCP (secondary path) -->
+  <rect x="720" y="160" width="220" height="200" rx="8" fill="#1a1a22" stroke="#2a2a30" stroke-width="1"/>
+  <text x="830" y="184" text-anchor="middle" fill="#e8e8ea" font-size="13" font-weight="600">engine/houston-composio</text>
+  <text x="830" y="202" text-anchor="middle" fill="#9a9aa1" font-size="11">existing — unchanged</text>
+  <line x1="740" y1="214" x2="920" y2="214" stroke="#2a2a30"/>
+  <text x="740" y="232" fill="#9a9aa1" font-size="11">• MCP catalog (~70 Linear tools)</text>
+  <text x="740" y="248" fill="#9a9aa1" font-size="11">• Agent-side only</text>
+  <text x="740" y="264" fill="#9a9aa1" font-size="11">• Used when OAuth not connected</text>
+  <text x="740" y="280" fill="#9a9aa1" font-size="11">• Long-tail ops escape hatch</text>
+  <text x="740" y="306" fill="#fbbf24" font-size="11" font-style="italic">SECONDARY path</text>
+  <text x="740" y="322" fill="#9a9aa1" font-size="11">Not the integration backbone.</text>
+
+  <!-- Light Composio link to Linear -->
+  <line x1="830" y1="160" x2="610" y2="100" stroke="#9a9aa1" stroke-width="1" stroke-dasharray="2,4"/>
+
+  <!-- Filesystem -->
+  <rect x="200" y="400" width="580" height="140" rx="8" fill="#18181b" stroke="#2a2a30" stroke-width="1"/>
+  <text x="490" y="424" text-anchor="middle" fill="#e8e8ea" font-size="13" font-weight="600">.houston/trackers/linear/</text>
+  <text x="220" y="450" fill="#9a9aa1" font-size="11" font-family="ui-monospace, monospace">connection.json     {provider: "linear", capabilities: [...]}</text>
+  <text x="220" y="468" fill="#9a9aa1" font-size="11" font-family="ui-monospace, monospace">raw/{issues,projects,initiatives,cycles}/&lt;uuid&gt;.json</text>
+  <text x="220" y="486" fill="#9a9aa1" font-size="11" font-family="ui-monospace, monospace">raw/webhook_events.jsonl   ← append-only ledger</text>
+  <text x="220" y="504" fill="#9a9aa1" font-size="11" font-family="ui-monospace, monospace">{issues,projects,initiatives,cycles}.json   ← projection</text>
+  <text x="220" y="522" fill="#9a9aa1" font-size="11" font-family="ui-monospace, monospace">agent_sessions/&lt;id&gt;.json    sync_state.json</text>
+
+  <!-- engine -> filesystem arrow -->
+  <line x1="490" y1="360" x2="490" y2="400" stroke="#9a9aa1" stroke-width="1.2" marker-end="url(#arrow)"/>
+  <text x="510" y="385" fill="#9a9aa1" font-size="10">writes</text>
+
+  <!-- Legend -->
+  <rect x="40" y="400" width="140" height="140" rx="6" fill="#0e0e10" stroke="#2a2a30" stroke-dasharray="2,2"/>
+  <text x="110" y="420" text-anchor="middle" fill="#9a9aa1" font-size="10">LEGEND</text>
+  <line x1="55" y1="438" x2="80" y2="438" stroke="#7c5cff" stroke-width="1.5"/>
+  <text x="88" y="442" fill="#e8e8ea" font-size="11">primary path</text>
+  <line x1="55" y1="458" x2="80" y2="458" stroke="#9a9aa1" stroke-width="1"/>
+  <text x="88" y="462" fill="#e8e8ea" font-size="11">data writes</text>
+  <line x1="55" y1="478" x2="80" y2="478" stroke="#9a9aa1" stroke-width="1" stroke-dasharray="2,4"/>
+  <text x="88" y="482" fill="#e8e8ea" font-size="11">secondary</text>
+  <text x="55" y="510" fill="#e8e8ea" font-size="11">DO = Durable</text>
+  <text x="55" y="524" fill="#e8e8ea" font-size="11">Object</text>
+</svg>
+</div>
+
+<h3>The two access paths</h3>
+<div class="grid-2">
+  <div>
+    <h4>Primary (new) — engine-direct</h4>
+    <ul>
+      <li>Engine speaks GraphQL to <code>api.linear.app</code></li>
+      <li>Engine owns OAuth tokens (keychain)</li>
+      <li>Engine receives webhooks via <code>houston-relay</code></li>
+      <li>Engine implements AgentSession protocol</li>
+      <li>Engine writes raw + projection to <code>.houston/trackers/linear/</code></li>
+      <li>Deterministic, fast, observable</li>
+    </ul>
+  </div>
+  <div>
+    <h4>Secondary (existing) — Composio MCP</h4>
+    <ul>
+      <li>Agent CLI calls Composio MCP tools</li>
+      <li>Composio holds its own OAuth to Linear</li>
+      <li>No webhook reactivity, no AgentSession</li>
+      <li>Used when user has not OAuth-connected Houston-Linear</li>
+      <li>Long-tail ops escape hatch after OAuth connect</li>
+      <li>Zero engineering — unchanged from today</li>
+    </ul>
+  </div>
+</div>
+
+<h2>5. Filesystem layout</h2>
+
+<pre><code>~/.houston/workspaces/&lt;Workspace&gt;/&lt;Agent&gt;/.houston/trackers/
+  linear/                                       provider-named subdir (matches .houston/sessions/{anthropic,openai}/ convention)
+    connection.json                             { provider: "linear", org_id, oauth_*, capabilities: [...] }
+    raw/                                        provider-fidelity, as-received from GraphQL/webhooks
+      issues/&lt;linear_uuid&gt;.json
+      initiatives/&lt;linear_uuid&gt;.json
+      projects/&lt;linear_uuid&gt;.json
+      cycles/&lt;linear_uuid&gt;.json
+      workflow_states/&lt;linear_uuid&gt;.json
+      webhook_events.jsonl                      append-only event ledger (webhookId idempotency)
+    issues.json                                 Houston's projection (today: thin shape over raw; future: canonical-aware)
+    projects.json
+    initiatives.json
+    cycles.json
+    agent_sessions/&lt;id&gt;.json                    per-session thread state
+    sync_state.json                             { cursor, last_reconcile_at, last_error, in_flight }
+
+  # FUTURE — same shape, only appears when concrete crate exists:
+  # jira/    connection.json + raw/ + ...
+  # github/  connection.json + raw/ + ...
+  # canonical/   ← only when ≥2 providers + cross-provider query need proves it pays back</code></pre>
+
+<div class="callout">
+<p><b>Why raw + projection.</b> The raw layer captures whatever the provider sent, byte-for-byte parseable. The projection is what Houston's domain logic reads. Webhook delivery is at-least-once unordered (Linear); re-projecting from raw is idempotent. Schema drift in Linear's API is absorbed at the projection boundary — domain types never see a half-broken upstream change.</p>
+<p>Today, with only Linear, the projection is mostly a thin shape over raw. The cost is roughly 2× disk for ticket data (negligible). The shape pays back the first time a webhook duplicate, retry storm, or schema change happens — both inevitable on a real Linear integration.</p>
+</div>
+
+<h2>6. REST surface</h2>
+
+<table>
+  <thead><tr><th>Method</th><th>Path</th><th>Purpose</th></tr></thead>
+  <tbody>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/connect</code></td><td>Start OAuth (returns authorize URL)</td></tr>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/connect/complete</code></td><td>Finish OAuth (code → token exchange)</td></tr>
+    <tr><td>DELETE</td><td><code>/v1/trackers/:provider/connect</code></td><td>Disconnect (revoke token, wipe mirror)</td></tr>
+    <tr><td>GET</td><td><code>/v1/trackers/:provider/status</code></td><td>Connection state, capabilities, sync checkpoint, last error</td></tr>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/sync</code></td><td>Force reconcile</td></tr>
+    <tr><td>GET</td><td><code>/v1/trackers/:provider/issues</code></td><td>List mirrored issues with filter</td></tr>
+    <tr><td>GET</td><td><code>/v1/trackers/:provider/issues/:id</code></td><td>Read one issue (projection)</td></tr>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/issues/:id:start-session</code></td><td>Dispatch a Houston session on this issue (via routing policy)</td></tr>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/issues/:id:state</code></td><td>Writeback state change</td></tr>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/issues/:id:comment</code></td><td>Add comment</td></tr>
+    <tr><td>GET</td><td><code>/v1/trackers/:provider/agent-sessions/:id</code></td><td>Read AgentSession state (capability-gated)</td></tr>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/agent-sessions/:id:respond</code></td><td>Send AgentSessionEvent response (capability-gated)</td></tr>
+    <tr><td>POST</td><td><code>/v1/trackers/:provider/webhook</code></td><td>Receive forwarded webhook from <code>houston-relay</code></td></tr>
+    <tr><td>GET/PUT</td><td><code>/v1/trackers/:provider/routing</code></td><td>Read/write routing policy</td></tr>
+  </tbody>
+</table>
+
+<p class="footnote">
+  V1 has <code>provider=linear</code> as the only accepted value. Adding tracker #2 = a value
+  added to the <code>TrackerProvider</code> enum + a route handler match arm. No URL changes
+  for any client. Mirrors the existing Houston pattern at
+  <code>/v1/providers/:name/login</code> (anthropic, openai, gemini).
+</p>
+
+<h2>7. Events &amp; WebSocket topics</h2>
+
+<h3>HoustonEvent variants (added)</h3>
+<pre><code>HoustonEvent::TrackerConnectionChanged   { provider: TrackerProvider, workspace_id, state }
+HoustonEvent::TrackerSyncStatus          { provider, workspace_id, cursor, last_reconcile_at, error }
+HoustonEvent::TrackerIssuesChanged       { provider, workspace_id, changed_ids }
+HoustonEvent::TrackerProjectsChanged     { provider, workspace_id, changed_ids }
+HoustonEvent::TrackerInitiativesChanged  { provider, workspace_id, changed_ids }
+HoustonEvent::TrackerCyclesChanged       { provider, workspace_id, changed_ids }
+HoustonEvent::AgentSessionEvent          { provider, workspace_id, session_id, kind, payload }
+                                         // capability-gated — provider tag tells UI it's Linear-shaped today</code></pre>
+
+<h3>WebSocket topic</h3>
+<p>
+  New reserved topic <code>tracker:&lt;provider&gt;:&lt;workspace_id&gt;</code> in the existing
+  topic schema (matches <code>session:&lt;key&gt;</code>, <code>agent:&lt;path&gt;</code>). The
+  desktop app's firehose (<code>*</code>) subscription continues to work unchanged; remote
+  clients can subscribe narrowly to <code>tracker:linear:&lt;wsid&gt;</code>.
+</p>
+
+<h2>8. Capability model</h2>
+
+<p>
+  The <code>capabilities</code> array in <code>connection.json</code> is the canonical declaration
+  of what this provider supports. UI gates and engine routes both consult it.
+</p>
+
+<table>
+  <thead><tr><th>Capability</th><th>Linear V1</th><th>Jira (future)</th><th>GitHub (future)</th><th>Notes</th></tr></thead>
+  <tbody>
+    <tr><td><code>issues</code></td><td>yes</td><td>yes</td><td>yes</td><td>Universal</td></tr>
+    <tr><td><code>projects</code></td><td>yes</td><td>yes</td><td>yes (Projects v2)</td><td>Linear projects ≠ Jira projects ≠ GitHub projects — capability presence only</td></tr>
+    <tr><td><code>initiatives</code></td><td>yes</td><td>partial (Epic)</td><td>no</td><td>Linear Initiatives are top-level cross-team containers</td></tr>
+    <tr><td><code>cycles</code></td><td>yes</td><td>—</td><td>no</td><td>Linear cycle = Jira sprint conceptually (mapped if Jira lands)</td></tr>
+    <tr><td><code>sprints</code></td><td>no</td><td>yes</td><td>no</td><td>Jira-only</td></tr>
+    <tr><td><code>milestones</code></td><td>yes (ProjectMilestone)</td><td>yes (Version)</td><td>yes</td><td>Each tracker's flavor</td></tr>
+    <tr><td><code>subtasks</code></td><td>yes</td><td>yes (Sub-task)</td><td>partial (task list)</td><td></td></tr>
+    <tr><td><code>webhooks</code></td><td>yes</td><td>yes</td><td>yes</td><td>Universal</td></tr>
+    <tr><td><code>agent_session</code></td><td>yes</td><td>no</td><td>no</td><td>Linear-only as of 2026; capability gate hides UI on other providers</td></tr>
+    <tr><td><code>custom_fields</code></td><td>partial</td><td>yes</td><td>partial</td><td>Punt to V2+</td></tr>
+  </tbody>
+</table>
+
+<div class="callout warn">
+<p><b>Anti-pattern to avoid.</b> Adding <code>Option&lt;sprint_id&gt;</code>, <code>Option&lt;cycle_id&gt;</code>, <code>Option&lt;milestone_id&gt;</code> to a future <code>TicketProvider</code> trait method signature. Per Sandi Metz's "Wrong Abstraction" diagnostic, if the trait grows option parameters and adapters branch on which is <code>Some</code>, the abstraction is incorrect. Use capability traits (<code>Sprintable</code>, <code>Cyclable</code>) at extraction time instead.</p>
+</div>
+
+<h2>9. Linear-specifics</h2>
+
+<h3>GraphQL client</h3>
+<p>
+  <code>cynic</code> codegen against Linear's introspected schema. Schema vendored at
+  <code>engine/houston-linear/schema/linear.graphql</code> with a refresh script
+  (<code>scripts/refresh-linear-schema.sh</code>) that re-introspects and produces a diff PR.
+  Schema drift is then an explicit code review event, not a silent break.
+</p>
+
+<h3>OAuth 2.0 scopes (workspace install)</h3>
+<ul>
+  <li><code>read</code> — list initiatives, projects, cycles, issues, comments</li>
+  <li><code>write</code> — update issue state, add comments</li>
+  <li><code>app:assignable</code> — Houston AppUser can be assigned to issues</li>
+  <li><code>app:mentionable</code> — Houston AppUser can be @-mentioned</li>
+  <li><code>webhook:write</code> — register the webhook URL programmatically (or via Linear admin UI; both acceptable)</li>
+</ul>
+
+<h3>Webhook semantics</h3>
+<ul>
+  <li><b>Verification:</b> HMAC-SHA256 over raw request body, header <code>Linear-Signature</code></li>
+  <li><b>Replay defense:</b> <code>Linear-Timestamp</code> header; reject deliveries older than 5 min</li>
+  <li><b>Idempotency:</b> <code>webhookId</code> + <code>Linear-Delivery</code> tracked in append-only <code>raw/webhook_events.jsonl</code>; dedupe on replay</li>
+  <li><b>Delivery guarantees:</b> at-least-once, no ordering; engine projects events idempotently from raw</li>
+  <li><b>Retry policy (Linear-side):</b> 3 retries at +1m / +1h / +6h, then auto-disable; polling reconciliation backstops</li>
+</ul>
+
+<h3>AgentSession protocol</h3>
+<ul>
+  <li><b>Registration:</b> on first OAuth install, engine calls <code>agentSessionRegister</code> to declare Houston as an AppUser in the connected org</li>
+  <li><b>Ingress:</b> Linear emits <code>AgentSessionEvent</code> when the AppUser is delegated to (assigned, mentioned, or invited to a thread)</li>
+  <li><b>Response budget:</b> <b>5 seconds</b> from event receipt to first response event back to Linear. Engine sends a <code>working</code> event within the budget, then completes asynchronously</li>
+  <li><b>Egress:</b> engine emits <code>working</code>, <code>thought</code>, <code>action</code>, <code>complete</code>, <code>error</code> events back to Linear as the Houston session progresses</li>
+  <li><b>Routing:</b> on ingress, engine consults workspace's <code>routing.json</code> policy: <code>(team_uuid, label_set, project_uuid) → houston_agent_path</code>; matching agent receives a session start with issue context injected</li>
+</ul>
+
+<h3>Rate limit budgeter</h3>
+<p>
+  Linear's quota is <b>3,000,000 complexity points per hour</b> per OAuth app, with per-query
+  caps. The engine's rate-limit module tracks a rolling token bucket and an explicit
+  <code>first: N</code> on every paginated query (default <code>first: 50</code> is multiplicative
+  on child complexity). Webhook-driven mutations are budget-prioritized over polling-driven
+  refreshes.
+</p>
+
+<h2>10. Forward-compatibility plan</h2>
+
+<h3>The seams (locked in V1)</h3>
+<ol>
+  <li><b>Provider-scoped filesystem subdirs</b> — <code>.houston/trackers/&lt;provider&gt;/</code></li>
+  <li><b>Provider-as-path-param REST routes</b> — <code>/v1/trackers/:provider/*</code></li>
+  <li><b>Provider-tagged event variants</b> — <code>TrackerIssuesChanged { provider, ... }</code></li>
+  <li><b><code>TrackerProvider</code> typed enum</b> in <code>engine/houston-engine-protocol</code></li>
+  <li><b>Capability declaration</b> in <code>connection.json</code></li>
+  <li><b>Raw + projection layout</b> on disk for idempotent re-projection</li>
+</ol>
+
+<h3>The trait extraction trigger (NOT in V1)</h3>
+<div class="callout good">
+<p>Extract <code>engine/houston-tracker-port</code> trait crate when <b>all three</b> conditions hold:</p>
+<ol>
+  <li>Concrete tracker #2 ships to real users (not "planned" — running in production)</li>
+  <li>That crate has been maintained for ≥1 month under real traffic</li>
+  <li>Tracker #3 is committed to the immediate roadmap (= the third implementation that locks the trait)</li>
+</ol>
+<p>Until then: per Metz / Fowler, the abstraction we'd extract today would be a Linear-shaped LCD with <code>Option&lt;...&gt;</code> pollution. Wait.</p>
+</div>
+
+<h3>What the extraction looks like (when triggered)</h3>
+<ol>
+  <li>Diff <code>engine/houston-linear</code> and <code>engine/houston-{#2}</code> public surfaces</li>
+  <li>Extract genuinely-common methods (likely: <code>list_issues</code>, <code>get_issue</code>, <code>update_issue_state</code>, <code>add_comment</code>, <code>list_containers</code>) into <code>TicketProvider</code> trait</li>
+  <li>Provider-specific methods remain on the concrete crate; expose them via capability marker traits (<code>AgentSessionAware</code>, <code>Sprintable</code>, <code>Cyclable</code>, …) implemented optionally</li>
+  <li>Engine-core's <code>match provider {...}</code> arms refactor to trait-object dispatch through a registry (mirrors the existing AI <code>Provider</code> newtype pattern in <code>engine/houston-terminal-manager</code>)</li>
+  <li>Run-time downcast (<code>as_any().downcast_ref::&lt;dyn AgentSessionAware&gt;()</code>) or capability-flag lookup gates Linear-only code paths</li>
+</ol>
+
+<h2>11. Implementation chunks</h2>
+
+<table>
+  <thead><tr><th>#</th><th>Chunk</th><th>Area</th><th>Verify</th></tr></thead>
+  <tbody>
+    <tr><td><b>C0</b></td><td>This spec + KB markdown (<i>this chunk</i>)</td><td><code>docs/specs/</code>, <code>knowledge-base/</code></td><td>Cross-reference integrity, P18 audience rule satisfied</td></tr>
+    <tr><td>C1</td><td>6 JSON schemas (provider-tagged: <code>tracker_*</code>) + <code>engine/houston-linear</code> crate skeleton</td><td><code>ui/agent-schemas</code>, <code>engine/houston-linear</code></td><td><code>cargo test -p houston-linear --workspace</code></td></tr>
+    <tr><td>C1.5</td><td>Vendor Linear's GraphQL schema; <code>cynic-codegen</code> build script</td><td><code>engine/houston-linear/schema/</code></td><td>Codegen produces typed query modules</td></tr>
+    <tr><td>C2</td><td>cynic GraphQL client + OAuth 2.0 install + keychain storage + rate-limit budgeter</td><td><code>engine/houston-linear</code></td><td>Mock GraphQL pass; OAuth state machine green; budget exhaustion test</td></tr>
+    <tr><td>C3</td><td>Webhook verification (HMAC-SHA256, replay defense, idempotency, <code>raw/webhook_events.jsonl</code>)</td><td><code>engine/houston-linear</code></td><td>Golden-file payloads; replay rejection</td></tr>
+    <tr><td>C4</td><td>AgentSession protocol (AppUser register, ingress/egress, 5s budget)</td><td><code>engine/houston-linear</code></td><td>Round-trip against recorded fixtures; budget enforced</td></tr>
+    <tr><td>C5</td><td>Polling reconcile (cursor, paginated <code>updatedAt</code>, backfill)</td><td><code>engine/houston-linear</code></td><td>Simulated downtime → catch-up; cursor monotonic</td></tr>
+    <tr><td>C6</td><td>Protocol additions: <code>TrackerProvider</code> enum, event variants, topic, error codes</td><td><code>engine/houston-engine-protocol</code></td><td><code>cargo test</code>; serialization round-trip</td></tr>
+    <tr><td>C7</td><td>Domain orchestration: connection lifecycle, routing policy, bridge, prompt-assembly hook</td><td><code>engine/houston-engine-core</code></td><td>Bridge dispatches to correct agent; fallback when no policy match</td></tr>
+    <tr><td>C8</td><td>Agent files: seed <code>.houston/trackers/linear/</code> raw + projection layout</td><td><code>engine/houston-agent-files</code></td><td>Schema seeding, idempotent migration over re-runs</td></tr>
+    <tr><td>C9</td><td>File watcher emits <code>Tracker*</code> events; scheduler registers <code>tracker-reconcile</code> cron</td><td><code>engine/houston-file-watcher</code>, <code>engine/houston-scheduler</code></td><td>Synthetic write triggers event; cron fires reconcile</td></tr>
+    <tr><td>C10</td><td>Engine REST surface <code>/v1/trackers/:provider/*</code></td><td><code>engine/houston-engine-server</code></td><td>In-process HTTP+WS test; curl walkthrough</td></tr>
+    <tr><td>C11</td><td><code>houston-relay</code> extension: <code>/linear/webhook/{tunnelId}</code> with edge HMAC verify</td><td><code>houston-relay/</code> separate deploy</td><td>Miniflare integration test; HMAC reject path covered</td></tr>
+    <tr><td>C12</td><td>TS wire types mirror Rust DTOs</td><td><code>ui/engine-client</code></td><td><code>bun run typecheck</code></td></tr>
+    <tr><td>C13</td><td><code>LinearIssueCard</code> + projection card variant; state pill, <code>TEAM-N</code>, assignee, labels</td><td><code>ui/board</code> or <code>app/</code></td><td>Storybook render + typecheck</td></tr>
+    <tr><td>C14</td><td>Connect-Linear dialog + Settings → Workspace → Linear + Linear agent-shell tab + en/es/pt localization</td><td><code>app/</code></td><td><code>bunx tsc --noEmit</code> + <code>bun run check-locales</code> + manual flow</td></tr>
+    <tr><td>C15</td><td>Migrate <code>app/src-tauri/src/bug_report/linear*.rs</code> to thin callers</td><td><code>app/src-tauri</code></td><td><code>cargo check</code> + bug report E2E</td></tr>
+    <tr><td>C16</td><td>Docs update: architecture / engine-protocol / agent-manifest / files-first / auth / .env.example</td><td><code>knowledge-base/</code>, root</td><td>Lint pass + cross-reference integrity</td></tr>
+    <tr><td>C17</td><td>E2E integration tests + Linear sandbox fixtures + dogfood receipt</td><td>tests, scripts</td><td>Full arc verified in real Linear sandbox</td></tr>
+  </tbody>
+</table>
+
+<h3>Verification milestones</h3>
+<table>
+  <thead><tr><th>After</th><th>Demonstrable behavior</th></tr></thead>
+  <tbody>
+    <tr><td>C5</td><td>All <code>engine/houston-linear</code> unit tests green; GraphQL + OAuth + webhook + AgentSession + reconcile work in isolation</td></tr>
+    <tr><td>C10</td><td><code>curl /v1/trackers/linear/connect</code> → returns OAuth URL; completing callback populates <code>connection.json</code>; <code>/v1/trackers/linear/sync</code> triggers reconcile; mirror populates</td></tr>
+    <tr><td>C11</td><td>Cloud-relay receives a real Linear webhook, validates HMAC at edge, pushes to a connected engine over the existing tunnel WS</td></tr>
+    <tr><td>C14</td><td>Non-technical user clicks "Connect Linear" → OAuths → sees issues on board → clicks "Start session" on an issue → agent responds → Linear state updates + comment added</td></tr>
+    <tr><td>C17</td><td>Linear delegates work to Houston workspace via AgentSessionEvent; Houston responds within 5s budget; finishes the task; state writeback verified in a real Linear sandbox org</td></tr>
+  </tbody>
+</table>
+
+<h2>12. Risks &amp; mitigations</h2>
+
+<table>
+  <thead><tr><th>Risk</th><th>Severity</th><th>Mitigation</th></tr></thead>
+  <tbody>
+    <tr>
+      <td>Linear AgentSession protocol edge cases (5s budget interpretation, "working"/"complete" ordering, what counts as "stalled")</td>
+      <td><span class="tag warn">MED-HIGH</span></td>
+      <td>Record real fixtures against a Linear sandbox org in C4 — not synthetic. Promote findings to <code>research/entities/concept/linear-agent-session-*.md</code> as discovered.</td>
+    </tr>
+    <tr>
+      <td><code>houston-relay</code> Cloudflare Worker scaling under webhook retry storms (3 retries × 100+ in-flight issues × auto-disable timing)</td>
+      <td><span class="tag warn">MED</span></td>
+      <td>Dedupe at the relay edge using <code>webhookId</code> before queueing in Durable Object. Reject deliveries with stale <code>Linear-Timestamp</code> at edge.</td>
+    </tr>
+    <tr>
+      <td>Rate limit exhaustion (3M complexity pts/hr) under high-volume traffic</td>
+      <td><span class="tag warn">MED</span></td>
+      <td>Complexity-aware budgeter in C2. Explicit <code>first: N</code> on every paginated query. Webhook-driven mutations prioritized over polling.</td>
+    </tr>
+    <tr>
+      <td>OAuth refresh-token rotation races (Linear rotates on use)</td>
+      <td><span class="tag warn">MED</span></td>
+      <td>Mutex-guarded refresh in <code>engine/houston-linear/src/auth.rs</code>. Single in-flight refresh per connection.</td>
+    </tr>
+    <tr>
+      <td>State conflict (Linear + Houston both update same issue in same window)</td>
+      <td><span class="tag warn">MED</span></td>
+      <td>Linear is canonical for state. Houston writes only via documented routes that always include the prior <code>updatedAt</code> for optimistic concurrency. Webhooks reconcile asynchronously.</td>
+    </tr>
+    <tr>
+      <td>Linear app review timeline if/when published to Linear's app directory</td>
+      <td><span class="tag warn">LOW (V1.5)</span></td>
+      <td>Ship as private per-workspace OAuth app first. Public directory entry is V1.5.</td>
+    </tr>
+    <tr>
+      <td>Linear changes its GraphQL schema</td>
+      <td><span class="tag warn">LOW</span></td>
+      <td><code>cynic</code> codegen fails the build on schema drift. <code>scripts/refresh-linear-schema.sh</code> produces an explicit diff PR for review.</td>
+    </tr>
+    <tr>
+      <td>Forward-compat over-investment (no tracker #2 ever arrives)</td>
+      <td><span class="tag good">LOW</span></td>
+      <td>The six adjustments cost ~half a day. If tracker #2 never lands, the cost is paid; if it does, the cost is repaid 10× in avoided migration. Asymmetric bet.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>13. Open items requiring user / Linear-org action</h2>
+<ol>
+  <li><b>Register a Linear OAuth app</b> in your Linear org settings. Surface: <code>LINEAR_CLIENT_ID</code>, <code>LINEAR_CLIENT_SECRET</code>, <code>LINEAR_WEBHOOK_SECRET</code>. These go into <code>app/src-tauri/.env.example</code> + production env per Houston's secrets rule (env vars only, never literals).</li>
+  <li><b>Confirm webhook hostname</b>. Recommended: <code>tunnel.gethouston.ai/linear/webhook/&lt;tunnelId&gt;</code>. This matches the existing relay subdomain — the Worker extension in C11 mounts at this path.</li>
+  <li><b>Linear sandbox org</b> for C4 and C17 fixtures. Must be separate from production Linear.</li>
+  <li><b>Houston-as-Linear-app branding</b> — name, icon, OAuth consent screen copy. De-scoped for V1 (private app), but slots threaded through.</li>
+</ol>
+
+<h2>14. References</h2>
+<ul>
+  <li><a href="https://linear.app/developers/agent-interaction">Linear — Developing the Agent Interaction</a></li>
+  <li><a href="https://linear.app/docs/api-and-webhooks">Linear — API and Webhooks</a></li>
+  <li><a href="https://linear.app/developers/graphql">Linear — GraphQL Getting Started</a></li>
+  <li><a href="https://cynic-rs.dev/">cynic — A GraphQL Client For Rust</a></li>
+  <li><a href="https://sandimetz.com/blog/2016/1/20/the-wrong-abstraction">Sandi Metz — The Wrong Abstraction (2016)</a></li>
+  <li><a href="https://alistair.cockburn.us/hexagonal-architecture">Alistair Cockburn — Hexagonal Architecture</a></li>
+  <li><a href="https://www.stackone.com/blog/why-unified-apis-break-for-agents/">StackOne — 7 Unified API Limitations for AI Agent Integration</a></li>
+  <li><a href="https://backstage.io/docs/features/software-catalog/extending-the-model/">Backstage — Extending the Catalog Model</a></li>
+  <li>Houston <code>knowledge-base/architecture.md</code> §<a href="../../knowledge-base/architecture.md">Engine crates</a></li>
+  <li>Houston <code>knowledge-base/engine-protocol.md</code> §<a href="../../knowledge-base/engine-protocol.md">REST conventions</a></li>
+  <li>Houston <code>knowledge-base/files-first.md</code> §<a href="../../knowledge-base/files-first.md">Layout</a></li>
+  <li>Houston <code>knowledge-base/tracker-integration.md</code> — agent-readable companion (markdown)</li>
+</ul>
+
+<h2>15. Glossary</h2>
+<dl>
+  <dt><b>AgentSession</b></dt>
+  <dd>Linear's 2026 protocol for delegating work to agents (AppUsers). Driven by <code>AgentSessionEvent</code> webhooks; 5-second response budget.</dd>
+  <dt><b>AppUser</b></dt>
+  <dd>A Linear workspace user that is an installed app rather than a human. Free, non-billable. Houston registers one per connected workspace.</dd>
+  <dt><b>Anti-corruption layer (ACL)</b></dt>
+  <dd>DDD pattern (Evans). A translation boundary between an external system's model and your domain model. Realized on disk in Houston as <code>raw/</code> + projection.</dd>
+  <dt><b>Capability-typed adapter</b></dt>
+  <dd>Pattern where adapters declare what they can do via a capability set; callers gate code paths on capability presence rather than via lowest-common-denominator method unions.</dd>
+  <dt><b>Hexagonal architecture</b></dt>
+  <dd>Cockburn's ports-and-adapters pattern. Domain logic in the centre; ports define the contract; adapters implement provider-specific code outside the hexagon.</dd>
+  <dt><b>LCD collapse</b></dt>
+  <dd>Lowest-common-denominator collapse — when a unified abstraction shrinks as more providers are added, because only fields universal to all of them can be exposed.</dd>
+  <dt><b>Raw + projection</b></dt>
+  <dd>Two-layer state mirror: <code>raw/</code> stores provider-fidelity payloads as received; projection is what Houston's domain reads. Re-projection from raw is idempotent.</dd>
+  <dt><b>Rule of three</b></dt>
+  <dd>Fowler / Metz refactoring heuristic: wait for the third concrete implementation before extracting the abstraction. Premature abstraction over two superficially-similar concepts is the canonical mistake.</dd>
+  <dt><b>TrackerProvider</b></dt>
+  <dd>Typed Rust enum (<code>Linear</code> in V1; future <code>Jira</code>, <code>Github</code>, <code>Asana</code>). Lives in <code>engine/houston-engine-protocol</code>. Tags every event, route, file, connection.</dd>
+</dl>
+
+</div>
+</body>
+</html>
