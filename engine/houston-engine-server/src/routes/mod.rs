@@ -8,6 +8,7 @@ pub mod claude;
 pub mod composio;
 pub mod conversations;
 pub mod error;
+pub mod git;
 pub mod health;
 pub mod portable;
 pub mod preferences;
