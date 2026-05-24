@@ -75,7 +75,7 @@ HTTP status maps 1:1 (see `engine-server/src/routes/error.rs`).
 ### Current routes
 
 Full surface live. Every mutating route emits matching `HoustonEvent` on
-broadcast bus. 16 route modules wired in
+broadcast bus. 17 route modules wired in
 [`houston-engine-server/src/lib.rs`](../engine/houston-engine-server/src/lib.rs).
 Integration tests in `engine/houston-engine-server/tests/` — one file per
 module.
@@ -273,6 +273,33 @@ See [`docs/mobile-architecture.md`](../docs/mobile-architecture.md) for the full
 |---|---|---|
 | POST | `/v1/watcher/start` | Start `notify` watch on agent dir |
 | POST | `/v1/watcher/stop` | Stop |
+
+**Trackers** (project-tracker integrations — V1 = Linear only)
+
+All routes take `:provider` as a path param. V1 accepts `provider=linear`; unknown providers return `400 BAD_REQUEST`. The dispatch is concrete (no `TicketProvider` trait yet — rule-of-three applies); adding tracker #2 is a new concrete crate + a new arm in `handle_delivery` / `start_connect`, no URL or DTO migration.
+
+| Method | Path | Description |
+|---|---|---|
+| POST | `/v1/trackers/:provider/connect` | Start OAuth flow (returns authorize URL + callback port + state) |
+| DELETE | `/v1/trackers/:provider/connect?workspacePath=...` | Revoke tokens + wipe `connection.json` |
+| GET | `/v1/trackers/:provider/status?workspacePath=...` | Connection state, capabilities, org metadata, last sync |
+| GET | `/v1/trackers/:provider/issues?workspacePath=...` | Read the on-disk projection (returns `[]` for never-connected workspaces) |
+| POST | `/v1/trackers/:provider/sync?workspacePath=...` | Force a reconcile pass (returns issues seen + pages fetched + cursor advanced) |
+| POST | `/v1/trackers/:provider/webhook?workspacePath=...` | Receive a Linear webhook (raw body; engine verifies HMAC + dedupes) |
+
+**Webhook contract**: every response is HTTP 200 (Linear's spec — engine logs sig/replay failures and returns the verdict in the body). Headers `Linear-Signature` (lowercase hex HMAC-SHA256) and `Linear-Timestamp` (unix-ms) are mandatory. Response body shapes:
+
+```json
+{ "status": "accepted", "event_type": "Issue", "action": "create" }
+{ "status": "accepted", "event_type": "AgentSessionEvent", "action": "created", "dispatched_session_id": "ses_abc" }
+{ "status": "duplicate" }
+{ "status": "bad_signature" }
+{ "status": "replay_window_exceeded" }
+```
+
+`dispatched_session_id` is set when an AgentSessionEvent (`created` / `prompted`) was handed off to the agent shell via `<workspace>/.houston/inbox/linear/<session_id>.json`.
+
+In production the relay (`houston-relay/`, see C11) translates `tunnel_id → workspace_path` before forwarding; for dev / localhost testing the caller passes `workspacePath` directly. See `knowledge-base/tracker-integration.md` for the full operational surface.
 
 ## WebSocket envelope
 

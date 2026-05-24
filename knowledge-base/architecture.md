@@ -40,7 +40,7 @@ Houston = open platform. Organized as **6 products + 3 code libraries**.
 
 ## Engine crates (`engine/`)
 
-15 crates. All pure libraries. No frontend assumptions. Full list in
+16 crates. All pure libraries. No frontend assumptions. Full list in
 the workspace root `Cargo.toml`.
 
 - `houston-db` — libSQL. `chat_feed`, `preferences`, `engine_tokens` tables.
@@ -57,6 +57,7 @@ the workspace root `Cargo.toml`.
 - `houston-tunnel` — outbound reverse tunnel client; desktop engine dials the relay so mobile can reach it through NAT. Heartbeat + watchdog; tunnel identity stays stable across normal network failures and only re-allocates on relay auth rejection.
 - `houston-skills` — skill discovery + management
 - `houston-agent-portable` — `.houstonagent` package format (zip writer/reader, manifest schema, selection model). See `knowledge-base/portable-agents.md`.
+- `houston-linear` — Linear project-tracker integration. cynic-typed GraphQL client (vendored schema at `engine/houston-linear/schema/linear.graphql`); OAuth 2.0 + macOS-keychain token storage; HMAC-SHA256 webhook verification with `Linear-Timestamp` replay window + `webhookId` idempotency ledger; AgentSession protocol (Linear's 2026 AppUser delegation) with inbox-file handoff to the agent shell + `agentActivityCreate` egress; complexity-points rate-limit budgeter (3M pts/hr); cursor-based polling reconcile backstop for missed webhooks. Concrete crate — no `TicketProvider` trait until rule-of-three triggers. See `knowledge-base/tracker-integration.md` for the operational surface.
 - `houston-engine-core` — runtime container (`EngineState`, paths, `workspaces::*`, `agents::{activity,routines,routine_runs,config,conversations,files,prompt,self_improvement}`, `sessions::{history,provider,summarize}`, `routines::{runner,runs,scheduler,engine_dispatcher}`, `store`, `sync`, `worktree`, `provider`, `attachments`, `preferences`, `conversations`, `skills`, `agent_configs`). Domain logic relocated from the Tauri adapter.
 - `houston-engine-protocol` — wire types (REST DTOs, WS envelope, error codes, `PROTOCOL_VERSION`). Matches `ui/engine-client/src/types.ts`.
 - `houston-engine-server` — axum HTTP+WS binary `houston-engine`. The process every client talks to. Full REST surface live — 17 route modules covering workspaces, agents CRUD, sessions, agent data + files, routines + scheduler, skills, store, composio, claude (runtime install), tunnel + pairing, worktrees, shell, attachments, preferences, providers, agent-configs, conversations, watcher. See `knowledge-base/engine-protocol.md` for the complete table.

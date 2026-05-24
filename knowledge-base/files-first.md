@@ -35,6 +35,23 @@ If app-specific → `.houston/`.
       openai/{session_key}.history      all Codex resume ids used by this conversation
       openai/{session_key}.invalid      Codex resume ids rejected by the CLI
       {session_key}.sid                 legacy flat resume id, read as fallback only
+    trackers/                           project-tracker integrations
+      linear/                           per-provider subdir (Linear today)
+        connection.json                 OAuth org + capability declaration + keychain refs
+        sync_state.json                 polling cursors + last_reconcile_at + in_flight guard
+        issues.json                     projection (Houston's working shape)
+        projects.json
+        initiatives.json
+        cycles.json
+        raw/                            provider-fidelity, write-first ledger
+          issues/<linear_uuid>.json     one file per issue, sorted by updated_at
+          projects/<linear_uuid>.json
+          initiatives/<linear_uuid>.json
+          cycles/<linear_uuid>.json
+          webhook_events.jsonl          append-only event ledger (webhookId idempotency)
+        agent_sessions/<id>.json        per-Linear-AgentSession thread state
+    inbox/                              ingress queue for external systems
+      linear/<session_id>.json          Linear AgentSession delegation (created/prompted webhook)
   .agents/
     skills/<name>/SKILL.md      Claude Code skill convention
   .claude/

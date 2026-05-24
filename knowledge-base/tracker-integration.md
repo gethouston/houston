@@ -4,6 +4,28 @@ Houston's project-tracker integration story. **V1 = Linear only.** Designed prov
 
 Full spec → [`docs/specs/2026-05-23-tracker-integration.html`](../docs/specs/2026-05-23-tracker-integration.html).
 
+## Implementation status (V1)
+
+Tracks the chunk plan in the spec. Each chunk ships as a separate PR; `MERGED` means landed on fork main + reachable from the desktop binary on the next dev rebuild.
+
+| Chunk | Surface | Status |
+|---|---|---|
+| **C0** | Spec deliverables (this doc + the HTML spec) | ✅ MERGED (#21) |
+| **C1 + C1.5** | `houston-linear` crate + cynic codegen + vendored schema | ✅ MERGED (#25) |
+| **C2** | OAuth 2.0 flow + macOS keychain + viewer query + rate-limit budgeter | ✅ MERGED (#25) |
+| **C2-app** | Settings → Tracker UI: Connect / Connecting / Connected / Error cards + 4-state lifecycle | ✅ MERGED (#27) |
+| **C5 + C8 + C10-read** | Mirror pipeline: typed `IssuesQuery` + cursor-based reconcile + raw/projection + `GET issues` + `POST sync` | ✅ MERGED (#29) |
+| **C13** | `LinearIssuesList` preview (up to 5 mirrored issues with state pills) inside the Connected card | ✅ MERGED (#30) |
+| **C3** | Webhook verification (HMAC-SHA256, constant-time) + replay window + `webhook_events.jsonl` idempotency ledger + `POST webhook` route + `LinearError::Io` cleanup | ✅ MERGED (#34) |
+| **C4** | AgentSession protocol: typed `agentActivityCreate` mutation + `InboxDelegation` writer + webhook → inbox dispatcher + `dispatched_session_id` surface | ✅ MERGED (#35) |
+| **C4b** | Engine-core dispatcher (file-watcher → agent session start with delegation as first prompt) | ⏳ deferred |
+| **C7** | Routing policy (`routing.json` mapping team/label/project → houston_agent_path) + bridge | ⏳ pending |
+| **C11** | `houston-relay` Cloudflare Worker `/linear/webhook/{tunnelId}` extension (production-reachable webhook URL) | ⏳ pending |
+| **C14 proper** | Dedicated Linear tab in agent shell — full kanban view of mirrored issues with filters | ⏳ pending (C13 ships a preview in Settings as an interim surface) |
+| **C15** | Migrate `app/src-tauri/src/bug_report/linear*.rs` to thin callers into `houston-linear` (today uses static API key, distinct auth model from user OAuth) | ⏳ pending |
+| **C16** | KB docs cross-references (this section + cross-refs in architecture/engine-protocol/files-first) | ✅ IN-FLIGHT |
+| **C17** | E2E tests against a Linear sandbox + V1 dogfood receipt (OAuth → seed → mirror → webhook → AgentSession round-trip with screenshots / log tails) | ⏳ pending |
+
 ## TL;DR for agents working in this code
 
 | Question | Answer |
@@ -22,22 +44,27 @@ Full spec → [`docs/specs/2026-05-23-tracker-integration.html`](../docs/specs/2
 Matches Houston's existing `.houston/sessions/{anthropic,openai}/` convention (provider-scoped subdirs). See `knowledge-base/files-first.md`.
 
 ```
-~/.houston/workspaces/<Workspace>/<Agent>/.houston/trackers/
-  linear/
-    connection.json          { provider: "linear", org_id, oauth_*, capabilities: [...] }
-    raw/                     provider-fidelity, as-received
-      issues/<linear_uuid>.json
-      initiatives/<linear_uuid>.json
-      projects/<linear_uuid>.json
-      cycles/<linear_uuid>.json
-      workflow_states/<linear_uuid>.json
-      webhook_events.jsonl   append-only event ledger (webhookId idempotency)
-    issues.json              projection (Houston's working shape)
-    projects.json
-    initiatives.json
-    cycles.json
-    agent_sessions/<id>.json per-session thread state
-    sync_state.json          { cursor, last_reconcile_at, last_error, in_flight }
+~/.houston/workspaces/<Workspace>/<Agent>/
+  .houston/
+    trackers/
+      linear/
+        connection.json          { provider: "linear", org_id, oauth_*, capabilities: [...] }
+        raw/                     provider-fidelity, as-received
+          issues/<linear_uuid>.json
+          initiatives/<linear_uuid>.json
+          projects/<linear_uuid>.json
+          cycles/<linear_uuid>.json
+          workflow_states/<linear_uuid>.json
+          webhook_events.jsonl   append-only event ledger (webhookId idempotency) — V1 ships issues + webhooks
+        issues.json              projection (Houston's working shape) — V1 ships
+        projects.json            (V1 ships dir, populated by C5b)
+        initiatives.json
+        cycles.json
+        agent_sessions/<id>.json per-session thread state
+        sync_state.json          { cursor, last_reconcile_at, last_error, in_flight }
+    inbox/
+      linear/<session_id>.json   AgentSession delegation, written by webhook handler;
+                                 consumed by the agent shell file watcher
 ```
 
 **raw + projection is the anti-corruption layer realized on disk.** Linear webhooks are at-least-once unordered; re-projecting from raw is idempotent. Don't bypass — always write raw first, then project.
@@ -163,23 +190,24 @@ Schema refresh: `bash scripts/refresh-linear-schema.sh` re-introspects and produ
 
 Tokens stored via macOS keychain, mutex-guarded refresh. Pattern matches existing Composio auth (`engine/houston-composio/src/auth.rs`).
 
-### Webhook semantics
+### Webhook semantics — **IMPLEMENTED (C3, PR #34)**
 
-- Verification: HMAC-SHA256 over **raw** request body (not parsed JSON). Header: `Linear-Signature`.
-- Replay defense: `Linear-Timestamp` header; reject deliveries older than 5 minutes.
-- Idempotency: `webhookId` + `Linear-Delivery` headers; dedupe via `raw/webhook_events.jsonl` ledger.
+- Verification: HMAC-SHA256 over **raw** request body (not parsed JSON), constant-time comparison via `subtle::ConstantTimeEq` in `houston-linear::webhooks::verify_signature`. Header: `Linear-Signature` (lowercase hex; uppercase + trailing-whitespace tolerated for resilience).
+- Replay defense: `Linear-Timestamp` header (unix-ms); reject deliveries older than 5 minutes (`WEBHOOK_REPLAY_WINDOW_SECS = 300`). Check runs *before* any disk I/O — stale deliveries don't touch the keychain.
+- Idempotency: top-level `webhookId` field; dedupe via append-only `raw/webhook_events.jsonl` ledger scan (`houston-linear::webhook_ledger`). Corrupted lines skipped silently so one bad append doesn't false-negative subsequent dedup.
+- Engine always returns HTTP 200 (Linear's spec — non-2xx triggers retry). Sig/replay failures surface in the response body (`{ "status": "bad_signature" | "replay_window_exceeded" }`) and via `tracing::warn!` engine-side.
 - Delivery: at-least-once, no ordering. Engine re-projects idempotently from raw.
-- Retry policy (Linear-side): 3 retries at +1m / +1h / +6h, then auto-disable. Polling reconciliation backstops.
+- Retry policy (Linear-side): 3 retries at +1m / +1h / +6h, then auto-disable. Polling reconciliation backstops (`houston-linear::reconcile`).
 
-### AgentSession protocol
+### AgentSession protocol — **PARTIALLY IMPLEMENTED (C4, PR #35)**
 
 Linear's 2026 agent-delegation protocol.
 
-- **Registration**: on first OAuth install, engine calls `agentSessionRegister` → Houston declared as AppUser in the connected org.
-- **Ingress**: Linear emits `AgentSessionEvent` when the AppUser is delegated to (assigned, mentioned, invited).
-- **5s budget**: from event receipt to first response event back to Linear. Engine emits a `working` event within the budget, then completes asynchronously.
-- **Egress events**: `working` → `thought` → `action` → `complete` | `error`.
-- **Routing**: ingress consults `routing.json`:
+- **Registration** — *no explicit mutation*. The OAuth user installed with `app:assignable` + `app:mentionable` scopes IS the AppUser for the org; Houston identifies its AppUser via the viewer query and persists `app_user_id` to `connection.json`.
+- **Ingress (Linear → Houston)** — implemented in `houston-linear::commands::agent_session::dispatch_from_webhook`. On every accepted webhook delivery of `type=AgentSessionEvent` with action `created` / `prompted`, the handler extracts `session_id` + initial prompt body + issue/comment refs and writes an `InboxDelegation` to `<workspace>/.houston/inbox/linear/<session_id>.json` atomically (temp + rename, idempotent in-place overwrite for `prompted` follow-ups). The desktop agent shell picks up via the existing file watcher per the AI-native-reactivity invariant.
+- **5s budget**: from event receipt to first response back to Linear. The transport layer (HMAC verify + ledger + dispatch) returns inside the budget; the actual `working` activity post is the next step (C4b — engine-core dispatcher).
+- **Egress (Houston → Linear)** — `houston-linear::agent_session::post_activity` wraps the typed cynic mutation `CreateAgentActivity`. V1 supports four `AgentActivityKind` values: `Thought` / `Action` / `Response` / `Error`. Manual JSON post pattern (mirrors `queries::viewer::fetch_org_info`) keeps the call resilient to cynic `ReqwestExt` version drift.
+- **Routing** — `routing.json` lives in C7 (pending). V1 writes to the workspace-level inbox; without a routing policy the agent shell picks the active agent via its existing workspace selection. Spec:
   ```json
   {
     "rules": [
@@ -277,11 +305,21 @@ Then:
 | Linear GraphQL schema (vendored) | `engine/houston-linear/schema/linear.graphql` |
 | cynic codegen build script | `engine/houston-linear/build.rs` |
 | OAuth flow + keychain | `engine/houston-linear/src/auth.rs` |
-| Webhook verification + idempotency | `engine/houston-linear/src/webhooks.rs` |
-| AgentSession protocol | `engine/houston-linear/src/agent_session.rs` |
+| Webhook signature verification + replay window | `engine/houston-linear/src/webhooks.rs` |
+| Webhook idempotency ledger (`webhook_events.jsonl`) | `engine/houston-linear/src/webhook_ledger.rs` |
+| Webhook orchestrator (verify → dedup → dispatch) | `engine/houston-linear/src/commands/webhook.rs` |
+| AgentSession inbox writer + activity poster | `engine/houston-linear/src/agent_session.rs` |
+| AgentActivity cynic mutation | `engine/houston-linear/src/mutations/agent_activity.rs` |
+| AgentSession ingress dispatch + egress wrapper | `engine/houston-linear/src/commands/agent_session.rs` |
 | Polling reconcile | `engine/houston-linear/src/reconcile.rs` |
 | Rate-limit budgeter | `engine/houston-linear/src/rate_limit.rs` |
-| Domain orchestration (routing, bridge) | `engine/houston-engine-core/src/linear/mod.rs` |
+| Sync state cursors | `engine/houston-linear/src/sync_state.rs` |
+| OAuth callback HTTP listener | `engine/houston-linear/src/callback.rs` |
+| Pending-OAuth in-flight store | `engine/houston-linear/src/pending.rs` |
+| Projected `TrackerIssue` IO (raw + projection) | `engine/houston-linear/src/models.rs` |
+| Typed `IssuesQuery` (paginated cursor) | `engine/houston-linear/src/queries/issues.rs` |
+| Custom-scalar wrappers (`DateTime`, `JsonObject`, ...) | `engine/houston-linear/src/queries.rs` |
+| Domain orchestration (routing, bridge) | `engine/houston-engine-core/src/linear/mod.rs` *(C7 pending)* |
 | Engine REST routes | `engine/houston-engine-server/src/routes/trackers.rs` |
 | TrackerProvider enum + event variants | `engine/houston-engine-protocol/src/{lib,events}.rs` |
 | Cloudflare Worker route | `houston-relay/src/worker.ts` (path `/linear/webhook/{tunnelId}`) |
