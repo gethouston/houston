@@ -6,7 +6,9 @@ import {
   useTrackerDisconnect,
   useTrackerIssues,
   useTrackerSyncNow,
+  useTrackerConnectionList,
 } from "../../../hooks/queries";
+import { LinearConnectionsPanel } from "../../tracker/linear-connections-panel";
 import { osOpenUrl } from "../../../lib/os-bridge";
 import { useAgentStore } from "../../../stores/agents";
 import { useUIStore } from "../../../stores/ui";
@@ -51,6 +53,11 @@ export function TrackerSection() {
   const connecting = status.data?.state === "connecting" || connect.isPending;
   const issues = useTrackerIssues("linear", workspacePath, connecting);
   const syncNow = useTrackerSyncNow("linear", workspacePath);
+  // Workspace-many list (PR B): informational panel listing every
+  // Linear connection registered to the workspace. Hidden when only
+  // 0 or 1 connection exists since the single-card view above already
+  // covers that case.
+  const connectionList = useTrackerConnectionList("linear", workspacePath);
 
   if (!workspacePath) {
     return (
@@ -153,6 +160,11 @@ export function TrackerSection() {
           pending={connect.isPending}
         />
       )}
+
+      <LinearConnectionsPanel
+        data={connectionList.data}
+        isLoading={connectionList.isLoading}
+      />
     </section>
   );
 }

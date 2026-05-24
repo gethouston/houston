@@ -11,7 +11,9 @@ import {
   useTrackerStatus,
   useTrackerIssues,
   useTrackerSyncNow,
+  useTrackerConnectionList,
 } from "../../hooks/queries";
+import { LinearConnectionsPanel } from "./linear-connections-panel";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { osOpenUrl } from "../../lib/os-bridge";
@@ -45,6 +47,12 @@ export function LinearView() {
   const status = useTrackerStatus("linear", workspacePath);
   const issues = useTrackerIssues("linear", workspacePath, false);
   const syncNow = useTrackerSyncNow("linear", workspacePath);
+  // Workspace-many list (PR B): surfaces the multi-connection
+  // panel below the kanban when 2+ Linear connections are registered
+  // to the workspace. PR C will gate the kanban itself per-org via
+  // a picker; today the kanban shows the current per-agent
+  // connection's projection.
+  const connectionList = useTrackerConnectionList("linear", workspacePath);
 
   // -- Lifecycle branch: no agent selected -----------------------
   if (!workspacePath) {
@@ -175,6 +183,12 @@ export function LinearView() {
           </Empty>
         }
       />
+      <div className="px-6 pb-4">
+        <LinearConnectionsPanel
+          data={connectionList.data}
+          isLoading={connectionList.isLoading}
+        />
+      </div>
     </ViewShell>
   );
 }

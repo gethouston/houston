@@ -17,6 +17,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   TrackerConnectRequest,
   TrackerConnectResponse,
+  TrackerConnectionList,
   TrackerIssue,
   TrackerProvider,
   TrackerReconcileResponse,
@@ -98,6 +99,36 @@ export function useTrackerDisconnect(
         });
       }
     },
+  });
+}
+
+function trackerConnectionsKey(
+  provider: TrackerProvider,
+  workspacePath: string | undefined,
+) {
+  return ["tracker", provider, workspacePath ?? "", "connections"] as const;
+}
+
+/**
+ * List every Linear connection registered to the workspace (PR A
+ * workspace-many primitive). The engine transparently migrates legacy
+ * per-agent connections on first call; the result is the merged view.
+ *
+ * Today's Settings card still consumes the single-connection
+ * `useTrackerStatus` as its primary surface; this hook drives the
+ * "all connections for this workspace" informational list rendered
+ * alongside. PR C will switch the per-org disconnect / sync surface
+ * to use this as the canonical read.
+ */
+export function useTrackerConnectionList(
+  provider: TrackerProvider,
+  workspacePath: string | undefined,
+) {
+  return useQuery<TrackerConnectionList>({
+    queryKey: trackerConnectionsKey(provider, workspacePath),
+    queryFn: () => tauriTrackers.listConnections(provider, workspacePath!),
+    enabled: !!workspacePath,
+    staleTime: STALE_MS,
   });
 }
 

@@ -19,6 +19,7 @@ export {
   useTrackerDisconnect,
   useTrackerIssues,
   useTrackerSyncNow,
+  useTrackerConnectionList,
 } from "./use-tracker";
 export {
   useRoutines,

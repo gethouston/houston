@@ -813,6 +813,7 @@ import type {
   TrackerProvider as EngineTrackerProvider,
   TrackerConnectRequest as EngineTrackerConnectRequest,
   TrackerConnectResponse as EngineTrackerConnectResponse,
+  TrackerConnectionList as EngineTrackerConnectionList,
   TrackerIssue as EngineTrackerIssue,
   TrackerReconcileResponse as EngineTrackerReconcileResponse,
   TrackerStatusResponse as EngineTrackerStatusResponse,
@@ -833,6 +834,21 @@ export const tauriTrackers = {
       // failed poll when the engine is bouncing or the connection
       // briefly drops. The Settings section surfaces last_error
       // inline instead.
+      { toast: false },
+    ),
+  /**
+   * List every Linear connection registered to a workspace (PR A
+   * workspace-many primitive). The engine transparently migrates
+   * legacy per-agent connections under the workspace into the
+   * workspace-level layout on first call. Today's UI consumes this
+   * informationally; PR C migrates the per-org disconnect / sync
+   * surface to use it as the primary read.
+   */
+  listConnections: (provider: EngineTrackerProvider, workspacePath: string) =>
+    call<EngineTrackerConnectionList>(
+      `tracker_${provider}_list_connections`,
+      () => getEngine().trackerListConnections(provider, workspacePath),
+      { workspacePath },
       { toast: false },
     ),
   disconnect: (provider: EngineTrackerProvider, workspacePath: string) =>

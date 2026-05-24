@@ -55,6 +55,13 @@
         "inProgress": "In progress",
         "done": "Done"
       }
+    },
+    "connections": {
+      "heading_one": "Workspace Linear connection ({{count}})",
+      "heading_other": "Workspace Linear connections ({{count}})",
+      "intro": "Every Linear org connected to this workspace. Each is mirrored under the workspace and shared by the agents inside.",
+      "moreCaps_one": "+ {{count}} more capability",
+      "moreCaps_other": "+ {{count}} more capabilities"
     }
   }
 }

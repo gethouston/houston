@@ -55,6 +55,13 @@
         "inProgress": "En progreso",
         "done": "Listo"
       }
+    },
+    "connections": {
+      "heading_one": "Conexión de Linear en este espacio de trabajo ({{count}})",
+      "heading_other": "Conexiones de Linear en este espacio de trabajo ({{count}})",
+      "intro": "Cada organización de Linear conectada a este espacio de trabajo. Todas se reflejan a nivel del espacio y los agentes dentro las comparten.",
+      "moreCaps_one": "+ {{count}} capacidad más",
+      "moreCaps_other": "+ {{count}} capacidades más"
     }
   }
 }
