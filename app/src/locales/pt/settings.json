@@ -85,7 +85,10 @@
       "submit": "Autorizar agente",
       "cancel": "Cancelar",
       "issuing": "Autorizando…",
-      "missingDeclaration": "Confirme a declaração antes de autorizar."
+      "missingDeclaration": "Confirme a declaração antes de autorizar.",
+      "identityRequiredTitle": "Verifique sua identidade primeiro",
+      "identityRequiredBody": "A Beltic exige que a pessoa que delegou autoridade seja uma identidade verificada. Abra Configurações, seção Identidade, verifique e volte.",
+      "delegatingFrom": "Delegando de"
     }
   },
   "account": {

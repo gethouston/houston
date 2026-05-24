@@ -240,6 +240,38 @@ pub fn run() {
                     engine_env.push(("HOUSTON_TUNNEL_URL".into(), v));
                 }
             }
+
+            // Beltic VC integration — debug-only staging defaults so
+            // `pnpm tauri dev` lights up the credentials flow without the
+            // dev needing to remember `export BELTIC_API_KEY=...` every
+            // session. Release builds NEVER see these literals (the
+            // cfg!(debug_assertions) gate strips them at compile time).
+            // Either env var, if set in the parent shell, wins over the
+            // default. Permissions on this key: credentials:read /
+            // :write / :revoke / :verify (no :delete) — matches what
+            // Houston's integration actually uses.
+            #[cfg(debug_assertions)]
+            {
+                if std::env::var("BELTIC_API_KEY").is_err() {
+                    engine_env.push((
+                        "BELTIC_API_KEY".into(),
+                        "sk_staging_9YCYmYYTf0CEGz0zgCDxXiP4yIlLNiUw".into(),
+                    ));
+                }
+                if std::env::var("BELTIC_BASE_URL").is_err() {
+                    engine_env.push((
+                        "BELTIC_BASE_URL".into(),
+                        "https://api.staging.beltic.com/v1".into(),
+                    ));
+                }
+            }
+            for var in ["BELTIC_API_KEY", "BELTIC_BASE_URL", "BELTIC_WEBHOOK_SECRET"] {
+                if let Ok(v) = std::env::var(var) {
+                    if !v.is_empty() {
+                        engine_env.push((var.into(), v));
+                    }
+                }
+            }
             // 30s banner timeout: first-run Gatekeeper scan on a notarized
             // sidecar can take 15–20s on slow machines.
             let slot = spawn_supervisor(binary, Duration::from_secs(30), engine_env, cb)

@@ -85,7 +85,10 @@
       "submit": "Authorize agent",
       "cancel": "Cancel",
       "issuing": "Authorizing…",
-      "missingDeclaration": "Confirm the declaration before authorizing."
+      "missingDeclaration": "Confirm the declaration before authorizing.",
+      "identityRequiredTitle": "Verify your identity first",
+      "identityRequiredBody": "Beltic requires the user that delegated authority to be a verified identity. Open Settings → Identity and verify, then come back.",
+      "delegatingFrom": "Delegating from"
     }
   },
   "account": {

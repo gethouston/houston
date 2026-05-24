@@ -9,8 +9,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
+import { AlertTriangle } from "lucide-react";
 
 import { useIssueAgentCredential } from "../../../hooks/queries/use-agent-credentials";
+import { useIdentity } from "../../../hooks/queries/use-identity";
 
 interface Props {
   agentId: string;
@@ -31,10 +33,14 @@ type Currency = (typeof CURRENCY_CHOICES)[number];
  * limits / currencies / confirmation rules, Houston builds the Beltic
  * IssueRequest and ships it.
  *
- * The `subject.id` (did:jwk) is a placeholder for this chunk — a follow-up
- * generates a real ES256 keypair server-side. Same for
- * `delegated_by_subject_id` which will pull from the workspace identity
- * credential once chunk 8 lands.
+ * Reads the user's active identity credential to fill
+ * `delegated_by_subject_id` per Beltic's FinCEN AML constraint — refuses
+ * to submit if there is no active identity (the modal directs the user
+ * to Settings → Identity → Verify instead).
+ *
+ * The agent's `subject.id` is sent as a `did:jwk:houston-<agentId>`
+ * placeholder; the engine route replaces it with a real ES256-derived
+ * did:jwk + persists the agent keypair (chunk 10).
  */
 export function AuthorizeAgentDialog({
   agentId,
@@ -45,6 +51,10 @@ export function AuthorizeAgentDialog({
 }: Props) {
   const { t } = useTranslation("settings");
   const issue = useIssueAgentCredential(agentPath);
+  const { data: identity } = useIdentity();
+
+  const activeIdentitySubjectId =
+    identity && identity.status === "active" ? identity.subject_id : null;
 
   const [dailyLimit, setDailyLimit] = useState("250");
   const [perTxMax, setPerTxMax] = useState("100");
@@ -59,7 +69,7 @@ export function AuthorizeAgentDialog({
     [agentId],
   );
 
-  function buildRequest() {
+  function buildRequest(delegatedBySubjectId: string) {
     const dailyCents = Math.round(Number(dailyLimit) * 100);
     const perTxCents = Math.round(Number(perTxMax) * 100);
     return {
@@ -95,8 +105,7 @@ export function AuthorizeAgentDialog({
         human_present: confirmMode !== "never",
         confirmation_threshold_cents:
           confirmMode === "threshold" ? Math.round(Number(threshold) * 100) : null,
-        // Placeholder — chunk 8 wires this to the real user credential id.
-        delegated_by_subject_id: "usr_houston_local",
+        delegated_by_subject_id: delegatedBySubjectId,
       },
       evidence_refs: [],
       ttl: "P30D" as const,
@@ -105,8 +114,9 @@ export function AuthorizeAgentDialog({
 
   async function onSubmit() {
     if (!declarationOk) return;
+    if (!activeIdentitySubjectId) return;
     try {
-      await issue.mutateAsync(buildRequest());
+      await issue.mutateAsync(buildRequest(activeIdentitySubjectId));
       onOpenChange(false);
       setDeclarationOk(false);
     } catch {
@@ -123,6 +133,25 @@ export function AuthorizeAgentDialog({
           </DialogTitle>
           <DialogDescription>{t("agents.consent.subtitle")}</DialogDescription>
         </DialogHeader>
+
+        {!activeIdentitySubjectId ? (
+          <div className="rounded-md border border-amber-300 bg-amber-50 p-3 flex gap-2 text-sm">
+            <AlertTriangle className="h-4 w-4 text-amber-700 mt-0.5 shrink-0" />
+            <div className="space-y-1">
+              <p className="font-medium text-amber-900">
+                {t("agents.consent.identityRequiredTitle")}
+              </p>
+              <p className="text-amber-800">
+                {t("agents.consent.identityRequiredBody")}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            {t("agents.consent.delegatingFrom")}{" "}
+            <code className="font-mono">{activeIdentitySubjectId}</code>
+          </p>
+        )}
 
         <div className="space-y-5">
           <section className="space-y-3">
@@ -233,7 +262,9 @@ export function AuthorizeAgentDialog({
           </Button>
           <Button
             onClick={() => void onSubmit()}
-            disabled={!declarationOk || issue.isPending}
+            disabled={
+              !declarationOk || !activeIdentitySubjectId || issue.isPending
+            }
           >
             {issue.isPending
               ? t("agents.consent.issuing")
