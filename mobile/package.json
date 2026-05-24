@@ -7,9 +7,17 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "cap:sync": "cap sync",
+    "cap:open:ios": "cap open ios",
+    "build:native": "bun run build && cap sync"
   },
   "dependencies": {
+    "@capacitor/app": "^8.0.0",
+    "@capacitor/core": "^8.3.4",
+    "@capacitor/ios": "^8.3.4",
+    "@capacitor/preferences": "^8.0.0",
+    "@capacitor/push-notifications": "^8.1.1",
     "@houston-ai/chat": "workspace:*",
     "@houston-ai/core": "workspace:*",
     "@houston-ai/engine-client": "workspace:*",
@@ -21,6 +29,7 @@
     "react-router-dom": "^7.1.0"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.3.4",
     "@tailwindcss/vite": "^4.1.0",
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",

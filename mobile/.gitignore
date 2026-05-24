@@ -1,0 +1,13 @@
+# Build output
+/dist/
+
+# Capacitor native projects.
+#
+# ios/ and android/ are GENERATED from capacitor.config.ts via
+# `cap add ios|android` + `cap sync` (see docs/mobile-architecture.md ->
+# "Native shell (Capacitor)"). They are regenerated rather than committed
+# until per-platform customization lands -- entitlements, Info.plist privacy
+# strings, app icons, signing (BRO-49 iOS sub-task + BRO-54). Capacitor also
+# writes its own per-platform .gitignore inside each generated dir.
+/ios/
+/android/

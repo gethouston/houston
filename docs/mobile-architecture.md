@@ -1,6 +1,6 @@
 # Mobile architecture
 
-Houston's mobile companion is a **web app** served from `tunnel.gethouston.ai`. No native iOS or Android build — the same Cloudflare Worker that brokers mobile ↔ desktop traffic also hosts the PWA bundle. One origin, one deployment, first-party cookies + WebSockets.
+Houston's mobile companion is a **web app** served from `tunnel.gethouston.ai` — the same Cloudflare Worker that brokers mobile ↔ desktop traffic also hosts the PWA bundle. One origin, one deployment, first-party cookies + WebSockets. A **native shell (Capacitor)** is being introduced to add push + App Store presence; it wraps this same web bundle (see the [Native shell](#native-shell-capacitor) section below and `docs/specs/2026-05-23-houston-mobile-capacitor.html`).
 
 ```
 ┌──────────────┐        ┌────────────────────────┐        ┌──────────────────┐
@@ -71,4 +71,23 @@ Together these guarantee the user never has to manually refresh after the agent 
 | Phone access store + HTTP routes | `engine/houston-engine-server/src/{mobile_access.rs,routes/tunnel.rs}` |
 | Relay Worker + Durable Object | `houston-relay/` |
 | PWA source (React + Vite) | `mobile/` |
+| Native shell config (Capacitor) | `mobile/capacitor.config.ts` |
 | Engine client library (shared with desktop) | `ui/engine-client/` |
+
+## Native shell (Capacitor)
+
+> Status: in progress (BRO-49…54). The web app + relay core above is unchanged; Capacitor wraps the built `dist/` bundle in a real iOS/Android app for native push, biometric unlock, and store distribution. Full rationale + decision log: `docs/specs/2026-05-23-houston-mobile-capacitor.html`.
+
+- **What it is.** `mobile/capacitor.config.ts` wraps `webDir: "dist"` (the existing Vite build) in a native shell. `appId` `ai.gethouston.companion`. The same `@houston-ai/engine-client` talks to the relay — no protocol change.
+- **Prerequisites.** iOS: Xcode + CocoaPods. Android: Android SDK (`ANDROID_HOME`) — gated until provisioned on the build host.
+- **Generate the native projects** (generated/derived output is gitignored — see `mobile/.gitignore`):
+
+```
+cd mobile && bun run build      # produce dist/
+bunx cap add ios                # generate ios/ (runs pod install)
+bunx cap sync ios               # copy web assets + plugins into ios/
+bunx cap open ios               # open in Xcode
+```
+
+- **Cross-origin.** Bundled, the app loads from `capacitor://localhost` (iOS) / `http://localhost` (Android), so engine traffic to `tunnel.gethouston.ai` is cross-origin. Auth is bearer-token (not cookies), so the relay only needs a CORS allowlist for those origins on `/e/<tunnelId>/v1/*`, `/pair/*`, `/push/register`, and the WS upgrade.
+- **Push.** Engine emits a `Notify` frame over the existing tunnel on `Needs You` / finished / failed; the relay forwards it to APNs/FCM for registered devices. Engine owns policy + i18n; the relay is a dumb push pipe. Push fires only while the Mac is awake and connected (Mac-tunnel backend).

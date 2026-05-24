@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Houston Mobile — Capacitor Native Architecture Spec</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --fg: #e8e8ea;
+    --muted: #9a9aa1;
+    --accent: #7c5cff;
+    --accent-soft: #2b1f5a;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --rule: #2a2a30;
+    --code-bg: #18181b;
+    --table-stripe: #141418;
+  }
+  html, body {
+    background: var(--bg);
+    color: var(--fg);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    margin: 0;
+    padding: 0;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 32px 96px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 20px; margin: 48px 0 12px; padding-top: 16px; border-top: 1px solid var(--rule); letter-spacing: -0.005em; }
+  h3 { font-size: 16px; margin: 28px 0 8px; color: var(--accent); }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  p, li { color: var(--fg); }
+  a { color: var(--accent); }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 28px; padding-bottom: 16px; border-bottom: 1px solid var(--rule); }
+  .meta span { display: inline-block; margin-right: 18px; }
+  .meta b { color: var(--fg); font-weight: 500; }
+  .tag { display: inline-block; background: var(--accent-soft); color: var(--fg); border-radius: 4px; padding: 2px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 6px; }
+  .tag.good { background: #16331f; color: var(--good); }
+  .tag.warn { background: #3a2d10; color: var(--warn); }
+  .tag.bad { background: #3b1a1a; color: var(--bad); }
+  code, pre { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 6px; overflow-x: auto; border: 1px solid var(--rule); line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+  tbody tr:nth-child(even) { background: var(--table-stripe); }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .callout { background: var(--code-bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 12px 16px; margin: 16px 0; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.bad { border-left-color: var(--bad); }
+  .callout.good { border-left-color: var(--good); }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  figure { margin: 24px 0; }
+  figure svg { width: 100%; height: auto; background: #0a0a0c; border: 1px solid var(--rule); border-radius: 8px; }
+  figcaption { color: var(--muted); font-size: 12px; margin-top: 8px; text-align: center; }
+  .diagram-box { fill: #18181b; stroke: #3a3a42; stroke-width: 1.2; }
+  .diagram-box.cloud { stroke: var(--accent); }
+  .diagram-label { fill: #e8e8ea; font: 600 13px -apple-system, sans-serif; }
+  .diagram-sub { fill: #9a9aa1; font: 11px "SF Mono", monospace; }
+  .diagram-edge { stroke: #6a6a76; stroke-width: 1.5; fill: none; }
+  .diagram-edge.notify { stroke: var(--accent); stroke-width: 2; stroke-dasharray: 5 4; }
+  .diagram-edge-label { fill: #9a9aa1; font: 10px "SF Mono", monospace; }
+  .diagram-edge-label.notify { fill: var(--accent); }
+  .footnote { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Houston Mobile — Capacitor Native Architecture Spec</h1>
+<p class="meta">
+  <span><b>Status:</b> <span class="tag warn">Proposed</span></span>
+  <span><b>Date:</b> 2026-05-23</span>
+  <span><b>Author:</b> broomva (autonomous, bstack)</span>
+  <span><b>Project:</b> <a href="https://linear.app/stimulus/project/houston-mobile-capacitor-native-deaf8d30c4aa">BRO · Houston Mobile</a></span>
+  <span><b>Chunks:</b> BRO-49 … BRO-54</span>
+</p>
+
+<div class="callout">
+  <p><b>One-line decision.</b> Houston Mobile already ships as a PWA. Take it native by wrapping the existing <code>mobile/</code> bundle in <b>Capacitor</b> (≈95% code reuse), keep the existing <b>Mac reverse-tunnel</b> as the only backend, and add <b>native push</b> driven by a new engine-emitted <code>Notify</code> frame over the existing tunnel.</p>
+</div>
+
+<h2>1. The reality: this is not greenfield</h2>
+<p>Houston Mobile exists today and ships. The decision space below is not "how do we build a mobile app" — it is "is the PWA bet still right, and what does going native cost." The pieces already on disk:</p>
+<table>
+  <thead><tr><th>Layer</th><th>Path</th><th>What</th></tr></thead>
+  <tbody>
+    <tr><td>Client</td><td><code>mobile/</code></td><td>React 19 + Vite 6 + TanStack Query 5 + react-router 7 + Tailwind v4 + framer-motion. Reuses <code>@houston-ai/{chat,core,engine-client}</code>.</td></tr>
+    <tr><td>Transport</td><td><code>houston-relay/</code></td><td>Cloudflare Worker + Durable Object at <code>tunnel.gethouston.ai</code>. Reverse-tunnel broker <em>and</em> static PWA host (one origin → first-party cookies/WS).</td></tr>
+    <tr><td>Tunnel</td><td><code>engine/houston-tunnel/</code></td><td>Desktop engine dials <b>outbound</b>; mobile HTTP+WS multiplexes over that link. The Mac opens no inbound port.</td></tr>
+    <tr><td>Auth</td><td><code>mobile_access.rs</code>, <code>routes/tunnel.rs</code></td><td>Reusable QR → device-scoped SHA-256 bearer in <code>engine_tokens</code>. "Disconnect all phones" rotates + revokes.</td></tr>
+    <tr><td>Reactivity</td><td><code>use-engine-invalidation.ts</code></td><td>WS event → query-invalidation, reconnect → refetch, tab-visibility + 2s active-session poll.</td></tr>
+  </tbody>
+</table>
+<div class="callout warn">
+  <p><b>The tell.</b> <code>mobile/public/sw.js</code> is a <b>self-destruct service worker</b> — it unregisters itself and wipes all caches ("replaces the old caching SW so existing users auto-clean"). They tried SW caching, it fought the multi-hop relay, and ripped it out. So today's PWA has <b>no offline support and no web-push</b>. That gap is the entire reason to consider going native.</p>
+</div>
+
+<h2>2. The irreducible constraint</h2>
+<p>The engine spawns CLI subprocesses — codex, claude-code, gemini, composio — via <code>houston-terminal-manager</code>. <b>iOS forbids <code>fork/exec</code> of arbitrary binaries; Android effectively forbids it too.</b> Therefore:</p>
+<div class="callout bad">
+  <p>The engine can <b>never</b> run on-device. Houston Mobile is <em>always</em> a thin client to a remote engine. This is equally true for PWA, Capacitor, Tauri-mobile, and React Native. No mobile technology changes it — so client-technology choice is purely about <em>shell capabilities</em> (push, install, background, store), not about where the engine runs.</p>
+</div>
+<p>Two valid remote engines exist: <b>(a)</b> the user's Mac via the tunnel — current, but dies when the Mac sleeps (phone gets 503); and <b>(b)</b> <b>Always On</b> (engine in Docker on a VPS — already shipped). <b>This spec commits to (a), the Mac tunnel</b> (see §9 for the consequence). Always On remains the future mobile-first unlock and is out of scope here.</p>
+
+<h2>3. Target architecture</h2>
+<figure>
+<svg viewBox="0 0 980 300" role="img" aria-label="Houston Mobile Capacitor architecture topology">
+  <rect class="diagram-box" x="20" y="70" width="230" height="150" rx="10"/>
+  <text class="diagram-label" x="135" y="100" text-anchor="middle">iOS / Android app</text>
+  <text class="diagram-sub" x="135" y="124" text-anchor="middle">Capacitor WKWebView</text>
+  <text class="diagram-sub" x="135" y="142" text-anchor="middle">mobile/dist (React PWA)</text>
+  <text class="diagram-sub" x="135" y="160" text-anchor="middle">+ native push plugin</text>
+  <text class="diagram-sub" x="135" y="178" text-anchor="middle">+ biometric / secure store</text>
+  <text class="diagram-sub" x="135" y="196" text-anchor="middle">+ in-app QR scanner</text>
+
+  <rect class="diagram-box cloud" x="375" y="70" width="230" height="150" rx="10"/>
+  <text class="diagram-label" x="490" y="100" text-anchor="middle">Relay Worker + DO</text>
+  <text class="diagram-sub" x="490" y="124" text-anchor="middle">tunnel.gethouston.ai</text>
+  <text class="diagram-sub" x="490" y="142" text-anchor="middle">tunnel-do.ts (multiplex)</text>
+  <text class="diagram-sub" x="490" y="160" text-anchor="middle">push registry (KV) — NEW</text>
+  <text class="diagram-sub" x="490" y="178" text-anchor="middle">APNs / FCM sender — NEW</text>
+  <text class="diagram-sub" x="490" y="196" text-anchor="middle">static PWA host</text>
+
+  <rect class="diagram-box" x="730" y="70" width="230" height="150" rx="10"/>
+  <text class="diagram-label" x="845" y="100" text-anchor="middle">User's Mac</text>
+  <text class="diagram-sub" x="845" y="124" text-anchor="middle">houston-engine</text>
+  <text class="diagram-sub" x="845" y="142" text-anchor="middle">houston-tunnel (dials out)</text>
+  <text class="diagram-sub" x="845" y="160" text-anchor="middle">spawns CLI subprocesses</text>
+  <text class="diagram-sub" x="845" y="178" text-anchor="middle">emits Notify frame — NEW</text>
+
+  <path class="diagram-edge" d="M250 130 L375 130"/>
+  <text class="diagram-edge-label" x="312" y="122" text-anchor="middle">HTTPS + WS</text>
+  <path class="diagram-edge" d="M605 130 L730 130"/>
+  <text class="diagram-edge-label" x="667" y="122" text-anchor="middle">WSS (outbound)</text>
+  <path class="diagram-edge notify" d="M730 165 L605 165"/>
+  <text class="diagram-edge-label notify" x="667" y="184" text-anchor="middle">Notify frame</text>
+  <path class="diagram-edge notify" d="M375 185 C 300 230, 200 230, 135 220"/>
+  <text class="diagram-edge-label notify" x="270" y="250" text-anchor="middle">APNs / FCM push</text>
+</svg>
+<figcaption>Solid = existing request/response + WS multiplex. Dashed (accent) = the one net-new path: engine emits a <code>Notify</code> frame on lifecycle transitions → relay fans out as native push.</figcaption>
+</figure>
+
+<p>The single new hop: when a session hits a notify-worthy state (<code>Needs You</code> / finished / failed), the engine sends a typed <code>Notify</code> frame over the existing tunnel. The relay forwards it to APNs/FCM for that tunnel's registered devices. <b>The engine owns the policy and i18n</b> (it already builds localized strings); <b>the relay stays a dumb push pipe</b> (no event semantics).</p>
+
+<h2>4. Why not the other paths</h2>
+<p>All four candidate paths keep <code>@houston-ai/engine-client</code> (it is just <code>fetch</code> + <code>WebSocket</code>, portable everywhere). They differ only in UI reuse, push quality, and store presence.</p>
+<table>
+  <thead><tr><th>Path</th><th>Code reuse</th><th>Native push</th><th>Store</th><th>Effort</th><th>Verdict</th></tr></thead>
+  <tbody>
+    <tr><td>Harden PWA</td><td>100%</td><td>iOS: home-screen-only, fragile</td><td>No</td><td>S</td><td>Push too weak on iOS for the one feature mobile must nail</td></tr>
+    <tr><td><b>Capacitor wrap</b> ⭐</td><td>~95%</td><td>Full APNs/FCM</td><td>Yes</td><td>M</td><td><span class="tag good">Chosen</span> best effort-to-value</td></tr>
+    <tr><td>Tauri 2 mobile</td><td>~90%</td><td>Via plugin (less mature)</td><td>Yes</td><td>M–L</td><td>On-brand (Rust) but mobile tooling thinner than Capacitor</td></tr>
+    <tr><td>Expo / React Native</td><td>engine-client only; UI rebuilt</td><td>Best-in-class</td><td>Yes</td><td>L–XL</td><td>Escape hatch if mobile becomes first-class (§11)</td></tr>
+  </tbody>
+</table>
+<p><b>The iOS PWA wall (2026).</b> Push works only since iOS 16.4, only if Added to Home Screen, no rich media, no silent push. No Background Sync / Periodic Sync / Background Fetch — no timeline. Install requires a manual Share → Add to Home Screen that most users never discover. Houston's #1 mobile job — "tell me when my agent finishes or needs me while I am away from my desk" — is exactly a push problem, and iOS PWA push is exactly the weak spot. Sources in §13.</p>
+<p><b>Why Capacitor over Tauri-mobile.</b> Tauri 2's mobile API is stable but the team is explicit it is not the "mobile-first" release — desktop is production-grade, mobile plugin coverage is partial. Capacitor is the 2026 consensus web→native bridge with a mature push/biometric plugin ecosystem and zero UI rewrite. We pay the Rust-consistency cost in exchange for shipping the push feature reliably.</p>
+
+<h2>5. The <code>Notify</code> frame (the net-new protocol surface)</h2>
+<p>This is the only genuinely new engineering. Everything else is wiring existing capabilities into a native shell.</p>
+<h4>Engine side <span class="tag">[engine]</span></h4>
+<ul>
+  <li>New variant on the <code>houston-tunnel</code> frame enum (<code>engine/houston-tunnel/src/frame.rs</code>):
+    <pre><code>Notify {
+    kind: NotifyKind,      // NeedsYou | Finished | Failed
+    title: String,         // localized (en/es/pt)
+    body: String,          // localized
+    session_key: String,   // deep-link target
+}</code></pre>
+  </li>
+  <li>Emit on session lifecycle transitions, reusing the <code>Needs You</code> / finished / failed signals already in <code>agents::activity</code> and the <code>HoustonEvent</code> fanout.</li>
+  <li>Engine owns <b>policy</b>: hard cap ≈3–5 notifications/day, dedup repeated states, and <b>i18n</b> (localized title/body). The relay never decides what is notify-worthy.</li>
+</ul>
+<h4>Relay side <span class="tag">[relay]</span></h4>
+<ul>
+  <li>Push-token registry: Worker KV keyed by <code>tunnelId</code> → <code>{ deviceToken, platform, bearerHash }</code>.</li>
+  <li>New route <code>POST /push/register</code> (authenticated with the device bearer).</li>
+  <li>On a <code>Notify</code> frame from the desktop link → look up registered devices → send APNs (HTTP/2 + <code>.p8</code> JWT) and FCM (HTTP v1).</li>
+  <li><b>CORS:</b> bundling the PWA in Capacitor moves the app origin to <code>capacitor://localhost</code> (iOS) / <code>http://localhost</code> (Android). Engine auth is bearer-token (not cookies), so the relay must add a CORS allowlist for those origins on the <code>/e/&lt;tunnelId&gt;/v1/*</code>, <code>/pair/*</code>, <code>/push/register</code> routes and the WS upgrade.</li>
+  <li>Secrets via <code>wrangler secret</code>: APNs <code>.p8</code> + key-id + team-id, FCM service-account JSON. Never literals (Houston secrets rule).</li>
+</ul>
+
+<h2>6. Work breakdown</h2>
+<p>Six chunks, library-before-app, each independently testable. Linear identifiers link the full step list + acceptance criteria.</p>
+<table>
+  <thead><tr><th>Chunk</th><th>Area</th><th>Summary</th><th>Effort</th><th>Ticket</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td><span class="tag">[mobile]</span></td><td>Capacitor shell: deps, config, scripts, iOS native project (Android deferred — no SDK on host)</td><td>S–M</td><td><a href="https://linear.app/stimulus/issue/BRO-49">BRO-49</a></td></tr>
+    <tr><td>2</td><td><span class="tag">[engine]</span><span class="tag">[relay]</span></td><td><code>Notify</code> frame end-to-end → APNs/FCM. The critical path.</td><td>M</td><td><a href="https://linear.app/stimulus/issue/BRO-50">BRO-50</a></td></tr>
+    <tr><td>3</td><td><span class="tag">[mobile]</span></td><td>Native push on device: register token, deep-link tap, value-first permission</td><td>M</td><td><a href="https://linear.app/stimulus/issue/BRO-51">BRO-51</a></td></tr>
+    <tr><td>4</td><td><span class="tag">[mobile]</span></td><td>Secure token storage (Keychain/Keystore) + biometric unlock</td><td>S–M</td><td><a href="https://linear.app/stimulus/issue/BRO-52">BRO-52</a></td></tr>
+    <tr><td>5</td><td><span class="tag">[mobile]</span></td><td>In-app camera QR pairing + universal links (replace Safari bounce)</td><td>M</td><td><a href="https://linear.app/stimulus/issue/BRO-53">BRO-53</a></td></tr>
+    <tr><td>6</td><td><span class="tag">[app]</span> infra</td><td>Store builds, signing, CI (App Store + Play). Heaviest ops weight.</td><td>M (bureaucratic)</td><td><a href="https://linear.app/stimulus/issue/BRO-54">BRO-54</a></td></tr>
+  </tbody>
+</table>
+<p>Dependency edges: 3 blocked by 1+2; 4 and 5 blocked by 1; 6 blocked by 1+2. Critical path is 1 → 2 → 3.</p>
+
+<h2>7. Reused vs net-new</h2>
+<table>
+  <thead><tr><th>Reused as-is</th><th>Net-new</th></tr></thead>
+  <tbody>
+    <tr><td><code>mobile/</code> React app (whole bundle)</td><td>Capacitor project + <code>ios/</code> (+ <code>android/</code> later) native shells</td></tr>
+    <tr><td><code>@houston-ai/{chat,core,engine-client}</code></td><td><code>@capacitor/push-notifications</code> wiring + token register</td></tr>
+    <tr><td><code>houston-relay/</code> tunnel + DO + QR pairing</td><td>Relay push registry (KV) + APNs/.p8 + FCM sender + CORS allowlist</td></tr>
+    <tr><td><code>houston-tunnel</code> transport</td><td><code>Notify</code> tunnel frame (engine → relay)</td></tr>
+    <tr><td>3-layer reactivity safety net</td><td>Secure token storage + biometric gate</td></tr>
+    <tr><td>Engine <code>HoustonEvent</code> lifecycle fanout</td><td>In-app QR camera scan (replace Safari deep-link)</td></tr>
+  </tbody>
+</table>
+
+<h2>8. Risks &amp; honest costs</h2>
+<ul>
+  <li><span class="tag bad">ops</span> <b>Ops weight jumps.</b> Today = one <code>wrangler deploy</code>. This adds Apple Developer ($99/yr) + Play ($25), two signing pipelines, a macOS CI runner, and store-review cycles. Real recurring maintenance.</li>
+  <li><span class="tag bad">review</span> <b>App Store Guideline 4.2</b> rejects thin website wrappers. Capacitor passes <em>only if</em> the app feels native: push + biometric + haptics + offline shell. The plan funds that (chunks 3–5), not a Safari-in-a-box. A pre-submission 4.2 self-review is a gate in BRO-54.</li>
+  <li><span class="tag warn">product</span> <b>Mac-asleep = no push.</b> Direct consequence of the Mac-tunnel backend choice. Push only fires while the Mac is awake and connected. Must be stated plainly to users. Revisit Always On (§11) if users expect 24/7.</li>
+  <li><span class="tag warn">perf</span> <b>WebView scroll on mid-range Android</b> runs ~20–30ms behind native. Mitigate hot lists if it shows; not a blocker for a companion app.</li>
+</ul>
+
+<h2>9. Secrets</h2>
+<p>Per the Houston rule (env / secret store only, never literals in committed files):</p>
+<ul>
+  <li><b>Relay Worker secrets</b> (<code>wrangler secret</code>): APNs <code>.p8</code> + key-id + team-id; FCM service-account JSON.</li>
+  <li><b>CI secrets</b>: Apple signing cert + provisioning profile + App Store Connect API key; Play upload key + service-account JSON.</li>
+</ul>
+
+<h2>10. Verification strategy (Empirical, P11)</h2>
+<ul>
+  <li><b>Chunk 1:</b> <code>bun install</code> resolves Capacitor; <code>bun run build</code> produces <code>dist/</code>; <code>cap sync ios</code> succeeds; <code>xcodebuild … -sdk iphonesimulator build</code> compiles; app launches in the simulator and pairs through the relay — behavior identical to the PWA.</li>
+  <li><b>Chunk 2:</b> engine unit tests for notify-policy (cap + dedup) with verbatim event fixtures; <code>wrangler tail</code> shows <code>Notify</code> → send; mock device token receives payload via local <code>wrangler dev</code>.</li>
+  <li><b>Chunk 3:</b> run an agent on the Mac → background the phone → receive push → tap → land in the correct chat.</li>
+  <li><b>Chunks 4–6:</b> token not readable from the WebView inspector; biometric gates entry; TestFlight + internal-track Play builds receive real push on physical devices.</li>
+</ul>
+
+<h2>11. Open questions &amp; escape hatches</h2>
+<ul>
+  <li><b>Always On as default backend</b> — the real mobile-first unlock (phone independent of the Mac). Deferred by the Mac-tunnel decision; revisit when users demand 24/7.</li>
+  <li><b>Android SDK provisioning</b> — gating the Android platform. Generate + commit <code>android/</code> once the SDK is on the build host (sub-task of BRO-49).</li>
+  <li><b>Expo / React Native</b> — if the WebView UX ceiling is hit and mobile becomes a primary surface, rebuild the UI in RN primitives. <code>engine-client</code> ports unchanged; only the <code>@houston-ai</code> DOM components are rewritten.</li>
+  <li><b>Upstream posture</b> — this lands on the broomva fork first (bun toolchain); the upstream PR is offered to gethouston for review (and would be re-based onto their pnpm toolchain), not self-merged.</li>
+</ul>
+
+<h2>12. Decision log</h2>
+<ul>
+  <li><b>D1</b> Client = Capacitor (not PWA-harden, not Tauri-mobile, not Expo). Rationale: §4.</li>
+  <li><b>D2</b> Backend = Mac tunnel only (not Always On, not user-selectable). Rationale: simplest, zero hosting; accepts the Mac-asleep limit.</li>
+  <li><b>D3</b> Push origin = relay, driven by an engine-emitted <code>Notify</code> frame. Rationale: relay is the always-on cloud component; engine owns semantics + i18n.</li>
+  <li><b>D4</b> iOS first (host has Xcode + CocoaPods); Android deferred to SDK provisioning. Rationale: do the verifiable platform right, do not commit unbuildable artifacts.</li>
+  <li><b>D5</b> Branch base = <code>fork/main</code> (bun), not <code>origin/main</code> (pnpm). Rationale: the fork is the primary landing target and is bun-native; basing on the pnpm upstream produced a dual-lockfile conflict.</li>
+</ul>
+
+<h2>13. References</h2>
+<ul class="footnote">
+  <li>iOS PWA limits 2026 — <a href="https://www.magicbell.com/blog/pwa-ios-limitations-safari-support-complete-guide">MagicBell</a>, <a href="https://www.mobiloud.com/blog/progressive-web-apps-ios">MobiLoud</a>, <a href="https://brainhub.eu/library/pwa-on-ios">Brainhub</a>, <a href="https://docs.bswen.com/blog/2026-03-12-safari-pwa-limitations-ios/">BSWEN</a></li>
+  <li>Capacitor vs RN vs PWA 2026 — <a href="https://www.pkgpulse.com/guides/react-native-vs-expo-vs-capacitor-cross-platform-mobile-2026">PkgPulse</a>, <a href="https://capgo.app/blog/capacitor-ai-mobile-apps/">Capgo</a>, <a href="https://nextnative.dev/blog/capacitor-vs-react-native">NextNative</a></li>
+  <li>Tauri 2 mobile readiness — <a href="https://v2.tauri.app/blog/tauri-20/">Tauri 2.0 release</a>, <a href="https://viadreams.cc/en/blog/tauri-guide/">Tauri iOS 2026 guide</a></li>
+  <li>Push best-practice 2026 — <a href="https://appbot.co/blog/app-push-notifications-2026-best-practices/">Appbot</a>, <a href="https://tianpan.co/blog/2026-05-13-background-agents-notification-budget-attention-economy">Notification budget for background agents</a></li>
+</ul>
+
+</div>
+</body>
+</html>
