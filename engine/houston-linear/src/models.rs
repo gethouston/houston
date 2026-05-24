@@ -80,14 +80,13 @@ pub fn projection_path(workspace_path: &Path) -> PathBuf {
 pub fn write_raw_issue(workspace_path: &Path, node: &IssueNode) -> Result<(), LinearError> {
     let dir = raw_issues_dir(workspace_path);
     std::fs::create_dir_all(&dir)
-        .map_err(|e| LinearError::Oauth(format!("create raw/issues dir: {e}")))?;
+        .map_err(|e| LinearError::Io(format!("create raw/issues dir: {e}")))?;
     let path = dir.join(format!("{}.json", node.id.inner()));
     let projected = <TrackerIssue as FromIssueNode>::project(node);
     let json = serde_json::to_string_pretty(&projected).map_err(LinearError::Json)?;
     let tmp = path.with_extension("json.tmp");
-    std::fs::write(&tmp, json).map_err(|e| LinearError::Oauth(format!("write raw issue: {e}")))?;
-    std::fs::rename(&tmp, &path)
-        .map_err(|e| LinearError::Oauth(format!("rename raw issue: {e}")))?;
+    std::fs::write(&tmp, json).map_err(|e| LinearError::Io(format!("write raw issue: {e}")))?;
+    std::fs::rename(&tmp, &path).map_err(|e| LinearError::Io(format!("rename raw issue: {e}")))?;
     Ok(())
 }
 
@@ -99,14 +98,14 @@ pub fn reproject_issues_from_raw(workspace_path: &Path) -> Result<usize, LinearE
     let mut items: Vec<ProjectedIssue> = Vec::new();
     if dir.exists() {
         for entry in std::fs::read_dir(&dir)
-            .map_err(|e| LinearError::Oauth(format!("read raw/issues dir: {e}")))?
+            .map_err(|e| LinearError::Io(format!("read raw/issues dir: {e}")))?
         {
-            let entry = entry.map_err(|e| LinearError::Oauth(format!("iter raw/issues: {e}")))?;
+            let entry = entry.map_err(|e| LinearError::Io(format!("iter raw/issues: {e}")))?;
             if entry.path().extension().and_then(|s| s.to_str()) != Some("json") {
                 continue;
             }
             let bytes = std::fs::read(entry.path())
-                .map_err(|e| LinearError::Oauth(format!("read raw issue: {e}")))?;
+                .map_err(|e| LinearError::Io(format!("read raw issue: {e}")))?;
             let issue: ProjectedIssue =
                 serde_json::from_slice(&bytes).map_err(LinearError::Json)?;
             items.push(issue);
@@ -117,14 +116,13 @@ pub fn reproject_issues_from_raw(workspace_path: &Path) -> Result<usize, LinearE
     let path = projection_path(workspace_path);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent)
-            .map_err(|e| LinearError::Oauth(format!("create projection dir: {e}")))?;
+            .map_err(|e| LinearError::Io(format!("create projection dir: {e}")))?;
     }
     let tmp = path.with_extension("json.tmp");
     let json = serde_json::to_string_pretty(&items).map_err(LinearError::Json)?;
-    std::fs::write(&tmp, json)
-        .map_err(|e| LinearError::Oauth(format!("write issues.json: {e}")))?;
+    std::fs::write(&tmp, json).map_err(|e| LinearError::Io(format!("write issues.json: {e}")))?;
     std::fs::rename(&tmp, &path)
-        .map_err(|e| LinearError::Oauth(format!("rename issues.json: {e}")))?;
+        .map_err(|e| LinearError::Io(format!("rename issues.json: {e}")))?;
     Ok(items.len())
 }
 
@@ -136,7 +134,7 @@ pub fn load_projection(workspace_path: &Path) -> Result<Vec<ProjectedIssue>, Lin
     match std::fs::read(&path) {
         Ok(bytes) => serde_json::from_slice(&bytes).map_err(LinearError::Json),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
-        Err(e) => Err(LinearError::Oauth(format!("read issues.json: {e}"))),
+        Err(e) => Err(LinearError::Io(format!("read issues.json: {e}"))),
     }
 }
 

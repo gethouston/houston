@@ -53,7 +53,7 @@ impl SyncState {
         match std::fs::read(&path) {
             Ok(bytes) => serde_json::from_slice(&bytes).map_err(LinearError::Json),
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
-            Err(e) => Err(LinearError::Oauth(format!("read sync_state.json: {e}"))),
+            Err(e) => Err(LinearError::Io(format!("read sync_state.json: {e}"))),
         }
     }
 
@@ -63,14 +63,14 @@ impl SyncState {
         let path = Self::path_for(workspace_path);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
-                .map_err(|e| LinearError::Oauth(format!("create sync_state dir: {e}")))?;
+                .map_err(|e| LinearError::Io(format!("create sync_state dir: {e}")))?;
         }
         let tmp = path.with_extension("json.tmp");
         let json = serde_json::to_string_pretty(self).map_err(LinearError::Json)?;
         std::fs::write(&tmp, json)
-            .map_err(|e| LinearError::Oauth(format!("write sync_state.json: {e}")))?;
+            .map_err(|e| LinearError::Io(format!("write sync_state.json: {e}")))?;
         std::fs::rename(&tmp, &path)
-            .map_err(|e| LinearError::Oauth(format!("rename sync_state.json: {e}")))?;
+            .map_err(|e| LinearError::Io(format!("rename sync_state.json: {e}")))?;
         Ok(())
     }
 

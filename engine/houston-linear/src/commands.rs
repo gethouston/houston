@@ -18,8 +18,10 @@
 
 mod issues;
 mod task;
+mod webhook;
 
 pub use issues::{list_issues, sync_now};
+pub use webhook::{handle_delivery, WebhookOutcome};
 
 use crate::auth::{build_authorize_url, LINEAR_OAUTH_CALLBACK_PORT, LINEAR_OAUTH_REDIRECT_URI};
 use crate::connection::ConnectionMeta;
@@ -171,7 +173,7 @@ pub fn disconnect(workspace_path: &Path) -> Result<(), LinearError> {
     match std::fs::remove_file(&path) {
         Ok(_) => Ok(()),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
-        Err(e) => Err(LinearError::Oauth(format!("delete connection.json: {e}"))),
+        Err(e) => Err(LinearError::Io(format!("delete connection.json: {e}"))),
     }
 }
 

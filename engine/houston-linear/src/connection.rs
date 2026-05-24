@@ -92,14 +92,14 @@ impl ConnectionMeta {
         let path = Self::path_for(workspace_path);
         if let Some(parent) = path.parent() {
             std::fs::create_dir_all(parent)
-                .map_err(|e| LinearError::Oauth(format!("create connection dir: {e}")))?;
+                .map_err(|e| LinearError::Io(format!("create connection dir: {e}")))?;
         }
         let tmp = path.with_extension("json.tmp");
         let json = serde_json::to_string_pretty(self).map_err(LinearError::Json)?;
         std::fs::write(&tmp, json)
-            .map_err(|e| LinearError::Oauth(format!("write connection.json: {e}")))?;
+            .map_err(|e| LinearError::Io(format!("write connection.json: {e}")))?;
         std::fs::rename(&tmp, &path)
-            .map_err(|e| LinearError::Oauth(format!("rename connection.json: {e}")))?;
+            .map_err(|e| LinearError::Io(format!("rename connection.json: {e}")))?;
         Ok(())
     }
 
@@ -113,7 +113,7 @@ impl ConnectionMeta {
                 return Err(LinearError::NotAuthenticated);
             }
             Err(e) => {
-                return Err(LinearError::Oauth(format!("read connection.json: {e}")));
+                return Err(LinearError::Io(format!("read connection.json: {e}")));
             }
         };
         serde_json::from_slice(&bytes).map_err(LinearError::Json)
@@ -158,14 +158,14 @@ pub fn seed_layout(workspace_path: &Path) -> Result<(), LinearError> {
         "agent_sessions",
     ] {
         std::fs::create_dir_all(root.join(sub))
-            .map_err(|e| LinearError::Oauth(format!("create {sub}: {e}")))?;
+            .map_err(|e| LinearError::Io(format!("create {sub}: {e}")))?;
     }
 
     // Append-only event ledger — touch if missing.
     let events_log = root.join("raw").join("webhook_events.jsonl");
     if !events_log.exists() {
         std::fs::write(&events_log, b"")
-            .map_err(|e| LinearError::Oauth(format!("touch webhook_events.jsonl: {e}")))?;
+            .map_err(|e| LinearError::Io(format!("touch webhook_events.jsonl: {e}")))?;
     }
 
     // Empty-array projection files — seed if absent.
@@ -178,7 +178,7 @@ pub fn seed_layout(workspace_path: &Path) -> Result<(), LinearError> {
         let path = root.join(name);
         if !path.exists() {
             std::fs::write(&path, b"[]")
-                .map_err(|e| LinearError::Oauth(format!("seed {name}: {e}")))?;
+                .map_err(|e| LinearError::Io(format!("seed {name}: {e}")))?;
         }
     }
 

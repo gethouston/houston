@@ -74,6 +74,21 @@ pub enum LinearError {
     /// JSON parsing failure on a Linear response or webhook payload.
     #[error("Linear JSON parse failed: {0}")]
     Json(#[from] serde_json::Error),
+
+    /// Local filesystem I/O failure on a Linear adapter mirror file
+    /// (connection.json, sync_state.json, raw/* projections, webhook
+    /// ledger). Carries the OS-level diagnostic. Distinct from
+    /// [`LinearError::Oauth`], which is reserved for OAuth-protocol
+    /// failures (token exchange, callback handling, URL parsing).
+    #[error("Linear adapter I/O failed: {0}")]
+    Io(String),
+
+    /// Webhook delivery duplicated — same `webhookId` already present
+    /// in the on-disk ledger. The engine still ACKs Linear with 200
+    /// (their spec), but the projection / agent-session dispatch is
+    /// skipped. Surfaces in logs and the webhook-route response.
+    #[error("Linear webhook duplicate (already in ledger)")]
+    WebhookDuplicate,
 }
 
 #[cfg(test)]
@@ -102,6 +117,27 @@ mod tests {
         assert_ne!(sig, replay);
         assert!(sig.contains("signature"));
         assert!(replay.contains("replay"));
+    }
+
+    #[test]
+    fn io_variant_distinct_from_oauth() {
+        // Renaming Oauth → Io for filesystem ops was the canonical
+        // type-safety win for C3. They must not collide.
+        let io = format!("{}", LinearError::Io("disk full".into()));
+        let oauth = format!("{}", LinearError::Oauth("bad code".into()));
+        assert!(io.contains("I/O"));
+        assert!(oauth.contains("OAuth"));
+        assert_ne!(io, oauth);
+    }
+
+    #[test]
+    fn webhook_duplicate_distinct_from_signature_and_replay() {
+        let dup = format!("{}", LinearError::WebhookDuplicate);
+        let sig = format!("{}", LinearError::WebhookSignature);
+        let replay = format!("{}", LinearError::WebhookReplay);
+        assert!(dup.contains("duplicate"));
+        assert_ne!(dup, sig);
+        assert_ne!(dup, replay);
     }
 
     #[test]

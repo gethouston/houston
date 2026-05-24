@@ -53,6 +53,7 @@ pub mod queries;
 pub mod rate_limit;
 pub mod reconcile;
 pub mod sync_state;
+pub mod webhook_ledger;
 pub mod webhooks;
 
 pub use callback::CallbackParams;

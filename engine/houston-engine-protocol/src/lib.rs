@@ -278,6 +278,28 @@ pub enum TrackerReconcileResponse {
     },
 }
 
+/// Response from `POST /v1/trackers/:provider/webhook?workspacePath=...` —
+/// outcome of a single Linear webhook delivery.
+///
+/// The HTTP status is always 200 (per Linear's webhook spec — even
+/// duplicates and verification failures get a 200, with the verdict
+/// surfaced in the body). Sig + replay failures are logged engine-side
+/// and surface here so the relay can distinguish "accepted" from
+/// "rejected at the wall" for its own metrics.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "status", rename_all = "snake_case")]
+pub enum TrackerWebhookResponse {
+    /// First time seen — projected + dispatched (downstream layers).
+    Accepted { event_type: String, action: String },
+    /// Same `webhookId` already on disk — no side effects.
+    Duplicate,
+    /// HMAC signature verification failed (wrong secret or tampered
+    /// body). Engine logs the rejection; Linear still gets 200.
+    BadSignature,
+    /// `Linear-Timestamp` outside the replay window. Engine drops.
+    ReplayWindowExceeded,
+}
+
 /// Helper: build an event envelope from a HoustonEvent.
 pub fn event_envelope(event: &HoustonEvent) -> EngineEnvelope {
     EngineEnvelope {
