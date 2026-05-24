@@ -637,6 +637,31 @@ export class HoustonClient {
       `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}/history`,
     );
   }
+  /**
+   * Submit the user's answer to a pending
+   * `mcp__houston__AskUserQuestion` tool call. The engine's MCP handler is
+   * blocked awaiting this; on success it returns the answer to the agent
+   * as the tool_result. 204 No Content on success; 404 if the question
+   * was already answered or never existed; 409 if the MCP handler was
+   * cancelled in the same tick.
+   *
+   * The `answer` shape is opaque to the engine — typically
+   * `{ answers: [{ selected: string[], other?: string }] }` per the UI
+   * convention, but the engine just forwards it verbatim as the tool
+   * result so the agent can interpret it however it wants.
+   */
+  submitUserInput(
+    agentPath: string,
+    sessionKey: string,
+    toolUseId: string,
+    answer: unknown,
+  ): Promise<void> {
+    return this.request(
+      "POST",
+      `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}/user_input`,
+      { toolUseId, answer },
+    );
+  }
   summarizeActivity(message: string, opts: SummarizeOptions = {}): Promise<SummarizeResult> {
     return this.request("POST", "/sessions/summarize", {
       message,

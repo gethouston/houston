@@ -9,8 +9,18 @@ export type FeedItem =
   | { feed_type: "user_message"; data: string }
   | { feed_type: "tool_runtime_error"; data: ToolRuntimeErrorEntry }
   | { feed_type: "provider_error"; data: ProviderError }
-  | { feed_type: "tool_call"; data: { name: string; input: unknown } }
-  | { feed_type: "tool_result"; data: { content: string; is_error: boolean } }
+  | {
+      feed_type: "tool_call";
+      data: { name: string; input: unknown; tool_use_id?: string };
+    }
+  | {
+      feed_type: "tool_result";
+      data: {
+        content: string;
+        is_error: boolean;
+        tool_use_id?: string;
+      };
+    }
   | { feed_type: "system_message"; data: string }
   | {
       feed_type: "file_changes";
