@@ -20,6 +20,7 @@
 use crate::claude_runner::spawn_claude;
 use crate::codex_runner::spawn_codex;
 use crate::gemini_runner::spawn_gemini;
+use crate::life_runner::LIFE_RUNNER;
 use crate::session_update::SessionUpdate;
 use crate::types::SessionStatus;
 use crate::Provider;
@@ -147,8 +148,13 @@ impl SessionRunner for CliRunner {
 /// Every provider currently runs as a local CLI subprocess, so this returns
 /// [`CliRunner`]. A provider with a different lifecycle (e.g. a remote
 /// streaming transport) would branch here to its own runner.
-pub(crate) fn runner_for(_provider: Provider) -> &'static dyn SessionRunner {
-    &CLI_RUNNER
+pub(crate) fn runner_for(provider: Provider) -> &'static dyn SessionRunner {
+    match provider.id() {
+        // Life is a remote runtime (no local CLI) — route to the
+        // gRPC/UDS-driven runner instead of the subprocess CliRunner.
+        "life" => &LIFE_RUNNER,
+        _ => &CLI_RUNNER,
+    }
 }
 
 /// Spawn the right runner for `provider`, forwarding the session updates onto

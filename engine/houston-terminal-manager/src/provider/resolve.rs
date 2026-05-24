@@ -24,6 +24,13 @@ pub enum InstallSource {
     Path,
     /// Not installed anywhere Houston knows about.
     Missing,
+    /// Provider lives at a remote endpoint — no local binary. Stage 0 of
+    /// the Life Runtime integration spawns sessions over gRPC/UDS to
+    /// `lifed`; future remote providers (Life over `lifegw` HTTPS,
+    /// hosted Anthropic relays, ...) reuse this variant. Callers that
+    /// dispatch on a binary path branch on `Remote` to skip the
+    /// path-dependent flows (install probe, CLI login spawn, ...).
+    Remote,
 }
 
 /// Walk the resolved shell PATH and return the first matching binary.
@@ -84,6 +91,7 @@ mod tests {
             (InstallSource::Managed, "\"managed\""),
             (InstallSource::Path, "\"path\""),
             (InstallSource::Missing, "\"missing\""),
+            (InstallSource::Remote, "\"remote\""),
         ];
         for (variant, expected) in cases {
             let s = serde_json::to_string(&variant).unwrap();

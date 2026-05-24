@@ -20,6 +20,10 @@ dirs = "5"
 # so subprocess spawns of `claude`/`codex`/`composio` find them without
 # any user-side shell config.
 houston-cli-bundle = { workspace = true }
+# Life Runtime client (Stage-0 wiring) — UDS gRPC client to `lifed` used
+# by `life_runner::LifeRemoteRunner`. Fork-exclusive; vendored protos
+# live in the `houston-life` crate itself.
+houston-life = { path = "../houston-life" }
 
 [dev-dependencies]
 # Used by the Gemini adapter tests to build throwaway
