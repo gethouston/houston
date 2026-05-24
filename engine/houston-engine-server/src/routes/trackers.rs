@@ -19,8 +19,8 @@ use axum::{
 };
 use houston_engine_core::CoreError;
 use houston_engine_protocol::{
-    TrackerConnectRequest, TrackerConnectResponse, TrackerIssue, TrackerProvider,
-    TrackerReconcileResponse, TrackerStatusResponse, TrackerWebhookResponse,
+    TrackerConnectRequest, TrackerConnectResponse, TrackerConnectionList, TrackerIssue,
+    TrackerProvider, TrackerReconcileResponse, TrackerStatusResponse, TrackerWebhookResponse,
 };
 use houston_linear::commands as linear;
 use serde::Deserialize;
@@ -34,6 +34,7 @@ pub fn router() -> Router<Arc<ServerState>> {
             post(connect).delete(disconnect),
         )
         .route("/trackers/:provider/status", get(status))
+        .route("/trackers/:provider/connections", get(connections))
         .route("/trackers/:provider/issues", get(issues))
         .route("/trackers/:provider/sync", post(sync_now))
         .route("/trackers/:provider/webhook", post(webhook))
@@ -111,6 +112,21 @@ async fn status(
 ) -> Result<Json<TrackerStatusResponse>, ApiError> {
     let workspace = require_linear_workspace(&provider, &q.workspace_path)?;
     Ok(Json(linear::get_status(&workspace)))
+}
+
+/// `GET /v1/trackers/:provider/connections?workspacePath=...` — list
+/// every Linear connection registered to the workspace (1 → N). New in
+/// PR A (workspace-many foundation). The UI in PR B will switch from
+/// the legacy single-`/status` shape to this list shape; today's
+/// Settings card still hits `/status` for its single-connection view.
+async fn connections(
+    State(_st): State<Arc<ServerState>>,
+    Path(provider): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<WorkspaceQuery>,
+) -> Result<Json<TrackerConnectionList>, ApiError> {
+    let workspace = require_linear_workspace(&provider, &q.workspace_path)?;
+    let list = linear::list_workspace_connections(&workspace).map_err(lift_linear)?;
+    Ok(Json(list))
 }
 
 /// `GET /v1/trackers/:provider/issues?workspacePath=...` — read the

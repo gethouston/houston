@@ -24,6 +24,7 @@ import type {
   ComposioStatus,
   TrackerConnectRequest,
   TrackerConnectResponse,
+  TrackerConnectionList,
   TrackerIssue,
   TrackerProvider,
   TrackerReconcileResponse,
@@ -802,6 +803,29 @@ export class HoustonClient {
     return this.request(
       "GET",
       `/trackers/${provider}/status`,
+      undefined,
+      { workspacePath },
+    );
+  }
+
+  /**
+   * List every Linear connection registered to a workspace
+   * (1 → N). New in PR A (workspace-many foundation). The engine
+   * transparently migrates any legacy per-agent connections under
+   * the workspace into the new workspace-level layout before
+   * listing — first call after upgrading is the migration trigger.
+   *
+   * Returns `{ provider, connections: [] }` for never-connected
+   * workspaces. PR B's Settings + LinearView UI consume this in
+   * place of single-connection `trackerStatus`.
+   */
+  trackerListConnections(
+    provider: TrackerProvider,
+    workspacePath: string,
+  ): Promise<TrackerConnectionList> {
+    return this.request(
+      "GET",
+      `/trackers/${provider}/connections`,
       undefined,
       { workspacePath },
     );

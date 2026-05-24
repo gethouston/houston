@@ -742,6 +742,37 @@ export interface TrackerStatusResponse {
   lastError?: string;
 }
 
+/** One row of `GET /v1/trackers/:provider/connections`. Lighter-weight
+ * than `TrackerStatusResponse`: status reports a single connection's
+ * full lifecycle (suitable for the Settings card today); this is the
+ * at-a-glance enumeration row PR B's UI renders in a list.
+ *
+ * New in PR A (workspace-many foundation).
+ */
+export interface TrackerConnectionListItem {
+  orgId: string;
+  orgName: string;
+  appUserId?: string;
+  capabilities: string[];
+  connectedAt: string;
+  lastSyncAt?: string;
+}
+
+/** Response from `GET /v1/trackers/:provider/connections?workspacePath=...`.
+ *
+ * Lists every Linear connection registered to the workspace (1 → N).
+ * Empty `connections` means the workspace has none. The engine
+ * transparently migrates legacy per-agent connections under the
+ * workspace into the new workspace-level layout before listing —
+ * the first call after upgrading is the migration trigger.
+ *
+ * New in PR A (workspace-many foundation).
+ */
+export interface TrackerConnectionList {
+  provider: TrackerProvider;
+  connections: TrackerConnectionListItem[];
+}
+
 /** One issue projected from the tracker. Mirrors
  * `tracker_issue.schema.json` + `houston-engine-protocol::TrackerIssue`. */
 export interface TrackerIssue {

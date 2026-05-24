@@ -263,6 +263,39 @@ pub struct TrackerIssue {
     pub completed_at: Option<String>,
 }
 
+/// One row of `GET /v1/trackers/:provider/connections?workspacePath=...`.
+/// Lighter-weight than [`TrackerStatusResponse`]: status reports
+/// everything about one connection's lifecycle (suitable for the
+/// Settings card); this is the at-a-glance enumeration shape the UI
+/// renders in a list.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackerConnectionListItem {
+    pub org_id: String,
+    pub org_name: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub app_user_id: Option<String>,
+    #[serde(default)]
+    pub capabilities: Vec<String>,
+    pub connected_at: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub last_sync_at: Option<String>,
+}
+
+/// Response from `GET /v1/trackers/:provider/connections?workspacePath=...`.
+///
+/// Lists every Linear connection registered to the workspace (1 ⟶ N).
+/// Empty `connections` array means the workspace has none. The engine
+/// transparently migrates any legacy per-agent connections under the
+/// workspace into the new workspace-level layout before listing — the
+/// first call after upgrading is the migration trigger.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct TrackerConnectionList {
+    pub provider: TrackerProvider,
+    pub connections: Vec<TrackerConnectionListItem>,
+}
+
 /// Response from `POST /v1/trackers/:provider/sync` — outcome of a
 /// reconcile invocation.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

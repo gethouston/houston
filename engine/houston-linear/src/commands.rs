@@ -30,7 +30,8 @@ use crate::connection::ConnectionMeta;
 use crate::error::LinearError;
 use crate::pending::PendingStore;
 use houston_engine_protocol::{
-    TrackerConnectResponse, TrackerConnectionState, TrackerProvider, TrackerStatusResponse,
+    TrackerConnectResponse, TrackerConnectionList, TrackerConnectionListItem,
+    TrackerConnectionState, TrackerProvider, TrackerStatusResponse,
 };
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
@@ -156,6 +157,36 @@ pub fn get_status(workspace_path: &Path) -> TrackerStatusResponse {
             last_error: Some(format!("{e}")),
         },
     }
+}
+
+/// List every Linear connection registered to a workspace (post-PR-A
+/// workspace-many surface). On first call after upgrading from the
+/// pre-PR-A per-agent layout, transparently migrates any per-agent
+/// connections under the workspace into the new
+/// `<workspace>/.houston/trackers/linear/connections/<org_id>.json`
+/// layout. Source files are left intact for rollback safety until a
+/// follow-up cleanup PR.
+///
+/// Returns an empty list when neither layout has any connections.
+pub fn list_workspace_connections(
+    workspace_path: &Path,
+) -> Result<TrackerConnectionList, LinearError> {
+    let metas = ConnectionMeta::list_for_workspace(workspace_path)?;
+    let connections = metas
+        .into_iter()
+        .map(|m| TrackerConnectionListItem {
+            org_id: m.org_id,
+            org_name: m.org_name,
+            app_user_id: m.app_user_id,
+            capabilities: m.capabilities,
+            connected_at: m.connected_at,
+            last_sync_at: m.last_sync_at,
+        })
+        .collect();
+    Ok(TrackerConnectionList {
+        provider: TrackerProvider::Linear,
+        connections,
+    })
 }
 
 /// Disconnect: cancel any in-flight task, remove the keychain entry,
