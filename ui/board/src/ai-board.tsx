@@ -81,6 +81,9 @@ export interface AIBoardProps {
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"]
   /** Custom renderer for special tool results. */
   renderToolResult?: ToolsAndCardsProps["renderToolResult"]
+  /** Custom renderer for special tools still awaiting a result (e.g.
+   *  interactive question cards that drive the result themselves). */
+  renderPendingTool?: ToolsAndCardsProps["renderPendingTool"]
   /** Translated labels for the collapsed process/details block. */
   processLabels?: ChatPanelProps["processLabels"]
   /** Translated reasoning text inside the process/details block. */
@@ -218,6 +221,7 @@ export function AIBoard({
   onDraftChange,
   isSpecialTool,
   renderToolResult,
+  renderPendingTool,
   processLabels,
   getThinkingMessage,
   toolLabels,
@@ -522,6 +526,7 @@ export function AIBoard({
           }
           isSpecialTool={isSpecialTool}
           renderToolResult={renderToolResult}
+          renderPendingTool={renderPendingTool}
           processLabels={processLabels}
           getThinkingMessage={getThinkingMessage}
           toolLabels={toolLabels}

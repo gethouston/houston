@@ -179,6 +179,14 @@ export type {
 } from "./chat-panel-types";
 export type { ChatProcessLabels } from "./chat-process-block";
 
+export { AskUserQuestionCard } from "./ask-user-question-card";
+export type {
+  AskUserQuestion,
+  AskUserQuestionAnswer,
+  AskUserQuestionCardProps,
+  AskUserQuestionLabels,
+} from "./ask-user-question-card";
+
 export { ChatInput } from "./chat-input";
 export type { ChatInputProps, ChatComposerLabels } from "./chat-input";
 export type { AttachMenuItem } from "./chat-input-parts";

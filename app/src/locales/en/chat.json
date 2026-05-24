@@ -100,5 +100,15 @@
     "learningsUpdated": "Learnings updated"
   },
   "filesUpdated_one": "1 file updated",
-  "filesUpdated_other": "{{count}} files updated"
+  "filesUpdated_other": "{{count}} files updated",
+  "askUserQuestion": {
+    "submit": "Submit",
+    "submitting": "Submitting...",
+    "other": "Other",
+    "otherPlaceholder": "Type your answer",
+    "selectOne": "Choose one",
+    "selectMany": "Choose one or more",
+    "answered": "Answered",
+    "preparing": "Preparing question..."
+  }
 }

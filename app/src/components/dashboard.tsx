@@ -432,6 +432,7 @@ export function Dashboard() {
           afterMessages={panel.afterMessages}
           isSpecialTool={panel.isSpecialTool}
           renderToolResult={panel.renderToolResult}
+          renderPendingTool={panel.renderPendingTool}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
           renderTurnSummary={panel.renderTurnSummary}

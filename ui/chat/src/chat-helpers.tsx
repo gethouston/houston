@@ -28,15 +28,29 @@ export interface ToolsAndCardsProps {
   toolLabels?: Record<string, string>;
   /**
    * Predicate to identify "special" tools that should be rendered via
-   * renderToolResult instead of the default ToolBlock.
+   * `renderToolResult` / `renderPendingTool` instead of the default ToolBlock.
    * Defaults to returning false (all tools shown as ToolBlocks).
    */
   isSpecialTool?: (toolName: string) => boolean;
   /**
    * Render prop for special tool results. Called for each tool where
-   * isSpecialTool returns true and the tool has a result.
+   * `isSpecialTool` returns true AND the tool has a result.
    */
   renderToolResult?: (tool: ToolEntry, index: number) => ReactNode;
+  /**
+   * Render prop for special tools that are STILL PENDING — the LLM has
+   * emitted the tool_use but no tool_result has arrived yet. Called for
+   * each tool where `isSpecialTool` returns true AND `tool.result` is
+   * undefined. Used to show interactive cards that DRIVE the result
+   * (e.g. `mcp__houston__AskUserQuestion` — the user picks an option,
+   * the app POSTs to `/user_input`, the engine routes the answer back to
+   * the LLM as the tool_result).
+   *
+   * When this prop is omitted, pending special tools fall back to the
+   * default ToolBlock rendering — which is fine, the user just sees a
+   * "running" tool block until the result lands.
+   */
+  renderPendingTool?: (tool: ToolEntry, index: number) => ReactNode;
 }
 
 export function ToolsAndCards({
@@ -45,19 +59,29 @@ export function ToolsAndCards({
   toolLabels,
   isSpecialTool,
   renderToolResult,
+  renderPendingTool,
 }: ToolsAndCardsProps) {
   const allDone = isStreaming && tools.length > 0 && tools.every((t) => t.result);
 
   return (
     <div className="space-y-2 mb-4">
       {tools.map((tool, i) => {
-        // Special tools get custom rendering
-        if (isSpecialTool?.(tool.name) && tool.result && renderToolResult) {
-          return (
-            <div key={`special-${i}`} className="py-1">
-              {renderToolResult(tool, i)}
-            </div>
-          );
+        // Special tools get custom rendering — branch on result state.
+        if (isSpecialTool?.(tool.name)) {
+          if (tool.result && renderToolResult) {
+            return (
+              <div key={`special-${i}`} className="py-1">
+                {renderToolResult(tool, i)}
+              </div>
+            );
+          }
+          if (!tool.result && renderPendingTool) {
+            return (
+              <div key={`special-pending-${i}`} className="py-1">
+                {renderPendingTool(tool, i)}
+              </div>
+            );
+          }
         }
 
         const isLastTool = i === tools.length - 1;

@@ -26,6 +26,7 @@ pub async fn pump_session(
                 if let FeedItem::ToolCall {
                     ref name,
                     ref input,
+                    ..
                 } = item
                 {
                     if let Some(path) = extract_output_file(name, input) {
@@ -150,6 +151,7 @@ mod tests {
         tx.send(SessionUpdate::Feed(FeedItem::ToolCall {
             name: "Write".into(),
             input: serde_json::json!({"file_path": "/tmp/out.txt"}),
+            tool_use_id: None,
         }))
         .unwrap();
         tx.send(SessionUpdate::Status(SessionStatus::Completed))

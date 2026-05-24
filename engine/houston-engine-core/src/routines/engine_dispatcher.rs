@@ -105,6 +105,9 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             resolved.provider,
             resolved.model,
             None,
+            // Routines don't open an MCP-ask-user round-trip (no human is
+            // sitting in front of the screen waiting to answer). Always None.
+            None,
         );
 
         match join_handle.await {

@@ -90,11 +90,13 @@ fn handle_event(event: GeminiEvent, acc: &mut GeminiAccumulator) -> Vec<FeedItem
             ..
         } => {
             let mut items = flush_assistant_buffer(acc);
-            acc.tool_names_by_id.insert(tool_id, tool_name.clone());
+            acc.tool_names_by_id
+                .insert(tool_id.clone(), tool_name.clone());
             let input = serde_json::to_value(&parameters).unwrap_or(serde_json::Value::Null);
             items.push(FeedItem::ToolCall {
                 name: tool_name,
                 input,
+                tool_use_id: Some(tool_id),
             });
             items
         }
@@ -107,7 +109,7 @@ fn handle_event(event: GeminiEvent, acc: &mut GeminiAccumulator) -> Vec<FeedItem
         } => {
             let mut items = flush_assistant_buffer(acc);
             acc.tool_names_by_id.remove(&tool_id);
-            items.push(tool_result_item(status, output, error));
+            items.push(tool_result_item(status, output, error, Some(tool_id)));
             items
         }
         GeminiEvent::Error { message, .. } => {
@@ -224,11 +226,13 @@ fn tool_result_item(
     status: GeminiStatus,
     output: Option<String>,
     error: Option<GeminiErrorPayload>,
+    tool_use_id: Option<String>,
 ) -> FeedItem {
     match status {
         GeminiStatus::Success => FeedItem::ToolResult {
             content: output.unwrap_or_else(|| "(non-text result)".to_string()),
             is_error: false,
+            tool_use_id,
         },
         GeminiStatus::Error => {
             let msg = error
@@ -244,6 +248,7 @@ fn tool_result_item(
             FeedItem::ToolResult {
                 content: msg,
                 is_error: true,
+                tool_use_id,
             }
         }
     }
@@ -334,9 +339,14 @@ mod tests {
         let use_items = parse_gemini_event(TOOL_USE_LINE, &mut a);
         assert_eq!(use_items.len(), 1);
         match &use_items[0] {
-            FeedItem::ToolCall { name, input } => {
+            FeedItem::ToolCall {
+                name,
+                input,
+                tool_use_id,
+            } => {
                 assert_eq!(name, "Read");
                 assert_eq!(input["file_path"], "/path/to/file.txt");
+                assert_eq!(tool_use_id.as_deref(), Some("read-123"));
             }
             other => panic!("expected ToolCall, got {other:?}"),
         }
@@ -348,9 +358,14 @@ mod tests {
         let res_items = parse_gemini_event(TOOL_RESULT_OK, &mut a);
         assert_eq!(res_items.len(), 1);
         match &res_items[0] {
-            FeedItem::ToolResult { content, is_error } => {
+            FeedItem::ToolResult {
+                content,
+                is_error,
+                tool_use_id,
+            } => {
                 assert_eq!(content, "File contents here");
                 assert!(!is_error);
+                assert_eq!(tool_use_id.as_deref(), Some("read-123"));
             }
             other => panic!("expected ToolResult, got {other:?}"),
         }
@@ -363,7 +378,9 @@ mod tests {
         let items = parse_gemini_event(TOOL_RESULT_ERR, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
-            FeedItem::ToolResult { content, is_error } => {
+            FeedItem::ToolResult {
+                content, is_error, ..
+            } => {
                 assert!(*is_error);
                 assert!(content.contains("FILE_NOT_FOUND"));
                 assert!(content.contains("File not found"));

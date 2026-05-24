@@ -100,5 +100,15 @@
     "learningsUpdated": "Aprendizajes actualizados"
   },
   "filesUpdated_one": "1 archivo actualizado",
-  "filesUpdated_other": "{{count}} archivos actualizados"
+  "filesUpdated_other": "{{count}} archivos actualizados",
+  "askUserQuestion": {
+    "submit": "Enviar",
+    "submitting": "Enviando...",
+    "other": "Otra",
+    "otherPlaceholder": "Escribe tu respuesta",
+    "selectOne": "Elige una",
+    "selectMany": "Elige una o más",
+    "answered": "Respondido",
+    "preparing": "Preparando la pregunta..."
+  }
 }

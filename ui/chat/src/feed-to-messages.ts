@@ -12,6 +12,15 @@ export interface ToolEntry {
   name: string;
   input?: unknown;
   result?: { content: string; is_error: boolean };
+  /**
+   * LLM-provided id from Anthropic's stream-json (and the matching field
+   * on Gemini's tool events). When present we can pair `tool_call` rows
+   * with their `tool_result` row deterministically, instead of relying on
+   * the legacy "last unmatched tool" sequential heuristic. Optional only
+   * because legacy `chat_feed` rows persisted before this field landed
+   * have no id — those still fall back to sequential pairing.
+   */
+  tool_use_id?: string;
 }
 
 export interface FileChangeEntry {
@@ -135,27 +144,53 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
 
       case "tool_call": {
         const msg = ensureAssistant();
+        const incomingId = item.data.tool_use_id;
         // Deduplicate: the parser emits two tool_calls per tool (null input
         // on block start, real input on block stop). Replace the placeholder.
+        // When tool_use_id is present, pair by id; otherwise fall back to
+        // the legacy "last tool with matching name and null input" heuristic.
         const lastTool = msg.tools[msg.tools.length - 1];
-        if (lastTool && lastTool.name === item.data.name && lastTool.input == null) {
+        const isFollowupForLast =
+          !!lastTool &&
+          ((incomingId && lastTool.tool_use_id === incomingId) ||
+            (!incomingId && lastTool.name === item.data.name && lastTool.input == null));
+        if (isFollowupForLast) {
           lastTool.input = item.data.input;
+          // Stamp the id on first arrival (block_start may emit it before
+          // block_stop on some parsers).
+          if (!lastTool.tool_use_id && incomingId) {
+            lastTool.tool_use_id = incomingId;
+          }
         } else {
-          msg.tools.push({ name: item.data.name, input: item.data.input });
+          msg.tools.push({
+            name: item.data.name,
+            input: item.data.input,
+            tool_use_id: incomingId,
+          });
         }
         if (!msg.content) msg.isStreaming = true;
         break;
       }
 
       case "tool_result": {
-        // Find the most recent unmatched tool_call — it might be in the
-        // current message OR in an already-flushed one (thinking blocks
-        // can cause flushes between tool_call and tool_result).
+        const incomingId = item.data.tool_use_id;
+        // Preferred: pair by tool_use_id. Falls back to sequential matching
+        // (oldest unmatched tool) when the id is absent — true for legacy
+        // chat_feed rows persisted before the field was added.
+        const matchTool = (entry: ToolEntry): boolean => {
+          if (entry.result) return false;
+          if (incomingId && entry.tool_use_id) {
+            return entry.tool_use_id === incomingId;
+          }
+          // Either side lacks an id — fall back to "any unresulted tool".
+          return !incomingId || !entry.tool_use_id;
+        };
+
         let matched = false;
         const active = getCur();
         if (active && active.from === "assistant") {
           for (let j = active.tools.length - 1; j >= 0; j--) {
-            if (!active.tools[j].result) {
+            if (matchTool(active.tools[j])) {
               active.tools[j].result = {
                 content: item.data.content,
                 is_error: item.data.is_error,
@@ -166,12 +201,12 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           }
         }
         if (!matched) {
-          // Search flushed messages backwards
+          // Search flushed messages backwards.
           for (let m = messages.length - 1; m >= 0 && !matched; m--) {
             const msg = messages[m];
             if (msg.from !== "assistant") continue;
             for (let j = msg.tools.length - 1; j >= 0; j--) {
-              if (!msg.tools[j].result) {
+              if (matchTool(msg.tools[j])) {
                 msg.tools[j].result = {
                   content: item.data.content,
                   is_error: item.data.is_error,

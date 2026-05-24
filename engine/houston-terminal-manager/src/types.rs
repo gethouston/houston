@@ -191,12 +191,28 @@ pub enum FeedItem {
     /// and CTAs.
     ProviderError(ProviderError),
     /// Tool call made by the assistant.
+    ///
+    /// `tool_use_id` is the LLM-provided identifier from the Anthropic API
+    /// (`tool_use.id` in stream-json). Optional only for backward
+    /// compatibility with previously-persisted feed rows that predate the
+    /// field; live parsing always stamps it. The UI uses it to (a) pair
+    /// tool_call with the matching tool_result deterministically and
+    /// (b) key interactive-question answers back to the right call via
+    /// `POST /v1/agents/.../sessions/.../user_input`.
     ToolCall {
         name: String,
         input: serde_json::Value,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tool_use_id: Option<String>,
     },
-    /// Result of a tool call.
-    ToolResult { content: String, is_error: bool },
+    /// Result of a tool call. `tool_use_id` matches the originating
+    /// [`Self::ToolCall`] when available; see that variant's docs.
+    ToolResult {
+        content: String,
+        is_error: bool,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        tool_use_id: Option<String>,
+    },
     /// System message (session start, etc.).
     SystemMessage(String),
     /// Session completed — cost/duration/usage summary.

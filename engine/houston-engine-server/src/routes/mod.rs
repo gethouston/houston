@@ -10,6 +10,7 @@ pub mod conversations;
 pub mod error;
 pub mod git;
 pub mod health;
+pub mod mcp;
 pub mod portable;
 pub mod preferences;
 pub mod providers;

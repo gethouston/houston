@@ -100,6 +100,7 @@ pub fn spawn_and_monitor(
     provider: Provider,
     model: Option<String>,
     effort: Option<String>,
+    mcp_config: Option<PathBuf>,
 ) -> tokio::task::JoinHandle<SessionResult> {
     // Ensure the user's shell PATH is resolved before spawning.
     // OnceLock inside init() makes this a no-op after the first call.
@@ -116,7 +117,7 @@ pub fn spawn_and_monitor(
         model,
         effort,
         system_prompt,
-        None,  // mcp_config
+        mcp_config,
         false, // disable_builtin_tools
         false, // disable_all_tools
     );
@@ -407,12 +408,26 @@ fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
             let data = serde_json::json!({ "kind": kind, "details": details });
             Some(("tool_runtime_error".into(), data.to_string()))
         }
-        FeedItem::ToolCall { name, input } => {
-            let data = serde_json::json!({ "name": name, "input": input });
+        FeedItem::ToolCall {
+            name,
+            input,
+            tool_use_id,
+        } => {
+            let mut data = serde_json::json!({ "name": name, "input": input });
+            if let Some(id) = tool_use_id {
+                data["tool_use_id"] = serde_json::Value::String(id.clone());
+            }
             Some(("tool_call".into(), data.to_string()))
         }
-        FeedItem::ToolResult { content, is_error } => {
-            let data = serde_json::json!({ "content": content, "is_error": is_error });
+        FeedItem::ToolResult {
+            content,
+            is_error,
+            tool_use_id,
+        } => {
+            let mut data = serde_json::json!({ "content": content, "is_error": is_error });
+            if let Some(id) = tool_use_id {
+                data["tool_use_id"] = serde_json::Value::String(id.clone());
+            }
             Some(("tool_result".into(), data.to_string()))
         }
         FeedItem::SystemMessage(t) => Some(("system_message".into(), json_str(t))),
