@@ -1,5 +1,7 @@
 import { useTranslation } from "react-i18next";
 import { Loader2, AlertTriangle, Check, RefreshCw } from "lucide-react";
+import type { TrackerIssue } from "@houston-ai/engine-client";
+import { LinearIssuesList } from "../../tracker/linear-issues-list";
 
 /**
  * State-card variants for {@link TrackerSection}. Split out to stay
@@ -59,17 +61,21 @@ interface ConnectedCardProps {
   capabilities: string[];
   connectedAt: string | undefined;
   issuesCount: number | undefined;
+  issues: TrackerIssue[];
   onDisconnect: () => void;
   disconnectPending: boolean;
   onSyncNow: () => void;
   syncPending: boolean;
 }
 
+const ISSUE_PREVIEW_LIMIT = 5;
+
 export function ConnectedCard({
   orgName,
   capabilities,
   connectedAt,
   issuesCount,
+  issues,
   onDisconnect,
   disconnectPending,
   onSyncNow,
@@ -124,7 +130,7 @@ export function ConnectedCard({
         </button>
       </div>
       {capabilities.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-1.5 mb-3">
           {capabilities.map((cap) => (
             <span
               key={cap}
@@ -133,6 +139,11 @@ export function ConnectedCard({
               {cap}
             </span>
           ))}
+        </div>
+      )}
+      {issues.length > 0 && (
+        <div className="border-t border-border pt-3">
+          <LinearIssuesList issues={issues} limit={ISSUE_PREVIEW_LIMIT} />
         </div>
       )}
     </div>

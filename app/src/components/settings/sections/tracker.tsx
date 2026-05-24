@@ -133,6 +133,7 @@ export function TrackerSection() {
           capabilities={data.capabilities}
           connectedAt={data.connectedAt}
           issuesCount={issues.data?.length}
+          issues={issues.data ?? []}
           onDisconnect={handleDisconnect}
           disconnectPending={disconnect.isPending}
           onSyncNow={handleSyncNow}

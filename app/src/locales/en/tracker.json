@@ -32,6 +32,13 @@
     "browserFailedBody": "Open this URL manually: {{url}}",
     "disconnectedToast": "Linear disconnected.",
     "syncedToast_one": "Synced {{count}} issue from Linear.",
-    "syncedToast_other": "Synced {{count}} issues from Linear."
+    "syncedToast_other": "Synced {{count}} issues from Linear.",
+    "issues": {
+      "empty": "No issues mirrored yet. Try Sync now.",
+      "openInLinear": "Open in Linear",
+      "openFailed": "Couldn't open the link in your browser.",
+      "moreTruncated_one": "+ {{count}} more issue",
+      "moreTruncated_other": "+ {{count}} more issues"
+    }
   }
 }
