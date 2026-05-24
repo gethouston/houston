@@ -534,6 +534,10 @@ fn write_mcp_config_file(
         .collect();
     let path = dir.join(format!("{safe_key}.json"));
     let url = format!("{}/v1/mcp/{}/", mcp.base_url.trim_end_matches('/'), session_key);
+    // `timeout` raises the tool-call watchdog from the 60-second default to
+    // 1 hour — humans answering a clarifying question may take a while.
+    // (The 60-second first-byte fetch budget is separate; we beat that
+    // by streaming SSE keepalives from the `tools/call` handler.)
     let body = serde_json::json!({
         "mcpServers": {
             "houston": {
@@ -541,7 +545,8 @@ fn write_mcp_config_file(
                 "url": url,
                 "headers": {
                     "Authorization": format!("Bearer {}", mcp.token),
-                }
+                },
+                "timeout": 3_600_000_u32,
             }
         }
     });

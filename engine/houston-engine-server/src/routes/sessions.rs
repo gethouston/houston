@@ -49,6 +49,10 @@ pub fn router() -> Router<Arc<ServerState>> {
             "/agents/:agent_path/sessions/:key/history",
             get(load_history),
         )
+        .route(
+            "/agents/:agent_path/sessions/:key/user_input",
+            post(submit_user_input),
+        )
         .route("/sessions/summarize", post(summarize_activity))
         .route(
             "/sessions/generate-instructions",
@@ -177,6 +181,40 @@ async fn load_history(
 ) -> Result<Json<Vec<history::ChatHistoryEntry>>, ApiError> {
     let agent_dir = resolve_agent_dir(&st.engine.paths, &agent_path);
     Ok(Json(history::load(&st.engine.db, &agent_dir, &key).await?))
+}
+
+/// POST `/v1/agents/:agent_path/sessions/:key/user_input` — frontend submits
+/// the user's answer to a pending `mcp__houston__AskUserQuestion`. The MCP
+/// handler in `routes/mcp.rs` is currently blocked awaiting this exact
+/// `tool_use_id`; we resolve its oneshot and return 204.
+///
+/// Errors:
+/// - `404 NOT_FOUND` if no pending question matches (already answered, wrong
+///   id, session cancelled).
+/// - `409 CONFLICT` if the MCP handler was cancelled in the same tick.
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserInputRequest {
+    /// The Anthropic-emitted `tool_use_id` echoed back from the frontend's
+    /// `FeedItem::ToolCall` row. The MCP handler is keyed on this id.
+    pub tool_use_id: String,
+    /// The structured answer payload, shape decided by the frontend.
+    /// Typically `{ answers: [{ selected: string[], other?: string }] }`
+    /// but treated opaquely here — handed verbatim to the MCP tool result.
+    pub answer: serde_json::Value,
+}
+
+async fn submit_user_input(
+    State(st): State<Arc<ServerState>>,
+    Path((_agent_path, key)): Path<(String, String)>,
+    Json(req): Json<UserInputRequest>,
+) -> Result<axum::http::StatusCode, ApiError> {
+    st.engine
+        .sessions
+        .ask_user
+        .submit_answer(&key, &req.tool_use_id, req.answer)
+        .await?;
+    Ok(axum::http::StatusCode::NO_CONTENT)
 }
 
 #[derive(Debug, Deserialize)]
