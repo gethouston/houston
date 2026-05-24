@@ -20,6 +20,11 @@ pub enum TunnelFrame {
     PairResponse(PairResponseFrame),
     Ping(PingFrame),
     Pong(PongFrame),
+    /// Desktop → relay: a notification-worthy session lifecycle
+    /// transition. The relay forwards it to APNs/FCM for this tunnel's
+    /// registered devices. The engine owns policy (cap/dedup) + i18n;
+    /// the relay is a dumb push pipe.
+    Notify(NotifyFrame),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -117,6 +122,32 @@ pub struct PongFrame {
     pub ts: i64,
 }
 
+/// Lifecycle transition that warrants a push. Mirror of
+/// `houston-relay/src/types.ts::NotifyKind`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum NotifyKind {
+    /// Agent is blocked waiting on the user.
+    NeedsYou,
+    /// Session completed successfully.
+    Finished,
+    /// Session ended in an error.
+    Failed,
+}
+
+/// Desktop → relay notification payload. `title`/`body` are already
+/// localized by the engine (en/es/pt); the relay never inspects them.
+/// Note: the inner discriminator is `notifyKind`, not `kind` — `kind`
+/// is taken by the [`TunnelFrame`] serde tag.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct NotifyFrame {
+    pub notify_kind: NotifyKind,
+    pub title: String,
+    pub body: String,
+    pub session_key: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -160,5 +191,22 @@ mod tests {
     fn ping_roundtrip() {
         let s = serde_json::to_string(&TunnelFrame::Ping(PingFrame { ts: 42 })).unwrap();
         assert!(s.contains("\"kind\":\"ping\""));
+    }
+
+    #[test]
+    fn notify_roundtrip_and_lockstep_shape() {
+        let frame = TunnelFrame::Notify(NotifyFrame {
+            notify_kind: NotifyKind::NeedsYou,
+            title: "Houston".into(),
+            body: "Your agent needs you".into(),
+            session_key: "sess-1".into(),
+        });
+        let s = serde_json::to_string(&frame).unwrap();
+        // Frame discriminator is `kind`; the inner event is `notifyKind`.
+        assert!(s.contains("\"kind\":\"notify\""));
+        assert!(s.contains("\"notifyKind\":\"needs_you\""));
+        assert!(s.contains("\"sessionKey\":\"sess-1\""));
+        let parsed: TunnelFrame = serde_json::from_str(&s).unwrap();
+        assert!(matches!(parsed, TunnelFrame::Notify(_)));
     }
 }

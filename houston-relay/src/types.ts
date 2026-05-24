@@ -35,7 +35,8 @@ export type TunnelFrame =
   | PairRequestFrame
   | PairResponseFrame
   | PingFrame
-  | PongFrame;
+  | PongFrame
+  | NotifyFrame;
 
 /** Mobile → desktop: proxy an HTTP request. */
 export interface HttpRequestFrame {
@@ -133,6 +134,23 @@ export interface PingFrame {
 export interface PongFrame {
   kind: "pong";
   ts: number;
+}
+
+/** Lifecycle transition that warrants a push. Mirror of
+ * `engine/houston-tunnel/src/frame.rs::NotifyKind`. */
+export type NotifyKind = "needs_you" | "finished" | "failed";
+
+/** Desktop → relay: a notification-worthy session lifecycle transition.
+ * The relay forwards it to APNs/FCM for this tunnel's registered devices.
+ * The engine owns policy (cap/dedup) + i18n (title/body already
+ * localized); the relay is a dumb pipe and never inspects the strings.
+ * Note: the inner discriminator is `notifyKind` — `kind` is the frame tag. */
+export interface NotifyFrame {
+  kind: "notify";
+  notifyKind: NotifyKind;
+  title: string;
+  body: string;
+  sessionKey: string;
 }
 
 // ---------------------------------------------------------------------------
