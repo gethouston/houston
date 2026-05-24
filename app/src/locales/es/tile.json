@@ -1,0 +1,7 @@
+{
+  "focus": {
+    "heading": "Última respuesta",
+    "emptyTitle": "Aún no hay nada fijado",
+    "emptyDescription": "El mensaje más reciente del asistente aparecerá aquí cuando termine un turno."
+  }
+}

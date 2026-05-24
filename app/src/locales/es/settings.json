@@ -99,6 +99,10 @@
       "checkpoints": {
         "label": "Puntos de control",
         "description": "Toma snapshots del estado .houston de un agente y restáuralos. Útil antes de cambios riesgosos o para revertir una ejecución mala."
+      },
+      "tile_layout": {
+        "label": "Disposición en mosaico",
+        "description": "Divide la pestaña de chat en dos paneles, la conversación a la izquierda y la última respuesta del asistente fijada a la derecha para leerla mejor."
       }
     },
     "resetAll": "Restablecer todos los ajustes avanzados",

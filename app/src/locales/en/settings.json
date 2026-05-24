@@ -99,6 +99,10 @@
       "checkpoints": {
         "label": "Checkpoints",
         "description": "Snapshot and restore an agent's .houston state. Useful before risky changes or to roll back a bad run."
+      },
+      "tile_layout": {
+        "label": "Tile layout",
+        "description": "Split the chat tab into two panes, the conversation on the left and the latest assistant response pinned on the right for easier reading."
       }
     },
     "resetAll": "Reset all advanced settings",

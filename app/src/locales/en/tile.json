@@ -1,0 +1,7 @@
+{
+  "focus": {
+    "heading": "Latest response",
+    "emptyTitle": "Nothing pinned yet",
+    "emptyDescription": "The assistant's most recent message will appear here once a turn completes."
+  }
+}

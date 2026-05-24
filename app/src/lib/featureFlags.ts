@@ -112,6 +112,18 @@ export const FLAG_REGISTRY: Record<string, FlagDef> = {
     since: "0.4.4",
     graduationTarget: "permanent",
   },
+  "advanced.tile_layout": {
+    key: "advanced.tile_layout",
+    category: "advanced",
+    default: false,
+    labelKey: "advanced.flags.tile_layout.label",
+    descriptionKey: "advanced.flags.tile_layout.description",
+    enforcementSurface: "ui",
+    status: "beta",
+    learnMoreSlug: "tile-layout",
+    since: "0.4.5",
+    graduationTarget: "permanent",
+  },
 };
 
 export type FlagMigration =

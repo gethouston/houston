@@ -30,6 +30,7 @@ import eventsEn from "../locales/en/events.json";
 import checkpointsEn from "../locales/en/checkpoints.json";
 import gitEn from "../locales/en/git.json";
 import portableEn from "../locales/en/portable.json";
+import tileEn from "../locales/en/tile.json";
 import timelineEn from "../locales/en/timeline.json";
 import trackerEn from "../locales/en/tracker.json";
 import commonEs from "../locales/es/common.json";
@@ -50,6 +51,7 @@ import eventsEs from "../locales/es/events.json";
 import checkpointsEs from "../locales/es/checkpoints.json";
 import gitEs from "../locales/es/git.json";
 import portableEs from "../locales/es/portable.json";
+import tileEs from "../locales/es/tile.json";
 import timelineEs from "../locales/es/timeline.json";
 import trackerEs from "../locales/es/tracker.json";
 import commonPt from "../locales/pt/common.json";
@@ -70,6 +72,7 @@ import eventsPt from "../locales/pt/events.json";
 import checkpointsPt from "../locales/pt/checkpoints.json";
 import gitPt from "../locales/pt/git.json";
 import portablePt from "../locales/pt/portable.json";
+import tilePt from "../locales/pt/tile.json";
 import timelinePt from "../locales/pt/timeline.json";
 import trackerPt from "../locales/pt/tracker.json";
 
@@ -136,6 +139,7 @@ const resources = {
     checkpoints: checkpointsEn,
     git: gitEn,
     portable: portableEn,
+    tile: tileEn,
     timeline: timelineEn,
     tracker: trackerEn,
   },
@@ -158,6 +162,7 @@ const resources = {
     checkpoints: checkpointsEs,
     git: gitEs,
     portable: portableEs,
+    tile: tileEs,
     timeline: timelineEs,
     tracker: trackerEs,
   },
@@ -180,6 +185,7 @@ const resources = {
     checkpoints: checkpointsPt,
     git: gitPt,
     portable: portablePt,
+    tile: tilePt,
     timeline: timelinePt,
     tracker: trackerPt,
   },
@@ -222,6 +228,7 @@ void i18n
       "checkpoints",
       "git",
       "portable",
+      "tile",
       "timeline",
       "tracker",
     ],

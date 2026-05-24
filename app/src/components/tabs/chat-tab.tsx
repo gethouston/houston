@@ -34,6 +34,9 @@ import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { ChatModelSelector } from "../chat-model-selector";
 import { ContextMeter } from "../context-meter";
 import { FeatureGate } from "../FeatureGate";
+import { useFeatureFlag } from "../../hooks/useFeatureFlag";
+import { SplitView } from "@houston-ai/layout";
+import { FocusedAssistantPane } from "../tile/focused-assistant-pane";
 import { Paperclip } from "lucide-react";
 import { useChatDisplayLabels } from "../use-chat-display-labels";
 import { getDefaultModel, PROVIDERS } from "../../lib/providers";
@@ -292,8 +295,27 @@ export default function ChatTab({ agent }: TabProps) {
     onQueued: handleQueued,
   });
 
+  // Phase 6 of RFC #248 — `advanced.tile_layout`. When the flag is on,
+  // we wrap the chat panel in a SplitView with the latest assistant
+  // text pinned in a right-side reader pane. v1 is a 2-pane horizontal
+  // split with the existing @houston-ai/layout SplitView primitive.
+  const tileLayoutOn = useFeatureFlag("advanced.tile_layout");
   return (
     <div className="h-full w-full flex flex-col">
+      {tileLayoutOn ? (
+        <SplitView
+          left={renderChatPanel()}
+          right={<FocusedAssistantPane feedItems={visibleFeedItems} />}
+        />
+      ) : (
+        renderChatPanel()
+      )}
+      {attachmentValidation.dialog}
+    </div>
+  );
+
+  function renderChatPanel() {
+    return (
       <ChatPanel
         sessionKey={sessionKey}
         feedItems={visibleFeedItems}
@@ -427,7 +449,6 @@ export default function ChatTab({ agent }: TabProps) {
           </Empty>
         }
       />
-      {attachmentValidation.dialog}
-    </div>
-  );
+    );
+  }
 }
