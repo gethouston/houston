@@ -185,6 +185,8 @@ export function LinearView() {
       />
       <div className="px-6 pb-4">
         <LinearConnectionsPanel
+          provider="linear"
+          workspacePath={workspacePath}
           data={connectionList.data}
           isLoading={connectionList.isLoading}
         />

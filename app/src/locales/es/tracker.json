@@ -61,7 +61,10 @@
       "heading_other": "Conexiones de Linear en este espacio de trabajo ({{count}})",
       "intro": "Cada organización de Linear conectada a este espacio de trabajo. Todas se reflejan a nivel del espacio y los agentes dentro las comparten.",
       "moreCaps_one": "+ {{count}} capacidad más",
-      "moreCaps_other": "+ {{count}} capacidades más"
+      "moreCaps_other": "+ {{count}} capacidades más",
+      "disconnectConfirmTitle": "¿Desconectar {{orgName}}?",
+      "disconnectConfirmBody": "Esto elimina los tokens OAuth de Linear y los metadatos de la conexión a nivel del espacio de trabajo. Los datos reflejados en disco se mantienen por ahora; elimina manualmente la carpeta del tracker del espacio si quieres borrarlos.",
+      "disconnectedToast": "{{orgName}} desconectado de Linear."
     }
   }
 }

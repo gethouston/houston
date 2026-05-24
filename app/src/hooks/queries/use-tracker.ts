@@ -82,20 +82,33 @@ export function useTrackerConnect(
 }
 
 /**
- * Disconnect: revokes the keychain entry and deletes `connection.json`.
- * Idempotent on the engine side — duplicate clicks resolve cleanly.
+ * Disconnect: revokes the keychain entry and deletes the on-disk
+ * meta. Idempotent on the engine side — duplicate clicks resolve
+ * cleanly.
+ *
+ * `orgId` (PR C, workspace-many surface): when provided, targets
+ * the specific Linear org's workspace-level meta. When absent,
+ * falls back to legacy per-agent disconnect.
  */
 export function useTrackerDisconnect(
   provider: TrackerProvider,
   workspacePath: string | undefined,
+  orgId?: string,
 ) {
   const qc = useQueryClient();
   return useMutation<void, Error, void>({
-    mutationFn: () => tauriTrackers.disconnect(provider, workspacePath!),
+    mutationFn: () =>
+      tauriTrackers.disconnect(provider, workspacePath!, orgId),
     onSuccess: () => {
       if (workspacePath) {
         qc.invalidateQueries({
           queryKey: trackerStatusKey(provider, workspacePath),
+        });
+        // Workspace-many surface also needs invalidating so the
+        // panel row disappears immediately after a per-org
+        // disconnect.
+        qc.invalidateQueries({
+          queryKey: trackerConnectionsKey(provider, workspacePath),
         });
       }
     },

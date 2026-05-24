@@ -162,6 +162,8 @@ export function TrackerSection() {
       )}
 
       <LinearConnectionsPanel
+        provider="linear"
+        workspacePath={workspacePath}
         data={connectionList.data}
         isLoading={connectionList.isLoading}
       />

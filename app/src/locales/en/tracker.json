@@ -61,7 +61,10 @@
       "heading_other": "Workspace Linear connections ({{count}})",
       "intro": "Every Linear org connected to this workspace. Each is mirrored under the workspace and shared by the agents inside.",
       "moreCaps_one": "+ {{count}} more capability",
-      "moreCaps_other": "+ {{count}} more capabilities"
+      "moreCaps_other": "+ {{count}} more capabilities",
+      "disconnectConfirmTitle": "Disconnect {{orgName}}?",
+      "disconnectConfirmBody": "This removes the Linear OAuth tokens and the workspace-level connection metadata. The mirrored data on disk is left in place for now; remove the workspace's tracker folder manually if you want it gone.",
+      "disconnectedToast": "{{orgName}} disconnected from Linear."
     }
   }
 }

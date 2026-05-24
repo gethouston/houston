@@ -851,11 +851,15 @@ export const tauriTrackers = {
       { workspacePath },
       { toast: false },
     ),
-  disconnect: (provider: EngineTrackerProvider, workspacePath: string) =>
+  disconnect: (
+    provider: EngineTrackerProvider,
+    workspacePath: string,
+    orgId?: string,
+  ) =>
     call<void>(
-      `tracker_${provider}_disconnect`,
-      () => getEngine().trackerDisconnect(provider, workspacePath),
-      { workspacePath },
+      `tracker_${provider}_disconnect${orgId ? `_${orgId}` : ""}`,
+      () => getEngine().trackerDisconnect(provider, workspacePath, orgId),
+      orgId ? { workspacePath, orgId } : { workspacePath },
     ),
   listIssues: (provider: EngineTrackerProvider, workspacePath: string) =>
     call<EngineTrackerIssue[]>(

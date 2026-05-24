@@ -93,25 +93,42 @@ async fn connect(
     Ok(Json(resp))
 }
 
-/// `DELETE /v1/trackers/:provider/connect` — disconnect.
+/// `DELETE /v1/trackers/:provider/connect?workspacePath=...[&orgId=...]`
+/// — disconnect. PR C: when `orgId` is supplied, removes the
+/// workspace-level `<org_id>.json` connection meta + the per-org
+/// keychain entry (workspace-many shape). When `orgId` is absent,
+/// falls back to the legacy per-agent path so existing UI callers
+/// keep working — PR D will retire the legacy variant.
 async fn disconnect(
     State(_st): State<Arc<ServerState>>,
     Path(provider): Path<String>,
     axum::extract::Query(q): axum::extract::Query<WorkspaceQuery>,
 ) -> Result<(), ApiError> {
     let workspace = require_linear_workspace(&provider, &q.workspace_path)?;
-    linear::disconnect(&workspace).map_err(lift_linear)?;
+    match q.org_id.as_deref() {
+        Some(org_id) if !org_id.is_empty() => {
+            linear::disconnect_for_org(&workspace, org_id).map_err(lift_linear)?
+        }
+        _ => linear::disconnect(&workspace).map_err(lift_linear)?,
+    }
     Ok(())
 }
 
-/// `GET /v1/trackers/:provider/status?workspacePath=...`
+/// `GET /v1/trackers/:provider/status?workspacePath=...[&orgId=...]`
+/// — connection status. PR C: when `orgId` is supplied, reads the
+/// workspace-level `<org_id>.json` (workspace-many shape). Legacy
+/// per-agent fallback when absent.
 async fn status(
     State(_st): State<Arc<ServerState>>,
     Path(provider): Path<String>,
     axum::extract::Query(q): axum::extract::Query<WorkspaceQuery>,
 ) -> Result<Json<TrackerStatusResponse>, ApiError> {
     let workspace = require_linear_workspace(&provider, &q.workspace_path)?;
-    Ok(Json(linear::get_status(&workspace)))
+    let resp = match q.org_id.as_deref() {
+        Some(org_id) if !org_id.is_empty() => linear::get_status_for_org(&workspace, org_id),
+        _ => linear::get_status(&workspace),
+    };
+    Ok(Json(resp))
 }
 
 /// `GET /v1/trackers/:provider/connections?workspacePath=...` — list
@@ -221,4 +238,11 @@ async fn webhook(
 #[serde(rename_all = "camelCase")]
 struct WorkspaceQuery {
     workspace_path: String,
+    /// Workspace-many surface (PR C+): when present, the request
+    /// targets the specific Linear org's workspace-level
+    /// `<org_id>.json` connection. When absent, the engine falls
+    /// back to the legacy per-agent shape (one connection per agent
+    /// dir). PR D retires the legacy path.
+    #[serde(default)]
+    org_id: Option<String>,
 }

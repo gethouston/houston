@@ -189,6 +189,80 @@ pub fn list_workspace_connections(
     })
 }
 
+/// Per-org disconnect (PR C, workspace-many surface): removes the
+/// keychain entry for `org_id` and deletes the workspace-level
+/// `<workspace>/.houston/trackers/linear/connections/<org_id>.json`
+/// file. Idempotent — calling on an absent org returns Ok.
+///
+/// Legacy per-agent files at
+/// `<agent>/.houston/trackers/linear/connection.json` are NOT touched
+/// here; the workspace-level migration runs lazily on the next
+/// `list_workspace_connections` call. PR D will clean those up
+/// after the new shape has soaked.
+pub fn disconnect_for_org(workspace_path: &Path, org_id: &str) -> Result<(), LinearError> {
+    // Only touch the keychain when the on-disk meta actually exists.
+    // Mirrors the legacy `disconnect` pattern: keychain ops are
+    // platform-bound (macOS `security` binary) and would fail
+    // spuriously on CI / Linux dev shells if we always called them.
+    // The "no meta on disk" branch is the idempotent-disconnect path
+    // used by tests + duplicate user clicks.
+    let meta_path = ConnectionMeta::path_for_workspace_org(workspace_path, org_id);
+    if meta_path.exists() {
+        // Keychain removed FIRST so a partial failure leaves no
+        // dangling token even if the FS delete errors out.
+        crate::keychain::delete(org_id)?;
+    }
+
+    match std::fs::remove_file(&meta_path) {
+        Ok(_) => Ok(()),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(()),
+        Err(e) => Err(LinearError::Io(format!("delete {org_id}.json: {e}"))),
+    }
+}
+
+/// Per-org status (PR C, workspace-many surface): reads the
+/// workspace-level `<org_id>.json` connection file. Returns a
+/// fully-populated [`TrackerStatusResponse`] when the connection
+/// exists, otherwise a `NotConnected` shape so callers can render
+/// "this org is gone" without special-casing missing files.
+pub fn get_status_for_org(workspace_path: &Path, org_id: &str) -> TrackerStatusResponse {
+    match ConnectionMeta::load_for_workspace_org(workspace_path, org_id) {
+        Ok(meta) => TrackerStatusResponse {
+            provider: TrackerProvider::Linear,
+            connected: true,
+            state: TrackerConnectionState::Connected,
+            org_id: Some(meta.org_id),
+            org_name: Some(meta.org_name),
+            capabilities: meta.capabilities,
+            connected_at: Some(meta.connected_at),
+            last_sync_at: meta.last_sync_at,
+            last_error: None,
+        },
+        Err(LinearError::NotAuthenticated) => TrackerStatusResponse {
+            provider: TrackerProvider::Linear,
+            connected: false,
+            state: TrackerConnectionState::NotConnected,
+            org_id: None,
+            org_name: None,
+            capabilities: vec![],
+            connected_at: None,
+            last_sync_at: None,
+            last_error: None,
+        },
+        Err(e) => TrackerStatusResponse {
+            provider: TrackerProvider::Linear,
+            connected: false,
+            state: TrackerConnectionState::Error,
+            org_id: None,
+            org_name: None,
+            capabilities: vec![],
+            connected_at: None,
+            last_sync_at: None,
+            last_error: Some(format!("{e}")),
+        },
+    }
+}
+
 /// Disconnect: cancel any in-flight task, remove the keychain entry,
 /// delete `connection.json`. Idempotent — calling on an unconnected
 /// workspace returns Ok.
@@ -248,5 +322,23 @@ mod tests {
     fn disconnect_on_unconnected_workspace_is_idempotent() {
         let dir = TempDir::new().unwrap();
         disconnect(dir.path()).unwrap();
+    }
+
+    // ── PR C: per-org workspace-many surface ─────────────────────
+
+    #[test]
+    fn status_for_missing_org_is_not_connected() {
+        let dir = TempDir::new().unwrap();
+        let s = get_status_for_org(dir.path(), "absent-org");
+        assert!(!s.connected);
+        assert_eq!(s.state, TrackerConnectionState::NotConnected);
+        assert!(s.last_error.is_none());
+    }
+
+    #[test]
+    fn disconnect_for_missing_org_is_idempotent() {
+        // No file, no keychain entry — should not blow up.
+        let dir = TempDir::new().unwrap();
+        disconnect_for_org(dir.path(), "absent-org").unwrap();
     }
 }

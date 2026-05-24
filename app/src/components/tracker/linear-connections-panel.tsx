@@ -1,30 +1,41 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link2 } from "lucide-react";
-import type { TrackerConnectionList } from "@houston-ai/engine-client";
+import { Button, ConfirmDialog } from "@houston-ai/core";
+import type {
+  TrackerConnectionList,
+  TrackerConnectionListItem,
+  TrackerProvider,
+} from "@houston-ai/engine-client";
+import { useTrackerDisconnect } from "../../hooks/queries";
+import { useUIStore } from "../../stores/ui";
 
 /**
- * Workspace-many informational surface (PR B).
+ * Workspace-many list surface (PR B + PR C).
  *
- * Renders the list of Linear connections registered to the workspace,
- * surfaced by `useTrackerConnectionList`. Today's Settings + LinearView
- * still drive their per-org disconnect/sync through the legacy
- * per-agent path (one connection at a time); this panel is the
- * first user-visible glimpse of the workspace-many shape that
- * PR A's engine foundation introduced.
+ * PR B shipped this as informational read-only. PR C adds per-row
+ * Disconnect buttons backed by the new per-org engine route
+ * (`DELETE /v1/trackers/linear/connect?workspacePath=...&orgId=...`).
  *
- * PR C will move the per-row Disconnect / Sync controls here once
- * the routes accept `orgId`.
+ * Today's Settings + LinearView still drive their primary
+ * connection through the legacy per-agent path; this panel is the
+ * canonical per-org control surface. PR D adds per-row Sync and
+ * retires the legacy path entirely.
  */
 export interface LinearConnectionsPanelProps {
+  provider: TrackerProvider;
+  workspacePath: string | undefined;
   data: TrackerConnectionList | undefined;
   isLoading: boolean;
   /** Hide entirely when only zero or one connection is present —
-   *  the existing single-card Settings view already covers that
+   *  the existing single-card view above already covers that
    *  shape, and a list of one is more noise than signal. */
   hideWhenLeOne?: boolean;
 }
 
 export function LinearConnectionsPanel({
+  provider,
+  workspacePath,
   data,
   isLoading,
   hideWhenLeOne = true,
@@ -48,38 +59,105 @@ export function LinearConnectionsPanel({
       </p>
       <ul className="space-y-2">
         {connections.map((c) => (
-          <li
+          <LinearConnectionRow
             key={c.orgId}
-            className="flex items-center justify-between rounded-md bg-secondary/30 px-3 py-2"
-          >
-            <div className="min-w-0">
-              <p className="text-sm font-medium truncate">{c.orgName}</p>
-              <p className="text-xs text-muted-foreground font-mono truncate">
-                {c.orgId}
-              </p>
-            </div>
-            {c.capabilities.length > 0 && (
-              <div className="hidden sm:flex items-center gap-1 shrink-0 ml-3">
-                {c.capabilities.slice(0, 3).map((cap) => (
-                  <span
-                    key={cap}
-                    className="inline-flex h-[18px] items-center rounded-full bg-background px-2 text-[10px] font-medium text-muted-foreground border border-border"
-                  >
-                    {cap}
-                  </span>
-                ))}
-                {c.capabilities.length > 3 && (
-                  <span className="text-[10px] text-muted-foreground">
-                    {t("linear.connections.moreCaps", {
-                      count: c.capabilities.length - 3,
-                    })}
-                  </span>
-                )}
-              </div>
-            )}
-          </li>
+            provider={provider}
+            workspacePath={workspacePath}
+            connection={c}
+          />
         ))}
       </ul>
     </section>
+  );
+}
+
+interface LinearConnectionRowProps {
+  provider: TrackerProvider;
+  workspacePath: string | undefined;
+  connection: TrackerConnectionListItem;
+}
+
+function LinearConnectionRow({
+  provider,
+  workspacePath,
+  connection,
+}: LinearConnectionRowProps) {
+  const { t } = useTranslation(["tracker", "common"]);
+  const addToast = useUIStore((s) => s.addToast);
+  const disconnect = useTrackerDisconnect(
+    provider,
+    workspacePath,
+    connection.orgId,
+  );
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  async function handleConfirm() {
+    try {
+      await disconnect.mutateAsync();
+      addToast({
+        title: t("linear.connections.disconnectedToast", {
+          orgName: connection.orgName,
+        }),
+      });
+    } catch {
+      // call() helper already surfaced a toast on failure; nothing
+      // more to do here. The catch keeps the promise chain from
+      // leaking an unhandled rejection.
+    } finally {
+      setShowConfirm(false);
+    }
+  }
+
+  return (
+    <>
+      <li className="flex items-center justify-between rounded-md bg-secondary/30 px-3 py-2">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium truncate">{connection.orgName}</p>
+          <p className="text-xs text-muted-foreground font-mono truncate">
+            {connection.orgId}
+          </p>
+        </div>
+        <div className="flex items-center gap-2 shrink-0 ml-3">
+          {connection.capabilities.length > 0 && (
+            <div className="hidden sm:flex items-center gap-1">
+              {connection.capabilities.slice(0, 3).map((cap) => (
+                <span
+                  key={cap}
+                  className="inline-flex h-[18px] items-center rounded-full bg-background px-2 text-[10px] font-medium text-muted-foreground border border-border"
+                >
+                  {cap}
+                </span>
+              ))}
+              {connection.capabilities.length > 3 && (
+                <span className="text-[10px] text-muted-foreground">
+                  {t("linear.connections.moreCaps", {
+                    count: connection.capabilities.length - 3,
+                  })}
+                </span>
+              )}
+            </div>
+          )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setShowConfirm(true)}
+            disabled={disconnect.isPending || !workspacePath}
+          >
+            {disconnect.isPending
+              ? t("linear.connected.disconnecting")
+              : t("linear.connected.disconnect")}
+          </Button>
+        </div>
+      </li>
+      <ConfirmDialog
+        open={showConfirm}
+        onOpenChange={setShowConfirm}
+        title={t("linear.connections.disconnectConfirmTitle", {
+          orgName: connection.orgName,
+        })}
+        description={t("linear.connections.disconnectConfirmBody")}
+        onConfirm={handleConfirm}
+      />
+    </>
   );
 }

@@ -833,18 +833,25 @@ export class HoustonClient {
 
   /**
    * Disconnect: cancels any in-flight OAuth task, removes the
-   * keychain entry for the bound org, deletes `connection.json`.
+   * keychain entry for the bound org, deletes the on-disk meta.
    * Idempotent.
+   *
+   * `orgId` (PR C, workspace-many surface): when provided, removes
+   * the workspace-level `<org_id>.json` connection and per-org
+   * keychain entry. When absent, falls back to the legacy per-agent
+   * path so existing callers keep working — PR D retires the
+   * legacy variant.
    */
   trackerDisconnect(
     provider: TrackerProvider,
     workspacePath: string,
+    orgId?: string,
   ): Promise<void> {
     return this.request(
       "DELETE",
       `/trackers/${provider}/connect`,
       undefined,
-      { workspacePath },
+      orgId ? { workspacePath, orgId } : { workspacePath },
     );
   }
 
