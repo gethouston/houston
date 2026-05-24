@@ -167,6 +167,19 @@ test("FLAG_REGISTRY contains advanced.timeline with the expected shape", () => {
   assert.equal(flag.graduationTarget, "permanent");
 });
 
+test("FLAG_REGISTRY contains advanced.checkpoints with the expected shape", () => {
+  const flag = FLAG_REGISTRY["advanced.checkpoints"];
+  assert.ok(flag, "advanced.checkpoints must be registered (Phase 5 of RFC #248)");
+  assert.equal(flag.key, "advanced.checkpoints");
+  assert.equal(flag.category, "advanced");
+  assert.equal(flag.default, false);
+  assert.equal(flag.enforcementSurface, "ui");
+  assert.equal(flag.status, "beta");
+  assert.equal(flag.labelKey, "advanced.flags.checkpoints.label");
+  assert.equal(flag.descriptionKey, "advanced.flags.checkpoints.description");
+  assert.equal(flag.graduationTarget, "permanent");
+});
+
 test("every FLAG_REGISTRY entry has the required FlagDef fields", () => {
   for (const [key, flag] of Object.entries(FLAG_REGISTRY)) {
     assert.equal(flag.key, key, `key field must match registry key: ${key}`);

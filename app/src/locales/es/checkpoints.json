@@ -1,0 +1,27 @@
+{
+  "loading": "Cargando…",
+  "saving": "Guardando…",
+  "empty": {
+    "title": "Aún no hay puntos de control",
+    "description": "Toma un snapshot del estado .houston de este agente antes de un cambio riesgoso para poder revertir."
+  },
+  "create": {
+    "placeholder": "Ponle un nombre, p. ej. 'antes del refactor'",
+    "button": "Crear punto de control",
+    "saving": "Snapshotando…"
+  },
+  "actions": {
+    "restore": "Restaurar",
+    "delete": "Eliminar"
+  },
+  "restore": {
+    "confirmTitle": "¿Restaurar este punto de control?",
+    "confirmDescription": "Sobrescribirá el estado .houston actual con el snapshot \"{{name}}\". Los archivos agregados desde el snapshot se perderán.",
+    "confirmLabel": "Restaurar"
+  },
+  "delete": {
+    "confirmTitle": "¿Eliminar este punto de control?",
+    "confirmDescription": "Eliminará del disco el snapshot \"{{name}}\". No se puede deshacer.",
+    "confirmLabel": "Eliminar"
+  }
+}

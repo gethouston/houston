@@ -1,0 +1,27 @@
+{
+  "loading": "Loading…",
+  "saving": "Saving…",
+  "empty": {
+    "title": "No checkpoints yet",
+    "description": "Snapshot this agent's .houston state before a risky change so you can roll back if needed."
+  },
+  "create": {
+    "placeholder": "Name this checkpoint, e.g. 'before refactor'",
+    "button": "Create checkpoint",
+    "saving": "Snapshotting…"
+  },
+  "actions": {
+    "restore": "Restore",
+    "delete": "Delete"
+  },
+  "restore": {
+    "confirmTitle": "Restore this checkpoint?",
+    "confirmDescription": "Will overwrite the current .houston state with the snapshot named \"{{name}}\". Files added since the snapshot will be lost.",
+    "confirmLabel": "Restore"
+  },
+  "delete": {
+    "confirmTitle": "Delete this checkpoint?",
+    "confirmDescription": "Will remove the snapshot named \"{{name}}\" from disk. This cannot be undone.",
+    "confirmLabel": "Delete"
+  }
+}

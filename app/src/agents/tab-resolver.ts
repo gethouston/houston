@@ -21,6 +21,7 @@ import SkillsTab from "../components/tabs/skills-tab";
 import ConfigTab from "../components/tabs/config-tab";
 import GitTab from "../components/tabs/git-tab";
 import TimelineTab from "../components/tabs/timeline-tab";
+import CheckpointsTab from "../components/tabs/checkpoints-tab";
 
 const BUILTIN_TABS: Record<string, ComponentType<TabProps>> = {
   chat: ChatTab,
@@ -38,6 +39,7 @@ const BUILTIN_TABS: Record<string, ComponentType<TabProps>> = {
   config: ConfigTab,
   git: GitTab,
   timeline: TimelineTab,
+  checkpoints: CheckpointsTab,
 };
 
 // Cache for custom bundle components so they're not re-created on every render

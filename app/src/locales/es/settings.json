@@ -95,6 +95,10 @@
       "timeline": {
         "label": "Línea de tiempo",
         "description": "Muestra una línea de tiempo de actividad entre sesiones en cada agente. Eventos más nuevos primero, con tipo y vista previa corta."
+      },
+      "checkpoints": {
+        "label": "Puntos de control",
+        "description": "Toma snapshots del estado .houston de un agente y restáuralos. Útil antes de cambios riesgosos o para revertir una ejecución mala."
       }
     },
     "resetAll": "Restablecer todos los ajustes avanzados",

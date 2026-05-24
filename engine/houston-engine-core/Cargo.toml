@@ -38,6 +38,10 @@ chrono-tz = "0.9"
 rand = "0.8"
 sha2 = "0.10"
 base64 = "0.22"
+# `advanced.checkpoints` (Phase 5 of RFC #248) — zip + unzip snapshots of
+# an agent's .houston directory.
+zip = { version = "2", default-features = false, features = ["deflate"] }
+walkdir = "2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
 # Native 7z decoder used to extract the bundled PortableGit archive

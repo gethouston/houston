@@ -95,6 +95,10 @@
       "timeline": {
         "label": "Timeline",
         "description": "Show a cross-session activity timeline on every agent. Newest events first, with type and short preview."
+      },
+      "checkpoints": {
+        "label": "Checkpoints",
+        "description": "Snapshot and restore an agent's .houston state. Useful before risky changes or to roll back a bad run."
       }
     },
     "resetAll": "Reset all advanced settings",

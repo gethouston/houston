@@ -2638,6 +2638,8 @@ dependencies = [
  "tokio",
  "tracing",
  "uuid",
+ "walkdir",
+ "zip 2.4.2",
 ]
 
 [[package]]

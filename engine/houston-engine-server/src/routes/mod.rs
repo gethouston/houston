@@ -4,6 +4,7 @@ pub mod agent_configs;
 pub mod agent_files;
 pub mod agents;
 pub mod attachments;
+pub mod checkpoints;
 pub mod claude;
 pub mod composio;
 pub mod conversations;

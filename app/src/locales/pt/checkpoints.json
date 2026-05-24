@@ -1,0 +1,27 @@
+{
+  "loading": "Carregando…",
+  "saving": "Salvando…",
+  "empty": {
+    "title": "Ainda não há pontos de checagem",
+    "description": "Tira um snapshot do estado .houston deste agente antes de uma mudança arriscada para poder reverter."
+  },
+  "create": {
+    "placeholder": "Dê um nome, ex. 'antes do refactor'",
+    "button": "Criar ponto de checagem",
+    "saving": "Tirando snapshot…"
+  },
+  "actions": {
+    "restore": "Restaurar",
+    "delete": "Excluir"
+  },
+  "restore": {
+    "confirmTitle": "Restaurar este ponto de checagem?",
+    "confirmDescription": "Vai sobrescrever o estado .houston atual com o snapshot \"{{name}}\". Arquivos adicionados após o snapshot serão perdidos.",
+    "confirmLabel": "Restaurar"
+  },
+  "delete": {
+    "confirmTitle": "Excluir este ponto de checagem?",
+    "confirmDescription": "Vai remover do disco o snapshot \"{{name}}\". Não dá para desfazer.",
+    "confirmLabel": "Excluir"
+  }
+}

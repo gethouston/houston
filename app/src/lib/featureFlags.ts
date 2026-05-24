@@ -100,6 +100,18 @@ export const FLAG_REGISTRY: Record<string, FlagDef> = {
     since: "0.4.3",
     graduationTarget: "permanent",
   },
+  "advanced.checkpoints": {
+    key: "advanced.checkpoints",
+    category: "advanced",
+    default: false,
+    labelKey: "advanced.flags.checkpoints.label",
+    descriptionKey: "advanced.flags.checkpoints.description",
+    enforcementSurface: "ui",
+    status: "beta",
+    learnMoreSlug: "checkpoints",
+    since: "0.4.4",
+    graduationTarget: "permanent",
+  },
 };
 
 export type FlagMigration =

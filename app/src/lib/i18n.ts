@@ -27,6 +27,7 @@ import integrationsEn from "../locales/en/integrations.json";
 import providersEn from "../locales/en/providers.json";
 import errorsEn from "../locales/en/errors.json";
 import eventsEn from "../locales/en/events.json";
+import checkpointsEn from "../locales/en/checkpoints.json";
 import gitEn from "../locales/en/git.json";
 import portableEn from "../locales/en/portable.json";
 import timelineEn from "../locales/en/timeline.json";
@@ -46,6 +47,7 @@ import integrationsEs from "../locales/es/integrations.json";
 import providersEs from "../locales/es/providers.json";
 import errorsEs from "../locales/es/errors.json";
 import eventsEs from "../locales/es/events.json";
+import checkpointsEs from "../locales/es/checkpoints.json";
 import gitEs from "../locales/es/git.json";
 import portableEs from "../locales/es/portable.json";
 import timelineEs from "../locales/es/timeline.json";
@@ -65,6 +67,7 @@ import integrationsPt from "../locales/pt/integrations.json";
 import providersPt from "../locales/pt/providers.json";
 import errorsPt from "../locales/pt/errors.json";
 import eventsPt from "../locales/pt/events.json";
+import checkpointsPt from "../locales/pt/checkpoints.json";
 import gitPt from "../locales/pt/git.json";
 import portablePt from "../locales/pt/portable.json";
 import timelinePt from "../locales/pt/timeline.json";
@@ -130,6 +133,7 @@ const resources = {
     providers: providersEn,
     errors: errorsEn,
     events: eventsEn,
+    checkpoints: checkpointsEn,
     git: gitEn,
     portable: portableEn,
     timeline: timelineEn,
@@ -151,6 +155,7 @@ const resources = {
     providers: providersEs,
     errors: errorsEs,
     events: eventsEs,
+    checkpoints: checkpointsEs,
     git: gitEs,
     portable: portableEs,
     timeline: timelineEs,
@@ -172,6 +177,7 @@ const resources = {
     providers: providersPt,
     errors: errorsPt,
     events: eventsPt,
+    checkpoints: checkpointsPt,
     git: gitPt,
     portable: portablePt,
     timeline: timelinePt,
@@ -213,6 +219,7 @@ void i18n
       "providers",
       "errors",
       "events",
+      "checkpoints",
       "git",
       "portable",
       "timeline",

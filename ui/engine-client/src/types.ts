@@ -556,6 +556,33 @@ export interface TimelineResponse {
   limit: number;
 }
 
+// ---------- Checkpoints (snapshot + restore agent .houston) ----------
+
+export interface Checkpoint {
+  id: string;
+  name: string;
+  createdAt: string;
+  sizeBytes: number;
+}
+export interface CreateCheckpointRequest {
+  agentPath: string;
+  name: string;
+}
+export interface ListCheckpointsRequest {
+  agentPath: string;
+}
+export interface RestoreCheckpointRequest {
+  agentPath: string;
+  checkpointId: string;
+}
+export interface DeleteCheckpointRequest {
+  agentPath: string;
+  checkpointId: string;
+}
+export interface CheckpointListResponse {
+  checkpoints: Checkpoint[];
+}
+
 export interface RunShellRequest {
   path: string;
   command: string;

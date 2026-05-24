@@ -603,6 +603,25 @@ export const tauriTimeline = {
     call("timeline", () => getEngine().timeline({ sessionIds, limit })),
 };
 
+// ─── Checkpoints (snapshot + restore — advanced.checkpoints) ──────────
+
+export const tauriCheckpoints = {
+  create: (agentPath: string, name: string) =>
+    call("checkpoint_create", () =>
+      getEngine().createCheckpoint({ agentPath, name }),
+    ),
+  list: (agentPath: string) =>
+    call("checkpoint_list", () => getEngine().listCheckpoints({ agentPath })),
+  restore: (agentPath: string, checkpointId: string) =>
+    call("checkpoint_restore", () =>
+      getEngine().restoreCheckpoint({ agentPath, checkpointId }),
+    ),
+  delete: (agentPath: string, checkpointId: string) =>
+    call("checkpoint_delete", () =>
+      getEngine().deleteCheckpoint({ agentPath, checkpointId }),
+    ),
+};
+
 // ─── Worktrees & shell ────────────────────────────────────────────────
 
 export const tauriWorktree = {

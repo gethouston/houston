@@ -44,6 +44,12 @@ import type {
   GitStatusResponse,
   TimelineRequest,
   TimelineResponse,
+  Checkpoint,
+  CheckpointListResponse,
+  CreateCheckpointRequest,
+  DeleteCheckpointRequest,
+  ListCheckpointsRequest,
+  RestoreCheckpointRequest,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
@@ -618,6 +624,21 @@ export class HoustonClient {
 
   timeline(req: TimelineRequest): Promise<TimelineResponse> {
     return this.request("POST", "/timeline", req);
+  }
+
+  // ---------- checkpoints (snapshot + restore) ----------
+
+  createCheckpoint(req: CreateCheckpointRequest): Promise<Checkpoint> {
+    return this.request("POST", "/checkpoints", req);
+  }
+  listCheckpoints(req: ListCheckpointsRequest): Promise<CheckpointListResponse> {
+    return this.request("POST", "/checkpoints/list", req);
+  }
+  restoreCheckpoint(req: RestoreCheckpointRequest): Promise<void> {
+    return this.request("POST", "/checkpoints/restore", req);
+  }
+  deleteCheckpoint(req: DeleteCheckpointRequest): Promise<void> {
+    return this.request("POST", "/checkpoints/delete", req);
   }
 
   // ---------- tunnel (mobile pairing + device-token management) ----------

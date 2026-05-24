@@ -80,17 +80,23 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
   // (no per-agent check; every agent has at least the chance of activities).
   const timelineFlagOn = useFeatureFlag("advanced.timeline");
   const showTimelineTab = timelineFlagOn && Boolean(currentAgent);
+  // Phase 5 — `advanced.checkpoints` injects a `Checkpoints` tab on every agent.
+  const checkpointsFlagOn = useFeatureFlag("advanced.checkpoints");
+  const showCheckpointsTab = checkpointsFlagOn && Boolean(currentAgent);
   const tabs = [
     ...baseTabs,
     ...(showGitTab
       ? [{ id: "git", label: "Git", builtIn: "git" as const }]
       : []),
     ...(showTimelineTab
+      ? [{ id: "timeline", label: "Timeline", builtIn: "timeline" as const }]
+      : []),
+    ...(showCheckpointsTab
       ? [
           {
-            id: "timeline",
-            label: "Timeline",
-            builtIn: "timeline" as const,
+            id: "checkpoints",
+            label: "Checkpoints",
+            builtIn: "checkpoints" as const,
           },
         ]
       : []),
