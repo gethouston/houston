@@ -72,7 +72,8 @@ const PROTOCOL_VERSION: &str = "2025-06-18";
 /// is enforced by the client, not us).
 const TOOL_NAME: &str = "AskUserQuestion";
 
-const TOOL_DESCRIPTION: &str = "Use this tool when you need to ask the user questions during execution. \
+const TOOL_DESCRIPTION: &str =
+    "Use this tool when you need to ask the user questions during execution. \
 This allows you to gather user preferences, clarify ambiguous instructions, get \
 decisions on implementation choices, or offer choices about what direction to \
 take. An 'Other' option that allows free-form input is automatically provided \
@@ -199,8 +200,13 @@ async fn handle_post(
             // first-byte fetch budget. Return SSE so we can flush keepalive
             // bytes during the wait; the spec allows it (section "Sending
             // Messages to the Server" in the Streamable HTTP transport).
-            return handle_tools_call_sse(st.clone(), session_key.clone(), id_for_dispatch, req.params)
-                .await;
+            return handle_tools_call_sse(
+                st.clone(),
+                session_key.clone(),
+                id_for_dispatch,
+                req.params,
+            )
+            .await;
         }
         other => rpc_error(
             id_for_dispatch,
@@ -498,7 +504,10 @@ mod tests {
         .await;
         assert_eq!(resp.status(), StatusCode::ACCEPTED);
         let bytes = to_bytes(resp.into_body(), 1024).await.unwrap();
-        assert!(bytes.is_empty(), "notification response must have empty body");
+        assert!(
+            bytes.is_empty(),
+            "notification response must have empty body"
+        );
     }
 
     #[tokio::test]
@@ -514,10 +523,7 @@ mod tests {
         let tools = value["result"]["tools"].as_array().expect("tools array");
         assert_eq!(tools.len(), 1);
         assert_eq!(tools[0]["name"], TOOL_NAME);
-        assert!(tools[0]["description"]
-            .as_str()
-            .unwrap()
-            .contains("Other"));
+        assert!(tools[0]["description"].as_str().unwrap().contains("Other"));
         // Schema must require questions array and forbid missing fields.
         assert_eq!(tools[0]["inputSchema"]["required"][0], "questions");
     }
@@ -589,7 +595,10 @@ mod tests {
             "a"
         );
         let txt = value["result"]["content"][0]["text"].as_str().unwrap();
-        assert!(txt.contains("\"a\""), "text payload should include the answer");
+        assert!(
+            txt.contains("\"a\""),
+            "text payload should include the answer"
+        );
     }
 
     #[tokio::test]

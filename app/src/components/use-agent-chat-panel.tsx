@@ -57,6 +57,8 @@ import { createMission } from "../lib/create-mission";
 import { queryKeys } from "../lib/query-keys";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
+import { useAskUserQuestionRenderer } from "../hooks/use-ask-user-question-renderer";
+import { useComposedSpecialToolRenderers } from "../hooks/use-composed-special-tool-renderers";
 import {
   ComposioLinkCard,
   parseComposioToolkitFromHref,
@@ -121,6 +123,7 @@ interface AgentChatPanelProps {
   /** Forwarded to AIBoard / ChatPanel for tool rendering. */
   isSpecialTool: ChatPanelProps["isSpecialTool"];
   renderToolResult: ChatPanelProps["renderToolResult"];
+  renderPendingTool: ChatPanelProps["renderPendingTool"];
   processLabels: ChatPanelProps["processLabels"];
   getThinkingMessage: ChatPanelProps["getThinkingMessage"];
   renderTurnSummary: ChatPanelProps["renderTurnSummary"];
@@ -246,8 +249,23 @@ export function useAgentChatPanel({
   );
 
   // ── File-tool rendering (per-agent path) ──────────────────────────────
-  const { isSpecialTool, renderToolResult, renderTurnSummary } =
-    useFileToolRenderer(path ?? "");
+  const fileRenderer = useFileToolRenderer(path ?? "");
+  const { renderTurnSummary } = fileRenderer;
+  // ── AskUserQuestion interactive card ──────────────────────────────────
+  // `selectedSessionKey` is null when the panel renders the empty state;
+  // an empty string is fine because the card only POSTs after the user
+  // clicks Submit, which only happens once a tool_call has arrived (and
+  // by then the session has a real key).
+  const askUserRenderer = useAskUserQuestionRenderer(
+    path ?? "",
+    selectedSessionKey ?? "",
+  );
+  const composedSpecialRenderers = useMemo(
+    () => [fileRenderer, askUserRenderer],
+    [fileRenderer, askUserRenderer],
+  );
+  const { isSpecialTool, renderToolResult, renderPendingTool } =
+    useComposedSpecialToolRenderers(composedSpecialRenderers);
 
   // ── Skills + selected-skill state ─────────────────────────────────────
   const { data: allSkills } = useSkills(path ?? undefined);
@@ -618,6 +636,7 @@ export function useAgentChatPanel({
     renderUserMessage,
     isSpecialTool,
     renderToolResult,
+    renderPendingTool,
     processLabels,
     getThinkingMessage,
     renderTurnSummary,

@@ -68,21 +68,31 @@ pub fn parse_gemini_event(line: &str, acc: &mut GeminiAccumulator) -> Vec<FeedIt
 
 fn handle_event(event: GeminiEvent, acc: &mut GeminiAccumulator) -> Vec<FeedItem> {
     match event {
-        GeminiEvent::Init { session_id, model, .. } => {
+        GeminiEvent::Init {
+            session_id, model, ..
+        } => {
             acc.session_id = Some(session_id);
             if !model.is_empty() {
                 acc.model = Some(model);
             }
             vec![]
         }
-        GeminiEvent::Message { role, content, delta, .. } => {
-            handle_message(role, content, delta, acc)
-        }
-        GeminiEvent::ToolUse { tool_name, tool_id, parameters, .. } => {
+        GeminiEvent::Message {
+            role,
+            content,
+            delta,
+            ..
+        } => handle_message(role, content, delta, acc),
+        GeminiEvent::ToolUse {
+            tool_name,
+            tool_id,
+            parameters,
+            ..
+        } => {
             let mut items = flush_assistant_buffer(acc);
-            acc.tool_names_by_id.insert(tool_id.clone(), tool_name.clone());
-            let input =
-                serde_json::to_value(&parameters).unwrap_or(serde_json::Value::Null);
+            acc.tool_names_by_id
+                .insert(tool_id.clone(), tool_name.clone());
+            let input = serde_json::to_value(&parameters).unwrap_or(serde_json::Value::Null);
             items.push(FeedItem::ToolCall {
                 name: tool_name,
                 input,
@@ -90,7 +100,13 @@ fn handle_event(event: GeminiEvent, acc: &mut GeminiAccumulator) -> Vec<FeedItem
             });
             items
         }
-        GeminiEvent::ToolResult { tool_id, status, output, error, .. } => {
+        GeminiEvent::ToolResult {
+            tool_id,
+            status,
+            output,
+            error,
+            ..
+        } => {
             let mut items = flush_assistant_buffer(acc);
             acc.tool_names_by_id.remove(&tool_id);
             items.push(tool_result_item(status, output, error, Some(tool_id)));
@@ -103,9 +119,12 @@ fn handle_event(event: GeminiEvent, acc: &mut GeminiAccumulator) -> Vec<FeedItem
             items.push(FeedItem::SystemMessage(message));
             items
         }
-        GeminiEvent::Result { status, error, stats, .. } => {
-            handle_result(status, error, stats, acc)
-        }
+        GeminiEvent::Result {
+            status,
+            error,
+            stats,
+            ..
+        } => handle_result(status, error, stats, acc),
         GeminiEvent::Unknown => {
             tracing::debug!("[gemini] unknown event variant — ignoring");
             vec![]
@@ -126,7 +145,9 @@ fn handle_message(
         GeminiMessageRole::Assistant if content.is_empty() => vec![],
         GeminiMessageRole::Assistant if delta => {
             acc.assistant_buffer.push_str(&content);
-            vec![FeedItem::AssistantTextStreaming(acc.assistant_buffer.clone())]
+            vec![FeedItem::AssistantTextStreaming(
+                acc.assistant_buffer.clone(),
+            )]
         }
         GeminiMessageRole::Assistant => {
             // Non-delta assistant message — treat as a final block.
@@ -167,17 +188,19 @@ fn classify_result_error(error: Option<&GeminiErrorPayload>) -> FeedItem {
         Some(e) => (e.kind.as_str(), e.message.as_str()),
         None => ("", "gemini reported an error with no detail"),
     };
-    let typed = provider.classify_result_error(kind, message).unwrap_or_else(|| {
-        let raw = if kind.is_empty() {
-            message.to_string()
-        } else {
-            format!("{kind}: {message}")
-        };
-        ProviderError::Unknown {
-            provider: "gemini".into(),
-            raw_excerpt: truncate_excerpt(&raw),
-        }
-    });
+    let typed = provider
+        .classify_result_error(kind, message)
+        .unwrap_or_else(|| {
+            let raw = if kind.is_empty() {
+                message.to_string()
+            } else {
+                format!("{kind}: {message}")
+            };
+            ProviderError::Unknown {
+                provider: "gemini".into(),
+                raw_excerpt: truncate_excerpt(&raw),
+            }
+        });
     FeedItem::ProviderError(typed)
 }
 
@@ -224,7 +247,9 @@ fn flush_assistant_buffer(acc: &mut GeminiAccumulator) -> Vec<FeedItem> {
     if acc.assistant_buffer.is_empty() {
         return vec![];
     }
-    vec![FeedItem::AssistantText(std::mem::take(&mut acc.assistant_buffer))]
+    vec![FeedItem::AssistantText(std::mem::take(
+        &mut acc.assistant_buffer,
+    ))]
 }
 
 #[cfg(test)]
@@ -255,7 +280,10 @@ mod tests {
         assert!(items.is_empty());
         assert_eq!(a.session_id.as_deref(), Some("test-session-123"));
         assert_eq!(a.model.as_deref(), Some("gemini-2.0-flash-exp"));
-        assert_eq!(extract_session_id(INIT_LINE).as_deref(), Some("test-session-123"));
+        assert_eq!(
+            extract_session_id(INIT_LINE).as_deref(),
+            Some("test-session-123")
+        );
     }
 
     #[test]
@@ -268,7 +296,10 @@ mod tests {
     fn user_message_is_dropped() {
         let mut a = acc();
         let items = parse_gemini_event(USER_MSG_LINE, &mut a);
-        assert!(items.is_empty(), "user echo dropped to avoid dup with prompt");
+        assert!(
+            items.is_empty(),
+            "user echo dropped to avoid dup with prompt"
+        );
     }
 
     #[test]
@@ -285,7 +316,10 @@ mod tests {
         // Result line should flush the buffer to a final AssistantText.
         let items3 = parse_gemini_event(RESULT_OK, &mut a);
         assert!(matches!(&items3[0], FeedItem::AssistantText(t) if t == "4!"));
-        assert!(matches!(items3.last().unwrap(), FeedItem::FinalResult { .. }));
+        assert!(matches!(
+            items3.last().unwrap(),
+            FeedItem::FinalResult { .. }
+        ));
     }
 
     #[test]
@@ -305,7 +339,10 @@ mod tests {
             }
             other => panic!("expected ToolCall, got {other:?}"),
         }
-        assert_eq!(a.tool_names_by_id.get("read-123").map(|s| s.as_str()), Some("Read"));
+        assert_eq!(
+            a.tool_names_by_id.get("read-123").map(|s| s.as_str()),
+            Some("Read")
+        );
 
         let res_items = parse_gemini_event(TOOL_RESULT_OK, &mut a);
         assert_eq!(res_items.len(), 1);
@@ -331,9 +368,7 @@ mod tests {
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ToolResult {
-                content,
-                is_error,
-                ..
+                content, is_error, ..
             } => {
                 assert!(*is_error);
                 assert!(content.contains("FILE_NOT_FOUND"));
@@ -368,7 +403,11 @@ mod tests {
         let items = parse_gemini_event(RESULT_OK, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
-            FeedItem::FinalResult { result, cost_usd, duration_ms } => {
+            FeedItem::FinalResult {
+                result,
+                cost_usd,
+                duration_ms,
+            } => {
                 assert_eq!(*duration_ms, Some(1200));
                 assert!(cost_usd.is_none(), "gemini emits no cost field");
                 assert!(result.contains("100 tokens"));
@@ -429,6 +468,12 @@ mod tests {
         // strict ordering), it still produces a sensible FeedItem.
         let items = parse_gemini_event(TOOL_RESULT_OK, &mut acc());
         assert_eq!(items.len(), 1);
-        assert!(matches!(&items[0], FeedItem::ToolResult { is_error: false, .. }));
+        assert!(matches!(
+            &items[0],
+            FeedItem::ToolResult {
+                is_error: false,
+                ..
+            }
+        ));
     }
 }

@@ -148,13 +148,17 @@ function PendingForm({
   const [error, setError] = useState<string | null>(null);
   const cardRef = useRef<HTMLFormElement | null>(null);
 
-  // Reset internal state if the agent re-uses the card with a new tool_use_id
-  // (a new question came in for the same session).
+  // Reset internal state if the agent re-uses the card with a new
+  // tool_use_id (a new question came in for the same session). We key
+  // ONLY on tool_use_id — depending on `questions` would refire on every
+  // render because the parent re-parses `tool.input` into a new array
+  // identity each time, which would clobber in-progress user selections.
   useEffect(() => {
     setState(freshState(questions));
     setSubmitting(false);
     setError(null);
-  }, [toolUseId, questions]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [toolUseId]);
 
   const hasAtLeastOneAnswer = state.some(
     (q) => q.selected.size > 0 || q.other.trim().length > 0,
@@ -239,16 +243,27 @@ function PendingForm({
       )}
       aria-label="Agent question"
     >
-      {questions.map((q, qIdx) => (
-        <QuestionBlock
-          key={qIdx}
-          question={q}
-          state={state[qIdx]}
-          onToggle={(option) => toggleOption(qIdx, option, q.multiSelect)}
-          onOtherChange={(v) => setOther(qIdx, v)}
-          labels={labels}
-        />
-      ))}
+      {questions.map((q, qIdx) => {
+        // `state` is reset via useEffect when `questions` changes (new
+        // tool_use_id), but the very next render runs BEFORE setState
+        // commits, so `state[qIdx]` can transiently be undefined for an
+        // index that exists in the new questions array. Fall back to an
+        // empty slot so the child never crashes on `state.selected.has`.
+        const slot: QuestionState = state[qIdx] ?? {
+          selected: new Set<string>(),
+          other: "",
+        };
+        return (
+          <QuestionBlock
+            key={qIdx}
+            question={q}
+            state={slot}
+            onToggle={(option) => toggleOption(qIdx, option, q.multiSelect)}
+            onOtherChange={(v) => setOther(qIdx, v)}
+            labels={labels}
+          />
+        );
+      })}
 
       {error && (
         <p role="alert" className="text-xs text-destructive">

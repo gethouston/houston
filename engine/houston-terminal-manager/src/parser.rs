@@ -227,9 +227,7 @@ fn parse_rate_limit_event(extra: serde_json::Value) -> Vec<FeedItem> {
         .get("message")
         .and_then(|v| v.as_str())
         .map(truncate_excerpt)
-        .unwrap_or_else(|| {
-            format!("Anthropic rate-limit signal: {status}")
-        });
+        .unwrap_or_else(|| format!("Anthropic rate-limit signal: {status}"));
     vec![FeedItem::ProviderError(ProviderError::RateLimited {
         provider: ANTHROPIC.into(),
         model: None,
@@ -417,9 +415,7 @@ mod tests {
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ToolCall {
-                name,
-                tool_use_id,
-                ..
+                name, tool_use_id, ..
             } => {
                 assert_eq!(name, "Read");
                 assert_eq!(tool_use_id.as_deref(), Some("t1"));
@@ -461,7 +457,11 @@ mod tests {
         let stop = r#"{"type":"stream_event","event":{"type":"content_block_stop","index":0}}"#;
 
         let started = parse_event(start, &mut a);
-        assert_eq!(started.len(), 1, "expected immediate ToolCall on block_start");
+        assert_eq!(
+            started.len(),
+            1,
+            "expected immediate ToolCall on block_start"
+        );
         match &started[0] {
             FeedItem::ToolCall {
                 name,
