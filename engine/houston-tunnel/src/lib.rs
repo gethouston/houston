@@ -17,6 +17,7 @@
 pub mod connection;
 pub mod frame;
 pub mod identity;
+pub mod notify;
 pub mod pairing;
 pub mod proxy;
 pub mod runtime;
@@ -24,6 +25,10 @@ pub mod runtime;
 pub use connection::{TunnelClient, TunnelConfig};
 pub use frame::TunnelFrame;
 pub use identity::{ensure, invalidate, load, save, TunnelIdentity};
+pub use notify::{
+    status_to_notify_kind, NotifyDecision, NotifyPolicy, SkipReason, DEFAULT_DAILY_CAP,
+    DEFAULT_DEDUP_WINDOW_SECS,
+};
 pub use pairing::{PairError, PairOutcome, PairingService};
 pub use proxy::EngineEndpoint;
 pub use runtime::{TunnelRuntimeSnapshot, TunnelRuntimeState};

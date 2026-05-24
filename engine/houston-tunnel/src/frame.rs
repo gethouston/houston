@@ -123,8 +123,9 @@ pub struct PongFrame {
 }
 
 /// Lifecycle transition that warrants a push. Mirror of
-/// `houston-relay/src/types.ts::NotifyKind`.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+/// `houston-relay/src/types.ts::NotifyKind`. `Hash` is needed so
+/// `NotifyPolicy` can dedup on `(kind, session_key)` HashMap keys.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum NotifyKind {
     /// Agent is blocked waiting on the user.
