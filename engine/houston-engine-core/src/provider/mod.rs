@@ -22,7 +22,7 @@ pub use login_relay::submit_login_code;
 use crate::error::{CoreError, CoreResult};
 use houston_terminal_manager::provider_auth::ProviderAuthState;
 use houston_terminal_manager::{claude_path, InstallSource, Provider};
-use houston_ui_events::DynEventSink;
+use houston_ui_events::{DynEventSink, HoustonEvent};
 use serde::{Deserialize, Serialize};
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -56,10 +56,22 @@ pub fn parse(s: &str) -> CoreResult<Provider> {
 pub async fn check_status(provider: Provider) -> CoreResult<ProviderStatus> {
     let (install_source, cli_path) = provider.resolve();
     let cli_installed = !matches!(install_source, InstallSource::Missing);
-    let auth_state = if let Some(path) = cli_path.as_deref() {
-        provider.probe_auth(path).await
-    } else {
-        ProviderAuthState::Unauthenticated
+    let auth_state = match install_source {
+        // Remote providers (e.g. Life) have no local CLI to probe — auth
+        // is managed by the runtime (a dev token in Stage 0, a Tier-1
+        // JWT against `lifegw` in Stage 1). Surface as Authenticated so
+        // the UI renders "Connected" instead of an actionable "Sign in"
+        // prompt the user can't fulfill (clicking it would try to spawn
+        // a CLI that does not exist). Stage 1 will refine this to probe
+        // a JWT cache; for now the dev token is unconditional.
+        InstallSource::Remote => ProviderAuthState::Authenticated,
+        _ => {
+            if let Some(path) = cli_path.as_deref() {
+                provider.probe_auth(path).await
+            } else {
+                ProviderAuthState::Unauthenticated
+            }
+        }
     };
     Ok(ProviderStatus {
         provider: provider.id().to_string(),
@@ -91,6 +103,22 @@ pub async fn check_status(provider: Provider) -> CoreResult<ProviderStatus> {
 /// for remote/headless engines (containers, Always-On) where the CLI
 /// can't open the user's browser itself.
 pub async fn launch_login(provider: Provider, sink: DynEventSink) -> CoreResult<()> {
+    // Remote providers (e.g. Life) have no CLI login flow — their auth
+    // is managed by the runtime (a dev token in Stage 0; lifegw OAuth in
+    // Stage 1). When the user clicks Connect, emit a synthetic "login
+    // complete" event so the UI advances to its Connected state instead
+    // of trying to spawn a missing binary. This is the H1b counterpart
+    // to `check_status` returning Authenticated for `InstallSource::Remote`.
+    let (install_source, _cli_path) = provider.resolve();
+    if matches!(install_source, InstallSource::Remote) {
+        sink.emit(HoustonEvent::ProviderLoginComplete {
+            provider: provider.id().to_string(),
+            success: true,
+            error: None,
+        });
+        return Ok(());
+    }
+
     // Gemini has no `gemini auth login` subcommand. Instead, gemini-cli
     // exposes an `authenticate` JSON-RPC method over its `--acp` mode
     // (Agent Communication Protocol) that triggers Google's OAuth flow
