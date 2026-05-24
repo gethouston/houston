@@ -141,15 +141,22 @@ export interface PongFrame {
 export type NotifyKind = "needs_you" | "finished" | "failed";
 
 /** Desktop → relay: a notification-worthy session lifecycle transition.
- * The relay forwards it to APNs/FCM for this tunnel's registered devices.
- * The engine owns policy (cap/dedup) + i18n (title/body already
- * localized); the relay is a dumb pipe and never inspects the strings.
+ * Shaped for **device-side localization** — the industry-best-practice
+ * mechanism shared by APNs (`loc-key`/`loc-args`) and FCM
+ * (`body_loc_key`/`body_loc_args`). The engine sends only the semantic
+ * event + any substitution args; the relay maps `notifyKind` onto the
+ * platform `*_loc_key` strings (e.g. `houston.<notifyKind>.title` and
+ * `houston.<notifyKind>.body`); the device localizes from its bundled
+ * `Localizable.strings` / `strings.xml` in the user's current OS
+ * locale. The engine owns policy (cap/dedup); the relay is a dumb pipe.
  * Note: the inner discriminator is `notifyKind` — `kind` is the frame tag. */
 export interface NotifyFrame {
   kind: "notify";
   notifyKind: NotifyKind;
-  title: string;
-  body: string;
+  /** Substitution args for the localized title/body strings (iOS `%@`
+   * in `.strings`, Android `%1$s` in `strings.xml`). Maps onto APNs
+   * `body-loc-args` + FCM `body_loc_args`. Optional / omitted when empty. */
+  locArgs?: string[];
   sessionKey: string;
 }
 

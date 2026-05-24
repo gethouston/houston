@@ -135,16 +135,31 @@ pub enum NotifyKind {
     Failed,
 }
 
-/// Desktop → relay notification payload. `title`/`body` are already
-/// localized by the engine (en/es/pt); the relay never inspects them.
+/// Desktop → relay notification payload, shaped for **device-side
+/// localization** — the industry-best-practice mechanism shared by APNs
+/// (`loc-key` / `loc-args`) and FCM (`body_loc_key` / `body_loc_args`).
+/// The engine sends only the semantic event + any substitution args;
+/// the relay maps `notify_kind` onto the platform `*_loc_key` strings
+/// (e.g. `houston.<kind>.title`, `houston.<kind>.body`); the device
+/// localizes from its bundled `Localizable.strings` / `strings.xml` in
+/// the user's current OS locale. This keeps payloads minimal, survives
+/// locale changes without a server roundtrip, and removes the need for
+/// the engine to track each device's locale.
+///
 /// Note: the inner discriminator is `notifyKind`, not `kind` — `kind`
 /// is taken by the [`TunnelFrame`] serde tag.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct NotifyFrame {
     pub notify_kind: NotifyKind,
-    pub title: String,
-    pub body: String,
+    /// Substitution args for the localized title/body strings (iOS
+    /// `%@` in `.strings`, Android `%1$s` in `strings.xml`). For
+    /// example `NeedsYou` may carry `[agent_name]`. Maps onto APNs
+    /// `body-loc-args` + FCM `body_loc_args`. Empty by default and
+    /// omitted from the wire when empty.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub loc_args: Vec<String>,
+    /// Deep-link target on push tap (the agent session key).
     pub session_key: String,
 }
 
@@ -195,18 +210,35 @@ mod tests {
 
     #[test]
     fn notify_roundtrip_and_lockstep_shape() {
+        // Device-localizes from notifyKind + locArgs (APNs/FCM loc-key
+        // model). No pre-localized title/body on the wire.
         let frame = TunnelFrame::Notify(NotifyFrame {
             notify_kind: NotifyKind::NeedsYou,
-            title: "Houston".into(),
-            body: "Your agent needs you".into(),
+            loc_args: vec!["docs-agent".into()],
             session_key: "sess-1".into(),
         });
         let s = serde_json::to_string(&frame).unwrap();
         // Frame discriminator is `kind`; the inner event is `notifyKind`.
         assert!(s.contains("\"kind\":\"notify\""));
         assert!(s.contains("\"notifyKind\":\"needs_you\""));
+        assert!(s.contains("\"locArgs\":[\"docs-agent\"]"));
         assert!(s.contains("\"sessionKey\":\"sess-1\""));
         let parsed: TunnelFrame = serde_json::from_str(&s).unwrap();
         assert!(matches!(parsed, TunnelFrame::Notify(_)));
+    }
+
+    #[test]
+    fn notify_omits_empty_loc_args_on_wire() {
+        // `locArgs` is optional on the TS twin (`locArgs?: string[]`);
+        // when empty it must NOT appear on the wire so the TS side never
+        // sees an unexpected key.
+        let frame = TunnelFrame::Notify(NotifyFrame {
+            notify_kind: NotifyKind::Finished,
+            loc_args: Vec::new(),
+            session_key: "sess-2".into(),
+        });
+        let s = serde_json::to_string(&frame).unwrap();
+        assert!(!s.contains("locArgs"));
+        assert!(s.contains("\"notifyKind\":\"finished\""));
     }
 }
