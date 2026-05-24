@@ -20,6 +20,7 @@ members = [
     "engine/houston-engine-core",
     "engine/houston-engine-protocol",
     "engine/houston-engine-server",
+    "engine/houston-life",
     "app/src-tauri",
 ]
 

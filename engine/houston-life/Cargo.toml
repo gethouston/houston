@@ -1,0 +1,22 @@
+[package]
+name = "houston-life"
+version = "0.4.12"
+edition = "2021"
+description = "Rust client for the Life Runtime (lifed/lifegw) — gRPC over UDS speaking life.v1.{Agent,Events,Wallet,Identity}"
+license = "MIT"
+repository = "https://github.com/broomva/houston"
+
+[dependencies]
+tonic = "0.14"
+tonic-prost = "0.14"
+prost = "0.14"
+prost-types = "0.14"
+tokio = { workspace = true }
+tower = { version = "0.5", features = ["util"] }
+hyper-util = { version = "0.1", features = ["client", "client-legacy"] }
+tracing = { workspace = true }
+thiserror = "1"
+
+[build-dependencies]
+tonic-prost-build = "0.14"
+protoc-bin-vendored = "3"

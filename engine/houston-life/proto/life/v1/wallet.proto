@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+// Public-plane Wallet dialect — full body per Spec C₂ §3.3.
+//
+// Sub-phase B M5 Task B9 lands the proto; Task B13 wires the handler
+// bodies in lifed against the haima-proxy crate.
+
+package life.v1;
+
+import "google/protobuf/timestamp.proto";
+
+service Wallet {
+  rpc GetBalance(WalletRef) returns (Balance);
+  rpc Statement(StatementReq) returns (stream LedgerEntry);
+  rpc Debit(DebitReq) returns (DebitReceipt);
+  rpc Transfer(TransferReq) returns (TransferReceipt);
+}
+
+message WalletRef {
+  string user_id = 1;
+  string project_id = 2;
+}
+
+message Balance {
+  uint64 micros = 1;
+  string currency = 2;
+  google.protobuf.Timestamp as_of = 3;
+}
+
+message StatementReq {
+  WalletRef wallet = 1;
+  google.protobuf.Timestamp since = 2;
+  google.protobuf.Timestamp until = 3;
+  uint32 limit = 4;
+}
+
+message LedgerEntry {
+  string entry_id = 1;
+  google.protobuf.Timestamp at = 2;
+  int64 delta_micros = 3;
+  string reason = 4;
+  string sid = 5;
+  string skill = 6;
+  string model = 7;
+  string tool = 8;
+}
+
+message DebitReq {
+  WalletRef wallet = 1;
+  uint64 amount_micros = 2;
+  string sid = 3;
+  string reason = 4;
+}
+
+message DebitReceipt {
+  string entry_id = 1;
+  Balance new_balance = 2;
+}
+
+message TransferReq {
+  WalletRef from = 1;
+  WalletRef to = 2;
+  uint64 amount_micros = 3;
+  string memo = 4;
+}
+
+message TransferReceipt {
+  string entry_id = 1;
+  Balance from_balance = 2;
+  Balance to_balance = 3;
+}

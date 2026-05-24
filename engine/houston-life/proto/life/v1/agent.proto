@@ -1,0 +1,148 @@
+syntax = "proto3";
+
+package life.v1;
+
+import "google/protobuf/timestamp.proto";
+import "aios/v1/identifiers.proto";
+import "life/v1/events.proto"; // EventRecord lives in the events dialect
+
+// Public-plane Agent dialect. See Spec C₂ §3.1 for the full definition.
+//
+// EventRecord / EventKind are declared locally below in the life.v1 package
+// because a canonical aios/v1/event.proto has not yet been published; sub-phase
+// B can lift these into aios.v1 if a cross-substrate event vocabulary is
+// agreed (Spec C₂ §10.3). The wire shape stays compatible because the inner
+// fields match the master-spec EventEnvelope.
+
+service Agent {
+  // Session lifecycle.
+  rpc CreateSession(CreateSessionReq) returns (Session);
+  rpc DescribeSession(SessionRef) returns (Session);
+  rpc CloseSession(SessionRef) returns (Empty);
+
+  // Message exchange — server-stream of tokens + tool events.
+  rpc SendMessage(SendMessageReq) returns (stream AgentEvent);
+  rpc StreamSession(SessionRef) returns (stream AgentEvent);
+
+  // Tool / approval surface.
+  rpc ApproveDispatch(ApprovalReq) returns (Empty);
+  rpc CancelDispatch(DispatchRef) returns (Empty);
+
+  // Catalog reads (cached client-side).
+  rpc ListSkills(ListSkillsReq) returns (SkillCatalog);
+  rpc ListModels(ListModelsReq) returns (ModelCatalog);
+  rpc ListTools(ListToolsReq) returns (ToolCatalog);
+
+  // Recursive embedding (master spec §L0.7 / Spec C₇). M5 ships a stub.
+  rpc SpawnChild(SpawnChildReq) returns (SpawnChildResp);
+}
+
+// EventRecord lives in events.proto (same life.v1 package). Both AgentEvent
+// and the Events service stream that one canonical type.
+
+message CreateSessionReq {
+  string user_id = 1;
+  string project_id = 2;
+  string label = 3;
+  aios.v1.SessionId resume_sid = 4;
+  ChildPolicy inherit_policy = 5;
+}
+
+message Session {
+  aios.v1.SessionId sid = 1;
+  aios.v1.AgentId agent_id = 2;
+  string user_id = 3;
+  string project_id = 4;
+  google.protobuf.Timestamp created_at = 5;
+}
+
+message SessionRef {
+  aios.v1.SessionId sid = 1;
+  // Sub-phase D (BRO-938 deviation D2): resume cursor for
+  // `Agent.StreamSession`. Browsers reconnect via the WS upgrade with
+  // `X-Life-Last-Seq-No: N`; lifegw forwards the value here so lifed
+  // can replay from `N+1` before transitioning to live tail. Spec C₃
+  // §6.3 LOCKED L4-D3.
+  //
+  // `0` (or unset) means "fresh stream": lifed replays from the start
+  // of the session per its default semantics. Field is `optional` so a
+  // pre-D client/server pair stays wire-compatible.
+  optional uint64 from_sequence = 2;
+}
+
+message SendMessageReq {
+  aios.v1.SessionId sid = 1;
+  string content = 2;
+  bytes attachment_blob_ref = 3;
+}
+
+message AgentEvent {
+  EventRecord record = 1;
+  AgentEventKind kind = 2;
+}
+
+enum AgentEventKind {
+  AGENT_EVENT_KIND_UNSPECIFIED = 0;
+  AGENT_EVENT_KIND_TOKEN = 1;
+  AGENT_EVENT_KIND_TOOL_CALL_PENDING = 2;
+  AGENT_EVENT_KIND_TOOL_RESULT = 3;
+  AGENT_EVENT_KIND_APPROVAL_REQUIRED = 4;
+  AGENT_EVENT_KIND_FINISH = 5;
+  AGENT_EVENT_KIND_ERROR = 6;
+  AGENT_EVENT_KIND_HIBERNATE = 7;
+}
+
+message ApprovalReq {
+  aios.v1.SessionId sid = 1;
+  string dispatch_id = 2;
+}
+
+message DispatchRef {
+  aios.v1.SessionId sid = 1;
+  string dispatch_id = 2;
+}
+
+message ListSkillsReq {
+  string project_id = 1;
+}
+message ListModelsReq {
+  string project_id = 1;
+}
+message ListToolsReq {
+  string project_id = 1;
+}
+message SkillCatalog {
+  repeated CatalogEntry items = 1;
+}
+message ModelCatalog {
+  repeated CatalogEntry items = 1;
+}
+message ToolCatalog {
+  repeated CatalogEntry items = 1;
+}
+message CatalogEntry {
+  string id = 1;
+  string version = 2;
+  bytes manifest = 3;
+}
+
+message SpawnChildReq {
+  aios.v1.SessionId parent_sid = 1;
+  CreateSessionReq spec = 2;
+  uint64 budget_cap_micros = 3;
+  ChildPolicy inherit_policy = 4;
+}
+
+message SpawnChildResp {
+  aios.v1.SessionId child_sid = 1;
+  string address = 2;
+}
+
+message ChildPolicy {
+  bool inherit_skills = 1;
+  bool inherit_models = 2;
+  uint32 depth_cap = 3;
+  uint32 fanout_cap = 4;
+}
+
+message Empty {}

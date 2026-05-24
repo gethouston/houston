@@ -1,0 +1,28 @@
+syntax = "proto3";
+
+package aios.v1;
+
+// Canonical opaque identifier types used across all Life substrates.
+//
+// Each is a string newtype. Internal Rust code uses `aios_protocol::ids::*`
+// (hand-written newtypes with rich `Display`, `From`, `FromStr` impls); the
+// proto representation here is the wire shape generated for cross-substrate
+// RPCs. The bridge module `aios_protocol::proto_bridge` converts between the
+// two without semantic loss.
+
+// VM identifier — opaque per-backend handle to a virtual machine.
+message VmId { string value = 1; }
+
+// VM snapshot identifier — opaque per-backend handle to a snapshot.
+message VmSnapshotId { string value = 1; }
+
+// Hypervisor backend identifier — selects which `HypervisorBackend` impl
+// the kernel routes a call to.
+message BackendId { string value = 1; }
+
+// Session identifier — universal sid for the Life Runtime session model.
+// See master spec §L3 for the full session model.
+message SessionId { string value = 1; }
+
+// Agent identifier — opaque handle to an agent runtime instance.
+message AgentId { string value = 1; }

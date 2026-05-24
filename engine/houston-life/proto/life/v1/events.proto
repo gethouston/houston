@@ -1,0 +1,57 @@
+syntax = "proto3";
+
+package life.v1;
+
+import "aios/v1/identifiers.proto";
+import "google/protobuf/timestamp.proto";
+
+// Public-plane Events dialect. See Spec C₂ §3.2.
+//
+// Sub-phase A: returns canned empty streams to validate the wire shape.
+// Sub-phase B wires real lago tail via lago-proxy.
+
+// EventRecord — minimal sub-phase A shape. Mirrors the master-spec
+// EventEnvelope; full parity with the aios.v1 vocabulary lands in sub-phase B
+// once aios/v1/event.proto is published. Lives here (not in agent.proto) so
+// both AgentEvent and Events.{Read,Subscribe} can reference it without a
+// duplicate definition.
+message EventRecord {
+  aios.v1.SessionId session_id = 1;
+  uint64 sequence = 2;
+  google.protobuf.Timestamp at = 3;
+  string kind = 4; // free-form kind tag for sub-phase A
+  bytes payload = 5;
+}
+
+service Events {
+  // Read historical events from a session's namespace, server-streamed.
+  rpc Read(ReadReq) returns (stream EventRecord);
+  // Subscribe to live events with optional kind filter.
+  rpc Subscribe(SubscribeReq) returns (stream EventRecord);
+  // Fetch a content-addressed blob from a namespace.
+  rpc GetBlob(BlobRef) returns (Blob);
+}
+
+message ReadReq {
+  aios.v1.SessionId session_id = 1;
+  uint64 from_sequence = 2;
+  uint32 limit = 3;
+}
+
+message SubscribeReq {
+  aios.v1.SessionId session_id = 1;
+  // Sub-phase A: kind filter is a free-form string list. Sub-phase B may
+  // tighten this to an enum once an EventKind vocabulary is published.
+  repeated string kinds = 2;
+  uint64 from_sequence = 3;
+}
+
+message BlobRef {
+  string namespace = 1;
+  string sha256 = 2;
+}
+
+message Blob {
+  bytes data = 1;
+  string content_type = 2;
+}
