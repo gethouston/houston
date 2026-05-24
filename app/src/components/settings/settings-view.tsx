@@ -1,7 +1,17 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@houston-ai/core";
-import { User, Smartphone, Folder, Bot, Bug, FileText, UserCircle } from "lucide-react";
+import {
+  User,
+  Smartphone,
+  Folder,
+  Bot,
+  Bug,
+  FileText,
+  UserCircle,
+  BadgeCheck,
+  ShieldCheck,
+} from "lucide-react";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -11,6 +21,8 @@ import {
 
 type SettingsSectionId =
   | "account"
+  | "identity"
+  | "agents"
   | "workspace"
   | "workspaceContext"
   | "userContext"
@@ -18,6 +30,8 @@ type SettingsSectionId =
   | "phone"
   | "reportBug";
 import { AccountSection, useAccountAvailable } from "./sections/account";
+import { IdentitySection } from "./sections/identity";
+import { AgentsSection } from "./sections/agents";
 import { ConnectPhoneSection } from "./sections/connect-phone";
 import { WorkspaceSection } from "./sections/workspace";
 import {
@@ -56,6 +70,8 @@ export function SettingsView() {
       list.push({ id: "account", label: t("settings:nav.account"), icon: User });
     }
     list.push(
+      { id: "identity", label: t("settings:nav.identity"), icon: BadgeCheck },
+      { id: "agents", label: t("settings:nav.agents"), icon: ShieldCheck },
       { id: "workspace", label: t("settings:nav.workspace"), icon: Folder },
       {
         id: "workspaceContext",
@@ -114,6 +130,8 @@ export function SettingsView() {
         ) : (
           <div className="mx-auto max-w-xl px-8 py-10">
             {activeVisible === "account" && <AccountSection />}
+            {activeVisible === "identity" && <IdentitySection />}
+            {activeVisible === "agents" && <AgentsSection />}
             {activeVisible === "workspace" && (
               <div className="space-y-10">
                 <WorkspaceSection />

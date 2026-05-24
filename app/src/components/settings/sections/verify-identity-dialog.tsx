@@ -18,11 +18,11 @@ interface Props {
 }
 
 const DOC_OPTIONS = [
-  { value: "", labelKey: "verify.documentNone" },
-  { value: "passport", labelKey: "verify.documentPassport" },
-  { value: "drivers_license", labelKey: "verify.documentDriversLicense" },
-  { value: "national_id", labelKey: "verify.documentNationalId" },
-  { value: "residence_permit", labelKey: "verify.documentResidencePermit" },
+  { value: "", labelKey: "identity.verify.documentNone" },
+  { value: "passport", labelKey: "identity.verify.documentPassport" },
+  { value: "drivers_license", labelKey: "identity.verify.documentDriversLicense" },
+  { value: "national_id", labelKey: "identity.verify.documentNationalId" },
+  { value: "residence_permit", labelKey: "identity.verify.documentResidencePermit" },
 ] as const;
 
 /**
@@ -72,13 +72,13 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>{t("verify.title")}</DialogTitle>
-          <DialogDescription>{t("verify.subtitle")}</DialogDescription>
+          <DialogTitle>{t("identity.verify.title")}</DialogTitle>
+          <DialogDescription>{t("identity.verify.subtitle")}</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <LabeledText
-            label={t("verify.nationality")}
+            label={t("identity.verify.nationality")}
             value={nationality}
             onChange={setNationality}
             placeholder="ISO-3166-1 alpha-2 (e.g. US, BR)"
@@ -86,7 +86,7 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
             required
           />
           <LabeledText
-            label={t("verify.dob")}
+            label={t("identity.verify.dob")}
             value={dob}
             onChange={setDob}
             placeholder="YYYY-MM-DD"
@@ -95,7 +95,7 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
 
           <div className="space-y-1">
             <label className="text-sm font-medium block">
-              {t("verify.documentType")}
+              {t("identity.verify.documentType")}
             </label>
             <select
               value={docType}
@@ -109,13 +109,13 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
               ))}
             </select>
             <p className="text-xs text-muted-foreground">
-              {t("verify.documentTypeOptional")}
+              {t("identity.verify.documentTypeOptional")}
             </p>
           </div>
 
           {docType ? (
             <LabeledText
-              label={t("verify.documentCountry")}
+              label={t("identity.verify.documentCountry")}
               value={docCountry}
               onChange={setDocCountry}
               placeholder="ISO-3166-1 alpha-2 (e.g. US)"
@@ -131,7 +131,7 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
               onChange={(e) => setDeclarationOk(e.target.checked)}
               className="mt-1"
             />
-            <span>{t("verify.declaration")}</span>
+            <span>{t("identity.verify.declaration")}</span>
           </label>
         </div>
 
@@ -141,13 +141,13 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
             onClick={() => onOpenChange(false)}
             disabled={issue.isPending}
           >
-            {t("verify.cancel")}
+            {t("identity.verify.cancel")}
           </Button>
           <Button
             onClick={() => void onSubmit()}
             disabled={!canSubmit || issue.isPending}
           >
-            {issue.isPending ? t("verify.issuing") : t("verify.submit")}
+            {issue.isPending ? t("identity.verify.issuing") : t("identity.verify.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>
