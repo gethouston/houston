@@ -39,6 +39,22 @@
       "openFailed": "Não foi possível abrir o link no seu navegador.",
       "moreTruncated_one": "+ {{count}} issue a mais",
       "moreTruncated_other": "+ {{count}} issues a mais"
+    },
+    "tab": {
+      "title": "Quadro do Linear",
+      "noAgentTitle": "Nenhum agente selecionado",
+      "notConnectedTitle": "Linear não está conectado para este agente",
+      "notConnectedBody": "Conecte o Linear em Configurações para espelhar issues, projetos e ciclos do seu time dentro do Houston.",
+      "openSettings": "Abrir Configurações",
+      "zeroIssuesTitle": "Nenhuma issue para mostrar",
+      "zeroIssuesBody": "Sua organização do Linear está conectada, mas nada foi espelhado ainda. Tente uma sincronização."
+    },
+    "kanban": {
+      "columns": {
+        "todo": "A fazer",
+        "inProgress": "Em andamento",
+        "done": "Pronto"
+      }
     }
   }
 }

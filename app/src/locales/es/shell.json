@@ -2,6 +2,7 @@
   "sidebar": {
     "missionControl": "Centro de misiones",
     "integrations": "Integraciones",
+    "linear": "Linear",
     "commands": "Comandos",
     "settings": "Configuración",
     "yourAgents": "Tus agentes",

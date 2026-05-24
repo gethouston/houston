@@ -39,6 +39,22 @@
       "openFailed": "No se pudo abrir el enlace en tu navegador.",
       "moreTruncated_one": "+ {{count}} issue más",
       "moreTruncated_other": "+ {{count}} issues más"
+    },
+    "tab": {
+      "title": "Tablero de Linear",
+      "noAgentTitle": "Ningún agente seleccionado",
+      "notConnectedTitle": "Linear no está conectado para este agente",
+      "notConnectedBody": "Conecta Linear en Ajustes para reflejar los issues, proyectos y ciclos de tu equipo dentro de Houston.",
+      "openSettings": "Abrir Ajustes",
+      "zeroIssuesTitle": "No hay issues para mostrar",
+      "zeroIssuesBody": "Tu organización de Linear está conectada, pero todavía no se ha reflejado nada. Intenta una sincronización."
+    },
+    "kanban": {
+      "columns": {
+        "todo": "Por hacer",
+        "inProgress": "En progreso",
+        "done": "Listo"
+      }
     }
   }
 }

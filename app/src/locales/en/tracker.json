@@ -39,6 +39,22 @@
       "openFailed": "Couldn't open the link in your browser.",
       "moreTruncated_one": "+ {{count}} more issue",
       "moreTruncated_other": "+ {{count}} more issues"
+    },
+    "tab": {
+      "title": "Linear board",
+      "noAgentTitle": "No agent selected",
+      "notConnectedTitle": "Linear is not connected for this agent",
+      "notConnectedBody": "Connect Linear in Settings to mirror your team's issues, projects, and cycles into Houston.",
+      "openSettings": "Open Settings",
+      "zeroIssuesTitle": "No issues to show",
+      "zeroIssuesBody": "Your Linear org is connected, but nothing has been mirrored yet. Try a fresh sync."
+    },
+    "kanban": {
+      "columns": {
+        "todo": "To do",
+        "inProgress": "In progress",
+        "done": "Done"
+      }
     }
   }
 }
