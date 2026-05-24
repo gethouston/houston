@@ -11,6 +11,7 @@
 //!
 //! Reconnects on drop with exponential backoff up to 60s.
 
+use crate::frame::TunnelFrame;
 use crate::pairing::PairingService;
 use crate::proxy::EngineEndpoint;
 use crate::runtime::TunnelRuntimeState;
@@ -30,6 +31,14 @@ const HEARTBEAT_EVERY: Duration = Duration::from_secs(30);
 /// in this window, the tunnel is dead even if the OS hasn't noticed the
 /// TCP FIN. Close + reconnect.
 const WATCHDOG_SILENCE: Duration = Duration::from_secs(90);
+
+/// Capacity of the persistent outbound-frame channel exposed via
+/// [`TunnelClient::outbound_frame_sender`]. 64 is well above any
+/// realistic per-second burst (the engine-level [`crate::NotifyPolicy`]
+/// caps to ~5/day) and small enough that a wedged tunnel can't
+/// accumulate unbounded backpressure. On `try_send` overflow producers
+/// log + drop — these frames are advisory, not a delivery guarantee.
+const OUTBOUND_CHANNEL_CAPACITY: usize = 64;
 
 /// Internal classification of `run_once` outcomes. `Unauthorized` means
 /// the relay explicitly rejected our tunnel token on the register
@@ -74,27 +83,69 @@ pub struct TunnelConfig {
     pub runtime: TunnelRuntimeState,
 }
 
-/// Cheap clone; spawn once per process.
+/// Spawn once per process. Owns the persistent outbound-frame channel:
+/// callers grab a sender via [`TunnelClient::outbound_frame_sender`]
+/// *before* moving the client into [`TunnelClient::run`], then push
+/// frames from anywhere in the engine without holding a reference to
+/// the tunnel itself.
 pub struct TunnelClient {
     cfg: tokio::sync::Mutex<TunnelConfig>,
     pairing: Arc<dyn PairingService>,
+    /// Stable producer side of the outbound-frame channel. Cheap to
+    /// clone; every producer (e.g. the engine-server notify dispatcher)
+    /// holds a clone for the engine lifetime. Survives reconnects — the
+    /// receiver is owned by [`Self::run`] and lives across `run_once`
+    /// cycles, so a `TrySendError::Full` means the buffer is genuinely
+    /// saturated (link wedged, or `OUTBOUND_CHANNEL_CAPACITY` frames
+    /// queued faster than the writer can drain). `Closed` only happens
+    /// when the engine is shutting down (the run task has exited and
+    /// dropped the receiver).
+    outbound_tx: tokio::sync::mpsc::Sender<TunnelFrame>,
+    /// Consumer side, owned by the run task. `Some` until the first
+    /// [`Self::run`] call; `None` thereafter. `run` takes `self` by
+    /// value so this can only be `take`n once.
+    outbound_rx: Option<tokio::sync::mpsc::Receiver<TunnelFrame>>,
 }
 
 impl TunnelClient {
     pub fn new(cfg: TunnelConfig, pairing: Arc<dyn PairingService>) -> Self {
+        let (outbound_tx, outbound_rx) = tokio::sync::mpsc::channel(OUTBOUND_CHANNEL_CAPACITY);
         Self {
             cfg: tokio::sync::Mutex::new(cfg),
             pairing,
+            outbound_tx,
+            outbound_rx: Some(outbound_rx),
         }
+    }
+
+    /// Return a clone of the stable outbound-frame sender. Producers
+    /// hold this for the engine lifetime and push via `try_send`
+    /// (non-blocking). On [`tokio::sync::mpsc::error::TrySendError::Full`]
+    /// the producer should log + drop — these frames are advisory and
+    /// bounded by [`crate::NotifyPolicy`] upstream of the channel.
+    ///
+    /// The channel survives reconnects: while the tunnel is down, the
+    /// next [`Self::run_once`] cycle continues draining from the same
+    /// receiver. Only engine shutdown closes it (the run task exits and
+    /// drops the receiver, after which producers see `TrySendError::Closed`).
+    pub fn outbound_frame_sender(&self) -> tokio::sync::mpsc::Sender<TunnelFrame> {
+        self.outbound_tx.clone()
     }
 
     /// Long-running task. Never returns (reconnect loop). Caller should
     /// `tokio::spawn` it.
-    pub async fn run(self) {
+    pub async fn run(mut self) {
+        // Invariant: `outbound_rx` is `Some` in `new` and `take`n
+        // exactly once here. `run` consumes `self`, so this method
+        // cannot be called twice.
+        let mut outbound_rx = self.outbound_rx.take().expect(
+            "TunnelClient invariant: outbound_rx is Some on construction \
+             and run() consumes self",
+        );
         let mut backoff_ms = 500u64;
         let mut consecutive_failures: u32 = 0;
         loop {
-            let run_result = self.run_once().await;
+            let run_result = self.run_once(&mut outbound_rx).await;
             match run_result {
                 Ok(()) => {
                     tracing::info!(target: "houston_tunnel", "tunnel closed cleanly, reconnecting");
@@ -190,4 +241,61 @@ pub(super) fn now_ms() -> i64 {
         .duration_since(UNIX_EPOCH)
         .map(|d| d.as_millis() as i64)
         .unwrap_or(0)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::OUTBOUND_CHANNEL_CAPACITY;
+    use crate::frame::{NotifyFrame, NotifyKind, TunnelFrame};
+
+    /// Documents the producer-side contract relied on by the engine-server
+    /// notify dispatcher: a bounded `(Sender, Receiver)` pair with the
+    /// chosen capacity, where pushed `TunnelFrame::Notify` payloads round-
+    /// trip through `serde_json` to the wire shape the relay expects.
+    #[tokio::test]
+    async fn outbound_channel_serializes_notify_to_wire_shape() {
+        let (tx, mut rx) = tokio::sync::mpsc::channel::<TunnelFrame>(OUTBOUND_CHANNEL_CAPACITY);
+        tx.try_send(TunnelFrame::Notify(NotifyFrame {
+            notify_kind: NotifyKind::NeedsYou,
+            loc_args: vec!["docs-agent".into()],
+            session_key: "sess-1".into(),
+        }))
+        .expect("fresh channel must accept first send");
+        let frame = rx.recv().await.expect("receiver still open");
+        let json = serde_json::to_string(&frame).expect("Notify frame serializes");
+        // Outer discriminator is `kind`; inner event uses `notifyKind`.
+        // Lockstep with `houston-relay/src/types.ts::TunnelFrame`.
+        assert!(json.contains("\"kind\":\"notify\""), "got: {json}");
+        assert!(json.contains("\"notifyKind\":\"needs_you\""), "got: {json}");
+        assert!(json.contains("\"locArgs\":[\"docs-agent\"]"), "got: {json}");
+        assert!(json.contains("\"sessionKey\":\"sess-1\""), "got: {json}");
+    }
+
+    /// Documents the "advisory delivery" semantic: when the buffer is
+    /// saturated, `try_send` returns `Full`. The producer (dispatcher)
+    /// is expected to log + drop, never block, never retry. Notifications
+    /// are gated upstream by `NotifyPolicy` so the cap is reachable only
+    /// during sustained disconnect — exactly when dropping is the
+    /// right answer.
+    #[test]
+    fn outbound_channel_full_yields_try_send_full_error() {
+        let (tx, _rx) = tokio::sync::mpsc::channel::<TunnelFrame>(1);
+        tx.try_send(TunnelFrame::Notify(NotifyFrame {
+            notify_kind: NotifyKind::Finished,
+            loc_args: vec![],
+            session_key: "a".into(),
+        }))
+        .expect("first send fits");
+        let err = tx
+            .try_send(TunnelFrame::Notify(NotifyFrame {
+                notify_kind: NotifyKind::Finished,
+                loc_args: vec![],
+                session_key: "b".into(),
+            }))
+            .expect_err("second send must overflow");
+        assert!(
+            matches!(err, tokio::sync::mpsc::error::TrySendError::Full(_)),
+            "expected Full, got {err:?}"
+        );
+    }
 }

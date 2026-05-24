@@ -9,7 +9,10 @@ use tokio::sync::Mutex;
 use tokio_tungstenite::tungstenite::Message as WsMsg;
 
 impl TunnelClient {
-    pub(super) async fn run_once(&self) -> Result<(), RunError> {
+    pub(super) async fn run_once(
+        &self,
+        outbound_rx: &mut tokio::sync::mpsc::Receiver<TunnelFrame>,
+    ) -> Result<(), RunError> {
         use tokio_tungstenite::tungstenite::client::IntoClientRequest;
         use tokio_tungstenite::tungstenite::http::HeaderValue;
 
@@ -102,6 +105,55 @@ impl TunnelClient {
                         Err(_) => continue,
                     };
                     self.dispatch(frame, &out_tx, &legs, &http, &endpoint).await;
+                }
+                maybe_outbound = outbound_rx.recv() => {
+                    match maybe_outbound {
+                        Some(frame) => {
+                            // Forward the producer-side frame into the
+                            // writer task's inner channel. `send_frame`
+                            // logs + drops on writer-disconnect (the
+                            // writer is per-`run_once`, so a writer
+                            // drop here means the connection is gone;
+                            // the next loop iteration will detect via
+                            // `src.next()` returning None or the
+                            // watchdog firing).
+                            //
+                            // Backpressure note: the inner writer
+                            // channel is unbounded (shared with every
+                            // other frame type — HttpResponse, Pong,
+                            // PairResponse — that uses the same
+                            // writer-task indirection). The bounded
+                            // `OUTBOUND_CHANNEL_CAPACITY` enforces
+                            // backpressure on the *producer* side
+                            // (the engine-server notify dispatcher);
+                            // a sustained slow WSS sink would let the
+                            // inner unbounded queue grow until the
+                            // watchdog (`WATCHDOG_SILENCE`, 90s) fires
+                            // and the connection is torn down. For
+                            // the only current producer
+                            // (notify_dispatcher) this is safe because
+                            // `NotifyPolicy` caps emissions to ~5/day,
+                            // so per-connection burst is bounded. A
+                            // future producer with higher cadence would
+                            // need to either (a) tighten the inner
+                            // channel to bounded, or (b) bypass the
+                            // writer task and write inline. Both are
+                            // wider refactors and out of scope here.
+                            self.send_frame(&out_tx, frame);
+                        }
+                        None => {
+                            // The persistent producer side (the
+                            // `outbound_tx` field on `TunnelClient`)
+                            // has been dropped — only happens when the
+                            // engine is shutting down. Exit cleanly so
+                            // the outer reconnect loop doesn't spin.
+                            tracing::info!(
+                                target: "houston_tunnel",
+                                "outbound channel closed; run_once exiting"
+                            );
+                            break Ok(());
+                        }
+                    }
                 }
                 _ = heartbeat.tick() => {
                     let silence_ms = now_ms() - last_recv_ms.load(Ordering::Relaxed);

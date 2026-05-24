@@ -7,6 +7,7 @@
 pub mod auth;
 pub mod config;
 pub mod mobile_access;
+pub mod notify_dispatcher;
 pub mod routes;
 pub mod state;
 pub mod ws;

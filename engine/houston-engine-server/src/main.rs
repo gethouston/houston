@@ -5,13 +5,14 @@
 //! token_hash, version}`, and serves the full router.
 
 use houston_engine_protocol::{ENGINE_VERSION, PROTOCOL_VERSION};
-use houston_engine_server::{build_router, ServerConfig, ServerState};
-use houston_tunnel::{EngineEndpoint, TunnelClient, TunnelConfig};
+use houston_engine_server::{build_router, notify_dispatcher, ServerConfig, ServerState};
+use houston_tunnel::{EngineEndpoint, NotifyPolicy, TunnelClient, TunnelConfig};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
+use tokio::sync::Mutex;
 
 #[derive(Serialize)]
 struct EngineManifest<'a> {
@@ -215,6 +216,20 @@ fn spawn_tunnel_if_allocated(state: Arc<ServerState>, engine_port: u16) {
         runtime,
     };
     let client = TunnelClient::new(cfg, Arc::new(state.mobile_access.clone()));
+
+    // Wire the engine-side push pipeline (Houston Mobile capacitor
+    // chunk 2 cont'd — `Notify` consumer):
+    //   BroadcastEventSink → NotifyPolicy → TunnelClient.outbound
+    //
+    // The dispatcher is spawned only when the tunnel is allocated.
+    // Without a tunnel there is nowhere for the frame to land, and the
+    // policy would silently burn its daily cap on un-sendable frames.
+    // Same `if-let` guard as the tunnel itself.
+    let tunnel_tx = client.outbound_frame_sender();
+    let events = state.events.subscribe();
+    let policy = Arc::new(Mutex::new(NotifyPolicy::default()));
+    notify_dispatcher::spawn_notify_dispatcher(events, policy, tunnel_tx);
+
     tokio::spawn(async move {
         client.run().await;
     });

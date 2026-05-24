@@ -23,7 +23,7 @@ pub mod proxy;
 pub mod runtime;
 
 pub use connection::{TunnelClient, TunnelConfig};
-pub use frame::TunnelFrame;
+pub use frame::{NotifyFrame, NotifyKind, TunnelFrame};
 pub use identity::{ensure, invalidate, load, save, TunnelIdentity};
 pub use notify::{
     status_to_notify_kind, NotifyDecision, NotifyPolicy, SkipReason, DEFAULT_DAILY_CAP,
