@@ -120,6 +120,71 @@ impl ConnectionMeta {
     }
 }
 
+/// Seed the on-disk mirror layout under `<workspace>/.houston/trackers/linear/`.
+///
+/// Idempotent: dir creation + empty-array projection files only get
+/// written if absent. Safe to call from `from_oauth` AND from any
+/// later reconcile that finds the dirs missing.
+///
+/// Layout:
+/// ```text
+/// .houston/trackers/linear/
+///   connection.json                    (written separately by ConnectionMeta::write_atomic)
+///   raw/
+///     issues/                          provider-fidelity per-entity JSONs (written by reconcile)
+///     projects/
+///     initiatives/
+///     cycles/
+///     webhook_events.jsonl             append-only event ledger
+///   issues.json                        projection — array (seeded as [])
+///   projects.json                      projection — array (seeded as [])
+///   initiatives.json                   projection — array (seeded as [])
+///   cycles.json                        projection — array (seeded as [])
+///   agent_sessions/                    per-session thread state (created on demand)
+///   sync_state.json                    polling cursors (seeded by SyncState::save_atomic)
+/// ```
+pub fn seed_layout(workspace_path: &Path) -> Result<(), LinearError> {
+    let root = workspace_path
+        .join(".houston")
+        .join("trackers")
+        .join("linear");
+
+    // Directories — idempotent.
+    for sub in [
+        "raw/issues",
+        "raw/projects",
+        "raw/initiatives",
+        "raw/cycles",
+        "agent_sessions",
+    ] {
+        std::fs::create_dir_all(root.join(sub))
+            .map_err(|e| LinearError::Oauth(format!("create {sub}: {e}")))?;
+    }
+
+    // Append-only event ledger — touch if missing.
+    let events_log = root.join("raw").join("webhook_events.jsonl");
+    if !events_log.exists() {
+        std::fs::write(&events_log, b"")
+            .map_err(|e| LinearError::Oauth(format!("touch webhook_events.jsonl: {e}")))?;
+    }
+
+    // Empty-array projection files — seed if absent.
+    for name in [
+        "issues.json",
+        "projects.json",
+        "initiatives.json",
+        "cycles.json",
+    ] {
+        let path = root.join(name);
+        if !path.exists() {
+            std::fs::write(&path, b"[]")
+                .map_err(|e| LinearError::Oauth(format!("seed {name}: {e}")))?;
+        }
+    }
+
+    Ok(())
+}
+
 // -- time helpers --
 
 fn now_iso() -> String {

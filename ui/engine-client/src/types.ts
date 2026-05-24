@@ -649,6 +649,56 @@ export interface TrackerStatusResponse {
   lastError?: string;
 }
 
+/** One issue projected from the tracker. Mirrors
+ * `tracker_issue.schema.json` + `houston-engine-protocol::TrackerIssue`. */
+export interface TrackerIssue {
+  provider: TrackerProvider;
+  providerId: string;
+  identifier: string;
+  title: string;
+  description?: string;
+  /** Provider-native state name (e.g. "In Progress"). */
+  state: string;
+  /** Linear's WorkflowStateType: triage / backlog / unstarted / started /
+   * completed / canceled. `null` on providers without typed categories. */
+  stateType?:
+    | "triage"
+    | "backlog"
+    | "unstarted"
+    | "started"
+    | "completed"
+    | "canceled";
+  priority?: number;
+  estimate?: number;
+  teamId: string;
+  projectId?: string;
+  projectMilestoneId?: string;
+  cycleId?: string;
+  parentId?: string;
+  assigneeId?: string;
+  /** Houston-side overlay — which Houston agent path this issue is
+   * routed to per routing.json. Not synced to the provider. */
+  assignedHoustonAgentId?: string;
+  labelIds: string[];
+  url?: string;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+/** Outcome of `POST /v1/trackers/:provider/sync`. Discriminated by `kind`. */
+export type TrackerReconcileResponse =
+  | {
+      kind: "synced";
+      issuesSeen: number;
+      pagesFetched: number;
+      cursorAdvancedTo?: string;
+    }
+  | {
+      kind: "skipped";
+      reason: string;
+    };
+
 // ---------- Composio ----------
 
 export type ComposioStatus =

@@ -776,6 +776,8 @@ import type {
   TrackerProvider as EngineTrackerProvider,
   TrackerConnectRequest as EngineTrackerConnectRequest,
   TrackerConnectResponse as EngineTrackerConnectResponse,
+  TrackerIssue as EngineTrackerIssue,
+  TrackerReconcileResponse as EngineTrackerReconcileResponse,
   TrackerStatusResponse as EngineTrackerStatusResponse,
 } from "@houston-ai/engine-client";
 
@@ -800,6 +802,20 @@ export const tauriTrackers = {
     call<void>(
       `tracker_${provider}_disconnect`,
       () => getEngine().trackerDisconnect(provider, workspacePath),
+      { workspacePath },
+    ),
+  listIssues: (provider: EngineTrackerProvider, workspacePath: string) =>
+    call<EngineTrackerIssue[]>(
+      `tracker_${provider}_list_issues`,
+      () => getEngine().trackerListIssues(provider, workspacePath),
+      { workspacePath },
+      // Issues fetches happen on every poll — silent like status.
+      { toast: false },
+    ),
+  syncNow: (provider: EngineTrackerProvider, workspacePath: string) =>
+    call<EngineTrackerReconcileResponse>(
+      `tracker_${provider}_sync_now`,
+      () => getEngine().trackerSync(provider, workspacePath),
       { workspacePath },
     ),
 };

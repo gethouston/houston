@@ -24,7 +24,9 @@ import type {
   ComposioStatus,
   TrackerConnectRequest,
   TrackerConnectResponse,
+  TrackerIssue,
   TrackerProvider,
+  TrackerReconcileResponse,
   TrackerStatusResponse,
   ConversationEntry,
   CreateAgent,
@@ -745,6 +747,36 @@ export class HoustonClient {
     return this.request(
       "DELETE",
       `/trackers/${provider}/connect`,
+      undefined,
+      { workspacePath },
+    );
+  }
+
+  /** Read the on-disk projection of issues for `workspacePath`. Empty
+   * array when never-connected; callers needing to distinguish empty
+   * from disconnected hit `trackerStatus` first. */
+  trackerListIssues(
+    provider: TrackerProvider,
+    workspacePath: string,
+  ): Promise<TrackerIssue[]> {
+    return this.request(
+      "GET",
+      `/trackers/${provider}/issues`,
+      undefined,
+      { workspacePath },
+    );
+  }
+
+  /** Trigger a manual reconcile against the provider. Engine loads
+   * tokens from keychain, runs the cursor-based puller, returns a
+   * summary the UI can show ("12 issues synced"). */
+  trackerSync(
+    provider: TrackerProvider,
+    workspacePath: string,
+  ): Promise<TrackerReconcileResponse> {
+    return this.request(
+      "POST",
+      `/trackers/${provider}/sync`,
       undefined,
       { workspacePath },
     );

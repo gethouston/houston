@@ -16,7 +16,12 @@
     "connected": {
       "subtitle": "Conectado el {{date}}",
       "disconnect": "Desconectar",
-      "disconnecting": "Desconectando..."
+      "disconnecting": "Desconectando...",
+      "issuesLoading": "Cargando issues...",
+      "issuesCount_one": "{{count}} issue sincronizado",
+      "issuesCount_other": "{{count}} issues sincronizados",
+      "syncNow": "Sincronizar ahora",
+      "syncing": "Sincronizando..."
     },
     "error": {
       "title": "Falló la conexión con Linear",
@@ -25,6 +30,8 @@
     },
     "browserFailedTitle": "No se pudo abrir tu navegador",
     "browserFailedBody": "Abre esta URL manualmente: {{url}}",
-    "disconnectedToast": "Linear desconectado."
+    "disconnectedToast": "Linear desconectado.",
+    "syncedToast_one": "Se sincronizó {{count}} issue desde Linear.",
+    "syncedToast_other": "Se sincronizaron {{count}} issues desde Linear."
   }
 }

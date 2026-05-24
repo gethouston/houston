@@ -7,7 +7,36 @@
 //! Paginated queries use explicit `first: N` to bound complexity
 //! consumption (default 50).
 
-pub mod viewer;
-
 #[cynic::schema("linear")]
 pub mod schema {}
+
+// ── Custom-scalar wrappers ───────────────────────────────────────
+//
+// cynic requires every GraphQL scalar to map to a unique Rust type
+// (so the `IsScalar<SchemaMarker>` trait bounds disambiguate). Linear's
+// custom scalars all serialize as JSON strings on the wire; each
+// wrapper is a transparent newtype + `cynic::impl_scalar!` registration
+// that points the wrapper at its schema-generated marker type. Living
+// in this module (next to the `schema` block they reference) keeps
+// macro path resolution simple.
+
+use serde::{Deserialize, Serialize};
+
+/// ISO 8601 timestamp string.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct DateTime(pub String);
+
+cynic::impl_scalar!(DateTime, schema::DateTime);
+
+/// ISO 8601 timestamp OR ISO 8601 duration. Linear accepts both in
+/// date filter inputs; we only ever pass the absolute form so the
+/// underlying type stays plain String.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(transparent)]
+pub struct DateTimeOrDuration(pub String);
+
+cynic::impl_scalar!(DateTimeOrDuration, schema::DateTimeOrDuration);
+
+pub mod issues;
+pub mod viewer;

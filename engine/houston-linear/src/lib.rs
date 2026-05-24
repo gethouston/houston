@@ -46,18 +46,21 @@ pub mod commands;
 pub mod connection;
 pub mod error;
 pub mod keychain;
+pub mod models;
 pub mod mutations;
 pub mod pending;
 pub mod queries;
 pub mod rate_limit;
 pub mod reconcile;
+pub mod sync_state;
 pub mod webhooks;
 
 pub use callback::CallbackParams;
-pub use connection::{ConnectionMeta, OrgInfo};
+pub use connection::{seed_layout, ConnectionMeta, OrgInfo};
 pub use error::LinearError;
 pub use keychain::StoredTokens;
 pub use pending::{PendingStore, TakenState};
+pub use sync_state::SyncState;
 
 /// Linear's GraphQL endpoint.
 pub const LINEAR_GRAPHQL_URL: &str = "https://api.linear.app/graphql";

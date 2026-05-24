@@ -86,6 +86,7 @@ pub(crate) async fn run_connect_task(
     let org = viewer::fetch_org_info(http(), &token.access_token).await?;
 
     let stored = project_to_stored(&token, None);
+    let access_token = stored.access_token.clone();
     let meta = ConnectionMeta::from_oauth(
         "linear",
         org,
@@ -95,12 +96,30 @@ pub(crate) async fn run_connect_task(
     )?;
     meta.write_atomic(&workspace_path)?;
 
+    // Seed the mirror directory layout. Idempotent — dirs that already
+    // exist (e.g. after a reconnect) are left in place.
+    crate::connection::seed_layout(&workspace_path)?;
+
     tracing::info!(
         workspace = %workspace_path.display(),
         org_id = %meta.org_id,
         org_name = %meta.org_name,
         "Linear connected"
     );
+
+    // Kick off an initial reconcile in the same background task so the
+    // mirror is populated by the time the UI's status poll flips to
+    // Connected. Logged-not-surfaced if it errors — the user can hit
+    // Sync-now manually, and the periodic reconciler (when wired) will
+    // also catch up.
+    if let Err(e) = crate::reconcile::reconcile_issues(&workspace_path, http(), &access_token).await
+    {
+        tracing::warn!(
+            workspace = %workspace_path.display(),
+            error = %e,
+            "initial Linear reconcile failed; will retry on next sync"
+        );
+    }
 
     if let Ok(mut map) = inflight().lock() {
         map.remove(&workspace_path);

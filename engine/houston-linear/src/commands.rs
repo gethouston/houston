@@ -16,7 +16,10 @@
 //! Re-clicking "Connect" while a previous attempt is in flight cancels
 //! the old task (releasing the callback port) and spawns a fresh one.
 
+mod issues;
 mod task;
+
+pub use issues::{list_issues, sync_now};
 
 use crate::auth::{build_authorize_url, LINEAR_OAUTH_CALLBACK_PORT, LINEAR_OAUTH_REDIRECT_URI};
 use crate::connection::ConnectionMeta;

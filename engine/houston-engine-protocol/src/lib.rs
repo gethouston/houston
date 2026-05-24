@@ -223,6 +223,61 @@ pub enum TrackerConnectionState {
     Error,
 }
 
+/// One issue projected from the tracker into Houston's on-disk mirror.
+/// Mirrors `ui/agent-schemas/src/tracker_issue.schema.json`. Wire shape
+/// used by both the engine route response AND the on-disk persistence
+/// in `engine/houston-linear/src/models.rs`.
+///
+/// `Eq` intentionally omitted — `estimate: Option<f64>` makes Eq invalid
+/// (NaN != NaN). PartialEq is enough for tests and dedupe.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub struct TrackerIssue {
+    pub provider: String,
+    pub provider_id: String,
+    pub identifier: String,
+    pub title: String,
+    pub description: Option<String>,
+    pub state: String,
+    /// Provider-native state category (Linear's WorkflowStateType:
+    /// triage/backlog/unstarted/started/completed/canceled). Null on
+    /// providers without typed state categories.
+    pub state_type: Option<String>,
+    pub priority: Option<i64>,
+    pub estimate: Option<f64>,
+    pub team_id: String,
+    pub project_id: Option<String>,
+    pub project_milestone_id: Option<String>,
+    pub cycle_id: Option<String>,
+    pub parent_id: Option<String>,
+    pub assignee_id: Option<String>,
+    /// Houston-side overlay — which Houston agent path this issue is
+    /// routed to per the workspace's routing.json policy. Not synced
+    /// to the provider.
+    pub assigned_houston_agent_id: Option<String>,
+    #[serde(default)]
+    pub label_ids: Vec<String>,
+    pub url: Option<String>,
+    pub created_at: String,
+    pub updated_at: String,
+    pub completed_at: Option<String>,
+}
+
+/// Response from `POST /v1/trackers/:provider/sync` — outcome of a
+/// reconcile invocation.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case", tag = "kind")]
+pub enum TrackerReconcileResponse {
+    Synced {
+        issues_seen: usize,
+        pages_fetched: usize,
+        cursor_advanced_to: Option<String>,
+    },
+    Skipped {
+        reason: String,
+    },
+}
+
 /// Helper: build an event envelope from a HoustonEvent.
 pub fn event_envelope(event: &HoustonEvent) -> EngineEnvelope {
     EngineEnvelope {

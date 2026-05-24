@@ -17,7 +17,8 @@ use axum::{
 };
 use houston_engine_core::CoreError;
 use houston_engine_protocol::{
-    TrackerConnectRequest, TrackerConnectResponse, TrackerProvider, TrackerStatusResponse,
+    TrackerConnectRequest, TrackerConnectResponse, TrackerIssue, TrackerProvider,
+    TrackerReconcileResponse, TrackerStatusResponse,
 };
 use houston_linear::commands as linear;
 use serde::Deserialize;
@@ -31,6 +32,8 @@ pub fn router() -> Router<Arc<ServerState>> {
             post(connect).delete(disconnect),
         )
         .route("/trackers/:provider/status", get(status))
+        .route("/trackers/:provider/issues", get(issues))
+        .route("/trackers/:provider/sync", post(sync_now))
 }
 
 fn bad(message: impl Into<String>) -> ApiError {
@@ -117,6 +120,47 @@ async fn status(
         return Err(bad("workspacePath must be absolute"));
     }
     Ok(Json(linear::get_status(&workspace)))
+}
+
+/// `GET /v1/trackers/:provider/issues?workspacePath=...` — read the
+/// on-disk projection. Returns `[]` when the workspace is not yet
+/// connected (per the no-silent-failures policy callers that need to
+/// distinguish "empty" from "disconnected" hit `/status` first).
+async fn issues(
+    State(_st): State<Arc<ServerState>>,
+    Path(provider): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<WorkspaceQuery>,
+) -> Result<Json<Vec<TrackerIssue>>, ApiError> {
+    let prov = parse_provider(&provider)?;
+    if !matches!(prov, TrackerProvider::Linear) {
+        return Err(bad(format!("provider {provider} not supported")));
+    }
+    let workspace = PathBuf::from(&q.workspace_path);
+    if !workspace.is_absolute() {
+        return Err(bad("workspacePath must be absolute"));
+    }
+    let items = linear::list_issues(&workspace).map_err(lift_linear)?;
+    Ok(Json(items))
+}
+
+/// `POST /v1/trackers/:provider/sync?workspacePath=...` — manual
+/// reconcile trigger. Returns the run summary; UI can show
+/// issues-seen / pages-fetched / cursor-advanced.
+async fn sync_now(
+    State(_st): State<Arc<ServerState>>,
+    Path(provider): Path<String>,
+    axum::extract::Query(q): axum::extract::Query<WorkspaceQuery>,
+) -> Result<Json<TrackerReconcileResponse>, ApiError> {
+    let prov = parse_provider(&provider)?;
+    if !matches!(prov, TrackerProvider::Linear) {
+        return Err(bad(format!("provider {provider} not supported")));
+    }
+    let workspace = PathBuf::from(&q.workspace_path);
+    if !workspace.is_absolute() {
+        return Err(bad("workspacePath must be absolute"));
+    }
+    let resp = linear::sync_now(&workspace).await.map_err(lift_linear)?;
+    Ok(Json(resp))
 }
 
 #[derive(Deserialize)]

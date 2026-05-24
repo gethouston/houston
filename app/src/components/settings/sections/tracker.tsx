@@ -4,6 +4,8 @@ import {
   useTrackerStatus,
   useTrackerConnect,
   useTrackerDisconnect,
+  useTrackerIssues,
+  useTrackerSyncNow,
 } from "../../../hooks/queries";
 import { osOpenUrl } from "../../../lib/os-bridge";
 import { useAgentStore } from "../../../stores/agents";
@@ -46,6 +48,9 @@ export function TrackerSection() {
   const status = useTrackerStatus("linear", workspacePath);
   const connect = useTrackerConnect("linear", workspacePath);
   const disconnect = useTrackerDisconnect("linear", workspacePath);
+  const connecting = status.data?.state === "connecting" || connect.isPending;
+  const issues = useTrackerIssues("linear", workspacePath, connecting);
+  const syncNow = useTrackerSyncNow("linear", workspacePath);
 
   if (!workspacePath) {
     return (
@@ -60,7 +65,6 @@ export function TrackerSection() {
   }
 
   const data = status.data;
-  const connecting = data?.state === "connecting" || connect.isPending;
   const connected = data?.state === "connected";
   const errored = data?.state === "error" || !!connect.error;
   const errorMessage =
@@ -97,6 +101,21 @@ export function TrackerSection() {
     addToast({ title: t("tracker:linear.disconnectedToast") });
   }
 
+  async function handleSyncNow() {
+    if (!workspacePath) return;
+    try {
+      const summary = await syncNow.mutateAsync();
+      if (summary.kind === "synced") {
+        addToast({
+          title: t("tracker:linear.syncedToast", { count: summary.issuesSeen }),
+        });
+      }
+    } catch (e) {
+      // tauriTrackers.syncNow uses the standard call() helper which
+      // already surfaces a toast on error — nothing more to do here.
+    }
+  }
+
   return (
     <section>
       <header className="flex items-center gap-3 mb-4">
@@ -113,8 +132,11 @@ export function TrackerSection() {
           orgName={data.orgName ?? t("common:unknown")}
           capabilities={data.capabilities}
           connectedAt={data.connectedAt}
+          issuesCount={issues.data?.length}
           onDisconnect={handleDisconnect}
           disconnectPending={disconnect.isPending}
+          onSyncNow={handleSyncNow}
+          syncPending={syncNow.isPending}
         />
       ) : connecting ? (
         <ConnectingCard />

@@ -1,5 +1,5 @@
 import { useTranslation } from "react-i18next";
-import { Loader2, AlertTriangle, Check } from "lucide-react";
+import { Loader2, AlertTriangle, Check, RefreshCw } from "lucide-react";
 
 /**
  * State-card variants for {@link TrackerSection}. Split out to stay
@@ -58,16 +58,22 @@ interface ConnectedCardProps {
   orgName: string;
   capabilities: string[];
   connectedAt: string | undefined;
+  issuesCount: number | undefined;
   onDisconnect: () => void;
   disconnectPending: boolean;
+  onSyncNow: () => void;
+  syncPending: boolean;
 }
 
 export function ConnectedCard({
   orgName,
   capabilities,
   connectedAt,
+  issuesCount,
   onDisconnect,
   disconnectPending,
+  onSyncNow,
+  syncPending,
 }: ConnectedCardProps) {
   const { t } = useTranslation(["tracker", "common"]);
   return (
@@ -95,6 +101,26 @@ export function ConnectedCard({
           {disconnectPending
             ? t("tracker:linear.connected.disconnecting")
             : t("tracker:linear.connected.disconnect")}
+        </button>
+      </div>
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <p className="text-sm text-muted-foreground">
+          {issuesCount === undefined
+            ? t("tracker:linear.connected.issuesLoading")
+            : t("tracker:linear.connected.issuesCount", { count: issuesCount })}
+        </p>
+        <button
+          type="button"
+          onClick={onSyncNow}
+          disabled={syncPending}
+          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${syncPending ? "animate-spin" : ""}`}
+          />
+          {syncPending
+            ? t("tracker:linear.connected.syncing")
+            : t("tracker:linear.connected.syncNow")}
         </button>
       </div>
       {capabilities.length > 0 && (
