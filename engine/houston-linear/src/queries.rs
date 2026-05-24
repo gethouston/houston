@@ -38,5 +38,17 @@ pub struct DateTimeOrDuration(pub String);
 
 cynic::impl_scalar!(DateTimeOrDuration, schema::DateTimeOrDuration);
 
+/// Arbitrary JSON object — Linear's `JSONObject` scalar. The
+/// `AgentActivityCreateInput.content` field is intentionally
+/// schema-free so each activity type (thought / action / response /
+/// elicitation / error / prompt) can carry its own shape; we round-trip
+/// it as raw [`serde_json::Value`] under a transparent newtype so each
+/// scalar gets a distinct Rust type for `IsScalar<SchemaMarker>`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(transparent)]
+pub struct JsonObject(pub serde_json::Value);
+
+cynic::impl_scalar!(JsonObject, schema::JSONObject);
+
 pub mod issues;
 pub mod viewer;

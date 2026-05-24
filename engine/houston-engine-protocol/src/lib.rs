@@ -290,7 +290,17 @@ pub enum TrackerReconcileResponse {
 #[serde(tag = "status", rename_all = "snake_case")]
 pub enum TrackerWebhookResponse {
     /// First time seen — projected + dispatched (downstream layers).
-    Accepted { event_type: String, action: String },
+    ///
+    /// `dispatched_session_id` is `Some(session_id)` when the delivery
+    /// was an AgentSession event Houston handed off to a workspace
+    /// inbox (the agent shell will pick up via the file watcher); the
+    /// field is `None` for every other accepted event type.
+    Accepted {
+        event_type: String,
+        action: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        dispatched_session_id: Option<String>,
+    },
     /// Same `webhookId` already on disk — no side effects.
     Duplicate,
     /// HMAC signature verification failed (wrong secret or tampered

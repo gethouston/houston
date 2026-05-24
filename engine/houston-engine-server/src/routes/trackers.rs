@@ -179,12 +179,15 @@ async fn webhook(
 
     let now_ms = chrono::Utc::now().timestamp_millis();
     match linear::handle_delivery(&workspace, &body, sig, ts, now_ms) {
-        Ok(linear::WebhookOutcome::Accepted { event_type, action }) => {
-            Ok(Json(TrackerWebhookResponse::Accepted {
-                event_type,
-                action,
-            }))
-        }
+        Ok(linear::WebhookOutcome::Accepted {
+            event_type,
+            action,
+            dispatched_session_id,
+        }) => Ok(Json(TrackerWebhookResponse::Accepted {
+            event_type,
+            action,
+            dispatched_session_id,
+        })),
         Ok(linear::WebhookOutcome::Duplicate) => Ok(Json(TrackerWebhookResponse::Duplicate)),
         Err(houston_linear::LinearError::WebhookSignature) => {
             tracing::warn!(target: "tracker.webhook", provider = %provider, "signature verification failed");

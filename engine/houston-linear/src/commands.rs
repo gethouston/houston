@@ -16,10 +16,12 @@
 //! Re-clicking "Connect" while a previous attempt is in flight cancels
 //! the old task (releasing the callback port) and spawns a fresh one.
 
+mod agent_session;
 mod issues;
 mod task;
 mod webhook;
 
+pub use agent_session::{dispatch_from_webhook, emit_activity};
 pub use issues::{list_issues, sync_now};
 pub use webhook::{handle_delivery, WebhookOutcome};
 

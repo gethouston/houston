@@ -13,6 +13,7 @@
 //! handler) is responsible for that 200; this function returns the
 //! *outcome* it observed so the route can log + respond appropriately.
 
+use super::agent_session as agent_session_cmd;
 use crate::connection::ConnectionMeta;
 use crate::error::LinearError;
 use crate::keychain;
@@ -27,7 +28,17 @@ use std::path::Path;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum WebhookOutcome {
     /// First time we've seen this `webhookId` — recorded.
-    Accepted { event_type: String, action: String },
+    ///
+    /// `dispatched_session_id` is set when the delivery was an
+    /// `AgentSessionEvent` with action `created` / `prompted` AND
+    /// the inbox handoff succeeded — the agent shell will see the
+    /// delegation via the file watcher. `None` for every other
+    /// accepted event type (Issue / Project / Cycle / ...).
+    Accepted {
+        event_type: String,
+        action: String,
+        dispatched_session_id: Option<String>,
+    },
     /// Same `webhookId` seen before — no side effects.
     Duplicate,
 }
@@ -90,12 +101,24 @@ pub fn handle_delivery(
         payload,
     };
 
+    // Clone the entry for ledger record + dispatch (dispatch needs
+    // the same struct after `record_if_new` consumes the original).
+    let entry_for_dispatch = entry.clone();
     Ok(
         match webhook_ledger::record_if_new(workspace_path, entry)? {
-            RecordOutcome::Recorded => WebhookOutcome::Accepted {
-                event_type: env.event_type,
-                action: env.action,
-            },
+            RecordOutcome::Recorded => {
+                // First-time delivery — try the inbox handoff if it's
+                // an AgentSessionEvent. Non-agent events pass through
+                // without side effects (ledger is the surface for the
+                // projection / reconcile layers).
+                let dispatched_session_id =
+                    agent_session_cmd::dispatch_from_webhook(workspace_path, &entry_for_dispatch)?;
+                WebhookOutcome::Accepted {
+                    event_type: env.event_type,
+                    action: env.action,
+                    dispatched_session_id,
+                }
+            }
             RecordOutcome::Duplicate => WebhookOutcome::Duplicate,
         },
     )
