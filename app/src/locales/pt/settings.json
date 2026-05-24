@@ -87,6 +87,10 @@
       "context_meter": {
         "label": "Medidor de contexto",
         "description": "Adiciona uma roda de uso de tokens no composer do chat para você ver o quanto da janela de contexto do modelo está em uso."
+      },
+      "git_panel": {
+        "label": "Painel do Git",
+        "description": "Mostra uma aba Git somente leitura nos agentes cujo diretório de trabalho é um repositório git. Status, commits recentes, diff por arquivo."
       }
     },
     "resetAll": "Redefinir todas as configurações avançadas",

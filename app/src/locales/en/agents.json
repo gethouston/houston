@@ -50,7 +50,8 @@
     "events": "Events",
     "learnings": "Learnings",
     "configure": "Configure",
-    "settings": "Settings"
+    "settings": "Settings",
+    "git": "Git"
   },
   "configure": {
     "projectContext": {

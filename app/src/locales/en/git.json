@@ -1,0 +1,30 @@
+{
+  "loading": "Loading…",
+  "notARepo": {
+    "title": "Not a git repository",
+    "description": "This agent's working directory isn't tracked by git. Point the agent at a repo (or run `git init` there) to see status, log, and diff here."
+  },
+  "tabs": {
+    "status": "Status",
+    "log": "Log"
+  },
+  "status": {
+    "onBranch": "On branch {{branch}}",
+    "cleanTree": "Working tree clean"
+  },
+  "statusCode": {
+    "untracked": "Untracked",
+    "added": "Added",
+    "deleted": "Deleted",
+    "renamed": "Renamed",
+    "copied": "Copied",
+    "modified": "Modified"
+  },
+  "log": {
+    "noCommits": "No commits yet"
+  },
+  "diff": {
+    "selectAFile": "Select a file from the status list to see its diff.",
+    "noChanges": "No changes."
+  }
+}

@@ -87,6 +87,10 @@
       "context_meter": {
         "label": "Context meter",
         "description": "Add a token-usage wheel to the chat composer so you can see how much of the model's context window is in use."
+      },
+      "git_panel": {
+        "label": "Git panel",
+        "description": "Show a read-only Git tab on agents whose working directory is a git repository. Status, recent commits, file diff."
       }
     },
     "resetAll": "Reset all advanced settings",

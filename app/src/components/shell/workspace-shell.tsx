@@ -19,6 +19,8 @@ import { useActivity } from "../../hooks/queries";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { useFeatureFlag } from "../../hooks/useFeatureFlag";
+import { useIsGitRepo } from "../../hooks/use-git-queries";
 import { AgentRenderer } from "./experience-renderer";
 import { Dashboard } from "../dashboard";
 import { IntegrationsView } from "../tabs/integrations-view";
@@ -64,7 +66,26 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
   const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(null);
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
-  const tabs = agentDef?.config.tabs ?? [];
+  const baseTabs = agentDef?.config.tabs ?? [];
+  // Phase 3 — `advanced.git_panel` injects a `Git` tab on agents whose
+  // working directory is a git repo. The flag is per-install (UI-only
+  // enforcement); the repo check is per-agent so non-code agents stay
+  // un-cluttered.
+  const gitPanelFlagOn = useFeatureFlag("advanced.git_panel");
+  const gitRepoCheck = useIsGitRepo(
+    gitPanelFlagOn && currentAgent ? currentAgent.folderPath : null,
+  );
+  const showGitTab = gitPanelFlagOn && gitRepoCheck.data === true;
+  const tabs = showGitTab
+    ? [
+        ...baseTabs,
+        {
+          id: "git",
+          label: "Git",
+          builtIn: "git" as const,
+        },
+      ]
+    : baseTabs;
   const hasActivityTab = tabs.some((tab) => tab.id === "activity");
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter((a) => a.status === "needs_you").length;

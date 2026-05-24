@@ -585,6 +585,17 @@ export const tauriActivity = {
     activityData.remove(agentPath, activityId),
 };
 
+// ─── Git (read-only inspection — advanced.git_panel) ──────────────────
+
+export const tauriGit = {
+  status: (cwd: string) =>
+    call("git_status", () => getEngine().gitStatus({ cwd })),
+  log: (cwd: string, limit?: number) =>
+    call("git_log", () => getEngine().gitLog({ cwd, limit })),
+  diff: (cwd: string, path?: string) =>
+    call("git_diff", () => getEngine().gitDiff({ cwd, path })),
+};
+
 // ─── Worktrees & shell ────────────────────────────────────────────────
 
 export const tauriWorktree = {

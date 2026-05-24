@@ -1,0 +1,30 @@
+{
+  "loading": "Cargando…",
+  "notARepo": {
+    "title": "No es un repositorio git",
+    "description": "El directorio de trabajo de este agente no está versionado con git. Apunta el agente a un repo (o corre `git init` ahí) para ver estado, log y diff aquí."
+  },
+  "tabs": {
+    "status": "Estado",
+    "log": "Historial"
+  },
+  "status": {
+    "onBranch": "En la rama {{branch}}",
+    "cleanTree": "No hay cambios en el árbol de trabajo"
+  },
+  "statusCode": {
+    "untracked": "Sin seguimiento",
+    "added": "Agregado",
+    "deleted": "Eliminado",
+    "renamed": "Renombrado",
+    "copied": "Copiado",
+    "modified": "Modificado"
+  },
+  "log": {
+    "noCommits": "Aún no hay commits"
+  },
+  "diff": {
+    "selectAFile": "Elige un archivo en la lista de estado para ver su diff.",
+    "noChanges": "Sin cambios."
+  }
+}

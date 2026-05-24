@@ -76,6 +76,18 @@ export const FLAG_REGISTRY: Record<string, FlagDef> = {
     since: "0.4.1",
     graduationTarget: "permanent",
   },
+  "advanced.git_panel": {
+    key: "advanced.git_panel",
+    category: "advanced",
+    default: false,
+    labelKey: "advanced.flags.git_panel.label",
+    descriptionKey: "advanced.flags.git_panel.description",
+    enforcementSurface: "ui",
+    status: "beta",
+    learnMoreSlug: "git-panel",
+    since: "0.4.2",
+    graduationTarget: "permanent",
+  },
 };
 
 export type FlagMigration =

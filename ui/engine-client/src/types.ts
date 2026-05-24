@@ -490,6 +490,52 @@ export interface RemoveWorktreeRequest {
   worktreePath: string;
 }
 
+// ---------- Git (read-only inspection) ----------
+
+export interface GitStatusRequest {
+  cwd: string;
+}
+export interface GitStatusEntry {
+  /** Two-char porcelain code (`"M "`, `" M"`, `"??"`, `"R "`, etc.). */
+  code: string;
+  path: string;
+  /** Set on rename/copy entries (codes starting with `R` or `C`). */
+  origPath: string | null;
+}
+export interface GitStatusResponse {
+  entries: GitStatusEntry[];
+  /** Current branch, or null on detached HEAD. */
+  branch: string | null;
+}
+
+export interface GitLogRequest {
+  cwd: string;
+  limit?: number;
+}
+export interface GitCommit {
+  sha: string;
+  author: string;
+  /** ISO 8601. */
+  date: string;
+  subject: string;
+}
+export interface GitLogResponse {
+  commits: GitCommit[];
+}
+
+export interface GitDiffRequest {
+  cwd: string;
+  /** When set, restrict diff to one path. */
+  path?: string;
+}
+export interface GitDiffResponse {
+  /** Raw unified diff text. */
+  diff: string;
+}
+
+/** Stable `kind` tag the engine emits when cwd isn't a git repo. */
+export const GIT_NOT_A_REPO_KIND = "git_not_a_repo";
+
 export interface RunShellRequest {
   path: string;
   command: string;

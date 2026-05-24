@@ -36,6 +36,12 @@ import type {
   CreateWorkspace,
   CreateWorktreeRequest,
   ErrorBody,
+  GitDiffRequest,
+  GitDiffResponse,
+  GitLogRequest,
+  GitLogResponse,
+  GitStatusRequest,
+  GitStatusResponse,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
@@ -592,6 +598,18 @@ export class HoustonClient {
   }
   runShell(req: RunShellRequest): Promise<string> {
     return this.request("POST", "/shell", req);
+  }
+
+  // ---------- git (read-only inspection) ----------
+
+  gitStatus(req: GitStatusRequest): Promise<GitStatusResponse> {
+    return this.request("POST", "/git/status", req);
+  }
+  gitLog(req: GitLogRequest): Promise<GitLogResponse> {
+    return this.request("POST", "/git/log", req);
+  }
+  gitDiff(req: GitDiffRequest): Promise<GitDiffResponse> {
+    return this.request("POST", "/git/diff", req);
   }
 
   // ---------- tunnel (mobile pairing + device-token management) ----------
