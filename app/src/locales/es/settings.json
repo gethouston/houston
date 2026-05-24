@@ -6,6 +6,7 @@
     "workspaceContext": "Contexto del espacio",
     "userContext": "Contexto del usuario",
     "provider": "Proveedor de IA",
+    "tracker": "Gestor de proyectos",
     "advanced": "Avanzado",
     "phone": "Conectar celular",
     "reportBug": "Reportar bug"

@@ -1,0 +1,30 @@
+{
+  "title": "Gestor de proyectos",
+  "noAgent": "Selecciona un agente en la barra lateral para gestionar su conexión con Linear.",
+  "linear": {
+    "intro": "Conecta Linear para que tu agente pueda leer issues, proyectos y ciclos, y responder a delegaciones mediante el protocolo Agent Session de Linear.",
+    "notConnected": {
+      "title": "Conectar Linear",
+      "body": "Houston abrirá Linear en tu navegador. Después de iniciar sesión y dar tu consentimiento, tu agente podrá leer y escribir issues para tu equipo.",
+      "connect": "Conectar Linear",
+      "connecting": "Abriendo Linear..."
+    },
+    "connecting": {
+      "title": "Esperando a Linear",
+      "body": "Termina de iniciar sesión en Linear en tu navegador. Esta página se actualizará automáticamente cuando estés conectado."
+    },
+    "connected": {
+      "subtitle": "Conectado el {{date}}",
+      "disconnect": "Desconectar",
+      "disconnecting": "Desconectando..."
+    },
+    "error": {
+      "title": "Falló la conexión con Linear",
+      "retry": "Reintentar",
+      "retrying": "Reintentando..."
+    },
+    "browserFailedTitle": "No se pudo abrir tu navegador",
+    "browserFailedBody": "Abre esta URL manualmente: {{url}}",
+    "disconnectedToast": "Linear desconectado."
+  }
+}

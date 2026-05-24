@@ -13,6 +13,7 @@ export { useFiles, useDeleteFile, useRenameFile, useCreateFolder } from "./use-f
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export { useConversations, useAllConversations, useChatHistory } from "./use-conversations";
 export { useConnections, useComposioApps, useConnectedToolkits, useInvalidateConnections, useResetConnections } from "./use-connections";
+export { useTrackerStatus, useTrackerConnect, useTrackerDisconnect } from "./use-tracker";
 export {
   useRoutines,
   useRoutineRuns,

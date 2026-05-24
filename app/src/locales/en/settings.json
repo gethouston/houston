@@ -6,6 +6,7 @@
     "workspaceContext": "Workspace context",
     "userContext": "User context",
     "provider": "AI provider",
+    "tracker": "Tracker",
     "advanced": "Advanced",
     "phone": "Connect phone",
     "reportBug": "Report bug"

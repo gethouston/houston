@@ -22,6 +22,10 @@ import type {
   ComposioStartLinkResponse,
   ComposioStartLoginResponse,
   ComposioStatus,
+  TrackerConnectRequest,
+  TrackerConnectResponse,
+  TrackerProvider,
+  TrackerStatusResponse,
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
@@ -695,6 +699,55 @@ export class HoustonClient {
   }
   stopAgentWatcher(): Promise<void> {
     return this.request("POST", "/watcher/stop");
+  }
+
+  // ---------- trackers (V1: linear) ----------
+
+  /**
+   * Start the OAuth flow for `provider` (only `linear` accepted in V1).
+   * Returns the authorize URL — caller should open it in the user's
+   * default browser. The engine handles the OAuth callback on its
+   * fixed loopback port; the caller polls `trackerStatus` (or, when
+   * events land, subscribes to `tracker:<provider>:<workspace>`).
+   */
+  trackerConnect(
+    provider: TrackerProvider,
+    req: TrackerConnectRequest,
+  ): Promise<TrackerConnectResponse> {
+    return this.request("POST", `/trackers/${provider}/connect`, req);
+  }
+
+  /**
+   * Read the current connection state for `workspacePath`. Read-only —
+   * does not touch the network or keychain. Safe to poll.
+   */
+  trackerStatus(
+    provider: TrackerProvider,
+    workspacePath: string,
+  ): Promise<TrackerStatusResponse> {
+    return this.request(
+      "GET",
+      `/trackers/${provider}/status`,
+      undefined,
+      { workspacePath },
+    );
+  }
+
+  /**
+   * Disconnect: cancels any in-flight OAuth task, removes the
+   * keychain entry for the bound org, deletes `connection.json`.
+   * Idempotent.
+   */
+  trackerDisconnect(
+    provider: TrackerProvider,
+    workspacePath: string,
+  ): Promise<void> {
+    return this.request(
+      "DELETE",
+      `/trackers/${provider}/connect`,
+      undefined,
+      { workspacePath },
+    );
   }
 
   // ---------- composio ----------

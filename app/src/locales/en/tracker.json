@@ -1,0 +1,30 @@
+{
+  "title": "Project tracker",
+  "noAgent": "Select an agent from the sidebar to manage its Linear connection.",
+  "linear": {
+    "intro": "Connect Linear to let your agent read issues, projects, and cycles, and respond to delegations through Linear's Agent Session protocol.",
+    "notConnected": {
+      "title": "Connect Linear",
+      "body": "Houston will open Linear in your browser. After you sign in and consent, your agent can read and write issues for your team.",
+      "connect": "Connect Linear",
+      "connecting": "Opening Linear..."
+    },
+    "connecting": {
+      "title": "Waiting for Linear",
+      "body": "Finish signing in to Linear in your browser. This page will update automatically once you're connected."
+    },
+    "connected": {
+      "subtitle": "Connected on {{date}}",
+      "disconnect": "Disconnect",
+      "disconnecting": "Disconnecting..."
+    },
+    "error": {
+      "title": "Linear connection failed",
+      "retry": "Try again",
+      "retrying": "Retrying..."
+    },
+    "browserFailedTitle": "Couldn't open your browser",
+    "browserFailedBody": "Open this URL manually: {{url}}",
+    "disconnectedToast": "Linear disconnected."
+  }
+}

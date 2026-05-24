@@ -764,3 +764,42 @@ export const tauriTunnel = {
   resetAccess: () =>
     call<EnginePairingCode>("tunnel_reset_access", () => getEngine().resetPhoneAccess()),
 };
+
+// ─── Trackers (V1: Linear) ────────────────────────────────────────────
+//
+// Project-tracker integration. Linear in V1; the route family is
+// provider-as-path-param so adding Jira / GitHub / Asana later is a
+// new concrete engine crate + a new TrackerProvider enum value, with
+// no client-side rewrite.
+
+import type {
+  TrackerProvider as EngineTrackerProvider,
+  TrackerConnectRequest as EngineTrackerConnectRequest,
+  TrackerConnectResponse as EngineTrackerConnectResponse,
+  TrackerStatusResponse as EngineTrackerStatusResponse,
+} from "@houston-ai/engine-client";
+
+export const tauriTrackers = {
+  connect: (provider: EngineTrackerProvider, req: EngineTrackerConnectRequest) =>
+    call<EngineTrackerConnectResponse>(
+      `tracker_${provider}_connect`,
+      () => getEngine().trackerConnect(provider, req),
+    ),
+  status: (provider: EngineTrackerProvider, workspacePath: string) =>
+    call<EngineTrackerStatusResponse>(
+      `tracker_${provider}_status`,
+      () => getEngine().trackerStatus(provider, workspacePath),
+      { workspacePath },
+      // Status polling is silent — we don't want a toast on every
+      // failed poll when the engine is bouncing or the connection
+      // briefly drops. The Settings section surfaces last_error
+      // inline instead.
+      { toast: false },
+    ),
+  disconnect: (provider: EngineTrackerProvider, workspacePath: string) =>
+    call<void>(
+      `tracker_${provider}_disconnect`,
+      () => getEngine().trackerDisconnect(provider, workspacePath),
+      { workspacePath },
+    ),
+};

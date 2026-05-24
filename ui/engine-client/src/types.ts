@@ -597,6 +597,58 @@ export interface AttachmentManifest extends AttachmentUploadResult {
   createdAt: string;
 }
 
+// ---------- Tracker integration (V1: Linear) ----------
+//
+// Provider-tagged from day one (matches engine/houston-engine-protocol).
+// Adding tracker #2 = a new enum value + a new concrete crate behind the
+// engine routes, with zero URL or DTO migration.
+
+export type TrackerProvider = "linear";
+
+export interface TrackerConnectRequest {
+  /** Absolute path of the Houston workspace this connection binds to. */
+  workspacePath: string;
+  /** OAuth client id; defaults to engine env `LINEAR_CLIENT_ID`. */
+  clientId?: string;
+  /** OAuth client secret; defaults to engine env `LINEAR_CLIENT_SECRET`. */
+  clientSecret?: string;
+}
+
+export interface TrackerConnectResponse {
+  provider: TrackerProvider;
+  /** URL to open in the user's default browser for OAuth consent. */
+  authorizeUrl: string;
+  /**
+   * CSRF token echoed back from Linear's redirect, surfaced for
+   * diagnostics only. The engine validates internally.
+   */
+  state: string;
+  /**
+   * Localhost port the engine listens on for the OAuth callback.
+   * Linear's OAuth-app config must allow `http://localhost:<port>/callback`.
+   */
+  callbackPort: number;
+}
+
+/** Lifecycle of a tracker connection. Drives the Connect/Connecting/Connected UI. */
+export type TrackerConnectionState =
+  | "not_connected"
+  | "connecting"
+  | "connected"
+  | "error";
+
+export interface TrackerStatusResponse {
+  provider: TrackerProvider;
+  connected: boolean;
+  state: TrackerConnectionState;
+  orgId?: string;
+  orgName?: string;
+  capabilities: string[];
+  connectedAt?: string;
+  lastSyncAt?: string;
+  lastError?: string;
+}
+
 // ---------- Composio ----------
 
 export type ComposioStatus =
