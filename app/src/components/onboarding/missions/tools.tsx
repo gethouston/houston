@@ -2,10 +2,7 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ExternalLink, Loader2 } from "lucide-react";
 import { Button, cn } from "@houston-ai/core";
-import {
-  useConnections,
-  useResetConnections,
-} from "../../../hooks/queries";
+import { useConnections, useResetConnections } from "../../../hooks/queries";
 import { useComposioAuth } from "../../../hooks/use-composio-auth";
 import { ComposioAuthDialog } from "../../composio-auth-dialog";
 

@@ -19,7 +19,9 @@ export function Section({
     <section>
       <h2 className="text-sm font-medium text-foreground">{title}</h2>
       {description && (
-        <p className="text-xs text-muted-foreground/60 mt-0.5 mb-3">{description}</p>
+        <p className="text-xs text-muted-foreground/60 mt-0.5 mb-3">
+          {description}
+        </p>
       )}
       {!description && <div className="mb-3" />}
       {children}
@@ -42,7 +44,9 @@ export function AutoSaveTextarea({
   const [value, setValue] = useState(initialValue);
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { setValue(initialValue); }, [initialValue]);
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
 
   const handleBlur = async () => {
     if (value !== initialValue) {
@@ -55,7 +59,9 @@ export function AutoSaveTextarea({
   return (
     <div className="relative">
       {saving && (
-        <span className="absolute top-2 right-3 text-[10px] text-muted-foreground/50">{t("configure.settings.savingHint")}</span>
+        <span className="absolute top-2 right-3 text-[10px] text-muted-foreground/50">
+          {t("configure.settings.savingHint")}
+        </span>
       )}
       <textarea
         value={value}
@@ -71,12 +77,24 @@ export function AutoSaveTextarea({
 
 // ── Settings form ────────────────────────────────────────────────
 
-export function SettingsForm({ agentPath, config }: { agentPath: string; config: Record<string, unknown> }) {
+export function SettingsForm({
+  agentPath,
+  config,
+}: {
+  agentPath: string;
+  config: Record<string, unknown>;
+}) {
   const { t } = useTranslation("agents");
   const qc = useQueryClient();
-  const [devCommand, setDevCommand] = useState((config.devCommand as string) ?? "");
-  const [installCommand, setInstallCommand] = useState((config.installCommand as string) ?? "");
-  const [worktreeMode, setWorktreeMode] = useState((config.worktreeMode as boolean) ?? false);
+  const [devCommand, setDevCommand] = useState(
+    (config.devCommand as string) ?? "",
+  );
+  const [installCommand, setInstallCommand] = useState(
+    (config.installCommand as string) ?? "",
+  );
+  const [worktreeMode, setWorktreeMode] = useState(
+    (config.worktreeMode as boolean) ?? false,
+  );
 
   useEffect(() => {
     setDevCommand((config.devCommand as string) ?? "");
@@ -97,8 +115,12 @@ export function SettingsForm({ agentPath, config }: { agentPath: string; config:
     <div className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
-          <label className="text-xs font-medium text-muted-foreground block">{t("configure.settings.worktreeMode")}</label>
-          <span className="text-xs text-muted-foreground/60">{t("configure.settings.worktreeModeDescription")}</span>
+          <label className="text-xs font-medium text-muted-foreground block">
+            {t("configure.settings.worktreeMode")}
+          </label>
+          <span className="text-xs text-muted-foreground/60">
+            {t("configure.settings.worktreeModeDescription")}
+          </span>
         </div>
         <button
           onClick={() => {
@@ -118,7 +140,9 @@ export function SettingsForm({ agentPath, config }: { agentPath: string; config:
         </button>
       </div>
       <div>
-        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("configure.settings.installCommand")}</label>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+          {t("configure.settings.installCommand")}
+        </label>
         <input
           type="text"
           value={installCommand}
@@ -129,7 +153,9 @@ export function SettingsForm({ agentPath, config }: { agentPath: string; config:
         />
       </div>
       <div>
-        <label className="text-xs font-medium text-muted-foreground block mb-1.5">{t("configure.settings.devCommand")}</label>
+        <label className="text-xs font-medium text-muted-foreground block mb-1.5">
+          {t("configure.settings.devCommand")}
+        </label>
         <input
           type="text"
           value={devCommand}

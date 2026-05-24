@@ -1,25 +1,25 @@
-import { useMemo } from "react"
-import { KanbanColumn } from "./kanban-column"
-import type { KanbanCardLabels } from "./kanban-card"
-import type { KanbanItem, KanbanColumn as KanbanColumnType } from "./types"
+import { useMemo } from "react";
+import { KanbanColumn } from "./kanban-column";
+import type { KanbanCardLabels } from "./kanban-card";
+import type { KanbanItem, KanbanColumn as KanbanColumnType } from "./types";
 
 export interface KanbanBoardProps {
-  columns: KanbanColumnType[]
-  items: KanbanItem[]
-  selectedId?: string | null
-  highlightedId?: string | null
-  onSelect?: (item: KanbanItem) => void
-  onDelete?: (item: KanbanItem) => void
-  onApprove?: (item: KanbanItem) => void
-  onRename?: (item: KanbanItem, newTitle: string) => void
-  emptyState?: React.ReactNode
-  renderCard?: (item: KanbanItem) => React.ReactNode
-  runningStatuses?: string[]
-  approveStatuses?: string[]
-  errorStatuses?: string[]
-  actions?: (item: KanbanItem) => React.ReactNode
-  avatar?: React.ReactNode
-  cardLabels?: KanbanCardLabels
+  columns: KanbanColumnType[];
+  items: KanbanItem[];
+  selectedId?: string | null;
+  highlightedId?: string | null;
+  onSelect?: (item: KanbanItem) => void;
+  onDelete?: (item: KanbanItem) => void;
+  onApprove?: (item: KanbanItem) => void;
+  onRename?: (item: KanbanItem, newTitle: string) => void;
+  emptyState?: React.ReactNode;
+  renderCard?: (item: KanbanItem) => React.ReactNode;
+  runningStatuses?: string[];
+  approveStatuses?: string[];
+  errorStatuses?: string[];
+  actions?: (item: KanbanItem) => React.ReactNode;
+  avatar?: React.ReactNode;
+  cardLabels?: KanbanCardLabels;
 }
 
 export function KanbanBoard({
@@ -46,19 +46,18 @@ export function KanbanBoard({
         .filter((item) => col.statuses.includes(item.status))
         .sort(
           (a, b) =>
-            new Date(b.updatedAt).getTime() -
-            new Date(a.updatedAt).getTime(),
-        )
-      return { ...col, items: colItems }
-    })
-  }, [columns, items])
+            new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
+        );
+      return { ...col, items: colItems };
+    });
+  }, [columns, items]);
 
   if (items.length === 0 && emptyState) {
     return (
       <div className="flex-1 flex items-center justify-center px-8">
         {emptyState}
       </div>
-    )
+    );
   }
 
   return (
@@ -86,5 +85,5 @@ export function KanbanBoard({
         />
       ))}
     </div>
-  )
+  );
 }

@@ -50,7 +50,9 @@ export function ConnectedAppsSection({
   return (
     <section className="mt-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-foreground">{t("connected.title")}</h2>
+        <h2 className="text-sm font-medium text-foreground">
+          {t("connected.title")}
+        </h2>
         <span className="text-xs text-muted-foreground">
           {t("connected.count", { count: connectedApps.length })}
         </span>
@@ -82,7 +84,6 @@ function composioAppUrl(toolkit: string): string {
   // → connect-app routing, which works reliably.
   return `https://composio.dev/#houston_toolkit=${toolkit}`;
 }
-
 
 function ConnectedAppCard({ app }: { app: AppInfo }) {
   const { t } = useTranslation("integrations");

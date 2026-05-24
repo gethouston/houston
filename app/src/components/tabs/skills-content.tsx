@@ -37,7 +37,10 @@ export function SkillsContent({
     signal?: AbortSignal,
   ) => Promise<string>;
   onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
-  onInstallFromRepo?: (source: string, skills: RepoSkill[]) => Promise<string[]>;
+  onInstallFromRepo?: (
+    source: string,
+    skills: RepoSkill[],
+  ) => Promise<string[]>;
   onCreateFromScratch?: (input: {
     name: string;
     description: string;
@@ -108,7 +111,11 @@ export function SkillsContent({
           {t("grid.descriptionShort")}
         </p>
         {addDialogProps && (
-          <Button size="sm" onClick={() => setDialogOpen(true)} className="shrink-0">
+          <Button
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            className="shrink-0"
+          >
             <Plus className="size-3.5" />
             {t("grid.addSkill")}
           </Button>

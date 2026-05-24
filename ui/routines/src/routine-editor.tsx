@@ -6,7 +6,7 @@
  * The composer hero is the only "boxed" element — it's the substance of the
  * routine — everything else is plain settings rows.
  */
-import { useMemo } from "react"
+import { useMemo } from "react";
 import {
   cn,
   Button,
@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@houston-ai/core"
+} from "@houston-ai/core";
 import {
   ArrowLeft,
   Play,
@@ -26,52 +26,52 @@ import {
   Globe,
   CalendarClock,
   MoreHorizontal,
-} from "lucide-react"
-import type { Routine, RoutineRun } from "./types"
-import { ScheduleBuilder } from "./schedule-builder"
-import { RunHistory } from "./run-history"
-import { nextFire, describeNextFire } from "./next-fire"
-import { useNow } from "./use-now"
+} from "lucide-react";
+import type { Routine, RoutineRun } from "./types";
+import { ScheduleBuilder } from "./schedule-builder";
+import { RunHistory } from "./run-history";
+import { nextFire, describeNextFire } from "./next-fire";
+import { useNow } from "./use-now";
 
 export interface RoutineFormData {
-  name: string
-  description: string
-  prompt: string
-  schedule: string
-  suppress_when_silent: boolean
+  name: string;
+  description: string;
+  prompt: string;
+  schedule: string;
+  suppress_when_silent: boolean;
   /** IANA timezone override. `null`/empty means use the account default. */
-  timezone?: string | null
+  timezone?: string | null;
   /** Composio toolkit slugs this routine uses. */
-  integrations: string[]
+  integrations: string[];
 }
 
 export interface RoutineEditorProps {
-  value: RoutineFormData
-  onChange: (patch: Partial<RoutineFormData>) => void
-  onBack: () => void
-  onSubmit: () => void
+  value: RoutineFormData;
+  onChange: (patch: Partial<RoutineFormData>) => void;
+  onBack: () => void;
+  onSubmit: () => void;
   /** Falsy = "new" mode. Provide the existing routine to enter edit mode. */
-  routine?: Routine
-  runs?: RoutineRun[]
-  onRunNow?: () => void
+  routine?: Routine;
+  runs?: RoutineRun[];
+  onRunNow?: () => void;
   /** Disable the "Run now" button while a manual-run request is in flight.
    *  Guards against spam-click races where the disk-state `running` row
    *  hasn't propagated through TanStack invalidation yet — without this,
    *  each extra click queues a redundant request that the engine then
    *  rejects with 409 (or, on older builds, recorded as a conflict-error
    *  row in run history). */
-  runNowPending?: boolean
+  runNowPending?: boolean;
   /** Stop an in-flight run. When present + a run is `running`, the header
    *  "Run now" button swaps to "Stop" and the matching run row shows a stop
    *  control. */
-  onCancelRun?: (runId: string) => void
-  onToggle?: (enabled: boolean) => void
-  onDelete?: () => void
-  onViewActivity?: (activityId: string) => void
+  onCancelRun?: (runId: string) => void;
+  onToggle?: (enabled: boolean) => void;
+  onDelete?: () => void;
+  onViewActivity?: (activityId: string) => void;
   /** IANA tz of the user's account preference, used for the "next run" hint. */
-  accountTimezone: string
+  accountTimezone: string;
   /** Disable Save when the form hasn't actually been touched. */
-  hasChanges?: boolean
+  hasChanges?: boolean;
 }
 
 const COMMON_TIMEZONES = [
@@ -93,18 +93,18 @@ const COMMON_TIMEZONES = [
   "Asia/Singapore",
   "Asia/Tokyo",
   "Australia/Sydney",
-]
+];
 
 function listTimezones(): string[] {
   try {
     const supported = (
       Intl as { supportedValuesOf?: (k: string) => string[] }
-    ).supportedValuesOf?.("timeZone")
-    if (supported && supported.length) return supported
+    ).supportedValuesOf?.("timeZone");
+    if (supported && supported.length) return supported;
   } catch {
     // fall through
   }
-  return COMMON_TIMEZONES
+  return COMMON_TIMEZONES;
 }
 
 // ----- Building blocks -----
@@ -118,15 +118,15 @@ function SectionCard({
   title,
   children,
 }: {
-  title: string
-  children: React.ReactNode
+  title: string;
+  children: React.ReactNode;
 }) {
   return (
     <section className="rounded-xl bg-secondary px-5 py-5">
       <h3 className="text-sm font-medium text-foreground mb-4">{title}</h3>
       <div className="space-y-4">{children}</div>
     </section>
-  )
+  );
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -134,7 +134,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
       {children}
     </label>
-  )
+  );
 }
 
 const baseFieldClass = cn(
@@ -142,7 +142,7 @@ const baseFieldClass = cn(
   "text-foreground placeholder:text-muted-foreground/60",
   "transition-shadow duration-200",
   "focus:outline-none focus:shadow-sm",
-)
+);
 
 // ----- Main -----
 
@@ -162,31 +162,31 @@ export function RoutineEditor({
   accountTimezone,
   hasChanges,
 }: RoutineEditorProps) {
-  const runningRun = runs.find((r) => r.status === "running")
-  const isEdit = !!routine
+  const runningRun = runs.find((r) => r.status === "running");
+  const isEdit = !!routine;
   const canSubmit =
     !!value.name.trim() &&
     !!value.prompt.trim() &&
     !!value.schedule.trim() &&
-    (!isEdit || hasChanges !== false)
+    (!isEdit || hasChanges !== false);
 
-  const timezones = useMemo(listTimezones, [])
-  const tzValue = value.timezone ?? ""
-  const effectiveTz = value.timezone || accountTimezone
+  const timezones = useMemo(listTimezones, []);
+  const tzValue = value.timezone ?? "";
+  const effectiveTz = value.timezone || accountTimezone;
 
   // Live "next run" preview, ticking every minute.
-  const now = useNow(60_000)
+  const now = useNow(60_000);
   const next = useMemo(
     () => (value.schedule ? nextFire(value.schedule, effectiveTz, now) : null),
     [value.schedule, effectiveTz, now],
-  )
-  const nextDescr = next ? describeNextFire(next, effectiveTz, now) : null
+  );
+  const nextDescr = next ? describeNextFire(next, effectiveTz, now) : null;
 
   // Header title — live, mirrors what the user is typing.
   const headerTitle = isEdit
     ? value.name.trim() || routine?.name || "Untitled routine"
-    : "New routine"
-  const hasOverflow = isEdit && (onToggle || onDelete)
+    : "New routine";
+  const hasOverflow = isEdit && (onToggle || onDelete);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">
@@ -246,7 +246,9 @@ export function RoutineEditor({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   {onToggle && routine && (
-                    <DropdownMenuItem onClick={() => onToggle(!routine.enabled)}>
+                    <DropdownMenuItem
+                      onClick={() => onToggle(!routine.enabled)}
+                    >
                       <Pause className="size-3.5" />
                       {routine.enabled ? "Pause routine" : "Resume routine"}
                     </DropdownMenuItem>
@@ -254,7 +256,10 @@ export function RoutineEditor({
                   {onDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={onDelete}
+                      >
                         <Trash2 className="size-3.5" />
                         Delete routine
                       </DropdownMenuItem>
@@ -345,9 +350,7 @@ export function RoutineEditor({
                     "pl-9 appearance-none cursor-pointer",
                   )}
                 >
-                  <option value="">
-                    Account default · {accountTimezone}
-                  </option>
+                  <option value="">Account default · {accountTimezone}</option>
                   {timezones.map((tz) => (
                     <option key={tz} value={tz}>
                       {tz}
@@ -372,7 +375,8 @@ export function RoutineEditor({
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
                       {nextDescr.absolute}
                       <span className="text-muted-foreground/60">
-                        {" "}· {effectiveTz}
+                        {" "}
+                        · {effectiveTz}
                       </span>
                     </p>
                   </>
@@ -423,5 +427,5 @@ export function RoutineEditor({
         </div>
       </div>
     </div>
-  )
+  );
 }

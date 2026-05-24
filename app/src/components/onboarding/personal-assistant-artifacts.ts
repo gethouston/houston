@@ -20,7 +20,10 @@ export function defaultAssistantSetup(labels: {
   };
 }
 
-export function buildAssistantInstructions(setup: AssistantSetup, missionTitle: string): string {
+export function buildAssistantInstructions(
+  setup: AssistantSetup,
+  missionTitle: string,
+): string {
   return `# ${setup.assistantName}
 
 You are my Personal assistant in Houston.

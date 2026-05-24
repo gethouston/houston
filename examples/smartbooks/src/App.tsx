@@ -80,7 +80,9 @@ export function App() {
     );
   }
 
-  return <Ready engine={status.engine} agent={status.agent} setStatus={setStatus} />;
+  return (
+    <Ready engine={status.engine} agent={status.agent} setStatus={setStatus} />
+  );
 }
 
 interface ReadyProps {
@@ -189,11 +191,16 @@ function Ready({ engine, agent, setStatus }: ReadyProps) {
               className="btn btn--ghost btn--small"
               onClick={() => {
                 if (
-                  !confirm("Reset to the default engine? Local chat will reload.")
+                  !confirm(
+                    "Reset to the default engine? Local chat will reload.",
+                  )
                 )
                   return;
                 clearEngineConfig();
-                setStatus({ kind: "connecting", config: resolveEngineConfig() });
+                setStatus({
+                  kind: "connecting",
+                  config: resolveEngineConfig(),
+                });
               }}
             >
               Reset
@@ -252,8 +259,8 @@ function EmptyWorkspace({ onNew }: { onNew: () => void }) {
     <div className="workspace-empty">
       <h2>Welcome to SmartBooks</h2>
       <p className="muted">
-        Add a client to get started. Drop a bank statement and
-        SmartBooks will build the transaction table automatically.
+        Add a client to get started. Drop a bank statement and SmartBooks will
+        build the transaction table automatically.
       </p>
       <button className="btn btn--primary" onClick={onNew}>
         + Add your first client

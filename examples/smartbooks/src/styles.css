@@ -27,10 +27,10 @@
   --radius-sm: 6px;
   --radius: 10px;
   --radius-lg: 14px;
-  --font-display: "Iowan Old Style", "Apple Garamond", "Baskerville", Georgia,
-    serif;
-  --font-body: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto,
-    sans-serif;
+  --font-display:
+    "Iowan Old Style", "Apple Garamond", "Baskerville", Georgia, serif;
+  --font-body:
+    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
@@ -293,7 +293,9 @@ a {
   border-radius: var(--radius);
   min-height: 360px;
   overflow: hidden;
-  transition: border-color 0.12s, background 0.12s;
+  transition:
+    border-color 0.12s,
+    background 0.12s;
 }
 .canvas--dragging {
   border-color: var(--accent);
@@ -461,7 +463,11 @@ a {
   align-items: center;
   gap: 16px;
   padding: 16px 20px;
-  background: linear-gradient(180deg, var(--bg-panel) 0%, var(--bg-subtle) 100%);
+  background: linear-gradient(
+    180deg,
+    var(--bg-panel) 0%,
+    var(--bg-subtle) 100%
+  );
   border-bottom: 1px solid var(--border-soft);
 }
 .wp-card--pending {
@@ -531,7 +537,9 @@ a {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  transition: color 0.1s, border-color 0.1s;
+  transition:
+    color 0.1s,
+    border-color 0.1s;
   margin-bottom: -1px; /* overlap the border-bottom on the tab row */
 }
 .workpaper__tab:hover {
@@ -691,7 +699,10 @@ a {
   gap: 8px;
   padding: 14px 4px;
   font: inherit;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
   position: relative;
 }
 .chat-rail__toggle:hover {
@@ -850,7 +861,9 @@ a {
   color: var(--text);
   background: var(--bg);
   outline: none;
-  transition: border-color 0.1s, box-shadow 0.1s;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s;
 }
 .chat-panel__composer textarea:focus:not(:disabled) {
   border-color: var(--accent);
@@ -974,7 +987,9 @@ a {
   animation-delay: 0.3s;
 }
 @keyframes typing {
-  0%, 60%, 100% {
+  0%,
+  60%,
+  100% {
     transform: translateY(0);
     opacity: 0.4;
   }
@@ -1003,7 +1018,10 @@ a {
   border-radius: var(--radius-sm);
   border: 1px solid transparent;
   cursor: pointer;
-  transition: background 0.1s, color 0.1s, border-color 0.1s;
+  transition:
+    background 0.1s,
+    color 0.1s,
+    border-color 0.1s;
 }
 .btn:disabled {
   opacity: 0.5;
@@ -1100,7 +1118,9 @@ a {
   border-radius: var(--radius-sm);
   padding: 9px 12px;
   outline: none;
-  transition: border-color 0.1s, box-shadow 0.1s;
+  transition:
+    border-color 0.1s,
+    box-shadow 0.1s;
 }
 .field input:focus {
   border-color: var(--accent);

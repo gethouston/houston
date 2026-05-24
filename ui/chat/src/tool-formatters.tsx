@@ -63,9 +63,9 @@ export function getToolDetail(name: string, input: unknown): string | null {
       return shortPath(inp.file_path as string | undefined);
     case "Grep":
     case "Glob":
-      return inp.pattern as string | undefined ?? null;
+      return (inp.pattern as string | undefined) ?? null;
     case "WebSearch":
-      return inp.query as string | undefined ?? null;
+      return (inp.query as string | undefined) ?? null;
     case "WebFetch":
       return shortUrl(inp.url as string | undefined);
     default:

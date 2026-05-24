@@ -148,7 +148,10 @@ export function ProviderLoginDialog({ provider, url, onClose }: Props) {
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="provider-login-code" className="text-[13px] font-medium">
+            <label
+              htmlFor="provider-login-code"
+              className="text-[13px] font-medium"
+            >
               {t("providerLogin.codeLabel")}
             </label>
             <input

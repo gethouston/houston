@@ -25,7 +25,8 @@
       #f97316 82%,
       #fbbf24 84%,
       transparent 88%
-    ) border-box;
+    )
+    border-box;
   border: 1.5px solid transparent;
   animation: glow-spin 2.5s linear infinite;
 }

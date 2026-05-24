@@ -40,7 +40,10 @@ export function AiIntegrationsStep({
   const auth = useComposioAuth(() => reset());
   const isSignedIn = result?.status === "ok";
   const { data: connectedList } = useConnectedToolkits(isSignedIn);
-  const connectedSet = useMemo(() => new Set(connectedList ?? []), [connectedList]);
+  const connectedSet = useMemo(
+    () => new Set(connectedList ?? []),
+    [connectedList],
+  );
   const { data: apiApps } = useComposioApps();
   const markWaitingForAuth = useComposioRefetchOnReturn();
   const [connecting, setConnecting] = useState<string | null>(null);
@@ -77,13 +80,19 @@ export function AiIntegrationsStep({
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
-      <DialogTitle className="sr-only">{t("aiIntegrations.stepTitle")}</DialogTitle>
+      <DialogTitle className="sr-only">
+        {t("aiIntegrations.stepTitle")}
+      </DialogTitle>
 
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-6">
         <div className="max-w-2xl mx-auto space-y-6">
           <div>
-            <h2 className="text-base font-semibold">{t("aiIntegrations.stepTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("aiIntegrations.stepDescription")}</p>
+            <h2 className="text-base font-semibold">
+              {t("aiIntegrations.stepTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("aiIntegrations.stepDescription")}
+            </p>
           </div>
 
           {!isLoading && result?.status === "not_installed" && (
@@ -94,7 +103,9 @@ export function AiIntegrationsStep({
 
           {!isLoading && result?.status === "needs_auth" && (
             <div className="rounded-xl bg-secondary px-4 py-3 flex items-center justify-between gap-3">
-              <p className="text-sm text-muted-foreground">{t("aiIntegrations.needsAuthNote")}</p>
+              <p className="text-sm text-muted-foreground">
+                {t("aiIntegrations.needsAuthNote")}
+              </p>
               <button
                 type="button"
                 onClick={auth.startAuth}
@@ -108,7 +119,9 @@ export function AiIntegrationsStep({
           {isSignedIn && integrations.length > 0 && (
             <div className="space-y-2">
               {integrations.map((app) => {
-                const isConnected = connectedSet.has(normalizeToolkitSlug(app.toolkit));
+                const isConnected = connectedSet.has(
+                  normalizeToolkitSlug(app.toolkit),
+                );
                 return (
                   <IntegrationCard
                     key={app.toolkit}
@@ -121,7 +134,6 @@ export function AiIntegrationsStep({
               })}
             </div>
           )}
-
         </div>
       </div>
 
@@ -160,7 +172,9 @@ function IntegrationCard({
     <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary">
       {showAvatar ? (
         <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
-          <span className="text-xs font-semibold text-muted-foreground">{initial}</span>
+          <span className="text-xs font-semibold text-muted-foreground">
+            {initial}
+          </span>
         </div>
       ) : (
         <img
@@ -171,9 +185,13 @@ function IntegrationCard({
         />
       )}
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-foreground truncate">{app.name}</p>
+        <p className="text-[13px] font-medium text-foreground truncate">
+          {app.name}
+        </p>
         {app.description && (
-          <p className="text-[11px] text-muted-foreground truncate">{app.description}</p>
+          <p className="text-[11px] text-muted-foreground truncate">
+            {app.description}
+          </p>
         )}
       </div>
       {isConnected ? (

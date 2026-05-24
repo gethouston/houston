@@ -1,1 +1,22 @@
-{"default":{"identifier":"default","description":"Default capability for the main window","local":true,"windows":["main"],"permissions":["core:default","core:event:default","core:event:allow-listen","core:event:allow-emit","notification:default","notification:allow-notify","notification:allow-is-permission-granted","notification:allow-request-permission","notification:allow-register-listener","updater:default","deep-link:default","sentry:default"]}}
+{
+  "default": {
+    "identifier": "default",
+    "description": "Default capability for the main window",
+    "local": true,
+    "windows": ["main"],
+    "permissions": [
+      "core:default",
+      "core:event:default",
+      "core:event:allow-listen",
+      "core:event:allow-emit",
+      "notification:default",
+      "notification:allow-notify",
+      "notification:allow-is-permission-granted",
+      "notification:allow-request-permission",
+      "notification:allow-register-listener",
+      "updater:default",
+      "deep-link:default",
+      "sentry:default"
+    ]
+  }
+}

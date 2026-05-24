@@ -25,8 +25,11 @@ export function ProviderPicker({ onSelect }: Props) {
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
-  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
+  const [confirmSignOutFor, setConfirmSignOutFor] =
+    useState<ProviderInfo | null>(null);
+  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(
+    null,
+  );
   const addToast = useUIStore((s) => s.addToast);
 
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
@@ -34,7 +37,9 @@ export function ProviderPicker({ onSelect }: Props) {
     // Probe every active provider in parallel. New providers added to the
     // PROVIDERS list are picked up automatically; never hardcode ids here.
     const results = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      PROVIDERS.map(
+        async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
+      ),
     );
     const next: Record<string, ProviderStatus> = {};
     for (const [id, status] of results) {
@@ -44,7 +49,8 @@ export function ProviderPicker({ onSelect }: Props) {
       const wasConnected =
         prevStatuses.current[prov.id]?.cli_installed &&
         prevStatuses.current[prov.id]?.authenticated;
-      const isConnected = next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
+      const isConnected =
+        next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
       if (!wasConnected && isConnected) {
         analytics.track("provider_configured", { provider: prov.id });
         onSelect(prov.id, prov.defaultModel);
@@ -93,7 +99,10 @@ export function ProviderPicker({ onSelect }: Props) {
       await tauriProvider.launchLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] launchLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signInFailed", { provider: provider.name }),
         description: msg,
@@ -110,7 +119,10 @@ export function ProviderPicker({ onSelect }: Props) {
       await loadStatuses();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] launchLogout(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] launchLogout(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signOutFailed", { provider: provider.name }),
         description: msg,
@@ -134,7 +146,8 @@ export function ProviderPicker({ onSelect }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {PROVIDERS.map((prov) => {
           const status = statuses[prov.id];
-          const connected = (status?.cli_installed && status?.authenticated) ?? false;
+          const connected =
+            (status?.cli_installed && status?.authenticated) ?? false;
           return (
             <ProviderCard
               key={prov.id}
@@ -157,8 +170,12 @@ export function ProviderPicker({ onSelect }: Props) {
         onOpenChange={(open) => {
           if (!open) setConfirmSignOutFor(null);
         }}
-        title={t("signOutConfirm.title", { provider: confirmSignOutFor?.name ?? "" })}
-        description={t("signOutConfirm.description", { provider: confirmSignOutFor?.name ?? "" })}
+        title={t("signOutConfirm.title", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
+        description={t("signOutConfirm.description", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
         confirmLabel={t("signOutConfirm.confirm")}
         cancelLabel={t("signOutConfirm.cancel")}
         variant="destructive"
@@ -193,4 +210,3 @@ export function ProviderPicker({ onSelect }: Props) {
     </>
   );
 }
-

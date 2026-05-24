@@ -51,7 +51,10 @@ test("pickOnboardingIntegrations prefers Google when both stacks connected", () 
     "outlook",
     "outlook_calendar",
   ]);
-  assert.deepEqual(pickOnboardingIntegrations(all), ["gmail", "googlecalendar"]);
+  assert.deepEqual(pickOnboardingIntegrations(all), [
+    "gmail",
+    "googlecalendar",
+  ]);
 });
 
 test("pickOnboardingIntegrations picks Outlook when Google is missing", () => {

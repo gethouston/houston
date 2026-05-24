@@ -6,8 +6,8 @@ export function ReviewEmpty() {
           All caught up
         </h1>
         <p className="text-base text-muted-foreground leading-relaxed">
-          No items need your review. Your routines will produce new
-          outputs automatically, or ask Houston for a one-off task.
+          No items need your review. Your routines will produce new outputs
+          automatically, or ask Houston for a one-off task.
         </p>
       </div>
     </div>

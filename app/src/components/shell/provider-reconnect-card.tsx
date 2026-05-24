@@ -27,8 +27,12 @@ export function ProviderReconnectCard({
   const [signalNeedsAuth, setSignalNeedsAuth] = useState(false);
 
   const shouldCheckSignal =
-    !authRequired && !!providerId && !!signalKey && signalKey !== resolvedSignal;
-  const activeProviderId = authRequired ?? (signalNeedsAuth ? providerId : null);
+    !authRequired &&
+    !!providerId &&
+    !!signalKey &&
+    signalKey !== resolvedSignal;
+  const activeProviderId =
+    authRequired ?? (signalNeedsAuth ? providerId : null);
   const provider = activeProviderId ? getProvider(activeProviderId) : null;
 
   useEffect(() => {
@@ -40,7 +44,8 @@ export function ProviderReconnectCard({
     setSignalNeedsAuth(false);
     if (!shouldCheckSignal || !providerId || !signalKey) return;
     let cancelled = false;
-    tauriProvider.checkStatus(providerId)
+    tauriProvider
+      .checkStatus(providerId)
       .then((status) => {
         if (cancelled) return;
         if (providerReconnectSignalState(status) === "needs_auth") {
@@ -122,7 +127,9 @@ export function ProviderReconnectCard({
                 ) : (
                   <OpenAILogoSmall />
                 )}
-                {t("shell:authReconnect.signInWith", { provider: provider.name })}
+                {t("shell:authReconnect.signInWith", {
+                  provider: provider.name,
+                })}
               </Button>
             ) : (
               <div className="flex items-center gap-3">

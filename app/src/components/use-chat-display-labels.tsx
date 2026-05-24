@@ -22,7 +22,8 @@ export function useChatDisplayLabels(): Pick<
       if (isStreaming || duration === 0) {
         return <Shimmer duration={1}>{t("reasoning.thinking")}</Shimmer>;
       }
-      if (duration === undefined) return <span>{t("reasoning.thoughtForFew")}</span>;
+      if (duration === undefined)
+        return <span>{t("reasoning.thoughtForFew")}</span>;
       return <span>{t("reasoning.thoughtFor", { count: duration })}</span>;
     },
     [t],

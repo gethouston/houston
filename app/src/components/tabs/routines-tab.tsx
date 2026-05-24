@@ -70,7 +70,10 @@ export default function RoutinesTab({ agent }: TabProps) {
     const map: Record<string, RoutineRun> = {};
     for (const run of allRuns) {
       const existing = map[run.routine_id];
-      if (!existing || new Date(run.started_at) > new Date(existing.started_at)) {
+      if (
+        !existing ||
+        new Date(run.started_at) > new Date(existing.started_at)
+      ) {
         map[run.routine_id] = run;
       }
     }
@@ -162,7 +165,9 @@ export default function RoutinesTab({ agent }: TabProps) {
   if (!tz.loaded || !tz.timezone) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">{t("loading")}</p>
+        <p className="text-sm text-muted-foreground animate-pulse">
+          {t("loading")}
+        </p>
       </div>
     );
   }

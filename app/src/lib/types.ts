@@ -41,10 +41,10 @@ export type AgentCategory =
 
 /** An agent mode defines a prompt profile (e.g. "execution" or "planning"). */
 export interface AgentMode {
-  id: string;              // e.g. "execution", "planning"
-  name: string;            // Display name, e.g. "Coder", "Planner"
-  promptFile: string;      // Mode name → reads .houston/prompts/modes/{promptFile}.md
-  createLabel: string;     // Button label, e.g. "New Mission"
+  id: string; // e.g. "execution", "planning"
+  name: string; // Display name, e.g. "Coder", "Planner"
+  promptFile: string; // Mode name → reads .houston/prompts/modes/{promptFile}.md
+  createLabel: string; // Button label, e.g. "New Mission"
 }
 
 /** The agent config (houston.json schema) */
@@ -53,37 +53,37 @@ export interface AgentConfig {
   name: string;
   description: string;
   version?: string;
-  icon?: string;           // Lucide icon name (fallback if no image)
-  image?: string;          // Image URL for store card
-  color?: string;          // Brand color override
+  icon?: string; // Lucide icon name (fallback if no image)
+  image?: string; // Image URL for store card
+  color?: string; // Brand color override
   category?: AgentCategory;
-  author?: string;         // e.g. "Houston" for official, user name for community
-  tags?: string[];         // Searchable tags
+  author?: string; // e.g. "Houston" for official, user name for community
+  tags?: string[]; // Searchable tags
   integrations?: string[]; // Composio toolkit slugs used by bundled agents
   tabs: AgentTab[];
-  defaultTab?: string;     // Tab ID to show by default, defaults to first tab
-  claudeMd?: string;       // CLAUDE.md content template
-  systemPrompt?: string;   // System prompt for the assistant
-  agentSeeds?: Record<string, string>;  // Files to seed in new agents
-  features?: string[];     // Rust feature flags needed
-  agents?: AgentMode[];    // Multiple prompt profiles for multi-agent setups
+  defaultTab?: string; // Tab ID to show by default, defaults to first tab
+  claudeMd?: string; // CLAUDE.md content template
+  systemPrompt?: string; // System prompt for the assistant
+  agentSeeds?: Record<string, string>; // Files to seed in new agents
+  features?: string[]; // Rust feature flags needed
+  agents?: AgentMode[]; // Multiple prompt profiles for multi-agent setups
 }
 
 /** A resolved agent definition (config + where it came from) */
 export interface AgentDefinition {
   config: AgentConfig;
   source: "builtin" | "installed";
-  path?: string;           // For installed: ~/.houston/agents/{id}/
-  bundleUrl?: string;      // For custom React: URL to bundle.js
+  path?: string; // For installed: ~/.houston/agents/{id}/
+  bundleUrl?: string; // For custom React: URL to bundle.js
 }
 
 /** An agent instance (formerly "Workspace") */
 export interface Agent {
   id: string;
   name: string;
-  folderPath: string;      // ~/.houston/workspaces/{WorkspaceName}/{AgentName}/
-  configId: string;      // Points to an AgentConfig
-  color?: string;        // User-chosen color for avatar
+  folderPath: string; // ~/.houston/workspaces/{WorkspaceName}/{AgentName}/
+  configId: string; // Points to an AgentConfig
+  color?: string; // User-chosen color for avatar
   createdAt: string;
   lastOpenedAt?: string;
 }

@@ -38,9 +38,7 @@ let pendingProvider: "google" | "azure" | null = null;
  * exactly what the user wants when they hit the wrong browser profile,
  * abort consent, or generally need to retry.
  */
-async function signInWithProvider(
-  provider: "google" | "azure",
-): Promise<void> {
+async function signInWithProvider(provider: "google" | "azure"): Promise<void> {
   if (!isAuthConfigured()) {
     throw new Error("Auth not configured");
   }
@@ -103,8 +101,10 @@ function emitAuthError(message: string): void {
   }
 }
 
-export const signInWithGoogle = (): Promise<void> => signInWithProvider("google");
-export const signInWithMicrosoft = (): Promise<void> => signInWithProvider("azure");
+export const signInWithGoogle = (): Promise<void> =>
+  signInWithProvider("google");
+export const signInWithMicrosoft = (): Promise<void> =>
+  signInWithProvider("azure");
 
 /**
  * Sign out: clear the Supabase session (our Keychain storage adapter
@@ -175,16 +175,23 @@ export function installDeepLinkListener(): () => void {
       // what we expected. Handle both, prefer PKCE when both are present
       // (which never happens in practice — Supabase emits one or the other).
       if (code) {
-        const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+        const { data, error } =
+          await supabase.auth.exchangeCodeForSession(code);
         if (error) {
-          logger.error(`[auth] exchangeCodeForSession failed: ${error.message}`);
+          logger.error(
+            `[auth] exchangeCodeForSession failed: ${error.message}`,
+          );
           emitAuthError(error.message);
           return;
         }
         applySessionToCache(data.session ?? null);
-        analytics.track("user_signed_in", { provider: pendingProvider ?? "unknown" });
+        analytics.track("user_signed_in", {
+          provider: pendingProvider ?? "unknown",
+        });
         pendingProvider = null;
-        logger.info(`[auth] session established (pkce) for ${data.user?.email}`);
+        logger.info(
+          `[auth] session established (pkce) for ${data.user?.email}`,
+        );
         return;
       }
 
@@ -209,7 +216,9 @@ export function installDeepLinkListener(): () => void {
         // cache key directly here makes the UI transition deterministic
         // regardless of whether the listener fires.
         applySessionToCache(data.session ?? null);
-        analytics.track("user_signed_in", { provider: pendingProvider ?? "unknown" });
+        analytics.track("user_signed_in", {
+          provider: pendingProvider ?? "unknown",
+        });
         pendingProvider = null;
         logger.info(
           `[auth] session established (implicit) for ${data.user?.email}`,
@@ -220,9 +229,7 @@ export function installDeepLinkListener(): () => void {
       logger.warn(
         "[auth] deep-link had neither `code` nor `access_token` — ignoring",
       );
-      emitAuthError(
-        "Sign-in callback was missing the authorization code.",
-      );
+      emitAuthError("Sign-in callback was missing the authorization code.");
     } catch (e) {
       logger.error(`[auth] failed to handle deep-link: ${e}`);
       emitAuthError(String(e));

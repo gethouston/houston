@@ -31,10 +31,7 @@ export const TruncatedCode = memo(
       <div>
         {showActions && (
           <div className={toolbarClass}>
-            <CodeBlockActions
-              code={content}
-              dark={dark}
-            />
+            <CodeBlockActions code={content} dark={dark} />
           </div>
         )}
         <pre

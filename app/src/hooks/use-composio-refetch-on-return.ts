@@ -100,9 +100,7 @@ export function useComposioRefetchOnReturn(): (slug: string) => void {
             return;
           }
         } catch (e) {
-          logger.warn(
-            `[composio] poll for ${targetSlug} failed: ${String(e)}`,
-          );
+          logger.warn(`[composio] poll for ${targetSlug} failed: ${String(e)}`);
         }
         if (attempts >= MAX_ATTEMPTS) {
           stop();

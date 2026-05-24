@@ -39,14 +39,20 @@ describe("mission search", () => {
     const result = searchMissions(missions, "budget");
 
     strictEqual(result.mode, "title");
-    deepStrictEqual(result.items.map((item) => item.id), ["one"]);
+    deepStrictEqual(
+      result.items.map((item) => item.id),
+      ["one"],
+    );
   });
 
   it("falls back to mission descriptions when no title matches", () => {
     const result = searchMissions(missions, "transcript budget");
 
     strictEqual(result.mode, "text");
-    deepStrictEqual(result.items.map((item) => item.id), ["two"]);
+    deepStrictEqual(
+      result.items.map((item) => item.id),
+      ["two"],
+    );
   });
 
   it("falls back to loaded chat history text", () => {
@@ -55,16 +61,31 @@ describe("mission search", () => {
     });
 
     strictEqual(result.mode, "text");
-    deepStrictEqual(result.items.map((item) => item.id), ["three"]);
+    deepStrictEqual(
+      result.items.map((item) => item.id),
+      ["three"],
+    );
   });
 
   it("builds searchable text from feed items", () => {
     const text = buildMissionHistorySearchText([
       { feed_type: "user_message", data: "Send invoice" },
-      { feed_type: "tool_call", data: { name: "Grep", input: { pattern: "invoice" } } },
-      { feed_type: "tool_result", data: { content: "Found billing.csv", is_error: false } },
-      { feed_type: "file_changes", data: { created: ["out.md"], modified: ["billing.csv"] } },
-      { feed_type: "final_result", data: { result: "Invoice sent", cost_usd: null, duration_ms: null } },
+      {
+        feed_type: "tool_call",
+        data: { name: "Grep", input: { pattern: "invoice" } },
+      },
+      {
+        feed_type: "tool_result",
+        data: { content: "Found billing.csv", is_error: false },
+      },
+      {
+        feed_type: "file_changes",
+        data: { created: ["out.md"], modified: ["billing.csv"] },
+      },
+      {
+        feed_type: "final_result",
+        data: { result: "Invoice sent", cost_usd: null, duration_ms: null },
+      },
     ]);
 
     strictEqual(text.includes("Send invoice"), true);

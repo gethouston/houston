@@ -37,9 +37,13 @@ export function ErrorCard({
         </div>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
           <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">{body}</p>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {body}
+          </p>
           {children && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">{children}</div>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              {children}
+            </div>
           )}
         </div>
       </div>
@@ -75,7 +79,11 @@ export function RetryButton({
       disabled={running}
       onClick={() => void handle()}
     >
-      {running ? <Spinner className="size-3.5" /> : <RotateCcwIcon className="size-3.5" />}
+      {running ? (
+        <Spinner className="size-3.5" />
+      ) : (
+        <RotateCcwIcon className="size-3.5" />
+      )}
       {label}
     </Button>
   );
@@ -150,7 +158,11 @@ export function ReportBugButton({
       disabled={sending}
       onClick={() => void send()}
     >
-      {sending ? <Spinner className="size-3.5" /> : <BugIcon className="size-3.5" />}
+      {sending ? (
+        <Spinner className="size-3.5" />
+      ) : (
+        <BugIcon className="size-3.5" />
+      )}
       {label}
     </Button>
   );

@@ -5,22 +5,44 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["id", "name", "description", "prompt", "schedule", "enabled", "suppress_when_silent", "created_at", "updated_at"],
+    "required": [
+      "id",
+      "name",
+      "description",
+      "prompt",
+      "schedule",
+      "enabled",
+      "suppress_when_silent",
+      "created_at",
+      "updated_at"
+    ],
     "properties": {
       "id": { "type": "string" },
       "name": { "type": "string" },
       "description": { "type": "string" },
-      "prompt": { "type": "string", "description": "Prompt sent to Claude when the routine fires." },
-      "schedule": { "type": "string", "description": "Cron expression (e.g. '0 9 * * 1-5')." },
+      "prompt": {
+        "type": "string",
+        "description": "Prompt sent to Claude when the routine fires."
+      },
+      "schedule": {
+        "type": "string",
+        "description": "Cron expression (e.g. '0 9 * * 1-5')."
+      },
       "enabled": { "type": "boolean" },
-      "suppress_when_silent": { "type": "boolean", "description": "If true, runs that respond ROUTINE_OK are silent." },
+      "suppress_when_silent": {
+        "type": "boolean",
+        "description": "If true, runs that respond ROUTINE_OK are silent."
+      },
       "integrations": {
         "type": "array",
         "items": { "type": "string" },
         "default": [],
         "description": "Composio toolkit slugs this routine uses (e.g. ['gmail', 'slack'])."
       },
-      "timezone": { "type": ["string", "null"], "description": "IANA tz override; null means use account default." },
+      "timezone": {
+        "type": ["string", "null"],
+        "description": "IANA tz override; null means use account default."
+      },
       "created_at": { "type": "string", "format": "date-time" },
       "updated_at": { "type": "string", "format": "date-time" }
     },

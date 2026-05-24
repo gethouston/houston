@@ -46,7 +46,8 @@ export function useVisualViewport(): VisualViewportRect {
   const [rect, setRect] = useState<VisualViewportRect>(snapshot);
 
   useEffect(() => {
-    const vv = typeof window !== "undefined" ? window.visualViewport : undefined;
+    const vv =
+      typeof window !== "undefined" ? window.visualViewport : undefined;
     if (!vv) return;
     const update = () => setRect(snapshot());
     update();

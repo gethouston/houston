@@ -57,7 +57,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       const workspaces = s.workspaces.filter((w) => w.id !== id);
       const current =
         s.current?.id === id
-          ? workspaces.find((w) => w.isDefault) ?? workspaces[0] ?? null
+          ? (workspaces.find((w) => w.isDefault) ?? workspaces[0] ?? null)
           : s.current;
       return { workspaces, current };
     });

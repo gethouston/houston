@@ -82,7 +82,8 @@ export function PersonalAssistantOnboarding({
   ): Promise<Agent> => {
     const setup = defaultAssistantSetup({
       workspaceName: t("setup:tutorial.defaults.workspaceName"),
-      assistantName: assistantName.trim() || t("setup:tutorial.defaults.assistantName"),
+      assistantName:
+        assistantName.trim() || t("setup:tutorial.defaults.assistantName"),
       focus: t("setup:tutorial.defaults.focus"),
       approvalRule: t("setup:tutorial.defaults.approvalRule"),
     });
@@ -91,7 +92,10 @@ export function PersonalAssistantOnboarding({
     // Persist the picked pair as the new global default so the next new agent
     // starts from the same place the user just chose during onboarding.
     await tauriProvider.setLastUsed(pickedProvider, pickedModel);
-    analytics.track("workspace_created", { provider: pickedProvider, source: "onboarding" });
+    analytics.track("workspace_created", {
+      provider: pickedProvider,
+      source: "onboarding",
+    });
     const created = await createPersonalAssistantForWorkspace(ws.id, {
       name: setup.assistantName.trim(),
       instructions: buildAssistantInstructions(setup, missionTitle),
@@ -103,7 +107,8 @@ export function PersonalAssistantOnboarding({
     useWorkspaceStore.getState().setCurrent(ws);
     await useAgentStore.getState().loadAgents(ws.id);
     const refreshed =
-      useAgentStore.getState().agents.find((a) => a.id === created.id) ?? created;
+      useAgentStore.getState().agents.find((a) => a.id === created.id) ??
+      created;
     useAgentStore.getState().setCurrent(refreshed);
     setAgent(refreshed);
     return refreshed;

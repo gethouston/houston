@@ -60,8 +60,15 @@ async function surfaceError(
   options?: EngineCallOptions,
 ): Promise<void> {
   const message =
-    err instanceof Error ? err.message : typeof err === "string" ? err : String(err);
-  logger.error(`[engine:${label}] ${message}`, context ? JSON.stringify(context) : undefined);
+    err instanceof Error
+      ? err.message
+      : typeof err === "string"
+        ? err
+        : String(err);
+  logger.error(
+    `[engine:${label}] ${message}`,
+    context ? JSON.stringify(context) : undefined,
+  );
   if (options?.toast === false) return;
   const { showErrorToast } = await import("./error-toast");
   showErrorToast(label, message);
@@ -70,10 +77,14 @@ async function surfaceError(
 // ─── Workspaces ────────────────────────────────────────────────────────
 
 export const tauriWorkspaces = {
-  list: () => call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
+  list: () =>
+    call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
   create: (name: string) =>
-    call<Workspace>("create_workspace", () => getEngine().createWorkspace({ name })),
-  delete: (id: string) => call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
+    call<Workspace>("create_workspace", () =>
+      getEngine().createWorkspace({ name }),
+    ),
+  delete: (id: string) =>
+    call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
   rename: (id: string, newName: string) =>
     call<void>("rename_workspace", async () => {
       await getEngine().renameWorkspace(id, { newName });
@@ -219,22 +230,30 @@ export const tauriAttachments = {
     );
   },
   delete: (scopeId: string) =>
-    call<void>("delete_attachments", () => getEngine().deleteAttachments(scopeId)),
+    call<void>("delete_attachments", () =>
+      getEngine().deleteAttachments(scopeId),
+    ),
 };
 
 // ─── Agent-data files (`.houston/**`) ─────────────────────────────────
 
 export const tauriAgent = {
   readFile: (agentPath: string, relPath: string) =>
-    call<string>("read_agent_file", () => getEngine().readAgentFile(agentPath, relPath)),
+    call<string>("read_agent_file", () =>
+      getEngine().readAgentFile(agentPath, relPath),
+    ),
   writeFile: (agentPath: string, relPath: string, content: string) =>
     call<void>("write_agent_file", () =>
       getEngine().writeAgentFile(agentPath, relPath, content),
     ),
   seedSchemas: (agentPath: string) =>
-    call<void>("seed_agent_schemas", () => getEngine().seedAgentSchemas(agentPath)),
+    call<void>("seed_agent_schemas", () =>
+      getEngine().seedAgentSchemas(agentPath),
+    ),
   migrateFiles: (agentPath: string) =>
-    call<void>("migrate_agent_files", () => getEngine().migrateAgentFiles(agentPath)),
+    call<void>("migrate_agent_files", () =>
+      getEngine().migrateAgentFiles(agentPath),
+    ),
 };
 
 // ─── Skills ───────────────────────────────────────────────────────────
@@ -266,10 +285,22 @@ export const tauriSkills = {
       })),
     ),
   load: (agentPath: string, name: string) =>
-    call<SkillDetail>("load_skill", () => getEngine().loadSkill(agentPath, name)),
-  create: (agentPath: string, name: string, description: string, content: string) =>
+    call<SkillDetail>("load_skill", () =>
+      getEngine().loadSkill(agentPath, name),
+    ),
+  create: (
+    agentPath: string,
+    name: string,
+    description: string,
+    content: string,
+  ) =>
     call<void>("create_skill", () =>
-      getEngine().createSkill({ workspacePath: agentPath, name, description, content }),
+      getEngine().createSkill({
+        workspacePath: agentPath,
+        name,
+        description,
+        content,
+      }),
     ),
   delete: (agentPath: string, name: string) =>
     call<void>("delete_skill", () => getEngine().deleteSkill(agentPath, name)),
@@ -278,7 +309,9 @@ export const tauriSkills = {
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
     ),
   listFromRepo: (source: string) =>
-    call<RepoSkill[]>("list_skills_from_repo", () => getEngine().listSkillsFromRepo(source)),
+    call<RepoSkill[]>("list_skills_from_repo", () =>
+      getEngine().listSkillsFromRepo(source),
+    ),
   installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) =>
     call<string[]>("install_skills_from_repo", () =>
       getEngine().installSkillsFromRepo({
@@ -362,16 +395,20 @@ export interface StartLinkResponse {
 
 export const tauriConnections = {
   list: () =>
-    call<ComposioStatus>("list_composio_connections", () => getEngine().composioStatus()),
+    call<ComposioStatus>("list_composio_connections", () =>
+      getEngine().composioStatus(),
+    ),
   listApps: () =>
     call<ComposioAppEntry[]>("list_composio_apps", async () =>
-      (await getEngine().composioListApps()).map((a: EngineComposioAppEntry) => ({
-        toolkit: a.toolkit,
-        name: a.name,
-        description: a.description,
-        logo_url: a.logo_url,
-        categories: a.categories,
-      })),
+      (await getEngine().composioListApps()).map(
+        (a: EngineComposioAppEntry) => ({
+          toolkit: a.toolkit,
+          name: a.name,
+          description: a.description,
+          logo_url: a.logo_url,
+          categories: a.categories,
+        }),
+      ),
     ),
   listConnectedToolkits: () =>
     call<string[]>("list_composio_connected_toolkits", () =>
@@ -403,10 +440,15 @@ export const tauriConnections = {
       return { login_url: r.login_url, cli_key: r.cli_key };
     }),
   completeLogin: (cliKey: string) =>
-    call<void>("complete_composio_login", () => getEngine().composioCompleteLogin(cliKey)),
+    call<void>("complete_composio_login", () =>
+      getEngine().composioCompleteLogin(cliKey),
+    ),
   isCliInstalled: () =>
-    call<boolean>("is_composio_cli_installed", () => getEngine().composioCliInstalled()),
-  installCli: () => call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
+    call<boolean>("is_composio_cli_installed", () =>
+      getEngine().composioCliInstalled(),
+    ),
+  installCli: () =>
+    call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
 };
 
 // ─── Project files (browser) ──────────────────────────────────────────
@@ -430,7 +472,9 @@ export const tauriFiles = {
   reveal: (agentPath: string, relativePath: string) =>
     osRevealFile(agentPath, relativePath),
   delete: (agentPath: string, relativePath: string) =>
-    call<void>("delete_file", () => getEngine().deleteFile(agentPath, relativePath)),
+    call<void>("delete_file", () =>
+      getEngine().deleteFile(agentPath, relativePath),
+    ),
   rename: (agentPath: string, relativePath: string, newName: string) =>
     call<void>("rename_file", () =>
       getEngine().renameFile(agentPath, relativePath, newName),
@@ -446,11 +490,14 @@ export const tauriFiles = {
 
 export const tauriStore = {
   listInstalled: () =>
-    call<Array<{ config: unknown; path: string }>>("list_installed_configs", () =>
-      getEngine().listInstalledConfigs(),
+    call<Array<{ config: unknown; path: string }>>(
+      "list_installed_configs",
+      () => getEngine().listInstalledConfigs(),
     ),
   fetchCatalog: () =>
-    call<StoreListing[]>("fetch_store_catalog", () => getEngine().storeCatalog()),
+    call<StoreListing[]>("fetch_store_catalog", () =>
+      getEngine().storeCatalog(),
+    ),
   search: (query: string) =>
     call<StoreListing[]>("search_store", () => getEngine().storeSearch(query)),
   install: (repo: string, agentId: string) =>
@@ -458,14 +505,19 @@ export const tauriStore = {
       getEngine().installStoreAgent({ repo, agentId }),
     ),
   uninstall: (agentId: string) =>
-    call<void>("uninstall_store_agent", () => getEngine().uninstallStoreAgent(agentId)),
+    call<void>("uninstall_store_agent", () =>
+      getEngine().uninstallStoreAgent(agentId),
+    ),
   installFromGithub: (githubUrl: string) =>
     call<string>(
       "install_agent_from_github",
-      async () => (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
+      async () =>
+        (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
     ),
   checkUpdates: () =>
-    call<string[]>("check_agent_updates", () => getEngine().checkAgentUpdates()),
+    call<string[]>("check_agent_updates", () =>
+      getEngine().checkAgentUpdates(),
+    ),
   installWorkspaceFromGithub: (githubUrl: string) =>
     call<ImportedWorkspace>("install_workspace_from_github", () =>
       getEngine().installWorkspaceFromGithub({ githubUrl }),
@@ -493,7 +545,9 @@ export const tauriConversations = {
     ),
   listAll: (agentPaths: string[]) =>
     call<RawConversation[]>("list_all_conversations", async () =>
-      (await getEngine().listAllConversations(agentPaths)).map(conversationToRaw),
+      (await getEngine().listAllConversations(agentPaths)).map(
+        conversationToRaw,
+      ),
     ),
 };
 
@@ -575,7 +629,16 @@ export const tauriActivity = {
     worktreePath?: string,
     provider?: string,
     model?: string,
-  ) => activityData.create(agentPath, title, description ?? "", agent, worktreePath, provider, model),
+  ) =>
+    activityData.create(
+      agentPath,
+      title,
+      description ?? "",
+      agent,
+      worktreePath,
+      provider,
+      model,
+    ),
   update: (
     agentPath: string,
     activityId: string,
@@ -658,7 +721,8 @@ const DEFAULT_MODEL_PREF_KEY = "default_model";
 export const tauriProvider = {
   checkStatus: (provider: string) =>
     call<ProviderStatus>("check_provider_status", async () => {
-      const p: EngineProviderStatus = await getEngine().providerStatus(provider);
+      const p: EngineProviderStatus =
+        await getEngine().providerStatus(provider);
       return {
         provider: p.provider,
         cli_installed: p.cliInstalled,
@@ -670,7 +734,8 @@ export const tauriProvider = {
   getDefault: () =>
     call<string>(
       "get_default_provider",
-      async () => (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
+      async () =>
+        (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
     ),
   setDefault: (provider: string) =>
     call<void>("set_default_provider", () =>
@@ -706,9 +771,13 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
   launchLogin: (provider: string) =>
-    call<void>("launch_provider_login", () => getEngine().providerLogin(provider)),
+    call<void>("launch_provider_login", () =>
+      getEngine().providerLogin(provider),
+    ),
   launchLogout: (provider: string) =>
-    call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
+    call<void>("launch_provider_logout", () =>
+      getEngine().providerLogout(provider),
+    ),
   /**
    * Submit the OAuth verification code the user pasted from their
    * browser. Only meaningful for remote/headless engines (container,
@@ -745,8 +814,11 @@ export const tauriSystem = {
 
 export const tauriWatcher = {
   start: (agentPath: string) =>
-    call<void>("start_agent_watcher", () => getEngine().startAgentWatcher(agentPath)),
-  stop: () => call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
+    call<void>("start_agent_watcher", () =>
+      getEngine().startAgentWatcher(agentPath),
+    ),
+  stop: () =>
+    call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
 };
 
 // ─── Tunnel (mobile pairing) ──────────────────────────────────────────
@@ -760,7 +832,11 @@ export const tauriTunnel = {
   status: () =>
     call<EngineTunnelStatus>("tunnel_status", () => getEngine().tunnelStatus()),
   mintPairingCode: () =>
-    call<EnginePairingCode>("tunnel_mint_pairing", () => getEngine().mintPairingCode()),
+    call<EnginePairingCode>("tunnel_mint_pairing", () =>
+      getEngine().mintPairingCode(),
+    ),
   resetAccess: () =>
-    call<EnginePairingCode>("tunnel_reset_access", () => getEngine().resetPhoneAccess()),
+    call<EnginePairingCode>("tunnel_reset_access", () =>
+      getEngine().resetPhoneAccess(),
+    ),
 };

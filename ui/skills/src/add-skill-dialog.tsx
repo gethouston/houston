@@ -5,7 +5,7 @@
  * - DialogContent is a fixed-size flex column. Switching tabs never resizes.
  * - Header + pill row are fixed. Body is the only scrollable region.
  */
-import { useEffect, useState } from "react"
+import { useEffect, useState } from "react";
 import {
   cn,
   Dialog,
@@ -13,52 +13,55 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-} from "@houston-ai/core"
-import type { CommunitySkill, RepoSkill } from "./types"
-import { StoreView } from "./add-skill-dialog-store-view"
-import type { StoreViewLabels } from "./add-skill-dialog-store-labels"
-import { RepoView } from "./add-skill-dialog-repo-view"
-import type { RepoViewLabels } from "./add-skill-dialog-repo-labels"
-import { ScratchView } from "./add-skill-dialog-scratch-view"
-import type { ScratchViewLabels } from "./add-skill-dialog-scratch-view"
+} from "@houston-ai/core";
+import type { CommunitySkill, RepoSkill } from "./types";
+import { StoreView } from "./add-skill-dialog-store-view";
+import type { StoreViewLabels } from "./add-skill-dialog-store-labels";
+import { RepoView } from "./add-skill-dialog-repo-view";
+import type { RepoViewLabels } from "./add-skill-dialog-repo-labels";
+import { ScratchView } from "./add-skill-dialog-scratch-view";
+import type { ScratchViewLabels } from "./add-skill-dialog-scratch-view";
 
 export interface AddSkillDialogProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
-  onSearch: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSearch: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
   /** Optional dedicated "popular skills" fetcher for the dialog empty state. */
-  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>
+  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
   onInstallCommunity: (
     skill: CommunitySkill,
     signal?: AbortSignal,
-  ) => Promise<string>
-  onListFromRepo?: (source: string) => Promise<RepoSkill[]>
-  onInstallFromRepo?: (source: string, skills: RepoSkill[]) => Promise<string[]>
+  ) => Promise<string>;
+  onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
+  onInstallFromRepo?: (
+    source: string,
+    skills: RepoSkill[],
+  ) => Promise<string[]>;
   /** Creates a brand new skill from a user-authored title + description +
    *  body. Returns the slug Houston stored it under. */
   onCreateFromScratch?: (input: {
-    name: string
-    description: string
-    content: string
-  }) => Promise<string>
+    name: string;
+    description: string;
+    content: string;
+  }) => Promise<string>;
   /** Lowercase set of slugs already installed locally. Used to render
    *  "Already installed" badges and disable repeat install attempts. */
-  installedSkillNames?: Set<string>
-  labels?: AddSkillDialogLabels
+  installedSkillNames?: Set<string>;
+  labels?: AddSkillDialogLabels;
 }
 
 export interface AddSkillDialogLabels {
-  title?: string
-  description?: string
-  storeTab?: string
-  repoTab?: string
-  scratchTab?: string
-  store?: StoreViewLabels
-  repo?: RepoViewLabels
-  scratch?: ScratchViewLabels
+  title?: string;
+  description?: string;
+  storeTab?: string;
+  repoTab?: string;
+  scratchTab?: string;
+  store?: StoreViewLabels;
+  repo?: RepoViewLabels;
+  scratch?: ScratchViewLabels;
 }
 
-type View = "store" | "repo" | "scratch"
+type View = "store" | "repo" | "scratch";
 
 const DEFAULT_LABELS: Required<
   Omit<AddSkillDialogLabels, "store" | "repo" | "scratch">
@@ -68,7 +71,7 @@ const DEFAULT_LABELS: Required<
   storeTab: "Skills.sh",
   repoTab: "GitHub",
   scratchTab: "From scratch",
-}
+};
 
 export function AddSkillDialog({
   open,
@@ -82,32 +85,30 @@ export function AddSkillDialog({
   installedSkillNames,
   labels,
 }: AddSkillDialogProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
-  const [view, setView] = useState<View>("store")
+  const l = { ...DEFAULT_LABELS, ...labels };
+  const [view, setView] = useState<View>("store");
   // Bump on open so the scratch form resets its title / description / body
   // every time the dialog re-opens.
-  const [openSeq, setOpenSeq] = useState(0)
+  const [openSeq, setOpenSeq] = useState(0);
 
   useEffect(() => {
-    if (open) setOpenSeq((n) => n + 1)
-    if (!open) setView("store")
-  }, [open])
+    if (open) setOpenSeq((n) => n + 1);
+    if (!open) setView("store");
+  }, [open]);
 
-  const canInstallFromRepo = !!onListFromRepo && !!onInstallFromRepo
-  const canCreateFromScratch = !!onCreateFromScratch
-  const tabs: View[] = ["store"]
-  if (canInstallFromRepo) tabs.push("repo")
-  if (canCreateFromScratch) tabs.push("scratch")
-  const showTabs = tabs.length > 1
+  const canInstallFromRepo = !!onListFromRepo && !!onInstallFromRepo;
+  const canCreateFromScratch = !!onCreateFromScratch;
+  const tabs: View[] = ["store"];
+  if (canInstallFromRepo) tabs.push("repo");
+  if (canCreateFromScratch) tabs.push("scratch");
+  const showTabs = tabs.length > 1;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-lg !gap-0 p-0 h-[600px] flex flex-col overflow-hidden">
         <DialogHeader className="shrink-0 px-6 pt-6 pb-3">
           <DialogTitle>{l.title}</DialogTitle>
-          <DialogDescription>
-            {l.description}
-          </DialogDescription>
+          <DialogDescription>{l.description}</DialogDescription>
         </DialogHeader>
 
         {showTabs && (
@@ -153,9 +154,9 @@ export function AddSkillDialog({
         {view === "scratch" && canCreateFromScratch && (
           <ScratchView
             onCreate={async (input) => {
-              const slug = await onCreateFromScratch!(input)
-              onOpenChange(false)
-              return slug
+              const slug = await onCreateFromScratch!(input);
+              onOpenChange(false);
+              return slug;
             }}
             installedSkillNames={installedSkillNames}
             labels={labels?.scratch}
@@ -164,5 +165,5 @@ export function AddSkillDialog({
         )}
       </DialogContent>
     </Dialog>
-  )
+  );
 }

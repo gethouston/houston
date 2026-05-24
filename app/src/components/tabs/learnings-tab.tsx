@@ -19,7 +19,9 @@ export default function LearningsTab({ agent }: TabProps) {
   return (
     <div className="h-full overflow-auto">
       <div className="max-w-3xl mx-auto px-6 py-6">
-        <h2 className="text-sm font-medium text-foreground">{t("configure.learnings.title")}</h2>
+        <h2 className="text-sm font-medium text-foreground">
+          {t("configure.learnings.title")}
+        </h2>
         <p className="text-xs text-muted-foreground/60 mt-0.5 mb-3">
           {t("configure.learnings.description")}
         </p>

@@ -16,7 +16,9 @@ import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
 export function useSkillSurface(agentPath: string) {
   const { skillDetailLabels } = useSkillSurfaceLabels();
   const { data: summaries, isLoading: skillsLoading } = useSkills(agentPath);
-  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
+  const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
+    null,
+  );
   // Render-time reset on agent switch — a useEffect would race the
   // auto-toast in `call()` because the stale-name fetch starts first.
   const [prevAgentPath, setPrevAgentPath] = useState(agentPath);

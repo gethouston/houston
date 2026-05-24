@@ -2,25 +2,25 @@
  * FilesBrowser — macOS Finder list-view clone.
  * Column headers with sort, file/folder tree, status bar, drag-and-drop.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { createPortal } from "react-dom"
-import { cn, Button } from "@houston-ai/core"
-import { Upload } from "lucide-react"
-import type { FileEntry } from "./types"
-import { useDropZone } from "./drop-zone"
-import { FileRow, FolderSection, COL_GRID } from "./file-row"
-import type { FileMenuLabels } from "./file-menu"
-import { NewFolderInput } from "./new-folder-input"
-import { buildTree } from "./tree"
-import { sortTree, type SortKey, type SortDirection } from "./utils"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { cn, Button } from "@houston-ai/core";
+import { Upload } from "lucide-react";
+import type { FileEntry } from "./types";
+import { useDropZone } from "./drop-zone";
+import { FileRow, FolderSection, COL_GRID } from "./file-row";
+import type { FileMenuLabels } from "./file-menu";
+import { NewFolderInput } from "./new-folder-input";
+import { buildTree } from "./tree";
+import { sortTree, type SortKey, type SortDirection } from "./utils";
 
 export interface FilesBrowserLabels {
-  columnName?: string
-  columnDateModified?: string
-  columnSize?: string
-  columnKind?: string
-  loading?: string
-  browseFiles?: string
+  columnName?: string;
+  columnDateModified?: string;
+  columnSize?: string;
+  columnKind?: string;
+  loading?: string;
+  browseFiles?: string;
 }
 
 const DEFAULT_LABELS: Required<FilesBrowserLabels> = {
@@ -30,106 +30,131 @@ const DEFAULT_LABELS: Required<FilesBrowserLabels> = {
   columnKind: "Kind",
   loading: "Loading\u2026",
   browseFiles: "Browse files",
-}
+};
 
 export interface FilesBrowserProps {
-  files: FileEntry[]
-  loading?: boolean
-  selectedPath?: string | null
-  onSelect?: (file: FileEntry) => void
-  onOpen?: (file: FileEntry) => void
-  onReveal?: (file: FileEntry) => void
-  onDelete?: (file: FileEntry) => void
-  onFilesDropped?: (files: File[], targetFolder?: string) => void
+  files: FileEntry[];
+  loading?: boolean;
+  selectedPath?: string | null;
+  onSelect?: (file: FileEntry) => void;
+  onOpen?: (file: FileEntry) => void;
+  onReveal?: (file: FileEntry) => void;
+  onDelete?: (file: FileEntry) => void;
+  onFilesDropped?: (files: File[], targetFolder?: string) => void;
   /** Move a file/folder to a new location (null = root) */
-  onMove?: (sourcePath: string, targetFolder: string | null) => void
-  onRename?: (file: FileEntry, newName: string) => void
-  onCreateFolder?: (name: string) => void
-  onBrowse?: () => void
-  emptyTitle?: string
-  emptyDescription?: string
+  onMove?: (sourcePath: string, targetFolder: string | null) => void;
+  onRename?: (file: FileEntry, newName: string) => void;
+  onCreateFolder?: (name: string) => void;
+  onBrowse?: () => void;
+  emptyTitle?: string;
+  emptyDescription?: string;
   /** Optional action rendered in the bottom status bar (e.g. "Open in File Manager" link) */
-  statusBarAction?: React.ReactNode
+  statusBarAction?: React.ReactNode;
   /** Overrides for chrome labels (column headers, loading, browse CTA). */
-  labels?: FilesBrowserLabels
+  labels?: FilesBrowserLabels;
   /** Overrides for the right-click context-menu labels. */
-  menuLabels?: FileMenuLabels
+  menuLabels?: FileMenuLabels;
 }
 
 export function FilesBrowser({
-  files, loading, selectedPath: controlledSelected, onSelect, onOpen, onReveal, onDelete,
-  onFilesDropped, onMove, onRename, onCreateFolder, onBrowse,
+  files,
+  loading,
+  selectedPath: controlledSelected,
+  onSelect,
+  onOpen,
+  onReveal,
+  onDelete,
+  onFilesDropped,
+  onMove,
+  onRename,
+  onCreateFolder,
+  onBrowse,
   emptyTitle = "No files yet",
   emptyDescription = "When agents create files, they\u2019ll appear here.",
   statusBarAction,
   labels,
   menuLabels,
 }: FilesBrowserProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
+  const l = { ...DEFAULT_LABELS, ...labels };
   // Internal selection state — used when consumer doesn't control selection
-  const [internalSelected, setInternalSelected] = useState<string | null>(null)
-  const selectedPath = controlledSelected !== undefined ? controlledSelected : internalSelected
-  const handleSelect = useCallback((file: FileEntry) => {
-    setInternalSelected(file.path)
-    onSelect?.(file)
-  }, [onSelect])
+  const [internalSelected, setInternalSelected] = useState<string | null>(null);
+  const selectedPath =
+    controlledSelected !== undefined ? controlledSelected : internalSelected;
+  const handleSelect = useCallback(
+    (file: FileEntry) => {
+      setInternalSelected(file.path);
+      onSelect?.(file);
+    },
+    [onSelect],
+  );
 
-  const [creatingFolder, setCreatingFolder] = useState(false)
-  const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null)
+  const [creatingFolder, setCreatingFolder] = useState(false);
+  const [bgMenu, setBgMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const [folderDropTarget, setFolderDropTarget] = useState<string | null>(null)
-  const folderTargetRef = useRef<string | null>(null)
-  const [sortKey, setSortKey] = useState<SortKey>("name")
-  const [sortDir, setSortDir] = useState<SortDirection>("asc")
+  const [folderDropTarget, setFolderDropTarget] = useState<string | null>(null);
+  const folderTargetRef = useRef<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDirection>("asc");
 
   const onDragActive = useCallback((f: string | null) => {
-    setFolderDropTarget(f)
-    folderTargetRef.current = f
-  }, [])
+    setFolderDropTarget(f);
+    folderTargetRef.current = f;
+  }, []);
 
   // Wrap callbacks so container drops target the hovered folder (or root)
-  const handleDrop = useCallback((files: File[]) => {
-    onFilesDropped?.(files, folderTargetRef.current ?? undefined)
-  }, [onFilesDropped])
-  const handleMove = useCallback((src: string) => {
-    onMove?.(src, folderTargetRef.current)
-  }, [onMove])
-  const { isDragging, dragHandlers } = useDropZone(handleDrop, handleMove)
+  const handleDrop = useCallback(
+    (files: File[]) => {
+      onFilesDropped?.(files, folderTargetRef.current ?? undefined);
+    },
+    [onFilesDropped],
+  );
+  const handleMove = useCallback(
+    (src: string) => {
+      onMove?.(src, folderTargetRef.current);
+    },
+    [onMove],
+  );
+  const { isDragging, dragHandlers } = useDropZone(handleDrop, handleMove);
 
-  const isEmpty = !loading && files.length === 0
-  const isRootTarget = isDragging && folderDropTarget === null
+  const isEmpty = !loading && files.length === 0;
+  const isRootTarget = isDragging && folderDropTarget === null;
 
   const handleSort = useCallback((key: SortKey) => {
     setSortKey((prev) => {
-      if (prev === key) { setSortDir((d) => (d === "asc" ? "desc" : "asc")); return prev }
-      setSortDir("asc")
-      return key
-    })
-  }, [])
+      if (prev === key) {
+        setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+        return prev;
+      }
+      setSortDir("asc");
+      return key;
+    });
+  }, []);
 
   const tree = useMemo(() => {
-    if (isEmpty) return null
-    return sortTree(buildTree(files), sortKey, sortDir)
-  }, [files, isEmpty, sortKey, sortDir])
+    if (isEmpty) return null;
+    return sortTree(buildTree(files), sortKey, sortDir);
+  }, [files, isEmpty, sortKey, sortDir]);
 
   const fileCount = useMemo(() => {
-    if (!tree) return 0
-    let count = 0
+    if (!tree) return 0;
+    let count = 0;
     const walk = (children: typeof tree.children) => {
       for (const c of children) {
-        count++
-        if (c.kind === "folder") walk(c.children)
+        count++;
+        if (c.kind === "folder") walk(c.children);
       }
-    }
-    walk(tree.children)
-    return count
-  }, [tree])
+    };
+    walk(tree.children);
+    return count;
+  }, [tree]);
 
   if (isEmpty) {
     return (
       <div className="flex-1 flex flex-col items-center pt-[20vh] gap-4 px-8">
         <div className="space-y-2 text-center max-w-md">
-          <h1 className="text-2xl font-semibold tracking-tight">{emptyTitle}</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            {emptyTitle}
+          </h1>
           <p className="text-sm text-muted-foreground">{emptyDescription}</p>
         </div>
         {onBrowse && (
@@ -138,7 +163,7 @@ export function FilesBrowser({
           </Button>
         )}
       </div>
-    )
+    );
   }
 
   return (
@@ -147,11 +172,40 @@ export function FilesBrowser({
       {...(onFilesDropped || onMove ? dragHandlers : {})}
     >
       <div className="h-[24px] shrink-0 border-b border-border bg-muted/40 select-none flex items-center rounded-t-xl px-1">
-        <div className="flex-1 min-w-0 items-center h-full" style={{ display: "grid", gridTemplateColumns: COL_GRID }}>
-          <HeaderCell label={l.columnName} col="name" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} className="pl-7" />
-          <HeaderCell label={l.columnDateModified} col="dateModified" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-          <HeaderCell label={l.columnSize} col="size" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} />
-          <HeaderCell label={l.columnKind} col="kind" sortKey={sortKey} sortDir={sortDir} onSort={handleSort} last />
+        <div
+          className="flex-1 min-w-0 items-center h-full"
+          style={{ display: "grid", gridTemplateColumns: COL_GRID }}
+        >
+          <HeaderCell
+            label={l.columnName}
+            col="name"
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={handleSort}
+            className="pl-7"
+          />
+          <HeaderCell
+            label={l.columnDateModified}
+            col="dateModified"
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={handleSort}
+          />
+          <HeaderCell
+            label={l.columnSize}
+            col="size"
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={handleSort}
+          />
+          <HeaderCell
+            label={l.columnKind}
+            col="kind"
+            sortKey={sortKey}
+            sortDir={sortDir}
+            onSort={handleSort}
+            last
+          />
         </div>
       </div>
 
@@ -162,15 +216,15 @@ export function FilesBrowser({
         }}
         onClick={(e) => {
           if (e.target === e.currentTarget) {
-            setInternalSelected(null)
-            setBgMenu(null)
+            setInternalSelected(null);
+            setBgMenu(null);
           }
         }}
         onContextMenu={(e) => {
           if (e.target === e.currentTarget && onCreateFolder) {
-            e.preventDefault()
-            setInternalSelected(null)
-            setBgMenu({ x: e.clientX, y: e.clientY })
+            e.preventDefault();
+            setInternalSelected(null);
+            setBgMenu({ x: e.clientX, y: e.clientY });
           }
         }}
       >
@@ -183,26 +237,41 @@ export function FilesBrowser({
             <div className="shrink-0 [&>:nth-child(even)]:bg-muted/30 [&>:nth-child(even)]:rounded-lg">
               {creatingFolder && (
                 <NewFolderInput
-                  onConfirm={(n) => { onCreateFolder?.(n); setCreatingFolder(false) }}
+                  onConfirm={(n) => {
+                    onCreateFolder?.(n);
+                    setCreatingFolder(false);
+                  }}
                   onCancel={() => setCreatingFolder(false)}
                 />
               )}
               {tree?.children.map((child) =>
                 child.kind === "folder" ? (
                   <FolderSection
-                    key={child.path} node={child} depth={0}
-                    selectedPath={selectedPath} onSelect={handleSelect}
-                    onOpen={onOpen} onReveal={onReveal} onDelete={onDelete}
+                    key={child.path}
+                    node={child}
+                    depth={0}
+                    selectedPath={selectedPath}
+                    onSelect={handleSelect}
+                    onOpen={onOpen}
+                    onReveal={onReveal}
+                    onDelete={onDelete}
                     onRename={onRename}
-                    onFilesDropped={onFilesDropped} onDragActive={onDragActive} onMove={onMove}
+                    onFilesDropped={onFilesDropped}
+                    onDragActive={onDragActive}
+                    onMove={onMove}
                     menuLabels={menuLabels}
                   />
                 ) : (
                   <FileRow
-                    key={child.entry.path} file={child.entry}
+                    key={child.entry.path}
+                    file={child.entry}
                     selected={selectedPath === child.entry.path}
-                    onSelect={handleSelect} onOpen={onOpen}
-                    onReveal={onReveal} onDelete={onDelete} onRename={onRename} onMove={onMove}
+                    onSelect={handleSelect}
+                    onOpen={onOpen}
+                    onReveal={onReveal}
+                    onDelete={onDelete}
+                    onRename={onRename}
+                    onMove={onMove}
                     menuLabels={menuLabels}
                   />
                 ),
@@ -210,12 +279,19 @@ export function FilesBrowser({
             </div>
             <FillerStripes
               startIndex={fileCount}
-              onDeselect={() => { setInternalSelected(null); setBgMenu(null) }}
-              onContextMenu={onCreateFolder ? (e) => {
-                e.preventDefault()
-                setInternalSelected(null)
-                setBgMenu({ x: e.clientX, y: e.clientY })
-              } : undefined}
+              onDeselect={() => {
+                setInternalSelected(null);
+                setBgMenu(null);
+              }}
+              onContextMenu={
+                onCreateFolder
+                  ? (e) => {
+                      e.preventDefault();
+                      setInternalSelected(null);
+                      setBgMenu({ x: e.clientX, y: e.clientY });
+                    }
+                  : undefined
+              }
             />
           </>
         )}
@@ -231,58 +307,79 @@ export function FilesBrowser({
       {bgMenu && (
         <BgContextMenu
           position={bgMenu}
-          onNewFolder={() => { setCreatingFolder(true); setBgMenu(null) }}
+          onNewFolder={() => {
+            setCreatingFolder(true);
+            setBgMenu(null);
+          }}
           onClose={() => setBgMenu(null)}
         />
       )}
     </div>
-  )
+  );
 }
 
 /** Fills remaining vertical space with real rounded stripe divs. */
-function FillerStripes({ startIndex, onDeselect, onContextMenu }: {
-  startIndex: number
-  onDeselect: () => void
-  onContextMenu?: (e: React.MouseEvent) => void
+function FillerStripes({
+  startIndex,
+  onDeselect,
+  onContextMenu,
+}: {
+  startIndex: number;
+  onDeselect: () => void;
+  onContextMenu?: (e: React.MouseEvent) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const [count, setCount] = useState(0)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [count, setCount] = useState(0);
 
   useEffect(() => {
-    const el = containerRef.current
-    if (!el) return
+    const el = containerRef.current;
+    if (!el) return;
     const update = () => {
-      const h = el.clientHeight
-      setCount(Math.ceil(h / 24))
-    }
-    update()
-    const obs = new ResizeObserver(update)
-    obs.observe(el)
-    return () => obs.disconnect()
-  }, [])
+      const h = el.clientHeight;
+      setCount(Math.ceil(h / 24));
+    };
+    update();
+    const obs = new ResizeObserver(update);
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, []);
 
   return (
     <div ref={containerRef} className="flex-1 min-h-0">
       {Array.from({ length: count }, (_, i) => (
         <div
           key={i}
-          className={cn("h-[24px]", (startIndex + i) % 2 === 1 && "bg-muted/30 rounded-lg")}
+          className={cn(
+            "h-[24px]",
+            (startIndex + i) % 2 === 1 && "bg-muted/30 rounded-lg",
+          )}
           onClick={onDeselect}
           onContextMenu={onContextMenu}
         />
       ))}
     </div>
-  )
+  );
 }
 
-function BgContextMenu({ position, onNewFolder, onClose }: {
-  position: { x: number; y: number }
-  onNewFolder: () => void
-  onClose: () => void
+function BgContextMenu({
+  position,
+  onNewFolder,
+  onClose,
+}: {
+  position: { x: number; y: number };
+  onNewFolder: () => void;
+  onClose: () => void;
 }) {
   return createPortal(
     <>
-      <div className="fixed inset-0 z-50" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose() }} />
+      <div
+        className="fixed inset-0 z-50"
+        onClick={onClose}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          onClose();
+        }}
+      />
       <div
         className="fixed z-50 bg-popover/95 backdrop-blur-xl border border-border rounded-lg shadow-lg py-1 min-w-[160px]"
         style={{ left: position.x, top: position.y }}
@@ -297,19 +394,27 @@ function BgContextMenu({ position, onNewFolder, onClose }: {
       </div>
     </>,
     document.body,
-  )
+  );
 }
 
-function HeaderCell({ label, col, sortKey, sortDir, onSort, className, last }: {
-  label: string
-  col: SortKey
-  sortKey: SortKey
-  sortDir: SortDirection
-  onSort: (key: SortKey) => void
-  className?: string
-  last?: boolean
+function HeaderCell({
+  label,
+  col,
+  sortKey,
+  sortDir,
+  onSort,
+  className,
+  last,
+}: {
+  label: string;
+  col: SortKey;
+  sortKey: SortKey;
+  sortDir: SortDirection;
+  onSort: (key: SortKey) => void;
+  className?: string;
+  last?: boolean;
 }) {
-  const active = sortKey === col
+  const active = sortKey === col;
   return (
     <button
       onClick={() => onSort(col)}
@@ -330,11 +435,13 @@ function HeaderCell({ label, col, sortKey, sortDir, onSort, className, last }: {
           strokeLinecap="round"
           strokeLinejoin="round"
         >
-          {sortDir === "asc"
-            ? <path d="M1 4.5L4 1.5L7 4.5" />
-            : <path d="M1 1.5L4 4.5L7 1.5" />}
+          {sortDir === "asc" ? (
+            <path d="M1 4.5L4 1.5L7 4.5" />
+          ) : (
+            <path d="M1 1.5L4 4.5L7 1.5" />
+          )}
         </svg>
       )}
     </button>
-  )
+  );
 }

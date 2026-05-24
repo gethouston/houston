@@ -70,7 +70,10 @@ export function Workpaper({
           Summary
         </TabButton>
         <span className="workpaper__spacer" />
-        <TabButton active={active === "files"} onClick={() => setActive("files")}>
+        <TabButton
+          active={active === "files"}
+          onClick={() => setActive("files")}
+        >
           Source documents
           <span className="workpaper__count">{statements.length}</span>
         </TabButton>
@@ -96,7 +99,12 @@ interface CardProps {
   onAskCustomize: () => void;
 }
 
-function WorkpaperCard({ file, sheetCount, onOpen, onAskCustomize }: CardProps) {
+function WorkpaperCard({
+  file,
+  sheetCount,
+  onOpen,
+  onAskCustomize,
+}: CardProps) {
   if (!file) {
     return (
       <div className="wp-card wp-card--pending">
@@ -122,7 +130,9 @@ function WorkpaperCard({ file, sheetCount, onOpen, onAskCustomize }: CardProps) 
       <div className="wp-card__body">
         <div className="wp-card__title">workpaper.xlsx</div>
         <div className="wp-card__subtitle muted">
-          <span>{sheetCount} sheet{sheetCount === 1 ? "" : "s"}</span>
+          <span>
+            {sheetCount} sheet{sheetCount === 1 ? "" : "s"}
+          </span>
           <span className="wp-card__dot">·</span>
           <span>{formatSize(file.size)}</span>
           <span className="wp-card__dot">·</span>
@@ -246,7 +256,9 @@ function SummaryTab({ rows }: SummaryProps) {
               <tr key={c.category}>
                 <td className="cell-category">{c.category}</td>
                 <td>{c.count}</td>
-                <td className="amount-pos">{c.inflow ? formatMoney(c.inflow) : "—"}</td>
+                <td className="amount-pos">
+                  {c.inflow ? formatMoney(c.inflow) : "—"}
+                </td>
                 <td className="amount-neg">
                   {c.outflow ? formatMoney(c.outflow) : "—"}
                 </td>

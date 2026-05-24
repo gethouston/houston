@@ -7,7 +7,9 @@ import {
 
 test("fallback mission title trims long text on word boundary", () => {
   assert.equal(
-    fallbackMissionTitle("Please write a long investor update for the whole team"),
+    fallbackMissionTitle(
+      "Please write a long investor update for the whole team",
+    ),
     "Please write a long investor update for...",
   );
 });

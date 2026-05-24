@@ -29,8 +29,11 @@ export function ProviderSettings() {
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
-  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
+  const [confirmSignOutFor, setConfirmSignOutFor] =
+    useState<ProviderInfo | null>(null);
+  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(
+    null,
+  );
   // OAuth URL surfaced by the engine when the CLI couldn't open the
   // user's browser itself (remote/headless deployments). Cleared on
   // ProviderLoginComplete or when the user closes the dialog.
@@ -47,7 +50,9 @@ export function ProviderSettings() {
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
   const loadStatuses = useCallback(async () => {
     const results = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      PROVIDERS.map(
+        async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
+      ),
     );
     const next: Record<string, ProviderStatus> = {};
     for (const [id, status] of results) {
@@ -58,7 +63,8 @@ export function ProviderSettings() {
         const wasConnected =
           prevStatuses.current[prov.id]?.cli_installed &&
           prevStatuses.current[prov.id]?.authenticated;
-        const isConnected = next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
+        const isConnected =
+          next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
         if (!wasConnected && isConnected) {
           analytics.track("provider_configured", { provider: prov.id });
         }
@@ -114,12 +120,16 @@ export function ProviderSettings() {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
         if (ev.data.success) {
           addToast({
-            title: t("toast.signInSucceeded", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInSucceeded", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             variant: "success",
           });
         } else if (ev.data.error) {
           addToast({
-            title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInFailed", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             description: ev.data.error,
             variant: "error",
           });
@@ -133,7 +143,9 @@ export function ProviderSettings() {
         // Same rule for the spinner-tracking pending id: on failure
         // the status poll won't ever see authenticated, so without
         // this clear the row would spin forever.
-        setPendingId((current) => (current === ev.data.provider ? null : current));
+        setPendingId((current) =>
+          current === ev.data.provider ? null : current,
+        );
         loadStatuses();
       }
     });
@@ -150,7 +162,10 @@ export function ProviderSettings() {
       await tauriProvider.launchLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-settings] launchLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-settings] launchLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signInFailed", { provider: provider.name }),
         description: msg,
@@ -167,7 +182,10 @@ export function ProviderSettings() {
       await loadStatuses();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-settings] launchLogout(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-settings] launchLogout(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signOutFailed", { provider: provider.name }),
         description: msg,
@@ -207,7 +225,8 @@ export function ProviderSettings() {
       <div className="grid grid-cols-1 gap-2">
         {orderedProviders.map((prov) => {
           const status = statuses[prov.id];
-          const connected = (status?.cli_installed && status?.authenticated) ?? false;
+          const connected =
+            (status?.cli_installed && status?.authenticated) ?? false;
           return (
             <ProviderAccountRow
               key={prov.id}
@@ -226,8 +245,12 @@ export function ProviderSettings() {
         onOpenChange={(open) => {
           if (!open) setConfirmSignOutFor(null);
         }}
-        title={t("signOutConfirm.title", { provider: confirmSignOutFor?.name ?? "" })}
-        description={t("signOutConfirm.description", { provider: confirmSignOutFor?.name ?? "" })}
+        title={t("signOutConfirm.title", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
+        description={t("signOutConfirm.description", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
         confirmLabel={t("signOutConfirm.confirm")}
         cancelLabel={t("signOutConfirm.cancel")}
         variant="destructive"

@@ -7,12 +7,7 @@ interface Props {
   children: (displayed: string) => React.ReactNode;
 }
 
-export function Typewriter({
-  text,
-  speed = 20,
-  onComplete,
-  children,
-}: Props) {
+export function Typewriter({ text, speed = 20, onComplete, children }: Props) {
   const [displayed, setDisplayed] = useState("");
   const indexRef = useRef(0);
   const completedRef = useRef(false);

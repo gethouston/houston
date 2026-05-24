@@ -14,10 +14,22 @@ import {
 } from "@houston-ai/core";
 import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
-import { useDraftStore, useDraftText, useDraftFiles } from "../../stores/drafts";
-import { isActiveSessionStatus, useSessionStatus } from "../../stores/session-status";
+import {
+  useDraftStore,
+  useDraftText,
+  useDraftFiles,
+} from "../../stores/drafts";
+import {
+  isActiveSessionStatus,
+  useSessionStatus,
+} from "../../stores/session-status";
 import { useSessionMessageQueue } from "../../hooks/use-session-message-queue";
-import { tauriChat, tauriAttachments, tauriConfig, tauriProvider } from "../../lib/tauri";
+import {
+  tauriChat,
+  tauriAttachments,
+  tauriConfig,
+  tauriProvider,
+} from "../../lib/tauri";
 import { openAgentHref } from "../../lib/open-href";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { useFileToolRenderer } from "../../hooks/use-file-tool-renderer";
@@ -51,13 +63,15 @@ export default function ChatTab({ agent }: TabProps) {
   const queuedLabels = useQueuedMessageLabels();
   const attachmentLabels = useMemo(
     () => ({
-      attachmentCount: (count: number) => t("attachmentMessage.count", { count }),
+      attachmentCount: (count: number) =>
+        t("attachmentMessage.count", { count }),
     }),
     [t],
   );
   const { processLabels, getThinkingMessage } = useChatDisplayLabels();
   const attachmentValidation = useAttachmentRejectionDialog();
-  const { isSpecialTool, renderToolResult, renderTurnSummary } = useFileToolRenderer(agent.folderPath);
+  const { isSpecialTool, renderToolResult, renderTurnSummary } =
+    useFileToolRenderer(agent.folderPath);
   // Free-form chat tab gets its own UUID-scoped session key per agent.
   // Must be stable across renders so streaming events land in the same bucket.
   const sessionKey = `chat-${agent.id}`;
@@ -84,7 +98,8 @@ export default function ChatTab({ agent }: TabProps) {
     [sessionKey],
   );
   const setComposerFiles = useCallback(
-    (files: File[]) => useDraftStore.getState().setDraftFiles(sessionKey, files),
+    (files: File[]) =>
+      useDraftStore.getState().setDraftFiles(sessionKey, files),
     [sessionKey],
   );
   const sendingRef = useRef(false);
@@ -97,10 +112,13 @@ export default function ChatTab({ agent }: TabProps) {
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   useEffect(() => {
-    tauriConfig.read(agentPath).then((cfg) => {
-      setAgentProvider((cfg.provider as string) ?? null);
-      setAgentModel((cfg.model as string) ?? null);
-    }).catch(() => {});
+    tauriConfig
+      .read(agentPath)
+      .then((cfg) => {
+        setAgentProvider((cfg.provider as string) ?? null);
+        setAgentModel((cfg.model as string) ?? null);
+      })
+      .catch(() => {});
   }, [agentPath]);
 
   // Effective = agent config > Anthropic default. Workspace-level defaults
@@ -246,7 +264,10 @@ export default function ChatTab({ agent }: TabProps) {
           modelOverride: effectiveModel,
         });
         started = true;
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         analytics.track("chat_message_sent");
         setComposerText("");
         setComposerFiles([]);
@@ -262,7 +283,17 @@ export default function ChatTab({ agent }: TabProps) {
         sendingRef.current = false;
       }
     },
-    [agentPath, sessionKey, attachmentScope, pushFeedItem, setComposerText, setComposerFiles, effectiveProvider, effectiveModel, t],
+    [
+      agentPath,
+      sessionKey,
+      attachmentScope,
+      pushFeedItem,
+      setComposerText,
+      setComposerFiles,
+      effectiveProvider,
+      effectiveModel,
+      t,
+    ],
   );
   const handleQueued = useCallback(() => {
     setComposerText("");
@@ -297,7 +328,10 @@ export default function ChatTab({ agent }: TabProps) {
               <ProviderErrorCard
                 error={msg.providerError}
                 onRetry={() =>
-                  messageQueue.sendOrQueue(t("toolRuntimeError.retryPrompt"), [])
+                  messageQueue.sendOrQueue(
+                    t("toolRuntimeError.retryPrompt"),
+                    [],
+                  )
                 }
                 onSwitchModel={() => handleSwitchModel(msg.providerError!)}
               />
@@ -310,10 +344,15 @@ export default function ChatTab({ agent }: TabProps) {
               <ToolRuntimeErrorCard
                 error={msg.runtimeError}
                 onRetry={() =>
-                  messageQueue.sendOrQueue(t("toolRuntimeError.retryPrompt"), [])
+                  messageQueue.sendOrQueue(
+                    t("toolRuntimeError.retryPrompt"),
+                    [],
+                  )
                 }
                 onSwitchModel={
-                  isModelUnsupported ? () => handleModelSelect("openai", "gpt-5.5") : undefined
+                  isModelUnsupported
+                    ? () => handleModelSelect("openai", "gpt-5.5")
+                    : undefined
                 }
               />
             );
@@ -365,7 +404,9 @@ export default function ChatTab({ agent }: TabProps) {
             provider={effectiveProvider}
             model={effectiveModel}
             onSelect={handleModelSelect}
-            lockedProvider={visibleFeedItems.length > 0 ? effectiveProvider : null}
+            lockedProvider={
+              visibleFeedItems.length > 0 ? effectiveProvider : null
+            }
           />
         }
         attachMenu={({ openFilePicker }) => (
@@ -385,7 +426,9 @@ export default function ChatTab({ agent }: TabProps) {
                 provider={effectiveProvider}
                 model={effectiveModel}
                 onSelect={handleModelSelect}
-                lockedProvider={visibleFeedItems.length > 0 ? effectiveProvider : null}
+                lockedProvider={
+                  visibleFeedItems.length > 0 ? effectiveProvider : null
+                }
               />
             </div>
           </div>
@@ -394,9 +437,7 @@ export default function ChatTab({ agent }: TabProps) {
           <Empty className="border-0">
             <EmptyHeader>
               <EmptyTitle>{t("empty.title")}</EmptyTitle>
-              <EmptyDescription>
-                {t("empty.description")}
-              </EmptyDescription>
+              <EmptyDescription>{t("empty.description")}</EmptyDescription>
             </EmptyHeader>
           </Empty>
         }

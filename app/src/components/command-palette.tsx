@@ -12,13 +12,7 @@ import {
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
-import {
-  Blend,
-  Keyboard,
-  LayoutDashboard,
-  Plus,
-  Settings,
-} from "lucide-react";
+import { Blend, Keyboard, LayoutDashboard, Plus, Settings } from "lucide-react";
 import { useAgentStore } from "../stores/agents";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
@@ -32,7 +26,9 @@ import { shortcutLabel } from "../lib/shortcuts";
 const AVATAR_PX = 28;
 
 function PaletteAvatar({ color }: { color?: string }) {
-  return <HoustonAvatar color={resolveAgentColor(color)} diameter={AVATAR_PX} />;
+  return (
+    <HoustonAvatar color={resolveAgentColor(color)} diameter={AVATAR_PX} />
+  );
 }
 
 const RECENT_MISSION_LIMIT = 12;
@@ -66,9 +62,7 @@ export function CommandPalette() {
     return convos
       .filter((c) => c.type === "activity")
       .slice()
-      .sort((a, b) =>
-        (b.updated_at ?? "").localeCompare(a.updated_at ?? ""),
-      )
+      .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
       .slice(0, RECENT_MISSION_LIMIT);
   }, [convos]);
 

@@ -3,7 +3,8 @@ import type { AgentConfig } from "../../lib/types";
 export const agentCreator: AgentConfig = {
   id: "agent-creator",
   name: "Agent Creator",
-  description: "Build and publish your own agent to the Houston Store — guided step by step",
+  description:
+    "Build and publish your own agent to the Houston Store — guided step by step",
   icon: "Wand2",
   category: "productivity",
   author: "Houston",

@@ -2,36 +2,47 @@
  * ScheduleBuilder — Visual cron schedule builder with preset buttons.
  * Supports presets (daily, weekly, etc.) and custom cron expressions.
  */
-import { useState, useEffect, useRef } from "react"
-import { cn } from "@houston-ai/core"
-import type { SchedulePreset } from "./types"
-import { SCHEDULE_PRESET_LABELS } from "./types"
-import { TimePicker, DayOfWeekPicker, DayOfMonthPicker, CronInput } from "./schedule-picker-fields"
+import { useState, useEffect, useRef } from "react";
+import { cn } from "@houston-ai/core";
+import type { SchedulePreset } from "./types";
+import { SCHEDULE_PRESET_LABELS } from "./types";
+import {
+  TimePicker,
+  DayOfWeekPicker,
+  DayOfMonthPicker,
+  CronInput,
+} from "./schedule-picker-fields";
 import {
   presetToCron,
   presetSummary,
   cronToPreset,
   cronToOptions,
   type ScheduleOptions,
-} from "./schedule-cron-utils"
+} from "./schedule-cron-utils";
 
 export interface ScheduleBuilderProps {
-  value: string
-  onChange: (cronExpression: string) => void
-  presets?: SchedulePreset[]
+  value: string;
+  onChange: (cronExpression: string) => void;
+  presets?: SchedulePreset[];
 }
 
 const DEFAULT_PRESETS: SchedulePreset[] = [
-  "every_30min", "hourly", "daily", "weekdays", "weekly", "monthly", "custom",
-]
+  "every_30min",
+  "hourly",
+  "daily",
+  "weekdays",
+  "weekly",
+  "monthly",
+  "custom",
+];
 
 const DEFAULT_OPTIONS: ScheduleOptions = {
   time: "09:00",
   dayOfWeek: 1,
   dayOfMonth: 1,
-}
+};
 
-const NEEDS_TIME: SchedulePreset[] = ["daily", "weekdays", "weekly", "monthly"]
+const NEEDS_TIME: SchedulePreset[] = ["daily", "weekdays", "weekly", "monthly"];
 
 export function ScheduleBuilder({
   value,
@@ -39,45 +50,49 @@ export function ScheduleBuilder({
   presets = DEFAULT_PRESETS,
 }: ScheduleBuilderProps) {
   // Detect initial preset from incoming cron
-  const detectedPreset = cronToPreset(value)
-  const detectedOptions = cronToOptions(value)
+  const detectedPreset = cronToPreset(value);
+  const detectedOptions = cronToOptions(value);
 
   const [activePreset, setActivePreset] = useState<SchedulePreset>(
     detectedPreset ?? "daily",
-  )
+  );
   const [options, setOptions] = useState<ScheduleOptions>({
     ...DEFAULT_OPTIONS,
     ...detectedOptions,
-  })
+  });
   const [customCron, setCustomCron] = useState(
     detectedPreset === null ? value : "",
-  )
+  );
 
   // Stable ref for onChange to avoid infinite effect loops
-  const onChangeRef = useRef(onChange)
-  onChangeRef.current = onChange
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
 
   // Emit cron when preset or options change
   useEffect(() => {
     if (activePreset === "custom") {
-      if (customCron.trim()) onChangeRef.current(customCron.trim())
-      return
+      if (customCron.trim()) onChangeRef.current(customCron.trim());
+      return;
     }
-    const cron = presetToCron(activePreset, options)
-    onChangeRef.current(cron)
-  }, [activePreset, options, customCron])
+    const cron = presetToCron(activePreset, options);
+    onChangeRef.current(cron);
+  }, [activePreset, options, customCron]);
 
   const updateOption = (patch: Partial<ScheduleOptions>) => {
-    setOptions((prev) => ({ ...prev, ...patch }))
-  }
+    setOptions((prev) => ({ ...prev, ...patch }));
+  };
 
-  const showTime = NEEDS_TIME.includes(activePreset)
-  const summary = activePreset === "custom"
-    ? (customCron.trim() ? "Custom cron schedule" : "Enter a cron expression")
-    : presetSummary(activePreset, options)
-  const cronDisplay = activePreset === "custom"
-    ? customCron
-    : presetToCron(activePreset, options)
+  const showTime = NEEDS_TIME.includes(activePreset);
+  const summary =
+    activePreset === "custom"
+      ? customCron.trim()
+        ? "Custom cron schedule"
+        : "Enter a cron expression"
+      : presetSummary(activePreset, options);
+  const cronDisplay =
+    activePreset === "custom"
+      ? customCron
+      : presetToCron(activePreset, options);
 
   return (
     <div className="space-y-4">
@@ -126,10 +141,7 @@ export function ScheduleBuilder({
         )}
 
         {activePreset === "custom" && (
-          <CronInput
-            value={customCron}
-            onChange={setCustomCron}
-          />
+          <CronInput value={customCron} onChange={setCustomCron} />
         )}
       </div>
 
@@ -140,5 +152,5 @@ export function ScheduleBuilder({
         </p>
       )}
     </div>
-  )
+  );
 }

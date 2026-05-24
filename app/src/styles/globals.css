@@ -18,8 +18,9 @@
 body {
   margin: 0;
   overflow: hidden;
-  font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica,
-    Arial, sans-serif;
+  font-family:
+    ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial,
+    sans-serif;
 }
 
 [data-theme="dark"] .houston-update-logo-light {

@@ -52,9 +52,7 @@ export function PairScreen() {
       <div className="flex min-h-full flex-col items-center justify-center bg-background safe-top px-6 text-center">
         <HoustonHelmet color="#737373" size={48} className="mb-4 opacity-70" />
         <div className="size-8 border-[3px] border-muted-foreground/30 border-t-primary rounded-full animate-spin mb-3" />
-        <p className="text-sm text-muted-foreground">
-          Connecting to your Mac…
-        </p>
+        <p className="text-sm text-muted-foreground">Connecting to your Mac…</p>
       </div>
     );
   }
@@ -84,9 +82,13 @@ export function PairScreen() {
       <HoustonHelmet color="#737373" size={56} className="mb-5" />
       <h1 className="text-2xl font-semibold">Houston</h1>
       <p className="mt-3 max-w-xs text-sm text-muted-foreground">
-        Open <span className="font-medium text-foreground">Houston on your Mac</span>,
-        click <span className="font-medium text-foreground">&ldquo;Connect phone&rdquo;</span>,
-        then scan the QR with your camera.
+        Open{" "}
+        <span className="font-medium text-foreground">Houston on your Mac</span>
+        , click{" "}
+        <span className="font-medium text-foreground">
+          &ldquo;Connect phone&rdquo;
+        </span>
+        , then scan the QR with your camera.
       </p>
       <div className="mt-8 inline-flex items-center gap-2 rounded-full bg-muted/60 px-4 py-2 text-xs text-muted-foreground">
         <Camera className="size-3.5" />

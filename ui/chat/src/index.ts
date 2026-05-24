@@ -167,7 +167,10 @@ export type { TextShimmerProps } from "./ai-elements/shimmer";
 
 // === AI Elements: Suggestion ===
 export { Suggestions, Suggestion } from "./ai-elements/suggestion";
-export type { SuggestionsProps, SuggestionProps } from "./ai-elements/suggestion";
+export type {
+  SuggestionsProps,
+  SuggestionProps,
+} from "./ai-elements/suggestion";
 
 // === Chat Components ===
 export { ChatPanel } from "./chat-panel";
@@ -189,8 +192,17 @@ export type {
   QueuedMessageListProps,
 } from "./queued-message-list";
 
-export { ToolActivity, ToolsAndCards, ToolBlock, feedItemsToMessages } from "./chat-helpers";
-export type { ToolActivityProps, ToolsAndCardsProps, ToolBlockProps } from "./chat-helpers";
+export {
+  ToolActivity,
+  ToolsAndCards,
+  ToolBlock,
+  feedItemsToMessages,
+} from "./chat-helpers";
+export type {
+  ToolActivityProps,
+  ToolsAndCardsProps,
+  ToolBlockProps,
+} from "./chat-helpers";
 
 // === Progress ===
 export { useProgressSteps } from "./use-progress-steps";
@@ -204,8 +216,14 @@ export type { ProgressPanelProps } from "./progress-panel";
 // (desktop, mobile) can render the same card.
 export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
 export type { SkillInvocation, SkillInvocationField } from "./skill-message";
-export { decodeAttachmentMessage, normalizeAttachmentReferences } from "./attachment-message";
-export type { AttachmentInvocation, AttachmentReference } from "./attachment-message";
+export {
+  decodeAttachmentMessage,
+  normalizeAttachmentReferences,
+} from "./attachment-message";
+export type {
+  AttachmentInvocation,
+  AttachmentReference,
+} from "./attachment-message";
 export {
   UserAttachmentBadge,
   UserAttachmentMessage,

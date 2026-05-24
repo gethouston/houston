@@ -12,7 +12,9 @@ function usePromptFile(agentPath: string, modeName: string) {
   return useQuery({
     queryKey: [...queryKeys.instructions(agentPath), "mode", modeName],
     queryFn: () =>
-      tauriAgent.readFile(agentPath, `.houston/prompts/modes/${modeName}`).catch(() => ""),
+      tauriAgent
+        .readFile(agentPath, `.houston/prompts/modes/${modeName}`)
+        .catch(() => ""),
     enabled: !!agentPath,
   });
 }
@@ -20,13 +22,23 @@ function usePromptFile(agentPath: string, modeName: string) {
 function useSavePromptFile(agentPath: string, modeName: string) {
   return useCallback(
     async (content: string) => {
-      await tauriAgent.writeFile(agentPath, `.houston/prompts/modes/${modeName}`, content);
+      await tauriAgent.writeFile(
+        agentPath,
+        `.houston/prompts/modes/${modeName}`,
+        content,
+      );
     },
     [agentPath, modeName],
   );
 }
 
-function PromptCard({ agentPath, mode }: { agentPath: string; mode: AgentMode }) {
+function PromptCard({
+  agentPath,
+  mode,
+}: {
+  agentPath: string;
+  mode: AgentMode;
+}) {
   const { t } = useTranslation("agents");
   const [open, setOpen] = useState(false);
   const { data: content } = usePromptFile(agentPath, mode.promptFile);
@@ -43,7 +55,10 @@ function PromptCard({ agentPath, mode }: { agentPath: string; mode: AgentMode })
         <div className="flex-1 min-w-0">
           <p className="text-sm font-medium text-foreground">{mode.name}</p>
           <p className="text-xs text-muted-foreground/60 truncate">
-            {t("promptCards.modeSummary", { file: mode.promptFile, count: lineCount })}
+            {t("promptCards.modeSummary", {
+              file: mode.promptFile,
+              count: lineCount,
+            })}
           </p>
         </div>
         <ChevronDown
@@ -52,7 +67,13 @@ function PromptCard({ agentPath, mode }: { agentPath: string; mode: AgentMode })
       </button>
       {open && (
         <div className="px-4 pb-4">
-          <AutoSaveTextarea value={content ?? ""} onSave={save} placeholder={t("configure.agentPrompts.placeholder", { name: mode.name })} />
+          <AutoSaveTextarea
+            value={content ?? ""}
+            onSave={save}
+            placeholder={t("configure.agentPrompts.placeholder", {
+              name: mode.name,
+            })}
+          />
         </div>
       )}
     </div>
@@ -74,7 +95,9 @@ function ProjectContextCard({ agentPath }: { agentPath: string }) {
       >
         <FileText className="size-4 text-muted-foreground shrink-0" />
         <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-foreground">{t("promptCards.projectContext")}</p>
+          <p className="text-sm font-medium text-foreground">
+            {t("promptCards.projectContext")}
+          </p>
           <p className="text-xs text-muted-foreground/60 truncate">
             {t("promptCards.claudeMdSummary", { count: lineCount })}
           </p>

@@ -21,7 +21,16 @@ import {
   useUpdateActivity,
 } from "../../hooks/queries";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
-import { tauriActivity, tauriChat, tauriAttachments, tauriWorktree, tauriShell, tauriTerminal, tauriConfig, tauriPreferences } from "../../lib/tauri";
+import {
+  tauriActivity,
+  tauriChat,
+  tauriAttachments,
+  tauriWorktree,
+  tauriShell,
+  tauriTerminal,
+  tauriConfig,
+  tauriPreferences,
+} from "../../lib/tauri";
 import { openAgentHref } from "../../lib/open-href";
 import { createMission } from "../../lib/create-mission";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
@@ -53,7 +62,8 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     approveTooltip: t("board:cardActions.approveTooltip"),
     renameTooltip: t("board:cardActions.renameTooltip"),
     deleteTooltip: t("board:cardActions.deleteTooltip"),
-    deleteTitle: (name: string) => t("board:deleteCard.titleWithName", { name }),
+    deleteTitle: (name: string) =>
+      t("board:deleteCard.titleWithName", { name }),
     deleteDescription: t("board:deleteCard.description"),
   };
   // Mirror Mission Control's columns so the tab and dashboard stay in
@@ -72,9 +82,15 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
   const setOnBoardOpen = useUIStore((s) => s.setOnBoardOpen);
   const setOnPanelClose = useUIStore((s) => s.setOnPanelClose);
   const setBoardActions = useUIStore((s) => s.setBoardActions);
-  const missionSearchQuery = useUIStore((s) => s.agentMissionSearchQueries[path] ?? "");
-  const setAgentMissionSearchQuery = useUIStore((s) => s.setAgentMissionSearchQuery);
-  const setAgentMissionSearchLoading = useUIStore((s) => s.setAgentMissionSearchLoading);
+  const missionSearchQuery = useUIStore(
+    (s) => s.agentMissionSearchQueries[path] ?? "",
+  );
+  const setAgentMissionSearchQuery = useUIStore(
+    (s) => s.setAgentMissionSearchQuery,
+  );
+  const setAgentMissionSearchLoading = useUIStore(
+    (s) => s.setAgentMissionSearchLoading,
+  );
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const addToast = useUIStore((s) => s.addToast);
@@ -109,24 +125,25 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
   );
 
   const items: KanbanItem[] = useMemo(
-    () => (rawItems ?? []).map((t) => {
-      const mode = agentModes?.find((m) => m.id === t.agent);
-      return {
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        status: t.status,
-        updatedAt: t.updated_at ?? new Date().toISOString(),
-        group: agent.name,
-        tags: mode ? [mode.name] : (t.routine_id ? ["Routine"] : undefined),
-        metadata: {
-          ...(t.session_key ? { sessionKey: t.session_key } : {}),
-          ...(t.routine_id ? { routineId: t.routine_id } : {}),
-          ...(t.agent ? { agent: t.agent } : {}),
-          ...(t.worktree_path ? { worktreePath: t.worktree_path } : {}),
-        },
-      };
-    }),
+    () =>
+      (rawItems ?? []).map((t) => {
+        const mode = agentModes?.find((m) => m.id === t.agent);
+        return {
+          id: t.id,
+          title: t.title,
+          description: t.description,
+          status: t.status,
+          updatedAt: t.updated_at ?? new Date().toISOString(),
+          group: agent.name,
+          tags: mode ? [mode.name] : t.routine_id ? ["Routine"] : undefined,
+          metadata: {
+            ...(t.session_key ? { sessionKey: t.session_key } : {}),
+            ...(t.routine_id ? { routineId: t.routine_id } : {}),
+            ...(t.agent ? { agent: t.agent } : {}),
+            ...(t.worktree_path ? { worktreePath: t.worktree_path } : {}),
+          },
+        };
+      }),
     [agent.name, agentModes, rawItems],
   );
 
@@ -183,12 +200,9 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     }
     return out;
   }, [rawDrafts]);
-  const handleDraftChange = useCallback(
-    (sessionKey: string, text: string) => {
-      useDraftStore.getState().setDraftText(sessionKey, text);
-    },
-    [],
-  );
+  const handleDraftChange = useCallback((sessionKey: string, text: string) => {
+    useDraftStore.getState().setDraftText(sessionKey, text);
+  }, []);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
   const setFeed = useFeedStore((s) => s.setFeed);
   const handleHistoryLoaded = useCallback(
@@ -312,7 +326,8 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     if (!rawItems) return;
     if (missionSearch.hasQuery) return;
     if (rawItems.length > 0) {
-      if (emptyAutoOpenKeyRef.current === path) emptyAutoOpenKeyRef.current = null;
+      if (emptyAutoOpenKeyRef.current === path)
+        emptyAutoOpenKeyRef.current = null;
       return;
     }
     if (!newPanelOpenerReady || missionPanelOpen || selectedId) return;
@@ -409,7 +424,10 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
 
   const handleApprove = useCallback(
     async (item: KanbanItem) => {
-      await updateActivity.mutateAsync({ activityId: item.id, update: { status: "done" } });
+      await updateActivity.mutateAsync({
+        activityId: item.id,
+        update: { status: "done" },
+      });
     },
     [updateActivity],
   );
@@ -433,20 +451,25 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
             tauriShell.run(worktreePath, installCmd).catch(console.error);
           }
         }
-      } catch { /* config may not exist yet */ }
+      } catch {
+        /* config may not exist yet */
+      }
 
       // Single source of truth for activity creation + session start. The
       // buildPrompt callback fires after the activity row exists so we can
       // scope attachments to `activity-{id}` and decorate the prompt with
       // their absolute paths in one pass.
-      const visible = formatVisibleMessageText(
-        text,
-        files,
-        (names) => t("chat:queue.attached", { names }),
+      const visible = formatVisibleMessageText(text, files, (names) =>
+        t("chat:queue.attached", { names }),
       );
       let userMessage = text;
       const { conversationId, sessionKey } = await createMission(
-        { id: agent.id, name: agent.name, color: agent.color, folderPath: path },
+        {
+          id: agent.id,
+          name: agent.name,
+          color: agent.color,
+          folderPath: path,
+        },
         text,
         {
           agentMode,
@@ -459,21 +482,41 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           modelOverride: effectiveModel,
           titleText: visible,
           buildPrompt: async (activityId) => {
-            const saved = await tauriAttachments.save(`activity-${activityId}`, files);
+            const saved = await tauriAttachments.save(
+              `activity-${activityId}`,
+              files,
+            );
             userMessage = buildAttachmentPrompt(text, files, saved);
             return userMessage;
           },
         },
       );
-      pushFeedItem(path, sessionKey, { feed_type: "user_message", data: userMessage });
+      pushFeedItem(path, sessionKey, {
+        feed_type: "user_message",
+        data: userMessage,
+      });
       setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       setPendingAgentMode(null);
       // createMission bypassed useCreateActivity so invalidate manually.
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
-      analytics.track("mission_created", { agent_mode: agentMode ?? "default" });
+      analytics.track("mission_created", {
+        agent_mode: agentMode ?? "default",
+      });
       return conversationId;
     },
-    [path, agent.id, agent.name, agent.color, pushFeedItem, pendingAgentMode, agentModes, effectiveProvider, effectiveModel, queryClient, t],
+    [
+      path,
+      agent.id,
+      agent.name,
+      agent.color,
+      pushFeedItem,
+      pendingAgentMode,
+      agentModes,
+      effectiveProvider,
+      effectiveModel,
+      queryClient,
+      t,
+    ],
   );
 
   // Derive the session key for an activity, using custom key if set by routine runner
@@ -513,7 +556,10 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
         });
-        pushFeedItem(path, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(path, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
@@ -524,7 +570,15 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
         throw err;
       }
     },
-    [path, pushFeedItem, rawItems, agentModes, effectiveProvider, effectiveModel, t],
+    [
+      path,
+      pushFeedItem,
+      rawItems,
+      agentModes,
+      effectiveProvider,
+      effectiveModel,
+      t,
+    ],
   );
 
   const selectedSessionActive = selectedSessionKey
@@ -553,18 +607,32 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     },
     [selectedSessionKey, messageQueue.sendOrQueue, sendMessageNow],
   );
-  const handleComposerSubmit = useCallback<NonNullable<typeof panel.onComposerSubmit>>(
+  const handleComposerSubmit = useCallback<
+    NonNullable<typeof panel.onComposerSubmit>
+  >(
     async (ctx) => {
-      if (ctx.sessionKey && ctx.sessionKey === selectedSessionKey && selectedSessionActive) {
+      if (
+        ctx.sessionKey &&
+        ctx.sessionKey === selectedSessionKey &&
+        selectedSessionActive
+      ) {
         messageQueue.queueMessage(ctx.text, ctx.files);
         return true;
       }
       return (await panel.onComposerSubmit?.(ctx)) ?? false;
     },
-    [selectedSessionKey, selectedSessionActive, messageQueue.queueMessage, panel.onComposerSubmit],
+    [
+      selectedSessionKey,
+      selectedSessionActive,
+      messageQueue.queueMessage,
+      panel.onComposerSubmit,
+    ],
   );
   const queuedMessages = useMemo(
-    () => selectedSessionKey ? { [selectedSessionKey]: messageQueue.queuedMessages } : {},
+    () =>
+      selectedSessionKey
+        ? { [selectedSessionKey]: messageQueue.queuedMessages }
+        : {},
     [selectedSessionKey, messageQueue.queuedMessages],
   );
 
@@ -576,8 +644,10 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
       try {
         const cfg = await tauriConfig.read(path);
         devCmd = cfg.devCommand as string | undefined;
-      } catch { /* ignore */ }
-      const terminal = await tauriPreferences.get("terminal") ?? undefined;
+      } catch {
+        /* ignore */
+      }
+      const terminal = (await tauriPreferences.get("terminal")) ?? undefined;
       tauriTerminal.open(wtPath, devCmd, terminal).catch(console.error);
     },
     [path],
@@ -589,7 +659,10 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
       if (!wtPath) return undefined;
       return (
         <button
-          onClick={(e) => { e.stopPropagation(); handleRunInTerminal(item); }}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleRunInTerminal(item);
+          }}
           className="flex items-center gap-0.5 h-5 px-1.5 rounded-full bg-secondary text-foreground text-[10px] font-medium hover:bg-accent transition-colors duration-200"
           title={t("cardActions.openTerminal")}
         >
@@ -671,12 +744,16 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           onDelete={handleDelete}
           onApprove={handleApprove}
           onRename={(item, newTitle) => {
-            tauriActivity.update(path, item.id, { title: newTitle }).catch(console.error);
+            tauriActivity
+              .update(path, item.id, { title: newTitle })
+              .catch(console.error);
           }}
           onCreateConversation={handleCreateConversation}
           onSendMessage={handleSendMessage}
           queuedMessages={queuedMessages}
-          onRemoveQueuedMessage={(_, id) => messageQueue.removeQueuedMessage(id)}
+          onRemoveQueuedMessage={(_, id) =>
+            messageQueue.removeQueuedMessage(id)
+          }
           queuedLabels={queuedLabels}
           onLoadHistory={loadHistory}
           onHistoryLoaded={handleHistoryLoaded}
@@ -705,7 +782,9 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           panelAvatar={
             <AgentPanelAvatar
               color={agent.color}
-              running={(rawItems ?? []).some((a) => a.id === selectedId && a.status === "running")}
+              running={(rawItems ?? []).some(
+                (a) => a.id === selectedId && a.status === "running",
+              )}
             />
           }
           cardLabels={cardLabels}

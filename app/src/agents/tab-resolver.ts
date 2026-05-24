@@ -69,10 +69,14 @@ export function resolveTabComponent(
           (window as any).__houston_bundle__ = undefined;
           if (!exports) throw new Error("Bundle did not register exports");
           const Component = exports[componentName];
-          if (!Component) throw new Error(`Bundle does not export "${componentName}"`);
+          if (!Component)
+            throw new Error(`Bundle does not export "${componentName}"`);
           return { default: Component };
         } catch (err) {
-          console.error(`[tab-resolver] Failed to load custom tab "${componentName}":`, err);
+          console.error(
+            `[tab-resolver] Failed to load custom tab "${componentName}":`,
+            err,
+          );
           return { default: BundleError as ComponentType<any> };
         }
       });
@@ -87,17 +91,37 @@ export function resolveTabComponent(
 
 /** Shown when a custom tab's bundle.js is missing or fails to load. */
 function BundleError() {
-  return React.createElement("div", {
-    style: {
-      display: "flex", flexDirection: "column" as const, alignItems: "center",
-      justifyContent: "center", height: "100%", gap: 8, padding: 32,
+  return React.createElement(
+    "div",
+    {
+      style: {
+        display: "flex",
+        flexDirection: "column" as const,
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+        gap: 8,
+        padding: 32,
+      },
     },
-  },
-    React.createElement("p", {
-      style: { fontSize: 20, fontWeight: 600, color: "#0d0d0d" },
-    }, "Custom tab unavailable"),
-    React.createElement("p", {
-      style: { fontSize: 14, color: "#676767", textAlign: "center" as const, maxWidth: 400 },
-    }, "This agent has a custom component but its bundle.js is missing or failed to load. Reinstall the agent or check the agent repo."),
+    React.createElement(
+      "p",
+      {
+        style: { fontSize: 20, fontWeight: 600, color: "#0d0d0d" },
+      },
+      "Custom tab unavailable",
+    ),
+    React.createElement(
+      "p",
+      {
+        style: {
+          fontSize: 14,
+          color: "#676767",
+          textAlign: "center" as const,
+          maxWidth: 400,
+        },
+      },
+      "This agent has a custom component but its bundle.js is missing or failed to load. Reinstall the agent or check the agent repo.",
+    ),
   );
 }

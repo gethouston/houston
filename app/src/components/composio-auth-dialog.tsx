@@ -1,6 +1,10 @@
 import { useTranslation } from "react-i18next";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from "@houston-ai/core";
 import { Loader2, ExternalLink } from "lucide-react";
 import type { ComposioAuthState } from "../hooks/use-composio-auth";
@@ -32,9 +36,7 @@ export function ComposioAuthDialog({
       <DialogContent showCloseButton className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("authDialog.title")}</DialogTitle>
-          <DialogDescription>
-            {t("authDialog.description")}
-          </DialogDescription>
+          <DialogDescription>{t("authDialog.description")}</DialogDescription>
         </DialogHeader>
 
         {state.phase === "waiting" && (

@@ -1,26 +1,26 @@
-import { AnimatePresence, motion } from "framer-motion"
-import { Plus } from "lucide-react"
-import type { KanbanItem } from "./types"
-import { KanbanCard, type KanbanCardLabels } from "./kanban-card"
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus } from "lucide-react";
+import type { KanbanItem } from "./types";
+import { KanbanCard, type KanbanCardLabels } from "./kanban-card";
 
 export interface KanbanColumnProps {
-  label: string
-  items: KanbanItem[]
-  selectedId?: string | null
-  highlightedId?: string | null
-  onAdd?: () => void
-  addLabel?: string
-  onSelect: (item: KanbanItem) => void
-  onDelete?: (item: KanbanItem) => void
-  onApprove?: (item: KanbanItem) => void
-  onRename?: (item: KanbanItem, newTitle: string) => void
-  runningStatuses?: string[]
-  approveStatuses?: string[]
-  errorStatuses?: string[]
-  renderCard?: (item: KanbanItem) => React.ReactNode
-  actions?: (item: KanbanItem) => React.ReactNode
-  avatar?: React.ReactNode
-  cardLabels?: KanbanCardLabels
+  label: string;
+  items: KanbanItem[];
+  selectedId?: string | null;
+  highlightedId?: string | null;
+  onAdd?: () => void;
+  addLabel?: string;
+  onSelect: (item: KanbanItem) => void;
+  onDelete?: (item: KanbanItem) => void;
+  onApprove?: (item: KanbanItem) => void;
+  onRename?: (item: KanbanItem, newTitle: string) => void;
+  runningStatuses?: string[];
+  approveStatuses?: string[];
+  errorStatuses?: string[];
+  renderCard?: (item: KanbanItem) => React.ReactNode;
+  actions?: (item: KanbanItem) => React.ReactNode;
+  avatar?: React.ReactNode;
+  cardLabels?: KanbanCardLabels;
 }
 
 export function KanbanColumn({
@@ -79,7 +79,9 @@ export function KanbanColumn({
                   onSelect={() => onSelect(item)}
                   onDelete={onDelete ? () => onDelete(item) : undefined}
                   onApprove={onApprove ? () => onApprove(item) : undefined}
-                  onRename={onRename ? (title) => onRename(item, title) : undefined}
+                  onRename={
+                    onRename ? (title) => onRename(item, title) : undefined
+                  }
                   runningStatuses={runningStatuses}
                   approveStatuses={approveStatuses}
                   errorStatuses={errorStatuses}
@@ -104,5 +106,5 @@ export function KanbanColumn({
         )}
       </div>
     </div>
-  )
+  );
 }

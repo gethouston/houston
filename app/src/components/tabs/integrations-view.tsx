@@ -65,7 +65,10 @@ export function IntegrationsView({ title }: IntegrationsViewProps) {
         {loading && <LoadingState />}
 
         {!loading && result?.status === "not_installed" && (
-          <NotInstalledState onInstall={handleInstall} installing={installing} />
+          <NotInstalledState
+            onInstall={handleInstall}
+            installing={installing}
+          />
         )}
 
         {!loading && result?.status === "needs_auth" && (

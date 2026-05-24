@@ -39,10 +39,7 @@ export function useMissionControl(agents: Agent[]) {
   const [loading, setLoading] = useState<Record<string, boolean>>({});
   const pathMapRef = useRef<Record<string, string>>({});
 
-  const paths = useMemo(
-    () => agents.map((a) => a.folderPath),
-    [agents],
-  );
+  const paths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
 
   const { data: convos, isFetched } = useAllConversations(paths);
 
@@ -64,7 +61,9 @@ export function useMissionControl(agents: Agent[]) {
           title: c.title,
           description: c.description,
           group: c.agent_name,
-          icon: createElement(AgentCardAvatar, { color: agentColorMap[c.agent_path] }),
+          icon: createElement(AgentCardAvatar, {
+            color: agentColorMap[c.agent_path],
+          }),
           status: c.status!,
           updatedAt: c.updated_at ?? new Date().toISOString(),
           metadata: { agentPath: c.agent_path, sessionKey: c.session_key },
@@ -97,14 +96,11 @@ export function useMissionControl(agents: Agent[]) {
     [selectedId],
   );
 
-  const handleApprove = useCallback(
-    async (item: KanbanItem) => {
-      const agentPath = pathMapRef.current[item.id];
-      if (!agentPath) return;
-      await tauriActivity.update(agentPath, item.id, { status: "done" });
-    },
-    [],
-  );
+  const handleApprove = useCallback(async (item: KanbanItem) => {
+    const agentPath = pathMapRef.current[item.id];
+    if (!agentPath) return;
+    await tauriActivity.update(agentPath, item.id, { status: "done" });
+  }, []);
 
   const handleRename = useCallback(
     async (item: KanbanItem, newTitle: string) => {
@@ -126,7 +122,8 @@ export function useMissionControl(agents: Agent[]) {
       const activityId = sessionKey.replace("activity-", "");
       const agentPath = pathMapRef.current[activityId];
       if (!agentPath) return;
-      const current = useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
+      const current =
+        useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
       // Server history is authoritative for what's persisted; anything
       // currently in `current` that isn't on the server is either an
       // optimistic overlay we pushed or a WS event that landed
@@ -144,10 +141,16 @@ export function useMissionControl(agents: Agent[]) {
       const agentPath = pathMapRef.current[activityId];
       if (!agentPath) return;
       try {
-        const paths = await tauriAttachments.save(`activity-${activityId}`, files);
+        const paths = await tauriAttachments.save(
+          `activity-${activityId}`,
+          files,
+        );
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey);
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
@@ -166,7 +169,10 @@ export function useMissionControl(agents: Agent[]) {
       const title = text.length > 80 ? text.slice(0, 77) + "..." : text;
       const item = await tauriActivity.create(agentPath, title, text);
       const sessionKey = `activity-${item.id}`;
-      pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: text });
+      pushFeedItem(agentPath, sessionKey, {
+        feed_type: "user_message",
+        data: text,
+      });
       setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       await tauriActivity.update(agentPath, item.id, { status: "running" });
       tauriChat.send(agentPath, text, sessionKey);
@@ -189,7 +195,9 @@ export function useMissionControl(agents: Agent[]) {
       }
     }
     for (const item of items) {
-      const sessionKey = (item.metadata?.sessionKey as string | undefined) ?? `activity-${item.id}`;
+      const sessionKey =
+        (item.metadata?.sessionKey as string | undefined) ??
+        `activity-${item.id}`;
       const agentPath = pathMapRef.current[item.id];
       const status = agentPath
         ? sessionStatuses[getSessionStatusKey(agentPath, sessionKey)]

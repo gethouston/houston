@@ -1,7 +1,10 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogTitle } from "@houston-ai/core";
-import type { SuggestedIntegration, SuggestedRoutine } from "@houston-ai/engine-client";
+import type {
+  SuggestedIntegration,
+  SuggestedRoutine,
+} from "@houston-ai/engine-client";
 import { tauriAgents, tauriProvider } from "../../lib/tauri";
 import { AgentSetupForm, type AgentSetupFormValues } from "./agent-setup-form";
 import { AiStepFooter } from "./ai-step-footer";
@@ -81,7 +84,9 @@ export function AiAssistStep({
       const body = result.instructions;
       const instructions = body.trimStart().startsWith("# ")
         ? body
-        : name ? `# ${name}\n\n${body}` : body;
+        : name
+          ? `# ${name}\n\n${body}`
+          : body;
       onContinue(
         instructions,
         name,
@@ -104,8 +109,12 @@ export function AiAssistStep({
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-6">
         <div className="max-w-2xl mx-auto space-y-6">
           <div>
-            <h2 className="text-base font-semibold">{t("aiAssist.stepTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("aiAssist.cardDescription")}</p>
+            <h2 className="text-base font-semibold">
+              {t("aiAssist.stepTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("aiAssist.cardDescription")}
+            </p>
           </div>
 
           <div className="space-y-1.5">
@@ -119,13 +128,23 @@ export function AiAssistStep({
             />
           </div>
 
-          <AgentSetupForm values={form} onChange={setForm} disabled={generating} />
+          <AgentSetupForm
+            values={form}
+            onChange={setForm}
+            disabled={generating}
+          />
 
           {error && !generating && (
             <div className="rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 space-y-1">
-              <p className="text-sm font-medium text-destructive">{t("aiAssist.errorTitle")}</p>
-              <p className="text-xs text-muted-foreground">{t("aiAssist.errorDescription")}</p>
-              <p className="text-xs font-mono text-muted-foreground/80 break-words whitespace-pre-wrap">{error}</p>
+              <p className="text-sm font-medium text-destructive">
+                {t("aiAssist.errorTitle")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("aiAssist.errorDescription")}
+              </p>
+              <p className="text-xs font-mono text-muted-foreground/80 break-words whitespace-pre-wrap">
+                {error}
+              </p>
             </div>
           )}
         </div>
@@ -133,7 +152,11 @@ export function AiAssistStep({
 
       <AiStepFooter
         onBack={onBack}
-        primaryLabel={generating ? t("aiAssist.generatingMessage") : t("aiAssist.generateButton")}
+        primaryLabel={
+          generating
+            ? t("aiAssist.generatingMessage")
+            : t("aiAssist.generateButton")
+        }
         onPrimary={handleGenerate}
         primaryDisabled={!canGenerate}
         primaryLoading={generating}

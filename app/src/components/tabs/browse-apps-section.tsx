@@ -11,7 +11,9 @@ interface BrowseAppsSectionProps {
 
 const PAGE_SIZE = 100;
 
-export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps) {
+export function BrowseAppsSection({
+  connectedToolkits,
+}: BrowseAppsSectionProps) {
   const { t } = useTranslation("integrations");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
@@ -49,13 +51,9 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
   }, [catalog]);
 
   const available = useMemo(() => {
-    let filtered = catalog.filter(
-      (app) => !connectedToolkits.has(app.toolkit),
-    );
+    let filtered = catalog.filter((app) => !connectedToolkits.has(app.toolkit));
     if (category !== "all") {
-      filtered = filtered.filter((app) =>
-        app.categories.includes(category),
-      );
+      filtered = filtered.filter((app) => app.categories.includes(category));
     }
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -124,7 +122,8 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
               <option value="all">{t("browse.allCategories")}</option>
               {categories.map((cat) => (
                 <option key={cat} value={cat}>
-                  {cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, " ")}
+                  {cat.charAt(0).toUpperCase() +
+                    cat.slice(1).replace(/-/g, " ")}
                 </option>
               ))}
             </select>
@@ -157,7 +156,9 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
                 onClick={() => setVisible((v) => v + PAGE_SIZE)}
                 className="inline-flex items-center gap-1 h-8 px-4 rounded-full border border-border bg-background text-foreground text-xs font-medium hover:bg-secondary transition-colors duration-200"
               >
-                {t("browse.loadMoreWithRemaining", { count: available.length - visible })}
+                {t("browse.loadMoreWithRemaining", {
+                  count: available.length - visible,
+                })}
               </button>
             </div>
           )}

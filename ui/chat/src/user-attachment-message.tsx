@@ -1,5 +1,8 @@
 import { Paperclip } from "lucide-react";
-import type { AttachmentInvocation, AttachmentReference } from "./attachment-message";
+import type {
+  AttachmentInvocation,
+  AttachmentReference,
+} from "./attachment-message";
 
 export interface UserAttachmentMessageLabels {
   attachmentCount?: (count: number) => string;
@@ -42,8 +45,13 @@ export function UserAttachmentBadge({
       className="inline-flex max-w-full items-center gap-2 rounded-full border border-border/50 bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm"
       title={files.map((file) => file.name).join(", ")}
     >
-      <Paperclip className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="truncate">{attachmentCountLabel(files.length, labels)}</span>
+      <Paperclip
+        className="size-3.5 shrink-0 text-muted-foreground"
+        aria-hidden
+      />
+      <span className="truncate">
+        {attachmentCountLabel(files.length, labels)}
+      </span>
     </div>
   );
 }

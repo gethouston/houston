@@ -258,9 +258,7 @@ export function SkillMission({
                     <button
                       type="button"
                       onClick={() =>
-                        void handlePick(
-                          t("setup:tutorial.missions.skill.chip"),
-                        )
+                        void handlePick(t("setup:tutorial.missions.skill.chip"))
                       }
                       disabled={pickedAny}
                       className={cn(

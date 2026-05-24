@@ -20,7 +20,10 @@ import type { FeedItem } from "./types";
  * then sits silent for 10-20s before bursting the entire response in
  * one batch). The indicator is the only signal during those stretches.
  */
-export function deriveStatus(items: FeedItem[], isLoading: boolean): ChatStatus {
+export function deriveStatus(
+  items: FeedItem[],
+  isLoading: boolean,
+): ChatStatus {
   const last = items[items.length - 1];
   if (
     last?.feed_type === "assistant_text_streaming" ||

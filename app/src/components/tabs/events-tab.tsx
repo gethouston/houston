@@ -14,9 +14,7 @@ export default function EventsTab(_props: TabProps) {
       <Empty className="border-0">
         <EmptyHeader>
           <EmptyTitle>{t("comingSoon.title")}</EmptyTitle>
-          <EmptyDescription>
-            {t("comingSoon.description")}
-          </EmptyDescription>
+          <EmptyDescription>{t("comingSoon.description")}</EmptyDescription>
         </EmptyHeader>
       </Empty>
     </div>

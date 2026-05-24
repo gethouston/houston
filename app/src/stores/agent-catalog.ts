@@ -28,9 +28,7 @@ export const useAgentCatalogStore = create<AgentCatalogState>((set, get) => ({
     const refreshInstalledConfigs = async () => {
       const agents = await loadAllConfigs();
       const installedIds = new Set(
-        agents
-          .filter((a) => a.source === "installed")
-          .map((a) => a.config.id),
+        agents.filter((a) => a.source === "installed").map((a) => a.config.id),
       );
       set({ agents, installedIds });
     };

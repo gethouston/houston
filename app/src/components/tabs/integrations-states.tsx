@@ -2,7 +2,10 @@ import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ExternalLink, Download, Loader2 } from "lucide-react";
 import {
-  Empty, EmptyHeader, EmptyTitle, EmptyDescription,
+  Empty,
+  EmptyHeader,
+  EmptyTitle,
+  EmptyDescription,
 } from "@houston-ai/core";
 import { HoustonLogo } from "../shell/experience-card";
 
@@ -23,9 +26,7 @@ export function LoadingState() {
       <HoustonLogo size={48} className="mb-2 animate-pulse" />
       <EmptyHeader>
         <EmptyTitle>{t("loading.title")}</EmptyTitle>
-        <EmptyDescription>
-          {t("loading.body")}
-        </EmptyDescription>
+        <EmptyDescription>{t("loading.body")}</EmptyDescription>
       </EmptyHeader>
       <div className="w-48 h-[2px] rounded-full bg-black/10 overflow-hidden">
         <div
@@ -55,9 +56,7 @@ export function NotInstalledState({
     <Empty className="border-0">
       <EmptyHeader>
         <EmptyTitle>{t("notInstalled.title")}</EmptyTitle>
-        <EmptyDescription>
-          {t("notInstalled.body")}
-        </EmptyDescription>
+        <EmptyDescription>{t("notInstalled.body")}</EmptyDescription>
       </EmptyHeader>
       <button
         onClick={onInstall}
@@ -86,9 +85,7 @@ export function NeedsAuthState({ onAuth }: { onAuth: () => void }) {
     <Empty className="border-0">
       <EmptyHeader>
         <EmptyTitle>{t("needsAuth.title")}</EmptyTitle>
-        <EmptyDescription>
-          {t("needsAuth.body")}
-        </EmptyDescription>
+        <EmptyDescription>{t("needsAuth.body")}</EmptyDescription>
       </EmptyHeader>
       <button
         onClick={onAuth}

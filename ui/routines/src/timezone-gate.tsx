@@ -5,15 +5,15 @@
  * because picking wrong leads to "why did this fire at 3am?" tickets. We
  * pre-select the browser-detected zone but require an explicit confirmation.
  */
-import { useMemo, useState } from "react"
-import { cn, Button } from "@houston-ai/core"
-import { Globe } from "lucide-react"
+import { useMemo, useState } from "react";
+import { cn, Button } from "@houston-ai/core";
+import { Globe } from "lucide-react";
 
 export interface TimezoneGateProps {
   /** Browser-detected IANA zone, used as the default selection. */
-  detected: string
+  detected: string;
   /** Persist the chosen zone. Resolves once the engine has acknowledged. */
-  onConfirm: (tz: string) => Promise<void> | void
+  onConfirm: (tz: string) => Promise<void> | void;
 }
 
 const COMMON_TIMEZONES = [
@@ -35,18 +35,18 @@ const COMMON_TIMEZONES = [
   "Asia/Singapore",
   "Asia/Tokyo",
   "Australia/Sydney",
-]
+];
 
 function listTimezones(): string[] {
   try {
     const supported = (
       Intl as { supportedValuesOf?: (k: string) => string[] }
-    ).supportedValuesOf?.("timeZone")
-    if (supported && supported.length) return supported
+    ).supportedValuesOf?.("timeZone");
+    if (supported && supported.length) return supported;
   } catch {
     // fall through
   }
-  return COMMON_TIMEZONES
+  return COMMON_TIMEZONES;
 }
 
 const fieldClass = cn(
@@ -54,45 +54,42 @@ const fieldClass = cn(
   "text-foreground transition-colors duration-200",
   "focus:outline-none focus:border-foreground/40",
   "appearance-none cursor-pointer pl-9",
-)
+);
 
 function formatOffset(tz: string): string {
   try {
     const fmt = new Intl.DateTimeFormat("en-US", {
       timeZone: tz,
       timeZoneName: "shortOffset",
-    })
-    const parts = fmt.formatToParts(new Date())
-    const offset = parts.find((p) => p.type === "timeZoneName")?.value
-    return offset ?? ""
+    });
+    const parts = fmt.formatToParts(new Date());
+    const offset = parts.find((p) => p.type === "timeZoneName")?.value;
+    return offset ?? "";
   } catch {
-    return ""
+    return "";
   }
 }
 
 export function TimezoneGate({ detected, onConfirm }: TimezoneGateProps) {
-  const [selected, setSelected] = useState(detected)
-  const [saving, setSaving] = useState(false)
-  const timezones = useMemo(listTimezones, [])
-  const offset = useMemo(() => formatOffset(selected), [selected])
+  const [selected, setSelected] = useState(detected);
+  const [saving, setSaving] = useState(false);
+  const timezones = useMemo(listTimezones, []);
+  const offset = useMemo(() => formatOffset(selected), [selected]);
 
   const handleConfirm = async () => {
-    if (!selected) return
-    setSaving(true)
+    if (!selected) return;
+    setSaving(true);
     try {
-      await onConfirm(selected)
+      await onConfirm(selected);
     } finally {
-      setSaving(false)
+      setSaving(false);
     }
-  }
+  };
 
   return (
     <div className="flex-1 flex items-center justify-center bg-background px-6">
       <div
-        className={cn(
-          "w-full max-w-md rounded-xl bg-secondary",
-          "px-7 py-8",
-        )}
+        className={cn("w-full max-w-md rounded-xl bg-secondary", "px-7 py-8")}
       >
         {/* Hero glyph */}
         <div className="flex items-center justify-center mb-5">
@@ -152,5 +149,5 @@ export function TimezoneGate({ detected, onConfirm }: TimezoneGateProps) {
         </div>
       </div>
     </div>
-  )
+  );
 }

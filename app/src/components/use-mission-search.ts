@@ -25,7 +25,9 @@ export function useMissionSearch({
   loadHistory,
   onHistoryLoadError,
 }: UseMissionSearchOptions) {
-  const [historyTextById, setHistoryTextById] = useState<Record<string, string>>({});
+  const [historyTextById, setHistoryTextById] = useState<
+    Record<string, string>
+  >({});
   const [pendingCount, setPendingCount] = useState(0);
   const loadingIdsRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
@@ -45,7 +47,9 @@ export function useMissionSearch({
   useEffect(() => {
     if (!normalizedQuery || result.mode === "title") return;
     const missing = items.filter(
-      (item) => historyTextById[item.id] === undefined && !loadingIdsRef.current.has(item.id),
+      (item) =>
+        historyTextById[item.id] === undefined &&
+        !loadingIdsRef.current.has(item.id),
     );
     if (missing.length === 0) return;
 
@@ -84,7 +88,14 @@ export function useMissionSearch({
           setPendingCount((count) => Math.max(0, count - missing.length));
         }
       });
-  }, [historyTextById, items, loadHistory, normalizedQuery, onHistoryLoadError, result.mode]);
+  }, [
+    historyTextById,
+    items,
+    loadHistory,
+    normalizedQuery,
+    onHistoryLoadError,
+    result.mode,
+  ]);
 
   return {
     items: result.items,

@@ -1,7 +1,12 @@
 import { useTranslation } from "react-i18next";
 import { FilesBrowser } from "@houston-ai/agent";
 import { FolderOpen } from "lucide-react";
-import { useFiles, useDeleteFile, useRenameFile, useCreateFolder } from "../../hooks/queries";
+import {
+  useFiles,
+  useDeleteFile,
+  useRenameFile,
+  useCreateFolder,
+} from "../../hooks/queries";
 import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 
@@ -35,7 +40,9 @@ export default function FilesTab({ agent }: TabProps) {
         onOpen={(file) => tauriFiles.open(path, file.path)}
         onReveal={(file) => tauriFiles.reveal(path, file.path)}
         onDelete={(file) => deleteFile.mutate(file.path)}
-        onRename={(file, newName) => renameFile.mutate({ relativePath: file.path, newName })}
+        onRename={(file, newName) =>
+          renameFile.mutate({ relativePath: file.path, newName })
+        }
         onCreateFolder={(name) => createFolder.mutate(name)}
         emptyTitle={t("files.emptyTitle")}
         emptyDescription={t("files.emptyDescription")}

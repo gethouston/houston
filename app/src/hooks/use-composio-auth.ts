@@ -55,7 +55,9 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       // 1. Get the login URL from the backend.
       logger.info("[composio-auth] calling startOAuth...");
       const { login_url, cli_key } = await tauriConnections.startOAuth();
-      logger.info(`[composio-auth] startOAuth returned: url=${login_url} key=${cli_key}`);
+      logger.info(
+        `[composio-auth] startOAuth returned: url=${login_url} key=${cli_key}`,
+      );
 
       // 2. ALWAYS surface the URL and open the browser — no stale-gen
       //    check here. Even if the component re-rendered during the
@@ -78,7 +80,9 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       await tauriConnections.completeLogin(cli_key);
       logger.info("[composio-auth] completeLogin resolved OK");
       if (!mountedRef.current || genRef.current !== myGen) {
-        logger.info("[composio-auth] stale gen after completeLogin, not updating state");
+        logger.info(
+          "[composio-auth] stale gen after completeLogin, not updating state",
+        );
         return;
       }
 

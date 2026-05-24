@@ -98,7 +98,9 @@ export function isSupported(value: unknown): value is SupportedLocale {
 }
 
 /** Normalize a BCP-47 tag (`pt-BR`) to a supported locale (`pt`), or null. */
-export function normalizeLocale(value: string | null | undefined): SupportedLocale | null {
+export function normalizeLocale(
+  value: string | null | undefined,
+): SupportedLocale | null {
   if (!value) return null;
   const base = value.toLowerCase().split(/[-_]/)[0];
   return isSupported(base) ? base : null;

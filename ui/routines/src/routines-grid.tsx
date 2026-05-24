@@ -10,10 +10,10 @@ import {
   EmptyTitle,
   EmptyDescription,
   Button,
-} from "@houston-ai/core"
-import { Plus } from "lucide-react"
-import type { Routine, RoutineRun } from "./types"
-import { RoutineRow } from "./routine-row"
+} from "@houston-ai/core";
+import { Plus } from "lucide-react";
+import type { Routine, RoutineRun } from "./types";
+import { RoutineRow } from "./routine-row";
 
 /**
  * Optional translated labels. English defaults so existing callers still
@@ -21,11 +21,11 @@ import { RoutineRow } from "./routine-row"
  * i18n-agnostic per the library-boundary rule.
  */
 export interface RoutinesGridLabels {
-  loading?: string
-  emptyTitle?: string
-  emptyDescription?: string
-  descriptionShort?: string
-  newRoutine?: string
+  loading?: string;
+  emptyTitle?: string;
+  emptyDescription?: string;
+  descriptionShort?: string;
+  newRoutine?: string;
 }
 
 const DEFAULT_LABELS: Required<RoutinesGridLabels> = {
@@ -36,19 +36,19 @@ const DEFAULT_LABELS: Required<RoutinesGridLabels> = {
   descriptionShort:
     "Recurring tasks that fire on schedule and only ping you when something needs attention.",
   newRoutine: "New routine",
-}
+};
 
 export interface RoutinesGridProps {
-  routines: Routine[]
+  routines: Routine[];
   /** Most recent run per routine, keyed by routine ID. */
-  lastRuns?: Record<string, RoutineRun>
+  lastRuns?: Record<string, RoutineRun>;
   /** Account-default IANA timezone — passed to rows for "next run" preview. */
-  accountTimezone: string
-  loading?: boolean
-  onSelect: (routineId: string) => void
-  onCreate?: () => void
-  onToggle?: (routineId: string, enabled: boolean) => void
-  labels?: RoutinesGridLabels
+  accountTimezone: string;
+  loading?: boolean;
+  onSelect: (routineId: string) => void;
+  onCreate?: () => void;
+  onToggle?: (routineId: string, enabled: boolean) => void;
+  labels?: RoutinesGridLabels;
 }
 
 export function RoutinesGrid({
@@ -61,12 +61,12 @@ export function RoutinesGrid({
   onToggle,
   labels,
 }: RoutinesGridProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
+  const l = { ...DEFAULT_LABELS, ...labels };
   // Sort: enabled first, then alphabetical
   const sorted = [...routines].sort((a, b) => {
-    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
-    return a.name.localeCompare(b.name)
-  })
+    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
 
   if (loading && routines.length === 0) {
     return (
@@ -75,7 +75,7 @@ export function RoutinesGrid({
           {l.loading}
         </p>
       </div>
-    )
+    );
   }
 
   if (sorted.length === 0) {
@@ -84,9 +84,7 @@ export function RoutinesGrid({
         <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
           <EmptyHeader>
             <EmptyTitle>{l.emptyTitle}</EmptyTitle>
-            <EmptyDescription>
-              {l.emptyDescription}
-            </EmptyDescription>
+            <EmptyDescription>{l.emptyDescription}</EmptyDescription>
           </EmptyHeader>
           {onCreate && (
             <Button onClick={onCreate}>
@@ -96,7 +94,7 @@ export function RoutinesGrid({
           )}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -130,12 +128,14 @@ export function RoutinesGrid({
               accountTimezone={accountTimezone}
               onClick={() => onSelect(routine.id)}
               onToggle={
-                onToggle ? (enabled) => onToggle(routine.id, enabled) : undefined
+                onToggle
+                  ? (enabled) => onToggle(routine.id, enabled)
+                  : undefined
               }
             />
           ))}
         </div>
       </div>
     </div>
-  )
+  );
 }

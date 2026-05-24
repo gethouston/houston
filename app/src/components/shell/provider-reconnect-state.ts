@@ -15,6 +15,8 @@ export function providerReconnectSignalState(
     : "resolved";
 }
 
-export function providerIsAuthenticated(status: ProviderReconnectStatus): boolean {
+export function providerIsAuthenticated(
+  status: ProviderReconnectStatus,
+): boolean {
   return status.cli_installed && status.auth_state === "authenticated";
 }

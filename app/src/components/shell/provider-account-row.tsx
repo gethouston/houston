@@ -60,7 +60,9 @@ export function ProviderAccountRow({
           <ProviderLogo provider={provider} />
         </div>
         <div className="flex-1 min-w-0">
-          <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
+          <p className="text-[13px] font-medium text-foreground truncate">
+            {provider.name}
+          </p>
           <p className="text-[11px] text-muted-foreground truncate">
             {connected ? t("card.connected") : provider.subtitle}
           </p>

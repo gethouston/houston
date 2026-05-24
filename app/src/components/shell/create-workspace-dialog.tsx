@@ -12,7 +12,10 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import { tauriConfig, tauriProvider, tauriRoutines } from "../../lib/tauri";
 import { logger } from "../../lib/logger";
-import type { SuggestedIntegration, SuggestedRoutine } from "@houston-ai/engine-client";
+import type {
+  SuggestedIntegration,
+  SuggestedRoutine,
+} from "@houston-ai/engine-client";
 import type { RoutineFormData } from "@houston-ai/routines";
 import type { StoreListing } from "../../lib/types";
 import { getDefaultModel } from "../../lib/providers";
@@ -23,7 +26,13 @@ import { AiReviewStep } from "./ai-review-step";
 import { AiRoutineStep } from "./ai-routine-step";
 import { AiIntegrationsStep } from "./ai-integrations-step";
 
-type Step = 1 | "ai-assist" | "ai-integrations" | "ai-routine" | "ai-review" | 2;
+type Step =
+  | 1
+  | "ai-assist"
+  | "ai-integrations"
+  | "ai-routine"
+  | "ai-review"
+  | 2;
 
 export function CreateAgentDialog() {
   const { t } = useTranslation("shell");
@@ -38,8 +47,12 @@ export function CreateAgentDialog() {
 
   const [step, setStep] = useState<Step>(1);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [generatedClaudeMd, setGeneratedClaudeMd] = useState<string | undefined>(undefined);
-  const [suggestedIntegrations, setSuggestedIntegrations] = useState<SuggestedIntegration[]>([]);
+  const [generatedClaudeMd, setGeneratedClaudeMd] = useState<
+    string | undefined
+  >(undefined);
+  const [suggestedIntegrations, setSuggestedIntegrations] = useState<
+    SuggestedIntegration[]
+  >([]);
   const [routineForm, setRoutineForm] = useState<RoutineFormData | null>(null);
   const [routineAccepted, setRoutineAccepted] = useState(false);
   // The AI suggestion the current routineForm was seeded from. Used to
@@ -147,7 +160,10 @@ export function CreateAgentDialog() {
           logger.error(`[new-agent] routine setup failed: ${e}`);
         }
       }
-      const firstTab = selectedDef?.config.defaultTab ?? selectedDef?.config.tabs[0]?.id ?? "chat";
+      const firstTab =
+        selectedDef?.config.defaultTab ??
+        selectedDef?.config.tabs[0]?.id ??
+        "chat";
       useUIStore.getState().setViewMode(firstTab);
       handleClose();
     } catch (err) {
@@ -178,7 +194,9 @@ export function CreateAgentDialog() {
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => { if (!o) handleClose(); }}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
       // Modal mode applies pointer-events:none to everything outside the
       // dialog. While the tour is on, that would block the tour's own
       // Next/Back buttons (rendered outside DialogContent). Drop modality
@@ -191,8 +209,12 @@ export function CreateAgentDialog() {
         // pointer-down outside the content. Suppress while the tour is
         // active so clicking the tour's Next button doesn't kill the
         // dialog mid-step; the tour closes it explicitly on the outro.
-        onPointerDownOutside={(e) => { if (uiTourActive) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (uiTourActive) e.preventDefault(); }}
+        onPointerDownOutside={(e) => {
+          if (uiTourActive) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (uiTourActive) e.preventDefault();
+        }}
       >
         {step === 1 ? (
           <>
@@ -227,7 +249,12 @@ export function CreateAgentDialog() {
               setModel(m);
             }}
             onBack={() => setStep(1)}
-            onContinue={(instructions, suggestedName, integrations, routine) => {
+            onContinue={(
+              instructions,
+              suggestedName,
+              integrations,
+              routine,
+            ) => {
               setGeneratedClaudeMd(instructions);
               setSuggestedIntegrations(integrations);
               // Only (re)seed the editable routine when the AI produced a
@@ -273,7 +300,11 @@ export function CreateAgentDialog() {
             accepted={routineAccepted}
             onAcceptedChange={setRoutineAccepted}
             onBack={() =>
-              setStep(suggestedIntegrations.length > 0 ? "ai-integrations" : "ai-assist")
+              setStep(
+                suggestedIntegrations.length > 0
+                  ? "ai-integrations"
+                  : "ai-assist",
+              )
             }
             onContinue={() => setStep("ai-review")}
           />
@@ -299,11 +330,16 @@ export function CreateAgentDialog() {
             existingPath={existingPath}
             provider={provider}
             model={model}
-            showLinkProject={selectedDef?.config.features?.includes("link-project")}
+            showLinkProject={selectedDef?.config.features?.includes(
+              "link-project",
+            )}
             onNameChange={setName}
             onColorChange={setColor}
             onExistingPathChange={setExistingPath}
-            onProviderChange={(p, m) => { setProvider(p); setModel(m); }}
+            onProviderChange={(p, m) => {
+              setProvider(p);
+              setModel(m);
+            }}
             onBack={() => setStep(1)}
             onSubmit={handleSubmit}
           />

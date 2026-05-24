@@ -48,9 +48,11 @@ export function useHoustonInit() {
         const agents = useAgentStore.getState().agents;
         await Promise.all(
           agents.map((a) =>
-            tauriRoutines.startScheduler(a.folderPath).catch((e) =>
-              console.error(`[init] scheduler start failed for ${a.id}:`, e),
-            ),
+            tauriRoutines
+              .startScheduler(a.folderPath)
+              .catch((e) =>
+                console.error(`[init] scheduler start failed for ${a.id}:`, e),
+              ),
           ),
         );
       }
@@ -62,7 +64,9 @@ export function useHoustonInit() {
           const saved = agents.find((a) => a.id === lastId);
           if (saved) {
             setCurrent(saved);
-            const agentDef = useAgentCatalogStore.getState().getById(saved.configId);
+            const agentDef = useAgentCatalogStore
+              .getState()
+              .getById(saved.configId);
             if (agentDef?.config.defaultTab) {
               setViewMode(agentDef.config.defaultTab);
             }
@@ -89,5 +93,12 @@ export function useHoustonInit() {
     }
 
     init();
-  }, [loadConfigs, loadWorkspaces, loadAgents, setCurrent, setClaudeAvailable, setViewMode]);
+  }, [
+    loadConfigs,
+    loadWorkspaces,
+    loadAgents,
+    setCurrent,
+    setClaudeAvailable,
+    setViewMode,
+  ]);
 }

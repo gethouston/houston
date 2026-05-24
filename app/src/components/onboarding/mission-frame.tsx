@@ -35,7 +35,9 @@ export function MissionFrame({
             <span className="text-sm font-medium">{brandLabel}</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">{counterLabel}</span>
+            <span className="text-xs text-muted-foreground">
+              {counterLabel}
+            </span>
             <ProgressDots index={meta.index} total={meta.total} />
           </div>
         </div>

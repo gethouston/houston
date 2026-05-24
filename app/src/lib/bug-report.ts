@@ -10,7 +10,9 @@ interface BugReportContext {
   appVersion: string;
 }
 
-async function getRecentLogs(lines = 50): Promise<{ backend: string; frontend: string }> {
+async function getRecentLogs(
+  lines = 50,
+): Promise<{ backend: string; frontend: string }> {
   try {
     return await osReadRecentLogs(lines);
   } catch {

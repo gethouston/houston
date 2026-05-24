@@ -4,7 +4,9 @@ import { normalizeUpdateNotes } from "./update-details.ts";
 
 test("hides generic updater notes", () => {
   assert.equal(
-    normalizeUpdateNotes("See the assets to download and install this version."),
+    normalizeUpdateNotes(
+      "See the assets to download and install this version.",
+    ),
     null,
   );
 });

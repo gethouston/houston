@@ -41,7 +41,9 @@ export function AgentSidebarColorMenu({
 
   return (
     <DropdownMenuSub>
-      <DropdownMenuSubTrigger>{t("sidebar.changeColor")}</DropdownMenuSubTrigger>
+      <DropdownMenuSubTrigger>
+        {t("sidebar.changeColor")}
+      </DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         <DropdownMenuRadioGroup
           value={agentColorValue(color)}

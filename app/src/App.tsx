@@ -72,7 +72,8 @@ export default function App() {
       const anchor = (e.target as HTMLElement).closest("a[href]");
       if (!anchor) return;
       const href = anchor.getAttribute("href");
-      if (!href || href.startsWith("#") || href.startsWith("javascript:")) return;
+      if (!href || href.startsWith("#") || href.startsWith("javascript:"))
+        return;
       e.preventDefault();
       tauriSystem.openUrl(href);
     };
@@ -115,7 +116,9 @@ export default function App() {
   if (isAuthConfigured() && sessionLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">{t("engineGate.starting")}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("engineGate.starting")}
+        </p>
       </div>
     );
   }
@@ -141,7 +144,9 @@ export default function App() {
   if (agentLoading || wsLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-background text-foreground">
-        <p className="text-muted-foreground text-sm">{t("engineGate.starting")}</p>
+        <p className="text-muted-foreground text-sm">
+          {t("engineGate.starting")}
+        </p>
       </div>
     );
   }
@@ -155,10 +160,5 @@ export default function App() {
     );
   }
 
-  return (
-    <WorkspaceShell
-      toasts={mappedToasts}
-      onDismissToast={dismissToast}
-    />
-  );
+  return <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />;
 }

@@ -143,7 +143,10 @@ export function GeminiConnectDialog({
             {t("geminiConnect.signInRecommended")}
           </p>
           {error && (
-            <p className="text-[12px] text-destructive text-center" role="alert">
+            <p
+              className="text-[12px] text-destructive text-center"
+              role="alert"
+            >
               {error}
             </p>
           )}

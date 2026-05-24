@@ -41,7 +41,8 @@ export function Dashboard() {
     approveTooltip: t("board:cardActions.approveTooltip"),
     renameTooltip: t("board:cardActions.renameTooltip"),
     deleteTooltip: t("board:cardActions.deleteTooltip"),
-    deleteTitle: (name: string) => t("board:deleteCard.titleWithName", { name }),
+    deleteTitle: (name: string) =>
+      t("board:deleteCard.titleWithName", { name }),
     deleteDescription: t("board:deleteCard.description"),
   };
   const panelContainer = useDetailPanelContainer();
@@ -67,7 +68,10 @@ export function Dashboard() {
   const openerRef = useRef<NewPanelOpener | null>(null);
   const closerRef = useRef<(() => void) | null>(null);
   const emptyAutoOpenKeyRef = useRef<string | null>(null);
-  const openNewMission = useCallback(() => setAgentPickerOpen(true), [setAgentPickerOpen]);
+  const openNewMission = useCallback(
+    () => setAgentPickerOpen(true),
+    [setAgentPickerOpen],
+  );
   useEffect(() => {
     setOnStartMission(openNewMission);
     return () => setOnStartMission(null);
@@ -87,7 +91,9 @@ export function Dashboard() {
 
   // Keyboard "highlight" — independent of the open panel. Arrow keys
   // move the ring; Enter promotes the ring to the open selection.
-  const [highlightedId, setHighlightedId] = useState<string | null>(mc.selectedId);
+  const [highlightedId, setHighlightedId] = useState<string | null>(
+    mc.selectedId,
+  );
 
   // Refs hold the latest snapshot so the navigator we register in the
   // UI store stays stable while always reading the current items,
@@ -158,11 +164,14 @@ export function Dashboard() {
   // Control: we set the pending agent so the right panel scopes its
   // actions/model/etc. to that agent, then ask AIBoard to open the
   // empty new-conversation panel.
-  const handlePickAgent = useCallback((agent: Agent, options?: { focusComposer?: boolean }) => {
-    setPendingAgent(agent);
-    setMissionControlSelectedId(null);
-    openerRef.current?.({ focusComposer: options?.focusComposer ?? true });
-  }, [setMissionControlSelectedId]);
+  const handlePickAgent = useCallback(
+    (agent: Agent, options?: { focusComposer?: boolean }) => {
+      setPendingAgent(agent);
+      setMissionControlSelectedId(null);
+      openerRef.current?.({ focusComposer: options?.focusComposer ?? true });
+    },
+    [setMissionControlSelectedId],
+  );
 
   const handleOpenerReady = useCallback((opener: NewPanelOpener) => {
     openerRef.current = opener;
@@ -199,11 +208,16 @@ export function Dashboard() {
       : mc.items;
     return base.map((item) => ({
       ...item,
-      icon: <AgentCardAvatar color={colorByPath[item.metadata?.agentPath as string]} />,
+      icon: (
+        <AgentCardAvatar
+          color={colorByPath[item.metadata?.agentPath as string]}
+        />
+      ),
     }));
   }, [mc.items, filterPath, colorByPath]);
   const visibleAgents = useMemo(
-    () => (filterPath ? agents.filter((a) => a.folderPath === filterPath) : agents),
+    () =>
+      filterPath ? agents.filter((a) => a.folderPath === filterPath) : agents,
     [agents, filterPath],
   );
   const handleMissionSearchError = useCallback(() => {
@@ -229,7 +243,8 @@ export function Dashboard() {
     if (missionSearch.hasQuery) return;
     const emptyKey = filterPath || "all";
     if (agentFilteredItems.length > 0) {
-      if (emptyAutoOpenKeyRef.current === emptyKey) emptyAutoOpenKeyRef.current = null;
+      if (emptyAutoOpenKeyRef.current === emptyKey)
+        emptyAutoOpenKeyRef.current = null;
       return;
     }
     if (!newPanelOpenerReady || missionPanelOpen || agentPickerOpen) return;
@@ -267,9 +282,12 @@ export function Dashboard() {
     }
     return pendingAgent;
   }, [selectedItem, pendingAgent, agents]);
-  const activeAgentDef = activeAgent ? getAgentDef(activeAgent.configId) ?? null : null;
+  const activeAgentDef = activeAgent
+    ? (getAgentDef(activeAgent.configId) ?? null)
+    : null;
   const selectedSessionKey = selectedItem
-    ? (selectedItem.metadata?.sessionKey as string | undefined) ?? `activity-${selectedItem.id}`
+    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
+      `activity-${selectedItem.id}`)
     : null;
   const onActionCreated = useCallback(
     (id: string) => mc.setSelectedId(id),
@@ -282,7 +300,9 @@ export function Dashboard() {
     onSelectSession: onActionCreated,
   });
   const attachmentValidation = useAttachmentRejectionDialog();
-  const selectedAgentPath = selectedItem?.metadata?.agentPath as string | undefined;
+  const selectedAgentPath = selectedItem?.metadata?.agentPath as
+    | string
+    | undefined;
   const selectedSessionActive = selectedSessionKey
     ? (mc.loading[selectedSessionKey] ?? false)
     : false;
@@ -309,18 +329,32 @@ export function Dashboard() {
     },
     [mc.handleSendMessage, selectedSessionKey, messageQueue.sendOrQueue],
   );
-  const handleComposerSubmit = useCallback<NonNullable<typeof panel.onComposerSubmit>>(
+  const handleComposerSubmit = useCallback<
+    NonNullable<typeof panel.onComposerSubmit>
+  >(
     async (ctx) => {
-      if (ctx.sessionKey && ctx.sessionKey === selectedSessionKey && selectedSessionActive) {
+      if (
+        ctx.sessionKey &&
+        ctx.sessionKey === selectedSessionKey &&
+        selectedSessionActive
+      ) {
         messageQueue.queueMessage(ctx.text, ctx.files);
         return true;
       }
       return (await panel.onComposerSubmit?.(ctx)) ?? false;
     },
-    [selectedSessionKey, selectedSessionActive, messageQueue.queueMessage, panel.onComposerSubmit],
+    [
+      selectedSessionKey,
+      selectedSessionActive,
+      messageQueue.queueMessage,
+      panel.onComposerSubmit,
+    ],
   );
   const queuedMessages = useMemo(
-    () => selectedSessionKey ? { [selectedSessionKey]: messageQueue.queuedMessages } : {},
+    () =>
+      selectedSessionKey
+        ? { [selectedSessionKey]: messageQueue.queuedMessages }
+        : {},
     [selectedSessionKey, messageQueue.queuedMessages],
   );
 
@@ -395,7 +429,9 @@ export function Dashboard() {
           onRename={mc.handleRename}
           onSendMessage={handleSendMessage}
           queuedMessages={queuedMessages}
-          onRemoveQueuedMessage={(_, id) => messageQueue.removeQueuedMessage(id)}
+          onRemoveQueuedMessage={(_, id) =>
+            messageQueue.removeQueuedMessage(id)
+          }
           queuedLabels={queuedLabels}
           onLoadHistory={mc.loadHistory}
           onHistoryLoaded={mc.handleHistoryLoaded}

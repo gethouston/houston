@@ -67,8 +67,16 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     loginCommand: "claude login",
     cost: "Your Claude subscription",
     models: [
-      { id: "sonnet", label: "Sonnet", description: "Best balance of speed and quality." },
-      { id: "opus", label: "Opus", description: "Most capable. Slower, more tokens." },
+      {
+        id: "sonnet",
+        label: "Sonnet",
+        description: "Best balance of speed and quality.",
+      },
+      {
+        id: "opus",
+        label: "Opus",
+        description: "Most capable. Slower, more tokens.",
+      },
     ],
     defaultModel: "sonnet",
   },
@@ -80,7 +88,10 @@ export function getProvider(id: string): ProviderInfo | undefined {
 }
 
 /** Find the model object for a provider + model id. */
-export function getModel(providerId: string, modelId: string): ModelOption | undefined {
+export function getModel(
+  providerId: string,
+  modelId: string,
+): ModelOption | undefined {
   return getProvider(providerId)?.models.find((m) => m.id === modelId);
 }
 
@@ -98,7 +109,9 @@ export function getDefaultModel(providerId: string): string {
  * before it was paused). Callers chain it with `??` to fall through to
  * the next tier of preference.
  */
-export function validProviderOrNull(providerId: string | null | undefined): string | null {
+export function validProviderOrNull(
+  providerId: string | null | undefined,
+): string | null {
   return providerId && getProvider(providerId) ? providerId : null;
 }
 
@@ -113,7 +126,9 @@ export function validModelOrNull(
   providerId: string | null | undefined,
   modelId: string | null | undefined,
 ): string | null {
-  return providerId && modelId && getModel(providerId, modelId) ? modelId : null;
+  return providerId && modelId && getModel(providerId, modelId)
+    ? modelId
+    : null;
 }
 
 export interface ComingSoonProviderInfo {

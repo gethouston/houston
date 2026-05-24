@@ -105,17 +105,26 @@ export function useSessionEvents() {
             // anything else that skips this webview) see the same
             // transition. We still need the activityId for the
             // notification nav target.
-            if (session_key.startsWith("activity-") && !session_key.startsWith("routine-")) {
+            if (
+              session_key.startsWith("activity-") &&
+              !session_key.startsWith("routine-")
+            ) {
               const activityId = session_key.replace("activity-", "");
               // Only navigate if the completed session belongs to the currently-open agent.
               if (agent?.id && agent.folderPath === agent_path) {
                 nav = { agentId: agent.id, activityId };
               } else {
-                logger.debug(`[notification] session completed for a non-active agent: agent_path=${agent_path}`);
+                logger.debug(
+                  `[notification] session completed for a non-active agent: agent_path=${agent_path}`,
+                );
               }
             }
 
-            sendSessionNotification(`${workspaceName} — ${agentName}`, "Your agent has finished working.", nav);
+            sendSessionNotification(
+              `${workspaceName} — ${agentName}`,
+              "Your agent has finished working.",
+              nav,
+            );
           }
           break;
         }
@@ -125,7 +134,9 @@ export function useSessionEvents() {
           });
           break;
         case "AuthRequired":
-          logger.info(`[auth] AuthRequired received: provider=${payload.data.provider}`);
+          logger.info(
+            `[auth] AuthRequired received: provider=${payload.data.provider}`,
+          );
           h.setAuthRequired(payload.data.provider);
           break;
       }
@@ -136,20 +147,28 @@ export function useSessionEvents() {
     let unlistenNotificationAction: (() => void) | undefined;
     import("@tauri-apps/plugin-notification").then(({ onAction }) => {
       onAction((action) => {
-        logger.debug(`[notification] onAction fired: ${JSON.stringify(action)} pendingNav=${describePendingNotificationNav()}`);
+        logger.debug(
+          `[notification] onAction fired: ${JSON.stringify(action)} pendingNav=${describePendingNotificationNav()}`,
+        );
         consumePendingNav();
-      }).then((unlisten) => {
-        unlistenNotificationAction = () => { unlisten.unregister(); };
-      }).catch((e) => {
-        logger.debug(`[notification] onAction registration failed: ${e}`);
-      });
+      })
+        .then((unlisten) => {
+          unlistenNotificationAction = () => {
+            unlisten.unregister();
+          };
+        })
+        .catch((e) => {
+          logger.debug(`[notification] onAction registration failed: ${e}`);
+        });
     });
 
     // Case: app in background — user clicks notification → OS activates app →
     // Rust emits "app-activated" via RunEvent::Resumed → we consume pending nav.
     // Also refresh the agent list so any external changes (e.g. Finder delete) are picked up.
     const unlistenActivated = listenOsEvent<unknown>("app-activated", () => {
-      logger.debug(`[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`);
+      logger.debug(
+        `[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`,
+      );
       consumePendingNav();
       const ws = useWorkspaceStore.getState().current;
       if (ws) {
@@ -166,9 +185,13 @@ export function useSessionEvents() {
       unlisten();
       unlistenActivated();
       unlistenNotificationAction?.();
-      unlistenTauriFocus?.then((fn) => fn()).catch((e) => {
-        logger.debug(`[notification] Tauri focus listener cleanup failed: ${e}`);
-      });
+      unlistenTauriFocus
+        ?.then((fn) => fn())
+        .catch((e) => {
+          logger.debug(
+            `[notification] Tauri focus listener cleanup failed: ${e}`,
+          );
+        });
     };
   }, []);
 }

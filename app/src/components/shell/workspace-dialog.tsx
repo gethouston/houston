@@ -72,7 +72,12 @@ export function CreateWorkspaceDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={(next) => { if (!next) handleClose(); }}>
+    <Dialog
+      open={open}
+      onOpenChange={(next) => {
+        if (!next) handleClose();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>{t("shell:workspaceDialog.title")}</DialogTitle>
@@ -130,7 +135,10 @@ export function CreateWorkspaceDialog({
               <input
                 type="text"
                 value={importUrl}
-                onChange={(e) => { setImportUrl(e.target.value); setImportError(""); }}
+                onChange={(e) => {
+                  setImportUrl(e.target.value);
+                  setImportError("");
+                }}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && importUrl.trim() && !importing) {
                     void handleImportWorkspace();
@@ -146,10 +154,16 @@ export function CreateWorkspaceDialog({
                 disabled={!importUrl.trim() || importing}
                 className="shrink-0 rounded-full"
               >
-                {importing ? <Spinner className="size-4" /> : t("shell:workspaceDialog.githubImport")}
+                {importing ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  t("shell:workspaceDialog.githubImport")
+                )}
               </Button>
             </div>
-            {importError && <p className="text-xs text-destructive">{importError}</p>}
+            {importError && (
+              <p className="text-xs text-destructive">{importError}</p>
+            )}
             {importing && (
               <div className="flex flex-col items-center gap-2 py-4">
                 <Spinner className="size-5 text-muted-foreground" />

@@ -111,7 +111,8 @@ export function ChatMessages({
                     getThinkingMessage={getThinkingMessage}
                   />
                   {(() => {
-                    if (!item.isTrailing || item.isActive || !renderTurnSummary) return null;
+                    if (!item.isTrailing || item.isActive || !renderTurnSummary)
+                      return null;
                     const summary = turnEndSummaries.get(item.sourceIndex);
                     if (!summary) return null;
                     return renderTurnSummary(summary);
@@ -137,30 +138,36 @@ export function ChatMessages({
           const isLastMsg = idx === messages.length - 1;
           const streaming = msg.isStreaming && isLastMsg;
           return (
-            <Message from={msg.from} key={msg.key} avatar={renderMessageAvatar?.(msg)}>
+            <Message
+              from={msg.from}
+              key={msg.key}
+              avatar={renderMessageAvatar?.(msg)}
+            >
               <div>
-                {msg.content && (() => {
-                  if (msg.from === "user" && renderUserMessage) {
-                    const custom = renderUserMessage(msg);
-                    if (custom !== undefined) return custom;
-                  }
-                  const transformed = msg.from === "assistant" && transformContent
-                    ? transformContent(msg.content)
-                    : null;
-                  const displayContent = transformed?.content ?? msg.content;
-                  return (
-                    <MessageContent>
-                      <MessageResponse
-                        isAnimating={streaming}
-                        onOpenLink={onOpenLink}
-                        renderLink={renderLink}
-                      >
-                        {displayContent}
-                      </MessageResponse>
-                      {transformed?.extra}
-                    </MessageContent>
-                  );
-                })()}
+                {msg.content &&
+                  (() => {
+                    if (msg.from === "user" && renderUserMessage) {
+                      const custom = renderUserMessage(msg);
+                      if (custom !== undefined) return custom;
+                    }
+                    const transformed =
+                      msg.from === "assistant" && transformContent
+                        ? transformContent(msg.content)
+                        : null;
+                    const displayContent = transformed?.content ?? msg.content;
+                    return (
+                      <MessageContent>
+                        <MessageResponse
+                          isAnimating={streaming}
+                          onOpenLink={onOpenLink}
+                          renderLink={renderLink}
+                        >
+                          {displayContent}
+                        </MessageResponse>
+                        {transformed?.extra}
+                      </MessageContent>
+                    );
+                  })()}
                 {(() => {
                   if (!renderTurnSummary) return null;
                   const summary = turnEndSummaries.get(idx);
@@ -173,9 +180,7 @@ export function ChatMessages({
         })}
         {status === "submitted" && (
           <Message from="assistant">
-            <MessageContent>
-              {thinkingIndicator}
-            </MessageContent>
+            <MessageContent>{thinkingIndicator}</MessageContent>
           </Message>
         )}
         {afterMessages}

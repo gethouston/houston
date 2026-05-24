@@ -30,15 +30,18 @@ const mod = isMac ? "⌘" : "Ctrl";
 const shortcuts: Record<ShortcutAction, ShortcutDef> = {
   newMission: {
     parts: [mod, "N"],
-    match: (e) => cmd(e) && !e.shiftKey && !e.altKey && (e.key === "n" || e.key === "N"),
+    match: (e) =>
+      cmd(e) && !e.shiftKey && !e.altKey && (e.key === "n" || e.key === "N"),
   },
   palette: {
     parts: [mod, "K"],
-    match: (e) => cmd(e) && !e.shiftKey && !e.altKey && (e.key === "k" || e.key === "K"),
+    match: (e) =>
+      cmd(e) && !e.shiftKey && !e.altKey && (e.key === "k" || e.key === "K"),
   },
   missionControl: {
     parts: [mod, "M"],
-    match: (e) => cmd(e) && !e.shiftKey && !e.altKey && (e.key === "m" || e.key === "M"),
+    match: (e) =>
+      cmd(e) && !e.shiftKey && !e.altKey && (e.key === "m" || e.key === "M"),
   },
   prevAgent: {
     parts: [mod, "["],
@@ -51,22 +54,38 @@ const shortcuts: Record<ShortcutAction, ShortcutDef> = {
   boardUp: {
     parts: ["↑"],
     match: (e) =>
-      e.key === "ArrowUp" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey,
+      e.key === "ArrowUp" &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.shiftKey &&
+      !e.altKey,
   },
   boardDown: {
     parts: ["↓"],
     match: (e) =>
-      e.key === "ArrowDown" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey,
+      e.key === "ArrowDown" &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.shiftKey &&
+      !e.altKey,
   },
   boardLeft: {
     parts: ["←"],
     match: (e) =>
-      e.key === "ArrowLeft" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey,
+      e.key === "ArrowLeft" &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.shiftKey &&
+      !e.altKey,
   },
   boardRight: {
     parts: ["→"],
     match: (e) =>
-      e.key === "ArrowRight" && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey,
+      e.key === "ArrowRight" &&
+      !e.metaKey &&
+      !e.ctrlKey &&
+      !e.shiftKey &&
+      !e.altKey,
   },
   boardOpen: {
     parts: ["↵"],
@@ -89,7 +108,10 @@ export function shortcutLabel(action: ShortcutAction): string {
   return isMac ? parts.join("") : parts.join("+");
 }
 
-export function matchShortcut(action: ShortcutAction, e: KeyboardEvent): boolean {
+export function matchShortcut(
+  action: ShortcutAction,
+  e: KeyboardEvent,
+): boolean {
   return shortcuts[action].match(e);
 }
 

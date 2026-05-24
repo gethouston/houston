@@ -138,7 +138,9 @@ export function ConnectPhoneSection() {
           <br />
           <Trans
             i18nKey="settings:connectPhone.alwaysOnHint"
-            components={{ emph: <span className="underline underline-offset-2" /> }}
+            components={{
+              emph: <span className="underline underline-offset-2" />,
+            }}
           />
         </p>
       </div>

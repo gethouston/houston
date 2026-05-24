@@ -10,7 +10,10 @@
       "id": { "type": "string" },
       "title": { "type": "string" },
       "description": { "type": "string" },
-      "status": { "type": "string", "enum": ["running", "needs_you", "done", "error"] },
+      "status": {
+        "type": "string",
+        "enum": ["running", "needs_you", "done", "error"]
+      },
       "claude_session_id": { "type": ["string", "null"] },
       "session_key": { "type": "string" },
       "agent": { "type": "string" },

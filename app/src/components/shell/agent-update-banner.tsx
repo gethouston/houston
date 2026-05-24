@@ -20,7 +20,12 @@ export function AgentUpdateBanner() {
   const names = updatedRepos.map((r) => r.split("/").pop() || r);
 
   return (
-    <Dialog open onOpenChange={(open) => { if (!open) dismiss(); }}>
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) dismiss();
+      }}
+    >
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -30,8 +35,10 @@ export function AgentUpdateBanner() {
           <DialogDescription>
             {names.length === 1
               ? t("shell:agentUpdate.descriptionOne", { name: names[0] })
-              : t("shell:agentUpdate.descriptionMany", { names: names.join(", ") })}
-            {" "}{t("shell:agentUpdate.descriptionSuffix")}
+              : t("shell:agentUpdate.descriptionMany", {
+                  names: names.join(", "),
+                })}{" "}
+            {t("shell:agentUpdate.descriptionSuffix")}
           </DialogDescription>
         </DialogHeader>
         <div className="flex gap-2 pt-2">
@@ -41,11 +48,7 @@ export function AgentUpdateBanner() {
           >
             {t("shell:agentUpdate.reloadNow")}
           </Button>
-          <Button
-            variant="outline"
-            onClick={dismiss}
-            className="rounded-full"
-          >
+          <Button variant="outline" onClick={dismiss} className="rounded-full">
             {t("common:actions.later")}
           </Button>
         </div>

@@ -67,12 +67,10 @@ export function AuthReconnectBanner() {
             </p>
 
             {!loginLaunched ? (
-              <Button
-                onClick={handleSignIn}
-                className="rounded-full"
-                size="sm"
-              >
-                {t("shell:authReconnect.signInWith", { provider: provider.name })}
+              <Button onClick={handleSignIn} className="rounded-full" size="sm">
+                {t("shell:authReconnect.signInWith", {
+                  provider: provider.name,
+                })}
               </Button>
             ) : (
               <div className="flex items-center gap-3">

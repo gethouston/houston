@@ -127,7 +127,9 @@ function SummarySection({
                 key={key}
                 type="button"
                 onClick={() =>
-                  item.kind === "file" ? onOpenFile(item.path) : onOpenSemantic(item.update)
+                  item.kind === "file"
+                    ? onOpenFile(item.path)
+                    : onOpenSemantic(item.update)
                 }
                 className="w-full flex items-center gap-2 px-3 py-2 text-sm text-left hover:bg-accent transition-colors"
               >

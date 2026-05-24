@@ -40,7 +40,9 @@ export function GeminiApiKeyForm(props: {
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       addToast({
-        title: t("geminiConnect.openConsoleFailed", { name: props.providerName }),
+        title: t("geminiConnect.openConsoleFailed", {
+          name: props.providerName,
+        }),
         description: msg,
         variant: "error",
       });
@@ -100,10 +102,16 @@ export function GeminiApiKeyForm(props: {
           size="sm"
           onClick={() => setRevealed((v) => !v)}
           className="gap-1.5 shrink-0"
-          aria-label={revealed ? t("geminiConnect.hide") : t("geminiConnect.show")}
+          aria-label={
+            revealed ? t("geminiConnect.hide") : t("geminiConnect.show")
+          }
           disabled={saving}
         >
-          {revealed ? <EyeOff className="size-3.5" /> : <Eye className="size-3.5" />}
+          {revealed ? (
+            <EyeOff className="size-3.5" />
+          ) : (
+            <Eye className="size-3.5" />
+          )}
         </Button>
       </div>
       {error && (
@@ -111,7 +119,12 @@ export function GeminiApiKeyForm(props: {
           {error}
         </p>
       )}
-      <Button type="submit" disabled={!canSave} className="gap-1.5 w-full" size="sm">
+      <Button
+        type="submit"
+        disabled={!canSave}
+        className="gap-1.5 w-full"
+        size="sm"
+      >
         {saving && <Spinner className="size-3.5" />}
         {saving ? t("geminiConnect.saving") : t("geminiConnect.saveKey")}
       </Button>

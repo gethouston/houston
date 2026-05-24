@@ -81,7 +81,8 @@ function bootstrap() {
     advanced_disable_flags: true,
     loaded: (ph) => {
       ph.register({
-        app_version: typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0",
+        app_version:
+          typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0",
         os: typeof navigator !== "undefined" ? navigator.platform : "unknown",
         is_debug: import.meta.env.DEV,
       });
@@ -116,10 +117,26 @@ function personProps(profile?: UserProfile): PersonProps | undefined {
 
 export function classifyAnalyticsError(message: string): string {
   const lower = message.toLowerCase();
-  if (lower.includes("auth") || lower.includes("token") || lower.includes("login")) return "auth";
-  if (lower.includes("network") || lower.includes("fetch") || lower.includes("timeout")) return "network";
-  if (lower.includes("permission") || lower.includes("denied")) return "permission";
-  if (lower.includes("provider") || lower.includes("openai") || lower.includes("anthropic")) return "provider";
+  if (
+    lower.includes("auth") ||
+    lower.includes("token") ||
+    lower.includes("login")
+  )
+    return "auth";
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch") ||
+    lower.includes("timeout")
+  )
+    return "network";
+  if (lower.includes("permission") || lower.includes("denied"))
+    return "permission";
+  if (
+    lower.includes("provider") ||
+    lower.includes("openai") ||
+    lower.includes("anthropic")
+  )
+    return "provider";
   if (
     lower.includes("unknown option") ||
     lower.includes("enoent") ||
@@ -189,7 +206,8 @@ export const analytics = {
   captureException: (error: unknown, props?: Props) => {
     if (!KEY) return;
     try {
-      const normalized = error instanceof Error ? error : new Error(String(error));
+      const normalized =
+        error instanceof Error ? error : new Error(String(error));
       posthog.captureException(normalized, cleanProps(props));
     } catch {
       // Analytics unavailable

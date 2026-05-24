@@ -43,5 +43,8 @@ test("queued files flatten without changing order", () => {
 });
 
 test("single message visible text matches chat feed copy", () => {
-  assert.equal(formatVisibleMessageText("Hello", [file("image.png")]), "Hello\n\nAttached: image.png");
+  assert.equal(
+    formatVisibleMessageText("Hello", [file("image.png")]),
+    "Hello\n\nAttached: image.png",
+  );
 });

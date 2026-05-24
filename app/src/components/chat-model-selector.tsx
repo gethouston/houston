@@ -10,7 +10,12 @@ import {
   DropdownMenuSeparator,
 } from "@houston-ai/core";
 import { tauriProvider, type ProviderStatus } from "../lib/tauri";
-import { PROVIDERS, getProvider, getModel, type ProviderInfo } from "../lib/providers";
+import {
+  PROVIDERS,
+  getProvider,
+  getModel,
+  type ProviderInfo,
+} from "../lib/providers";
 import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
 
 interface ChatModelSelectorProps {
@@ -28,13 +33,20 @@ interface ChatModelSelectorProps {
   lockedProvider?: string | null;
 }
 
-export function ChatModelSelector({ provider, model, onSelect, lockedProvider }: ChatModelSelectorProps) {
+export function ChatModelSelector({
+  provider,
+  model,
+  onSelect,
+  lockedProvider,
+}: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
 
   const loadStatuses = useCallback(async () => {
     const entries = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      PROVIDERS.map(
+        async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
+      ),
     );
     setStatuses(Object.fromEntries(entries));
   }, []);
@@ -45,7 +57,10 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
 
   const currentProvider = getProvider(provider);
   const currentModel = getModel(provider, model);
-  const displayLabel = currentModel?.label ?? currentProvider?.subtitle ?? t("modelSelector.selectModel");
+  const displayLabel =
+    currentModel?.label ??
+    currentProvider?.subtitle ??
+    t("modelSelector.selectModel");
 
   // Honour `lockedProvider` only when it points at a currently-active
   // provider that the engine reports as installed. Two cases drop the
@@ -61,7 +76,9 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
   // In both cases every send would route to a provider the user cannot
   // currently invoke, so the dropdown must expose installed
   // alternatives instead of pinning the broken choice.
-  const lockedProviderEntry = lockedProvider ? getProvider(lockedProvider) : undefined;
+  const lockedProviderEntry = lockedProvider
+    ? getProvider(lockedProvider)
+    : undefined;
   const lockedStatus = lockedProvider ? statuses[lockedProvider] : undefined;
   const lockedProviderInstalled = lockedStatus?.cli_installed ?? true;
   const effectiveLock =
@@ -72,7 +89,10 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
     // from interpreting dropdown clicks as "click outside → close panel".
-    <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <div
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
@@ -91,7 +111,8 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
         >
           {PROVIDERS.map((prov, idx) => {
             const status = statuses[prov.id];
-            const connected = (status?.cli_installed && status?.authenticated) ?? false;
+            const connected =
+              (status?.cli_installed && status?.authenticated) ?? false;
             // Hide disconnected providers that aren't active
             if (!connected && prov.id !== provider) return null;
             // When provider is locked AND still installed, only show the
@@ -140,7 +161,9 @@ function ProviderModelGroup({
         <ProviderIcon providerId={provider.id} className="size-3.5" />
         {provider.name}
         {!connected && (
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.notConnected")}</span>
+          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+            {t("modelSelector.notConnected")}
+          </span>
         )}
       </DropdownMenuLabel>
       {provider.models.map((m) => {
@@ -161,7 +184,9 @@ function ProviderModelGroup({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm">{m.label}</div>
-              <div className="text-xs text-muted-foreground leading-snug">{m.description}</div>
+              <div className="text-xs text-muted-foreground leading-snug">
+                {m.description}
+              </div>
             </div>
           </DropdownMenuItem>
         );
@@ -176,7 +201,13 @@ function ProviderModelGroup({
  * (which renders at its native viewBox); the chat panel uses size-3.5 vs
  * the provider picker's size-5.
  */
-function ProviderIcon({ providerId, className }: { providerId: string; className?: string }) {
+function ProviderIcon({
+  providerId,
+  className,
+}: {
+  providerId: string;
+  className?: string;
+}) {
   return (
     <span className={className} style={{ display: "inline-flex" }}>
       {iconFor(providerId)}

@@ -17,7 +17,11 @@ describe("agent activity summary model", () => {
         { agent_path: "/workspace/b", type: "activity", status: "running" },
         { agent_path: "/workspace/b", type: "activity", status: "done" },
         { agent_path: "/workspace/b", type: "primary", status: "needs_you" },
-        { agent_path: "/workspace/missing", type: "activity", status: "needs_you" },
+        {
+          agent_path: "/workspace/missing",
+          type: "activity",
+          status: "needs_you",
+        },
       ],
     );
 

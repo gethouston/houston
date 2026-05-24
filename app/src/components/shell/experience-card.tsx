@@ -2,7 +2,15 @@ import { useState } from "react";
 import type { AgentConfig, StoreListing } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { AgentAvatar } from "./agent-avatar";
-export { AgentAvatar, HoustonLogo, HoustonThinkingIndicator, getAgentIcon, getAgentIconColor, getHoustonLogo, isLightColor } from "./agent-avatar";
+export {
+  AgentAvatar,
+  HoustonLogo,
+  HoustonThinkingIndicator,
+  getAgentIcon,
+  getAgentIconColor,
+  getHoustonLogo,
+  isLightColor,
+} from "./agent-avatar";
 
 interface AgentCardProps {
   config: AgentConfig;

@@ -26,14 +26,18 @@ export function consumePendingNav() {
   }
 
   const agents = useAgentStore.getState().agents;
-  logger.debug(`[notification] consuming nav: agentId=${agentId} activityId=${activityId} agents=[${agents.map(a => a.id).join(",")}]`);
+  logger.debug(
+    `[notification] consuming nav: agentId=${agentId} activityId=${activityId} agents=[${agents.map((a) => a.id).join(",")}]`,
+  );
   const agent = agents.find((a) => a.id === agentId);
   if (!agent) {
     logger.debug("[notification] agent not found, cannot navigate");
     return;
   }
 
-  logger.debug(`[notification] navigating to agent=${agent.name} activity=${activityId}`);
+  logger.debug(
+    `[notification] navigating to agent=${agent.name} activity=${activityId}`,
+  );
   useUIStore.getState().setViewMode("activity");
   useAgentStore.getState().setCurrent(agent);
   useUIStore.getState().setActivityPanelId(activityId);
@@ -63,14 +67,21 @@ export async function sendSessionNotification(
 
     pendingNotificationNav = nav;
     if (pendingNavTimer) clearTimeout(pendingNavTimer);
-    pendingNavTimer = setTimeout(() => {
-      pendingNotificationNav = null;
-    }, 5 * 60 * 1000);
-    logger.debug(`[notification] pending nav set: agentId=${nav.agentId} activityId=${nav.activityId}`);
+    pendingNavTimer = setTimeout(
+      () => {
+        pendingNotificationNav = null;
+      },
+      5 * 60 * 1000,
+    );
+    logger.debug(
+      `[notification] pending nav set: agentId=${nav.agentId} activityId=${nav.activityId}`,
+    );
 
     const focused = await getCurrentWindow().isFocused();
     if (focused) {
-      logger.debug("[notification] window already focused, navigating immediately");
+      logger.debug(
+        "[notification] window already focused, navigating immediately",
+      );
       consumePendingNav();
     }
   } catch (e) {
@@ -82,7 +93,9 @@ export function listenForNotificationFocus(): Promise<() => void> | undefined {
   try {
     return getCurrentWindow().onFocusChanged(({ payload: focused }) => {
       if (!focused || !pendingNotificationNav) return;
-      logger.debug(`[notification] onFocusChanged fired: focused=${focused} pendingNav=${JSON.stringify(pendingNotificationNav)}`);
+      logger.debug(
+        `[notification] onFocusChanged fired: focused=${focused} pendingNav=${JSON.stringify(pendingNotificationNav)}`,
+      );
       consumePendingNav();
     });
   } catch (e) {

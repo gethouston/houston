@@ -16,11 +16,19 @@ export function mergeFeedItem(items: FeedItem[], item: FeedItem): FeedItem[] {
   const last = items[items.length - 1];
 
   if (item.feed_type === "thinking_streaming") {
-    return replaceLast(items, item, (existing) => existing.feed_type === "thinking_streaming");
+    return replaceLast(
+      items,
+      item,
+      (existing) => existing.feed_type === "thinking_streaming",
+    );
   }
 
   if (item.feed_type === "thinking") {
-    return replaceLast(items, item, (existing) => existing.feed_type === "thinking_streaming");
+    return replaceLast(
+      items,
+      item,
+      (existing) => existing.feed_type === "thinking_streaming",
+    );
   }
 
   if (item.feed_type === "assistant_text_streaming") {
@@ -71,11 +79,7 @@ function replaceLast(
 ): FeedItem[] {
   for (let index = items.length - 1; index >= 0; index -= 1) {
     if (predicate(items[index])) {
-      return [
-        ...items.slice(0, index),
-        item,
-        ...items.slice(index + 1),
-      ];
+      return [...items.slice(0, index), item, ...items.slice(index + 1)];
     }
   }
   return [...items, item];

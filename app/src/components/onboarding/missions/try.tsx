@@ -2,10 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatPanel, type FeedItem } from "@houston-ai/chat";
 import { HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
-import {
-  useConnectedToolkits,
-  useConnections,
-} from "../../../hooks/queries";
+import { useConnectedToolkits, useConnections } from "../../../hooks/queries";
 import { tauriAgent, tauriChat, tauriSystem } from "../../../lib/tauri";
 import { logger } from "../../../lib/logger";
 import { createMission } from "../../../lib/create-mission";

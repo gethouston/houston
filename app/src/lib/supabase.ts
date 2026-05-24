@@ -7,7 +7,8 @@ import { logger } from "./logger";
 // Empty values → Supabase client still constructs but all auth calls are
 // no-ops (isAuthConfigured() returns false so the UI won't attempt sign-in).
 const URL_ = typeof __SUPABASE_URL__ !== "undefined" ? __SUPABASE_URL__ : "";
-const KEY = typeof __SUPABASE_ANON_KEY__ !== "undefined" ? __SUPABASE_ANON_KEY__ : "";
+const KEY =
+  typeof __SUPABASE_ANON_KEY__ !== "undefined" ? __SUPABASE_ANON_KEY__ : "";
 
 /**
  * Release storage adapter that round-trips to Rust via the `auth_*` Tauri
@@ -96,7 +97,9 @@ export const supabase: SupabaseClient = createClient(
   {
     auth: {
       storage:
-        authStorageConfig.mode === "keychain" ? keychainStorage : browserStorage,
+        authStorageConfig.mode === "keychain"
+          ? keychainStorage
+          : browserStorage,
       storageKey: authStorageConfig.storageKey,
       autoRefreshToken: true,
       persistSession: true,

@@ -378,17 +378,13 @@ export interface PreferenceValue {
   value: string | null;
 }
 
-
 /**
  * Known preference keys. Free-form strings are still allowed — this alias
  * just documents the well-known keys and gives consumers completion.
  *
  * Keep in sync with `houston-engine-core::preferences` constants.
  */
-export type KnownPreferenceKey =
-  | "timezone"
-  | "locale"
-  | "legal_acceptance";
+export type KnownPreferenceKey = "timezone" | "locale" | "legal_acceptance";
 
 /**
  * Persisted record that the user has accepted a given version of the
@@ -765,7 +761,11 @@ export type PortableScanCategory =
   | "suspicious_shell"
   | "external_callback";
 export type PortableScanSeverity = "low" | "medium" | "high";
-export type PortableScanItemKind = "claude_md" | "skill" | "routine" | "learning";
+export type PortableScanItemKind =
+  | "claude_md"
+  | "skill"
+  | "routine"
+  | "learning";
 
 export interface PortableScanFinding {
   category: PortableScanCategory;

@@ -41,9 +41,7 @@ export function MissionControlToolbar({
   return (
     <div className="shrink-0 px-5 pt-4">
       <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center">
-        <h1 className="text-xl font-semibold text-foreground">
-          {t("title")}
-        </h1>
+        <h1 className="text-xl font-semibold text-foreground">{t("title")}</h1>
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center lg:ml-auto">
           <div className="flex items-center gap-2">
             <MissionSearchInput

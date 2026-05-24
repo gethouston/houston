@@ -12,8 +12,7 @@ export const queryKeys = {
   skillDetail: (agentPath: string, name: string) =>
     ["skill-detail", agentPath, name] as const,
   files: (agentPath: string) => ["files", agentPath] as const,
-  instructions: (agentPath: string) =>
-    ["instructions", agentPath] as const,
+  instructions: (agentPath: string) => ["instructions", agentPath] as const,
   config: (agentPath: string) => ["config", agentPath] as const,
   routines: (agentPath: string) => ["routines", agentPath] as const,
   learnings: (agentPath: string) => ["learnings", agentPath] as const,
@@ -21,8 +20,7 @@ export const queryKeys = {
     routineId
       ? (["routine-runs", agentPath, routineId] as const)
       : (["routine-runs", agentPath] as const),
-  conversations: (agentPath: string) =>
-    ["conversations", agentPath] as const,
+  conversations: (agentPath: string) => ["conversations", agentPath] as const,
   allConversations: (agentPaths: string[]) =>
     ["all-conversations", ...agentPaths] as const,
   chatHistory: (agentPath: string, sessionKey: string) =>

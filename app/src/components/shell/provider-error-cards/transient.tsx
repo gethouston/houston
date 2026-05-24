@@ -48,7 +48,10 @@ export function RateLimitedCard({
       body={body}
     >
       {onRetry && (
-        <RetryButton onRetry={onRetry} label={t("providerError.rateLimited.retry")} />
+        <RetryButton
+          onRetry={onRetry}
+          label={t("providerError.rateLimited.retry")}
+        />
       )}
       {onSwitchModel && (
         <Button

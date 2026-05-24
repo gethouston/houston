@@ -5,30 +5,34 @@
  * + colored accent. Switch on the right. The whole row is clickable; the
  * switch stops propagation so toggling doesn't open the editor.
  */
-import { cn, Switch } from "@houston-ai/core"
-import type { Routine, RoutineRun } from "./types"
-import { cronToPreset, presetSummary, cronToOptions } from "./schedule-cron-utils"
-import { nextFire, describeNextFire } from "./next-fire"
-import { useNow } from "./use-now"
+import { cn, Switch } from "@houston-ai/core";
+import type { Routine, RoutineRun } from "./types";
+import {
+  cronToPreset,
+  presetSummary,
+  cronToOptions,
+} from "./schedule-cron-utils";
+import { nextFire, describeNextFire } from "./next-fire";
+import { useNow } from "./use-now";
 
 export interface RoutineRowProps {
-  routine: Routine
-  lastRun?: RoutineRun
+  routine: Routine;
+  lastRun?: RoutineRun;
   /** IANA tz of the user's account preference, used when routine has no override. */
-  accountTimezone: string
-  onClick?: () => void
-  onToggle?: (enabled: boolean) => void
+  accountTimezone: string;
+  onClick?: () => void;
+  onToggle?: (enabled: boolean) => void;
 }
 
 function scheduleSummary(cron: string): string {
-  const preset = cronToPreset(cron)
-  if (!preset) return cron
-  const options = cronToOptions(cron)
+  const preset = cronToPreset(cron);
+  if (!preset) return cron;
+  const options = cronToOptions(cron);
   return presetSummary(preset, {
     time: options.time ?? "09:00",
     dayOfWeek: options.dayOfWeek ?? 1,
     dayOfMonth: options.dayOfMonth ?? 1,
-  })
+  });
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -37,19 +41,22 @@ const STATUS_DOT: Record<string, string> = {
   running: "bg-blue-500",
   error: "bg-red-500",
   cancelled: "bg-gray-400",
-}
+};
 
-function lastRunLabel(lastRun: RoutineRun | undefined, now: Date): string | null {
-  if (!lastRun) return null
-  const date = new Date(lastRun.started_at)
-  const diff = now.getTime() - date.getTime()
-  const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return "just ran"
-  if (mins < 60) return `ran ${mins}m ago`
-  const hours = Math.floor(mins / 60)
-  if (hours < 24) return `ran ${hours}h ago`
-  const days = Math.floor(hours / 24)
-  return `ran ${days}d ago`
+function lastRunLabel(
+  lastRun: RoutineRun | undefined,
+  now: Date,
+): string | null {
+  if (!lastRun) return null;
+  const date = new Date(lastRun.started_at);
+  const diff = now.getTime() - date.getTime();
+  const mins = Math.floor(diff / 60_000);
+  if (mins < 1) return "just ran";
+  if (mins < 60) return `ran ${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `ran ${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  return `ran ${days}d ago`;
 }
 
 export function RoutineRow({
@@ -59,12 +66,12 @@ export function RoutineRow({
   onClick,
   onToggle,
 }: RoutineRowProps) {
-  const now = useNow(60_000)
-  const tz = routine.timezone ?? accountTimezone
-  const next = routine.enabled ? nextFire(routine.schedule, tz, now) : null
-  const nextDescr = next ? describeNextFire(next, tz, now) : null
-  const lastLabel = lastRunLabel(lastRun, now)
-  const isPaused = lastRun?.status === "running" && !!lastRun.paused_until
+  const now = useNow(60_000);
+  const tz = routine.timezone ?? accountTimezone;
+  const next = routine.enabled ? nextFire(routine.schedule, tz, now) : null;
+  const nextDescr = next ? describeNextFire(next, tz, now) : null;
+  const lastLabel = lastRunLabel(lastRun, now);
+  const isPaused = lastRun?.status === "running" && !!lastRun.paused_until;
 
   return (
     <div
@@ -73,8 +80,8 @@ export function RoutineRow({
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onClick?.()
+          e.preventDefault();
+          onClick?.();
         }
       }}
       className={cn(
@@ -95,7 +102,7 @@ export function RoutineRow({
             ? "bg-gray-300"
             : isPaused
               ? "bg-amber-500"
-              : STATUS_DOT[lastRun?.status ?? "silent"] ?? "bg-gray-300",
+              : (STATUS_DOT[lastRun?.status ?? "silent"] ?? "bg-gray-300"),
           lastRun?.status === "running" && !isPaused && "animate-pulse",
         )}
         aria-hidden
@@ -109,7 +116,10 @@ export function RoutineRow({
         <p className="text-xs text-muted-foreground truncate mt-0.5">
           {scheduleSummary(routine.schedule)}
           {routine.timezone && (
-            <span className="text-muted-foreground/60"> · {routine.timezone}</span>
+            <span className="text-muted-foreground/60">
+              {" "}
+              · {routine.timezone}
+            </span>
           )}
         </p>
       </div>
@@ -154,5 +164,5 @@ export function RoutineRow({
         </div>
       )}
     </div>
-  )
+  );
 }

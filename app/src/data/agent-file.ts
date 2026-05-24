@@ -72,7 +72,11 @@ export async function writeAgentJson<T>(
       JSON.stringify(validate.errors),
     );
   }
-  await tauriAgent.writeFile(agentPath, relPath(name), JSON.stringify(data, null, 2));
+  await tauriAgent.writeFile(
+    agentPath,
+    relPath(name),
+    JSON.stringify(data, null, 2),
+  );
 }
 
 /** UUID via the Web Crypto API — good enough for in-UI ids. */

@@ -61,14 +61,8 @@ export function ChatProcessBlock({
   }, [isActive]);
 
   return (
-    <Collapsible
-      className="not-prose"
-      open={isOpen}
-      onOpenChange={setIsOpen}
-    >
-      <CollapsibleTrigger
-        className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground/65 transition-colors hover:text-muted-foreground"
-      >
+    <Collapsible className="not-prose" open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground/65 transition-colors hover:text-muted-foreground">
         <HoustonHelmet color="currentColor" size={13} />
         <span className="min-w-0 truncate text-left">
           {isActive ? <Shimmer duration={1}>{l.active}</Shimmer> : l.complete}
@@ -99,7 +93,9 @@ export function ChatProcessBlock({
                   defaultOpen={segmentActive && segment.reasoning.isStreaming}
                 >
                   <ReasoningTrigger getThinkingMessage={getThinkingMessage} />
-                  <ReasoningContent>{segment.reasoning.content}</ReasoningContent>
+                  <ReasoningContent>
+                    {segment.reasoning.content}
+                  </ReasoningContent>
                 </Reasoning>
               )}
               {segment.tools.length > 0 && (

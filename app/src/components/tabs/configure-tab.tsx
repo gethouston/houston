@@ -22,7 +22,9 @@ function usePromptFile(agentPath: string, fileName: string) {
   return useQuery({
     queryKey: [...queryKeys.instructions(agentPath), "prompt", fileName],
     queryFn: () =>
-      tauriAgent.readFile(agentPath, `.houston/prompts/${fileName}`).catch(() => ""),
+      tauriAgent
+        .readFile(agentPath, `.houston/prompts/${fileName}`)
+        .catch(() => ""),
     enabled: !!agentPath,
   });
 }
@@ -30,13 +32,23 @@ function usePromptFile(agentPath: string, fileName: string) {
 function useSavePromptFile(agentPath: string, fileName: string) {
   return useCallback(
     async (content: string) => {
-      await tauriAgent.writeFile(agentPath, `.houston/prompts/${fileName}`, content);
+      await tauriAgent.writeFile(
+        agentPath,
+        `.houston/prompts/${fileName}`,
+        content,
+      );
     },
     [agentPath, fileName],
   );
 }
 
-function PromptEditor({ agentPath, mode }: { agentPath: string; mode: AgentMode }) {
+function PromptEditor({
+  agentPath,
+  mode,
+}: {
+  agentPath: string;
+  mode: AgentMode;
+}) {
   const { t } = useTranslation("agents");
   const { data: content } = usePromptFile(agentPath, mode.promptFile);
   const save = useSavePromptFile(agentPath, mode.promptFile);
@@ -48,7 +60,9 @@ function PromptEditor({ agentPath, mode }: { agentPath: string; mode: AgentMode 
       <AutoSaveTextarea
         value={content ?? ""}
         onSave={save}
-        placeholder={t("configure.agentPrompts.placeholder", { name: mode.name })}
+        placeholder={t("configure.agentPrompts.placeholder", {
+          name: mode.name,
+        })}
       />
     </div>
   );
