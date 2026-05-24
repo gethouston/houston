@@ -1,0 +1,20 @@
+{
+  "loading": "Cargando…",
+  "empty": {
+    "title": "Aún no hay nada en la línea de tiempo",
+    "description": "Una vez que este agente haya corrido misiones, verás aquí cada mensaje, llamada a herramienta y resultado, los más nuevos primero."
+  },
+  "session": "sesión {{id}}",
+  "limitNote": "Mostrando los {{limit}} eventos más recientes.",
+  "type": {
+    "user": "Tú",
+    "assistant": "Asistente",
+    "toolCall": "Herramienta",
+    "toolResult": "Resultado",
+    "system": "Sistema",
+    "thinking": "Pensando",
+    "final": "Final",
+    "files": "Archivos",
+    "error": "Error"
+  }
+}

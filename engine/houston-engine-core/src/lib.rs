@@ -21,6 +21,7 @@ pub mod sessions;
 pub mod skills;
 pub mod state;
 pub mod store;
+pub mod timeline;
 pub mod workspace_context;
 pub mod workspaces;
 pub mod worktree;

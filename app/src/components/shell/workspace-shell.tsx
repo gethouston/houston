@@ -76,16 +76,25 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
     gitPanelFlagOn && currentAgent ? currentAgent.folderPath : null,
   );
   const showGitTab = gitPanelFlagOn && gitRepoCheck.data === true;
-  const tabs = showGitTab
-    ? [
-        ...baseTabs,
-        {
-          id: "git",
-          label: "Git",
-          builtIn: "git" as const,
-        },
-      ]
-    : baseTabs;
+  // Phase 4 — `advanced.timeline` injects a `Timeline` tab on every agent
+  // (no per-agent check; every agent has at least the chance of activities).
+  const timelineFlagOn = useFeatureFlag("advanced.timeline");
+  const showTimelineTab = timelineFlagOn && Boolean(currentAgent);
+  const tabs = [
+    ...baseTabs,
+    ...(showGitTab
+      ? [{ id: "git", label: "Git", builtIn: "git" as const }]
+      : []),
+    ...(showTimelineTab
+      ? [
+          {
+            id: "timeline",
+            label: "Timeline",
+            builtIn: "timeline" as const,
+          },
+        ]
+      : []),
+  ];
   const hasActivityTab = tabs.some((tab) => tab.id === "activity");
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter((a) => a.status === "needs_you").length;

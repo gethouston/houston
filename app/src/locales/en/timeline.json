@@ -1,0 +1,20 @@
+{
+  "loading": "Loading…",
+  "empty": {
+    "title": "Nothing on the timeline yet",
+    "description": "Once this agent has run missions, you'll see every message, tool call, and result here, newest first."
+  },
+  "session": "session {{id}}",
+  "limitNote": "Showing the {{limit}} most recent events.",
+  "type": {
+    "user": "You",
+    "assistant": "Assistant",
+    "toolCall": "Tool",
+    "toolResult": "Tool result",
+    "system": "System",
+    "thinking": "Thinking",
+    "final": "Final",
+    "files": "Files",
+    "error": "Error"
+  }
+}

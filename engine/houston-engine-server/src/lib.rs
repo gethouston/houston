@@ -34,6 +34,7 @@ pub fn build_router(state: Arc<ServerState>) -> Router {
         .merge(routes::attachments::router())
         .merge(routes::worktree::router())
         .merge(routes::git::router())
+        .merge(routes::timeline::router())
         .merge(routes::store::router())
         .merge(routes::routines::router())
         .merge(routes::agents::router())

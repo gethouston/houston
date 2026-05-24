@@ -88,6 +88,18 @@ export const FLAG_REGISTRY: Record<string, FlagDef> = {
     since: "0.4.2",
     graduationTarget: "permanent",
   },
+  "advanced.timeline": {
+    key: "advanced.timeline",
+    category: "advanced",
+    default: false,
+    labelKey: "advanced.flags.timeline.label",
+    descriptionKey: "advanced.flags.timeline.description",
+    enforcementSurface: "ui",
+    status: "beta",
+    learnMoreSlug: "timeline",
+    since: "0.4.3",
+    graduationTarget: "permanent",
+  },
 };
 
 export type FlagMigration =

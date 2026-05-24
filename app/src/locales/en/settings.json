@@ -91,6 +91,10 @@
       "git_panel": {
         "label": "Git panel",
         "description": "Show a read-only Git tab on agents whose working directory is a git repository. Status, recent commits, file diff."
+      },
+      "timeline": {
+        "label": "Timeline",
+        "description": "Show a cross-session activity timeline on every agent. Newest events first, with type and short preview."
       }
     },
     "resetAll": "Reset all advanced settings",

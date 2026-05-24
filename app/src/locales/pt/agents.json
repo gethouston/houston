@@ -51,7 +51,8 @@
     "learnings": "Aprendizados",
     "configure": "Configurar",
     "settings": "Configurações",
-    "git": "Git"
+    "git": "Git",
+    "timeline": "Linha do tempo"
   },
   "configure": {
     "projectContext": {

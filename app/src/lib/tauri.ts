@@ -596,6 +596,13 @@ export const tauriGit = {
     call("git_diff", () => getEngine().gitDiff({ cwd, path })),
 };
 
+// ─── Timeline (cross-session — advanced.timeline) ─────────────────────
+
+export const tauriTimeline = {
+  fetch: (sessionIds: string[], limit?: number) =>
+    call("timeline", () => getEngine().timeline({ sessionIds, limit })),
+};
+
 // ─── Worktrees & shell ────────────────────────────────────────────────
 
 export const tauriWorktree = {

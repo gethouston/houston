@@ -91,6 +91,10 @@
       "git_panel": {
         "label": "Painel do Git",
         "description": "Mostra uma aba Git somente leitura nos agentes cujo diretório de trabalho é um repositório git. Status, commits recentes, diff por arquivo."
+      },
+      "timeline": {
+        "label": "Linha do tempo",
+        "description": "Mostra uma linha do tempo de atividade entre sessões em cada agente. Eventos mais novos primeiro, com tipo e prévia curta."
       }
     },
     "resetAll": "Redefinir todas as configurações avançadas",

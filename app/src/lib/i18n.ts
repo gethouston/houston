@@ -29,6 +29,7 @@ import errorsEn from "../locales/en/errors.json";
 import eventsEn from "../locales/en/events.json";
 import gitEn from "../locales/en/git.json";
 import portableEn from "../locales/en/portable.json";
+import timelineEn from "../locales/en/timeline.json";
 import trackerEn from "../locales/en/tracker.json";
 import commonEs from "../locales/es/common.json";
 import setupEs from "../locales/es/setup.json";
@@ -47,6 +48,7 @@ import errorsEs from "../locales/es/errors.json";
 import eventsEs from "../locales/es/events.json";
 import gitEs from "../locales/es/git.json";
 import portableEs from "../locales/es/portable.json";
+import timelineEs from "../locales/es/timeline.json";
 import trackerEs from "../locales/es/tracker.json";
 import commonPt from "../locales/pt/common.json";
 import setupPt from "../locales/pt/setup.json";
@@ -65,6 +67,7 @@ import errorsPt from "../locales/pt/errors.json";
 import eventsPt from "../locales/pt/events.json";
 import gitPt from "../locales/pt/git.json";
 import portablePt from "../locales/pt/portable.json";
+import timelinePt from "../locales/pt/timeline.json";
 import trackerPt from "../locales/pt/tracker.json";
 
 export const SUPPORTED_LOCALES = ["en", "es", "pt"] as const;
@@ -129,6 +132,7 @@ const resources = {
     events: eventsEn,
     git: gitEn,
     portable: portableEn,
+    timeline: timelineEn,
     tracker: trackerEn,
   },
   es: {
@@ -149,6 +153,7 @@ const resources = {
     events: eventsEs,
     git: gitEs,
     portable: portableEs,
+    timeline: timelineEs,
     tracker: trackerEs,
   },
   pt: {
@@ -169,6 +174,7 @@ const resources = {
     events: eventsPt,
     git: gitPt,
     portable: portablePt,
+    timeline: timelinePt,
     tracker: trackerPt,
   },
 } as const;
@@ -209,6 +215,7 @@ void i18n
       "events",
       "git",
       "portable",
+      "timeline",
       "tracker",
     ],
     interpolation: { escapeValue: false }, // react already escapes

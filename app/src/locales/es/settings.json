@@ -91,6 +91,10 @@
       "git_panel": {
         "label": "Panel de Git",
         "description": "Muestra una pestaña Git de solo lectura en los agentes cuyo directorio de trabajo es un repositorio git. Estado, commits recientes, diff por archivo."
+      },
+      "timeline": {
+        "label": "Línea de tiempo",
+        "description": "Muestra una línea de tiempo de actividad entre sesiones en cada agente. Eventos más nuevos primero, con tipo y vista previa corta."
       }
     },
     "resetAll": "Restablecer todos los ajustes avanzados",

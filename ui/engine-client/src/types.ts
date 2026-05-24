@@ -536,6 +536,26 @@ export interface GitDiffResponse {
 /** Stable `kind` tag the engine emits when cwd isn't a git repo. */
 export const GIT_NOT_A_REPO_KIND = "git_not_a_repo";
 
+// ---------- Timeline (cross-session activity view) ----------
+
+export interface TimelineRequest {
+  sessionIds: string[];
+  limit?: number;
+}
+export interface TimelineEvent {
+  claudeSessionId: string;
+  timestamp: string;
+  feedType: string;
+  /** Raw `data_json` from the chat_feed row. Frontend interprets per
+   *  `feedType` (matches the FeedItem discriminated union). */
+  dataJson: string;
+  source: string;
+}
+export interface TimelineResponse {
+  events: TimelineEvent[];
+  limit: number;
+}
+
 export interface RunShellRequest {
   path: string;
   command: string;

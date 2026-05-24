@@ -42,6 +42,8 @@ import type {
   GitLogResponse,
   GitStatusRequest,
   GitStatusResponse,
+  TimelineRequest,
+  TimelineResponse,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
@@ -610,6 +612,12 @@ export class HoustonClient {
   }
   gitDiff(req: GitDiffRequest): Promise<GitDiffResponse> {
     return this.request("POST", "/git/diff", req);
+  }
+
+  // ---------- timeline (cross-session activity view) ----------
+
+  timeline(req: TimelineRequest): Promise<TimelineResponse> {
+    return this.request("POST", "/timeline", req);
   }
 
   // ---------- tunnel (mobile pairing + device-token management) ----------
