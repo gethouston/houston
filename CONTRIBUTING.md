@@ -38,7 +38,7 @@ make verify-all
 All code in Houston lives within strict logical domains to ensure the engine remains highly reusable and the UI stays modular:
 
 1. **`engine/` (Rust Workspace Crates)**: Standalone, frontend-agnostic execution runtime. No Tauri dependencies, no React assumptions. Speaks exclusively HTTP and WebSocket.
-2. **`ui/` (React Workspace Packages)**: Generic, props-driven, UI-only `@houston-ai/*` packages. No global state stores (e.g. Zustand, Redux) are allowed inside libraries. Use props over stores.
+2. **`ui/` (React Workspace Packages)**: Generic, props-driven, UI-only `@houston-ai/*` packages. No global state stores (e.g. Zustand, Redux) are allowed inside libraries. Use props over stores. No `@/` path aliases inside packages — use relative imports within a package and package imports between them.
 3. **`app/` (Tauri Desktop App)**: Orchestrates the UI packages and spawns the Rust engine as a sidecar process. Features target-specific adapters linking Tauri endpoints to the Engine protocol.
 4. **`mobile/` (React PWA)**: Serves mobile viewport components dynamically.
 
