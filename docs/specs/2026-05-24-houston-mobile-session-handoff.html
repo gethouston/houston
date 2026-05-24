@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Houston Mobile — Session Handoff (2026-05-24)</title>
+<style>
+  :root {
+    --bg: #0e0e10;
+    --fg: #e8e8ea;
+    --muted: #9a9aa1;
+    --accent: #7c5cff;
+    --accent-soft: #2b1f5a;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
+    --rule: #2a2a30;
+    --code-bg: #18181b;
+    --table-stripe: #141418;
+  }
+  html, body {
+    background: var(--bg); color: var(--fg);
+    font: 15px/1.6 -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+    margin: 0; padding: 0;
+  }
+  .wrap { max-width: 1100px; margin: 0 auto; padding: 48px 32px 96px; }
+  h1 { font-size: 28px; margin: 0 0 8px; letter-spacing: -0.01em; }
+  h2 { font-size: 20px; margin: 48px 0 12px; padding-top: 16px; border-top: 1px solid var(--rule); letter-spacing: -0.005em; }
+  h3 { font-size: 16px; margin: 28px 0 8px; color: var(--accent); }
+  h4 { font-size: 14px; margin: 16px 0 6px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+  p, li { color: var(--fg); }
+  a { color: var(--accent); }
+  .meta { color: var(--muted); font-size: 13px; margin: 0 0 28px; padding-bottom: 16px; border-bottom: 1px solid var(--rule); }
+  .meta span { display: inline-block; margin-right: 18px; }
+  .meta b { color: var(--fg); font-weight: 500; }
+  .tag { display: inline-block; background: var(--accent-soft); color: var(--fg); border-radius: 4px; padding: 2px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 6px; }
+  .tag.good { background: #16331f; color: var(--good); }
+  .tag.warn { background: #3a2d10; color: var(--warn); }
+  .tag.bad { background: #3b1a1a; color: var(--bad); }
+  code, pre { font-family: "SF Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 13px; }
+  code { background: var(--code-bg); padding: 1px 5px; border-radius: 3px; }
+  pre { background: var(--code-bg); padding: 14px 16px; border-radius: 6px; overflow-x: auto; border: 1px solid var(--rule); line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; }
+  tbody tr:nth-child(even) { background: var(--table-stripe); }
+  ul, ol { padding-left: 22px; }
+  li { margin: 4px 0; }
+  .callout { background: var(--code-bg); border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; padding: 12px 16px; margin: 16px 0; }
+  .callout.warn { border-left-color: var(--warn); }
+  .callout.bad { border-left-color: var(--bad); }
+  .callout.good { border-left-color: var(--good); }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .footnote { color: var(--muted); font-size: 12px; }
+  .stack td:first-child { white-space: nowrap; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Houston Mobile — Session Handoff</h1>
+<p class="meta">
+  <span><b>Date:</b> 2026-05-24</span>
+  <span><b>Project:</b> Houston Mobile · Capacitor Native</span>
+  <span><b>Status:</b> <span class="tag good">In flight</span></span>
+  <span><b>PRs landed:</b> 4 / 4 merged</span>
+  <span><b>Companion:</b> <a href="../PROMPT.md"><code>docs/PROMPT.md</code></a> (fresh-session prompt)</span>
+</p>
+
+<div class="callout good">
+  <p><b>One-line state.</b> Houston Mobile's <b>protocol foundation + push policy core</b> are merged on <code>fork/main</code>. The next genuinely dogfoodable step is the <i>HoustonEvent subscriber + tunnel outbound-frame channel</i>. Everything after that needs Apple / Google / device resources this environment doesn't have.</p>
+</div>
+
+<h2>1. What landed (4 PRs, all merged)</h2>
+<table>
+  <thead><tr><th>#</th><th>Title</th><th>Verified by</th></tr></thead>
+  <tbody>
+    <tr>
+      <td><a href="https://github.com/broomva/houston/pull/28">#28</a></td>
+      <td><b>Capacitor shell wiring + architecture spec.</b> Adds <code>mobile/capacitor.config.ts</code>, deps (<code>@capacitor/{core,ios,app,push-notifications,preferences}</code> 8.x + cli), scripts (<code>cap:sync</code>, <code>cap:open:ios</code>, <code>build:native</code>), <code>mobile/.gitignore</code>, the architecture spec, and a "Native shell (Capacitor)" section in <code>docs/mobile-architecture.md</code>.</td>
+      <td><code>bun install</code> clean; <code>bun run build</code> green (7089 modules); <code>cap add ios</code> generates valid SPM Xcode project. iOS sim compile ⊘ (toolchain-stalls in this env).</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/broomva/houston/pull/32">#32</a></td>
+      <td><b>Notify frame v1.</b> Adds <code>Notify(NotifyFrame)</code> variant on the <code>TunnelFrame</code> enum, with <code>NotifyKind</code> (<code>NeedsYou</code>/<code>Finished</code>/<code>Failed</code>) + serde test. Superseded by #40 — shipped <i>protocol-only</i> with no consumer, so nothing depended on the v1 shape.</td>
+      <td><code>cargo test -p houston-tunnel</code> (9 → 10 tests passing).</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/broomva/houston/pull/40">#40</a></td>
+      <td><b>Notify frame v2 — APNs / FCM <code>loc-key</code> shape (industry best practice).</b> Refactors <code>NotifyFrame</code> to carry only <code>notifyKind</code> + <code>locArgs</code>; drops pre-localized <code>title</code> / <code>body</code>. Device localizes from its bundled <code>Localizable.strings</code> / <code>strings.xml</code> using <code>notifyKind</code> as the key. Both <a href="https://developer.apple.com/documentation/usernotifications/generating-a-remote-notification">APNs <code>loc-key</code> / <code>loc-args</code></a> and FCM <code>body_loc_key</code> / <code>body_loc_args</code> ship this exact mechanism.</td>
+      <td>10 tests pass, incl. <code>notify_omits_empty_loc_args_on_wire</code> (proves <code>locArgs</code> is absent on the wire when empty so the TS twin's <code>locArgs?: string[]</code> optionality matches); relay <code>tsc</code> exit 0.</td>
+    </tr>
+    <tr>
+      <td><a href="https://github.com/broomva/houston/pull/42">#42</a></td>
+      <td><b><code>NotifyPolicy</code> + <code>status_to_notify_kind</code>.</b> Standalone, deterministic state machine: daily cap (default 5) + dedup window (default 60s) keyed on <code>(NotifyKind, session_key)</code>. UTC day boundary resets count; <code>div_euclid</code> defends against negative-clock rewinds. Skip decisions do <i>not</i> count against the cap.</td>
+      <td><code>cargo test -p houston-tunnel</code> → 22 passed, 12 new in <code>notify::tests</code>.</td>
+    </tr>
+  </tbody>
+</table>
+
+<h2>2. Architecture (canonical)</h2>
+<p>Topology + the new push hop:</p>
+<pre><code>┌──────────────┐         ┌────────────────────────┐         ┌──────────────────┐
+│ iOS / Android│         │  Relay Worker (DO)     │         │  User's Mac      │
+│ Capacitor app│◄───────►│  tunnel.gethouston.ai  │◄──WSS──►│  houston-engine  │
+│  WKWebView:  │  HTTPS  │  ├─ tunnel-do.ts       │         │  houston-tunnel  │
+│  mobile/dist │  + WS   │  ├─ push registry KV * │         │  (dials out)     │
+│  + native    │         │  └─ APNs/FCM sender *  │◄─Notify─┤  emits Notify    │
+│  push/bio    │  APNs   │                        │  frame  │  on lifecycle    │
+│              │◄─FCM────┤                        │         │                  │
+└──────────────┘         └────────────────────────┘         └──────────────────┘
+                                * = not yet built (credential-gated)
+</code></pre>
+<p>The single new hop: engine sends a typed <code>Notify</code> frame over the existing tunnel on a notify-worthy session lifecycle transition. The relay maps <code>notifyKind</code> onto APNs <code>body-loc-key</code> + FCM <code>body_loc_key</code>; the device localizes via its bundled resources. <b>Engine owns policy + semantic event; relay is a dumb push pipe.</b></p>
+
+<h2>3. Decisions locked (D1–D6)</h2>
+<table>
+  <thead><tr><th>#</th><th>Decision</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>D1</td><td>Client = <b>Capacitor</b> (not PWA-harden / not Tauri-mobile / not Expo-RN)</td><td>~95% reuse of the existing <code>mobile/</code> bundle, real APNs/FCM, store presence. PWA push on iOS is too weak; Tauri mobile is less mature; Expo would discard <code>@houston-ai</code> DOM components.</td></tr>
+    <tr><td>D2</td><td>Backend = <b>Mac tunnel only</b> (not Always-On, not user-selectable)</td><td>Engine can never run on-device — it spawns CLI subprocesses (iOS forbids <code>fork/exec</code>). Mac tunnel is simplest. Trade-off accepted: push fires only while the Mac is awake.</td></tr>
+    <tr><td>D3</td><td>Push origin = <b>relay</b>, driven by an engine-emitted <code>Notify</code> frame</td><td>Relay is the always-on cloud component. Engine owns semantics + policy; relay is dumb.</td></tr>
+    <tr><td>D4</td><td>iOS first; Android <b>deferred</b> until SDK provisioning</td><td>Host has Xcode + CocoaPods. Android SDK absent. Do the verifiable platform right; don't commit unbuildable artifacts.</td></tr>
+    <tr><td>D5</td><td>Branch base = <code>fork/main</code> (bun), <i>not</i> <code>origin/main</code> (pnpm)</td><td>The broomva fork standardized on bun (the "#26 bun divergence"). Basing on upstream pnpm produced a dual-lockfile conflict; basing on fork is clean.</td></tr>
+    <tr><td>D6</td><td>Notification localization = <b>device-side</b> (APNs <code>loc-key</code> / FCM <code>body_loc_key</code>)</td><td>Server doesn't know the device locale and shouldn't have to track it. Both platforms ship this exact mechanism. Survives locale changes instantly, minimal payloads, removes a class of server state.</td></tr>
+  </tbody>
+</table>
+
+<h2>4. What's still open</h2>
+
+<h3>Doable next (validatable with code + tests, no external resources)</h3>
+<p><b>The subscriber + the tunnel outbound-frame channel.</b> Three components:</p>
+<ol>
+  <li><b>Add an outbound-frame channel on <code>TunnelClient</code></b>. New public API <code>TunnelClient::outbound_frame_sender() -&gt; tokio::sync::mpsc::Sender&lt;TunnelFrame&gt;</code>. Plumb the receiver into the WS write side in <code>engine/houston-tunnel/src/connection.rs</code> (and <code>connection/dispatch.rs</code>) so frames pushed in get written out to the relay. Unit-test the channel with a mock WS sink — drop frames in, assert serialized JSON appears on the sink.</li>
+  <li><b>Subscriber task</b> that consumes <code>HoustonEvent::SessionStatus</code> from a <code>BroadcastEventSink</code> receiver, calls <code>notify::status_to_notify_kind(status)</code>, asks <code>NotifyPolicy::decide(kind, session_key, now_ms)</code>, and (on <code>Emit</code>) builds a <code>NotifyFrame</code> + pushes it onto the channel. Lives in <code>houston-engine-server</code> (the binary that wires up the event sink + tunnel at startup). Unit-test with a synthetic broadcast stream — emit a few <code>SessionStatus</code> events, assert the right frames arrive at a mock channel.</li>
+  <li><b>Wire it into <code>houston-engine-server</code>'s startup</b>. Where the <code>BroadcastEventSink</code> + <code>TunnelClient</code> are constructed, spawn the dispatcher with both.</li>
+</ol>
+<p><i>locArgs design.</i> Each <code>NotifyKind</code> needs a stable set of <code>locArgs</code> so the bundled <code>.strings</code> / <code>strings.xml</code> can use <code>%@</code> / <code>%1$s</code> placeholders. Suggested starting set: <code>NeedsYou</code> → <code>[agent_name]</code>; <code>Finished</code> → <code>[agent_name]</code>; <code>Failed</code> → <code>[agent_name]</code>. Locale resources land later as part of the mobile-side i18n work, but the subscriber needs to commit to this shape now.</p>
+
+<h3>Credential / device / account-gated (do <i>not</i> fake-build these)</h3>
+<table>
+  <thead><tr><th>Chunk</th><th>Blocked on</th></tr></thead>
+  <tbody>
+    <tr><td>Relay APNs / FCM <b>sender</b></td><td>Apple <code>.p8</code> auth key + key id + team id; FCM service-account JSON</td></tr>
+    <tr><td>On-device <b>push handler</b> (Chunk 3)</td><td>iOS simulator with push profile or a physical device + APNs sandbox</td></tr>
+    <tr><td><b>Biometric unlock</b> (Chunk 4)</td><td>Physical device (Face/Touch ID isn't available on the iOS simulator)</td></tr>
+    <tr><td>In-app <b>camera QR scan</b> (Chunk 5)</td><td>Physical device camera</td></tr>
+    <tr><td><b>Store CI</b> (Chunk 6)</td><td>Apple Developer account ($99/yr) + Google Play account ($25) + signing certs / provisioning profiles + .p8 / FCM project / upload key</td></tr>
+  </tbody>
+</table>
+
+<h2>5. Environment caveats observed this session</h2>
+<ul>
+  <li><span class="tag warn">tooling</span> <b>iOS simulator SPM resolution stalls</b> repeatedly on Xcode 26.3 under any I/O contention — once due to an orphaned <code>xcodebuild -list</code> lock, once with no obvious cause past "Resolve Package Graph". CI on clean runners completes fine; locally on this host it stalls. <b>Don't burn turns on local iOS sim builds</b> — trust CI.</li>
+  <li><span class="tag bad">disk</span> <b>Disk hit 100% / 0 bytes free</b> during the session and deadlocked every file write briefly. Caused by the host being ~460 GB / pre-existing full; the iOS toolchain just hit the ceiling. Recovered ~37 GB by clearing DerivedData + Rust target dirs across <code>~/broomva</code> + <code>~/conductor</code> Houston worktrees, then another ~11 GB sweeping the rest of the broomva workspace (symphony 1.6G · broomva-cli 2.5G + 1.2G · OmniVoice src-tauri 2.9G · houston linear-mirror 1.3G · others). <b>Keep disk headroom; cargo regenerates target deterministically.</b></li>
+  <li><span class="tag warn">git</span> <b>Race on auto-merge while pushing follow-up commits.</b> When auto-merge is armed and a second commit lands during the CI window, only the first one gets squash-merged; the follow-up commit needs a new branch + PR. Encountered on #32 → #40; recovered cleanly with a cherry-pick. <b>Don't push follow-ups to an armed branch — open a new branch.</b></li>
+  <li><span class="tag warn">git</span> <b>Pre-commit (lint-staged) on the fork base runs <code>rustfmt --check</code> + <code>bun run typecheck</code> + <code>check-locales</code>.</b> Long one-line <code>assert_eq!</code> calls will fail <code>rustfmt --check</code> — run <code>cargo fmt -p &lt;crate&gt;</code> before committing Rust, or rely on the hook + retry.</li>
+  <li><span class="tag warn">linear</span> <b>Linear MCP is currently <i>not connected</i></b> (and the <code>authenticate</code> tool isn't surfacing either — the connector appears to be fully removed). To restore: claude.ai → Settings → Connectors → +Add → Linear → authorize the <b>Broomva</b> workspace (not Stimulus). A previous run accidentally filed tickets in the Stimulus workspace; those were canceled but not hard-deleted (Linear MCP exposes <code>delete_comment</code> / <code>delete_attachment</code> / <code>delete_status_update</code> only — there's no <code>delete_issue</code> / <code>delete_project</code>; trash them in the Linear UI when you have a moment: <a href="https://linear.app/stimulus/project/houston-mobile-capacitor-native-deaf8d30c4aa">Stimulus / BRO-49…54</a>).</li>
+  <li><span class="tag warn">stash</span> An unrelated WIP stash on <code>feat/migrate-to-bun</code> got popped during a recovery — recoverable from the reflog as <code>fb82ba48b7ed64be1aa14d61d3905e748d1e4198</code> if you still want it.</li>
+</ul>
+
+<h2>6. Continuation</h2>
+<p>Fresh-session prompt: <a href="../PROMPT.md"><code>docs/PROMPT.md</code></a>. It's self-contained — a new agent can load it, read the listed files in order, and resume on the subscriber + outbound-channel work without re-doing the research / design.</p>
+<p>Architecture spec (the original): <a href="2026-05-23-houston-mobile-capacitor.html"><code>docs/specs/2026-05-23-houston-mobile-capacitor.html</code></a>.</p>
+
+<h2>7. References</h2>
+<ul class="footnote">
+  <li>APNs <code>loc-key</code> / <code>loc-args</code> — <a href="https://developer.apple.com/documentation/usernotifications/generating-a-remote-notification">Generating a remote notification (Apple Developer Docs)</a></li>
+  <li>FCM <code>body_loc_key</code> — Firebase Cloud Messaging HTTP v1 (<code>notification.title_loc_key</code> / <code>body_loc_key</code> / <code>body_loc_args</code>)</li>
+  <li>Notification budget for background agents — <a href="https://tianpan.co/blog/2026-05-13-background-agents-notification-budget-attention-economy">Tianpan, 2026</a></li>
+  <li>Capacitor vs RN vs PWA 2026 — <a href="https://www.pkgpulse.com/guides/react-native-vs-expo-vs-capacitor-cross-platform-mobile-2026">PkgPulse</a>, <a href="https://capgo.app/blog/capacitor-ai-mobile-apps/">Capgo</a></li>
+  <li>iOS PWA limits 2026 — <a href="https://www.magicbell.com/blog/pwa-ios-limitations-safari-support-complete-guide">MagicBell</a>, <a href="https://www.mobiloud.com/blog/progressive-web-apps-ios">MobiLoud</a></li>
+</ul>
+
+</div>
+</body>
+</html>
