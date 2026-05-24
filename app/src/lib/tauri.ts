@@ -861,18 +861,26 @@ export const tauriTrackers = {
       () => getEngine().trackerDisconnect(provider, workspacePath, orgId),
       orgId ? { workspacePath, orgId } : { workspacePath },
     ),
-  listIssues: (provider: EngineTrackerProvider, workspacePath: string) =>
+  listIssues: (
+    provider: EngineTrackerProvider,
+    workspacePath: string,
+    orgId?: string,
+  ) =>
     call<EngineTrackerIssue[]>(
-      `tracker_${provider}_list_issues`,
-      () => getEngine().trackerListIssues(provider, workspacePath),
-      { workspacePath },
+      `tracker_${provider}_list_issues${orgId ? `_${orgId}` : ""}`,
+      () => getEngine().trackerListIssues(provider, workspacePath, orgId),
+      orgId ? { workspacePath, orgId } : { workspacePath },
       // Issues fetches happen on every poll — silent like status.
       { toast: false },
     ),
-  syncNow: (provider: EngineTrackerProvider, workspacePath: string) =>
+  syncNow: (
+    provider: EngineTrackerProvider,
+    workspacePath: string,
+    orgId?: string,
+  ) =>
     call<EngineTrackerReconcileResponse>(
-      `tracker_${provider}_sync_now`,
-      () => getEngine().trackerSync(provider, workspacePath),
-      { workspacePath },
+      `tracker_${provider}_sync_now${orgId ? `_${orgId}` : ""}`,
+      () => getEngine().trackerSync(provider, workspacePath, orgId),
+      orgId ? { workspacePath, orgId } : { workspacePath },
     ),
 };

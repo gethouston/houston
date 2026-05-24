@@ -64,7 +64,12 @@
       "moreCaps_other": "+ {{count}} capacidades a mais",
       "disconnectConfirmTitle": "Desconectar {{orgName}}?",
       "disconnectConfirmBody": "Isso remove os tokens OAuth do Linear e os metadados da conexão no nível do workspace. Os dados espelhados em disco ficam no lugar por enquanto; remova a pasta do tracker do workspace manualmente se quiser apagá-los.",
-      "disconnectedToast": "{{orgName}} desconectado do Linear."
+      "disconnectedToast": "{{orgName}} desconectado do Linear.",
+      "syncedToast_one": "{{count}} issue sincronizada de {{orgName}}.",
+      "syncedToast_other": "{{count}} issues sincronizadas de {{orgName}}."
+    },
+    "picker": {
+      "label": "Mostrando:"
     }
   }
 }

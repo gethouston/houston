@@ -74,6 +74,53 @@ impl SyncState {
         Ok(())
     }
 
+    // ── Workspace-many (PR D) variants ──────────────────────────
+    //
+    // Per-(workspace, org_id) sync state under
+    // `<workspace>/.houston/trackers/linear/<org_id>/sync_state.json`.
+    // Composes with the workspace-level connection layout from PR A.
+    // Pre-PR-D callers continue to use the per-agent helpers above;
+    // PR E retires them after the new shape soaks.
+
+    /// Workspace-level path for a given org's sync state.
+    pub fn path_for_workspace_org(workspace_path: &Path, org_id: &str) -> PathBuf {
+        crate::connection::org_data_dir(workspace_path, org_id).join("sync_state.json")
+    }
+
+    /// Load from the per-(workspace, org) path. Returns
+    /// [`SyncState::default()`] when missing.
+    pub fn load_for_workspace_org(
+        workspace_path: &Path,
+        org_id: &str,
+    ) -> Result<Self, LinearError> {
+        let path = Self::path_for_workspace_org(workspace_path, org_id);
+        match std::fs::read(&path) {
+            Ok(bytes) => serde_json::from_slice(&bytes).map_err(LinearError::Json),
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Self::default()),
+            Err(e) => Err(LinearError::Io(format!("read sync_state.json: {e}"))),
+        }
+    }
+
+    /// Write atomically to the per-(workspace, org) path.
+    pub fn save_atomic_for_workspace_org(
+        &self,
+        workspace_path: &Path,
+        org_id: &str,
+    ) -> Result<(), LinearError> {
+        let path = Self::path_for_workspace_org(workspace_path, org_id);
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| LinearError::Io(format!("create sync_state dir: {e}")))?;
+        }
+        let tmp = path.with_extension("json.tmp");
+        let json = serde_json::to_string_pretty(self).map_err(LinearError::Json)?;
+        std::fs::write(&tmp, json)
+            .map_err(|e| LinearError::Io(format!("write sync_state.json: {e}")))?;
+        std::fs::rename(&tmp, &path)
+            .map_err(|e| LinearError::Io(format!("rename sync_state.json: {e}")))?;
+        Ok(())
+    }
+
     /// Convenience: take an RFC 3339 string and update `issues_cursor`
     /// if the new value is strictly later than the current. Caller
     /// drives this from the latest `updatedAt` in a reconcile page.

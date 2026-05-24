@@ -74,6 +74,24 @@ pub fn projection_path(workspace_path: &Path) -> PathBuf {
         .join("issues.json")
 }
 
+// ── Workspace-many (PR D) variants ───────────────────────────────
+//
+// Per-org raw + projection paths under
+// `<workspace>/.houston/trackers/linear/<org_id>/`. Composes with
+// the workspace-level connection layout introduced in PR A. Pre-PR-D
+// callers continue to use the per-agent helpers above; PR E retires
+// them after the new shape soaks.
+
+pub fn raw_issues_dir_for_workspace_org(workspace_path: &Path, org_id: &str) -> PathBuf {
+    crate::connection::org_data_dir(workspace_path, org_id)
+        .join("raw")
+        .join("issues")
+}
+
+pub fn projection_path_for_workspace_org(workspace_path: &Path, org_id: &str) -> PathBuf {
+    crate::connection::org_data_dir(workspace_path, org_id).join("issues.json")
+}
+
 // ── Raw + projection IO ─────────────────────────────────────────
 
 /// Write one cynic-fetched issue to `raw/issues/<uuid>.json`.
@@ -131,6 +149,79 @@ pub fn reproject_issues_from_raw(workspace_path: &Path) -> Result<usize, LinearE
 /// caller decides whether to surface that vs. NotAuthenticated).
 pub fn load_projection(workspace_path: &Path) -> Result<Vec<ProjectedIssue>, LinearError> {
     let path = projection_path(workspace_path);
+    match std::fs::read(&path) {
+        Ok(bytes) => serde_json::from_slice(&bytes).map_err(LinearError::Json),
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),
+        Err(e) => Err(LinearError::Io(format!("read issues.json: {e}"))),
+    }
+}
+
+// ── Workspace-many (PR D) raw + projection IO ────────────────────
+
+/// Write one cynic-fetched issue to
+/// `<workspace>/.houston/trackers/linear/<org_id>/raw/issues/<uuid>.json`.
+pub fn write_raw_issue_for_workspace_org(
+    workspace_path: &Path,
+    org_id: &str,
+    node: &IssueNode,
+) -> Result<(), LinearError> {
+    let dir = raw_issues_dir_for_workspace_org(workspace_path, org_id);
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| LinearError::Io(format!("create raw/issues dir: {e}")))?;
+    let path = dir.join(format!("{}.json", node.id.inner()));
+    let projected = <TrackerIssue as FromIssueNode>::project(node);
+    let json = serde_json::to_string_pretty(&projected).map_err(LinearError::Json)?;
+    let tmp = path.with_extension("json.tmp");
+    std::fs::write(&tmp, json).map_err(|e| LinearError::Io(format!("write raw issue: {e}")))?;
+    std::fs::rename(&tmp, &path).map_err(|e| LinearError::Io(format!("rename raw issue: {e}")))?;
+    Ok(())
+}
+
+/// Re-project from per-org `raw/issues/*.json` to per-org
+/// `issues.json`. Idempotent.
+pub fn reproject_issues_from_raw_for_workspace_org(
+    workspace_path: &Path,
+    org_id: &str,
+) -> Result<usize, LinearError> {
+    let dir = raw_issues_dir_for_workspace_org(workspace_path, org_id);
+    let mut items: Vec<ProjectedIssue> = Vec::new();
+    if dir.exists() {
+        for entry in std::fs::read_dir(&dir)
+            .map_err(|e| LinearError::Io(format!("read raw/issues dir: {e}")))?
+        {
+            let entry = entry.map_err(|e| LinearError::Io(format!("iter raw/issues: {e}")))?;
+            if entry.path().extension().and_then(|s| s.to_str()) != Some("json") {
+                continue;
+            }
+            let bytes = std::fs::read(entry.path())
+                .map_err(|e| LinearError::Io(format!("read raw issue: {e}")))?;
+            let issue: ProjectedIssue =
+                serde_json::from_slice(&bytes).map_err(LinearError::Json)?;
+            items.push(issue);
+        }
+    }
+    items.sort_by(|a, b| b.updated_at.cmp(&a.updated_at));
+
+    let path = projection_path_for_workspace_org(workspace_path, org_id);
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)
+            .map_err(|e| LinearError::Io(format!("create projection dir: {e}")))?;
+    }
+    let tmp = path.with_extension("json.tmp");
+    let json = serde_json::to_string_pretty(&items).map_err(LinearError::Json)?;
+    std::fs::write(&tmp, json).map_err(|e| LinearError::Io(format!("write issues.json: {e}")))?;
+    std::fs::rename(&tmp, &path)
+        .map_err(|e| LinearError::Io(format!("rename issues.json: {e}")))?;
+    Ok(items.len())
+}
+
+/// Read the per-org consolidated projection. Returns an empty vec
+/// when the file is missing.
+pub fn load_projection_for_workspace_org(
+    workspace_path: &Path,
+    org_id: &str,
+) -> Result<Vec<ProjectedIssue>, LinearError> {
+    let path = projection_path_for_workspace_org(workspace_path, org_id);
     match std::fs::read(&path) {
         Ok(bytes) => serde_json::from_slice(&bytes).map_err(LinearError::Json),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(Vec::new()),

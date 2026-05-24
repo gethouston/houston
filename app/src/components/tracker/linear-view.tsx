@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Link2, Loader2, RefreshCw, ExternalLink } from "lucide-react";
 import {
@@ -6,6 +7,7 @@ import {
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  cn,
 } from "@houston-ai/core";
 import {
   useTrackerStatus,
@@ -45,14 +47,40 @@ export function LinearView() {
   const setViewMode = useUIStore((s) => s.setViewMode);
 
   const status = useTrackerStatus("linear", workspacePath);
-  const issues = useTrackerIssues("linear", workspacePath, false);
-  const syncNow = useTrackerSyncNow("linear", workspacePath);
   // Workspace-many list (PR B): surfaces the multi-connection
   // panel below the kanban when 2+ Linear connections are registered
-  // to the workspace. PR C will gate the kanban itself per-org via
-  // a picker; today the kanban shows the current per-agent
-  // connection's projection.
+  // to the workspace. PR D wires the kanban itself to the selected
+  // connection via the picker below.
   const connectionList = useTrackerConnectionList("linear", workspacePath);
+
+  // PR D — connection picker. Defaults to undefined (legacy per-agent
+  // read) when 0/1 connection exists; when 2+, defaults to the first
+  // org and lets the user switch. Auto-falls-back if the currently-
+  // selected org is removed (via Disconnect on the panel).
+  const connections = connectionList.data?.connections ?? [];
+  const [selectedOrgId, setSelectedOrgId] = useState<string | undefined>(undefined);
+  useEffect(() => {
+    if (connections.length <= 1) {
+      // Single (or zero) connection — read via the legacy per-agent
+      // path so today's mirror data keeps rendering until PR E.
+      setSelectedOrgId(undefined);
+      return;
+    }
+    // Multiple connections — make sure selected is still valid;
+    // default to the first when not.
+    const ids = new Set(connections.map((c) => c.orgId));
+    if (!selectedOrgId || !ids.has(selectedOrgId)) {
+      setSelectedOrgId(connections[0]?.orgId);
+    }
+  }, [connections, selectedOrgId]);
+
+  const issues = useTrackerIssues("linear", workspacePath, false, selectedOrgId);
+  const syncNow = useTrackerSyncNow("linear", workspacePath, selectedOrgId);
+
+  const selectedConnection = useMemo(
+    () => connections.find((c) => c.orgId === selectedOrgId),
+    [connections, selectedOrgId],
+  );
 
   // -- Lifecycle branch: no agent selected -----------------------
   if (!workspacePath) {
@@ -134,10 +162,14 @@ export function LinearView() {
     }
   }
 
+  // Header subtitle: prefer the picked org's name when present;
+  // otherwise the single-connection org name from status.
+  const headerSubtitle = selectedConnection?.orgName ?? data.orgName ?? undefined;
+
   return (
     <ViewShell
       title={t("linear.tab.title")}
-      subtitle={data.orgName ?? undefined}
+      subtitle={headerSubtitle}
       headerActions={
         <Button
           variant="outline"
@@ -156,6 +188,29 @@ export function LinearView() {
         </Button>
       }
     >
+      {connections.length > 1 && (
+        <div className="flex items-center gap-2 px-6 py-3 border-b border-border shrink-0 overflow-x-auto">
+          <span className="text-xs text-muted-foreground shrink-0">
+            {t("linear.picker.label")}
+          </span>
+          <div className="flex items-center gap-1.5">
+            {connections.map((c) => (
+              <button
+                key={c.orgId}
+                onClick={() => setSelectedOrgId(c.orgId)}
+                className={cn(
+                  "px-2.5 py-1 rounded-md text-xs font-medium transition-colors duration-150 whitespace-nowrap",
+                  c.orgId === selectedOrgId
+                    ? "bg-accent text-foreground"
+                    : "text-muted-foreground hover:bg-secondary",
+                )}
+              >
+                {c.orgName}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
       <LinearKanban
         issues={issues.data ?? []}
         onSelect={(issue) => handleOpenIssue(issue.url ?? null)}

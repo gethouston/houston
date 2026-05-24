@@ -1,13 +1,16 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Link2 } from "lucide-react";
+import { Link2, RefreshCw } from "lucide-react";
 import { Button, ConfirmDialog } from "@houston-ai/core";
 import type {
   TrackerConnectionList,
   TrackerConnectionListItem,
   TrackerProvider,
 } from "@houston-ai/engine-client";
-import { useTrackerDisconnect } from "../../hooks/queries";
+import {
+  useTrackerDisconnect,
+  useTrackerSyncNow,
+} from "../../hooks/queries";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -89,6 +92,7 @@ function LinearConnectionRow({
     workspacePath,
     connection.orgId,
   );
+  const syncNow = useTrackerSyncNow(provider, workspacePath, connection.orgId);
   const [showConfirm, setShowConfirm] = useState(false);
 
   async function handleConfirm() {
@@ -105,6 +109,22 @@ function LinearConnectionRow({
       // leaking an unhandled rejection.
     } finally {
       setShowConfirm(false);
+    }
+  }
+
+  async function handleSync() {
+    try {
+      const summary = await syncNow.mutateAsync();
+      if (summary.kind === "synced") {
+        addToast({
+          title: t("linear.connections.syncedToast", {
+            orgName: connection.orgName,
+            count: summary.issuesSeen,
+          }),
+        });
+      }
+    } catch {
+      // call() helper already surfaced a toast on failure.
     }
   }
 
@@ -137,6 +157,22 @@ function LinearConnectionRow({
               )}
             </div>
           )}
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSync}
+            disabled={syncNow.isPending || !workspacePath}
+            title={t("linear.connected.syncNow")}
+          >
+            <RefreshCw
+              className={`h-3.5 w-3.5 mr-1.5 ${
+                syncNow.isPending ? "animate-spin" : ""
+              }`}
+            />
+            {syncNow.isPending
+              ? t("linear.connected.syncing")
+              : t("linear.connected.syncNow")}
+          </Button>
           <Button
             variant="ghost"
             size="sm"

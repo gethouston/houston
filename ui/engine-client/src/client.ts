@@ -857,31 +857,43 @@ export class HoustonClient {
 
   /** Read the on-disk projection of issues for `workspacePath`. Empty
    * array when never-connected; callers needing to distinguish empty
-   * from disconnected hit `trackerStatus` first. */
+   * from disconnected hit `trackerStatus` first.
+   *
+   * `orgId` (PR D, workspace-many surface): when provided, reads the
+   * per-org projection under the workspace; when absent, falls back
+   * to the legacy per-agent path.
+   */
   trackerListIssues(
     provider: TrackerProvider,
     workspacePath: string,
+    orgId?: string,
   ): Promise<TrackerIssue[]> {
     return this.request(
       "GET",
       `/trackers/${provider}/issues`,
       undefined,
-      { workspacePath },
+      orgId ? { workspacePath, orgId } : { workspacePath },
     );
   }
 
   /** Trigger a manual reconcile against the provider. Engine loads
    * tokens from keychain, runs the cursor-based puller, returns a
-   * summary the UI can show ("12 issues synced"). */
+   * summary the UI can show ("12 issues synced").
+   *
+   * `orgId` (PR D, workspace-many surface): when provided, runs the
+   * per-org reconcile; when absent, falls back to the legacy
+   * per-agent path.
+   */
   trackerSync(
     provider: TrackerProvider,
     workspacePath: string,
+    orgId?: string,
   ): Promise<TrackerReconcileResponse> {
     return this.request(
       "POST",
       `/trackers/${provider}/sync`,
       undefined,
-      { workspacePath },
+      orgId ? { workspacePath, orgId } : { workspacePath },
     );
   }
 

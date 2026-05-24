@@ -146,29 +146,44 @@ async fn connections(
     Ok(Json(list))
 }
 
-/// `GET /v1/trackers/:provider/issues?workspacePath=...` — read the
-/// on-disk projection. Returns `[]` when the workspace is not yet
-/// connected (per the no-silent-failures policy callers that need to
-/// distinguish "empty" from "disconnected" hit `/status` first).
+/// `GET /v1/trackers/:provider/issues?workspacePath=...[&orgId=...]`
+/// — read the on-disk projection. PR D: when `orgId` is supplied,
+/// reads the workspace-level per-org projection
+/// (`<workspace>/.houston/trackers/linear/<org_id>/issues.json`).
+/// When absent, falls back to the legacy per-agent path. Returns
+/// `[]` when the projection is not yet populated.
 async fn issues(
     State(_st): State<Arc<ServerState>>,
     Path(provider): Path<String>,
     axum::extract::Query(q): axum::extract::Query<WorkspaceQuery>,
 ) -> Result<Json<Vec<TrackerIssue>>, ApiError> {
     let workspace = require_linear_workspace(&provider, &q.workspace_path)?;
-    let items = linear::list_issues(&workspace).map_err(lift_linear)?;
+    let items = match q.org_id.as_deref() {
+        Some(org_id) if !org_id.is_empty() => {
+            linear::list_issues_for_org(&workspace, org_id).map_err(lift_linear)?
+        }
+        _ => linear::list_issues(&workspace).map_err(lift_linear)?,
+    };
     Ok(Json(items))
 }
 
-/// `POST /v1/trackers/:provider/sync?workspacePath=...` — manual
-/// reconcile trigger.
+/// `POST /v1/trackers/:provider/sync?workspacePath=...[&orgId=...]`
+/// — manual reconcile trigger. PR D: when `orgId` is supplied, runs
+/// the per-org reconcile (writes per-org raw + projection). When
+/// absent, falls back to the legacy per-agent reconcile. PR E
+/// retires the legacy variant.
 async fn sync_now(
     State(_st): State<Arc<ServerState>>,
     Path(provider): Path<String>,
     axum::extract::Query(q): axum::extract::Query<WorkspaceQuery>,
 ) -> Result<Json<TrackerReconcileResponse>, ApiError> {
     let workspace = require_linear_workspace(&provider, &q.workspace_path)?;
-    let resp = linear::sync_now(&workspace).await.map_err(lift_linear)?;
+    let resp = match q.org_id.as_deref() {
+        Some(org_id) if !org_id.is_empty() => linear::sync_now_for_org(&workspace, org_id)
+            .await
+            .map_err(lift_linear)?,
+        _ => linear::sync_now(&workspace).await.map_err(lift_linear)?,
+    };
     Ok(Json(resp))
 }
 

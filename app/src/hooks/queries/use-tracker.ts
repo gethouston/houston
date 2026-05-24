@@ -148,8 +148,15 @@ export function useTrackerConnectionList(
 function trackerIssuesKey(
   provider: TrackerProvider,
   workspacePath: string | undefined,
+  orgId?: string,
 ) {
-  return ["tracker", provider, workspacePath ?? "", "issues"] as const;
+  return [
+    "tracker",
+    provider,
+    workspacePath ?? "",
+    "issues",
+    orgId ?? "",
+  ] as const;
 }
 
 /**
@@ -157,15 +164,21 @@ function trackerIssuesKey(
  * connection is `connecting` (so the count fills in as the initial
  * reconcile lands) and stays static otherwise (30s stale; manual
  * refetch via Sync-now or status-driven invalidation).
+ *
+ * `orgId` (PR D, workspace-many surface): when provided, reads the
+ * per-org projection; when absent, falls back to legacy per-agent.
+ * The query key includes `orgId` so each org's issues cache is
+ * isolated (picker switching is instantaneous via cache hit).
  */
 export function useTrackerIssues(
   provider: TrackerProvider,
   workspacePath: string | undefined,
   connecting: boolean,
+  orgId?: string,
 ) {
   return useQuery({
-    queryKey: trackerIssuesKey(provider, workspacePath),
-    queryFn: () => tauriTrackers.listIssues(provider, workspacePath!),
+    queryKey: trackerIssuesKey(provider, workspacePath, orgId),
+    queryFn: () => tauriTrackers.listIssues(provider, workspacePath!, orgId),
     enabled: !!workspacePath,
     staleTime: STALE_MS,
     refetchInterval: connecting ? 5_000 : false,
@@ -175,21 +188,31 @@ export function useTrackerIssues(
 /**
  * Trigger a manual reconcile. On success, invalidate the issues query
  * so the new projection lands immediately in the UI.
+ *
+ * `orgId` (PR D, workspace-many surface): when provided, runs the
+ * per-org reconcile; when absent, falls back to legacy per-agent.
+ * Invalidations cover both the per-org and legacy keys so a panel
+ * row's Sync triggers the matching row's projection refresh AND
+ * the Settings card if it was showing that org.
  */
 export function useTrackerSyncNow(
   provider: TrackerProvider,
   workspacePath: string | undefined,
+  orgId?: string,
 ) {
   const qc = useQueryClient();
   return useMutation<TrackerReconcileResponse, Error, void>({
-    mutationFn: () => tauriTrackers.syncNow(provider, workspacePath!),
+    mutationFn: () => tauriTrackers.syncNow(provider, workspacePath!, orgId),
     onSuccess: () => {
       if (workspacePath) {
         qc.invalidateQueries({
-          queryKey: trackerIssuesKey(provider, workspacePath),
+          queryKey: trackerIssuesKey(provider, workspacePath, orgId),
         });
         qc.invalidateQueries({
           queryKey: trackerStatusKey(provider, workspacePath),
+        });
+        qc.invalidateQueries({
+          queryKey: trackerConnectionsKey(provider, workspacePath),
         });
       }
     },

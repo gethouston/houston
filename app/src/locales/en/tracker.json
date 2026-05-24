@@ -64,7 +64,12 @@
       "moreCaps_other": "+ {{count}} more capabilities",
       "disconnectConfirmTitle": "Disconnect {{orgName}}?",
       "disconnectConfirmBody": "This removes the Linear OAuth tokens and the workspace-level connection metadata. The mirrored data on disk is left in place for now; remove the workspace's tracker folder manually if you want it gone.",
-      "disconnectedToast": "{{orgName}} disconnected from Linear."
+      "disconnectedToast": "{{orgName}} disconnected from Linear.",
+      "syncedToast_one": "Synced {{count}} issue from {{orgName}}.",
+      "syncedToast_other": "Synced {{count}} issues from {{orgName}}."
+    },
+    "picker": {
+      "label": "Showing:"
     }
   }
 }

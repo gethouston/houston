@@ -22,7 +22,7 @@ mod task;
 mod webhook;
 
 pub use agent_session::{dispatch_from_webhook, emit_activity};
-pub use issues::{list_issues, sync_now};
+pub use issues::{list_issues, list_issues_for_org, sync_now, sync_now_for_org};
 pub use webhook::{handle_delivery, WebhookOutcome};
 
 use crate::auth::{build_authorize_url, LINEAR_OAUTH_CALLBACK_PORT, LINEAR_OAUTH_REDIRECT_URI};
