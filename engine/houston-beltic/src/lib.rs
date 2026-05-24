@@ -16,6 +16,7 @@
 
 pub mod client;
 pub mod config;
+pub mod did_jwk;
 pub mod errors;
 pub mod issuer;
 pub mod verifier;
@@ -23,6 +24,7 @@ pub mod webhook_verifier;
 
 pub use client::Client;
 pub use config::Configuration;
+pub use did_jwk::{mint as mint_did_jwk, MintedDidJwk};
 pub use errors::{BelticError, BelticResult};
 pub use issuer::Issuer;
 pub use verifier::{Verifier, VerifyResult};

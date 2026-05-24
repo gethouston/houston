@@ -11,6 +11,7 @@
 //! workspace-scoped helpers in [`identity`] write to a sibling folder at
 //! the workspace root instead of the agent root.
 
+pub mod agent_did;
 pub mod identity;
 pub mod store;
 pub mod types;

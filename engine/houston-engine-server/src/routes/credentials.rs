@@ -15,8 +15,9 @@ use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use houston_beltic::issuer::IssueRequest;
+use houston_beltic::mint_did_jwk;
 use houston_engine_core::credentials::{
-    self, CredentialStatus, NewCredential, VerifiableCredential,
+    self, agent_did, CredentialStatus, NewCredential, VerifiableCredential,
 };
 use houston_engine_core::CoreError;
 use houston_ui_events::HoustonEvent;
@@ -66,11 +67,18 @@ async fn list_credentials(
 async fn issue_credential(
     State(st): State<Arc<ServerState>>,
     Query(q): Query<AgentQuery>,
-    Json(input): Json<IssueRequest>,
+    Json(mut input): Json<IssueRequest>,
 ) -> Result<(StatusCode, Json<VerifiableCredential>), ApiError> {
     let root = resolve_root(&q.agent_path)?;
     let beltic = beltic_ctx()?;
     let credential_type = input.credential_type.clone();
+    // If the UI submitted a placeholder DID for this agent (it doesn't
+    // hold a keypair until issuance time), mint a real ES256 keypair,
+    // patch the request, and persist the private JWK to the agent's
+    // `.houston/agent_did/` before calling Beltic. We do this before
+    // network I/O so a successful issuance always corresponds to a
+    // keypair we can actually use later for presentation flows.
+    mint_agent_did_if_placeholder(&mut input, &root)?;
     let issued = beltic.issuer.issue(input).await.map_err(map_beltic)?;
 
     let row = credentials::save(
@@ -149,6 +157,33 @@ async fn verify_credential(
     Ok(Json(result))
 }
 
+/// Houston UI sends `did:jwk:houston-<uuid>` as a placeholder when it
+/// doesn't yet know the agent's real DID. The engine owns keypair
+/// material, so we mint here, swap the placeholder for the real DID,
+/// attach the public JWK to the subject (so Beltic's verifier can
+/// later resolve it without re-decoding the DID), and save the
+/// private key on disk for the agent.
+fn mint_agent_did_if_placeholder(
+    input: &mut IssueRequest,
+    root: &std::path::Path,
+) -> Result<(), ApiError> {
+    let needs_mint = input
+        .subject
+        .get("id")
+        .and_then(|v| v.as_str())
+        .is_some_and(|id| id.starts_with("did:jwk:houston-"));
+    if !needs_mint {
+        return Ok(());
+    }
+    let minted = mint_did_jwk().map_err(map_beltic)?;
+    if let Some(obj) = input.subject.as_object_mut() {
+        obj.insert("id".into(), serde_json::Value::String(minted.did.clone()));
+        obj.insert("public_jwk".into(), minted.public_jwk.clone());
+    }
+    agent_did::save_private_jwk(root, &minted.private_jwk)?;
+    Ok(())
+}
+
 fn string_field(value: &serde_json::Value, key: &str) -> String {
     value
         .get(key)
@@ -171,4 +206,74 @@ fn expand_tilde(p: &std::path::Path) -> PathBuf {
         }
     }
     p.to_path_buf()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use tempfile::TempDir;
+
+    fn request(subject_id: &str) -> IssueRequest {
+        IssueRequest {
+            credential_type: "agent_authorization".into(),
+            self_attestation_complete: true,
+            subject: json!({"type": "ai_agent", "id": subject_id}),
+            claims: json!({}),
+            evidence_refs: vec![],
+            ttl: None,
+        }
+    }
+
+    #[test]
+    fn placeholder_subject_is_replaced_with_real_did_jwk() {
+        let tmp = TempDir::new().unwrap();
+        let mut req = request("did:jwk:houston-abc123");
+        mint_agent_did_if_placeholder(&mut req, tmp.path()).unwrap();
+        let new_id = req.subject["id"].as_str().unwrap();
+        assert!(new_id.starts_with("did:jwk:"));
+        assert!(
+            !new_id.starts_with("did:jwk:houston-"),
+            "placeholder still present: {new_id}"
+        );
+        assert_eq!(req.subject["public_jwk"]["kty"], "EC");
+    }
+
+    #[test]
+    fn placeholder_replacement_persists_private_jwk() {
+        let tmp = TempDir::new().unwrap();
+        let mut req = request("did:jwk:houston-abc123");
+        mint_agent_did_if_placeholder(&mut req, tmp.path()).unwrap();
+        let loaded = agent_did::load_private_jwk(tmp.path()).unwrap().unwrap();
+        assert!(loaded["d"].is_string(), "private JWK missing `d` scalar");
+    }
+
+    #[test]
+    fn non_placeholder_subject_is_left_alone() {
+        let tmp = TempDir::new().unwrap();
+        let mut req = request("did:jwk:eyJjcnYiOiJQLTI1NiJ9");
+        let before = req.subject.clone();
+        mint_agent_did_if_placeholder(&mut req, tmp.path()).unwrap();
+        assert_eq!(req.subject, before, "non-placeholder subject was mutated");
+        assert!(
+            agent_did::load_private_jwk(tmp.path()).unwrap().is_none(),
+            "private JWK persisted for a non-placeholder subject"
+        );
+    }
+
+    #[test]
+    fn identity_subject_is_left_alone() {
+        let tmp = TempDir::new().unwrap();
+        let mut req = IssueRequest {
+            credential_type: "identity".into(),
+            self_attestation_complete: true,
+            subject: json!({"type": "person", "id": "did:web:houston-user"}),
+            claims: json!({}),
+            evidence_refs: vec![],
+            ttl: None,
+        };
+        let before = req.subject.clone();
+        mint_agent_did_if_placeholder(&mut req, tmp.path()).unwrap();
+        assert_eq!(req.subject, before);
+    }
 }

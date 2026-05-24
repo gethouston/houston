@@ -21,6 +21,10 @@ reqwest = { version = "0.12", features = ["json", "rustls-tls"], default-feature
 # JWT-VC verification (ES256 / P-256)
 jsonwebtoken = "9"
 
+# ES256 keypair generation for agent did:jwk minting
+p256 = { version = "0.13", features = ["jwk", "pem"] }
+rand = "0.8"
+
 # Webhook HMAC (Beltic-Signature: sha256=<hex>)
 hmac = "0.12"
 sha2 = "0.10"
