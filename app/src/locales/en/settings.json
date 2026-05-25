@@ -60,7 +60,8 @@
         "hashing": "Hashing…",
         "unsupportedType": "{{name}}: unsupported file type.",
         "fileTooLarge": "{{name}}: exceeds the 10 MB limit.",
-        "removeAria": "Remove document"
+        "removeAria": "Remove document",
+        "persistFailed": "Could not save evidence locally. The credential was not issued."
       }
     }
   },

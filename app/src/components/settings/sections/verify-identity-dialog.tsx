@@ -21,6 +21,7 @@ import { Upload, X, FileText } from "lucide-react";
 
 import { useIssueIdentity } from "../../../hooks/queries/use-identity";
 import { useUIStore } from "../../../stores/ui";
+import { getEngine } from "../../../lib/engine";
 
 interface Props {
   open: boolean;
@@ -49,6 +50,8 @@ const MAX_BYTES = 10 * 1024 * 1024;
 
 interface Attachment {
   id: string;
+  /** Held to POST bytes to the engine on submit; cleared after submit. */
+  file: File;
   filename: string;
   contentType: string;
   sizeBytes: number;
@@ -117,6 +120,7 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
       if (attachments.some((a) => a.id === id)) continue;
       const next: Attachment = {
         id,
+        file,
         filename: file.name,
         contentType: file.type,
         sizeBytes: file.size,
@@ -152,7 +156,19 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
   async function onSubmit() {
     if (!canSubmit) return;
     const primaryDocType = attachments.find((a) => a.sha256)?.docType;
+    const engine = getEngine();
+    // Persist each attachment locally BEFORE issuing the credential.
+    // Aborting the issuance on any persist failure avoids the situation
+    // where the credential names evidence files that aren't on disk.
     try {
+      for (const a of attachments) {
+        if (!a.sha256) continue; // skipped/errored, drop it from the request
+        const bytes = new Uint8Array(await a.file.arrayBuffer());
+        await engine.persistIdentityEvidence(bytes, {
+          sha256: a.sha256,
+          contentType: a.contentType,
+        });
+      }
       await issue.mutateAsync({
         nationality: nationality.trim().toUpperCase(),
         date_of_birth: dob.trim(),
@@ -165,8 +181,12 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
       });
       onOpenChange(false);
       reset();
-    } catch {
-      // showErrorToast fired inside the mutation's onError
+    } catch (err) {
+      addToast({
+        title: t("identity.verify.evidence.persistFailed"),
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
     }
   }
 

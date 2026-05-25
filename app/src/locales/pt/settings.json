@@ -60,7 +60,8 @@
         "hashing": "Calculando hash…",
         "unsupportedType": "{{name}}: tipo de arquivo não suportado.",
         "fileTooLarge": "{{name}}: passa do limite de 10 MB.",
-        "removeAria": "Remover documento"
+        "removeAria": "Remover documento",
+        "persistFailed": "Não foi possível salvar a evidência localmente. A credencial não foi emitida."
       }
     }
   },

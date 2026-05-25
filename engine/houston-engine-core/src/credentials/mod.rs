@@ -12,6 +12,7 @@
 //! the workspace root instead of the agent root.
 
 pub mod agent_did;
+pub mod evidence_store;
 pub mod identity;
 pub mod store;
 pub mod types;

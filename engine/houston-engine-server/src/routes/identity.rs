@@ -12,16 +12,17 @@
 
 use std::sync::Arc;
 
-use axum::extract::State;
+use axum::body::Bytes;
+use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use houston_engine_core::credentials::{
-    identity, CredentialStatus, NewCredential, VerifiableCredential,
+    evidence_store, identity, CredentialStatus, NewCredential, VerifiableCredential,
 };
 use houston_engine_core::CoreError;
 use houston_ui_events::HoustonEvent;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use super::beltic_shared::{ctx as beltic_ctx, map_beltic};
 use super::error::ApiError;
@@ -31,6 +32,68 @@ pub fn router() -> Router<Arc<ServerState>> {
     Router::new()
         .route("/identity", get(get_identity).post(issue_identity))
         .route("/identity/revoke", post(revoke_identity))
+        .route("/identity/evidence", post(persist_evidence))
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct PersistEvidenceQuery {
+    sha256: String,
+    content_type: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct PersistEvidenceResponse {
+    stored_at: String,
+    sha256: String,
+    size_bytes: usize,
+}
+
+/// Persist a piece of attached evidence to
+/// `<home>/.houston/identity/evidence/<sha256>.<ext>` (mode 0600).
+///
+/// The renderer has already hashed the file bytes; we re-hash on the
+/// server side and reject if the body doesn't match the supplied
+/// `sha256` query param. That gives the engine its own end-to-end
+/// integrity check and prevents a buggy renderer from saving the wrong
+/// bytes against a "trusted" content address.
+async fn persist_evidence(
+    State(st): State<Arc<ServerState>>,
+    Query(q): Query<PersistEvidenceQuery>,
+    body: Bytes,
+) -> Result<(StatusCode, Json<PersistEvidenceResponse>), ApiError> {
+    if body.is_empty() {
+        return Err(ApiError(CoreError::BadRequest(
+            "request body must contain evidence bytes".into(),
+        )));
+    }
+
+    let supplied = q.sha256.to_ascii_lowercase();
+    let actual = sha256_hex(&body);
+    if actual != supplied {
+        return Err(ApiError(CoreError::BadRequest(format!(
+            "sha256 mismatch: body hashes to {actual} but query param said {supplied}",
+        ))));
+    }
+
+    let root = st.engine.paths.home().to_path_buf();
+    let path = evidence_store::save(&root, &actual, &q.content_type, &body)?;
+
+    Ok((
+        StatusCode::CREATED,
+        Json(PersistEvidenceResponse {
+            stored_at: path.to_string_lossy().to_string(),
+            sha256: actual,
+            size_bytes: body.len(),
+        }),
+    ))
+}
+
+fn sha256_hex(bytes: &[u8]) -> String {
+    use sha2::{Digest, Sha256};
+    let mut h = Sha256::new();
+    h.update(bytes);
+    let out = h.finalize();
+    out.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 /// What the verify modal sends. Houston's route constructs the full

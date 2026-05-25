@@ -60,7 +60,8 @@
         "hashing": "Hasheando…",
         "unsupportedType": "{{name}}: tipo de archivo no admitido.",
         "fileTooLarge": "{{name}}: supera el límite de 10 MB.",
-        "removeAria": "Quitar documento"
+        "removeAria": "Quitar documento",
+        "persistFailed": "No se pudo guardar la evidencia localmente. La credencial no se emitió."
       }
     }
   },

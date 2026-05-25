@@ -397,6 +397,38 @@ export class HoustonClient {
   revokeIdentity(): Promise<VerifiableCredential | null> {
     return this.request("POST", "/identity/revoke");
   }
+  /**
+   * Persist raw evidence bytes to the workspace identity directory
+   * (`<home>/.houston/identity/evidence/<sha256>.<ext>` on Unix, mode 0600).
+   * The engine re-hashes the body and rejects on sha256 mismatch.
+   */
+  async persistIdentityEvidence(
+    bytes: Uint8Array,
+    args: { sha256: string; contentType: string },
+  ): Promise<{ stored_at: string; sha256: string; size_bytes: number }> {
+    const q = new URLSearchParams({
+      sha256: args.sha256,
+      content_type: args.contentType,
+    });
+    const url = `${this.baseUrl}/v1/identity/evidence?${q.toString()}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/octet-stream",
+      },
+      // BodyInit accepts ArrayBuffer/typed-array directly
+      body: bytes as BodyInit,
+    });
+    if (!res.ok) {
+      throw await this.toError(res);
+    }
+    return (await res.json()) as {
+      stored_at: string;
+      sha256: string;
+      size_bytes: number;
+    };
+  }
 
   // ---------- agents: Beltic credentials ----------
 
