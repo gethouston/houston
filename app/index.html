@@ -4,6 +4,10 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Houston</title>
+    <!-- Classic (non-module) script: runs before the deferred app bundle and
+         shows a clear message instead of a white screen when the system WebView
+         is too old to run Houston (issue #102). Served verbatim from public/. -->
+    <script src="/compat-gate.js"></script>
   </head>
   <body>
     <div id="root"></div>

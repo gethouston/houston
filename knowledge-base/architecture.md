@@ -89,6 +89,31 @@ OS-native glue remains in `app/src-tauri/src/commands/`.
   `/v1/health`, injects `window.__HOUSTON_ENGINE__` handshake before
   the React tree mounts (see `EngineGate` in `app/src/main.tsx`).
 
+## App boot — WebView compatibility gate
+
+Tauri renders through the *system* WKWebView, so our minimum engine is the
+user's OS, not something we ship. macOS Monterey commonly runs WebKit < 16.4
+(no regex lookbehind); the markdown stack ships a lookbehind literal, so the
+bundle throws `SyntaxError: invalid group specifier name` at module-eval —
+before React mounts — and the screen stays blank (issue #102). No error
+boundary can catch a module-eval crash.
+
+`app/public/compat-gate.js` is a classic (non-module) `<script>` in
+`index.html`. Classic parser-blocking scripts run before any deferred module
+bundle, and `public/` is copied verbatim (never bundled), so the gate stays
+free of the modern syntax it detects. It feature-tests lookbehind via the
+`RegExp` *constructor* (a literal would fail to parse on the very engines it
+targets) and, when unsupported, paints a localized "update macOS" message
+instead of a white screen.
+
+Invariants: keep it a classic script (not `type=module`), dependency-free, and
+never author a lookbehind / `v`-flag regex *literal* in it. Defense in depth:
+the `ui/chat` markdown renderer is wrapped in `@houston-ai/core`'s
+`ErrorBoundary`, so a render-time regex failure degrades to raw text rather
+than blanking the chat. `minimumSystemVersion` in `tauri.conf.json` stays at
+`10.15` (install-time native-binary floor) — the capability gate, not the OS
+version, decides whether the UI can actually run.
+
 ## UI packages (`ui/`)
 
 11 packages under `@houston-ai/`: `core, chat, board, layout, events,

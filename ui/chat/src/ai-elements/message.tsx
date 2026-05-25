@@ -11,7 +11,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { cn } from "@houston-ai/core";
+import { cn, ErrorBoundary } from "@houston-ai/core";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";
@@ -412,15 +412,26 @@ export const MessageResponse = memo(
     }, [onOpenLink, renderLink]);
 
     return (
-      <Streamdown
-        className={cn(
-          "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
-          className
-        )}
-        plugins={streamdownPlugins}
-        components={components}
-        {...props}
-      />
+      // Degrade to the raw markdown text if a render-time failure escapes
+      // Streamdown (e.g. shiki's JS regex engine on an older WebView) so a
+      // single message can't blank the whole chat.
+      <ErrorBoundary
+        fallback={
+          <div className="size-full whitespace-pre-wrap break-words">
+            {props.children}
+          </div>
+        }
+      >
+        <Streamdown
+          className={cn(
+            "size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
+            className
+          )}
+          plugins={streamdownPlugins}
+          components={components}
+          {...props}
+        />
+      </ErrorBoundary>
     );
   },
   (prevProps, nextProps) =>
