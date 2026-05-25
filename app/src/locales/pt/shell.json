@@ -264,6 +264,9 @@
   "engineGate": {
     "starting": "Iniciando o motor do Houston…"
   },
+  "claudeCli": {
+    "installFailedTitle": "Não foi possível instalar o Claude Code"
+  },
   "providerError": {
     "rateLimited": {
       "title": "Atingiu um limite de uso",

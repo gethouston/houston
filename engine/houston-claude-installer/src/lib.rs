@@ -1,66 +1,49 @@
 //! Runtime installer for Anthropic's Claude Code CLI.
 //!
-//! Why a runtime installer instead of bundling like codex/composio?
-//! Claude Code is shipped under a proprietary license that doesn't
-//! permit redistribution inside Houston's bundle. So we do the next
-//! best thing for non-technical users: detect the missing CLI on first
-//! launch and download it for them, no terminal required.
+//! Why a runtime installer instead of bundling? Claude Code ships under
+//! a proprietary license that doesn't permit redistribution inside
+//! Houston's bundle. So we detect the missing CLI on first launch and
+//! download it, no terminal required.
 //!
-//! Why not just run `curl https://claude.ai/install.sh | bash`?
-//!   1. **Reproducibility** — we pin a specific version + SHA-256 in
-//!      `cli-deps.json` (bundled inside the .app via
-//!      `houston-cli-bundle`). The upstream install script chases
-//!      "latest", which would silently roll a new version on every
-//!      Houston install and break the version lockstep we use to
-//!      validate compatibility.
-//!   2. **Verifiability** — every byte of the downloaded binary is
-//!      checksum-verified before it's marked executable. The .app is
-//!      signed/notarized; the manifest inside is tamper-evident; this
-//!      installer extends that trust chain to the runtime download.
-//!   3. **No bash dep** — we don't want to require `/bin/bash` at
-//!      install time on every user's machine.
-//!   4. **Progress events** — the installer emits `HoustonEvent`s so
-//!      the UI shows real progress instead of a frozen splash.
+//! Why not `curl https://claude.ai/install.sh | bash`?
+//!   1. **Reproducibility** — we pin a version + SHA-256 in
+//!      `cli-deps.json` (bundled via `houston-cli-bundle`). Upstream
+//!      chases "latest", which would silently roll versions and break
+//!      the lockstep we use to validate compatibility.
+//!   2. **Verifiability** — every byte is checksum-verified before
+//!      the executable bit is set. Extends the .app's trust chain to
+//!      the runtime download.
+//!   3. **No bash dep**.
+//!   4. **Progress events** — `HoustonEvent`s drive a real progress UI.
 //!
-//! ## Install flow
+//! ## Module split (each stays under the 200-line cap)
 //!
-//! 1. Resolve manifest: prefer the bundled `cli-deps.json`, fall back
-//!    to a same-shape JSON at the dev-checkout repo root.
-//! 2. Look up the `claude-code` entry. Bail early if `bundled: true`
-//!    (defensive — bundling claude-code would need a license change).
-//! 3. Fetch the per-platform URL + checksum (`darwin-arm64`,
-//!    `darwin-x64`, …) and download to a temp file alongside the final
-//!    install target so the rename at the end is atomic on the same
-//!    filesystem.
-//! 4. Stream the response, accumulating SHA-256 as bytes arrive. Emit
-//!    `HoustonEvent::ClaudeCliInstalling { progress_pct }` every ~250 ms.
-//! 5. On EOF, compare the digest to the pinned checksum. Mismatch =>
-//!    delete the temp file, return error (treated as fatal by the
-//!    lifecycle entry).
-//! 6. Mark executable (Unix), atomically rename into place, persist the
-//!    installed version in the engine DB so the next boot can decide
-//!    whether to re-install.
+//! - `lib.rs` — lifecycle entry + decision tree.
+//! - `download` — download / verify / atomic-install pipeline.
+//! - `manifest` — `cli-deps.json` resolution (bundled vs dev-checkout).
+//! - `marker` — installed-version DB marker + persistence policy.
 
-use futures_util::StreamExt;
+mod download;
+mod error;
+mod finalize;
+mod manifest;
+mod marker;
+
 use houston_db::db::Database;
 use houston_ui_events::{DynEventSink, HoustonEvent};
-use sha2::{Digest, Sha256};
-use std::path::PathBuf;
-use tokio::io::AsyncWriteExt;
+
+// Re-export so existing call sites (lifecycle, routes/claude.rs,
+// provider/resolve.rs) keep working unchanged after the extraction.
+pub use download::{install, install_to};
+pub use marker::{persist_version_or_warn, PREF_INSTALLED_VERSION};
 
 // Path-resolution functions live in `houston-terminal-manager` so the
 // spawn-side code (`claude_path`, `claude_runner`) shares one source of
 // truth with the install-side code below. Re-exported here for callers
-// that import from this crate (e.g. `routes/claude.rs`,
-// `provider/resolve.rs`).
+// that import from this crate.
 pub use houston_terminal_manager::claude_install_path::{
     binary_name, cli_path, install_dir, is_installed,
 };
-
-/// Engine-DB preferences key holding the last successfully-installed
-/// claude-code version. Lifecycle compares it against the manifest's
-/// pinned version on every boot.
-const PREF_INSTALLED_VERSION: &str = "claude_code_installed_version";
 
 /// CLI key inside `cli-deps.json`. Constant so we don't string-literal
 /// the same value across modules.
@@ -69,30 +52,29 @@ const CLI_KEY: &str = "claude-code";
 /// Lifecycle entry — call once at engine startup as a background task.
 ///
 /// Decision tree:
-/// - No manifest available → log + emit `ClaudeCliReady` (best-effort,
-///   user can install manually or use Codex). The engine never blocks
-///   on claude install: the user might be on Codex.
+/// - No manifest available → log + emit `ClaudeCliReady` (the engine
+///   never blocks on claude install; the user might be on Codex).
 /// - Already installed at the pinned version → emit `ClaudeCliReady`.
 /// - Not installed, or installed at a different version →
 ///   download/verify/install, then emit `ClaudeCliReady`.
 /// - Download/verify failure → emit `ClaudeCliFailed { message }` with
-///   actionable hint.
+///   actionable hint (version + URL + status/checksum + target).
+///
+/// Surfacing path (engine side): `message` threads through the WS
+/// firehose to `app/src/hooks/use-claude-cli-events.ts`, which routes
+/// the failure into the toast store. The frontend hook is what closes
+/// the loop for #231 — the engine alone can only emit; without a
+/// subscriber the events go to /dev/null.
 pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
-    // Resolve the manifest. In dev (no bundle), we fall back to the
-    // checkout's `cli-deps.json` so engineers get the same auto-install
-    // behavior they'd hit in a packaged release. Production always finds
-    // the bundled copy.
-    let Some(manifest) = resolve_manifest() else {
-        tracing::warn!(
-            "[claude-installer] no cli-deps.json available — skipping auto-install"
-        );
+    let Some(m) = manifest::resolve_manifest() else {
+        tracing::warn!("[claude-installer] no cli-deps.json available; skipping auto-install");
         sink.emit(HoustonEvent::ClaudeCliReady);
         return;
     };
 
-    let Some(entry) = manifest.entry(CLI_KEY) else {
+    let Some(entry) = m.entry(CLI_KEY) else {
         tracing::warn!(
-            "[claude-installer] cli-deps.json missing '{}' entry — skipping auto-install",
+            "[claude-installer] cli-deps.json missing '{}' entry; skipping auto-install",
             CLI_KEY
         );
         sink.emit(HoustonEvent::ClaudeCliReady);
@@ -100,22 +82,15 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     };
 
     if entry.bundled {
-        // Defensive — shouldn't be possible without a license change.
-        // Treat the bundled binary as authoritative if it's there.
-        tracing::info!("[claude-installer] manifest reports claude-code as bundled; trusting bundle");
+        tracing::info!(
+            "[claude-installer] manifest reports claude-code as bundled; trusting bundle"
+        );
         sink.emit(HoustonEvent::ClaudeCliReady);
         return;
     }
 
     let pinned_version = entry.version.clone();
-
-    // Already installed at the pinned version? Skip the download.
-    let last_version = db
-        .get_preference(PREF_INSTALLED_VERSION)
-        .await
-        .ok()
-        .flatten()
-        .unwrap_or_default();
+    let last_version = marker::read_or_warn(&db).await;
 
     if is_installed() && last_version == pinned_version {
         tracing::info!(
@@ -127,7 +102,7 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     }
 
     tracing::info!(
-        "[claude-installer] installing claude-code v{} ({} → {})",
+        "[claude-installer] installing claude-code v{} ({} -> {})",
         pinned_version,
         if last_version.is_empty() { "none" } else { &last_version },
         pinned_version
@@ -144,357 +119,26 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     match result {
         Ok(path) => {
             tracing::info!("[claude-installer] installed at {}", path.display());
-            if let Err(e) = db.set_preference(PREF_INSTALLED_VERSION, &pinned_version).await {
-                tracing::warn!("[claude-installer] failed to persist version marker: {e}");
-            }
+            persist_version_or_warn(&db, &pinned_version, &sink).await;
             sink.emit(HoustonEvent::ClaudeCliReady);
         }
         Err(e) => {
+            // `e` already carries version + URL + status/checksum + target.
+            // Subscriber: `app/src/hooks/use-claude-cli-events.ts`.
             tracing::error!("[claude-installer] install failed: {e}");
             sink.emit(HoustonEvent::ClaudeCliFailed { message: e });
         }
     }
 }
 
-/// Resolve the `cli-deps.json` manifest. Prefers the bundled copy
-/// (production) and falls back to the dev-checkout root so engineers
-/// running `cargo run -p houston-engine-server` against an unbundled
-/// build still get auto-install.
-fn resolve_manifest() -> Option<houston_cli_bundle::CliDepsManifest> {
-    if let Some(m) = houston_cli_bundle::load_bundled_manifest() {
-        return Some(m);
-    }
-    // Dev fallback: walk up from CWD looking for `cli-deps.json`.
-    let cwd = std::env::current_dir().ok()?;
-    let mut here = cwd.as_path();
-    loop {
-        let candidate = here.join("cli-deps.json");
-        if candidate.is_file() {
-            return houston_cli_bundle::CliDepsManifest::load(&candidate).ok();
-        }
-        match here.parent() {
-            Some(p) => here = p,
-            None => return None,
-        }
-    }
-}
-
-/// Download + verify + install. Public so callers (e.g. an explicit
-/// "Reinstall Claude" UI button) can re-run the same path without going
-/// through the full lifecycle.
-///
-/// Writes to the production install location. Tests use [`install_to`]
-/// directly to point at a temp dir.
-pub async fn install(
-    entry: &houston_cli_bundle::CliEntry,
-    progress: impl FnMut(u8) + Send + 'static,
-) -> Result<PathBuf, String> {
-    install_to(entry, &install_dir(), binary_name(), progress).await
-}
-
-/// Parameterized variant of [`install`]: download `entry` for the
-/// current host platform, verify SHA-256, write atomically into
-/// `install_dir/binary_name`. Used by tests to redirect into a temp
-/// directory; production callers should use [`install`].
-pub async fn install_to(
-    entry: &houston_cli_bundle::CliEntry,
-    install_dir: &std::path::Path,
-    binary_name: &str,
-    mut progress: impl FnMut(u8) + Send + 'static,
-) -> Result<PathBuf, String> {
-    let platform = houston_cli_bundle::host_platform_key();
-    let url = entry
-        .url_for(platform)
-        .ok_or_else(|| format!("no claude-code URL for platform '{platform}'"))?;
-    let expected_checksum = entry
-        .checksum_for(platform)
-        .ok_or_else(|| format!("no claude-code checksum for platform '{platform}'"))?
-        .to_string();
-
-    tracing::info!("[claude-installer] GET {url}");
-
-    tokio::fs::create_dir_all(install_dir)
-        .await
-        .map_err(|e| format!("failed to create install dir {}: {e}", install_dir.display()))?;
-
-    let final_path = install_dir.join(binary_name);
-    // Temp path on the same filesystem so the final rename is atomic
-    // and we never leave a half-downloaded binary at the install
-    // target if the process crashes mid-stream.
-    let tmp_path = install_dir.join(format!(".{binary_name}.partial"));
-    // Drop any leftover partial from a prior aborted install.
-    let _ = tokio::fs::remove_file(&tmp_path).await;
-
-    let client = reqwest::Client::builder()
-        .connect_timeout(std::time::Duration::from_secs(15))
-        .build()
-        .map_err(|e| format!("failed to build HTTP client: {e}"))?;
-
-    let resp = client
-        .get(&url)
-        .send()
-        .await
-        .map_err(|e| format!("download request failed: {e}"))?;
-
-    if !resp.status().is_success() {
-        return Err(format!(
-            "download returned HTTP {}: {url}",
-            resp.status()
-        ));
-    }
-
-    let total = resp.content_length();
-    let mut stream = resp.bytes_stream();
-    let mut hasher = Sha256::new();
-    let mut downloaded: u64 = 0;
-    let mut last_pct_emitted: u8 = 0;
-
-    let mut tmp_file = tokio::fs::File::create(&tmp_path)
-        .await
-        .map_err(|e| format!("failed to open temp file {}: {e}", tmp_path.display()))?;
-
-    while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("download stream error: {e}"))?;
-        hasher.update(&chunk);
-        tmp_file
-            .write_all(&chunk)
-            .await
-            .map_err(|e| format!("failed to write chunk: {e}"))?;
-        downloaded = downloaded.saturating_add(chunk.len() as u64);
-
-        // Throttle progress events so we don't flood the WebSocket.
-        // 10% increments are smooth enough for a ~120 MB download
-        // without producing noise during the rest of engine boot.
-        if let Some(total) = total {
-            if total > 0 {
-                let pct = ((downloaded.min(total) * 100) / total) as u8;
-                if pct >= last_pct_emitted.saturating_add(10).min(100) {
-                    last_pct_emitted = pct;
-                    progress(pct);
-                }
-            }
-        }
-    }
-
-    tmp_file
-        .flush()
-        .await
-        .map_err(|e| format!("flush failed: {e}"))?;
-    drop(tmp_file);
-
-    // Always emit a final 100% so the UI can transition out of
-    // "installing" even when content-length was missing or we hit a
-    // weird edge case in the throttle math above.
-    progress(100);
-
-    let actual_checksum = hex::encode(hasher.finalize());
-    if !checksum_matches(&actual_checksum, &expected_checksum) {
-        let _ = tokio::fs::remove_file(&tmp_path).await;
-        return Err(format!(
-            "claude-code checksum mismatch: expected {expected_checksum}, got {actual_checksum} \
-             — download may be tampered or the pinned manifest is stale"
-        ));
-    }
-
-    // Make the binary executable BEFORE the rename so a racing reader
-    // never sees a non-executable file at the install target.
-    #[cfg(unix)]
-    {
-        use std::os::unix::fs::PermissionsExt;
-        let perms = std::fs::Permissions::from_mode(0o755);
-        std::fs::set_permissions(&tmp_path, perms)
-            .map_err(|e| format!("failed to chmod +x: {e}"))?;
-    }
-
-    // Atomic rename within the same dir. On Unix this is a syscall;
-    // on Windows we have to remove the existing target first because
-    // `rename` fails if the destination exists.
-    #[cfg(windows)]
-    {
-        if final_path.exists() {
-            let _ = std::fs::remove_file(&final_path);
-        }
-    }
-    std::fs::rename(&tmp_path, &final_path).map_err(|e| {
-        format!(
-            "failed to install to {}: {e} — check the directory is writable",
-            final_path.display()
-        )
-    })?;
-
-    Ok(final_path)
-}
-
-/// Hex string equality is case-insensitive in our manifest convention,
-/// but we still want a constant-time-ish compare to avoid leaking
-/// whether the prefix matched in profiling. Use `subtle`? Overkill for
-/// a checksum compare in a desktop app — equality is fine, just be
-/// explicit about case folding.
-fn checksum_matches(actual: &str, expected: &str) -> bool {
-    actual.eq_ignore_ascii_case(expected)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use sha2::Digest;
-    use std::sync::atomic::{AtomicU8, Ordering};
-    use std::sync::Arc;
-    use wiremock::matchers::{method, path};
-    use wiremock::{Mock, MockServer, ResponseTemplate};
-
-    #[test]
-    fn checksum_match_ignores_case() {
-        assert!(checksum_matches("DEADBEEF", "deadbeef"));
-        assert!(checksum_matches("abc123", "abc123"));
-        assert!(!checksum_matches("abc", "abd"));
-    }
 
     #[test]
     fn cli_path_is_under_install_dir() {
         let cli = cli_path();
         let dir = install_dir();
         assert!(cli.starts_with(&dir), "{} not under {}", cli.display(), dir.display());
-    }
-
-    /// Build a `CliEntry` parsed from a JSON document whose URL points
-    /// at the wiremock server and whose checksum reflects `payload`.
-    /// Mirrors the shape of `cli-deps.json` so the test exercises the
-    /// real deserialization path.
-    fn entry_for(server_uri: &str, payload: &[u8]) -> houston_cli_bundle::CliEntry {
-        let actual = hex::encode(sha2::Sha256::digest(payload));
-        let manifest = serde_json::json!({
-            "claude-code": {
-                "version": "9.9.9",
-                "bundled": false,
-                "binary_name": "claude",
-                "license": "PROPRIETARY",
-                "urls": {
-                    houston_cli_bundle::host_platform_key(): format!("{server_uri}/claude")
-                },
-                "checksums": {
-                    houston_cli_bundle::host_platform_key(): actual
-                }
-            }
-        });
-        let raw = serde_json::to_string(&manifest).unwrap();
-        let tmp = tempfile::NamedTempFile::new().unwrap();
-        std::fs::write(tmp.path(), raw).unwrap();
-        let m = houston_cli_bundle::CliDepsManifest::load(tmp.path()).unwrap();
-        m.entry("claude-code").unwrap()
-    }
-
-    #[tokio::test]
-    async fn install_downloads_verifies_and_chmods() {
-        let server = MockServer::start().await;
-        let payload = b"#!/bin/sh\necho 'fake claude'\n".repeat(50_000); // ~1.5 MB
-
-        Mock::given(method("GET"))
-            .and(path("/claude"))
-            .respond_with(
-                ResponseTemplate::new(200)
-                    .insert_header("content-type", "application/octet-stream")
-                    .set_body_bytes(payload.clone()),
-            )
-            .mount(&server)
-            .await;
-
-        let entry = entry_for(&server.uri(), &payload);
-        let dest_dir = tempfile::tempdir().unwrap();
-        let progress = Arc::new(AtomicU8::new(0));
-        let progress_clone = progress.clone();
-
-        let result = install_to(&entry, dest_dir.path(), "claude", move |pct| {
-            progress_clone.store(pct, Ordering::Relaxed);
-        })
-        .await;
-
-        let installed = result.expect("install should succeed");
-        assert_eq!(installed, dest_dir.path().join("claude"));
-        assert_eq!(std::fs::read(&installed).unwrap(), payload);
-        assert_eq!(progress.load(Ordering::Relaxed), 100);
-
-        // Temp file must be cleaned up after atomic rename.
-        let tmp = dest_dir.path().join(".claude.partial");
-        assert!(!tmp.exists(), "leftover partial at {}", tmp.display());
-
-        // Unix: chmod +x must be set so the binary can be exec'd.
-        #[cfg(unix)]
-        {
-            use std::os::unix::fs::PermissionsExt;
-            let mode = std::fs::metadata(&installed).unwrap().permissions().mode();
-            assert!(
-                mode & 0o111 != 0,
-                "binary not executable (mode={mode:o}): {}",
-                installed.display()
-            );
-        }
-    }
-
-    #[tokio::test]
-    async fn install_rejects_checksum_mismatch_and_cleans_temp() {
-        let server = MockServer::start().await;
-        let payload = b"corrupt payload";
-
-        Mock::given(method("GET"))
-            .and(path("/claude"))
-            .respond_with(ResponseTemplate::new(200).set_body_bytes(payload.to_vec()))
-            .mount(&server)
-            .await;
-
-        // Build entry with a fake checksum that won't match the actual.
-        let manifest = serde_json::json!({
-            "claude-code": {
-                "version": "9.9.9",
-                "bundled": false,
-                "binary_name": "claude",
-                "urls": {
-                    houston_cli_bundle::host_platform_key(): format!("{}/claude", server.uri())
-                },
-                "checksums": {
-                    houston_cli_bundle::host_platform_key():
-                        "0000000000000000000000000000000000000000000000000000000000000000"
-                }
-            }
-        });
-        let tmp = tempfile::NamedTempFile::new().unwrap();
-        std::fs::write(tmp.path(), serde_json::to_string(&manifest).unwrap()).unwrap();
-        let entry = houston_cli_bundle::CliDepsManifest::load(tmp.path())
-            .unwrap()
-            .entry("claude-code")
-            .unwrap();
-
-        let dest_dir = tempfile::tempdir().unwrap();
-        let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
-
-        let err = result.expect_err("checksum mismatch must error");
-        assert!(
-            err.contains("checksum mismatch"),
-            "unexpected error: {err}"
-        );
-        // Both the partial and the final must be absent — we never want
-        // a tampered binary on disk after a verification failure.
-        assert!(!dest_dir.path().join("claude").exists());
-        assert!(!dest_dir.path().join(".claude.partial").exists());
-    }
-
-    #[tokio::test]
-    async fn install_surfaces_http_errors() {
-        let server = MockServer::start().await;
-        Mock::given(method("GET"))
-            .and(path("/claude"))
-            .respond_with(ResponseTemplate::new(500))
-            .mount(&server)
-            .await;
-
-        let entry = entry_for(&server.uri(), b"unused");
-        let dest_dir = tempfile::tempdir().unwrap();
-        let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
-
-        let err = result.expect_err("server 500 must error");
-        assert!(
-            err.contains("HTTP") || err.contains("500"),
-            "unexpected error: {err}"
-        );
     }
 }
