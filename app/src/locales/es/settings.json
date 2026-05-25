@@ -6,6 +6,7 @@
     "workspaceContext": "Contexto del espacio",
     "userContext": "Contexto del usuario",
     "provider": "Proveedor de IA",
+    "advanced": "Avanzado",
     "phone": "Conectar celular",
     "reportBug": "Reportar bug"
   },
@@ -72,6 +73,21 @@
     "title": "Apariencia",
     "light": "Claro",
     "dark": "Oscuro"
+  },
+  "advanced": {
+    "title": "Avanzado",
+    "description": "Capacidades para usuarios avanzados. Están desactivadas por defecto, activa solo las que necesites.",
+    "empty": "No hay capacidades avanzadas disponibles en esta versión. Las próximas actualizaciones las irán habilitando aquí.",
+    "flags": {
+      "worktrees": {
+        "label": "Worktrees",
+        "description": "Muestra el ajuste Modo worktree en cada agente para que las misiones puedan correr en worktrees de git aislados."
+      }
+    },
+    "resetAll": "Restablecer todos los ajustes avanzados",
+    "resetConfirmTitle": "¿Restablecer todos los ajustes avanzados?",
+    "resetConfirmDescription": "Cada interruptor avanzado volverá a su valor por defecto. No se elimina ningún dato.",
+    "resetConfirmLabel": "Restablecer"
   },
   "dangerZone": {
     "title": "Zona de peligro",

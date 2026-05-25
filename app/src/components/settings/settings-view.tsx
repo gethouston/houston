@@ -1,7 +1,16 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@houston-ai/core";
-import { User, Smartphone, Folder, Bot, Bug, FileText, UserCircle } from "lucide-react";
+import {
+  User,
+  Smartphone,
+  Folder,
+  Bot,
+  Bug,
+  FileText,
+  UserCircle,
+  SlidersHorizontal,
+} from "lucide-react";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -15,6 +24,7 @@ type SettingsSectionId =
   | "workspaceContext"
   | "userContext"
   | "provider"
+  | "advanced"
   | "phone"
   | "reportBug";
 import { AccountSection, useAccountAvailable } from "./sections/account";
@@ -28,6 +38,7 @@ import { ProviderSection } from "./sections/provider";
 import { TimezoneSection } from "./sections/timezone";
 import { LanguageSection } from "./sections/language";
 import { AppearanceSection } from "./sections/appearance";
+import { AdvancedSection } from "./sections/advanced";
 import { DangerSection } from "./sections/danger";
 import { ReportBugSection } from "./sections/report-bug";
 
@@ -68,6 +79,12 @@ export function SettingsView() {
         icon: UserCircle,
       },
       { id: "provider", label: t("settings:nav.provider"), icon: Bot },
+      {
+        id: "advanced",
+        label: t("settings:nav.advanced"),
+        icon: SlidersHorizontal,
+        beta: true,
+      },
       { id: "phone", label: t("settings:nav.phone"), icon: Smartphone, beta: true },
       { id: "reportBug", label: t("settings:nav.reportBug"), icon: Bug },
     );
@@ -124,6 +141,7 @@ export function SettingsView() {
               </div>
             )}
             {activeVisible === "provider" && <ProviderSection />}
+            {activeVisible === "advanced" && <AdvancedSection />}
             {activeVisible === "phone" && <ConnectPhoneSection />}
             {activeVisible === "reportBug" && <ReportBugSection />}
           </div>
