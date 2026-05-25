@@ -34,6 +34,8 @@ struct AgentConfig {
     provider: Option<String>,
     #[serde(default, alias = "claude_model")]
     model: Option<String>,
+    #[serde(default, alias = "claude_effort")]
+    effort: Option<String>,
 }
 
 /// Resolve the provider + model for an agent.
@@ -65,6 +67,34 @@ fn read_agent_config(agent_dir: &Path) -> Option<AgentConfig> {
     serde_json::from_str(&raw).ok()
 }
 
+/// Resolve the reasoning effort for a session against a *final* provider
+/// (already override-resolved by the caller).
+///
+/// Order:
+/// 1. The agent's `effort` in `config.json`, but only if the provider's CLI
+///    actually accepts it ([`Provider::effort_levels`]). A value valid for
+///    one provider but not another (e.g. `max` on Codex, or a hand-edited
+///    typo) is dropped rather than passed to a CLI that would reject it.
+/// 2. The provider's [`Provider::default_effort`] — the floor every session
+///    gets when nothing valid is configured.
+/// 3. `None` for providers with no effort control (e.g. Gemini), so the
+///    runner omits the flag.
+///
+/// Effort is per-agent, validated against whichever provider the session
+/// ends up using; callers pass the same agent dir they resolved the
+/// provider from.
+pub fn resolve_effort(agent_dir: &Path, provider: Provider) -> Option<String> {
+    let levels = provider.effort_levels();
+    if levels.is_empty() {
+        return None;
+    }
+    let configured = read_agent_config(agent_dir).and_then(|c| c.effort);
+    match configured.as_deref() {
+        Some(e) if levels.iter().any(|&l| l == e) => Some(e.to_string()),
+        _ => provider.default_effort().map(str::to_string),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,6 +110,9 @@ mod tests {
     }
     fn openai() -> Provider {
         "openai".parse().unwrap()
+    }
+    fn gemini() -> Provider {
+        "gemini".parse().unwrap()
     }
 
     #[test]
@@ -127,5 +160,63 @@ mod tests {
         let r = resolve_provider(&agent);
         assert_eq!(r.provider, anthropic());
         assert_eq!(r.model.as_deref(), Some("sonnet"));
+    }
+
+    fn agent_with(body: &str) -> (TempDir, std::path::PathBuf) {
+        let d = TempDir::new().unwrap();
+        let agent = d.path().join("ws").join("agent");
+        write_json(&agent.join(".houston/config/config.json"), body);
+        (d, agent)
+    }
+
+    #[test]
+    fn effort_uses_configured_value_when_provider_accepts_it() {
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","effort":"high"}"#);
+        assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("high"));
+    }
+
+    #[test]
+    fn effort_accepts_max_on_claude_but_clamps_on_codex() {
+        // `max` is valid for Claude; for Codex it is an unknown variant, so
+        // the configured value is dropped in favor of the provider default.
+        let (_d, agent) = agent_with(r#"{"effort":"max"}"#);
+        assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("max"));
+        assert_eq!(resolve_effort(&agent, openai()).as_deref(), Some("medium"));
+    }
+
+    #[test]
+    fn effort_accepts_xhigh_on_codex() {
+        let (_d, agent) = agent_with(r#"{"provider":"openai","effort":"xhigh"}"#);
+        assert_eq!(resolve_effort(&agent, openai()).as_deref(), Some("xhigh"));
+    }
+
+    #[test]
+    fn effort_falls_back_to_default_when_unset_or_garbage() {
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic"}"#);
+        assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("medium"));
+
+        let (_d2, agent2) = agent_with(r#"{"effort":"ultra"}"#);
+        assert_eq!(resolve_effort(&agent2, anthropic()).as_deref(), Some("medium"));
+    }
+
+    #[test]
+    fn effort_reads_claude_effort_alias() {
+        let (_d, agent) = agent_with(r#"{"claude_effort":"xhigh"}"#);
+        assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("xhigh"));
+    }
+
+    #[test]
+    fn effort_is_none_for_provider_without_effort_control() {
+        // Gemini has no effort flag — even a configured value yields None.
+        let (_d, agent) = agent_with(r#"{"provider":"gemini","effort":"high"}"#);
+        assert!(resolve_effort(&agent, gemini()).is_none());
+    }
+
+    #[test]
+    fn effort_default_when_no_config_file() {
+        let d = TempDir::new().unwrap();
+        let agent = d.path().join("ws").join("agent");
+        std::fs::create_dir_all(&agent).unwrap();
+        assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("medium"));
     }
 }

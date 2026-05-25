@@ -66,7 +66,12 @@ import {
   isComposioSigninHref,
 } from "./composio-signin-card";
 import { ChatModelSelector } from "./chat-model-selector";
-import { getDefaultModel, validModelOrNull } from "../lib/providers";
+import {
+  getDefaultModel,
+  validModelOrNull,
+  validEffortOrDefault,
+  type EffortLevel,
+} from "../lib/providers";
 import { analytics } from "../lib/analytics";
 import {
   buildSkillClaudePrompt,
@@ -156,10 +161,12 @@ export function useAgentChatPanel({
   // migrated into agent configs at engine boot.
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
+  const [agentEffort, setAgentEffort] = useState<string | null>(null);
   useEffect(() => {
     if (!path) {
       setAgentProvider(null);
       setAgentModel(null);
+      setAgentEffort(null);
       return;
     }
     tauriConfig
@@ -167,6 +174,7 @@ export function useAgentChatPanel({
       .then((cfg) => {
         setAgentProvider((cfg.provider as string) ?? null);
         setAgentModel((cfg.model as string) ?? null);
+        setAgentEffort((cfg.effort as string) ?? null);
       })
       .catch(() => {});
   }, [path]);
@@ -187,6 +195,14 @@ export function useAgentChatPanel({
     validModelOrNull(effectiveProvider, activityModel) ??
     validModelOrNull(effectiveProvider, agentModel) ??
     getDefaultModel(effectiveProvider);
+  // Effort is a per-agent setting validated against whatever model is active
+  // (activity override or agent default), so it never offers an unsupported
+  // level for the model that will actually run.
+  const effectiveEffort = validEffortOrDefault(
+    effectiveProvider,
+    effectiveModel,
+    agentEffort,
+  );
   const handleModelSelect = useCallback(
     async (prov: string, mod: string) => {
       // Optimistic UI: the picker flips instantly while the writes fan out.
@@ -217,6 +233,26 @@ export function useAgentChatPanel({
       }
     },
     [path, selectedActivityId, addToast, t],
+  );
+  const handleEffortSelect = useCallback(
+    async (effort: EffortLevel) => {
+      // Effort is per-agent (not per-activity): persist to the agent config
+      // the engine reads at send time. Optimistic flip for the picker.
+      setAgentEffort(effort);
+      try {
+        if (path) {
+          const cfg = await tauriConfig.read(path);
+          await tauriConfig.write(path, { ...cfg, effort });
+        }
+      } catch (err) {
+        addToast({
+          title: t("chat:errors.modelPersistFailed"),
+          description: String(err),
+          variant: "error",
+        });
+      }
+    },
+    [path, addToast, t],
   );
 
   // ── Composio link card support ────────────────────────────────────────
@@ -553,10 +589,12 @@ export function useAgentChatPanel({
           model={effectiveModel}
           onSelect={handleModelSelect}
           lockedProvider={hasMessages ? effectiveProvider : null}
+          effort={effectiveEffort}
+          onEffortSelect={handleEffortSelect}
         />
       </div>
     );
-  }, [agent, t, effectiveProvider, effectiveModel, handleModelSelect]);
+  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect]);
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
@@ -589,11 +627,13 @@ export function useAgentChatPanel({
             model={effectiveModel}
             onSelect={handleModelSelect}
             lockedProvider={hasMessages ? effectiveProvider : null}
+            effort={effectiveEffort}
+            onEffortSelect={handleEffortSelect}
           />
         </div>
       </div>
     );
-  }, [agent, t, effectiveProvider, effectiveModel, handleModelSelect]);
+  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect]);
 
   const pickerDialog = agent ? (
     <NewMissionPickerDialog

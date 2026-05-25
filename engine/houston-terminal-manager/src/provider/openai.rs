@@ -44,10 +44,11 @@ impl ProviderAdapter for OpenAiAdapter {
     }
 
     fn login_args(&self) -> Option<&'static [&'static str]> {
-        // Same `xhigh` guard as `logout_args` and the runner: codex loads
-        // `~/.codex/config.toml` before any subcommand, and a stale
-        // `model_reasoning_effort = "xhigh"` written by a newer CLI makes
-        // the bundled one bail out before the OAuth flow can even start.
+        // Same guard as `logout_args` and the runner: codex loads
+        // `~/.codex/config.toml` before any subcommand, so a stale
+        // `model_reasoning_effort` the bundled enum can't parse (e.g. a
+        // stray `max` copied from Claude) would make it bail out before the
+        // OAuth flow can even start. Force a known-good value.
         Some(&["login", "-c", "model_reasoning_effort=high"])
     }
 
@@ -56,13 +57,25 @@ impl ProviderAdapter for OpenAiAdapter {
         // then deletes `~/.codex/auth.json`.
         //
         // Codex loads `~/.codex/config.toml` before running any subcommand,
-        // including `logout`. Newer Codex CLIs write
-        // `model_reasoning_effort = "xhigh"`, which the bundled CLI rejects
-        // ("unknown variant `xhigh`"), so logout exits 1 with a config error
-        // and the user is stuck signed in. Force a known-good value, same
-        // trick `provider_auth::probe_codex_auth_status` uses for
-        // `login status`.
+        // including `logout`. A `model_reasoning_effort` value the bundled
+        // CLI's enum doesn't recognize (e.g. `max`, which is Claude-only)
+        // makes logout exit 1 with a config error, leaving the user stuck
+        // signed in. Force a known-good value, same trick
+        // `provider_auth::probe_codex_auth_status` uses for `login status`.
         Some(&["logout", "-c", "model_reasoning_effort=high"])
+    }
+
+    fn effort_levels(&self) -> &'static [&'static str] {
+        // Codex `ReasoningEffort` enum (bundled CLI):
+        // none/minimal/low/medium/high/xhigh. We surface the meaningful
+        // tuning range. `max` is Claude-only and would be an "unknown
+        // variant" to codex — and codex has no clamp-to-highest fallback —
+        // so it is deliberately excluded.
+        &["low", "medium", "high", "xhigh"]
+    }
+
+    fn default_effort(&self) -> Option<&'static str> {
+        Some("medium")
     }
 
     fn classify_stderr(&self, line: &str) -> Option<ProviderError> {

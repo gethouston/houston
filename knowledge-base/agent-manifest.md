@@ -234,6 +234,34 @@ Notes:
   three dispatch arms (runner, parser, summarizer). See "Engine boundary"
   in `CLAUDE.md`.
 
+### Reasoning effort
+
+Effort is **per-agent and model-gated**. Stored as `effort` in the agent's
+`.houston/config/config.json` (schema `ui/agent-schemas/src/config.schema.json`),
+set from the model picker (`app/src/components/chat-model-selector.tsx`), which
+shows only the levels the active model accepts.
+
+- The engine resolves it in `houston_engine_core::sessions::resolve_effort`
+  (`engine/houston-engine-core/src/sessions/provider.rs`): the configured value
+  when the **final** provider accepts it, else the provider's `default_effort`
+  (`medium`), else `None` for providers with no effort control. An explicit
+  `effort` on `POST .../sessions` (the onboarding tutorial) still wins over
+  config. Applies to chat, board missions, routines, and onboarding alike.
+- Valid levels live on the `ProviderAdapter` (`effort_levels` / `default_effort`)
+  as a provider-level **superset** used for validation; per-model availability
+  is a picker concern (`ModelOption.effortLevels` in `providers.ts`).
+
+| Provider | Model | Effort levels offered | CLI flag |
+|---|---|---|---|
+| `anthropic` | `opus` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
+| `anthropic` | `sonnet` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
+| `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
+| `gemini` | any | none | (no flag) |
+
+Claude self-clamps an unsupported `--effort` down to its highest supported
+level; codex has no such fallback, so `max` (an unknown variant to codex) is
+never offered for OpenAI. Default for every effort-capable provider is `medium`.
+
 ## Workspace
 - Storage: `~/.houston/workspaces/workspaces.json` (index) + one dir per workspace `~/.houston/workspaces/{Name}/`. `HOUSTON_DOCS` env var overrides the root.
 - First launch: welcome screen, create first workspace

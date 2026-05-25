@@ -32,7 +32,7 @@ import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { ChatModelSelector } from "../chat-model-selector";
 import { Paperclip } from "lucide-react";
 import { useChatDisplayLabels } from "../use-chat-display-labels";
-import { getDefaultModel, PROVIDERS } from "../../lib/providers";
+import { getDefaultModel, PROVIDERS, validEffortOrDefault, type EffortLevel } from "../../lib/providers";
 import type { ProviderError } from "@houston-ai/chat";
 import { ProviderReconnectCard } from "../shell/provider-reconnect-card";
 import { ProviderErrorCard } from "../shell/provider-error-card";
@@ -96,10 +96,12 @@ export default function ChatTab({ agent }: TabProps) {
   // user's last pick and no other ephemeral state is involved.
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
+  const [agentEffort, setAgentEffort] = useState<string | null>(null);
   useEffect(() => {
     tauriConfig.read(agentPath).then((cfg) => {
       setAgentProvider((cfg.provider as string) ?? null);
       setAgentModel((cfg.model as string) ?? null);
+      setAgentEffort((cfg.effort as string) ?? null);
     }).catch(() => {});
   }, [agentPath]);
 
@@ -107,6 +109,9 @@ export default function ChatTab({ agent }: TabProps) {
   // were retired; existing values were migrated into agent configs at boot.
   const effectiveProvider = agentProvider ?? "anthropic";
   const effectiveModel = agentModel ?? getDefaultModel(effectiveProvider);
+  // Effort is per-model; validate the stored value against the active model
+  // (so e.g. a stored `max` falls back to the default on a model without it).
+  const effectiveEffort = validEffortOrDefault(effectiveProvider, effectiveModel, agentEffort);
   const authSignalKey = useMemo(
     () => providerAuthSignalKey(feedItems ?? []),
     [feedItems],
@@ -145,6 +150,29 @@ export default function ChatTab({ agent }: TabProps) {
         } catch {
           setAgentProvider(null);
           setAgentModel(null);
+        }
+      }
+    },
+    [agentPath],
+  );
+
+  const handleEffortSelect = useCallback(
+    async (effort: EffortLevel) => {
+      // Optimistic flip; the engine reads `config.effort` at send time, so
+      // persisting it is what makes the next turn honor the new level.
+      setAgentEffort(effort);
+      try {
+        const cfg = await tauriConfig.read(agentPath);
+        await tauriConfig.write(agentPath, { ...cfg, effort });
+      } catch (e) {
+        // tauriConfig.write surfaces its own toast via the `call` wrapper;
+        // roll back the optimistic state so the picker doesn't lie.
+        console.error("[chat-tab] persist effort selection failed:", e);
+        try {
+          const cfg = await tauriConfig.read(agentPath);
+          setAgentEffort(cfg.effort ?? null);
+        } catch {
+          setAgentEffort(null);
         }
       }
     },
@@ -366,6 +394,8 @@ export default function ChatTab({ agent }: TabProps) {
             model={effectiveModel}
             onSelect={handleModelSelect}
             lockedProvider={visibleFeedItems.length > 0 ? effectiveProvider : null}
+            effort={effectiveEffort}
+            onEffortSelect={handleEffortSelect}
           />
         }
         attachMenu={({ openFilePicker }) => (
@@ -386,6 +416,8 @@ export default function ChatTab({ agent }: TabProps) {
                 model={effectiveModel}
                 onSelect={handleModelSelect}
                 lockedProvider={visibleFeedItems.length > 0 ? effectiveProvider : null}
+                effort={effectiveEffort}
+                onEffortSelect={handleEffortSelect}
               />
             </div>
           </div>
