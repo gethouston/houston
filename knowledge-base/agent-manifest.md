@@ -1,12 +1,11 @@
 # Agent Manifest
 
-Agent definitions = what AI agent looks like. Which tabs. What prompt. What files seeded. Primary dev surface of platform.
+Agent definitions = what AI agent looks like. What prompt. What files seeded. Primary dev surface of platform.
 
-## Three tiers
+## Two tiers
 
-1. **JSON-only** — `houston.json` + `CLAUDE.md`. Defines tabs, prompt, colors, icon. Uses built-in tab components.
-2. **Custom React** — `houston.json` + `bundle.js`. Custom components. Import `@houston-ai/*` as peer deps.
-3. **Workspace template** — `workspace.json` + `agents/` folder. Bundles multiple agents from one GitHub repo.
+1. **JSON-only** — `houston.json` + `CLAUDE.md`. Defines prompt, colors, icon, integrations. All agents share the same shell tabs (see "Tabs" below).
+2. **Workspace template** — `workspace.json` + `agents/` folder. Bundles multiple agents from one GitHub repo.
 
 ## Manifest shape
 ```ts
@@ -20,22 +19,22 @@ interface AgentManifest {
   category?: AgentCategory;
   author?: string;
   tags?: string[];
-  tabs: AgentTab[];
-  defaultTab?: string;
+  integrations?: string[]; // Composio toolkit slugs
   claudeMd?: string;       // CLAUDE.md template content
   systemPrompt?: string;
   agentSeeds?: Record<string, string>;
   features?: string[];     // Rust feature flags needed
 }
-
-interface AgentTab {
-  id: string;
-  label: string;
-  builtIn?: "chat" | "board" | "skills" | "files" | "connections" | "context" | "routines" | "channels" | "events" | "learnings";
-  customComponent?: string;
-  badge?: "activity" | "none";
-}
 ```
+
+## Tabs
+
+Every agent renders the same four tabs in the shell:
+`Activity` (board) / `Routines` / `Files` / `Job Description`.
+
+This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
+
+Workspace-wide integrations live in the sidebar `Connections` entry, not in a per-agent tab.
 
 ## Locations
 - **Built-in:** `app/src/agents/builtin/` — `personalAssistantAgent`
@@ -82,7 +81,8 @@ board item.
 Update checks compare installed `.source.json` to the bundled catalog
 and refresh installed definitions when a newer app release carries a
 newer package. The desktop catalog reloads after updates so existing
-workspace agents pick up new tabs/defaults from the refreshed manifest.
+workspace agents pick up new manifest values (name, description,
+integrations) from the refreshed manifest.
 
 After a bundled package update, Houston copies newly-added packaged
 Skills into existing workspace agents with the same `config_id`.
@@ -93,7 +93,7 @@ integrations, images, category, and featured state can update with a release.
 ## GitHub import flow
 Engine route remains for developer/manual import. A caller posts an
 `owner/repo` URL and Houston downloads `houston.json`, `CLAUDE.md`,
-`icon.png`, `bundle.js` → `~/.houston/agents/{id}/`. The desktop
+`icon.png` → `~/.houston/agents/{id}/`. The desktop
 New Agent modal is Store-only for non-technical users.
 
 ## Agent creation

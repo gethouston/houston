@@ -1,9 +1,9 @@
 import { useEffect } from "react";
 import { useAgentStore } from "../stores/agents";
-import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
 import { orderAgents } from "../lib/agent-order";
 import { isEmptyEditable, isTypingTarget, matchShortcut } from "../lib/shortcuts";
+import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 
 /**
  * Programmatic step-scroll of the chat message log. The conversation
@@ -102,9 +102,7 @@ export function useKeyboardShortcuts() {
           : (idx + dir + ordered.length) % ordered.length;
         const next = ordered[nextIdx];
         setCurrent(next);
-        const def = useAgentCatalogStore.getState().getById(next.configId);
-        const tab = def?.config.defaultTab ?? def?.config.tabs[0]?.id ?? "activity";
-        useUIStore.getState().setViewMode(tab);
+        useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
         return;
       }
 

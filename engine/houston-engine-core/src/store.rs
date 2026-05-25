@@ -158,18 +158,6 @@ pub async fn install_agent(agents_dir: &Path, req: InstallAgent) -> CoreResult<(
         }
     }
 
-    let bundle_url = format!(
-        "https://raw.githubusercontent.com/{}/main/bundle.js",
-        req.repo
-    );
-    if let Ok(bundle_resp) = reqwest::get(&bundle_url).await {
-        if bundle_resp.status().is_success() {
-            if let Ok(bytes) = bundle_resp.bytes().await {
-                let _ = fs::write(dir.join("bundle.js"), &bytes);
-            }
-        }
-    }
-
     let install_url = format!(
         "{}/agents/{}/install",
         store_api(),
@@ -214,15 +202,11 @@ pub async fn install_agent_from_github(agents_dir: &Path, github_url: &str) -> C
     fs::create_dir_all(&dir)?;
     fs::write(dir.join("houston.json"), &config_bytes)?;
 
-    let (bundle, icon, claude_md) = tokio::join!(
-        fetch_github_raw(&owner, &repo, "bundle.js"),
+    let (icon, claude_md) = tokio::join!(
         fetch_github_raw(&owner, &repo, "icon.png"),
         fetch_github_raw(&owner, &repo, "CLAUDE.md"),
     );
 
-    if let Ok(Some(bytes)) = bundle {
-        let _ = fs::write(dir.join("bundle.js"), &bytes);
-    }
     if let Ok(Some(bytes)) = icon {
         let _ = fs::write(dir.join("icon.png"), &bytes);
     }
@@ -307,27 +291,11 @@ pub async fn check_agent_updates(agents_dir: &Path) -> CoreResult<Vec<String>> {
 
         let config_changed = local_config.trim() != remote_config.trim();
 
-        let local_bundle_len = fs::metadata(path.join("bundle.js"))
-            .map(|m| m.len())
-            .unwrap_or(0);
-        let remote_bundle = fetch_github_raw(owner, repo_name, "bundle.js").await;
-        let bundle_changed = match &remote_bundle {
-            Ok(Some(bytes)) => bytes.len() as u64 != local_bundle_len,
-            _ => false,
-        };
-
-        if !config_changed && !bundle_changed {
+        if !config_changed {
             continue;
         }
 
-        if config_changed {
-            let _ = fs::write(path.join("houston.json"), &remote_config);
-        }
-        if let Ok(Some(bytes)) = remote_bundle {
-            if bundle_changed {
-                let _ = fs::write(path.join("bundle.js"), &bytes);
-            }
-        }
+        let _ = fs::write(path.join("houston.json"), &remote_config);
         if let Ok(Some(bytes)) = fetch_github_raw(owner, repo_name, "CLAUDE.md").await {
             let _ = fs::write(path.join("CLAUDE.md"), &bytes);
         }
@@ -407,11 +375,9 @@ pub async fn install_workspace_from_github(
 
         let claude_path_gh = format!("{prefix}/CLAUDE.md");
         let icon_path_gh = format!("{prefix}/icon.png");
-        let bundle_path_gh = format!("{prefix}/bundle.js");
-        let (claude_md, icon, bundle) = tokio::join!(
+        let (claude_md, icon) = tokio::join!(
             fetch_github_raw(&owner, &repo, &claude_path_gh),
             fetch_github_raw(&owner, &repo, &icon_path_gh),
-            fetch_github_raw(&owner, &repo, &bundle_path_gh),
         );
 
         if let Ok(Some(bytes)) = claude_md {
@@ -419,9 +385,6 @@ pub async fn install_workspace_from_github(
         }
         if let Ok(Some(bytes)) = icon {
             let _ = fs::write(def_dir.join("icon.png"), &bytes);
-        }
-        if let Ok(Some(bytes)) = bundle {
-            let _ = fs::write(def_dir.join("bundle.js"), &bytes);
         }
 
         let source = serde_json::json!({

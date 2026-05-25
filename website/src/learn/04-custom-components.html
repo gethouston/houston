@@ -6,9 +6,9 @@ visionPath: "../vision/index.html"
 permalink: "learn/04-custom-components.html"
 ---
 {% extends "base.njk" %}
-{% block title %}Custom components — Learn Houston{% endblock %}
+{% block title %}The agent shell — Learn Houston{% endblock %}
 {% block meta %}
-<meta name="description" content="Build custom React components for your Houston agent. Go beyond built-in tabs with your own UI.">
+<meta name="description" content="Every Houston agent renders the same four tabs: Activity, Routines, Files, and Job Description. Here is what each one is for.">
 {% endblock %}
 {% block stylesheets %}
 <link rel="stylesheet" href="style.css?v=3">
@@ -21,256 +21,75 @@ permalink: "learn/04-custom-components.html"
 
       <main class="content">
         <div class="content-label">Chapter 04</div>
-        <h1>Custom components.</h1>
+        <h1>The agent shell.</h1>
         <p class="lead">
-          Built-in tabs cover most agents. When they don't, you build
-          your own React components and bundle them with your agent.
+          Every agent in Houston renders the same four tabs. The shape
+          is fixed on purpose, so users learn one layout and reuse it
+          across every agent they install.
         </p>
 
         <div class="toc">
           <div class="toc-label">On this page</div>
           <ol>
-            <li><a href="#when">When you need this</a></li>
-            <li><a href="#setup">Project setup</a></li>
-            <li><a href="#component">Writing a component</a></li>
-            <li><a href="#props">Props reference</a></li>
-            <li><a href="#houston-packages">Using Houston packages</a></li>
-            <li><a href="#manifest">Wiring it to the manifest</a></li>
-            <li><a href="#build-and-ship">Build and ship</a></li>
+            <li><a href="#tabs">The four tabs</a></li>
+            <li><a href="#why-fixed">Why the layout is fixed</a></li>
+            <li><a href="#integrations">Where integrations live</a></li>
           </ol>
         </div>
 
-        <h2 id="when">When you need this</h2>
+        <h2 id="tabs">The four tabs</h2>
         <p>
-          Most agents work with the built-in tabs: board, files,
-          integrations, job description. Custom components are for when
-          your vertical needs a UI that doesn't exist yet.
+          From left to right:
+        </p>
+        <ul>
+          <li>
+            <strong>Activity.</strong> A kanban board of conversations.
+            Each card is one mission. Clicking a card opens the chat.
+            This is the default tab when an agent opens.
+          </li>
+          <li>
+            <strong>Routines.</strong> Scheduled jobs the agent runs on
+            its own, like "every Monday at 8am, summarize last week's
+            inbox." Houston runs the schedule, the agent runs the work.
+          </li>
+          <li>
+            <strong>Files.</strong> Browse anything the agent has read
+            or written inside its working directory. Drafts, notes,
+            structured data, exports.
+          </li>
+          <li>
+            <strong>Job Description.</strong> The agent's
+            <code>CLAUDE.md</code>. This is what the agent reads at the
+            start of every conversation to know who it is and how to
+            behave. Edit it whenever the agent's role changes.
+          </li>
+        </ul>
+
+        <h2 id="why-fixed">Why the layout is fixed</h2>
+        <p>
+          Earlier versions of Houston let every agent declare its own
+          tab list in <code>houston.json</code>, and an experimental
+          path let agents ship a <code>bundle.js</code> with custom
+          React components for their own tabs. In practice nobody used
+          the custom-component path, and the per-agent tab list mostly
+          caused drift, where an old installed agent kept showing tabs
+          a new version of the agent no longer declared.
         </p>
         <p>
-          Examples: a tax form review panel, a contract comparison view,
-          a patient intake dashboard, a custom configuration wizard.
-        </p>
-        <p>
-          If you can build it in React, you can put it in a Houston tab.
+          The fixed shell is simpler for users (one layout to learn) and
+          simpler for agent authors (you write a manifest and a
+          <code>CLAUDE.md</code>, nothing else). The list of tabs lives
+          in <code>app/src/agents/standard-tabs.ts</code> if you want to
+          read it in code.
         </p>
 
-        <h2 id="setup">Project setup</h2>
+        <h2 id="integrations">Where integrations live</h2>
         <p>
-          Create a small Vite project next to your manifest. This project
-          compiles to a single <code>bundle.js</code> that Houston loads
-          at runtime.
-        </p>
-        <h3>File structure</h3>
-        <pre><code>your-agent/
-├── houston.json
-├── CLAUDE.md
-├── icon.png
-├── bundle.js          ← built output
-├── package.json
-├── vite.config.ts
-├── tsconfig.json
-└── src/
-    └── index.tsx      ← your components</code></pre>
-
-        <h3>package.json</h3>
-        <pre><code>{
-  "name": "my-agent",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "scripts": {
-    "dev": "vite build --watch",
-    "build": "vite build"
-  },
-  "peerDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@houston-ai/core": "*",
-    "@houston-ai/chat": "*",
-    "@houston-ai/board": "*",
-    "@houston-ai/layout": "*"
-  },
-  "devDependencies": {
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "@types/react": "^19.0.0",
-    "typescript": "^5.7.0",
-    "vite": "^6.0.0"
-  }
-}</code></pre>
-        <p>
-          Houston packages are <strong>peer dependencies</strong>. Houston
-          provides them at runtime. Your bundle stays small because React
-          and the component libraries aren't included in it.
-        </p>
-
-        <h3>vite.config.ts</h3>
-        <pre><code>import { defineConfig } from "vite";
-
-export default defineConfig({
-  build: {
-    lib: {
-      entry: "src/index.tsx",
-      formats: ["es"],
-      fileName: () => "bundle.js",
-    },
-    rollupOptions: {
-      external: [
-        "react",
-        "react-dom",
-        "react/jsx-runtime",
-        "@houston-ai/core",
-        "@houston-ai/chat",
-        "@houston-ai/board",
-        "@houston-ai/layout",
-      ],
-    },
-    outDir: ".",
-    emptyOutDir: false,
-  },
-});</code></pre>
-        <p>
-          The key: everything in <code>external</code> is provided by
-          Houston. Your bundle only contains your code.
-        </p>
-
-        <h2 id="component">Writing a component</h2>
-        <p>
-          Export a named React component from <code>src/index.tsx</code>.
-          The export name is what you reference in the manifest.
-        </p>
-        <pre><code>{% raw %}import type { FC } from "react";
-
-interface CustomTabProps {
-  agent: {
-    id: string;
-    name: string;
-    folderPath: string;
-    configId: string;
-  };
-  readFile: (name: string) =&gt; Promise&lt;string&gt;;
-  writeFile: (name: string, content: string) =&gt; Promise&lt;void&gt;;
-  listFiles: () =&gt; Promise&lt;Array&lt;{
-    path: string;
-    name: string;
-    size: number;
-  }&gt;&gt;;
-  sendMessage: (text: string) =&gt; void;
-}
-
-export const Dashboard: FC&lt;CustomTabProps&gt; = ({
-  agent,
-  readFile,
-  writeFile,
-  sendMessage,
-}) =&gt; {
-  return (
-    &lt;div style={{ padding: 24 }}&gt;
-      &lt;h2&gt;{agent.name} Dashboard&lt;/h2&gt;
-      &lt;button onClick={() =&gt; sendMessage("Generate this week's report")}&gt;
-        Generate report
-      &lt;/button&gt;
-    &lt;/div&gt;
-  );
-};{% endraw %}</code></pre>
-
-        <h2 id="props">Props reference</h2>
-        <p>
-          Houston injects these props into every custom tab component:
-        </p>
-        <table class="fields-table">
-          <thead><tr><th>Prop</th><th>Type</th><th>What it does</th></tr></thead>
-          <tbody>
-            <tr>
-              <td><code>agent</code></td>
-              <td>object</td>
-              <td>The current agent: id, name, folderPath, configId.</td>
-            </tr>
-            <tr>
-              <td><code>readFile(name)</code></td>
-              <td>function</td>
-              <td>Read a file from the agent's working directory.</td>
-            </tr>
-            <tr>
-              <td><code>writeFile(name, content)</code></td>
-              <td>function</td>
-              <td>Write a file to the agent's working directory.</td>
-            </tr>
-            <tr>
-              <td><code>listFiles()</code></td>
-              <td>function</td>
-              <td>List all files in the agent's working directory.</td>
-            </tr>
-            <tr>
-              <td><code>sendMessage(text)</code></td>
-              <td>function</td>
-              <td>Send a message to the AI as if the user typed it in the chat.</td>
-            </tr>
-          </tbody>
-        </table>
-        <p>
-          These props are your bridge to the workspace. Read config files
-          the AI wrote. Write data the AI can read. Send messages to
-          trigger AI actions. The symmetric participation from Chapter 2
-          works here too.
-        </p>
-
-        <h2 id="houston-packages">Using Houston packages</h2>
-        <p>
-          You can import any <code>@houston-ai</code> component. They're
-          available at runtime because Houston loads them as shared modules.
-        </p>
-        <pre><code>import { Button, Card, Badge } from "@houston-ai/core";
-import { EventFeed } from "@houston-ai/events";
-import { MemoryBrowser } from "@houston-ai/memory";</code></pre>
-        <p>
-          This means your custom tab can look and feel native. Same
-          buttons, same cards, same design system. Your users won't know
-          the tab is custom.
-        </p>
-
-        <h2 id="manifest">Wiring it to the manifest</h2>
-        <p>
-          In your <code>houston.json</code>, add a tab with
-          <code>customComponent</code> pointing to your export name:
-        </p>
-        <pre><code>{
-  "id": "my-agent",
-  "name": "My Agent",
-  "description": "An agent with a custom dashboard.",
-  "tabs": [
-    { "id": "board", "label": "Tasks", "builtIn": "board", "badge": "activity" },
-    { "id": "dashboard", "label": "Dashboard", "customComponent": "Dashboard" },
-    { "id": "files", "label": "Files", "builtIn": "files" }
-  ]
-}</code></pre>
-        <p>
-          The <code>customComponent</code> value must match the named
-          export from your <code>src/index.tsx</code>. You can have
-          multiple custom tabs in one agent. Just export multiple
-          components and reference each one.
-        </p>
-
-        <h2 id="build-and-ship">Build and ship</h2>
-        <pre><code>npm run build</code></pre>
-        <p>
-          This produces <code>bundle.js</code> in your project root. Push
-          it to GitHub alongside your manifest:
-        </p>
-        <pre><code>your-agent/
-├── houston.json
-├── CLAUDE.md
-├── icon.png
-└── bundle.js</code></pre>
-        <p>
-          When someone imports your agent from GitHub, Houston downloads
-          the bundle and loads your custom components automatically.
-        </p>
-        <p>
-          During development, use <code>npm run dev</code> to rebuild on
-          every save. Copy the updated <code>bundle.js</code> to
-          <code>~/.houston/agents/your-agent-id/</code> and reload
-          Houston to see changes.
+          Integrations are workspace-wide, not per-agent. Open the
+          <strong>Connections</strong> entry in the sidebar to add
+          Gmail, Calendar, Slack, Notion, and the other 1000+ tools
+          Houston supports through Composio. Every agent in the
+          workspace shares the same set of connected accounts.
         </p>
 
         <div class="pager">
@@ -285,4 +104,4 @@ import { MemoryBrowser } from "@houston-ai/memory";</code></pre>
         </div>
       </main>
     </div>
-  {% endblock %}
+{% endblock %}

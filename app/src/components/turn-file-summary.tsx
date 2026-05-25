@@ -6,7 +6,6 @@ import { cn } from "@houston-ai/core";
 import { tauriFiles } from "../lib/tauri";
 import type { JobDescriptionTarget } from "../stores/ui";
 import { useAgentStore } from "../stores/agents";
-import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
 import {
   groupTurnSummaryItems,
@@ -39,15 +38,8 @@ export function TurnFileSummary({ items, agentPath }: TurnFileSummaryProps) {
       const ui = useUIStore.getState();
       if (agent) {
         useAgentStore.getState().setCurrent(agent);
-        const def = useAgentCatalogStore.getState().getById(agent.configId);
-        const tabIds = new Set(def?.config.tabs.map((tab) => tab.id) ?? []);
-        const target = semanticTarget(kind);
-        if (tabIds.has("job-description")) {
-          ui.setJobDescriptionTarget(target);
-          ui.setViewMode("job-description");
-        } else {
-          ui.setViewMode(fallbackTab(kind, tabIds));
-        }
+        ui.setJobDescriptionTarget(semanticTarget(kind));
+        ui.setViewMode("job-description");
       }
       ui.setMissionPanelOpen(false);
     },
@@ -144,14 +136,6 @@ function SummarySection({
 
 function semanticTarget(kind: SemanticUpdateKind): JobDescriptionTarget {
   return kind;
-}
-
-function fallbackTab(kind: SemanticUpdateKind, tabIds: Set<string>): string {
-  if (kind === "skills" && tabIds.has("skills")) return "skills";
-  if (kind === "learnings" && tabIds.has("learnings")) return "learnings";
-  if (kind === "instructions" && tabIds.has("prompts")) return "prompts";
-  if (tabIds.has("configure")) return "configure";
-  return "activity";
 }
 
 function semanticIcon(kind: SemanticUpdateKind) {

@@ -20,9 +20,9 @@ import {
   Settings,
 } from "lucide-react";
 import { useAgentStore } from "../stores/agents";
-import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useUIStore } from "../stores/ui";
 import { useAllConversations } from "../hooks/queries";
+import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { orderAgents } from "../lib/agent-order";
 import { shortcutLabel } from "../lib/shortcuts";
 
@@ -56,7 +56,6 @@ export function CommandPalette() {
   const setCheatsheetOpen = useUIStore((s) => s.setCheatsheetOpen);
   const agents = useAgentStore((s) => s.agents);
   const setCurrentAgent = useAgentStore((s) => s.setCurrent);
-  const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const orderedAgents = useMemo(() => orderAgents(agents), [agents]);
   const agentPaths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const { data: convos } = useAllConversations(agentPaths);
@@ -84,9 +83,7 @@ export function CommandPalette() {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;
     setCurrentAgent(agent);
-    const def = getAgentDef(agent.configId);
-    const tab = def?.config.defaultTab ?? def?.config.tabs[0]?.id ?? "activity";
-    setViewMode(tab);
+    setViewMode(DEFAULT_TAB_ID);
     close();
   }
 

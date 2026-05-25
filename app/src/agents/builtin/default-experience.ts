@@ -8,13 +8,5 @@ export const blankAgent: AgentConfig = {
   category: "productivity",
   author: "Houston",
   tags: ["blank", "custom", "starter"],
-  tabs: [
-    { id: "activity", label: "Activity", builtIn: "board", badge: "activity" },
-    { id: "routines", label: "Routines", builtIn: "routines" },
-    { id: "files", label: "Files", builtIn: "files" },
-    { id: "job-description", label: "Job Description", builtIn: "job-description" },
-    { id: "integrations", label: "Integrations", builtIn: "integrations" },
-  ],
-  defaultTab: "activity",
   claudeMd: "",
 };

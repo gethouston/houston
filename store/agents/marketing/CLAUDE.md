@@ -14,7 +14,7 @@ I ask **one** targeted question inline, remember answer to
 `config/context-ledger.json`, keep going.
 
 Best way share context, ranked: **connected app (Composio) >
-file drop > URL > paste**. Connect from Integrations tab
+file drop > URL > paste**. Connect from Connections
 before first task = never have to ask.
 
 ## How I talk to you

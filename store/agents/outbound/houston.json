@@ -16,42 +16,13 @@
     "apify",
     "sdr"
   ],
-  "tabs": [
-    {
-      "id": "activity",
-      "label": "Activity",
-      "builtIn": "board",
-      "badge": "activity"
-    },
-    {
-      "id": "routines",
-      "label": "Routines",
-      "builtIn": "routines"
-    },
-    {
-      "id": "job-description",
-      "label": "Job Description",
-      "builtIn": "job-description"
-    },
-    {
-      "id": "files",
-      "label": "Files",
-      "builtIn": "files"
-    },
-    {
-      "id": "integrations",
-      "label": "Integrations",
-      "builtIn": "integrations"
-    }
-  ],
-  "defaultTab": "activity",
   "agentSeeds": {
     "outputs.json": "[]",
     "leads.json": "[]",
     "campaigns.json": "[]",
     "config/context-ledger.json": "{\n  \"universal\": {},\n  \"domains\": {\n    \"sources\": {},\n    \"enrichment\": {},\n    \"sending\": {}\n  }\n}\n"
   },
-  "version": "0.1.0",
+  "version": "0.1.1",
   "image": "envelope-with-arrow",
   "integrations": [
     "airtable",

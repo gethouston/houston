@@ -57,12 +57,7 @@ Create two files:
   "name": "Bookkeeper",
   "description": "Categorize expenses and reconcile accounts.",
   "icon": "Calculator",
-  "category": "business",
-  "tabs": [
-    { "id": "board", "label": "Tasks", "builtIn": "board", "badge": "activity" },
-    { "id": "files", "label": "Files", "builtIn": "files" },
-    { "id": "job-description", "label": "Instructions", "builtIn": "job-description" }
-  ]
+  "category": "business"
 }
 ```
 
@@ -128,15 +123,14 @@ Each kanban card is a Claude conversation. Click a card to see the full chat. Co
 
 ## Agent definitions
 
-Three tiers:
+Two tiers:
 
 | Tier | What you write | What you get |
 |------|---------------|-------------|
-| **JSON-only** | `houston.json` + `CLAUDE.md` | Tabs, prompt, icon. Uses built-in components. |
-| **Custom React** | Add `bundle.js` | Custom React components as tabs. |
+| **JSON-only** | `houston.json` + `CLAUDE.md` | A new agent. Renders the standard shell (Activity, Routines, Files, Job Description). |
 | **Workspace template** | `workspace.json` + agents folder | Multiple agents, one import. |
 
-**Built-in tab types:** `board`, `files`, `job-description`, `integrations`, `routines`, `configure`, `events`
+Every agent shows the same four tabs. The list lives in `app/src/agents/standard-tabs.ts` if you want to read it in code.
 
 ---
 

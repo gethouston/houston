@@ -33,7 +33,6 @@ permalink: "learn/03-build-your-first-agent.html"
             <li><a href="#what-you-need">What you need</a></li>
             <li><a href="#the-manifest">The manifest</a></li>
             <li><a href="#the-prompt">The prompt</a></li>
-            <li><a href="#built-in-tabs">Built-in tabs</a></li>
             <li><a href="#import-and-test">Import and test</a></li>
             <li><a href="#publish">Publish to GitHub</a></li>
             <li><a href="#advanced">Going further</a></li>
@@ -46,7 +45,7 @@ permalink: "learn/03-build-your-first-agent.html"
         </p>
         <ul>
           <li><code>houston.json</code> — defines what your agent looks
-          like, which tabs it has, and what category it belongs to.</li>
+          like, its name, icon, and category.</li>
           <li><code>CLAUDE.md</code> — the instructions your agent follows.
           This is the brain.</li>
         </ul>
@@ -66,13 +65,7 @@ permalink: "learn/03-build-your-first-agent.html"
   "icon": "Calculator",
   "category": "business",
   "author": "Your Name",
-  "tags": ["accounting", "bookkeeping", "finance"],
-  "tabs": [
-    { "id": "chat", "label": "Chat", "builtIn": "board", "badge": "activity" },
-    { "id": "files", "label": "Files", "builtIn": "files" },
-    { "id": "job-description", "label": "Instructions", "builtIn": "job-description" }
-  ],
-  "defaultTab": "chat"
+  "tags": ["accounting", "bookkeeping", "finance"]
 }</code></pre>
         <p>
           The <code>id</code> must be unique. Use kebab-case. This is how
@@ -88,8 +81,7 @@ permalink: "learn/03-build-your-first-agent.html"
             <tr><td><code>description</code></td><td>Yes</td><td>One-line description for the store card</td></tr>
             <tr><td><code>icon</code></td><td>No</td><td>Lucide icon name (fallback if no icon.png)</td></tr>
             <tr><td><code>category</code></td><td>No</td><td>productivity, development, research, creative, or business</td></tr>
-            <tr><td><code>tabs</code></td><td>Yes</td><td>Which tabs the agent shows (see below)</td></tr>
-            <tr><td><code>defaultTab</code></td><td>No</td><td>Tab ID to show first. Defaults to the first tab.</td></tr>
+            <tr><td><code>integrations</code></td><td>No</td><td>Composio toolkit slugs your agent uses (e.g. <code>["gmail", "googlecalendar"]</code>)</td></tr>
             <tr><td><code>claudeMd</code></td><td>No</td><td>Inline CLAUDE.md content (alternative to a separate file)</td></tr>
             <tr><td><code>agentSeeds</code></td><td>No</td><td>Files to create in every new agent instance</td></tr>
             <tr><td><code>agents</code></td><td>No</td><td>Multiple prompt profiles for multi-agent setups</td></tr>
@@ -123,29 +115,6 @@ and preparing reports.
           where founders spend their time. The domain knowledge, the edge
           case handling, the workflow design. This is your product.
         </p>
-
-        <h2 id="built-in-tabs">Built-in tabs</h2>
-        <p>
-          Houston ships with tabs you can use out of the box. Add them
-          to your <code>tabs</code> array with a <code>builtIn</code> key.
-        </p>
-        <table class="fields-table">
-          <thead><tr><th>builtIn value</th><th>What it does</th></tr></thead>
-          <tbody>
-            <tr><td><code>board</code></td><td>Kanban board for tasks and conversations. The main chat interface.</td></tr>
-            <tr><td><code>files</code></td><td>File browser for the agent's working directory.</td></tr>
-            <tr><td><code>job-description</code></td><td>CLAUDE.md editor with skills and learnings.</td></tr>
-            <tr><td><code>integrations</code></td><td>Service integrations (Composio). 1000+ tools.</td></tr>
-            <tr><td><code>routines</code></td><td>Scheduled routines and automations.</td></tr>
-            <tr><td><code>configure</code></td><td>Custom configuration panel.</td></tr>
-            <tr><td><code>events</code></td><td>Event feed and activity stream.</td></tr>
-          </tbody>
-        </table>
-        <p>
-          You can also disable a tab or add a chip label. Useful for features
-          you're still building:
-        </p>
-        <pre><code>{ "id": "routines", "label": "Routines", "builtIn": "routines", "disabled": true, "chip": "Soon" }</code></pre>
 
         <h2 id="import-and-test">Import and test</h2>
         <p>
@@ -219,12 +188,6 @@ and preparing reports.
   }
 ]</code></pre>
 
-        <h3>Custom React components</h3>
-        <p>
-          Built-in tabs not enough? You can build custom React components
-          and bundle them with your agent. That's the next chapter.
-        </p>
-
         <div class="pager">
           <a href="02-symmetric-participation.html">
             <div class="pager-label">← Previous</div>
@@ -232,7 +195,7 @@ and preparing reports.
           </a>
           <a href="04-custom-components.html" class="next">
             <div class="pager-label">Next →</div>
-            <div class="pager-title">Custom components</div>
+            <div class="pager-title">The agent shell</div>
           </a>
         </div>
       </main>

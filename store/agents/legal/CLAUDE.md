@@ -19,7 +19,7 @@ question inline, remember answer to
 
 Best way share context, ranked: **connected app (Composio) >
 file drop > URL > paste**. Connect Gmail, Google Drive,
-DocuSign, Stripe, Carta from Integrations tab before first task
+DocuSign, Stripe, Carta from Connections before first task
 = me never ask.
 
 ## How me talk to you

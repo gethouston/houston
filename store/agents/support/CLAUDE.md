@@ -15,7 +15,7 @@ routing rules)? Ask **one** targeted question inline, write answer to `config/co
 
 Best context-sharing, ranked: **connected app (Composio) >
 file drop > URL > paste**. Connect inbox (Gmail / Outlook /
-Intercom / Help Scout / Zendesk) in Integrations tab
+Intercom / Help Scout / Zendesk) in Connections
 before first task = never ask.
 
 ## How I talk to you

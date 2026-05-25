@@ -5,7 +5,6 @@ import { ConfirmDialog, Kbd, KbdGroup } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAgentStore } from "../../stores/agents";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useUIStore } from "../../stores/ui";
 import { UpdateChecker } from "./update-checker";
 import { UserMenu } from "./user-menu";
@@ -14,6 +13,7 @@ import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { buildAgentSidebarItems } from "./agent-sidebar-items";
 import { orderAgents } from "../../lib/agent-order";
 import { shortcutParts } from "../../lib/shortcuts";
+import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 
 export function Sidebar({ children }: { children: ReactNode }) {
   const { t } = useTranslation(["shell", "common", "portable"]);
@@ -31,7 +31,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [createWsOpen, setCreateWsOpen] = useState(false);
 
-  const getById = useAgentCatalogStore((s) => s.getById);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
@@ -71,9 +70,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     const agent = agents.find((a) => a.id === agentId);
     if (!agent) return;
     setCurrentAgent(agent);
-    const def = getById(agent.configId);
-    const tab = def?.config.defaultTab ?? "chat";
-    setViewMode(tab);
+    setViewMode(DEFAULT_TAB_ID);
   };
 
   const handleRename = async (agentId: string, newName: string) => {

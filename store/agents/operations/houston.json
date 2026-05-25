@@ -15,41 +15,12 @@
     "data",
     "ops"
   ],
-  "tabs": [
-    {
-      "id": "activity",
-      "label": "Activity",
-      "builtIn": "board",
-      "badge": "activity"
-    },
-    {
-      "id": "routines",
-      "label": "Routines",
-      "builtIn": "routines"
-    },
-    {
-      "id": "job-description",
-      "label": "Job Description",
-      "builtIn": "job-description"
-    },
-    {
-      "id": "files",
-      "label": "Files",
-      "builtIn": "files"
-    },
-    {
-      "id": "integrations",
-      "label": "Integrations",
-      "builtIn": "integrations"
-    }
-  ],
-  "defaultTab": "activity",
   "agentSeeds": {
     "outputs.json": "[]",
     "config/context-ledger.json": "{\n  \"universal\": {},\n  \"domains\": {\n    \"rhythm\": {},\n    \"people\": {},\n    \"data\": {},\n    \"vendors\": {},\n    \"investors\": {}\n  }\n}\n",
     ".houston/routines/routines.json": "[{\"id\": \"weekly-ops-review\", \"name\": \"Monday operations review\", \"description\": \"Every Monday morning: what shipped last week, what's stale, what's next \\u2014 rolled up across Planning, Scheduling, Finance, Vendors, and Data.\", \"prompt\": \"Run the Monday operations review. Use the run-my-ops-review skill with period=weekly.\\n\\nFirst, if the latest rollups/ file is older than 7 days, also run run-my-ops-review with period=metrics-rollup and fold its top movers into the review.\\n\\nAggregate everything this agent produced in the last 7 days from outputs.json. Group by domain (Planning / Scheduling / Finance / Vendors / Data). For each domain, surface (a) what shipped, (b) what's stale \\u2014 started but not touched in 3+ weeks, (c) the single most useful next move.\\n\\nCross-reference with active priorities from context/operations-context.md (honest verdict per priority: on-track / at-risk / off-track) and the 30-day renewal window from renewals/calendar.md. Flag any investor-update or board deadline coming up this week.\\n\\nEnd with THE ONE MOVE \\u2014 a single most-useful thing to do this week.\\n\\nWrite to reviews/{YYYY-MM-DD}.md and log to outputs.json. This routine always surfaces \\u2014 the review matters even on a quiet week.\", \"schedule\": \"0 8 * * 1\", \"enabled\": true, \"suppress_when_silent\": false, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}, {\"id\": \"weekly-followup-sweep\", \"name\": \"Weekly follow-up sweep\", \"description\": \"Every Friday afternoon: what did I commit to that's due or overdue? Drafts the fulfillment or an honest bump so Monday doesn't start with debt.\", \"prompt\": \"Run the weekly follow-up sweep. Use the draft-a-message skill with type=followup (HANDLE sub-mode).\\n\\nRead followups.json. For every follow-up with status='pending' and dueAt <= today + 3 days, either (a) flip to 'ready-to-close' if there's an addressing outbound in drafts/ already, or (b) draft either the fulfillment or an honest bump in my voice ('Following up on the {X} I promised by {Y} \\u2014 status: {Z}'). Save each draft to drafts/followup-{date}-{slug}.md AND as an inbox draft.\\n\\nSummarize to me: count of newly-drafted followups, count of ready-to-close, count still genuinely-pending-with-date.\\n\\nAlways surface \\u2014 follow-up debt never goes away on its own.\", \"schedule\": \"0 15 * * 5\", \"enabled\": true, \"suppress_when_silent\": false, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}, {\"id\": \"monthly-renewal-saas-scan\", \"name\": \"Monthly renewals + SaaS sweep\", \"description\": \"1st of every month: refresh the renewal calendar, re-audit SaaS spend against Stripe + inbox receipts. Silent unless a new renewal or cancel candidate appeared.\", \"prompt\": \"Run the monthly renewals + SaaS sweep. Two skills, chained:\\n\\n1. Use the track-my-renewals skill. Re-scan contracts/ and any connected Google Drive, refresh renewals/calendar.md with any newly-added contracts or updated terms.\\n\\n2. Use the audit-my-saas-spend skill. Re-aggregate subscriptions from contracts + Stripe + inbox receipts. Compare against last month's saas-audits/ file \\u2014 flag NEW subscriptions, NEW cancel candidates (tools with growing spend and falling usage signal), and duplicate-in-category additions.\\n\\nIf nothing new has appeared \\u2014 no new contracts in the next 60d, no new cancel candidates, no duplicates \\u2014 end with ROUTINE_OK so this stays silent. On the first run (no prior audit exists), always surface \\u2014 that's the baseline.\\n\\nSave to saas-audits/{YYYY-MM-DD}.md and log to outputs.json.\", \"schedule\": \"0 8 1 * *\", \"enabled\": true, \"suppress_when_silent\": true, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}, {\"id\": \"monthly-data-qa\", \"name\": \"Monthly data quality audit\", \"description\": \"15th of every month: run DQ checks on the core tables. Catches nulls, duplicate drift, freshness regressions, broken referential integrity. Silent unless a new issue appeared.\", \"prompt\": \"Run the monthly data quality audit. Use the analyze-my-data skill with subject=data-qa.\\n\\nRead config/schemas.json for the target tables. For each table: nulls per column (vs expected), duplicates on natural keys, freshness (MAX(updated_at) vs staleness expectation), referential integrity on key joins (foreign-key orphans), cardinality surprises.\\n\\nCompare against the most recent data-quality-reports/ file so you can flag NEW issues vs. ones already reported. Produce the dated report with pass / warn / fail per check + the SQL used + a suggested fix per fail.\\n\\nIf no NEW failures appeared since the last audit, end with ROUTINE_OK so this stays silent. Surface only when a new fail or warn appeared. On the first run (no prior report exists), always surface \\u2014 that's the baseline.\\n\\nSave to data-quality-reports/{YYYY-MM-DD}/report.md and log to outputs.json.\", \"schedule\": \"0 8 15 * *\", \"enabled\": true, \"suppress_when_silent\": true, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}]"
   },
-  "version": "0.1.8",
+  "version": "0.1.9",
   "image": "clipboard",
   "integrations": [
     "airtable",
