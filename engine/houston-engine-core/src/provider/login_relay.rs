@@ -72,6 +72,7 @@ struct LoginSession {
 
 /// Handed back by [`insert_session`] to the spawn site so the relay
 /// task gets the same cancel handle + token stored in the map.
+#[derive(Debug)]
 pub(super) struct RelayRegistration {
     cancel: Arc<Notify>,
     token: u64,

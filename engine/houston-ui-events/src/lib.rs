@@ -13,7 +13,7 @@ use serde::Serialize;
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type", content = "data")]
 pub enum HoustonEvent {
     /// A feed item from a running session.
