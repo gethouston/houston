@@ -6,6 +6,7 @@
     "workspaceContext": "Contexto do espaço",
     "userContext": "Contexto do usuário",
     "provider": "Provedor de IA",
+    "advanced": "Avançado",
     "phone": "Conectar celular",
     "reportBug": "Reportar bug"
   },
@@ -72,6 +73,25 @@
     "title": "Aparência",
     "light": "Claro",
     "dark": "Escuro"
+  },
+  "advanced": {
+    "title": "Avançado",
+    "description": "Recursos para usuários avançados. Vêm desativados por padrão, ative só o que você precisar.",
+    "empty": "Nenhum recurso avançado disponível nesta versão. As próximas atualizações vão liberar mais aqui.",
+    "flags": {
+      "worktrees": {
+        "label": "Worktrees",
+        "description": "Mostra a opção Modo worktree em cada agente para que as missões possam rodar em worktrees do git separados."
+      },
+      "context_meter": {
+        "label": "Medidor de contexto",
+        "description": "Adiciona uma roda de uso de tokens no composer do chat para você ver o quanto da janela de contexto do modelo está em uso."
+      }
+    },
+    "resetAll": "Redefinir todas as configurações avançadas",
+    "resetConfirmTitle": "Redefinir todas as configurações avançadas?",
+    "resetConfirmDescription": "Cada interruptor avançado volta ao padrão. Nenhum dado é apagado.",
+    "resetConfirmLabel": "Redefinir"
   },
   "dangerZone": {
     "title": "Zona de perigo",

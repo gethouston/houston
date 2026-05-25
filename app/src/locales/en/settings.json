@@ -6,6 +6,7 @@
     "workspaceContext": "Workspace context",
     "userContext": "User context",
     "provider": "AI provider",
+    "advanced": "Advanced",
     "phone": "Connect phone",
     "reportBug": "Report bug"
   },
@@ -72,6 +73,25 @@
     "title": "Appearance",
     "light": "Light",
     "dark": "Dark"
+  },
+  "advanced": {
+    "title": "Advanced",
+    "description": "Power-user capabilities. These are off by default, enable only what you need.",
+    "empty": "No advanced capabilities available in this version. Future updates will surface them here.",
+    "flags": {
+      "worktrees": {
+        "label": "Worktrees",
+        "description": "Show the Worktree mode setting on each agent so missions can run in isolated git worktrees."
+      },
+      "context_meter": {
+        "label": "Context meter",
+        "description": "Add a token-usage wheel to the chat composer so you can see how much of the model's context window is in use."
+      }
+    },
+    "resetAll": "Reset all advanced settings",
+    "resetConfirmTitle": "Reset all advanced settings?",
+    "resetConfirmDescription": "Every advanced toggle will return to default. No data is deleted.",
+    "resetConfirmLabel": "Reset"
   },
   "dangerZone": {
     "title": "Danger zone",

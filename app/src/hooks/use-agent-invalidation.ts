@@ -38,6 +38,13 @@ export function useAgentInvalidation() {
           qc.invalidateQueries({ queryKey: queryKeys.conversations(p.data.agent_path) });
           qc.invalidateQueries({ queryKey: ["all-conversations"] });
           break;
+        case "PreferenceChanged":
+          // Cross-tab / cross-client preference invalidation. Every
+          // `useFeatureFlag(key)` call keys its query by `["preference", key]`,
+          // so invalidating that key triggers a re-fetch on every listening
+          // hook (rule 7 in `knowledge-base/feature-flags.md`).
+          qc.invalidateQueries({ queryKey: ["preference", p.data.key] });
+          break;
         case "RoutinesChanged":
           qc.invalidateQueries({ queryKey: queryKeys.routines(p.data.agent_path) });
           break;

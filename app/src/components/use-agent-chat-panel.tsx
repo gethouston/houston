@@ -66,6 +66,8 @@ import {
   isComposioSigninHref,
 } from "./composio-signin-card";
 import { ChatModelSelector } from "./chat-model-selector";
+import { ContextMeter } from "./context-meter";
+import { FeatureGate } from "./FeatureGate";
 import { getDefaultModel, validModelOrNull } from "../lib/providers";
 import { analytics } from "../lib/analytics";
 import {
@@ -537,7 +539,7 @@ export function useAgentChatPanel({
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;
-    return ({ hasMessages }) => (
+    return ({ hasMessages, feedItems }) => (
       <div className="flex items-center gap-2 w-full">
         <button
           type="button"
@@ -554,6 +556,13 @@ export function useAgentChatPanel({
           onSelect={handleModelSelect}
           lockedProvider={hasMessages ? effectiveProvider : null}
         />
+        <FeatureGate flag="advanced.context_meter">
+          <ContextMeter
+            feedItems={feedItems}
+            provider={effectiveProvider}
+            model={effectiveModel}
+          />
+        </FeatureGate>
       </div>
     );
   }, [agent, t, effectiveProvider, effectiveModel, handleModelSelect]);

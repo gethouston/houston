@@ -60,6 +60,28 @@
     "model": "Modelo",
     "notConnected": "Sem conexão"
   },
+  "contextMeter": {
+    "title": "Contexto",
+    "tooltip": "{{used}} de {{max}} tokens ({{percent}}%)",
+    "estimatedNote": "Os contadores por categoria são estimados. O total vem do modelo.",
+    "breakdown": {
+      "free": "Espaço livre",
+      "user_messages": "Suas mensagens",
+      "assistant_messages": "Mensagens do assistente",
+      "thinking": "Raciocínio",
+      "tool_input": "Chamadas de ferramentas",
+      "tool_output": "Resultados de ferramentas",
+      "system": "Sistema"
+    },
+    "metrics": {
+      "turns": "Turnos",
+      "duration": "Tempo",
+      "cost": "Custo",
+      "cacheHit": "Cache",
+      "toolCalls": "Chamadas",
+      "fileChanges": "Arquivos alterados"
+    }
+  },
   "reasoning": {
     "thinking": "Pensando...",
     "thoughtFor": "Pensou por {{count}} segundos",
