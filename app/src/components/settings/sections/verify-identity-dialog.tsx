@@ -72,6 +72,13 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
   const [declarationOk, setDeclarationOk] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  /**
+   * Pre-selected document type for the next dropped file. User can change
+   * this between drops to upload different doc types in one session. The
+   * per-row dropdown stays as a safety net for fixing wrong types after
+   * the fact without removing + re-uploading.
+   */
+  const [pendingDocType, setPendingDocType] = useState<DocType>("passport");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const anyHashing = attachments.some((a) => !a.sha256 && !a.error);
@@ -87,6 +94,7 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
     setDeclarationOk(false);
     setAttachments([]);
     setIsDragging(false);
+    setPendingDocType("passport");
   }
 
   async function hashAttachment(file: File): Promise<string> {
@@ -126,7 +134,9 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
         filename: file.name,
         contentType: file.type,
         sizeBytes: file.size,
-        docType: "passport",
+        // Pick up the currently-selected pre-type. User can adjust
+        // per-row after the fact via the row's dropdown.
+        docType: pendingDocType,
       };
       setAttachments((cur) => [...cur, next]);
       try {
@@ -275,6 +285,27 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
               {t("identity.verify.evidence.description")}
             </p>
 
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground whitespace-nowrap">
+                {t("identity.verify.evidence.nextDocType")}
+              </label>
+              <Select
+                value={pendingDocType}
+                onValueChange={(v) => setPendingDocType(v as DocType)}
+              >
+                <SelectTrigger className="flex-1 h-9 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DOC_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {t(opt.labelKey as Parameters<typeof t>[0])}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -299,6 +330,13 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
               <Upload className="h-5 w-5 text-muted-foreground" />
               <span className="font-medium">
                 {t("identity.verify.evidence.dropPrompt")}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t("identity.verify.evidence.tagAs", {
+                  type: t(
+                    `identity.verify.document${capitalize(pendingDocType)}` as Parameters<typeof t>[0],
+                  ),
+                })}
               </span>
               <span className="text-xs text-muted-foreground">
                 {t("identity.verify.evidence.constraints")}
@@ -459,4 +497,11 @@ function formatBytes(n: number): string {
   if (n < 1024) return `${n} B`;
   if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
   return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function capitalize(s: string): string {
+  return s
+    .split("_")
+    .map((w) => (w.length === 0 ? w : w[0]!.toUpperCase() + w.slice(1)))
+    .join("");
 }
