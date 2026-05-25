@@ -38,6 +38,7 @@ export interface ChatMessagesProps {
   toolLabels?: ToolsAndCardsProps["toolLabels"];
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"];
   renderToolResult?: ToolsAndCardsProps["renderToolResult"];
+  renderPendingTool?: ToolsAndCardsProps["renderPendingTool"];
   processLabels?: ChatProcessLabels;
   getThinkingMessage?: ReasoningTriggerProps["getThinkingMessage"];
   renderMessageAvatar?: (msg: ChatMessage) => ReactNode | undefined;
@@ -69,6 +70,7 @@ export function ChatMessages({
   toolLabels,
   isSpecialTool,
   renderToolResult,
+  renderPendingTool,
   processLabels,
   getThinkingMessage,
   renderMessageAvatar,
@@ -108,6 +110,7 @@ export function ChatMessages({
                     toolLabels={toolLabels}
                     isSpecialTool={isSpecialTool}
                     renderToolResult={renderToolResult}
+                    renderPendingTool={renderPendingTool}
                     getThinkingMessage={getThinkingMessage}
                   />
                   {(() => {

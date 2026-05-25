@@ -30,6 +30,7 @@ export interface ChatProcessBlockProps {
   toolLabels?: ToolsAndCardsProps["toolLabels"];
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"];
   renderToolResult?: ToolsAndCardsProps["renderToolResult"];
+  renderPendingTool?: ToolsAndCardsProps["renderPendingTool"];
   getThinkingMessage?: ReasoningTriggerProps["getThinkingMessage"];
 }
 
@@ -45,6 +46,7 @@ export function ChatProcessBlock({
   toolLabels,
   isSpecialTool,
   renderToolResult,
+  renderPendingTool,
   getThinkingMessage,
 }: ChatProcessBlockProps) {
   const l = useMemo(() => ({ ...DEFAULT_LABELS, ...labels }), [labels]);
@@ -109,6 +111,7 @@ export function ChatProcessBlock({
                   toolLabels={toolLabels}
                   isSpecialTool={isSpecialTool}
                   renderToolResult={renderToolResult}
+                  renderPendingTool={renderPendingTool}
                 />
               )}
             </div>

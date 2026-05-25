@@ -25,4 +25,4 @@ pub mod workspace_context;
 pub mod workspaces;
 
 pub use error::{CoreError, CoreResult};
-pub use state::EngineState;
+pub use state::{EngineState, McpSelf};

@@ -23,7 +23,7 @@ pub async fn pump_session(
         match update {
             SessionUpdate::Feed(item) => {
                 // Detect output files from Write/Edit tool calls.
-                if let FeedItem::ToolCall { ref name, ref input } = item {
+                if let FeedItem::ToolCall { ref name, ref input, .. } = item {
                     if let Some(path) = extract_output_file(name, input) {
                         on_output_file(path);
                     }
@@ -149,6 +149,7 @@ mod tests {
         tx.send(SessionUpdate::Feed(FeedItem::ToolCall {
             name: "Write".into(),
             input: serde_json::json!({"file_path": "/tmp/out.txt"}),
+            tool_use_id: None,
         }))
         .unwrap();
         tx.send(SessionUpdate::Status(SessionStatus::Completed))

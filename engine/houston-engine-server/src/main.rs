@@ -126,9 +126,20 @@ async fn main() {
         }
     };
 
-    let state = ServerState::new(cfg, tunnel_identity)
+    let mut state = ServerState::new(cfg, tunnel_identity)
         .await
         .expect("engine state init failed");
+
+    // Now that we know our own bind port + token, stamp the self-loopback
+    // identity onto SessionRuntime so future sessions can generate a
+    // per-session `--mcp-config` JSON pointing claude at our in-engine
+    // `/v1/mcp/<session_key>/` endpoint. Without this, the ask-user MCP
+    // tool stays unwired and agents fall back to plain-text questions.
+    let mcp_base = format!("http://127.0.0.1:{}", actual.port());
+    state.engine.sessions.mcp_self = Some(houston_engine_core::McpSelf {
+        base_url: mcp_base,
+        token: state.config.token.clone(),
+    });
 
     let state = Arc::new(state);
 

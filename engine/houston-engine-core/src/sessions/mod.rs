@@ -17,6 +17,7 @@
 //! lives in the adapter today; it will move into `engine-core` in a later
 //! phase once `agent_store` is ported.
 
+pub mod ask_user;
 mod control;
 pub mod file_changes;
 pub mod generate_instructions;
@@ -54,6 +55,16 @@ pub struct SessionRuntime {
     control: SessionControl,
     turn_locks: SessionTurnLocks,
     workdir_activity: WorkdirActivity,
+    /// Pairs Houston MCP `AskUserQuestion` tool calls with answers
+    /// submitted by the user over REST. See [`ask_user`] for the protocol.
+    pub ask_user: ask_user::PendingAskUserRegistry,
+    /// Self-loopback identity for the in-engine MCP server. When set, every
+    /// new Claude session gets a per-session mcp_config pointing at
+    /// `<base_url>/v1/mcp/<session_key>/`. The server binary populates this
+    /// once it knows its own bind address and token; embedding scenarios
+    /// without an HTTP server leave it `None` and the ask-user tool stays
+    /// unavailable to the agent.
+    pub mcp_self: Option<crate::state::McpSelf>,
 }
 
 impl SessionRuntime {
@@ -111,6 +122,7 @@ pub async fn start(
     events: DynEventSink,
     db: Database,
     app_system_prompt: &str,
+    paths: &EnginePaths,
     params: StartParams,
 ) -> Result<String, crate::CoreError> {
     let session_key = params.session_key.clone();
@@ -120,6 +132,7 @@ pub async fn start(
     let generation = rt.control.register(&identity).await;
     let rt = rt.clone();
     let app_system_prompt = app_system_prompt.to_string();
+    let paths = paths.clone();
 
     tokio::spawn({
         let events = events.clone();
@@ -131,6 +144,7 @@ pub async fn start(
                 events.clone(),
                 db,
                 &app_system_prompt,
+                &paths,
                 params,
                 identity.clone(),
                 generation,
@@ -181,6 +195,7 @@ async fn run_start(
     events: DynEventSink,
     db: Database,
     app_system_prompt: &str,
+    paths: &EnginePaths,
     params: StartParams,
     identity: SessionIdentity,
     generation: u64,
@@ -200,6 +215,14 @@ async fn run_start(
     if !agent_dir.exists() {
         std::fs::create_dir_all(&agent_dir)?;
     }
+
+    // Wrap the events sink with the ask-user tap. The tap snoops every
+    // FeedItem flying through this session and tells the registry the
+    // moment a `mcp__houston__AskUserQuestion` tool_use lands, so the
+    // in-engine MCP handler (which will be invoked any millisecond now
+    // by the spawned claude subprocess) can correlate its call with
+    // the `tool_use_id`. Non-ask-user events pass through unchanged.
+    let events = ask_user::AskUserSinkTap::wrap(events, rt.ask_user.clone(), session_key.clone());
 
     let _turn_guard = rt.acquire_turn(&identity).await;
     if rt.control.is_stale(&identity, generation).await {
@@ -316,6 +339,25 @@ async fn run_start(
         lifecycle: None,
     });
 
+    // Generate the per-session MCP config file pointing the spawned claude
+    // CLI at this engine's in-process MCP server. Only when (a) the server
+    // binary has populated `rt.mcp_self` (i.e. we know our own URL+token)
+    // AND (b) the provider is anthropic (codex/gemini don't wire MCP in
+    // v1). Failure to write is non-fatal — we just disable the ask-user
+    // tool for this session and let the agent fall back to text.
+    let mcp_config_path = if provider.id() == "anthropic" {
+        match write_mcp_config_file(rt.mcp_self.as_ref(), &paths.home_dir, &session_key) {
+            Ok(path) => path,
+            Err(e) => {
+                tracing::warn!("[sessions] mcp_config write failed for {session_key}: {e}");
+                None
+            }
+        }
+    } else {
+        None
+    };
+    let mcp_config_for_cleanup = mcp_config_path.clone();
+
     let events_for_end = events.clone();
     let working_dir_for_end = working_dir.clone();
     let handle = session_runner::spawn_and_monitor(
@@ -332,6 +374,7 @@ async fn run_start(
         provider,
         model,
         effort,
+        mcp_config_path,
     );
 
     // Own the end-of-session activity flip engine-side. Before this, the
@@ -438,7 +481,89 @@ async fn run_start(
     }
     rt.control.finish(&identity).await;
 
+    // Clean up the per-session MCP config file. Best-effort — leaving it on
+    // disk would leak token material in a world-readable file path, so we
+    // log on failure but don't fail the session for it.
+    if let Some(path) = mcp_config_for_cleanup {
+        if let Err(e) = std::fs::remove_file(&path) {
+            if e.kind() != std::io::ErrorKind::NotFound {
+                tracing::warn!(
+                    "[sessions] failed to remove mcp_config at {}: {e}",
+                    path.display()
+                );
+            }
+        }
+    }
+
     Ok(())
+}
+
+/// Write a per-session MCP config JSON pointing claude at this engine's
+/// in-process MCP server. Returns the file path (or `None` if `mcp_self`
+/// isn't set yet — caller falls back to no MCP for the session).
+///
+/// File layout (matches the `--mcp-config` format Claude Code accepts):
+/// ```json
+/// {
+///   "mcpServers": {
+///     "houston": {
+///       "type": "http",
+///       "url": "http://127.0.0.1:31338/v1/mcp/<session_key>/",
+///       "headers": { "Authorization": "Bearer <token>" }
+///     }
+///   }
+/// }
+/// ```
+fn write_mcp_config_file(
+    mcp_self: Option<&crate::state::McpSelf>,
+    home_dir: &Path,
+    session_key: &str,
+) -> std::io::Result<Option<PathBuf>> {
+    let Some(mcp) = mcp_self else {
+        return Ok(None);
+    };
+    let dir = home_dir.join("tmp").join("mcp");
+    std::fs::create_dir_all(&dir)?;
+    // session_key already comes from the frontend so it's a stable id; but
+    // file-system-safety still demands we strip anything that isn't a
+    // file-name-safe character. The caller's session_key is opaque to the
+    // CLI — only this engine reads the path back to delete it.
+    let safe_key: String = session_key
+        .chars()
+        .map(|c| if c.is_ascii_alphanumeric() || c == '-' || c == '_' { c } else { '_' })
+        .collect();
+    let path = dir.join(format!("{safe_key}.json"));
+    let url = format!("{}/v1/mcp/{}/", mcp.base_url.trim_end_matches('/'), session_key);
+    // `timeout` raises the tool-call watchdog from the 60-second default to
+    // 1 hour — humans answering a clarifying question may take a while.
+    // (The 60-second first-byte fetch budget is separate; we beat that
+    // by streaming SSE keepalives from the `tools/call` handler.)
+    let body = serde_json::json!({
+        "mcpServers": {
+            "houston": {
+                "type": "http",
+                "url": url,
+                "headers": {
+                    "Authorization": format!("Bearer {}", mcp.token),
+                },
+                "timeout": 3_600_000_u32,
+            }
+        }
+    });
+    std::fs::write(&path, body.to_string())?;
+    // Best-effort tighten permissions to owner-only (mode 0600). This file
+    // holds the engine token. Failure to chmod is a warning, not an error —
+    // the parent ~/.houston is already owner-only by convention.
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        if let Ok(metadata) = std::fs::metadata(&path) {
+            let mut perms = metadata.permissions();
+            perms.set_mode(0o600);
+            let _ = std::fs::set_permissions(&path, perms);
+        }
+    }
+    Ok(Some(path))
 }
 
 /// Cancel a running or queued session. On Unix sends `SIGTERM` to the
@@ -456,6 +581,11 @@ pub async fn cancel(
     let identity = SessionIdentity::new(agent_path.to_string(), session_key.to_string());
     let had_queued = rt.control.cancel(&identity).await;
     let pid = rt.pid_map.remove(session_key).await;
+
+    // Drop any pending AskUserQuestion state so an in-flight MCP handler
+    // doesn't hang forever waiting on a user answer that will never come.
+    // mcp_await_answer resolves with Err the moment we drop the senders.
+    rt.ask_user.cancel(session_key).await;
 
     if let Some(pid) = pid {
         tracing::info!("[sessions] cancel session_key={session_key} pid={pid}");
@@ -542,6 +672,7 @@ pub async fn start_onboarding(
     db: Database,
     app_system_prompt: &str,
     app_onboarding_prompt: &str,
+    paths: &EnginePaths,
     agent_dir: PathBuf,
     session_key: String,
 ) -> Result<String, crate::CoreError> {
@@ -558,6 +689,7 @@ pub async fn start_onboarding(
         events,
         db,
         app_system_prompt,
+        paths,
         StartParams {
             agent_dir: agent_dir.clone(),
             working_dir: agent_dir,
@@ -617,6 +749,10 @@ mod tests {
         let guard = rt.acquire_turn(&identity).await;
         let db = Database::connect_in_memory().await.unwrap();
         let events: DynEventSink = Arc::new(NoopEventSink);
+        let paths = EnginePaths {
+            docs_dir: dir.path().to_path_buf(),
+            home_dir: dir.path().to_path_buf(),
+        };
 
         let accepted = timeout(
             Duration::from_millis(100),
@@ -625,6 +761,7 @@ mod tests {
                 events.clone(),
                 db,
                 "",
+                &paths,
                 StartParams {
                     agent_dir: dir.path().to_path_buf(),
                     working_dir: dir.path().to_path_buf(),

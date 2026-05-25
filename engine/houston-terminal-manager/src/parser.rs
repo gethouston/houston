@@ -22,6 +22,10 @@ pub struct StreamAccumulator {
 #[derive(Debug)]
 struct InProgressTool {
     name: String,
+    /// `tool_use.id` from the Anthropic stream-json. Carried through from
+    /// `content_block_start` to `content_block_stop` so the final
+    /// [`FeedItem::ToolCall`] can be stamped with it.
+    tool_use_id: Option<String>,
     json_parts: Vec<String>,
 }
 
@@ -41,7 +45,9 @@ impl StreamAccumulator {
         match inner.event_type.as_str() {
             "content_block_start" => {
                 if let Some(ContentBlock::ToolUse {
-                    name: Some(name), ..
+                    id,
+                    name: Some(name),
+                    ..
                 }) = inner.content_block
                 {
                     // Emit an immediate ToolCall so the UI shows activity right away.
@@ -49,11 +55,13 @@ impl StreamAccumulator {
                     let item = FeedItem::ToolCall {
                         name: name.clone(),
                         input: serde_json::Value::Null,
+                        tool_use_id: id.clone(),
                     };
                     self.tools.insert(
                         index,
                         InProgressTool {
                             name,
+                            tool_use_id: id,
                             json_parts: Vec::new(),
                         },
                     );
@@ -112,6 +120,7 @@ impl StreamAccumulator {
                     return vec![FeedItem::ToolCall {
                         name: tool.name,
                         input,
+                        tool_use_id: tool.tool_use_id,
                     }];
                 }
                 // Finalize a thinking block.
@@ -218,9 +227,7 @@ fn parse_rate_limit_event(extra: serde_json::Value) -> Vec<FeedItem> {
         .get("message")
         .and_then(|v| v.as_str())
         .map(truncate_excerpt)
-        .unwrap_or_else(|| {
-            format!("Anthropic rate-limit signal: {status}")
-        });
+        .unwrap_or_else(|| format!("Anthropic rate-limit signal: {status}"));
     vec![FeedItem::ProviderError(ProviderError::RateLimited {
         provider: ANTHROPIC.into(),
         model: None,
@@ -264,14 +271,20 @@ fn parse_assistant_event(
                     }
                 }
             }
-            ContentBlock::ToolUse { name, input, .. } => {
+            ContentBlock::ToolUse {
+                id, name, input, ..
+            } => {
                 items.push(FeedItem::ToolCall {
                     name: name.unwrap_or_else(|| "unknown".into()),
                     input: input.unwrap_or(serde_json::Value::Null),
+                    tool_use_id: id,
                 });
             }
             ContentBlock::ToolResult {
-                content, is_error, ..
+                tool_use_id,
+                content,
+                is_error,
+                ..
             } => {
                 let text = match content {
                     Some(serde_json::Value::String(s)) => s,
@@ -281,6 +294,7 @@ fn parse_assistant_event(
                 items.push(FeedItem::ToolResult {
                     content: text,
                     is_error: is_error.unwrap_or(false),
+                    tool_use_id,
                 });
             }
             ContentBlock::Unknown => {}
@@ -311,7 +325,10 @@ fn parse_user_event(message: Option<UserMessage>) -> Vec<FeedItem> {
     let mut items = Vec::new();
     for block in blocks {
         if let ContentBlock::ToolResult {
-            content, is_error, ..
+            tool_use_id,
+            content,
+            is_error,
+            ..
         } = block
         {
             let text = match content {
@@ -322,6 +339,7 @@ fn parse_user_event(message: Option<UserMessage>) -> Vec<FeedItem> {
             items.push(FeedItem::ToolResult {
                 content: text,
                 is_error: is_error.unwrap_or(false),
+                tool_use_id,
             });
         }
     }
@@ -396,7 +414,12 @@ mod tests {
         let items = parse_event(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
-            FeedItem::ToolCall { name, .. } => assert_eq!(name, "Read"),
+            FeedItem::ToolCall {
+                name, tool_use_id, ..
+            } => {
+                assert_eq!(name, "Read");
+                assert_eq!(tool_use_id.as_deref(), Some("t1"));
+            }
             other => panic!("expected ToolCall, got {other:?}"),
         }
     }
@@ -407,11 +430,71 @@ mod tests {
         let items = parse_event(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
-            FeedItem::ToolResult { content, is_error } => {
+            FeedItem::ToolResult {
+                content,
+                is_error,
+                tool_use_id,
+            } => {
                 assert_eq!(content, "file contents");
                 assert!(!is_error);
+                assert_eq!(tool_use_id.as_deref(), Some("t1"));
             }
             other => panic!("expected ToolResult, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_streaming_tool_use_carries_id() {
+        // Real Claude `-p --output-format stream-json --include-partial-messages`
+        // splits a tool_use across stream events: content_block_start carries the
+        // id+name, input_json_delta accumulates the arguments, content_block_stop
+        // finalizes. Both the immediate ToolCall (null input) and the final
+        // ToolCall (with input) must carry the tool_use_id so the UI can pair
+        // them with the eventual tool_result.
+        let mut a = acc();
+        let start = r#"{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"tu_abc","name":"mcp__houston__AskUserQuestion","input":{}}}}"#;
+        let delta = r#"{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"questions\":[]}"}}}"#;
+        let stop = r#"{"type":"stream_event","event":{"type":"content_block_stop","index":0}}"#;
+
+        let started = parse_event(start, &mut a);
+        assert_eq!(
+            started.len(),
+            1,
+            "expected immediate ToolCall on block_start"
+        );
+        match &started[0] {
+            FeedItem::ToolCall {
+                name,
+                input,
+                tool_use_id,
+            } => {
+                assert_eq!(name, "mcp__houston__AskUserQuestion");
+                assert!(input.is_null(), "early ToolCall has null input");
+                assert_eq!(tool_use_id.as_deref(), Some("tu_abc"));
+            }
+            other => panic!("expected ToolCall, got {other:?}"),
+        }
+
+        let mid = parse_event(delta, &mut a);
+        assert!(mid.is_empty(), "input_json_delta emits no FeedItem");
+
+        let finished = parse_event(stop, &mut a);
+        assert_eq!(finished.len(), 1);
+        match &finished[0] {
+            FeedItem::ToolCall {
+                name,
+                input,
+                tool_use_id,
+            } => {
+                assert_eq!(name, "mcp__houston__AskUserQuestion");
+                assert_eq!(input["questions"], serde_json::json!([]));
+                assert_eq!(
+                    tool_use_id.as_deref(),
+                    Some("tu_abc"),
+                    "tool_use_id from block_start must survive to block_stop"
+                );
+            }
+            other => panic!("expected final ToolCall, got {other:?}"),
         }
     }
 
@@ -421,9 +504,14 @@ mod tests {
         let items = parse_event(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
-            FeedItem::ToolResult { content, is_error } => {
+            FeedItem::ToolResult {
+                content,
+                is_error,
+                tool_use_id,
+            } => {
                 assert!(content.contains("(id: abc-123)"));
                 assert!(!is_error);
+                assert_eq!(tool_use_id.as_deref(), Some("t1"));
             }
             other => panic!("expected ToolResult, got {other:?}"),
         }
@@ -503,7 +591,7 @@ mod tests {
         let start_items = parse_event(start, &mut a);
         assert_eq!(start_items.len(), 1);
         match &start_items[0] {
-            FeedItem::ToolCall { name, input } => {
+            FeedItem::ToolCall { name, input, .. } => {
                 assert_eq!(name, "complete_job");
                 assert!(input.is_null());
             }
@@ -521,7 +609,7 @@ mod tests {
         let items = parse_event(stop, &mut a);
         assert_eq!(items.len(), 1);
         match &items[0] {
-            FeedItem::ToolCall { name, input } => {
+            FeedItem::ToolCall { name, input, .. } => {
                 assert_eq!(name, "complete_job");
                 assert_eq!(input.get("summary").unwrap().as_str().unwrap(), "Done!");
             }

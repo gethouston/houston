@@ -21,6 +21,8 @@ import { tauriChat, tauriAttachments, tauriConfig, tauriProvider } from "../../l
 import { openAgentHref } from "../../lib/open-href";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { useFileToolRenderer } from "../../hooks/use-file-tool-renderer";
+import { useAskUserQuestionRenderer } from "../../hooks/use-ask-user-question-renderer";
+import { useComposedSpecialToolRenderers } from "../../hooks/use-composed-special-tool-renderers";
 import { useConnectedToolkits, useConnections } from "../../hooks/queries";
 import {
   ComposioLinkCard,
@@ -57,11 +59,23 @@ export default function ChatTab({ agent }: TabProps) {
   );
   const { processLabels, getThinkingMessage } = useChatDisplayLabels();
   const attachmentValidation = useAttachmentRejectionDialog();
-  const { isSpecialTool, renderToolResult, renderTurnSummary } = useFileToolRenderer(agent.folderPath);
+  const fileRenderer = useFileToolRenderer(agent.folderPath);
+  const { renderTurnSummary } = fileRenderer;
   // Free-form chat tab gets its own UUID-scoped session key per agent.
   // Must be stable across renders so streaming events land in the same bucket.
   const sessionKey = `chat-${agent.id}`;
   const agentPath = agent.folderPath;
+  const askUserRenderer = useAskUserQuestionRenderer(agentPath, sessionKey);
+  // Compose: file-tool predicate first (Write/Edit), then ask-user predicate
+  // (`mcp__houston__AskUserQuestion`). Both produce their own
+  // renderPendingTool/renderToolResult callbacks; everything else falls
+  // through to the default `<ToolBlock>` rendering.
+  const composedRenderers = useMemo(
+    () => [fileRenderer, askUserRenderer],
+    [fileRenderer, askUserRenderer],
+  );
+  const { isSpecialTool, renderToolResult, renderPendingTool } =
+    useComposedSpecialToolRenderers(composedRenderers);
   // Attachments scope: keyed by agent so they survive restarts and are
   // wiped only when the agent is deleted.
   const attachmentScope = `agent-${agent.id}`;
@@ -288,6 +302,7 @@ export default function ChatTab({ agent }: TabProps) {
         renderLink={renderLink}
         isSpecialTool={isSpecialTool}
         renderToolResult={renderToolResult}
+        renderPendingTool={renderPendingTool}
         processLabels={processLabels}
         getThinkingMessage={getThinkingMessage}
         renderTurnSummary={renderTurnSummary}

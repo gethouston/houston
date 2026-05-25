@@ -65,6 +65,7 @@ export interface ChatPanelProps {
   toolLabels?: ToolsAndCardsProps["toolLabels"];
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"];
   renderToolResult?: ToolsAndCardsProps["renderToolResult"];
+  renderPendingTool?: ToolsAndCardsProps["renderPendingTool"];
   processLabels?: ChatMessagesProps["processLabels"];
   getThinkingMessage?: ChatMessagesProps["getThinkingMessage"];
   renderMessageAvatar?: (msg: ChatMessage) => ReactNode | undefined;
