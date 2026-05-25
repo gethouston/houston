@@ -409,17 +409,38 @@ export class HoustonClient {
 
   /**
    * Persist raw evidence bytes to the workspace identity directory
-   * (`<home>/.houston/identity/evidence/<sha256>.<ext>` on Unix, mode 0600).
-   * The engine re-hashes the body and rejects on sha256 mismatch.
+   * (`<home>/.houston/identity/evidence/<sha256>.<ext>` on Unix, mode 0600)
+   * AND upload them to Beltic's `/v1/evidence` endpoint when reachable.
+   *
+   * The engine re-hashes the body and rejects on sha256 mismatch. The
+   * Beltic upload is best-effort: when staging hasn't deployed the
+   * evidence routes yet (or any transient upstream error), the response
+   * still returns the local-mirror path but omits `beltic_evidence_id`.
+   * Callers SHOULD fall back to `sha256:<hex>:...` opaque refs in that
+   * case. Re-running the same submit once Beltic is live is a no-op
+   * (the sha256 dedupe in the Beltic endpoint returns the existing
+   * resource).
    */
   async persistIdentityEvidence(
     bytes: Uint8Array,
-    args: { sha256: string; contentType: string },
-  ): Promise<{ stored_at: string; sha256: string; size_bytes: number }> {
+    args: {
+      sha256: string;
+      contentType: string;
+      documentType?: string;
+      filename?: string;
+    },
+  ): Promise<{
+    stored_at: string;
+    sha256: string;
+    size_bytes: number;
+    beltic_evidence_id?: string;
+  }> {
     const q = new URLSearchParams({
       sha256: args.sha256,
       content_type: args.contentType,
     });
+    if (args.documentType) q.set("document_type", args.documentType);
+    if (args.filename) q.set("filename", args.filename);
     const url = `${this.baseUrl}/v1/identity/evidence?${q.toString()}`;
     const res = await fetch(url, {
       method: "POST",
@@ -427,7 +448,6 @@ export class HoustonClient {
         Authorization: `Bearer ${this.token}`,
         "Content-Type": "application/octet-stream",
       },
-      // BodyInit accepts ArrayBuffer/typed-array directly
       body: bytes as BodyInit,
     });
     if (!res.ok) {
@@ -437,6 +457,7 @@ export class HoustonClient {
       stored_at: string;
       sha256: string;
       size_bytes: number;
+      beltic_evidence_id?: string;
     };
   }
 

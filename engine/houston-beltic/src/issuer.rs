@@ -107,6 +107,56 @@ impl Issuer {
         let path = format!("/credentials/{}", id);
         self.client.get_json::<Credential>(&path).await
     }
+
+    /// Upload supporting evidence bytes to Beltic. Returns the
+    /// EvidenceResource shape — callers stuff `evidence:<id>` into the
+    /// next issue request's `evidence_refs[]` to bind the bytes to the
+    /// credential via a W3C `evidence[]` claim with `digestSRI`.
+    ///
+    /// Dedupe: re-uploading bytes whose sha256 already exists for the
+    /// org returns the existing resource (HTTP 200). New uploads return
+    /// HTTP 201. Both are surfaced identically here.
+    pub async fn upload_evidence(
+        &self,
+        bytes: Vec<u8>,
+        content_type: &str,
+        document_type: Option<&str>,
+        filename: Option<&str>,
+    ) -> BelticResult<EvidenceResource> {
+        let mut part = reqwest::multipart::Part::bytes(bytes)
+            .mime_str(content_type)
+            .map_err(|e| {
+                BelticError::Configuration(format!("invalid content_type {content_type}: {e}"))
+            })?;
+        if let Some(name) = filename {
+            part = part.file_name(name.to_string());
+        }
+        let mut form = reqwest::multipart::Form::new().part("file", part);
+        if let Some(doc_type) = document_type {
+            form = form.text("document_type", doc_type.to_string());
+        }
+        if let Some(name) = filename {
+            form = form.text("filename", name.to_string());
+        }
+        self.client.post_multipart::<EvidenceResource>("/evidence", form).await
+    }
+}
+
+/// Mirrors the Beltic EvidenceResource Zod schema. Flat JSON, ADR-002.
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize)]
+pub struct EvidenceResource {
+    /// `ev_<uuid>` — embed as `"evidence:<id>"` in a credential's
+    /// evidence_refs[] to trigger W3C evidence[] embedding at issue time.
+    pub id: String,
+    /// Lowercase hex SHA-256.
+    pub sha256: String,
+    pub content_type: String,
+    pub size_bytes: u64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub filename: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub document_type: Option<String>,
+    pub created_at: String,
 }
 
 /// Beltic schema `.superRefine()` requires `claims.delegated_by_subject_id`

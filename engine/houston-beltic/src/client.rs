@@ -79,6 +79,27 @@ impl Client {
         handle_response(response).await
     }
 
+    /// POST a multipart/form-data body. The credentials evidence upload
+    /// endpoint is the only multipart consumer in this crate, so we
+    /// inline the helper here rather than building a generic abstraction.
+    pub async fn post_multipart<Res>(
+        &self,
+        path: &str,
+        form: reqwest::multipart::Form,
+    ) -> BelticResult<Res>
+    where
+        Res: DeserializeOwned,
+    {
+        let response = self
+            .inner
+            .post(self.url(path))
+            .multipart(form)
+            .send()
+            .await
+            .map_err(transport_err)?;
+        handle_response(response).await
+    }
+
     fn url(&self, path: &str) -> String {
         let base = self.config.base_url.trim_end_matches('/');
         let path = path.trim_start_matches('/');

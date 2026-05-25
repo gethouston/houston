@@ -26,6 +26,6 @@ pub use client::Client;
 pub use config::Configuration;
 pub use did_jwk::{mint as mint_did_jwk, MintedDidJwk};
 pub use errors::{BelticError, BelticResult};
-pub use issuer::Issuer;
+pub use issuer::{EvidenceResource, Issuer};
 pub use verifier::{Verifier, VerifyResult};
 pub use webhook_verifier::WebhookVerifier;

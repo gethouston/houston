@@ -57,6 +57,8 @@ interface Attachment {
   sizeBytes: number;
   docType: DocType;
   sha256?: string;
+  /** Set after the engine successfully forwards the bytes to Beltic. */
+  belticEvidenceId?: string;
   error?: string;
 }
 
@@ -144,12 +146,21 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
     }
   }
 
-  function buildEvidenceRefs(): string[] {
-    return attachments
+  /**
+   * Prefer `evidence:<id>` (Beltic resource) when the engine
+   * successfully forwarded the upload; fall back to the opaque
+   * `sha256:<hex>:<doctype>:<urlencoded-filename>` shape when Beltic
+   * wasn't reachable. Beltic stores both formats verbatim today;
+   * `evidence:<id>` is what triggers the W3C `evidence[]` embedding
+   * in the JWT-VC at issue time.
+   */
+  function buildEvidenceRefs(persisted: Attachment[]): string[] {
+    return persisted
       .filter((a) => a.sha256)
-      .map(
-        (a) =>
-          `sha256:${a.sha256}:${a.docType}:${encodeURIComponent(a.filename)}`,
+      .map((a) =>
+        a.belticEvidenceId
+          ? `evidence:${a.belticEvidenceId}`
+          : `sha256:${a.sha256}:${a.docType}:${encodeURIComponent(a.filename)}`,
       );
   }
 
@@ -160,13 +171,28 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
     // Persist each attachment locally BEFORE issuing the credential.
     // Aborting the issuance on any persist failure avoids the situation
     // where the credential names evidence files that aren't on disk.
+    // The engine ALSO forwards bytes to Beltic when reachable — when it
+    // succeeds, we get back `beltic_evidence_id` to use as the canonical
+    // ref. When it fails (staging hasn't deployed PR #179), we fall back
+    // to the opaque `sha256:<hex>:...` shape; the credential row still
+    // carries the ref and re-running once Beltic is live is a no-op
+    // (sha256 dedupes upstream).
     try {
+      const persisted: Attachment[] = [];
       for (const a of attachments) {
-        if (!a.sha256) continue; // skipped/errored, drop it from the request
+        if (!a.sha256) continue;
         const bytes = new Uint8Array(await a.file.arrayBuffer());
-        await engine.persistIdentityEvidence(bytes, {
+        const result = await engine.persistIdentityEvidence(bytes, {
           sha256: a.sha256,
           contentType: a.contentType,
+          documentType: a.docType,
+          filename: a.filename,
+        });
+        persisted.push({
+          ...a,
+          ...(result.beltic_evidence_id
+            ? { belticEvidenceId: result.beltic_evidence_id }
+            : {}),
         });
       }
       await issue.mutateAsync({
@@ -177,7 +203,7 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
           ? { id_document_country: nationality.trim().toUpperCase() }
           : {}),
         self_attestation_complete: true,
-        evidence_refs: buildEvidenceRefs(),
+        evidence_refs: buildEvidenceRefs(persisted),
       });
       onOpenChange(false);
       reset();

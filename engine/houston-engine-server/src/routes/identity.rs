@@ -69,6 +69,10 @@ async fn locate_evidence(
 struct PersistEvidenceQuery {
     sha256: String,
     content_type: String,
+    #[serde(default)]
+    document_type: Option<String>,
+    #[serde(default)]
+    filename: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -76,16 +80,34 @@ struct PersistEvidenceResponse {
     stored_at: String,
     sha256: String,
     size_bytes: usize,
+    /// Beltic evidence resource id when the upstream upload succeeded.
+    /// `None` when the Beltic endpoint isn't reachable yet (staging
+    /// hasn't deployed PR #179) — the local mirror still works and the
+    /// credential issuance falls back to the opaque `sha256:<hex>:...`
+    /// ref shape.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    beltic_evidence_id: Option<String>,
 }
 
 /// Persist a piece of attached evidence to
-/// `<home>/.houston/identity/evidence/<sha256>.<ext>` (mode 0600).
+/// `<home>/.houston/identity/evidence/<sha256>.<ext>` (mode 0600) AND
+/// upload to Beltic's `/v1/evidence` endpoint to obtain an `ev_<uuid>`
+/// resource id. Local mirror is the source of truth for offline audit;
+/// the Beltic id is what gets embedded in the credential's W3C
+/// evidence[] claim at issue time.
 ///
 /// The renderer has already hashed the file bytes; we re-hash on the
 /// server side and reject if the body doesn't match the supplied
 /// `sha256` query param. That gives the engine its own end-to-end
 /// integrity check and prevents a buggy renderer from saving the wrong
 /// bytes against a "trusted" content address.
+///
+/// Beltic upload is best-effort: if the upstream endpoint isn't
+/// available yet (staging hasn't deployed evidence routes), we still
+/// return 201 with the local path so the user gets their copy. The
+/// dialog will fall back to opaque `sha256:<hex>:...` refs in that
+/// case, and re-uploading once staging deploys is a no-op (sha256
+/// dedupes).
 async fn persist_evidence(
     State(st): State<Arc<ServerState>>,
     Query(q): Query<PersistEvidenceQuery>,
@@ -108,12 +130,46 @@ async fn persist_evidence(
     let root = st.engine.paths.home().to_path_buf();
     let path = evidence_store::save(&root, &actual, &q.content_type, &body)?;
 
+    // Try the upstream Beltic upload. Failures here don't abort —
+    // the renderer falls back to `sha256:<hex>:...` opaque refs.
+    let bytes_vec = body.to_vec();
+    let beltic_evidence_id = match beltic_ctx() {
+        Ok(beltic) => match beltic
+            .issuer
+            .upload_evidence(
+                bytes_vec,
+                &q.content_type,
+                q.document_type.as_deref(),
+                q.filename.as_deref(),
+            )
+            .await
+        {
+            Ok(resource) => Some(resource.id),
+            Err(e) => {
+                tracing::warn!(
+                    error = %e,
+                    sha256 = %actual,
+                    "Beltic /v1/evidence upload failed; falling back to sha256 ref",
+                );
+                None
+            }
+        },
+        Err(e) => {
+            tracing::warn!(
+                error = ?e,
+                "Beltic ctx unavailable for evidence upload; falling back to sha256 ref",
+            );
+            None
+        }
+    };
+
     Ok((
         StatusCode::CREATED,
         Json(PersistEvidenceResponse {
             stored_at: path.to_string_lossy().to_string(),
             sha256: actual,
             size_bytes: body.len(),
+            beltic_evidence_id,
         }),
     ))
 }

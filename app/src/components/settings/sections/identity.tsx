@@ -131,7 +131,7 @@ export function IdentitySection() {
             <ul className="space-y-1.5">
               {evidence.map((e, i) => (
                 <li
-                  key={`${e.sha256}-${i}`}
+                  key={`${e.belticId ?? e.sha256}-${i}`}
                   className="text-sm flex items-center gap-2 group"
                 >
                   <span className="rounded-md border border-border bg-muted/40 px-2 py-0.5 text-xs font-medium">
@@ -143,19 +143,23 @@ export function IdentitySection() {
                     {e.filename}
                   </span>
                   <code className="font-mono text-xs text-muted-foreground">
-                    sha256:{e.sha256.slice(0, 8)}…
+                    {e.belticId
+                      ? `evidence:${e.belticId.slice(0, 10)}…`
+                      : `sha256:${e.sha256.slice(0, 8)}…`}
                   </code>
-                  <button
-                    type="button"
-                    onClick={() => void revealEvidence(e.sha256)}
-                    aria-label={t("identity.revealEvidenceAria", {
-                      filename: e.filename,
-                    })}
-                    title={t("identity.revealEvidence")}
-                    className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                  >
-                    <FolderOpen className="h-3.5 w-3.5" />
-                  </button>
+                  {e.sha256 && (
+                    <button
+                      type="button"
+                      onClick={() => void revealEvidence(e.sha256)}
+                      aria-label={t("identity.revealEvidenceAria", {
+                        filename: e.filename,
+                      })}
+                      title={t("identity.revealEvidence")}
+                      className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                    >
+                      <FolderOpen className="h-3.5 w-3.5" />
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>
@@ -210,20 +214,37 @@ function formatDate(iso: string): string {
 }
 
 interface ParsedEvidence {
+  /** Empty when the ref is `evidence:<id>` (sha256 lives on Beltic only). */
   sha256: string;
   docType: string;
   filename: string;
+  /** Set when the ref is `evidence:<id>`. */
+  belticId?: string;
 }
 
 /**
- * Houston encodes evidence refs as `sha256:<hex>:<doctype>:<urlencoded-filename>`
- * (free-form opaque strings on the Beltic side). Anything that doesn't match
- * the expected shape is skipped, so a future `evidence:<id>` format (once
- * Beltic's evidence endpoint ships) will simply not render here until the
- * UI is taught to hydrate it.
+ * Houston encodes evidence refs two ways:
+ *   - `evidence:<ev_uuid>` when the engine successfully forwarded the
+ *     bytes to Beltic. The Beltic console + JWT-VC `evidence[]` claim
+ *     are the source of truth; this UI only shows that the ref exists.
+ *   - `sha256:<hex>:<doctype>:<urlencoded-filename>` opaque fallback
+ *     for when Beltic was unreachable at issuance time. Carries the
+ *     local-mirror hash so the Reveal-in-Finder button still works.
+ *
+ * Unknown shapes are skipped.
  */
 function parseEvidenceRefs(refs: string[]): ParsedEvidence[] {
   return refs.flatMap((ref) => {
+    if (ref.startsWith("evidence:")) {
+      const id = ref.slice("evidence:".length);
+      if (!id) return [];
+      // For `evidence:<id>` refs we don't have the local sha256 or
+      // filename inline — they live on Beltic. Render with the Beltic
+      // id as the visible token; the Reveal-in-Finder button is
+      // hidden for these (the local mirror is keyed by sha256 which
+      // we don't have here without a Beltic round trip).
+      return [{ sha256: "", docType: "passport", filename: id, belticId: id }];
+    }
     const parts = ref.split(":");
     if (parts.length < 3 || parts[0] !== "sha256") return [];
     const [, sha256, docType, ...rest] = parts;
