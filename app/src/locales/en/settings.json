@@ -29,11 +29,15 @@
     "revokeCta": "Revoke credential",
     "revokeConfirm": "Revoke your Beltic identity credential? Every agent credential delegated by it will stop verifying until you re-issue.",
     "viewOnBeltic": "View on Beltic",
+    "verifiedWith": "Verified with",
+    "noEvidence": "Self-attested only. No supporting documents on file.",
     "verify": {
       "title": "Verify your identity",
       "subtitle": "Beltic stores only what's needed to issue your credential. Cancel any time.",
       "nationality": "Nationality",
+      "nationalityHint": "Two-letter country code (ISO 3166-1 alpha-2).",
       "dob": "Date of birth",
+      "dobHint": "Year, month, day.",
       "documentType": "Government ID type",
       "documentTypeOptional": "Optional. Unlocks the idv_verified trust level.",
       "documentCountry": "ID document country",
@@ -46,7 +50,18 @@
       "submit": "Issue credential",
       "cancel": "Cancel",
       "issuing": "Issuing…",
-      "missingFields": "Nationality and date of birth are required."
+      "missingFields": "Nationality and date of birth are required.",
+      "evidence": {
+        "title": "Supporting documents",
+        "optional": "Optional",
+        "description": "Attach a passport, driver's license, national ID, or residence permit to strengthen the credential. Each document is hashed locally; only the SHA-256 plus document type leaves your machine until Beltic's evidence endpoint ships.",
+        "dropPrompt": "Drop a file here or click to browse",
+        "constraints": "PDF, JPG, PNG, WEBP, HEIC. Up to 10 MB.",
+        "hashing": "Hashing…",
+        "unsupportedType": "{{name}}: unsupported file type.",
+        "fileTooLarge": "{{name}}: exceeds the 10 MB limit.",
+        "removeAria": "Remove document"
+      }
     }
   },
   "agents": {

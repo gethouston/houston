@@ -29,11 +29,15 @@
     "revokeCta": "Revocar credencial",
     "revokeConfirm": "¿Revocar tu credencial de identidad Beltic? Toda credencial de agente que delegó dejará de verificarse hasta que la emitas de nuevo.",
     "viewOnBeltic": "Ver en Beltic",
+    "verifiedWith": "Verificada con",
+    "noEvidence": "Solo autodeclarada. No hay documentos adjuntos.",
     "verify": {
       "title": "Verificá tu identidad",
       "subtitle": "Beltic guarda solo lo necesario para emitir tu credencial. Podés cancelar cuando quieras.",
       "nationality": "Nacionalidad",
+      "nationalityHint": "Código de país de dos letras (ISO 3166-1 alpha-2).",
       "dob": "Fecha de nacimiento",
+      "dobHint": "Año, mes, día.",
       "documentType": "Tipo de documento oficial",
       "documentTypeOptional": "Opcional. Desbloquea el nivel idv_verified.",
       "documentCountry": "País del documento",
@@ -46,7 +50,18 @@
       "submit": "Emitir credencial",
       "cancel": "Cancelar",
       "issuing": "Emitiendo…",
-      "missingFields": "La nacionalidad y la fecha de nacimiento son obligatorias."
+      "missingFields": "La nacionalidad y la fecha de nacimiento son obligatorias.",
+      "evidence": {
+        "title": "Documentos de respaldo",
+        "optional": "Opcional",
+        "description": "Adjuntá un pasaporte, una licencia de conducir, un DNI o una residencia para fortalecer la credencial. Cada documento se hashea localmente; solo el SHA-256 y el tipo de documento salen de tu equipo hasta que se lance el endpoint de evidencias de Beltic.",
+        "dropPrompt": "Soltá un archivo aquí o hacé clic para buscar",
+        "constraints": "PDF, JPG, PNG, WEBP, HEIC. Hasta 10 MB.",
+        "hashing": "Hasheando…",
+        "unsupportedType": "{{name}}: tipo de archivo no admitido.",
+        "fileTooLarge": "{{name}}: supera el límite de 10 MB.",
+        "removeAria": "Quitar documento"
+      }
     }
   },
   "agents": {

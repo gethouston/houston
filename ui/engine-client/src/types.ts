@@ -834,6 +834,14 @@ export interface VerifiableCredential {
   revocation_reason: string | null;
   delegated_by_subject_id: string | null;
   status_list_index: number;
+  /**
+   * Opaque evidence references attached at issue time. Today these come
+   * through as `sha256:<hex>:<doctype>:<urlencoded-filename>` strings.
+   * Once the Beltic `/v1/evidence` endpoint ships, the format will switch
+   * to `evidence:<id>` and the JWT-VC will gain a W3C `evidence[]` claim
+   * with a `digestSRI` for each.
+   */
+  evidence_refs?: string[];
 }
 
 /** Request body for `POST /v1/agents/credentials?agent_path=...`. */
@@ -861,4 +869,13 @@ export interface IssueIdentityRequest {
   id_document_type?: string;
   id_document_country?: string;
   self_attestation_complete: boolean;
+  /**
+   * Opaque evidence references for supporting documents. Houston currently
+   * emits `sha256:<hex>:<doctype>:<urlencoded-filename>` strings — Beltic
+   * stores them verbatim on the credential row. When the Beltic
+   * `/v1/evidence` endpoint ships, the ref format will switch to
+   * `evidence:<id>` and the JWT-VC will gain a W3C `evidence[]` claim
+   * with `digestSRI: sha256-<base64url>` for each entry.
+   */
+  evidence_refs?: string[];
 }

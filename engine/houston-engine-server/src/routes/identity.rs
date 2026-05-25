@@ -44,6 +44,12 @@ struct IssueIdentityRequest {
     pub id_document_country: Option<String>,
     #[serde(default)]
     pub self_attestation_complete: bool,
+    /// Opaque evidence refs supplied by the UI. Today the UI emits
+    /// `sha256:<hex>:<doctype>:<urlencoded-filename>` strings — Beltic
+    /// stores them verbatim. When the Beltic `/v1/evidence` endpoint
+    /// ships, the format will switch to `evidence:<id>`.
+    #[serde(default)]
+    pub evidence_refs: Vec<String>,
 }
 
 async fn get_identity(
@@ -98,7 +104,7 @@ async fn issue_identity(
         self_attestation_complete: true,
         subject: serde_json::json!({"type": "person", "id": subject_id}),
         claims,
-        evidence_refs: vec![],
+        evidence_refs: input.evidence_refs.clone(),
         ttl: Some("P1Y".into()),
     };
 

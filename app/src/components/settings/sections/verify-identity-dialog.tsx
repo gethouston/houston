@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
+  Badge,
   Button,
   Dialog,
   DialogContent,
@@ -8,9 +9,18 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  Input,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+  Spinner,
 } from "@houston-ai/core";
+import { Upload, X, FileText } from "lucide-react";
 
 import { useIssueIdentity } from "../../../hooks/queries/use-identity";
+import { useUIStore } from "../../../stores/ui";
 
 interface Props {
   open: boolean;
@@ -18,111 +28,270 @@ interface Props {
 }
 
 const DOC_OPTIONS = [
-  { value: "", labelKey: "identity.verify.documentNone" },
   { value: "passport", labelKey: "identity.verify.documentPassport" },
   { value: "drivers_license", labelKey: "identity.verify.documentDriversLicense" },
   { value: "national_id", labelKey: "identity.verify.documentNationalId" },
   { value: "residence_permit", labelKey: "identity.verify.documentResidencePermit" },
 ] as const;
 
-/**
- * Identity self-attestation modal — maps the Figma "Verify Your Identity"
- * screen onto an issueIdentity mutation. Required fields: nationality,
- * DOB. Optional: ID document type + country (unlocks idv_verified). All
- * fields tagged self_attested per Beltic schema.
- */
+type DocType = (typeof DOC_OPTIONS)[number]["value"];
+
+const ACCEPTED_TYPES = new Set([
+  "application/pdf",
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/heic",
+  "image/heif",
+]);
+const MAX_BYTES = 10 * 1024 * 1024;
+
+interface Attachment {
+  id: string;
+  filename: string;
+  contentType: string;
+  sizeBytes: number;
+  docType: DocType;
+  sha256?: string;
+  error?: string;
+}
+
 export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
   const { t } = useTranslation("settings");
   const issue = useIssueIdentity();
+  const addToast = useUIStore((s) => s.addToast);
 
   const [nationality, setNationality] = useState("");
   const [dob, setDob] = useState("");
-  const [docType, setDocType] = useState("");
-  const [docCountry, setDocCountry] = useState("");
   const [declarationOk, setDeclarationOk] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const anyHashing = attachments.some((a) => !a.sha256 && !a.error);
   const canSubmit =
     declarationOk &&
-    nationality.trim() &&
-    dob.trim() &&
-    (!docType || docCountry);
+    nationality.trim().length === 2 &&
+    /^\d{4}-\d{2}-\d{2}$/.test(dob.trim()) &&
+    !anyHashing;
+
+  function reset() {
+    setNationality("");
+    setDob("");
+    setDeclarationOk(false);
+    setAttachments([]);
+    setIsDragging(false);
+  }
+
+  async function hashAttachment(file: File): Promise<string> {
+    const buf = await file.arrayBuffer();
+    const digest = await crypto.subtle.digest("SHA-256", buf);
+    return Array.from(new Uint8Array(digest))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+  }
+
+  async function ingestFiles(files: FileList | File[]) {
+    const list = Array.from(files);
+    for (const file of list) {
+      if (!ACCEPTED_TYPES.has(file.type)) {
+        addToast({
+          title: t("identity.verify.evidence.unsupportedType", {
+            name: file.name,
+          }),
+          variant: "error",
+        });
+        continue;
+      }
+      if (file.size > MAX_BYTES) {
+        addToast({
+          title: t("identity.verify.evidence.fileTooLarge", {
+            name: file.name,
+          }),
+          variant: "error",
+        });
+        continue;
+      }
+      const id = `${file.name}-${file.size}-${file.lastModified}`;
+      if (attachments.some((a) => a.id === id)) continue;
+      const next: Attachment = {
+        id,
+        filename: file.name,
+        contentType: file.type,
+        sizeBytes: file.size,
+        docType: "passport",
+      };
+      setAttachments((cur) => [...cur, next]);
+      try {
+        const sha = await hashAttachment(file);
+        setAttachments((cur) =>
+          cur.map((a) => (a.id === id ? { ...a, sha256: sha } : a)),
+        );
+      } catch (err) {
+        setAttachments((cur) =>
+          cur.map((a) =>
+            a.id === id
+              ? { ...a, error: err instanceof Error ? err.message : "hash failed" }
+              : a,
+          ),
+        );
+      }
+    }
+  }
+
+  function buildEvidenceRefs(): string[] {
+    return attachments
+      .filter((a) => a.sha256)
+      .map(
+        (a) =>
+          `sha256:${a.sha256}:${a.docType}:${encodeURIComponent(a.filename)}`,
+      );
+  }
 
   async function onSubmit() {
     if (!canSubmit) return;
+    const primaryDocType = attachments.find((a) => a.sha256)?.docType;
     try {
       await issue.mutateAsync({
-        nationality: nationality.trim(),
+        nationality: nationality.trim().toUpperCase(),
         date_of_birth: dob.trim(),
-        id_document_type: docType || undefined,
-        id_document_country: docCountry || undefined,
+        ...(primaryDocType ? { id_document_type: primaryDocType } : {}),
+        ...(primaryDocType
+          ? { id_document_country: nationality.trim().toUpperCase() }
+          : {}),
         self_attestation_complete: true,
+        evidence_refs: buildEvidenceRefs(),
       });
       onOpenChange(false);
-      setNationality("");
-      setDob("");
-      setDocType("");
-      setDocCountry("");
-      setDeclarationOk(false);
+      reset();
     } catch {
       // showErrorToast fired inside the mutation's onError
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-lg">
+    <Dialog
+      open={open}
+      onOpenChange={(o) => {
+        onOpenChange(o);
+        if (!o) reset();
+      }}
+    >
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>{t("identity.verify.title")}</DialogTitle>
-          <DialogDescription>{t("identity.verify.subtitle")}</DialogDescription>
+          <DialogDescription>
+            {t("identity.verify.subtitle")}
+          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <LabeledText
-            label={t("identity.verify.nationality")}
-            value={nationality}
-            onChange={setNationality}
-            placeholder="ISO-3166-1 alpha-2 (e.g. US, BR)"
-            maxLength={2}
-            required
-          />
-          <LabeledText
-            label={t("identity.verify.dob")}
-            value={dob}
-            onChange={setDob}
-            placeholder="YYYY-MM-DD"
-            required
-          />
-
-          <div className="space-y-1">
-            <label className="text-sm font-medium block">
-              {t("identity.verify.documentType")}
-            </label>
-            <select
-              value={docType}
-              onChange={(e) => setDocType(e.target.value)}
-              className="w-full rounded-md border border-gray-300 px-2 h-9 text-sm"
+        <div className="space-y-5">
+          <div className="grid grid-cols-2 gap-4">
+            <Field
+              label={t("identity.verify.nationality")}
+              required
+              hint={t("identity.verify.nationalityHint")}
             >
-              {DOC_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {t(opt.labelKey as Parameters<typeof t>[0])}
-                </option>
-              ))}
-            </select>
-            <p className="text-xs text-muted-foreground">
-              {t("identity.verify.documentTypeOptional")}
-            </p>
+              <Input
+                value={nationality}
+                onChange={(e) =>
+                  setNationality(e.target.value.toUpperCase().slice(0, 2))
+                }
+                placeholder="US"
+                maxLength={2}
+                autoCapitalize="characters"
+              />
+            </Field>
+            <Field
+              label={t("identity.verify.dob")}
+              required
+              hint={t("identity.verify.dobHint")}
+            >
+              <Input
+                type="date"
+                value={dob}
+                onChange={(e) => setDob(e.target.value)}
+              />
+            </Field>
           </div>
 
-          {docType ? (
-            <LabeledText
-              label={t("identity.verify.documentCountry")}
-              value={docCountry}
-              onChange={setDocCountry}
-              placeholder="ISO-3166-1 alpha-2 (e.g. US)"
-              maxLength={2}
-              required
-            />
-          ) : null}
+          <div className="space-y-2">
+            <div className="flex items-baseline justify-between">
+              <label className="text-sm font-medium">
+                {t("identity.verify.evidence.title")}
+              </label>
+              <span className="text-xs text-muted-foreground">
+                {t("identity.verify.evidence.optional")}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {t("identity.verify.evidence.description")}
+            </p>
+
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
+              }}
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setIsDragging(false);
+                if (e.dataTransfer.files.length > 0) {
+                  void ingestFiles(e.dataTransfer.files);
+                }
+              }}
+              className={`w-full rounded-lg border-2 border-dashed px-4 py-6 text-sm flex flex-col items-center gap-2 transition-colors cursor-pointer ${
+                isDragging
+                  ? "border-foreground/40 bg-muted/60"
+                  : "border-border hover:border-foreground/20 hover:bg-muted/30"
+              }`}
+            >
+              <Upload className="h-5 w-5 text-muted-foreground" />
+              <span className="font-medium">
+                {t("identity.verify.evidence.dropPrompt")}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {t("identity.verify.evidence.constraints")}
+              </span>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".pdf,.png,.jpg,.jpeg,.webp,.heic,.heif"
+                multiple
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files.length > 0) {
+                    void ingestFiles(e.target.files);
+                  }
+                  e.target.value = "";
+                }}
+              />
+            </button>
+
+            {attachments.length > 0 && (
+              <ul className="space-y-2 pt-1">
+                {attachments.map((a) => (
+                  <AttachmentRow
+                    key={a.id}
+                    attachment={a}
+                    onChangeDocType={(docType) =>
+                      setAttachments((cur) =>
+                        cur.map((x) => (x.id === a.id ? { ...x, docType } : x)),
+                      )
+                    }
+                    onRemove={() =>
+                      setAttachments((cur) => cur.filter((x) => x.id !== a.id))
+                    }
+                    t={t}
+                  />
+                ))}
+              </ul>
+            )}
+          </div>
 
           <label className="flex items-start gap-2 text-sm">
             <input
@@ -147,7 +316,9 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
             onClick={() => void onSubmit()}
             disabled={!canSubmit || issue.isPending}
           >
-            {issue.isPending ? t("identity.verify.issuing") : t("identity.verify.submit")}
+            {issue.isPending
+              ? t("identity.verify.issuing")
+              : t("identity.verify.submit")}
           </Button>
         </DialogFooter>
       </DialogContent>
@@ -155,20 +326,76 @@ export function VerifyIdentityDialog({ open, onOpenChange }: Props) {
   );
 }
 
-function LabeledText({
+function AttachmentRow({
+  attachment: a,
+  onChangeDocType,
+  onRemove,
+  t,
+}: {
+  attachment: Attachment;
+  onChangeDocType: (v: DocType) => void;
+  onRemove: () => void;
+  t: ReturnType<typeof useTranslation>["t"];
+}) {
+  const short = a.sha256 ? a.sha256.slice(0, 8) : null;
+  return (
+    <li className="rounded-lg border border-border bg-card px-3 py-2.5 flex items-center gap-3">
+      <FileText className="h-4 w-4 text-muted-foreground shrink-0" />
+      <div className="flex-1 min-w-0">
+        <div className="text-sm font-medium truncate">{a.filename}</div>
+        <div className="text-xs text-muted-foreground flex items-center gap-2">
+          <span>{formatBytes(a.sizeBytes)}</span>
+          {a.error ? (
+            <Badge variant="destructive" className="text-[10px]">
+              {a.error}
+            </Badge>
+          ) : short ? (
+            <code className="font-mono">sha256:{short}…</code>
+          ) : (
+            <span className="inline-flex items-center gap-1">
+              <Spinner className="h-3 w-3" />
+              {t("identity.verify.evidence.hashing")}
+            </span>
+          )}
+        </div>
+      </div>
+      <Select
+        value={a.docType}
+        onValueChange={(v) => onChangeDocType(v as DocType)}
+      >
+        <SelectTrigger className="w-[140px] h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {DOC_OPTIONS.map((opt) => (
+            <SelectItem key={opt.value} value={opt.value}>
+              {t(opt.labelKey as Parameters<typeof t>[0])}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <button
+        type="button"
+        onClick={onRemove}
+        aria-label={t("identity.verify.evidence.removeAria")}
+        className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+      >
+        <X className="h-4 w-4" />
+      </button>
+    </li>
+  );
+}
+
+function Field({
   label,
-  value,
-  onChange,
-  placeholder,
-  maxLength,
   required,
+  hint,
+  children,
 }: {
   label: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  maxLength?: number;
   required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
 }) {
   return (
     <label className="block space-y-1 text-sm">
@@ -176,14 +403,14 @@ function LabeledText({
         {label}
         {required ? <span className="text-red-500"> *</span> : null}
       </span>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        maxLength={maxLength}
-        className="w-full rounded-md border border-gray-300 px-2 h-9"
-      />
+      {children}
+      {hint ? <span className="text-xs text-muted-foreground">{hint}</span> : null}
     </label>
   );
+}
+
+function formatBytes(n: number): string {
+  if (n < 1024) return `${n} B`;
+  if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+  return `${(n / (1024 * 1024)).toFixed(1)} MB`;
 }

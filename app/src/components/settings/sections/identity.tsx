@@ -69,6 +69,8 @@ export function IdentitySection() {
     (identity.claims as { trust_level?: string } | null)?.trust_level ??
     "self_attested";
 
+  const evidence = parseEvidenceRefs(identity.evidence_refs ?? []);
+
   return (
     <section className="space-y-6">
       <header>
@@ -98,6 +100,36 @@ export function IdentitySection() {
             {formatDate(identity.expires_at)}
           </Field>
         </dl>
+
+        <div className="pt-1">
+          <div className="text-xs text-muted-foreground uppercase tracking-wide mb-2">
+            {t("identity.verifiedWith")}
+          </div>
+          {evidence.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {t("identity.noEvidence")}
+            </p>
+          ) : (
+            <ul className="space-y-1.5">
+              {evidence.map((e, i) => (
+                <li
+                  key={`${e.sha256}-${i}`}
+                  className="text-sm flex items-center gap-2"
+                >
+                  <span className="rounded-md border border-border bg-muted/40 px-2 py-0.5 text-xs font-medium">
+                    {t(`identity.verify.document${capitalize(e.docType)}` as Parameters<typeof t>[0], {
+                      defaultValue: e.docType,
+                    })}
+                  </span>
+                  <span className="truncate text-foreground/80">{e.filename}</span>
+                  <code className="font-mono text-xs text-muted-foreground">
+                    sha256:{e.sha256.slice(0, 8)}…
+                  </code>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
         <div className="flex gap-2 pt-2">
           <button
@@ -144,4 +176,40 @@ function formatDate(iso: string): string {
   } catch {
     return iso;
   }
+}
+
+interface ParsedEvidence {
+  sha256: string;
+  docType: string;
+  filename: string;
+}
+
+/**
+ * Houston encodes evidence refs as `sha256:<hex>:<doctype>:<urlencoded-filename>`
+ * (free-form opaque strings on the Beltic side). Anything that doesn't match
+ * the expected shape is skipped, so a future `evidence:<id>` format (once
+ * Beltic's evidence endpoint ships) will simply not render here until the
+ * UI is taught to hydrate it.
+ */
+function parseEvidenceRefs(refs: string[]): ParsedEvidence[] {
+  return refs.flatMap((ref) => {
+    const parts = ref.split(":");
+    if (parts.length < 3 || parts[0] !== "sha256") return [];
+    const [, sha256, docType, ...rest] = parts;
+    if (!sha256 || !docType) return [];
+    let filename = rest.join(":");
+    try {
+      filename = decodeURIComponent(filename);
+    } catch {
+      // leave as-is
+    }
+    return [{ sha256, docType, filename }];
+  });
+}
+
+function capitalize(s: string): string {
+  return s
+    .split("_")
+    .map((w) => (w.length === 0 ? w : w[0]!.toUpperCase() + w.slice(1)))
+    .join("");
 }
