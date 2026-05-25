@@ -31,6 +31,9 @@
     "viewOnBeltic": "Ver na Beltic",
     "verifiedWith": "Verificada com",
     "noEvidence": "Apenas autodeclarada. Nenhum documento anexo.",
+    "revealEvidence": "Mostrar no Finder",
+    "revealEvidenceAria": "Mostrar {{filename}} no Finder",
+    "revealEvidenceFailed": "Não foi possível localizar o arquivo de evidência no disco.",
     "verify": {
       "title": "Verifique sua identidade",
       "subtitle": "A Beltic guarda só o necessário para emitir sua credencial. Você pode cancelar a qualquer momento.",

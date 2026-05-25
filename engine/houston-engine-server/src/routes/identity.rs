@@ -32,7 +32,37 @@ pub fn router() -> Router<Arc<ServerState>> {
     Router::new()
         .route("/identity", get(get_identity).post(issue_identity))
         .route("/identity/revoke", post(revoke_identity))
-        .route("/identity/evidence", post(persist_evidence))
+        .route(
+            "/identity/evidence",
+            post(persist_evidence).get(locate_evidence),
+        )
+}
+
+#[derive(Debug, Clone, Deserialize)]
+struct LocateEvidenceQuery {
+    sha256: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct LocateEvidenceResponse {
+    path: String,
+}
+
+/// Look up the locally-mirrored evidence file by content hash and
+/// return its absolute path. Used by the Identity panel's
+/// Reveal-in-Finder button — the parsed `evidence_refs[]` carries
+/// the sha256 but not the content_type the file was saved under, so
+/// the route globs the evidence dir to find the match.
+async fn locate_evidence(
+    State(st): State<Arc<ServerState>>,
+    Query(q): Query<LocateEvidenceQuery>,
+) -> Result<Json<LocateEvidenceResponse>, ApiError> {
+    let root = st.engine.paths.home().to_path_buf();
+    let path = evidence_store::locate_by_sha256(&root, &q.sha256)?
+        .ok_or_else(|| CoreError::NotFound(format!("evidence {}", q.sha256)))?;
+    Ok(Json(LocateEvidenceResponse {
+        path: path.to_string_lossy().to_string(),
+    }))
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -102,6 +102,35 @@ pub fn locate(
     Ok(if path.exists() { Some(path) } else { None })
 }
 
+/// Look up a stored evidence file by content hash alone, without
+/// needing the original content_type. Used by the Reveal-in-Finder
+/// flow in the Identity panel — the credential's evidence_refs carry
+/// `sha256:<hex>:<doctype>:<filename>` but not the content type, so
+/// we glob the evidence dir for the matching content-addressed file.
+pub fn locate_by_sha256(
+    workspace_root: &Path,
+    sha256: &str,
+) -> CoreResult<Option<PathBuf>> {
+    validate_sha256(sha256)?;
+    let dir = workspace_root.join(".houston").join(SUBDIR);
+    if !dir.exists() {
+        return Ok(None);
+    }
+    let entries = std::fs::read_dir(&dir).map_err(|e| {
+        CoreError::Internal(format!("read_dir {}: {e}", dir.display()))
+    })?;
+    for entry in entries.flatten() {
+        let path = entry.path();
+        let Some(stem) = path.file_stem().and_then(|s| s.to_str()) else {
+            continue;
+        };
+        if stem == sha256 {
+            return Ok(Some(path));
+        }
+    }
+    Ok(None)
+}
+
 #[cfg(unix)]
 fn set_owner_only(path: &Path) -> CoreResult<()> {
     use std::os::unix::fs::PermissionsExt;
@@ -198,5 +227,26 @@ mod tests {
         let tmp = TempDir::new().unwrap();
         let none = locate(tmp.path(), &sha(), "application/pdf").unwrap();
         assert!(none.is_none());
+    }
+
+    #[test]
+    fn locate_by_sha256_finds_file_without_knowing_content_type() {
+        let tmp = TempDir::new().unwrap();
+        let saved = save(tmp.path(), &sha(), "image/png", b"\x89PNG\r\n").unwrap();
+        let found = locate_by_sha256(tmp.path(), &sha()).unwrap().unwrap();
+        assert_eq!(found, saved);
+    }
+
+    #[test]
+    fn locate_by_sha256_returns_none_when_dir_missing() {
+        let tmp = TempDir::new().unwrap();
+        let none = locate_by_sha256(tmp.path(), &sha()).unwrap();
+        assert!(none.is_none());
+    }
+
+    #[test]
+    fn locate_by_sha256_rejects_bad_sha256() {
+        let tmp = TempDir::new().unwrap();
+        assert!(locate_by_sha256(tmp.path(), "tooshort").is_err());
     }
 }

@@ -1,10 +1,14 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { FolderOpen } from "lucide-react";
 
 import {
   useIdentity,
   useRevokeIdentity,
 } from "../../../hooks/queries/use-identity";
+import { useUIStore } from "../../../stores/ui";
+import { getEngine } from "../../../lib/engine";
+import { osRevealPath } from "../../../lib/os-bridge";
 import { VerifyIdentityDialog } from "./verify-identity-dialog";
 
 /**
@@ -16,7 +20,21 @@ export function IdentitySection() {
   const { t } = useTranslation("settings");
   const { data: identity, isLoading } = useIdentity();
   const revoke = useRevokeIdentity();
+  const addToast = useUIStore((s) => s.addToast);
   const [verifyOpen, setVerifyOpen] = useState(false);
+
+  async function revealEvidence(sha256: string) {
+    try {
+      const { path } = await getEngine().locateIdentityEvidence(sha256);
+      await osRevealPath(path);
+    } catch (err) {
+      addToast({
+        title: t("identity.revealEvidenceFailed"),
+        description: err instanceof Error ? err.message : String(err),
+        variant: "error",
+      });
+    }
+  }
 
   const shortId = useMemo(() => {
     if (!identity) return null;
@@ -114,17 +132,30 @@ export function IdentitySection() {
               {evidence.map((e, i) => (
                 <li
                   key={`${e.sha256}-${i}`}
-                  className="text-sm flex items-center gap-2"
+                  className="text-sm flex items-center gap-2 group"
                 >
                   <span className="rounded-md border border-border bg-muted/40 px-2 py-0.5 text-xs font-medium">
                     {t(`identity.verify.document${capitalize(e.docType)}` as Parameters<typeof t>[0], {
                       defaultValue: e.docType,
                     })}
                   </span>
-                  <span className="truncate text-foreground/80">{e.filename}</span>
+                  <span className="truncate text-foreground/80 flex-1">
+                    {e.filename}
+                  </span>
                   <code className="font-mono text-xs text-muted-foreground">
                     sha256:{e.sha256.slice(0, 8)}…
                   </code>
+                  <button
+                    type="button"
+                    onClick={() => void revealEvidence(e.sha256)}
+                    aria-label={t("identity.revealEvidenceAria", {
+                      filename: e.filename,
+                    })}
+                    title={t("identity.revealEvidence")}
+                    className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  >
+                    <FolderOpen className="h-3.5 w-3.5" />
+                  </button>
                 </li>
               ))}
             </ul>

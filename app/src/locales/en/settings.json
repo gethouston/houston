@@ -31,6 +31,9 @@
     "viewOnBeltic": "View on Beltic",
     "verifiedWith": "Verified with",
     "noEvidence": "Self-attested only. No supporting documents on file.",
+    "revealEvidence": "Reveal in Finder",
+    "revealEvidenceAria": "Reveal {{filename}} in Finder",
+    "revealEvidenceFailed": "Could not locate the evidence file on disk.",
     "verify": {
       "title": "Verify your identity",
       "subtitle": "Beltic stores only what's needed to issue your credential. Cancel any time.",

@@ -398,6 +398,16 @@ export class HoustonClient {
     return this.request("POST", "/identity/revoke");
   }
   /**
+   * Look up the absolute path of a locally-mirrored evidence file by
+   * content hash. Used by the Reveal-in-Finder flow in the Identity
+   * panel — the credential's evidence_refs carry the sha256 but not
+   * the content_type the file was saved under.
+   */
+  locateIdentityEvidence(sha256: string): Promise<{ path: string }> {
+    return this.request("GET", "/identity/evidence", undefined, { sha256 });
+  }
+
+  /**
    * Persist raw evidence bytes to the workspace identity directory
    * (`<home>/.houston/identity/evidence/<sha256>.<ext>` on Unix, mode 0600).
    * The engine re-hashes the body and rejects on sha256 mismatch.
