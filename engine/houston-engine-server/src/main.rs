@@ -213,7 +213,18 @@ fn init_tracing() {
     use tracing_subscriber::{fmt, EnvFilter};
     let filter =
         EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info,houston=debug"));
-    fmt().with_env_filter(filter).with_target(false).init();
+    // Write tracing to STDERR, never stdout. `tracing_subscriber::fmt()`
+    // defaults to stdout, but stdout is reserved for the single
+    // `HOUSTON_ENGINE_LISTENING` banner line: the desktop supervisor
+    // (`app/src-tauri/src/engine_supervisor.rs`) captures the engine's
+    // stderr into `engine.log`, while its stdout drain only forwards the
+    // banner. Leaving the default stdout writer left `engine.log` empty
+    // and leaked every trace onto stdout (gethouston/houston#240).
+    fmt()
+        .with_env_filter(filter)
+        .with_target(false)
+        .with_writer(std::io::stderr)
+        .init();
 }
 
 fn write_manifest(cfg: &ServerConfig, port: u16) {
