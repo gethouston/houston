@@ -163,6 +163,9 @@ pub fn event_topic(event: &HoustonEvent) -> String {
         HoustonEvent::ProviderLoginUrl { .. } | HoustonEvent::ProviderLoginComplete { .. } => {
             "providers".into()
         }
+        HoustonEvent::CredentialIssued { agent_path, .. }
+        | HoustonEvent::CredentialRevoked { agent_path, .. }
+        | HoustonEvent::CredentialSuspended { agent_path, .. } => format!("agent:{agent_path}"),
     }
 }
 

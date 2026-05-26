@@ -8,6 +8,7 @@ use axum::{
 use houston_engine_core::CoreError;
 use houston_engine_protocol::{ErrorBody, ErrorCode, ErrorDetail};
 
+#[derive(Debug)]
 pub struct ApiError(pub CoreError);
 
 impl From<CoreError> for ApiError {

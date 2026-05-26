@@ -180,6 +180,31 @@ pub enum HoustonEvent {
         success: bool,
         error: Option<String>,
     },
+
+    // ----- Beltic verifiable credentials -----
+    //
+    // Emitted when an agent's Beltic credential changes state — either
+    // because Houston just issued one, because the user revoked it, or
+    // because a Beltic webhook flipped its status. UI invalidates the
+    // matching TanStack Query key (per-agent credentials list) and
+    // re-renders the badge/card.
+
+    /// A new credential was successfully issued and persisted for an agent.
+    CredentialIssued {
+        agent_path: String,
+        credential_id: String,
+    },
+    /// An existing credential transitioned to `revoked`.
+    CredentialRevoked {
+        agent_path: String,
+        credential_id: String,
+    },
+    /// An existing credential was temporarily suspended (Beltic webhook).
+    /// The credential is no longer presentable but is not permanently gone.
+    CredentialSuspended {
+        agent_path: String,
+        credential_id: String,
+    },
 }
 
 // ---------------------------------------------------------------------------

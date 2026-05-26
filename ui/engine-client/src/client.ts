@@ -79,6 +79,10 @@ import type {
   PortableScanResponse,
   PortableInstallRequest,
   PortableInstalledAgent,
+  VerifiableCredential,
+  IssueCredentialRequest,
+  IssueIdentityRequest,
+  VerifyCredentialResult,
 } from "./types";
 import { planAttachmentUploadBatches } from "./attachments";
 
@@ -380,6 +384,116 @@ export class HoustonClient {
   }
   setAgentConfig(agentPath: string, config: ProjectConfig): Promise<ProjectConfig> {
     return this.request("PUT", "/agents/config", config, { agent_path: agentPath });
+  }
+
+  // ---------- workspace identity (Beltic user credential) ----------
+
+  getIdentity(): Promise<VerifiableCredential | null> {
+    return this.request("GET", "/identity");
+  }
+  issueIdentity(input: IssueIdentityRequest): Promise<VerifiableCredential> {
+    return this.request("POST", "/identity", input);
+  }
+  revokeIdentity(): Promise<VerifiableCredential | null> {
+    return this.request("POST", "/identity/revoke");
+  }
+  /**
+   * Look up the absolute path of a locally-mirrored evidence file by
+   * content hash. Used by the Reveal-in-Finder flow in the Identity
+   * panel — the credential's evidence_refs carry the sha256 but not
+   * the content_type the file was saved under.
+   */
+  locateIdentityEvidence(sha256: string): Promise<{ path: string }> {
+    return this.request("GET", "/identity/evidence", undefined, { sha256 });
+  }
+
+  /**
+   * Persist raw evidence bytes to the workspace identity directory
+   * (`<home>/.houston/identity/evidence/<sha256>.<ext>` on Unix, mode 0600)
+   * AND upload them to Beltic's `/v1/evidence` endpoint when reachable.
+   *
+   * The engine re-hashes the body and rejects on sha256 mismatch. The
+   * Beltic upload is best-effort: when staging hasn't deployed the
+   * evidence routes yet (or any transient upstream error), the response
+   * still returns the local-mirror path but omits `beltic_evidence_id`.
+   * Callers SHOULD fall back to `sha256:<hex>:...` opaque refs in that
+   * case. Re-running the same submit once Beltic is live is a no-op
+   * (the sha256 dedupe in the Beltic endpoint returns the existing
+   * resource).
+   */
+  async persistIdentityEvidence(
+    bytes: Uint8Array,
+    args: {
+      sha256: string;
+      contentType: string;
+      documentType?: string;
+      filename?: string;
+    },
+  ): Promise<{
+    stored_at: string;
+    sha256: string;
+    size_bytes: number;
+    beltic_evidence_id?: string;
+  }> {
+    const q = new URLSearchParams({
+      sha256: args.sha256,
+      content_type: args.contentType,
+    });
+    if (args.documentType) q.set("document_type", args.documentType);
+    if (args.filename) q.set("filename", args.filename);
+    const url = `${this.baseUrl}/v1/identity/evidence?${q.toString()}`;
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.token}`,
+        "Content-Type": "application/octet-stream",
+      },
+      body: bytes as BodyInit,
+    });
+    if (!res.ok) {
+      throw await this.toError(res);
+    }
+    return (await res.json()) as {
+      stored_at: string;
+      sha256: string;
+      size_bytes: number;
+      beltic_evidence_id?: string;
+    };
+  }
+
+  // ---------- agents: Beltic credentials ----------
+
+  listAgentCredentials(agentPath: string): Promise<VerifiableCredential[]> {
+    return this.request("GET", "/agents/credentials", undefined, { agent_path: agentPath });
+  }
+  issueAgentCredential(
+    agentPath: string,
+    input: IssueCredentialRequest,
+  ): Promise<VerifiableCredential> {
+    return this.request("POST", "/agents/credentials", input, { agent_path: agentPath });
+  }
+  revokeAgentCredential(
+    agentPath: string,
+    credentialId: string,
+  ): Promise<VerifiableCredential> {
+    return this.request(
+      "POST",
+      `/agents/credentials/${this.seg(credentialId)}/revoke`,
+      undefined,
+      { agent_path: agentPath },
+    );
+  }
+  verifyAgentCredential(
+    agentPath: string,
+    credentialId: string,
+    context: unknown,
+  ): Promise<VerifyCredentialResult> {
+    return this.request(
+      "POST",
+      `/agents/credentials/${this.seg(credentialId)}/verify`,
+      { context },
+      { agent_path: agentPath },
+    );
   }
 
   // ---------- agent configs (installed manifests) ----------

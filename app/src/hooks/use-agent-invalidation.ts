@@ -65,6 +65,24 @@ export function useAgentInvalidation() {
         case "ComposioConnectionAdded":
           qc.invalidateQueries({ queryKey: queryKeys.connectedToolkits() });
           break;
+        // Beltic credential lifecycle — issued/revoked/suspended all
+        // flip the per-agent credentials list and the verified-status
+        // badges that depend on it.
+        case "CredentialIssued":
+        case "CredentialRevoked":
+        case "CredentialSuspended":
+          // Identity events use a synthetic "identity:<subject_id>" agent_path
+          // (see engine routes/identity.rs). Invalidate both the per-agent
+          // and the workspace-identity caches; whichever doesn't apply is a
+          // no-op.
+          if (p.data.agent_path.startsWith("identity:")) {
+            qc.invalidateQueries({ queryKey: ["workspace-identity"] });
+          } else {
+            qc.invalidateQueries({
+              queryKey: ["agent-credentials", p.data.agent_path],
+            });
+          }
+          break;
       }
     });
 

@@ -139,4 +139,16 @@ export type HoustonEvent =
   | {
       type: "ProviderLoginComplete";
       data: { provider: string; success: boolean; error: string | null };
+    }
+  | {
+      type: "CredentialIssued";
+      data: { agent_path: string; credential_id: string };
+    }
+  | {
+      type: "CredentialRevoked";
+      data: { agent_path: string; credential_id: string };
+    }
+  | {
+      type: "CredentialSuspended";
+      data: { agent_path: string; credential_id: string };
     };
