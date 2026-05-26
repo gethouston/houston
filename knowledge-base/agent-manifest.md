@@ -29,12 +29,12 @@ interface AgentManifest {
 
 ## Tabs
 
-Every agent renders the same four tabs in the shell:
-`Activity` (board) / `Routines` / `Files` / `Job Description`.
+Every agent renders the same five tabs in the shell:
+`Activity` (board) / `Routines` / `Files` / `Job Description` / `Integrations`.
 
 This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
 
-Workspace-wide integrations live in the sidebar `Connections` entry, not in a per-agent tab.
+The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
 ## Locations
 - **Built-in:** `app/src/agents/builtin/` — `personalAssistantAgent`
