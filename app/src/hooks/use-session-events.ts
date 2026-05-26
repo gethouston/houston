@@ -159,8 +159,12 @@ export function useSessionEvents() {
       }
     });
 
-    // Case: user clicks notification → plugin fires onAction directly.
-    // This is the most reliable path for macOS desktop notification clicks.
+    // Notification "action performed" listener. NOTE: the plugin's Actions API
+    // only fires on mobile — on every desktop OS this is a no-op. Desktop
+    // notification clicks navigate via the `app-activated` / focus path below
+    // (macOS: OS app-activation on click; Linux/Windows: the Rust command in
+    // notification.rs raises the window and emits `app-activated`). Kept for
+    // when Houston ships a mobile shell.
     let unlistenNotificationAction: (() => void) | undefined;
     import("@tauri-apps/plugin-notification").then(({ onAction }) => {
       onAction((action) => {

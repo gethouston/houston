@@ -1,6 +1,8 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { logger } from "../lib/logger";
+import { isMac } from "../lib/platform";
+import { osShowSessionNotification } from "../lib/os-bridge";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 
@@ -45,20 +47,31 @@ export async function sendSessionNotification(
   nav?: NotificationNav,
 ) {
   try {
-    const {
-      isPermissionGranted,
-      requestPermission,
-      sendNotification: notify,
-    } = await import("@tauri-apps/plugin-notification");
+    if (isMac) {
+      // macOS: the JS notification plugin's click activates the app, which
+      // fires the focus event the listener below consumes. Unchanged.
+      const {
+        isPermissionGranted,
+        requestPermission,
+        sendNotification: notify,
+      } = await import("@tauri-apps/plugin-notification");
 
-    let granted = await isPermissionGranted();
-    if (!granted) {
-      const perm = await requestPermission();
-      granted = perm === "granted";
+      let granted = await isPermissionGranted();
+      if (!granted) {
+        const perm = await requestPermission();
+        granted = perm === "granted";
+      }
+      if (!granted) return;
+
+      notify({ title, body, sound: "Glass" });
+    } else {
+      // Linux/Windows: the plugin is fire-and-forget (no click event) and a
+      // notification click doesn't focus the window, so the focus path never
+      // fires. The Rust command shows a native notification whose click raises
+      // the window and emits `app-activated` — consumed exactly like macOS.
+      await osShowSessionNotification(title, body);
     }
-    if (!granted) return;
 
-    notify({ title, body, sound: "Glass" });
     if (!nav) return;
 
     pendingNotificationNav = nav;
@@ -74,7 +87,7 @@ export async function sendSessionNotification(
       consumePendingNav();
     }
   } catch (e) {
-    console.error("[notification] Failed:", e);
+    logger.error(`[notification] Failed: ${e}`);
   }
 }
 
