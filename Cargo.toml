@@ -51,3 +51,10 @@ houston-claude-installer = { version = "0.4.12", path = "engine/houston-claude-i
 houston-engine-core = { version = "0.4.12", path = "engine/houston-engine-core" }
 houston-engine-protocol = { version = "0.4.12", path = "engine/houston-engine-protocol" }
 houston-engine-server = { version = "0.4.12", path = "engine/houston-engine-server" }
+
+# Keep line-table debug info in release binaries so Sentry can symbolicate
+# Rust panics to file:line. Costs ~10-15% binary size; full debug info is
+# stripped, only line tables remain. sentry-cli debug-files upload extracts
+# these in CI and ships them to the Sentry org for symbolication.
+[profile.release]
+debug = "line-tables-only"

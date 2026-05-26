@@ -13,6 +13,7 @@ import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
 import { useConnections, useComposioApps } from "./hooks/queries";
 import { analytics } from "./lib/analytics";
+import { setUser as setSentryUser, clearUser as clearSentryUser } from "./lib/sentry";
 import { loadTheme } from "./lib/theme";
 import { isAuthConfigured } from "./lib/supabase";
 import { installDeepLinkListener } from "./lib/auth";
@@ -50,18 +51,22 @@ export default function App() {
 
   const { data: session, isLoading: sessionLoading } = useSession();
 
-  // Identify / alias the user in PostHog on sign-in; reset on sign-out.
-  // Runs AFTER analytics.init() has claimed the install_id as distinct_id,
-  // so `alias(userId, profile)` correctly merges prior anonymous history.
+  // Identify / alias the user in PostHog AND Sentry on sign-in; reset on
+  // sign-out. Runs AFTER analytics.init() has claimed the install_id as
+  // distinct_id, so `alias(userId, profile)` correctly merges prior
+  // anonymous history. Sentry gets the same identity so crashes are
+  // attributable to a user when triaging.
   const prevUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     const userId = session?.user?.id ?? null;
     const userEmail = session?.user?.email ?? null;
     if (userId && userId !== prevUserIdRef.current) {
       analytics.alias(userId, { email: userEmail });
+      setSentryUser({ id: userId, email: userEmail });
       prevUserIdRef.current = userId;
     } else if (!userId && prevUserIdRef.current) {
       analytics.reset();
+      clearSentryUser();
       prevUserIdRef.current = null;
     }
   }, [session]);

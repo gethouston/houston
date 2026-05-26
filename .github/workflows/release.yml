@@ -27,6 +27,7 @@
 #   LINEAR_TEAM_ID                     — Linear team UUID for in-app "Report bug" issues
 #   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built
 #   SENTRY_DSN                         — Sentry crash reporting DSN
+#   SENTRY_AUTH_TOKEN                  — Sentry CLI auth token (org-scoped, perms: project:releases, project:read, org:read). Used to upload source maps + Rust debug symbols and create/finalize releases. Empty → skip the Sentry upload step (forks, personal builds).
 
 name: Release
 
@@ -554,6 +555,46 @@ jobs:
 
           echo "=== Sidecar checks passed ==="
 
+      # Sentry upload: source maps (Vite output in app/dist/) + Rust debug
+      # symbols (both per-triple houston-engine binaries with line-tables-only
+      # debug info from the workspace [profile.release]). Tag everything as
+      # `houston-app@<version>` so events fired from the running app — whose
+      # release name is set by sentry::release_name!() in lib.rs — match the
+      # uploaded artifacts and resolve to real file:line frames.
+      #
+      # Skips silently when SENTRY_AUTH_TOKEN is unset so forks and personal
+      # builds don't fail. Without uploads, Sentry events still arrive but
+      # show as minified soup / hex addresses, which makes triage impossible.
+      - name: Upload source maps + Rust debug symbols to Sentry
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: houston-cd
+          SENTRY_PROJECT: houston-app
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE="houston-app@${VERSION}"
+
+          curl -sL https://sentry.io/get-cli/ | bash
+
+          echo "=== 1. Create release ${RELEASE} ==="
+          sentry-cli releases new "$RELEASE"
+          sentry-cli releases set-commits --auto "$RELEASE" || \
+            echo "::warning::set-commits --auto failed (likely shallow clone or first release); continuing"
+
+          echo "=== 2. Inject + upload Vite source maps ==="
+          sentry-cli sourcemaps inject app/dist
+          sentry-cli sourcemaps upload --release "$RELEASE" app/dist
+
+          echo "=== 3. Upload Rust debug symbols (both Mac architectures) ==="
+          sentry-cli debug-files upload \
+            target/aarch64-apple-darwin/release/houston-engine \
+            target/x86_64-apple-darwin/release/houston-engine
+
+          echo "=== 4. Finalize release ==="
+          sentry-cli releases finalize "$RELEASE"
+
       - name: Notarize DMG
         timeout-minutes: 25
         run: |
@@ -948,6 +989,38 @@ jobs:
           echo "Artifacts:"
           echo "  .msi:     $MSI ($(du -sh "$MSI" | cut -f1))"
           echo "  .msi.sig: $SIG ($(wc -c < "$SIG") bytes)"
+
+      # Sentry upload (Windows): Rust debug symbols for the matrix-arch
+      # houston-engine.exe + its .pdb (MSVC emits PDBs alongside the binary
+       # in release mode with debug = "line-tables-only" in workspace Cargo).
+      # Source maps are uploaded once by the macOS job — same JS bundle ships
+      # to both platforms, so we don't duplicate the upload here.
+      #
+      # x86_64 + aarch64 each run this in parallel via the matrix; both
+      # contribute their debug symbols to the same `houston-app@<version>`
+      # release. Skips silently when SENTRY_AUTH_TOKEN is unset.
+      - name: Upload Rust debug symbols to Sentry (${{ matrix.arch }})
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        shell: bash
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: houston-cd
+          SENTRY_PROJECT: houston-app
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE="houston-app@${VERSION}"
+
+          curl -sL https://sentry.io/get-cli/ | bash
+
+          echo "=== Upload ${{ matrix.target }} debug symbols ==="
+          # MSVC emits the PDB next to the .exe; Rust converts the binary's
+          # `-` to `_` for the PDB stem (houston-engine.exe → houston_engine.pdb).
+          # Upload both — Sentry needs the PDB for symbolication but indexes
+          # by the .exe's debug-id.
+          sentry-cli debug-files upload \
+            "target/${{ matrix.target }}/release/houston-engine.exe" \
+            "target/${{ matrix.target }}/release/houston_engine.pdb"
 
       - name: Upload Windows MSI + updater signature to draft release
         env:

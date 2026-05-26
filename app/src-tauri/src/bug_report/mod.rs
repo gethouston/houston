@@ -20,6 +20,12 @@ pub struct BugReportPayload {
     pub(super) timestamp: String,
     pub(super) app_version: String,
     pub(super) logs: BugReportLogs,
+    /// Free-text feedback the user wrote, when reporting voluntarily via
+    /// the "Send feedback" menu item (not present on the auto-generated
+    /// path that fires from error toasts). Rendered at the top of the
+    /// Linear issue so the engineer reads the user's own words before logs.
+    #[serde(default)]
+    pub(super) user_message: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -106,6 +112,7 @@ pub(super) fn sample_payload() -> BugReportPayload {
             backend: "backend log line".to_string(),
             frontend: "frontend log line".to_string(),
         },
+        user_message: None,
     }
 }
 

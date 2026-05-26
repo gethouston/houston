@@ -45,6 +45,14 @@ export default defineConfig(({ mode }) => {
       __SUPABASE_ANON_KEY__: JSON.stringify(env.SUPABASE_ANON_KEY ?? ""),
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify(authStorageMode),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify(authStorageScope),
+      __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),
+    },
+    build: {
+      // "hidden" emits .map files next to bundled JS but skips the
+      // //# sourceMappingURL= comment, so production users can't reconstruct
+      // source via DevTools. release.yml uploads the maps to Sentry, which
+      // matches them to events by filename + content hash for symbolication.
+      sourcemap: "hidden",
     },
     clearScreen: false,
     // Exclude workspace packages from Vite's dep pre-bundling so live edits

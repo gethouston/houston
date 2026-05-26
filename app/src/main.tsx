@@ -18,6 +18,11 @@ import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { showErrorToast } from "./lib/error-toast";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
+import { initSentry, captureException as sentryCapture } from "./lib/sentry";
+
+// Sentry first so global error handlers below can capture into it from the
+// very first render. Empty DSN → silent no-op (dev / forks).
+initSentry();
 
 // Initialize file-based logging — patches console.error/warn to write to
 // ~/.houston/logs/frontend.log (or ~/.dev-houston/logs/frontend.log in dev).
@@ -28,10 +33,12 @@ initFrontendLogging();
 window.onerror = (_event, _source, _line, _col, error) => {
   const message = error?.message ?? String(_event);
   console.error("[global:error]", message, error);
-  analytics.captureException(error ?? new Error(message), {
+  const err = error ?? new Error(message);
+  analytics.captureException(err, {
     source: "uncaught_error",
     error_kind: classifyAnalyticsError(message),
   });
+  sentryCapture(err, { source: "uncaught_error" });
   showErrorToast("uncaught_error", message);
 };
 
@@ -42,6 +49,7 @@ window.onunhandledrejection = (event: PromiseRejectionEvent) => {
     source: "unhandled_rejection",
     error_kind: classifyAnalyticsError(message),
   });
+  sentryCapture(event.reason, { source: "unhandled_rejection" });
   showErrorToast("unhandled_rejection", message);
 };
 
@@ -54,6 +62,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
       source: "react_crash",
       error_kind: classifyAnalyticsError(error.message),
     });
+    sentryCapture(error, { source: "react_crash" });
     showErrorToast("react_crash", error.message);
   }
   render() {

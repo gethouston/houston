@@ -366,5 +366,20 @@
       "panelEscape": "Sair do chat e depois fechar",
       "cheatsheet": "Mostrar esta lista"
     }
+  },
+  "userMenu": {
+    "sendFeedback": "Enviar feedback"
+  },
+  "feedback": {
+    "title": "Enviar feedback",
+    "description": "Os relatórios de erro chegam automaticamente. Isto é para tudo o mais: algo que parece estranho, um fluxo que quebrou, uma ideia.",
+    "placeholder": "O que você está pensando?",
+    "send": "Enviar",
+    "sending": "Enviando...",
+    "cancel": "Cancelar",
+    "successTitle": "Recebido, obrigado pelo relatório.",
+    "successWithId": "O centro de controle está cuidando disso. Referência: {{id}}",
+    "successNoId": "O centro de controle está cuidando disso.",
+    "errorTitle": "Não foi possível enviar o relatório"
   }
 }

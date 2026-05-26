@@ -27,6 +27,10 @@ tauri-plugin-updater = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-sentry = "0.5"
 sentry = "0.42"
+# Pipes tracing::* records into Sentry as breadcrumbs (INFO+) and events (ERROR).
+# Layer is a no-op until sentry::init has run, so safe to register
+# unconditionally in logging.rs even when SENTRY_DSN is empty.
+sentry-tracing = "0.42"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 houston-ui-events = { path = "../../engine/houston-ui-events" }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }

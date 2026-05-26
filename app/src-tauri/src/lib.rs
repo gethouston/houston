@@ -64,14 +64,23 @@ impl SupervisorCallbacks for TauriSupervisorCallbacks {
 }
 
 pub fn run() {
-    // Initialize logging before anything else. `houston_dir()` flips to
-    // `~/.dev-houston/` in debug builds so `pnpm tauri dev` stays isolated
-    // from an installed release of Houston.
+    // `houston_dir()` flips to `~/.dev-houston/` in debug builds so
+    // `pnpm tauri dev` stays isolated from an installed release of Houston.
     let houston = houston_tauri::houston_db::db::houston_dir();
-    logging::init(&houston);
 
-    // Sentry: initialize before the builder so it catches panics in plugin inits.
-    // The guard must live for the lifetime of the app to flush events on shutdown.
+    // Sentry MUST init before logging so the tracing subscriber's
+    // sentry_tracing layer (registered in logging::init) has a live client
+    // to forward breadcrumbs/events to from the first emitted record. Init
+    // also installs the panic handler before any plugin setup runs.
+    //
+    // `release` = `houston-app@<CARGO_PKG_VERSION>` via release_name!() — MUST
+    // match the `--release` flag passed to sentry-cli sourcemaps + debug-files
+    // uploads in .github/workflows/release.yml, otherwise stack traces won't
+    // resolve. release.yml derives the same string from the git tag.
+    //
+    // `environment` separates production crashes (real users on installed
+    // builds) from development noise (someone running `pnpm tauri dev` with
+    // a DSN exported). Tile filters in Sentry default to production.
     let sentry_dsn = option_env!("SENTRY_DSN").unwrap_or("");
     let _sentry_client = if sentry_dsn.is_empty() {
         None
@@ -80,11 +89,23 @@ pub fn run() {
             sentry_dsn,
             sentry::ClientOptions {
                 release: sentry::release_name!(),
+                environment: Some(
+                    if cfg!(debug_assertions) {
+                        "development"
+                    } else {
+                        "production"
+                    }
+                    .into(),
+                ),
                 auto_session_tracking: true,
                 ..Default::default()
             },
         )))
     };
+
+    // Logging second so the sentry_tracing layer captures everything from
+    // here onwards, including engine subprocess spawn logs and plugin setup.
+    logging::init(&houston);
 
     let mut builder = tauri::Builder::default();
 
