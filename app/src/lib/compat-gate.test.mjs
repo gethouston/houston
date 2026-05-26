@@ -96,3 +96,27 @@ test("an old engine renders a localized message into the root", () => {
   const en = runGate({ navigatorLanguage: "fr-FR", lookbehindThrows: true });
   assert.ok(en.includes(MESSAGES.en.title), "unknown locale falls back to English");
 });
+
+// Guards the load order, which runGate can't model: the gate paints into #root,
+// so it must run AFTER #root is parsed. `defer` guarantees that while still
+// running before the deferred app bundle. A parser-blocking <head> script (no
+// defer) runs before <body>, finds no #root, and silently paints nothing — the
+// white screen this whole gate exists to prevent.
+test("index.html loads the gate as a deferred (not parser-blocking) script", () => {
+  const indexHtml = readFileSync(
+    fileURLToPath(new URL("../../index.html", import.meta.url)),
+    "utf8",
+  );
+  const gateTag = indexHtml.match(/<script\b[^>]*\bsrc="\/compat-gate\.js"[^>]*>/);
+  assert.ok(gateTag, "index.html must load /compat-gate.js");
+  assert.match(
+    gateTag[0],
+    /\bdefer\b/,
+    "gate script must be `defer` so #root exists when it runs",
+  );
+  assert.doesNotMatch(
+    gateTag[0],
+    /\btype="module"\b/,
+    "gate must stay a classic script so it parses on the engines it detects",
+  );
+});

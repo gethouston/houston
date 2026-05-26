@@ -1,10 +1,13 @@
 // Compatibility gate — runs BEFORE the app bundle.
 //
-// index.html loads this as a classic (non-module) <script> in <head>. Classic
-// parser-blocking scripts execute before any deferred module script by spec, so
-// this runs ahead of the app bundle regardless of where Vite injects it. It
-// lives in public/ so Vite copies it verbatim and never bundles it — keeping it
-// free of the modern syntax that the app bundle ships.
+// index.html loads this as a classic (non-module) <script defer> in <head>.
+// `defer` scripts and module scripts execute in document order after the
+// document is parsed, so this runs ahead of the deferred app bundle (it comes
+// first in the document) AND after #root exists. It must NOT be parser-blocking:
+// a parser-blocking <head> script runs before <body> is parsed, so
+// getElementById("root") would return null and nothing would paint. It lives in
+// public/ so Vite copies it verbatim and never bundles it — keeping it free of
+// the modern syntax that the app bundle ships.
 //
 // Why it exists: Tauri renders through the *system* WKWebView. macOS Monterey
 // commonly ships WebKit < 16.4, which predates regex lookbehind. Our markdown

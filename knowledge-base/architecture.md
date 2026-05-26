@@ -98,16 +98,20 @@ bundle throws `SyntaxError: invalid group specifier name` at module-eval —
 before React mounts — and the screen stays blank (issue #102). No error
 boundary can catch a module-eval crash.
 
-`app/public/compat-gate.js` is a classic (non-module) `<script>` in
-`index.html`. Classic parser-blocking scripts run before any deferred module
-bundle, and `public/` is copied verbatim (never bundled), so the gate stays
-free of the modern syntax it detects. It feature-tests lookbehind via the
-`RegExp` *constructor* (a literal would fail to parse on the very engines it
-targets) and, when unsupported, paints a localized "update macOS" message
-instead of a white screen.
+`app/public/compat-gate.js` is a classic (non-module) `<script defer>` in
+`index.html`. `defer` scripts and module scripts run in document order after the
+document is parsed, so the gate runs before the deferred app bundle (it is first
+in the document) yet after `#root` exists. It must NOT be parser-blocking: a
+parser-blocking `<head>` script runs before `<body>`, so `getElementById("root")`
+returns null and nothing paints — the white screen would persist. `public/` is
+copied verbatim (never bundled), so the gate stays free of the modern syntax it
+detects. It feature-tests lookbehind via the `RegExp` *constructor* (a literal
+would fail to parse on the very engines it targets) and, when unsupported, paints
+a localized "update macOS" message instead of a white screen.
 
-Invariants: keep it a classic script (not `type=module`), dependency-free, and
-never author a lookbehind / `v`-flag regex *literal* in it. Defense in depth:
+Invariants: keep it a classic `<script defer>` (not `type=module`, never
+parser-blocking), dependency-free, and never author a lookbehind / `v`-flag
+regex *literal* in it. Defense in depth:
 the `ui/chat` markdown renderer is wrapped in `@houston-ai/core`'s
 `ErrorBoundary`, so a render-time regex failure degrades to raw text rather
 than blanking the chat. `minimumSystemVersion` in `tauri.conf.json` stays at
