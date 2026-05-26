@@ -11,6 +11,7 @@ import {
 } from "../lib/composio-toolkits";
 import { queryKeys } from "../lib/query-keys";
 import { useUIStore } from "../stores/ui";
+import { analytics } from "../lib/analytics";
 
 /**
  * After clicking Connect, the user goes to the browser to authorize.
@@ -147,6 +148,7 @@ export function ComposioLinkCard({
     );
     const connected = fresh.includes(target);
     if (connected) {
+      analytics.track("integration_connected", { integration_slug: target });
       addToast({
         title: t("composio.verifiedToast", { name: app.name }),
         variant: "success",

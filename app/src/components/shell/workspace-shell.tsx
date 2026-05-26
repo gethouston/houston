@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Compass, Plus } from "lucide-react";
 import {
@@ -13,6 +13,7 @@ import {
   TooltipTrigger,
   type Toast,
 } from "@houston-ai/core";
+import { analytics } from "../../lib/analytics";
 import { shortcutLabel } from "../../lib/shortcuts";
 import { TabBar } from "@houston-ai/layout";
 import { useActivity } from "../../hooks/queries";
@@ -81,6 +82,21 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
       setViewMode(agentDef?.config.defaultTab ?? tabs[0].id);
     }
   }, [agentDef, isAgentView, setViewMode, tabs, viewMode]);
+
+  // Single tab_opened analytics point — watches viewMode regardless of which
+  // path triggered the change (TabBar click, sidebar nav, keyboard shortcut,
+  // programmatic redirect). Fires on real transitions only, not on initial
+  // mount (the first dashboard/agent landing already shows in install_created).
+  const lastTrackedViewModeRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (lastTrackedViewModeRef.current === null) {
+      lastTrackedViewModeRef.current = viewMode;
+      return;
+    }
+    if (lastTrackedViewModeRef.current === viewMode) return;
+    analytics.track("tab_opened", { tab_name: viewMode });
+    lastTrackedViewModeRef.current = viewMode;
+  }, [viewMode]);
 
   useKeyboardShortcuts();
 

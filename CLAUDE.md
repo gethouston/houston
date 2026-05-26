@@ -74,6 +74,8 @@ Need specific knowledge? Load on demand:
 - Custom frontend on `houston-engine` (integration reference) → `examples/smartbooks/README.md`
 - Mobile PWA (tunnel, pairing, reactivity) → `docs/mobile-architecture.md` + `docs/relay-operations.md`
 - Updater, analytics, Sentry, env vars, CI → `knowledge-base/production-infra.md`
+- Daily/weekly/monthly data rituals + dashboard reading guide → `knowledge-base/data-rituals.md`
+- UTM conventions, campaign attribution, IRL event tracking → `growth/utm-conventions.md` + `growth/campaigns/_template.md` + `scripts/event-qr.sh`
 - Supabase auth, Google SSO, Keychain → `knowledge-base/auth.md`
 - Translating UI strings, namespaces, ui/ labels prop pattern, `t()` rules → `knowledge-base/i18n.md`
 

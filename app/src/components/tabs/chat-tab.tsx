@@ -20,13 +20,23 @@ import { useSessionMessageQueue } from "../../hooks/use-session-message-queue";
 import { tauriChat, tauriAttachments, tauriConfig, tauriProvider } from "../../lib/tauri";
 import { openAgentHref } from "../../lib/open-href";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
+import { analytics } from "../../lib/analytics";
+
+function classifyFileKind(file: File): string {
+  if (file.type.startsWith("image/")) return "image";
+  if (file.type === "application/pdf") return "pdf";
+  const name = file.name.toLowerCase();
+  if (/\.(md|markdown|txt|rst)$/.test(name)) return "text";
+  if (/\.(csv|xlsx?|tsv)$/.test(name)) return "spreadsheet";
+  if (/\.(docx?|odt)$/.test(name)) return "document";
+  return "other";
+}
 import { useFileToolRenderer } from "../../hooks/use-file-tool-renderer";
 import { useConnectedToolkits, useConnections } from "../../hooks/queries";
 import {
   ComposioLinkCard,
   parseComposioToolkitFromHref,
 } from "../composio-link-card";
-import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { ChatModelSelector } from "../chat-model-selector";
@@ -84,7 +94,20 @@ export default function ChatTab({ agent }: TabProps) {
     [sessionKey],
   );
   const setComposerFiles = useCallback(
-    (files: File[]) => useDraftStore.getState().setDraftFiles(sessionKey, files),
+    (files: File[]) => {
+      const prevFiles =
+        useDraftStore.getState().drafts[sessionKey]?.files ?? [];
+      useDraftStore.getState().setDraftFiles(sessionKey, files);
+      // Only fire when the set GROWS — onAttachmentsChange is called on
+      // removal too, and we don't want to count those.
+      if (files.length > prevFiles.length) {
+        for (let i = prevFiles.length; i < files.length; i++) {
+          analytics.track("file_attached", {
+            file_kind: classifyFileKind(files[i]),
+          });
+        }
+      }
+    },
     [sessionKey],
   );
   const sendingRef = useRef(false);

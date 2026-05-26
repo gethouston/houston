@@ -386,6 +386,7 @@ export function useAgentChatPanel({
         });
         onSelectSessionRef.current?.(conversationId);
       }
+      analytics.track("skill_used", { skill_slug: skill.name });
       setActiveSkill(null);
       return true;
     },

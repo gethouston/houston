@@ -28,6 +28,8 @@
 #   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built
 #   SENTRY_DSN                         — Sentry crash reporting DSN
 #   SENTRY_AUTH_TOKEN                  — Sentry CLI auth token (org-scoped, perms: project:releases, project:read, org:read). Used to upload source maps + Rust debug symbols and create/finalize releases. Empty → skip the Sentry upload step (forks, personal builds).
+#   POSTHOG_PERSONAL_API_KEY           — PostHog personal API key (scope: annotation:write) used by the finalize job to mark every release on PostHog charts. Empty → skip the annotation step.
+#   POSTHOG_PROJECT_ID                 — PostHog project ID (numeric) the annotation lands under.
 
 name: Release
 
@@ -1137,6 +1139,41 @@ jobs:
           mv "$tmpdir/latest.next.json" "$tmpdir/latest.json"
           gh release upload "$GITHUB_REF_NAME" "$tmpdir/latest.json" --clobber
           echo "::notice::latest.json now advertises macOS + Windows (x64 + arm64) for the in-app updater"
+
+      # Drop a PostHog annotation marking this release. Every PostHog
+      # insight chart shows a vertical line at this timestamp, so any
+      # spike or drop in metrics is instantly correlatable to "did we
+      # ship something?". Skipped silently when the personal API key or
+      # project ID aren't set (forks, personal builds).
+      - name: Annotate this release in PostHog
+        if: ${{ env.POSTHOG_PERSONAL_API_KEY != '' && env.POSTHOG_PROJECT_ID != '' }}
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          HOST="${POSTHOG_HOST:-https://us.posthog.com}"
+          # Strip the i. ingestion subdomain if someone configured POSTHOG_HOST
+          # for client ingest (us.i.posthog.com). The annotation REST API
+          # lives on the regular dashboard host, not the ingest endpoint.
+          HOST="${HOST/us.i.posthog.com/us.posthog.com}"
+          HOST="${HOST/eu.i.posthog.com/eu.posthog.com}"
+
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          jq -n \
+            --arg content "Houston v$VERSION shipped" \
+            --arg date_marker "$NOW" \
+            '{ content: $content, date_marker: $date_marker, scope: "project" }' \
+            > posthog-annotation.json
+
+          curl --silent --show-error --fail \
+            -X POST "$HOST/api/projects/$POSTHOG_PROJECT_ID/annotations/" \
+            -H "Authorization: Bearer $POSTHOG_PERSONAL_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data @posthog-annotation.json
+          echo "::notice::PostHog annotation created for Houston v$VERSION"
 
       # Pings the team Slack channel so anyone can grab the DMG and try
       # the build before we publish. No-ops when

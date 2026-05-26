@@ -38,6 +38,10 @@ export default function App() {
     analytics.init().then(({ isNew }) => {
       analytics.trackActive();
       if (isNew) analytics.track("install_created");
+      // `session_started` fires every app launch (cf. `app_active` which
+      // dedupes per UTC day for DAU). Lets us measure sessions-per-day
+      // intensity AND time-of-day usage patterns.
+      analytics.track("session_started");
     });
     loadTheme();
   }, []);
