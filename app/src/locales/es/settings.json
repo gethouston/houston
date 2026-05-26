@@ -7,6 +7,7 @@
     "userContext": "Contexto del usuario",
     "provider": "Proveedor de IA",
     "phone": "Conectar celular",
+    "shortcuts": "Atajos de teclado",
     "reportBug": "Reportar bug"
   },
   "account": {
@@ -81,6 +82,10 @@
     "confirmTitle": "¿Eliminar \"{{name}}\"?",
     "confirmDescription": "Esto eliminará de forma permanente este espacio de trabajo y todos sus agentes. No se puede deshacer.",
     "confirmLabel": "Eliminar"
+  },
+  "shortcuts": {
+    "title": "Atajos de teclado",
+    "description": "Usa Houston sin tocar el mouse."
   },
   "reportBug": {
     "title": "Reportar bug",

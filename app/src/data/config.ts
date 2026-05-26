@@ -7,7 +7,7 @@ export interface Config {
   name?: string;
   provider?: "anthropic" | "openai";
   model?: string;
-  effort?: "low" | "medium" | "high";
+  effort?: "low" | "medium" | "high" | "xhigh" | "max";
   [extra: string]: unknown;
 }
 

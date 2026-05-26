@@ -3,12 +3,14 @@ import type { TabProps } from "../lib/types";
 import type { AgentTab } from "./standard-tabs";
 import BoardTab from "../components/tabs/board-tab";
 import FilesTab from "../components/tabs/files-tab";
+import IntegrationsTab from "../components/tabs/integrations-tab";
 import JobDescriptionTab from "../components/tabs/job-description-tab";
 import RoutinesTab from "../components/tabs/routines-tab";
 
 const BUILTIN_TABS: Record<string, ComponentType<TabProps>> = {
   board: BoardTab,
   files: FilesTab,
+  integrations: IntegrationsTab,
   "job-description": JobDescriptionTab,
   routines: RoutinesTab,
 };

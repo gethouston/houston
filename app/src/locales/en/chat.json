@@ -58,7 +58,22 @@
   "modelSelector": {
     "selectModel": "Select model",
     "model": "Model",
-    "notConnected": "Not connected"
+    "notConnected": "Not connected",
+    "effort": "Reasoning effort",
+    "effortLevels": {
+      "low": "Low",
+      "medium": "Medium",
+      "high": "High",
+      "xhigh": "Extra high",
+      "max": "Max"
+    },
+    "effortDescriptions": {
+      "low": "Fastest, lightest thinking.",
+      "medium": "Balanced speed and depth.",
+      "high": "Deeper thinking for harder work.",
+      "xhigh": "Best for complex, agentic tasks.",
+      "max": "Deepest thinking, no token limit."
+    }
   },
   "reasoning": {
     "thinking": "Thinking...",

@@ -22,7 +22,7 @@
     "campaigns.json": "[]",
     "config/context-ledger.json": "{\n  \"universal\": {},\n  \"domains\": {\n    \"sources\": {},\n    \"enrichment\": {},\n    \"sending\": {}\n  }\n}\n"
   },
-  "version": "0.1.1",
+  "version": "0.1.2",
   "image": "envelope-with-arrow",
   "integrations": [
     "airtable",

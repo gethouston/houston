@@ -45,8 +45,10 @@ pub(crate) async fn spawn_claude(
     disable_all_tools: bool,
 ) {
     tracing::info!(
-        "[houston:session] spawning claude -p (resume={:?})",
-        resume_session_id
+        "[houston:session] spawning claude -p (resume={:?}, model={:?}, effort={:?})",
+        resume_session_id,
+        model,
+        effort,
     );
 
     if let Some(ref dir) = working_dir {

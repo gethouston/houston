@@ -105,7 +105,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             Some(self.rt.pid_map.clone()),
             resolved.provider,
             resolved.model,
-            None,
+            sessions::resolve_effort(ctx.working_dir, resolved.provider),
         );
 
         match join_handle.await {

@@ -1,17 +1,17 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { ChevronDown, Check } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
 } from "@houston-ai/core";
 import { tauriProvider, type ProviderStatus } from "../lib/tauri";
-import { PROVIDERS, getProvider, getModel, type ProviderInfo } from "../lib/providers";
-import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
+import { PROVIDERS, getProvider, getModel } from "../lib/providers";
+import {
+  ProviderModelGroup,
+  ProviderIcon,
+} from "./chat-model-selector-parts";
 
 interface ChatModelSelectorProps {
   /** Current provider id (from workspace/agent config). */
@@ -28,7 +28,12 @@ interface ChatModelSelectorProps {
   lockedProvider?: string | null;
 }
 
-export function ChatModelSelector({ provider, model, onSelect, lockedProvider }: ChatModelSelectorProps) {
+export function ChatModelSelector({
+  provider,
+  model,
+  onSelect,
+  lockedProvider,
+}: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
 
@@ -115,82 +120,4 @@ export function ChatModelSelector({ provider, model, onSelect, lockedProvider }:
       </DropdownMenu>
     </div>
   );
-}
-
-function ProviderModelGroup({
-  provider,
-  connected,
-  isActiveProvider,
-  activeModel,
-  onSelect,
-  showSeparator,
-}: {
-  provider: ProviderInfo;
-  connected: boolean;
-  isActiveProvider: boolean;
-  activeModel: string | null;
-  onSelect: (provider: string, model: string) => void;
-  showSeparator: boolean;
-}) {
-  const { t } = useTranslation("chat");
-  return (
-    <>
-      {showSeparator && <DropdownMenuSeparator />}
-      <DropdownMenuLabel className="flex items-center gap-1.5 text-xs text-muted-foreground font-normal">
-        <ProviderIcon providerId={provider.id} className="size-3.5" />
-        {provider.name}
-        {!connected && (
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.notConnected")}</span>
-        )}
-      </DropdownMenuLabel>
-      {provider.models.map((m) => {
-        const isActive = isActiveProvider && m.id === activeModel;
-        return (
-          <DropdownMenuItem
-            key={m.id}
-            disabled={!connected}
-            onPointerDown={(e) => e.stopPropagation()}
-            onClick={(e) => {
-              e.stopPropagation();
-              onSelect(provider.id, m.id);
-            }}
-            className="flex items-start gap-2.5 py-1.5"
-          >
-            <div className="w-4 shrink-0 mt-0.5 flex justify-center">
-              {isActive && <Check className="h-3.5 w-3.5 text-foreground" />}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-sm">{m.label}</div>
-              <div className="text-xs text-muted-foreground leading-snug">{m.description}</div>
-            </div>
-          </DropdownMenuItem>
-        );
-      })}
-    </>
-  );
-}
-
-/**
- * Exhaustive icon dispatch for active providers. Mirrors the `ProviderLogo`
- * switch in provider-cards.tsx. The wrapper div sizes the underlying logo
- * (which renders at its native viewBox); the chat panel uses size-3.5 vs
- * the provider picker's size-5.
- */
-function ProviderIcon({ providerId, className }: { providerId: string; className?: string }) {
-  return (
-    <span className={className} style={{ display: "inline-flex" }}>
-      {iconFor(providerId)}
-    </span>
-  );
-}
-
-function iconFor(providerId: string) {
-  switch (providerId) {
-    case "anthropic":
-      return <ClaudeLogo className="size-full" />;
-    case "openai":
-      return <OpenAILogo className="size-full" />;
-    default:
-      return null;
-  }
 }

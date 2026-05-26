@@ -2,7 +2,6 @@
   "sidebar": {
     "missionControl": "Mission Control",
     "integrations": "Integrations",
-    "commands": "Commands",
     "settings": "Settings",
     "yourAgents": "Your Agents",
     "selectWorkspace": "Select workspace",

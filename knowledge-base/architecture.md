@@ -73,9 +73,12 @@ detailed in `knowledge-base/cli-bundling.md`.
 as a subprocess on startup (sidecar via Tauri `externalBin`), parses
 the stdout `HOUSTON_ENGINE_LISTENING` banner for `{port, token}`, and
 talks to it over HTTP+WS — the same way a remote client on a VPS
-would. The supervisor (`app/src-tauri/src/engine_supervisor.rs`) pipes
-stdin so engine sees EOF on parent death and exits cleanly (no orphan
-engines holding ports). All domain Tauri commands are deleted — only
+would. The supervisor (`app/src-tauri/src/engine_supervisor.rs`) binds the
+engine's lifetime to the app's: on Unix via piped stdin (engine exits on
+EOF when the parent dies), on Windows via a kill-on-close Job Object
+(`TerminateProcess` never delivers stdin EOF, so the job is what reaps the
+engine and its children). No orphan engines holding ports. All domain
+Tauri commands are deleted — only
 OS-native glue remains in `app/src-tauri/src/commands/`.
 
 ## App-side Rust (`app/`)
@@ -88,6 +91,35 @@ OS-native glue remains in `app/src-tauri/src/commands/`.
   crates. Spawns the engine subprocess in `setup()`, waits for
   `/v1/health`, injects `window.__HOUSTON_ENGINE__` handshake before
   the React tree mounts (see `EngineGate` in `app/src/main.tsx`).
+
+## App boot — WebView compatibility gate
+
+Tauri renders through the *system* WKWebView, so our minimum engine is the
+user's OS, not something we ship. macOS Monterey commonly runs WebKit < 16.4
+(no regex lookbehind); the markdown stack ships a lookbehind literal, so the
+bundle throws `SyntaxError: invalid group specifier name` at module-eval —
+before React mounts — and the screen stays blank (issue #102). No error
+boundary can catch a module-eval crash.
+
+`app/public/compat-gate.js` is a classic (non-module) `<script defer>` in
+`index.html`. `defer` scripts and module scripts run in document order after the
+document is parsed, so the gate runs before the deferred app bundle (it is first
+in the document) yet after `#root` exists. It must NOT be parser-blocking: a
+parser-blocking `<head>` script runs before `<body>`, so `getElementById("root")`
+returns null and nothing paints — the white screen would persist. `public/` is
+copied verbatim (never bundled), so the gate stays free of the modern syntax it
+detects. It feature-tests lookbehind via the `RegExp` *constructor* (a literal
+would fail to parse on the very engines it targets) and, when unsupported, paints
+a localized "update macOS" message instead of a white screen.
+
+Invariants: keep it a classic `<script defer>` (not `type=module`, never
+parser-blocking), dependency-free, and never author a lookbehind / `v`-flag
+regex *literal* in it. Defense in depth:
+the `ui/chat` markdown renderer is wrapped in `@houston-ai/core`'s
+`ErrorBoundary`, so a render-time regex failure degrades to raw text rather
+than blanking the chat. `minimumSystemVersion` in `tauri.conf.json` stays at
+`10.15` (install-time native-binary floor) — the capability gate, not the OS
+version, decides whether the UI can actually run.
 
 ## UI packages (`ui/`)
 

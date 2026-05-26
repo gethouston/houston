@@ -27,12 +27,22 @@
     "manageOn": "Gerenciar {{name}}",
     "dotAria": "Conectado"
   },
+  "signOut": {
+    "button": "Sair",
+    "loading": "Saindo…",
+    "confirmTitle": "Sair do Composio?",
+    "confirmBody": "Você vai precisar entrar de novo e reconectar os apps que usa. Isso não desinstala o provedor.",
+    "confirmAction": "Sair",
+    "cancel": "Cancelar"
+  },
   "browse": {
     "title": "Ver todos os apps",
     "count_one": "{{count}} app",
     "count_other": "{{count}} apps",
     "searchPlaceholder": "Buscar apps...",
     "allCategories": "Todas as categorias",
+    "searchCategories": "Buscar categorias...",
+    "noCategoryResults": "Nenhuma categoria corresponde à busca.",
     "noResults": "Nenhum app corresponde à busca.",
     "loadMoreWithRemaining": "Carregar mais ({{count}} restantes)",
     "connectTitle": "Conectar {{name}}"

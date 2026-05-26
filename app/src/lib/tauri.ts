@@ -404,6 +404,7 @@ export const tauriConnections = {
     }),
   completeLogin: (cliKey: string) =>
     call<void>("complete_composio_login", () => getEngine().composioCompleteLogin(cliKey)),
+  logout: () => call<void>("logout_composio", () => getEngine().composioLogout()),
   isCliInstalled: () =>
     call<boolean>("is_composio_cli_installed", () => getEngine().composioCliInstalled()),
   installCli: () => call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
