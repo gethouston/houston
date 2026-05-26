@@ -9,6 +9,7 @@ import { useAgentStore } from "../stores/agents";
 import { useSessionStatusStore } from "../stores/session-status";
 import { subscribeHoustonEvents, listenOsEvent } from "../lib/events";
 import { logger } from "../lib/logger";
+import { resolveNotificationTarget } from "../lib/notification-nav";
 import { tauriClaude } from "../lib/tauri";
 import { hasToolRuntimeError } from "../components/tool-runtime-feed";
 import {
@@ -98,26 +99,28 @@ export function useSessionEvents() {
           }
           if (status === "completed") {
             const workspace = h.getWorkspace();
-            const agent = h.getAgent();
             const workspaceName = workspace?.name ?? "Houston";
-            const agentName = agent?.name ?? "Agent";
-            let nav: { agentId: string; activityId: string } | undefined;
 
             // Activity status flip (→ "needs_you") is owned by the
             // engine now — `sessions::start` spawns a task that writes
             // the terminal status after the runner finishes and emits
             // `ActivityChanged`. That way phone-only users (and
             // anything else that skips this webview) see the same
-            // transition. We still need the activityId for the
-            // notification nav target.
-            if (session_key.startsWith("activity-") && !session_key.startsWith("routine-")) {
-              const activityId = session_key.replace("activity-", "");
-              // Only navigate if the completed session belongs to the currently-open agent.
-              if (agent?.id && agent.folderPath === agent_path) {
-                nav = { agentId: agent.id, activityId };
-              } else {
-                logger.debug(`[notification] session completed for a non-active agent: agent_path=${agent_path}`);
-              }
+            // transition. Here we only need the notification title + the
+            // click-to-navigate target.
+            //
+            // Target the agent that *finished* (matched by folder path),
+            // not the currently-open one, so clicking the notification
+            // jumps to it even after the user switched agents or closed
+            // the chat. consumePendingNav() switches the active agent.
+            const { agentName, nav } = resolveNotificationTarget(
+              useAgentStore.getState().agents,
+              agent_path,
+              session_key,
+              h.getAgent()?.name ?? "Agent",
+            );
+            if (!nav && session_key.startsWith("activity-") && !session_key.startsWith("routine-")) {
+              logger.debug(`[notification] completed agent not in loaded list: agent_path=${agent_path}`);
             }
 
             sendSessionNotification(`${workspaceName} — ${agentName}`, "Your agent has finished working.", nav);
