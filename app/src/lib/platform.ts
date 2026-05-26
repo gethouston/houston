@@ -7,6 +7,18 @@
  * notifications through the JS plugin on macOS vs. the Rust command on
  * Linux/Windows). Anything finer-grained belongs in Rust behind `#[cfg]`.
  */
+/**
+ * Pure macOS check over raw `navigator` fields, exported for tests. Prefers
+ * `platform` and falls back to `userAgent` (some webviews leave `platform`
+ * empty). The runtime `isMac` const below is the only production caller.
+ */
+export function isMacPlatform(
+  platform: string | undefined | null,
+  userAgent: string | undefined | null,
+): boolean {
+  return /mac/i.test(platform || userAgent || "");
+}
+
 export const isMac =
   typeof navigator !== "undefined" &&
-  /mac/i.test(navigator.platform || navigator.userAgent || "");
+  isMacPlatform(navigator.platform, navigator.userAgent);

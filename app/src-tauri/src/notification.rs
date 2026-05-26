@@ -114,19 +114,24 @@ mod linux {
 #[cfg(target_os = "windows")]
 mod windows {
     use super::activate_main_window;
-    use tauri::{AppHandle, Manager};
+    use tauri::AppHandle;
     use tauri_winrt_notification::Toast;
 
-    pub fn show(app: AppHandle, title: String, body: String) -> Result<(), String> {
-        // Installed builds register the `com.houston.app` AUMID so the toast
-        // carries Houston's icon + name; unregistered dev builds fall back to
-        // the PowerShell AUMID — the same split tauri-plugin-notification uses.
-        // `on_activated` fires in-process when the toast is clicked.
-        let app_id = if cfg!(debug_assertions) {
+    /// Pick the toast's Application User Model ID. Installed builds register the
+    /// `com.houston.app` AUMID so the toast carries Houston's icon + name;
+    /// unregistered dev builds fall back to the PowerShell AUMID — the same
+    /// split tauri-plugin-notification uses.
+    fn resolve_toast_app_id(debug: bool, identifier: &str) -> String {
+        if debug {
             Toast::POWERSHELL_APP_ID.to_string()
         } else {
-            app.config().identifier.clone()
-        };
+            identifier.to_string()
+        }
+    }
+
+    pub fn show(app: AppHandle, title: String, body: String) -> Result<(), String> {
+        // `on_activated` fires in-process when the toast is clicked.
+        let app_id = resolve_toast_app_id(cfg!(debug_assertions), &app.config().identifier);
         let activate = app.clone();
         Toast::new(&app_id)
             .title(&title)
@@ -137,6 +142,27 @@ mod windows {
             })
             .show()
             .map_err(|e| format!("failed to show toast: {e}"))
+    }
+
+    #[cfg(test)]
+    mod tests {
+        use super::resolve_toast_app_id;
+        use tauri_winrt_notification::Toast;
+
+        #[test]
+        fn release_uses_app_identifier_and_dev_uses_powershell() {
+            // Release: the toast must carry Houston's registered AUMID so the
+            // OS shows our icon/name and routes the click back to us.
+            assert_eq!(
+                resolve_toast_app_id(false, "com.houston.app").as_str(),
+                "com.houston.app",
+            );
+            // Dev: no AUMID is registered, so fall back to PowerShell's.
+            assert_eq!(
+                resolve_toast_app_id(true, "com.houston.app").as_str(),
+                Toast::POWERSHELL_APP_ID,
+            );
+        }
     }
 }
 
