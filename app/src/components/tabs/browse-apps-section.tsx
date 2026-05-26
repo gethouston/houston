@@ -1,7 +1,17 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Search, Loader2, Plus, ChevronDown } from "lucide-react";
+import { Search, Loader2, Plus, ChevronDown, Check } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import {
+  Command,
+  CommandEmpty,
+  CommandInput,
+  CommandItem,
+  CommandList,
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@houston-ai/core";
 import { tauriConnections, tauriSystem } from "../../lib/tauri";
 import { useComposioRefetchOnReturn } from "../../hooks/use-composio-refetch-on-return";
 
@@ -15,6 +25,7 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
   const { t } = useTranslation("integrations");
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("all");
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
   const [connecting, setConnecting] = useState<string | null>(null);
   const markWaitingForAuth = useComposioRefetchOnReturn();
@@ -37,15 +48,15 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
   }, [apiApps]);
 
   const categories = useMemo(() => {
-    const counts = new Map<string, number>();
+    const seen = new Set<string>();
     for (const app of catalog) {
       for (const cat of app.categories) {
-        counts.set(cat, (counts.get(cat) ?? 0) + 1);
+        seen.add(cat);
       }
     }
-    return Array.from(counts.entries())
-      .sort((a, b) => b[1] - a[1])
-      .map(([name]) => name);
+    return Array.from(seen).sort((a, b) =>
+      categoryLabel(a).localeCompare(categoryLabel(b)),
+    );
   }, [catalog]);
 
   const available = useMemo(() => {
@@ -112,24 +123,61 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
           />
         </div>
         {categories.length > 0 && (
-          <div className="relative">
-            <select
-              value={category}
-              onChange={(e) => {
-                setCategory(e.target.value);
-                setVisible(PAGE_SIZE);
-              }}
-              className="h-9 pl-3 pr-8 rounded-full border border-border bg-background text-sm text-foreground appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring/20"
+          <Popover open={categoryOpen} onOpenChange={setCategoryOpen}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                aria-label={t("browse.allCategories")}
+                className="inline-flex h-9 items-center gap-2 pl-3 pr-2.5 rounded-full border border-border bg-background text-sm text-foreground cursor-pointer hover:bg-secondary focus:outline-none focus:ring-2 focus:ring-ring/20"
+              >
+                <span className="truncate max-w-[180px]">
+                  {category === "all"
+                    ? t("browse.allCategories")
+                    : categoryLabel(category)}
+                </span>
+                <ChevronDown className="size-3.5 text-muted-foreground shrink-0" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent
+              align="end"
+              className="w-60 p-0"
             >
-              <option value="all">{t("browse.allCategories")}</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, " ")}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-          </div>
+              <Command>
+                <CommandInput placeholder={t("browse.searchCategories")} />
+                <CommandList>
+                  <CommandEmpty>{t("browse.noCategoryResults")}</CommandEmpty>
+                  <CommandItem
+                    value={t("browse.allCategories")}
+                    onSelect={() => {
+                      setCategory("all");
+                      setVisible(PAGE_SIZE);
+                      setCategoryOpen(false);
+                    }}
+                  >
+                    <span className="flex-1">{t("browse.allCategories")}</span>
+                    {category === "all" && <Check className="size-4" />}
+                  </CommandItem>
+                  {categories.map((cat) => {
+                    const label = categoryLabel(cat);
+                    return (
+                      <CommandItem
+                        key={cat}
+                        value={label}
+                        onSelect={() => {
+                          setCategory(cat);
+                          setVisible(PAGE_SIZE);
+                          setCategoryOpen(false);
+                        }}
+                      >
+                        <span className="flex-1">{label}</span>
+                        {category === cat && <Check className="size-4" />}
+                      </CommandItem>
+                    );
+                  })}
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         )}
       </div>
 
@@ -229,4 +277,8 @@ function AppCard({
 
 function fallbackLogo(toolkit: string): string {
   return `https://www.google.com/s2/favicons?domain=${toolkit}.com&sz=128`;
+}
+
+function categoryLabel(cat: string): string {
+  return cat.charAt(0).toUpperCase() + cat.slice(1).replace(/-/g, " ");
 }

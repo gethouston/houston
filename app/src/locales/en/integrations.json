@@ -41,6 +41,8 @@
     "count_other": "{{count}} apps",
     "searchPlaceholder": "Search apps...",
     "allCategories": "All categories",
+    "searchCategories": "Search categories...",
+    "noCategoryResults": "No matching categories.",
     "noResults": "No matching apps found.",
     "loadMoreWithRemaining": "Load more ({{count}} remaining)",
     "connectTitle": "Connect {{name}}"
