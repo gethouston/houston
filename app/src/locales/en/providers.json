@@ -27,7 +27,18 @@
     "installingWithProgress": "Downloading Claude Code... {{progress}}%",
     "failedTitle": "Houston couldn't download Claude Code",
     "preparing": "Houston is downloading Claude Code in the background. If it doesn't start, try again below.",
-    "retry": "Retry download"
+    "retry": "Retry download",
+    "errors": {
+      "timeout": "The download took too long. Check your internet connection and try again.",
+      "networkUnreachable": "Couldn't reach Anthropic. Check your internet connection and try again.",
+      "downloadInterrupted": "The download was interrupted. Check your internet connection and try again.",
+      "httpError": "Anthropic's servers had a problem (error {{status}}). Try again in a few minutes.",
+      "checksumMismatch": "The download didn't arrive intact. Check your connection and try again.",
+      "platformUnsupported": "Claude Code isn't available for this device yet.",
+      "writeFailed": "Houston couldn't save Claude Code to your computer. Make sure there's enough space and try again.",
+      "unavailable": "Houston couldn't start the download. Try again in a moment.",
+      "unknown": "Something went wrong while downloading Claude Code. Try again."
+    }
   },
   "signOutConfirm": {
     "title": "Sign out of {{provider}}?",

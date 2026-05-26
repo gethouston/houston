@@ -1,7 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { AlertTriangle, Download, Loader2, RefreshCw } from "lucide-react";
 import { Button } from "@houston-ai/core";
-import type { ClaudeInstallState } from "../../hooks/use-claude-install";
+import {
+  useClaudeInstallErrorText,
+  type ClaudeInstallState,
+} from "../../hooks/use-claude-install";
 
 /**
  * Replacement for the generic "install the CLI yourself" hint when the
@@ -12,6 +15,7 @@ import type { ClaudeInstallState } from "../../hooks/use-claude-install";
  */
 export function ClaudeInstallHint({ state }: { state: ClaudeInstallState }) {
   const { t } = useTranslation("providers");
+  const errorText = useClaudeInstallErrorText();
 
   if (state.installing) {
     const label =
@@ -28,14 +32,14 @@ export function ClaudeInstallHint({ state }: { state: ClaudeInstallState }) {
     );
   }
 
-  if (state.errorMessage) {
+  if (state.error) {
     return (
       <div className="flex flex-col gap-2">
         <div className="flex items-start gap-2 text-xs text-foreground">
           <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-amber-600" />
           <div className="flex flex-col gap-0.5">
             <span className="font-medium">{t("claudeInstall.failedTitle")}</span>
-            <span className="text-muted-foreground">{state.errorMessage}</span>
+            <span className="text-muted-foreground">{errorText(state.error)}</span>
           </div>
         </div>
         <Button
