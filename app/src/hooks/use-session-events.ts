@@ -9,7 +9,8 @@ import { useAgentStore } from "../stores/agents";
 import { useSessionStatusStore } from "../stores/session-status";
 import { subscribeHoustonEvents, listenOsEvent } from "../lib/events";
 import { logger } from "../lib/logger";
-import { resolveNotificationTarget } from "../lib/notification-nav";
+import { isMac } from "../lib/platform";
+import { resolveNotificationTarget, shouldNavigateOnAppActivation } from "../lib/notification-nav";
 import { tauriClaude } from "../lib/tauri";
 import { hasToolRuntimeError } from "../components/tool-runtime-feed";
 import {
@@ -180,12 +181,21 @@ export function useSessionEvents() {
       });
     });
 
-    // Case: app in background — user clicks notification → OS activates app →
-    // Rust emits "app-activated" via RunEvent::Resumed → we consume pending nav.
-    // Also refresh the agent list so any external changes (e.g. Finder delete) are picked up.
+    // `app-activated` fires on ANY foregrounding (window focus, dock click,
+    // RunEvent::Resumed) — not just a notification click. So it drives two
+    // different things:
+    //
+    //  - Navigation: only on macOS, where the JS notification plugin has no
+    //    desktop click event and a click is indistinguishable from activation.
+    //    On Linux/Windows a real click arrives as the distinct
+    //    `notification-clicked` event below, so navigating here would yank the
+    //    user back to a finished mission whenever they refocus Houston for any
+    //    reason — the bug we're fixing.
+    //  - Agent-list refresh: always, so external changes (e.g. Finder delete)
+    //    are picked up when the window comes forward.
     const unlistenActivated = listenOsEvent<unknown>("app-activated", () => {
       logger.debug(`[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`);
-      consumePendingNav();
+      if (shouldNavigateOnAppActivation(isMac)) consumePendingNav();
       const ws = useWorkspaceStore.getState().current;
       if (ws) {
         // Silent refresh — don't flip loading:true, which would unmount the
@@ -194,12 +204,21 @@ export function useSessionEvents() {
       }
     });
 
-    // Fallback: Tauri window focus event (fires when user switches to the app any way).
+    // Linux/Windows: a genuine notification click (emitted by notification.rs).
+    // This is the ONLY foregrounding that should navigate to the finished
+    // mission on those platforms. macOS never emits it (uses the focus path).
+    const unlistenNotifClick = listenOsEvent<unknown>("notification-clicked", () => {
+      logger.debug(`[notification] notification-clicked event fired: pendingNav=${describePendingNotificationNav()}`);
+      consumePendingNav();
+    });
+
+    // Fallback: Tauri window focus event (macOS only — see listenForNotificationFocus).
     const unlistenTauriFocus = listenForNotificationFocus();
 
     return () => {
       unlisten();
       unlistenActivated();
+      unlistenNotifClick();
       unlistenNotificationAction?.();
       unlistenTauriFocus?.then((fn) => fn()).catch((e) => {
         logger.debug(`[notification] Tauri focus listener cleanup failed: ${e}`);

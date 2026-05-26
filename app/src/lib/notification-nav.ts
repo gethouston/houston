@@ -64,6 +64,8 @@ export function resolveNotificationTarget(
 export interface PendingActivityArgs {
   /** Published nav target (`activityPanelId`), or null when none is pending. */
   pendingActivityId: string | null;
+  /** Explicit user navigation, such as a notification click, may replace an open chat. */
+  forceOpen?: boolean;
   /** True only at the moment the board's active agent changed under it. */
   agentSwitched: boolean;
   /** Activity whose chat is currently open on the board, or null. */
@@ -89,12 +91,44 @@ export interface PendingActivityArgs {
  */
 export function resolvePendingActivitySelection({
   pendingActivityId,
+  forceOpen = false,
   agentSwitched,
   selectedId,
   missionPanelOpen,
 }: PendingActivityArgs): string | null {
   if (!pendingActivityId) return null;
+  if (forceOpen) return pendingActivityId;
   if (agentSwitched) return pendingActivityId;
   if (selectedId || missionPanelOpen) return null;
   return pendingActivityId;
+}
+
+/**
+ * Whether a session-finished notification should arm its click-to-navigate
+ * target. Linux/Windows have a distinct native click event, so arming while
+ * focused is safe and required: the user may click the toast while working in a
+ * different Houston chat. macOS has no desktop click event in the JS plugin, so
+ * focus is the click proxy there and we only arm while backgrounded.
+ */
+export function shouldArmNotificationNav(
+  windowFocused: boolean,
+  hasNativeClickEvent: boolean,
+): boolean {
+  return hasNativeClickEvent || !windowFocused;
+}
+
+/**
+ * Whether a generic app foregrounding (`app-activated` / window focus) should
+ * consume the pending notification nav and jump to the finished mission.
+ *
+ * Only on macOS. There the JS notification plugin exposes no desktop click
+ * event, so a notification click only manifests as the app activating — focus
+ * is the sole signal. On Linux/Windows the Rust click handler (`notification.rs`)
+ * emits a distinct `notification-clicked` event, so nav is driven by that real
+ * click alone; navigating on any other refocus (alt-tab, dock click, resume)
+ * would yank the user out of whatever they were doing when a mission finished in
+ * the background. See `hooks/use-session-events.ts` + `session-notifications.ts`.
+ */
+export function shouldNavigateOnAppActivation(isMacPlatform: boolean): boolean {
+  return isMacPlatform;
 }

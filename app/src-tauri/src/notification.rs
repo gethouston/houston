@@ -14,15 +14,17 @@
 //!
 //! Linux notification clicks don't focus the source window, and Windows toast
 //! clicks don't reliably raise it, so that incidental path never fires there.
-//! Here we show the notification ourselves and wire its click to the same
-//! outcome: raise + focus the main window and emit `app-activated`. The
-//! frontend navigation logic is unchanged — it already stashes the target in
-//! `pendingNotificationNav` and consumes it on `app-activated`.
+//! Here we show the notification ourselves and wire its click to raise + focus
+//! the main window and emit a distinct `notification-clicked` event. The
+//! frontend stashes the nav target in `pendingNotificationNav` and consumes it
+//! on `notification-clicked` — NOT on the generic `app-activated`, which also
+//! fires on any alt-tab / dock click / resume and would otherwise yank the user
+//! to a finished mission whenever they refocus Houston.
 
 use tauri::AppHandle;
 
 /// Show a native notification whose click raises Houston and emits
-/// `app-activated`. macOS keeps using the JS notification plugin (see
+/// `notification-clicked`. macOS keeps using the JS notification plugin (see
 /// `session-notifications.ts`) and never invokes this command.
 #[tauri::command(rename_all = "snake_case")]
 pub fn show_session_notification(
@@ -47,9 +49,13 @@ pub fn show_session_notification(
     }
 }
 
-/// Raise + focus the main window and tell the frontend the app was activated.
-/// Mirrors the single-instance handler in `lib.rs`; `app-activated` is what the
-/// frontend listens for to consume `pendingNotificationNav`.
+/// Raise + focus the main window in response to a real notification click, then
+/// signal that click to the frontend. We emit `notification-clicked` rather than
+/// the generic `app-activated`: the latter also fires on any alt-tab / dock
+/// click / resume (see `lib.rs`), and nav to the finished mission must happen
+/// only on a genuine click, never on an incidental refocus. The window-raise
+/// still triggers `WindowEvent::Focused(true)` -> `app-activated`, which is what
+/// refreshes the agent list. See `use-session-events.ts`.
 #[cfg(any(target_os = "linux", target_os = "windows"))]
 fn activate_main_window(app: &AppHandle) {
     use tauri::{Emitter, Manager};
@@ -65,8 +71,18 @@ fn activate_main_window(app: &AppHandle) {
             tracing::warn!("[notification] set_focus failed: {e}");
         }
     }
-    if let Err(e) = app.emit("app-activated", ()) {
-        tracing::error!("[notification] failed to emit app-activated: {e}");
+    tracing::info!("[notification] click → emitting notification-clicked");
+    // The click callback runs on a platform notification thread (the WinRT toast
+    // callback / notify-rust's D-Bus loop). Marshal the emit onto the main
+    // thread so the event reliably reaches the webview regardless of that
+    // thread's context.
+    let emitter = app.clone();
+    if let Err(e) = app.run_on_main_thread(move || {
+        if let Err(e) = emitter.emit("notification-clicked", ()) {
+            tracing::error!("[notification] failed to emit notification-clicked: {e}");
+        }
+    }) {
+        tracing::error!("[notification] run_on_main_thread failed: {e}");
     }
 }
 
@@ -132,6 +148,7 @@ mod windows {
     pub fn show(app: AppHandle, title: String, body: String) -> Result<(), String> {
         // `on_activated` fires in-process when the toast is clicked.
         let app_id = resolve_toast_app_id(cfg!(debug_assertions), &app.config().identifier);
+        tracing::info!("[notification] showing Windows toast (app_id={app_id})");
         let activate = app.clone();
         Toast::new(&app_id)
             .title(&title)

@@ -104,8 +104,9 @@ export function osWriteFrontendLog(
 }
 
 /** Show a native "agent finished" notification on Linux/Windows whose click
- * raises the window and emits `app-activated` (which navigates to the mission).
- * macOS uses the JS notification plugin instead — see session-notifications.ts. */
+ * raises the window and emits `notification-clicked` (which navigates to the
+ * mission — a plain refocus does not). macOS uses the JS notification plugin
+ * instead — see session-notifications.ts. */
 export function osShowSessionNotification(title: string, body: string): Promise<void> {
   return invoke<void>("show_session_notification", { title, body });
 }

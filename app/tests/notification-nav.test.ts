@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   resolveNotificationTarget,
   resolvePendingActivitySelection,
+  shouldArmNotificationNav,
+  shouldNavigateOnAppActivation,
   type NavAgent,
 } from "../src/lib/notification-nav.ts";
 
@@ -105,6 +107,32 @@ describe("resolvePendingActivitySelection", () => {
     );
   });
 
+  it("force-opens the pending target over an open same-agent conversation", () => {
+    strictEqual(
+      resolvePendingActivitySelection({
+        pendingActivityId: "act-A",
+        forceOpen: true,
+        agentSwitched: false,
+        selectedId: "act-Z",
+        missionPanelOpen: true,
+      }),
+      "act-A",
+    );
+  });
+
+  it("force-opens the pending target over a same-agent composer", () => {
+    strictEqual(
+      resolvePendingActivitySelection({
+        pendingActivityId: "act-A",
+        forceOpen: true,
+        agentSwitched: false,
+        selectedId: null,
+        missionPanelOpen: true,
+      }),
+      "act-A",
+    );
+  });
+
   it("does not interrupt a New Mission composer on the same agent", () => {
     strictEqual(
       resolvePendingActivitySelection({
@@ -127,5 +155,38 @@ describe("resolvePendingActivitySelection", () => {
       }),
       null,
     );
+  });
+});
+
+describe("shouldArmNotificationNav", () => {
+  it("arms the click target when the app is backgrounded", () => {
+    strictEqual(shouldArmNotificationNav(false, false), true);
+  });
+
+  // Regression for focused Windows/Linux: user can be in another Houston chat,
+  // click the toast, and still navigate because the native click event is the
+  // consume signal.
+  it("arms while focused when a native click event exists", () => {
+    strictEqual(shouldArmNotificationNav(true, true), true);
+  });
+
+  // macOS has no desktop click event from the JS plugin, so focus is the click
+  // proxy there. Don't arm while already focused or a later refocus could yank.
+  it("does not arm while focused when focus is the only click signal", () => {
+    strictEqual(shouldArmNotificationNav(true, false), false);
+  });
+});
+
+describe("shouldNavigateOnAppActivation", () => {
+  it("navigates on app activation only on macOS (no desktop click event there)", () => {
+    strictEqual(shouldNavigateOnAppActivation(true), true);
+  });
+
+  // Regression for the refocus-yank: on Linux/Windows a plain foregrounding
+  // (alt-tab, taskbar, resume) must NOT navigate — only the distinct
+  // notification-clicked event does. Otherwise returning to Houston after a
+  // mission finished in the background throws the user into that mission.
+  it("does not navigate on app activation on Linux/Windows", () => {
+    strictEqual(shouldNavigateOnAppActivation(false), false);
   });
 });

@@ -133,6 +133,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
 
   // Read and consume pending selection from Mission Control
   const pendingId = useUIStore((s) => s.activityPanelId);
+  const pendingForceOpen = useUIStore((s) => s.activityPanelForceOpen);
   const clearPending = useUIStore((s) => s.setActivityPanelId);
   const [selectedId, setSelectedId] = useState<string | null>(pendingId);
   // The keyboard "focus ring" card — moved by arrow keys, opened by
@@ -161,6 +162,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     setTrackedAgentId(agent.id);
     const next = resolvePendingActivitySelection({
       pendingActivityId: pendingId,
+      forceOpen: pendingForceOpen,
       agentSwitched: true,
       selectedId,
       missionPanelOpen,
@@ -176,13 +178,14 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     // Mission composer on the agent they're already viewing.
     const next = resolvePendingActivitySelection({
       pendingActivityId: pendingId,
+      forceOpen: pendingForceOpen,
       agentSwitched: false,
       selectedId,
       missionPanelOpen,
     });
     if (next) setSelectedId(next);
     clearPending(null);
-  }, [pendingId, clearPending, selectedId, missionPanelOpen]);
+  }, [pendingId, pendingForceOpen, clearPending, selectedId, missionPanelOpen]);
 
   // Per-agent session key for the currently selected card. Drives the
   // panel hook's action routing (mid-conversation send vs new
