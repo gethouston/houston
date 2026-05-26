@@ -52,6 +52,21 @@ impl ProviderAdapter for OpenAiAdapter {
         Some(&["login", "-c", "model_reasoning_effort=high"])
     }
 
+    fn device_login_args(&self) -> Option<&'static [&'static str]> {
+        // Headless / remote sign-in (webapp or mobile pointed at an engine
+        // on another machine). Plain `codex login` (see `login_args`) spins
+        // up a `localhost:1455` callback server and prints an OAuth URL whose
+        // `redirect_uri` points back at that local port — the browser on the
+        // user's laptop can never reach a port bound on the VPS, so the flow
+        // hangs until the relay times out. `--device-auth` switches codex to
+        // the OAuth device-grant flow: it prints a verification URL plus a
+        // one-time code, the user enters the code in their own browser, and
+        // codex polls and writes `~/.codex/auth.json` itself. The
+        // `model_reasoning_effort=high` override is the same config guard
+        // `login_args` carries.
+        Some(&["login", "--device-auth", "-c", "model_reasoning_effort=high"])
+    }
+
     fn logout_args(&self) -> Option<&'static [&'static str]> {
         // `codex logout` revokes the ChatGPT refresh token server-side
         // then deletes `~/.codex/auth.json`.

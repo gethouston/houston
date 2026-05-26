@@ -253,16 +253,34 @@ pub enum HoustonEvent {
     //
     // When the engine runs in a remote/headless context (container,
     // Always-On VPS, future Cloud), the CLI can't open the user's
-    // browser — the browser is on a different machine entirely. Each
-    // CLI prints a fallback OAuth URL to stdout and waits for the
-    // verification code on stdin. These events surface that URL to
-    // the UI so the user can open it in their own browser and paste
-    // the code back through `POST /v1/providers/:name/login/code`.
+    // browser — the browser is on a different machine entirely. The CLI
+    // prints a sign-in URL to stdout; the user opens it on their own
+    // machine. Two shapes of completion follow, depending on the
+    // provider's flow:
+    //   * Paste-back (Claude): the user copies a verification code from
+    //     the browser and submits it via `POST /v1/providers/:name/login/code`.
+    //   * Device-grant (codex `--device-auth`): the CLI also prints a
+    //     one-time code; the user enters THAT code on the provider's page
+    //     and the CLI polls + completes on its own (no paste-back).
+    // These events surface the URL (and, for device-grant, the code) to
+    // the UI.
 
     /// A provider's OAuth login subprocess produced a sign-in URL.
-    /// Frontend should display it (and optionally `window.open` it)
-    /// plus a paste-code input that submits to the code-relay route.
-    ProviderLoginUrl { provider: String, url: String },
+    /// Frontend should display it (and optionally `window.open` it).
+    ///
+    /// `user_code` is `None` for the paste-back flow (Claude) — the UI
+    /// shows a paste-code input that submits to the code-relay route.
+    /// For codex's device-grant flow it carries the one-time code the
+    /// user must enter on the provider's verification page; the UI shows
+    /// it (and no paste-code input, since the CLI self-completes). The
+    /// relay may emit twice for one device sign-in: first URL-only the
+    /// moment the URL appears, then again with `user_code` once the code
+    /// line streams in.
+    ProviderLoginUrl {
+        provider: String,
+        url: String,
+        user_code: Option<String>,
+    },
     /// The OAuth subprocess exited. `success` reflects the exit
     /// status; on failure, `error` is best-effort stderr/stdout.
     /// Frontend closes the dialog and re-fetches `providerStatus`.

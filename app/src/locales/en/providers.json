@@ -67,6 +67,13 @@
     "codeRequired": "Enter the verification code first.",
     "submit": "Submit code",
     "submitting": "Submitting...",
+    "deviceDescription": "Open the link below, sign in, then enter this one-time code to finish.",
+    "deviceCodeLabel": "One-time code",
+    "deviceCodeHint": "Enter this code on the {{name}} page after you sign in.",
+    "deviceWaiting": "Waiting for you to authorize in your browser...",
+    "copyCode": "Copy code",
+    "codeCopied": "Code copied to clipboard",
+    "codeCopyFailed": "Couldn't copy the code",
     "cancel": "Cancel"
   },
   "geminiConnect": {

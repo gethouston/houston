@@ -216,6 +216,30 @@ async fn default_provider_roundtrip_via_generic_preferences() {
     assert_eq!(get2["value"], "anthropic");
 }
 
+#[tokio::test]
+async fn login_accepts_optional_device_auth_query() {
+    // The `?deviceAuth=` flag must be optional — the desktop app sends no
+    // query at all — and must not shadow provider validation. Both the
+    // no-query form (desktop) and the `?deviceAuth=true` form (webapp,
+    // mobile) on an unknown provider must surface our structured
+    // BAD_REQUEST, which proves the `Query<LoginQuery>` extractor defaulted
+    // cleanly instead of rejecting the request before `provider::parse`
+    // runs. A real provider would spawn its CLI, which doesn't fit the unit
+    // harness; the device-vs-loopback argv choice is unit-tested in
+    // `houston_engine_core::provider::tests::select_login_args_*`.
+    let (addr, tok) = spawn().await;
+    let c = reqwest::Client::new();
+    for url in [
+        format!("http://{addr}/v1/providers/nonexistent-provider/login"),
+        format!("http://{addr}/v1/providers/nonexistent-provider/login?deviceAuth=true"),
+    ] {
+        let res = c.post(&url).bearer_auth(&tok).send().await.unwrap();
+        assert_eq!(res.status(), 400, "url={url}");
+        let body: serde_json::Value = res.json().await.unwrap();
+        assert_eq!(body["error"]["code"], "BAD_REQUEST", "url={url}");
+    }
+}
+
 // The previous "Houston drives Google OAuth directly" routes
 // (`/providers/gemini/oauth/{start,cancel}`) were removed in favor of
 // delegating to gemini-cli's own OAuth via the `--acp` JSON-RPC

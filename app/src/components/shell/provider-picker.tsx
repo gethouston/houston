@@ -11,6 +11,7 @@ import {
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
+import { osIsTauri } from "../../lib/os-bridge";
 import { GeminiConnectDialog } from "./gemini-connect-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderCard, ComingSoonCard } from "./provider-cards";
@@ -31,11 +32,14 @@ export function ProviderPicker({ onSelect }: Props) {
   const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
   const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
   // OAuth URL surfaced by the engine when the CLI couldn't open the
-  // user's browser (remote/headless deployments). Cleared on
+  // user's browser (remote/headless deployments). `userCode` is set for
+  // codex's device-grant flow (the one-time code to enter on OpenAI's
+  // page); null for Claude's paste-back flow. Cleared on
   // ProviderLoginComplete or when the user closes the dialog.
   const [loginDialog, setLoginDialog] = useState<{
     provider: ProviderInfo;
     url: string;
+    userCode: string | null;
   } | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
@@ -104,7 +108,17 @@ export function ProviderPicker({ onSelect }: Props) {
       if (ev.type === "ProviderLoginUrl") {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
         if (prov) {
-          setLoginDialog({ provider: prov, url: ev.data.url });
+          // The relay can emit twice for codex's device flow: URL-only,
+          // then again carrying the one-time code. Keep a code we've
+          // already shown if a later URL-only frame arrives for the same
+          // provider.
+          setLoginDialog((current) => ({
+            provider: prov,
+            url: ev.data.url,
+            userCode:
+              ev.data.user_code ??
+              (current?.provider.id === prov.id ? current.userCode : null),
+          }));
         }
       } else if (ev.type === "ProviderLoginComplete") {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
@@ -142,7 +156,11 @@ export function ProviderPicker({ onSelect }: Props) {
     }
     setPendingId(provider.id);
     try {
-      await tauriProvider.launchLogin(provider.id);
+      // Remote clients (this app running as a webapp/PWA against a hosted
+      // engine) can't receive the CLI's localhost OAuth callback, so ask
+      // for the headless device-code flow. The engine ignores the flag for
+      // providers without a device variant (Claude keeps its paste-back).
+      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri() });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);
@@ -268,6 +286,7 @@ export function ProviderPicker({ onSelect }: Props) {
       <ProviderLoginDialog
         provider={loginDialog?.provider ?? null}
         url={loginDialog?.url ?? null}
+        userCode={loginDialog?.userCode ?? null}
         onClose={() => setLoginDialog(null)}
       />
     </>

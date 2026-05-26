@@ -706,8 +706,8 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  launchLogin: (provider: string) =>
-    call<void>("launch_provider_login", () => getEngine().providerLogin(provider)),
+  launchLogin: (provider: string, opts?: { deviceAuth?: boolean }) =>
+    call<void>("launch_provider_login", () => getEngine().providerLogin(provider, opts)),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
   /**

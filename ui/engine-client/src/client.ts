@@ -447,8 +447,20 @@ export class HoustonClient {
   providerStatus(name: string): Promise<ProviderStatus> {
     return this.request("GET", `/providers/${this.seg(name)}/status`);
   }
-  providerLogin(name: string): Promise<void> {
-    return this.request("POST", `/providers/${this.seg(name)}/login`);
+  /**
+   * Launch the provider's CLI login. `opts.deviceAuth` requests the
+   * provider's headless device-code flow (OpenAI/codex `--device-auth`)
+   * for remote engines that can't receive the CLI's `localhost` OAuth
+   * callback. It's ignored by providers without a device flow, and the
+   * co-located desktop app omits it to keep the browser-loopback login.
+   */
+  providerLogin(name: string, opts?: { deviceAuth?: boolean }): Promise<void> {
+    return this.request(
+      "POST",
+      `/providers/${this.seg(name)}/login`,
+      undefined,
+      opts?.deviceAuth ? { deviceAuth: "true" } : undefined,
+    );
   }
   providerLogout(name: string): Promise<void> {
     return this.request("POST", `/providers/${this.seg(name)}/logout`);

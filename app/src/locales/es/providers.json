@@ -67,6 +67,13 @@
     "codeRequired": "Primero ingresa el código de verificación.",
     "submit": "Enviar código",
     "submitting": "Enviando...",
+    "deviceDescription": "Abre el enlace de abajo, inicia sesión y luego ingresa este código de un solo uso para terminar.",
+    "deviceCodeLabel": "Código de un solo uso",
+    "deviceCodeHint": "Ingresa este código en la página de {{name}} después de iniciar sesión.",
+    "deviceWaiting": "Esperando a que autorices en tu navegador...",
+    "copyCode": "Copiar código",
+    "codeCopied": "Código copiado al portapapeles",
+    "codeCopyFailed": "No se pudo copiar el código",
     "cancel": "Cancelar"
   },
   "geminiConnect": {

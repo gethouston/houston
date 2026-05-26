@@ -17,8 +17,26 @@
  * this file.
  */
 
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
 import { listen, emit, type Event, type UnlistenFn } from "@tauri-apps/api/event";
+
+// ── Platform detection ────────────────────────────────────────────────
+
+/**
+ * True when running inside the Tauri desktop shell, false in a plain
+ * browser (the webapp / mobile PWA pointed at a remote engine).
+ *
+ * This is the load-bearing distinction for provider sign-in: only the
+ * desktop app is co-located with its engine, so only there can a
+ * provider CLI's `localhost` OAuth callback reach the user's browser.
+ * Remote clients must request the headless device-code flow instead
+ * (see `provider-picker` / `provider-settings`). Delegates to
+ * `@tauri-apps/api`'s blessed check (the global `isTauri` flag the
+ * webview sets) rather than poking internals ourselves.
+ */
+export function osIsTauri(): boolean {
+  return isTauri();
+}
 
 // ── Local Tauri events (non-domain) ──────────────────────────────────
 

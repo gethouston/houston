@@ -14,32 +14,35 @@ import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { providerLoginUrlHost } from "./provider-login-url";
+import { ProviderDeviceCode } from "./provider-device-code";
 
 /**
- * OAuth verification-code dialog for remote/headless Houston Engines.
+ * Sign-in dialog for remote/headless Houston Engines, where the provider
+ * CLI can't open the user's browser (it lives on another machine). The
+ * engine surfaces the sign-in URL via a `ProviderLoginUrl` WS event; this
+ * dialog shows it plus the per-provider completion step:
  *
- * When the engine spawns a provider CLI (`claude auth login`, `codex
- * login`) inside a Docker container or on an Always-On VPS, the CLI
- * can't open the user's browser — the browser is on a different
- * machine entirely. The CLI prints a fallback OAuth URL to stdout and
- * waits for a verification code on stdin. The engine surfaces that
- * URL via a `ProviderLoginUrl` WS event; this dialog shows it (and
- * auto-opens it in a new tab) plus a paste-code input. Submitting
- * relays the code through `POST /v1/providers/:name/login/code`,
- * which the engine writes into the CLI's stdin.
+ *  - Paste-back (Claude): a text input relays the verification code to
+ *    `POST /v1/providers/:name/login/code` (written to the CLI's stdin).
+ *  - Device-grant (codex `--device-auth`): when the event carries
+ *    `userCode`, we render <ProviderDeviceCode> with that one-time code
+ *    for the user to enter on the provider's verification page. The CLI
+ *    polls and finishes on its own, so there's no paste-back input; the
+ *    dialog waits for `ProviderLoginComplete` (handled by the parent) to
+ *    auto-close.
  *
- * On desktop Houston this dialog still pops because claude prints the
- * fallback URL unconditionally — but claude finishes via its own
- * `127.0.0.1` callback before the user ever needs to paste, the
- * `ProviderLoginComplete` event arrives, and the dialog auto-closes.
+ * On desktop the dialog still pops (claude prints the URL unconditionally)
+ * but auto-dismisses once the CLI's own localhost callback completes.
  */
 interface Props {
   provider: ProviderInfo | null;
   url: string | null;
+  /** Device-grant one-time code (codex). Null/absent = paste-back flow. */
+  userCode?: string | null;
   onClose: () => void;
 }
 
-export function ProviderLoginDialog({ provider, url, onClose }: Props) {
+export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props) {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
   const [code, setCode] = useState("");
@@ -78,15 +81,11 @@ export function ProviderLoginDialog({ provider, url, onClose }: Props) {
   const handleCopyUrl = async () => {
     try {
       await navigator.clipboard.writeText(url);
-      addToast({
-        title: t("providerLogin.urlCopied"),
-        variant: "success",
-      });
+      addToast({ title: t("providerLogin.urlCopied"), variant: "success" });
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
       addToast({
         title: t("providerLogin.urlCopyFailed"),
-        description: msg,
+        description: err instanceof Error ? err.message : String(err),
         variant: "error",
       });
     }
@@ -103,35 +102,33 @@ export function ProviderLoginDialog({ provider, url, onClose }: Props) {
     setError(null);
     try {
       await tauriProvider.submitLoginCode(provider.id, trimmed);
-      // Do NOT close the dialog here — wait for
-      // `ProviderLoginComplete` to fire so the user sees confirmation
-      // that the CLI actually finished the OAuth exchange. The parent
-      // listens for that event and calls `onClose`.
+      // Do NOT close here: wait for `ProviderLoginComplete` so the user
+      // sees the CLI actually finish the exchange. The parent listens for
+      // that event and calls `onClose`.
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setError(err instanceof Error ? err.message : String(err));
       setSubmitting(false);
     }
   };
 
   return (
     <Dialog
-      open={provider !== null && url !== null}
+      open
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>
-            {t("providerLogin.title", { name: provider.name })}
-          </DialogTitle>
+          <DialogTitle>{t("providerLogin.title", { name: provider.name })}</DialogTitle>
           <DialogDescription>
-            {t("providerLogin.description", { name: provider.name })}
+            {userCode
+              ? t("providerLogin.deviceDescription", { name: provider.name })
+              : t("providerLogin.description", { name: provider.name })}
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-4">
           {host && (
             <p className="text-[13px] text-muted-foreground">
               {t("providerLogin.destinationHint", { host })}
@@ -186,40 +183,48 @@ export function ProviderLoginDialog({ provider, url, onClose }: Props) {
             </div>
           )}
 
-          <div className="space-y-1.5">
-            <label htmlFor="provider-login-code" className="text-[13px] font-medium">
-              {t("providerLogin.codeLabel")}
-            </label>
-            <input
-              id="provider-login-code"
-              type="text"
-              autoComplete="off"
-              autoFocus
-              value={code}
-              onChange={(e) => setCode(e.target.value)}
-              placeholder={t("providerLogin.codePlaceholder")}
-              className="w-full rounded-md border bg-background px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-ring"
-              disabled={submitting}
+          {userCode ? (
+            <ProviderDeviceCode
+              code={userCode}
+              providerName={provider.name}
+              onClose={onClose}
             />
-          </div>
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="space-y-1.5">
+                <label htmlFor="provider-login-code" className="text-[13px] font-medium">
+                  {t("providerLogin.codeLabel")}
+                </label>
+                <input
+                  id="provider-login-code"
+                  type="text"
+                  autoComplete="off"
+                  autoFocus
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder={t("providerLogin.codePlaceholder")}
+                  className="w-full rounded-md border bg-background px-3 py-2 text-[13px] font-mono focus:outline-none focus:ring-2 focus:ring-ring"
+                  disabled={submitting}
+                />
+              </div>
 
-          {error && (
-            <p className="text-[12px] text-destructive" role="alert">
-              {error}
-            </p>
+              {error && (
+                <p className="text-[12px] text-destructive" role="alert">
+                  {error}
+                </p>
+              )}
+
+              <DialogFooter className="gap-2">
+                <Button type="button" variant="outline" onClick={onClose}>
+                  {t("providerLogin.cancel")}
+                </Button>
+                <Button type="submit" disabled={submitting || !code.trim()}>
+                  {submitting ? t("providerLogin.submitting") : t("providerLogin.submit")}
+                </Button>
+              </DialogFooter>
+            </form>
           )}
-
-          <DialogFooter className="gap-2">
-            <Button type="button" variant="outline" onClick={onClose}>
-              {t("providerLogin.cancel")}
-            </Button>
-            <Button type="submit" disabled={submitting || !code.trim()}>
-              {submitting
-                ? t("providerLogin.submitting")
-                : t("providerLogin.submit")}
-            </Button>
-          </DialogFooter>
-        </form>
+        </div>
       </DialogContent>
     </Dialog>
   );

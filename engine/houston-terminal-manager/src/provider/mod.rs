@@ -81,6 +81,23 @@ pub trait ProviderAdapter: Send + Sync + 'static {
     /// a different connect UX in that case rather than spawning the CLI.
     fn login_args(&self) -> Option<&'static [&'static str]>;
 
+    /// Argv for a *headless / device-code* login flow, when the provider's
+    /// CLI offers one distinct from [`Self::login_args`].
+    ///
+    /// Returns `None` by default: most providers' standard login already
+    /// works on a remote engine (Claude prints a paste-back code; Gemini
+    /// drives its own browser identity), so callers fall back to
+    /// [`Self::login_args`]. OpenAI overrides this because plain
+    /// `codex login` starts a `localhost:1455` loopback server and prints
+    /// an OAuth URL whose `redirect_uri` points back at that local port —
+    /// reachable from the desktop app (browser + engine share a machine)
+    /// but a dead end when the engine runs on a VPS and the browser is on
+    /// the user's laptop. Only `codex login --device-auth` (the OAuth
+    /// device-grant flow) completes across machines.
+    fn device_login_args(&self) -> Option<&'static [&'static str]> {
+        None
+    }
+
     /// Argv to pass to the CLI to launch a logout flow. `None` semantics
     /// match [`Self::login_args`].
     fn logout_args(&self) -> Option<&'static [&'static str]>;
@@ -245,6 +262,13 @@ impl Provider {
     /// login flow.
     pub fn login_args(self) -> Option<&'static [&'static str]> {
         self.0.login_args()
+    }
+
+    /// Argv for a headless/device-code login, if this provider has one
+    /// distinct from [`Self::login_args`]. See
+    /// [`ProviderAdapter::device_login_args`].
+    pub fn device_login_args(self) -> Option<&'static [&'static str]> {
+        self.0.device_login_args()
     }
 
     /// Argv for `<cli> <logout_args>`. `None` if this provider has no
@@ -463,5 +487,27 @@ mod tests {
             );
         }
         assert!(gemini.default_effort().is_none());
+    }
+
+    #[test]
+    fn device_login_args_only_for_openai() {
+        // Only codex needs a distinct headless flow — plain `codex login`
+        // uses a localhost loopback redirect that can't reach a remote
+        // engine. Claude's standard login already works headless (paste-back
+        // code) and Gemini drives its own browser identity, so neither
+        // exposes a device variant.
+        let openai = Provider::from_str("openai").unwrap();
+        assert_eq!(
+            openai.device_login_args().map(|a| a.to_vec()),
+            Some(vec!["login", "--device-auth", "-c", "model_reasoning_effort=high"])
+        );
+        assert!(Provider::from_str("anthropic")
+            .unwrap()
+            .device_login_args()
+            .is_none());
+        assert!(Provider::from_str("gemini")
+            .unwrap()
+            .device_login_args()
+            .is_none());
     }
 }

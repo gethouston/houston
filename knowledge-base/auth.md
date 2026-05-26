@@ -114,6 +114,20 @@ expired OAuth/API-key messages) and `houston-agents-conversations` emits
 `codex login` through `/v1/providers/:name/login` and polls provider status
 until the CLI reports authenticated.
 
+**Headless connect uses two completion shapes.** A remote client (the webapp
+or mobile PWA pointed at a hosted engine) can't receive the CLI's `localhost`
+OAuth callback, so the connect surfaces that render `ProviderLoginDialog`
+(`ProviderPicker`, `ProviderSettings`) pass `deviceAuth: !isTauri()`. That
+flips codex to its device-code flow (`codex login --device-auth`): the engine
+surfaces a verification URL plus a one-time `ProviderLoginUrl.user_code`, the
+user enters that code on OpenAI's page, and codex polls + writes
+`~/.codex/auth.json` itself (no paste-back). Claude has no device variant —
+its standard login already completes headlessly via the paste-back code
+(`/v1/providers/:name/login/code`), so the flag is a no-op for it. Note the
+mid-chat `ProviderReconnectCard` / `auth-reconnect-banner` don't render the
+dialog, so headless re-auth currently routes through the picker/settings; the
+device-code requires the user's OpenAI account to have device sign-in enabled.
+
 ### Cancelling / retrying a stuck sign-in
 
 A login subprocess only ends when the CLI exits, the user pastes a code, or

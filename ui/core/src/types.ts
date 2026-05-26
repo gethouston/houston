@@ -168,7 +168,12 @@ export type HoustonEvent =
     }
   | {
       type: "ProviderLoginUrl";
-      data: { provider: string; url: string };
+      // `user_code` is null for the paste-back flow (Claude): the UI shows a
+      // paste-code input. For codex's device-grant flow it carries the
+      // one-time code the user enters on the provider's verification page
+      // (no paste-back). The relay may emit twice for one device sign-in:
+      // first URL-only, then again with the code.
+      data: { provider: string; url: string; user_code: string | null };
     }
   | {
       type: "ProviderLoginComplete";

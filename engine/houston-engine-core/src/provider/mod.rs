@@ -90,7 +90,19 @@ pub async fn check_status(provider: Provider) -> CoreResult<ProviderStatus> {
 /// status. This makes "click Connect → OAuth in browser → done" work
 /// for remote/headless engines (containers, Always-On) where the CLI
 /// can't open the user's browser itself.
-pub async fn launch_login(provider: Provider, sink: DynEventSink) -> CoreResult<()> {
+///
+/// `device_auth` selects the provider's headless device-code flow when
+/// it has one (only OpenAI/codex today — see
+/// [`Provider::device_login_args`]). Remote clients (webapp, mobile)
+/// set it because they can't receive the CLI's `localhost` OAuth
+/// callback. Providers without a device variant ignore it and use their
+/// standard login, which for Claude already completes headlessly via a
+/// paste-back code.
+pub async fn launch_login(
+    provider: Provider,
+    sink: DynEventSink,
+    device_auth: bool,
+) -> CoreResult<()> {
     // Gemini has no `gemini auth login` subcommand. Instead, gemini-cli
     // exposes an `authenticate` JSON-RPC method over its `--acp` mode
     // (Agent Communication Protocol) that triggers Google's OAuth flow
@@ -113,7 +125,7 @@ pub async fn launch_login(provider: Provider, sink: DynEventSink) -> CoreResult<
         path,
         args,
         shell_path,
-    } = login_command(provider)?;
+    } = login_command(provider, device_auth)?;
 
     let mut cmd = tokio::process::Command::new(&path);
     cmd.args(&args)
@@ -253,6 +265,7 @@ pub async fn launch_login(provider: Provider, sink: DynEventSink) -> CoreResult<
                 stderr,
                 sink,
                 registration,
+                device_auth,
             );
             Ok(())
         }
@@ -340,10 +353,22 @@ struct ProviderCliCommand {
     shell_path: OsString,
 }
 
-fn login_command(provider: Provider) -> CoreResult<ProviderCliCommand> {
+/// Pick the argv for a login attempt: the provider's headless
+/// device-code variant when the caller asked for it AND the provider
+/// exposes one, otherwise the standard login argv. Every provider
+/// without a device variant (Claude, Gemini), and every non-device
+/// caller, falls through to `login_args`. Pure + path-independent so it
+/// can be unit-tested without a CLI on disk.
+fn select_login_args(provider: Provider, device_auth: bool) -> Option<&'static [&'static str]> {
+    device_auth
+        .then(|| provider.device_login_args())
+        .flatten()
+        .or_else(|| provider.login_args())
+}
+
+fn login_command(provider: Provider, device_auth: bool) -> CoreResult<ProviderCliCommand> {
     let resolved_path = provider.resolve().1;
-    let args = provider
-        .login_args()
+    let args = select_login_args(provider, device_auth)
         .ok_or_else(|| {
             CoreError::BadRequest(format!(
                 "{} has no CLI login flow. Connect via settings instead.",
@@ -579,6 +604,28 @@ mod tests {
             command.args,
             vec!["login", "-c", "model_reasoning_effort=high"]
         );
+    }
+
+    #[test]
+    fn select_login_args_codex_switches_to_device_auth() {
+        let openai = parse("openai").unwrap();
+        // Standard flow → loopback `codex login`.
+        assert_eq!(select_login_args(openai, false), openai.login_args());
+        // Device flow → `codex login --device-auth`.
+        assert_eq!(
+            select_login_args(openai, true).map(|a| a.to_vec()),
+            Some(vec!["login", "--device-auth", "-c", "model_reasoning_effort=high"])
+        );
+    }
+
+    #[test]
+    fn select_login_args_claude_ignores_device_auth() {
+        // Claude has no device variant; its standard login already works
+        // headless (paste-back code), so device_auth=true must fall back to
+        // the normal argv rather than erroring.
+        let anthropic = parse("anthropic").unwrap();
+        assert_eq!(select_login_args(anthropic, true), anthropic.login_args());
+        assert_eq!(select_login_args(anthropic, false), anthropic.login_args());
     }
 
     #[test]
