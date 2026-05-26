@@ -9,6 +9,7 @@ use houston_engine_server::{build_router, ServerConfig, ServerState};
 use houston_tunnel::{EngineEndpoint, TunnelClient, TunnelConfig};
 use serde::Serialize;
 use sha2::{Digest, Sha256};
+use std::io::{IsTerminal, Read};
 use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
@@ -25,6 +26,10 @@ struct EngineManifest<'a> {
 #[tokio::main]
 async fn main() {
     init_tracing();
+
+    // Exit when the desktop app that owns us goes away, so we never become
+    // an orphan engine holding a port (gethouston/houston#306).
+    spawn_parent_watchdog();
 
     // PATH resolution runs `zsh -l -c 'echo $PATH'` + scans install dirs
     // (~0.5-2s). Previously we did it here synchronously, which blocked
@@ -227,6 +232,69 @@ fn init_tracing() {
         .init();
 }
 
+/// Exit the process when the parent that launched us closes our stdin.
+///
+/// The desktop supervisor (`app/src-tauri/src/engine_supervisor.rs`) pipes
+/// the engine's stdin and never writes to it. The instant the app process
+/// goes away — graceful quit, force-quit, panic, OOM kill — the OS closes
+/// that pipe's write end and a blocking `read(stdin)` returns EOF. We treat
+/// EOF as "the app that owns me is gone" and exit, so no orphaned engine
+/// keeps holding its port after the app closes (gethouston/houston#306).
+///
+/// Gating (see `knowledge-base/engine-server.md` → "Parent watchdog"):
+/// - Skipped when stdin is a TTY — you're running the binary by hand for
+///   debugging and there is no supervisor to die.
+/// - Skipped when `HOUSTON_NO_PARENT_WATCHDOG=1`. Standalone deployments
+///   (Always On systemd / docker) wire stdin to `/dev/null`, which reports
+///   EOF immediately; they opt out and own lifecycle some other way.
+fn spawn_parent_watchdog() {
+    let disable = std::env::var("HOUSTON_NO_PARENT_WATCHDOG").ok();
+    if !watchdog_should_arm(disable.as_deref(), std::io::stdin().is_terminal()) {
+        tracing::debug!("[watchdog] parent stdin watchdog disabled");
+        return;
+    }
+    // A dedicated OS thread, not a tokio task: the read blocks for the whole
+    // life of the process and must not tie up a runtime worker.
+    std::thread::Builder::new()
+        .name("parent-watchdog".into())
+        .spawn(|| {
+            block_until_stdin_closed(std::io::stdin().lock());
+            tracing::info!("[watchdog] stdin closed — parent process gone, exiting engine");
+            std::process::exit(0);
+        })
+        .expect("spawn parent-watchdog thread");
+}
+
+/// Whether the stdin-EOF watchdog should arm. Pure, so the gating contract
+/// is unit-testable without touching real stdin. `disable_env` is the value
+/// of `HOUSTON_NO_PARENT_WATCHDOG`; `stdin_is_tty` is
+/// `std::io::stdin().is_terminal()`.
+fn watchdog_should_arm(disable_env: Option<&str>, stdin_is_tty: bool) -> bool {
+    if disable_env == Some("1") {
+        return false;
+    }
+    !stdin_is_tty
+}
+
+/// Block until `reader` (the process stdin) reaches EOF or errors
+/// unrecoverably. Pure (no process exit) so the read loop is unit-testable;
+/// the caller decides what EOF means.
+fn block_until_stdin_closed<R: Read>(mut reader: R) {
+    let mut buf = [0u8; 256];
+    loop {
+        match reader.read(&mut buf) {
+            // EOF: the parent closed the write end of the pipe.
+            Ok(0) => return,
+            // The supervisor never writes, but drain anything that shows up.
+            Ok(_) => continue,
+            // Retryable: a signal interrupted the read.
+            Err(ref e) if e.kind() == std::io::ErrorKind::Interrupted => continue,
+            // Broken pipe / closed fd — treat the parent as gone.
+            Err(_) => return,
+        }
+    }
+}
+
 fn write_manifest(cfg: &ServerConfig, port: u16) {
     let path = cfg.home_dir.join("engine.json");
     if let Some(parent) = path.parent() {
@@ -249,5 +317,53 @@ fn write_manifest(cfg: &ServerConfig, port: u16) {
             use std::os::unix::fs::PermissionsExt;
             let _ = std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o600));
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{block_until_stdin_closed, watchdog_should_arm};
+    use std::io::Cursor;
+
+    #[test]
+    fn watchdog_disabled_by_env_regardless_of_stdin() {
+        // The explicit opt-out wins whether or not stdin looks like a TTY.
+        assert!(!watchdog_should_arm(Some("1"), false));
+        assert!(!watchdog_should_arm(Some("1"), true));
+    }
+
+    #[test]
+    fn watchdog_only_disabled_by_exact_one() {
+        // Any value other than "1" leaves the watchdog armed (when not a TTY),
+        // so a stray `HOUSTON_NO_PARENT_WATCHDOG=0` can't silently leak engines.
+        assert!(watchdog_should_arm(Some("0"), false));
+        assert!(watchdog_should_arm(Some("true"), false));
+        assert!(watchdog_should_arm(Some(""), false));
+    }
+
+    #[test]
+    fn watchdog_skipped_on_tty() {
+        // Running the binary by hand in a terminal must not self-terminate.
+        assert!(!watchdog_should_arm(None, true));
+    }
+
+    #[test]
+    fn watchdog_arms_when_piped_and_not_disabled() {
+        // The desktop supervisor case: piped (non-TTY) stdin, no opt-out.
+        assert!(watchdog_should_arm(None, false));
+    }
+
+    #[test]
+    fn read_loop_returns_on_immediate_eof() {
+        // Empty stdin (already-closed pipe, /dev/null) → EOF on first read.
+        // If the loop didn't terminate, this test would hang.
+        block_until_stdin_closed(Cursor::new(Vec::<u8>::new()));
+    }
+
+    #[test]
+    fn read_loop_drains_then_returns_on_eof() {
+        // Bytes available, then EOF — the loop drains the data and still
+        // terminates rather than spinning.
+        block_until_stdin_closed(Cursor::new(b"stray bytes before parent exits".to_vec()));
     }
 }
