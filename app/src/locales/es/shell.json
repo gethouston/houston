@@ -2,7 +2,6 @@
   "sidebar": {
     "missionControl": "Centro de misiones",
     "integrations": "Integraciones",
-    "commands": "Comandos",
     "settings": "Configuración",
     "yourAgents": "Tus agentes",
     "selectWorkspace": "Elige un espacio de trabajo",

@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Blend, Command, Settings } from "lucide-react";
-import { ConfirmDialog, Kbd, KbdGroup } from "@houston-ai/core";
+import { LayoutDashboard, Blend, Settings } from "lucide-react";
+import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAgentStore } from "../../stores/agents";
@@ -12,7 +12,6 @@ import { CreateWorkspaceDialog } from "./workspace-dialog";
 import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { buildAgentSidebarItems } from "./agent-sidebar-items";
 import { orderAgents } from "../../lib/agent-order";
-import { shortcutParts } from "../../lib/shortcuts";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 
 export function Sidebar({ children }: { children: ReactNode }) {
@@ -129,19 +128,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
             icon: <Blend className="h-4 w-4" />,
             onClick: () => setViewMode("connections"),
             dataAttrs: { "data-tour-target": "nav-connections" },
-          },
-          {
-            id: "commands",
-            label: t("shell:sidebar.commands"),
-            icon: <Command className="h-4 w-4" />,
-            onClick: () => useUIStore.getState().setPaletteOpen(true),
-            trailing: (
-              <KbdGroup>
-                {shortcutParts("palette").map((p) => (
-                  <Kbd key={p}>{p}</Kbd>
-                ))}
-              </KbdGroup>
-            ),
           },
           {
             id: "settings",
