@@ -27,6 +27,14 @@
     "manageOn": "Manage {{name}}",
     "dotAria": "Connected"
   },
+  "signOut": {
+    "button": "Sign out",
+    "loading": "Signing out…",
+    "confirmTitle": "Sign out of Composio?",
+    "confirmBody": "You'll need to sign in again and reconnect any apps you use. This won't uninstall the provider.",
+    "confirmAction": "Sign out",
+    "cancel": "Cancel"
+  },
   "browse": {
     "title": "Browse all apps",
     "count_one": "{{count}} app",

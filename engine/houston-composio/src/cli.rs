@@ -191,9 +191,20 @@ pub async fn complete_login(cli_key: &str) -> Result<(), String> {
     }
 }
 
-/// Log out of Composio. Best-effort; silently ignores CLI errors.
+/// Log out of Composio. Shells out to `composio logout` (no flags —
+/// the subcommand takes none and rejects `-y` with exit 1 + usage
+/// text). Errors surface to the caller so the UI can toast on failure
+/// instead of falsely reporting success.
 pub async fn logout() -> Result<(), String> {
-    let _ = run_cli(&["logout", "-y"]).await?;
+    let output = run_cli(&["logout"]).await?;
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+        return Err(format!(
+            "composio logout failed (exit {}): {}",
+            output.status,
+            if stderr.is_empty() { "<no stderr>" } else { &stderr }
+        ));
+    }
     Ok(())
 }
 

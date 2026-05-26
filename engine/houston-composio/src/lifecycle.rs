@@ -18,7 +18,7 @@
 //! Emits `HoustonEvent::ComposioCliReady` on success so the frontend
 //! invalidates the connections query and the integrations tab refreshes.
 
-use crate::install;
+use crate::{cli, install};
 use houston_db::db::Database;
 use houston_ui_events::{DynEventSink, HoustonEvent};
 
@@ -26,12 +26,29 @@ use houston_ui_events::{DynEventSink, HoustonEvent};
 /// ensured the standalone CLI. Skipped entirely for bundled builds.
 const PREF_CLI_VERSION: &str = "composio_cli_houston_version";
 
+/// Marker preference set the first time the forced-logout migration
+/// ran successfully. Existence of this key means "we already kicked
+/// every user out once on this version of the migration, don't do it
+/// again." Bump the suffix (`_v3`, `_v4`, …) for any future incident
+/// that requires another mass logout — reusing the same key would
+/// silently skip everyone.
+///
+/// `_v2` because the first cut shipped with `composio logout -y`,
+/// which the CLI rejects with exit 1 + usage text. Old wrapper
+/// swallowed the exit code so the migration reported success without
+/// actually logging anyone out. Bumping to `_v2` re-triggers the
+/// migration with the fixed wrapper on any machine that still has
+/// the poisoned `_v1` marker.
+const PREF_FORCED_LOGOUT_V2: &str = "composio_forced_logout_v2";
+
 /// Current Houston version (read from Cargo.toml at compile time).
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// Run the full lifecycle check: install if missing, upgrade if Houston
 /// version changed. Emits events so the frontend reacts.
 pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
+    forced_logout(&db).await;
+
     if install::is_bundled() {
         tracing::info!(
             "[composio:lifecycle] bundled CLI detected at {} — skipping install/upgrade",
@@ -95,6 +112,56 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     }
 
     sink.emit(HoustonEvent::ComposioCliReady);
+}
+
+/// One-time forced logout, gated by [`PREF_FORCED_LOGOUT_V2`].
+///
+/// Runs before the bundled / standalone branches so every existing
+/// user gets signed out exactly once on the first launch of the
+/// release that ships this migration. If the logout shell-out fails
+/// we leave the marker unset so the next launch retries — better to
+/// re-run the (idempotent) `composio logout` once more than to leave
+/// a user still signed in believing they're not.
+async fn forced_logout(db: &Database) {
+    let already_done = db
+        .get_preference(PREF_FORCED_LOGOUT_V2)
+        .await
+        .ok()
+        .flatten()
+        .is_some();
+    if already_done {
+        return;
+    }
+
+    if !install::is_installed() {
+        tracing::info!(
+            "[composio:lifecycle] forced logout: CLI not installed, nothing to clear"
+        );
+        if let Err(e) = db.set_preference(PREF_FORCED_LOGOUT_V2, "1").await {
+            tracing::warn!(
+                "[composio:lifecycle] failed to persist forced-logout marker: {e}"
+            );
+        }
+        return;
+    }
+
+    tracing::info!("[composio:lifecycle] running forced logout (one-time migration)");
+    match cli::logout().await {
+        Ok(()) => {
+            tracing::info!("[composio:lifecycle] forced logout succeeded");
+            if let Err(e) = db.set_preference(PREF_FORCED_LOGOUT_V2, "1").await {
+                tracing::warn!(
+                    "[composio:lifecycle] failed to persist forced-logout marker: {e} \
+                     (migration will retry next launch)"
+                );
+            }
+        }
+        Err(e) => {
+            tracing::warn!(
+                "[composio:lifecycle] forced logout failed: {e} — will retry next launch"
+            );
+        }
+    }
 }
 
 /// Run `composio upgrade` via the same sync-Command + spawn_blocking

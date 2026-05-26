@@ -753,6 +753,9 @@ export class HoustonClient {
   composioCompleteLogin(cliKey: string): Promise<void> {
     return this.request("POST", "/composio/login/complete", { cliKey });
   }
+  composioLogout(): Promise<void> {
+    return this.request("POST", "/composio/logout");
+  }
   composioListApps(): Promise<ComposioAppEntry[]> {
     return this.request("GET", "/composio/apps");
   }

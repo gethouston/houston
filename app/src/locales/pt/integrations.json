@@ -27,6 +27,14 @@
     "manageOn": "Gerenciar {{name}}",
     "dotAria": "Conectado"
   },
+  "signOut": {
+    "button": "Sair",
+    "loading": "Saindo…",
+    "confirmTitle": "Sair do Composio?",
+    "confirmBody": "Você vai precisar entrar de novo e reconectar os apps que usa. Isso não desinstala o provedor.",
+    "confirmAction": "Sair",
+    "cancel": "Cancelar"
+  },
   "browse": {
     "title": "Ver todos os apps",
     "count_one": "{{count}} app",
