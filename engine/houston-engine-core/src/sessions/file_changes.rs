@@ -81,6 +81,31 @@ mod tests {
     }
 
     #[test]
+    fn markdown_deliverables_tracked_but_role_files_ignored() {
+        // Markdown reports are user deliverables and must appear in the
+        // chat file-change summary (issue #294). The seeded role files
+        // (CLAUDE.md, AGENTS.md, GEMINI.md), created on first run, must
+        // NOT — otherwise every agent's first session would falsely
+        // report creating its own instructions.
+        let dir = TempDir::new().unwrap();
+        let before = snapshot(dir.path()).unwrap();
+
+        std::fs::write(dir.path().join("CLAUDE.md"), "role").unwrap();
+        std::fs::write(dir.path().join("AGENTS.md"), "role").unwrap();
+        std::fs::write(dir.path().join("GEMINI.md"), "role").unwrap();
+        std::fs::write(dir.path().join("summary.md"), "# Summary").unwrap();
+
+        let after = snapshot(dir.path()).unwrap();
+        let changes = diff(&before, &after);
+
+        assert_eq!(
+            changes.created,
+            vec![dir.path().join("summary.md").to_string_lossy()]
+        );
+        assert!(changes.modified.is_empty());
+    }
+
+    #[test]
     fn detects_modified_visible_files() {
         let dir = TempDir::new().unwrap();
         let path = dir.path().join("brief.txt");
