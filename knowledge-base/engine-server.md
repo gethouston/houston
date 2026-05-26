@@ -68,15 +68,23 @@ the engine side.
 `engine_supervisor.rs` spawns the binary with:
 
 - **Piped stdin** that the supervisor holds open but never writes.
-  When the supervisor (the Tauri app) exits for any reason, the pipe
+  When the supervisor (the Tauri app) exits, the pipe's write-end
   closes → the engine's `spawn_parent_watchdog` sees stdin EOF →
-  `exit(0)`. This is the cross-platform orphan-prevention.
+  `exit(0)`. This is the orphan-prevention path **on Unix only**:
+  Windows `TerminateProcess` does not deliver stdin EOF to a child,
+  so the watchdog never fires there — Windows uses the Job Object
+  below instead (gethouston/houston#306).
 - **macOS/Linux:** `setpgid(0,0)` so the child gets its own process group.
   Parent drop also kills `-pgrp` as a backup path.
 - **Linux:** `prctl(PR_SET_PDEATHSIG, SIGKILL)` (Phase 4 task; the
   stdin watchdog already covers this case).
-- **Windows:** Job Objects with `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE`
-  (Phase 4 task).
+- **Windows:** the child is assigned to a Job Object with
+  `JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE` (`engine_supervisor.rs::win_job`).
+  The supervisor holds the sole, non-inheritable job handle; when the app
+  process dies for any reason — graceful, force-quit, crash, Task Manager
+  "End task" — the OS closes that handle and the kernel terminates the
+  engine and every process it spawned. This is the Windows orphan-fix
+  because the stdin-EOF watchdog cannot fire on `TerminateProcess`.
 
 Restart policy: exponential backoff 500ms → 30s cap on child crash.
 
@@ -91,6 +99,14 @@ Gating:
 - Disabled when `HOUSTON_NO_PARENT_WATCHDOG=1` is set. Use this under
   systemd, docker, or any supervisor that owns lifecycle some other
   way.
+
+**Windows caveat:** this watchdog is effectively Unix-only. Windows
+`TerminateProcess` (force-quit, crash, Task Manager "End task") does not
+close the child's stdin in a way that yields EOF, so the blocking read
+never returns and the engine would orphan. The Windows supervisor binds the
+engine to a kill-on-close Job Object instead (see
+`engine_supervisor.rs::win_job` and "Supervision (desktop)" above); the
+watchdog stays armed there only as harmless defense-in-depth.
 
 **Important interaction:** `engine_supervisor.rs` takes the child's
 `ChildStdin` out of `Child` before any `wait()` call — `Child::wait()`

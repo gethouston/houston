@@ -73,9 +73,12 @@ detailed in `knowledge-base/cli-bundling.md`.
 as a subprocess on startup (sidecar via Tauri `externalBin`), parses
 the stdout `HOUSTON_ENGINE_LISTENING` banner for `{port, token}`, and
 talks to it over HTTP+WS — the same way a remote client on a VPS
-would. The supervisor (`app/src-tauri/src/engine_supervisor.rs`) pipes
-stdin so engine sees EOF on parent death and exits cleanly (no orphan
-engines holding ports). All domain Tauri commands are deleted — only
+would. The supervisor (`app/src-tauri/src/engine_supervisor.rs`) binds the
+engine's lifetime to the app's: on Unix via piped stdin (engine exits on
+EOF when the parent dies), on Windows via a kill-on-close Job Object
+(`TerminateProcess` never delivers stdin EOF, so the job is what reaps the
+engine and its children). No orphan engines holding ports. All domain
+Tauri commands are deleted — only
 OS-native glue remains in `app/src-tauri/src/commands/`.
 
 ## App-side Rust (`app/`)
