@@ -1,7 +1,7 @@
 // =============================================================================
 // provision-tenant — Supabase Edge Function (Deno).
 //
-// Triggered by the authenticated mobile webapp right after signup:
+// Triggered by the authenticated webapp right after signup:
 //   await supabase.functions.invoke("provision-tenant")
 //
 // Responsibilities:
@@ -9,7 +9,7 @@
 //   2. Create Namespace + Secret + Deployment + Service in K8s via REST.
 //      (See ./k8s.ts — Supabase Edge runtime has no kubectl/helm.)
 //   3. Write engine_url + engine_token back into public.tenants so the
-//      mobile Realtime subscription wakes up with the connection details.
+//      webapp's Realtime subscription wakes up with the connection details.
 //
 // Same file deploys to production unchanged. Only env vars differ:
 // locally K8S_API_URL points at kind on 127.0.0.1; in prod it points
@@ -23,6 +23,8 @@ import {
   createNamespace,
   createTokenSecret,
 } from "./k8s.ts";
+
+type TenantStatus = "pending" | "ready" | "failed";
 
 const SUPABASE_URL = mustEnv("SUPABASE_URL");
 const SERVICE_ROLE = mustEnv("SUPABASE_SERVICE_ROLE_KEY");
@@ -56,14 +58,18 @@ Deno.serve(async (req) => {
 
   const { data: userData, error: userErr } = await admin.auth.getUser(jwt);
   if (userErr || !userData?.user) {
-    return json({ error: "invalid token", detail: userErr?.message }, 401);
+    // Log the supabase-auth detail server-side; the caller gets a generic
+    // 401 with no library internals (the original `detail: userErr.message`
+    // could leak version-specific error strings).
+    console.error("[provision-tenant] invalid token:", userErr?.message);
+    return json({ error: "invalid token" }, 401);
   }
   const user = userData.user;
   const namespace = `tenant-${shortId(user.id)}`;
   const engineToken = randomToken();
 
   try {
-    await ensureTenantRow(user.id);
+    await upsertTenantRow(user.id, { status: "pending", error: null });
     await createNamespace(namespace);
     // createTokenSecret is idempotent and returns the EFFECTIVE token —
     // either the one we just wrote (fresh tenant) or the one that was
@@ -73,39 +79,63 @@ Deno.serve(async (req) => {
     await createEngineDeployment(namespace);
     await createEngineService(namespace);
 
-    // engine_url is the laptop-side port-forward target for now (Chunk 4).
-    // Multi-tenant Ingress lands in a later chunk; engine_url then becomes
-    // something like `http://localhost/<namespace>/`.
+    // engine_url is the laptop-side port-forward target for now.
+    // Multi-tenant Ingress will replace this once it lands; engine_url
+    // then becomes something like `http://localhost/<namespace>/`.
     const engineUrl = "http://localhost:7777";
 
-    await admin.from("tenants").update({
+    await updateTenantRow(user.id, {
       namespace,
       engine_url: engineUrl,
       engine_token: effectiveToken,
       status: "ready",
       error: null,
-      updated_at: new Date().toISOString(),
-    }).eq("user_id", user.id);
+    });
 
     return json({ namespace, engine_url: engineUrl }, 200);
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    await admin.from("tenants").update({
-      status: "failed",
-      error: msg,
-      updated_at: new Date().toISOString(),
-    }).eq("user_id", user.id);
-    return json({ error: msg }, 500);
+    const detail = err instanceof Error ? err.message : String(err);
+    // Detail lands in `tenants.error` (visible via the Supabase dashboard
+    // to whoever owns the project) and the Deno log. The HTTP body is
+    // deliberately generic so K8s API server hostnames, response bodies,
+    // or other internals don't reach the browser.
+    console.error("[provision-tenant] failed for", user.id, "—", detail);
+    try {
+      await updateTenantRow(user.id, { status: "failed", error: detail });
+    } catch (e) {
+      console.error("[provision-tenant] tenants row failure-update also failed:", e);
+    }
+    return json({ error: "tenant provisioning failed — see logs" }, 500);
   }
 });
 
-async function ensureTenantRow(userId: string): Promise<void> {
+interface TenantRowUpdate {
+  namespace?: string;
+  engine_url?: string;
+  engine_token?: string;
+  status: TenantStatus;
+  error: string | null;
+}
+
+async function upsertTenantRow(
+  userId: string,
+  fields: { status: TenantStatus; error: string | null },
+): Promise<void> {
   const { error } = await admin.from("tenants").upsert({
     user_id: userId,
-    status: "pending",
+    status: fields.status,
+    error: fields.error,
     updated_at: new Date().toISOString(),
   });
   if (error) throw new Error(`tenants upsert: ${error.message}`);
+}
+
+async function updateTenantRow(userId: string, fields: TenantRowUpdate): Promise<void> {
+  const { error } = await admin.from("tenants").update({
+    ...fields,
+    updated_at: new Date().toISOString(),
+  }).eq("user_id", userId);
+  if (error) throw new Error(`tenants update: ${error.message}`);
 }
 
 function mustEnv(name: string): string {

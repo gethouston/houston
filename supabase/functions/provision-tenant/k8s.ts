@@ -8,8 +8,11 @@
 const K8S_API_URL = mustEnv("K8S_API_URL");
 const K8S_TOKEN = mustEnv("K8S_TOKEN");
 const K8S_CA_CERT_B64 = mustEnv("K8S_CA_CERT_B64");
-const ENGINE_IMAGE = Deno.env.get("ENGINE_IMAGE") ??
-  "ghcr.io/gethouston/houston-engine:latest";
+// Fail-fast on missing ENGINE_IMAGE — the prior silent fallback to
+// `:latest` masked typos like `ENGIN_IMAGE=...` and meant tenants
+// drifted versions every time the image was re-tagged. Operators
+// must pin a digest or tag explicitly in the env file.
+const ENGINE_IMAGE = mustEnv("ENGINE_IMAGE");
 
 const k8sCa = atob(K8S_CA_CERT_B64);
 const k8sClient = Deno.createHttpClient({ caCerts: [k8sCa] });
