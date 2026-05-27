@@ -35,5 +35,11 @@
     "description": "Elige el idioma que Houston usa en su interfaz.",
     "label": "Idioma de la interfaz",
     "toastChanged": "Idioma cambiado"
+  },
+  "notifications": {
+    "sessionComplete": {
+      "title": "{{workspace}} · {{agent}}",
+      "body": "Tu agente terminó de trabajar."
+    }
   }
 }

@@ -128,7 +128,14 @@ export function useSessionEvents() {
               logger.debug(`[notification] completed agent not in loaded list: agent_path=${agent_path}`);
             }
 
-            sendSessionNotification(`${workspaceName} — ${agentName}`, "Your agent has finished working.", nav);
+            sendSessionNotification(
+              h.t("common:notifications.sessionComplete.title", {
+                workspace: workspaceName,
+                agent: agentName,
+              }),
+              h.t("common:notifications.sessionComplete.body"),
+              nav,
+            );
           }
           break;
         }
