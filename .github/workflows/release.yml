@@ -554,6 +554,14 @@ jobs:
 
           echo "=== Sidecar checks passed ==="
 
+      # Rename the mounted-volume label from "Houston" (Tauri default,
+      # derived from productName) to "Houston Installer" before we
+      # notarize. Done here so notarization sees the final bytes — any
+      # post-notarize edit would invalidate the staple.
+      - name: Rename DMG volume to "Houston Installer"
+        run: |
+          ./scripts/rename-dmg-volume.sh "${{ steps.artifacts.outputs.dmg }}" "Houston Installer"
+
       - name: Notarize DMG
         timeout-minutes: 25
         run: |

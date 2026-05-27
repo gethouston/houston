@@ -28,6 +28,13 @@ tauri-plugin-deep-link = "2"
 tauri-plugin-sentry = "0.5"
 sentry = "0.42"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
+# macOS-only: native blocking dialog used by the first-launch DMG guard
+# (`dmg_guard.rs`). Must fire BEFORE the Tauri builder runs because once
+# the webview boots we've already committed to launching from the DMG.
+# `rfd` is pure Rust + AppKit, no React/Webview/Tauri dependency, so it
+# can pop a dialog at the very top of `run()`.
+[target."cfg(target_os = \"macos\")".dependencies]
+rfd = "0.15"
 houston-ui-events = { path = "../../engine/houston-ui-events" }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }
 tracing = { workspace = true }

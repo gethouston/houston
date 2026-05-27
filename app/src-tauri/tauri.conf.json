@@ -52,7 +52,13 @@
     "macOS": {
       "signingIdentity": "-",
       "entitlements": "entitlements.plist",
-      "minimumSystemVersion": "10.15"
+      "minimumSystemVersion": "10.15",
+      "dmg": {
+        "background": "assets/dmg-background.tiff",
+        "windowSize": { "width": 608, "height": 480 },
+        "appPosition": { "x": 145, "y": 258 },
+        "applicationFolderPosition": { "x": 465, "y": 258 }
+      }
     },
     "windows": {
       "wix": {
