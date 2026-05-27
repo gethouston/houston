@@ -605,6 +605,22 @@ jobs:
         run: |
           ./scripts/rename-dmg-volume.sh "${{ steps.artifacts.outputs.dmg }}" "Houston Installer"
 
+      # rename-dmg-volume.sh rebuilds the DMG (hdiutil convert), which strips
+      # the Developer ID signature tauri-action applied to the original .dmg.
+      # Notarization staples a ticket but does NOT code-sign, so without this
+      # the DMG reaches "Verify complete signing chain" unsigned ("code object
+      # is not signed at all"). Re-sign with Developer ID here, before
+      # notarization, so the notarized + stapled DMG carries a valid signature.
+      # The identity is already in the keychain from the pre-sign import step.
+      - name: Re-sign DMG after volume rename
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          DMG="${{ steps.artifacts.outputs.dmg }}"
+          codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$DMG"
+          echo "=== Re-signed DMG with Developer ID ==="
+          codesign -vvv "$DMG"
+
       - name: Notarize DMG
         timeout-minutes: 25
         run: |
