@@ -12,7 +12,6 @@ pub mod types;
 
 use crate::error::{CoreError, CoreResult};
 use chrono::Utc;
-use houston_agent_files as files;
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::path::Path;
@@ -22,27 +21,17 @@ pub use types::{NewRoutine, Routine, RoutineUpdate};
 
 const FILE: &str = "routines";
 
-// -- Typed JSON I/O helpers (mirrors agent_store::helpers) --
+// -- Typed JSON I/O helpers --
 
-fn rel_path(name: &str) -> String {
-    format!(".houston/{name}/{name}.json")
-}
-
-pub(crate) fn read_json<T: DeserializeOwned + Default>(root: &Path, name: &str) -> CoreResult<T> {
-    let rel = rel_path(name);
-    let contents = files::read_file(root, &rel)
-        .map_err(|e| CoreError::Internal(format!("read {rel}: {e}")))?;
-    if contents.is_empty() {
-        return Ok(T::default());
-    }
-    serde_json::from_str(&contents).map_err(Into::into)
+pub(crate) fn read_json<T: DeserializeOwned + Serialize + Default>(
+    root: &Path,
+    name: &str,
+) -> CoreResult<T> {
+    crate::agents::store::read_json(root, name)
 }
 
 pub(crate) fn write_json<T: Serialize>(root: &Path, name: &str, data: &T) -> CoreResult<()> {
-    let rel = rel_path(name);
-    let body = serde_json::to_string_pretty(data)?;
-    files::write_file_atomic(root, &rel, &body)
-        .map_err(|e| CoreError::Internal(format!("write {rel}: {e}")))
+    crate::agents::store::write_json(root, name, data)
 }
 
 pub(crate) fn ensure_houston_dir(root: &Path) -> CoreResult<()> {

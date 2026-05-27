@@ -90,7 +90,7 @@ pub fn write_file_atomic(agent_root: &Path, rel: &str, content: &str) -> Result<
     if let Some(parent) = path.parent() {
         fs::create_dir_all(parent)?;
     }
-    let tmp = path.with_extension("tmp");
+    let tmp = unique_tmp_path(&path);
     {
         let mut f = fs::File::create(&tmp)?;
         f.write_all(content.as_bytes())?;
@@ -98,6 +98,11 @@ pub fn write_file_atomic(agent_root: &Path, rel: &str, content: &str) -> Result<
     }
     fs::rename(&tmp, &path)?;
     Ok(())
+}
+
+fn unique_tmp_path(path: &Path) -> PathBuf {
+    let file_name = path.file_name().and_then(|s| s.to_str()).unwrap_or("file");
+    path.with_file_name(format!(".{file_name}.{}.tmp", uuid::Uuid::new_v4()))
 }
 
 /// Classify a relative path to the matching event type name.

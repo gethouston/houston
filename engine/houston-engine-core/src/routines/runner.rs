@@ -106,15 +106,7 @@ pub async fn run_routine(
     // is reliable for the common case (one run completes, status flips
     // terminal); orphan `running` rows from a crashed engine are swept
     // by `sweep_orphan_running` at agent-scheduler start.
-    let existing = routine_runs::list(&working_dir)?;
-    if let Some(busy) = existing.iter().find(|r| r.status == "running") {
-        return Err(CoreError::Conflict(format!(
-            "another routine run is already in progress (run {})",
-            busy.id
-        )));
-    }
-
-    let run = routine_runs::create(&working_dir, routine_id)?;
+    let run = routine_runs::create_if_no_running(&working_dir, routine_id)?;
     events.emit(HoustonEvent::RoutineRunsChanged {
         agent_path: agent_path.to_string(),
     });

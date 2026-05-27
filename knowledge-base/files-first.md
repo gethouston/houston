@@ -47,9 +47,16 @@ If app-specific → `.houston/`.
 Frontend never touches the filesystem directly. All `.houston/` reads
 and writes flow through `@houston-ai/engine-client` → `houston-engine`
 REST routes (`/v1/agents/:path/files/:kind`, etc.), which call into
-`houston-agent-files`. Writes are atomic (temp + rename) and emit a
+`houston-agent-files`. Writes are atomic (unique temp + rename) and emit a
 matching `HoustonEvent` over the WS. No typed CRUD — per-type folder +
 schema + a generic read/write pair covers everything.
+
+Typed JSON readers preserve corrupt files as
+`.houston/<type>/<type>.json.corrupt-<timestamp>-<uuid>.bak` before
+repairing. If a file has trailing JSON data, Houston keeps the first valid
+value and rewrites the file. If `routine_runs.json` is otherwise
+unreadable, Houston resets only the run history to `[]` after backing up
+the original so routine definitions can load and run again.
 
 ## Schemas
 Authoritative. Live in `ui/agent-schemas/src/*.schema.json`. Embedded in Rust via `include_str!` in `houston-agent-files::schemas`. Seeded into each agent's `.houston/<type>/<type>.schema.json` on first launch. Prompts instruct model to read schema before writing data file.
@@ -74,7 +81,7 @@ session key. Provider-scoped `.invalid` files stop a rejected legacy ID
 from being retried by the provider that rejected it.
 
 ## Atomic writes
-All writes: temp file + rename. Path-traversal safe via `houston-agent-files::safe_relative`.
+All writes: unique temp file + rename. Path-traversal safe via `houston-agent-files::safe_relative`.
 
 ## Activity statuses
 `running` · `needs_you` · `done` · `error`

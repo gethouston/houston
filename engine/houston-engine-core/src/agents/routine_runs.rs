@@ -22,6 +22,10 @@ pub fn list_for_routine(root: &Path, routine_id: &str) -> CoreResult<Vec<Routine
 }
 
 pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
+    with_runs_lock(root, || create_unlocked(root, routine_id))
+}
+
+fn create_unlocked(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     let mut runs = list(root)?;
     let id = Uuid::new_v4().to_string();
     let session_key = format!("routine-{routine_id}-run-{id}");
@@ -42,6 +46,10 @@ pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
 }
 
 pub fn update(root: &Path, id: &str, updates: RoutineRunUpdate) -> CoreResult<RoutineRun> {
+    with_runs_lock(root, || update_unlocked(root, id, updates))
+}
+
+fn update_unlocked(root: &Path, id: &str, updates: RoutineRunUpdate) -> CoreResult<RoutineRun> {
     let mut runs = list(root)?;
     let run = runs
         .iter_mut()
@@ -64,6 +72,10 @@ pub fn update(root: &Path, id: &str, updates: RoutineRunUpdate) -> CoreResult<Ro
     let result = run.clone();
     write_json(root, FILE, &runs)?;
     Ok(result)
+}
+
+fn with_runs_lock<T>(root: &Path, f: impl FnOnce() -> CoreResult<T>) -> CoreResult<T> {
+    super::store::with_json_file_lock(root, FILE, f)
 }
 
 /// Keep only the most recent `MAX_RUNS_PER_ROUTINE` runs per routine.
