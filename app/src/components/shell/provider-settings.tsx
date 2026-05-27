@@ -11,6 +11,7 @@ import { subscribeHoustonEvents } from "../../lib/events";
 import { GeminiConnectDialog } from "./gemini-connect-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderAccountRow } from "./provider-account-row";
+import { providerAppearsConnected } from "./provider-reconnect-state";
 
 /**
  * Settings-screen variant of the AI provider UI: accounts only.
@@ -56,10 +57,10 @@ export function ProviderSettings() {
     }
     if (hasBaseline.current) {
       for (const prov of PROVIDERS) {
-        const wasConnected =
-          prevStatuses.current[prov.id]?.cli_installed &&
-          prevStatuses.current[prov.id]?.authenticated;
-        const isConnected = next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
+        const prev = prevStatuses.current[prov.id];
+        const cur = next[prov.id];
+        const wasConnected = prev ? providerAppearsConnected(prev) : false;
+        const isConnected = cur ? providerAppearsConnected(cur) : false;
         if (!wasConnected && isConnected) {
           analytics.track("provider_configured", { provider: prov.id });
         }
@@ -99,7 +100,7 @@ export function ProviderSettings() {
   useEffect(() => {
     if (!pendingId) return;
     const status = statuses[pendingId];
-    if (status?.cli_installed && status?.authenticated) {
+    if (status && providerAppearsConnected(status)) {
       setPendingId(null);
     }
   }, [pendingId, statuses]);
@@ -221,7 +222,7 @@ export function ProviderSettings() {
     const disconnected: ProviderInfo[] = [];
     for (const p of PROVIDERS) {
       const s = statuses[p.id];
-      if (s?.cli_installed && s?.authenticated) connected.push(p);
+      if (s && providerAppearsConnected(s)) connected.push(p);
       else disconnected.push(p);
     }
     return [...connected, ...disconnected];
@@ -240,7 +241,7 @@ export function ProviderSettings() {
       <div className="grid grid-cols-1 gap-2">
         {orderedProviders.map((prov) => {
           const status = statuses[prov.id];
-          const connected = (status?.cli_installed && status?.authenticated) ?? false;
+          const connected = status ? providerAppearsConnected(status) : false;
           return (
             <ProviderAccountRow
               key={prov.id}
