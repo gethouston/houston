@@ -16,27 +16,43 @@ export function mergeFeedItem(items: FeedItem[], item: FeedItem): FeedItem[] {
   const last = items[items.length - 1];
 
   if (item.feed_type === "thinking_streaming") {
-    return replaceLast(items, item, (existing) => existing.feed_type === "thinking_streaming");
+    if (hasEquivalentSinceLastUser(items, item)) return items;
+    return replaceLast(
+      items,
+      item,
+      (existing) => existing.feed_type === "thinking_streaming",
+    ) ?? [...items, item];
   }
 
   if (item.feed_type === "thinking") {
-    return replaceLast(items, item, (existing) => existing.feed_type === "thinking_streaming");
+    const next = replaceLast(
+      items,
+      item,
+      (existing) => existing.feed_type === "thinking_streaming",
+    );
+    if (next) return next;
+    if (hasEquivalentSinceLastUser(items, item)) return items;
+    return [...items, item];
   }
 
   if (item.feed_type === "assistant_text_streaming") {
+    if (hasEquivalentSinceLastUser(items, item)) return items;
     return replaceLast(
       items,
       item,
       (existing) => existing.feed_type === "assistant_text_streaming",
-    );
+    ) ?? [...items, item];
   }
 
   if (item.feed_type === "assistant_text") {
-    return replaceLast(
+    const next = replaceLast(
       items,
       item,
       (existing) => existing.feed_type === "assistant_text_streaming",
     );
+    if (next) return next;
+    if (hasEquivalentSinceLastUser(items, item)) return items;
+    return [...items, item];
   }
 
   // tool_call with real input replaces the immediate null-input notification
@@ -61,14 +77,40 @@ export function mergeFeedItem(items: FeedItem[], item: FeedItem): FeedItem[] {
     }
   }
 
+  if (item.feed_type !== "user_message" && hasExactSinceLastUser(items, item)) {
+    return items;
+  }
+
   return [...items, item];
+}
+
+/**
+ * Merge persisted history with the current in-memory feed.
+ *
+ * History is authoritative, but the current feed can hold optimistic user
+ * messages or live WS events that arrived while history was loading. Treat
+ * streaming/final assistant pairs with the same text as duplicates so a stale
+ * in-memory stream cannot render below its persisted final answer.
+ */
+export function mergeFeedHistory(history: FeedItem[], current: FeedItem[]): FeedItem[] {
+  const exactCounts = countBy(history, feedItemKey);
+  const finalCounts = countBy(history, finalEquivalentKey);
+  let merged = [...history];
+
+  for (const item of current) {
+    if (consumeCount(exactCounts, feedItemKey(item))) continue;
+    if (consumeCount(finalCounts, finalEquivalentKey(item))) continue;
+    merged = mergeFeedItem(merged, item);
+  }
+
+  return merged;
 }
 
 function replaceLast(
   items: FeedItem[],
   item: FeedItem,
   predicate: (item: FeedItem) => boolean,
-): FeedItem[] {
+): FeedItem[] | null {
   for (let index = items.length - 1; index >= 0; index -= 1) {
     if (predicate(items[index])) {
       return [
@@ -78,5 +120,65 @@ function replaceLast(
       ];
     }
   }
-  return [...items, item];
+  return null;
+}
+
+function hasExactSinceLastUser(items: FeedItem[], item: FeedItem): boolean {
+  const key = feedItemKey(item);
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const existing = items[index];
+    if (existing.feed_type === "user_message") return false;
+    if (feedItemKey(existing) === key) return true;
+  }
+  return false;
+}
+
+function hasEquivalentSinceLastUser(items: FeedItem[], item: FeedItem): boolean {
+  const key = finalEquivalentKey(item);
+  if (!key) return false;
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    const existing = items[index];
+    if (existing.feed_type === "user_message") return false;
+    if (finalEquivalentKey(existing) === key) return true;
+  }
+  return false;
+}
+
+function feedItemKey(item: FeedItem): string {
+  return JSON.stringify(item);
+}
+
+function finalEquivalentKey(item: FeedItem): string | null {
+  switch (item.feed_type) {
+    case "assistant_text":
+    case "assistant_text_streaming":
+      return `assistant:${item.data}`;
+    case "thinking":
+    case "thinking_streaming":
+      return `thinking:${item.data}`;
+    default:
+      return null;
+  }
+}
+
+function countBy(
+  items: FeedItem[],
+  keyFor: (item: FeedItem) => string | null,
+): Map<string, number> {
+  const counts = new Map<string, number>();
+  for (const item of items) {
+    const key = keyFor(item);
+    if (!key) continue;
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  return counts;
+}
+
+function consumeCount(counts: Map<string, number>, key: string | null): boolean {
+  if (!key) return false;
+  const count = counts.get(key) ?? 0;
+  if (count <= 0) return false;
+  if (count === 1) counts.delete(key);
+  else counts.set(key, count - 1);
+  return true;
 }

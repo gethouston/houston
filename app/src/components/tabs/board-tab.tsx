@@ -3,7 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { AIBoard } from "@houston-ai/board";
 import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
-import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, type FeedItem } from "@houston-ai/chat";
 import { Terminal, GitBranch } from "lucide-react";
 
 import { useFeedStore } from "../../stores/feeds";
@@ -239,17 +239,9 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
       // truth — live WS events append cleanly and no "liveFeed wins if
       // non-empty" hack is needed. Any items already in the bucket
       // from WS events that arrived between activity creation and
-      // selection are preserved by merging the server history with
-      // the current bucket and dropping exact duplicates by position.
+      // selection are preserved by the shared history merge.
       const current = useFeedStore.getState().items[path]?.[sessionKey] ?? [];
-      // Server history is authoritative for everything persisted up to
-      // load time. Anything currently in `current` that isn't in the
-      // server history must be either an optimistic overlay we pushed
-      // or an event that landed mid-load. Append those after the
-      // server slice.
-      const serverIds = new Set(items.map((it) => JSON.stringify(it)));
-      const tail = current.filter((it) => !serverIds.has(JSON.stringify(it)));
-      setFeed(path, sessionKey, [...items, ...tail]);
+      setFeed(path, sessionKey, mergeFeedHistory(items, current));
     },
     [path, setFeed],
   );

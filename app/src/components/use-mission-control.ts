@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
-import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, type FeedItem } from "@houston-ai/chat";
 import { useFeedStore } from "../stores/feeds";
 import {
   getSessionStatusKey,
@@ -141,13 +141,7 @@ export function useMissionControl(agents: Agent[]) {
       const agentPath = pathMapRef.current[activityId];
       if (!agentPath) return;
       const current = useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
-      // Server history is authoritative for what's persisted; anything
-      // currently in `current` that isn't on the server is either an
-      // optimistic overlay we pushed or a WS event that landed
-      // mid-load. Append those after the server slice.
-      const serverIds = new Set(history.map((it) => JSON.stringify(it)));
-      const tail = current.filter((it) => !serverIds.has(JSON.stringify(it)));
-      setFeed(agentPath, sessionKey, [...history, ...tail]);
+      setFeed(agentPath, sessionKey, mergeFeedHistory(history, current));
     },
     [setFeed],
   );
