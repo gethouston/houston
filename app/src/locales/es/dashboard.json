@@ -30,6 +30,9 @@
     "description": "Arma tu equipo de IA y haz lo imposible.",
     "cta": "Nuevo agente"
   },
+  "errors": {
+    "noAgentForMission": "Elige un agente antes de iniciar una misión."
+  },
   "agentPicker": {
     "title": "¿Qué agente debería ejecutar esto?",
     "description": "Elige un agente para abrir una nueva conversación."

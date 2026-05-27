@@ -30,6 +30,7 @@ import { MissionBoardEmptyState } from "./mission-board-empty-state";
 import { useMissionSearch } from "./use-mission-search";
 import { buildMissionBoardColumns } from "./mission-board-columns";
 import { navigateBoard } from "../lib/board-navigate";
+import { planNewMission } from "./mission-control-create";
 
 export function Dashboard() {
   const { t } = useTranslation(["dashboard", "board", "common"]);
@@ -319,6 +320,36 @@ export function Dashboard() {
     },
     [selectedSessionKey, selectedSessionActive, messageQueue.queueMessage, panel.onComposerSubmit],
   );
+  // Blank "New mission" submit. The new-mission panel only opens after an
+  // agent is picked, so `activeAgent` drives the create; the planner keeps
+  // the agent/default-mode resolution pure (and unit-tested). Wiring this
+  // into AIBoard is the issue #328 fix — Mission Control previously passed
+  // no `onCreateConversation`, so a blank submit cleared the composer and
+  // did nothing.
+  const handleCreateConversation = useCallback(
+    async (text: string, files: File[]): Promise<string> => {
+      const plan = planNewMission({
+        activeAgent,
+        activeAgentDef,
+        providerOverride: panel.effectiveProvider,
+        modelOverride: panel.effectiveModel,
+      });
+      if (plan.kind === "no-agent") {
+        addToast({
+          title: t("dashboard:errors.noAgentForMission"),
+          variant: "error",
+        });
+        throw new Error("New mission submitted with no active agent");
+      }
+      return mc.handleCreateConversation(plan.agent, text, files, {
+        agentMode: plan.agentMode,
+        promptFile: plan.promptFile,
+        providerOverride: plan.providerOverride,
+        modelOverride: plan.modelOverride,
+      });
+    },
+    [activeAgent, activeAgentDef, panel.effectiveProvider, panel.effectiveModel, mc.handleCreateConversation, addToast, t],
+  );
   const queuedMessages = useMemo(
     () => selectedSessionKey ? { [selectedSessionKey]: messageQueue.queuedMessages } : {},
     [selectedSessionKey, messageQueue.queuedMessages],
@@ -393,6 +424,7 @@ export function Dashboard() {
           onDelete={mc.handleDelete}
           onApprove={mc.handleApprove}
           onRename={mc.handleRename}
+          onCreateConversation={handleCreateConversation}
           onSendMessage={handleSendMessage}
           queuedMessages={queuedMessages}
           onRemoveQueuedMessage={(_, id) => messageQueue.removeQueuedMessage(id)}

@@ -30,6 +30,9 @@
     "description": "Build your AI team and ship the impossible.",
     "cta": "New Agent"
   },
+  "errors": {
+    "noAgentForMission": "Pick an agent before starting a mission."
+  },
   "agentPicker": {
     "title": "Which agent should run this?",
     "description": "Pick an agent to open a fresh conversation."

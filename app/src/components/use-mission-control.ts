@@ -8,15 +8,29 @@ import {
   isActiveSessionStatus,
   useSessionStatusStore,
 } from "../stores/session-status";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAllConversations } from "../hooks/queries";
-import { tauriActivity, tauriChat, tauriAttachments } from "../lib/tauri";
+import {
+  tauriActivity,
+  tauriChat,
+  tauriAttachments,
+  tauriConfig,
+  tauriWorktree,
+  tauriShell,
+} from "../lib/tauri";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
+import { createMission } from "../lib/create-mission";
+import { formatVisibleMessageText } from "../lib/queued-chat";
+import { queryKeys } from "../lib/query-keys";
+import { useUIStore } from "../stores/ui";
 import type { Agent } from "../lib/types";
 import { createElement } from "react";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
 export function useMissionControl(agents: Agent[]) {
   const { t } = useTranslation("chat");
+  const queryClient = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
   // Mission control is cross-agent. Flatten the nested feed store into a
   // single sessionKey → items map, filtered to the agents on this view.
   const allItems = useFeedStore((s) => s.items);
@@ -161,18 +175,87 @@ export function useMissionControl(agents: Agent[]) {
     [pushFeedItem, t],
   );
 
-  const handleCreate = useCallback(
-    async (agentPath: string, text: string) => {
-      const title = text.length > 80 ? text.slice(0, 77) + "..." : text;
-      const item = await tauriActivity.create(agentPath, title, text);
-      const sessionKey = `activity-${item.id}`;
-      pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: text });
-      setLoading((prev) => ({ ...prev, [sessionKey]: true }));
-      await tauriActivity.update(agentPath, item.id, { status: "running" });
-      tauriChat.send(agentPath, text, sessionKey);
-      setSelectedId(item.id);
+  // Blank "New mission" create path for Mission Control. Mirrors the
+  // per-agent BoardTab `handleCreateConversation` (it routes through the
+  // same `createMission` source of truth) but takes the agent explicitly
+  // because this view is cross-agent. Wired into AIBoard via
+  // `onCreateConversation`; without it a blank submit had no handler and
+  // the composer silently cleared (issue #328). AIBoard selects the
+  // returned activity id, so we don't call setSelectedId here.
+  const handleCreateConversation = useCallback(
+    async (
+      agent: Agent,
+      text: string,
+      files: File[],
+      opts?: {
+        agentMode?: string;
+        promptFile?: string;
+        providerOverride?: string;
+        modelOverride?: string;
+      },
+    ): Promise<string> => {
+      const agentPath = agent.folderPath;
+
+      // Honour worktree mode when the agent's config opts in — same
+      // bootstrap as the BoardTab create path.
+      let worktreePath: string | undefined;
+      try {
+        const cfg = await tauriConfig.read(agentPath);
+        if (cfg.worktreeMode) {
+          const slug = crypto.randomUUID().slice(0, 8);
+          const wt = await tauriWorktree.create(agentPath, slug);
+          worktreePath = wt.path;
+          const installCmd = cfg.installCommand as string | undefined;
+          if (installCmd && worktreePath) {
+            tauriShell.run(worktreePath, installCmd).catch(console.error);
+          }
+        }
+      } catch {
+        /* config may not exist yet */
+      }
+
+      const visible = formatVisibleMessageText(
+        text,
+        files,
+        (names) => t("queue.attached", { names }),
+      );
+      let userMessage = text;
+      try {
+        const { conversationId, sessionKey } = await createMission(
+          { id: agent.id, name: agent.name, color: agent.color, folderPath: agentPath },
+          text,
+          {
+            agentMode: opts?.agentMode,
+            worktreePath,
+            promptFile: opts?.promptFile,
+            providerOverride: opts?.providerOverride,
+            modelOverride: opts?.modelOverride,
+            titleText: visible,
+            buildPrompt: async (activityId) => {
+              const saved = await tauriAttachments.save(`activity-${activityId}`, files);
+              userMessage = buildAttachmentPrompt(text, files, saved);
+              return userMessage;
+            },
+          },
+        );
+        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: userMessage });
+        setLoading((prev) => ({ ...prev, [sessionKey]: true }));
+        // createMission bypasses the activity mutation hooks, so refresh
+        // the cross-agent conversation list manually.
+        queryClient.invalidateQueries({ queryKey: queryKeys.allConversations(paths) });
+        return conversationId;
+      } catch (err) {
+        // No silent failures: createMission already rolled back the
+        // half-created activity. Surface why the mission did not start so
+        // the user can retry or report it.
+        addToast({
+          title: t("errors.sessionStart", { error: String(err) }),
+          variant: "error",
+        });
+        throw err;
+      }
     },
-    [pushFeedItem],
+    [t, pushFeedItem, queryClient, paths, addToast],
   );
 
   const effectiveLoading = useMemo(() => {
@@ -214,6 +297,6 @@ export function useMissionControl(agents: Agent[]) {
     handleApprove,
     handleRename,
     handleSendMessage,
-    handleCreate,
+    handleCreateConversation,
   };
 }
