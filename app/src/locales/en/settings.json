@@ -7,6 +7,7 @@
     "userContext": "User context",
     "provider": "AI provider",
     "phone": "Connect phone",
+    "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug"
   },
   "account": {
@@ -81,6 +82,10 @@
     "confirmTitle": "Delete \"{{name}}\"?",
     "confirmDescription": "This will permanently delete this workspace and all its agents. This cannot be undone.",
     "confirmLabel": "Delete"
+  },
+  "shortcuts": {
+    "title": "Keyboard shortcuts",
+    "description": "Run Houston without touching the mouse."
   },
   "reportBug": {
     "title": "Report bug",

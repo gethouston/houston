@@ -25,11 +25,12 @@ use houston_ui_events::{DynEventSink, HoustonEvent};
 use once_cell::sync::Lazy;
 use regex::Regex;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdin, ChildStdout};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, Notify};
 
 /// Hard ceiling on a single OAuth login subprocess lifetime. If the
 /// CLI hasn't exited by then (e.g. user abandoned the browser flow
@@ -42,7 +43,8 @@ const LOGIN_SESSION_TIMEOUT: Duration = Duration::from_secs(600);
 /// `"anthropic"`, `"openai"`). Single-entry-per-provider by design:
 /// [`insert_session`] rejects a second concurrent attempt with
 /// `BadRequest` so a fast double-click can't orphan a subprocess.
-/// Removed by [`relay_login_output`] when the child exits.
+/// Removed by [`relay_login_output`] when the child exits, or eagerly
+/// by [`cancel_login`] so an abandoned sign-in can be retried at once.
 ///
 /// `stdin` is wrapped in its own `Arc<Mutex<_>>` so
 /// [`submit_login_code`] can clone the handle out of this map under
@@ -52,8 +54,36 @@ const LOGIN_SESSION_TIMEOUT: Duration = Duration::from_secs(600);
 static LOGIN_SESSIONS: Lazy<Mutex<HashMap<String, LoginSession>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
+/// Monotonic session token source. Each [`insert_session`] mints a
+/// fresh token so the relay task can prove ownership of the map entry
+/// before removing it — otherwise a [`cancel_login`] followed by an
+/// immediate re-`Connect` (new session, same provider id) could be
+/// evicted by the *previous* relay's end-of-life cleanup.
+static SESSION_SEQ: AtomicU64 = AtomicU64::new(0);
+
 struct LoginSession {
     stdin: Arc<Mutex<ChildStdin>>,
+    /// Fired by [`cancel_login`] to abort an in-flight browser sign-in.
+    /// The relay task holds its own `Arc` clone and selects on it.
+    cancel: Arc<Notify>,
+    /// Identifies which relay owns this map entry (see [`SESSION_SEQ`]).
+    token: u64,
+}
+
+/// Handed back by [`insert_session`] to the spawn site so the relay
+/// task gets the same cancel handle + token stored in the map.
+#[derive(Debug)]
+pub(super) struct RelayRegistration {
+    cancel: Arc<Notify>,
+    token: u64,
+}
+
+/// How a relay's lifetime ended, distinguishing a user-initiated
+/// [`cancel_login`] (benign — no error toast) from the CLI exiting on
+/// its own (success or real failure).
+enum RelayOutcome {
+    Exited(std::io::Result<std::process::ExitStatus>),
+    Cancelled,
 }
 
 /// Regex over a single line of CLI stdout, looking for an HTTPS URL
@@ -89,19 +119,56 @@ pub(super) async fn insert_session(
     provider_id: &str,
     cli_name: &str,
     stdin: ChildStdin,
-) -> CoreResult<()> {
+) -> CoreResult<RelayRegistration> {
     let mut sessions = LOGIN_SESSIONS.lock().await;
     if sessions.contains_key(provider_id) {
         return Err(CoreError::BadRequest(format!(
-            "{cli_name} sign-in is already pending. Finish the open sign-in or restart Houston to retry.",
+            "{cli_name} sign-in is already pending. Finish the open sign-in or cancel it to retry.",
         )));
     }
+    let cancel = Arc::new(Notify::new());
+    let token = SESSION_SEQ.fetch_add(1, Ordering::Relaxed);
     sessions.insert(
         provider_id.to_string(),
         LoginSession {
             stdin: Arc::new(Mutex::new(stdin)),
+            cancel: Arc::clone(&cancel),
+            token,
         },
     );
+    Ok(RelayRegistration { cancel, token })
+}
+
+/// Cancel an in-flight OAuth login. Removes the map entry **eagerly**
+/// (under the lock) so a follow-up `Connect` click isn't rejected by
+/// [`insert_session`]'s already-pending guard, then signals the relay
+/// task — which holds its own `Arc<Notify>` clone — to kill the
+/// subprocess and emit a benign [`HoustonEvent::ProviderLoginComplete`]
+/// (`success: false`, `error: None`). Idempotent: cancelling when no
+/// session is pending is a no-op success, because the goal state — no
+/// pending sign-in — already holds (e.g. the flow completed between the
+/// user opening the browser and giving up).
+pub async fn cancel_login(provider: Provider) -> CoreResult<()> {
+    cancel_login_inner(provider.id(), provider.cli_name()).await
+}
+
+/// Id-based core of [`cancel_login`], split out so unit tests can drive
+/// it with a synthetic provider id that won't collide with the real
+/// providers other tests touch on the shared [`LOGIN_SESSIONS`] map.
+async fn cancel_login_inner(provider_id: &str, cli_name: &str) -> CoreResult<()> {
+    let session = {
+        let mut sessions = LOGIN_SESSIONS.lock().await;
+        sessions.remove(provider_id)
+    };
+    match session {
+        Some(session) => {
+            session.cancel.notify_one();
+            tracing::info!("[houston:provider] {cli_name} login cancel requested");
+        }
+        None => {
+            tracing::debug!("[houston:provider] cancel_login: no pending {cli_name} session");
+        }
+    }
     Ok(())
 }
 
@@ -117,9 +184,11 @@ pub(super) fn spawn_relay(
     stdout: ChildStdout,
     stderr: Option<tokio::process::ChildStderr>,
     sink: DynEventSink,
+    registration: RelayRegistration,
 ) {
     tokio::spawn(async move {
-        relay_login_output(provider_id, cli_name, child, stdout, stderr, sink).await;
+        relay_login_output(provider_id, cli_name, child, stdout, stderr, sink, registration)
+            .await;
     });
 }
 
@@ -130,7 +199,9 @@ async fn relay_login_output(
     stdout: ChildStdout,
     stderr: Option<tokio::process::ChildStderr>,
     sink: DynEventSink,
+    registration: RelayRegistration,
 ) {
+    let RelayRegistration { cancel, token } = registration;
     // Drain stderr in a sibling task so a verbose CLI can't fill the
     // 64KB stderr pipe buffer and deadlock the child on write.
     // Captured stderr is appended to the `ProviderLoginComplete`
@@ -151,10 +222,20 @@ async fn relay_login_output(
     // Outer timeout protects against a CLI that keeps stdout open
     // and never exits (user abandoned the browser flow, claude
     // wedged on a network call, …). When the timeout fires we kill
-    // the child so its `wait()` resolves quickly below.
+    // the child so its `wait()` resolves quickly below. A user
+    // [`cancel_login`] takes the fast path through the `cancel` arm.
     let work = async {
         loop {
             tokio::select! {
+                _ = cancel.notified() => {
+                    tracing::info!(
+                        "[houston:provider] {cli_name} login cancelled — killing subprocess"
+                    );
+                    let _ = child.kill().await;
+                    // Reap so the OS doesn't keep a zombie around.
+                    let _ = child.wait().await;
+                    return RelayOutcome::Cancelled;
+                }
                 line = reader.next_line() => {
                     match line {
                         Ok(Some(line)) => {
@@ -181,17 +262,17 @@ async fn relay_login_output(
                     }
                 }
                 exit = child.wait() => {
-                    return Ok::<_, ()>(exit);
+                    return RelayOutcome::Exited(exit);
                 }
             }
         }
         // Stdout EOF without seeing the child exit — wait for it
         // explicitly so we still observe the exit status.
-        Ok(child.wait().await)
+        RelayOutcome::Exited(child.wait().await)
     };
 
     let (success, error) = match tokio::time::timeout(LOGIN_SESSION_TIMEOUT, work).await {
-        Ok(Ok(Ok(status))) => {
+        Ok(RelayOutcome::Exited(Ok(status))) => {
             tracing::info!("[houston:provider] {cli_name} login exited: {status}");
             let stderr_text = drain_stderr(stderr_handle).await;
             (
@@ -203,7 +284,7 @@ async fn relay_login_output(
                 },
             )
         }
-        Ok(Ok(Err(e))) => {
+        Ok(RelayOutcome::Exited(Err(e))) => {
             tracing::warn!("[houston:provider] {cli_name} login wait failed: {e}");
             let stderr_text = drain_stderr(stderr_handle).await;
             (
@@ -211,9 +292,14 @@ async fn relay_login_output(
                 Some(format_exit_error(&cli_name, &format!("wait failed: {e}"), &stderr_text)),
             )
         }
-        Ok(Err(())) => unreachable!(
-            "the inner async block returns Ok variants only — Err(()) is just for type inference"
-        ),
+        Ok(RelayOutcome::Cancelled) => {
+            // User abandoned the sign-in. Drain stderr so the sibling
+            // task joins, but DON'T surface it — a deliberate cancel
+            // isn't an error, so `error: None` keeps the frontend from
+            // toasting. The spinner just clears and the card re-arms.
+            drain_stderr(stderr_handle).await;
+            (false, None)
+        }
         Err(_) => {
             tracing::warn!(
                 "[houston:provider] {cli_name} login timed out after {}s — killing subprocess",
@@ -232,7 +318,16 @@ async fn relay_login_output(
         }
     };
 
-    LOGIN_SESSIONS.lock().await.remove(&provider_id);
+    // Remove the map entry only if it's still *ours*. A `cancel_login`
+    // already removed it eagerly, and a fresh `Connect` may have
+    // inserted a brand-new session under the same provider id — token
+    // equality stops us from evicting that newcomer.
+    {
+        let mut sessions = LOGIN_SESSIONS.lock().await;
+        if sessions.get(&provider_id).map(|s| s.token) == Some(token) {
+            sessions.remove(&provider_id);
+        }
+    }
     sink.emit(HoustonEvent::ProviderLoginComplete {
         provider: provider_id,
         success,
@@ -379,5 +474,89 @@ mod tests {
         );
         // Cleanup so subsequent tests in this process see an empty map.
         LOGIN_SESSIONS.lock().await.remove(provider_id);
+    }
+
+    /// Spawn a long-lived child with piped stdio so the relay has a
+    /// real subprocess to kill. `sleep 60` never writes stdout, so the
+    /// relay only ever emits on cancel/exit — no spurious URL event.
+    async fn spawn_idle_child() -> Child {
+        let mut cmd = tokio::process::Command::new("sleep");
+        cmd.arg("60")
+            .stdin(std::process::Stdio::piped())
+            .stdout(std::process::Stdio::piped())
+            .stderr(std::process::Stdio::piped())
+            .kill_on_drop(true);
+        cmd.spawn().expect("spawn sleep")
+    }
+
+    #[tokio::test]
+    async fn cancel_login_kills_session_and_emits_benign_completion() {
+        use houston_ui_events::BroadcastEventSink;
+
+        let provider_id = "test-cancel-provider";
+        let cli_name = "test-cli";
+
+        let mut child = spawn_idle_child().await;
+        let stdin = child.stdin.take().expect("stdin piped");
+        let stdout = child.stdout.take().expect("stdout piped");
+        let stderr = child.stderr.take();
+
+        let sink = Arc::new(BroadcastEventSink::new(16));
+        let mut rx = sink.subscribe();
+
+        let registration = insert_session(provider_id, cli_name, stdin)
+            .await
+            .expect("first insert succeeds");
+        spawn_relay(
+            provider_id.to_string(),
+            cli_name.to_string(),
+            child,
+            stdout,
+            stderr,
+            sink.clone(),
+            registration,
+        );
+
+        assert!(
+            LOGIN_SESSIONS.lock().await.contains_key(provider_id),
+            "session should be pending right after spawn"
+        );
+
+        cancel_login_inner(provider_id, cli_name)
+            .await
+            .expect("cancel succeeds");
+
+        let ev = tokio::time::timeout(Duration::from_secs(5), rx.recv())
+            .await
+            .expect("relay emits within 5s")
+            .expect("event received");
+        match ev {
+            HoustonEvent::ProviderLoginComplete {
+                provider,
+                success,
+                error,
+            } => {
+                assert_eq!(provider, provider_id);
+                assert!(!success, "a cancelled sign-in did not complete");
+                assert_eq!(error, None, "a user cancel must not surface an error toast");
+            }
+            other => panic!("expected ProviderLoginComplete, got {other:?}"),
+        }
+
+        // Cancel removed the entry eagerly; the relay's token-guarded
+        // cleanup is a no-op. Either way the slot is free so a fresh
+        // Connect can spawn immediately instead of hitting "already
+        // pending" (#237).
+        assert!(
+            !LOGIN_SESSIONS.lock().await.contains_key(provider_id),
+            "session should be cleared after cancel"
+        );
+    }
+
+    #[tokio::test]
+    async fn cancel_login_without_session_is_idempotent() {
+        cancel_login_inner("test-cancel-absent", "test-cli")
+            .await
+            .expect("cancelling a non-existent session is a no-op success");
     }
 }

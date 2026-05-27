@@ -115,10 +115,14 @@ COPY --from=cli-tools --chown=houston:houston /data/.composio /data/.composio
 
 USER houston
 WORKDIR /data
+# HOUSTON_NO_PARENT_WATCHDOG=1: no supervisor owns our stdin in a container,
+# so disable the parent-watchdog that would otherwise see /dev/null EOF and
+# exit the engine at boot (gethouston/houston#306).
 ENV HOUSTON_HOME=/data/.houston \
     HOUSTON_DOCS=/data/Houston \
     HOUSTON_BIND=0.0.0.0:7777 \
     HOUSTON_BIND_ALL=1 \
+    HOUSTON_NO_PARENT_WATCHDOG=1 \
     PATH=/data/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 
 EXPOSE 7777

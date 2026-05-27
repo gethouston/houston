@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Storage — Houston Cloud Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Cloud Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Cloud Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-the-plan.html"><span class="num">01</span>The plan<span class="sb-status progress"></span></a></li>
+      <li><a href="02-kubernetes.html"><span class="num">02</span>Kubernetes<span class="sb-status planned"></span></a></li>
+      <li><a href="03-kata-firecracker.html"><span class="num">03</span>Kata + Firecracker<span class="sb-status planned"></span></a></li>
+      <li><a href="04-knative.html"><span class="num">04</span>Knative<span class="sb-status planned"></span></a></li>
+      <li><a href="05-control-plane.html"><span class="num">05</span>The control plane<span class="sb-status planned"></span></a></li>
+      <li><a href="06-postgres-redis.html"><span class="num">06</span>Postgres + Redis<span class="sb-status planned"></span></a></li>
+      <li><a href="07-storage.html" class="active"><span class="num">07</span>Storage<span class="sb-status planned"></span></a></li>
+      <li><a href="08-networking.html"><span class="num">08</span>Networking<span class="sb-status planned"></span></a></li>
+      <li><a href="09-auth.html"><span class="num">09</span>Auth<span class="sb-status partial"></span></a></li>
+      <li><a href="10-message-flow.html"><span class="num">10</span>End-to-end flow<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 07
+      <span class="status planned">Planned</span>
+    </div>
+    <h1>The agent's brain lives on a disk that outlives the pod.</h1>
+    <p class="lead">
+      When Knative kills an idle agent pod, the agent's notes, memory,
+      and OAuth tokens can't die with it. The pod gets thrown away.
+      The disk doesn't. This chapter is about that disk and the
+      handful of decisions around it.
+    </p>
+
+    <h2>The problem</h2>
+    <p>
+      A Houston agent stores everything in a folder called
+      <code>.houston/</code>. Inside: chat history, memory, learned
+      skills, OAuth tokens for connected tools, files the user has
+      shared. On the desktop, that folder lives in
+      <code>~/.houston/workspaces/...</code> on the user's hard drive.
+      It survives reboots, app crashes, anything short of the user
+      deleting it.
+    </p>
+    <p>
+      In the cloud, the agent's pod is ephemeral. Knative kills it
+      after a few minutes of idle. If the <code>.houston/</code>
+      folder lived inside the pod, every nap would amnesia the agent.
+      Bad. So the folder has to live somewhere outside the pod.
+    </p>
+
+    <h2>The fix: a persistent volume per agent</h2>
+    <p>
+      Kubernetes calls disks "persistent volumes." A persistent volume
+      is a chunk of cloud storage that gets attached to a pod when the
+      pod boots and detached when the pod dies. The data on it
+      survives.
+    </p>
+    <p>
+      Every agent gets one. ~1 GB to start, grows as needed. Mounted
+      inside the pod at <code>/data/.houston/</code>. The engine
+      doesn't know it's running in the cloud; it sees a normal
+      folder.
+    </p>
+
+    <div class="diagram">
+      <div class="deploy-grid">
+        <div class="deploy-col">
+          <div class="deploy-head">When the agent is awake</div>
+          <div class="deploy-layer">Agent pod (Knative)</div>
+          <div class="deploy-arrow">↓ mounted at</div>
+          <div class="deploy-layer">/data/.houston/</div>
+          <div class="deploy-arrow">↓ stored on</div>
+          <div class="deploy-layer">PersistentVolume (cloud disk)</div>
+        </div>
+        <div class="deploy-col">
+          <div class="deploy-head">When the agent is asleep</div>
+          <div class="deploy-layer" style="opacity: 0.4">Agent pod (deleted)</div>
+          <div class="deploy-arrow" style="opacity: 0.4">↓</div>
+          <div class="deploy-layer" style="opacity: 0.4">/data/.houston/</div>
+          <div class="deploy-arrow">↓ still here</div>
+          <div class="deploy-layer">PersistentVolume (cloud disk)</div>
+        </div>
+      </div>
+      <div class="caption">Pod dies, disk lives. Wake up, mount disk, exactly where you left off.</div>
+    </div>
+
+    <h2>How big is the disk?</h2>
+    <ul>
+      <li>Sessions and memory text: a few MB even for heavy users. Text compresses well.</li>
+      <li>OAuth tokens, settings: kilobytes.</li>
+      <li>Files the user uploads: this is the wild card. Could be tens of MB to GB.</li>
+    </ul>
+    <p>
+      Start at 1 GB per agent. Costs about 10 cents per month on GCP.
+      Auto-grow when 80% full. We're not optimizing storage cost
+      ever — even 10,000 agents at 1 GB is $1,000 a month total. Real
+      money is compute, not disk.
+    </p>
+
+    <h2>What about big files?</h2>
+    <p>
+      If an agent handles huge files (videos, datasets), the
+      persistent volume is the wrong place. Two reasons: it's
+      attached only when the pod is alive, and it's a more
+      expensive kind of storage than necessary.
+    </p>
+    <p>
+      For big files, the agent writes to <strong>object storage</strong>
+      (S3 on AWS, GCS on Google Cloud). Object storage is dirt cheap,
+      designed for huge blobs, and accessible from anywhere. The
+      agent keeps only a reference (a URL) on its persistent volume.
+    </p>
+    <p>
+      Same pattern as your desktop app having a shortcut to a video
+      on Dropbox. The shortcut is small, the video lives somewhere
+      cheap and shared.
+    </p>
+
+    <h2>Backups</h2>
+    <p>
+      Two layers:
+    </p>
+    <ul>
+      <li><strong>Volume snapshots</strong>: Kubernetes can snapshot a persistent volume nightly. Costs a fraction of the volume itself.</li>
+      <li><strong>Export to object storage</strong>: weekly tar of the <code>.houston/</code> folder uploaded to S3, keyed by agent + date. Old snapshots cycle out.</li>
+    </ul>
+    <p>
+      Restore process: if an agent's volume gets corrupted, we mount
+      the last snapshot, copy in the latest <code>.houston/</code> from
+      S3, the agent's next message wakes the pod with restored state.
+      User notices nothing.
+    </p>
+
+    <h2>Sticky scheduling</h2>
+    <p>
+      There's a subtle issue: a persistent volume is usually tied to
+      one cloud region or even one zone. If we have nodes in
+      <code>us-east-1a</code> and <code>us-east-1b</code>, an agent's
+      volume that was created in <code>1a</code> can only mount to
+      pods in <code>1a</code>.
+    </p>
+    <p>
+      Kubernetes handles this automatically with
+      <strong>topology aware scheduling</strong>. When the pod boots,
+      K8s asks "where does your volume live?" and only schedules the
+      pod onto matching nodes. We don't have to think about it once
+      it's set up.
+    </p>
+
+    <h2>The cold start optimization (for later)</h2>
+    <p>
+      Attaching a persistent volume on cold start adds a few hundred
+      milliseconds. For 99% of agents this is fine. If we ever need
+      sub-100ms cold start for some always-on agent, we'd switch to
+      <strong>image preloaded with state</strong> or
+      <strong>state sync from object storage</strong> instead of mount.
+      Not v1.
+    </p>
+
+    <h2>What this gives us</h2>
+    <ul>
+      <li><strong>Agents have real memory.</strong> Their <code>.houston/</code> survives sleep, restart, even cluster failures (with backups).</li>
+      <li><strong>Compute scales to zero, storage costs pennies.</strong> An agent untouched for a year still has its memory waiting, for less than a dollar in storage.</li>
+      <li><strong>The engine doesn't have to change.</strong> From the engine's perspective, <code>/data/.houston/</code> is just a folder. Same logic as the desktop app's <code>~/.houston/</code>.</li>
+    </ul>
+
+    <div class="callout callout-warning">
+      <div class="callout-label">The one footgun</div>
+      <p>Persistent volumes don't shrink. If an agent writes 5 GB of crap once and then cleans up, you're paying for 5 GB forever (until you migrate the volume). For Houston this probably doesn't matter — agent data should stay small if we're disciplined about big-file offload to object storage. Worth a periodic "agent volume size audit" cron once we're live.</p>
+    </div>
+
+    <div class="tech-box">
+      <div class="label">Concrete setup</div>
+      <p>StorageClass <code>standard-ssd-zonal</code> on GKE (cheap SSD per AZ). PersistentVolumeClaim per agent, name pattern <code>pvc-agent-{agent-id}</code>. Created by the control plane when the agent is provisioned. Snapshots scheduled via Velero or native VolumeSnapshot controllers. Object storage: GCS bucket per workspace for tenant data, with lifecycle rules archiving old files to colder/cheaper tiers.</p>
+    </div>
+
+    <div class="pager">
+      <a href="06-postgres-redis.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Postgres + Redis</div>
+      </a>
+      <a href="08-networking.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">Networking</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Cloud Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

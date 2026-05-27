@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Auth — Houston Cloud Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Cloud Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Cloud Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-the-plan.html"><span class="num">01</span>The plan<span class="sb-status progress"></span></a></li>
+      <li><a href="02-kubernetes.html"><span class="num">02</span>Kubernetes<span class="sb-status planned"></span></a></li>
+      <li><a href="03-kata-firecracker.html"><span class="num">03</span>Kata + Firecracker<span class="sb-status planned"></span></a></li>
+      <li><a href="04-knative.html"><span class="num">04</span>Knative<span class="sb-status planned"></span></a></li>
+      <li><a href="05-control-plane.html"><span class="num">05</span>The control plane<span class="sb-status planned"></span></a></li>
+      <li><a href="06-postgres-redis.html"><span class="num">06</span>Postgres + Redis<span class="sb-status planned"></span></a></li>
+      <li><a href="07-storage.html"><span class="num">07</span>Storage<span class="sb-status planned"></span></a></li>
+      <li><a href="08-networking.html"><span class="num">08</span>Networking<span class="sb-status planned"></span></a></li>
+      <li><a href="09-auth.html" class="active"><span class="num">09</span>Auth<span class="sb-status partial"></span></a></li>
+      <li><a href="10-message-flow.html"><span class="num">10</span>End-to-end flow<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 09
+      <span class="status partial">Partial</span>
+    </div>
+    <h1>Login is solved. Supabase does it.</h1>
+    <p class="lead">
+      Auth is the kind of thing that sounds simple ("just log people
+      in") and ends with a six month rewrite. We don't write auth.
+      We use Supabase, which handles email login, Google SSO, magic
+      links, password resets, multi factor, and the rest of the
+      checklist. Our job is to consume the result.
+    </p>
+
+    <h2>What "auth" actually means</h2>
+    <p>
+      Three different jobs people confuse:
+    </p>
+    <ol>
+      <li><strong>Authentication</strong>: who are you? (Login, sessions, password reset.)</li>
+      <li><strong>Authorization</strong>: what are you allowed to do? (Can Juan talk to HR agent?)</li>
+      <li><strong>Connection</strong>: which third party tools is this agent allowed to act on? (Has Juan's Slack been linked?)</li>
+    </ol>
+    <p>
+      We use Supabase for #1. We do #2 ourselves in the control plane.
+      #3 is mostly Composio (with help from us for the OAuth flow).
+    </p>
+
+    <h2>Supabase, the parts we use</h2>
+    <ul>
+      <li><strong>Email + password</strong>: standard login. Supabase stores hashed passwords. We never see plaintext.</li>
+      <li><strong>Google SSO</strong>: "Continue with Google." Maps Google accounts to Houston accounts.</li>
+      <li><strong>SAML / OIDC for enterprise</strong>: "log in with your Okta/Azure AD." Supabase has this for the paid tier. Enterprise customers will demand it.</li>
+      <li><strong>Magic links</strong>: emailed login link. Useful for non-tech users who forget passwords.</li>
+      <li><strong>Multi factor</strong>: TOTP (authenticator app). Optional for individuals, mandatory for admin roles on enterprise tenants.</li>
+      <li><strong>JWT tokens</strong>: after login, Supabase issues a JWT. The frontend sends it on every request. The control plane verifies it.</li>
+    </ul>
+
+    <h2>How the JWT flows</h2>
+
+    <div class="flow-list">
+      <div class="flow-step">
+        <div class="num">01</div>
+        <div>
+          <div class="from-to"><span class="actor">User</span> <span class="arrow">→</span> <span class="actor">app.houston.ai</span></div>
+          <div class="action">Clicks "log in." Frontend redirects to Supabase login UI.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="num">02</div>
+        <div>
+          <div class="from-to"><span class="actor">User</span> <span class="arrow">→</span> <span class="actor">Supabase</span></div>
+          <div class="action">Enters credentials (or clicks Google). Supabase authenticates.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="num">03</div>
+        <div>
+          <div class="from-to"><span class="actor">Supabase</span> <span class="arrow">→</span> <span class="actor">User</span></div>
+          <div class="action">Returns a JWT containing user ID, email, expiry. Frontend stores it (cookie or local storage).</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="num">04</div>
+        <div>
+          <div class="from-to"><span class="actor">Frontend</span> <span class="arrow">→</span> <span class="actor">Control plane</span></div>
+          <div class="action">Every request includes the JWT in the <code>Authorization</code> header.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="num">05</div>
+        <div>
+          <div class="from-to"><span class="actor">Control plane</span></div>
+          <div class="action">Verifies the JWT's signature with Supabase's public key. Locally. No network call. Microseconds.</div>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="num">06</div>
+        <div>
+          <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Postgres</span></div>
+          <div class="action">Look up: which workspace + which permissions for this user ID? Cache the answer in Redis.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Authorization: who can do what</h2>
+    <p>
+      JWT only proves "you are Juan." Whether Juan can talk to the
+      HR agent is a Houston question, answered from our
+      <code>permissions</code> table in Postgres.
+    </p>
+    <p>
+      The rule is simple:
+    </p>
+    <ul>
+      <li>Workspace admin grants per agent access to each user.</li>
+      <li>Control plane checks <code>permissions(user_id, agent_id, can_use)</code> on every request.</li>
+      <li>If the row doesn't exist or is <code>false</code>, return 403. Don't even tell the user the agent exists.</li>
+    </ul>
+    <p>
+      We considered fancier models (roles, groups, ABAC). For v1, a
+      simple grant table covers 95% of needs. Add complexity when a
+      customer asks.
+    </p>
+
+    <h2>OAuth for tools (Composio's job)</h2>
+    <p>
+      The third kind of auth: when the HR agent needs to read Juan's
+      Slack messages, Slack has to grant permission. That's OAuth.
+      <strong>Composio</strong> handles all the OAuth flows for the
+      1,000+ tools we integrate.
+    </p>
+    <p>
+      Flow:
+    </p>
+    <ol>
+      <li>Juan asks HR agent to do something Slack related.</li>
+      <li>Agent says "you haven't connected Slack yet, click here."</li>
+      <li>Juan clicks. Composio opens Slack's OAuth dialog.</li>
+      <li>Juan approves. Slack sends OAuth tokens back to Composio.</li>
+      <li>Composio stores the tokens, keyed by (user, tool).</li>
+      <li>Agent calls Composio with "send a message to Slack as Juan." Composio uses the stored tokens.</li>
+    </ol>
+    <p>
+      Composio tokens live in Composio's secure storage, not ours. We
+      ask Composio to do things on a user's behalf using a Composio
+      API key per workspace.
+    </p>
+
+    <h2>Sessions, in plain English</h2>
+    <p>
+      A "session" is the unbroken span from login to logout. Supabase
+      manages it: when the JWT expires (default 1 hour), the frontend
+      silently refreshes it using a longer-lived refresh token (30
+      days). User stays logged in for weeks unless they explicitly
+      log out or the security policy says re-auth.
+    </p>
+    <p>
+      Enterprise tenants can tighten this: "force re-login every 8
+      hours" or "require MFA on each session." All handled by
+      Supabase config per tenant.
+    </p>
+
+    <h2>What "partial" means in the status pill</h2>
+    <p>
+      We already use Supabase for the desktop app's "sign in to use a
+      remote Houston engine" flow (it shipped in commit
+      <code>c9affe3f</code>). That gives us the OAuth foundation. What
+      we don't have yet: the multi-tenant permissions table, the
+      enterprise SSO flow, the audit log of who-did-what. All
+      additive on top of what exists.
+    </p>
+
+    <div class="callout callout-success">
+      <div class="callout-label">Why we don't write our own auth</div>
+      <p>Auth is the bottomless pit. Password hashing edge cases, OAuth provider quirks, session fixation attacks, MFA bypass bugs, GDPR-compliant deletion. Supabase has a security team that does nothing but this. Our team gets to ship Houston instead of becoming part-time identity engineers.</p>
+    </div>
+
+    <div class="tech-box">
+      <div class="label">Concrete pieces</div>
+      <p>Supabase project for the cloud (separate from the desktop auth project). JWT validation in the control plane using the project's JWKS URL. <code>users</code> table in our Postgres mirrors a subset of Supabase user data (email, workspace, role) for fast lookup. RLS not used directly — control plane enforces all authz in code so we keep Supabase as a pure identity provider.</p>
+    </div>
+
+    <div class="pager">
+      <a href="08-networking.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Networking</div>
+      </a>
+      <a href="10-message-flow.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">End-to-end flow</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Cloud Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

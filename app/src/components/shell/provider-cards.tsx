@@ -55,24 +55,33 @@ export function ProviderCard({
   connected,
   pending,
   onClick,
+  onCancel,
 }: {
   provider: ProviderInfo;
   connected: boolean;
   pending: boolean;
   onClick: () => void;
+  /**
+   * Abort an in-flight sign-in. While `pending`, the whole card becomes
+   * the cancel target (the trailing slot shows a visible "Cancel" label
+   * next to the spinner — never hover-gated) so a user who closed the
+   * OAuth tab isn't stuck on a forever-spinner (#237).
+   */
+  onCancel: () => void;
 }) {
   const { t } = useTranslation("providers");
   return (
     <button
       type="button"
-      onClick={onClick}
-      disabled={pending}
+      onClick={pending ? onCancel : onClick}
       title={
-        connected
-          ? t("card.signOutTitle", { name: provider.name })
-          : t("card.connectTitle", { name: provider.name })
+        pending
+          ? t("card.cancelTitle", { name: provider.name })
+          : connected
+            ? t("card.signOutTitle", { name: provider.name })
+            : t("card.connectTitle", { name: provider.name })
       }
-      className="group w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary hover:bg-black/[0.05] transition-colors disabled:opacity-60 disabled:cursor-wait focus-visible:outline-none focus-visible:bg-black/[0.05]"
+      className="group w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:bg-black/[0.05]"
     >
       <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
         <ProviderLogo provider={provider} />
@@ -88,11 +97,14 @@ export function ProviderCard({
           )}
         </p>
         <p className="text-[11px] text-muted-foreground truncate">
-          {connected ? provider.cost : provider.subtitle}
+          {pending ? t("card.connecting") : connected ? provider.cost : provider.subtitle}
         </p>
       </div>
       {pending ? (
-        <Loader2 className="size-3.5 animate-spin text-muted-foreground shrink-0" />
+        <span className="inline-flex items-center gap-1.5 shrink-0 text-[11px] font-medium text-muted-foreground group-hover:text-foreground transition-colors">
+          <Loader2 className="size-3.5 animate-spin" />
+          {t("card.cancel")}
+        </span>
       ) : connected ? (
         <LogOut className="size-3.5 text-muted-foreground/60 shrink-0 group-hover:text-muted-foreground transition-colors" />
       ) : (

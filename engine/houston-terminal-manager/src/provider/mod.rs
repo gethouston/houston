@@ -142,6 +142,32 @@ pub trait ProviderAdapter: Send + Sync + 'static {
             message: truncate_excerpt(stderr_excerpt),
         }
     }
+
+    // -------------------------------------------------------------------
+    // Reasoning effort
+    // -------------------------------------------------------------------
+
+    /// Reasoning-effort levels this provider's CLI accepts, ordered
+    /// low→high. An empty slice means the provider has no effort control,
+    /// so the runner omits the flag entirely (e.g. Gemini).
+    ///
+    /// This is the provider-level *superset* the engine uses to validate
+    /// the agent's configured effort and to clamp it before spawning.
+    /// Per-model availability (e.g. Sonnet 4.6 has `max` but not `xhigh`)
+    /// is a frontend-picker concern — Claude self-clamps an unsupported
+    /// value down to its highest supported level, so the engine only needs
+    /// the union here. Codex has no such fallback, which is exactly why
+    /// `max` (an unknown variant to codex) is excluded from OpenAI's set.
+    fn effort_levels(&self) -> &'static [&'static str] {
+        &[]
+    }
+
+    /// Default reasoning effort applied when the agent hasn't configured a
+    /// value the provider accepts. `None` means "pass no effort flag".
+    /// When `Some`, the value MUST be a member of [`Self::effort_levels`].
+    fn default_effort(&self) -> Option<&'static str> {
+        None
+    }
 }
 
 /// All registered providers. Add a new provider by importing its module
@@ -257,6 +283,18 @@ impl Provider {
         stderr_excerpt: &str,
     ) -> ProviderError {
         self.0.classify_spawn_failure(exit_code, stderr_excerpt)
+    }
+
+    /// Reasoning-effort levels this provider accepts. See
+    /// [`ProviderAdapter::effort_levels`].
+    pub fn effort_levels(self) -> &'static [&'static str] {
+        self.0.effort_levels()
+    }
+
+    /// Default reasoning effort for this provider. See
+    /// [`ProviderAdapter::default_effort`].
+    pub fn default_effort(self) -> Option<&'static str> {
+        self.0.default_effort()
     }
 }
 
@@ -392,5 +430,38 @@ mod tests {
     fn parse_gemini_alias() {
         assert_eq!(Provider::from_str("gemini").unwrap().id(), "gemini");
         assert_eq!(Provider::from_str("google").unwrap().id(), "gemini");
+    }
+
+    #[test]
+    fn effort_levels_are_provider_specific() {
+        let anthropic = Provider::from_str("anthropic").unwrap();
+        let openai = Provider::from_str("openai").unwrap();
+        let gemini = Provider::from_str("gemini").unwrap();
+
+        // Claude `--effort` accepts the full range (Opus 4.7); Claude
+        // self-clamps unsupported values per model.
+        assert_eq!(
+            anthropic.effort_levels().to_vec(),
+            vec!["low", "medium", "high", "xhigh", "max"]
+        );
+        // Codex `model_reasoning_effort` has no `max` variant — including it
+        // would be an "unknown variant" error with no CLI-side fallback.
+        assert_eq!(
+            openai.effort_levels().to_vec(),
+            vec!["low", "medium", "high", "xhigh"]
+        );
+        // Gemini CLI takes no effort flag.
+        assert!(gemini.effort_levels().is_empty());
+
+        // Every provider default must be a member of its own level set, and
+        // providers without effort control must have no default.
+        for p in [anthropic, openai] {
+            let d = p.default_effort().expect("effort provider has a default");
+            assert!(
+                p.effort_levels().contains(&d),
+                "{p} default {d} not in its effort_levels"
+            );
+        }
+        assert!(gemini.default_effort().is_none());
     }
 }

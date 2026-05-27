@@ -3,12 +3,16 @@
     "connected": "Conectado",
     "notConnected": "Sin conexión",
     "comingSoon": "Próximamente",
+    "connecting": "Conectando...",
     "connectTitle": "Conectar {{name}}",
-    "signOutTitle": "Cerrar sesión de {{name}}"
+    "signOutTitle": "Cerrar sesión de {{name}}",
+    "cancel": "Cancelar",
+    "cancelTitle": "Cancelar el inicio de sesión de {{name}}"
   },
   "row": {
     "connect": "Conectar",
-    "signOut": "Cerrar sesión"
+    "signOut": "Cerrar sesión",
+    "cancel": "Cancelar"
   },
   "setup": {
     "installHint": "Instala la CLI de {{cli}} en tu computador. Houston la detecta sola.",
@@ -17,6 +21,24 @@
     "waiting": "Esperando a que termines de iniciar sesión en tu navegador...",
     "cancelWaiting": "Cancelar e intentar de nuevo",
     "installedCheckAgain": "¿Ya la instalaste? Reintentar"
+  },
+  "claudeInstall": {
+    "installing": "Descargando Claude Code...",
+    "installingWithProgress": "Descargando Claude Code... {{progress}}%",
+    "failedTitle": "Houston no pudo descargar Claude Code",
+    "preparing": "Houston está descargando Claude Code en segundo plano. Si no inicia, reintenta abajo.",
+    "retry": "Reintentar descarga",
+    "errors": {
+      "timeout": "La descarga tardó demasiado. Revisa tu conexión a internet e inténtalo de nuevo.",
+      "networkUnreachable": "No se pudo conectar con Anthropic. Revisa tu conexión a internet e inténtalo de nuevo.",
+      "downloadInterrupted": "La descarga se interrumpió. Revisa tu conexión a internet e inténtalo de nuevo.",
+      "httpError": "Los servidores de Anthropic tuvieron un problema (error {{status}}). Inténtalo de nuevo en unos minutos.",
+      "checksumMismatch": "La descarga no llegó completa. Revisa tu conexión e inténtalo de nuevo.",
+      "platformUnsupported": "Claude Code todavía no está disponible para este dispositivo.",
+      "writeFailed": "Houston no pudo guardar Claude Code en tu computador. Asegúrate de tener espacio suficiente e inténtalo de nuevo.",
+      "unavailable": "Houston no pudo iniciar la descarga. Inténtalo de nuevo en un momento.",
+      "unknown": "Algo salió mal al descargar Claude Code. Inténtalo de nuevo."
+    }
   },
   "signOutConfirm": {
     "title": "¿Cerrar sesión de {{provider}}?",
@@ -27,15 +49,19 @@
   "toast": {
     "signInFailed": "No se pudo abrir el inicio de sesión de {{provider}}",
     "signOutFailed": "No se pudo cerrar sesión de {{provider}}",
-    "signInSucceeded": "Sesión iniciada en {{provider}}"
+    "signInSucceeded": "Sesión iniciada en {{provider}}",
+    "cancelFailed": "No se pudo cancelar el inicio de sesión de {{provider}}"
   },
   "providerLogin": {
     "title": "Termina de iniciar sesión en {{name}}",
-    "description": "Abre la URL de abajo en tu navegador, completa el inicio de sesión y luego pega aquí el código de verificación.",
+    "description": "Abre la página de inicio de sesión en tu navegador, completa el inicio de sesión y luego pega aquí el código de verificación.",
     "openUrl": "Abrir URL",
     "copyUrl": "Copiar URL",
     "urlCopied": "URL copiada al portapapeles",
     "urlCopyFailed": "No se pudo copiar la URL",
+    "showUrl": "Mostrar URL",
+    "hideUrl": "Ocultar URL",
+    "destinationHint": "Te llevaremos a {{host}}.",
     "codeLabel": "Código de verificación",
     "codePlaceholder": "Pega el código de tu navegador",
     "codeRequired": "Primero ingresa el código de verificación.",

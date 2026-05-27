@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>End-to-end flow — Houston Cloud Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Cloud Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Cloud Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-the-plan.html"><span class="num">01</span>The plan<span class="sb-status progress"></span></a></li>
+      <li><a href="02-kubernetes.html"><span class="num">02</span>Kubernetes<span class="sb-status planned"></span></a></li>
+      <li><a href="03-kata-firecracker.html"><span class="num">03</span>Kata + Firecracker<span class="sb-status planned"></span></a></li>
+      <li><a href="04-knative.html"><span class="num">04</span>Knative<span class="sb-status planned"></span></a></li>
+      <li><a href="05-control-plane.html"><span class="num">05</span>The control plane<span class="sb-status planned"></span></a></li>
+      <li><a href="06-postgres-redis.html"><span class="num">06</span>Postgres + Redis<span class="sb-status planned"></span></a></li>
+      <li><a href="07-storage.html"><span class="num">07</span>Storage<span class="sb-status planned"></span></a></li>
+      <li><a href="08-networking.html"><span class="num">08</span>Networking<span class="sb-status planned"></span></a></li>
+      <li><a href="09-auth.html"><span class="num">09</span>Auth<span class="sb-status partial"></span></a></li>
+      <li><a href="10-message-flow.html" class="active"><span class="num">10</span>End-to-end flow<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 10
+      <span class="status planned">Planned</span>
+    </div>
+    <h1>One message, all the way through.</h1>
+    <p class="lead">
+      Time to stop talking about boxes and watch one actually run.
+      Juan from sales is going to ask his HR agent for the company
+      vacation policy. We follow that single message from his
+      keystroke to the agent's reply. Every chapter so far shows up
+      in this one walkthrough.
+    </p>
+
+    <h2>Setup</h2>
+    <ul>
+      <li>Juan is an Acme Corp employee. Logged in. Has permission for the HR agent.</li>
+      <li>The HR agent's pod is asleep. Nobody talked to HR since yesterday.</li>
+      <li>HR's persistent volume holds 3 months of conversation history.</li>
+      <li>Juan opens <code>app.houston.ai</code>, clicks the HR tile, types "what's our vacation policy?", hits send.</li>
+    </ul>
+
+    <h2>The full flow</h2>
+
+    <div class="flow-list">
+      <div class="flow-step">
+        <div class="num">01</div>
+        <div>
+          <div class="from-to"><span class="actor">Juan's browser</span> <span class="arrow">→</span> <span class="actor">Load balancer</span></div>
+          <div class="action">HTTPS POST to <code>app.houston.ai/v1/chat</code>. Carries the JWT in the Authorization header and the message text in the body.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">02</div>
+        <div>
+          <div class="from-to"><span class="actor">Load balancer</span> <span class="arrow">→</span> <span class="actor">Control plane pod</span></div>
+          <div class="action">Routes to one of the 5 control plane replicas. Round robin.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">03</div>
+        <div>
+          <div class="from-to"><span class="actor">Control plane</span></div>
+          <div class="action">Verifies JWT signature locally using Supabase's public key. <strong>~1 ms.</strong></div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">04</div>
+        <div>
+          <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Redis</span></div>
+          <div class="action">"Can user juan-id-123 talk to agent hr-acme-456?" Cached from a previous lookup. <strong>~0.1 ms.</strong> Yes.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">05</div>
+        <div>
+          <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Redis</span></div>
+          <div class="action">"Where is hr-acme-456's pod?" Cached. Returns Knative URL <code>http://hr-acme.ws-acme.svc.cluster.local</code>.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">06</div>
+        <div>
+          <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Knative</span></div>
+          <div class="action">Opens a WebSocket to the agent's URL. Knative sees no pod is running. <strong>This is the cold start.</strong></div>
+        </div>
+      </div>
+
+      <div class="flow-loop">
+        <div class="flow-loop-label">Cold start (~500 ms total)</div>
+        <div class="flow-step">
+          <div class="num">06a</div>
+          <div>
+            <div class="from-to"><span class="actor">Knative</span></div>
+            <div class="action">Asks Kubernetes to schedule a new pod for hr-acme. K8s picks a node in <code>ws-acme</code>'s namespace.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">06b</div>
+          <div>
+            <div class="from-to"><span class="actor">Kata Containers</span></div>
+            <div class="action">Boots a Firecracker microVM with the houston-engine image. <strong>~125 ms.</strong></div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">06c</div>
+          <div>
+            <div class="from-to"><span class="actor">Kubernetes</span></div>
+            <div class="action">Mounts the persistent volume holding HR's <code>.houston/</code> directory at <code>/data/.houston</code>. <strong>~100 ms.</strong></div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">06d</div>
+          <div>
+            <div class="from-to"><span class="actor">houston-engine</span></div>
+            <div class="action">Starts inside the VM. Reads agent manifest. Opens its HTTP + WS server. <strong>~200 ms.</strong></div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">06e</div>
+          <div>
+            <div class="from-to"><span class="actor">Knative</span> <span class="arrow">→</span> <span class="actor">Control plane</span></div>
+            <div class="action">"Pod is ready." WebSocket connects.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">07</div>
+        <div>
+          <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Agent pod</span></div>
+          <div class="action">Forwards Juan's message: "what's our vacation policy?"</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">08</div>
+        <div>
+          <div class="from-to"><span class="actor">houston-engine</span></div>
+          <div class="action">Reads the agent's CLAUDE.md (HR persona). Loads recent session history from <code>/data/.houston/sessions/</code>.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">09</div>
+        <div>
+          <div class="from-to"><span class="actor">houston-engine</span> <span class="arrow">→</span> <span class="actor">Claude API</span></div>
+          <div class="action">Spawns the claude-code CLI as a subprocess. Streams Juan's message + the agent's system prompt + history. Outbound traffic allowed by Cilium policy (api.anthropic.com is on the allowlist).</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">10</div>
+        <div>
+          <div class="from-to"><span class="actor">Claude</span> <span class="arrow">→</span> <span class="actor">houston-engine</span></div>
+          <div class="action">Streams tokens back. Houston-engine emits each token over its WebSocket as it arrives.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">11</div>
+        <div>
+          <div class="from-to"><span class="actor">Agent pod</span> <span class="arrow">→</span> <span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Juan's browser</span></div>
+          <div class="action">Token by token, the answer streams back to Juan. He starts reading before Claude has finished generating. Feels instant.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">12</div>
+        <div>
+          <div class="from-to"><span class="actor">houston-engine</span></div>
+          <div class="action">Writes the full turn (Juan's message + agent's reply) to <code>/data/.houston/sessions/...</code>. Saved on the persistent volume. Survives sleep.</div>
+        </div>
+      </div>
+
+      <div class="flow-step db-write">
+        <div class="num">13</div>
+        <div>
+          <div class="from-to"><span class="actor db">Postgres</span> <span class="arrow">←</span> <span class="actor">Control plane</span></div>
+          <div class="action">Audit log entry: "juan-id-123 sent a message to hr-acme-456 at 14:22:07." Billing event: "+1 message, +N tokens for ws-acme."</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">14</div>
+        <div>
+          <div class="from-to"><span class="actor">Juan</span></div>
+          <div class="action">Reads the answer. Closes the tab.</div>
+        </div>
+      </div>
+
+      <div class="flow-step">
+        <div class="num">15</div>
+        <div>
+          <div class="from-to"><span class="actor">Knative</span></div>
+          <div class="action">2 minutes of no traffic to hr-acme. Kills the pod. Persistent volume detaches but persists. Back to zero compute cost.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2>Numbers that matter</h2>
+    <ul>
+      <li><strong>Cold start:</strong> ~500 ms (Firecracker + engine + volume mount).</li>
+      <li><strong>Warm hop:</strong> ~10 ms (control plane → agent pod is in-cluster).</li>
+      <li><strong>Token streaming latency:</strong> ~50 ms first token (limited by Claude API itself, not by Houston).</li>
+      <li><strong>Idle compute cost:</strong> zero.</li>
+      <li><strong>Idle storage cost:</strong> ~10 cents/month for the persistent volume.</li>
+    </ul>
+
+    <h2>What if Juan sends a second message?</h2>
+    <p>
+      Pod is still warm. Steps 1–5 are the same (with everything
+      cached). Step 6 reuses the existing WebSocket. No cold start.
+      Total latency to first token: maybe 60 ms plus Claude's
+      thinking time. Indistinguishable from a desktop app.
+    </p>
+
+    <h2>What if the agent has to call a tool?</h2>
+    <p>
+      Same flow plus a step at #9.5: the agent decides to call Slack
+      via Composio. houston-engine calls
+      <code>api.composio.dev</code> (on the Cilium allowlist).
+      Composio uses Juan's stored Slack OAuth token to do the thing.
+      Returns a result. houston-engine feeds it back into Claude, the
+      conversation continues. The user sees a "calling Slack…" status
+      then the result.
+    </p>
+
+    <h2>What if Juan tries to read Sales' data via HR?</h2>
+    <p>
+      Juan: "HR agent, please read /data/sales/.houston/sessions/."
+    </p>
+    <p>
+      HR's pod is a Firecracker microVM with one mounted volume:
+      <code>/data/.houston</code> (HR's own). There is no
+      <code>/data/sales/</code> visible inside the VM. Even the
+      claude-code subprocess running inside the pod can't reach what
+      isn't mounted. The file doesn't exist for it. The attack fails
+      at the kernel level, not at the application level.
+    </p>
+    <p>
+      This is why pod-per-agent matters. Auth + RBAC keep Juan from
+      <em>asking</em> the Sales agent for things. Kata + Firecracker
+      keep him from <em>tricking</em> the HR agent into reading Sales
+      data. Two locks. Different keys.
+    </p>
+
+    <div class="callout callout-success">
+      <div class="callout-label">The whole guide in one walkthrough</div>
+      <p>Every chapter shows up here. Auth (Ch9), control plane (Ch5), Postgres + Redis (Ch6), Knative (Ch4), Kata + Firecracker (Ch3), Kubernetes (Ch2), storage (Ch7), networking (Ch8). The flow above is the whole product running. Build that flow and you've built Houston Cloud.</p>
+    </div>
+
+    <div class="pager">
+      <a href="09-auth.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">Auth</div>
+      </a>
+      <a href="11-roadmap.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">The roadmap</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Cloud Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

@@ -17,6 +17,7 @@ import type {
   AttachmentManifest,
   AttachmentUploadResult,
   ChatHistoryEntry,
+  ClaudeStatus,
   CommunitySkill,
   ComposioAppEntry,
   ComposioStartLinkResponse,
@@ -468,6 +469,20 @@ export class HoustonClient {
     });
   }
   /**
+   * Abort an in-flight browser sign-in. The engine kills the provider
+   * CLI subprocess and frees the in-flight slot so a follow-up
+   * `providerLogin` isn't rejected as "already pending". Use this when
+   * the user gives up on the OAuth tab (closed the browser, stuck
+   * spinner): without it they'd be stuck until the 10-min relay
+   * timeout. Idempotent — cancelling with nothing pending is a no-op.
+   * The engine emits a benign `ProviderLoginComplete` (`success:
+   * false`, no `error`) so subscribers clear their pending state
+   * without showing an error toast.
+   */
+  cancelProviderLogin(name: string): Promise<void> {
+    return this.request("POST", `/providers/${this.seg(name)}/login/cancel`);
+  }
+  /**
    * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
    * the key shape, writes atomically, and chmods 0600 on Unix. The
    * next `providerStatus("gemini")` poll will return `Authenticated`
@@ -697,6 +712,28 @@ export class HoustonClient {
     return this.request("POST", "/watcher/stop");
   }
 
+  // ---------- claude (runtime installer) ----------
+
+  /**
+   * Snapshot of the runtime Claude Code install — used by the
+   * onboarding "Sign in with Anthropic" card so it can show a clear
+   * "couldn't reach Anthropic" / "Retry" instead of the misleading
+   * "install it yourself" hint that fires for every other
+   * `cli_installed=false` case (issue #231).
+   */
+  claudeStatus(): Promise<ClaudeStatus> {
+    return this.request("GET", "/claude/status");
+  }
+  /**
+   * Kick off a fresh install in the background. The HTTP request
+   * returns immediately; progress + completion stream over the WS
+   * firehose as `ClaudeCliInstalling` / `ClaudeCliReady` /
+   * `ClaudeCliFailed` events.
+   */
+  claudeInstall(): Promise<void> {
+    return this.request("POST", "/claude/install");
+  }
+
   // ---------- composio ----------
 
   composioStatus(): Promise<ComposioStatus> {
@@ -715,6 +752,9 @@ export class HoustonClient {
   }
   composioCompleteLogin(cliKey: string): Promise<void> {
     return this.request("POST", "/composio/login/complete", { cliKey });
+  }
+  composioLogout(): Promise<void> {
+    return this.request("POST", "/composio/logout");
   }
   composioListApps(): Promise<ComposioAppEntry[]> {
     return this.request("GET", "/composio/apps");

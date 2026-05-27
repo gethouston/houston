@@ -399,6 +399,37 @@ desktop. `win.sh launch` exists but in practice manually
 double-clicking Houston from the Start menu inside the VM is the
 reliable path.
 
+### `cargo test -p houston-claude-installer` → `os error 740`
+
+Running the installer crate's tests natively on Windows died before
+any test ran:
+
+```
+Running unittests src\lib.rs (...houston_claude_installer-<hash>.exe)
+The requested operation requires elevation. (os error 740)
+```
+
+The build succeeded; only the *launch* of the test harness was
+blocked. Cause: Windows UAC **Installer Detection**. It flags any
+*unmanifested* executable whose file name contains
+`install` / `setup` / `update` / `patch` as an installer and refuses
+to start it without elevation. The crate is `houston-claude-installer`,
+so cargo names the harness `houston_claude_installer-<hash>.exe` — the
+`install` substring trips the heuristic. Nothing actually needs admin.
+
+**Fixed** by `engine/houston-claude-installer/build.rs`: it embeds an
+`asInvoker` UAC manifest on Windows-MSVC via
+`/MANIFEST:EMBED` + `/MANIFESTINPUT:`. An explicit
+`requestedExecutionLevel` is what disables Installer Detection. The
+flags use `cargo:rustc-link-arg` (not `-bins`) so they reach the test
+harness, and are gated on `CARGO_CFG_TARGET_ENV == "msvc"` so the
+cross-`check` GNU flow (which never links/launches) is untouched. The
+shipping `houston-engine.exe` doesn't need this — its name doesn't trip
+the heuristic.
+
+If a *new* crate ever gets a name containing one of those keywords and
+its tests/bins must launch on Windows, copy that build.rs.
+
 ## Finding logs
 
 If `houston_dir()` is correct: `%USERPROFILE%\.houston\logs\`. After

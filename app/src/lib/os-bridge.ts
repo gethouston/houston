@@ -103,6 +103,14 @@ export function osWriteFrontendLog(
   return invoke<void>("write_frontend_log", { level, message, context });
 }
 
+/** Show a native "agent finished" notification on Linux/Windows whose click
+ * raises the window and emits `notification-clicked` (which navigates to the
+ * mission — a plain refocus does not). macOS uses the JS notification plugin
+ * instead — see session-notifications.ts. */
+export function osShowSessionNotification(title: string, body: string): Promise<void> {
+  return invoke<void>("show_session_notification", { title, body });
+}
+
 /** Read the last N lines from backend + frontend log files. */
 export function osReadRecentLogs(
   lines = 50,

@@ -17,35 +17,6 @@
     "1099",
     "gaap"
   ],
-  "tabs": [
-    {
-      "id": "activity",
-      "label": "Activity",
-      "builtIn": "board",
-      "badge": "activity"
-    },
-    {
-      "id": "routines",
-      "label": "Routines",
-      "builtIn": "routines"
-    },
-    {
-      "id": "job-description",
-      "label": "Job Description",
-      "builtIn": "job-description"
-    },
-    {
-      "id": "files",
-      "label": "Files",
-      "builtIn": "files"
-    },
-    {
-      "id": "integrations",
-      "label": "Integrations",
-      "builtIn": "integrations"
-    }
-  ],
-  "defaultTab": "activity",
   "agentSeeds": {
     "outputs.json": "[]",
     "run-index.json": "[]",
@@ -56,7 +27,7 @@
     "config/context-ledger.json": "{\n  \"universal\": {},\n  \"domains\": {\n    \"banks\": {},\n    \"payroll\": {},\n    \"revenue\": {},\n    \"budget\": {},\n    \"investors\": {},\n    \"tax\": {}\n  }\n}\n",
     ".houston/routines/routines.json": "[{\"id\": \"monthly-close\", \"name\": \"Monthly close\", \"description\": \"5th business day of every month: reconcile every account for the prior month, refresh accruals, post standard journal entries, generate statements, run variance vs. budget. Always surfaces \\u2014 the close is the product.\", \"prompt\": \"Run the monthly close for the prior month. Use the run-monthly-close skill.\\n\\nDetermine the prior month from today's date (e.g., if today is 2026-05-06, close 2026-04). Orchestrate: (1) reconcile-account across every account in context-ledger.banks for the period, (2) review-accruals to refresh the accrual register, (3) prep-journal-entry for each due journal entry (accruals, prepaids, depreciation, revenue recognition, payroll), (4) generate-financial-statements with statement=pnl, statement=balance-sheet, statement=cash-flow, (5) run-variance-analysis against budget if available or prior period otherwise.\\n\\nAssemble the close package at closes/{YYYY-MM}/package.md with links to every sub-artifact and flag any open items (recon breaks > $100, uncategorized > 10% of volume, stale accruals > 90d). Log to outputs.json with status=draft until I approve.\", \"schedule\": \"0 9 5 * *\", \"enabled\": true, \"suppress_when_silent\": false, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}, {\"id\": \"weekly-transaction-review\", \"name\": \"Weekly transaction review\", \"description\": \"Every Monday morning: catch up on new transactions since last week across all connected accounts. Silent if nothing new to categorize.\", \"prompt\": \"Run the weekly transaction review. Use the categorize-transactions skill.\\n\\nPull new transactions since the last run across every account in context-ledger.banks (via connected QuickBooks Online / Xero / bank feed). Apply party rules + prior categorizations + reasoning. Write review-ready batch to transactions/{YYYY-MM-DD}.md.\\n\\nIf every transaction was auto-categorized at confidence >= 0.95 from rules/prior and there are zero review or suspense items, end with ROUTINE_OK so this stays silent. Surface only when there are review or suspense items, or when a new recurring vendor appeared.\", \"schedule\": \"0 9 * * 1\", \"enabled\": true, \"suppress_when_silent\": true, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}, {\"id\": \"weekly-runway-refresh\", \"name\": \"Weekly burn & runway refresh\", \"description\": \"Every Friday morning: refresh the burn & runway report with the latest cash balances. Always surfaces \\u2014 runway is the founder metric.\", \"prompt\": \"Refresh the burn & runway report. Use the build-burn-runway-report skill.\\n\\nRead the latest cash balances across every account in context-ledger.banks. Compute 3-month and 6-month trailing net burn from financials/{latest}/pnl.md and cash-flow.md if present, or from run-index.json + journal-entries.json otherwise. Write runway/{YYYY-MM-DD}.md with: cash balance by account, monthly net burn (3-mo and 6-mo avg), runway months, and sensitivity to the top-3 cost drivers.\\n\\nFlag any 10%+ week-over-week change in runway months.\", \"schedule\": \"0 9 * * 5\", \"enabled\": true, \"suppress_when_silent\": false, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}, {\"id\": \"quarterly-books-audit\", \"name\": \"Quarterly books audit\", \"description\": \"1st of the month after each quarter-end (Apr 1, Jul 1, Oct 1, Jan 1): sweep the books for uncategorized aging, suspense balance, recon breaks, stale accruals, cutoff issues. Silent if clean.\", \"prompt\": \"Run the quarterly books audit. Use the audit-books skill.\\n\\nSweep: (a) uncategorized / suspense items and their aging, (b) recon breaks > $100 open for > 30 days, (c) accruals from accruals.json with no activity in > 90 days, (d) cutoff candidates (expenses dated in prior quarter but booked this one), (e) any journal entry in draft status for > 14 days.\\n\\nProduce a punch list at audits/{YYYY-MM-DD}.md. If nothing needs attention, end with ROUTINE_OK so this stays silent. Otherwise surface with counts + the one most important item to close.\", \"schedule\": \"0 9 1 1,4,7,10 *\", \"enabled\": true, \"suppress_when_silent\": true, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}, {\"id\": \"annual-1099-prep\", \"name\": \"Annual 1099 preparation\", \"description\": \"January 10th of every year: prep the 1099 list for the prior tax year. Flags missing W-9s so there's time to chase before the Jan 31 filing deadline.\", \"prompt\": \"Prep the 1099 list for the prior tax year. Use the track-vendor-1099s skill.\\n\\nCompute YTD payments per vendor for the prior tax year (e.g., on 2026-01-10, for 2025). Flag 1099-eligible vendors (non-corporate, >= $600 threshold for NEC) and their W-9 status. Separate NEC from MISC categories. Write to compliance/1099s/{prior-year}.md.\\n\\nAlways surface \\u2014 filing deadline is Jan 31, chasing W-9s takes days. Lead with: how many vendors are eligible, how many are missing W-9s, drafted chase emails ready in drafts/.\", \"schedule\": \"0 9 10 1 *\", \"enabled\": true, \"suppress_when_silent\": false, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}]"
   },
-  "version": "0.1.6",
+  "version": "0.1.8",
   "image": "ledger",
   "integrations": [
     "gmail",

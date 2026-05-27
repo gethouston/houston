@@ -28,6 +28,7 @@ import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { queryKeys } from "../../lib/query-keys";
 import { analytics } from "../../lib/analytics";
+import { classifyFileKind } from "../../lib/file-kind";
 import type { TabProps } from "../../lib/types";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
 import { HoustonThinkingIndicator } from "../shell/experience-card";
@@ -39,6 +40,7 @@ import { useMissionSearch } from "../use-mission-search";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
 import { buildMissionBoardColumns } from "../mission-board-columns";
 import { navigateBoard } from "../../lib/board-navigate";
+import { resolvePendingActivitySelection } from "../../lib/notification-nav";
 
 // Stable empty reference so the feed store selector doesn't return a new
 // object every render when this agent has no feeds yet (which would otherwise
@@ -132,20 +134,59 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
 
   // Read and consume pending selection from Mission Control
   const pendingId = useUIStore((s) => s.activityPanelId);
+  const pendingForceOpen = useUIStore((s) => s.activityPanelForceOpen);
   const clearPending = useUIStore((s) => s.setActivityPanelId);
   const [selectedId, setSelectedId] = useState<string | null>(pendingId);
   // The keyboard "focus ring" card — moved by arrow keys, opened by
   // Enter. Kept separate from `selectedId` so arrow nav doesn't auto-
   // mount the chat panel.
   const [highlightedId, setHighlightedId] = useState<string | null>(pendingId);
+
+  // `selectedId`/`highlightedId` are per-agent (a mission belongs to one
+  // agent), but this BoardTab instance is reused across agents — it's keyed by
+  // tab, not agent (see experience-renderer.tsx + workspace-shell.tsx). So when
+  // the active agent changes we reconcile the selection during render (React's
+  // "adjust state on prop change" pattern: the render-phase setState re-renders
+  // before effects run).
+  //
+  // A cross-agent nav (notification click, command palette, Mission Control)
+  // switches the agent AND publishes its target activity via `activityPanelId`
+  // in the same update, so on a switch we adopt that target right here. We
+  // can't defer it to the consume effect below: `missionPanelOpen` lives in the
+  // global UI store and still describes the agent we just LEFT (it lags the
+  // switch until AIBoard reconciles), so that effect's guard would swallow the
+  // nav and strand the user on the right agent with no chat open. A plain
+  // sidebar switch carries no pending target, so this just drops the previous
+  // agent's selection.
+  const [trackedAgentId, setTrackedAgentId] = useState(agent.id);
+  if (trackedAgentId !== agent.id) {
+    setTrackedAgentId(agent.id);
+    const next = resolvePendingActivitySelection({
+      pendingActivityId: pendingId,
+      forceOpen: pendingForceOpen,
+      agentSwitched: true,
+      selectedId,
+      missionPanelOpen,
+    });
+    setSelectedId(next);
+    setHighlightedId(next);
+  }
+
   useEffect(() => {
-    if (pendingId) {
-      // Only navigate if the user isn't already viewing a conversation
-      // and hasn't opened the New Mission panel.
-      if (!selectedId && !missionPanelOpen) setSelectedId(pendingId);
-      clearPending(null);
-    }
-  }, [pendingId, clearPending, selectedId, missionPanelOpen]);
+    if (!pendingId) return;
+    // Same-agent nav (the switch case is handled in render above): honor the
+    // guard so we don't yank the user out of an open conversation or a New
+    // Mission composer on the agent they're already viewing.
+    const next = resolvePendingActivitySelection({
+      pendingActivityId: pendingId,
+      forceOpen: pendingForceOpen,
+      agentSwitched: false,
+      selectedId,
+      missionPanelOpen,
+    });
+    if (next) setSelectedId(next);
+    clearPending(null);
+  }, [pendingId, pendingForceOpen, clearPending, selectedId, missionPanelOpen]);
 
   // Per-agent session key for the currently selected card. Drives the
   // panel hook's action routing (mid-conversation send vs new
@@ -471,6 +512,10 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
       // createMission bypassed useCreateActivity so invalidate manually.
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
       analytics.track("mission_created", { agent_mode: agentMode ?? "default" });
+      analytics.track("chat_message_sent");
+      for (const f of files) {
+        analytics.track("file_attached", { file_kind: classifyFileKind(f) });
+      }
       return conversationId;
     },
     [path, agent.id, agent.name, agent.color, pushFeedItem, pendingAgentMode, agentModes, effectiveProvider, effectiveModel, queryClient, t],
@@ -515,6 +560,10 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
         });
         pushFeedItem(path, sessionKey, { feed_type: "user_message", data: prompt });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
+        analytics.track("chat_message_sent");
+        for (const f of files) {
+          analytics.track("file_attached", { file_kind: classifyFileKind(f) });
+        }
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
         pushFeedItem(path, sessionKey, {

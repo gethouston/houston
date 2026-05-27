@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Postgres + Redis — Houston Cloud Design</title>
+<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<nav>
+  <a href="index.html" class="nav-logo">Houston<span class="nav-sub">· Cloud Design</span></a>
+</nav>
+
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-label">Cloud Design</div>
+    <ul class="sidebar-nav">
+      <li><a href="index.html"><span class="num">—</span>Overview</a></li>
+      <li><a href="01-the-plan.html"><span class="num">01</span>The plan<span class="sb-status progress"></span></a></li>
+      <li><a href="02-kubernetes.html"><span class="num">02</span>Kubernetes<span class="sb-status planned"></span></a></li>
+      <li><a href="03-kata-firecracker.html"><span class="num">03</span>Kata + Firecracker<span class="sb-status planned"></span></a></li>
+      <li><a href="04-knative.html"><span class="num">04</span>Knative<span class="sb-status planned"></span></a></li>
+      <li><a href="05-control-plane.html"><span class="num">05</span>The control plane<span class="sb-status planned"></span></a></li>
+      <li><a href="06-postgres-redis.html" class="active"><span class="num">06</span>Postgres + Redis<span class="sb-status planned"></span></a></li>
+      <li><a href="07-storage.html"><span class="num">07</span>Storage<span class="sb-status planned"></span></a></li>
+      <li><a href="08-networking.html"><span class="num">08</span>Networking<span class="sb-status planned"></span></a></li>
+      <li><a href="09-auth.html"><span class="num">09</span>Auth<span class="sb-status partial"></span></a></li>
+      <li><a href="10-message-flow.html"><span class="num">10</span>End-to-end flow<span class="sb-status planned"></span></a></li>
+      <li><a href="11-roadmap.html"><span class="num">11</span>The roadmap<span class="sb-status progress"></span></a></li>
+    </ul>
+  </aside>
+
+  <main class="content">
+    <div class="content-label">
+      Chapter 06
+      <span class="status planned">Planned</span>
+    </div>
+    <h1>Two memories. One slow and forever, one fast and forgetful.</h1>
+    <p class="lead">
+      Houston Cloud has two databases that work as a team. Postgres
+      is the boring permanent record: workspaces, users, agents,
+      who can talk to whom. Redis is the fast scratchpad: who's
+      online right now, which session is open, where the
+      WebSocket is. Both matter. They do completely different jobs.
+    </p>
+
+    <h2>Postgres, the long term memory</h2>
+    <p>
+      Postgres is the most boring, most reliable database in
+      existence. Tables, rows, SQL. It's what your bank's bank uses.
+      When data has to be there next Tuesday, it goes in Postgres.
+    </p>
+    <p>
+      In Houston Cloud, Postgres holds:
+    </p>
+    <ul>
+      <li><strong>Workspaces</strong>: "Acme Corp" has these settings, these billing details, this namespace.</li>
+      <li><strong>Users</strong>: Juan is in Acme, his email is juan@acme.com, his Supabase ID is xyz.</li>
+      <li><strong>Agents</strong>: "HR agent" belongs to Acme, lives at this Knative URL, costs this much.</li>
+      <li><strong>Permissions</strong>: Juan can talk to HR. Cannot talk to Sales. Map of (user, agent, can_use).</li>
+      <li><strong>Billing</strong>: how many messages this month, how many tokens, how much owed.</li>
+      <li><strong>Audit log</strong>: who did what when. For compliance.</li>
+    </ul>
+    <p>
+      None of this changes fast. Permissions get set once and read a
+      thousand times. Postgres is perfect.
+    </p>
+
+    <h2>Why Supabase</h2>
+    <p>
+      Supabase is "Postgres in a box, plus auth, plus realtime, plus
+      file storage, plus a Node.js library." You get a managed
+      Postgres database and a bunch of helpful extras around it. We
+      already chose Supabase for auth, so we get the database for
+      free (well, for cheap).
+    </p>
+    <p>
+      The alternative is hosting Postgres ourselves on AWS RDS or
+      Google Cloud SQL. We could. Supabase is faster because we don't
+      have to wire up auth separately. Honest tradeoff: Supabase has
+      ops headroom limits if we grow huge. We can migrate to dedicated
+      Postgres when it actually hurts.
+    </p>
+
+    <h2>Redis, the short term memory</h2>
+    <p>
+      Redis is a different shape of database. Postgres stores
+      everything on disk. Redis stores everything in RAM. That makes
+      it stupid fast (microseconds per query) and stupid forgetful
+      (if it restarts, things you didn't explicitly save can vanish).
+    </p>
+    <p>
+      Trade-off: speed for permanence. For some data, that's the
+      right trade.
+    </p>
+    <p>
+      In Houston Cloud, Redis holds:
+    </p>
+    <ul>
+      <li><strong>Active WebSocket sessions</strong>: which user is currently chatting with which agent, on which control plane pod.</li>
+      <li><strong>Routing cache</strong>: "agent HR-Acme is at this Knative URL." Avoids hitting Postgres for every message.</li>
+      <li><strong>Rate limits</strong>: "Juan has sent 47 messages this hour." Resets every hour. Lives in RAM.</li>
+      <li><strong>Permission cache</strong>: "Juan → HR: allowed." Avoids re-checking Postgres on every message in a chat.</li>
+      <li><strong>Pub/sub</strong>: when an agent's pod emits an event, Redis fans it out to all the control plane pods that have subscribers.</li>
+    </ul>
+    <p>
+      Notice the pattern: anything we'd be sad about losing goes in
+      Postgres. Anything we can rebuild from Postgres in a second
+      goes in Redis.
+    </p>
+
+    <h2>The four tables you actually need to remember</h2>
+    <p>The first version of the schema is roughly four tables in Postgres.</p>
+
+    <table>
+      <thead>
+        <tr><th>Table</th><th>What's in it</th><th>How often it changes</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>workspaces</code></td><td>Tenant ID, name, billing plan, K8s namespace</td><td>Rarely (new customer signs up)</td></tr>
+        <tr><td><code>users</code></td><td>User ID, Supabase ID, email, workspace, role</td><td>Sometimes (invites, removals)</td></tr>
+        <tr><td><code>agents</code></td><td>Agent ID, workspace, name, Knative URL, settings</td><td>Sometimes (new agent published)</td></tr>
+        <tr><td><code>permissions</code></td><td>User ID + Agent ID + can_use bool</td><td>Sometimes (admin grants/revokes)</td></tr>
+      </tbody>
+    </table>
+
+    <p>
+      Plus an audit log table and a billing-events table. That's it
+      for v1. Grow from there.
+    </p>
+
+    <h2>How they work together</h2>
+
+    <div class="diagram">
+      <div class="flow-list">
+        <div class="flow-step">
+          <div class="num">01</div>
+          <div>
+            <div class="from-to"><span class="actor">Juan opens Houston</span></div>
+            <div class="action">Frontend calls control plane: "give me my agents."</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">02</div>
+          <div>
+            <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Postgres</span></div>
+            <div class="action">Look up Juan's permissions. Returns: [HR, Recruiter]. Caches in Redis for 5 minutes.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">03</div>
+          <div>
+            <div class="from-to"><span class="actor">Juan clicks HR</span></div>
+            <div class="action">Frontend opens WebSocket to control plane.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">04</div>
+          <div>
+            <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">Redis</span></div>
+            <div class="action">Lookup HR's Knative URL. Cached. Microseconds.</div>
+          </div>
+        </div>
+        <div class="flow-step">
+          <div class="num">05</div>
+          <div>
+            <div class="from-to"><span class="actor">Control plane</span> <span class="arrow">→</span> <span class="actor">HR pod</span></div>
+            <div class="action">Open WebSocket to HR. Stream the conversation.</div>
+          </div>
+        </div>
+        <div class="flow-step db-write">
+          <div class="num">06</div>
+          <div>
+            <div class="from-to"><span class="actor db">Postgres</span> <span class="arrow">←</span> <span class="actor">Control plane</span></div>
+            <div class="action">After the turn ends, write an audit entry: "Juan asked HR a question at 10:42."</div>
+          </div>
+        </div>
+      </div>
+      <div class="caption">Postgres is the source of truth. Redis is the speed layer in front of it.</div>
+    </div>
+
+    <h2>Why we don't just use Postgres for everything</h2>
+    <p>
+      We could. Postgres can do rate limiting (with row locks), can
+      do pub/sub (with LISTEN/NOTIFY). It would just be slower and
+      more expensive.
+    </p>
+    <p>
+      Adding Redis is a 30-minute decision that buys us 100x
+      throughput on the hot path. Cheap insurance against scale
+      problems we don't want to debug at 3am.
+    </p>
+
+    <h2>Where the agent's own memory lives</h2>
+    <p>
+      Important distinction. <strong>The agent's own memory</strong>
+      (its conversations with the user, its CLAUDE.md, its skills) is
+      not in Postgres. That lives in the agent's pod, on its
+      persistent volume, in the <code>.houston/</code> directory.
+      Postgres only holds the platform metadata around the agent.
+    </p>
+    <p>
+      The pod is the agent. Postgres is the registry of which pods
+      exist and who's allowed to talk to them.
+    </p>
+
+    <div class="callout callout-info">
+      <div class="callout-label">Two databases, one rule</div>
+      <p>Lose Redis: site is slow for a few minutes, no data lost. Lose Postgres: catastrophe, everyone's locked out, payments break, this is what backups are for. Treat them accordingly: Postgres gets daily backups + read replicas + point-in-time recovery. Redis gets a restart script and a shrug.</p>
+    </div>
+
+    <div class="tech-box">
+      <div class="label">Concrete services</div>
+      <p>Postgres via Supabase (managed). Redis via Upstash (managed, serverless, cheap) or a small self-hosted instance on the cluster for v1. Connection pooling via PgBouncer in front of Postgres to keep connection counts sane as the control plane scales.</p>
+    </div>
+
+    <div class="pager">
+      <a href="05-control-plane.html">
+        <div class="pager-label">← Previous</div>
+        <div class="pager-title">The control plane</div>
+      </a>
+      <a href="07-storage.html" class="next">
+        <div class="pager-label">Next →</div>
+        <div class="pager-title">Storage</div>
+      </a>
+    </div>
+  </main>
+</div>
+
+<footer class="footer">
+  <div>Houston Cloud Design Guide · Living document</div>
+</footer>
+
+</body>
+</html>

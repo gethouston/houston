@@ -1,6 +1,4 @@
-const isMac =
-  typeof navigator !== "undefined" &&
-  /mac/i.test(navigator.platform || navigator.userAgent || "");
+import { isMac } from "./platform";
 
 export type ShortcutAction =
   | "newMission"

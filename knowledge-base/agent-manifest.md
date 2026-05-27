@@ -1,12 +1,11 @@
 # Agent Manifest
 
-Agent definitions = what AI agent looks like. Which tabs. What prompt. What files seeded. Primary dev surface of platform.
+Agent definitions = what AI agent looks like. What prompt. What files seeded. Primary dev surface of platform.
 
-## Three tiers
+## Two tiers
 
-1. **JSON-only** — `houston.json` + `CLAUDE.md`. Defines tabs, prompt, colors, icon. Uses built-in tab components.
-2. **Custom React** — `houston.json` + `bundle.js`. Custom components. Import `@houston-ai/*` as peer deps.
-3. **Workspace template** — `workspace.json` + `agents/` folder. Bundles multiple agents from one GitHub repo.
+1. **JSON-only** — `houston.json` + `CLAUDE.md`. Defines prompt, colors, icon, integrations. All agents share the same shell tabs (see "Tabs" below).
+2. **Workspace template** — `workspace.json` + `agents/` folder. Bundles multiple agents from one GitHub repo.
 
 ## Manifest shape
 ```ts
@@ -20,22 +19,22 @@ interface AgentManifest {
   category?: AgentCategory;
   author?: string;
   tags?: string[];
-  tabs: AgentTab[];
-  defaultTab?: string;
+  integrations?: string[]; // Composio toolkit slugs
   claudeMd?: string;       // CLAUDE.md template content
   systemPrompt?: string;
   agentSeeds?: Record<string, string>;
   features?: string[];     // Rust feature flags needed
 }
-
-interface AgentTab {
-  id: string;
-  label: string;
-  builtIn?: "chat" | "board" | "skills" | "files" | "connections" | "context" | "routines" | "channels" | "events" | "learnings";
-  customComponent?: string;
-  badge?: "activity" | "none";
-}
 ```
+
+## Tabs
+
+Every agent renders the same five tabs in the shell:
+`Activity` (board) / `Routines` / `Files` / `Job Description` / `Integrations`.
+
+This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
+
+The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
 ## Locations
 - **Built-in:** `app/src/agents/builtin/` — `personalAssistantAgent`
@@ -82,7 +81,8 @@ board item.
 Update checks compare installed `.source.json` to the bundled catalog
 and refresh installed definitions when a newer app release carries a
 newer package. The desktop catalog reloads after updates so existing
-workspace agents pick up new tabs/defaults from the refreshed manifest.
+workspace agents pick up new manifest values (name, description,
+integrations) from the refreshed manifest.
 
 After a bundled package update, Houston copies newly-added packaged
 Skills into existing workspace agents with the same `config_id`.
@@ -93,7 +93,7 @@ integrations, images, category, and featured state can update with a release.
 ## GitHub import flow
 Engine route remains for developer/manual import. A caller posts an
 `owner/repo` URL and Houston downloads `houston.json`, `CLAUDE.md`,
-`icon.png`, `bundle.js` → `~/.houston/agents/{id}/`. The desktop
+`icon.png` → `~/.houston/agents/{id}/`. The desktop
 New Agent modal is Store-only for non-technical users.
 
 ## Agent creation
@@ -233,6 +233,34 @@ Notes:
 - Adding a fourth provider = one new adapter file + one registry entry +
   three dispatch arms (runner, parser, summarizer). See "Engine boundary"
   in `CLAUDE.md`.
+
+### Reasoning effort
+
+Effort is **per-agent and model-gated**. Stored as `effort` in the agent's
+`.houston/config/config.json` (schema `ui/agent-schemas/src/config.schema.json`),
+set from the model picker (`app/src/components/chat-model-selector.tsx`), which
+shows only the levels the active model accepts.
+
+- The engine resolves it in `houston_engine_core::sessions::resolve_effort`
+  (`engine/houston-engine-core/src/sessions/provider.rs`): the configured value
+  when the **final** provider accepts it, else the provider's `default_effort`
+  (`medium`), else `None` for providers with no effort control. An explicit
+  `effort` on `POST .../sessions` (the onboarding tutorial) still wins over
+  config. Applies to chat, board missions, routines, and onboarding alike.
+- Valid levels live on the `ProviderAdapter` (`effort_levels` / `default_effort`)
+  as a provider-level **superset** used for validation; per-model availability
+  is a picker concern (`ModelOption.effortLevels` in `providers.ts`).
+
+| Provider | Model | Effort levels offered | CLI flag |
+|---|---|---|---|
+| `anthropic` | `opus` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
+| `anthropic` | `sonnet` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
+| `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
+| `gemini` | any | none | (no flag) |
+
+Claude self-clamps an unsupported `--effort` down to its highest supported
+level; codex has no such fallback, so `max` (an unknown variant to codex) is
+never offered for OpenAI. Default for every effort-capable provider is `medium`.
 
 ## Workspace
 - Storage: `~/.houston/workspaces/workspaces.json` (index) + one dir per workspace `~/.houston/workspaces/{Name}/`. `HOUSTON_DOCS` env var overrides the root.

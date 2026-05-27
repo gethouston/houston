@@ -14,6 +14,7 @@ interface UIState {
   viewMode: string;
   assistantPanelOpen: boolean;
   activityPanelId: string | null;
+  activityPanelForceOpen: boolean;
   claudeAvailable: boolean | null;
   /** Provider ID that needs re-auth (e.g. "anthropic", "openai"), or null if OK */
   authRequired: string | null;
@@ -58,7 +59,7 @@ interface UIState {
   importFromFriendOpen: boolean;
   setViewMode: (mode: string) => void;
   setAssistantPanelOpen: (open: boolean) => void;
-  setActivityPanelId: (id: string | null) => void;
+  setActivityPanelId: (id: string | null, options?: { forceOpen?: boolean }) => void;
   setClaudeAvailable: (available: boolean | null) => void;
   setAuthRequired: (provider: string | null) => void;
   addToast: (toast: Omit<ToastItem, "id">) => void;
@@ -87,6 +88,7 @@ export const useUIStore = create<UIState>((set) => ({
   viewMode: "chat",
   assistantPanelOpen: false,
   activityPanelId: null,
+  activityPanelForceOpen: false,
   claudeAvailable: null,
   authRequired: null,
   toasts: [],
@@ -109,7 +111,11 @@ export const useUIStore = create<UIState>((set) => ({
 
   setViewMode: (viewMode) => set({ viewMode }),
   setAssistantPanelOpen: (assistantPanelOpen) => set({ assistantPanelOpen }),
-  setActivityPanelId: (activityPanelId) => set({ activityPanelId }),
+  setActivityPanelId: (activityPanelId, options) =>
+    set({
+      activityPanelId,
+      activityPanelForceOpen: activityPanelId ? (options?.forceOpen ?? false) : false,
+    }),
   setClaudeAvailable: (claudeAvailable) => set({ claudeAvailable }),
   setAuthRequired: (authRequired) => set({ authRequired }),
 

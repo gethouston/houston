@@ -1,0 +1,52 @@
+name: Website Deploy
+
+# Builds the Eleventy site in website/ and deploys it to Cloudflare Pages
+# (project: houston-site). Runs automatically when website/ changes land on
+# main; can also be triggered manually from the Actions tab.
+#
+# Required repo secrets:
+#   CLOUDFLARE_API_TOKEN  - token with "Cloudflare Pages: Edit" permission
+#   CLOUDFLARE_ACCOUNT_ID - account id from the Cloudflare dashboard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'website/**'
+      - '.github/workflows/website-deploy.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: website-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & deploy to Cloudflare Pages
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: website/package-lock.json
+
+      - name: Install dependencies
+        working-directory: website
+        run: npm ci
+
+      - name: Build site
+        working-directory: website
+        run: npx @11ty/eleventy
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: website
+          command: pages deploy _site --project-name=houston-site --branch=main

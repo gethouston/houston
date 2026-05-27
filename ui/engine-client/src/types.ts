@@ -597,6 +597,60 @@ export interface AttachmentManifest extends AttachmentUploadResult {
   createdAt: string;
 }
 
+// ---------- Claude Code installer ----------
+
+/**
+ * Stable failure `kind` for a Claude Code install attempt. Mirror of the
+ * Rust `ClaudeInstallError` enum in
+ * `engine/houston-ui-events/src/lib.rs` (serde `tag = "kind"`,
+ * snake_case). The engine is i18n-agnostic, so it emits the slug and the
+ * frontend localizes it. The two MUST stay in sync.
+ */
+export type ClaudeInstallErrorKind =
+  | "timeout"
+  | "network_unreachable"
+  | "download_interrupted"
+  | "http_error"
+  | "checksum_mismatch"
+  | "platform_unsupported"
+  | "write_failed"
+  | "manifest_missing"
+  | "manifest_entry_missing"
+  | "unknown";
+
+/**
+ * Typed install failure. `kind` is localized by the frontend; the
+ * optional fields carry per-kind data. `detail` is technical text for
+ * the bug report — never shown to a user verbatim.
+ */
+export interface ClaudeInstallError {
+  kind: ClaudeInstallErrorKind;
+  /** Present on `http_error`. */
+  status?: number;
+  /** Present on `platform_unsupported`. */
+  platform?: string;
+  /** Present on `checksum_mismatch` / `write_failed` / `unknown`. */
+  detail?: string;
+}
+
+/**
+ * Snapshot of the runtime Claude Code install. Returned by
+ * `GET /v1/claude/status`.
+ *
+ * `lastInstallError` is the field the onboarding "Sign in with
+ * Anthropic" card reads when `installed` is `false` — it disambiguates
+ * "Houston tried to download Claude Code and failed (likely no
+ * internet)" from "Houston hasn't tried yet". See issue #231 for the
+ * UX bug this addresses.
+ */
+export interface ClaudeStatus {
+  installed: boolean;
+  installPath: string;
+  pinnedVersion: string | null;
+  installedVersion: string | null;
+  lastInstallError: ClaudeInstallError | null;
+}
+
 // ---------- Composio ----------
 
 export type ComposioStatus =

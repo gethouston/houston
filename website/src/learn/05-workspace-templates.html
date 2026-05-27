@@ -118,7 +118,7 @@ permalink: "learn/05-workspace-templates.html"
         <h2 id="example">Full example</h2>
         <p>
           Here's a complete workspace template for a small accounting
-          firm. Three agents, each with its own prompt and tabs.
+          firm. Three agents, each with its own prompt and integrations.
         </p>
         <h3>workspace.json</h3>
         <pre><code>{
@@ -132,12 +132,7 @@ permalink: "learn/05-workspace-templates.html"
   "name": "Bookkeeper",
   "description": "Categorize expenses and reconcile accounts.",
   "icon": "Calculator",
-  "category": "business",
-  "tabs": [
-    { "id": "board", "label": "Tasks", "builtIn": "board", "badge": "activity" },
-    { "id": "files", "label": "Files", "builtIn": "files" },
-    { "id": "job-description", "label": "Instructions", "builtIn": "job-description" }
-  ]
+  "category": "business"
 }</code></pre>
         <h3>agents/bookkeeper/CLAUDE.md</h3>
         <pre><code># Bookkeeper
@@ -148,13 +143,13 @@ Round to two decimal places. When unsure about a category, ask.</code></pre>
         <p>
           The other two agents follow the same pattern. Push the repo to
           GitHub. Anyone who imports it gets a workspace with three
-          agents, each with its own instructions and tabs, ready to work.
+          agents, each with its own instructions, ready to work.
         </p>
 
         <div class="pager">
           <a href="04-custom-components.html">
             <div class="pager-label">← Previous</div>
-            <div class="pager-title">Custom components</div>
+            <div class="pager-title">The agent shell</div>
           </a>
           <a href="index.html" class="next">
             <div class="pager-label">Back to</div>

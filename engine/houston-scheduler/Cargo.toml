@@ -1,6 +1,6 @@
 [package]
 name = "houston-scheduler"
-version = "0.4.12"
+version = "0.4.13"
 edition = "2021"
 description = "Heartbeat and cron scheduling for AI agent desktop apps"
 license = "MIT"

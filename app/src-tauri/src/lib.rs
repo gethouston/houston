@@ -4,6 +4,7 @@ mod commands;
 mod engine_supervisor;
 mod houston_prompt;
 mod logging;
+mod notification;
 
 use engine_supervisor::{
     resolve_engine_binary, spawn_supervisor, wait_until_healthy, EngineHandshake,
@@ -354,6 +355,10 @@ pub fn run() {
             // Logging (writes to local log files).
             logging::write_frontend_log,
             logging::read_recent_logs,
+            // Linux/Windows session-finished notifications whose click brings
+            // the window forward + emits `app-activated` (macOS uses the JS
+            // notification plugin — see session-notifications.ts).
+            notification::show_session_notification,
             // Native network delivery for bug reports. Avoids webview CORS and
             // keeps Linear credentials out of the JavaScript bundle.
             bug_report::report_bug,

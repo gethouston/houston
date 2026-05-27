@@ -7,6 +7,7 @@
     "userContext": "Contexto do usuário",
     "provider": "Provedor de IA",
     "phone": "Conectar celular",
+    "shortcuts": "Atalhos de teclado",
     "reportBug": "Reportar bug"
   },
   "account": {
@@ -81,6 +82,10 @@
     "confirmTitle": "Excluir \"{{name}}\"?",
     "confirmDescription": "Isso exclui este espaço de trabalho e todos os seus agentes de forma permanente. Não dá para desfazer.",
     "confirmLabel": "Excluir"
+  },
+  "shortcuts": {
+    "title": "Atalhos de teclado",
+    "description": "Use o Houston sem tocar no mouse."
   },
   "reportBug": {
     "title": "Reportar bug",

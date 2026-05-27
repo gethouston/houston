@@ -208,7 +208,9 @@ not user-facing copy.
 |---|---|---|
 | GET/PUT | `/v1/preferences/:key` | String KV (DB-backed) |
 | GET | `/v1/providers/:name/status` | `{cliInstalled, authState, installSource, cliPath}` |
-| POST | `/v1/providers/:name/login` | Launch CLI login. Returns `BAD_REQUEST` for providers without an OAuth flow (e.g. `gemini`); callers must use the credentials route instead. |
+| POST | `/v1/providers/:name/login` | Launch CLI login. Returns `BAD_REQUEST` for providers without an OAuth flow (e.g. `gemini`); callers must use the credentials route instead. Surfaces the OAuth URL via the `ProviderLoginUrl` WS event and the outcome via `ProviderLoginComplete`. |
+| POST | `/v1/providers/:name/login/code` | Relay the OAuth verification code the user pasted (remote/headless engines that can't open the local browser). Body: `{ code }`. Written to the CLI's stdin. |
+| POST | `/v1/providers/:name/login/cancel` | Abort an in-flight sign-in: kills the CLI subprocess and frees the in-flight slot so a retry isn't rejected as "already pending". Idempotent (no-op when nothing pending). Emits a benign `ProviderLoginComplete` (`success: false`, `error: null`) so pending spinners clear without an error toast. Fixes the stuck-spinner-after-closing-browser case. |
 | POST | `/v1/providers/gemini/credentials` | Write `GEMINI_API_KEY` to `~/.gemini/.env` (atomic, mode 0600). Body: `{ apiKey }`. Provider-specific because Gemini is the only provider with file-backed credentials today. |
 | GET | `/v1/agent-configs` | List installed agent definitions |
 

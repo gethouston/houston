@@ -58,7 +58,22 @@
   "modelSelector": {
     "selectModel": "Escolha um modelo",
     "model": "Modelo",
-    "notConnected": "Sem conexão"
+    "notConnected": "Sem conexão",
+    "effort": "Esforço de raciocínio",
+    "effortLevels": {
+      "low": "Baixo",
+      "medium": "Médio",
+      "high": "Alto",
+      "xhigh": "Muito alto",
+      "max": "Máximo"
+    },
+    "effortDescriptions": {
+      "low": "Mais rápido, menos análise.",
+      "medium": "Equilíbrio entre velocidade e profundidade.",
+      "high": "Análise mais profunda para tarefas difíceis.",
+      "xhigh": "Ideal para tarefas complexas.",
+      "max": "Análise máxima, sem limite de tokens."
+    }
   },
   "reasoning": {
     "thinking": "Pensando...",

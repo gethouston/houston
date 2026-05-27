@@ -39,15 +39,20 @@ both.
   gemini users without `~/.gemini/.env` or OAuth files do not hit
   "Failed to prepare gemini runtime home".
 - **PATH lookup**: `houston-terminal-manager::provider::which_on_path`
-  walks each PATH directory. On Windows it checks
-  `.exe` / `.cmd` / `.bat` / `.ps1` variants BEFORE the bare filename
-  in each directory so npm-global CLIs (which ship both `<name>` —
-  Unix script — and `<name>.cmd` — Windows shim — in the same dir)
-  resolve to the executable shim instead of the unexecutable script.
-  Without that, `Command::new(...)` later fails with os error 193
-  ("%1 is not a valid Win32 application"). Inner pure helper
-  `which_in_dirs(command, iter)` is exposed for tests so the
-  per-platform priority can be verified without mutating
+  walks each PATH directory. On Windows it checks `.exe` / `.cmd` /
+  `.bat` variants BEFORE the bare filename in each directory so
+  npm-global CLIs (which ship both `<name>` — Unix script — and
+  `<name>.cmd` — Windows shim — in the same dir) resolve to the
+  executable shim instead of the unexecutable script. Without that,
+  `Command::new(...)` later fails with os error 193 ("%1 is not a valid
+  Win32 application"). Two guards keep the resolver from ever returning a
+  guaranteed-193 path (regression from issue #213): `.ps1` is NOT probed
+  (`CreateProcess` can't launch a PowerShell script directly, and Rust's
+  `Command` only wraps `.bat`/`.cmd` through cmd.exe), and the bare,
+  extensionless fallback is accepted only when the file is a real PE
+  image (`MZ` magic) — a bare file is almost always a Unix shim script.
+  Inner pure helper `which_in_dirs(command, iter)` is exposed for tests
+  so the per-platform priority can be verified without mutating
   process-global PATH.
 - **PTY**: `portable-pty` (used in `houston-terminal-manager::manager`)
   — ConPTY-backed on Windows 10+, no code change needed.
@@ -65,7 +70,7 @@ both.
 | Login-shell PATH probe | `houston-terminal-manager/src/claude_path.rs` | `/bin/zsh -l -c 'echo $PATH'`, fallback `/bin/bash -l`, `-i` | skipped — inherited process PATH is already the user PATH |
 | Common-install-dir probe | same | `~/.local/bin`, `/opt/homebrew/bin`, `/usr/local/bin`, `~/.cargo/bin`, `~/.composio`, nvm node dirs | `~\.cargo\bin`, `~\.composio`, `~\AppData\Roaming\npm`, `~\AppData\Local\Programs\claude` |
 | Command-exists check | same `is_command_available` | bare filename | bare + `.exe`/`.cmd`/`.bat`/`.ps1` variants |
-| Gemini CLI spawn | `houston-terminal-manager/src/gemini_runner.rs` + `houston-engine-core/src/sessions/provider_oneshot.rs::run_gemini` | bundled SEA per arch (`Resources/bin/gemini-<arch>/gemini`) | bundled binary not shipped in v1; falls back to user-installed gemini-cli on PATH (e.g. `npm i -g @google/gemini-cli`). Two Windows-specific quirks make this work: (a) `which_on_path` prefers `.exe`/`.cmd`/`.bat`/`.ps1` variants over the bare filename so the npm-global `.cmd` shim wins over the unexecutable Unix script that ships in the same dir (avoids os error 193, "%1 is not a valid Win32 application"); (b) `gemini_compatible_path` strips the `\\?\` extended-length prefix from canonicalized agent paths before they hit `--include-directories` because gemini-cli's Node-based `fs.realpathSync` parses each component and crashes with `EISDIR: illegal operation on a directory, lstat 'C:'`. If neither bundled nor PATH-installed, both call sites short-circuit with a platform-aware "not available yet" toast. UI also unlocks the chat-model dropdown when the locked provider has `cli_installed=false` (`chat-model-selector.tsx`). |
+| Gemini CLI spawn | `houston-terminal-manager/src/gemini_runner.rs` + `houston-engine-core/src/sessions/provider_oneshot.rs::run_gemini` | bundled SEA per arch (`Resources/bin/gemini-<arch>/gemini`) | bundled binary not shipped in v1; falls back to user-installed gemini-cli on PATH (e.g. `npm i -g @google/gemini-cli`). Two Windows-specific quirks make this work: (a) `which_on_path` prefers `.exe`/`.cmd`/`.bat` variants over the bare filename so the npm-global `.cmd` shim wins over the unexecutable Unix script that ships in the same dir (avoids os error 193, "%1 is not a valid Win32 application"; `.ps1` is not probed and a bare extensionless match must be a real PE — see the PATH-lookup note above); (b) `gemini_compatible_path` strips the `\\?\` extended-length prefix from canonicalized agent paths before they hit `--include-directories` because gemini-cli's Node-based `fs.realpathSync` parses each component and crashes with `EISDIR: illegal operation on a directory, lstat 'C:'`. If neither bundled nor PATH-installed, both call sites short-circuit with a platform-aware "not available yet" toast. UI also unlocks the chat-model dropdown when the locked provider has `cli_installed=false` (`chat-model-selector.tsx`). |
 
 ## Known gaps — Windows needs a follow-up
 

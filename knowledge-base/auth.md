@@ -114,6 +114,28 @@ expired OAuth/API-key messages) and `houston-agents-conversations` emits
 `codex login` through `/v1/providers/:name/login` and polls provider status
 until the CLI reports authenticated.
 
+### Cancelling / retrying a stuck sign-in
+
+A login subprocess only ends when the CLI exits, the user pastes a code, or
+the 10-minute relay timeout fires (`LOGIN_SESSION_TIMEOUT` in
+`engine-core::provider::login_relay`). If the user closes the OAuth tab before
+finishing, the CLI keeps its localhost callback open and just hangs — so the
+status poll never flips to authenticated and the connect UI spins. Worse, a
+fresh Connect click is rejected by `insert_session` as "already pending" until
+the timeout, which read to users as "I have to restart the app" (#237).
+
+`POST /v1/providers/:name/login/cancel` → `cancel_login` fixes this: it removes
+the in-flight session from `LOGIN_SESSIONS` **eagerly** (so the next Connect
+isn't rejected) and signals the relay task — which holds an `Arc<Notify>` clone
+— to kill the subprocess. The relay emits a **benign**
+`ProviderLoginComplete { success: false, error: null }`; the frontend treats a
+completion with no `error` as "not an error" and silently clears its pending
+spinner (no toast). A monotonic per-session token guards the relay's
+end-of-life map cleanup so it can't evict a freshly-spawned retry session that
+reused the same provider id. All three connect surfaces wire to it: the
+onboarding brain mission's "Cancel and try again", the workspace-setup
+`ProviderPicker`, and the settings `ProviderSettings` account rows.
+
 Codex has one extra wrinkle: it can emit retry-shaped 401 messages while it
 refreshes or reconnects, then continue successfully. Treat the synthetic
 `__auth_retry__` marker as provisional. Suppress it, remember it, and emit

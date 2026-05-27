@@ -1,7 +1,25 @@
+/**
+ * Reasoning-effort levels, ordered low→high. The set a given model accepts
+ * is model-specific (see `ModelOption.effortLevels`):
+ * - Codex `model_reasoning_effort`: low/medium/high/xhigh (no `max`).
+ * - Claude `--effort`: Opus 4.7 = all five; Sonnet 4.6 = low/medium/high/max
+ *   (no `xhigh`). Claude self-clamps an unsupported value; Codex does not.
+ */
+export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
+
+/** Effort applied when nothing else is configured. Mirrors the engine. */
+export const DEFAULT_EFFORT: EffortLevel = "medium";
+
 export interface ModelOption {
   id: string;
   label: string;
   description: string;
+  /**
+   * Reasoning-effort levels this model accepts, ordered low→high. Omitted
+   * or empty means the model has no effort control and the picker hides the
+   * effort row (e.g. Gemini, Haiku).
+   */
+  effortLevels?: readonly EffortLevel[];
 }
 
 /**
@@ -54,6 +72,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         id: "gpt-5.5",
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
       },
     ],
     defaultModel: "gpt-5.5",
@@ -67,8 +86,20 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     loginCommand: "claude login",
     cost: "Your Claude subscription",
     models: [
-      { id: "sonnet", label: "Sonnet", description: "Best balance of speed and quality." },
-      { id: "opus", label: "Opus", description: "Most capable. Slower, more tokens." },
+      {
+        id: "sonnet",
+        label: "Sonnet",
+        description: "Best balance of speed and quality.",
+        // Sonnet 4.6: has `max`, no `xhigh`.
+        effortLevels: ["low", "medium", "high", "max"],
+      },
+      {
+        id: "opus",
+        label: "Opus",
+        description: "Most capable. Slower, more tokens.",
+        // Opus 4.7: full range.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+      },
     ],
     defaultModel: "sonnet",
   },
@@ -114,6 +145,33 @@ export function validModelOrNull(
   modelId: string | null | undefined,
 ): string | null {
   return providerId && modelId && getModel(providerId, modelId) ? modelId : null;
+}
+
+/** Reasoning-effort levels the given provider+model accepts (low→high). */
+export function getEffortLevels(
+  providerId: string | null | undefined,
+  modelId: string | null | undefined,
+): readonly EffortLevel[] {
+  if (!providerId || !modelId) return [];
+  return getModel(providerId, modelId)?.effortLevels ?? [];
+}
+
+/**
+ * The effort to actually use for a provider+model: the requested value when
+ * the model accepts it, otherwise the shared default (or the lowest level if
+ * the model somehow lacks `medium`). Returns `undefined` when the model has
+ * no effort control, so callers omit the flag entirely. Mirrors the engine's
+ * `sessions::resolve_effort`, keeping the picker honest about what will run.
+ */
+export function validEffortOrDefault(
+  providerId: string | null | undefined,
+  modelId: string | null | undefined,
+  effort: string | null | undefined,
+): EffortLevel | undefined {
+  const levels = getEffortLevels(providerId, modelId);
+  if (levels.length === 0) return undefined;
+  if (effort && levels.includes(effort as EffortLevel)) return effort as EffortLevel;
+  return levels.includes(DEFAULT_EFFORT) ? DEFAULT_EFFORT : levels[0];
 }
 
 export interface ComingSoonProviderInfo {
