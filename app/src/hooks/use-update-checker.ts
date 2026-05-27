@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { check } from "@tauri-apps/plugin-updater";
+import { analytics } from "../lib/analytics";
 import {
   osCurrentAppBundlePath,
   osRelaunchAppFromPath,
@@ -56,6 +57,14 @@ export function useUpdateChecker() {
 
       updateRef.current = update;
       infoRef.current = info;
+      // Only fire `update_offered` on the transition into "available" so a
+      // 30-min recheck of the same version doesn't double-count.
+      if (statusRef.current.state !== "available") {
+        analytics.track("update_offered", {
+          from_version: info.currentVersion,
+          to_version: info.version,
+        });
+      }
       setStatus({ state: "available", info });
     } catch (error) {
       console.warn("[updater] check failed", error);
@@ -88,6 +97,10 @@ export function useUpdateChecker() {
     if (!update || !info) return;
 
     installingRef.current = true;
+    analytics.track("update_accepted", {
+      from_version: info.currentVersion,
+      to_version: info.version,
+    });
     try {
       appPathRef.current = await osCurrentAppBundlePath();
       let totalLength = 0;
@@ -122,6 +135,24 @@ export function useUpdateChecker() {
     await relaunchInstalledApp();
   }, [relaunchInstalledApp, runCheck]);
 
+  /**
+   * User clicked the X on the update card. Hide it for THIS session and
+   * record the dismissal so the funnel `update_offered → {accepted | dismissed}`
+   * tells us how many users actively wave the update away vs how many just
+   * never see the card. The interval still re-checks every 30 min, so a
+   * fresh dismissal sticks only until the next check runs.
+   */
+  const dismiss = useCallback(() => {
+    const info = infoRef.current;
+    if (info) {
+      analytics.track("update_dismissed", {
+        from_version: info.currentVersion,
+        to_version: info.version,
+      });
+    }
+    setStatus({ state: "idle" });
+  }, []);
+
   useEffect(() => {
     runCheck();
     intervalRef.current = setInterval(runCheck, CHECK_INTERVAL_MS);
@@ -130,5 +161,5 @@ export function useUpdateChecker() {
     };
   }, [runCheck]);
 
-  return { status, installAndRelaunch, relaunchInstalledApp };
+  return { status, installAndRelaunch, relaunchInstalledApp, dismiss };
 }

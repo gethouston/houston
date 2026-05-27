@@ -2,7 +2,6 @@
   "sidebar": {
     "missionControl": "Centro de misiones",
     "integrations": "Integraciones",
-    "commands": "Comandos",
     "settings": "Configuración",
     "yourAgents": "Tus agentes",
     "selectWorkspace": "Elige un espacio de trabajo",
@@ -157,7 +156,8 @@
     "primaryAction": "Actualizar y reiniciar",
     "installingAction": "Instalando actualización...",
     "relaunchAction": "Reiniciar Houston",
-    "retryAction": "Intentar otra vez"
+    "retryAction": "Intentar otra vez",
+    "dismissAction": "Descartar actualización por ahora"
   },
   "store": {
     "searchPlaceholder": "Buscar en la tienda...",
@@ -366,5 +366,20 @@
       "panelEscape": "Salir del chat y luego cerrar",
       "cheatsheet": "Mostrar esta hoja"
     }
+  },
+  "userMenu": {
+    "sendFeedback": "Enviar comentarios"
+  },
+  "feedback": {
+    "title": "Enviar comentarios",
+    "description": "Los reportes de errores nos llegan automáticamente. Esto es para todo lo demás: algo que se siente raro, un flujo que falló, una idea.",
+    "placeholder": "¿Qué tienes en mente?",
+    "send": "Enviar",
+    "sending": "Enviando...",
+    "cancel": "Cancelar",
+    "successTitle": "Recibido, gracias por el reporte.",
+    "successWithId": "El centro de control está en eso. Referencia: {{id}}",
+    "successNoId": "El centro de control está en eso.",
+    "errorTitle": "No se pudo enviar el reporte"
   }
 }

@@ -20,6 +20,7 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/slack");
   eleventyConfig.addPassthroughCopy("src/auth");
   eleventyConfig.addPassthroughCopy("src/_headers");
+  eleventyConfig.addPassthroughCopy("src/_redirects");
 
   return {
     dir: {

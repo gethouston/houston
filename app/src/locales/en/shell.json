@@ -2,7 +2,6 @@
   "sidebar": {
     "missionControl": "Mission Control",
     "integrations": "Integrations",
-    "commands": "Commands",
     "settings": "Settings",
     "yourAgents": "Your Agents",
     "selectWorkspace": "Select workspace",
@@ -157,7 +156,8 @@
     "primaryAction": "Update and relaunch",
     "installingAction": "Installing update...",
     "relaunchAction": "Relaunch Houston",
-    "retryAction": "Try again"
+    "retryAction": "Try again",
+    "dismissAction": "Dismiss update for now"
   },
   "store": {
     "searchPlaceholder": "Search the store...",
@@ -366,5 +366,20 @@
       "panelEscape": "Leave chat, then close",
       "cheatsheet": "Show this sheet"
     }
+  },
+  "userMenu": {
+    "sendFeedback": "Send feedback"
+  },
+  "feedback": {
+    "title": "Send feedback",
+    "description": "Crash data reaches us automatically. This is for everything else: a feature that feels off, a flow that broke, an idea.",
+    "placeholder": "What's on your mind?",
+    "send": "Send",
+    "sending": "Sending...",
+    "cancel": "Cancel",
+    "successTitle": "Roger that, report received.",
+    "successWithId": "Mission control is on it. Reference: {{id}}",
+    "successNoId": "Mission control is on it.",
+    "errorTitle": "Couldn't send report"
   }
 }

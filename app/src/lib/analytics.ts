@@ -9,22 +9,55 @@ const HOST =
   typeof __POSTHOG_HOST__ !== "undefined" && __POSTHOG_HOST__
     ? __POSTHOG_HOST__
     : "https://us.i.posthog.com";
+const APP_VERSION =
+  typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0";
+
 const ACTIVE_DATE_KEY = "analytics:last_active_date";
+const FIRST_INSTALL_VERSION_KEY = "analytics:first_install_version";
+const FIRST_INSTALL_DATE_KEY = "analytics:first_install_date";
+
+// Per-process session id. Regenerated every app launch — lets us group
+// events that happened in the same "sit-down session" without making
+// users a tracking surface.
+const SESSION_ID = crypto.randomUUID();
 
 export type AnalyticsEventName =
+  // Lifecycle / acquisition
   | "app_active"
   | "install_created"
+  | "session_started"
+  | "session_ended"
+  // Auth
+  | "user_signed_in"
+  | "user_signed_out"
+  // Onboarding
+  | "onboarding_started"
+  | "onboarding_completed"
+  // Activation funnel
   | "workspace_created"
   | "provider_configured"
   | "provider_not_configured"
   | "agent_created"
+  | "agent_installed_from_store"
+  | "agent_shared"
+  | "agent_imported"
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
-  | "onboarding_started"
-  | "onboarding_completed"
-  | "user_signed_in"
-  | "user_signed_out"
+  // Feature adoption
+  | "integration_connected"
+  | "integration_disconnected"
+  | "skill_used"
+  | "routine_scheduled"
+  | "routine_executed"
+  | "tab_opened"
+  | "file_attached"
+  | "mobile_paired"
+  // Update lifecycle (closes the symbolication-coverage feedback loop)
+  | "update_offered"
+  | "update_accepted"
+  | "update_dismissed"
+  // Reliability
   | "session_completed"
   | "session_failed"
   | "app_error_shown";
@@ -39,7 +72,17 @@ type AnalyticsProperty =
   | "source"
   | "error_kind"
   | "workspace_count"
-  | "agent_count";
+  | "agent_count"
+  // New properties
+  | "integration_slug"
+  | "skill_slug"
+  | "routine_id"
+  | "agent_slug"
+  | "tab_name"
+  | "file_kind"
+  | "from_version"
+  | "to_version";
+
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserProfile = {
   email?: string | null;
@@ -59,6 +102,14 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "error_kind",
   "workspace_count",
   "agent_count",
+  "integration_slug",
+  "skill_slug",
+  "routine_id",
+  "agent_slug",
+  "tab_name",
+  "file_kind",
+  "from_version",
+  "to_version",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors
@@ -81,9 +132,11 @@ function bootstrap() {
     advanced_disable_flags: true,
     loaded: (ph) => {
       ph.register({
-        app_version: typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0",
+        app_version: APP_VERSION,
         os: typeof navigator !== "undefined" ? navigator.platform : "unknown",
         is_debug: import.meta.env.DEV,
+        session_id: SESSION_ID,
+        auth_status: "anonymous",
       });
     },
   });
@@ -114,6 +167,13 @@ function personProps(profile?: UserProfile): PersonProps | undefined {
   return email ? { email } : undefined;
 }
 
+function daysBetween(fromISO: string, toISO: string): number {
+  const a = new Date(fromISO).getTime();
+  const b = new Date(toISO).getTime();
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0;
+  return Math.max(0, Math.floor((b - a) / (1000 * 60 * 60 * 24)));
+}
+
 export function classifyAnalyticsError(message: string): string {
   const lower = message.toLowerCase();
   if (lower.includes("auth") || lower.includes("token") || lower.includes("login")) return "auth";
@@ -134,20 +194,65 @@ export function classifyAnalyticsError(message: string): string {
 }
 
 /**
+ * Set or read the first-install-version + first-install-date person
+ * properties. Set ONCE per install on the first analytics.init() call;
+ * subsequent launches just confirm + read for `days_since_install` math.
+ */
+async function ensureFirstInstallProps(): Promise<{
+  firstInstallVersion: string;
+  firstInstallDate: string;
+}> {
+  const today = activeDate();
+  const existingVersion = await tauriPreferences
+    .get(FIRST_INSTALL_VERSION_KEY)
+    .catch(() => null);
+  const existingDate = await tauriPreferences
+    .get(FIRST_INSTALL_DATE_KEY)
+    .catch(() => null);
+
+  const firstInstallVersion = existingVersion ?? APP_VERSION;
+  const firstInstallDate = existingDate ?? today;
+
+  if (!existingVersion) {
+    await tauriPreferences
+      .set(FIRST_INSTALL_VERSION_KEY, firstInstallVersion)
+      .catch(() => {});
+  }
+  if (!existingDate) {
+    await tauriPreferences
+      .set(FIRST_INSTALL_DATE_KEY, firstInstallDate)
+      .catch(() => {});
+  }
+
+  return { firstInstallVersion, firstInstallDate };
+}
+
+/**
  * Fire-and-forget analytics wrapper. Never throws, never blocks.
  * Empty POSTHOG_KEY → silent no-op (local dev without secrets).
  */
 export const analytics = {
   /**
    * Resolve the persistent install_id and identify the PostHog distinct_id.
-   * Call once on app mount. Returns `isNew` so callers can track first install.
+   * Stamps install-vintage person properties (first_install_version,
+   * first_install_date) on first launch, days_since_install on every
+   * launch. Call once on app mount. Returns `isNew` so callers can track
+   * first install.
    */
   init: async (): Promise<{ installId: string; isNew: boolean }> => {
     if (!KEY) return { installId: "", isNew: false };
     const { id, isNew } = await getInstallId();
+    const { firstInstallVersion, firstInstallDate } =
+      await ensureFirstInstallProps();
     try {
-      posthog.identify(id);
-      posthog.register({ install_id: id });
+      posthog.identify(id, {
+        first_install_version: firstInstallVersion,
+        first_install_date: firstInstallDate,
+      });
+      posthog.register({
+        install_id: id,
+        days_since_install: daysBetween(firstInstallDate, activeDate()),
+      });
     } catch {
       // Analytics unavailable
     }
@@ -167,6 +272,12 @@ export const analytics = {
     if (!KEY) return;
     try {
       posthog.capture(event, cleanProps(props));
+      // Maintain the `is_activated` person property — flips to true on
+      // first `chat_message_received` and stays true forever. Lets cohort
+      // filters say "activated users" without a complex insight.
+      if (event === "chat_message_received") {
+        posthog.people.set({ is_activated: true });
+      }
     } catch {
       // Analytics unavailable
     }
@@ -175,12 +286,15 @@ export const analytics = {
   /**
    * Merge anonymous install_id history into an identified user. Call on sign-in.
    * Email is a person property for lookup/filtering, never an event prop.
+   * Flips the auth_status super property so every event going forward is
+   * tagged as authenticated.
    */
   alias: (userId: string, profile?: UserProfile) => {
     if (!KEY) return;
     try {
       posthog.alias(userId);
       posthog.identify(userId, personProps(profile));
+      posthog.register({ auth_status: "authenticated" });
     } catch {
       // Analytics unavailable
     }
@@ -201,6 +315,7 @@ export const analytics = {
     if (!KEY) return;
     try {
       posthog.reset();
+      posthog.register({ auth_status: "anonymous" });
     } catch {
       // Analytics unavailable
     }

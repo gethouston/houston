@@ -1,4 +1,4 @@
-import { AlertCircle, DownloadCloud, Loader2, RotateCw } from "lucide-react";
+import { AlertCircle, DownloadCloud, Loader2, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUpdateChecker } from "../../hooks/use-update-checker";
 import { normalizeUpdateNotes } from "../../lib/update-details";
@@ -7,7 +7,7 @@ import houstonWhite from "../../assets/houston-icon-white.svg";
 
 export function UpdateChecker() {
   const { t } = useTranslation("shell");
-  const { status, installAndRelaunch, relaunchInstalledApp } = useUpdateChecker();
+  const { status, installAndRelaunch, relaunchInstalledApp, dismiss } = useUpdateChecker();
 
   if (status.state === "idle") return null;
 
@@ -71,6 +71,16 @@ export function UpdateChecker() {
           </div>
           <p className="mt-1 text-sm leading-snug text-muted-foreground">{message}</p>
         </div>
+        {!downloading && !ready && (
+          <button
+            type="button"
+            onClick={dismiss}
+            aria-label={t("updateChecker.dismissAction")}
+            className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
+            <X className="size-4" />
+          </button>
+        )}
       </div>
 
       <div className="mt-4 rounded-xl bg-muted p-3">

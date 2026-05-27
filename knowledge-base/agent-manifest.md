@@ -29,12 +29,12 @@ interface AgentManifest {
 
 ## Tabs
 
-Every agent renders the same four tabs in the shell:
-`Activity` (board) / `Routines` / `Files` / `Job Description`.
+Every agent renders the same five tabs in the shell:
+`Activity` (board) / `Routines` / `Files` / `Job Description` / `Integrations`.
 
 This used to be configurable per agent via a `tabs: AgentTab[]` field in `houston.json`, plus an optional `customComponent` pointing at a per-agent `bundle.js`. The flexibility was never used in practice (zero shipped agents had a custom React tab) and caused drift between installed agents and fresh ones whenever the default set changed. The set is now hardcoded in `app/src/agents/standard-tabs.ts` (`STANDARD_TABS`, `DEFAULT_TAB_ID`). Old `tabs` / `defaultTab` fields on installed manifests are ignored by the loader.
 
-Workspace-wide integrations live in the sidebar `Connections` entry, not in a per-agent tab.
+The per-agent `Integrations` tab is a thin wrapper around the same `IntegrationsView` that the sidebar `Connections` entry renders, so the per-agent and workspace-wide surfaces are intentionally identical. The two entry points are kept because users reach for them at different moments (focused on one agent vs. setting up Houston as a whole).
 
 ## Locations
 - **Built-in:** `app/src/agents/builtin/` — `personalAssistantAgent`
@@ -233,6 +233,34 @@ Notes:
 - Adding a fourth provider = one new adapter file + one registry entry +
   three dispatch arms (runner, parser, summarizer). See "Engine boundary"
   in `CLAUDE.md`.
+
+### Reasoning effort
+
+Effort is **per-agent and model-gated**. Stored as `effort` in the agent's
+`.houston/config/config.json` (schema `ui/agent-schemas/src/config.schema.json`),
+set from the model picker (`app/src/components/chat-model-selector.tsx`), which
+shows only the levels the active model accepts.
+
+- The engine resolves it in `houston_engine_core::sessions::resolve_effort`
+  (`engine/houston-engine-core/src/sessions/provider.rs`): the configured value
+  when the **final** provider accepts it, else the provider's `default_effort`
+  (`medium`), else `None` for providers with no effort control. An explicit
+  `effort` on `POST .../sessions` (the onboarding tutorial) still wins over
+  config. Applies to chat, board missions, routines, and onboarding alike.
+- Valid levels live on the `ProviderAdapter` (`effort_levels` / `default_effort`)
+  as a provider-level **superset** used for validation; per-model availability
+  is a picker concern (`ModelOption.effortLevels` in `providers.ts`).
+
+| Provider | Model | Effort levels offered | CLI flag |
+|---|---|---|---|
+| `anthropic` | `opus` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
+| `anthropic` | `sonnet` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
+| `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
+| `gemini` | any | none | (no flag) |
+
+Claude self-clamps an unsupported `--effort` down to its highest supported
+level; codex has no such fallback, so `max` (an unknown variant to codex) is
+never offered for OpenAI. Default for every effort-capable provider is `medium`.
 
 ## Workspace
 - Storage: `~/.houston/workspaces/workspaces.json` (index) + one dir per workspace `~/.houston/workspaces/{Name}/`. `HOUSTON_DOCS` env var overrides the root.

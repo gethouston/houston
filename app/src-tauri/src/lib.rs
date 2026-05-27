@@ -6,6 +6,7 @@ mod dmg_guard;
 mod engine_supervisor;
 mod houston_prompt;
 mod logging;
+mod notification;
 
 use engine_supervisor::{
     resolve_engine_binary, spawn_supervisor, wait_until_healthy, EngineHandshake,
@@ -69,20 +70,28 @@ pub fn run() {
     // First-launch DMG guard (macOS only). If we were double-clicked from
     // inside the installer DMG (path under /Volumes/…), show a native
     // dialog asking the user to move Houston to Applications, do the
-    // copy + relaunch, and exit this process. Must run BEFORE logging
-    // init — logging would otherwise write to a `~/.houston/logs/` dir
-    // that the in-DMG instance has no business creating.
+    // copy + relaunch, and exit this process. Must run BEFORE Sentry +
+    // logging init so the in-DMG instance never touches `~/.houston/`.
     #[cfg(target_os = "macos")]
     dmg_guard::handle_if_needed();
 
-    // Initialize logging before anything else. `houston_dir()` flips to
-    // `~/.dev-houston/` in debug builds so `pnpm tauri dev` stays isolated
-    // from an installed release of Houston.
+    // `houston_dir()` flips to `~/.dev-houston/` in debug builds so
+    // `pnpm tauri dev` stays isolated from an installed release of Houston.
     let houston = houston_tauri::houston_db::db::houston_dir();
-    logging::init(&houston);
 
-    // Sentry: initialize before the builder so it catches panics in plugin inits.
-    // The guard must live for the lifetime of the app to flush events on shutdown.
+    // Sentry MUST init before logging so the tracing subscriber's
+    // sentry_tracing layer (registered in logging::init) has a live client
+    // to forward breadcrumbs/events to from the first emitted record. Init
+    // also installs the panic handler before any plugin setup runs.
+    //
+    // `release` = `houston-app@<CARGO_PKG_VERSION>` via release_name!() — MUST
+    // match the `--release` flag passed to sentry-cli sourcemaps + debug-files
+    // uploads in .github/workflows/release.yml, otherwise stack traces won't
+    // resolve. release.yml derives the same string from the git tag.
+    //
+    // `environment` separates production crashes (real users on installed
+    // builds) from development noise (someone running `pnpm tauri dev` with
+    // a DSN exported). Tile filters in Sentry default to production.
     let sentry_dsn = option_env!("SENTRY_DSN").unwrap_or("");
     let _sentry_client = if sentry_dsn.is_empty() {
         None
@@ -91,11 +100,23 @@ pub fn run() {
             sentry_dsn,
             sentry::ClientOptions {
                 release: sentry::release_name!(),
+                environment: Some(
+                    if cfg!(debug_assertions) {
+                        "development"
+                    } else {
+                        "production"
+                    }
+                    .into(),
+                ),
                 auto_session_tracking: true,
                 ..Default::default()
             },
         )))
     };
+
+    // Logging second so the sentry_tracing layer captures everything from
+    // here onwards, including engine subprocess spawn logs and plugin setup.
+    logging::init(&houston);
 
     let mut builder = tauri::Builder::default();
 
@@ -344,6 +365,10 @@ pub fn run() {
             // Logging (writes to local log files).
             logging::write_frontend_log,
             logging::read_recent_logs,
+            // Linux/Windows session-finished notifications whose click brings
+            // the window forward + emits `app-activated` (macOS uses the JS
+            // notification plugin — see session-notifications.ts).
+            notification::show_session_notification,
             // Native network delivery for bug reports. Avoids webview CORS and
             // keeps Linear credentials out of the JavaScript bundle.
             bug_report::report_bug,

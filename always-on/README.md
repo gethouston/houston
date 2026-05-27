@@ -59,6 +59,7 @@ when you're connected to a remote engine.
 | `HOUSTON_ENGINE_TOKEN` | auto-generated | Bearer token clients must send. |
 | `HOUSTON_HOME` | `~/.houston` | Data dir (DB, `engine.json`, workspaces). |
 | `HOUSTON_DOCS` | `$HOUSTON_HOME/workspaces` | Workspaces root. |
+| `HOUSTON_NO_PARENT_WATCHDOG` | unset | Set to `1` to disable the stdin-EOF parent watchdog. Required for non-interactive standalone runs (systemd/docker) where stdin is `/dev/null` — already set in the unit and compose files here. |
 | `RUST_LOG` | `info,houston=debug` | tracing filter. |
 
 ## Native build (no Docker)

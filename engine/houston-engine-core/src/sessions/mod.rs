@@ -43,7 +43,7 @@ use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::{Path, PathBuf};
 use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
 
-pub use provider::{resolve_provider, ResolvedProvider};
+pub use provider::{resolve_effort, resolve_provider, ResolvedProvider};
 
 /// Engine-owned session state. Cheap to clone.
 #[derive(Default, Clone)]
@@ -552,6 +552,7 @@ pub async fn start_onboarding(
     let product_prompt = format!("{app_system_prompt}{app_onboarding_prompt}");
 
     let resolved = resolve_provider(&agent_dir);
+    let effort = resolve_effort(&agent_dir, resolved.provider);
 
     start(
         rt,
@@ -567,7 +568,7 @@ pub async fn start_onboarding(
             source: Some("desktop".into()),
             provider: resolved.provider,
             model: resolved.model,
-            effort: None,
+            effort,
         },
     )
     .await

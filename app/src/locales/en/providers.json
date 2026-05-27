@@ -22,6 +22,24 @@
     "cancelWaiting": "Cancel and try again",
     "installedCheckAgain": "Already installed? Check again"
   },
+  "claudeInstall": {
+    "installing": "Downloading Claude Code...",
+    "installingWithProgress": "Downloading Claude Code... {{progress}}%",
+    "failedTitle": "Houston couldn't download Claude Code",
+    "preparing": "Houston is downloading Claude Code in the background. If it doesn't start, try again below.",
+    "retry": "Retry download",
+    "errors": {
+      "timeout": "The download took too long. Check your internet connection and try again.",
+      "networkUnreachable": "Couldn't reach Anthropic. Check your internet connection and try again.",
+      "downloadInterrupted": "The download was interrupted. Check your internet connection and try again.",
+      "httpError": "Anthropic's servers had a problem (error {{status}}). Try again in a few minutes.",
+      "checksumMismatch": "The download didn't arrive intact. Check your connection and try again.",
+      "platformUnsupported": "Claude Code isn't available for this device yet.",
+      "writeFailed": "Houston couldn't save Claude Code to your computer. Make sure there's enough space and try again.",
+      "unavailable": "Houston couldn't start the download. Try again in a moment.",
+      "unknown": "Something went wrong while downloading Claude Code. Try again."
+    }
+  },
   "signOutConfirm": {
     "title": "Sign out of {{provider}}?",
     "description": "Houston will stop using {{provider}} until you sign in again. Existing missions can still finish their current turn.",
@@ -36,11 +54,14 @@
   },
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
-    "description": "Open the URL below in your browser, complete sign-in, then paste the verification code back here.",
+    "description": "Open the sign-in page in your browser, complete sign-in, then paste the verification code back here.",
     "openUrl": "Open URL",
     "copyUrl": "Copy URL",
     "urlCopied": "URL copied to clipboard",
     "urlCopyFailed": "Couldn't copy the URL",
+    "showUrl": "Show URL",
+    "hideUrl": "Hide URL",
+    "destinationHint": "You'll be taken to {{host}}.",
     "codeLabel": "Verification code",
     "codePlaceholder": "Paste the code from your browser",
     "codeRequired": "Enter the verification code first.",

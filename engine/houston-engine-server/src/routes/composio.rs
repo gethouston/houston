@@ -26,6 +26,7 @@ pub fn router() -> Router<Arc<ServerState>> {
         .route("/composio/cli", post(install_cli))
         .route("/composio/login", post(start_login))
         .route("/composio/login/complete", post(complete_login))
+        .route("/composio/logout", post(logout))
         .route("/composio/apps", get(list_apps))
         .route(
             "/composio/connections",
@@ -86,6 +87,10 @@ async fn complete_login(
     inner::complete_composio_login(req.cli_key)
         .await
         .map_err(lift)
+}
+
+async fn logout(State(_st): State<Arc<ServerState>>) -> Result<(), ApiError> {
+    inner::logout_composio().await.map_err(lift)
 }
 
 async fn list_apps(State(_st): State<Arc<ServerState>>) -> Json<Vec<ComposioAppEntry>> {

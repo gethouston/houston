@@ -43,7 +43,7 @@
 
 use futures_util::StreamExt;
 use houston_db::db::Database;
-use houston_ui_events::{DynEventSink, HoustonEvent};
+use houston_ui_events::{ClaudeInstallError, DynEventSink, HoustonEvent};
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
 use tokio::io::AsyncWriteExt;
@@ -60,7 +60,15 @@ pub use houston_terminal_manager::claude_install_path::{
 /// Engine-DB preferences key holding the last successfully-installed
 /// claude-code version. Lifecycle compares it against the manifest's
 /// pinned version on every boot.
-const PREF_INSTALLED_VERSION: &str = "claude_code_installed_version";
+pub const PREF_INSTALLED_VERSION: &str = "claude_code_installed_version";
+
+/// Engine-DB preferences key holding the most recent install failure
+/// (empty string = no error). Read by `/v1/claude/status` so the
+/// onboarding UI can show a clear reason next to the disabled "Sign in
+/// with Anthropic" button instead of the misleading "install it
+/// yourself" hint that fires for every other `cli_installed=false`
+/// case.
+pub const PREF_LAST_INSTALL_ERROR: &str = "claude_code_last_install_error";
 
 /// CLI key inside `cli-deps.json`. Constant so we don't string-literal
 /// the same value across modules.
@@ -75,8 +83,8 @@ const CLI_KEY: &str = "claude-code";
 /// - Already installed at the pinned version → emit `ClaudeCliReady`.
 /// - Not installed, or installed at a different version →
 ///   download/verify/install, then emit `ClaudeCliReady`.
-/// - Download/verify failure → emit `ClaudeCliFailed { message }` with
-///   actionable hint.
+/// - Download/verify failure → emit `ClaudeCliFailed { error }` with a
+///   typed, localizable reason.
 pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     // Resolve the manifest. In dev (no bundle), we fall back to the
     // checkout's `cli-deps.json` so engineers get the same auto-install
@@ -141,19 +149,67 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
     })
     .await;
 
+    finalize_install(&db, &pinned_version, &sink, result).await;
+}
+
+/// Persist the outcome of an install attempt and emit the matching
+/// `ClaudeCliReady` / `ClaudeCliFailed` event. Shared between the
+/// lifecycle entry above and the `POST /v1/claude/install` route handler
+/// so both flows write the same DB markers and emit the same events.
+pub async fn finalize_install(
+    db: &Database,
+    pinned_version: &str,
+    sink: &DynEventSink,
+    result: Result<PathBuf, ClaudeInstallError>,
+) {
     match result {
         Ok(path) => {
             tracing::info!("[claude-installer] installed at {}", path.display());
-            if let Err(e) = db.set_preference(PREF_INSTALLED_VERSION, &pinned_version).await {
+            if let Err(e) = db.set_preference(PREF_INSTALLED_VERSION, pinned_version).await {
                 tracing::warn!("[claude-installer] failed to persist version marker: {e}");
+            }
+            // Clear the last-error marker so the UI stops surfacing a
+            // stale failure after a successful retry.
+            if let Err(e) = db.set_preference(PREF_LAST_INSTALL_ERROR, "").await {
+                tracing::warn!("[claude-installer] failed to clear last-error marker: {e}");
             }
             sink.emit(HoustonEvent::ClaudeCliReady);
         }
-        Err(e) => {
-            tracing::error!("[claude-installer] install failed: {e}");
-            sink.emit(HoustonEvent::ClaudeCliFailed { message: e });
+        Err(error) => {
+            // English `Display` is for the engine log + bug-report
+            // bundle only; the typed `kind` is what the UI localizes.
+            tracing::error!("[claude-installer] install failed: {error}");
+            if let Err(persist_err) = db
+                .set_preference(PREF_LAST_INSTALL_ERROR, &error.to_pref_json())
+                .await
+            {
+                tracing::warn!(
+                    "[claude-installer] failed to persist last-error marker: {persist_err}"
+                );
+            }
+            sink.emit(HoustonEvent::ClaudeCliFailed { error });
         }
     }
+}
+
+/// Resolve the pinned manifest, look up the `claude-code` entry, and run
+/// the install for the host platform. Used by the `POST /v1/claude/install`
+/// route so manifest / entry problems surface as a typed
+/// [`ClaudeInstallError`] through the normal `ClaudeCliFailed` path
+/// instead of a synchronous internal error the UI can't localize.
+///
+/// Returns the pinned version alongside the path on success so the
+/// caller can write the installed-version marker via [`finalize_install`].
+pub async fn install_pinned(
+    progress: impl FnMut(u8) + Send + 'static,
+) -> Result<(String, PathBuf), ClaudeInstallError> {
+    let manifest = resolve_manifest().ok_or(ClaudeInstallError::ManifestMissing)?;
+    let entry = manifest
+        .entry(CLI_KEY)
+        .ok_or(ClaudeInstallError::ManifestEntryMissing)?;
+    let version = entry.version.clone();
+    let path = install(&entry, progress).await?;
+    Ok((version, path))
 }
 
 /// Resolve the `cli-deps.json` manifest. Prefers the bundled copy
@@ -188,7 +244,7 @@ fn resolve_manifest() -> Option<houston_cli_bundle::CliDepsManifest> {
 pub async fn install(
     entry: &houston_cli_bundle::CliEntry,
     progress: impl FnMut(u8) + Send + 'static,
-) -> Result<PathBuf, String> {
+) -> Result<PathBuf, ClaudeInstallError> {
     install_to(entry, &install_dir(), binary_name(), progress).await
 }
 
@@ -201,21 +257,27 @@ pub async fn install_to(
     install_dir: &std::path::Path,
     binary_name: &str,
     mut progress: impl FnMut(u8) + Send + 'static,
-) -> Result<PathBuf, String> {
+) -> Result<PathBuf, ClaudeInstallError> {
     let platform = houston_cli_bundle::host_platform_key();
     let url = entry
         .url_for(platform)
-        .ok_or_else(|| format!("no claude-code URL for platform '{platform}'"))?;
+        .ok_or_else(|| ClaudeInstallError::PlatformUnsupported {
+            platform: platform.to_string(),
+        })?;
     let expected_checksum = entry
         .checksum_for(platform)
-        .ok_or_else(|| format!("no claude-code checksum for platform '{platform}'"))?
+        .ok_or_else(|| ClaudeInstallError::PlatformUnsupported {
+            platform: platform.to_string(),
+        })?
         .to_string();
 
     tracing::info!("[claude-installer] GET {url}");
 
     tokio::fs::create_dir_all(install_dir)
         .await
-        .map_err(|e| format!("failed to create install dir {}: {e}", install_dir.display()))?;
+        .map_err(|e| ClaudeInstallError::WriteFailed {
+            detail: format!("failed to create install dir {}: {e}", install_dir.display()),
+        })?;
 
     let final_path = install_dir.join(binary_name);
     // Temp path on the same filesystem so the final rename is atomic
@@ -228,19 +290,20 @@ pub async fn install_to(
     let client = reqwest::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(15))
         .build()
-        .map_err(|e| format!("failed to build HTTP client: {e}"))?;
+        .map_err(|e| ClaudeInstallError::Unknown {
+            detail: format!("failed to build HTTP client: {e}"),
+        })?;
 
     let resp = client
         .get(&url)
         .send()
         .await
-        .map_err(|e| format!("download request failed: {e}"))?;
+        .map_err(|e| classify_reqwest_error(&e))?;
 
     if !resp.status().is_success() {
-        return Err(format!(
-            "download returned HTTP {}: {url}",
-            resp.status()
-        ));
+        return Err(ClaudeInstallError::HttpError {
+            status: resp.status().as_u16(),
+        });
     }
 
     let total = resp.content_length();
@@ -251,15 +314,19 @@ pub async fn install_to(
 
     let mut tmp_file = tokio::fs::File::create(&tmp_path)
         .await
-        .map_err(|e| format!("failed to open temp file {}: {e}", tmp_path.display()))?;
+        .map_err(|e| ClaudeInstallError::WriteFailed {
+            detail: format!("failed to open temp file {}: {e}", tmp_path.display()),
+        })?;
 
     while let Some(chunk) = stream.next().await {
-        let chunk = chunk.map_err(|e| format!("download stream error: {e}"))?;
+        let chunk = chunk.map_err(|e| classify_reqwest_error(&e))?;
         hasher.update(&chunk);
         tmp_file
             .write_all(&chunk)
             .await
-            .map_err(|e| format!("failed to write chunk: {e}"))?;
+            .map_err(|e| ClaudeInstallError::WriteFailed {
+                detail: format!("failed to write chunk: {e}"),
+            })?;
         downloaded = downloaded.saturating_add(chunk.len() as u64);
 
         // Throttle progress events so we don't flood the WebSocket.
@@ -279,7 +346,9 @@ pub async fn install_to(
     tmp_file
         .flush()
         .await
-        .map_err(|e| format!("flush failed: {e}"))?;
+        .map_err(|e| ClaudeInstallError::WriteFailed {
+            detail: format!("flush failed: {e}"),
+        })?;
     drop(tmp_file);
 
     // Always emit a final 100% so the UI can transition out of
@@ -290,10 +359,11 @@ pub async fn install_to(
     let actual_checksum = hex::encode(hasher.finalize());
     if !checksum_matches(&actual_checksum, &expected_checksum) {
         let _ = tokio::fs::remove_file(&tmp_path).await;
-        return Err(format!(
-            "claude-code checksum mismatch: expected {expected_checksum}, got {actual_checksum} \
-             — download may be tampered or the pinned manifest is stale"
-        ));
+        // The localized user copy comes from the `kind`; the expected /
+        // actual digests ride along in `detail` for the bug report.
+        return Err(ClaudeInstallError::ChecksumMismatch {
+            detail: format!("checksum mismatch: expected {expected_checksum}, got {actual_checksum}"),
+        });
     }
 
     // Make the binary executable BEFORE the rename so a racing reader
@@ -302,8 +372,9 @@ pub async fn install_to(
     {
         use std::os::unix::fs::PermissionsExt;
         let perms = std::fs::Permissions::from_mode(0o755);
-        std::fs::set_permissions(&tmp_path, perms)
-            .map_err(|e| format!("failed to chmod +x: {e}"))?;
+        std::fs::set_permissions(&tmp_path, perms).map_err(|e| ClaudeInstallError::WriteFailed {
+            detail: format!("failed to chmod +x: {e}"),
+        })?;
     }
 
     // Atomic rename within the same dir. On Unix this is a syscall;
@@ -315,11 +386,11 @@ pub async fn install_to(
             let _ = std::fs::remove_file(&final_path);
         }
     }
-    std::fs::rename(&tmp_path, &final_path).map_err(|e| {
-        format!(
-            "failed to install to {}: {e} — check the directory is writable",
+    std::fs::rename(&tmp_path, &final_path).map_err(|e| ClaudeInstallError::WriteFailed {
+        detail: format!(
+            "failed to install to {}: {e} (check the directory is writable)",
             final_path.display()
-        )
+        ),
     })?;
 
     Ok(final_path)
@@ -332,6 +403,42 @@ pub async fn install_to(
 /// explicit about case folding.
 fn checksum_matches(actual: &str, expected: &str) -> bool {
     actual.eq_ignore_ascii_case(expected)
+}
+
+/// Translate a `reqwest::Error` into a message a non-technical user can
+/// act on. The default `Display` impl produces chains like
+/// `error sending request for url (...): error trying to connect:
+/// dns error: failed to lookup address information`, which is the
+/// "useless raw error" we surface in the onboarding card today and
+/// which prompted issue #231.
+///
+/// Bias toward the network-down case — that's what real users hit
+/// (laptop on a flaky cafe wifi, captive portal). The other branches
+/// (HTTP 5xx, response body decode) get their own user-readable
+/// wording.
+fn classify_reqwest_error(err: &reqwest::Error) -> ClaudeInstallError {
+    if err.is_timeout() {
+        return ClaudeInstallError::Timeout;
+    }
+    if err.is_connect() {
+        return ClaudeInstallError::NetworkUnreachable;
+    }
+    if err.is_body() || err.is_decode() {
+        return ClaudeInstallError::DownloadInterrupted;
+    }
+    if err.is_request() {
+        // `is_request` catches the catch-all "request-level" failures
+        // (DNS lookup failure at the resolver layer, TLS handshake
+        // failure, etc.) that don't surface through the more specific
+        // predicates above. From the user's perspective these all mean
+        // "the network didn't cooperate", so collapse to the same kind.
+        return ClaudeInstallError::NetworkUnreachable;
+    }
+    // Unknown shape — keep the technical detail so bug reports stay
+    // actionable.
+    ClaudeInstallError::Unknown {
+        detail: err.to_string(),
+    }
 }
 
 #[cfg(test)]
@@ -468,9 +575,13 @@ mod tests {
         let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
 
         let err = result.expect_err("checksum mismatch must error");
+        let detail = match err {
+            ClaudeInstallError::ChecksumMismatch { detail } => detail,
+            other => panic!("expected ChecksumMismatch, got {other:?}"),
+        };
         assert!(
-            err.contains("checksum mismatch"),
-            "unexpected error: {err}"
+            detail.contains("checksum mismatch"),
+            "detail must keep the technical digests for the bug report: {detail}"
         );
         // Both the partial and the final must be absent — we never want
         // a tampered binary on disk after a verification failure.
@@ -492,9 +603,121 @@ mod tests {
         let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
 
         let err = result.expect_err("server 500 must error");
-        assert!(
-            err.contains("HTTP") || err.contains("500"),
-            "unexpected error: {err}"
+        assert_eq!(
+            err,
+            ClaudeInstallError::HttpError { status: 500 },
+            "5xx must classify as HttpError carrying the status code"
         );
+    }
+
+    /// Bad host = the realistic "no internet" scenario. Reqwest can't
+    /// resolve `nonexistent-host-for-houston-test.invalid` so the
+    /// failure surfaces through `is_request()` / `is_connect()`. Issue
+    /// #231: this used to dump the raw error chain at the user; verify
+    /// we collapse it to a one-line actionable message instead.
+    #[tokio::test]
+    async fn install_surfaces_network_failure_with_actionable_message() {
+        let manifest = serde_json::json!({
+            "claude-code": {
+                "version": "9.9.9",
+                "bundled": false,
+                "binary_name": "claude",
+                "urls": {
+                    houston_cli_bundle::host_platform_key():
+                        "http://nonexistent-host-for-houston-test.invalid/claude"
+                },
+                "checksums": {
+                    houston_cli_bundle::host_platform_key():
+                        "0000000000000000000000000000000000000000000000000000000000000000"
+                }
+            }
+        });
+        let tmp = tempfile::NamedTempFile::new().unwrap();
+        std::fs::write(tmp.path(), serde_json::to_string(&manifest).unwrap()).unwrap();
+        let entry = houston_cli_bundle::CliDepsManifest::load(tmp.path())
+            .unwrap()
+            .entry("claude-code")
+            .unwrap();
+
+        let dest_dir = tempfile::tempdir().unwrap();
+        let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
+
+        let err = result.expect_err("bad host must error");
+        // A DNS/connect failure used to dump the raw reqwest chain at the
+        // user (issue #231). It must now collapse to the typed
+        // NetworkUnreachable kind so the frontend can localize it — no
+        // English prose, no leaked transport chain.
+        assert_eq!(
+            err,
+            ClaudeInstallError::NetworkUnreachable,
+            "DNS/connect failure must classify as NetworkUnreachable"
+        );
+    }
+
+    #[tokio::test]
+    async fn install_surfaces_stream_interruption() {
+        // A genuinely truncated download: the server declares a 1 KB body
+        // in Content-Length but writes a handful of bytes and slams the
+        // socket shut, so reqwest fails mid-stream with a body/decode
+        // error. Without classify_reqwest_error the user would see the raw
+        // `hyper::Error(IncompleteMessage)` chain (issue #231).
+        //
+        // wiremock can't express this — it recomputes Content-Length from
+        // the body, so a hand-rolled one-shot TCP server is the only way
+        // to put a header/body length mismatch on the wire.
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+        use tokio::net::TcpListener;
+
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let addr = listener.local_addr().unwrap();
+        tokio::spawn(async move {
+            if let Ok((mut socket, _)) = listener.accept().await {
+                // Drain the request head enough to start replying; the
+                // exact bytes don't matter, only that we then send a
+                // short, truncated response body.
+                let mut buf = [0u8; 1024];
+                let _ = socket.read(&mut buf).await;
+                let _ = socket
+                    .write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 1024\r\n\r\nshort")
+                    .await;
+                // Dropping `socket` here closes the connection mid-body.
+            }
+        });
+
+        let entry = entry_for(&format!("http://{addr}"), b"unused");
+        let dest_dir = tempfile::tempdir().unwrap();
+        let result = install_to(&entry, dest_dir.path(), "claude", |_| {}).await;
+
+        let err = result.expect_err("a truncated download must error");
+        // The connection succeeded — only the body was cut — so this must
+        // collapse to the typed DownloadInterrupted kind, never the raw
+        // hyper chain and never NetworkUnreachable.
+        assert_eq!(
+            err,
+            ClaudeInstallError::DownloadInterrupted,
+            "truncated stream must classify as DownloadInterrupted, got {err:?}"
+        );
+    }
+
+    #[test]
+    fn error_kinds_serialize_with_snake_case_discriminant() {
+        // The wire contract the TS union mirrors: a `kind` discriminant
+        // in snake_case, per-variant fields alongside.
+        assert_eq!(
+            serde_json::to_string(&ClaudeInstallError::NetworkUnreachable).unwrap(),
+            r#"{"kind":"network_unreachable"}"#
+        );
+        assert_eq!(
+            serde_json::to_string(&ClaudeInstallError::HttpError { status: 503 }).unwrap(),
+            r#"{"kind":"http_error","status":503}"#
+        );
+        // The preference JSON form the status route reads back must
+        // round-trip losslessly.
+        let original = ClaudeInstallError::ChecksumMismatch {
+            detail: "expected a, got b".into(),
+        };
+        let restored: ClaudeInstallError =
+            serde_json::from_str(&original.to_pref_json()).unwrap();
+        assert_eq!(restored, original);
     }
 }

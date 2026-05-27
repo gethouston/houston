@@ -105,8 +105,13 @@ Chat sessions snapshot user-visible project files before and after the
 CLI run. The engine diffs those snapshots and persists a `file_changes`
 feed item with `created` and `modified` absolute paths. The visible-file
 filter is shared with the project file browser, so helper files such as
-Python scripts, JSON, Markdown, `.houston/`, `.agents/`, and dotdirs stay
-out of non-technical chat summaries.
+Python scripts, JSON, the agent role files (`CLAUDE.md` / `AGENTS.md` /
+`GEMINI.md`), `.houston/`, `.agents/`, and dotdirs stay out of
+non-technical chat summaries. Markdown deliverables the agent writes
+(reports, plans, notes) DO surface — they are documents, not config
+(issue #294). The allowlist + role-file denylist live in
+`USER_EXTENSIONS` / `HIDDEN_ROLE_FILES` in
+`engine/houston-engine-core/src/agents/files.rs`.
 
 Attribution is strict only when one session owns a working directory. The
 engine enforces that by holding a per-`working_dir` guard for chat and

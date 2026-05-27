@@ -16,6 +16,8 @@ import {
   type ProviderInfo,
   type ComingSoonProviderInfo,
 } from "../../../lib/providers";
+import { useClaudeInstall, type ClaudeInstallState } from "../../../hooks/use-claude-install";
+import { ClaudeInstallHint } from "../../shell/claude-install-hint";
 
 interface BrainMissionProps {
   provider: string | null;
@@ -44,6 +46,14 @@ export function BrainMission({
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  // Anthropic uses a Houston-managed runtime install for `claude` (the
+  // license forbids bundling). Track the install state separately so
+  // the SetupHint can render a real reason + Retry instead of the
+  // generic "install it yourself" message — issue #231.
+  const claudeInstall = useClaudeInstall({
+    onReady: () => void refresh(),
+  });
 
   // Poll while a disconnected provider is selected so the screen unblocks the
   // moment the user finishes the browser sign-in flow.
@@ -82,6 +92,7 @@ export function BrainMission({
             onSelect={(modelId) => onSelect(prov.id, modelId)}
             onRefresh={refresh}
             costLabel={prov.cost}
+            claudeInstall={prov.id === "anthropic" ? claudeInstall : null}
           />
         ))}
         {COMING_SOON_PROVIDERS.map((prov) => (
@@ -119,6 +130,7 @@ function ProviderCard({
   onSelect,
   onRefresh,
   costLabel,
+  claudeInstall,
 }: {
   provider: ProviderInfo;
   status: ProviderStatus | undefined;
@@ -127,6 +139,10 @@ function ProviderCard({
   onSelect: (modelId: string) => void;
   onRefresh: () => Promise<void>;
   costLabel: string;
+  /** Live install state for Houston-managed CLIs. Pass `null` for any
+   *  provider that ships a bundled CLI — the generic install hint
+   *  fires for those. */
+  claudeInstall: ClaudeInstallState | null;
 }) {
   const { t } = useTranslation(["setup", "providers"]);
   const installed = status?.cli_installed ?? false;
@@ -191,6 +207,7 @@ function ProviderCard({
           onSignIn={() => void handleSignIn()}
           onRefresh={() => void onRefresh()}
           onCancelWaiting={() => void handleCancelWaiting()}
+          claudeInstall={claudeInstall}
         />
       )}
       {selected && connected && (
@@ -260,6 +277,7 @@ function SetupHint({
   onSignIn,
   onRefresh,
   onCancelWaiting,
+  claudeInstall,
 }: {
   provider: ProviderInfo;
   installed: boolean;
@@ -268,6 +286,10 @@ function SetupHint({
   onSignIn: () => void;
   onRefresh: () => void;
   onCancelWaiting: () => void;
+  /** Houston-managed install state for the Anthropic CLI. `null` for
+   *  bundled-CLI providers — they fall through to the generic install
+   *  hint. */
+  claudeInstall: ClaudeInstallState | null;
 }) {
   const { t } = useTranslation(["setup", "providers"]);
   return (
@@ -275,7 +297,8 @@ function SetupHint({
       className="rounded-lg bg-secondary/60 p-3"
       onClick={(e) => e.stopPropagation()}
     >
-      {!installed && (
+      {!installed && claudeInstall && <ClaudeInstallHint state={claudeInstall} />}
+      {!installed && !claudeInstall && (
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <Terminal className="mt-0.5 size-3.5 shrink-0" />
           <span>
@@ -320,7 +343,11 @@ function SetupHint({
           </button>
         </div>
       )}
-      {!installed && (
+      {/* For Houston-managed installs the ClaudeInstallHint above
+       *  already shows a retry — surfacing a second "Already installed?
+       *  Check again" link below would just confuse the user, so we
+       *  only render it for bundled-CLI providers (codex et al.). */}
+      {!installed && !claudeInstall && (
         <button
           type="button"
           onClick={onRefresh}

@@ -8,6 +8,9 @@ interface BugReportContext {
   userEmail?: string | null;
   timestamp: string;
   appVersion: string;
+  /** Free-text feedback the user typed (only present on voluntary
+   *  "Send feedback" submissions, never on auto-generated error paths). */
+  userMessage?: string;
 }
 
 async function getRecentLogs(lines = 50): Promise<{ backend: string; frontend: string }> {

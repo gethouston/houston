@@ -17,7 +17,7 @@ framework, connected CRM) I ask **one** targeted question inline,
 remember answer to `config/context-ledger.json`, keep going.
 
 Best way to share context, ranked: **connected app (Composio) >
-file drop > URL > paste**. Connect from Connections
+file drop > URL > paste**. Connect from Integrations tab
 before first task (CRM, call-recorder, inbox, calendar) = never
 have to ask.
 

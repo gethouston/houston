@@ -36,6 +36,7 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAgentStore } from "../../stores/agents";
 import { getEngine } from "../../lib/engine";
 import { tauriConfig, tauriProvider } from "../../lib/tauri";
+import { analytics } from "../../lib/analytics";
 import { getDefaultModel } from "../../lib/providers";
 import { IntegrationLogos } from "../integration-logos";
 import { InlineModelSelector } from "../shell/naming-step";
@@ -218,6 +219,7 @@ export function ImportAgentWizard() {
       });
       await tauriProvider.setLastUsed(provider, model);
       await loadAgents(currentWorkspace.id);
+      analytics.track("agent_imported", { agent_slug: installed.agentName });
       addToast({
         variant: "success",
         title: t("import.toasts.installedTitle"),

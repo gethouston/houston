@@ -3,6 +3,7 @@ import { Trans, useTranslation } from "react-i18next";
 import { Badge, Button, ConfirmDialog } from "@houston-ai/core";
 import { QRCodeSVG } from "qrcode.react";
 import { tauriTunnel } from "../../../lib/tauri";
+import { analytics } from "../../../lib/analytics";
 import { logger } from "../../../lib/logger";
 import { useUIStore } from "../../../stores/ui";
 
@@ -38,6 +39,12 @@ export function ConnectPhoneSection() {
       const p = await tauriTunnel.mintPairingCode();
       setPairingCode(p.code);
       setError(null);
+      // Fires on pairing initiation (user displayed the QR / link). The
+      // engine doesn't currently emit a "pairing completed" event we can
+      // hook into, so this is the closest proxy: the user opened the
+      // pairing flow and was issued a code. Slight over-count vs. true
+      // completed-pairs but the directional signal is what matters.
+      analytics.track("mobile_paired");
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setError(

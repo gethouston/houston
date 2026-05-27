@@ -25,6 +25,7 @@ import { useUIStore } from "../../stores/ui";
 import { useAgentStore } from "../../stores/agents";
 import { getEngine } from "../../lib/engine";
 import { osRevealPath } from "../../lib/os-bridge";
+import { analytics } from "../../lib/analytics";
 import { IntegrationLogos } from "../integration-logos";
 import type {
   PortableAnonymizeResponse,
@@ -217,6 +218,7 @@ export function ExportAgentWizard() {
         bytes: Array.from(u8),
       });
       if (savedPath) {
+        analytics.track("agent_shared", { agent_slug: agent.id });
         addToast({
           variant: "success",
           title: t("export.toasts.savedTitle"),

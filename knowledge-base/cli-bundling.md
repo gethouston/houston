@@ -250,10 +250,20 @@ composio readiness.
 Mirrors `/v1/composio/*`:
 
 - `GET /v1/claude/cli-installed` → `{ installed: bool }`.
-- `GET /v1/claude/status` → `{ installed, installPath, pinnedVersion, installedVersion }`.
+- `GET /v1/claude/status` → `{ installed, installPath, pinnedVersion,
+  installedVersion, lastInstallError }`. `lastInstallError` is the
+  classified user-readable reason the most recent install failed (or
+  `null` when install has never failed / has since succeeded). The
+  onboarding "Sign in with Anthropic" card reads it so a bad-internet
+  failure renders as "Couldn't reach Anthropic — Retry" instead of the
+  generic "install the CLI yourself" hint (issue #231).
 - `POST /v1/claude/install` → kicks off a fresh install in the
   background. Progress + completion stream over the WS firehose as
   `ClaudeCliInstalling` / `ClaudeCliReady` / `ClaudeCliFailed` events.
+  Both the lifecycle entry and this route flow through
+  `houston_claude_installer::finalize_install` so DB markers
+  (`PREF_INSTALLED_VERSION`, `PREF_LAST_INSTALL_ERROR`) stay in sync —
+  a successful retry clears any stale error from a previous attempt.
 
 `ProviderStatus` (returned by `GET /v1/providers/<name>/status`) gains
 three status fields beyond provider + CLI name:

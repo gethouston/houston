@@ -1,0 +1,17 @@
+# Cloudflare Pages redirects — per-campaign short URLs that 302 to the
+# landing page with full UTM params baked in.
+#
+# Format (one rule per line):
+#   /<short-slug>   /?utm_source=X&utm_medium=Y&utm_campaign=Z&utm_content=W   302
+#
+# Add one rule per IRL event / printed material / partner link. Keep the
+# slug human-printable (use on QR codes, posters, business cards).
+# UTM convention is locked in growth/utm-conventions.md — do not invent
+# new utm_source / utm_medium values without updating that doc.
+#
+# Examples (delete these once real campaigns are wired):
+# /yc-demo-day-2026   /?utm_source=qr_code&utm_medium=event&utm_campaign=yc_demo_day_2026&utm_content=qr_table_tent   302
+# /yc-followup        /?utm_source=email&utm_medium=email_followup&utm_campaign=yc_demo_day_2026&utm_content=irl_followup_24h   302
+# /paris-meetup-jan   /?utm_source=qr_code&utm_medium=event&utm_campaign=paris_meetup_jan_2026&utm_content=qr_main   302
+#
+# Live campaigns: (add rules below this line)

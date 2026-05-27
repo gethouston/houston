@@ -19,7 +19,7 @@
     "config/context-ledger.json": "{\n  \"universal\": {},\n  \"domains\": {\n    \"people\": {}\n  }\n}\n",
     ".houston/routines/routines.json": "[{\"id\": \"monthly-compliance-audit\", \"name\": \"Monthly compliance audit\", \"description\": \"1st of every month: I-9 / W-4 / visa renewals, review-cycle drift, policy-refresh dates. Silent unless a new item is due.\", \"prompt\": \"Run the monthly compliance audit. Use the track-compliance-deadlines skill.\\n\\nFull scan of my connected HR system for work-authorization expirations, I-9 / W-4 completeness, and vesting-cliff dates. Pull the review-cycle rhythm and policy-refresh cadence from context/people-context.md. Update compliance-calendar.md in place and log each substantive change in outputs.json. Compare against the prior audit run.\\n\\nIf nothing new is due in the next 60 days and nothing has drifted since the last audit, end with ROUTINE_OK so this stays silent. Surface only when a new item is due, a document is incomplete, or a visa expiration is approaching. On the first run (no prior audit exists), always surface \\u2014 that's the baseline.\", \"schedule\": \"0 8 1 * *\", \"enabled\": true, \"suppress_when_silent\": true, \"created_at\": \"2026-04-24T00:00:00Z\", \"updated_at\": \"2026-04-24T00:00:00Z\"}]"
   },
-  "version": "0.1.8",
+  "version": "0.1.9",
   "image": "busts-in-silhouette",
   "integrations": [
     "discord",

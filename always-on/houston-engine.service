@@ -9,6 +9,10 @@ Group=houston
 WorkingDirectory=/opt/houston
 Environment=HOUSTON_BIND=0.0.0.0:7777
 Environment=HOUSTON_BIND_ALL=1
+# systemd wires stdin to /dev/null, which reports EOF immediately. Opt out
+# of the desktop parent-watchdog so the engine doesn't self-terminate at
+# boot; systemd owns the lifecycle here. (gethouston/houston#306)
+Environment=HOUSTON_NO_PARENT_WATCHDOG=1
 EnvironmentFile=/etc/houston/engine.env
 ExecStart=/usr/local/bin/houston-engine
 Restart=on-failure

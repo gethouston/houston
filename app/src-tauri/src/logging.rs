@@ -3,12 +3,30 @@ use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 use std::time::SystemTime;
 use tracing_appender::non_blocking::WorkerGuard;
-use tracing_subscriber::{fmt, EnvFilter};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 /// Guard kept alive for the entire process lifetime via OnceLock.
 static GUARD: OnceLock<WorkerGuard> = OnceLock::new();
 
-/// Initialize tracing with file output.
+/// Initialize tracing with file output + Sentry breadcrumb pipeline.
+///
+/// Two layers chained on a single Registry:
+///   - `fmt_layer`  → rolling daily file `backend.log` (current behavior)
+///   - `sentry_tracing::layer()` → INFO+ events become Sentry breadcrumbs;
+///     ERROR events become standalone Sentry events. No-op if `sentry::init`
+///     hasn't been called (e.g. empty SENTRY_DSN), so safe to always include.
+///
+/// Result: when a Rust panic or explicit `tracing::error!` lands in Sentry,
+/// the last ~100 INFO/WARN log lines auto-attach as breadcrumbs — the
+/// reliability engineer sees what was happening up until the crash without
+/// asking the user to send their log file.
+///
+/// Privacy note: breadcrumbs include the raw tracing message strings, which
+/// may contain file paths (e.g. `binary.display()`) and agent names. This
+/// is a conscious tradeoff — debug value > privacy for crash data on a
+/// beta product. Revisit if leak surface becomes a real concern; sanitize
+/// via `sentry_tracing::layer().event_mapper(...)` at that point.
+///
 /// Call once at app startup, before any other code runs.
 pub fn init(data_dir: &Path) {
     let logs_dir = data_dir.join("logs");
@@ -24,14 +42,18 @@ pub fn init(data_dir: &Path) {
         EnvFilter::new("info,houston_terminal_manager=debug,houston_tauri=debug,houston_app=debug")
     });
 
-    fmt()
-        .with_env_filter(filter)
+    let fmt_layer = fmt::layer()
         .with_writer(non_blocking)
         .with_ansi(false)
         .with_target(true)
         .with_thread_ids(false)
         .with_file(true)
-        .with_line_number(true)
+        .with_line_number(true);
+
+    tracing_subscriber::registry()
+        .with(filter)
+        .with(fmt_layer)
+        .with(sentry_tracing::layer())
         .init();
 }
 

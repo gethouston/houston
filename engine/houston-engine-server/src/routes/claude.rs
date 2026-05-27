@@ -15,14 +15,14 @@
 //!   "Retry"). Returns 202-style — the install runs in the background
 //!   and progress events stream over the WS firehose.
 
-use crate::routes::error::ApiError;
 use crate::state::ServerState;
 use axum::{
     extract::State,
+    http::StatusCode,
     routing::{get, post},
     Json, Router,
 };
-use houston_engine_core::CoreError;
+use houston_ui_events::{ClaudeInstallError, HoustonEvent};
 use serde::Serialize;
 use std::sync::Arc;
 
@@ -53,10 +53,13 @@ struct ClaudeStatus {
     /// Used by the lifecycle to decide whether to re-download on a
     /// Houston upgrade that bumps the pinned version.
     installed_version: Option<String>,
-}
-
-fn lift(e: String) -> ApiError {
-    ApiError(CoreError::Internal(e))
+    /// Last install failure, as a typed [`ClaudeInstallError`] (`kind` +
+    /// optional `detail`). `None` when install has never failed, or when
+    /// the most recent attempt succeeded. The onboarding "Sign in with
+    /// Anthropic" card reads this so it can distinguish "Houston tried
+    /// but the network was down" from "the user hasn't connected yet"
+    /// (issue #231); the frontend localizes `kind` (en/es/pt).
+    last_install_error: Option<ClaudeInstallError>,
 }
 
 async fn cli_installed(State(_st): State<Arc<ServerState>>) -> Json<CliInstalled> {
@@ -77,62 +80,81 @@ async fn status(State(st): State<Arc<ServerState>>) -> Json<ClaudeStatus> {
     let installed_version = st
         .engine
         .db
-        .get_preference("claude_code_installed_version")
+        .get_preference(houston_claude_installer::PREF_INSTALLED_VERSION)
         .await
         .ok()
         .flatten();
+
+    // Empty string is the cleared sentinel — the installer writes "" on
+    // a successful retry rather than deleting the row, so we filter it
+    // here so the UI doesn't render an empty-string error card. The
+    // stored value is the JSON form of a `ClaudeInstallError`; a value
+    // that doesn't parse is a legacy/corrupt marker from an older build,
+    // so we log it and degrade to "no error" rather than 500 the status
+    // call.
+    let raw_last_error = st
+        .engine
+        .db
+        .get_preference(houston_claude_installer::PREF_LAST_INSTALL_ERROR)
+        .await
+        .ok()
+        .flatten()
+        .filter(|s| !s.is_empty());
+    let last_install_error = match raw_last_error {
+        Some(s) => match serde_json::from_str::<ClaudeInstallError>(&s) {
+            Ok(error) => Some(error),
+            Err(parse_err) => {
+                tracing::warn!(
+                    "[claude] ignoring legacy/corrupt last-install-error preference: {parse_err}"
+                );
+                None
+            }
+        },
+        None => None,
+    };
 
     Json(ClaudeStatus {
         installed,
         install_path,
         pinned_version,
         installed_version,
+        last_install_error,
     })
 }
 
 /// Trigger a fresh install in the background. The request returns
-/// immediately; install progress + completion are emitted as
-/// `HoustonEvent::ClaudeCliInstalling` / `ClaudeCliReady` /
+/// `202 Accepted` immediately; install progress + completion are emitted
+/// as `HoustonEvent::ClaudeCliInstalling` / `ClaudeCliReady` /
 /// `ClaudeCliFailed` over the WebSocket firehose.
-async fn install(State(st): State<Arc<ServerState>>) -> Result<(), ApiError> {
-    let manifest = houston_cli_bundle::load_bundled_manifest()
-        .ok_or_else(|| lift("cli-deps.json manifest not available — install pinned manifest first".into()))?;
-    let entry = manifest
-        .entry("claude-code")
-        .ok_or_else(|| lift("cli-deps.json missing 'claude-code' entry".into()))?;
-    let pinned_version = entry.version.clone();
-
-    // Run the actual install on a background task so the HTTP request
-    // returns immediately. The lifecycle entry would emit the same
-    // events, but going through `install()` directly lets us run the
-    // install even when the version marker already matches (manual
-    // "reinstall" from the UI).
+///
+/// Manifest resolution runs INSIDE the spawned task (via
+/// `install_pinned`) so a missing or malformed manifest surfaces as a
+/// typed `ClaudeCliFailed { ManifestMissing }` the UI can localize,
+/// rather than a synchronous internal error string the frontend would
+/// have shown verbatim (untranslated) on Retry.
+async fn install(State(st): State<Arc<ServerState>>) -> StatusCode {
     let sink = st.engine.events.clone();
     let db = st.engine.db.clone();
     tokio::spawn(async move {
-        sink.emit(houston_ui_events::HoustonEvent::ClaudeCliInstalling { progress_pct: 0 });
+        sink.emit(HoustonEvent::ClaudeCliInstalling { progress_pct: 0 });
         let sink_for_progress = sink.clone();
-        let result =
-            houston_claude_installer::install(&entry, move |pct| {
-                sink_for_progress
-                    .emit(houston_ui_events::HoustonEvent::ClaudeCliInstalling { progress_pct: pct });
-            })
-            .await;
-        match result {
-            Ok(_) => {
-                if let Err(e) = db
-                    .set_preference("claude_code_installed_version", &pinned_version)
-                    .await
-                {
-                    tracing::warn!("[claude:install] failed to persist version marker: {e}");
-                }
-                sink.emit(houston_ui_events::HoustonEvent::ClaudeCliReady);
+        let outcome = houston_claude_installer::install_pinned(move |pct| {
+            sink_for_progress.emit(HoustonEvent::ClaudeCliInstalling { progress_pct: pct });
+        })
+        .await;
+        // Delegate to the shared finalizer so we write the same DB
+        // markers (version + cleared/updated last-error) as the
+        // boot-time `ensure_and_upgrade` path. The version is only used
+        // on the success branch, so the error branch passes "".
+        match outcome {
+            Ok((version, path)) => {
+                houston_claude_installer::finalize_install(&db, &version, &sink, Ok(path)).await;
             }
-            Err(e) => {
-                sink.emit(houston_ui_events::HoustonEvent::ClaudeCliFailed { message: e });
+            Err(error) => {
+                houston_claude_installer::finalize_install(&db, "", &sink, Err(error)).await;
             }
         }
     });
 
-    Ok(())
+    StatusCode::ACCEPTED
 }

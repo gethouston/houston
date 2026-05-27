@@ -127,10 +127,10 @@ Two tiers:
 
 | Tier | What you write | What you get |
 |------|---------------|-------------|
-| **JSON-only** | `houston.json` + `CLAUDE.md` | A new agent. Renders the standard shell (Activity, Routines, Files, Job Description). |
+| **JSON-only** | `houston.json` + `CLAUDE.md` | A new agent. Renders the standard shell (Activity, Routines, Files, Job Description, Integrations). |
 | **Workspace template** | `workspace.json` + agents folder | Multiple agents, one import. |
 
-Every agent shows the same four tabs. The list lives in `app/src/agents/standard-tabs.ts` if you want to read it in code.
+Every agent shows the same five tabs. The list lives in `app/src/agents/standard-tabs.ts` if you want to read it in code.
 
 ---
 

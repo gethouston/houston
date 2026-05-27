@@ -24,8 +24,11 @@ pub(crate) fn build_args(
         args.push(OsString::from(format!("developer_instructions={json_val}")));
     }
 
-    // Override `model_reasoning_effort` so a global `~/.codex/config.toml`
-    // value (newer Codex CLIs allow `xhigh`, bundled doesn't) can't break us.
+    // Always emit `model_reasoning_effort` so a stale global
+    // `~/.codex/config.toml` value can't silently change the effort the
+    // engine resolved (or, if it's a variant this codex build can't parse,
+    // break the session). The value itself is chosen upstream by
+    // `sessions::resolve_effort`.
     if let Some(e) = effort {
         args.push(OsString::from("-c"));
         args.push(OsString::from(format!("model_reasoning_effort=\"{e}\"")));

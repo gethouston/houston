@@ -12,6 +12,7 @@ import {
   useCancelRoutineRun,
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
+import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 
 type View = { type: "grid" } | { type: "editor"; editId?: string };
@@ -121,7 +122,8 @@ export default function RoutinesTab({ agent }: TabProps) {
         integrations: updated.integrations ?? [],
       });
     } else {
-      await createRoutine.mutateAsync(form);
+      const created = await createRoutine.mutateAsync(form);
+      analytics.track("routine_scheduled", { routine_id: created.id });
       setView({ type: "grid" });
     }
   }, [view, form, createRoutine, updateRoutine]);
@@ -143,6 +145,13 @@ export default function RoutinesTab({ agent }: TabProps) {
 
   const handleRunNow = useCallback(
     (routineId: string) => {
+      // Tracks user-initiated runs only ("Run now" button). Scheduled cron
+      // runs that the engine triggers in the background are not counted
+      // here — wiring those would need a dedicated engine event (the
+      // existing RoutineRunsChanged also fires on status updates, which
+      // would over-count). Manual runs are the cleaner signal anyway:
+      // they tell us users are USING the feature actively.
+      analytics.track("routine_executed", { routine_id: routineId });
       runNow.mutate(routineId);
     },
     [runNow],

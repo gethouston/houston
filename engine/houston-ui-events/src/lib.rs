@@ -9,9 +9,99 @@
 //! injected at the top of the app. No Tauri dep here by design.
 
 use houston_terminal_manager::FeedItem;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tokio::sync::broadcast;
+
+/// Typed reason a Claude Code install attempt failed.
+///
+/// Mirrors the `ProviderError` taxonomy (see
+/// `knowledge-base/provider-errors.md`): the engine is i18n-agnostic, so
+/// instead of shipping an English sentence to the UI we emit a stable
+/// `kind` slug and let the frontend localize it (en/es/pt). The
+/// `Display` impl is the English wording, kept ONLY for engine logs and
+/// the Report-bug bundle — never shown to a user verbatim. `detail`
+/// carries the technical specifics (digest values, filesystem error,
+/// raw transport error) for those diagnostics.
+///
+/// Serializes with a `kind` discriminant (snake_case) so the same JSON
+/// flows over the WS `ClaudeCliFailed` event AND into the
+/// `claude_code_last_install_error` preference the status route reads
+/// back. Lives in this crate (not `houston-claude-installer`) because
+/// the installer depends on this crate for `HoustonEvent` — putting the
+/// type here keeps the dependency edge one-way.
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ClaudeInstallError {
+    /// Download timed out.
+    Timeout,
+    /// Couldn't reach Anthropic at all (DNS, refused connection, TLS, or
+    /// any other request-level transport failure).
+    NetworkUnreachable,
+    /// The connection dropped mid-stream (truncated body / decode error).
+    DownloadInterrupted,
+    /// Anthropic's download server answered with a non-success status.
+    HttpError { status: u16 },
+    /// The downloaded bytes didn't match the pinned SHA-256.
+    ChecksumMismatch { detail: String },
+    /// No URL / checksum is pinned for the host platform.
+    PlatformUnsupported { platform: String },
+    /// A filesystem step failed (mkdir, temp file, write, flush, chmod,
+    /// rename).
+    WriteFailed { detail: String },
+    /// `cli-deps.json` couldn't be resolved. Dev-only in practice —
+    /// production bundles the manifest. Surfaced to the user as a
+    /// generic "couldn't start the download" so we never leak the
+    /// internal manifest hint.
+    ManifestMissing,
+    /// Manifest resolved but has no `claude-code` entry.
+    ManifestEntryMissing,
+    /// No classifier matched. `detail` carries the raw error so the bug
+    /// report stays actionable.
+    Unknown { detail: String },
+}
+
+impl std::fmt::Display for ClaudeInstallError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Timeout => write!(f, "Timed out while downloading Claude Code."),
+            Self::NetworkUnreachable => {
+                write!(f, "Couldn't reach Anthropic to download Claude Code.")
+            }
+            Self::DownloadInterrupted => {
+                write!(f, "Download interrupted while fetching Claude Code.")
+            }
+            Self::HttpError { status } => {
+                write!(f, "Anthropic's download server returned HTTP {status}.")
+            }
+            Self::ChecksumMismatch { detail } => {
+                write!(f, "Downloaded Claude Code failed checksum verification ({detail}).")
+            }
+            Self::PlatformUnsupported { platform } => {
+                write!(f, "No Claude Code download is pinned for platform '{platform}'.")
+            }
+            Self::WriteFailed { detail } => {
+                write!(f, "Failed to write Claude Code to disk: {detail}")
+            }
+            Self::ManifestMissing => {
+                write!(f, "cli-deps.json manifest not available; install the pinned manifest first.")
+            }
+            Self::ManifestEntryMissing => write!(f, "cli-deps.json has no 'claude-code' entry."),
+            Self::Unknown { detail } => write!(f, "Claude Code install failed: {detail}"),
+        }
+    }
+}
+
+impl ClaudeInstallError {
+    /// JSON form persisted to the `claude_code_last_install_error`
+    /// preference and read back by the status route. Falls back to a
+    /// valid `unknown` document if serialization ever fails so the
+    /// stored value always round-trips.
+    pub fn to_pref_json(&self) -> String {
+        serde_json::to_string(self)
+            .unwrap_or_else(|_| r#"{"kind":"unknown","detail":""}"#.to_string())
+    }
+}
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(tag = "type", content = "data")]
@@ -154,9 +244,10 @@ pub enum HoustonEvent {
     /// already at the pinned version). Frontend invalidates the
     /// `provider_status` query so the Anthropic provider chip updates.
     ClaudeCliReady,
-    /// Claude Code CLI install or upgrade failed. `message` is intended
-    /// to be user-readable (network/region/permissions/disk-space hints).
-    ClaudeCliFailed { message: String },
+    /// Claude Code CLI install or upgrade failed. Carries a typed
+    /// [`ClaudeInstallError`] (`kind` + optional `detail`); the frontend
+    /// localizes `kind` and the engine logs the English `Display`.
+    ClaudeCliFailed { error: ClaudeInstallError },
 
     // ----- Provider OAuth login (URL relay) -----
     //

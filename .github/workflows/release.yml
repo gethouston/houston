@@ -27,6 +27,9 @@
 #   LINEAR_TEAM_ID                     — Linear team UUID for in-app "Report bug" issues
 #   SLACK_RELEASE_WEBHOOK_URL          — Slack incoming-webhook to ping the team when a draft release is built
 #   SENTRY_DSN                         — Sentry crash reporting DSN
+#   SENTRY_AUTH_TOKEN                  — Sentry CLI auth token (org-scoped, perms: project:releases, project:read, org:read). Used to upload source maps + Rust debug symbols and create/finalize releases. Empty → skip the Sentry upload step (forks, personal builds).
+#   POSTHOG_PERSONAL_API_KEY           — PostHog personal API key (scope: annotation:write) used by the finalize job to mark every release on PostHog charts. Empty → skip the annotation step.
+#   POSTHOG_PROJECT_ID                 — PostHog project ID (numeric) the annotation lands under.
 
 name: Release
 
@@ -554,6 +557,46 @@ jobs:
 
           echo "=== Sidecar checks passed ==="
 
+      # Sentry upload: source maps (Vite output in app/dist/) + Rust debug
+      # symbols (both per-triple houston-engine binaries with line-tables-only
+      # debug info from the workspace [profile.release]). Tag everything as
+      # `houston-app@<version>` so events fired from the running app — whose
+      # release name is set by sentry::release_name!() in lib.rs — match the
+      # uploaded artifacts and resolve to real file:line frames.
+      #
+      # Skips silently when SENTRY_AUTH_TOKEN is unset so forks and personal
+      # builds don't fail. Without uploads, Sentry events still arrive but
+      # show as minified soup / hex addresses, which makes triage impossible.
+      - name: Upload source maps + Rust debug symbols to Sentry
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: houston-cd
+          SENTRY_PROJECT: houston-app
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE="houston-app@${VERSION}"
+
+          curl -sL https://sentry.io/get-cli/ | bash
+
+          echo "=== 1. Create release ${RELEASE} ==="
+          sentry-cli releases new "$RELEASE"
+          sentry-cli releases set-commits --auto "$RELEASE" || \
+            echo "::warning::set-commits --auto failed (likely shallow clone or first release); continuing"
+
+          echo "=== 2. Inject + upload Vite source maps ==="
+          sentry-cli sourcemaps inject app/dist
+          sentry-cli sourcemaps upload --release "$RELEASE" app/dist
+
+          echo "=== 3. Upload Rust debug symbols (both Mac architectures) ==="
+          sentry-cli debug-files upload \
+            target/aarch64-apple-darwin/release/houston-engine \
+            target/x86_64-apple-darwin/release/houston-engine
+
+          echo "=== 4. Finalize release ==="
+          sentry-cli releases finalize "$RELEASE"
+
       # Rename the mounted-volume label from "Houston" (Tauri default,
       # derived from productName) to "Houston Installer" before we
       # notarize. Done here so notarization sees the final bytes — any
@@ -957,6 +1000,38 @@ jobs:
           echo "  .msi:     $MSI ($(du -sh "$MSI" | cut -f1))"
           echo "  .msi.sig: $SIG ($(wc -c < "$SIG") bytes)"
 
+      # Sentry upload (Windows): Rust debug symbols for the matrix-arch
+      # houston-engine.exe + its .pdb (MSVC emits PDBs alongside the binary
+       # in release mode with debug = "line-tables-only" in workspace Cargo).
+      # Source maps are uploaded once by the macOS job — same JS bundle ships
+      # to both platforms, so we don't duplicate the upload here.
+      #
+      # x86_64 + aarch64 each run this in parallel via the matrix; both
+      # contribute their debug symbols to the same `houston-app@<version>`
+      # release. Skips silently when SENTRY_AUTH_TOKEN is unset.
+      - name: Upload Rust debug symbols to Sentry (${{ matrix.arch }})
+        if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
+        shell: bash
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: houston-cd
+          SENTRY_PROJECT: houston-app
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          RELEASE="houston-app@${VERSION}"
+
+          curl -sL https://sentry.io/get-cli/ | bash
+
+          echo "=== Upload ${{ matrix.target }} debug symbols ==="
+          # MSVC emits the PDB next to the .exe; Rust converts the binary's
+          # `-` to `_` for the PDB stem (houston-engine.exe → houston_engine.pdb).
+          # Upload both — Sentry needs the PDB for symbolication but indexes
+          # by the .exe's debug-id.
+          sentry-cli debug-files upload \
+            "target/${{ matrix.target }}/release/houston-engine.exe" \
+            "target/${{ matrix.target }}/release/houston_engine.pdb"
+
       - name: Upload Windows MSI + updater signature to draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -1072,6 +1147,41 @@ jobs:
           mv "$tmpdir/latest.next.json" "$tmpdir/latest.json"
           gh release upload "$GITHUB_REF_NAME" "$tmpdir/latest.json" --clobber
           echo "::notice::latest.json now advertises macOS + Windows (x64 + arm64) for the in-app updater"
+
+      # Drop a PostHog annotation marking this release. Every PostHog
+      # insight chart shows a vertical line at this timestamp, so any
+      # spike or drop in metrics is instantly correlatable to "did we
+      # ship something?". Skipped silently when the personal API key or
+      # project ID aren't set (forks, personal builds).
+      - name: Annotate this release in PostHog
+        if: ${{ env.POSTHOG_PERSONAL_API_KEY != '' && env.POSTHOG_PROJECT_ID != '' }}
+        env:
+          POSTHOG_PERSONAL_API_KEY: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ secrets.POSTHOG_PROJECT_ID }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          HOST="${POSTHOG_HOST:-https://us.posthog.com}"
+          # Strip the i. ingestion subdomain if someone configured POSTHOG_HOST
+          # for client ingest (us.i.posthog.com). The annotation REST API
+          # lives on the regular dashboard host, not the ingest endpoint.
+          HOST="${HOST/us.i.posthog.com/us.posthog.com}"
+          HOST="${HOST/eu.i.posthog.com/eu.posthog.com}"
+
+          NOW=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+          jq -n \
+            --arg content "Houston v$VERSION shipped" \
+            --arg date_marker "$NOW" \
+            '{ content: $content, date_marker: $date_marker, scope: "project" }' \
+            > posthog-annotation.json
+
+          curl --silent --show-error --fail \
+            -X POST "$HOST/api/projects/$POSTHOG_PROJECT_ID/annotations/" \
+            -H "Authorization: Bearer $POSTHOG_PERSONAL_API_KEY" \
+            -H "Content-Type: application/json" \
+            --data @posthog-annotation.json
+          echo "::notice::PostHog annotation created for Houston v$VERSION"
 
       # Pings the team Slack channel so anyone can grab the DMG and try
       # the build before we publish. No-ops when

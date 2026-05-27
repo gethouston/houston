@@ -4,6 +4,7 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
 import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
+import { useClaudeInstall } from "../../hooks/use-claude-install";
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
@@ -73,6 +74,17 @@ export function ProviderSettings() {
   useEffect(() => {
     loadStatuses();
   }, [loadStatuses]);
+
+  // Anthropic's `claude` is a Houston-managed runtime install (the
+  // license forbids bundling it). Track that install here so the
+  // Anthropic row can show the real download reason + Retry instead of a
+  // Connect button that just errors with "claude CLI is not installed"
+  // when Houston couldn't fetch it — the same #231 fix the onboarding
+  // card carries. `onReady` re-scans so the row flips to Connect the
+  // moment the download lands.
+  const claudeInstall = useClaudeInstall({
+    onReady: () => void loadStatuses(),
+  });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
@@ -234,9 +246,11 @@ export function ProviderSettings() {
               key={prov.id}
               provider={prov}
               connected={connected}
+              installed={status?.cli_installed ?? false}
               pending={pendingId === prov.id}
               onConnect={() => handleConnect(prov)}
               onSignOut={() => setConfirmSignOutFor(prov)}
+              claudeInstall={prov.id === "anthropic" ? claudeInstall : null}
               onCancel={() => handleCancel(prov)}
             />
           );

@@ -1,0 +1,91 @@
+---
+rootPath: "../"
+---
+{% extends "base.njk" %}
+{% block title %}Welcome to Houston{% endblock %}
+{% block meta %}
+<meta name="description" content="Houston is installed. Thanks for joining.">
+<meta name="robots" content="noindex,nofollow">
+{% endblock %}
+{% block stylesheets %}
+<link rel="stylesheet" href="../learn/style.css?v=3">
+{% endblock %}
+{% block inlineStyles %}
+<style>
+  .welcome {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 96px 32px 96px;
+    text-align: center;
+  }
+  @media (max-width: 700px) {
+    .welcome { padding: 64px 24px 72px; }
+  }
+  .welcome .eyebrow {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--gray-500);
+    margin-bottom: 12px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+  }
+  .welcome h1 {
+    font-size: clamp(36px, 5vw, 52px);
+    font-weight: 400;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--gray-950);
+    margin-bottom: 24px;
+  }
+  .welcome p {
+    font-size: 18px;
+    line-height: 1.65;
+    color: var(--gray-700);
+    margin-bottom: 16px;
+  }
+  .welcome .meta {
+    font-size: 13px;
+    color: var(--gray-500);
+    margin-top: 48px;
+    padding-top: 24px;
+    border-top: 1px solid var(--border-light);
+  }
+</style>
+{% endblock %}
+{% block body %}
+<main class="welcome">
+  <div class="eyebrow">Houston, you have landed</div>
+  <h1>You're set up.</h1>
+  <p>Houston is now installed on this machine. Head back to the app to create your first agent — we'll be tracking your journey from here on.</p>
+  <p class="meta">You can close this tab.</p>
+</main>
+
+<script>
+  // Identity merge: the desktop app opens this URL on first launch with
+  // ?install_id=<id>. We call posthog.identify(install_id) which MERGES
+  // the website's anonymous person (with $initial_utm_* properties
+  // captured on the original landing pageview) into the app's install
+  // identity. The result: every event the app fires from now on carries
+  // the original attribution.
+  //
+  // person_profiles is 'always' in base.njk so the anonymous person
+  // exists with UTM props ready to be merged. Without 'always', this
+  // identify would create a fresh empty profile.
+  (function () {
+    if (typeof window === 'undefined' || !window.posthog) return;
+    var params = new URLSearchParams(window.location.search);
+    var installId = params.get('install_id');
+    if (!installId || !/^[0-9a-f-]{36}$/i.test(installId)) return;
+    try {
+      window.posthog.alias(installId);
+      window.posthog.identify(installId, {
+        attribution_bridged_at: new Date().toISOString(),
+      });
+      window.posthog.capture('install_bridged', { source: 'website' });
+    } catch (e) {
+      // PostHog blocked or DNT — silent no-op, attribution falls back to
+      // app-only events without website UTM properties.
+    }
+  })();
+</script>
+{% endblock %}

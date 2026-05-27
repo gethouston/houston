@@ -22,6 +22,24 @@
     "cancelWaiting": "Cancelar e tentar de novo",
     "installedCheckAgain": "Já está instalado? Verificar de novo"
   },
+  "claudeInstall": {
+    "installing": "Baixando Claude Code...",
+    "installingWithProgress": "Baixando Claude Code... {{progress}}%",
+    "failedTitle": "Houston não conseguiu baixar Claude Code",
+    "preparing": "Houston está baixando Claude Code em segundo plano. Se não começar, tente novamente abaixo.",
+    "retry": "Tentar baixar de novo",
+    "errors": {
+      "timeout": "O download demorou demais. Verifique sua conexão com a internet e tente novamente.",
+      "networkUnreachable": "Não foi possível conectar à Anthropic. Verifique sua conexão com a internet e tente novamente.",
+      "downloadInterrupted": "O download foi interrompido. Verifique sua conexão com a internet e tente novamente.",
+      "httpError": "Os servidores da Anthropic tiveram um problema (erro {{status}}). Tente novamente em alguns minutos.",
+      "checksumMismatch": "O download não chegou completo. Verifique sua conexão e tente novamente.",
+      "platformUnsupported": "O Claude Code ainda não está disponível para este dispositivo.",
+      "writeFailed": "O Houston não conseguiu salvar o Claude Code no seu computador. Verifique se há espaço suficiente e tente novamente.",
+      "unavailable": "O Houston não conseguiu iniciar o download. Tente novamente em instantes.",
+      "unknown": "Algo deu errado ao baixar o Claude Code. Tente novamente."
+    }
+  },
   "signOutConfirm": {
     "title": "Sair de {{provider}}?",
     "description": "Houston vai parar de usar {{provider}} até você entrar de novo. As missões em andamento podem terminar o turno atual.",
@@ -36,11 +54,14 @@
   },
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
-    "description": "Abra a URL abaixo no seu navegador, finalize o login e cole aqui o código de verificação.",
+    "description": "Abra a página de login no seu navegador, finalize o login e cole aqui o código de verificação.",
     "openUrl": "Abrir URL",
     "copyUrl": "Copiar URL",
     "urlCopied": "URL copiada para a área de transferência",
     "urlCopyFailed": "Não foi possível copiar a URL",
+    "showUrl": "Mostrar URL",
+    "hideUrl": "Ocultar URL",
+    "destinationHint": "Você será levado para {{host}}.",
     "codeLabel": "Código de verificação",
     "codePlaceholder": "Cole o código do seu navegador",
     "codeRequired": "Informe primeiro o código de verificação.",

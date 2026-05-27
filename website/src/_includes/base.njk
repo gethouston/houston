@@ -24,7 +24,12 @@
   posthog.init('{{ env.posthogKey }}', {
     api_host: '{{ env.posthogHost }}',
     defaults: '2026-01-30',
-    person_profiles: 'identified_only',
+    // 'always' = anonymous visitors get a person profile too, so $initial_utm_*
+    // gets captured on first pageview. Otherwise PostHog defers profile
+    // creation until identify() is called, and the UTM data is lost. The
+    // app's post-install /welcome bounce then identifies(install_id) which
+    // merges that anonymous profile (with UTMs) into the install identity.
+    person_profiles: 'always',
     capture_pageview: true,
     capture_pageleave: true,
     autocapture: false,

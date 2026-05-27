@@ -1,6 +1,6 @@
 [package]
 name = "houston-app"
-version = "0.4.12"
+version = "0.4.13"
 edition = "2021"
 
 [lib]
@@ -27,6 +27,10 @@ tauri-plugin-updater = "2"
 tauri-plugin-deep-link = "2"
 tauri-plugin-sentry = "0.5"
 sentry = "0.42"
+# Pipes tracing::* records into Sentry as breadcrumbs (INFO+) and events (ERROR).
+# Layer is a no-op until sentry::init has run, so safe to register
+# unconditionally in logging.rs even when SENTRY_DSN is empty.
+sentry-tracing = "0.42"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 # macOS-only: native blocking dialog used by the first-launch DMG guard
 # (`dmg_guard.rs`). Must fire BEFORE the Tauri builder runs because once
@@ -54,6 +58,13 @@ tracing-appender = { workspace = true }
 [target."cfg(any(target_os = \"windows\", target_os = \"linux\"))".dependencies]
 tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 
+# Linux-only: session-finished notifications whose click raises the window.
+# tauri-plugin-notification is fire-and-forget on desktop (no click event), so
+# we drive notify-rust directly and use its freedesktop "default" action to
+# detect the click. Same crate (and version) the plugin already pulls in.
+[target."cfg(target_os = \"linux\")".dependencies]
+notify-rust = "4.11"
+
 # Windows-only: DPAPI session storage. The Windows Credential Manager
 # (which the `keyring` crate uses) caps `CredentialBlob` at ~2560 bytes,
 # and a Supabase session payload (JWT access_token + JWT user object +
@@ -66,4 +77,8 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 # DPAPI binds the ciphertext to the Windows user account so a copied
 # file is useless to another user. See `src/auth.rs` storage module.
 [target."cfg(target_os = \"windows\")".dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_JobObjects", "Win32_System_Threading"] }
+# Same reason as notify-rust on Linux, but notify-rust's action handling is
+# XDG/D-Bus-only — on Windows we use the WinRT toast's `on_activated` callback
+# to catch the click. This is the crate notify-rust uses under the hood.
+tauri-winrt-notification = "0.7"

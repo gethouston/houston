@@ -8,7 +8,7 @@ permalink: "learn/04-custom-components.html"
 {% extends "base.njk" %}
 {% block title %}The agent shell — Learn Houston{% endblock %}
 {% block meta %}
-<meta name="description" content="Every Houston agent renders the same four tabs: Activity, Routines, Files, and Job Description. Here is what each one is for.">
+<meta name="description" content="Every Houston agent renders the same five tabs: Activity, Routines, Files, Job Description, and Integrations. Here is what each one is for.">
 {% endblock %}
 {% block stylesheets %}
 <link rel="stylesheet" href="style.css?v=3">
@@ -23,7 +23,7 @@ permalink: "learn/04-custom-components.html"
         <div class="content-label">Chapter 04</div>
         <h1>The agent shell.</h1>
         <p class="lead">
-          Every agent in Houston renders the same four tabs. The shape
+          Every agent in Houston renders the same five tabs. The shape
           is fixed on purpose, so users learn one layout and reuse it
           across every agent they install.
         </p>
@@ -31,13 +31,13 @@ permalink: "learn/04-custom-components.html"
         <div class="toc">
           <div class="toc-label">On this page</div>
           <ol>
-            <li><a href="#tabs">The four tabs</a></li>
+            <li><a href="#tabs">The five tabs</a></li>
             <li><a href="#why-fixed">Why the layout is fixed</a></li>
-            <li><a href="#integrations">Where integrations live</a></li>
+            <li><a href="#integrations">Two ways to reach Integrations</a></li>
           </ol>
         </div>
 
-        <h2 id="tabs">The four tabs</h2>
+        <h2 id="tabs">The five tabs</h2>
         <p>
           From left to right:
         </p>
@@ -63,6 +63,12 @@ permalink: "learn/04-custom-components.html"
             start of every conversation to know who it is and how to
             behave. Edit it whenever the agent's role changes.
           </li>
+          <li>
+            <strong>Integrations.</strong> Connect Gmail, Calendar,
+            Slack, Notion, and the rest. Houston supports 1000+ tools
+            through Composio. Connections are workspace-wide, so every
+            agent in the workspace sees the same accounts.
+          </li>
         </ul>
 
         <h2 id="why-fixed">Why the layout is fixed</h2>
@@ -83,13 +89,14 @@ permalink: "learn/04-custom-components.html"
           read it in code.
         </p>
 
-        <h2 id="integrations">Where integrations live</h2>
+        <h2 id="integrations">Two ways to reach Integrations</h2>
         <p>
-          Integrations are workspace-wide, not per-agent. Open the
-          <strong>Connections</strong> entry in the sidebar to add
-          Gmail, Calendar, Slack, Notion, and the other 1000+ tools
-          Houston supports through Composio. Every agent in the
-          workspace shares the same set of connected accounts.
+          The per-agent <strong>Integrations</strong> tab and the
+          sidebar <strong>Connections</strong> entry render the same
+          surface. The two entry points exist because users reach for
+          them at different moments: from inside an agent (the tab), or
+          when setting Houston up as a whole (the sidebar). Connections
+          are workspace-wide either way.
         </p>
 
         <div class="pager">

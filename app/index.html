@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Houston</title>
+    <!-- Classic (non-module) script. `defer` (not parser-blocking) so it runs
+         AFTER the document is parsed and #root exists, yet still before the
+         deferred app bundle (defer scripts + module scripts execute in document
+         order, and this comes first). A parser-blocking script in <head> would
+         run before <body>, find no #root, and paint nothing -> white screen.
+         Shows a clear message instead of a white screen when the system WebView
+         is too old to run Houston (issue #102). Served verbatim from public/. -->
+    <script defer src="/compat-gate.js"></script>
   </head>
   <body>
     <div id="root"></div>

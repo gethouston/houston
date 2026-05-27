@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { loadAllConfigs } from "../agents/loader";
+import { analytics } from "../lib/analytics";
 import { tauriStore } from "../lib/tauri";
 import type { AgentDefinition, StoreListing } from "../lib/types";
 
@@ -69,6 +70,7 @@ export const useAgentCatalogStore = create<AgentCatalogState>((set, get) => ({
     await tauriStore.install(listing.repo, listing.id);
     // Reload configs so the newly installed agent appears
     await get().loadConfigs();
+    analytics.track("agent_installed_from_store", { agent_slug: listing.id });
   },
 
   uninstallAgent: async (agentId) => {

@@ -89,11 +89,34 @@ fn file_err(e: files::AgentFilesError) -> CoreError {
 // ---------------------------------------------------------------------------
 
 /// User-facing file extensions shown in the browser.
-/// Technical files (json, py, md) are excluded — they confuse non-technical users.
+///
+/// Markdown is included: it is the document format agents most often
+/// produce (reports, plans, notes), so a non-technical user MUST see it
+/// (issue #294). Genuinely technical files (`json`, `py`, `ts`, …) stay
+/// excluded — they only confuse the non-technical audience.
 const USER_EXTENSIONS: &[&str] = &[
     "docx", "doc", "xlsx", "xls", "pptx", "ppt", "pdf", "png", "jpg", "jpeg", "svg", "gif", "txt",
-    "rtf", "csv",
+    "rtf", "csv", "md", "markdown",
 ];
+
+/// Agent-role instruction files seeded at the agent root. They are
+/// markdown, but they are the agent's "brain" (its job description), not
+/// user documents: `CLAUDE.md` is canonical and `AGENTS.md` / `GEMINI.md`
+/// are symlink/copy mirrors of it for codex / gemini-cli (see
+/// `agents::prompt::seed_agent`). Now that markdown is user-facing they
+/// would otherwise surface in the file browser AND in chat file-change
+/// summaries (the snapshot in `sessions::file_changes` shares this
+/// filter), so they are hidden by name.
+const HIDDEN_ROLE_FILES: &[&str] = &["CLAUDE.md", "AGENTS.md", "GEMINI.md"];
+
+/// True if `name` is an agent-role instruction file that must never
+/// appear as a user document. Compared case-insensitively: the canonical
+/// casing is fixed but filesystems (and user-typed copies) vary.
+fn is_hidden_role_file(name: &str) -> bool {
+    HIDDEN_ROLE_FILES
+        .iter()
+        .any(|role| role.eq_ignore_ascii_case(name))
+}
 
 fn should_skip_dir(name: &str) -> bool {
     matches!(
@@ -372,6 +395,12 @@ fn collect_files(root: &Path, dir: &Path, out: &mut Vec<ProjectFile>) {
         if !USER_EXTENSIONS.contains(&ext.as_str()) {
             continue;
         }
+        // Markdown passes the extension gate, so filter the seeded agent
+        // role files (CLAUDE.md / AGENTS.md / GEMINI.md) here — they are
+        // instructions, not user documents (issue #294).
+        if is_hidden_role_file(&name) {
+            continue;
+        }
         let relative = relative_path_string(root, &path);
         let metadata = entry.metadata().ok();
         let size = metadata.as_ref().map(|m| m.len()).unwrap_or(0);
@@ -455,6 +484,45 @@ mod tests {
         assert!(names.contains(&"notes.txt"));
         assert!(!names.contains(&"script.py"));
         assert!(!names.iter().any(|n| n.starts_with('.')));
+    }
+
+    #[test]
+    fn markdown_files_are_visible() {
+        // Issue #294: agents emit markdown deliverables (reports, plans);
+        // a non-technical user must see them in the browser. Genuinely
+        // technical files (json, py) stay hidden.
+        let d = tmp();
+        std::fs::write(d.path().join("report.md"), "# Report").unwrap();
+        std::fs::write(d.path().join("notes.markdown"), "notes").unwrap();
+        std::fs::write(d.path().join("data.json"), "{}").unwrap();
+        std::fs::write(d.path().join("script.py"), "x").unwrap();
+
+        let files = list_project_files(d.path()).unwrap();
+        let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"report.md"));
+        assert!(names.contains(&"notes.markdown"));
+        assert!(!names.contains(&"data.json"));
+        assert!(!names.contains(&"script.py"));
+    }
+
+    #[test]
+    fn agent_role_files_stay_hidden_despite_markdown() {
+        // CLAUDE.md and its AGENTS.md / GEMINI.md mirrors are the agent's
+        // instructions, not user documents — they must never appear even
+        // though markdown is now visible (issue #294). A real markdown
+        // deliverable alongside them still shows.
+        let d = tmp();
+        std::fs::write(d.path().join("CLAUDE.md"), "role").unwrap();
+        std::fs::write(d.path().join("AGENTS.md"), "role").unwrap();
+        std::fs::write(d.path().join("GEMINI.md"), "role").unwrap();
+        std::fs::write(d.path().join("deliverable.md"), "# Real doc").unwrap();
+
+        let files = list_project_files(d.path()).unwrap();
+        let names: Vec<&str> = files.iter().map(|f| f.name.as_str()).collect();
+        assert!(names.contains(&"deliverable.md"));
+        assert!(!names.contains(&"CLAUDE.md"));
+        assert!(!names.contains(&"AGENTS.md"));
+        assert!(!names.contains(&"GEMINI.md"));
     }
 
     #[test]
