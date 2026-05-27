@@ -12,6 +12,7 @@ use crate::error::{CoreError, CoreResult};
 use crate::paths::expand_tilde;
 use crate::workspaces;
 use chrono::Utc;
+use houston_agents_conversations::session_id_tracker::invalidate_current_session_ids_for_path_change;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -334,6 +335,13 @@ pub fn rename(root: &Path, workspace_id: &str, id: &str, new_name: &str) -> Core
         write_agent_meta(&new_link, &meta)?;
         Ok(meta_to_agent(&new_link, &meta))
     } else {
+        let invalidated = invalidate_current_session_ids_for_path_change(&old_folder)?;
+        if invalidated > 0 {
+            tracing::info!(
+                "[agents] invalidated {invalidated} current session ids before path rename: {}",
+                old_folder.display()
+            );
+        }
         fs::rename(&old_folder, &new_link)?;
         let meta = read_agent_meta(&new_link)?;
         Ok(meta_to_agent(&new_link, &meta))
@@ -361,10 +369,7 @@ mod tests {
     use tempfile::TempDir;
 
     fn setup_ws(root: &Path) -> String {
-        workspaces::create(
-            root,
-            CreateWorkspace { name: "alpha".into() },
-        )
+        workspaces::create(root, CreateWorkspace { name: "alpha".into() })
         .unwrap()
         .id
     }
@@ -450,6 +455,44 @@ mod tests {
         assert_eq!(renamed.name, "m");
         delete(d.path(), &ws_id, &res.agent.id).unwrap();
         assert!(list(d.path(), &ws_id).unwrap().is_empty());
+    }
+
+    #[test]
+    fn rename_invalidates_current_session_ids() {
+        use houston_agents_conversations::session_id_tracker::{
+            session_history_path, session_id_path,
+        };
+
+        let d = TempDir::new().unwrap();
+        let ws_id = setup_ws(d.path());
+        let res = create(
+            d.path(),
+            &ws_id,
+            CreateAgent {
+                name: "before".into(),
+                config_id: "gmail".into(),
+                color: None,
+                claude_md: None,
+                installed_path: None,
+                seeds: None,
+                existing_path: None,
+            },
+        )
+        .unwrap();
+        let agent_dir = d.path().join("alpha/before");
+        let provider = "anthropic".parse().unwrap();
+        let sid_path = session_id_path(&agent_dir, provider, "activity-1");
+        fs::create_dir_all(sid_path.parent().unwrap()).unwrap();
+        fs::write(&sid_path, "claude-session\n").unwrap();
+
+        rename(d.path(), &ws_id, &res.agent.id, "after").unwrap();
+
+        let renamed_dir = d.path().join("alpha/after");
+        assert!(!session_id_path(&renamed_dir, provider, "activity-1").exists());
+        assert_eq!(
+            fs::read_to_string(session_history_path(&renamed_dir, provider, "activity-1")).unwrap(),
+            "claude-session\n"
+        );
     }
 
     #[test]

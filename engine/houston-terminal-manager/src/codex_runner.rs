@@ -51,7 +51,8 @@ pub(crate) async fn spawn_codex(
         system_prompt.as_deref(),
     );
 
-    let outcome = run_cli_process(tx, &mut cmd, &prompt, provider).await;
+    let outcome =
+        run_cli_process(tx, &mut cmd, &prompt, provider, resume_session_id.is_some()).await;
     if outcome == CliRunOutcome::CodexResumeMissing && resume_session_id.is_some() {
         tracing::warn!("[houston:session] codex resume rollout missing; retrying with fresh thread");
         let _ = tx.send(SessionUpdate::ResumeInvalid);
@@ -62,7 +63,7 @@ pub(crate) async fn spawn_codex(
             effort.as_deref(),
             system_prompt.as_deref(),
         );
-        run_cli_process(tx, &mut fresh_cmd, &prompt, provider).await;
+        run_cli_process(tx, &mut fresh_cmd, &prompt, provider, false).await;
     }
 }
 

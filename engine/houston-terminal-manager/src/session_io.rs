@@ -11,9 +11,15 @@ use crate::Provider;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StdoutReadReport {
     pub malformed_provider_json: bool,
+    /// Claude can emit a one-line `result/error_during_execution` immediately
+    /// when `--resume <id>` points at a conversation that no longer works from
+    /// this working directory. The runner handles this as stale resume state and
+    /// retries fresh. We defer the Unknown provider card until the runner knows
+    /// whether a retry is possible, so users don't see a false permanent error.
+    pub claude_error_during_execution_without_progress: Option<String>,
     /// True when the provider CLI surfaced an auth failure on stdout (e.g.
     /// claude's `{"type":"result","is_error":true,"result":"... 401 ..."}`
     /// event). stderr is empty in that case, so without this flag the
@@ -117,6 +123,7 @@ async fn read_claude_stdout(
     let mut line_count = 0u64;
     let mut item_count = 0u64;
     let mut report = StdoutReadReport::default();
+    let mut saw_progress = false;
     while let Ok(Some(line)) = lines.next_line().await {
         line_count += 1;
         let line_type = line.trim().chars().take(80).collect::<String>();
@@ -130,14 +137,45 @@ async fn read_claude_stdout(
             tracing::warn!("[houston:stdout:claude] suppressed malformed provider JSON error");
             continue;
         }
+        let maybe_immediate_execution_error = (!saw_progress)
+            .then(|| parser::claude_execution_error_message(&line))
+            .flatten();
         let items = parser::parse_event(&line, &mut acc);
+        if let Some(message) = maybe_immediate_execution_error {
+            let only_unknown_provider_error = matches!(
+                items.as_slice(),
+                [FeedItem::ProviderError(ProviderError::Unknown { .. })]
+            );
+            if only_unknown_provider_error {
+                report.claude_error_during_execution_without_progress = Some(message);
+                tracing::warn!(
+                    "[houston:stdout:claude] deferred immediate error_during_execution for runner retry"
+                );
+                continue;
+            }
+        }
         mark_auth_error(&items, &mut report);
+        mark_progress(&items, &mut saw_progress);
         item_count += log_and_send(&tx, items);
     }
     tracing::debug!(
         "[houston:stdout:claude] stream ended. {line_count} lines, {item_count} feed items"
     );
     report
+}
+
+fn mark_progress(items: &[FeedItem], saw_progress: &mut bool) {
+    if *saw_progress {
+        return;
+    }
+    if items.iter().any(|item| {
+        !matches!(
+            item,
+            FeedItem::ProviderError(_) | FeedItem::SystemMessage(_)
+        )
+    }) {
+        *saw_progress = true;
+    }
 }
 
 async fn read_codex_stdout(

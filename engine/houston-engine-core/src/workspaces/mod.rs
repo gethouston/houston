@@ -12,6 +12,7 @@ pub use io::read_all;
 pub use migrate::migrate_workspace_provider_into_agents;
 
 use crate::error::{CoreError, CoreResult};
+use houston_agents_conversations::session_id_tracker::invalidate_current_session_ids_for_path_change;
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -104,12 +105,32 @@ pub fn rename(root: &Path, id: &str, req: RenameWorkspace) -> CoreResult<Workspa
         )));
     }
     if old_dir.exists() {
+        invalidate_workspace_session_ids_for_path_change(&old_dir)?;
         fs::rename(&old_dir, &new_dir)?;
     }
     ws.name = req.new_name;
     let updated = ws.clone();
     io::write_all(root, &workspaces)?;
     Ok(updated)
+}
+
+fn invalidate_workspace_session_ids_for_path_change(ws_dir: &Path) -> CoreResult<()> {
+    for entry in fs::read_dir(ws_dir)? {
+        let entry = entry?;
+        let file_type = entry.file_type()?;
+        if !file_type.is_dir() {
+            continue;
+        }
+        let agent_dir = entry.path();
+        let invalidated = invalidate_current_session_ids_for_path_change(&agent_dir)?;
+        if invalidated > 0 {
+            tracing::info!(
+                "[workspaces] invalidated {invalidated} current session ids before path rename: {}",
+                agent_dir.display()
+            );
+        }
+    }
+    Ok(())
 }
 
 pub fn delete(root: &Path, id: &str) -> CoreResult<()> {
@@ -173,6 +194,42 @@ mod tests {
         assert_eq!(renamed.name, "b");
         delete(d.path(), &ws.id).unwrap();
         assert!(list(d.path()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn rename_invalidates_child_agent_session_ids() {
+        use houston_agents_conversations::session_id_tracker::{
+            session_history_path, session_id_path,
+        };
+
+        let d = tmp();
+        let ws = create(d.path(), CreateWorkspace { name: "a".into() }).unwrap();
+        let agent_dir = d.path().join("a/agent");
+        let provider = "anthropic".parse().unwrap();
+        let sid_path = session_id_path(&agent_dir, provider, "activity-1");
+        fs::create_dir_all(sid_path.parent().unwrap()).unwrap();
+        fs::write(&sid_path, "claude-session\n").unwrap();
+
+        rename(
+            d.path(),
+            &ws.id,
+            RenameWorkspace {
+                new_name: "b".into(),
+            },
+        )
+        .unwrap();
+
+        let renamed_agent_dir = d.path().join("b/agent");
+        assert!(!session_id_path(&renamed_agent_dir, provider, "activity-1").exists());
+        assert_eq!(
+            fs::read_to_string(session_history_path(
+                &renamed_agent_dir,
+                provider,
+                "activity-1"
+            ))
+            .unwrap(),
+            "claude-session\n"
+        );
     }
 
     /// Concurrent writers must not corrupt `workspaces.json`. Mirrors the

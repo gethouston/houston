@@ -333,8 +333,37 @@ pub fn extract_session_id(line: &str) -> Option<String> {
     let event: ClaudeEvent = serde_json::from_str(line.trim()).ok()?;
     match event {
         ClaudeEvent::System { session_id, .. } => session_id,
-        ClaudeEvent::Result { session_id, .. } => session_id,
+        ClaudeEvent::Result {
+            subtype,
+            is_error,
+            session_id,
+            ..
+        } => {
+            if is_error == Some(true) || subtype.as_deref().is_some_and(|s| s.starts_with("error"))
+            {
+                None
+            } else {
+                session_id
+            }
+        }
         ClaudeEvent::StreamEvent { session_id, .. } => session_id,
+        _ => None,
+    }
+}
+
+/// Return the message from Claude's immediate `result/error_during_execution`
+/// shape. The caller decides whether to surface it or retry without `--resume`.
+pub fn claude_execution_error_message(line: &str) -> Option<String> {
+    let event: ClaudeEvent = serde_json::from_str(line.trim()).ok()?;
+    match event {
+        ClaudeEvent::Result {
+            subtype,
+            is_error,
+            result,
+            ..
+        } if subtype.as_deref() == Some("error_during_execution") && is_error != Some(false) => {
+            Some(result.unwrap_or_else(|| "Unknown error".to_string()))
+        }
         _ => None,
     }
 }
@@ -452,6 +481,23 @@ mod tests {
             other => panic!("expected FinalResult, got {other:?}"),
         }
         assert_eq!(extract_session_id(line), Some("s1".to_string()));
+    }
+
+    #[test]
+    fn extract_session_id_ignores_error_result() {
+        let line = r#"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"stale","session_id":"bad"}"#;
+
+        assert_eq!(extract_session_id(line), None);
+    }
+
+    #[test]
+    fn claude_execution_error_message_reads_immediate_error() {
+        let line = r#"{"type":"result","subtype":"error_during_execution","is_error":true,"result":"resume failed","session_id":"bad"}"#;
+
+        assert_eq!(
+            claude_execution_error_message(line).as_deref(),
+            Some("resume failed")
+        );
     }
 
     #[test]

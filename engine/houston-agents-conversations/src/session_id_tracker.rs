@@ -52,6 +52,90 @@ fn session_invalid_path(agent_dir: &Path, provider: Provider, session_key: &str)
         .join(format!("{session_key}.invalid"))
 }
 
+/// Invalidate current provider resume IDs when an agent's filesystem path is
+/// about to change. Provider CLIs can bind resumed conversations to their
+/// original working directory; after a path rename, retrying the old current
+/// ID can produce a permanent immediate runtime error. History remains
+/// readable, but the next turn starts a fresh provider session.
+pub fn invalidate_current_session_ids_for_path_change(agent_dir: &Path) -> io::Result<usize> {
+    let base = sessions_dir(agent_dir);
+    if !base.exists() {
+        return Ok(0);
+    }
+
+    let mut invalidated = 0usize;
+    for provider in all_providers() {
+        let provider_dir = base.join(provider.to_string());
+        if !provider_dir.exists() {
+            continue;
+        }
+        for entry in fs::read_dir(&provider_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if !entry.file_type()?.is_file()
+                || path.extension().and_then(|v| v.to_str()) != Some("sid")
+            {
+                continue;
+            }
+            let Some(session_key) = path
+                .file_stem()
+                .and_then(|name| name.to_str())
+                .map(str::to_string)
+            else {
+                continue;
+            };
+            if invalidate_provider_sid(agent_dir, provider, &session_key, &path)? {
+                invalidated += 1;
+            }
+        }
+    }
+
+    for entry in fs::read_dir(&base)? {
+        let entry = entry?;
+        let path = entry.path();
+        if !entry.file_type()?.is_file() || path.extension().and_then(|v| v.to_str()) != Some("sid")
+        {
+            continue;
+        }
+        let Some(session_key) = path
+            .file_stem()
+            .and_then(|name| name.to_str())
+            .map(str::to_string)
+        else {
+            continue;
+        };
+        if let Some(id) = read_trimmed_file_checked(&path)? {
+            for provider in all_providers() {
+                append_history_id_checked(
+                    &session_invalid_path(agent_dir, provider, &session_key),
+                    &id,
+                )?;
+            }
+            invalidated += 1;
+        }
+    }
+
+    Ok(invalidated)
+}
+
+fn invalidate_provider_sid(
+    agent_dir: &Path,
+    provider: Provider,
+    session_key: &str,
+    sid_path: &Path,
+) -> io::Result<bool> {
+    if let Some(id) = read_trimmed_file_checked(sid_path)? {
+        append_history_id_checked(&session_history_path(agent_dir, provider, session_key), &id)?;
+        append_history_id_checked(&session_invalid_path(agent_dir, provider, session_key), &id)?;
+    }
+
+    match fs::remove_file(sid_path) {
+        Ok(()) => Ok(true),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(false),
+        Err(e) => Err(e),
+    }
+}
+
 /// Return every known resume ID for a session key, across legacy and
 /// provider-scoped current/history files. Used for DB-backed chat history.
 pub fn session_ids_for_history(agent_dir: &Path, session_key: &str) -> Vec<String> {
@@ -215,11 +299,8 @@ fn push_unique_id(ids: &mut Vec<String>, seen: &mut HashSet<String>, id: String)
 }
 
 fn read_trimmed_file(path: &Path) -> Option<String> {
-    match fs::read_to_string(path) {
-        Ok(body) => {
-            let value = body.trim().to_string();
-            (!value.is_empty()).then_some(value)
-        }
+    match read_trimmed_file_checked(path) {
+        Ok(value) => value,
         Err(e) if e.kind() == io::ErrorKind::NotFound => None,
         Err(e) => {
             tracing::warn!(
@@ -232,16 +313,20 @@ fn read_trimmed_file(path: &Path) -> Option<String> {
     }
 }
 
-fn read_history_ids(path: &Path) -> Vec<String> {
+fn read_trimmed_file_checked(path: &Path) -> io::Result<Option<String>> {
     match fs::read_to_string(path) {
         Ok(body) => {
-            let mut ids = Vec::new();
-            let mut seen = HashSet::new();
-            for line in body.lines() {
-                push_unique_id(&mut ids, &mut seen, line.to_string());
-            }
-            ids
+            let value = body.trim().to_string();
+            Ok((!value.is_empty()).then_some(value))
         }
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(None),
+        Err(e) => Err(e),
+    }
+}
+
+fn read_history_ids(path: &Path) -> Vec<String> {
+    match read_history_ids_checked(path) {
+        Ok(ids) => ids,
         Err(e) if e.kind() == io::ErrorKind::NotFound => Vec::new(),
         Err(e) => {
             tracing::warn!(
@@ -254,27 +339,45 @@ fn read_history_ids(path: &Path) -> Vec<String> {
     }
 }
 
+fn read_history_ids_checked(path: &Path) -> io::Result<Vec<String>> {
+    let body = match fs::read_to_string(path) {
+        Ok(body) => body,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(Vec::new()),
+        Err(e) => return Err(e),
+    };
+    let mut ids = Vec::new();
+    let mut seen = HashSet::new();
+    for line in body.lines() {
+        push_unique_id(&mut ids, &mut seen, line.to_string());
+    }
+    Ok(ids)
+}
+
 fn append_history_id(path: &Path, id: &str) {
-    let id = id.trim();
-    if id.is_empty() {
-        return;
-    }
-
-    let mut ids = read_history_ids(path);
-    if ids.iter().any(|existing| existing == id) {
-        return;
-    }
-    ids.push(id.to_string());
-
-    let mut body = ids.join("\n");
-    body.push('\n');
-    if let Err(e) = write_atomic(path, &body) {
+    if let Err(e) = append_history_id_checked(path, id) {
         tracing::warn!(
             path = %path.display(),
             error = %e,
             "failed to persist session history"
         );
     }
+}
+
+fn append_history_id_checked(path: &Path, id: &str) -> io::Result<()> {
+    let id = id.trim();
+    if id.is_empty() {
+        return Ok(());
+    }
+
+    let mut ids = read_history_ids_checked(path)?;
+    if ids.iter().any(|existing| existing == id) {
+        return Ok(());
+    }
+    ids.push(id.to_string());
+
+    let mut body = ids.join("\n");
+    body.push('\n');
+    write_atomic(path, &body)
 }
 
 fn write_atomic(path: &Path, content: &str) -> io::Result<()> {
@@ -397,6 +500,44 @@ mod tests {
 
         assert_eq!(openai_handle.get().await, None);
         assert_eq!(anthropic_handle.get().await, Some("legacy-id".to_string()));
+    }
+
+    #[tokio::test]
+    async fn path_change_invalidation_clears_current_ids_and_blocks_legacy_fallback() {
+        let dir = TempDir::new().unwrap();
+        write_file(
+            &session_id_path(dir.path(), anthropic(), "chat"),
+            "claude-current\n",
+        );
+        write_file(&legacy_session_id_path(dir.path(), "chat"), "legacy-id\n");
+
+        let count = invalidate_current_session_ids_for_path_change(dir.path()).unwrap();
+
+        assert_eq!(count, 2);
+        assert!(!session_id_path(dir.path(), anthropic(), "chat").exists());
+        assert_eq!(
+            fs::read_to_string(session_history_path(dir.path(), anthropic(), "chat")).unwrap(),
+            "claude-current\n"
+        );
+        assert_eq!(
+            fs::read_to_string(session_invalid_path(dir.path(), anthropic(), "chat")).unwrap(),
+            "claude-current\nlegacy-id\n"
+        );
+        assert_eq!(
+            fs::read_to_string(session_invalid_path(dir.path(), openai(), "chat")).unwrap(),
+            "legacy-id\n"
+        );
+
+        let restarted_tracker = SessionIdTracker::default();
+        let anthropic_handle = restarted_tracker
+            .get_for_session("agent:anthropic:chat", dir.path(), "chat", anthropic())
+            .await;
+        let openai_handle = restarted_tracker
+            .get_for_session("agent:openai:chat", dir.path(), "chat", openai())
+            .await;
+
+        assert_eq!(anthropic_handle.get().await, None);
+        assert_eq!(openai_handle.get().await, None);
     }
 
     #[test]

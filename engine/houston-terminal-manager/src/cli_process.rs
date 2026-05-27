@@ -2,7 +2,7 @@ use super::session_io;
 use super::types::{FeedItem, SessionStatus};
 use crate::codex_command;
 use crate::provider::detect_malformed_provider_json;
-use crate::provider_error_kind::ProviderError;
+use crate::provider_error_kind::{truncate_excerpt, ProviderError};
 use crate::session_update::SessionUpdate;
 use crate::Provider;
 use std::process::Stdio;
@@ -16,6 +16,7 @@ pub(crate) enum CliRunOutcome {
     Completed,
     Failed,
     CodexResumeMissing,
+    ProviderResumeRejected,
     ProviderRequestMalformedJson,
 }
 
@@ -30,6 +31,7 @@ pub(crate) async fn run_cli_process(
     cmd: &mut Command,
     prompt: &str,
     provider: Provider,
+    resume_requested: bool,
 ) -> CliRunOutcome {
     let cli_name = provider.cli_name();
 
@@ -153,6 +155,12 @@ pub(crate) async fn run_cli_process(
                 }
                 let _ = tx.send(SessionUpdate::Status(SessionStatus::Completed));
                 CliRunOutcome::Completed
+            } else if is_resume_rejected(provider, resume_requested, &stderr_lines, &stdout_report)
+            {
+                tracing::warn!(
+                    "[houston:session] {cli_name} rejected resume without progress; retrying fresh"
+                );
+                CliRunOutcome::ProviderResumeRejected
             } else {
                 handle_failed_exit(tx, cli_name, provider, &stderr_lines, &stdout_report)
             }
@@ -164,6 +172,20 @@ pub(crate) async fn run_cli_process(
             CliRunOutcome::Failed
         }
     }
+}
+
+fn is_resume_rejected(
+    provider: Provider,
+    resume_requested: bool,
+    stderr_lines: &[String],
+    stdout_report: &session_io::StdoutReadReport,
+) -> bool {
+    resume_requested
+        && provider.id() == "anthropic"
+        && stderr_lines.is_empty()
+        && stdout_report
+            .claude_error_during_execution_without_progress
+            .is_some()
 }
 
 fn handle_failed_exit(
@@ -228,7 +250,8 @@ fn handle_failed_exit(
     let is_tool_runtime = stderr_lines
         .iter()
         .any(|line| crate::stderr_filter::is_tool_runtime_stderr(line));
-    if !already_emitted_typed && !is_tool_runtime {
+    let emitted_deferred_stdout_error = emit_deferred_stdout_error(tx, provider, stdout_report);
+    if !emitted_deferred_stdout_error && !already_emitted_typed && !is_tool_runtime {
         let stderr_summary = if stderr_lines.is_empty() {
             "no stderr output captured".to_string()
         } else {
@@ -247,6 +270,26 @@ fn handle_failed_exit(
         "{cli_name} hit a runtime error"
     ))));
     CliRunOutcome::Failed
+}
+
+fn emit_deferred_stdout_error(
+    tx: &mpsc::UnboundedSender<SessionUpdate>,
+    provider: Provider,
+    stdout_report: &session_io::StdoutReadReport,
+) -> bool {
+    let Some(message) = stdout_report
+        .claude_error_during_execution_without_progress
+        .as_deref()
+    else {
+        return false;
+    };
+    let _ = tx.send(SessionUpdate::Feed(FeedItem::ProviderError(
+        ProviderError::Unknown {
+            provider: provider.id().to_string(),
+            raw_excerpt: truncate_excerpt(message),
+        },
+    )));
+    true
 }
 
 #[cfg(unix)]
@@ -293,18 +336,17 @@ mod tests {
             malformed_provider_json: false,
             saw_auth_error: true,
             saw_model_unsupported_error: false,
+            claude_error_during_execution_without_progress: None,
         };
 
-        let outcome =
-            handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
+        let outcome = handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
         assert_eq!(outcome, CliRunOutcome::Failed);
 
         let updates = drain(&mut rx);
         assert!(
-            !updates.iter().any(|u| matches!(
-                u,
-                SessionUpdate::Feed(FeedItem::ToolRuntimeError { .. })
-            )),
+            !updates
+                .iter()
+                .any(|u| matches!(u, SessionUpdate::Feed(FeedItem::ToolRuntimeError { .. }))),
             "should not emit ToolRuntimeError when auth was seen on stdout: {updates:?}"
         );
         assert!(
@@ -328,8 +370,7 @@ mod tests {
         let (tx, mut rx) = mpsc::unbounded_channel();
         let stdout_report = session_io::StdoutReadReport::default();
 
-        let outcome =
-            handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
+        let outcome = handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
         assert_eq!(outcome, CliRunOutcome::Failed);
 
         let updates = drain(&mut rx);
@@ -338,5 +379,26 @@ mod tests {
             SessionUpdate::Feed(FeedItem::ProviderError(ProviderError::SpawnFailed { message, .. }))
                 if message == "no stderr output captured"
         )));
+    }
+
+    #[test]
+    fn claude_immediate_execution_error_with_resume_is_resume_rejected() {
+        let stdout_report = session_io::StdoutReadReport {
+            claude_error_during_execution_without_progress: Some("Unknown error".into()),
+            ..Default::default()
+        };
+
+        assert!(is_resume_rejected(
+            Provider::default(),
+            true,
+            &[],
+            &stdout_report
+        ));
+        assert!(!is_resume_rejected(
+            Provider::default(),
+            false,
+            &[],
+            &stdout_report
+        ));
     }
 }

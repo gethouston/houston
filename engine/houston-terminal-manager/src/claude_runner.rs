@@ -73,7 +73,8 @@ pub(crate) async fn spawn_claude(
         disable_builtin_tools,
         disable_all_tools,
     );
-    let outcome = run_cli_process(tx, &mut cmd, &prompt, provider).await;
+    let outcome =
+        run_cli_process(tx, &mut cmd, &prompt, provider, resume_session_id.is_some()).await;
     if should_retry_malformed_provider_json(outcome, resume_session_id.as_deref()) {
         tracing::warn!(
             "[houston:session] claude resume failed with malformed provider JSON; retrying fresh"
@@ -92,8 +93,28 @@ pub(crate) async fn spawn_claude(
             disable_all_tools,
         )
         .await;
+    } else if should_retry_resume_rejected(outcome, resume_session_id.as_deref()) {
+        tracing::warn!("[houston:session] claude resume rejected by provider; retrying fresh");
+        let _ = tx.send(SessionUpdate::ResumeInvalid);
+        retry_fresh(
+            tx,
+            provider,
+            &prompt,
+            working_dir.as_deref(),
+            model.as_deref(),
+            effort.as_deref(),
+            system_prompt.as_deref(),
+            mcp_config.as_deref(),
+            disable_builtin_tools,
+            disable_all_tools,
+        )
+        .await;
     } else if outcome == CliRunOutcome::ProviderRequestMalformedJson {
         send_malformed_provider_json_status(tx);
+    } else if outcome == CliRunOutcome::ProviderResumeRejected {
+        let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(
+            "Claude hit a runtime error".to_string(),
+        )));
     }
 }
 
@@ -122,7 +143,7 @@ async fn retry_fresh(
         disable_builtin_tools,
         disable_all_tools,
     );
-    let retry_outcome = run_cli_process(tx, &mut fresh_cmd, prompt, provider).await;
+    let retry_outcome = run_cli_process(tx, &mut fresh_cmd, prompt, provider, false).await;
     if retry_outcome == CliRunOutcome::ProviderRequestMalformedJson {
         send_malformed_provider_json_status(tx);
     }
@@ -190,6 +211,10 @@ fn should_retry_malformed_provider_json(
     outcome == CliRunOutcome::ProviderRequestMalformedJson && resume_session_id.is_some()
 }
 
+fn should_retry_resume_rejected(outcome: CliRunOutcome, resume_session_id: Option<&str>) -> bool {
+    outcome == CliRunOutcome::ProviderResumeRejected && resume_session_id.is_some()
+}
+
 fn send_malformed_provider_json_status(tx: &mpsc::UnboundedSender<SessionUpdate>) {
     let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(
         MALFORMED_PROVIDER_JSON_MESSAGE.to_string(),
@@ -208,6 +233,18 @@ mod tests {
         ));
         assert!(!should_retry_malformed_provider_json(
             CliRunOutcome::ProviderRequestMalformedJson,
+            None,
+        ));
+    }
+
+    #[test]
+    fn retries_resume_rejected_only_for_resume() {
+        assert!(should_retry_resume_rejected(
+            CliRunOutcome::ProviderResumeRejected,
+            Some("claude-session-id"),
+        ));
+        assert!(!should_retry_resume_rejected(
+            CliRunOutcome::ProviderResumeRejected,
             None,
         ));
     }

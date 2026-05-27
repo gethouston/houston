@@ -73,6 +73,11 @@ loads the legacy ID plus every provider current/history ID for the same
 session key. Provider-scoped `.invalid` files stop a rejected legacy ID
 from being retried by the provider that rejected it.
 
+Agent and workspace renames invalidate current provider-scoped resume IDs before
+the filesystem path changes. The IDs are preserved in `.history` for chat replay
+and copied to `.invalid` so the next turn starts a fresh provider session instead
+of retrying a resume bound to the old working directory.
+
 ## Atomic writes
 All writes: temp file + rename. Path-traversal safe via `houston-agent-files::safe_relative`.
 
