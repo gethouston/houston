@@ -30,7 +30,7 @@ export function SessionResumeMissingCard({
       {onRetry && (
         <RetryButton
           onRetry={onRetry}
-          label={t("providerError.sessionResumeMissing.startFresh")}
+          label={t("providerError.sessionResumeMissing.tryAgain")}
         />
       )}
     </ErrorCard>

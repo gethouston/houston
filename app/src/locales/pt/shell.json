@@ -306,9 +306,9 @@
       "checkStatus": "Ver página de status"
     },
     "sessionResumeMissing": {
-      "title": "Não dá para retomar esta sessão",
-      "body": "A sessão anterior do {{provider}} não existe mais. Comece uma missão nova para continuar.",
-      "startFresh": "Recomeçar"
+      "title": "Sessão reiniciada",
+      "body": "A conversa anterior do {{provider}} não pôde ser reaberta, então o Houston a reiniciou. Sua mensagem foi enviada novamente e o assistente está respondendo abaixo.",
+      "tryAgain": "Tentar de novo"
     },
     "malformedResponse": {
       "title": "Resposta corrompida",

@@ -306,9 +306,9 @@
       "checkStatus": "Check status page"
     },
     "sessionResumeMissing": {
-      "title": "Cannot resume this session",
-      "body": "The previous {{provider}} session is gone. Start a fresh mission to continue.",
-      "startFresh": "Start fresh"
+      "title": "Session restarted",
+      "body": "The previous {{provider}} conversation could not be reopened, so Houston restarted it. Your message was sent again and the assistant is responding below.",
+      "tryAgain": "Try again"
     },
     "malformedResponse": {
       "title": "Got a broken response",

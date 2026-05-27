@@ -306,9 +306,9 @@
       "checkStatus": "Ver página de estado"
     },
     "sessionResumeMissing": {
-      "title": "No se puede retomar esta sesión",
-      "body": "La sesión anterior de {{provider}} ya no existe. Inicia una misión nueva para continuar.",
-      "startFresh": "Empezar de nuevo"
+      "title": "Sesión reiniciada",
+      "body": "La conversación anterior de {{provider}} no se pudo reabrir, así que Houston la reinició. Tu mensaje se envió de nuevo y el asistente está respondiendo abajo.",
+      "tryAgain": "Reintentar"
     },
     "malformedResponse": {
       "title": "Respuesta dañada",
