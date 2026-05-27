@@ -17,6 +17,13 @@ pub(crate) enum CliRunOutcome {
     Failed,
     CodexResumeMissing,
     ProviderRequestMalformedJson,
+    /// Claude's first stdout line was a `result/error_during_execution`
+    /// with `duration_ms == 0` — the on-disk transcript pointed at by
+    /// `--resume <id>` is unrecoverable. The runner uses this outcome to
+    /// silently retry the spawn without `--resume`. See
+    /// `session_io::StdoutReadReport::saw_resume_corrupted` for the full
+    /// rationale.
+    ClaudeResumeCorrupted,
 }
 
 enum CliIoReport {
@@ -126,7 +133,16 @@ pub(crate) async fn run_cli_process(
                 || stderr_lines
                     .iter()
                     .any(|line| detect_malformed_provider_json(line));
-            if malformed_provider_json {
+            // Claude resume-corrupted: must precede `status.success()`
+            // and the generic failure path so the runner can retry
+            // silently without the user seeing a flicker of "claude hit
+            // a runtime error".
+            if stdout_report.saw_resume_corrupted {
+                tracing::warn!(
+                    "[houston:session] claude failed with corrupted-resume signature"
+                );
+                CliRunOutcome::ClaudeResumeCorrupted
+            } else if malformed_provider_json {
                 tracing::warn!("[houston:session] claude failed with malformed provider JSON");
                 CliRunOutcome::ProviderRequestMalformedJson
             } else if status.success() || is_sigterm || likely_user_stop_windows {
@@ -293,6 +309,7 @@ mod tests {
             malformed_provider_json: false,
             saw_auth_error: true,
             saw_model_unsupported_error: false,
+            saw_resume_corrupted: false,
         };
 
         let outcome =

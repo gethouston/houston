@@ -30,7 +30,7 @@ and mirrored in `ui/chat/src/types.ts`. The two MUST stay in sync.
 | `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect (drives `tauriProvider.launchLogin`).      |
 | `NetworkUnreachable`       | Cannot reach the provider's API (DNS, connect refused, ECONNRESET).                     | Retry, Check status page.                            |
 | `ProviderInternal`         | 5xx from upstream, transient infra failure.                                             | Retry, Check status page.                            |
-| `SessionResumeMissing`     | Resume target doesn't exist (Codex `no rollout found`).                                 | Start fresh.                                         |
+| `SessionResumeMissing`     | Resume target is gone or unrecoverable. Codex: `no rollout found`. Anthropic: claude exits with `result/error_during_execution/duration_ms:0` on the very first stdout line — the `~/.claude/projects/<encoded-cwd>/<id>.jsonl` transcript is corrupt. Both runners auto-restart fresh; the card is informational. | Try again (re-sends after the auto-restart in case the fresh attempt also failed). |
 | `MalformedResponse`        | CLI emitted unparseable JSON mid-stream.                                                 | Retry.                                               |
 | `SpawnFailed`              | CLI couldn't even spawn (binary missing, killed by OS).                                  | Report bug.                                          |
 | `Cancelled`                | User pressed Stop. Distinct so the UI shows nothing (no toast, no retry).                | none (rendered as `null`).                           |
