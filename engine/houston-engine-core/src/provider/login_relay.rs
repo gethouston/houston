@@ -137,6 +137,33 @@ fn extract_device_user_code(line: &str) -> Option<String> {
     DEVICE_CODE_RE.find(line).map(|m| m.as_str().to_string())
 }
 
+/// Regex over ANSI / VT escape sequences. codex emits SGR colour codes
+/// even when its stdout is a pipe (not a TTY): the verification URL and
+/// the one-time device code both arrive wrapped like
+/// `\x1b[94m<value>\x1b[0m`. The opening sequence ends in `m` — a word
+/// character — so it sits flush against the device code and defeats the
+/// `\b` word-boundary anchor in [`DEVICE_CODE_RE`]; without stripping, the
+/// code never matches, [`relay_login_output`] never re-emits
+/// `ProviderLoginUrl` with `user_code`, and the headless dialog wrongly
+/// falls back to the Claude paste-back input (codex device-auth has
+/// nothing to paste back). Stripping also keeps a coloured URL from ever
+/// carrying stray escape bytes into [`extract_login_url`].
+static ANSI_ESCAPE_RE: Lazy<Regex> = Lazy::new(|| {
+    // CSI form: ESC '[' params([0-9;?]) intermediates([ -/]) final([@-~]).
+    // Covers SGR colour (final `m`), cursor moves, etc. — everything codex
+    // prints. The character ranges are spelled with ASCII bytes so the
+    // pattern stays obvious: ` -/` is 0x20..=0x2F, `@-~` is 0x40..=0x7E.
+    Regex::new(r"\x1b\[[0-9;?]*[ -/]*[@-~]").expect("ansi escape regex must compile")
+});
+
+/// Remove ANSI escape sequences from a CLI stdout line, borrowing the
+/// input untouched when it carries none. Run before the URL / device-code
+/// regexes — see [`ANSI_ESCAPE_RE`] for why codex's colourized output
+/// would otherwise hide the device code.
+fn strip_ansi(line: &str) -> std::borrow::Cow<'_, str> {
+    ANSI_ESCAPE_RE.replace_all(line, "")
+}
+
 /// Register a new login session, taking ownership of the CLI's
 /// stdin handle. Returns `BadRequest` if a session is already in
 /// flight for the same provider — the caller should kill its own
@@ -287,8 +314,16 @@ async fn relay_login_output(
                 line = reader.next_line() => {
                     match line {
                         Ok(Some(line)) => {
+                            // codex colourizes stdout even over a pipe, so the
+                            // URL and device code arrive wrapped in SGR escape
+                            // sequences. Strip them before matching — the
+                            // trailing `m` of `\x1b[94m` otherwise defeats the
+                            // `\b` anchor in DEVICE_CODE_RE and the code is
+                            // never surfaced. See `strip_ansi`.
+                            let clean = strip_ansi(&line);
+                            let clean = clean.as_ref();
                             if !url_emitted {
-                                if let Some(url) = extract_login_url(&line) {
+                                if let Some(url) = extract_login_url(clean) {
                                     tracing::info!(
                                         "[houston:provider] {cli_name} login URL surfaced: {url}"
                                     );
@@ -311,7 +346,7 @@ async fn relay_login_output(
                             // here.
                             if device_auth && !code_emitted {
                                 if let (Some(url), Some(code)) =
-                                    (login_url.as_ref(), extract_device_user_code(&line))
+                                    (login_url.as_ref(), extract_device_user_code(clean))
                                 {
                                     tracing::info!(
                                         "[houston:provider] {cli_name} device login code surfaced"
@@ -545,6 +580,51 @@ mod tests {
         );
     }
 
+    #[test]
+    fn strip_ansi_removes_sgr_colour_codes() {
+        // Verbatim wrappers from codex 0.133 stdout.
+        assert_eq!(strip_ansi("   \u{1b}[94mRH7H-TS5DE\u{1b}[0m"), "   RH7H-TS5DE");
+        assert_eq!(
+            strip_ansi("\u{1b}[90mOpenAI's command-line coding agent\u{1b}[0m"),
+            "OpenAI's command-line coding agent"
+        );
+        // Multi-parameter SGR (`\x1b[31;1m`) is stripped too.
+        assert_eq!(strip_ansi("\u{1b}[31;1mError\u{1b}[0m"), "Error");
+        // A clean line is returned untouched (borrowed, not reallocated).
+        assert!(matches!(strip_ansi("plain line"), std::borrow::Cow::Borrowed("plain line")));
+    }
+
+    #[test]
+    fn extract_device_code_needs_ansi_stripped_first() {
+        // The exact byte shape `codex login --device-auth` (v0.133) prints
+        // for the one-time code: an SGR colour wrapper whose opening
+        // `\x1b[94m` ends in `m`, flush against the code. Matching the raw
+        // line fails (no `\b` before the code); stripping ANSI first is what
+        // lets the device-grant flow surface the code instead of falling
+        // back to the paste-back input. Regression guard for that bug.
+        let raw = "   \u{1b}[94mRH7H-TS5DE\u{1b}[0m";
+        assert!(
+            extract_device_user_code(raw).is_none(),
+            "the raw ANSI-wrapped line must NOT match before stripping"
+        );
+        assert_eq!(
+            extract_device_user_code(&strip_ansi(raw)).unwrap(),
+            "RH7H-TS5DE"
+        );
+    }
+
+    #[test]
+    fn extract_url_from_ansi_wrapped_codex_line() {
+        // codex wraps the verification URL in the same colour codes. The URL
+        // regex happens to survive raw (ESC terminates the char class), but
+        // we strip first for both — assert the stripped path is clean.
+        let raw = "   \u{1b}[94mhttps://auth.openai.com/codex/device\u{1b}[0m";
+        assert_eq!(
+            extract_login_url(&strip_ansi(raw)).unwrap(),
+            "https://auth.openai.com/codex/device"
+        );
+    }
+
     #[tokio::test]
     async fn submit_login_code_errors_without_pending_session() {
         let provider = parse("anthropic").unwrap();
@@ -678,13 +758,20 @@ mod tests {
         // verbatim multi-line output (prose, the verification URL, then the
         // one-time code on its own line) and exits. The relay should surface
         // the URL the moment it streams, then re-emit with the code.
+        //
+        // The URL and code lines carry the SGR colour wrappers codex prints
+        // even over a pipe (`\x1b[94m…\x1b[0m`) — the exact byte shape
+        // captured from codex 0.133. This is the regression case: the
+        // opening `\x1b[94m` ends in `m`, flush against the code, so the
+        // relay MUST strip ANSI before matching or the second emit (the
+        // code) never fires and the dialog falls back to paste-back.
         let mut cmd = tokio::process::Command::new("printf");
         cmd.arg("%s\\n")
             .arg("Follow these steps to sign in with ChatGPT using device code authorization:")
             .arg("1. Open this link in your browser and sign in to your account")
-            .arg("   https://auth.openai.com/codex/device")
-            .arg("2. Enter this one-time code (expires in 15 minutes)")
-            .arg("   ABCD-EFGHI")
+            .arg("   \u{1b}[94mhttps://auth.openai.com/codex/device\u{1b}[0m")
+            .arg("2. Enter this one-time code \u{1b}[90m(expires in 15 minutes)\u{1b}[0m")
+            .arg("   \u{1b}[94mABCD-EFGHI\u{1b}[0m")
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::piped())

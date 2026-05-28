@@ -72,7 +72,7 @@
     "deviceCodeHint": "Enter this code on the {{name}} page after you sign in.",
     "deviceWaiting": "Waiting for you to authorize in your browser...",
     "copyCode": "Copy code",
-    "codeCopied": "Code copied to clipboard",
+    "codeCopied": "Code copied!",
     "codeCopyFailed": "Couldn't copy the code",
     "cancel": "Cancel"
   },

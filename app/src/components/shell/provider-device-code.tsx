@@ -1,5 +1,6 @@
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { Button, DialogFooter, Spinner } from "@houston-ai/core";
 import { useUIStore } from "../../stores/ui";
 
@@ -21,11 +22,31 @@ interface Props {
 export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
+  // Brief inline confirmation: on copy the code box swaps to "Code
+  // copied!" for a couple seconds, then reverts. Clearer than a toast for
+  // a value the user is about to paste elsewhere — the feedback lands
+  // right where they're looking.
+  const [copied, setCopied] = useState(false);
+  const revertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Drop the confirmation if a fresh code arrives (e.g. a re-emit), and
+  // clear any pending timer on unmount so it can't fire into an unmounted
+  // component.
+  useEffect(() => {
+    setCopied(false);
+  }, [code]);
+  useEffect(() => {
+    return () => {
+      if (revertTimer.current) clearTimeout(revertTimer.current);
+    };
+  }, []);
 
   const copyCode = async () => {
     try {
       await navigator.clipboard.writeText(code);
-      addToast({ title: t("providerLogin.codeCopied"), variant: "success" });
+      setCopied(true);
+      if (revertTimer.current) clearTimeout(revertTimer.current);
+      revertTimer.current = setTimeout(() => setCopied(false), 2000);
     } catch (err) {
       addToast({
         title: t("providerLogin.codeCopyFailed"),
@@ -42,8 +63,15 @@ export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
           {t("providerLogin.deviceCodeLabel")}
         </span>
         <div className="flex items-center gap-2">
-          <code className="flex-1 rounded-md border bg-background px-3 py-2 text-center text-[18px] font-mono tracking-[0.25em]">
-            {code}
+          <code
+            aria-live="polite"
+            className={`flex-1 rounded-md border bg-background px-3 py-2 text-center font-mono ${
+              copied
+                ? "text-[14px] font-medium text-emerald-600 dark:text-emerald-400"
+                : "text-[18px] tracking-[0.25em]"
+            }`}
+          >
+            {copied ? t("providerLogin.codeCopied") : code}
           </code>
           <Button
             type="button"
@@ -52,7 +80,7 @@ export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
             aria-label={t("providerLogin.copyCode")}
             onClick={copyCode}
           >
-            <Copy className="size-3.5" />
+            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
           </Button>
         </div>
         <p className="text-[12px] text-muted-foreground">

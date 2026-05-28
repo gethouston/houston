@@ -72,7 +72,7 @@
     "deviceCodeHint": "Digite este código na página da {{name}} depois de fazer login.",
     "deviceWaiting": "Aguardando você autorizar no navegador...",
     "copyCode": "Copiar código",
-    "codeCopied": "Código copiado para a área de transferência",
+    "codeCopied": "Código copiado!",
     "codeCopyFailed": "Não foi possível copiar o código",
     "cancel": "Cancelar"
   },

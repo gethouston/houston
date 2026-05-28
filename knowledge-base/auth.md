@@ -121,7 +121,12 @@ OAuth callback, so the connect surfaces that render `ProviderLoginDialog`
 flips codex to its device-code flow (`codex login --device-auth`): the engine
 surfaces a verification URL plus a one-time `ProviderLoginUrl.user_code`, the
 user enters that code on OpenAI's page, and codex polls + writes
-`~/.codex/auth.json` itself (no paste-back). Claude has no device variant —
+`~/.codex/auth.json` itself (no paste-back). **codex colourizes stdout even
+over a pipe**, so the relay strips ANSI escape sequences from each line before
+scanning (`login_relay::strip_ansi`): the `\x1b[94m` wrapper's trailing `m`
+otherwise sits flush against the code and defeats the `\b` anchor in the
+device-code regex, leaving `user_code` unset and the dialog wrongly stuck on
+paste-back. Claude has no device variant —
 its standard login already completes headlessly via the paste-back code
 (`/v1/providers/:name/login/code`), so the flag is a no-op for it. Note the
 mid-chat `ProviderReconnectCard` / `auth-reconnect-banner` don't render the
