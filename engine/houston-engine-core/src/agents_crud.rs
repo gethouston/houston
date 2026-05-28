@@ -9,7 +9,7 @@
 //! consume this module.
 
 use crate::error::{CoreError, CoreResult};
-use crate::paths::expand_tilde;
+use crate::paths::{expand_tilde, rename_path, same_fs_entity};
 use crate::workspaces;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
@@ -316,10 +316,21 @@ pub fn rename(root: &Path, workspace_id: &str, id: &str, new_name: &str) -> Core
     let old_folder = find_agent_by_id(&ws_dir, id)?;
     let new_link = ws_dir.join(new_name);
 
-    if new_link.exists() {
+    // A genuine conflict is a *different* agent already holding `new_name`.
+    // A case-only rename of the agent's own folder ("PERA" -> "PERa") resolves
+    // to the same entity on case-insensitive filesystems, so `new_link.exists()`
+    // is true even though there is no collision — allow it.
+    if new_link.exists() && !same_fs_entity(&old_folder, &new_link) {
         return Err(CoreError::Conflict(format!(
             "An agent named \"{new_name}\" already exists"
         )));
+    }
+
+    // Exact no-op (same path, same case): nothing to move. Defends the engine
+    // even when a client fires a rename with the unchanged name.
+    if old_folder == new_link {
+        let meta = read_agent_meta(&old_folder)?;
+        return Ok(meta_to_agent(&old_folder, &meta));
     }
 
     if old_folder.is_symlink() {
@@ -334,7 +345,7 @@ pub fn rename(root: &Path, workspace_id: &str, id: &str, new_name: &str) -> Core
         write_agent_meta(&new_link, &meta)?;
         Ok(meta_to_agent(&new_link, &meta))
     } else {
-        fs::rename(&old_folder, &new_link)?;
+        rename_path(&old_folder, &new_link)?;
         let meta = read_agent_meta(&new_link)?;
         Ok(meta_to_agent(&new_link, &meta))
     }
@@ -484,5 +495,72 @@ mod tests {
         assert_eq!(updated.color.as_deref(), Some("forest"));
         let all = list(d.path(), &ws_id).unwrap();
         assert_eq!(all[0].color.as_deref(), Some("forest"));
+    }
+
+    fn create_named(root: &Path, ws_id: &str, name: &str) -> Agent {
+        create(
+            root,
+            ws_id,
+            CreateAgent {
+                name: name.into(),
+                config_id: "blank".into(),
+                color: None,
+                claude_md: None,
+                installed_path: None,
+                seeds: None,
+                existing_path: None,
+            },
+        )
+        .unwrap()
+        .agent
+    }
+
+    /// Renaming to the unchanged name is a no-op, not a conflict. Guards #325 at
+    /// the engine level regardless of which client fires it. FS-independent.
+    #[test]
+    fn rename_to_same_name_is_noop() {
+        let d = TempDir::new().unwrap();
+        let ws_id = setup_ws(d.path());
+        let agent = create_named(d.path(), &ws_id, "PERA");
+
+        let renamed = rename(d.path(), &ws_id, &agent.id, "PERA").unwrap();
+
+        assert_eq!(renamed.id, agent.id);
+        assert_eq!(renamed.name, "PERA");
+        assert_eq!(list(d.path(), &ws_id).unwrap().len(), 1);
+    }
+
+    /// A case-only change ("PERA" -> "PERa") must succeed and leave exactly one
+    /// agent under the new spelling. On case-insensitive filesystems (Windows,
+    /// default macOS) this is the bug from PR #339's testing: the destination
+    /// resolves to the agent's own folder, so the old `new_link.exists()` guard
+    /// wrongly reported "already exists".
+    #[test]
+    fn rename_case_only_change() {
+        let d = TempDir::new().unwrap();
+        let ws_id = setup_ws(d.path());
+        let agent = create_named(d.path(), &ws_id, "PERA");
+
+        let renamed = rename(d.path(), &ws_id, &agent.id, "PERa").unwrap();
+
+        assert_eq!(renamed.id, agent.id);
+        assert_eq!(renamed.name, "PERa");
+        let all = list(d.path(), &ws_id).unwrap();
+        assert_eq!(all.len(), 1, "case-only rename must not duplicate the agent");
+        assert_eq!(all[0].name, "PERa");
+    }
+
+    /// Renaming onto a *different* agent's name is still a real conflict.
+    #[test]
+    fn rename_conflicts_with_other_agent() {
+        let d = TempDir::new().unwrap();
+        let ws_id = setup_ws(d.path());
+        create_named(d.path(), &ws_id, "PERA");
+        let zed = create_named(d.path(), &ws_id, "ZED");
+
+        let err = rename(d.path(), &ws_id, &zed.id, "PERA").unwrap_err();
+
+        assert!(matches!(err, CoreError::Conflict(_)));
+        assert_eq!(list(d.path(), &ws_id).unwrap().len(), 2);
     }
 }

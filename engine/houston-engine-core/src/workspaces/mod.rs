@@ -12,6 +12,7 @@ pub use io::read_all;
 pub use migrate::migrate_workspace_provider_into_agents;
 
 use crate::error::{CoreError, CoreResult};
+use crate::paths::{rename_path, same_fs_entity};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
@@ -97,14 +98,18 @@ pub fn rename(root: &Path, id: &str, req: RenameWorkspace) -> CoreResult<Workspa
         .ok_or_else(|| CoreError::NotFound(format!("workspace {id}")))?;
     let old_dir = root.join(&ws.name);
     let new_dir = root.join(&req.new_name);
-    if new_dir.exists() && old_dir != new_dir {
+    // Same entity = renaming the workspace's own folder (including a case-only
+    // change like "Acme" -> "ACME" on a case-insensitive filesystem, where
+    // `new_dir.exists()` is true because it resolves to `old_dir`). Only a
+    // *different* directory occupying `new_name` is a real conflict.
+    if new_dir.exists() && !same_fs_entity(&old_dir, &new_dir) {
         return Err(CoreError::Conflict(format!(
             "directory named {:?} already exists",
             req.new_name
         )));
     }
     if old_dir.exists() {
-        fs::rename(&old_dir, &new_dir)?;
+        rename_path(&old_dir, &new_dir)?;
     }
     ws.name = req.new_name;
     let updated = ws.clone();
@@ -173,6 +178,45 @@ mod tests {
         assert_eq!(renamed.name, "b");
         delete(d.path(), &ws.id).unwrap();
         assert!(list(d.path()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn rename_to_same_name_is_noop() {
+        let d = tmp();
+        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        let renamed = rename(
+            d.path(),
+            &ws.id,
+            RenameWorkspace {
+                new_name: "alpha".into(),
+            },
+        )
+        .unwrap();
+        assert_eq!(renamed.name, "alpha");
+        assert_eq!(list(d.path()).unwrap().len(), 1);
+        assert!(d.path().join("alpha").is_dir());
+    }
+
+    /// Case-only workspace rename ("Acme" -> "ACME"). On case-insensitive
+    /// filesystems the new folder resolves to the old one, so the previous
+    /// `old_dir != new_dir` string compare reported a spurious conflict.
+    #[test]
+    fn rename_case_only_change() {
+        let d = tmp();
+        let ws = create(d.path(), CreateWorkspace { name: "Acme".into() }).unwrap();
+        let renamed = rename(
+            d.path(),
+            &ws.id,
+            RenameWorkspace {
+                new_name: "ACME".into(),
+            },
+        )
+        .unwrap();
+        assert_eq!(renamed.name, "ACME");
+        let all = list(d.path()).unwrap();
+        assert_eq!(all.len(), 1, "case-only rename must not duplicate workspace");
+        assert_eq!(all[0].name, "ACME");
+        assert!(d.path().join("ACME").is_dir());
     }
 
     /// Concurrent writers must not corrupt `workspaces.json`. Mirrors the
