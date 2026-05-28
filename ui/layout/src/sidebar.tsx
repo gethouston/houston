@@ -91,7 +91,10 @@ export function AppSidebar({
 
   const commitRename = (id: string) => {
     const trimmed = editValue.trim();
-    if (trimmed && onRename) onRename(id, trimmed);
+    const originalName = items.find((it) => it.id === id)?.name;
+    if (trimmed && trimmed !== originalName && onRename) {
+      onRename(id, trimmed);
+    }
     setEditingId(null);
   };
 
