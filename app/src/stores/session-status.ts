@@ -5,6 +5,7 @@ export type SessionRunStatus = "starting" | "running" | "completed" | "error";
 interface SessionStatusState {
   statuses: Record<string, SessionRunStatus>;
   setStatus: (agentPath: string, sessionKey: string, status: SessionRunStatus) => void;
+  clearAll: () => void;
 }
 
 export function getSessionStatusKey(agentPath: string, sessionKey: string) {
@@ -20,6 +21,7 @@ export const useSessionStatusStore = create<SessionStatusState>((set) => ({
         [getSessionStatusKey(agentPath, sessionKey)]: status,
       },
     })),
+  clearAll: () => set({ statuses: {} }),
 }));
 
 export function useSessionStatus(agentPath: string, sessionKey: string) {

@@ -15,6 +15,7 @@ pub(crate) async fn spawn_codex(
     provider: Provider,
     prompt: String,
     resume_session_id: Option<String>,
+    resume_fallback_prompt: Option<String>,
     working_dir: Option<std::path::PathBuf>,
     model: Option<String>,
     effort: Option<String>,
@@ -62,8 +63,18 @@ pub(crate) async fn spawn_codex(
             effort.as_deref(),
             system_prompt.as_deref(),
         );
-        run_cli_process(tx, &mut fresh_cmd, &prompt, provider).await;
+        run_cli_process(
+            tx,
+            &mut fresh_cmd,
+            fresh_retry_prompt(&prompt, resume_fallback_prompt.as_deref()),
+            provider,
+        )
+        .await;
     }
+}
+
+fn fresh_retry_prompt<'a>(prompt: &'a str, resume_fallback_prompt: Option<&'a str>) -> &'a str {
+    resume_fallback_prompt.unwrap_or(prompt)
 }
 
 fn build_codex_command(
@@ -96,4 +107,18 @@ fn build_codex_command(
         cmd.current_dir(dir);
     }
     cmd
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn fresh_retry_uses_recovery_prompt_when_available() {
+        assert_eq!(
+            fresh_retry_prompt("latest", Some("recovered history + latest")),
+            "recovered history + latest"
+        );
+        assert_eq!(fresh_retry_prompt("latest", None), "latest");
+    }
 }

@@ -150,6 +150,58 @@ pub fn set_status_by_session_key(
     Ok(Some(result))
 }
 
+/// Recover a persisted activity row that still says `running` even though the
+/// engine no longer owns a queued turn or provider process for it.
+pub fn clear_stale_running_by_session_key(
+    root: &Path,
+    session_key: &str,
+) -> CoreResult<Option<Activity>> {
+    let mut items = list(root)?;
+    let implied_id = session_key.strip_prefix("activity-");
+    let Some(item) = items.iter_mut().find(|t| {
+        t.session_key.as_deref() == Some(session_key) || implied_id.is_some_and(|id| t.id == id)
+    }) else {
+        return Ok(None);
+    };
+
+    if item.session_key.as_deref() != Some(session_key) {
+        item.session_key = Some(session_key.to_string());
+    }
+    if item.status != "running" {
+        return Ok(None);
+    }
+
+    item.status = "needs_you".to_string();
+    item.updated_at = Some(Utc::now().to_rfc3339());
+    let result = item.clone();
+    write_json(root, FILE, &items)?;
+    Ok(Some(result))
+}
+
+/// On boot, no in-memory provider process or queued turn survives. Any
+/// persisted activity row still marked `running` is an orphan from the previous
+/// engine process and should become actionable again instead of spinning
+/// forever in the UI.
+pub fn sweep_orphan_running(root: &Path) -> CoreResult<usize> {
+    let mut items = list(root)?;
+    let mut repaired = 0usize;
+    let now = Utc::now().to_rfc3339();
+
+    for item in &mut items {
+        if item.status == "running" {
+            item.status = "needs_you".to_string();
+            item.updated_at = Some(now.clone());
+            repaired += 1;
+        }
+    }
+
+    if repaired > 0 {
+        write_json(root, FILE, &items)?;
+    }
+
+    Ok(repaired)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -245,6 +297,58 @@ mod tests {
             .expect("call succeeds");
 
         assert!(result.is_none());
+    }
+
+    #[test]
+    fn clears_only_running_activity_for_stale_cancel() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let running = seed_activity(dir.path(), Some("chat-running"), "running");
+        let done = seed_activity(dir.path(), Some("chat-done"), "done");
+
+        let result = clear_stale_running_by_session_key(dir.path(), "chat-running")
+            .expect("stale flip")
+            .expect("running activity found");
+
+        assert_eq!(result.id, running.id);
+        assert_eq!(result.status, "needs_you");
+
+        let done_result = clear_stale_running_by_session_key(dir.path(), "chat-done")
+            .expect("non-running row should not error");
+        assert!(done_result.is_none());
+
+        let persisted = list(dir.path()).unwrap();
+        assert_eq!(
+            persisted
+                .iter()
+                .find(|item| item.id == done.id)
+                .expect("done row")
+                .status,
+            "done"
+        );
+    }
+
+    #[test]
+    fn sweeps_orphan_running_rows_to_needs_you() {
+        let dir = tempfile::TempDir::new().unwrap();
+        let first = seed_activity(dir.path(), Some("chat-one"), "running");
+        let second = seed_activity(dir.path(), Some("chat-two"), "needs_you");
+        let third = seed_activity(dir.path(), Some("chat-three"), "running");
+
+        let repaired = sweep_orphan_running(dir.path()).expect("sweep");
+
+        assert_eq!(repaired, 2);
+        let persisted = list(dir.path()).unwrap();
+        let status = |id: &str| {
+            persisted
+                .iter()
+                .find(|item| item.id == id)
+                .expect("activity exists")
+                .status
+                .as_str()
+        };
+        assert_eq!(status(&first.id), "needs_you");
+        assert_eq!(status(&second.id), "needs_you");
+        assert_eq!(status(&third.id), "needs_you");
     }
 
     #[test]

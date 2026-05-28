@@ -87,6 +87,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             ctx.run.session_key.clone(),
             ctx.prompt.to_string(),
             resume_id,
+            None,
             ctx.working_dir.to_path_buf(),
             Some(system_prompt),
             Some(sid_handle),

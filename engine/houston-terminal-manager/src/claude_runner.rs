@@ -37,6 +37,7 @@ pub(crate) async fn spawn_claude(
     provider: Provider,
     prompt: String,
     resume_session_id: Option<String>,
+    resume_fallback_prompt: Option<String>,
     working_dir: Option<std::path::PathBuf>,
     model: Option<String>,
     effort: Option<String>,
@@ -80,10 +81,11 @@ pub(crate) async fn spawn_claude(
             "[houston:session] claude resume failed ({outcome:?}); retrying fresh"
         );
         let _ = tx.send(SessionUpdate::ResumeInvalid);
+        let retry_prompt = fresh_retry_prompt(&prompt, resume_fallback_prompt.as_deref());
         retry_fresh(
             tx,
             provider,
-            &prompt,
+            retry_prompt,
             working_dir.as_deref(),
             model.as_deref(),
             effort.as_deref(),
@@ -241,6 +243,10 @@ fn should_retry_fresh_after_resume_failure(
     ) && resume_session_id.is_some()
 }
 
+fn fresh_retry_prompt<'a>(prompt: &'a str, resume_fallback_prompt: Option<&'a str>) -> &'a str {
+    resume_fallback_prompt.unwrap_or(prompt)
+}
+
 fn send_malformed_provider_json_status(tx: &mpsc::UnboundedSender<SessionUpdate>) {
     let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(
         MALFORMED_PROVIDER_JSON_MESSAGE.to_string(),
@@ -290,5 +296,14 @@ mod tests {
             CliRunOutcome::CodexResumeMissing,
             Some("claude-session-id"),
         ));
+    }
+
+    #[test]
+    fn fresh_retry_uses_recovery_prompt_when_available() {
+        assert_eq!(
+            fresh_retry_prompt("latest", Some("recovered history + latest")),
+            "recovered history + latest"
+        );
+        assert_eq!(fresh_retry_prompt("latest", None), "latest");
     }
 }

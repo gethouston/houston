@@ -275,6 +275,37 @@ async fn run_start(
         .get_for_session(&agent_key, &working_dir, &session_key, provider)
         .await;
     let resume_id = sid_handle.get().await;
+    let resume_recovery_prompt = if resume_id.is_some() {
+        let activity_hint = match activity_hint_for_session_key(&agent_dir, &session_key) {
+            Ok(hint) => hint,
+            Err(e) => {
+                tracing::warn!(
+                    "[sessions] failed to load activity hint for resume recovery: {e} (session_key={session_key})"
+                );
+                None
+            }
+        };
+        match history::resume_recovery_prompt(
+            &db,
+            &working_dir,
+            Some(&agent_dir),
+            &session_key,
+            &prompt,
+            activity_hint.as_deref(),
+        )
+        .await
+        {
+            Ok(prompt) => prompt,
+            Err(e) => {
+                tracing::warn!(
+                    "[sessions] failed to build resume recovery prompt: {e} (session_key={session_key})"
+                );
+                None
+            }
+        }
+    } else {
+        None
+    };
 
     tracing::info!(
         "[sessions] start agent_dir={} session_key={} resume_id={:?} provider={}",
@@ -324,6 +355,7 @@ async fn run_start(
         session_key.clone(),
         prompt,
         resume_id,
+        resume_recovery_prompt,
         working_dir,
         system_prompt,
         Some(sid_handle),
@@ -441,6 +473,36 @@ async fn run_start(
     Ok(())
 }
 
+fn activity_hint_for_session_key(
+    agent_dir: &Path,
+    session_key: &str,
+) -> CoreResult<Option<String>> {
+    let implied_id = session_key.strip_prefix("activity-");
+    let activity = crate::agents::activity::list(agent_dir)?
+        .into_iter()
+        .find(|item| {
+            item.session_key.as_deref() == Some(session_key)
+                || implied_id.is_some_and(|id| item.id == id)
+        });
+    let Some(activity) = activity else {
+        return Ok(None);
+    };
+
+    let title = activity.title.trim();
+    let description = activity.description.trim();
+    let hint = match (
+        title.is_empty(),
+        description.is_empty(),
+        title == description,
+    ) {
+        (true, true, _) => None,
+        (false, true, _) | (false, false, true) => Some(title.to_string()),
+        (true, false, _) => Some(description.to_string()),
+        (false, false, false) => Some(format!("{title}\n\n{description}")),
+    };
+    Ok(hint)
+}
+
 /// Cancel a running or queued session. On Unix sends `SIGTERM` to the
 /// provider process group; on Windows issues `taskkill /PID <pid> /T /F`
 /// (terminates the process tree). Emits a `Stopped by user` feed item +
@@ -479,7 +541,26 @@ pub async fn cancel(
             }
         }
     } else if !had_queued {
-        return false;
+        match crate::agents::activity::clear_stale_running_by_session_key(
+            Path::new(agent_path),
+            session_key,
+        ) {
+            Ok(Some(_)) => {
+                tracing::info!(
+                    "[sessions] cleared stale running activity on cancel session_key={session_key}"
+                );
+                events.emit(HoustonEvent::ActivityChanged {
+                    agent_path: agent_path.to_string(),
+                });
+            }
+            Ok(None) => return false,
+            Err(e) => {
+                tracing::warn!(
+                    "[sessions] failed to clear stale running activity on cancel: {e} (session_key={session_key})"
+                );
+                return false;
+            }
+        }
     }
 
     events.emit(HoustonEvent::FeedItem {
@@ -646,5 +727,54 @@ mod tests {
         assert_eq!(accepted, "chat-test");
         assert!(cancel(&rt, &events, &dir.path().to_string_lossy(), "chat-test",).await);
         drop(guard);
+    }
+
+    #[tokio::test]
+    async fn cancel_clears_stale_running_activity_without_pid_or_queue() {
+        let rt = SessionRuntime::default();
+        let dir = TempDir::new().unwrap();
+        let activity = crate::agents::activity::create(
+            dir.path(),
+            crate::agents::types::NewActivity {
+                title: "stale".into(),
+                description: String::new(),
+                agent: None,
+                worktree_path: None,
+                provider: None,
+                model: None,
+            },
+        )
+        .unwrap();
+        let session_key = activity.session_key.clone().expect("session key");
+        let events: DynEventSink = Arc::new(NoopEventSink);
+
+        assert!(cancel(&rt, &events, &dir.path().to_string_lossy(), &session_key).await);
+
+        let persisted = crate::agents::activity::list(dir.path()).unwrap();
+        assert_eq!(persisted[0].status, "needs_you");
+    }
+
+    #[test]
+    fn activity_hint_for_recovery_uses_title_and_description() {
+        let dir = TempDir::new().unwrap();
+        let activity = crate::agents::activity::create(
+            dir.path(),
+            crate::agents::types::NewActivity {
+                title: "Investigate stuck chat".into(),
+                description: "Original prompt details".into(),
+                agent: None,
+                worktree_path: None,
+                provider: None,
+                model: None,
+            },
+        )
+        .unwrap();
+        let session_key = activity.session_key.expect("session key");
+
+        let hint = activity_hint_for_session_key(dir.path(), &session_key)
+            .expect("hint lookup")
+            .expect("hint");
+
+        assert_eq!(hint, "Investigate stuck chat\n\nOriginal prompt details");
     }
 }

@@ -127,6 +127,25 @@ export function getEngineWs(): EngineWebSocket {
   return _ws;
 }
 
+const restartListeners = new Set<() => void>();
+
+export function onEngineRestarted(listener: () => void): () => void {
+  restartListeners.add(listener);
+  return () => {
+    restartListeners.delete(listener);
+  };
+}
+
+function notifyEngineRestarted() {
+  for (const listener of restartListeners) {
+    try {
+      listener();
+    } catch (err) {
+      console.error("[engine] restart listener failed", err);
+    }
+  }
+}
+
 // --- Tauri event wiring ----------------------------------------------
 //
 // `houston-engine-ready` fires ONCE after initial /v1/health passes. This
@@ -159,6 +178,7 @@ listen<{ baseUrl: string; token: string }>(
       }
       _ws = null;
     }
+    notifyEngineRestarted();
   },
 ).catch(() => {
   /* non-Tauri env */
