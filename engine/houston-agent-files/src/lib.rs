@@ -513,6 +513,72 @@ mod tests {
         assert_eq!(fs::read_to_string(&new).unwrap(), "[{\"id\":\"a\"}]");
     }
 
+    // --- Full upgrade-path coverage through migrate_agent_data ---
+    // The alias unit tests above call migrate_config_model_aliases directly on a
+    // pre-seeded FOLDER config. These drive the REAL upgrade sequence a user
+    // hits: a legacy FLAT `.houston/config.json` that the layout step copies to
+    // the per-type folder, which the alias rewrite then runs against. This also
+    // pins the load-bearing ordering (layout copy BEFORE alias rewrite).
+
+    fn write_flat_config(agent_root: &Path, body: &str) {
+        let flat = agent_root.join(".houston/config.json");
+        fs::create_dir_all(flat.parent().unwrap()).unwrap();
+        fs::write(&flat, body).unwrap();
+    }
+
+    #[test]
+    fn migrate_agent_data_rewrites_alias_via_flat_to_folder_and_preserves_siblings() {
+        let dir = TempDir::new().unwrap();
+        write_flat_config(
+            dir.path(),
+            r#"{"provider":"anthropic","model":"opus","effort":"high","worktreeMode":true}"#,
+        );
+
+        migrate_agent_data(dir.path()).unwrap();
+
+        let cfg = read_config(dir.path());
+        assert_eq!(cfg["model"], "claude-opus-4-7");
+        assert_eq!(cfg["provider"], "anthropic");
+        assert_eq!(cfg["effort"], "high");
+        // An unknown sibling key survives the raw-Object rewrite.
+        assert_eq!(cfg["worktreeMode"], true);
+    }
+
+    #[test]
+    fn migrate_agent_data_leaves_stale_flat_config_untouched() {
+        // The flat file is a deliberate rollback safety net; no step rewrites it.
+        let dir = TempDir::new().unwrap();
+        write_flat_config(dir.path(), r#"{"model":"opus"}"#);
+
+        migrate_agent_data(dir.path()).unwrap();
+
+        let flat = fs::read_to_string(dir.path().join(".houston/config.json")).unwrap();
+        assert!(flat.contains("opus"), "flat config must stay as a rollback net: {flat}");
+    }
+
+    #[test]
+    fn migrate_agent_data_rewrites_both_keys_via_full_path() {
+        let dir = TempDir::new().unwrap();
+        write_flat_config(dir.path(), r#"{"model":"opus","claude_model":"sonnet"}"#);
+
+        migrate_agent_data(dir.path()).unwrap();
+
+        let cfg = read_config(dir.path());
+        assert_eq!(cfg["model"], "claude-opus-4-7");
+        assert_eq!(cfg["claude_model"], "claude-sonnet-4-6");
+    }
+
+    #[test]
+    fn migrate_agent_data_is_idempotent_on_config_alias() {
+        let dir = TempDir::new().unwrap();
+        write_flat_config(dir.path(), r#"{"model":"opus"}"#);
+
+        migrate_agent_data(dir.path()).unwrap();
+        migrate_agent_data(dir.path()).unwrap();
+
+        assert_eq!(read_config(dir.path())["model"], "claude-opus-4-7");
+    }
+
     #[test]
     fn migrate_removes_legacy_product_prompts() {
         let dir = TempDir::new().unwrap();

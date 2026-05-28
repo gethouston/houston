@@ -156,6 +156,36 @@ export function validModelOrNull(
   return providerId && modelId && getModel(providerId, modelId) ? modelId : null;
 }
 
+/**
+ * Retired Claude CLI aliases → the explicit catalog ID that replaced them.
+ * Mirrors the engine map in `houston-agent-files/src/lib.rs`
+ * (`LEGACY_MODEL_ALIASES`) — keep both in sync.
+ */
+const LEGACY_MODEL_ALIASES: Readonly<Record<string, string>> = {
+  opus: "claude-opus-4-7",
+  sonnet: "claude-sonnet-4-6",
+};
+
+/**
+ * Interpret a model value that may have been persisted by an older Houston
+ * build. The catalog pins explicit versions now, so a stored `"opus"`/`"sonnet"`
+ * (an agent config the engine has not migrated yet, or an activity record —
+ * those are never migrated) must be read as the version it denoted rather than
+ * treated as unknown. Without this, `validModelOrNull` would null a legacy
+ * `"opus"` and the effective-model chain would fall through to the default,
+ * silently downgrading an Opus agent to Sonnet. Already-explicit IDs and other
+ * providers' models pass through unchanged; null/undefined returns null so it
+ * composes in `??` chains.
+ */
+export function normalizeLegacyModel(model: string | null | undefined): string | null {
+  if (!model) return null;
+  // `hasOwnProperty` guard so a hand-edited config with a model like
+  // "constructor"/"__proto__" resolves to itself, not an Object.prototype member.
+  return Object.prototype.hasOwnProperty.call(LEGACY_MODEL_ALIASES, model)
+    ? LEGACY_MODEL_ALIASES[model]
+    : model;
+}
+
 /** Reasoning-effort levels the given provider+model accepts (low→high). */
 export function getEffortLevels(
   providerId: string | null | undefined,

@@ -1,6 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { getEffortLevels, validEffortOrDefault } from "./providers.ts";
+import {
+  getEffortLevels,
+  validEffortOrDefault,
+  validModelOrNull,
+  normalizeLegacyModel,
+} from "./providers.ts";
 
 test("effort levels are per model", () => {
   // Codex: has xhigh, no max.
@@ -67,4 +72,41 @@ test("validEffortOrDefault falls back to default when unset or garbage", () => {
 
 test("validEffortOrDefault is undefined for models without effort control", () => {
   assert.equal(validEffortOrDefault("gemini", "gemini-2.5-pro", "high"), undefined);
+});
+
+test("validModelOrNull rejects retired aliases and accepts catalog IDs", () => {
+  assert.equal(validModelOrNull("anthropic", "opus"), null);
+  assert.equal(validModelOrNull("anthropic", "sonnet"), null);
+  assert.equal(validModelOrNull("anthropic", "claude-opus-4-8"), "claude-opus-4-8");
+  assert.equal(validModelOrNull("anthropic", "claude-opus-4-7"), "claude-opus-4-7");
+  assert.equal(validModelOrNull("anthropic", "claude-sonnet-4-6"), "claude-sonnet-4-6");
+});
+
+test("normalizeLegacyModel maps retired aliases, passes everything else through", () => {
+  assert.equal(normalizeLegacyModel("opus"), "claude-opus-4-7");
+  assert.equal(normalizeLegacyModel("sonnet"), "claude-sonnet-4-6");
+  // Already-explicit IDs and other providers' models are untouched.
+  assert.equal(normalizeLegacyModel("claude-opus-4-8"), "claude-opus-4-8");
+  assert.equal(normalizeLegacyModel("gpt-5.5"), "gpt-5.5");
+  // null/undefined return null so it composes in `??` chains.
+  assert.equal(normalizeLegacyModel(null), null);
+  assert.equal(normalizeLegacyModel(undefined), null);
+  // Object-prototype keys are not aliases: a hand-edited config must pass
+  // through, never resolve to an Object.prototype member.
+  assert.equal(normalizeLegacyModel("constructor"), "constructor");
+  assert.equal(normalizeLegacyModel("__proto__"), "__proto__");
+  assert.equal(normalizeLegacyModel("toString"), "toString");
+});
+
+test("normalized legacy model resolves through validModelOrNull (no Opus->Sonnet downgrade)", () => {
+  // The chat panel normalizes a stored model before validModelOrNull: a legacy
+  // "opus" must resolve to Opus 4.7, never fall through to the Sonnet default.
+  assert.equal(
+    validModelOrNull("anthropic", normalizeLegacyModel("opus")),
+    "claude-opus-4-7",
+  );
+  assert.equal(
+    validModelOrNull("anthropic", normalizeLegacyModel("sonnet")),
+    "claude-sonnet-4-6",
+  );
 });

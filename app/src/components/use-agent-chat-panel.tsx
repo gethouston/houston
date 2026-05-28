@@ -71,6 +71,7 @@ import {
   getDefaultModel,
   validModelOrNull,
   validEffortOrDefault,
+  normalizeLegacyModel,
   type EffortLevel,
 } from "../lib/providers";
 import { analytics } from "../lib/analytics";
@@ -158,8 +159,12 @@ export function useAgentChatPanel({
 
   // ── Activity / agent tier model resolution ─────────────────────────────
   // Activity is the per-mission override; agent config is the per-agent
-  // default. Workspace-level defaults were retired; existing values were
-  // migrated into agent configs at engine boot.
+  // default. Workspace-level defaults were retired and pushed into agent
+  // configs. Legacy Claude model aliases ("opus"/"sonnet") are normalized to
+  // their explicit version IDs on read (mirrors the engine migration) so a
+  // stored alias never falls through to the default model and silently
+  // downgrades an Opus agent to Sonnet — activity records in particular are
+  // never migrated on disk, so this read-side guard is what covers them.
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
@@ -174,7 +179,7 @@ export function useAgentChatPanel({
       .read(path)
       .then((cfg) => {
         setAgentProvider((cfg.provider as string) ?? null);
-        setAgentModel((cfg.model as string) ?? null);
+        setAgentModel(normalizeLegacyModel((cfg.model as string) ?? null));
         setAgentEffort((cfg.effort as string) ?? null);
       })
       .catch(() => {});
@@ -188,7 +193,7 @@ export function useAgentChatPanel({
     ) ?? null;
   }, [activities, selectedSessionKey]);
   const activityProvider = selectedActivity?.provider ?? null;
-  const activityModel = selectedActivity?.model ?? null;
+  const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
   const selectedActivityId = selectedActivity?.id ?? null;
 
   const effectiveProvider = activityProvider ?? agentProvider ?? "anthropic";
