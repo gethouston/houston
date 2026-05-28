@@ -1019,13 +1019,16 @@ jobs:
       # Sentry upload (Windows): Rust debug symbols for the matrix-arch
       # houston-engine.exe + its .pdb (MSVC emits PDBs alongside the binary
        # in release mode with debug = "line-tables-only" in workspace Cargo).
-      # Source maps are uploaded once by the macOS job — same JS bundle ships
-      # to both platforms, so we don't duplicate the upload here.
+      # Source maps are uploaded per-arch (NOT once from the macOS job): Vite
+      # content-hashes the bundle on every build, so the Windows x64 / arm64 /
+      # macOS bundles ship distinct filenames (e.g. index-<hash>.js). Uploading
+      # only from macOS left every Windows JS frame unmatchable; each arch must
+      # upload its own app/dist to the shared release.
       #
       # x86_64 + aarch64 each run this in parallel via the matrix; both
       # contribute their debug symbols to the same `houston-app@<version>`
       # release. Skips silently when SENTRY_AUTH_TOKEN is unset.
-      - name: Upload Rust debug symbols to Sentry (${{ matrix.arch }})
+      - name: Upload source maps + Rust debug symbols to Sentry (${{ matrix.arch }})
         if: ${{ env.SENTRY_AUTH_TOKEN != '' }}
         shell: bash
         env:
@@ -1055,6 +1058,15 @@ jobs:
             exit 1
           fi
           "$SENTRY_CLI" --version
+
+          echo "=== Inject + upload ${{ matrix.target }} Vite source maps ==="
+          # This arch's bundle carries its own Vite content-hashes, so its maps
+          # must be uploaded under the shared release or Windows JS frames stay
+          # minified in Sentry. `releases new` is idempotent and guards the
+          # parallel race with the macOS job, which also creates this release.
+          "$SENTRY_CLI" releases new "$RELEASE"
+          "$SENTRY_CLI" sourcemaps inject app/dist
+          "$SENTRY_CLI" sourcemaps upload --release "$RELEASE" app/dist
 
           echo "=== Upload ${{ matrix.target }} debug symbols ==="
           # MSVC emits the PDB next to the .exe; Rust converts the binary's
