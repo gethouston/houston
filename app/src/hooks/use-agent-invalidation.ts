@@ -65,6 +65,12 @@ export function useAgentInvalidation() {
         case "ComposioConnectionAdded":
           qc.invalidateQueries({ queryKey: queryKeys.connectedToolkits() });
           break;
+        // A provider OAuth sign-in (or sign-out) finished — refresh the
+        // cached provider statuses so the chat model picker reflects the new
+        // connection without waiting for the next mount (issue #342).
+        case "ProviderLoginComplete":
+          qc.invalidateQueries({ queryKey: queryKeys.providerStatuses() });
+          break;
       }
     });
 

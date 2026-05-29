@@ -1,0 +1,113 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {
+  providerPickerState,
+  shouldShowProviderInPicker,
+} from "./model-picker.ts";
+
+const CONNECTED = { cli_installed: true, authenticated: true };
+const INSTALLED_UNAUTH = { cli_installed: true, authenticated: false };
+const MISSING = { cli_installed: false, authenticated: false };
+
+test("providerPickerState: known statuses map to connected / disconnected", () => {
+  assert.equal(providerPickerState(CONNECTED, false), "connected");
+  // A connected status wins even if a background refetch is in flight.
+  assert.equal(providerPickerState(CONNECTED, true), "connected");
+  assert.equal(providerPickerState(INSTALLED_UNAUTH, false), "disconnected");
+  assert.equal(providerPickerState(MISSING, false), "disconnected");
+});
+
+test("providerPickerState: missing status is 'checking' only while loading", () => {
+  // The #342 fix: before statuses resolve, providers read as 'checking', NOT
+  // 'disconnected', so the picker never shows a false "Not connected".
+  assert.equal(providerPickerState(undefined, true), "checking");
+  // Not loading + no status (e.g. the fetch failed) degrades to disconnected
+  // rather than spinning forever.
+  assert.equal(providerPickerState(undefined, false), "disconnected");
+});
+
+test("shouldShowProviderInPicker: 'checking' keeps every provider visible (#342)", () => {
+  // Before resolution a non-active provider must stay visible so the list does
+  // not collapse to a single "Not connected" entry — the reported bug.
+  assert.equal(
+    shouldShowProviderInPicker({
+      providerId: "openai",
+      state: "checking",
+      isActiveProvider: false,
+      effectiveLock: null,
+    }),
+    true,
+  );
+});
+
+test("shouldShowProviderInPicker: known-disconnected non-active providers are hidden", () => {
+  assert.equal(
+    shouldShowProviderInPicker({
+      providerId: "openai",
+      state: "disconnected",
+      isActiveProvider: false,
+      effectiveLock: null,
+    }),
+    false,
+  );
+});
+
+test("shouldShowProviderInPicker: connected non-active providers are shown", () => {
+  assert.equal(
+    shouldShowProviderInPicker({
+      providerId: "openai",
+      state: "connected",
+      isActiveProvider: false,
+      effectiveLock: null,
+    }),
+    true,
+  );
+});
+
+test("shouldShowProviderInPicker: the active provider is always shown", () => {
+  for (const state of ["connected", "disconnected", "checking"]) {
+    assert.equal(
+      shouldShowProviderInPicker({
+        providerId: "anthropic",
+        state,
+        isActiveProvider: true,
+        effectiveLock: null,
+      }),
+      true,
+      `active provider should show while ${state}`,
+    );
+  }
+});
+
+test("shouldShowProviderInPicker: a lock hides every other provider", () => {
+  // Non-locked provider hidden even when connected.
+  assert.equal(
+    shouldShowProviderInPicker({
+      providerId: "openai",
+      state: "connected",
+      isActiveProvider: false,
+      effectiveLock: "anthropic",
+    }),
+    false,
+  );
+  // The locked provider shows.
+  assert.equal(
+    shouldShowProviderInPicker({
+      providerId: "anthropic",
+      state: "connected",
+      isActiveProvider: true,
+      effectiveLock: "anthropic",
+    }),
+    true,
+  );
+  // A still-checking locked provider shows too (only it).
+  assert.equal(
+    shouldShowProviderInPicker({
+      providerId: "anthropic",
+      state: "checking",
+      isActiveProvider: true,
+      effectiveLock: "anthropic",
+    }),
+    true,
+  );
+});

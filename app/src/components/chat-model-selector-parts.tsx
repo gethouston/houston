@@ -6,6 +6,7 @@ import {
   DropdownMenuSeparator,
 } from "@houston-ai/core";
 import { type ProviderInfo } from "../lib/providers";
+import { type ProviderPickerState } from "../lib/model-picker";
 import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
 
 /**
@@ -16,27 +17,31 @@ import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
 
 export function ProviderModelGroup({
   provider,
-  connected,
+  state,
   isActiveProvider,
   activeModel,
   onSelect,
   showSeparator,
 }: {
   provider: ProviderInfo;
-  connected: boolean;
+  state: ProviderPickerState;
   isActiveProvider: boolean;
   activeModel: string | null;
   onSelect: (provider: string, model: string) => void;
   showSeparator: boolean;
 }) {
   const { t } = useTranslation("chat");
+  const connected = state === "connected";
   return (
     <>
       {showSeparator && <DropdownMenuSeparator />}
       <DropdownMenuLabel className="flex items-center gap-1.5 text-xs text-muted-foreground font-normal">
         <ProviderIcon providerId={provider.id} className="size-3.5" />
         {provider.name}
-        {!connected && (
+        {state === "checking" && (
+          <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.checking")}</span>
+        )}
+        {state === "disconnected" && (
           <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.notConnected")}</span>
         )}
       </DropdownMenuLabel>

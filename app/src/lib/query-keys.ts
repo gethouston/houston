@@ -32,4 +32,10 @@ export const queryKeys = {
   connections: () => ["connections"] as const,
   composioApps: () => ["composio-apps"] as const,
   connectedToolkits: () => ["connected-toolkits"] as const,
+  /**
+   * Provider connection statuses for the chat model picker. Invalidated on
+   * `ProviderLoginComplete` so a fresh sign-in flips the picker live instead
+   * of waiting for the next mount (issue #342).
+   */
+  providerStatuses: () => ["provider-statuses"] as const,
 };

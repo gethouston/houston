@@ -59,6 +59,7 @@
     "selectModel": "Elige un modelo",
     "model": "Modelo",
     "notConnected": "Sin conexión",
+    "checking": "Verificando...",
     "effort": "Esfuerzo de razonamiento",
     "effortLevels": {
       "low": "Bajo",
