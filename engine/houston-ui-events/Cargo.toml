@@ -1,6 +1,6 @@
 [package]
 name = "houston-ui-events"
-version = "0.4.14"
+version = "0.4.15"
 edition = "2021"
 description = "Event types emitted from Houston backend to the UI via Tauri's event bus"
 license = "MIT"
