@@ -1,6 +1,6 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { isMacPlatform } from "../src/lib/platform.ts";
+import { detectPlatformOs, isMacPlatform } from "../src/lib/platform.ts";
 
 // `isMacPlatform` gates the whole notification fix: macOS keeps the JS
 // notification plugin, every other OS routes through the Rust command. A
@@ -34,5 +34,42 @@ describe("isMacPlatform", () => {
     strictEqual(isMacPlatform(undefined, undefined), false);
     strictEqual(isMacPlatform(null, null), false);
     strictEqual(isMacPlatform("", ""), false);
+  });
+});
+
+describe("detectPlatformOs", () => {
+  it("normalizes macOS", () => {
+    strictEqual(detectPlatformOs("MacIntel", "Mozilla/5.0 (Macintosh)"), "macos");
+  });
+
+  it("normalizes Windows", () => {
+    strictEqual(
+      detectPlatformOs("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64)"),
+      "windows",
+    );
+  });
+
+  it("normalizes Linux", () => {
+    strictEqual(
+      detectPlatformOs("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64)"),
+      "linux",
+    );
+  });
+
+  it("falls back to userAgent when platform is empty", () => {
+    strictEqual(
+      detectPlatformOs("", "Mozilla/5.0 (Windows NT 10.0; Win64)"),
+      "windows",
+    );
+  });
+
+  it("prefers platform over userAgent", () => {
+    strictEqual(detectPlatformOs("Win32", "Mozilla/5.0 (Macintosh)"), "windows");
+  });
+
+  it("returns unknown when navigator fields are missing or empty", () => {
+    strictEqual(detectPlatformOs(undefined, undefined), "unknown");
+    strictEqual(detectPlatformOs(null, null), "unknown");
+    strictEqual(detectPlatformOs("", ""), "unknown");
   });
 });

@@ -22,7 +22,7 @@ Four prod systems. All **dormant by default** — activate only when env vars se
 - **Install identity:** `app/src/lib/install-id.ts` — mints a UUID on first launch, persists via `tauriPreferences` (`install_id` key). Used as anonymous PostHog `distinct_id` until sign-in, then `analytics.alias/identify` merges history to the Supabase user.
 - **User identity:** `distinct_id` is the stable Supabase user id. `email` and `email_domain` are PostHog person properties only, used for lookup, company-domain filtering, and B2B usage checks.
 - **Debug/Release:** `import.meta.env.DEV` → `is_debug` super property. Filter it out in dashboards to exclude dev activity.
-- **Super properties:** `app_version`, `os`, `install_id`, `is_debug`.
+- **Super properties:** `app_version`, `app_os` (normalized: `macos` / `windows` / `linux` / `unknown`), `os` (raw legacy `navigator.platform`), `install_id`, `is_debug`.
 - **Privacy:** no workspace names, agent names, raw prompts, raw message text, file paths, session keys, or raw error text in PostHog event props. Email is allowed only as a person property after auth, never as an event property.
 
 ### Event surface
@@ -46,7 +46,7 @@ Event names + props are allowlisted in `AnalyticsEventName` / `AnalyticsProperty
 
 8 themed dashboards, each opens with one question. Numeric prefix sets the sidebar order to match daily reading flow:
 
-1. **Houston / 1. Acquisition** (id 1631626) — where users come from. Installs over time + UTM-campaign + OS breakdown
+1. **Houston / 1. Acquisition** (id 1631626) — where users come from. Installs over time + UTM-campaign + normalized `app_os` breakdown
 2. **Houston / 2. Activation** (id 1631629) — where the funnel leaks. Install → activation funnel, time-to-activation, onboarding completion
 3. **Houston / 3. Engagement** (id 1631631) — DAU/WAU/MAU, stickiness, messages-per-active-day
 4. **Houston / 4. Retention** (id 1631635) — weekly cohort retention, growth accounting, attribution-cohorted retention
@@ -70,7 +70,7 @@ The dashboard tile shows COUNTS. To actually reach people on old versions, use P
 1. Persons → "New cohort" (or ad-hoc filter)
 2. Filter: `app_version` (super property, type **Event property**) `is not` `<latest version>` (e.g. `0.4.3`). Repeat with `is_set` to exclude any persons missing the property.
 3. Optionally also filter `email is_set` — only signed-in users have an email; anonymous installs cannot be emailed.
-4. Export the cohort as CSV. Columns of interest: `email`, `email_domain`, `app_version`, `os`.
+4. Export the cohort as CSV. Columns of interest: `email`, `email_domain`, `app_version`, `install_os`.
 
 Caveats:
 - `app_version` is a SUPER property attached to events, not a person property. So filtering by it on Persons works only if PostHog has seen that person fire an event recently in that version. Long-dormant users may not show up.

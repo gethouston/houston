@@ -1,5 +1,6 @@
 import posthog from "posthog-js";
 import { getInstallId } from "./install-id";
+import { currentPlatformOs } from "./platform";
 import { tauriPreferences } from "./tauri";
 
 // __POSTHOG_KEY__, __POSTHOG_HOST__, __APP_VERSION__ declared in vite-env.d.ts,
@@ -115,6 +116,21 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
 // Bootstrap PostHog at module load so a configured build can capture errors
 // before `analytics.init()` resolves. Product events are fired after init.
 let bootstrapped = false;
+
+function rawNavigatorPlatform() {
+  return typeof navigator !== "undefined" ? navigator.platform : "unknown";
+}
+
+function baseSuperProps() {
+  return {
+    app_version: APP_VERSION,
+    app_os: currentPlatformOs,
+    os: rawNavigatorPlatform(),
+    is_debug: import.meta.env.DEV,
+    session_id: SESSION_ID,
+  };
+}
+
 function bootstrap() {
   if (bootstrapped || !KEY) return;
   bootstrapped = true;
@@ -132,10 +148,7 @@ function bootstrap() {
     advanced_disable_flags: true,
     loaded: (ph) => {
       ph.register({
-        app_version: APP_VERSION,
-        os: typeof navigator !== "undefined" ? navigator.platform : "unknown",
-        is_debug: import.meta.env.DEV,
-        session_id: SESSION_ID,
+        ...baseSuperProps(),
         auth_status: "anonymous",
       });
     },
@@ -248,8 +261,10 @@ export const analytics = {
       posthog.identify(id, {
         first_install_version: firstInstallVersion,
         first_install_date: firstInstallDate,
+        install_os: currentPlatformOs,
       });
       posthog.register({
+        ...baseSuperProps(),
         install_id: id,
         days_since_install: daysBetween(firstInstallDate, activeDate()),
       });
@@ -294,7 +309,7 @@ export const analytics = {
     try {
       posthog.alias(userId);
       posthog.identify(userId, personProps(profile));
-      posthog.register({ auth_status: "authenticated" });
+      posthog.register({ ...baseSuperProps(), auth_status: "authenticated" });
     } catch {
       // Analytics unavailable
     }
@@ -315,7 +330,7 @@ export const analytics = {
     if (!KEY) return;
     try {
       posthog.reset();
-      posthog.register({ auth_status: "anonymous" });
+      posthog.register({ ...baseSuperProps(), auth_status: "anonymous" });
     } catch {
       // Analytics unavailable
     }
