@@ -271,6 +271,11 @@ export function useMissionControl(agents: Agent[]) {
 
   const effectiveLoading = useMemo(() => {
     const out: Record<string, boolean> = {};
+    const itemStatusBySession = new Map<string, string>();
+    for (const item of items) {
+      const sessionKey = (item.metadata?.sessionKey as string | undefined) ?? `activity-${item.id}`;
+      itemStatusBySession.set(sessionKey, item.status);
+    }
     for (const [sessionKey, value] of Object.entries(loading)) {
       if (!value) continue;
       const activityId = sessionKey.replace("activity-", "");
@@ -278,6 +283,10 @@ export function useMissionControl(agents: Agent[]) {
       const status = agentPath
         ? sessionStatuses[getSessionStatusKey(agentPath, sessionKey)]
         : undefined;
+      const activityStatus = itemStatusBySession.get(sessionKey);
+      if (!status && activityStatus && activityStatus !== "running") {
+        continue;
+      }
       if (!status || isActiveSessionStatus(status)) {
         out[sessionKey] = true;
       }

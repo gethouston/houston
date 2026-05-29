@@ -3,6 +3,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { HoustonEvent } from "@houston-ai/core";
 import { queryKeys } from "../lib/query-keys";
 import { subscribeHoustonEvents } from "../lib/events";
+import { onEngineRestarted } from "../lib/engine";
+import { useSessionStatusStore } from "../stores/session-status";
 
 /**
  * Maps agent-change events from Rust (both Tauri command emissions
@@ -14,6 +16,11 @@ export function useAgentInvalidation() {
   const qc = useQueryClient();
 
   useEffect(() => {
+    const offEngineRestarted = onEngineRestarted(() => {
+      useSessionStatusStore.getState().clearAll();
+      qc.invalidateQueries({ queryKey: ["activity"] });
+      qc.invalidateQueries({ queryKey: ["all-conversations"] });
+    });
     const unlisten = subscribeHoustonEvents((p: HoustonEvent) => {
       console.log("[invalidation] event:", p.type, "data" in p ? (p as { data: { agent_path?: string } }).data?.agent_path : "");
 
@@ -69,6 +76,7 @@ export function useAgentInvalidation() {
     });
 
     return () => {
+      offEngineRestarted();
       unlisten();
     };
   }, [qc]);

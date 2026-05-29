@@ -262,9 +262,17 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
   // terminal state.
   const effectiveLoading = useMemo(() => {
     const out: Record<string, boolean> = {};
+    const activityStatusBySession = new Map<string, string>();
+    for (const a of rawItems ?? []) {
+      activityStatusBySession.set(a.session_key ?? `activity-${a.id}`, a.status);
+    }
     for (const [key, value] of Object.entries(loadingState)) {
       if (!value) continue;
       const knownStatus = sessionStatuses[getSessionStatusKey(path, key)];
+      const activityStatus = activityStatusBySession.get(key);
+      if (!knownStatus && activityStatus && activityStatus !== "running") {
+        continue;
+      }
       if (!knownStatus || isActiveSessionStatus(knownStatus)) {
         out[key] = true;
       }
