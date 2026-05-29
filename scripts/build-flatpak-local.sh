@@ -60,8 +60,9 @@ pnpm --dir app build
 printf '==> Build engine sidecar\n'
 cargo build --release -p houston-engine-server
 
-printf '==> Build Tauri app binary\n'
-cargo build --manifest-path app/src-tauri/Cargo.toml --release
+printf '==> Build Tauri app binary (bundled frontend, no devUrl localhost)\n'
+cargo build --manifest-path app/src-tauri/Cargo.toml --release \
+  --features tauri/custom-protocol
 
 [ -x "$APP_BIN" ] || {
   echo "ERROR: app binary missing at $APP_BIN" >&2

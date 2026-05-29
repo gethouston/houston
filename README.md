@@ -57,7 +57,7 @@ flatpak install --user --bundle ".flatpak/Houston-linux-$ARCH.flatpak"
 flatpak run com.houston.app
 ```
 
-This is a local packaging flow for Linux. It stays separate from Tauri's `bundle.targets`. Tagged releases now build and upload both x86_64 and aarch64 Flatpak assets in CI, but Linux installs are still manual and not wired into Houston's in-app updater.
+This is a local packaging flow for Linux. It stays separate from Tauri's `bundle.targets`. The Flatpak is based on `org.gnome.Platform//50` because Tauri needs WebKitGTK 4.1 at runtime, and the build script compiles `houston-app` with `tauri/custom-protocol` so the bundled frontend is embedded instead of falling back to `http://localhost:1420`. Tagged releases now build and upload both x86_64 and aarch64 Flatpak assets in CI, but Linux installs are still manual and not wired into Houston's in-app updater.
 
 ### Build your first agent
 

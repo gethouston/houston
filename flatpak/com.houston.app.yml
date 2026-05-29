@@ -1,7 +1,7 @@
 app-id: com.houston.app
-runtime: org.freedesktop.Platform
-runtime-version: '24.08'
-sdk: org.freedesktop.Sdk
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
 command: houston
 finish-args:
   - --share=network

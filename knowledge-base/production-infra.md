@@ -214,7 +214,7 @@ Houston ships ONE DMG that runs natively on Apple Silicon AND Intel. Same app, s
 
 ## Linux Flatpak
 
-Houston's Linux app packaging still lives outside Tauri `bundle.targets`, but the release workflow now builds and uploads two Flatpak assets on tagged releases: `Houston_<version>_linux_x86_64.flatpak` and `Houston_<version>_linux_aarch64.flatpak` (plus `.sha256` files for each). For local testing, use the staging flow:
+Houston's Linux app packaging still lives outside Tauri `bundle.targets`, but the release workflow now builds and uploads two Flatpak assets on tagged releases: `Houston_<version>_linux_x86_64.flatpak` and `Houston_<version>_linux_aarch64.flatpak` (plus `.sha256` files for each). The manifest targets `org.gnome.Platform//50` + `org.gnome.Sdk//50` because the Tauri shell links `libwebkit2gtk-4.1.so.0` / `libjavascriptcoregtk-4.1.so.0`, which are not present in the freedesktop runtime. For local testing, use the staging flow:
 
 ```bash
 pnpm install
@@ -227,7 +227,8 @@ flatpak run com.houston.app
 
 What it does:
 - builds the web assets
-- builds `houston-app` + `houston-engine`
+- builds `houston-engine`
+- builds `houston-app` with `tauri/custom-protocol` so the Flatpak embeds `app/dist` instead of trying `tauri.conf.json::devUrl` (`http://localhost:1420`)
 - stages the bundled Store under `/app/share/houston/store`
 - wraps launch with `HOUSTON_STORE_DIR=/app/share/houston/store` and `HOUSTON_ENGINE_BIN=/app/bin/houston-engine`
 - copies any pre-staged `app/src-tauri/resources/bin/` payload into the Flatpak image
