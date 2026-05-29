@@ -327,11 +327,25 @@ fn migrate_config_model_aliases(agent_root: &Path) -> Result<()> {
     }
 
     if changed {
+        // Downgrade safety net: save the pre-migration content as a sibling
+        // backup BEFORE the atomic overwrite. The catalog now pins explicit
+        // version IDs (claude-opus-4-7 / claude-sonnet-4-6), so a user who
+        // rolls back to an older Houston build that only knows the bare
+        // aliases can restore the original config with
+        // `mv config.json.pre-opus48 config.json`. Only the FIRST rewrite
+        // writes a backup; idempotent re-runs (or any later migration that
+        // touches the model field again) find the backup already present
+        // and leave the original pre-opus48 content intact, so the rollback
+        // target never drifts forward over time.
+        let backup_rel = ".houston/config/config.json.pre-opus48";
+        if !agent_root.join(backup_rel).exists() {
+            write_file_atomic(agent_root, backup_rel, &raw)?;
+        }
         let body = serde_json::to_string_pretty(&serde_json::Value::Object(obj))?;
         write_file_atomic(agent_root, rel, &body)?;
         tracing::info!(
             agent_root = %agent_root.display(),
-            "migrated legacy Claude model alias → explicit version id"
+            "migrated legacy Claude model alias → explicit version id (backup: config.json.pre-opus48)"
         );
     }
     Ok(())
@@ -451,6 +465,87 @@ mod tests {
         let raw =
             fs::read_to_string(dir.path().join(".houston/config/config.json")).unwrap();
         assert_eq!(raw, "not json at all");
+    }
+
+    // --- Pre-migration backup (downgrade safety net) ---
+
+    fn backup_path(agent_root: &Path) -> std::path::PathBuf {
+        agent_root.join(".houston/config/config.json.pre-opus48")
+    }
+
+    #[test]
+    fn first_alias_rewrite_writes_pre_opus48_backup_with_original_content() {
+        let dir = TempDir::new().unwrap();
+        let original = r#"{"provider":"anthropic","model":"opus","effort":"high"}"#;
+        write_config(dir.path(), original);
+
+        migrate_config_model_aliases(dir.path()).unwrap();
+
+        let backup = fs::read_to_string(backup_path(dir.path())).unwrap();
+        assert_eq!(backup, original);
+        // The live file is the rewritten one.
+        assert_eq!(read_config(dir.path())["model"], "claude-opus-4-7");
+    }
+
+    #[test]
+    fn second_run_preserves_the_original_backup() {
+        // Rollback target must NEVER drift forward. After the first rewrite, any
+        // subsequent migration that touches the model field again (idempotent
+        // re-run, or a later migration extending LEGACY_MODEL_ALIASES) must not
+        // overwrite the existing backup, or the user's path back to the pre-
+        // opus48 build is lost.
+        let dir = TempDir::new().unwrap();
+        let original = r#"{"model":"opus"}"#;
+        write_config(dir.path(), original);
+
+        migrate_config_model_aliases(dir.path()).unwrap();
+        let first_backup = fs::read_to_string(backup_path(dir.path())).unwrap();
+
+        // Simulate a later mutation that triggers another rewrite path: rewrite
+        // the live config back to a bare alias and re-run. The backup must
+        // still reflect the very first pre-migration content, not this newer
+        // intermediate state.
+        fs::write(
+            dir.path().join(".houston/config/config.json"),
+            r#"{"model":"sonnet"}"#,
+        )
+        .unwrap();
+        migrate_config_model_aliases(dir.path()).unwrap();
+
+        let second_backup = fs::read_to_string(backup_path(dir.path())).unwrap();
+        assert_eq!(second_backup, first_backup);
+        assert_eq!(second_backup, original);
+    }
+
+    #[test]
+    fn no_op_migration_does_not_create_backup() {
+        // No legacy alias present → nothing rewritten → backup must not appear
+        // (we only want backups for agents the migration actually touched).
+        let dir = TempDir::new().unwrap();
+        write_config(dir.path(), r#"{"model":"claude-opus-4-8"}"#);
+
+        migrate_config_model_aliases(dir.path()).unwrap();
+
+        assert!(!backup_path(dir.path()).exists());
+    }
+
+    #[test]
+    fn missing_or_non_object_config_does_not_create_backup() {
+        // Empty/missing/non-object configs bail before the rewrite branch, so
+        // they must NOT leave a backup turd behind.
+        let dir1 = TempDir::new().unwrap();
+        migrate_config_model_aliases(dir1.path()).unwrap();
+        assert!(!backup_path(dir1.path()).exists());
+
+        let dir2 = TempDir::new().unwrap();
+        write_config(dir2.path(), "");
+        migrate_config_model_aliases(dir2.path()).unwrap();
+        assert!(!backup_path(dir2.path()).exists());
+
+        let dir3 = TempDir::new().unwrap();
+        write_config(dir3.path(), "not json at all");
+        migrate_config_model_aliases(dir3.path()).unwrap();
+        assert!(!backup_path(dir3.path()).exists());
     }
 
     #[test]
