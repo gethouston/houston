@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.houston.app</id>
+  <name>Houston</name>
+  <summary>AI-native desktop workspace for Houston agents</summary>
+  <description>
+    <p>Houston is a desktop app for running AI agents that do real work, from research and outreach to bookkeeping and scheduling.</p>
+    <p>Each workspace groups agents, files, skills, and conversations in one place, with the Houston Engine running locally as a bundled sidecar.</p>
+  </description>
+  <launchable type="desktop-id">com.houston.app.desktop</launchable>
+  <provides>
+    <binary>houston</binary>
+  </provides>
+  <url type="homepage">https://gethouston.ai</url>
+  <url type="bugtracker">https://github.com/gethouston/houston/issues</url>
+  <metadata_license>MIT</metadata_license>
+  <project_license>MIT</project_license>
+  <developer_name>Houston</developer_name>
+  <content_rating type="oars-1.1" />
+</component>

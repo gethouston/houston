@@ -44,10 +44,11 @@ permissions:
 jobs:
   # Lightweight orchestration job that runs before the heavy builds. It
   # creates the draft GitHub Release with finalized notes and exports
-  # `release-notes.md` as a workflow artifact so the macOS, Windows, and
-  # finalize jobs can read it without re-running the notes builder. This
-  # job exists so build-macos and build-windows can run IN PARALLEL — they
-  # each only need the draft to upload into, not each other's output.
+  # `release-notes.md` as a workflow artifact so the macOS, Windows, Linux,
+  # and finalize jobs can read it without re-running the notes builder. This
+  # job exists so build-macos, build-windows, and build-linux-flatpak can run
+  # IN PARALLEL — they each only need the draft to upload into, not each
+  # other's output.
   prep:
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -1098,7 +1099,116 @@ jobs:
           echo "::warning::This MSI is UNSIGNED (code-signing wise) — Windows SmartScreen will warn on first install. The updater minisign signature above is separate; it covers in-app auto-update verification, not OS code-signing. SignPath integration lands in a follow-up PR."
 
   # ============================================================================
-  # Stitch the parallel mac + win builds into one finished draft release.
+  # Linux Flatpak build — runs in parallel with macOS + Windows. Unlike the
+  # signed updater targets, this is a manual-install channel for now: we build
+  # the `.flatpak` bundle, upload it to the draft release as a durable asset,
+  # and also mirror it to the workflow artifacts for CI debugging.
+  #
+  # Current scope:
+  #   * x86_64 + aarch64 via native GitHub-hosted runners
+  #   * no in-app updater wiring (`latest.json` stays macOS/Windows-only)
+  #   * Linux bundled CLIs are not staged yet, so the Flatpak relies on any
+  #     preexisting `app/src-tauri/resources/bin/` payload or runtime fallbacks
+  build-linux-flatpak:
+    name: build-linux-flatpak (${{ matrix.flatpak_arch }})
+    needs: prep
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - flatpak_arch: x86_64
+            runner: ubuntu-24.04
+          - flatpak_arch: aarch64
+            runner: ubuntu-24.04-arm
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/src-tauri/target
+            target
+          key: ${{ runner.os }}-${{ matrix.flatpak_arch }}-cargo-flatpak-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-${{ matrix.flatpak_arch }}-cargo-flatpak-
+
+      - name: Install Linux build + Flatpak tooling
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y \
+            flatpak \
+            flatpak-builder \
+            libgtk-3-dev \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libsoup-3.0-dev \
+            libwebkit2gtk-4.1-dev \
+            patchelf
+
+      - name: Install Flatpak runtime + SDK
+        run: |
+          set -euo pipefail
+          flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+          flatpak install -y flathub \
+            org.freedesktop.Platform//24.08 \
+            org.freedesktop.Sdk//24.08
+
+      - name: Build Flatpak bundle
+        env:
+          HOUSTON_FLATPAK_BUNDLE_PATH: ${{ runner.temp }}/Houston_${{ github.ref_name }}_linux_${{ matrix.flatpak_arch }}.flatpak
+        run: |
+          set -euo pipefail
+          echo "runner_arch=$(uname -m)"
+          pnpm build:flatpak
+          sha256sum "$HOUSTON_FLATPAK_BUNDLE_PATH" > "$HOUSTON_FLATPAK_BUNDLE_PATH.sha256"
+          ls -lah "$HOUSTON_FLATPAK_BUNDLE_PATH" "$HOUSTON_FLATPAK_BUNDLE_PATH.sha256"
+
+      - name: Upload Flatpak workflow artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: houston-flatpak-${{ github.ref_name }}-linux-${{ matrix.flatpak_arch }}
+          path: |
+            ${{ runner.temp }}/Houston_${{ github.ref_name }}_linux_${{ matrix.flatpak_arch }}.flatpak
+            ${{ runner.temp }}/Houston_${{ github.ref_name }}_linux_${{ matrix.flatpak_arch }}.flatpak.sha256
+          retention-days: 7
+
+      - name: Upload Flatpak to draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "$GITHUB_REF_NAME" \
+            "$RUNNER_TEMP/Houston_${GITHUB_REF_NAME}_linux_${{ matrix.flatpak_arch }}.flatpak" \
+            "$RUNNER_TEMP/Houston_${GITHUB_REF_NAME}_linux_${{ matrix.flatpak_arch }}.flatpak.sha256" \
+            --clobber
+          echo "::notice::Linux Flatpak (${{ matrix.flatpak_arch }}) uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
+
+  # ============================================================================
+  # Stitch the parallel mac + win + linux builds into one finished draft release.
   # Runs on a clean ubuntu runner — no source tree, no signing identities,
   # no platform-specific tooling needed. Just `gh`, `jq`, and `curl`,
   # which are all preinstalled on `ubuntu-latest`.
@@ -1113,7 +1223,7 @@ jobs:
   #      runner. Now `prep` publishes it as a workflow artifact and any
   #      downstream job downloads it.
   finalize:
-    needs: [build-macos, build-windows]
+    needs: [build-macos, build-windows, build-linux-flatpak]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     # No `actions/checkout` step on this job — finalize doesn't need the
