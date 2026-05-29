@@ -6,6 +6,7 @@ import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useAgentStore } from "../../stores/agents";
 import { tauriProvider, tauriWorkspaces } from "../../lib/tauri";
+import { getDefaultModel } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
 import { MissionFrame } from "./mission-frame";
 import { MeetMission } from "./missions/meet";
@@ -116,7 +117,7 @@ export function PersonalAssistantOnboarding({
     setTutorialActive(true);
     try {
       const fallbackProvider = provider ?? "anthropic";
-      const fallbackModel = model ?? "sonnet";
+      const fallbackModel = model ?? getDefaultModel(fallbackProvider);
       await createWorkspaceAndAssistant(fallbackProvider, fallbackModel);
       analytics.track("onboarding_completed", {
         mission: TUTORIAL_MISSION.id,
@@ -152,6 +153,12 @@ export function PersonalAssistantOnboarding({
     setUiTourActive(true);
     setTutorialActive(false);
   };
+
+  // Provider/model the back-half missions (Try, Routine) run against. The
+  // user picks these in the Brain mission; fall back to the platform default
+  // model for the chosen provider if a mission renders before a pick.
+  const missionProvider = provider ?? "anthropic";
+  const missionModel = model ?? getDefaultModel(missionProvider);
 
   return (
     <>
@@ -213,8 +220,8 @@ export function PersonalAssistantOnboarding({
           frame={frame}
           agent={agent}
           assistantColor={assistantColor}
-          provider={provider ?? "anthropic"}
-          model={model ?? "sonnet"}
+          provider={missionProvider}
+          model={missionModel}
           onSessionKey={setMissionSessionKey}
           onContinue={handleTryComplete}
           onSkip={finishOnboarding}
@@ -237,8 +244,8 @@ export function PersonalAssistantOnboarding({
           frame={frame}
           agent={agent}
           assistantColor={assistantColor}
-          provider={provider ?? "anthropic"}
-          model={model ?? "sonnet"}
+          provider={missionProvider}
+          model={missionModel}
           sessionKey={missionSessionKey}
           onContinue={handleRoutineComplete}
           onSkip={finishOnboarding}

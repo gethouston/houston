@@ -162,6 +162,23 @@ mod tests {
         assert_eq!(r.model.as_deref(), Some("sonnet"));
     }
 
+    #[test]
+    fn reads_folder_config_not_stale_flat() {
+        // After the per-type-folder migration the authoritative model lives in
+        // `.houston/config/config.json`. A stale legacy FLAT `.houston/config.json`
+        // left behind as a rollback net (still holding the pre-migration alias)
+        // must never be read, so the migrated explicit ID always wins.
+        let d = TempDir::new().unwrap();
+        let agent = d.path().join("ws").join("agent");
+        write_json(&agent.join(".houston/config.json"), r#"{"model":"opus"}"#);
+        write_json(
+            &agent.join(".houston/config/config.json"),
+            r#"{"model":"claude-opus-4-7"}"#,
+        );
+        let r = resolve_provider(&agent);
+        assert_eq!(r.model.as_deref(), Some("claude-opus-4-7"));
+    }
+
     fn agent_with(body: &str) -> (TempDir, std::path::PathBuf) {
         let d = TempDir::new().unwrap();
         let agent = d.path().join("ws").join("agent");

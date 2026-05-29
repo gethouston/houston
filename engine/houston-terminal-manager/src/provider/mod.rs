@@ -462,7 +462,7 @@ mod tests {
         let openai = Provider::from_str("openai").unwrap();
         let gemini = Provider::from_str("gemini").unwrap();
 
-        // Claude `--effort` accepts the full range (Opus 4.7); Claude
+        // Claude `--effort` accepts the full range (Opus 4.7/4.8); Claude
         // self-clamps unsupported values per model.
         assert_eq!(
             anthropic.effort_levels().to_vec(),

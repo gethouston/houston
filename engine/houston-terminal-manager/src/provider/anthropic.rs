@@ -56,7 +56,7 @@ impl ProviderAdapter for AnthropicAdapter {
 
     fn effort_levels(&self) -> &'static [&'static str] {
         // `claude --effort` accepts low/medium/high/xhigh/max. The model
-        // gates which are *honored* (Opus 4.7 = all; Sonnet 4.6 = no
+        // gates which are *honored* (Opus 4.7/4.8 = all; Sonnet 4.6 = no
         // `xhigh`), but Claude self-clamps an unsupported value to its
         // highest, so the engine carries the full union and lets the
         // frontend picker present the per-model subset.

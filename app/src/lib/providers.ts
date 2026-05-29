@@ -2,8 +2,9 @@
  * Reasoning-effort levels, ordered low→high. The set a given model accepts
  * is model-specific (see `ModelOption.effortLevels`):
  * - Codex `model_reasoning_effort`: low/medium/high/xhigh (no `max`).
- * - Claude `--effort`: Opus 4.7 = all five; Sonnet 4.6 = low/medium/high/max
- *   (no `xhigh`). Claude self-clamps an unsupported value; Codex does not.
+ * - Claude `--effort`: Opus 4.7 and 4.8 = all five; Sonnet 4.6 =
+ *   low/medium/high/max (no `xhigh`). Claude self-clamps an unsupported
+ *   value; Codex does not.
  */
 export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
 
@@ -87,21 +88,29 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "Your Claude subscription",
     models: [
       {
-        id: "sonnet",
-        label: "Sonnet",
+        id: "claude-sonnet-4-6",
+        label: "Sonnet 4.6",
         description: "Best balance of speed and quality.",
         // Sonnet 4.6: has `max`, no `xhigh`.
         effortLevels: ["low", "medium", "high", "max"],
       },
       {
-        id: "opus",
-        label: "Opus",
-        description: "Most capable. Slower, more tokens.",
+        id: "claude-opus-4-8",
+        label: "Opus 4.8",
+        description: "Newest flagship. Most capable, slower.",
+        // Opus 4.8: full range (same as 4.7). NOTE: `ultracode` is a Claude
+        // Code harness mode, NOT an effort level — never add it here.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+      },
+      {
+        id: "claude-opus-4-7",
+        label: "Opus 4.7",
+        description: "Previous flagship. Very capable, slower.",
         // Opus 4.7: full range.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
       },
     ],
-    defaultModel: "sonnet",
+    defaultModel: "claude-sonnet-4-6",
   },
 ] as const;
 
@@ -117,7 +126,7 @@ export function getModel(providerId: string, modelId: string): ModelOption | und
 
 /** Get the default provider + model for a provider id. */
 export function getDefaultModel(providerId: string): string {
-  return getProvider(providerId)?.defaultModel ?? "sonnet";
+  return getProvider(providerId)?.defaultModel ?? "claude-sonnet-4-6";
 }
 
 /**
@@ -145,6 +154,36 @@ export function validModelOrNull(
   modelId: string | null | undefined,
 ): string | null {
   return providerId && modelId && getModel(providerId, modelId) ? modelId : null;
+}
+
+/**
+ * Retired Claude CLI aliases → the explicit catalog ID that replaced them.
+ * Mirrors the engine map in `houston-agent-files/src/lib.rs`
+ * (`LEGACY_MODEL_ALIASES`) — keep both in sync.
+ */
+const LEGACY_MODEL_ALIASES: Readonly<Record<string, string>> = {
+  opus: "claude-opus-4-7",
+  sonnet: "claude-sonnet-4-6",
+};
+
+/**
+ * Interpret a model value that may have been persisted by an older Houston
+ * build. The catalog pins explicit versions now, so a stored `"opus"`/`"sonnet"`
+ * (an agent config the engine has not migrated yet, or an activity record —
+ * those are never migrated) must be read as the version it denoted rather than
+ * treated as unknown. Without this, `validModelOrNull` would null a legacy
+ * `"opus"` and the effective-model chain would fall through to the default,
+ * silently downgrading an Opus agent to Sonnet. Already-explicit IDs and other
+ * providers' models pass through unchanged; null/undefined returns null so it
+ * composes in `??` chains.
+ */
+export function normalizeLegacyModel(model: string | null | undefined): string | null {
+  if (!model) return null;
+  // `hasOwnProperty` guard so a hand-edited config with a model like
+  // "constructor"/"__proto__" resolves to itself, not an Object.prototype member.
+  return Object.prototype.hasOwnProperty.call(LEGACY_MODEL_ALIASES, model)
+    ? LEGACY_MODEL_ALIASES[model]
+    : model;
 }
 
 /** Reasoning-effort levels the given provider+model accepts (low→high). */

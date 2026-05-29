@@ -30,7 +30,7 @@ describe("planNewMission (issue #328)", () => {
       activeAgent: agent,
       activeAgentDef: agentDefWithModes,
       providerOverride: "anthropic",
-      modelOverride: "sonnet",
+      modelOverride: "claude-sonnet-4-6",
     });
     deepStrictEqual(plan, {
       kind: "create",
@@ -38,7 +38,7 @@ describe("planNewMission (issue #328)", () => {
       agentMode: "default",
       promptFile: "default",
       providerOverride: "anthropic",
-      modelOverride: "sonnet",
+      modelOverride: "claude-sonnet-4-6",
     });
   });
 
@@ -64,7 +64,7 @@ describe("planNewMission (issue #328)", () => {
       activeAgent: null,
       activeAgentDef: null,
       providerOverride: "anthropic",
-      modelOverride: "sonnet",
+      modelOverride: "claude-sonnet-4-6",
     });
     deepStrictEqual(plan, { kind: "no-agent" });
   });

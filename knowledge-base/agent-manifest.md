@@ -219,7 +219,7 @@ adapter, see `knowledge-base/architecture.md`).
 
 | Provider id | CLI | Default model | Premium model | Login flow |
 |---|---|---|---|---|
-| `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-5` | `claude-opus-4-1` | OAuth via `claude auth login --claudeai` |
+| `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-6` | `claude-opus-4-8` | OAuth via `claude auth login --claudeai` |
 | `openai` (alias `codex`) | `codex` (bundled) | `gpt-5` | `gpt-5-codex` | OAuth via `codex login` |
 | `gemini` (alias `google`) | `gemini` (bundled, macOS only) | `gemini-2.5-flash` | `gemini-2.5-pro` | API key, no CLI login (see `knowledge-base/auth.md`) |
 
@@ -253,8 +253,9 @@ shows only the levels the active model accepts.
 
 | Provider | Model | Effort levels offered | CLI flag |
 |---|---|---|---|
-| `anthropic` | `opus` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
-| `anthropic` | `sonnet` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
+| `anthropic` | `claude-opus-4-8` (Opus 4.8) | low, medium, high, xhigh, max | `--effort <v>` |
+| `anthropic` | `claude-opus-4-7` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
+| `anthropic` | `claude-sonnet-4-6` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
 | `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
 | `gemini` | any | none | (no flag) |
 

@@ -32,6 +32,7 @@ import type {
 import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
+import { normalizeLegacyModel } from "./providers";
 export { withAttachmentPaths } from "./attachment-message";
 
 interface EngineCallOptions {
@@ -687,6 +688,12 @@ export const tauriProvider = {
    * migration step. The companion model key is new (no upgrade path needed
    * because a missing value just falls back to the provider's
    * `defaultModel`).
+   *
+   * The stored model is normalized through `normalizeLegacyModel` on the way
+   * out: an install that last picked a model before the catalog pinned
+   * versions has a bare `"opus"`/`"sonnet"` in this preference, and creation
+   * dialogs seed a new agent's config from this value. Normalizing here means
+   * they never write a retired alias into a fresh config.
    */
   getLastUsed: () =>
     call<{ provider: string | null; model: string | null }>(
@@ -697,7 +704,7 @@ export const tauriProvider = {
           eng.getPreference(DEFAULT_PROVIDER_PREF_KEY),
           eng.getPreference(DEFAULT_MODEL_PREF_KEY),
         ]);
-        return { provider: provider ?? null, model: model ?? null };
+        return { provider: provider ?? null, model: normalizeLegacyModel(model) };
       },
     ),
   setLastUsed: (provider: string, model: string) =>

@@ -20,6 +20,7 @@ import {
 } from "../lib/tauri";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
+import { resolveActivityOverride } from "./mission-control-send";
 import { formatVisibleMessageText } from "../lib/queued-chat";
 import { queryKeys } from "../lib/query-keys";
 import { useUIStore } from "../stores/ui";
@@ -160,7 +161,17 @@ export function useMissionControl(agents: Agent[]) {
       try {
         const paths = await tauriAttachments.save(`activity-${activityId}`, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
-        await tauriChat.send(agentPath, prompt, sessionKey);
+        // Mission Control is cross-agent: the activity's stored provider/model
+        // is the per-activity override that the chat picker is showing. The
+        // engine session router only reads agent config when no override is
+        // sent, so dropping the activity's choice here routes the message to
+        // whatever CLI the agent defaults to (e.g. agent=openai but activity
+        // was created with Opus -> spawns codex instead of claude). Look the
+        // activity up and forward its override pair to keep picker and wire
+        // in agreement.
+        const list = await tauriActivity.list(agentPath);
+        const overrides = resolveActivityOverride(sessionKey, list);
+        await tauriChat.send(agentPath, prompt, sessionKey, overrides);
         pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       } catch (err) {
