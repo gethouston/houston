@@ -15,7 +15,11 @@
  * normalization is unit-testable and shared with whatever Mission Control's
  * future send paths grow into.
  */
-import { normalizeLegacyModel } from "../lib/providers";
+// Explicit `.ts` extension so this module is also resolvable when loaded
+// directly by `node --test --experimental-strip-types` (Node ESM requires
+// the extension for runtime-value imports). Vite/TSC accept it because
+// `allowImportingTsExtensions: true` is set in `app/tsconfig.json`.
+import { normalizeLegacyModel } from "../lib/providers.ts";
 
 /** Minimal shape needed for override resolution; mirrors `ActivityItem`. */
 export interface ActivityOverrideSource {
