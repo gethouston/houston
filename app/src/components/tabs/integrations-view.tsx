@@ -40,6 +40,8 @@ export function IntegrationsView({ title }: IntegrationsViewProps) {
     () => new Set(connectedList ?? []),
     [connectedList],
   );
+  // Workspace slug for dashboard deep-links (whoami's default_org_name).
+  const orgName = result?.status === "ok" ? result.org_name : null;
 
   const handleManage = useCallback(() => {
     tauriSystem.openUrl(COMPOSIO_DASHBOARD_URL);
@@ -120,7 +122,10 @@ export function IntegrationsView({ title }: IntegrationsViewProps) {
 
         {!loading && result?.status === "ok" && (
           <>
-            <ConnectedAppsSection connectedToolkits={connectedSet} />
+            <ConnectedAppsSection
+              connectedToolkits={connectedSet}
+              orgName={orgName}
+            />
             <BrowseAppsSection connectedToolkits={connectedSet} />
           </>
         )}

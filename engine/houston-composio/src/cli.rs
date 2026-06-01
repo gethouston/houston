@@ -458,11 +458,11 @@ pub async fn list_connected_toolkits() -> Vec<String> {
 async fn list_connected_toolkits_inner() -> Result<Vec<String>, String> {
     let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
     let client = reqwest::Client::new();
-    let consumer_user_id = resolve_consumer_user_id(&client, &base_url, &api_key, &org_id).await?;
+    let project = resolve_consumer_project(&client, &base_url, &api_key, &org_id).await?;
 
     let toolkits_resp = client
         .get(format!("{base_url}/api/v3/org/consumer/connected_toolkits"))
-        .query(&[("user_id", &consumer_user_id)])
+        .query(&[("user_id", &project.user_id)])
         .header("x-user-api-key", &api_key)
         .header("x-org-id", &org_id)
         .header("Accept", "application/json")
@@ -487,16 +487,30 @@ async fn list_connected_toolkits_inner() -> Result<Vec<String>, String> {
     Ok(result.toolkits)
 }
 
-/// Resolve the consumer ("Composio for You") project's user id. Shared by
-/// every consumer-namespace REST call (connected toolkits, connected
-/// accounts). Mirrors the resolve step the composio CLI performs before
-/// scoping `client.connectedAccounts.*` to the consumer user.
-async fn resolve_consumer_user_id(
+/// Consumer ("Composio for You") project identity, resolved once per
+/// operation and reused across the consumer-namespace REST calls.
+struct ConsumerProject {
+    /// Consumer user id (e.g. `consumer-...-ok_...`).
+    user_id: String,
+    /// Project nano id (e.g. `pr_...`). REQUIRED as the `x-project-id`
+    /// header on `/api/v3/connected_accounts*` — without it the endpoint
+    /// resolves to the org's default project and returns ZERO accounts
+    /// even though the consumer connection exists (verified against the
+    /// live API: org-only headers → `items: []`; + `x-project-id` → the
+    /// real accounts).
+    project_nano_id: String,
+}
+
+/// Resolve the consumer project (user id + project nano id). Shared by
+/// every consumer-namespace REST call. Mirrors the resolve step the
+/// composio CLI performs before scoping `client.connectedAccounts.*` to
+/// the consumer project.
+async fn resolve_consumer_project(
     client: &reqwest::Client,
     base_url: &str,
     api_key: &str,
     org_id: &str,
-) -> Result<String, String> {
+) -> Result<ConsumerProject, String> {
     let resolve_resp = client
         .post(format!("{base_url}/api/v3/org/consumer/project/resolve"))
         .header("x-user-api-key", api_key)
@@ -515,15 +529,58 @@ async fn resolve_consumer_user_id(
     }
 
     #[derive(Deserialize)]
-    struct ConsumerProject {
+    struct Resolved {
         consumer_user_id: String,
+        project_nano_id: String,
     }
 
-    let project: ConsumerProject = resolve_resp
+    let r: Resolved = resolve_resp
         .json()
         .await
         .map_err(|e| format!("Failed to parse consumer project: {e}"))?;
-    Ok(project.consumer_user_id)
+    Ok(ConsumerProject {
+        user_id: r.consumer_user_id,
+        project_nano_id: r.project_nano_id,
+    })
+}
+
+/// GET the consumer's connected accounts for a toolkit, scoped to an
+/// already-resolved project. The `x-project-id` header (project nano id)
+/// is what scopes the query to the consumer project; omit it and the
+/// endpoint returns an empty list.
+async fn fetch_connected_accounts(
+    client: &reqwest::Client,
+    base_url: &str,
+    api_key: &str,
+    org_id: &str,
+    project: &ConsumerProject,
+    toolkit: &str,
+) -> Result<Vec<ConnectedAccount>, String> {
+    let resp = client
+        .get(format!("{base_url}/api/v3/connected_accounts"))
+        .query(&[
+            ("user_ids", project.user_id.as_str()),
+            ("toolkit_slugs", toolkit),
+            ("limit", "1000"),
+        ])
+        .header("x-user-api-key", api_key)
+        .header("x-org-id", org_id)
+        .header("x-project-id", &project.project_nano_id)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Connected accounts request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("Connected accounts returned {}", resp.status()));
+    }
+
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse connected accounts: {e}"))?;
+
+    parse_connected_accounts(&body)
 }
 
 // -- Connected accounts (disconnect + reconnect) --
@@ -557,35 +614,10 @@ pub async fn list_connected_accounts(toolkit: &str) -> Result<Vec<ConnectedAccou
     if toolkit.is_empty() {
         return Err("toolkit must not be empty".into());
     }
-
     let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
     let client = reqwest::Client::new();
-    let consumer_user_id = resolve_consumer_user_id(&client, &base_url, &api_key, &org_id).await?;
-
-    let resp = client
-        .get(format!("{base_url}/api/v3/connected_accounts"))
-        .query(&[
-            ("user_ids", consumer_user_id.as_str()),
-            ("toolkit_slugs", toolkit.as_str()),
-            ("limit", "1000"),
-        ])
-        .header("x-user-api-key", &api_key)
-        .header("x-org-id", &org_id)
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(|e| format!("Connected accounts request failed: {e}"))?;
-
-    if !resp.status().is_success() {
-        return Err(format!("Connected accounts returned {}", resp.status()));
-    }
-
-    let body: serde_json::Value = resp
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse connected accounts: {e}"))?;
-
-    parse_connected_accounts(&body)
+    let project = resolve_consumer_project(&client, &base_url, &api_key, &org_id).await?;
+    fetch_connected_accounts(&client, &base_url, &api_key, &org_id, &project, &toolkit).await
 }
 
 /// Extract `{ id, status }` records from a `connected_accounts` list
@@ -624,13 +656,18 @@ fn parse_connected_accounts(body: &serde_json::Value) -> Result<Vec<ConnectedAcc
 /// Upstream caveat: `connectedAccounts.delete` removes Composio's record
 /// but does NOT revoke the OAuth token at the upstream provider.
 pub async fn disconnect_toolkit(toolkit: &str) -> Result<usize, String> {
-    let accounts = list_connected_accounts(toolkit).await?;
+    let toolkit = normalize_toolkit_slug(toolkit);
+    if toolkit.is_empty() {
+        return Err("toolkit must not be empty".into());
+    }
+    let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
+    let client = reqwest::Client::new();
+    let project = resolve_consumer_project(&client, &base_url, &api_key, &org_id).await?;
+    let accounts =
+        fetch_connected_accounts(&client, &base_url, &api_key, &org_id, &project, &toolkit).await?;
     if accounts.is_empty() {
         return Err(format!("No connected account found for {toolkit}"));
     }
-
-    let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
-    let client = reqwest::Client::new();
 
     let mut removed = 0usize;
     for acct in &accounts {
@@ -638,6 +675,7 @@ pub async fn disconnect_toolkit(toolkit: &str) -> Result<usize, String> {
             .delete(format!("{base_url}/api/v3/connected_accounts/{}", acct.id))
             .header("x-user-api-key", &api_key)
             .header("x-org-id", &org_id)
+            .header("x-project-id", &project.project_nano_id)
             .header("Accept", "application/json")
             .send()
             .await
@@ -668,15 +706,20 @@ pub async fn disconnect_toolkit(toolkit: &str) -> Result<usize, String> {
 /// first one (a broken connection has no active account, and that is
 /// exactly the account a reconnect needs to refresh).
 pub async fn reconnect_toolkit(toolkit: &str) -> Result<Option<String>, String> {
-    let accounts = list_connected_accounts(toolkit).await?;
+    let toolkit = normalize_toolkit_slug(toolkit);
+    if toolkit.is_empty() {
+        return Err("toolkit must not be empty".into());
+    }
+    let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
+    let client = reqwest::Client::new();
+    let project = resolve_consumer_project(&client, &base_url, &api_key, &org_id).await?;
+    let accounts =
+        fetch_connected_accounts(&client, &base_url, &api_key, &org_id, &project, &toolkit).await?;
     let target = accounts
         .iter()
         .find(|a| a.status.eq_ignore_ascii_case("ACTIVE"))
         .or_else(|| accounts.first())
         .ok_or_else(|| format!("No connected account found for {toolkit}"))?;
-
-    let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
-    let client = reqwest::Client::new();
 
     let resp = client
         .post(format!(
@@ -685,6 +728,7 @@ pub async fn reconnect_toolkit(toolkit: &str) -> Result<Option<String>, String> 
         ))
         .header("x-user-api-key", &api_key)
         .header("x-org-id", &org_id)
+        .header("x-project-id", &project.project_nano_id)
         .header("Content-Type", "application/json")
         .header("Accept", "application/json")
         .json(&serde_json::json!({}))

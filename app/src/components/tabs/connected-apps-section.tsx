@@ -15,10 +15,13 @@ import {
 
 interface ConnectedAppsSectionProps {
   connectedToolkits: Set<string>;
+  /** Composio workspace slug (whoami's default_org_name) for deep-links. */
+  orgName?: string | null;
 }
 
 export function ConnectedAppsSection({
   connectedToolkits,
+  orgName,
 }: ConnectedAppsSectionProps) {
   const { t } = useTranslation("integrations");
   const invalidate = useInvalidateConnections();
@@ -63,6 +66,17 @@ export function ConnectedAppsSection({
   const setCardBusy = useCallback((toolkit: string, state: CardBusy) => {
     setBusy((prev) => ({ ...prev, [toolkit]: state }));
   }, []);
+
+  const handleManage = useCallback(
+    (toolkit: string) => {
+      // `openUrl` is a raw OS-bridge call (not routed through `call()`),
+      // so surface its failure instead of letting it fail silently.
+      void tauriSystem
+        .openUrl(composioAppUrl(toolkit, orgName))
+        .catch((err) => showErrorToast("composio_open_manage", String(err)));
+    },
+    [orgName],
+  );
 
   const handleReconnect = useCallback(
     async (app: ConnectedAppInfo) => {
@@ -140,7 +154,7 @@ export function ConnectedAppsSection({
             key={app.toolkit}
             app={app}
             busy={busy[app.toolkit] ?? null}
-            onManage={() => tauriSystem.openUrl(composioAppUrl(app.toolkit))}
+            onManage={() => handleManage(app.toolkit)}
             onReconnect={() => handleReconnect(app)}
             onDisconnect={() => setPendingDisconnect(app)}
           />
@@ -169,16 +183,16 @@ export function ConnectedAppsSection({
   );
 }
 
-function composioAppUrl(toolkit: string): string {
-  // Route through Composio's marketing site with the Houston-tagged
-  // fragment instead of `dashboard.composio.dev/~/connect/apps/<toolkit>`.
-  // The bare-dashboard URL relies on `~` resolving to the user's default
-  // workspace, which was observed not to work for at least one alpha
-  // user (Composio routed them to a workspace-less page that does
-  // nothing). The marketing-site URL is the same one the tutorial chat
-  // card emits and it goes through Composio's auth → user's workspace
-  // → connect-app routing, which works reliably.
-  return `https://composio.dev/#houston_toolkit=${toolkit}`;
+function composioAppUrl(toolkit: string, orgName?: string | null): string {
+  // Deep-link straight to the app's page in the user's Composio dashboard
+  // workspace. `orgName` is the workspace slug from the signed-in account
+  // (whoami's default_org_name, e.g. "<user>_workspace"); the inner `~` is
+  // Composio's "current project" placeholder. A bare `~` workspace is
+  // unreliable (it can land on a workspace-less page), so we only fall
+  // back to it when the slug is unknown.
+  const workspace =
+    orgName && orgName.trim() ? encodeURIComponent(orgName.trim()) : "~";
+  return `https://dashboard.composio.dev/${workspace}/~/connect/apps/${toolkit}`;
 }
 
 function fallbackLogo(toolkit: string): string {
