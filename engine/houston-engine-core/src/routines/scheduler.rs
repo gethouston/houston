@@ -172,7 +172,7 @@ impl AgentScheduler {
                     Utc::now().to_rfc3339()
                 );
 
-                if let Err(e) = run_routine(
+                match run_routine(
                     events.clone(),
                     dispatcher.clone(),
                     surface.clone(),
@@ -181,9 +181,19 @@ impl AgentScheduler {
                 )
                 .await
                 {
-                    tracing::error!(
-                        "[routines] Error running routine {routine_id}: {e}"
-                    );
+                    Ok(()) => {}
+                    // The previous run of THIS routine is still in flight when
+                    // the next tick landed — expected dedup, not an error.
+                    Err(crate::CoreError::Conflict(msg)) => {
+                        tracing::info!(
+                            "[routines] skipped cron fire for {routine_id}: {msg}"
+                        );
+                    }
+                    Err(e) => {
+                        tracing::error!(
+                            "[routines] Error running routine {routine_id}: {e}"
+                        );
+                    }
                 }
             }
         }))

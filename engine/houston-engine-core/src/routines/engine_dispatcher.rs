@@ -38,15 +38,19 @@ pub struct EngineRoutineDispatcher {
 #[async_trait]
 impl RoutineDispatcher for EngineRoutineDispatcher {
     async fn dispatch(&self, ctx: DispatchContext<'_>) -> DispatchOutcome {
-        let _workdir_guard = match self.rt.try_acquire_workdir(ctx.working_dir).await {
-            Ok(guard) => guard,
-            Err(e) => {
-                return DispatchOutcome {
-                    response_text: String::new(),
-                    error: Some(e.to_string()),
-                };
-            }
-        };
+        // Serialize sessions that share a working directory: wait for any
+        // earlier routine run in this folder to finish before starting ours.
+        // Two routines scheduled for the same time both run, one after the
+        // other (issue #362), instead of the second failing on a busy folder.
+        let _workdir_guard = self.rt.acquire_workdir(ctx.working_dir).await;
+
+        // We may have waited on the lock. If the user cancelled this run while
+        // it sat queued, the row is already terminal — skip spawning a session
+        // (and burning provider tokens) for work that's been called off.
+        // `finish_run` sees the `cancelled` status and discards this outcome.
+        if cancelled_while_queued(ctx.working_dir, &ctx.run.id) {
+            return DispatchOutcome::default();
+        }
 
         if let Err(e) = agent_prompt::seed_agent(ctx.working_dir) {
             return DispatchOutcome {
@@ -118,6 +122,27 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
                 response_text: String::new(),
                 error: Some(format!("session task failed: {e}")),
             },
+        }
+    }
+}
+
+/// After acquiring the workdir lock, a run that sat queued behind another
+/// routine may have been cancelled. Returns `true` if the on-disk row is
+/// already terminal (`cancelled`) and the dispatcher should skip spawning a
+/// session for it.
+///
+/// A failed re-read is treated as "not cancelled" (proceed): `finish_run`
+/// still drives the run to a terminal status from the dispatch outcome, so
+/// proceeding can't strand the row, whereas wrongly skipping on a transient
+/// read error would.
+fn cancelled_while_queued(working_dir: &Path, run_id: &str) -> bool {
+    match routine_runs::find_by_id(working_dir, run_id) {
+        Ok(run) => run.status == "cancelled",
+        Err(e) => {
+            tracing::warn!(
+                "[routines] failed to re-read run {run_id} after acquiring workdir lock: {e}"
+            );
+            false
         }
     }
 }
@@ -236,6 +261,32 @@ mod lifecycle_tests {
 
         let after = routine_runs::find_by_id(d.path(), &run.id).unwrap();
         assert_eq!(after.paused_until.as_deref(), Some("soon"));
+    }
+
+    #[test]
+    fn cancelled_while_queued_detects_terminal_cancel_and_tolerates_missing() {
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), mk_routine()).unwrap();
+        let run = routine_runs::create(d.path(), &r.id).unwrap();
+
+        // Freshly created run is still `running` → not cancelled → proceed.
+        assert!(!cancelled_while_queued(d.path(), &run.id));
+
+        // Cancelled while queued → skip dispatch.
+        routine_runs::update(
+            d.path(),
+            &run.id,
+            RoutineRunUpdate {
+                status: Some("cancelled".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert!(cancelled_while_queued(d.path(), &run.id));
+
+        // Unreadable / missing row → treat as live (proceed); finish_run still
+        // drives a terminal status, so this must never strand the run.
+        assert!(!cancelled_while_queued(d.path(), "nonexistent-run-id"));
     }
 }
 

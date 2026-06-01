@@ -11,7 +11,9 @@ pub struct WorkdirLocks {
 }
 
 impl WorkdirLocks {
-    #[cfg(test)]
+    /// Acquire the per-folder session lock, waiting if another session holds
+    /// it. Callers that want two sessions in the same folder to *queue*
+    /// (routines — issue #362) await this; the guard releases on drop.
     pub async fn acquire(&self, working_dir: &Path) -> WorkdirSessionGuard {
         let key = normalize_key(working_dir);
         let lock = {
@@ -22,18 +24,6 @@ impl WorkdirLocks {
                 .clone()
         };
         lock.lock_owned().await
-    }
-
-    pub async fn try_acquire(&self, working_dir: &Path) -> Option<WorkdirSessionGuard> {
-        let key = normalize_key(working_dir);
-        let lock = {
-            let mut locks = self.inner.lock().await;
-            locks
-                .entry(key)
-                .or_insert_with(|| Arc::new(Mutex::new(())))
-                .clone()
-        };
-        lock.try_lock_owned().ok()
     }
 }
 
@@ -47,16 +37,26 @@ mod tests {
     use tempfile::TempDir;
 
     #[tokio::test]
-    async fn rejects_same_workdir_until_guard_drops() {
+    async fn second_acquire_blocks_until_guard_drops() {
         let dir = TempDir::new().unwrap();
         let locks = WorkdirLocks::default();
 
-        let first = locks.try_acquire(dir.path()).await;
-        assert!(first.is_some());
-        assert!(locks.try_acquire(dir.path()).await.is_none());
+        let first = locks.acquire(dir.path()).await;
 
+        // A second acquire on the held folder must not resolve immediately…
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(20), locks.acquire(dir.path()))
+                .await
+                .is_err()
+        );
+
+        // …but does once the first guard drops.
         drop(first);
-        assert!(locks.try_acquire(dir.path()).await.is_some());
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(50), locks.acquire(dir.path()))
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]
@@ -87,11 +87,13 @@ mod tests {
         let two = TempDir::new().unwrap();
         let locks = WorkdirLocks::default();
 
-        let first = locks.try_acquire(one.path()).await;
-        let second = locks.try_acquire(two.path()).await;
-
-        assert!(first.is_some());
-        assert!(second.is_some());
+        // Distinct folders never contend — both acquire without waiting.
+        let _first = tokio::time::timeout(std::time::Duration::from_millis(50), locks.acquire(one.path()))
+            .await
+            .expect("first folder acquires immediately");
+        let _second = tokio::time::timeout(std::time::Duration::from_millis(50), locks.acquire(two.path()))
+            .await
+            .expect("second folder acquires immediately");
     }
 
     #[tokio::test]
@@ -100,8 +102,12 @@ mod tests {
         let locks = WorkdirLocks::default();
         let equivalent = dir.path().join(".");
 
-        let first = locks.try_acquire(dir.path()).await;
-        assert!(first.is_some());
-        assert!(locks.try_acquire(&equivalent).await.is_none());
+        let _first = locks.acquire(dir.path()).await;
+        // `dir` and `dir/.` canonicalize to the same key → the second waits.
+        assert!(
+            tokio::time::timeout(std::time::Duration::from_millis(20), locks.acquire(&equivalent))
+                .await
+                .is_err()
+        );
     }
 }

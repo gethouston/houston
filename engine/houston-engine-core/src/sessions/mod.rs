@@ -30,7 +30,7 @@ mod workdir_locks;
 
 use crate::agents::prompt as agent_prompt;
 use crate::paths::EnginePaths;
-use crate::{CoreError, CoreResult};
+use crate::CoreResult;
 use control::{
     SessionControl, SessionIdentity, SessionTurnGuard, SessionTurnLocks, WorkdirActivity,
 };
@@ -57,16 +57,13 @@ pub struct SessionRuntime {
 }
 
 impl SessionRuntime {
-    pub(crate) async fn try_acquire_workdir(
-        &self,
-        working_dir: &Path,
-    ) -> CoreResult<WorkdirSessionGuard> {
-        self.workdir_locks
-            .try_acquire(working_dir)
-            .await
-            .ok_or_else(|| {
-                CoreError::Conflict("another mission is already running in this folder".to_string())
-            })
+    /// Acquire the per-folder session lock, waiting if another session is
+    /// already running in that folder. Routines use this to serialize runs
+    /// that share a working directory — two routines scheduled for the same
+    /// time both run, one after the other, instead of the second being
+    /// dropped (issue #362). The guard releases on drop.
+    pub(crate) async fn acquire_workdir(&self, working_dir: &Path) -> WorkdirSessionGuard {
+        self.workdir_locks.acquire(working_dir).await
     }
 
     async fn acquire_turn(&self, id: &SessionIdentity) -> SessionTurnGuard {
@@ -727,6 +724,45 @@ mod tests {
         assert_eq!(accepted, "chat-test");
         assert!(cancel(&rt, &events, &dir.path().to_string_lossy(), "chat-test",).await);
         drop(guard);
+    }
+
+    #[tokio::test]
+    async fn acquire_workdir_serializes_same_folder() {
+        // The primitive behind serial routine execution (issue #362): two
+        // acquisitions of the same folder queue — the second only proceeds
+        // after the first guard drops.
+        let rt = SessionRuntime::default();
+        let dir = TempDir::new().unwrap();
+
+        let first = rt.acquire_workdir(dir.path()).await;
+        assert!(
+            timeout(Duration::from_millis(20), rt.acquire_workdir(dir.path()))
+                .await
+                .is_err(),
+            "second acquire on a busy folder must wait"
+        );
+        drop(first);
+        assert!(
+            timeout(Duration::from_millis(50), rt.acquire_workdir(dir.path()))
+                .await
+                .is_ok(),
+            "second acquire proceeds once the folder frees"
+        );
+    }
+
+    #[tokio::test]
+    async fn acquire_workdir_allows_distinct_folders_concurrently() {
+        let rt = SessionRuntime::default();
+        let one = TempDir::new().unwrap();
+        let two = TempDir::new().unwrap();
+
+        let _a = rt.acquire_workdir(one.path()).await;
+        // Different folder — no contention even while the first is held.
+        assert!(
+            timeout(Duration::from_millis(50), rt.acquire_workdir(two.path()))
+                .await
+                .is_ok()
+        );
     }
 
     #[tokio::test]

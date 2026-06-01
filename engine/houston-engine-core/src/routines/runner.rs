@@ -67,20 +67,38 @@ pub trait ActivitySurface: Send + Sync {
     ) -> Result<String, String>;
 }
 
-/// Full execution of one routine. Mirrors the original behaviour of
-/// `run_routine()` in the desktop adapter:
+/// Phase 1 output: the loaded routine and the freshly-created `running` row,
+/// ready to hand to [`finish_run`].
+pub struct BegunRun {
+    pub working_dir: PathBuf,
+    pub routine: Routine,
+    pub run: RoutineRun,
+    /// Prompt with the suppression instruction already appended when
+    /// `routine.suppress_when_silent` is set.
+    pub prompt: String,
+}
+
+/// Phase 1 of a routine run: load the routine, enforce the per-routine
+/// in-flight gate, create the `running` row, and announce it.
 ///
-/// 1. Load routine + create run (status=`running`)
-/// 2. Dispatch session (via trait)
-/// 3. Evaluate: silent → update run; error → update run; surfaced → create
-///    activity, link both sides, emit events.
-pub async fn run_routine(
-    events: DynEventSink,
-    dispatcher: Arc<dyn RoutineDispatcher>,
-    surface: Arc<dyn ActivitySurface>,
+/// Synchronous and fast — callers run it in the request path so `NotFound`
+/// (routine gone) and `Conflict` (this routine already running) surface to the
+/// user as an HTTP error, then hand the [`BegunRun`] to [`finish_run`] (inline
+/// for the cron loop, or on a detached task for `run-now`).
+///
+/// The gate is per-routine, not per-agent: a *different* routine that happens
+/// to be running on the same agent must NOT block this one (issue #362).
+/// Repeated runs of the *same* routine are still rejected so spam-clicked
+/// `run-now` (or a cron fire landing on a still-running previous run) doesn't
+/// queue duplicate work. Serializing the sessions themselves — so two runs
+/// don't write the same folder at once — is the dispatcher's job via the
+/// workdir lock, which waits rather than failing. Orphan `running` rows from a
+/// crashed engine are swept by `sweep_orphan_running` at agent-scheduler start.
+pub fn begin_run(
+    events: &DynEventSink,
     agent_path: &str,
     routine_id: &str,
-) -> CoreResult<()> {
+) -> CoreResult<BegunRun> {
     let working_dir = expand_tilde(Path::new(agent_path));
 
     let routines = routines::list(&working_dir)?;
@@ -92,21 +110,7 @@ pub async fn run_routine(
 
     ensure_houston_dir(&working_dir)?;
 
-    // Reject early if a run is already in flight for this agent. Without
-    // this, repeated `run-now` clicks (a) pollute the on-disk history
-    // with `status="error", summary="conflict: another mission..."` rows
-    // from the workdir-lock failure inside the dispatcher, and (b) leave
-    // the UI unable to pick out the "real" running run vs. the noise
-    // since `lastRuns` keys by latest `started_at`. Fail fast at the
-    // route level instead — frontend gets a 409 and surfaces a toast.
-    //
-    // We treat "in flight" as "status=running on disk". The workdir lock
-    // would be a more precise signal, but it lives on `SessionRuntime`
-    // and isn't reachable from this transport-neutral runner. Disk state
-    // is reliable for the common case (one run completes, status flips
-    // terminal); orphan `running` rows from a crashed engine are swept
-    // by `sweep_orphan_running` at agent-scheduler start.
-    let run = routine_runs::create_if_no_running(&working_dir, routine_id)?;
+    let run = routine_runs::create_if_routine_idle(&working_dir, routine_id)?;
     events.emit(HoustonEvent::RoutineRunsChanged {
         agent_path: agent_path.to_string(),
     });
@@ -116,6 +120,36 @@ pub async fn run_routine(
     } else {
         routine.prompt.clone()
     };
+
+    Ok(BegunRun {
+        working_dir,
+        routine,
+        run,
+        prompt,
+    })
+}
+
+/// Phase 2 of a routine run: dispatch the session, then evaluate the outcome
+/// (silent → update run; error → update run; surfaced → create activity, link
+/// both sides, emit events).
+///
+/// Always drives the run to a terminal status before returning — a dispatch
+/// error, a cancellation, or a failure to surface the result can never leave
+/// the row stuck on `running`. Safe to run on a detached task: it owns its
+/// inputs and reaches a terminal write regardless of the caller's lifetime.
+pub async fn finish_run(
+    events: DynEventSink,
+    dispatcher: Arc<dyn RoutineDispatcher>,
+    surface: Arc<dyn ActivitySurface>,
+    agent_path: &str,
+    begun: BegunRun,
+) -> CoreResult<()> {
+    let BegunRun {
+        working_dir,
+        routine,
+        run,
+        prompt,
+    } = begun;
 
     let outcome = dispatcher
         .dispatch(DispatchContext {
@@ -132,11 +166,27 @@ pub async fn run_routine(
     let is_silent = routine.suppress_when_silent && response_is_silent(&response);
 
     // Cancellation race: the cancel handler may have written status="cancelled"
-    // (and SIGTERM'd the PID) while we were awaiting dispatch. In that case the
-    // disk record is already terminal — don't overwrite it with `error`/`silent`/
-    // `surfaced`, and don't create an activity for a cancelled run.
-    let current = routine_runs::find_by_id(&working_dir, &run.id)?;
-    if current.status == "cancelled" {
+    // (and SIGTERM'd the PID) while we were awaiting dispatch — or while this
+    // run sat queued on the workdir lock waiting for an earlier routine to
+    // finish. In that case the disk record is already terminal — don't
+    // overwrite it with `error`/`silent`/`surfaced`, and don't create an
+    // activity for a cancelled run.
+    //
+    // A failed re-read must NOT bail with `?` here: that would skip every
+    // terminal write below and strand the row on `running` forever — the very
+    // failure this runner exists to prevent. Treat an unreadable record as
+    // "not cancelled" and fall through to a terminal status update.
+    let cancelled = match routine_runs::find_by_id(&working_dir, &run.id) {
+        Ok(current) => current.status == "cancelled",
+        Err(e) => {
+            tracing::warn!(
+                "[routines] failed to re-read run {} after dispatch: {e}; treating as live",
+                run.id
+            );
+            false
+        }
+    };
+    if cancelled {
         events.emit(HoustonEvent::RoutineRunsChanged {
             agent_path: agent_path.to_string(),
         });
@@ -171,35 +221,52 @@ pub async fn run_routine(
             routine.name,
             first_line(&response).unwrap_or("Needs attention")
         );
-        let activity_id = surface
-            .surface(
-                &working_dir,
-                &title,
-                &routine.description,
-                &run.session_key,
-                &routine.id,
-                &run.id,
-            )
-            .map_err(CoreError::Internal)?;
-
-        routine_runs::update(
+        match surface.surface(
             &working_dir,
+            &title,
+            &routine.description,
+            &run.session_key,
+            &routine.id,
             &run.id,
-            RoutineRunUpdate {
-                status: Some("surfaced".into()),
-                activity_id: Some(activity_id),
-                completed_at: Some(now),
-                ..Default::default()
-            },
-        )?;
-
-        events.emit(HoustonEvent::ActivityChanged {
-            agent_path: agent_path.to_string(),
-        });
-        events.emit(HoustonEvent::CompletionToast {
-            title: format!("{} found something", routine.name),
-            issue_id: None,
-        });
+        ) {
+            Ok(activity_id) => {
+                routine_runs::update(
+                    &working_dir,
+                    &run.id,
+                    RoutineRunUpdate {
+                        status: Some("surfaced".into()),
+                        activity_id: Some(activity_id),
+                        completed_at: Some(now),
+                        ..Default::default()
+                    },
+                )?;
+                events.emit(HoustonEvent::ActivityChanged {
+                    agent_path: agent_path.to_string(),
+                });
+                events.emit(HoustonEvent::CompletionToast {
+                    title: format!("{} found something", routine.name),
+                    issue_id: None,
+                });
+            }
+            Err(e) => {
+                // Surfacing failed. Flip the run to `error` so it doesn't sit
+                // on `running` forever, then propagate so the caller logs it.
+                routine_runs::update(
+                    &working_dir,
+                    &run.id,
+                    RoutineRunUpdate {
+                        status: Some("error".into()),
+                        summary: Some(format!("failed to surface result: {e}")),
+                        completed_at: Some(now),
+                        ..Default::default()
+                    },
+                )?;
+                events.emit(HoustonEvent::RoutineRunsChanged {
+                    agent_path: agent_path.to_string(),
+                });
+                return Err(CoreError::Internal(e));
+            }
+        }
     }
 
     events.emit(HoustonEvent::RoutineRunsChanged {
@@ -207,6 +274,24 @@ pub async fn run_routine(
     });
 
     Ok(())
+}
+
+/// Full execution of one routine: [`begin_run`] then [`finish_run`]. Used by
+/// the cron scheduler, which already runs on its own task per routine.
+///
+/// 1. Load routine + create run (status=`running`)
+/// 2. Dispatch session (via trait)
+/// 3. Evaluate: silent → update run; error → update run; surfaced → create
+///    activity, link both sides, emit events.
+pub async fn run_routine(
+    events: DynEventSink,
+    dispatcher: Arc<dyn RoutineDispatcher>,
+    surface: Arc<dyn ActivitySurface>,
+    agent_path: &str,
+    routine_id: &str,
+) -> CoreResult<()> {
+    let begun = begin_run(&events, agent_path, routine_id)?;
+    finish_run(events, dispatcher, surface, agent_path, begun).await
 }
 
 /// Cancel an in-flight routine run end-to-end.
@@ -472,6 +557,148 @@ mod tests {
         let runs = routine_runs::list(d.path()).unwrap();
         assert_eq!(runs.len(), 1);
         assert_eq!(runs[0].id, in_flight.id);
+    }
+
+    #[tokio::test]
+    async fn two_different_routines_on_same_agent_both_run() {
+        // Issue #362: two routines scheduled for the same time on the same
+        // agent must BOTH run — the per-routine gate must not let one drop the
+        // other. (The workdir lock that serializes the real sessions is
+        // exercised separately in `sessions` + `workdir_locks` tests; the fake
+        // dispatcher here doesn't take it, so this isolates the gate fix.)
+        let d = TempDir::new().unwrap();
+        let agent_path = d.path().to_string_lossy().to_string();
+        let a = create(d.path(), sample_routine()).unwrap();
+        let b = create(d.path(), sample_routine()).unwrap();
+
+        let dispatcher = Arc::new(FakeDispatcher(DispatchOutcome {
+            response_text: "all quiet\nROUTINE_OK".into(),
+            error: None,
+        }));
+        let surface = Arc::new(RecordingSurface::default());
+        let events: DynEventSink = Arc::new(NoopEventSink);
+
+        let (ra, rb) = tokio::join!(
+            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &a.id),
+            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &b.id),
+        );
+        ra.unwrap();
+        rb.unwrap();
+
+        let runs = routine_runs::list(d.path()).unwrap();
+        assert_eq!(runs.len(), 2, "both routines created a run");
+        assert!(
+            runs.iter().all(|r| r.status == "silent"),
+            "both runs reached a terminal status: {:?}",
+            runs.iter().map(|r| (&r.routine_id, &r.status)).collect::<Vec<_>>()
+        );
+        // One run per routine id.
+        assert!(runs.iter().any(|r| r.routine_id == a.id));
+        assert!(runs.iter().any(|r| r.routine_id == b.id));
+    }
+
+    #[tokio::test]
+    async fn two_routines_same_folder_serialize_via_workdir_lock() {
+        // Issue #362 end-to-end: two routines on the same agent both run, but
+        // their sessions SERIALIZE on the shared folder (never overlap) — using
+        // the real `SessionRuntime::acquire_workdir` the engine dispatcher uses.
+        use std::sync::atomic::{AtomicUsize, Ordering};
+
+        let d = TempDir::new().unwrap();
+        let agent_path = d.path().to_string_lossy().to_string();
+        let a = create(d.path(), sample_routine()).unwrap();
+        let b = create(d.path(), sample_routine()).unwrap();
+
+        struct SerializingDispatcher {
+            rt: crate::sessions::SessionRuntime,
+            active: Arc<AtomicUsize>,
+            peak: Arc<AtomicUsize>,
+        }
+        #[async_trait]
+        impl RoutineDispatcher for SerializingDispatcher {
+            async fn dispatch(&self, ctx: DispatchContext<'_>) -> DispatchOutcome {
+                let _guard = self.rt.acquire_workdir(ctx.working_dir).await;
+                let n = self.active.fetch_add(1, Ordering::SeqCst) + 1;
+                self.peak.fetch_max(n, Ordering::SeqCst);
+                tokio::time::sleep(std::time::Duration::from_millis(30)).await;
+                self.active.fetch_sub(1, Ordering::SeqCst);
+                DispatchOutcome {
+                    response_text: "all quiet\nROUTINE_OK".into(),
+                    error: None,
+                }
+            }
+        }
+
+        let peak = Arc::new(AtomicUsize::new(0));
+        let dispatcher = Arc::new(SerializingDispatcher {
+            rt: crate::sessions::SessionRuntime::default(),
+            active: Arc::new(AtomicUsize::new(0)),
+            peak: peak.clone(),
+        });
+        let surface = Arc::new(RecordingSurface::default());
+        let events: DynEventSink = Arc::new(NoopEventSink);
+
+        let (ra, rb) = tokio::join!(
+            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &a.id),
+            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &b.id),
+        );
+        ra.unwrap();
+        rb.unwrap();
+
+        let runs = routine_runs::list(d.path()).unwrap();
+        assert_eq!(runs.len(), 2, "both routines ran");
+        assert!(runs.iter().all(|r| r.status == "silent"), "both reached terminal");
+        assert_eq!(
+            peak.load(Ordering::SeqCst),
+            1,
+            "the two sessions must serialize on the shared workdir lock"
+        );
+    }
+
+    #[tokio::test]
+    async fn finish_run_marks_error_when_surface_fails() {
+        // A surfacing failure must not strand the run on `running`.
+        let d = TempDir::new().unwrap();
+        let agent_path = d.path().to_string_lossy().to_string();
+        let r = create(d.path(), sample_routine()).unwrap();
+
+        struct FailingSurface;
+        impl ActivitySurface for FailingSurface {
+            fn surface(
+                &self,
+                _wd: &Path,
+                _t: &str,
+                _d: &str,
+                _s: &str,
+                _r: &str,
+                _rr: &str,
+            ) -> Result<String, String> {
+                Err("disk full".into())
+            }
+        }
+
+        // Non-silent response → runner tries to surface → surface fails.
+        let dispatcher = Arc::new(FakeDispatcher(DispatchOutcome {
+            response_text: "Found something".into(),
+            error: None,
+        }));
+
+        let err = run_routine(
+            Arc::new(NoopEventSink),
+            dispatcher,
+            Arc::new(FailingSurface),
+            &agent_path,
+            &r.id,
+        )
+        .await
+        .unwrap_err();
+        assert!(matches!(err, CoreError::Internal(_)));
+
+        let runs = routine_runs::list(d.path()).unwrap();
+        assert_eq!(runs.len(), 1);
+        assert_eq!(runs[0].status, "error");
+        assert!(runs[0].completed_at.is_some());
+        assert!(runs[0].summary.as_deref().unwrap().contains("disk full"));
     }
 
     #[tokio::test]

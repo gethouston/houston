@@ -36,9 +36,9 @@ pub fn find_by_id(root: &Path, id: &str) -> CoreResult<RoutineRun> {
 /// because there's no way to distinguish a row from a still-alive
 /// subprocess vs. one that's been orphaned by a previous engine crash
 /// (the row is written before the dispatch awaits, and the dispatch
-/// process is gone after a hard restart). Without this sweep, an
-/// orphan would permanently block every future `run-now` for that
-/// agent via the precondition in [`crate::routines::runner::run_routine`].
+/// process is gone after a hard restart). Without this sweep, an orphan
+/// would permanently block every future run of that routine via the
+/// per-routine gate in [`create_if_routine_idle`].
 ///
 /// Returns the number of rows reaped. Safe to call when there are no
 /// orphan rows — it's a no-op.
@@ -68,12 +68,27 @@ fn sweep_orphan_running_unlocked(root: &Path) -> CoreResult<usize> {
     Ok(reaped)
 }
 
-pub fn create_if_no_running(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
+/// Create a run for `routine_id`, unless that *same* routine already has a
+/// run in `running` status.
+///
+/// The gate is scoped to the routine, NOT the agent: two different routines
+/// on the same agent that fire at the same time both get a run created, so
+/// neither is silently dropped (issue #362). Serializing the actual sessions
+/// — so two runs don't write the same folder at once — is the dispatcher's
+/// job via the workdir lock, which now *waits* instead of failing.
+///
+/// Same-routine concurrency is still rejected so repeated `run-now` clicks
+/// (or a cron fire that lands while the previous run is still in flight)
+/// don't queue duplicate work or pollute history.
+pub fn create_if_routine_idle(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     with_runs_lock(root, || {
         let existing = list(root)?;
-        if let Some(busy) = existing.iter().find(|r| r.status == "running") {
+        if let Some(busy) = existing
+            .iter()
+            .find(|r| r.routine_id == routine_id && r.status == "running")
+        {
             return Err(CoreError::Conflict(format!(
-                "another routine run is already in progress (run {})",
+                "routine {routine_id} already has a run in progress (run {})",
                 busy.id
             )));
         }
@@ -290,13 +305,15 @@ mod tests {
     }
 
     #[test]
-    fn concurrent_create_if_no_running_allows_one_run() {
+    fn create_if_routine_idle_serializes_same_routine() {
+        // Spam-click protection: many concurrent attempts to run the SAME
+        // routine collapse to a single in-flight run.
         let d = TempDir::new().unwrap();
         let root = d.path().to_path_buf();
         let handles = (0..8)
-            .map(|i| {
+            .map(|_| {
                 let root = root.clone();
-                thread::spawn(move || create_if_no_running(&root, &format!("rid-{i}")))
+                thread::spawn(move || create_if_routine_idle(&root, "same-rid"))
             })
             .collect::<Vec<_>>();
 
@@ -314,6 +331,51 @@ mod tests {
         assert_eq!(conflicts, 7);
         let runs = list(&root).unwrap();
         assert_eq!(runs.len(), 1);
+    }
+
+    #[test]
+    fn create_if_routine_idle_allows_a_different_routine_while_one_runs() {
+        // Issue #362: a second routine on the same agent must NOT be blocked
+        // by an unrelated routine that happens to be running.
+        let d = TempDir::new().unwrap();
+        let root = d.path();
+
+        let a = create_if_routine_idle(root, "routine-a").unwrap();
+        assert_eq!(a.status, "running");
+
+        // Different routine — allowed even though A is still running.
+        let b = create_if_routine_idle(root, "routine-b").unwrap();
+        assert_eq!(b.status, "running");
+
+        // Same routine as the in-flight A — rejected.
+        assert!(matches!(
+            create_if_routine_idle(root, "routine-a").unwrap_err(),
+            CoreError::Conflict(_)
+        ));
+
+        let runs = list(root).unwrap();
+        assert_eq!(runs.len(), 2);
+    }
+
+    #[test]
+    fn concurrent_create_if_routine_idle_allows_distinct_routines() {
+        // Distinct routine ids racing concurrently each get their own run —
+        // none are dropped.
+        let d = TempDir::new().unwrap();
+        let root = d.path().to_path_buf();
+        let handles = (0..8)
+            .map(|i| {
+                let root = root.clone();
+                thread::spawn(move || create_if_routine_idle(&root, &format!("rid-{i}")))
+            })
+            .collect::<Vec<_>>();
+
+        for handle in handles {
+            handle.join().unwrap().unwrap();
+        }
+
+        let runs = list(&root).unwrap();
+        assert_eq!(runs.len(), 8);
     }
 
     #[test]

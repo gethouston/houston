@@ -170,7 +170,7 @@ not user-facing copy.
 | PATCH/DELETE | `/v1/routines/:id` | Update/delete |
 | POST | `/v1/routines/:id/runs` | Create run |
 | POST | `/v1/routines/:id/runs/:run_id:cancel` | Stop an in-flight run (kills the provider PID, marks status `cancelled`). 409 if the run is already terminal. Deleting a routine cascades to this for any `running` runs. |
-| POST | `/v1/routines/:id/run-now` | Manual trigger |
+| POST | `/v1/routines/:id/run-now` | Manual trigger. Returns once the run row is created (404 if the routine is gone, 409 if *this* routine already has a run in flight); the session runs on a detached task — follow it via `RoutineRunsChanged`. Different routines on one agent both run, serialized on the folder; the same routine can't double-run. |
 | GET | `/v1/routine-runs` | List (optional `?routineId`) |
 | PATCH | `/v1/routine-runs/:id` | Update run |
 | POST | `/v1/routines/scheduler/start` | Start per-agent cron |

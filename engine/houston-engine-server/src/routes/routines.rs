@@ -15,7 +15,7 @@ use houston_engine_core::preferences;
 use houston_engine_core::routines::{
     self,
     engine_dispatcher::{EngineActivitySurface, EngineRoutineDispatcher},
-    runner::{cancel_run, run_routine},
+    runner::cancel_run,
     runs as routine_runs,
     types::{NewRoutine, Routine, RoutineRun, RoutineUpdate},
 };
@@ -162,14 +162,29 @@ async fn run_now(
     let dispatcher: Arc<dyn routines::runner::RoutineDispatcher> =
         Arc::new(make_dispatcher(&st));
     let surface: Arc<dyn routines::runner::ActivitySurface> = Arc::new(EngineActivitySurface);
-    run_routine(
-        st.engine.events.clone(),
-        dispatcher,
-        surface,
-        &q.agent_path,
-        &id,
-    )
-    .await?;
+    let events = st.engine.events.clone();
+
+    // Phase 1 runs in the request path so a missing routine (404) or an
+    // already-in-flight run of THIS routine (409) surfaces to the caller as a
+    // toast.
+    let begun = routines::runner::begin_run(&events, &q.agent_path, &id)?;
+
+    // Phase 2 — the actual session — runs on a detached task. A routine can
+    // take minutes, and may wait on the workdir lock behind another routine
+    // that's already running in the folder; we must not pin the HTTP request
+    // open for that. Critically, if we awaited it here and the client
+    // disconnected (navigate away / timeout), the dropped future would strand
+    // the run on `running` forever. The UI follows progress via
+    // `RoutineRunsChanged` events + query invalidation, not this response.
+    let agent_path = q.agent_path.clone();
+    tokio::spawn(async move {
+        if let Err(e) =
+            routines::runner::finish_run(events, dispatcher, surface, &agent_path, begun).await
+        {
+            tracing::error!("[routines] run-now dispatch failed for routine {id}: {e}");
+        }
+    });
+
     Ok(())
 }
 
