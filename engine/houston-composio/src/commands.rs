@@ -50,6 +50,19 @@ pub async fn connect_composio_app(toolkit: String) -> Result<StartLinkResponse, 
     cli::start_link(&toolkit).await
 }
 
+/// Disconnect a linked app: removes every connected account for the
+/// toolkit in the consumer namespace. See `cli::disconnect_toolkit`.
+pub async fn disconnect_composio_app(toolkit: String) -> Result<(), String> {
+    cli::disconnect_toolkit(&toolkit).await.map(|_| ())
+}
+
+/// Reconnect a linked app by refreshing its authentication. Returns the
+/// browser URL the user must open to complete OAuth re-consent, or `None`
+/// for auth schemes that refresh silently. See `cli::reconnect_toolkit`.
+pub async fn reconnect_composio_app(toolkit: String) -> Result<Option<String>, String> {
+    cli::reconnect_toolkit(&toolkit).await
+}
+
 /// List all available Composio apps from the REST API.
 pub async fn list_composio_apps() -> Vec<crate::apps::ComposioAppEntry> {
     crate::apps::list_all_apps().await

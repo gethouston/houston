@@ -20,6 +20,7 @@ import type {
   ClaudeStatus,
   CommunitySkill,
   ComposioAppEntry,
+  ComposioReconnectResponse,
   ComposioStartLinkResponse,
   ComposioStartLoginResponse,
   ComposioStatus,
@@ -776,6 +777,18 @@ export class HoustonClient {
   }
   composioConnectApp(toolkit: string): Promise<ComposioStartLinkResponse> {
     return this.request("POST", "/composio/connections", { toolkit });
+  }
+  /** Disconnect a toolkit: removes its connected account(s). */
+  composioDisconnect(toolkit: string): Promise<void> {
+    return this.request("POST", "/composio/connections/disconnect", { toolkit });
+  }
+  /**
+   * Reconnect a toolkit by refreshing its auth. Resolves to a browser URL
+   * the user must open to complete OAuth re-consent, or `null` when the
+   * auth scheme refreshed silently.
+   */
+  composioReconnect(toolkit: string): Promise<ComposioReconnectResponse> {
+    return this.request("POST", "/composio/connections/reconnect", { toolkit });
   }
   /**
    * Ask the engine to actively watch for `toolkit` to land in the

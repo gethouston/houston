@@ -25,7 +25,24 @@
     "count_one": "{{count}} app",
     "count_other": "{{count}} apps",
     "manageOn": "Gestionar {{name}}",
-    "dotAria": "Conectado"
+    "dotAria": "Conectado",
+    "menu": {
+      "aria": "Opciones de {{name}}",
+      "manage": "Gestionar en Composio",
+      "reconnect": "Reconectar",
+      "disconnect": "Desconectar"
+    },
+    "reconnect": {
+      "openedTitle": "Reconectando {{name}}",
+      "openedBody": "Vuelve a iniciar sesión en tu navegador y regresa aquí.",
+      "doneTitle": "{{name}} reconectado"
+    },
+    "disconnect": {
+      "confirmTitle": "¿Desconectar {{name}}?",
+      "confirmBody": "Tu agente perderá el acceso a {{name}}. Puedes reconectarlo cuando quieras.",
+      "confirmAction": "Desconectar",
+      "cancel": "Cancelar"
+    }
   },
   "signOut": {
     "button": "Cerrar sesión",

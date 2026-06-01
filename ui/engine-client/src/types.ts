@@ -678,6 +678,14 @@ export interface ComposioStartLinkResponse {
   toolkit: string;
 }
 
+export interface ComposioReconnectResponse {
+  /**
+   * Browser URL the user must open to finish OAuth re-consent, or `null`
+   * when the auth scheme refreshed silently (e.g. API-key connections).
+   */
+  redirectUrl: string | null;
+}
+
 // ────────────────────────────────────────────────────────────────────────
 // Portable agent (share / import "from a friend")
 // ────────────────────────────────────────────────────────────────────────

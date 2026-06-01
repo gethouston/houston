@@ -21,6 +21,7 @@ use std::process::Stdio;
 use tokio::process::Command;
 
 use crate::install;
+use crate::toolkits::normalize_toolkit_slug;
 
 // -- Public types (shared shape with the legacy `composio.rs` to keep
 //    the frontend types stable while the backend is swapped). --
@@ -456,38 +457,12 @@ pub async fn list_connected_toolkits() -> Vec<String> {
 
 async fn list_connected_toolkits_inner() -> Result<Vec<String>, String> {
     let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
-
     let client = reqwest::Client::new();
+    let consumer_user_id = resolve_consumer_user_id(&client, &base_url, &api_key, &org_id).await?;
 
-    // Step 1: resolve consumer project to get consumer_user_id
-    let resolve_resp = client
-        .post(format!("{base_url}/api/v3/org/consumer/project/resolve"))
-        .header("x-user-api-key", &api_key)
-        .header("x-org-id", &org_id)
-        .header("Content-Type", "application/json")
-        .header("Accept", "application/json")
-        .send()
-        .await
-        .map_err(|e| format!("Consumer project resolve failed: {e}"))?;
-
-    if !resolve_resp.status().is_success() {
-        return Err(format!("Consumer project resolve returned {}", resolve_resp.status()));
-    }
-
-    #[derive(Deserialize)]
-    struct ConsumerProject {
-        consumer_user_id: String,
-    }
-
-    let project: ConsumerProject = resolve_resp
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse consumer project: {e}"))?;
-
-    // Step 2: get connected toolkits for this consumer user
     let toolkits_resp = client
         .get(format!("{base_url}/api/v3/org/consumer/connected_toolkits"))
-        .query(&[("user_id", &project.consumer_user_id)])
+        .query(&[("user_id", &consumer_user_id)])
         .header("x-user-api-key", &api_key)
         .header("x-org-id", &org_id)
         .header("Accept", "application/json")
@@ -510,6 +485,232 @@ async fn list_connected_toolkits_inner() -> Result<Vec<String>, String> {
         .map_err(|e| format!("Failed to parse connected toolkits: {e}"))?;
 
     Ok(result.toolkits)
+}
+
+/// Resolve the consumer ("Composio for You") project's user id. Shared by
+/// every consumer-namespace REST call (connected toolkits, connected
+/// accounts). Mirrors the resolve step the composio CLI performs before
+/// scoping `client.connectedAccounts.*` to the consumer user.
+async fn resolve_consumer_user_id(
+    client: &reqwest::Client,
+    base_url: &str,
+    api_key: &str,
+    org_id: &str,
+) -> Result<String, String> {
+    let resolve_resp = client
+        .post(format!("{base_url}/api/v3/org/consumer/project/resolve"))
+        .header("x-user-api-key", api_key)
+        .header("x-org-id", org_id)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Consumer project resolve failed: {e}"))?;
+
+    if !resolve_resp.status().is_success() {
+        return Err(format!(
+            "Consumer project resolve returned {}",
+            resolve_resp.status()
+        ));
+    }
+
+    #[derive(Deserialize)]
+    struct ConsumerProject {
+        consumer_user_id: String,
+    }
+
+    let project: ConsumerProject = resolve_resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse consumer project: {e}"))?;
+    Ok(project.consumer_user_id)
+}
+
+// -- Connected accounts (disconnect + reconnect) --
+//
+// `connected_toolkits` (above) tells us WHICH apps are connected; managing
+// a connection needs the underlying connected-account ids. These mirror the
+// exact calls the composio CLI's `connections list` / `connections remove`
+// make through the SDK (`client.connectedAccounts.list` / `.delete` /
+// `.refresh`), scoped to the consumer user. We go straight to REST because:
+//   - `connections remove` only ships in @composio/cli >= 0.2.26 (Houston
+//     bundles 0.2.24) AND always prompts an interactive confirm with no
+//     `--yes` bypass, so it can't run in the engine's non-TTY wrapper.
+//   - there is NO CLI command for reconnect/refresh in any version.
+// `/api/v3/connected_accounts` exposes list + delete + refresh; v3 and v3.1
+// are aliases, and Houston speaks v3 everywhere else.
+
+/// One connected account as returned by `GET /api/v3/connected_accounts`.
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConnectedAccount {
+    /// Composio nanoid (e.g. `ca_...`). The handle for delete/refresh.
+    pub id: String,
+    /// Account status (e.g. `ACTIVE`, `INITIATED`, `EXPIRED`, `FAILED`).
+    #[serde(default)]
+    pub status: String,
+}
+
+/// List the consumer's connected accounts for a single toolkit slug.
+/// Empty `Vec` means the toolkit has no connected account.
+pub async fn list_connected_accounts(toolkit: &str) -> Result<Vec<ConnectedAccount>, String> {
+    let toolkit = normalize_toolkit_slug(toolkit);
+    if toolkit.is_empty() {
+        return Err("toolkit must not be empty".into());
+    }
+
+    let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
+    let client = reqwest::Client::new();
+    let consumer_user_id = resolve_consumer_user_id(&client, &base_url, &api_key, &org_id).await?;
+
+    let resp = client
+        .get(format!("{base_url}/api/v3/connected_accounts"))
+        .query(&[
+            ("user_ids", consumer_user_id.as_str()),
+            ("toolkit_slugs", toolkit.as_str()),
+            ("limit", "1000"),
+        ])
+        .header("x-user-api-key", &api_key)
+        .header("x-org-id", &org_id)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| format!("Connected accounts request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("Connected accounts returned {}", resp.status()));
+    }
+
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse connected accounts: {e}"))?;
+
+    parse_connected_accounts(&body)
+}
+
+/// Extract `{ id, status }` records from a `connected_accounts` list
+/// response. The payload wraps results in an `items` array (same shape as
+/// the toolkit catalog endpoint).
+fn parse_connected_accounts(body: &serde_json::Value) -> Result<Vec<ConnectedAccount>, String> {
+    let items = body
+        .get("items")
+        .and_then(|v| v.as_array())
+        .ok_or("Expected 'items' array in connected accounts response")?;
+
+    Ok(items
+        .iter()
+        .filter_map(|item| {
+            let id = item.get("id").and_then(|v| v.as_str())?.trim().to_string();
+            if id.is_empty() {
+                return None;
+            }
+            let status = item
+                .get("status")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            Some(ConnectedAccount { id, status })
+        })
+        .collect())
+}
+
+/// Disconnect (delete) every connected account for `toolkit` in the
+/// consumer namespace. Returns the number of accounts removed.
+///
+/// Deletes ALL matching accounts (active + stale/expired) so the toolkit
+/// is fully gone, matching what a user expects from "Disconnect". Errors
+/// surface to the caller so the UI toasts on failure.
+///
+/// Upstream caveat: `connectedAccounts.delete` removes Composio's record
+/// but does NOT revoke the OAuth token at the upstream provider.
+pub async fn disconnect_toolkit(toolkit: &str) -> Result<usize, String> {
+    let accounts = list_connected_accounts(toolkit).await?;
+    if accounts.is_empty() {
+        return Err(format!("No connected account found for {toolkit}"));
+    }
+
+    let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
+    let client = reqwest::Client::new();
+
+    let mut removed = 0usize;
+    for acct in &accounts {
+        let resp = client
+            .delete(format!("{base_url}/api/v3/connected_accounts/{}", acct.id))
+            .header("x-user-api-key", &api_key)
+            .header("x-org-id", &org_id)
+            .header("Accept", "application/json")
+            .send()
+            .await
+            .map_err(|e| format!("Disconnect request failed for {}: {e}", acct.id))?;
+
+        if !resp.status().is_success() {
+            return Err(format!(
+                "Disconnect failed for {} (status {})",
+                acct.id,
+                resp.status()
+            ));
+        }
+        removed += 1;
+    }
+
+    Ok(removed)
+}
+
+/// Reconnect (refresh authentication on) the connected account for
+/// `toolkit`. Returns the browser URL the user must open to complete
+/// OAuth re-consent, or `None` for auth schemes that refresh silently
+/// (e.g. API-key connections).
+///
+/// Maps to `POST /api/v3/connected_accounts/{id}/refresh` — the same call
+/// the dashboard "Reconnect" button makes (formerly v1 `reinitiate`).
+/// There is no CLI command for this in any composio version, so REST is
+/// the only path. Prefers an `ACTIVE` account, else falls back to the
+/// first one (a broken connection has no active account, and that is
+/// exactly the account a reconnect needs to refresh).
+pub async fn reconnect_toolkit(toolkit: &str) -> Result<Option<String>, String> {
+    let accounts = list_connected_accounts(toolkit).await?;
+    let target = accounts
+        .iter()
+        .find(|a| a.status.eq_ignore_ascii_case("ACTIVE"))
+        .or_else(|| accounts.first())
+        .ok_or_else(|| format!("No connected account found for {toolkit}"))?;
+
+    let (api_key, base_url, org_id) = crate::apps::read_user_config_full()?;
+    let client = reqwest::Client::new();
+
+    let resp = client
+        .post(format!(
+            "{base_url}/api/v3/connected_accounts/{}/refresh",
+            target.id
+        ))
+        .header("x-user-api-key", &api_key)
+        .header("x-org-id", &org_id)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
+        .json(&serde_json::json!({}))
+        .send()
+        .await
+        .map_err(|e| format!("Reconnect request failed: {e}"))?;
+
+    if !resp.status().is_success() {
+        return Err(format!("Reconnect failed (status {})", resp.status()));
+    }
+
+    let body: serde_json::Value = resp
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse reconnect response: {e}"))?;
+
+    Ok(parse_redirect_url(&body))
+}
+
+/// Pull a non-empty `redirect_url` out of a refresh response, or `None`.
+fn parse_redirect_url(body: &serde_json::Value) -> Option<String> {
+    body.get("redirect_url")
+        .and_then(|v| v.as_str())
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(String::from)
 }
 
 /// Turn a cryptic Windows process exit (e.g. `0xc000001d`) into a
@@ -568,5 +769,58 @@ mod tests {
     fn passes_through_when_code_unavailable() {
         let msg = decorate_windows_exit("composio login", "signal: 9", None);
         assert_eq!(msg, "composio login exited with signal: 9");
+    }
+
+    #[test]
+    fn parses_connected_accounts_items() {
+        let body = serde_json::json!({
+            "items": [
+                { "id": "ca_active", "status": "ACTIVE" },
+                { "id": "ca_expired", "status": "EXPIRED" },
+                { "id": "  ", "status": "ACTIVE" },
+                { "status": "ACTIVE" }
+            ],
+            "total_pages": 1
+        });
+        let accounts = parse_connected_accounts(&body).unwrap();
+        assert_eq!(accounts.len(), 2);
+        assert_eq!(accounts[0].id, "ca_active");
+        assert_eq!(accounts[0].status, "ACTIVE");
+        assert_eq!(accounts[1].id, "ca_expired");
+    }
+
+    #[test]
+    fn parse_connected_accounts_defaults_missing_status() {
+        let body = serde_json::json!({ "items": [ { "id": "ca_1" } ] });
+        let accounts = parse_connected_accounts(&body).unwrap();
+        assert_eq!(accounts.len(), 1);
+        assert_eq!(accounts[0].status, "");
+    }
+
+    #[test]
+    fn parse_connected_accounts_rejects_missing_items() {
+        let body = serde_json::json!({ "data": [] });
+        assert!(parse_connected_accounts(&body).is_err());
+    }
+
+    #[test]
+    fn parses_redirect_url_when_present() {
+        let body = serde_json::json!({
+            "id": "ca_1",
+            "status": "INITIATED",
+            "redirect_url": "https://backend.composio.dev/auth/redirect/abc"
+        });
+        assert_eq!(
+            parse_redirect_url(&body).as_deref(),
+            Some("https://backend.composio.dev/auth/redirect/abc")
+        );
+    }
+
+    #[test]
+    fn redirect_url_none_for_silent_refresh() {
+        // Non-redirect schemes (e.g. API-key) return null / absent / empty.
+        assert!(parse_redirect_url(&serde_json::json!({ "redirect_url": null })).is_none());
+        assert!(parse_redirect_url(&serde_json::json!({ "redirect_url": "" })).is_none());
+        assert!(parse_redirect_url(&serde_json::json!({ "id": "ca_1" })).is_none());
     }
 }

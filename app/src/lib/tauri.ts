@@ -361,6 +361,11 @@ export interface StartLinkResponse {
   toolkit: string;
 }
 
+export interface ReconnectResult {
+  /** URL to open for OAuth re-consent, or null when refreshed silently. */
+  redirectUrl: string | null;
+}
+
 export const tauriConnections = {
   list: () =>
     call<ComposioStatus>("list_composio_connections", () => getEngine().composioStatus()),
@@ -387,6 +392,21 @@ export const tauriConnections = {
         toolkit: r.toolkit,
       };
     }),
+  disconnectApp: (toolkit: string) =>
+    call<void>(
+      "disconnect_composio_app",
+      () => getEngine().composioDisconnect(toolkit),
+      { toolkit },
+    ),
+  reconnectApp: (toolkit: string) =>
+    call<ReconnectResult>(
+      "reconnect_composio_app",
+      async () => {
+        const r = await getEngine().composioReconnect(toolkit);
+        return { redirectUrl: r.redirectUrl };
+      },
+      { toolkit },
+    ),
   watchConnection: (toolkit: string) =>
     call<void>(
       "watch_composio_connection",

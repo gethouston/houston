@@ -1,8 +1,17 @@
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ExternalLink } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import { ConfirmDialog } from "@houston-ai/core";
 import { tauriConnections, tauriSystem } from "../../lib/tauri";
+import { useInvalidateConnections } from "../../hooks/queries";
+import { useComposioRefetchOnReturn } from "../../hooks/use-composio-refetch-on-return";
+import { useUIStore } from "../../stores/ui";
+import { showErrorToast } from "../../lib/error-toast";
+import {
+  ConnectedAppCard,
+  type CardBusy,
+  type ConnectedAppInfo,
+} from "./connected-app-card";
 
 interface ConnectedAppsSectionProps {
   connectedToolkits: Set<string>;
@@ -12,13 +21,21 @@ export function ConnectedAppsSection({
   connectedToolkits,
 }: ConnectedAppsSectionProps) {
   const { t } = useTranslation("integrations");
+  const invalidate = useInvalidateConnections();
+  const markWaitingForAuth = useComposioRefetchOnReturn();
+  const addToast = useUIStore((s) => s.addToast);
+
   const { data: apiApps } = useQuery({
     queryKey: ["composio-apps"],
     queryFn: () => tauriConnections.listApps(),
     staleTime: 1000 * 60 * 60,
   });
 
-  const connectedApps = useMemo(() => {
+  const [busy, setBusy] = useState<Record<string, CardBusy>>({});
+  const [pendingDisconnect, setPendingDisconnect] =
+    useState<ConnectedAppInfo | null>(null);
+
+  const connectedApps = useMemo<ConnectedAppInfo[]>(() => {
     const byToolkit = new Map(
       (apiApps ?? []).map((a) => [
         a.toolkit,
@@ -41,7 +58,67 @@ export function ConnectedAppsSection({
           },
       )
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [apiApps, connectedToolkits]);
+  }, [apiApps, connectedToolkits, t]);
+
+  const setCardBusy = useCallback((toolkit: string, state: CardBusy) => {
+    setBusy((prev) => ({ ...prev, [toolkit]: state }));
+  }, []);
+
+  const handleReconnect = useCallback(
+    async (app: ConnectedAppInfo) => {
+      setCardBusy(app.toolkit, "reconnecting");
+      try {
+        const { redirectUrl } = await tauriConnections.reconnectApp(app.toolkit);
+        if (redirectUrl) {
+          // OAuth scheme: open the browser for re-consent. `openUrl` is a
+          // raw OS-bridge call that does NOT route through `call()`, so we
+          // surface its failure here and only confirm once it opened.
+          try {
+            await tauriSystem.openUrl(redirectUrl);
+          } catch (err) {
+            showErrorToast("reconnect_open_url", String(err));
+            return;
+          }
+          // Refetch when the user returns from the browser.
+          markWaitingForAuth(app.toolkit);
+          addToast({
+            variant: "success",
+            title: t("connected.reconnect.openedTitle", { name: app.name }),
+            description: t("connected.reconnect.openedBody"),
+          });
+        } else {
+          // Non-redirect scheme refreshed silently.
+          await invalidate();
+          addToast({
+            variant: "success",
+            title: t("connected.reconnect.doneTitle", { name: app.name }),
+          });
+        }
+      } catch {
+        // Surfaced by `call()` as an error toast.
+      } finally {
+        setCardBusy(app.toolkit, null);
+      }
+    },
+    [addToast, invalidate, markWaitingForAuth, setCardBusy, t],
+  );
+
+  const handleDisconnect = useCallback(
+    async (app: ConnectedAppInfo) => {
+      setCardBusy(app.toolkit, "disconnecting");
+      try {
+        await tauriConnections.disconnectApp(app.toolkit);
+      } catch {
+        // Surfaced by `call()` as an error toast.
+      } finally {
+        // Always refresh: a partial delete (some accounts removed before a
+        // failure) must still drop those from the card.
+        await invalidate();
+        setCardBusy(app.toolkit, null);
+      }
+    },
+    [invalidate, setCardBusy],
+  );
 
   if (connectedApps.length === 0) {
     return null;
@@ -50,25 +127,46 @@ export function ConnectedAppsSection({
   return (
     <section className="mt-6">
       <div className="flex items-center justify-between mb-3">
-        <h2 className="text-sm font-medium text-foreground">{t("connected.title")}</h2>
+        <h2 className="text-sm font-medium text-foreground">
+          {t("connected.title")}
+        </h2>
         <span className="text-xs text-muted-foreground">
           {t("connected.count", { count: connectedApps.length })}
         </span>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {connectedApps.map((app) => (
-          <ConnectedAppCard key={app.toolkit} app={app} />
+          <ConnectedAppCard
+            key={app.toolkit}
+            app={app}
+            busy={busy[app.toolkit] ?? null}
+            onManage={() => tauriSystem.openUrl(composioAppUrl(app.toolkit))}
+            onReconnect={() => handleReconnect(app)}
+            onDisconnect={() => setPendingDisconnect(app)}
+          />
         ))}
       </div>
+
+      <ConfirmDialog
+        open={pendingDisconnect !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDisconnect(null);
+        }}
+        title={t("connected.disconnect.confirmTitle", {
+          name: pendingDisconnect?.name ?? "",
+        })}
+        description={t("connected.disconnect.confirmBody", {
+          name: pendingDisconnect?.name ?? "",
+        })}
+        confirmLabel={t("connected.disconnect.confirmAction")}
+        cancelLabel={t("connected.disconnect.cancel")}
+        variant="destructive"
+        onConfirm={() => {
+          if (pendingDisconnect) void handleDisconnect(pendingDisconnect);
+        }}
+      />
     </section>
   );
-}
-
-interface AppInfo {
-  toolkit: string;
-  name: string;
-  description: string;
-  logoUrl: string;
 }
 
 function composioAppUrl(toolkit: string): string {
@@ -81,50 +179,6 @@ function composioAppUrl(toolkit: string): string {
   // card emits and it goes through Composio's auth → user's workspace
   // → connect-app routing, which works reliably.
   return `https://composio.dev/#houston_toolkit=${toolkit}`;
-}
-
-
-function ConnectedAppCard({ app }: { app: AppInfo }) {
-  const { t } = useTranslation("integrations");
-  const [imgError, setImgError] = useState(false);
-  const initial = app.name.charAt(0).toUpperCase();
-
-  return (
-    <button
-      type="button"
-      onClick={() => tauriSystem.openUrl(composioAppUrl(app.toolkit))}
-      title={t("connected.manageOn", { name: app.name })}
-      className="group w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl bg-secondary hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:bg-black/[0.05]"
-    >
-      {!imgError ? (
-        <img
-          src={app.logoUrl}
-          alt={app.name}
-          className="size-8 rounded-lg object-contain shrink-0 bg-background"
-          onError={() => setImgError(true)}
-        />
-      ) : (
-        <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
-          <span className="text-xs font-semibold text-muted-foreground">
-            {initial}
-          </span>
-        </div>
-      )}
-      <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-foreground truncate flex items-center gap-1.5">
-          {app.name}
-          <span
-            className="size-1.5 rounded-full bg-emerald-500 shrink-0"
-            aria-label={t("connected.dotAria")}
-          />
-        </p>
-        <p className="text-[11px] text-muted-foreground truncate">
-          {app.description}
-        </p>
-      </div>
-      <ExternalLink className="size-3.5 text-muted-foreground/60 shrink-0 group-hover:text-muted-foreground transition-colors" />
-    </button>
-  );
 }
 
 function fallbackLogo(toolkit: string): string {

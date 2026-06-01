@@ -25,7 +25,24 @@
     "count_one": "{{count}} app",
     "count_other": "{{count}} apps",
     "manageOn": "Manage {{name}}",
-    "dotAria": "Connected"
+    "dotAria": "Connected",
+    "menu": {
+      "aria": "Options for {{name}}",
+      "manage": "Manage on Composio",
+      "reconnect": "Reconnect",
+      "disconnect": "Disconnect"
+    },
+    "reconnect": {
+      "openedTitle": "Reconnecting {{name}}",
+      "openedBody": "Finish signing in again in your browser, then come back here.",
+      "doneTitle": "{{name}} reconnected"
+    },
+    "disconnect": {
+      "confirmTitle": "Disconnect {{name}}?",
+      "confirmBody": "Your agent will lose access to {{name}}. You can reconnect it anytime.",
+      "confirmAction": "Disconnect",
+      "cancel": "Cancel"
+    }
   },
   "signOut": {
     "button": "Sign out",
