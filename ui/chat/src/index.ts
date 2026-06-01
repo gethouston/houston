@@ -214,7 +214,7 @@ export type { UserAttachmentMessageLabels } from "./user-attachment-message";
 
 // === Utilities ===
 export { Typewriter } from "./typewriter";
-export { mergeFeedItem } from "./feed-merge";
+export { mergeFeedItem, mergeFeedHistory } from "./feed-merge";
 export { ChannelAvatar } from "./channel-avatar";
 export type { ChannelSource } from "./channel-avatar";
 
