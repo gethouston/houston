@@ -55,11 +55,18 @@ impl ProviderAdapter for AnthropicAdapter {
     }
 
     fn effort_levels(&self) -> &'static [&'static str] {
-        // `claude --effort` accepts low/medium/high/xhigh/max. The model
-        // gates which are *honored* (Opus 4.7/4.8 = all; Sonnet 4.6 = no
-        // `xhigh`), but Claude self-clamps an unsupported value to its
-        // highest, so the engine carries the full union and lets the
-        // frontend picker present the per-model subset.
+        // These MUST be a subset of the `--effort` choices accepted by the
+        // claude-code version pinned in `cli-deps.json`. `claude --effort`
+        // validates via a commander `.choices()` allow-list and HARD-REJECTS
+        // (exit 1, `argument '<v>' is invalid`) anything outside it — it does
+        // NOT self-clamp to its highest level. Passing a value an older
+        // installed CLI doesn't know kills the session with a generic
+        // "claude hit a runtime error" (this is exactly how `xhigh` broke on
+        // the previously-pinned 2.1.92, which only knew low/medium/high/max).
+        // The pinned CLI (>= 2.1.158) accepts all five below; the model gates
+        // which are *honored* (Opus 4.7/4.8 = all; Sonnet 4.6 = no `xhigh`),
+        // so the engine carries the full union and the frontend picker
+        // presents the per-model subset.
         &["low", "medium", "high", "xhigh", "max"]
     }
 
