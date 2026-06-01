@@ -22,13 +22,17 @@ export interface ModelOption {
    */
   effortLevels?: readonly EffortLevel[];
   /**
-   * Maximum context-window size in tokens, as it behaves inside the model's
-   * CLI. Drives the composer context-usage indicator (used tokens ÷ window).
-   * Omit when the window isn't known for a model so the indicator degrades to
-   * a raw token count instead of showing a misleading percentage.
+   * Maximum context-window size in tokens, as the model's CLI actually
+   * behaves at runtime (i.e. the number to divide live `usage.context_tokens`
+   * by). Drives the composer context-usage indicator. Omit when unknown so
+   * the indicator falls back to a raw token count instead of a misleading %.
    *
-   * Houston runs Claude at the standard 200k window (not the 1M beta). Codex
-   * caps gpt-5.5 at 400k even though the raw API offers 1M.
+   * The model's CLI is the source of truth, not the raw API: the same model
+   * id can have different effective windows depending on which client speaks
+   * to it (Claude Code defaults to 1M; Microsoft Foundry routes still see
+   * 200k; Codex caps gpt-5.5 well below the 1M raw API offer). The values
+   * here mirror what each CLI reports back to the user in its own usage UI,
+   * so Houston's % matches what users see when they run the bare CLI.
    */
   contextWindow?: number;
 }
@@ -84,9 +88,12 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
         effortLevels: ["low", "medium", "high", "xhigh"],
-        // Codex caps gpt-5.5 at 400k total context (272k input + 128k
-        // reserved output) even though the raw API exposes 1M.
-        contextWindow: 400_000,
+        // Codex CLI's enforced cap is 272k input — the input portion of a
+        // 400k total split (272k input + 128k reserved output). The raw
+        // OpenAI API offers 1M but Codex never serves that. Matches the
+        // ceiling Codex's own UI reports back (~258k post-95% safety
+        // multiplier, but the hard limit IS 272k).
+        contextWindow: 272_000,
       },
     ],
     defaultModel: "gpt-5.5",
@@ -106,7 +113,15 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         description: "Best balance of speed and quality.",
         // Sonnet 4.6: has `max`, no `xhigh`.
         effortLevels: ["low", "medium", "high", "max"],
-        contextWindow: 200_000,
+        // Claude Code 2.1+ defaults Sonnet 4.6 / Opus 4.7 / Opus 4.8 to the
+        // 1M-token window on the Anthropic API + Bedrock + Vertex routes
+        // (the routes the bundled Claude CLI uses for OAuth + ANTHROPIC_API_KEY
+        // auth, i.e. every Houston user we ship to today). Microsoft Foundry
+        // routes still cap at 200k, but `claude -p` never speaks to Foundry
+        // and the stream-json `system init` event carries no window field,
+        // so we encode the Claude-Code-default 1M. Houston's % indicator
+        // matches what `/context` shows in the bare CLI.
+        contextWindow: 1_000_000,
       },
       {
         id: "claude-opus-4-8",
@@ -115,7 +130,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         // Opus 4.8: full range (same as 4.7). NOTE: `ultracode` is a Claude
         // Code harness mode, NOT an effort level — never add it here.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        contextWindow: 200_000,
+        contextWindow: 1_000_000,
       },
       {
         id: "claude-opus-4-7",
@@ -123,7 +138,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         description: "Previous flagship. Very capable, slower.",
         // Opus 4.7: full range.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        contextWindow: 200_000,
+        contextWindow: 1_000_000,
       },
     ],
     defaultModel: "claude-sonnet-4-6",

@@ -385,13 +385,30 @@ sums its three-way split (`input + cache_creation + cache_read`), Codex's
 `input_tokens` is already cache-inclusive so it maps straight through. The
 desktop composer's context-usage indicator (`app/src/components/context-
 indicator.tsx`) divides `context_tokens` by the model's `contextWindow`
-(`app/src/lib/providers.ts`, Claude 200k / gpt-5.5 400k) for a "% full"
-gauge; it reads the latest such item via `latestContextUsage` so it works
-both live and after a history reload (the field is persisted in
-`chat_feed.data_json`). `/context` (the interactive Claude Code slash
-command) is unavailable here because the engine drives `claude -p` in
-non-interactive print mode — the data comes from the stream's `usage`
-blocks, not a REPL command.
+(`app/src/lib/providers.ts`) for a "% full" gauge; it reads the latest such
+item via `latestContextUsage` so it works both live and after a history
+reload (the field is persisted in `chat_feed.data_json`). `/context` (the
+interactive Claude Code slash command) is unavailable here because the
+engine drives `claude -p` in non-interactive print mode — the data comes
+from the stream's `usage` blocks, not a REPL command.
+
+**Window values.** Claude Code's stream-json `system init` event does NOT
+carry a context-window field (verified against Claude Code 2.1.159: only
+`model`, `tools`, `mcp_servers`, etc. — no `max_tokens` / `context_window`),
+and Codex's `thread.started` doesn't either. The catalog therefore encodes
+per-model CLI-reported windows:
+
+- `claude-sonnet-4-6` / `claude-opus-4-7` / `claude-opus-4-8` → **1M**
+  (Claude Code default on Anthropic/Bedrock/Vertex routes — i.e. every
+  Houston user; Microsoft Foundry capping at 200k is undetectable from the
+  stream but doesn't apply to the bundled `claude` CLI's auth flow).
+- `gpt-5.5` → **272k** (Codex CLI's enforced input cap, the input portion
+  of its 400k total split; the raw OpenAI API offers 1M but Codex never
+  serves that).
+
+If a future Claude/Codex release exposes the window in `system init` /
+`thread.started`, prefer the live value over the catalog and treat the
+catalog as a fallback.
 
 ### Binary file downloads
 
