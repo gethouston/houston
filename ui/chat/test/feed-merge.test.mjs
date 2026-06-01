@@ -108,3 +108,36 @@ test("mergeFeedHistory preserves a legitimately repeated user turn", () => {
 
   assert.deepEqual(mergeFeedHistory(history, current), history);
 });
+
+test("mergeFeedItem drops a WS-echoed user_message that duplicates an answered turn", () => {
+  // Issue #363: a surfaced routine is hydrated to [user, pong, final] and the
+  // same turn is replayed over the live socket. The echoed user_message lands
+  // after the assistant reply, so the consecutive-collapse misses it; the
+  // fromWs guard drops it instead of surfacing the prompt a second time.
+  const feed = [user("ping"), assistant("pong"), finalResult("pong")];
+
+  assert.equal(mergeFeedItem(feed, user("ping"), { fromWs: true }), feed);
+});
+
+test("mergeFeedItem keeps an optimistic repeat of the same user text", () => {
+  // A local optimistic push (no fromWs) is a real new turn — both copies stay,
+  // even though an identical user_message already sits earlier in the feed.
+  const feed = [user("hi"), assistant("hello")];
+
+  assert.deepEqual(mergeFeedItem(feed, user("hi")), [
+    user("hi"),
+    assistant("hello"),
+    user("hi"),
+  ]);
+});
+
+test("mergeFeedItem appends a fresh WS user_message with no duplicate", () => {
+  // A WS user_message from another client / a new turn must still show.
+  const feed = [user("ping"), assistant("pong")];
+
+  assert.deepEqual(mergeFeedItem(feed, user("pong?"), { fromWs: true }), [
+    user("ping"),
+    assistant("pong"),
+    user("pong?"),
+  ]);
+});

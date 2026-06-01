@@ -12,7 +12,12 @@ import type { FeedItem } from "@houston-ai/chat";
  */
 interface FeedState {
   items: Record<string, Record<string, FeedItem[]>>;
-  pushFeedItem: (agentPath: string, sessionKey: string, item: FeedItem) => void;
+  pushFeedItem: (
+    agentPath: string,
+    sessionKey: string,
+    item: FeedItem,
+    opts?: { fromWs?: boolean },
+  ) => void;
   setFeed: (agentPath: string, sessionKey: string, items: FeedItem[]) => void;
   clearFeed: (agentPath: string, sessionKey: string) => void;
   clearAgent: (agentPath: string) => void;
@@ -21,10 +26,10 @@ interface FeedState {
 export const useFeedStore = create<FeedState>((set) => ({
   items: {},
 
-  pushFeedItem: (agentPath, sessionKey, item) => {
+  pushFeedItem: (agentPath, sessionKey, item, opts) => {
     return set((s) => {
       const agentBucket = s.items[agentPath] ?? {};
-      const nextSession = mergeFeedItem(agentBucket[sessionKey] ?? [], item);
+      const nextSession = mergeFeedItem(agentBucket[sessionKey] ?? [], item, opts);
       return {
         items: {
           ...s.items,
