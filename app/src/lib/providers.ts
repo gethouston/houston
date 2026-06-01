@@ -22,19 +22,29 @@ export interface ModelOption {
    */
   effortLevels?: readonly EffortLevel[];
   /**
-   * Maximum context-window size in tokens, as the model's CLI actually
-   * behaves at runtime (i.e. the number to divide live `usage.context_tokens`
-   * by). Drives the composer context-usage indicator. Omit when unknown so
-   * the indicator falls back to a raw token count instead of a misleading %.
-   *
-   * The model's CLI is the source of truth, not the raw API: the same model
-   * id can have different effective windows depending on which client speaks
-   * to it (Claude Code defaults to 1M; Microsoft Foundry routes still see
-   * 200k; Codex caps gpt-5.5 well below the 1M raw API offer). The values
-   * here mirror what each CLI reports back to the user in its own usage UI,
-   * so Houston's % matches what users see when they run the bare CLI.
+   * Default assumed context window (tokens) — the denominator the composer's
+   * context-usage indicator STARTS with. The real window is plan/credit-gated
+   * and is NOT reported by `claude -p` (verified: the stream's `system init`
+   * event carries only `model`, no window; no flag, no env var). Specifically:
+   *   - Opus 4.x: 1M only on Max/Team/Enterprise (automatic) or with usage
+   *     credits; 200k on Pro without credits.
+   *   - Sonnet 4.6: 200k unless usage credits are enabled (on every plan).
+   *   - Codex caps gpt-5.5 at ~272k regardless of the 1M raw API offer.
+   * So this is an estimate. The indicator snaps UP to `contextWindowMax` once
+   * a session's observed usage exceeds this default, which PROVES the real
+   * window is larger (Claude Code auto-compacts before the limit, so observed
+   * usage can never exceed the true window). Omit to hide the % and show a raw
+   * token count instead.
    */
   contextWindow?: number;
+  /**
+   * Snap-up ceiling (tokens) for the self-correcting estimate. When a
+   * session's observed usage exceeds `contextWindow`, the indicator switches
+   * the denominator to this value. Defaults to `contextWindow` when omitted
+   * (no snapping). Set above `contextWindow` only for models whose window is
+   * gated upward at runtime — e.g. Sonnet 4.6 (200k default → 1M with credits).
+   */
+  contextWindowMax?: number;
 }
 
 /**
@@ -90,9 +100,8 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         effortLevels: ["low", "medium", "high", "xhigh"],
         // Codex CLI's enforced cap is 272k input — the input portion of a
         // 400k total split (272k input + 128k reserved output). The raw
-        // OpenAI API offers 1M but Codex never serves that. Matches the
-        // ceiling Codex's own UI reports back (~258k post-95% safety
-        // multiplier, but the hard limit IS 272k).
+        // OpenAI API offers 1M but Codex never serves that. Not plan-laddered
+        // like Claude, so no snap-up ceiling.
         contextWindow: 272_000,
       },
     ],
@@ -113,15 +122,12 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         description: "Best balance of speed and quality.",
         // Sonnet 4.6: has `max`, no `xhigh`.
         effortLevels: ["low", "medium", "high", "max"],
-        // Claude Code 2.1+ defaults Sonnet 4.6 / Opus 4.7 / Opus 4.8 to the
-        // 1M-token window on the Anthropic API + Bedrock + Vertex routes
-        // (the routes the bundled Claude CLI uses for OAuth + ANTHROPIC_API_KEY
-        // auth, i.e. every Houston user we ship to today). Microsoft Foundry
-        // routes still cap at 200k, but `claude -p` never speaks to Foundry
-        // and the stream-json `system init` event carries no window field,
-        // so we encode the Claude-Code-default 1M. Houston's % indicator
-        // matches what `/context` shows in the bare CLI.
-        contextWindow: 1_000_000,
+        // Sonnet 4.6 in Claude Code defaults to 200k on EVERY plan; the
+        // 1M window is opt-in via usage credits (`/extra-usage`) and is NOT
+        // part of any automatic upgrade. So start at 200k and snap to 1M only
+        // once observed usage proves the credits-enabled window is active.
+        contextWindow: 200_000,
+        contextWindowMax: 1_000_000,
       },
       {
         id: "claude-opus-4-8",
@@ -130,13 +136,17 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         // Opus 4.8: full range (same as 4.7). NOTE: `ultracode` is a Claude
         // Code harness mode, NOT an effort level — never add it here.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        // Opus 4.x auto-upgrades to 1M on Max/Team/Enterprise (the power-user
+        // default; matches what `/context` shows there). Pro WITHOUT usage
+        // credits actually runs 200k — the one case this over-estimates, and
+        // it can't self-correct downward, so the dialog flags it as estimated.
         contextWindow: 1_000_000,
       },
       {
         id: "claude-opus-4-7",
         label: "Opus 4.7",
         description: "Previous flagship. Very capable, slower.",
-        // Opus 4.7: full range.
+        // Opus 4.7: full range. Same 1M-on-Max default as Opus 4.8 above.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
         contextWindow: 1_000_000,
       },
@@ -160,18 +170,32 @@ export function getDefaultModel(providerId: string): string {
   return getProvider(providerId)?.defaultModel ?? "claude-sonnet-4-6";
 }
 
+/** Default + snap-up ceiling for a model's context window (tokens). */
+export interface ContextWindowConfig {
+  /** Starting denominator for the usage indicator (the estimate). */
+  default: number;
+  /** Snap-up ceiling once observed usage proves a larger window. */
+  max: number;
+}
+
 /**
- * Max context-window size (tokens) for a provider+model, or `undefined` when
- * the model is unknown or its window isn't catalogued. Drives the composer
- * context-usage indicator: the caller shows a percentage when a window is
- * known and falls back to a raw token count otherwise.
+ * Context-window config for a provider+model, or `undefined` when the model is
+ * unknown or its window isn't catalogued (the indicator then shows a raw token
+ * count instead of a %). `max` falls back to `default` when the model has no
+ * upward gating. See `effectiveContextWindow` for how the two combine with a
+ * session's observed usage.
  */
-export function getContextWindow(
+export function getContextWindowConfig(
   providerId: string | null | undefined,
   modelId: string | null | undefined,
-): number | undefined {
+): ContextWindowConfig | undefined {
   if (!providerId || !modelId) return undefined;
-  return getModel(providerId, modelId)?.contextWindow;
+  const model = getModel(providerId, modelId);
+  if (model?.contextWindow == null) return undefined;
+  return {
+    default: model.contextWindow,
+    max: model.contextWindowMax ?? model.contextWindow,
+  };
 }
 
 /**

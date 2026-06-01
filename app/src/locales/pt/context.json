@@ -11,6 +11,7 @@
     "usedOfTotal": "{{used}} de {{total}} tokens",
     "tokensUsed": "{{used}} tokens usados",
     "free": "{{free}} livres",
+    "estimated": "Estimado. A janela de contexto real do seu plano pode variar.",
     "cached": "Reaproveitado do cache",
     "lastReply": "Última resposta",
     "empty": "Envie uma mensagem e o uso do contexto vai aparecer aqui.",

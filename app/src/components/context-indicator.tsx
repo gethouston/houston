@@ -2,11 +2,13 @@
  * Composer context-usage indicator.
  *
  * A small footer pill that shows how full the model's context window is for
- * the current conversation, opening a dialog with the detail. Reads the
- * latest turn's normalized `TokenUsage` (see `latestContextUsage`) and the
- * active model's context window (`getContextWindow`). When the window is
- * unknown for a model it degrades to a raw token count rather than showing a
- * misleading percentage.
+ * the current conversation, opening a dialog with the detail. The caller
+ * resolves `usage` (latest turn) and `contextWindow` (a self-correcting
+ * estimate; see `sessionContextUsage` + `effectiveContextWindow` in
+ * `lib/context-usage.ts` and `getContextWindowConfig` in `lib/providers.ts`).
+ * The window is plan/credit-gated and not reported by `claude -p`, so the
+ * dialog labels the figure "estimated". When no window is known for a model
+ * it degrades to a raw token count rather than a misleading percentage.
  *
  * App-side (not in `ui/`) because it depends on the app's model catalog and
  * i18n; it uses `t()` directly per the library-boundary rule.
@@ -68,6 +70,7 @@ export function ContextIndicator({
         <button
           type="button"
           aria-label={t("button.aria")}
+          title={percent != null ? t("dialog.estimated") : undefined}
           className={`inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full text-xs font-medium transition-colors hover:bg-accent ${
             warn
               ? "text-destructive"
@@ -110,6 +113,9 @@ export function ContextIndicator({
                   {t("dialog.free", {
                     free: fmt(Math.max(0, windowTokens - usage.context_tokens)),
                   })}
+                </p>
+                <p className="text-[11px] text-muted-foreground/80">
+                  {t("dialog.estimated")}
                 </p>
               </>
             ) : (

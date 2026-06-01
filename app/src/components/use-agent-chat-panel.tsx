@@ -68,7 +68,7 @@ import {
 import { ChatModelSelector } from "./chat-model-selector";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import {
-  getContextWindow,
+  getContextWindowConfig,
   getDefaultModel,
   getModel,
   validModelOrNull,
@@ -76,7 +76,10 @@ import {
   normalizeLegacyModel,
   type EffortLevel,
 } from "../lib/providers";
-import { latestContextUsage } from "../lib/context-usage";
+import {
+  sessionContextUsage,
+  effectiveContextWindow,
+} from "../lib/context-usage";
 import { ContextIndicator } from "./context-indicator";
 import { analytics } from "../lib/analytics";
 import {
@@ -215,18 +218,29 @@ export function useAgentChatPanel({
   );
 
   // ── Context-usage indicator ───────────────────────────────────────────
-  // Latest turn's normalized usage from this session's feed, plus the active
-  // model's context-window size. Drive the composer footer pill + dialog.
+  // Latest turn's normalized usage from this session's feed, divided by a
+  // self-correcting window estimate: the active model's catalogued default,
+  // snapped up once the session's observed peak proves a larger (plan/credit-
+  // gated) window. Drives the composer footer pill + dialog.
   const sessionFeedItems = useFeedStore((s) =>
     path && selectedSessionKey
       ? s.items[path]?.[selectedSessionKey]
       : undefined,
   );
-  const contextUsage = useMemo(
-    () => latestContextUsage(sessionFeedItems),
-    [sessionFeedItems],
-  );
-  const contextWindow = getContextWindow(effectiveProvider, effectiveModel);
+  const { contextUsage, contextWindow } = useMemo(() => {
+    const { latest, peakContextTokens } = sessionContextUsage(sessionFeedItems);
+    // `peakContextTokens` is session-wide while `cfg` is the currently-selected
+    // model's. Safe today because all same-provider models share a snap ceiling
+    // (every Anthropic model maxes at 1M; provider is locked after turn one so
+    // openai/anthropic never mix in one session). Revisit if a provider ever
+    // adds a model whose ceiling is below a sibling's realistic peak.
+    const cfg = getContextWindowConfig(effectiveProvider, effectiveModel);
+    return {
+      contextUsage: latest,
+      contextWindow:
+        effectiveContextWindow(cfg, peakContextTokens) ?? undefined,
+    };
+  }, [sessionFeedItems, effectiveProvider, effectiveModel]);
   const modelLabel = getModel(effectiveProvider, effectiveModel)?.label;
 
   const handleModelSelect = useCallback(

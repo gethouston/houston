@@ -384,31 +384,38 @@ request, i.e. how much of the context window is in use — Anthropic's parser
 sums its three-way split (`input + cache_creation + cache_read`), Codex's
 `input_tokens` is already cache-inclusive so it maps straight through. The
 desktop composer's context-usage indicator (`app/src/components/context-
-indicator.tsx`) divides `context_tokens` by the model's `contextWindow`
-(`app/src/lib/providers.ts`) for a "% full" gauge; it reads the latest such
-item via `latestContextUsage` so it works both live and after a history
+indicator.tsx`) divides the latest turn's `context_tokens` by a window
+estimate for a "% full" gauge; it reads usage via `sessionContextUsage`
+(`app/src/lib/context-usage.ts`) so it works both live and after a history
 reload (the field is persisted in `chat_feed.data_json`). `/context` (the
 interactive Claude Code slash command) is unavailable here because the
 engine drives `claude -p` in non-interactive print mode — the data comes
 from the stream's `usage` blocks, not a REPL command.
 
-**Window values.** Claude Code's stream-json `system init` event does NOT
-carry a context-window field (verified against Claude Code 2.1.159: only
-`model`, `tools`, `mcp_servers`, etc. — no `max_tokens` / `context_window`),
-and Codex's `thread.started` doesn't either. The catalog therefore encodes
-per-model CLI-reported windows:
+**The window is an estimate, by necessity.** The real context window is
+plan/credit-gated and is NOT reported anywhere `claude -p` can see (verified
+against Claude Code 2.1.159: `system init` carries only `model`, `tools`,
+`mcp_servers`, ... — no window field; no flag; no env var; Codex's
+`thread.started` likewise). The gating:
 
-- `claude-sonnet-4-6` / `claude-opus-4-7` / `claude-opus-4-8` → **1M**
-  (Claude Code default on Anthropic/Bedrock/Vertex routes — i.e. every
-  Houston user; Microsoft Foundry capping at 200k is undetectable from the
-  stream but doesn't apply to the bundled `claude` CLI's auth flow).
-- `gpt-5.5` → **272k** (Codex CLI's enforced input cap, the input portion
-  of its 400k total split; the raw OpenAI API offers 1M but Codex never
-  serves that).
+- Opus 4.x → 1M automatic on Max/Team/Enterprise, else 200k (1M needs
+  `/extra-usage` credits on Pro).
+- Sonnet 4.6 → 200k on every plan; 1M only with usage credits.
+- Codex gpt-5.5 → ~272k enforced input cap (input portion of a 400k split;
+  raw API offers 1M but Codex never serves it).
 
-If a future Claude/Codex release exposes the window in `system init` /
-`thread.started`, prefer the live value over the catalog and treat the
-catalog as a fallback.
+So the indicator uses a **self-correcting estimate** (`providers.ts`
+`contextWindow` = default assumption, `contextWindowMax` = snap-up ceiling;
+`context-usage.ts` `effectiveContextWindow`): start from the per-model
+default (Opus 1M, Sonnet 200k, gpt-5.5 272k), then snap UP to the ceiling
+once the session's observed PEAK `context_tokens` exceeds the default —
+which proves the real window is larger, because both CLIs auto-compact
+before the limit so observed usage can never exceed the true window. This
+auto-fixes Sonnet-with-credits and never reads over 100%. The one case it
+over-estimates is Opus on Pro WITHOUT credits (shows 1M, really 200k); it
+can't self-correct downward, so the dialog labels the figure "estimated".
+If a future CLI release exposes the window in `system init` /
+`thread.started`, prefer that live value over the estimate.
 
 ### Binary file downloads
 
