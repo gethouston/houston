@@ -4,6 +4,7 @@ import {
   ARCHIVED_STATUS,
   BULK_MOVE_TARGETS,
   isArchived,
+  moveTargetsForSection,
   selectActive,
   selectArchived,
 } from "../src/lib/mission-selection.ts";
@@ -33,6 +34,15 @@ describe("mission selection", () => {
     ok(!targets.includes("error"));
     ok(!targets.includes(ARCHIVED_STATUS));
     deepStrictEqual([...BULK_MOVE_TARGETS], ["done", "needs_you"]);
+  });
+
+  it("offers only the other section as a move target", () => {
+    // Locked to needs_you -> can only move to done, and vice versa.
+    deepStrictEqual(moveTargetsForSection("needs_you"), ["done"]);
+    deepStrictEqual(moveTargetsForSection("done"), ["needs_you"]);
+    // running isn't a move target, so both stay; null = nothing locked.
+    deepStrictEqual(moveTargetsForSection("running"), ["done", "needs_you"]);
+    deepStrictEqual(moveTargetsForSection(null), ["done", "needs_you"]);
   });
 
   it("keeps archived out of every board column", () => {

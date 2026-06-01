@@ -26,6 +26,9 @@ export interface KanbanBoardProps {
   selectedIds?: ReadonlySet<string>
   /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void
+  /** When set, only this column's cards stay selectable — others hide their
+   *  checkbox so a multi-selection can't span sections. */
+  selectionLockColumnId?: string | null
 }
 
 export function KanbanBoard({
@@ -48,6 +51,7 @@ export function KanbanBoard({
   selectable,
   selectedIds,
   onToggleSelect,
+  selectionLockColumnId,
 }: KanbanBoardProps) {
   const columnData = useMemo(() => {
     return columns.map((col) => {
@@ -93,7 +97,10 @@ export function KanbanBoard({
           actions={actions}
           avatar={avatar}
           cardLabels={cardLabels}
-          selectable={selectable}
+          selectable={
+            selectable &&
+            (selectionLockColumnId == null || selectionLockColumnId === col.id)
+          }
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
         />

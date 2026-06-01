@@ -1,40 +1,28 @@
 import { AnimatePresence, motion } from "framer-motion"
-import { KanbanCard, type KanbanCardLabels } from "./kanban-card"
+import { KanbanListItem } from "./kanban-list-item"
+import type { KanbanCardLabels } from "./kanban-card"
 import type { KanbanItem } from "./types"
 
 export interface KanbanListProps {
   items: KanbanItem[]
   selectedId?: string | null
-  highlightedId?: string | null
   onSelect: (item: KanbanItem) => void
   onDelete?: (item: KanbanItem) => void
-  onRename?: (item: KanbanItem, newTitle: string) => void
-  runningStatuses?: string[]
-  approveStatuses?: string[]
-  errorStatuses?: string[]
-  actions?: (item: KanbanItem) => React.ReactNode
   avatar?: React.ReactNode
   cardLabels?: KanbanCardLabels
   emptyState?: React.ReactNode
 }
 
 /**
- * Single-column list rendering of board items. Reuses `KanbanCard` so the
- * click-to-open-chat, rename, and delete affordances match the kanban
- * board exactly — the only difference is the vertical, column-less layout
- * (used by the Archived missions tab). Items are sorted newest-first.
+ * Compact, column-less list of board items (used by the Archived missions
+ * tab). Rows reuse `KanbanListItem` — agent icon + name, title, delete — so
+ * the list reads as short rectangles. Items are sorted newest-first.
  */
 export function KanbanList({
   items,
   selectedId,
-  highlightedId,
   onSelect,
   onDelete,
-  onRename,
-  runningStatuses,
-  approveStatuses,
-  errorStatuses,
-  actions,
   avatar,
   cardLabels,
   emptyState,
@@ -64,18 +52,12 @@ export function KanbanList({
               exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
             >
-              <KanbanCard
+              <KanbanListItem
                 item={item}
+                avatar={avatar}
                 selected={selectedId === item.id}
-                highlighted={highlightedId === item.id}
                 onSelect={() => onSelect(item)}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
-                onRename={onRename ? (title) => onRename(item, title) : undefined}
-                runningStatuses={runningStatuses}
-                approveStatuses={approveStatuses}
-                errorStatuses={errorStatuses}
-                actions={actions?.(item)}
-                avatar={avatar}
                 labels={cardLabels}
               />
             </motion.div>

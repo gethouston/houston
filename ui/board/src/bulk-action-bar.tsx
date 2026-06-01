@@ -106,24 +106,37 @@ export function BulkActionBar({
           {labels.selected(count)}
         </span>
         <span className="mx-0.5 h-5 w-px bg-border" />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full">
-              {labels.moveTo}
-              <ChevronDown className="size-3.5" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="center" side="top">
-            {moveTargets.map((target) => (
-              <DropdownMenuItem
-                key={target.status}
-                onSelect={() => setPending({ kind: "move", target })}
-              >
-                {target.label}
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {moveTargets.length === 1 ? (
+          // A locked selection can only move to one other section — show it
+          // directly instead of a one-item dropdown.
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1 rounded-full"
+            onClick={() => setPending({ kind: "move", target: moveTargets[0] })}
+          >
+            {labels.moveTo} {moveTargets[0].label}
+          </Button>
+        ) : moveTargets.length > 1 ? (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full">
+                {labels.moveTo}
+                <ChevronDown className="size-3.5" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="center" side="top">
+              {moveTargets.map((target) => (
+                <DropdownMenuItem
+                  key={target.status}
+                  onSelect={() => setPending({ kind: "move", target })}
+                >
+                  {target.label}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+        ) : null}
         <Button
           variant="ghost"
           size="sm"

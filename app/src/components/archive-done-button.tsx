@@ -16,8 +16,6 @@ interface ArchiveDoneButtonLabels {
 }
 
 interface ArchiveDoneButtonProps {
-  /** Number of missions currently in the Done column. */
-  count: number;
   /** Archive every Done mission. */
   onConfirm: () => void;
   labels: ArchiveDoneButtonLabels;
@@ -25,9 +23,10 @@ interface ArchiveDoneButtonProps {
 
 /**
  * Archive-icon button rendered in the Done column header. Confirms before
- * archiving every mission currently in Done (issue #360).
+ * archiving every mission currently in Done (issue #360). The Done count is
+ * baked into `labels.confirmDescription` by the caller.
  */
-export function ArchiveDoneButton({ count, onConfirm, labels }: ArchiveDoneButtonProps) {
+export function ArchiveDoneButton({ onConfirm, labels }: ArchiveDoneButtonProps) {
   const [confirming, setConfirming] = useState(false);
   return (
     <>

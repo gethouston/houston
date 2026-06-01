@@ -177,6 +177,9 @@ export interface AIBoardProps {
   selectedIds?: ReadonlySet<string>
   /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void
+  /** When a selection is active, locks selection to this column id — cards in
+   *  other columns hide their checkbox so a selection can't span sections. */
+  selectionLockColumnId?: string | null
   /** Floating bulk-action bar config. Rendered when `selectable` and at
    *  least one card is selected. */
   bulkActions?: {
@@ -261,6 +264,7 @@ export function AIBoard({
   selectable,
   selectedIds,
   onToggleSelect,
+  selectionLockColumnId,
   bulkActions,
 }: AIBoardProps) {
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null)
@@ -499,15 +503,9 @@ export function AIBoard({
         <KanbanList
           items={items}
           selectedId={selectedId}
-          highlightedId={highlightedId}
-          runningStatuses={runningStatuses}
-          approveStatuses={approveStatuses}
-          errorStatuses={errorStatuses}
           onSelect={handleCardSelect}
           onDelete={onDelete ? handleDelete : undefined}
-          onRename={onRename}
           emptyState={emptyState}
-          actions={actions}
           avatar={cardAvatar}
           cardLabels={cardLabels}
         />
@@ -531,6 +529,7 @@ export function AIBoard({
           selectable={selectable}
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
+          selectionLockColumnId={selectionLockColumnId}
         />
       )}
       {showBulkBar && bulkActions && (
