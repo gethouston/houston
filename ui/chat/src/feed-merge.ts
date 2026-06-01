@@ -12,9 +12,22 @@ import type { FeedItem } from "./types";
  *   in the current turn (guards against live WS events re-pushing an item
  *   that history hydration already seeded).
  *
+ * Pass `opts.fromWs` for items arriving over the engine WebSocket echo (as
+ * opposed to a local optimistic push). The engine emits each user message
+ * exactly once per turn, so a WS-sourced `user_message` that duplicates one
+ * already in the feed is a re-delivery and is dropped — this is what keeps a
+ * surfaced routine (whose transcript is both hydrated from history AND replayed
+ * live) from showing the user's prompt twice (#363). Optimistic pushes omit the
+ * flag and always append, so a user legitimately re-sending the same text keeps
+ * both copies.
+ *
  * Use this in your Zustand/Redux store to avoid duplicating merge logic.
  */
-export function mergeFeedItem(items: FeedItem[], item: FeedItem): FeedItem[] {
+export function mergeFeedItem(
+  items: FeedItem[],
+  item: FeedItem,
+  opts?: { fromWs?: boolean },
+): FeedItem[] {
   const last = items[items.length - 1];
 
   if (item.feed_type === "thinking_streaming") {
@@ -70,15 +83,26 @@ export function mergeFeedItem(items: FeedItem[], item: FeedItem): FeedItem[] {
     }
   }
 
-  // Collapse consecutive identical user_messages. Desktop's send handler
-  // pushes an optimistic user_message the instant the user hits send, and
-  // the engine also persists + broadcasts the same text via a FeedItem
-  // event. Without this, every send from the desktop UI doubles up. The
-  // edge case — a user legitimately sending the same text twice back-to-
-  // back with no agent response between — is rare and visually harmless
-  // (the second appears after the agent replies).
-  if (item.feed_type === "user_message" && last?.feed_type === "user_message") {
-    if (last.data === item.data) {
+  if (item.feed_type === "user_message") {
+    // Collapse consecutive identical user_messages. Desktop's send handler
+    // pushes an optimistic user_message the instant the user hits send, and
+    // the engine also broadcasts the same text via a WS FeedItem echo that
+    // lands right after. Without this, every send would double up.
+    if (last?.feed_type === "user_message" && last.data === item.data) {
+      return items;
+    }
+    // Drop a WS-delivered user_message that duplicates one already in the feed
+    // even when it is NOT consecutive. A surfaced routine's transcript is
+    // hydrated from DB history (mergeFeedHistory) and the same turn is also
+    // replayed over the live socket; the echo arrives after the assistant
+    // reply, so the consecutive check above misses it and it would otherwise be
+    // appended below — surfacing the user's prompt a second time (#363). Local
+    // optimistic pushes omit `fromWs` and fall through, so a deliberate repeat
+    // of the same text keeps both copies.
+    if (
+      opts?.fromWs &&
+      items.some((it) => it.feed_type === "user_message" && it.data === item.data)
+    ) {
       return items;
     }
   }

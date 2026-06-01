@@ -66,10 +66,15 @@ export function useSessionEvents() {
 
       switch (payload.type) {
         case "FeedItem":
+          // fromWs: this is the engine's echo of a feed item, not a local
+          // optimistic push. A user_message echo that duplicates one already
+          // in the feed is a re-delivery (e.g. a surfaced routine replayed
+          // live on top of its hydrated history) and is dropped (#363).
           h.pushFeedItem(
             payload.data.agent_path,
             payload.data.session_key,
             payload.data.item as FeedItem,
+            { fromWs: true },
           );
           break;
         case "SessionStatus": {
