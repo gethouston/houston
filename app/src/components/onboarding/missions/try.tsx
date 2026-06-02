@@ -21,10 +21,8 @@ import {
   isActiveSessionStatus,
 } from "../../../stores/session-status";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
-import {
-  ComposioLinkCard,
-  parseComposioToolkitFromHref,
-} from "../../composio-link-card";
+import { ComposioLinkCard } from "../../composio-link-card";
+import { parseComposioToolkitFromHref } from "../../composio-card-state";
 import {
   ComposioSigninCard,
   isComposioSigninHref,

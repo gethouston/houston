@@ -42,11 +42,12 @@
     "integration": "Integração de app",
     "alreadyConnected": "Já conectado",
     "connected": "Conectado",
+    "connecting": "Conectando...",
     "connect": "Conectar",
-    "verify": "Já me conectei",
-    "verifying": "Verificando...",
-    "notVerified": "Ainda não consigo verificar, tente de novo",
-    "verifiedToast": "{{name}} está conectado"
+    "reconnect": "Reconectar",
+    "verifiedToast": "{{name}} está conectado",
+    "connectedFollowup": "Já conectei {{name}}. Pode continuar.",
+    "followupFailed": "Não consegui avisar o assistente que {{name}} está conectado"
   },
   "composioSignin": {
     "appName": "Provedor de integrações",

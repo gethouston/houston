@@ -57,10 +57,8 @@ import { createMission } from "../lib/create-mission";
 import { queryKeys } from "../lib/query-keys";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
-import {
-  ComposioLinkCard,
-  parseComposioToolkitFromHref,
-} from "./composio-link-card";
+import { ComposioLinkCard } from "./composio-link-card";
+import { parseComposioToolkitFromHref } from "./composio-card-state";
 import {
   ComposioSigninCard,
   isComposioSigninHref,
@@ -160,6 +158,7 @@ export function useAgentChatPanel({
   const { processLabels, getThinkingMessage } = useChatDisplayLabels();
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
+  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
 
   const path = agent?.folderPath ?? null;
   const agentModes = agentDef?.config.agents;
@@ -303,6 +302,45 @@ export function useAgentChatPanel({
     () => new Set(connectedList ?? []),
     [connectedList],
   );
+  // When a connection the user started from a chat card actually lands,
+  // proactively nudge the agent so it resumes the task without the user
+  // having to retype. Mirrors the retry send-path: send first, then push the
+  // optimistic feed item; surface a toast if the send fails (no silent drop).
+  const handleIntegrationConnected = useCallback(
+    (_toolkit: string, appName: string) => {
+      if (!path || !selectedSessionKey) return;
+      const text = t("chat:composio.connectedFollowup", { name: appName });
+      tauriChat
+        .send(path, text, selectedSessionKey, {
+          providerOverride: effectiveProvider,
+          modelOverride: effectiveModel,
+          effortOverride: effectiveEffort,
+        })
+        .then(() => {
+          pushFeedItem(path, selectedSessionKey, {
+            feed_type: "user_message",
+            data: text,
+          });
+        })
+        .catch((err) => {
+          addToast({
+            title: t("chat:composio.followupFailed", { name: appName }),
+            description: String(err),
+            variant: "error",
+          });
+        });
+    },
+    [
+      path,
+      selectedSessionKey,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+      pushFeedItem,
+      addToast,
+      t,
+    ],
+  );
   const renderLink = useCallback(
     ({ href, onOpen }: { href: string; onOpen: () => void }) => {
       if (isComposioSigninHref(href)) {
@@ -315,10 +353,11 @@ export function useAgentChatPanel({
           toolkit={toolkit}
           isConnected={connectedSet.has(toolkit)}
           onOpen={onOpen}
+          onConnected={handleIntegrationConnected}
         />
       );
     },
-    [connectedSet],
+    [connectedSet, handleIntegrationConnected],
   );
 
   // ── File-tool rendering (per-agent path) ──────────────────────────────
@@ -350,7 +389,6 @@ export function useAgentChatPanel({
     onSelectSessionRef.current = onSelectSession;
   }, [onSelectSession]);
 
-  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
   const attachmentLabels = useMemo<UserAttachmentMessageLabels>(
     () => ({
       attachmentCount: (count) => t("attachmentMessage.count", { count }),
