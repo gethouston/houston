@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 import {
   deriveComposioCardView,
   fallbackLogo,
+  isToolkitConnected,
   parseComposioToolkitFromHref,
   shouldSendConnectedFollowup,
   type ConnectedFollowupInput,
@@ -152,6 +153,33 @@ describe("parseComposioToolkitFromHref (card-vs-plain-link decision)", () => {
 
   it("returns null for a non-URL string instead of throwing", () => {
     strictEqual(parseComposioToolkitFromHref("not a url"), null);
+  });
+});
+
+describe("isToolkitConnected (normalized membership)", () => {
+  it("matches when the fragment slug and probe slug agree exactly", () => {
+    strictEqual(isToolkitConnected(new Set(["gmail"]), "gmail"), true);
+  });
+
+  it("matches across casing: raw fragment vs lowercased probe set", () => {
+    // The engine watcher detected `googledrive`; the agent authored the
+    // fragment as `GoogleDrive`. Without normalization the card would stay
+    // stuck on "Connecting..." forever — this is the #385 fix.
+    strictEqual(isToolkitConnected(new Set(["googledrive"]), "GoogleDrive"), true);
+  });
+
+  it("matches despite stray whitespace in the fragment slug", () => {
+    strictEqual(isToolkitConnected(new Set(["slack"]), "  slack "), true);
+  });
+
+  it("does not match a structurally different slug", () => {
+    // Normalization only trims + lowercases; an underscore variant is a
+    // genuine authoring mismatch, not something the card should paper over.
+    strictEqual(isToolkitConnected(new Set(["googledrive"]), "google_drive"), false);
+  });
+
+  it("is false against an empty connected set", () => {
+    strictEqual(isToolkitConnected(new Set(), "gmail"), false);
   });
 });
 

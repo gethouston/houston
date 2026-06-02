@@ -2,10 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatPanel, type FeedItem } from "@houston-ai/chat";
 import { HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
-import {
-  useConnectedToolkits,
-  useConnections,
-} from "../../../hooks/queries";
 import { tauriAgent, tauriChat, tauriSystem } from "../../../lib/tauri";
 import { logger } from "../../../lib/logger";
 import { createMission } from "../../../lib/create-mission";
@@ -127,14 +123,6 @@ export function TryMission({
   const [pickedAny, setPickedAny] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: composioStatus } = useConnections();
-  const isSignedIn = composioStatus?.status === "ok";
-  const { data: connectedList } = useConnectedToolkits(isSignedIn);
-  const connectedSet = useMemo(
-    () => new Set(connectedList ?? []),
-    [connectedList],
-  );
-
   // Append the tutorial directive to CLAUDE.md while this mission is
   // mounted; strip on unmount. Agent reads the augmented file at session
   // start so the directive lives in the system context, not in any
@@ -202,14 +190,10 @@ export function TryMission({
       const toolkit = parseComposioToolkitFromHref(href);
       if (!toolkit) return undefined;
       return (
-        <ComposioLinkCard
-          toolkit={toolkit}
-          isConnected={connectedSet.has(toolkit)}
-          onOpen={onOpen}
-        />
+        <ComposioLinkCard toolkit={toolkit} onOpen={onOpen} />
       );
     },
-    [connectedSet],
+    [],
   );
 
   const transformContent = useCallback((content: string) => {

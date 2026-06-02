@@ -36,5 +36,12 @@ to go to the Integrations tab. Instead:\n\n\
    output exactly: \
    `[Connect Gmail](https://connect.composio.dev/link/lk_abc#houston_toolkit=gmail)`. \
    The card renders the app name/logo and handles the click for you.\n\
-4. After they tell you they've approved in the browser, retry the \
-   original request.";
+4. Do NOT ask the user to tell you when they're done, and do NOT promise \
+   to \"check\" or \"confirm\" the connection yourself. Houston detects the \
+   moment the connection goes live and automatically sends you a short \
+   message (e.g. \"I've connected Gmail. Please continue.\") so you can \
+   resume the task on your own. Phrase your message to set that \
+   expectation instead of asking them to report back, e.g. \"Once you \
+   approve access in the browser, I'll keep going from here \
+   automatically.\" Then stop and wait. When Houston's confirmation \
+   arrives, retry the original request.";

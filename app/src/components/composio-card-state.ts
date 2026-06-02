@@ -12,6 +12,27 @@
  * auth flow.
  */
 
+import { normalizeToolkitSlug } from "../lib/composio-toolkits.ts";
+
+/**
+ * Is `toolkit` present in the connected set?
+ *
+ * `connected` is already normalized (lowercased) by the
+ * `useConnectedToolkits` query, but `toolkit` arrives raw from the
+ * agent-authored `#houston_toolkit=<slug>` fragment — so it can carry any
+ * casing or stray whitespace. Comparing the two directly silently misses a
+ * real connection (e.g. fragment `GoogleDrive` vs probe `googledrive`),
+ * leaving the card stuck on "Connecting…" forever even after the engine
+ * watcher has detected the landing. Normalize the lookup so the card
+ * reflects the same truth the engine already computed.
+ */
+export function isToolkitConnected(
+  connected: ReadonlySet<string>,
+  toolkit: string,
+): boolean {
+  return connected.has(normalizeToolkitSlug(toolkit));
+}
+
 /**
  * Local interaction state owned by the card. The real connection status
  * (`isConnected`, resolved from the shared probe query) is tracked

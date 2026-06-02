@@ -37,12 +37,7 @@ import {
 
 import { useFeedStore } from "../stores/feeds";
 import { useUIStore } from "../stores/ui";
-import {
-  useActivity,
-  useConnectedToolkits,
-  useConnections,
-  useSkills,
-} from "../hooks/queries";
+import { useActivity, useSkills } from "../hooks/queries";
 import {
   tauriActivity,
   tauriAttachments,
@@ -86,6 +81,10 @@ import {
   encodeSkillMessage,
 } from "../lib/skill-message";
 import { attachmentReferences } from "../lib/attachment-message";
+import {
+  encodeAutoContinueMessage,
+  filterAutoContinueFeedItems,
+} from "../lib/auto-continue-message";
 import { SkillCard } from "./skill-card";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { UserSkillMessage } from "./user-skill-message";
@@ -295,13 +294,10 @@ export function useAgentChatPanel({
   );
 
   // ── Composio link card support ────────────────────────────────────────
-  const { data: composioStatus } = useConnections();
-  const isSignedIn = composioStatus?.status === "ok";
-  const { data: connectedList } = useConnectedToolkits(isSignedIn);
-  const connectedSet = useMemo(
-    () => new Set(connectedList ?? []),
-    [connectedList],
-  );
+  // The card owns its own connection status (it subscribes to the
+  // connectedToolkits query directly so it stays reactive inside Streamdown's
+  // memoized markdown blocks). The panel only supplies the agent nudge.
+  //
   // When a connection the user started from a chat card actually lands,
   // proactively nudge the agent so it resumes the task without the user
   // having to retype. Mirrors the retry send-path: send first, then push the
@@ -309,18 +305,19 @@ export function useAgentChatPanel({
   const handleIntegrationConnected = useCallback(
     (_toolkit: string, appName: string) => {
       if (!path || !selectedSessionKey) return;
-      const text = t("chat:composio.connectedFollowup", { name: appName });
+      // The agent needs a user turn to resume, but the user didn't type one.
+      // Tag it with the auto-continue marker so the agent still receives the
+      // instruction while the transcript hides the bubble (see
+      // `mapFeedItems`). No optimistic push: we never want it shown, and the
+      // engine-persisted copy is filtered the same way on reload.
+      const message = encodeAutoContinueMessage(
+        t("chat:composio.connectedFollowup", { name: appName }),
+      );
       tauriChat
-        .send(path, text, selectedSessionKey, {
+        .send(path, message, selectedSessionKey, {
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
           effortOverride: effectiveEffort,
-        })
-        .then(() => {
-          pushFeedItem(path, selectedSessionKey, {
-            feed_type: "user_message",
-            data: text,
-          });
         })
         .catch((err) => {
           addToast({
@@ -336,7 +333,6 @@ export function useAgentChatPanel({
       effectiveProvider,
       effectiveModel,
       effectiveEffort,
-      pushFeedItem,
       addToast,
       t,
     ],
@@ -351,13 +347,12 @@ export function useAgentChatPanel({
       return (
         <ComposioLinkCard
           toolkit={toolkit}
-          isConnected={connectedSet.has(toolkit)}
           onOpen={onOpen}
           onConnected={handleIntegrationConnected}
         />
       );
     },
-    [connectedSet, handleIntegrationConnected],
+    [handleIntegrationConnected],
   );
 
   // ── File-tool rendering (per-agent path) ──────────────────────────────
@@ -588,7 +583,7 @@ export function useAgentChatPanel({
   );
   const mapFeedItems = useCallback(
     ({ items }: { sessionKey: string; items: FeedItem[] }) =>
-      filterProviderAuthFeedItems(items),
+      filterAutoContinueFeedItems(filterProviderAuthFeedItems(items)),
     [],
   );
   const afterMessages = useCallback(

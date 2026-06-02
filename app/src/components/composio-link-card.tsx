@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useComposioApps } from "../hooks/queries";
+import {
+  useComposioApps,
+  useConnectedToolkits,
+  useConnections,
+} from "../hooks/queries";
 import { useComposioConnectionWatcher } from "../hooks/use-composio-connection-watcher";
 import { useComposioRefetchOnReturn } from "../hooks/use-composio-refetch-on-return";
 import { normalizeToolkitSlug } from "../lib/composio-toolkits";
@@ -9,6 +13,7 @@ import { analytics } from "../lib/analytics";
 import {
   deriveComposioCardView,
   fallbackLogo,
+  isToolkitConnected,
   shouldSendConnectedFollowup,
   type ComposioCardPhase,
 } from "./composio-card-state";
@@ -26,12 +31,6 @@ const CONNECTING_TIMEOUT_MS = 90_000;
 
 interface ComposioLinkCardProps {
   toolkit: string;
-  /**
-   * True if this toolkit is currently connected in the user's Composio
-   * account. Resolved from the shared `useConnectedToolkits` query in
-   * the parent (chat-tab / board-tab).
-   */
-  isConnected: boolean;
   /**
    * Default open-URL handler from the chat's link renderer. Called when
    * the user clicks Connect — opens the authorization URL in the
@@ -66,11 +65,28 @@ interface ComposioLinkCardProps {
  */
 export function ComposioLinkCard({
   toolkit,
-  isConnected,
   onOpen,
   onConnected,
 }: ComposioLinkCardProps) {
   const { t } = useTranslation("chat");
+
+  // Own the connection status instead of taking it as a prop. The card
+  // renders inside Streamdown, which memoizes a completed markdown block by
+  // its source text and stops re-invoking the custom link renderer once the
+  // message has finished streaming. A parent-computed `isConnected` prop
+  // therefore freezes at the card's first render and never reflects a
+  // connection that lands afterwards — the eternal "Connecting…" bug. By
+  // subscribing to the query here, the card re-renders itself the moment the
+  // status changes, independent of Streamdown's block memoization. TanStack
+  // dedupes the fetch, so N cards still issue one request per tick.
+  const { data: composioStatus } = useConnections();
+  const isSignedIn = composioStatus?.status === "ok";
+  const { data: connectedList } = useConnectedToolkits(isSignedIn);
+  const isConnected = useMemo(
+    () => isToolkitConnected(new Set(connectedList ?? []), toolkit),
+    [connectedList, toolkit],
+  );
+
   const [phase, setPhase] = useState<ComposioCardPhase>("idle");
   const graceTimer = useRef<number | null>(null);
   // Whether the user started a connect/reconnect from this card. Gates the
@@ -92,7 +108,13 @@ export function ComposioLinkCard({
   useComposioConnectionWatcher(isConnected);
 
   const app = (() => {
-    const fromApi = apiApps?.find((a) => a.toolkit === toolkit);
+    // The catalog reports canonical (lowercased) slugs; `toolkit` is the
+    // raw fragment slug, so normalize both sides or a mis-cased slug falls
+    // back to the bare name + favicon guess instead of the real name/logo.
+    const normalizedToolkit = normalizeToolkitSlug(toolkit);
+    const fromApi = apiApps?.find(
+      (a) => normalizeToolkitSlug(a.toolkit) === normalizedToolkit,
+    );
     if (fromApi) {
       return {
         toolkit: fromApi.toolkit,
