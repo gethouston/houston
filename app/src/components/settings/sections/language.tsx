@@ -6,15 +6,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
-import { tauriPreferences } from "../../../lib/tauri";
 import {
   changeLocale,
   isSupported,
-  LOCALE_PREF_KEY,
   SUPPORTED_LOCALES,
   type SupportedLocale,
 } from "../../../lib/i18n";
 import { useUIStore } from "../../../stores/ui";
+import { useWorkspaceStore } from "../../../stores/workspaces";
 
 const LOCALE_LABELS: Record<SupportedLocale, string> = {
   en: "English",
@@ -25,14 +24,21 @@ const LOCALE_LABELS: Record<SupportedLocale, string> = {
 export function LanguageSection() {
   const { t, i18n } = useTranslation("common");
   const addToast = useUIStore((s) => s.addToast);
+  const current = useWorkspaceStore((s) => s.current);
+  const setWorkspaceLocale = useWorkspaceStore((s) => s.setLocale);
   const currentLocale: SupportedLocale = isSupported(i18n.resolvedLanguage)
     ? (i18n.resolvedLanguage as SupportedLocale)
     : "en";
 
   const handleLocaleChange = async (value: string) => {
-    if (!isSupported(value)) return;
+    // This picker lives under the Workspace settings tab, which SettingsView
+    // only renders once a workspace is active — so `current` is guaranteed; the
+    // guard just defends the rare unmount race. Persist the override FIRST so
+    // the engine is the source of truth; if it fails the error surfaces and the
+    // UI never switches to an unsaved language.
+    if (!isSupported(value) || !current) return;
+    await setWorkspaceLocale(current.id, value);
     await changeLocale(value);
-    await tauriPreferences.set(LOCALE_PREF_KEY, value);
     addToast({ title: t("language.toastChanged") });
   };
 

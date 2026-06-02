@@ -32,7 +32,7 @@
   },
   "language": {
     "title": "Idioma",
-    "description": "Elige el idioma que Houston usa en su interfaz.",
+    "description": "Elige el idioma que Houston usa para este espacio de trabajo.",
     "label": "Idioma de la interfaz",
     "toastChanged": "Idioma cambiado"
   },

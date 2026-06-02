@@ -9,6 +9,8 @@ If app-specific → `.houston/`.
 ## Layout
 
 ```
+~/.houston/workspaces/workspaces.json   Workspace[] index: id, name, isDefault, createdAt, locale?
+                                          (locale = optional per-workspace UI-locale override; absent = inherit global `locale` pref)
 ~/.houston/workspaces/{Workspace}/{Agent}/
   .houston/
     agent.json                  AgentMeta (id, manifest_id, created_at, last_opened_at)

@@ -95,6 +95,64 @@ async fn create_list_rename_delete_workspace() {
 }
 
 #[tokio::test]
+async fn set_workspace_locale_roundtrip() {
+    let (addr, tok, _docs) = spawn().await;
+    let c = reqwest::Client::new();
+
+    // Create — no locale override on a fresh workspace.
+    let ws: serde_json::Value = c
+        .post(format!("http://{addr}/v1/workspaces"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "name": "alpha" }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let id = ws["id"].as_str().unwrap().to_string();
+    assert!(ws.get("locale").is_none() || ws["locale"].is_null());
+
+    // Set the per-workspace locale override.
+    let updated: serde_json::Value = c
+        .patch(format!("http://{addr}/v1/workspaces/{id}/locale"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "locale": "es" }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(updated["locale"], "es");
+
+    // It survives a fresh list (persisted to workspaces.json).
+    let list: serde_json::Value = c
+        .get(format!("http://{addr}/v1/workspaces"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(list[0]["locale"], "es");
+
+    // Clearing with null removes the override.
+    let cleared: serde_json::Value = c
+        .patch(format!("http://{addr}/v1/workspaces/{id}/locale"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "locale": null }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert!(cleared.get("locale").is_none() || cleared["locale"].is_null());
+}
+
+#[tokio::test]
 async fn update_workspace_agent_color() {
     let (addr, tok, _docs) = spawn().await;
     let c = reqwest::Client::new();

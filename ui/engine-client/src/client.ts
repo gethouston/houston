@@ -190,6 +190,14 @@ export class HoustonClient {
   deleteWorkspace(id: string): Promise<void> {
     return this.request("DELETE", `/workspaces/${this.seg(id)}`);
   }
+  /**
+   * Set (or clear) a workspace's UI-locale override. Pass `null` to clear it
+   * so the workspace falls back to the global `locale` preference. Persisted on
+   * the workspace record, so every client of this engine shares the value.
+   */
+  setWorkspaceLocale(id: string, locale: string | null): Promise<Workspace> {
+    return this.request("PATCH", `/workspaces/${this.seg(id)}/locale`, { locale });
+  }
   setWorkspaceProvider(id: string, req: UpdateProvider): Promise<Workspace> {
     return this.request("PATCH", `/workspaces/${this.seg(id)}/provider`, req);
   }

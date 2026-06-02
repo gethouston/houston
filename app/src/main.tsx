@@ -115,9 +115,11 @@ function EngineGate({ children }: { children: ReactNode }) {
     };
   }, [ready]);
 
-  // Locale resolution moved to <LanguageGate>, which both reads the
-  // persisted pref and handles the first-run picker. That gate sits
-  // inside <I18nextProvider> and owns the full locale story.
+  // Locale resolution lives in <LanguageGate>: it resolves the effective
+  // locale from the engine (active workspace override → global preference),
+  // applies it to the live i18n instance, and handles the first-run picker.
+  // That gate sits inside <I18nextProvider> and owns the full locale story —
+  // the engine, not localStorage, is the source of truth.
 
   if (!ready) {
     // Use the i18n singleton directly — this renders OUTSIDE

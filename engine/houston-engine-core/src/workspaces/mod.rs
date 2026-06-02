@@ -25,6 +25,14 @@ pub struct Workspace {
     pub name: String,
     pub is_default: bool,
     pub created_at: String,
+    /// Optional per-workspace UI locale override (BCP-47 base tag: `"en"`,
+    /// `"es"`, `"pt"`). When set, frontends prefer it over the global
+    /// `preferences::locale` value; when `None` the workspace inherits that
+    /// global default. Additive + `skip_serializing_if` so pre-existing
+    /// `workspaces.json` files (which lack the key) parse unchanged and a
+    /// workspace that never picked a language never grows a `locale` key.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub locale: Option<String>,
     // Legacy fields. They're still parsed here so the migration can read
     // pre-0.5 workspace files; once `migrate_workspace_provider_into_agents`
     // runs they're stripped from disk and the resolver no longer consults
@@ -70,6 +78,7 @@ pub fn create(root: &Path, req: CreateWorkspace) -> CoreResult<Workspace> {
         name: req.name.clone(),
         is_default: false,
         created_at: now_iso(),
+        locale: None,
         provider: None,
         model: None,
     };
@@ -112,6 +121,23 @@ pub fn rename(root: &Path, id: &str, req: RenameWorkspace) -> CoreResult<Workspa
         rename_path(&old_dir, &new_dir)?;
     }
     ws.name = req.new_name;
+    let updated = ws.clone();
+    io::write_all(root, &workspaces)?;
+    Ok(updated)
+}
+
+/// Set (or clear) a workspace's UI-locale override. An empty / whitespace
+/// value clears it — mirroring how `preferences::locale` treats blanks — so
+/// the workspace falls back to the global `locale` preference. The value is
+/// stored verbatim (frontends normalize BCP-47 tags); the engine stays
+/// locale-agnostic.
+pub fn set_locale(root: &Path, id: &str, locale: Option<String>) -> CoreResult<Workspace> {
+    let mut workspaces = read_all(root)?;
+    let ws = workspaces
+        .iter_mut()
+        .find(|w| w.id == id)
+        .ok_or_else(|| CoreError::NotFound(format!("workspace {id}")))?;
+    ws.locale = locale.filter(|s| !s.trim().is_empty());
     let updated = ws.clone();
     io::write_all(root, &workspaces)?;
     Ok(updated)
@@ -178,6 +204,68 @@ mod tests {
         assert_eq!(renamed.name, "b");
         delete(d.path(), &ws.id).unwrap();
         assert!(list(d.path()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn set_locale_roundtrip_and_clear() {
+        let d = tmp();
+        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        assert!(ws.locale.is_none(), "new workspace has no locale override");
+
+        let updated = set_locale(d.path(), &ws.id, Some("es".into())).unwrap();
+        assert_eq!(updated.locale.as_deref(), Some("es"));
+        assert_eq!(list(d.path()).unwrap()[0].locale.as_deref(), Some("es"));
+
+        // Whitespace-only clears the override (falls back to the global default),
+        // mirroring preferences::locale.
+        let cleared = set_locale(d.path(), &ws.id, Some("   ".into())).unwrap();
+        assert!(cleared.locale.is_none());
+        assert!(list(d.path()).unwrap()[0].locale.is_none());
+
+        // Explicit None also clears.
+        set_locale(d.path(), &ws.id, Some("pt".into())).unwrap();
+        let cleared_again = set_locale(d.path(), &ws.id, None).unwrap();
+        assert!(cleared_again.locale.is_none());
+    }
+
+    #[test]
+    fn set_locale_unknown_id_errors() {
+        let d = tmp();
+        let err = set_locale(d.path(), "nope", Some("es".into())).unwrap_err();
+        assert!(matches!(err, CoreError::NotFound(_)));
+    }
+
+    #[test]
+    fn locale_survives_rename() {
+        let d = tmp();
+        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        set_locale(d.path(), &ws.id, Some("pt".into())).unwrap();
+        rename(
+            d.path(),
+            &ws.id,
+            RenameWorkspace { new_name: "beta".into() },
+        )
+        .unwrap();
+        let all = list(d.path()).unwrap();
+        assert_eq!(all[0].name, "beta");
+        assert_eq!(all[0].locale.as_deref(), Some("pt"));
+    }
+
+    /// A pre-`locale` `workspaces.json` (no `locale` key) must deserialize with
+    /// `locale: None` — the field is additive, so existing users need no
+    /// migration. And a workspace without an override must not serialize the key.
+    #[test]
+    fn workspace_json_without_locale_parses_and_omits_when_unset() {
+        let json = r#"[{"id":"w1","name":"Personal","isDefault":true,"createdAt":"t"}]"#;
+        let parsed: Vec<Workspace> = serde_json::from_str(json).unwrap();
+        assert_eq!(parsed.len(), 1);
+        assert!(parsed[0].locale.is_none());
+
+        let out = serde_json::to_string(&parsed).unwrap();
+        assert!(
+            !out.contains("locale"),
+            "an unset locale override must not be written to disk, got: {out}"
+        );
     }
 
     #[test]

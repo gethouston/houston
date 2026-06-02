@@ -32,7 +32,7 @@
   },
   "language": {
     "title": "Language",
-    "description": "Choose the language Houston uses in its interface.",
+    "description": "Choose the language Houston uses for this workspace.",
     "label": "Interface language",
     "toastChanged": "Language changed"
   },

@@ -65,6 +65,11 @@ export interface Workspace {
   name: string;
   isDefault: boolean;
   createdAt: string;
+  /**
+   * Optional per-workspace UI-locale override (BCP-47 base tag: `en`/`es`/`pt`).
+   * Absent/null means the workspace inherits the global `locale` preference.
+   */
+  locale?: string | null;
   provider?: string;
   model?: string;
 }

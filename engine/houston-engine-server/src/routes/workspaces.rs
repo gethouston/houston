@@ -18,6 +18,7 @@ pub fn router() -> Router<Arc<ServerState>> {
         .route("/workspaces", get(list).post(create))
         .route("/workspaces/:id", delete(remove))
         .route("/workspaces/:id/rename", post(rename))
+        .route("/workspaces/:id/locale", patch(set_locale))
         .route(
             "/workspaces/:id/context",
             get(get_context).put(put_context),
@@ -62,6 +63,26 @@ async fn rename(
     Json(req): Json<RenameWorkspace>,
 ) -> Result<Json<Workspace>, ApiError> {
     Ok(Json(workspaces::rename(st.engine.paths.docs(), &id, req)?))
+}
+
+#[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct SetWorkspaceLocale {
+    /// BCP-47 base tag (`"en"` / `"es"` / `"pt"`). `null` or empty clears the
+    /// per-workspace override so the workspace inherits the global `locale`.
+    locale: Option<String>,
+}
+
+async fn set_locale(
+    State(st): State<Arc<ServerState>>,
+    Path(id): Path<String>,
+    Json(req): Json<SetWorkspaceLocale>,
+) -> Result<Json<Workspace>, ApiError> {
+    Ok(Json(workspaces::set_locale(
+        st.engine.paths.docs(),
+        &id,
+        req.locale,
+    )?))
 }
 
 async fn get_context(

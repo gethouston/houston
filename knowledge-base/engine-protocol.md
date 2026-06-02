@@ -94,6 +94,7 @@ module.
 | POST | `/v1/workspaces` | Create |
 | DELETE | `/v1/workspaces/:id` | Delete |
 | POST | `/v1/workspaces/:id/rename` | Rename |
+| PATCH | `/v1/workspaces/:id/locale` | Set/clear the per-workspace UI-locale override (`{ locale: "es" \| null }`) |
 | PATCH | `/v1/workspaces/:id/provider` | Set provider/model |
 | GET | `/v1/workspaces/:id/context` | Read shared `WORKSPACE.md` + `USER.md` |
 | PUT | `/v1/workspaces/:id/context` | Write shared `WORKSPACE.md` + `USER.md` |

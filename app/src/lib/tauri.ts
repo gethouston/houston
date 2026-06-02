@@ -79,6 +79,10 @@ export const tauriWorkspaces = {
     call<void>("rename_workspace", async () => {
       await getEngine().renameWorkspace(id, { newName });
     }),
+  setLocale: (id: string, locale: string | null) =>
+    call<Workspace>("set_workspace_locale", () =>
+      getEngine().setWorkspaceLocale(id, locale),
+    ),
   getContext: (id: string) =>
     call<import("@houston-ai/engine-client").WorkspaceContext>(
       "get_workspace_context",

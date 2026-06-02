@@ -12,6 +12,8 @@ interface WorkspaceState {
   create: (name: string) => Promise<Workspace>;
   delete: (id: string) => Promise<void>;
   rename: (id: string, newName: string) => Promise<void>;
+  /** Set (or clear, with null) the workspace's UI-locale override. */
+  setLocale: (id: string, locale: string | null) => Promise<void>;
 }
 
 export const useWorkspaceStore = create<WorkspaceState>((set) => ({
@@ -71,6 +73,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set) => ({
       ),
       current:
         s.current?.id === id ? { ...s.current, name: newName } : s.current,
+    }));
+  },
+
+  setLocale: async (id, locale) => {
+    const updated = await tauriWorkspaces.setLocale(id, locale);
+    set((s) => ({
+      workspaces: s.workspaces.map((w) => (w.id === id ? updated : w)),
+      current: s.current?.id === id ? updated : s.current,
     }));
   },
 }));
