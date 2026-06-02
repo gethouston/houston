@@ -89,6 +89,7 @@
   },
   "archived": {
     "emptyTitle": "No hay misiones archivadas",
-    "emptyDescription": "Las misiones archivadas aparecen aquí. Responde a una para reactivarla."
+    "emptyDescription": "Las misiones archivadas aparecen aquí. Responde a una para reactivarla.",
+    "searchPlaceholder": "Buscar misiones archivadas"
   }
 }

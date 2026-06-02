@@ -23,6 +23,8 @@ import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
+import { MissionSearchInput } from "../mission-search-input";
+import { useMissionSearch } from "../use-mission-search";
 
 // Stable empty reference so the feed store selector doesn't return a new
 // object every render when this agent has no feeds yet.
@@ -45,6 +47,11 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
+  const archivedSearchQuery = useUIStore((s) => s.agentArchivedSearchQueries[path] ?? "");
+  const archivedSearchLoading = useUIStore((s) => s.agentArchivedSearchLoading[path] ?? false);
+  const setArchivedSearchQuery = useUIStore((s) => s.setAgentArchivedSearchQuery);
+  const setArchivedSearchLoading = useUIStore((s) => s.setAgentArchivedSearchLoading);
+  const addToast = useUIStore((s) => s.addToast);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
   const setFeed = useFeedStore((s) => s.setFeed);
   const attachmentValidation = useAttachmentRejectionDialog();
@@ -95,6 +102,23 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
       (await tauriChat.loadHistory(path, sessionKey)) as FeedItem[],
     [path],
   );
+  const handleArchivedSearchError = useCallback(() => {
+    addToast({
+      title: t("board:search.historyErrorTitle"),
+      description: t("board:search.historyErrorDescription"),
+      variant: "error",
+    });
+  }, [addToast, t]);
+  const missionSearch = useMissionSearch({
+    items,
+    query: archivedSearchQuery,
+    loadHistory,
+    onHistoryLoadError: handleArchivedSearchError,
+  });
+  useEffect(() => {
+    setArchivedSearchLoading(path, missionSearch.isSearchingText);
+    return () => setArchivedSearchLoading(path, false);
+  }, [missionSearch.isSearchingText, path, setArchivedSearchLoading]);
   const handleHistoryLoaded = useCallback(
     (sessionKey: string, history: FeedItem[]) => {
       // Reconcile the persisted slice with any live-bucket items (optimistic
@@ -152,7 +176,23 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
     [path, selectedId, archived, agentDef, effectiveProvider, effectiveModel, pushFeedItem, setViewMode, setActivityPanelId, t],
   );
 
-  const emptyState = (
+  const emptyState = missionSearch.hasQuery ? (
+    <Empty className="border-0">
+      <EmptyHeader>
+        <Archive className="size-8 text-muted-foreground" strokeWidth={1.5} />
+        <EmptyTitle>
+          {missionSearch.isSearchingText
+            ? t("board:search.searchingTitle")
+            : t("board:search.emptyTitle")}
+        </EmptyTitle>
+        <EmptyDescription>
+          {missionSearch.isSearchingText
+            ? t("board:search.searchingDescription")
+            : t("board:search.emptyDescription")}
+        </EmptyDescription>
+      </EmptyHeader>
+    </Empty>
+  ) : (
     <Empty className="border-0">
       <EmptyHeader>
         <Archive className="size-8 text-muted-foreground" strokeWidth={1.5} />
@@ -164,10 +204,25 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
 
   return (
     <div className="flex h-full flex-col">
+      {items.length > 0 || missionSearch.hasQuery ? (
+        <div className="flex justify-center px-4 pt-4 pb-2">
+          <MissionSearchInput
+            value={archivedSearchQuery}
+            isSearchingText={archivedSearchLoading}
+            labels={{
+              placeholder: t("board:archived.searchPlaceholder"),
+              clear: t("board:search.clear"),
+              searchingText: t("board:search.searchingText"),
+            }}
+            className="relative w-full max-w-md"
+            onChange={(value) => setArchivedSearchQuery(path, value)}
+          />
+        </div>
+      ) : null}
       <div className="min-h-0 flex-1">
         <AIBoard
           layout="list"
-          items={items}
+          items={missionSearch.items}
           selectedId={selectedId}
           onSelect={setSelectedId}
           panelContainer={panelContainer}
