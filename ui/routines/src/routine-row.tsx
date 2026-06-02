@@ -7,7 +7,7 @@
  */
 import { cn, Switch } from "@houston-ai/core"
 import type { Routine, RoutineRun } from "./types"
-import { cronToPreset, presetSummary, cronToOptions } from "./schedule-cron-utils"
+import { cronSummary } from "./schedule-cron-utils"
 import { nextFire, describeNextFire } from "./next-fire"
 import { useNow } from "./use-now"
 
@@ -18,17 +18,6 @@ export interface RoutineRowProps {
   accountTimezone: string
   onClick?: () => void
   onToggle?: (enabled: boolean) => void
-}
-
-function scheduleSummary(cron: string): string {
-  const preset = cronToPreset(cron)
-  if (!preset) return cron
-  const options = cronToOptions(cron)
-  return presetSummary(preset, {
-    time: options.time ?? "09:00",
-    dayOfWeek: options.dayOfWeek ?? 1,
-    dayOfMonth: options.dayOfMonth ?? 1,
-  })
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -107,7 +96,7 @@ export function RoutineRow({
           {routine.name || "Untitled"}
         </p>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {scheduleSummary(routine.schedule)}
+          {cronSummary(routine.schedule)}
           {routine.timezone && (
             <span className="text-muted-foreground/60"> · {routine.timezone}</span>
           )}

@@ -12,6 +12,7 @@ import {
   presetSummary,
   cronToPreset,
   cronToOptions,
+  cronSummary,
   type ScheduleOptions,
 } from "./schedule-cron-utils"
 
@@ -50,7 +51,7 @@ export function ScheduleBuilder({
     ...detectedOptions,
   })
   const [customCron, setCustomCron] = useState(
-    detectedPreset === null ? value : "",
+    detectedPreset === "custom" ? value : "",
   )
 
   // Stable ref for onChange to avoid infinite effect loops
@@ -73,7 +74,7 @@ export function ScheduleBuilder({
 
   const showTime = NEEDS_TIME.includes(activePreset)
   const summary = activePreset === "custom"
-    ? (customCron.trim() ? "Custom cron schedule" : "Enter a cron expression")
+    ? (customCron.trim() ? cronSummary(customCron) : "Enter a cron expression")
     : presetSummary(activePreset, options)
   const cronDisplay = activePreset === "custom"
     ? customCron
