@@ -2700,6 +2700,7 @@ dependencies = [
 name = "houston-tauri"
 version = "0.4.15"
 dependencies = [
+ "dirs 5.0.1",
  "houston-agent-files",
  "houston-agents-conversations",
  "houston-db",
