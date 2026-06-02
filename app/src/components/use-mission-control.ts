@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
+import { mergeFeedHistory } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
 import { useFeedStore } from "../stores/feeds";
 import {
@@ -143,14 +144,12 @@ export function useMissionControl(agents: Agent[]) {
       const activityId = sessionKey.replace("activity-", "");
       const agentPath = pathMapRef.current[activityId];
       if (!agentPath) return;
+      // Server history is authoritative for what's persisted; reconcile it with
+      // anything already in the live bucket (optimistic overlay or a WS event
+      // that landed mid-load) by turn identity so a routine that surfaced in
+      // the background doesn't render its first turn twice (#363).
       const current = useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
-      // Server history is authoritative for what's persisted; anything
-      // currently in `current` that isn't on the server is either an
-      // optimistic overlay we pushed or a WS event that landed
-      // mid-load. Append those after the server slice.
-      const serverIds = new Set(history.map((it) => JSON.stringify(it)));
-      const tail = current.filter((it) => !serverIds.has(JSON.stringify(it)));
-      setFeed(agentPath, sessionKey, [...history, ...tail]);
+      setFeed(agentPath, sessionKey, mergeFeedHistory(history, current));
     },
     [setFeed],
   );

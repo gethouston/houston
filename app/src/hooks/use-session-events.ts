@@ -66,10 +66,14 @@ export function useSessionEvents() {
 
       switch (payload.type) {
         case "FeedItem":
+          // Mark WS-delivered so a re-broadcast user_message echo (the engine
+          // emits one at session-id time for cross-client sync) dedupes against
+          // a turn the feed already shows instead of duplicating it (#363).
           h.pushFeedItem(
             payload.data.agent_path,
             payload.data.session_key,
             payload.data.item as FeedItem,
+            { fromWs: true },
           );
           break;
         case "SessionStatus": {

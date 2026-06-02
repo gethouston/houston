@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AIBoard } from "@houston-ai/board";
 import type { KanbanItem } from "@houston-ai/board";
+import { mergeFeedHistory } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
 import { Empty, EmptyHeader, EmptyTitle, EmptyDescription } from "@houston-ai/core";
 import { Archive } from "lucide-react";
@@ -96,10 +97,10 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   );
   const handleHistoryLoaded = useCallback(
     (sessionKey: string, history: FeedItem[]) => {
+      // Reconcile the persisted slice with any live-bucket items (optimistic
+      // or WS) by turn identity so a surfaced routine isn't shown twice (#363).
       const current = useFeedStore.getState().items[path]?.[sessionKey] ?? [];
-      const serverIds = new Set(history.map((it) => JSON.stringify(it)));
-      const tail = current.filter((it) => !serverIds.has(JSON.stringify(it)));
-      setFeed(path, sessionKey, [...history, ...tail]);
+      setFeed(path, sessionKey, mergeFeedHistory(history, current));
     },
     [path, setFeed],
   );
