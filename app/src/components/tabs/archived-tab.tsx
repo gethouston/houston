@@ -116,8 +116,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   const handleSendMessage = useCallback(
     async (sessionKey: string, text: string, files: File[]) => {
       // Use the selected activity id (not a derived session key): routine
-      // missions carry a `routine-{id}-run-{run}` session key, so stripping
-      // `activity-` would yield the wrong id for attachments + the handoff.
+      // missions carry a `routine-{id}` session key, so stripping `activity-`
+      // would yield the wrong id for attachments + the handoff.
       const missionId = selectedId ?? sessionKey.replace(/^activity-/, "");
       const activity = archived.find((a) => a.id === missionId);
       const mode = agentDef.config.agents?.find((m) => m.id === activity?.agent);

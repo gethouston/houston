@@ -28,7 +28,9 @@ pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
 fn create_unlocked(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     let mut runs = list(root)?;
     let id = Uuid::new_v4().to_string();
-    let session_key = format!("routine-{routine_id}-run-{id}");
+    // Stable per routine, NOT per run, so all of a routine's runs share one
+    // chat (#381). Kept in lockstep with `routines::runs::create_unlocked`.
+    let session_key = format!("routine-{routine_id}");
     let run = RoutineRun {
         id,
         routine_id: routine_id.to_string(),

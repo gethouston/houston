@@ -83,7 +83,13 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
                 resolved.provider,
             )
             .await;
-        let resume_id = sid_handle.get().await;
+        // One chat per routine (#381): all runs share a stable session_key, so
+        // resuming here would carry the PREVIOUS run's full context into this
+        // one — unbounded growth and drift that would change what a routine
+        // does. Force a fresh session every run. The handle is still passed
+        // below so the new provider session id is appended to the shared key's
+        // `.history`, and THAT is what merges every run into the single chat.
+        let resume_id: Option<String> = None;
 
         let join_handle = session_runner::spawn_and_monitor(
             self.events.clone(),
@@ -304,21 +310,42 @@ impl ActivitySurface for EngineActivitySurface {
         routine_run_id: &str,
     ) -> Result<String, String> {
         ensure_houston_dir(working_dir).map_err(|e| e.to_string())?;
-        let activity = agents::activity::create(
-            working_dir,
-            NewActivity {
-                title: title.to_string(),
-                description: description.to_string(),
-                agent: None,
-                worktree_path: None,
-                provider: None,
-                model: None,
-            },
-        )
-        .map_err(|e| e.to_string())?;
+
+        // One chat per routine (#381): reuse the activity already bound to this
+        // routine's stable session_key instead of spawning a fresh chat for
+        // every surfaced run. The match is on the exact session_key, so older
+        // per-run routine chats (which carry the legacy `routine-{id}-run-{run}`
+        // key) are left untouched as history while new runs collapse into one.
+        let existing = agents::activity::list(working_dir)
+            .map_err(|e| e.to_string())?
+            .into_iter()
+            .find(|a| a.session_key.as_deref() == Some(session_key));
+
+        let activity_id = match existing {
+            Some(activity) => activity.id,
+            None => {
+                agents::activity::create(
+                    working_dir,
+                    NewActivity {
+                        title: title.to_string(),
+                        description: description.to_string(),
+                        agent: None,
+                        worktree_path: None,
+                        provider: None,
+                        model: None,
+                    },
+                )
+                .map_err(|e| e.to_string())?
+                .id
+            }
+        };
+
+        // Flip the chat back to "needs you" and re-link the latest run. Title +
+        // description are deliberately set only on create (above), so a user's
+        // rename of the routine chat survives later surfaces.
         agents::activity::update(
             working_dir,
-            &activity.id,
+            &activity_id,
             ActivityUpdate {
                 status: Some("needs_you".into()),
                 session_key: Some(session_key.to_string()),
@@ -328,6 +355,107 @@ impl ActivitySurface for EngineActivitySurface {
             },
         )
         .map_err(|e| e.to_string())?;
-        Ok(activity.id)
+        Ok(activity_id)
+    }
+}
+
+#[cfg(test)]
+mod surface_tests {
+    use super::*;
+    use crate::agents::activity;
+    use tempfile::TempDir;
+
+    #[test]
+    fn reuses_one_activity_per_routine_session_key() {
+        // Two surfaced runs of the same routine collapse into one chat (#381).
+        let d = TempDir::new().unwrap();
+        let surface = EngineActivitySurface;
+        let key = "routine-abc";
+
+        let id1 = surface
+            .surface(d.path(), "Morning", "desc", key, "abc", "run-1")
+            .unwrap();
+        let id2 = surface
+            .surface(d.path(), "Morning", "desc", key, "abc", "run-2")
+            .unwrap();
+
+        assert_eq!(id1, id2, "second surface reuses the same activity");
+        let acts = activity::list(d.path()).unwrap();
+        assert_eq!(acts.len(), 1, "only one activity for the routine");
+        let a = &acts[0];
+        assert_eq!(a.status, "needs_you");
+        assert_eq!(a.session_key.as_deref(), Some(key));
+        assert_eq!(a.routine_id.as_deref(), Some("abc"));
+        assert_eq!(
+            a.routine_run_id.as_deref(),
+            Some("run-2"),
+            "the reused chat links the latest run"
+        );
+    }
+
+    #[test]
+    fn distinct_routines_get_distinct_chats() {
+        let d = TempDir::new().unwrap();
+        let surface = EngineActivitySurface;
+
+        let id_a = surface
+            .surface(d.path(), "A", "", "routine-a", "a", "run-1")
+            .unwrap();
+        let id_b = surface
+            .surface(d.path(), "B", "", "routine-b", "b", "run-1")
+            .unwrap();
+
+        assert_ne!(id_a, id_b);
+        assert_eq!(activity::list(d.path()).unwrap().len(), 2);
+    }
+
+    #[test]
+    fn reuse_preserves_a_user_renamed_chat_title() {
+        let d = TempDir::new().unwrap();
+        let surface = EngineActivitySurface;
+        let key = "routine-abc";
+
+        let id = surface
+            .surface(d.path(), "Morning", "desc", key, "abc", "run-1")
+            .unwrap();
+        activity::update(
+            d.path(),
+            &id,
+            ActivityUpdate {
+                title: Some("My renamed chat".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        surface
+            .surface(d.path(), "Morning", "desc", key, "abc", "run-2")
+            .unwrap();
+
+        let acts = activity::list(d.path()).unwrap();
+        assert_eq!(acts.len(), 1);
+        assert_eq!(
+            acts[0].title, "My renamed chat",
+            "a later surface must not clobber the user's rename"
+        );
+    }
+
+    #[test]
+    fn legacy_per_run_chats_are_left_intact() {
+        // A pre-#381 routine chat carries the old per-run key. A new surface on
+        // the stable key must create a fresh canonical chat, not adopt the old
+        // one (whose feed lives under a different key).
+        let d = TempDir::new().unwrap();
+        let surface = EngineActivitySurface;
+
+        let legacy = surface
+            .surface(d.path(), "Old", "", "routine-abc-run-xyz", "abc", "run-xyz")
+            .unwrap();
+        let canonical = surface
+            .surface(d.path(), "Morning", "", "routine-abc", "abc", "run-1")
+            .unwrap();
+
+        assert_ne!(legacy, canonical);
+        assert_eq!(activity::list(d.path()).unwrap().len(), 2);
     }
 }

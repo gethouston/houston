@@ -104,7 +104,13 @@ fn create_unlocked(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     ensure_houston_dir(root)?;
     let mut runs = list(root)?;
     let id = Uuid::new_v4().to_string();
-    let session_key = format!("routine-{routine_id}-run-{id}");
+    // One chat per routine (#381): the session key is stable per routine, NOT
+    // per run, so every run of a routine streams + persists into the same
+    // conversation. The shared key's `.history` file aggregates each run's
+    // provider session id, so opening the routine's chat shows a running log of
+    // all its reports instead of a fresh chat per surfaced run. Runs stay
+    // independent (the dispatcher never resumes) — only the *view* is unified.
+    let session_key = format!("routine-{routine_id}");
     let run = RoutineRun {
         id,
         routine_id: routine_id.to_string(),
@@ -221,7 +227,7 @@ mod tests {
         let run = create(d.path(), "rid").unwrap();
         assert_eq!(run.routine_id, "rid");
         assert_eq!(run.status, "running");
-        assert!(run.session_key.contains("routine-rid-run-"));
+        assert_eq!(run.session_key, "routine-rid");
 
         let done = update(
             d.path(),
@@ -236,6 +242,22 @@ mod tests {
         .unwrap();
         assert_eq!(done.status, "silent");
         assert!(done.completed_at.is_some());
+    }
+
+    #[test]
+    fn session_key_is_stable_per_routine() {
+        // One chat per routine (#381): every run of a routine shares the same
+        // session_key so their feeds aggregate into a single conversation,
+        // while different routines keep their own chats.
+        let d = TempDir::new().unwrap();
+        let r1 = create(d.path(), "rid").unwrap();
+        let r2 = create(d.path(), "rid").unwrap();
+        assert_eq!(r1.session_key, "routine-rid");
+        assert_eq!(r2.session_key, "routine-rid");
+        assert_ne!(r1.id, r2.id, "runs are still distinct rows");
+
+        let other = create(d.path(), "other").unwrap();
+        assert_eq!(other.session_key, "routine-other");
     }
 
     #[test]

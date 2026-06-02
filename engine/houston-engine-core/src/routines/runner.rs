@@ -52,9 +52,11 @@ pub trait RoutineDispatcher: Send + Sync {
     async fn dispatch(&self, ctx: DispatchContext<'_>) -> DispatchOutcome;
 }
 
-/// Surface for creating + linking activities when a routine run needs
-/// attention. Activity CRUD currently lives in the desktop adapter; this
-/// trait lets the runner stay engine-side without pulling it in.
+/// Surface for the chat that shows a routine's results when a run needs
+/// attention. Implementations reuse one chat per routine — keyed by the
+/// stable `session_key` — rather than creating a new one per run (#381), so
+/// the engine impl is a find-or-create on `session_key`. Activity CRUD lives
+/// in the agent store; this trait lets the runner stay decoupled from it.
 pub trait ActivitySurface: Send + Sync {
     fn surface(
         &self,
@@ -216,11 +218,10 @@ pub async fn finish_run(
             },
         )?;
     } else {
-        let title = format!(
-            "{} — {}",
-            routine.name,
-            first_line(&response).unwrap_or("Needs attention")
-        );
+        // One chat per routine (#381): the chat is reused across runs, so its
+        // title is the stable routine name rather than the latest finding's
+        // first line. The finding itself lands in the conversation feed.
+        let title = routine.name.clone();
         match surface.surface(
             &working_dir,
             &title,
@@ -371,10 +372,6 @@ fn extract_summary(response: &str) -> String {
     }
 }
 
-fn first_line(text: &str) -> Option<&str> {
-    text.lines().map(|l| l.trim()).find(|l| !l.is_empty())
-}
-
 fn truncate(s: &str, max: usize) -> String {
     if s.chars().count() <= max {
         return s.to_string();
@@ -516,8 +513,9 @@ mod tests {
 
         let calls = surface.calls.lock().unwrap();
         assert_eq!(calls.len(), 1);
-        assert!(calls[0].0.contains("Morning"));
-        assert!(calls[0].0.contains("Two PRs need review"));
+        // Title is the stable routine name, not the finding (#381) — the
+        // finding shows up in the conversation feed, not the chat title.
+        assert_eq!(calls[0].0, "Morning");
 
         let runs = routine_runs::list(d.path()).unwrap();
         assert_eq!(runs[0].status, "surfaced");

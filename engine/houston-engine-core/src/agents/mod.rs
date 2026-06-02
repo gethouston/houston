@@ -210,7 +210,7 @@ mod tests {
 
         let run = s.create_routine_run(&r.id).unwrap();
         assert_eq!(run.routine_id, r.id);
-        assert!(run.session_key.starts_with(&format!("routine-{}-run-", r.id)));
+        assert_eq!(run.session_key, format!("routine-{}", r.id));
         assert_eq!(s.list_routine_runs_for(&r.id).unwrap().len(), 1);
 
         let upd = s
