@@ -28,6 +28,10 @@ interface UIState {
   agentMissionSearchQueries: Record<string, string>;
   /** Whether a per-agent mission search is loading conversation text. */
   agentMissionSearchLoading: Record<string, boolean>;
+  /** Per-agent archived-tab search query (separate from the active board search). */
+  agentArchivedSearchQueries: Record<string, string>;
+  /** Whether the per-agent archived-tab search is loading conversation text. */
+  agentArchivedSearchLoading: Record<string, boolean>;
   /** Whether the mission chat panel is open (hides tab bar for full-height panel) */
   missionPanelOpen: boolean;
   /** Whether the global command palette (⌘K) is open. */
@@ -69,6 +73,8 @@ interface UIState {
   setBoardActions: (actions: Array<{ id: string; label: string; onClick: () => void }>) => void;
   setAgentMissionSearchQuery: (agentPath: string, query: string) => void;
   setAgentMissionSearchLoading: (agentPath: string, loading: boolean) => void;
+  setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
+  setAgentArchivedSearchLoading: (agentPath: string, loading: boolean) => void;
   setMissionPanelOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
@@ -97,6 +103,8 @@ export const useUIStore = create<UIState>((set) => ({
   boardActions: [],
   agentMissionSearchQueries: {},
   agentMissionSearchLoading: {},
+  agentArchivedSearchQueries: {},
+  agentArchivedSearchLoading: {},
   missionPanelOpen: false,
   paletteOpen: false,
   cheatsheetOpen: false,
@@ -161,6 +169,20 @@ export const useUIStore = create<UIState>((set) => ({
       if (loading) next[agentPath] = true;
       else delete next[agentPath];
       return { agentMissionSearchLoading: next };
+    }),
+  setAgentArchivedSearchQuery: (agentPath, query) =>
+    set((s) => {
+      const next = { ...s.agentArchivedSearchQueries };
+      if (query) next[agentPath] = query;
+      else delete next[agentPath];
+      return { agentArchivedSearchQueries: next };
+    }),
+  setAgentArchivedSearchLoading: (agentPath, loading) =>
+    set((s) => {
+      const next = { ...s.agentArchivedSearchLoading };
+      if (loading) next[agentPath] = true;
+      else delete next[agentPath];
+      return { agentArchivedSearchLoading: next };
     }),
   setMissionPanelOpen: (missionPanelOpen) => set({ missionPanelOpen }),
   setPaletteOpen: (paletteOpen) => set({ paletteOpen }),

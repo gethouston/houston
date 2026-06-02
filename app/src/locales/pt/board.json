@@ -89,6 +89,7 @@
   },
   "archived": {
     "emptyTitle": "Nenhuma missão arquivada",
-    "emptyDescription": "As missões arquivadas aparecem aqui. Responda a uma para reativá-la."
+    "emptyDescription": "As missões arquivadas aparecem aqui. Responda a uma para reativá-la.",
+    "searchPlaceholder": "Buscar missões arquivadas"
   }
 }
