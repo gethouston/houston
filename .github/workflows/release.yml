@@ -585,8 +585,13 @@ jobs:
           sentry-cli releases set-commits --auto "$RELEASE" || \
             echo "::warning::set-commits --auto failed (likely shallow clone or first release); continuing"
 
-          echo "=== 2. Inject + upload Vite source maps ==="
-          sentry-cli sourcemaps inject app/dist
+          echo "=== 2. Upload Vite source maps ==="
+          # Debug IDs are injected at BUILD time (the app's beforeBuildCommand
+          # runs scripts/sentry-inject.mjs after `pnpm build`, before cargo
+          # embeds the frontend), so the shipped bundle and this map share
+          # identical byte offsets and the same Debug ID. Do NOT inject here — a
+          # post-package inject shifts offsets and every in-app JS frame fails to
+          # symbolicate (Sentry error `js_invalid_sourcemap_location`).
           sentry-cli sourcemaps upload --release "$RELEASE" app/dist
 
           echo "=== 3. Upload Rust debug symbols (both Mac architectures) ==="
@@ -1059,13 +1064,20 @@ jobs:
           fi
           "$SENTRY_CLI" --version
 
-          echo "=== Inject + upload ${{ matrix.target }} Vite source maps ==="
+          echo "=== Upload ${{ matrix.target }} Vite source maps ==="
           # This arch's bundle carries its own Vite content-hashes, so its maps
           # must be uploaded under the shared release or Windows JS frames stay
           # minified in Sentry. `releases new` is idempotent and guards the
           # parallel race with the macOS job, which also creates this release.
+          #
+          # Debug IDs are injected at BUILD time (the app's beforeBuildCommand
+          # runs scripts/sentry-inject.mjs after `pnpm build`, before cargo
+          # embeds the frontend), so the shipped bundle and this map share
+          # identical byte offsets. Do NOT inject here — a post-package inject
+          # shifts offsets and every in-app JS frame fails to symbolicate
+          # (Sentry error `js_invalid_sourcemap_location`), which is the exact
+          # bug this resolves.
           "$SENTRY_CLI" releases new "$RELEASE"
-          "$SENTRY_CLI" sourcemaps inject app/dist
           "$SENTRY_CLI" sourcemaps upload --release "$RELEASE" app/dist
 
           echo "=== Upload ${{ matrix.target }} debug symbols ==="
