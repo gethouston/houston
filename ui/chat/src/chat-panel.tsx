@@ -23,6 +23,7 @@ const DefaultThinkingIndicator = () => (
 );
 
 export function ChatPanel({
+  sessionKey,
   feedItems,
   onSend,
   onStop,
@@ -127,6 +128,18 @@ export function ChatPanel({
       )}
       {hasMessages || status !== "ready" ? (
         <ChatMessages
+          // Remount the whole message list when the conversation changes.
+          // Assistant text renders through Streamdown, a *streaming* markdown
+          // renderer that appends incrementally and holds internal parse/DOM
+          // state. Message keys are position-based ("assistant-1"), so they
+          // collide across conversations and React reuses those Streamdown
+          // instances on a session switch — swapping to a different mission's
+          // final answer leaves the previous reply on screen (the user message,
+          // plain text, updates; the assistant reply does not). Keying the list
+          // by sessionKey resets the subtree so each conversation renders fresh
+          // (#364). sessionKey is stable within a conversation, so live
+          // streaming is unaffected.
+          key={sessionKey}
           messages={messages}
           status={status}
           thinkingIndicator={thinkingIndicator ?? <DefaultThinkingIndicator />}
