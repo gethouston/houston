@@ -74,12 +74,6 @@
     "light": "Claro",
     "dark": "Oscuro"
   },
-  "autocompact": {
-    "title": "Resumir conversaciones largas",
-    "description": "Cuando un chat se hace muy largo, resume automáticamente la parte anterior para que el asistente pueda continuar. Seguirás viendo la conversación completa.",
-    "on": "Activado",
-    "off": "Desactivado"
-  },
   "dangerZone": {
     "title": "Zona de peligro",
     "description": "Elimina este espacio de trabajo y todos sus agentes de forma permanente.",

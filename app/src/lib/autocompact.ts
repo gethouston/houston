@@ -5,13 +5,13 @@
  * board chat, mission control, skill sends, retries — gets autocompact for
  * free, rather than each call site re-deriving the flag and one being missed.
  *
- * Reads the live feed store + the user's on/off setting synchronously (both
- * Zustand stores); the threshold is a build-time constant. New conversations
- * have no reported usage yet, so this returns `false` and the engine runs a
- * normal first turn.
+ * Autocompact is always on: it's a non-destructive guarantee that long chats
+ * keep working (the full history stays visible regardless). The only knob is
+ * the build-time threshold. Reads the live feed store synchronously. New
+ * conversations have no reported usage yet, so this returns `false` and the
+ * engine runs a normal first turn.
  */
 import { useFeedStore } from "../stores/feeds";
-import { useAutocompactSettings } from "../stores/autocompact-settings";
 import { getContextWindowConfig } from "./providers";
 import {
   contextFillPercent,
@@ -37,18 +37,11 @@ export function shouldAutocompactForSession(
   provider: string | undefined,
   model: string | undefined,
 ): boolean {
-  const enabled = useAutocompactSettings.getState().enabled;
-  if (!enabled) return false;
-
   const items = useFeedStore.getState().items[agentPath]?.[sessionKey];
   const { latest, peakContextTokens } = sessionContextUsage(items);
   const cfg = getContextWindowConfig(provider, model);
   const window = effectiveContextWindow(cfg, peakContextTokens);
   const percent = contextFillPercent(latest, window);
 
-  return shouldAutocompact({
-    percent,
-    enabled,
-    threshold: AUTOCOMPACT_THRESHOLD,
-  });
+  return shouldAutocompact({ percent, threshold: AUTOCOMPACT_THRESHOLD });
 }

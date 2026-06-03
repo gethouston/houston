@@ -464,13 +464,12 @@ rendered as a subtle divider — the full history above and below stays visible.
   persisted/displayed user message stays the original; only the agent's working
   context shrank. Provider-agnostic — the reliable path for Codex.
 
-The on/off toggle lives in a client-side store (`localStorage`,
-`houston.autocompact`), not the engine `preferences` table: it governs how the
-desktop client drives sessions and is read synchronously at send time
-(`lib/autocompact.ts`, called from `tauriChat.send` so every send path gets it).
-*Settings → Summarize long conversations* is just that toggle. The threshold itself is a
-build-time constant (`VITE_AUTOCOMPACT_THRESHOLD`, default 93), not a user
-setting.
+Autocompact is always on — there is no user-facing toggle. It's a
+non-destructive guarantee (the full `chat_feed` stays visible regardless), so
+the decision is purely client-side: `lib/autocompact.ts`, called from
+`tauriChat.send` so every send path gets it, reads the live feed usage
+synchronously. The only knob is the threshold, a build-time constant
+(`VITE_AUTOCOMPACT_THRESHOLD`, default 93), not a user setting.
 `compact` is honored only when a resume id exists (ignored on turn 1). On
 summary failure the engine logs and falls back to a normal resume (the CLI's own
 auto-compaction is the backstop), so a turn never fails because compaction

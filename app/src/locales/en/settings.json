@@ -74,12 +74,6 @@
     "light": "Light",
     "dark": "Dark"
   },
-  "autocompact": {
-    "title": "Summarize long conversations",
-    "description": "When a chat gets very long, automatically summarize the earlier part so the assistant can keep going. You'll still see the full conversation.",
-    "on": "On",
-    "off": "Off"
-  },
   "dangerZone": {
     "title": "Danger zone",
     "description": "Permanently delete this workspace and all its agents.",
