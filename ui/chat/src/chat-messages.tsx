@@ -45,6 +45,9 @@ export interface ChatMessagesProps {
   /** Custom renderer for system messages. Return a node to replace the default,
    *  or undefined to use the default italic text. */
   renderSystemMessage?: (msg: ChatMessage) => ReactNode | undefined;
+  /** Localized label for the context-compaction divider. The library ships an
+   *  English default; the app passes a `t()` string (i18n stays out of `ui/`). */
+  contextCompactedLabel?: string;
   /**
    * Custom renderer for user messages. Return a node to replace the
    * default user bubble (e.g. to render a structured action-invocation
@@ -74,6 +77,7 @@ export function ChatMessages({
   renderMessageAvatar,
   renderTurnSummary,
   renderSystemMessage,
+  contextCompactedLabel,
   renderUserMessage,
   afterMessages,
   onOpenLink,
@@ -126,6 +130,21 @@ export function ChatMessages({
           if (msg.from === "system") {
             const custom = renderSystemMessage?.(msg);
             if (custom !== undefined) return <div key={msg.key}>{custom}</div>;
+            if (msg.compaction) {
+              return (
+                <div
+                  key={msg.key}
+                  className="flex items-center gap-3 max-w-3xl mx-auto px-4 py-3 text-muted-foreground/70"
+                >
+                  <div className="h-px flex-1 bg-border/60" />
+                  <span className="text-xs italic whitespace-nowrap">
+                    {contextCompactedLabel ??
+                      "Earlier conversation summarized to free up space"}
+                  </span>
+                  <div className="h-px flex-1 bg-border/60" />
+                </div>
+              );
+            }
             return (
               <div key={msg.key} className="flex justify-center py-2">
                 <span className="text-xs text-muted-foreground/60 italic">

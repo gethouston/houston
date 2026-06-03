@@ -74,6 +74,12 @@
     "light": "Claro",
     "dark": "Escuro"
   },
+  "autocompact": {
+    "title": "Resumir conversas longas",
+    "description": "Quando uma conversa fica muito longa, resume automaticamente a parte anterior para o assistente poder continuar. Você ainda verá a conversa completa.",
+    "on": "Ativado",
+    "off": "Desativado"
+  },
   "dangerZone": {
     "title": "Zona de perigo",
     "description": "Exclui este espaço de trabalho e todos os seus agentes de forma permanente.",

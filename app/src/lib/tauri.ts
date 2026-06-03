@@ -33,6 +33,7 @@ import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
 import { normalizeLegacyModel } from "./providers";
+import { shouldAutocompactForSession } from "./autocompact";
 export { withAttachmentPaths } from "./attachment-message";
 
 interface EngineCallOptions {
@@ -185,6 +186,16 @@ export const tauriChat = {
     },
   ) =>
     call<string>("send_message", async () => {
+      // Centralized autocompact decision: when this session's context is
+      // nearly full, ask the engine to summarize + reseed before this turn.
+      // Computed here so every send path gets it; new conversations have no
+      // usage yet and resolve to `false`.
+      const compact = shouldAutocompactForSession(
+        agentPath,
+        sessionKey,
+        opts?.providerOverride,
+        opts?.modelOverride,
+      );
       const res = await getEngine().startSession(agentPath, {
         sessionKey,
         prompt,
@@ -193,6 +204,7 @@ export const tauriChat = {
         provider: opts?.providerOverride,
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
+        compact,
       });
       return res.sessionKey;
     }),

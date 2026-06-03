@@ -41,6 +41,7 @@ export function ChatPanel({
   getThinkingMessage,
   renderMessageAvatar,
   renderSystemMessage,
+  contextCompactedLabel,
   renderUserMessage,
   afterMessages,
   renderTurnSummary,
@@ -151,6 +152,7 @@ export function ChatPanel({
           getThinkingMessage={getThinkingMessage}
           renderMessageAvatar={renderMessageAvatar}
           renderSystemMessage={renderSystemMessage}
+          contextCompactedLabel={contextCompactedLabel}
           renderUserMessage={renderUserMessage}
           afterMessages={afterMessages}
           renderTurnSummary={renderTurnSummary}

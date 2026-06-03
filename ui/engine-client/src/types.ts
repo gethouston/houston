@@ -517,6 +517,13 @@ export interface SessionStartRequest {
    * blow up the session.
    */
   effort?: string;
+  /**
+   * When `true`, the engine compacts the conversation (summarize the visible
+   * history + reseed a fresh provider session) before running this turn. Set
+   * by the desktop client once the context window is nearly full. Honored only
+   * when there's an existing session to compact; ignored on the first turn.
+   */
+  compact?: boolean;
 }
 
 export interface SessionStartResponse {

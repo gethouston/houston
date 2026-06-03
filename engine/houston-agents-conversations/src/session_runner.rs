@@ -447,6 +447,16 @@ fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
             let data = serde_json::to_string(err).unwrap_or_else(|_| "null".into());
             Some(("provider_error".into(), data))
         }
+        FeedItem::ContextCompacted {
+            trigger,
+            pre_tokens,
+        } => {
+            // Persist the compaction divider so it survives a history reload,
+            // matching the live FeedItem wire shape (`data` = the variant
+            // fields). `trigger` serializes to "native"/"proactive".
+            let data = serde_json::json!({ "trigger": trigger, "pre_tokens": pre_tokens });
+            Some(("context_compacted".into(), data.to_string()))
+        }
         // Skip streaming items — they get replaced by finals.
         FeedItem::AssistantTextStreaming(_) | FeedItem::ThinkingStreaming(_) => None,
     }
@@ -698,6 +708,38 @@ mod tests {
         assert_eq!(parsed["usage"]["context_tokens"], 151_500);
         assert_eq!(parsed["usage"]["cached_tokens"], 150_000);
         assert_eq!(parsed["usage"]["output_tokens"], 420);
+    }
+
+    #[test]
+    fn context_compacted_persists_for_history() {
+        // The compaction divider must survive a history reload, so it
+        // serializes to its wire shape (`trigger` + `pre_tokens`).
+        let item = FeedItem::ContextCompacted {
+            trigger: houston_terminal_manager::CompactTrigger::Proactive,
+            pre_tokens: Some(185_000),
+        };
+
+        let (feed_type, data) = serialize_for_persist(&item).expect("serializes");
+
+        assert_eq!(feed_type, "context_compacted");
+        let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
+        assert_eq!(parsed["trigger"], "proactive");
+        assert_eq!(parsed["pre_tokens"], 185_000);
+    }
+
+    #[test]
+    fn context_compacted_native_without_pre_tokens_persists_null() {
+        let item = FeedItem::ContextCompacted {
+            trigger: houston_terminal_manager::CompactTrigger::Native,
+            pre_tokens: None,
+        };
+
+        let (feed_type, data) = serialize_for_persist(&item).expect("serializes");
+
+        assert_eq!(feed_type, "context_compacted");
+        let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
+        assert_eq!(parsed["trigger"], "native");
+        assert!(parsed["pre_tokens"].is_null());
     }
 
     #[test]

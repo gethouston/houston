@@ -29,6 +29,7 @@ import { ProviderSection } from "./sections/provider";
 import { TimezoneSection } from "./sections/timezone";
 import { LanguageSection } from "./sections/language";
 import { AppearanceSection } from "./sections/appearance";
+import { AutocompactSection } from "./sections/autocompact";
 import { DangerSection } from "./sections/danger";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
@@ -123,6 +124,7 @@ export function SettingsView() {
                 <LanguageSection />
                 <TimezoneSection />
                 <AppearanceSection />
+                <AutocompactSection />
                 <DangerSection />
               </div>
             )}

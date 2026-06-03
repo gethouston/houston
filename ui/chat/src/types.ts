@@ -13,6 +13,17 @@ export type FeedItem =
   | { feed_type: "tool_result"; data: { content: string; is_error: boolean } }
   | { feed_type: "system_message"; data: string }
   | {
+      /**
+       * A context-compaction boundary. Earlier turns were summarized to free
+       * context, either by the provider CLI itself (`native`) or by Houston's
+       * proactive reseed (`proactive`). Rendered as a subtle divider; the full
+       * chat above and below stays visible. `pre_tokens` is how full the
+       * context was just before compaction, when reported.
+       */
+      feed_type: "context_compacted";
+      data: { trigger: "native" | "proactive"; pre_tokens?: number | null };
+    }
+  | {
       feed_type: "file_changes";
       data: { created: string[]; modified: string[] };
     }

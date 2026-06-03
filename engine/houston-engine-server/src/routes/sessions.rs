@@ -84,6 +84,12 @@ pub struct StartRequest {
     /// in `~/.codex/config.toml`.
     #[serde(default)]
     pub effort: Option<String>,
+    /// When `true`, compact the conversation (summarize + reseed a fresh
+    /// provider session) before running this turn. The frontend sets this
+    /// once the context window is nearly full. Defaults to `false` so older
+    /// clients deserialize unchanged.
+    #[serde(default)]
+    pub compact: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -125,6 +131,7 @@ async fn start_session(
         provider,
         model,
         effort,
+        compact: req.compact,
     };
 
     let rt = SessionRuntime::clone(&st.engine.sessions);

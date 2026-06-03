@@ -42,6 +42,6 @@ pub use provider_error_kind::{
 };
 pub use session_update::SessionUpdate;
 pub use types::{
-    ClaudeEvent, ContentBlock, FeedItem, FileChanges, SessionFeedBuffer, SessionStatus,
-    TokenUsage, ToolRuntimeErrorKind,
+    ClaudeEvent, CompactTrigger, ContentBlock, FeedItem, FileChanges, SessionFeedBuffer,
+    SessionStatus, TokenUsage, ToolRuntimeErrorKind,
 };

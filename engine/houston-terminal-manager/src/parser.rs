@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use super::provider::anthropic_classify;
 use super::provider_error_kind::{truncate_excerpt, ProviderError};
 use super::types::{
-    AssistantMessage, ClaudeEvent, ContentBlock, FeedItem, TokenUsage, UserMessage,
+    AssistantMessage, ClaudeEvent, CompactTrigger, ContentBlock, FeedItem, TokenUsage, UserMessage,
 };
 
 const ANTHROPIC: &str = "anthropic";
@@ -156,7 +156,9 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
     };
 
     match event {
-        ClaudeEvent::System { .. } => vec![],
+        ClaudeEvent::System { subtype, extra, .. } => {
+            parse_system_event(subtype.as_deref(), &extra)
+        }
         ClaudeEvent::Assistant {
             subtype, message, ..
         } => {
@@ -255,6 +257,45 @@ fn parse_rate_limit_event(extra: serde_json::Value) -> Vec<FeedItem> {
         retry_after_seconds,
         message,
     })]
+}
+
+/// Parse Claude's `system` events. Most are internal (`init`, `api_retry`,
+/// `plugin_install`) and produce nothing. The one we surface is
+/// `compact_boundary`: Claude Code auto-compacts its own transcript as it
+/// nears the context window and emits this marker. We lift it to a
+/// [`FeedItem::ContextCompacted`] (trigger `Native`) so the UI can show a
+/// subtle divider — the user's visible chat is untouched; only the agent's
+/// working context shrank.
+///
+/// Verified against Claude Code 2.1.160: the wire line is a top-level
+/// `{"type":"system","subtype":"compact_boundary","session_id":...,"uuid":...,
+/// "compact_metadata":{"trigger":"auto"|"manual","pre_tokens":N,...}}`.
+/// `compact_metadata` lands in the flattened `extra`. We read leniently
+/// (number-or-string `pre_tokens`) so a casing/format shift doesn't crash.
+fn parse_system_event(subtype: Option<&str>, extra: &serde_json::Value) -> Vec<FeedItem> {
+    if subtype != Some("compact_boundary") {
+        return vec![];
+    }
+    let pre_tokens = extra
+        .get("compact_metadata")
+        .and_then(|m| m.get("pre_tokens").or_else(|| m.get("preTokens")))
+        .and_then(json_u64)
+        .or_else(|| {
+            extra
+                .get("pre_tokens")
+                .or_else(|| extra.get("preTokens"))
+                .and_then(json_u64)
+        });
+    vec![FeedItem::ContextCompacted {
+        trigger: CompactTrigger::Native,
+        pre_tokens,
+    }]
+}
+
+/// Read a JSON value as a `u64`, tolerating a numeric string (some Claude
+/// telemetry paths stringify token counts).
+fn json_u64(v: &serde_json::Value) -> Option<u64> {
+    v.as_u64().or_else(|| v.as_str().and_then(|s| s.parse().ok()))
 }
 
 fn parse_assistant_event(
@@ -399,6 +440,42 @@ mod tests {
             }
             other => panic!("expected Unauthenticated, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn parse_compact_boundary_emits_context_compacted() {
+        // Verbatim shape from Claude Code 2.1.160's stream-json output: a
+        // top-level `system` event whose `compact_metadata` carries the
+        // pre-compaction token count. We surface it as a Native marker.
+        let line = r#"{"type":"system","subtype":"compact_boundary","session_id":"s1","uuid":"u1","compact_metadata":{"trigger":"auto","pre_tokens":185000,"post_tokens":42000,"duration_ms":1200}}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ContextCompacted {
+                trigger,
+                pre_tokens,
+            } => {
+                assert_eq!(*trigger, CompactTrigger::Native);
+                assert_eq!(*pre_tokens, Some(185_000));
+            }
+            other => panic!("expected ContextCompacted, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn parse_compact_boundary_tolerates_missing_metadata() {
+        // A future/variant shape without compact_metadata still produces the
+        // marker (pre_tokens unknown) rather than crashing or going silent.
+        let line = r#"{"type":"system","subtype":"compact_boundary","session_id":"s1","uuid":"u1"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ContextCompacted {
+                trigger: CompactTrigger::Native,
+                pre_tokens: None,
+            }
+        ));
     }
 
     #[test]

@@ -26,6 +26,7 @@ import {
   Progress,
 } from "@houston-ai/core";
 import type { TokenUsage } from "@houston-ai/chat";
+import { contextFillPercent } from "../lib/context-usage";
 
 interface ContextIndicatorProps {
   /** Latest turn's usage, or null when no turn has reported it yet. */
@@ -53,13 +54,7 @@ export function ContextIndicator({
     typeof contextWindow === "number" && contextWindow > 0
       ? contextWindow
       : null;
-  const percent =
-    usage && windowTokens != null
-      ? Math.min(
-          100,
-          Math.max(0, Math.round((usage.context_tokens / windowTokens) * 100)),
-        )
-      : null;
+  const percent = contextFillPercent(usage, windowTokens);
   const warn = percent != null && percent >= WARN_PERCENT;
 
   const fmt = (n: number) => n.toLocaleString(i18n.language);

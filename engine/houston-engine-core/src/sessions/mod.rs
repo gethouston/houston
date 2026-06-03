@@ -17,6 +17,7 @@
 //! lives in the adapter today; it will move into `engine-core` in a later
 //! phase once `agent_store` is ported.
 
+mod compaction;
 mod control;
 pub mod file_changes;
 pub mod generate_instructions;
@@ -38,7 +39,7 @@ use houston_agents_conversations::session_id_tracker::SessionIdTracker;
 use houston_agents_conversations::session_pids::SessionPidMap;
 use houston_agents_conversations::session_runner::{self, PersistOptions};
 use houston_db::Database;
-use houston_terminal_manager::{FeedItem, Provider};
+use houston_terminal_manager::{CompactTrigger, FeedItem, Provider};
 use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::{Path, PathBuf};
 use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
@@ -98,6 +99,11 @@ pub struct StartParams {
     /// `--effort <value>`. Accepted values vary per provider; the caller is
     /// responsible for passing something each CLI understands (e.g. "medium").
     pub effort: Option<String>,
+    /// When `true`, the frontend has detected the context window is nearly
+    /// full and wants this turn to run on a freshly-compacted session.
+    /// Honored only when there's an existing session to compact; ignored on
+    /// the first turn. See [`compaction`].
+    pub compact: bool,
 }
 
 /// Start a session turn. The request is accepted immediately. Turns with the
@@ -192,6 +198,7 @@ async fn run_start(
         provider,
         model,
         effort,
+        compact,
     } = params;
 
     if !agent_dir.exists() {
@@ -271,7 +278,80 @@ async fn run_start(
         .session_ids
         .get_for_session(&agent_key, &working_dir, &session_key, provider)
         .await;
-    let resume_id = sid_handle.get().await;
+    let agent_path = agent_dir.to_string_lossy().to_string();
+    let mut resume_id = sid_handle.get().await;
+    // What the CLI actually receives this turn. Normally the user's prompt;
+    // for a forced compaction it becomes the summary-seeded prompt, while the
+    // persisted/displayed user message stays the original (see `persist`).
+    let mut cli_prompt = prompt.clone();
+
+    // Forced autocompact (mechanism B): the frontend flagged this turn because
+    // the context window is nearly full. Summarize the visible history,
+    // abandon the current resume id (kept in `.history` so the chat stays
+    // visible), and run this turn on a FRESH provider session seeded with the
+    // summary. The user's chat_feed is never mutated.
+    if compact {
+        if let Some(old_id) = resume_id.clone() {
+            match compaction::build_compaction_seed(
+                &db,
+                &working_dir,
+                &agent_dir,
+                &session_key,
+                &prompt,
+                provider,
+                model.as_deref(),
+            )
+            .await
+            {
+                Ok(Some(seed)) => {
+                    cli_prompt = seed.prompt;
+                    // Emit the marker live so the divider appears immediately,
+                    // and persist it under the OLD session id so it sits at the
+                    // boundary between the prior turns and the fresh session.
+                    events.emit(HoustonEvent::FeedItem {
+                        agent_path: agent_path.clone(),
+                        session_key: session_key.clone(),
+                        item: FeedItem::ContextCompacted {
+                            trigger: CompactTrigger::Proactive,
+                            pre_tokens: seed.pre_tokens,
+                        },
+                    });
+                    let data = serde_json::json!({
+                        "trigger": "proactive",
+                        "pre_tokens": seed.pre_tokens,
+                    })
+                    .to_string();
+                    if let Err(e) = db
+                        .add_chat_feed_item_by_session(&old_id, "context_compacted", &data, &source)
+                        .await
+                    {
+                        tracing::warn!(
+                            "[sessions] failed to persist compaction marker: {e} (session_key={session_key})"
+                        );
+                    }
+                    sid_handle.clear_current_preserving_history().await;
+                    resume_id = None;
+                    tracing::info!(
+                        "[sessions] proactively compacted context for session_key={session_key} (abandoned resume_id={old_id})"
+                    );
+                }
+                Ok(None) => {
+                    tracing::info!(
+                        "[sessions] compaction requested but no visible history to summarize (session_key={session_key})"
+                    );
+                }
+                Err(e) => {
+                    // Non-fatal: fall back to a normal resume. The provider's
+                    // own auto-compaction is the backstop, and the context
+                    // indicator still shows the high fill so it stays visible.
+                    tracing::warn!(
+                        "[sessions] context compaction failed, continuing with normal resume: {e} (session_key={session_key})"
+                    );
+                }
+            }
+        }
+    }
+
     let resume_recovery_prompt = if resume_id.is_some() {
         let activity_hint = match activity_hint_for_session_key(&agent_dir, &session_key) {
             Ok(hint) => hint,
@@ -312,8 +392,6 @@ async fn run_start(
         provider,
     );
 
-    let agent_path = agent_dir.to_string_lossy().to_string();
-
     // Flip the matching board activity to "running" synchronously, before
     // the CLI subprocess spawns. Desktop UI pre-wrote this from the send
     // handler; moving it here means mobile (and any other client that
@@ -350,7 +428,7 @@ async fn run_start(
         events,
         agent_path.clone(),
         session_key.clone(),
-        prompt,
+        cli_prompt,
         resume_id,
         resume_recovery_prompt,
         working_dir,
@@ -647,6 +725,7 @@ pub async fn start_onboarding(
             provider: resolved.provider,
             model: resolved.model,
             effort,
+            compact: false,
         },
     )
     .await
@@ -714,6 +793,7 @@ mod tests {
                     provider: "openai".parse().unwrap(),
                     model: None,
                     effort: None,
+                    compact: false,
                 },
             ),
         )

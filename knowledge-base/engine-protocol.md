@@ -437,6 +437,45 @@ can't self-correct downward, so the dialog labels the figure "estimated".
 If a future CLI release exposes the window in `system init` /
 `thread.started`, prefer that live value over the estimate.
 
+### Autocompact (`context_compacted`)
+
+When a conversation nears the context window, Houston frees space without
+touching the user's visible chat. Both paths surface as one
+`feed_type: "context_compacted"` item (`data: { trigger: "native" |
+"proactive", pre_tokens?: number }`, Rust `FeedItem::ContextCompacted`),
+rendered as a subtle divider — the full history above and below stays visible.
+
+- **Native** — Claude Code auto-compacts its own transcript as it nears the
+  window (~95%) and emits a top-level stream-json `system` event
+  `{"subtype":"compact_boundary","compact_metadata":{"trigger","pre_tokens",…}}`
+  (verified against Claude Code 2.1.160). `parser.rs` lifts it into
+  `ContextCompacted { trigger: Native }`. Claude-only today: Codex's `exec`
+  auto-compaction is unreliable, which is exactly why the forced path exists.
+- **Proactive** — the desktop client watches the context-usage % and, once it
+  crosses the threshold (default 93%, overridable at build time via
+  `VITE_AUTOCOMPACT_THRESHOLD`), sets `compact: true` on the next
+  `startSession`. The engine
+  (`sessions::compaction`) summarizes the visible chat via a one-shot provider
+  call, abandons the current resume id with
+  `SessionIdHandle::clear_current_preserving_history()` (the id stays in
+  `.history` so `session_ids_for_history` still loads the full `chat_feed`),
+  emits + persists a `Proactive` marker under the old id, then runs the turn on
+  a FRESH provider session seeded with `[summary + the user's message]`. The
+  persisted/displayed user message stays the original; only the agent's working
+  context shrank. Provider-agnostic — the reliable path for Codex.
+
+The on/off toggle lives in a client-side store (`localStorage`,
+`houston.autocompact`), not the engine `preferences` table: it governs how the
+desktop client drives sessions and is read synchronously at send time
+(`lib/autocompact.ts`, called from `tauriChat.send` so every send path gets it).
+*Settings → Summarize long conversations* is just that toggle. The threshold itself is a
+build-time constant (`VITE_AUTOCOMPACT_THRESHOLD`, default 93), not a user
+setting.
+`compact` is honored only when a resume id exists (ignored on turn 1). On
+summary failure the engine logs and falls back to a normal resume (the CLI's own
+auto-compaction is the backstop), so a turn never fails because compaction
+couldn't run.
+
 ### Binary file downloads
 
 The `read-project` route returns text only. For xlsx, pdf, images,

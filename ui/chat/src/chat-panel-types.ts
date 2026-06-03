@@ -69,6 +69,9 @@ export interface ChatPanelProps {
   getThinkingMessage?: ChatMessagesProps["getThinkingMessage"];
   renderMessageAvatar?: (msg: ChatMessage) => ReactNode | undefined;
   renderSystemMessage?: (msg: ChatMessage) => ReactNode | undefined;
+  /** Localized label for the context-compaction divider. English default in
+   *  the component; the app passes a `t()` string. */
+  contextCompactedLabel?: string;
   renderUserMessage?: (msg: ChatMessage) => ReactNode | undefined;
   afterMessages?: ReactNode;
   renderTurnSummary?: ChatMessagesProps["renderTurnSummary"];

@@ -95,5 +95,6 @@
     "learningsUpdated": "Learnings updated"
   },
   "filesUpdated_one": "1 file updated",
-  "filesUpdated_other": "{{count}} files updated"
+  "filesUpdated_other": "{{count}} files updated",
+  "contextCompacted": "Earlier conversation summarized so the chat can keep going"
 }

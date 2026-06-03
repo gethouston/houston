@@ -80,8 +80,7 @@ pub(crate) fn build_resume_recovery_prompt(
     latest_user_prompt: &str,
     activity_hint: Option<&str>,
 ) -> Option<String> {
-    let mut rendered_entries: Vec<String> =
-        entries.iter().filter_map(render_recovery_entry).collect();
+    let mut rendered_entries: Vec<String> = render_visible_entries(entries);
 
     if rendered_entries.is_empty() {
         if let Some(hint) = activity_hint
@@ -96,10 +95,19 @@ pub(crate) fn build_resume_recovery_prompt(
         return None;
     }
 
-    let recovered_history = truncate_recovered_history(rendered_entries.join("\n\n"));
+    let recovered_history =
+        truncate_history_tail(rendered_entries.join("\n\n"), MAX_RECOVERY_HISTORY_BYTES);
     Some(format!(
         "The previous provider transcript could not be resumed. Continue this conversation using the recovered visible chat history below. Do not treat this as a new conversation.\n\n<recovered_chat_history>\n{recovered_history}\n</recovered_chat_history>\n\nLatest user message:\n<latest_user_message>\n{latest_user_prompt}\n</latest_user_message>"
     ))
+}
+
+/// Render the user/assistant turns of a conversation to plain text lines,
+/// dropping tool calls/results and other non-conversational feed items. Shared
+/// by resume-recovery and proactive compaction so both reconstruct the visible
+/// chat the same way.
+pub(crate) fn render_visible_entries(entries: &[ChatHistoryEntry]) -> Vec<String> {
+    entries.iter().filter_map(render_recovery_entry).collect()
 }
 
 fn render_recovery_entry(entry: &ChatHistoryEntry) -> Option<String> {
@@ -121,17 +129,20 @@ fn text_from_json(value: &serde_json::Value) -> Option<String> {
     (!trimmed.is_empty()).then(|| trimmed.to_string())
 }
 
-fn truncate_recovered_history(history: String) -> String {
-    if history.len() <= MAX_RECOVERY_HISTORY_BYTES {
+/// Keep the most-recent `max_bytes` of a rendered history, prefixing a note
+/// when earlier content was dropped. Splits on a UTF-8 char boundary. Shared
+/// by resume-recovery and compaction (each passes its own cap).
+pub(crate) fn truncate_history_tail(history: String, max_bytes: usize) -> String {
+    if history.len() <= max_bytes {
         return history;
     }
 
-    let mut start = history.len() - MAX_RECOVERY_HISTORY_BYTES;
+    let mut start = history.len() - max_bytes;
     while !history.is_char_boundary(start) {
         start += 1;
     }
     format!(
-        "[Earlier recovered history omitted because it was too long.]\n\n{}",
+        "[Earlier history omitted because it was too long.]\n\n{}",
         &history[start..]
     )
 }

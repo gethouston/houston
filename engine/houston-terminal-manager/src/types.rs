@@ -198,6 +198,21 @@ pub enum ToolRuntimeErrorKind {
     ProviderModelUnsupported,
 }
 
+/// Why a context-compaction boundary was recorded.
+///
+/// `Native` — the provider CLI compacted its own transcript on its own
+/// schedule (Claude Code's `compact_boundary` system event as it nears the
+/// context window). `Proactive` — Houston forced a summarize-and-reseed at the
+/// user's configured threshold, before the CLI would have. In both cases the
+/// user's visible `chat_feed` is untouched; only the agent's working context
+/// shrinks.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CompactTrigger {
+    Native,
+    Proactive,
+}
+
 /// Processed feed items for rendering in the UI.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "feed_type", content = "data", rename_all = "snake_case")]
@@ -237,6 +252,21 @@ pub enum FeedItem {
     ToolResult { content: String, is_error: bool },
     /// System message (session start, etc.).
     SystemMessage(String),
+    /// A context-compaction boundary. The conversation's earlier turns were
+    /// summarized to free context — either by the provider CLI itself
+    /// (`Native`) or by Houston's proactive reseed (`Proactive`). Rendered as
+    /// a subtle divider; the full chat history above and below stays visible.
+    /// `pre_tokens` is how full the context was just before compaction, when
+    /// the provider reports it.
+    ContextCompacted {
+        trigger: CompactTrigger,
+        // Plain `Option` (serializes as `null` when absent), matching the
+        // `FinalResult { usage }` convention so the live event and the
+        // persisted `chat_feed` row share one shape. `default` keeps an older
+        // row that predates the field deserializable.
+        #[serde(default)]
+        pre_tokens: Option<u64>,
+    },
     /// Session completed — cost/duration summary.
     FinalResult {
         result: String,

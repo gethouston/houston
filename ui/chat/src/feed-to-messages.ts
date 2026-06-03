@@ -19,6 +19,12 @@ export interface FileChangeEntry {
   status: "created" | "modified";
 }
 
+/** Marks a `from: "system"` message as a context-compaction divider. */
+export interface ChatCompactionInfo {
+  trigger: "native" | "proactive";
+  preTokens?: number;
+}
+
 export interface ChatMessage {
   key: string;
   from: "user" | "assistant" | "system";
@@ -36,6 +42,11 @@ export interface ChatMessage {
   fileChanges: FileChangeEntry[];
   /** Source channel if the message came from an external channel. */
   source?: string;
+  /**
+   * Set on `from: "system"` messages that mark a context-compaction boundary.
+   * The renderer shows a subtle divider instead of plain system text.
+   */
+  compaction?: ChatCompactionInfo;
 }
 
 export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
@@ -229,6 +240,25 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           isStreaming: false,
           tools: [],
           fileChanges: [],
+        });
+        break;
+      }
+
+      case "context_compacted": {
+        flush();
+        messages.push({
+          key: `context-compacted-${messages.length}`,
+          from: "system",
+          // Empty content — the renderer shows a localized divider keyed off
+          // `compaction`, not this string.
+          content: "",
+          isStreaming: false,
+          tools: [],
+          fileChanges: [],
+          compaction: {
+            trigger: item.data.trigger,
+            preTokens: item.data.pre_tokens ?? undefined,
+          },
         });
         break;
       }
