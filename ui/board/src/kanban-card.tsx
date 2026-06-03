@@ -175,9 +175,10 @@ export function KanbanCard({
           // colliding with the conic-gradient keyframe animation.
           // Restrict transitions to the safe properties we actually
           // care about.
-          "group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
-          // Grab cursor signals the card can be dragged; plain pointer otherwise.
-          canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          "group/card relative rounded-xl p-3 cursor-default transition-[background-color,box-shadow,border-color] duration-200",
+          // The card no longer shows a grab/pointer cursor across its whole
+          // surface — only the title reads as the clickable affordance (see
+          // the title span below). Dragging still works from anywhere.
           selected || highlighted ? "bg-accent shadow-md" : "bg-background",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
@@ -311,7 +312,16 @@ export function KanbanCard({
           />
         ) : (
           <p className="text-[13px] font-medium text-foreground line-clamp-2">
-            {item.title}
+            {/* The title is the explicit click affordance: pointer cursor +
+                underline on hover, scoped to the text glyphs. The click still
+                bubbles to the card's onSelect, and `stopPropagation` keeps a
+                title click from also triggering it twice. */}
+            <span
+              onClick={(e) => { e.stopPropagation(); onSelect() }}
+              className="cursor-pointer hover:underline"
+            >
+              {item.title}
+            </span>
           </p>
         )}
 
