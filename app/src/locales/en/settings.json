@@ -78,8 +78,7 @@
     "title": "Long conversations",
     "description": "When a chat gets very long, automatically summarize the earlier part so the assistant can keep going. You'll still see the full conversation.",
     "on": "On",
-    "off": "Off",
-    "thresholdLabel": "Summarize at"
+    "off": "Off"
   },
   "dangerZone": {
     "title": "Danger zone",

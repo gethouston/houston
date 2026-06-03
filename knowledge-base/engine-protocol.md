@@ -451,8 +451,9 @@ rendered as a subtle divider — the full history above and below stays visible.
   `ContextCompacted { trigger: Native }`. Claude-only today: Codex's `exec`
   auto-compaction is unreliable, which is exactly why the forced path exists.
 - **Proactive** — the desktop client watches the context-usage % and, once it
-  crosses the user's threshold (default 93%, *Settings → Long conversations*),
-  sets `compact: true` on the next `startSession`. The engine
+  crosses the threshold (default 93%, overridable at build time via
+  `VITE_AUTOCOMPACT_THRESHOLD`), sets `compact: true` on the next
+  `startSession`. The engine
   (`sessions::compaction`) summarizes the visible chat via a one-shot provider
   call, abandons the current resume id with
   `SessionIdHandle::clear_current_preserving_history()` (the id stays in
@@ -462,10 +463,13 @@ rendered as a subtle divider — the full history above and below stays visible.
   persisted/displayed user message stays the original; only the agent's working
   context shrank. Provider-agnostic — the reliable path for Codex.
 
-The threshold + on/off live in a client-side store (`localStorage`,
+The on/off toggle lives in a client-side store (`localStorage`,
 `houston.autocompact`), not the engine `preferences` table: it governs how the
 desktop client drives sessions and is read synchronously at send time
 (`lib/autocompact.ts`, called from `tauriChat.send` so every send path gets it).
+*Settings → Long conversations* is just that toggle. The threshold itself is a
+build-time constant (`VITE_AUTOCOMPACT_THRESHOLD`, default 93), not a user
+setting.
 `compact` is honored only when a resume id exists (ignored on turn 1). On
 summary failure the engine logs and falls back to a normal resume (the CLI's own
 auto-compaction is the backstop), so a turn never fails because compaction

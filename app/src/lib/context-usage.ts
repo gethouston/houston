@@ -88,3 +88,30 @@ export function shouldAutocompact(opts: {
   if (!opts.enabled || opts.percent == null) return false;
   return opts.percent >= opts.threshold;
 }
+
+/**
+ * Autocompact threshold (percent-full at which the next turn proactively
+ * compacts). Not a user setting — a tuning constant with an optional
+ * build-time override via `VITE_AUTOCOMPACT_THRESHOLD` (read in
+ * `lib/autocompact.ts`). Defaults to 93, just below the provider CLIs' own
+ * ~95% auto-compaction so Houston compacts cleanly at a turn boundary first.
+ */
+export const DEFAULT_AUTOCOMPACT_THRESHOLD = 93;
+export const MIN_AUTOCOMPACT_THRESHOLD = 1;
+export const MAX_AUTOCOMPACT_THRESHOLD = 99;
+
+/**
+ * Parse + clamp the `VITE_AUTOCOMPACT_THRESHOLD` build-time env value. Empty,
+ * missing, or non-numeric falls back to the default; valid values are rounded
+ * and clamped to [1, 99]. Pure (takes the raw string, not `import.meta.env`)
+ * so it's unit-testable without a Vite environment.
+ */
+export function resolveThreshold(raw: string | undefined): number {
+  if (raw == null || raw === "") return DEFAULT_AUTOCOMPACT_THRESHOLD;
+  const n = Number(raw);
+  if (!Number.isFinite(n)) return DEFAULT_AUTOCOMPACT_THRESHOLD;
+  return Math.min(
+    MAX_AUTOCOMPACT_THRESHOLD,
+    Math.max(MIN_AUTOCOMPACT_THRESHOLD, Math.round(n)),
+  );
+}

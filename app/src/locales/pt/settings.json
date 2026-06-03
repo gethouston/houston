@@ -78,8 +78,7 @@
     "title": "Conversas longas",
     "description": "Quando uma conversa fica muito longa, resume automaticamente a parte anterior para o assistente poder continuar. Você ainda verá a conversa completa.",
     "on": "Ativado",
-    "off": "Desativado",
-    "thresholdLabel": "Resumir em"
+    "off": "Desativado"
   },
   "dangerZone": {
     "title": "Zona de perigo",

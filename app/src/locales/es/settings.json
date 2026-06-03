@@ -78,8 +78,7 @@
     "title": "Conversaciones largas",
     "description": "Cuando un chat se hace muy largo, resume automáticamente la parte anterior para que el asistente pueda continuar. Seguirás viendo la conversación completa.",
     "on": "Activado",
-    "off": "Desactivado",
-    "thresholdLabel": "Resumir al"
+    "off": "Desactivado"
   },
   "dangerZone": {
     "title": "Zona de peligro",

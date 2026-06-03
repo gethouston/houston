@@ -2,6 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   contextFillPercent,
+  resolveThreshold,
   shouldAutocompact,
 } from "../src/lib/context-usage.ts";
 
@@ -38,5 +39,21 @@ describe("shouldAutocompact", () => {
   it("never fires when disabled or usage unknown", () => {
     strictEqual(shouldAutocompact({ percent: 99, enabled: false, threshold: 93 }), false);
     strictEqual(shouldAutocompact({ percent: null, enabled: true, threshold: 93 }), false);
+  });
+});
+
+describe("resolveThreshold", () => {
+  it("defaults to 93 when unset, empty, or non-numeric", () => {
+    strictEqual(resolveThreshold(undefined), 93);
+    strictEqual(resolveThreshold(""), 93);
+    strictEqual(resolveThreshold("abc"), 93);
+  });
+
+  it("rounds and clamps to [1, 99]", () => {
+    strictEqual(resolveThreshold("80"), 80);
+    strictEqual(resolveThreshold("85.6"), 86); // round
+    strictEqual(resolveThreshold("0"), 1); // clamp floor
+    strictEqual(resolveThreshold("-20"), 1); // clamp floor
+    strictEqual(resolveThreshold("150"), 99); // clamp ceil
   });
 });

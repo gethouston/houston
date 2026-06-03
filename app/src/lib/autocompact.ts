@@ -5,9 +5,10 @@
  * board chat, mission control, skill sends, retries — gets autocompact for
  * free, rather than each call site re-deriving the flag and one being missed.
  *
- * Reads the live feed store + the user's autocompact settings synchronously
- * (both are Zustand stores). New conversations have no reported usage yet, so
- * this returns `false` and the engine runs a normal first turn.
+ * Reads the live feed store + the user's on/off setting synchronously (both
+ * Zustand stores); the threshold is a build-time constant. New conversations
+ * have no reported usage yet, so this returns `false` and the engine runs a
+ * normal first turn.
  */
 import { useFeedStore } from "../stores/feeds";
 import { useAutocompactSettings } from "../stores/autocompact-settings";
@@ -15,9 +16,20 @@ import { getContextWindowConfig } from "./providers";
 import {
   contextFillPercent,
   effectiveContextWindow,
+  resolveThreshold,
   sessionContextUsage,
   shouldAutocompact,
 } from "./context-usage";
+
+/**
+ * Percent-full at which a turn proactively compacts. A tuning constant, not a
+ * user setting: defaults to 93, optionally overridden at build time via
+ * `VITE_AUTOCOMPACT_THRESHOLD` (e.g. set it low to force compaction while
+ * testing). Resolved once at module load.
+ */
+const AUTOCOMPACT_THRESHOLD = resolveThreshold(
+  import.meta.env.VITE_AUTOCOMPACT_THRESHOLD,
+);
 
 export function shouldAutocompactForSession(
   agentPath: string,
@@ -25,7 +37,7 @@ export function shouldAutocompactForSession(
   provider: string | undefined,
   model: string | undefined,
 ): boolean {
-  const { enabled, threshold } = useAutocompactSettings.getState();
+  const enabled = useAutocompactSettings.getState().enabled;
   if (!enabled) return false;
 
   const items = useFeedStore.getState().items[agentPath]?.[sessionKey];
@@ -34,5 +46,9 @@ export function shouldAutocompactForSession(
   const window = effectiveContextWindow(cfg, peakContextTokens);
   const percent = contextFillPercent(latest, window);
 
-  return shouldAutocompact({ percent, enabled, threshold });
+  return shouldAutocompact({
+    percent,
+    enabled,
+    threshold: AUTOCOMPACT_THRESHOLD,
+  });
 }
