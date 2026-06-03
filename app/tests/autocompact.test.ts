@@ -27,18 +27,17 @@ describe("contextFillPercent", () => {
 });
 
 describe("shouldAutocompact", () => {
-  it("fires at or above the threshold when enabled", () => {
-    strictEqual(shouldAutocompact({ percent: 93, enabled: true, threshold: 93 }), true);
-    strictEqual(shouldAutocompact({ percent: 99, enabled: true, threshold: 93 }), true);
+  it("fires at or above the threshold", () => {
+    strictEqual(shouldAutocompact({ percent: 93, threshold: 93 }), true);
+    strictEqual(shouldAutocompact({ percent: 99, threshold: 93 }), true);
   });
 
   it("does not fire below the threshold", () => {
-    strictEqual(shouldAutocompact({ percent: 92, enabled: true, threshold: 93 }), false);
+    strictEqual(shouldAutocompact({ percent: 92, threshold: 93 }), false);
   });
 
-  it("never fires when disabled or usage unknown", () => {
-    strictEqual(shouldAutocompact({ percent: 99, enabled: false, threshold: 93 }), false);
-    strictEqual(shouldAutocompact({ percent: null, enabled: true, threshold: 93 }), false);
+  it("never fires when usage is unknown", () => {
+    strictEqual(shouldAutocompact({ percent: null, threshold: 93 }), false);
   });
 });
 

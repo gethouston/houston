@@ -74,18 +74,16 @@ export function contextFillPercent(
 }
 
 /**
- * Whether to proactively compact this turn: autocompact is enabled and the
- * context is at/over the user's threshold. `percent` null (unknown usage or
- * window) means we can't tell, so we don't compact. Self-limiting: after a
- * compaction the next turn's fill is small, so this won't re-fire until the
- * window fills again.
+ * Whether to proactively compact this turn: the context is at/over the
+ * threshold. `percent` null (unknown usage or window) means we can't tell, so
+ * we don't compact. Self-limiting: after a compaction the next turn's fill is
+ * small, so this won't re-fire until the window fills again.
  */
 export function shouldAutocompact(opts: {
   percent: number | null;
-  enabled: boolean;
   threshold: number;
 }): boolean {
-  if (!opts.enabled || opts.percent == null) return false;
+  if (opts.percent == null) return false;
   return opts.percent >= opts.threshold;
 }
 
