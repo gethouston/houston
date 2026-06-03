@@ -75,7 +75,7 @@
     "dark": "Escuro"
   },
   "autocompact": {
-    "title": "Conversas longas",
+    "title": "Resumir conversas longas",
     "description": "Quando uma conversa fica muito longa, resume automaticamente a parte anterior para o assistente poder continuar. Você ainda verá a conversa completa.",
     "on": "Ativado",
     "off": "Desativado"

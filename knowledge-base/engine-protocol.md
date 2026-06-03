@@ -467,7 +467,7 @@ The on/off toggle lives in a client-side store (`localStorage`,
 `houston.autocompact`), not the engine `preferences` table: it governs how the
 desktop client drives sessions and is read synchronously at send time
 (`lib/autocompact.ts`, called from `tauriChat.send` so every send path gets it).
-*Settings → Long conversations* is just that toggle. The threshold itself is a
+*Settings → Summarize long conversations* is just that toggle. The threshold itself is a
 build-time constant (`VITE_AUTOCOMPACT_THRESHOLD`, default 93), not a user
 setting.
 `compact` is honored only when a resume id exists (ignored on turn 1). On

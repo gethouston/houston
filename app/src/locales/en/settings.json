@@ -75,7 +75,7 @@
     "dark": "Dark"
   },
   "autocompact": {
-    "title": "Long conversations",
+    "title": "Summarize long conversations",
     "description": "When a chat gets very long, automatically summarize the earlier part so the assistant can keep going. You'll still see the full conversation.",
     "on": "On",
     "off": "Off"
