@@ -27,6 +27,10 @@
     "newMission": "Nova missão",
     "startTour": "Me guie"
   },
+  "sentrySmoke": {
+    "nativeTriggeredTitle": "Teste nativo do Sentry acionado",
+    "nativeTriggeredDescription": "Confira o Sentry para sentry-native-stack-smoke-test."
+  },
   "agentDelete": {
     "title": "Excluir o agente?",
     "description": "Isso apaga o agente e todos os seus dados de forma permanente. Não dá para desfazer."

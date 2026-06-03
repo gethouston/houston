@@ -141,3 +141,9 @@ export function osReadRecentLogs(
 export function osReportBug(payload: unknown): Promise<string | null> {
   return invoke<string | null>("report_bug", { payload });
 }
+
+/** Hidden diagnostics command: intentionally panic in native code so release
+ * builds can verify Rust/Tauri symbol upload and native stack rendering. */
+export function osTriggerNativeSentrySmokeTest(): Promise<void> {
+  return invoke<void>("sentry_native_stack_smoke_test");
+}

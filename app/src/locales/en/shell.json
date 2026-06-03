@@ -27,6 +27,10 @@
     "newMission": "New mission",
     "startTour": "Guide me"
   },
+  "sentrySmoke": {
+    "nativeTriggeredTitle": "Native Sentry smoke triggered",
+    "nativeTriggeredDescription": "Check Sentry for sentry-native-stack-smoke-test."
+  },
   "agentDelete": {
     "title": "Delete agent?",
     "description": "This will permanently delete the agent and all its data. This cannot be undone."

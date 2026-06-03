@@ -96,10 +96,18 @@ pub fn run() {
     let _sentry_client = if sentry_dsn.is_empty() {
         None
     } else {
+        let sentry_release = if cfg!(debug_assertions) {
+            Some(std::borrow::Cow::Owned(format!(
+                "houston-app@{}-dev",
+                env!("CARGO_PKG_VERSION")
+            )))
+        } else {
+            sentry::release_name!()
+        };
         Some(sentry::init((
             sentry_dsn,
             sentry::ClientOptions {
-                release: sentry::release_name!(),
+                release: sentry_release,
                 environment: Some(
                     if cfg!(debug_assertions) {
                         "development"
@@ -362,6 +370,8 @@ pub fn run() {
             commands::portable::open_portable_agent,
             commands::update::current_app_bundle_path,
             commands::update::relaunch_app_from_path,
+            // Hidden Sentry smoke command for native stack verification.
+            commands::diagnostics::sentry_native_stack_smoke_test,
             // Logging (writes to local log files).
             logging::write_frontend_log,
             logging::read_recent_logs,

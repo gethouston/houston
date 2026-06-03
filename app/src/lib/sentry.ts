@@ -90,14 +90,23 @@ export function initSentry(): void {
 }
 
 /**
- * Capture an exception synchronously. Returns the event ID Sentry assigned,
- * suitable for surfacing in a toast ("Reported as #abc12345"). Returns
- * empty string if Sentry isn't initialized (no DSN).
+ * Capture an exception and wait for the frontend transport to flush. Returns
+ * the event ID only when the SDK confirms the pending envelope left its queue.
+ * This is still not a Sentry ingestion guarantee, but it prevents the app from
+ * showing a "reported" toast for events that never reached the transport.
  */
-export function captureException(error: unknown, context?: Record<string, string>): string {
+export async function captureException(
+  error: unknown,
+  context?: Record<string, string>,
+): Promise<string> {
   if (!initialized) return "";
   const normalized = error instanceof Error ? error : new Error(String(error));
-  return Sentry.captureException(normalized, context ? { tags: context } : undefined);
+  const eventId = Sentry.captureException(
+    normalized,
+    context ? { tags: context } : undefined,
+  );
+  const flushed = await Sentry.flush(5000);
+  return flushed ? eventId : "";
 }
 
 /**

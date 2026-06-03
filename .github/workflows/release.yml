@@ -558,11 +558,11 @@ jobs:
           echo "=== Sidecar checks passed ==="
 
       # Sentry upload: source maps (Vite output in app/dist/) + Rust debug
-      # symbols (both per-triple houston-engine binaries with line-tables-only
-      # debug info from the workspace [profile.release]). Tag everything as
-      # `houston-app@<version>` so events fired from the running app — whose
-      # release name is set by sentry::release_name!() in lib.rs — match the
-      # uploaded artifacts and resolve to real file:line frames.
+      # symbols for the Tauri app binary and both per-triple houston-engine
+      # sidecars. Tag everything as `houston-app@<version>` so events fired
+      # from the running app — whose release name is set by
+      # sentry::release_name!() in lib.rs — match the uploaded artifacts and
+      # resolve to real file:line frames.
       #
       # Skips silently when SENTRY_AUTH_TOKEN is unset so forks and personal
       # builds don't fail. Without uploads, Sentry events still arrive but
@@ -594,8 +594,16 @@ jobs:
           # symbolicate (Sentry error `js_invalid_sourcemap_location`).
           sentry-cli sourcemaps upload --release "$RELEASE" app/dist
 
-          echo "=== 3. Upload Rust debug symbols (both Mac architectures) ==="
+          echo "=== 3. Upload Rust debug symbols (app + engine) ==="
+          APP="${{ steps.artifacts.outputs.app }}"
+          APP_EXE="$APP/Contents/MacOS/Houston"
+          if [ ! -x "$APP_EXE" ]; then
+            echo "::error::Tauri app executable missing at $APP_EXE"
+            find "$APP/Contents/MacOS" -maxdepth 1 -type f -print || true
+            exit 1
+          fi
           sentry-cli debug-files upload \
+            "$APP_EXE" \
             target/aarch64-apple-darwin/release/houston-engine \
             target/x86_64-apple-darwin/release/houston-engine
 
@@ -1021,9 +1029,10 @@ jobs:
           echo "  .msi:     $MSI ($(du -sh "$MSI" | cut -f1))"
           echo "  .msi.sig: $SIG ($(wc -c < "$SIG") bytes)"
 
-      # Sentry upload (Windows): Rust debug symbols for the matrix-arch
-      # houston-engine.exe + its .pdb (MSVC emits PDBs alongside the binary
-       # in release mode with debug = "line-tables-only" in workspace Cargo).
+      # Sentry upload (Windows): Rust debug symbols for the Tauri app binary
+      # and matrix-arch houston-engine.exe. MSVC emits PDBs alongside both
+      # binaries in release mode with debug = "line-tables-only" in workspace
+      # Cargo.
       # Source maps are uploaded per-arch (NOT once from the macOS job): Vite
       # content-hashes the bundle on every build, so the Windows x64 / arm64 /
       # macOS bundles ship distinct filenames (e.g. index-<hash>.js). Uploading
@@ -1081,11 +1090,17 @@ jobs:
           "$SENTRY_CLI" sourcemaps upload --release "$RELEASE" app/dist
 
           echo "=== Upload ${{ matrix.target }} debug symbols ==="
-          # MSVC emits the PDB next to the .exe; Rust converts the binary's
-          # `-` to `_` for the PDB stem (houston-engine.exe → houston_engine.pdb).
-          # Upload both — Sentry needs the PDB for symbolication but indexes
-          # by the .exe's debug-id.
+          # Rust converts `-` to `_` for PDB stems
+          # (houston-app.exe -> houston_app.pdb, houston-engine.exe ->
+          # houston_engine.pdb). Upload exe + PDB pairs so Sentry can index by
+          # the executable debug-id and resolve through the PDB line tables.
+          test -f "target/${{ matrix.target }}/release/houston-app.exe"
+          test -f "target/${{ matrix.target }}/release/houston_app.pdb"
+          test -f "target/${{ matrix.target }}/release/houston-engine.exe"
+          test -f "target/${{ matrix.target }}/release/houston_engine.pdb"
           "$SENTRY_CLI" debug-files upload \
+            "target/${{ matrix.target }}/release/houston-app.exe" \
+            "target/${{ matrix.target }}/release/houston_app.pdb" \
             "target/${{ matrix.target }}/release/houston-engine.exe" \
             "target/${{ matrix.target }}/release/houston_engine.pdb"
 
