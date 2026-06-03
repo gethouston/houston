@@ -1,33 +1,26 @@
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-
-export type MissionSearchMode = "none" | "title" | "text";
+import {
+  extractSnippet,
+  foldForSearch,
+  matchesPhrase,
+  type MissionSnippet,
+} from "./mission-highlight.ts";
 
 export interface MissionSearchResult<T> {
   items: T[];
-  mode: MissionSearchMode;
-  query: string;
   hasQuery: boolean;
+  /** `item.id` -> matched body/history fragment, shown below the mission when
+   *  the phrase was found there rather than in the title. Title matches get no
+   *  snippet (the title already shows the phrase) and the title is never
+   *  highlighted. */
+  snippets: Record<string, MissionSnippet>;
 }
 
-const COMBINING_MARKS = /[\u0300-\u036f]/g;
-
+/** Fold + collapse internal whitespace so a multi-word query is matched as a
+ *  single phrase (e.g. "this   month" -> "this month"). */
 export function normalizeMissionSearchQuery(value: string): string {
-  return value
-    .normalize("NFKD")
-    .replace(COMBINING_MARKS, "")
-    .trim()
-    .toLocaleLowerCase();
-}
-
-function queryTerms(query: string): string[] {
-  return normalizeMissionSearchQuery(query).split(/\s+/).filter(Boolean);
-}
-
-function matchesTerms(value: string | undefined, terms: string[]): boolean {
-  if (!value || terms.length === 0) return false;
-  const normalized = normalizeMissionSearchQuery(value);
-  return terms.every((term) => normalized.includes(term));
+  return foldForSearch(value).replace(/\s+/g, " ").trim();
 }
 
 function feedValueToText(value: unknown): string {
@@ -45,6 +38,9 @@ function feedValueToText(value: unknown): string {
 
 function feedItemToSearchText(item: FeedItem): string {
   switch (item.feed_type) {
+    // The user's own messages are part of the searchable conversation.
+    case "user_message":
+      return item.data;
     case "tool_call":
       return `${item.data.name} ${feedValueToText(item.data.input)}`;
     case "tool_result":
@@ -70,22 +66,25 @@ export function searchMissions<T extends KanbanItem>(
   historyTextById: Record<string, string> = {},
 ): MissionSearchResult<T> {
   const query = normalizeMissionSearchQuery(rawQuery);
-  const terms = queryTerms(rawQuery);
-  if (terms.length === 0) {
-    return { items, mode: "none", query, hasQuery: false };
+  if (!query) {
+    return { items, hasQuery: false, snippets: {} };
   }
 
-  const titleMatches = items.filter((item) => matchesTerms(item.title, terms));
-  if (titleMatches.length > 0) {
-    return { items: titleMatches, mode: "title", query, hasQuery: true };
-  }
-
-  const textMatches = items.filter((item) => {
+  const snippets: Record<string, MissionSnippet> = {};
+  const matched = items.filter((item) => {
+    // A title match speaks for itself: keep it, show no snippet, and (per #411)
+    // never highlight the title.
+    if (matchesPhrase(item.title, query)) return true;
+    // Otherwise search the body + loaded chat history (which includes the
+    // user's own messages) and, on a match, surface a snippet showing why.
     const text = [item.description, historyTextById[item.id]]
       .filter(Boolean)
       .join("\n");
-    return matchesTerms(text, terms);
+    if (!matchesPhrase(text, query)) return false;
+    const snippet = extractSnippet(text, query);
+    if (snippet) snippets[item.id] = snippet;
+    return true;
   });
 
-  return { items: textMatches, mode: "text", query, hasQuery: true };
+  return { items: matched, hasQuery: true, snippets };
 }

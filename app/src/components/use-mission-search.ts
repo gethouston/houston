@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
+import { matchesPhrase } from "./mission-highlight";
 import {
   buildMissionHistorySearchText,
   normalizeMissionSearchQuery,
@@ -29,7 +30,7 @@ export function useMissionSearch({
   const [pendingCount, setPendingCount] = useState(0);
   const loadingIdsRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);
-  const normalizedQuery = normalizeMissionSearchQuery(query);
+  const phrase = normalizeMissionSearchQuery(query);
 
   const result = useMemo(
     () => searchMissions(items, query, historyTextById),
@@ -43,9 +44,16 @@ export function useMissionSearch({
   }, []);
 
   useEffect(() => {
-    if (!normalizedQuery || result.mode === "title") return;
+    if (!phrase) return;
+    // Load chat history only for missions that don't already match by title or
+    // description, so matches deeper in the conversation (including the user's
+    // own messages) still surface — even when other missions match by title.
     const missing = items.filter(
-      (item) => historyTextById[item.id] === undefined && !loadingIdsRef.current.has(item.id),
+      (item) =>
+        !matchesPhrase(item.title, phrase) &&
+        !matchesPhrase(item.description, phrase) &&
+        historyTextById[item.id] === undefined &&
+        !loadingIdsRef.current.has(item.id),
     );
     if (missing.length === 0) return;
 
@@ -84,12 +92,12 @@ export function useMissionSearch({
           setPendingCount((count) => Math.max(0, count - missing.length));
         }
       });
-  }, [historyTextById, items, loadHistory, normalizedQuery, onHistoryLoadError, result.mode]);
+  }, [historyTextById, items, loadHistory, phrase, onHistoryLoadError]);
 
   return {
     items: result.items,
-    mode: result.mode,
     hasQuery: result.hasQuery,
-    isSearchingText: result.mode === "text" && pendingCount > 0,
+    snippets: result.snippets,
+    isSearchingText: pendingCount > 0,
   };
 }

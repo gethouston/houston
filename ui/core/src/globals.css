@@ -32,6 +32,11 @@
   --ht-success-fg: #ffffff;
   --ht-warning: #e0ac00;
   --ht-warning-fg: #ffffff;
+  /* Search-match highlight (e.g. matched keyword in archived-mission search).
+     Translucent so it reads as yellow over white cards AND selected/accent
+     rows without a hard-edged block. */
+  --ht-highlight: rgba(250, 204, 21, 0.45);
+  --ht-highlight-fg: #3f2d00;
 }
 
 /* Dark mode overrides — same vars, different values */
@@ -64,6 +69,10 @@
   --ht-success-fg: #000000;
   --ht-warning: #eab308;
   --ht-warning-fg: #000000;
+  /* Dimmer amber tint + warm light text so the highlight stays readable on
+     dark cards instead of glaring like a light-mode highlighter. */
+  --ht-highlight: rgba(234, 179, 8, 0.34);
+  --ht-highlight-fg: #fde68a;
   color-scheme: dark;
 }
 
@@ -98,6 +107,8 @@
   --color-success-foreground: var(--ht-success-fg);
   --color-warning: var(--ht-warning);
   --color-warning-foreground: var(--ht-warning-fg);
+  --color-highlight: var(--ht-highlight);
+  --color-highlight-foreground: var(--ht-highlight-fg);
 }
 
 @layer base {

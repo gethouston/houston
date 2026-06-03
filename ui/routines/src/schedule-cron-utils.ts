@@ -13,7 +13,7 @@ export interface ScheduleOptions {
 }
 
 /** Parse "HH:MM" into { hour, minute } */
-function parseTime(time: string): { hour: number; minute: number } {
+export function parseTime(time: string): { hour: number; minute: number } {
   const [h, m] = time.split(":").map(Number)
   return { hour: h ?? 9, minute: m ?? 0 }
 }
@@ -170,6 +170,13 @@ export function cronSummary(cron: string): string {
         const n = Number(hourStep[1])
         return n === 1 ? "Runs every hour" : `Runs every ${n} hours`
       }
+    }
+    // Every N days at a fixed time: "M H */N * *".
+    const domStep = dom.match(/^\*\/(\d+)$/)
+    if (month === "*" && dow === "*" && /^\d+$/.test(min) && /^\d+$/.test(hour) && domStep) {
+      const n = Number(domStep[1])
+      const t = formatTime(`${hour}:${min}`)
+      return n === 1 ? `Runs every day at ${t}` : `Runs every ${n} days at ${t}`
     }
   }
 

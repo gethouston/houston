@@ -44,6 +44,7 @@
     "connected": "Conectado",
     "connecting": "Conectando...",
     "connect": "Conectar",
+    "waitingToConnect": "Aguardando você conectar",
     "reconnect": "Reconectar",
     "verifiedToast": "{{name}} está conectado",
     "connectedFollowup": "Já conectei {{name}}. Pode continuar.",

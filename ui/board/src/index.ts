@@ -6,6 +6,9 @@ export { KanbanCard } from "./kanban-card"
 export type { KanbanCardProps, KanbanCardLabels } from "./kanban-card"
 export { KanbanList } from "./kanban-list"
 export type { KanbanListProps } from "./kanban-list"
+export { KanbanListRail } from "./kanban-list-rail"
+export type { KanbanListRailProps } from "./kanban-list-rail"
+export { KANBAN_LIST_RAIL_CLASS_NAME } from "./kanban-list-layout"
 export { KanbanListItem } from "./kanban-list-item"
 export type { KanbanListItemProps } from "./kanban-list-item"
 export { BulkActionBar } from "./bulk-action-bar"
@@ -17,4 +20,9 @@ export type { AIBoardProps, NewPanelOpener, NewPanelOptions } from "./ai-board"
 export { ConversationList } from "./conversation-list"
 export type { ConversationListProps } from "./conversation-list"
 export { BOARD_CARD_DRAG_TYPE, defaultCanDropItem } from "./dnd"
-export type { KanbanItem, KanbanColumn as KanbanColumnConfig, ConversationEntry } from "./types"
+export type {
+  KanbanItem,
+  KanbanColumn as KanbanColumnConfig,
+  ConversationEntry,
+  BoardSearchSnippet,
+} from "./types"

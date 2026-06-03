@@ -1,7 +1,8 @@
 import { AnimatePresence, motion } from "framer-motion"
+import { KanbanListRail } from "./kanban-list-rail"
 import { KanbanListItem } from "./kanban-list-item"
 import type { KanbanCardLabels } from "./kanban-card"
-import type { KanbanItem } from "./types"
+import type { BoardSearchSnippet, KanbanItem } from "./types"
 
 export interface KanbanListProps {
   items: KanbanItem[]
@@ -11,6 +12,9 @@ export interface KanbanListProps {
   avatar?: React.ReactNode
   cardLabels?: KanbanCardLabels
   emptyState?: React.ReactNode
+  /** Per-item matched body fragment, keyed by `KanbanItem.id`, shown below a row
+   *  when the search matched in the body rather than the title. */
+  searchSnippets?: Record<string, BoardSearchSnippet>
 }
 
 /**
@@ -26,6 +30,7 @@ export function KanbanList({
   avatar,
   cardLabels,
   emptyState,
+  searchSnippets,
 }: KanbanListProps) {
   if (items.length === 0 && emptyState) {
     return (
@@ -41,7 +46,7 @@ export function KanbanList({
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
-      <div className="mx-auto w-full max-w-2xl space-y-1.5">
+      <KanbanListRail className="space-y-1.5">
         <AnimatePresence mode="popLayout">
           {sorted.map((item) => (
             <motion.div
@@ -59,11 +64,12 @@ export function KanbanList({
                 onSelect={() => onSelect(item)}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
                 labels={cardLabels}
+                snippet={searchSnippets?.[item.id]}
               />
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+      </KanbanListRail>
     </div>
   )
 }

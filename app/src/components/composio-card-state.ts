@@ -13,6 +13,7 @@
  */
 
 import { normalizeToolkitSlug } from "../lib/composio-toolkits.ts";
+import type { ComposioAppEntry } from "../lib/tauri.ts";
 
 /**
  * Is `toolkit` present in the connected set?
@@ -69,6 +70,22 @@ export function deriveComposioCardView(
   if (isConnected) return "connected";
   if (phase === "connecting") return "connecting";
   return "idle";
+}
+
+/**
+ * Should the card show the "Waiting for you to connect" status line (issue
+ * #412)?
+ *
+ * In every view except "connected": the line stays up the whole time the
+ * agent is blocked on the integration, from the idle hand-off through the
+ * "Connecting…" auth round-trip, and only clears once the connection is
+ * truly established (at which point the agent resumes via the auto-continue
+ * nudge). Keeping it through "connecting" matters because the auth flow can
+ * stall, get abandoned, or time back out to idle, so the agent is still
+ * waiting until the connection actually lands.
+ */
+export function shouldShowWaitingToConnect(view: ComposioCardView): boolean {
+  return view !== "connected";
 }
 
 export interface ConnectedFollowupInput {
@@ -132,4 +149,46 @@ export function parseComposioToolkitFromHref(href: string): string | null {
  */
 export function fallbackLogo(toolkit: string): string {
   return `https://www.google.com/s2/favicons?domain=${toolkit}.com&sz=128`;
+}
+
+/** The card's resolved app identity: real catalog entry when we have one,
+ *  else a best-effort fallback from the raw toolkit slug. */
+export interface ComposioCardApp {
+  toolkit: string;
+  name: string;
+  description: string;
+  logoUrl: string;
+}
+
+/**
+ * Resolve the display identity (name, description, logo) for a connect card
+ * from the Composio catalog. The catalog reports canonical (lowercased)
+ * slugs while `toolkit` is the raw `#houston_toolkit=<slug>` fragment, so we
+ * normalize both sides — otherwise a mis-cased slug falls back to the bare
+ * name + favicon guess instead of the real name/logo. `fallbackDescription`
+ * is supplied by the caller so this stays i18n-agnostic and unit-testable.
+ */
+export function resolveComposioApp(
+  toolkit: string,
+  apiApps: ComposioAppEntry[] | undefined,
+  fallbackDescription: string,
+): ComposioCardApp {
+  const normalizedToolkit = normalizeToolkitSlug(toolkit);
+  const fromApi = apiApps?.find(
+    (a) => normalizeToolkitSlug(a.toolkit) === normalizedToolkit,
+  );
+  if (fromApi) {
+    return {
+      toolkit: fromApi.toolkit,
+      name: fromApi.name,
+      description: fromApi.description,
+      logoUrl: fromApi.logo_url || fallbackLogo(fromApi.toolkit),
+    };
+  }
+  return {
+    toolkit,
+    name: toolkit,
+    description: fallbackDescription,
+    logoUrl: fallbackLogo(toolkit),
+  };
 }
