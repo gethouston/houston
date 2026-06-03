@@ -16,4 +16,10 @@ export { AIBoard } from "./ai-board"
 export type { AIBoardProps, NewPanelOpener, NewPanelOptions } from "./ai-board"
 export { ConversationList } from "./conversation-list"
 export type { ConversationListProps } from "./conversation-list"
-export type { KanbanItem, KanbanColumn as KanbanColumnConfig, ConversationEntry } from "./types"
+export type {
+  KanbanItem,
+  KanbanColumn as KanbanColumnConfig,
+  ConversationEntry,
+  BoardSearchHighlight,
+  BoardSearchSnippet,
+} from "./types"

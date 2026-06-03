@@ -11,7 +11,7 @@ import { KanbanDetailPanel } from "./kanban-detail-panel"
 import { BulkActionBar } from "./bulk-action-bar"
 import type { BulkActionBarLabels, BulkMoveTarget } from "./bulk-action-bar"
 import type { KanbanCardLabels } from "./kanban-card"
-import type { KanbanItem, KanbanColumn } from "./types"
+import type { BoardSearchHighlight, KanbanItem, KanbanColumn } from "./types"
 
 export interface NewPanelOptions {
   focusComposer?: boolean
@@ -171,6 +171,10 @@ export interface AIBoardProps {
   /** Left-pane layout. "board" = kanban columns (default); "list" = a single
    *  column-less vertical list (used by the Archived missions tab). */
   layout?: "board" | "list"
+  /** Per-item search-match highlighting: the matched keyword in each item's
+   *  title and, when the match is in the body/history instead, a snippet shown
+   *  below the title. Currently applied in the "list" layout. */
+  searchHighlight?: BoardSearchHighlight
   /** Enable per-card multi-select checkboxes (board layout only). */
   selectable?: boolean
   /** Ids currently in the multi-select set. */
@@ -261,6 +265,7 @@ export function AIBoard({
   composerOverride,
   composerLabels,
   layout = "board",
+  searchHighlight,
   selectable,
   selectedIds,
   onToggleSelect,
@@ -508,6 +513,7 @@ export function AIBoard({
           emptyState={emptyState}
           avatar={cardAvatar}
           cardLabels={cardLabels}
+          searchHighlight={searchHighlight}
         />
       ) : (
         <KanbanBoard

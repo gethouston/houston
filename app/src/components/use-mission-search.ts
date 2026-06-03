@@ -90,6 +90,8 @@ export function useMissionSearch({
     items: result.items,
     mode: result.mode,
     hasQuery: result.hasQuery,
+    titleRanges: result.titleRanges,
+    snippets: result.snippets,
     isSearchingText: result.mode === "text" && pendingCount > 0,
   };
 }

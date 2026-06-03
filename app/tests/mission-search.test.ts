@@ -73,3 +73,60 @@ describe("mission search", () => {
     strictEqual(text.includes("Invoice sent"), true);
   });
 });
+
+describe("mission search highlighting", () => {
+  it("highlights the keyword in the title and adds no snippet on a title match", () => {
+    const result = searchMissions(missions, "budget");
+
+    strictEqual(result.mode, "title");
+    deepStrictEqual(result.terms, ["budget"]);
+    const titleRanges = result.titleRanges["one"] ?? [];
+    deepStrictEqual(
+      titleRanges.map((r) => missions[0].title.slice(r.start, r.end)),
+      ["Budget"],
+    );
+    deepStrictEqual(result.snippets, {});
+  });
+
+  it("returns a body snippet (and no title highlight) when the match is in the text", () => {
+    const result = searchMissions(missions, "transcript budget");
+
+    strictEqual(result.mode, "text");
+    // Body match => snippet only, title left un-highlighted (#411).
+    strictEqual(Object.keys(result.titleRanges).length, 0);
+    const snippet = result.snippets["two"];
+    strictEqual(snippet !== undefined, true);
+    strictEqual(snippet.text.toLowerCase().includes("budget"), true);
+    strictEqual(snippet.text.toLowerCase().includes("transcript"), true);
+  });
+
+  it("never highlights the title in text mode, even if a term appears there", () => {
+    const local = [
+      {
+        id: "x",
+        title: "Q3 budget",
+        description: "the budget figures and the revenue report are attached",
+        status: "archived",
+        updatedAt: "2026-01-01T00:00:00Z",
+      },
+    ];
+    // "report" is only in the body, so no title fully matches -> text mode, even
+    // though the title literally contains "budget".
+    const result = searchMissions(local, "budget report");
+
+    strictEqual(result.mode, "text");
+    deepStrictEqual(result.titleRanges, {});
+    strictEqual(result.snippets["x"] !== undefined, true);
+  });
+
+  it("builds the snippet from loaded chat history when that is what matched", () => {
+    const result = searchMissions(missions, "vendor contract", {
+      three: "Assistant found the vendor contract in old messages.",
+    });
+
+    strictEqual(result.mode, "text");
+    const snippet = result.snippets["three"];
+    strictEqual(snippet !== undefined, true);
+    strictEqual(snippet.text.toLowerCase().includes("vendor contract"), true);
+  });
+});

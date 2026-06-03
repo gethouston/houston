@@ -1,4 +1,5 @@
 import type React from "react"
+import type { HighlightRange } from "@houston-ai/core"
 
 export interface KanbanItem {
   id: string
@@ -13,6 +14,21 @@ export interface KanbanItem {
   updatedAt: string
   icon?: React.ReactNode
   metadata?: Record<string, unknown>
+}
+
+/** A matched body fragment shown below a board item during search. `text` is
+ *  the display string; `ranges` index into it. */
+export interface BoardSearchSnippet {
+  text: string
+  ranges: HighlightRange[]
+}
+
+/** Search-match highlighting for the board, keyed by `KanbanItem.id`. When a
+ *  keyword is in the title, `titleRanges` highlights it in place; when the match
+ *  is only in the body/history, `snippets` shows the surrounding fragment. */
+export interface BoardSearchHighlight {
+  titleRanges?: Record<string, HighlightRange[]>
+  snippets?: Record<string, BoardSearchSnippet>
 }
 
 /** A unified conversation entry — either the primary chat or an activity conversation. */

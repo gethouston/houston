@@ -1,7 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { KanbanListItem } from "./kanban-list-item"
 import type { KanbanCardLabels } from "./kanban-card"
-import type { KanbanItem } from "./types"
+import type { BoardSearchHighlight, KanbanItem } from "./types"
 
 export interface KanbanListProps {
   items: KanbanItem[]
@@ -11,6 +11,8 @@ export interface KanbanListProps {
   avatar?: React.ReactNode
   cardLabels?: KanbanCardLabels
   emptyState?: React.ReactNode
+  /** Per-item search-match highlighting (title keyword + body snippet). */
+  searchHighlight?: BoardSearchHighlight
 }
 
 /**
@@ -26,6 +28,7 @@ export function KanbanList({
   avatar,
   cardLabels,
   emptyState,
+  searchHighlight,
 }: KanbanListProps) {
   if (items.length === 0 && emptyState) {
     return (
@@ -59,6 +62,8 @@ export function KanbanList({
                 onSelect={() => onSelect(item)}
                 onDelete={onDelete ? () => onDelete(item) : undefined}
                 labels={cardLabels}
+                titleRanges={searchHighlight?.titleRanges?.[item.id]}
+                snippet={searchHighlight?.snippets?.[item.id]}
               />
             </motion.div>
           ))}
