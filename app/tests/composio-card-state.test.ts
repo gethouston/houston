@@ -88,11 +88,13 @@ describe("shouldShowWaitingToConnect (issue #412: explicit hand-off line)", () =
     strictEqual(shouldShowWaitingToConnect("idle"), true);
   });
 
-  it("hides it once connecting (the Connecting badge already speaks)", () => {
-    strictEqual(shouldShowWaitingToConnect("connecting"), false);
+  it("keeps the line up while connecting, until the connection lands", () => {
+    // The auth round-trip can stall, get abandoned, or time back out to
+    // idle, so the agent is still waiting; the message must not vanish.
+    strictEqual(shouldShowWaitingToConnect("connecting"), true);
   });
 
-  it("hides it once connected (nothing left to wait on)", () => {
+  it("hides it only once connected (the agent can resume)", () => {
     strictEqual(shouldShowWaitingToConnect("connected"), false);
   });
 });

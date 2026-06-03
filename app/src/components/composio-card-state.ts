@@ -76,14 +76,16 @@ export function deriveComposioCardView(
  * Should the card show the "Waiting for you to connect" status line (issue
  * #412)?
  *
- * Only in the "idle" view: the agent has linked an app and paused, but the
- * user has not started the connect yet, so the line makes the hand-off
- * explicit ("the agent is waiting on you"). Once the user clicks Connect the
- * "Connecting…" badge already communicates progress, and "Connected" speaks
- * for itself, so the line would be redundant in those views.
+ * In every view except "connected": the line stays up the whole time the
+ * agent is blocked on the integration, from the idle hand-off through the
+ * "Connecting…" auth round-trip, and only clears once the connection is
+ * truly established (at which point the agent resumes via the auto-continue
+ * nudge). Keeping it through "connecting" matters because the auth flow can
+ * stall, get abandoned, or time back out to idle, so the agent is still
+ * waiting until the connection actually lands.
  */
 export function shouldShowWaitingToConnect(view: ComposioCardView): boolean {
-  return view === "idle";
+  return view !== "connected";
 }
 
 export interface ConnectedFollowupInput {
