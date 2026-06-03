@@ -31,7 +31,8 @@
     "cta": "Nuevo agente"
   },
   "errors": {
-    "noAgentForMission": "Elige un agente antes de iniciar una misión."
+    "noAgentForMission": "Elige un agente antes de iniciar una misión.",
+    "stopSession": "No se pudo detener la misión: {{error}}"
   },
   "agentPicker": {
     "title": "¿Qué agente debería ejecutar esto?",

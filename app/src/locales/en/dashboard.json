@@ -31,7 +31,8 @@
     "cta": "New Agent"
   },
   "errors": {
-    "noAgentForMission": "Pick an agent before starting a mission."
+    "noAgentForMission": "Pick an agent before starting a mission.",
+    "stopSession": "Couldn't stop the mission: {{error}}"
   },
   "agentPicker": {
     "title": "Which agent should run this?",

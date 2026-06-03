@@ -24,6 +24,7 @@ import { normalizeLegacyModel } from "../lib/providers.ts";
 /** Minimal shape needed for override resolution; mirrors `ActivityItem`. */
 export interface ActivityOverrideSource {
   id: string;
+  session_key?: string;
   provider?: string;
   model?: string;
 }
@@ -50,7 +51,10 @@ export function resolveActivityOverride(
   activities: ActivityOverrideSource[] | undefined,
 ): SendOverrides {
   const activityId = sessionKey.replace(/^activity-/, "");
-  const activity = activities?.find((a) => a.id === activityId);
+  const activity = activities?.find((a) => {
+    if (a.session_key && a.session_key === sessionKey) return true;
+    return sessionKey.startsWith("activity-") && a.id === activityId;
+  });
   if (!activity) return {};
   return {
     providerOverride: activity.provider,

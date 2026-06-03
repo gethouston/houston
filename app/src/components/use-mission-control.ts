@@ -15,12 +15,10 @@ import {
   tauriActivity,
   tauriChat,
   tauriAttachments,
-  tauriConfig,
-  tauriWorktree,
-  tauriShell,
 } from "../lib/tauri";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
+import { createMissionWorktreeIfEnabled } from "../lib/mission-worktree";
 import { resolveActivityOverride } from "./mission-control-send";
 import { formatVisibleMessageText } from "../lib/queued-chat";
 import { queryKeys } from "../lib/query-keys";
@@ -218,31 +216,14 @@ export function useMissionControl(agents: Agent[]) {
     ): Promise<string> => {
       const agentPath = agent.folderPath;
 
-      // Honour worktree mode when the agent's config opts in — same
-      // bootstrap as the BoardTab create path.
-      let worktreePath: string | undefined;
       try {
-        const cfg = await tauriConfig.read(agentPath);
-        if (cfg.worktreeMode) {
-          const slug = crypto.randomUUID().slice(0, 8);
-          const wt = await tauriWorktree.create(agentPath, slug);
-          worktreePath = wt.path;
-          const installCmd = cfg.installCommand as string | undefined;
-          if (installCmd && worktreePath) {
-            tauriShell.run(worktreePath, installCmd).catch(console.error);
-          }
-        }
-      } catch {
-        /* config may not exist yet */
-      }
-
-      const visible = formatVisibleMessageText(
-        text,
-        files,
-        (names) => t("queue.attached", { names }),
-      );
-      let userMessage = text;
-      try {
+        const worktreePath = await createMissionWorktreeIfEnabled(agentPath);
+        const visible = formatVisibleMessageText(
+          text,
+          files,
+          (names) => t("queue.attached", { names }),
+        );
+        let userMessage = text;
         const { conversationId, sessionKey } = await createMission(
           { id: agent.id, name: agent.name, color: agent.color, folderPath: agentPath },
           text,

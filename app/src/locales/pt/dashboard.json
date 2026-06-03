@@ -31,7 +31,8 @@
     "cta": "Novo agente"
   },
   "errors": {
-    "noAgentForMission": "Escolha um agente antes de iniciar uma missão."
+    "noAgentForMission": "Escolha um agente antes de iniciar uma missão.",
+    "stopSession": "Não foi possível parar a missão: {{error}}"
   },
   "agentPicker": {
     "title": "Qual agente deve fazer isso?",

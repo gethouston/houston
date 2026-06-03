@@ -44,11 +44,10 @@ import {
   tauriChat,
   tauriConfig,
   tauriProvider,
-  tauriShell,
-  tauriWorktree,
   withAttachmentPaths,
 } from "../lib/tauri";
 import { createMission } from "../lib/create-mission";
+import { createMissionWorktreeIfEnabled } from "../lib/mission-worktree";
 import { queryKeys } from "../lib/query-keys";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
@@ -440,23 +439,7 @@ export function useAgentChatPanel({
         const mode = agentModes?.find((m) => m.id === agentMode);
         let encodedUserMessage = encoded;
 
-        // Honour worktree mode if the agent's config opts in. Same
-        // bootstrap as BoardTab's text-send path.
-        let worktreePath: string | undefined;
-        try {
-          const cfg = await tauriConfig.read(path);
-          if (cfg.worktreeMode) {
-            const slug = crypto.randomUUID().slice(0, 8);
-            const wt = await tauriWorktree.create(path, slug);
-            worktreePath = wt.path;
-            const installCmd = cfg.installCommand as string | undefined;
-            if (installCmd && worktreePath) {
-              tauriShell.run(worktreePath, installCmd).catch(console.error);
-            }
-          }
-        } catch {
-          /* config may not exist yet */
-        }
+        const worktreePath = await createMissionWorktreeIfEnabled(path);
 
         const { conversationId, sessionKey } = await createMission(
           {

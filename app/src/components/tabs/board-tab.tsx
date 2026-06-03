@@ -22,9 +22,10 @@ import {
   useUpdateActivity,
 } from "../../hooks/queries";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
-import { tauriActivity, tauriChat, tauriAttachments, tauriWorktree, tauriShell, tauriTerminal, tauriConfig, tauriPreferences } from "../../lib/tauri";
+import { tauriActivity, tauriChat, tauriAttachments, tauriTerminal, tauriConfig, tauriPreferences } from "../../lib/tauri";
 import { openAgentHref } from "../../lib/open-href";
 import { createMission } from "../../lib/create-mission";
+import { createMissionWorktreeIfEnabled } from "../../lib/mission-worktree";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { queryKeys } from "../../lib/query-keys";
@@ -639,21 +640,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
       const agentMode = pendingAgentMode ?? agentModes?.[0]?.id;
       const mode = agentModes?.find((m) => m.id === agentMode);
 
-      // Check if worktree mode is enabled
-      let worktreePath: string | undefined;
-      try {
-        const cfg = await tauriConfig.read(path);
-        if (cfg.worktreeMode) {
-          const slug = crypto.randomUUID().slice(0, 8);
-          const wt = await tauriWorktree.create(path, slug);
-          worktreePath = wt.path;
-          // Run install command in the new worktree
-          const installCmd = cfg.installCommand as string | undefined;
-          if (installCmd && worktreePath) {
-            tauriShell.run(worktreePath, installCmd).catch(console.error);
-          }
-        }
-      } catch { /* config may not exist yet */ }
+      const worktreePath = await createMissionWorktreeIfEnabled(path);
 
       // Single source of truth for activity creation + session start. The
       // buildPrompt callback fires after the activity row exists so we can

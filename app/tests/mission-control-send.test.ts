@@ -29,12 +29,34 @@ const codexActivity: ActivityOverrideSource = {
   model: "gpt-5.5",
 };
 
+const routineActivity: ActivityOverrideSource = {
+  id: "activity-row-for-routine",
+  session_key: "routine-routine-id",
+  provider: "anthropic",
+  model: "claude-opus-4-7",
+};
+
 describe("resolveActivityOverride (Mission Control send-path override drop fix)", () => {
   it("returns the activity's provider+model when the activity is found", () => {
     const overrides = resolveActivityOverride(
       `activity-${opus47Activity.id}`,
       [opus47Activity, codexActivity],
     );
+    deepStrictEqual(overrides, {
+      providerOverride: "anthropic",
+      modelOverride: "claude-opus-4-7",
+    });
+  });
+
+  it("matches routine chats by their stored session key", () => {
+    // Mission Control card ids are activity ids, but routine chat history and
+    // follow-up sends address the stable `routine-{id}` session. Matching only
+    // `activity-{id}` makes Mission Control silently drop the routine's model
+    // override even though the per-agent board sends correctly.
+    const overrides = resolveActivityOverride("routine-routine-id", [
+      opus47Activity,
+      routineActivity,
+    ]);
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
       modelOverride: "claude-opus-4-7",

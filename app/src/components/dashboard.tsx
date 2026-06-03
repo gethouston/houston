@@ -31,6 +31,10 @@ import { useMissionSearch } from "./use-mission-search";
 import { buildMissionBoardColumns } from "./mission-board-columns";
 import { navigateBoard } from "../lib/board-navigate";
 import { planNewMission } from "./mission-control-create";
+import {
+  missionControlAgentPathForSession,
+  missionControlSessionKeyForId,
+} from "./mission-control-session";
 
 export function Dashboard() {
   const { t } = useTranslation(["dashboard", "board", "common"]);
@@ -176,13 +180,16 @@ export function Dashboard() {
 
   const handleStopSession = useCallback(
     (sessionKey: string) => {
-      const activityId = sessionKey.replace("activity-", "");
-      const item = mc.items.find((i) => i.id === activityId);
-      const agentPath = item?.metadata?.agentPath as string | undefined;
+      const agentPath = missionControlAgentPathForSession(mc.items, sessionKey);
       if (!agentPath) return;
-      tauriChat.stop(agentPath, sessionKey).catch(console.error);
+      tauriChat.stop(agentPath, sessionKey).catch((err) => {
+        addToast({
+          title: t("dashboard:errors.stopSession", { error: String(err) }),
+          variant: "error",
+        });
+      });
     },
-    [mc.items],
+    [mc.items, addToast, t],
   );
 
   // Build agentPath → color lookup from agent instances
@@ -310,6 +317,10 @@ export function Dashboard() {
     },
     [mc.handleSendMessage, selectedSessionKey, messageQueue.sendOrQueue],
   );
+  const sessionKeyFor = useCallback(
+    (activityId: string) => missionControlSessionKeyForId(mc.items, activityId),
+    [mc.items],
+  );
   const handleComposerSubmit = useCallback<NonNullable<typeof panel.onComposerSubmit>>(
     async (ctx) => {
       if (ctx.sessionKey && ctx.sessionKey === selectedSessionKey && selectedSessionActive) {
@@ -426,6 +437,7 @@ export function Dashboard() {
           onRename={mc.handleRename}
           onCreateConversation={handleCreateConversation}
           onSendMessage={handleSendMessage}
+          sessionKeyFor={sessionKeyFor}
           queuedMessages={queuedMessages}
           onRemoveQueuedMessage={(_, id) => messageQueue.removeQueuedMessage(id)}
           queuedLabels={queuedLabels}
