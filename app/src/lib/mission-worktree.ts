@@ -1,4 +1,10 @@
-import { tauriConfig, tauriShell, tauriWorktree } from "./tauri";
+import {
+  tauriConfig,
+  tauriPreferences,
+  tauriShell,
+  tauriTerminal,
+  tauriWorktree,
+} from "./tauri";
 
 export async function createMissionWorktreeIfEnabled(
   agentPath: string,
@@ -14,4 +20,14 @@ export async function createMissionWorktreeIfEnabled(
       : undefined;
   if (installCmd) await tauriShell.run(worktree.path, installCmd);
   return worktree.path;
+}
+
+export async function openMissionWorktreeTerminal(
+  agentPath: string,
+  worktreePath: string,
+): Promise<void> {
+  const cfg = await tauriConfig.read(agentPath);
+  const devCmd = typeof cfg.devCommand === "string" ? cfg.devCommand : undefined;
+  const terminal = (await tauriPreferences.get("terminal")) ?? undefined;
+  await tauriTerminal.open(worktreePath, devCmd, terminal);
 }

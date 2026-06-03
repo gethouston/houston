@@ -6,11 +6,15 @@
     "approveTooltip": "Mover para Pronto",
     "renameTooltip": "Mudar título",
     "deleteTooltip": "Excluir",
-    "select": "Selecionar missão"
+    "select": "Selecionar missão",
+    "openTerminalFailed": "Não foi possível abrir o terminal: {{error}}"
   },
   "deleteCard": {
     "titleWithName": "Excluir \"{{name}}\"?",
     "description": "Este item e seu histórico serão removidos de forma permanente."
+  },
+  "tags": {
+    "routine": "Rotina"
   },
   "empty": {
     "title": "Ainda sem conversas",

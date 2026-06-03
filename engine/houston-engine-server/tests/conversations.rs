@@ -89,6 +89,38 @@ async fn list_returns_sorted_entries() {
 }
 
 #[tokio::test]
+async fn list_returns_activity_card_metadata() {
+    let (addr, tok) = spawn().await;
+    let agent = tempfile::TempDir::new().unwrap();
+    seed_activity(
+        agent.path(),
+        serde_json::json!([
+            { "id": "routine-card", "title": "Digest", "description": "",
+              "status": "needs_you", "session_key": "routine-r1",
+              "routine_id": "r1", "agent": "research",
+              "worktree_path": "/tmp/wt",
+              "updated_at": "2026-02-02T00:00:00Z" }
+        ]),
+    );
+    let c = reqwest::Client::new();
+    let body: serde_json::Value = c
+        .post(format!("http://{addr}/v1/conversations/list"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "agentPath": agent.path().to_string_lossy() }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let row = &body.as_array().unwrap()[0];
+    assert_eq!(row["session_key"], "routine-r1");
+    assert_eq!(row["routine_id"], "r1");
+    assert_eq!(row["agent"], "research");
+    assert_eq!(row["worktree_path"], "/tmp/wt");
+}
+
+#[tokio::test]
 async fn list_all_aggregates_across_agents() {
     let (addr, tok) = spawn().await;
     let a = tempfile::TempDir::new().unwrap();

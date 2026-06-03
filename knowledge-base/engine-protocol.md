@@ -184,6 +184,10 @@ not user-facing copy.
 | POST | `/v1/conversations/list` | List conversations for one agent |
 | POST | `/v1/conversations/list-all` | List across many agents |
 
+Conversation entries include the activity's stored `session_key` plus the
+card metadata the agent board needs to render the same mission card in
+cross-agent surfaces: `agent`, `routine_id`, and `worktree_path` when present.
+
 **Skills**
 | Method | Path | Description |
 |---|---|---|

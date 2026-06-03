@@ -32,6 +32,12 @@ struct ActivityRow {
     #[serde(default)]
     session_key: Option<String>,
     #[serde(default)]
+    agent: Option<String>,
+    #[serde(default)]
+    routine_id: Option<String>,
+    #[serde(default)]
+    worktree_path: Option<String>,
+    #[serde(default)]
     updated_at: Option<String>,
 }
 
@@ -57,6 +63,12 @@ pub struct ConversationEntry {
     pub agent_path: String,
     /// Human-readable agent name.
     pub agent_name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub agent: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub routine_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub worktree_path: Option<String>,
 }
 
 fn read_activities(root: &Path) -> CoreResult<Vec<ActivityRow>> {
@@ -102,6 +114,9 @@ pub fn list(root: &Path) -> CoreResult<Vec<ConversationEntry>> {
             updated_at: row.updated_at,
             agent_path: agent_path_str.clone(),
             agent_name: agent_name_str.clone(),
+            agent: row.agent,
+            routine_id: row.routine_id,
+            worktree_path: row.worktree_path,
         })
         .collect())
 }
@@ -185,10 +200,28 @@ mod tests {
         let entries = list(d.path()).unwrap();
         assert_eq!(entries.len(), 1);
         assert_eq!(entries[0].id, "act-uuid");
+        assert_eq!(entries[0].routine_id.as_deref(), Some("abc"));
         assert_eq!(
             entries[0].session_key, "routine-abc",
             "routine chats keep their stable per-routine key"
         );
+    }
+
+    #[test]
+    fn preserves_activity_card_metadata() {
+        let d = TempDir::new().unwrap();
+        seed(
+            d.path(),
+            serde_json::json!([
+                { "id": "act", "title": "Work", "description": "", "status": "running",
+                  "session_key": "activity-act", "agent": "research",
+                  "worktree_path": "/tmp/worktree",
+                  "updated_at": "2026-02-02T00:00:00Z" },
+            ]),
+        );
+        let entries = list(d.path()).unwrap();
+        assert_eq!(entries[0].agent.as_deref(), Some("research"));
+        assert_eq!(entries[0].worktree_path.as_deref(), Some("/tmp/worktree"));
     }
 
     #[test]

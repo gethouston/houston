@@ -5,7 +5,6 @@ import { AIBoard } from "@houston-ai/board";
 import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
 import { mergeFeedHistory } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
-import { Terminal, GitBranch } from "lucide-react";
 
 import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
@@ -22,10 +21,13 @@ import {
   useUpdateActivity,
 } from "../../hooks/queries";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
-import { tauriActivity, tauriChat, tauriAttachments, tauriTerminal, tauriConfig, tauriPreferences } from "../../lib/tauri";
+import { tauriActivity, tauriChat, tauriAttachments } from "../../lib/tauri";
 import { openAgentHref } from "../../lib/open-href";
 import { createMission } from "../../lib/create-mission";
-import { createMissionWorktreeIfEnabled } from "../../lib/mission-worktree";
+import {
+  createMissionWorktreeIfEnabled,
+  openMissionWorktreeTerminal,
+} from "../../lib/mission-worktree";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { queryKeys } from "../../lib/query-keys";
@@ -47,6 +49,11 @@ import { SelectAllButton } from "../select-all-button";
 import { selectActive, moveTargetsForSection, areAllSelected } from "../../lib/mission-selection";
 import { navigateBoard } from "../../lib/board-navigate";
 import { resolvePendingActivitySelection } from "../../lib/notification-nav";
+import { missionCardTags } from "../../lib/mission-card";
+import {
+  MissionWorktreeCardAction,
+  MissionWorktreePanelActions,
+} from "../mission-worktree-actions";
 
 // Stable empty reference so the feed store selector doesn't return a new
 // object every render when this agent has no feeds yet (which would otherwise
@@ -226,25 +233,29 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
   );
 
   const items: KanbanItem[] = useMemo(
-    () => activeRaw.map((t) => {
-      const mode = agentModes?.find((m) => m.id === t.agent);
+    () => activeRaw.map((activity) => {
       return {
-        id: t.id,
-        title: t.title,
-        description: t.description,
-        status: t.status,
-        updatedAt: t.updated_at ?? new Date().toISOString(),
+        id: activity.id,
+        title: activity.title,
+        description: activity.description,
+        status: activity.status,
+        updatedAt: activity.updated_at ?? new Date().toISOString(),
         group: agent.name,
-        tags: mode ? [mode.name] : (t.routine_id ? ["Routine"] : undefined),
+        tags: missionCardTags({
+          agent: activity.agent,
+          agentModes,
+          routineId: activity.routine_id,
+          routineLabel: t("board:tags.routine"),
+        }),
         metadata: {
-          ...(t.session_key ? { sessionKey: t.session_key } : {}),
-          ...(t.routine_id ? { routineId: t.routine_id } : {}),
-          ...(t.agent ? { agent: t.agent } : {}),
-          ...(t.worktree_path ? { worktreePath: t.worktree_path } : {}),
+          ...(activity.session_key ? { sessionKey: activity.session_key } : {}),
+          ...(activity.routine_id ? { routineId: activity.routine_id } : {}),
+          ...(activity.agent ? { agent: activity.agent } : {}),
+          ...(activity.worktree_path ? { worktreePath: activity.worktree_path } : {}),
         },
       };
     }),
-    [agent.name, agentModes, activeRaw],
+    [agent.name, agentModes, activeRaw, t],
   );
 
   // Read and consume pending selection from Mission Control
@@ -787,60 +798,43 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     async (item: KanbanItem) => {
       const wtPath = item.metadata?.worktreePath as string | undefined;
       if (!wtPath) return;
-      let devCmd: string | undefined;
       try {
-        const cfg = await tauriConfig.read(path);
-        devCmd = cfg.devCommand as string | undefined;
-      } catch { /* ignore */ }
-      const terminal = await tauriPreferences.get("terminal") ?? undefined;
-      tauriTerminal.open(wtPath, devCmd, terminal).catch(console.error);
+        await openMissionWorktreeTerminal(path, wtPath);
+      } catch (err) {
+        addToast({
+          title: t("board:cardActions.openTerminalFailed", { error: String(err) }),
+          variant: "error",
+        });
+      }
     },
-    [path],
+    [path, addToast, t],
   );
 
   const cardActions = useCallback(
-    (item: KanbanItem) => {
-      const wtPath = item.metadata?.worktreePath as string | undefined;
-      if (!wtPath) return undefined;
-      return (
-        <button
-          onClick={(e) => { e.stopPropagation(); handleRunInTerminal(item); }}
-          className="flex items-center gap-0.5 h-5 px-1.5 rounded-full bg-secondary text-foreground text-[10px] font-medium hover:bg-accent transition-colors duration-200"
-          title={t("cardActions.openTerminal")}
-        >
-          <Terminal className="size-2.5" />
-          {t("cardActions.run")}
-        </button>
-      );
-    },
+    (item: KanbanItem) => (
+      <MissionWorktreeCardAction
+        item={item}
+        labels={{
+          openTerminal: t("board:cardActions.openTerminal"),
+          run: t("board:cardActions.run"),
+        }}
+        onRun={handleRunInTerminal}
+      />
+    ),
     [handleRunInTerminal, t],
   );
 
   const panelActions = useCallback(
-    (item: KanbanItem) => {
-      const wtPath = item.metadata?.worktreePath as string | undefined;
-      if (!wtPath) return undefined;
-      const label = wtPath.split("/").pop() ?? wtPath;
-      return (
-        <div className="flex items-center gap-1.5">
-          <span
-            className="flex items-center gap-1 h-5 px-1.5 rounded-full bg-secondary text-muted-foreground text-[10px] font-medium truncate max-w-[160px]"
-            title={wtPath}
-          >
-            <GitBranch className="size-2.5 shrink-0" />
-            {label}
-          </span>
-          <button
-            onClick={() => handleRunInTerminal(item)}
-            className="flex items-center gap-0.5 h-5 px-1.5 rounded-full bg-secondary text-foreground text-[10px] font-medium hover:bg-accent transition-colors duration-200"
-            title={t("cardActions.openTerminal")}
-          >
-            <Terminal className="size-2.5" />
-            {t("cardActions.run")}
-          </button>
-        </div>
-      );
-    },
+    (item: KanbanItem) => (
+      <MissionWorktreePanelActions
+        item={item}
+        labels={{
+          openTerminal: t("board:cardActions.openTerminal"),
+          run: t("board:cardActions.run"),
+        }}
+        onRun={handleRunInTerminal}
+      />
+    ),
     [handleRunInTerminal, t],
   );
 
@@ -917,7 +911,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}
-          actions={agentModes ? cardActions : undefined}
+          actions={cardActions}
           panelActions={panelActions}
           cardAvatar={<AgentCardAvatar color={agent.color} />}
           thinkingIndicator={<HoustonThinkingIndicator />}

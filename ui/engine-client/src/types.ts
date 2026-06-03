@@ -272,6 +272,9 @@ export interface ConversationEntry {
   updated_at?: string;
   agent_path: string;
   agent_name: string;
+  agent?: string;
+  routine_id?: string;
+  worktree_path?: string | null;
 }
 
 // ---------- Skills ----------

@@ -6,11 +6,15 @@
     "approveTooltip": "Move to done",
     "renameTooltip": "Change title",
     "deleteTooltip": "Delete",
-    "select": "Select mission"
+    "select": "Select mission",
+    "openTerminalFailed": "Couldn't open the terminal: {{error}}"
   },
   "deleteCard": {
     "titleWithName": "Delete \"{{name}}\"?",
     "description": "This item and its history will be permanently removed."
+  },
+  "tags": {
+    "routine": "Routine"
   },
   "empty": {
     "title": "No conversations yet",
