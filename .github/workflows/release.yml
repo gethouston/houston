@@ -596,7 +596,10 @@ jobs:
 
           echo "=== 3. Upload Rust debug symbols (app + engine) ==="
           APP="${{ steps.artifacts.outputs.app }}"
-          APP_EXE="$APP/Contents/MacOS/Houston"
+          # The bundled executable is named after the Cargo binary
+          # (`houston-app`), NOT the productName ("Houston"). The sidecar
+          # alongside it is `houston-engine`.
+          APP_EXE="$APP/Contents/MacOS/houston-app"
           if [ ! -x "$APP_EXE" ]; then
             echo "::error::Tauri app executable missing at $APP_EXE"
             find "$APP/Contents/MacOS" -maxdepth 1 -type f -print || true
