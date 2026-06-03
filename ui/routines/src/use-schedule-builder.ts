@@ -39,7 +39,6 @@ export interface ScheduleBuilderState {
   isCustom: boolean
   showTime: boolean
   summary: string
-  cronDisplay: string
 }
 
 export function useScheduleBuilder(
@@ -132,12 +131,6 @@ export function useScheduleBuilder(
   } else {
     summary = everyValid ? cronSummary(customCron) : "Enter a number"
   }
-  const cronDisplay =
-    unrepresentable && !touched
-      ? value
-      : isCustom
-        ? customCron
-        : presetToCron(activePreset, options)
 
   return {
     activePreset,
@@ -152,6 +145,5 @@ export function useScheduleBuilder(
     isCustom,
     showTime: NEEDS_TIME.includes(activePreset),
     summary,
-    cronDisplay,
   }
 }

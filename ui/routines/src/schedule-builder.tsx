@@ -46,7 +46,6 @@ export function ScheduleBuilder({
     isCustom,
     showTime,
     summary,
-    cronDisplay,
   } = useScheduleBuilder(value, onChange)
 
   return (
@@ -113,13 +112,6 @@ export function ScheduleBuilder({
           </>
         )}
       </div>
-
-      {/* Cron expression display */}
-      {cronDisplay && (
-        <p className="text-[11px] text-muted-foreground font-mono">
-          cron: {cronDisplay}
-        </p>
-      )}
     </div>
   )
 }
