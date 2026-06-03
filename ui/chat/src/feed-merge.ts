@@ -4,15 +4,56 @@ import type { FeedItem } from "./types";
 export interface MergeFeedOptions {
   /**
    * The item arrived over the engine WebSocket (a push event), not from an
-   * optimistic local push. The engine re-broadcasts a turn's `user_message`
-   * over the `session:{key}` topic (so other clients echo it) AFTER streaming
-   * has begun, so that echo can land non-consecutively: on top of the
-   * assistant reply or on top of hydrated history. A WS-sourced `user_message`
-   * the feed already shows is a re-delivery and is dropped; optimistic/local
-   * pushes leave this unset so a deliberate repeat of the same text always
-   * appends.
+   * optimistic local push. Used by {@link reconcileUserMessageEcho} to drop the
+   * engine's re-broadcast of a prompt this client already pushed optimistically.
    */
   fromWs?: boolean;
+}
+
+/**
+ * Per-session tally of optimistic (locally-pushed) user messages still awaiting
+ * their engine WS echo, keyed by message text.
+ */
+export type PendingUserEcho = Record<string, number>;
+
+/**
+ * Decide whether a `user_message` should be appended to a session feed, given
+ * the optimistic pushes still awaiting their WS echo.
+ *
+ * The engine re-broadcasts every turn's prompt over the `session:{key}` WS topic
+ * so other clients echo it. The client that SENT the turn already pushed the
+ * prompt optimistically, so that echo is a duplicate — but only for that one
+ * turn. The earlier fix (#363) dropped any WS `user_message` whose TEXT already
+ * appeared in the feed, which wrongly collapsed DISTINCT turns that share text:
+ * once a routine reuses a single chat across runs (#381), every run carries the
+ * identical prompt, so a new run's prompt got swallowed by an earlier run's
+ * (and prior runs sitting in hydrated history swallowed it too).
+ *
+ * Correlating echo→optimistic by a pending count fixes both: the sender's own
+ * echo is dropped, while a background routine run (which never pushes
+ * optimistically) and cross-client deliveries append. Mutates `pending`.
+ *
+ * @returns `true` to append the item, `false` to drop it as a duplicate echo.
+ */
+export function reconcileUserMessageEcho(
+  pending: PendingUserEcho,
+  item: FeedItem,
+  fromWs: boolean,
+): boolean {
+  if (item.feed_type !== "user_message") return true;
+  if (!fromWs) {
+    // Optimistic local push: remember it so its echo can be matched + dropped.
+    pending[item.data] = (pending[item.data] ?? 0) + 1;
+    return true;
+  }
+  const awaiting = pending[item.data] ?? 0;
+  if (awaiting > 0) {
+    pending[item.data] = awaiting - 1;
+    return false;
+  }
+  // No optimistic push is waiting: a routine run's prompt, or a turn from
+  // another client. Append it — there is nothing to dedupe against.
+  return true;
 }
 
 /**
@@ -23,16 +64,16 @@ export interface MergeFeedOptions {
  * - `thinking` (final) replaces last `thinking_streaming`
  * - `assistant_text_streaming` replaces previous `assistant_text_streaming`
  * - `assistant_text` (final) replaces last `assistant_text_streaming`
- * - a WebSocket-echoed `user_message` already present is dropped
+ * - a null-input `tool_call` is replaced by the real-input one
  * - everything else is appended.
+ *
+ * `user_message` echo de-duplication is handled separately by
+ * {@link reconcileUserMessageEcho} BEFORE this is called, because it needs
+ * per-session provenance state this pure function does not carry.
  *
  * Use this in your Zustand/Redux store to avoid duplicating merge logic.
  */
-export function mergeFeedItem(
-  items: FeedItem[],
-  item: FeedItem,
-  opts?: MergeFeedOptions,
-): FeedItem[] {
+export function mergeFeedItem(items: FeedItem[], item: FeedItem): FeedItem[] {
   const last = items[items.length - 1];
 
   if (item.feed_type === "thinking_streaming") {
@@ -65,20 +106,6 @@ export function mergeFeedItem(
   if (item.feed_type === "tool_call" && last?.feed_type === "tool_call") {
     if (last.data.name === item.data.name && last.data.input == null) {
       return [...items.slice(0, -1), item];
-    }
-  }
-
-  // Drop a WebSocket-echoed user_message the feed already shows. The engine
-  // re-broadcasts the turn's prompt over the session topic for cross-client
-  // echo AFTER streaming has begun, so the echo can arrive non-consecutively:
-  // on top of the assistant reply, or on top of hydrated history. Matching only
-  // the immediately-previous item (the old behaviour) let routine-surfaced
-  // turns render their first user prompt twice (issue #363). Provenance, not
-  // shape, decides: only WS deliveries dedupe, so a user who deliberately
-  // repeats the same text locally still sees both copies.
-  if (item.feed_type === "user_message" && opts?.fromWs) {
-    if (items.some((it) => it.feed_type === "user_message" && it.data === item.data)) {
-      return items;
     }
   }
 

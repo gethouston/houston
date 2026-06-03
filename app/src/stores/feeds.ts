@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { mergeFeedItem } from "@houston-ai/chat";
-import type { FeedItem, MergeFeedOptions } from "@houston-ai/chat";
+import { mergeFeedItem, reconcileUserMessageEcho } from "@houston-ai/chat";
+import type { FeedItem, MergeFeedOptions, PendingUserEcho } from "@houston-ai/chat";
 
 /**
  * Feed store — nested by agent path, then by session key.
@@ -13,10 +13,19 @@ import type { FeedItem, MergeFeedOptions } from "@houston-ai/chat";
 interface FeedState {
   items: Record<string, Record<string, FeedItem[]>>;
   /**
+   * Optimistic `user_message` pushes still awaiting their WS echo, nested by
+   * agent path then session key. Lets `pushFeedItem` drop the engine's echo of
+   * a prompt this client already showed without collapsing distinct turns that
+   * happen to share text — e.g. every run of a routine, which now share one
+   * chat (#381). See `reconcileUserMessageEcho`.
+   */
+  pendingEcho: Record<string, Record<string, PendingUserEcho>>;
+  /**
    * Merge one item into a session's feed. Pass `{ fromWs: true }` for items
    * delivered over the engine WebSocket so a re-broadcast `user_message` echo
-   * is deduped against the turn already shown (see `mergeFeedItem`). Optimistic
-   * local pushes omit it so a deliberate repeat still appends.
+   * is deduped against the matching optimistic push. Optimistic local pushes
+   * omit it so a deliberate repeat (and every routine run's prompt) still
+   * appends.
    */
   pushFeedItem: (
     agentPath: string,
@@ -31,12 +40,25 @@ interface FeedState {
 
 export const useFeedStore = create<FeedState>((set) => ({
   items: {},
+  pendingEcho: {},
 
   pushFeedItem: (agentPath, sessionKey, item, opts) => {
     return set((s) => {
+      const agentPending = s.pendingEcho[agentPath] ?? {};
+      const sessionPending = { ...(agentPending[sessionKey] ?? {}) };
+      const keep = reconcileUserMessageEcho(sessionPending, item, opts?.fromWs ?? false);
+      const pendingEcho = {
+        ...s.pendingEcho,
+        [agentPath]: { ...agentPending, [sessionKey]: sessionPending },
+      };
+      // Drop the WS echo of a prompt already shown optimistically, but keep the
+      // decremented pending tally so a later identical send still matches.
+      if (!keep) return { pendingEcho };
+
       const agentBucket = s.items[agentPath] ?? {};
-      const nextSession = mergeFeedItem(agentBucket[sessionKey] ?? [], item, opts);
+      const nextSession = mergeFeedItem(agentBucket[sessionKey] ?? [], item);
       return {
+        pendingEcho,
         items: {
           ...s.items,
           [agentPath]: {
@@ -64,10 +86,16 @@ export const useFeedStore = create<FeedState>((set) => ({
       const agentBucket = s.items[agentPath];
       if (!agentBucket) return s;
       const { [sessionKey]: _, ...rest } = agentBucket;
+      const agentPending = s.pendingEcho[agentPath];
+      const { [sessionKey]: __, ...restPending } = agentPending ?? {};
       return {
         items: {
           ...s.items,
           [agentPath]: rest,
+        },
+        pendingEcho: {
+          ...s.pendingEcho,
+          [agentPath]: restPending,
         },
       };
     }),
@@ -75,6 +103,7 @@ export const useFeedStore = create<FeedState>((set) => ({
   clearAgent: (agentPath) =>
     set((s) => {
       const { [agentPath]: _, ...rest } = s.items;
-      return { items: rest };
+      const { [agentPath]: __, ...restPending } = s.pendingEcho;
+      return { items: rest, pendingEcho: restPending };
     }),
 }));

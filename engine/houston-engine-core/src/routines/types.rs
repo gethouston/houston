@@ -80,7 +80,9 @@ pub struct RoutineRun {
     /// `POST /v1/routines/:id/runs/:run_id:cancel` or when the parent
     /// routine is deleted while a run is still in flight.
     pub status: String,
-    /// Session key for chat history lookup (`"routine-{rid}-run-{id}"`).
+    /// Session key for chat history lookup. Stable per routine
+    /// (`"routine-{rid}"`), shared by every run so they aggregate into one
+    /// chat — one chat per routine, not per run (#381).
     pub session_key: String,
     /// If surfaced, the activity ID created on the board.
     #[serde(default, skip_serializing_if = "Option::is_none")]

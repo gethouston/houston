@@ -136,7 +136,9 @@ pub struct RoutineRun {
     pub routine_id: String,
     /// "running" | "silent" | "surfaced" | "error"
     pub status: String,
-    /// Session key for chat history lookup (e.g. "routine-{routine_id}-run-{id}").
+    /// Session key for chat history lookup. Stable per routine
+    /// ("routine-{routine_id}"), shared by every run — one chat per routine,
+    /// not per run (#381).
     pub session_key: String,
     /// If surfaced, the activity ID created on the board.
     #[serde(default, skip_serializing_if = "Option::is_none")]

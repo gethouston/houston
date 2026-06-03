@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mergeFeedItem, mergeFeedHistory } from "../src/feed-merge.ts";
+import {
+  mergeFeedItem,
+  mergeFeedHistory,
+  reconcileUserMessageEcho,
+} from "../src/feed-merge.ts";
 
 test("assistant final replaces streaming text before queued user message", () => {
   const queued = [
@@ -40,63 +44,81 @@ test("streaming updates replace existing stream before queued user message", () 
   ]);
 });
 
-// ── mergeFeedItem: WS user_message echo dedup (issue #363) ─────────────────
+// ── reconcileUserMessageEcho: optimistic↔echo dedup (issues #363 + #381) ───
 
-test("WS user_message echo dropped when it duplicates a non-consecutive turn", () => {
-  // The engine re-broadcasts the prompt over the session topic AFTER the
-  // assistant has started replying, so the echo lands after the reply — not
-  // consecutively. Old code only collapsed consecutive user_messages, so this
-  // duplicated the user's first message.
-  const feed = [
-    { feed_type: "user_message", data: "ping" },
-    { feed_type: "assistant_text", data: "pong" },
-  ];
-
-  const merged = mergeFeedItem(
-    feed,
-    { feed_type: "user_message", data: "ping" },
-    { fromWs: true },
+test("echo of an optimistic push is dropped (issue #363)", () => {
+  const pending = {};
+  // The local client pushed the prompt optimistically first.
+  assert.equal(
+    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "ping" }, false),
+    true,
   );
-
-  assert.deepEqual(merged, feed);
+  assert.deepEqual(pending, { ping: 1 });
+  // The engine's WS echo of that same prompt is the duplicate — drop it.
+  assert.equal(
+    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "ping" }, true),
+    false,
+  );
+  assert.deepEqual(pending, { ping: 0 });
 });
 
-test("WS user_message echo dropped when it duplicates the previous turn", () => {
+test("an echo with no pending optimistic push appends (routine run / cross-client)", () => {
+  // A background routine run never pushes optimistically, so its prompt arrives
+  // only as a WS echo and must append.
+  const pending = {};
+  assert.equal(
+    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "check email" }, true),
+    true,
+  );
+  assert.deepEqual(pending, {});
+});
+
+test("repeated routine runs with the identical prompt all append (issue #381)", () => {
+  // One chat per routine: every run carries the same prompt and arrives as a WS
+  // echo with nothing pending. Each must append — no run's prompt is swallowed.
+  const pending = {};
+  for (let i = 0; i < 3; i += 1) {
+    assert.equal(
+      reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "check email" }, true),
+      true,
+      `run ${i} appends`,
+    );
+  }
+});
+
+test("deliberate local repeat keeps both; both echoes drop", () => {
+  const pending = {};
+  reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, false);
+  reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, false);
+  assert.deepEqual(pending, { again: 2 });
+  assert.equal(
+    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, true),
+    false,
+  );
+  assert.equal(
+    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, true),
+    false,
+  );
+  assert.deepEqual(pending, { again: 0 });
+});
+
+test("non-user_message items are never gated by the echo tally", () => {
+  const pending = {};
+  assert.equal(
+    reconcileUserMessageEcho(pending, { feed_type: "assistant_text", data: "hi" }, true),
+    true,
+  );
+  assert.deepEqual(pending, {});
+});
+
+// ── mergeFeedItem: streaming/tool merges leave user_messages alone ──────────
+
+test("mergeFeedItem appends user_messages verbatim (dedup moved out)", () => {
   const feed = [{ feed_type: "user_message", data: "ping" }];
-  const merged = mergeFeedItem(
-    feed,
-    { feed_type: "user_message", data: "ping" },
-    { fromWs: true },
-  );
-  assert.deepEqual(merged, feed);
-});
-
-test("local user_message repeat always appends (deliberate repeat preserved)", () => {
-  // No fromWs => optimistic/local push. A user sending the same text twice
-  // keeps both copies; provenance, not shape, gates the dedup.
-  const feed = [
-    { feed_type: "user_message", data: "again" },
-    { feed_type: "assistant_text", data: "ok" },
-  ];
-
-  const merged = mergeFeedItem(feed, { feed_type: "user_message", data: "again" });
-
-  assert.deepEqual(merged, [
-    ...feed,
-    { feed_type: "user_message", data: "again" },
-  ]);
-});
-
-test("WS user_message with new text still appends", () => {
-  const feed = [{ feed_type: "user_message", data: "ping" }];
-  const merged = mergeFeedItem(
-    feed,
-    { feed_type: "user_message", data: "different" },
-    { fromWs: true },
-  );
+  const merged = mergeFeedItem(feed, { feed_type: "user_message", data: "ping" });
   assert.deepEqual(merged, [
     { feed_type: "user_message", data: "ping" },
-    { feed_type: "user_message", data: "different" },
+    { feed_type: "user_message", data: "ping" },
   ]);
 });
 
