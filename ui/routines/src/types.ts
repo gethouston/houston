@@ -55,5 +55,5 @@ export const SCHEDULE_PRESET_LABELS: Record<SchedulePreset, string> = {
   weekdays: "Weekdays only",
   weekly: "Weekly",
   monthly: "Monthly",
-  custom: "Custom (cron)",
+  custom: "Custom",
 }
