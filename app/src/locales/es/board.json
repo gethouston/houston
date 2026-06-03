@@ -91,5 +91,8 @@
     "emptyTitle": "No hay misiones archivadas",
     "emptyDescription": "Las misiones archivadas aparecen aquí. Responde a una para reactivarla.",
     "searchPlaceholder": "Buscar misiones archivadas"
+  },
+  "dnd": {
+    "moveError": "No se pudo mover la misión: {{error}}"
   }
 }

@@ -190,6 +190,13 @@ export interface AIBoardProps {
     onClear: () => void
     labels: BulkActionBarLabels
   }
+  /** Called when a card is dropped onto a different column (board layout
+   *  only). Receives the dragged item and the target column id. Providing
+   *  this enables drag-and-drop between columns. */
+  onItemMove?: (item: KanbanItem, toColumnId: string) => void
+  /** Override which columns accept a given dragged item. See
+   *  `KanbanBoardProps.canDropItem`. */
+  canDropItem?: (item: KanbanItem, toColumnId: string) => boolean
 }
 
 const DEFAULT_COLUMNS: KanbanColumn[] = [
@@ -266,6 +273,8 @@ export function AIBoard({
   onToggleSelect,
   selectionLockColumnId,
   bulkActions,
+  onItemMove,
+  canDropItem,
 }: AIBoardProps) {
   const [internalSelectedId, setInternalSelectedId] = useState<string | null>(null)
   const [newPanelOpen, setNewPanelOpen] = useState(false)
@@ -530,6 +539,8 @@ export function AIBoard({
           selectedIds={selectedIds}
           onToggleSelect={onToggleSelect}
           selectionLockColumnId={selectionLockColumnId}
+          onItemMove={onItemMove}
+          canDropItem={canDropItem}
         />
       )}
       {showBulkBar && bulkActions && (

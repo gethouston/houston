@@ -43,7 +43,7 @@ import { buildMissionBoardColumns } from "../mission-board-columns";
 import { useBoardSelection } from "../use-board-selection";
 import { ArchiveDoneButton } from "../archive-done-button";
 import { SelectAllButton } from "../select-all-button";
-import { selectActive, moveTargetsForSection, areAllSelected } from "../../lib/mission-selection";
+import { selectActive, moveTargetsForSection, areAllSelected, canDropMission } from "../../lib/mission-selection";
 import { navigateBoard } from "../../lib/board-navigate";
 import { resolvePendingActivitySelection } from "../../lib/notification-nav";
 
@@ -570,6 +570,34 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
     [updateActivity],
   );
 
+  // Drag a card onto another column to change its status. The board only fires
+  // this for a column `canDropItem` accepted, so `toColumnId` is always a bulk-
+  // move status (done / needs_you) that doubles as the new status. A failure
+  // surfaces as a toast rather than a silent swallow.
+  const handleItemMove = useCallback(
+    async (item: KanbanItem, toColumnId: string) => {
+      try {
+        await updateActivity.mutateAsync({
+          activityId: item.id,
+          update: { status: toColumnId },
+        });
+      } catch (err) {
+        addToast({
+          title: t("board:dnd.moveError", { error: String(err) }),
+          variant: "error",
+        });
+      }
+    },
+    [updateActivity, addToast, t],
+  );
+  // A card can be dropped on a column iff the shared mission rule allows it:
+  // only needs_you / done, and never its current section.
+  const canDropItem = useCallback(
+    (item: KanbanItem, toColumnId: string) =>
+      canDropMission(columnOfStatus(item.status), toColumnId),
+    [columnOfStatus],
+  );
+
   // Bulk actions surface their failure as a toast (no silent swallow); the
   // selection clears inside the hook on success.
   const handleBulkMove = useCallback(
@@ -903,6 +931,8 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           sessionKeyFor={sessionKeyFor}
           onDelete={handleDelete}
           onApprove={handleApprove}
+          onItemMove={handleItemMove}
+          canDropItem={canDropItem}
           onRename={(item, newTitle) => {
             tauriActivity.update(path, item.id, { title: newTitle }).catch(console.error);
           }}

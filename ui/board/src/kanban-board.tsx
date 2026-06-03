@@ -1,7 +1,8 @@
-import { useMemo } from "react"
+import { useCallback, useMemo, useState } from "react"
 import { KanbanColumn } from "./kanban-column"
 import type { KanbanCardLabels } from "./kanban-card"
 import type { KanbanItem, KanbanColumn as KanbanColumnType } from "./types"
+import { defaultCanDropItem } from "./dnd"
 
 export interface KanbanBoardProps {
   columns: KanbanColumnType[]
@@ -29,6 +30,14 @@ export interface KanbanBoardProps {
   /** When set, only this column's cards stay selectable — others hide their
    *  checkbox so a multi-selection can't span sections. */
   selectionLockColumnId?: string | null
+  /** Called when a card is dropped onto a different column. Receives the
+   *  dragged item and the target column id. Providing this enables drag-and-
+   *  drop on the board. */
+  onItemMove?: (item: KanbanItem, toColumnId: string) => void
+  /** Override which columns accept a given dragged item. Defaults to "any
+   *  column whose statuses don't already include the item's status". Return
+   *  false to reject the column (it won't highlight or accept a drop). */
+  canDropItem?: (item: KanbanItem, toColumnId: string) => boolean
 }
 
 export function KanbanBoard({
@@ -52,7 +61,24 @@ export function KanbanBoard({
   selectedIds,
   onToggleSelect,
   selectionLockColumnId,
+  onItemMove,
+  canDropItem,
 }: KanbanBoardProps) {
+  const dndEnabled = !!onItemMove
+  // The card currently being dragged (null when idle). Held here so every
+  // column can tell — during dragover, before the drop fires — whether it's a
+  // valid target for this card and render the affordance accordingly.
+  const [draggingItem, setDraggingItem] = useState<KanbanItem | null>(null)
+  const handleCardDragEnd = useCallback(() => setDraggingItem(null), [])
+  const resolveCanDrop = useCallback(
+    (item: KanbanItem, columnId: string) => {
+      if (canDropItem) return canDropItem(item, columnId)
+      const col = columns.find((c) => c.id === columnId)
+      return col ? defaultCanDropItem(item, col) : false
+    },
+    [canDropItem, columns],
+  )
+
   const columnData = useMemo(() => {
     return columns.map((col) => {
       const colItems = items
@@ -76,35 +102,48 @@ export function KanbanBoard({
 
   return (
     <div className="flex-1 flex gap-3 p-3 min-h-0 overflow-hidden">
-      {columnData.map((col) => (
-        <KanbanColumn
-          key={col.id}
-          label={col.label}
-          items={col.items}
-          selectedId={selectedId}
-          highlightedId={highlightedId}
-          onAdd={col.onAdd}
-          addLabel={col.addLabel}
-          headerAction={col.headerAction}
-          onSelect={onSelect ?? (() => {})}
-          onDelete={onDelete}
-          onApprove={onApprove}
-          onRename={onRename}
-          renderCard={renderCard}
-          runningStatuses={runningStatuses}
-          approveStatuses={approveStatuses}
-          errorStatuses={errorStatuses}
-          actions={actions}
-          avatar={avatar}
-          cardLabels={cardLabels}
-          selectable={
-            selectable &&
-            (selectionLockColumnId == null || selectionLockColumnId === col.id)
-          }
-          selectedIds={selectedIds}
-          onToggleSelect={onToggleSelect}
-        />
-      ))}
+      {columnData.map((col) => {
+        const isDropTarget =
+          dndEnabled &&
+          draggingItem != null &&
+          resolveCanDrop(draggingItem, col.id)
+        return (
+          <KanbanColumn
+            key={col.id}
+            label={col.label}
+            items={col.items}
+            selectedId={selectedId}
+            highlightedId={highlightedId}
+            onAdd={col.onAdd}
+            addLabel={col.addLabel}
+            headerAction={col.headerAction}
+            onSelect={onSelect ?? (() => {})}
+            onDelete={onDelete}
+            onApprove={onApprove}
+            onRename={onRename}
+            renderCard={renderCard}
+            runningStatuses={runningStatuses}
+            approveStatuses={approveStatuses}
+            errorStatuses={errorStatuses}
+            actions={actions}
+            avatar={avatar}
+            cardLabels={cardLabels}
+            selectable={
+              selectable &&
+              (selectionLockColumnId == null || selectionLockColumnId === col.id)
+            }
+            selectedIds={selectedIds}
+            onToggleSelect={onToggleSelect}
+            dndEnabled={dndEnabled}
+            isDropTarget={isDropTarget}
+            onCardDragStart={setDraggingItem}
+            onCardDragEnd={handleCardDragEnd}
+            onCardDrop={() => {
+              if (draggingItem) onItemMove?.(draggingItem, col.id)
+            }}
+          />
+        )
+      })}
     </div>
   )
 }

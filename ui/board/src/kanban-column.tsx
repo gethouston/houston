@@ -1,7 +1,9 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { Plus } from "lucide-react"
+import { cn } from "@houston-ai/core"
 import type { KanbanItem } from "./types"
 import { KanbanCard, type KanbanCardLabels } from "./kanban-card"
+import { useColumnDropTarget } from "./use-column-drop-target"
 
 export interface KanbanColumnProps {
   label: string
@@ -29,6 +31,18 @@ export interface KanbanColumnProps {
   selectedIds?: ReadonlySet<string>
   /** Toggle a card's membership in the multi-select set. */
   onToggleSelect?: (item: KanbanItem) => void
+  /** Make this column's cards draggable. */
+  dndEnabled?: boolean
+  /** Whether this column accepts the card currently being dragged. When true
+   *  the column shows a drop affordance and handles the drop; when false it
+   *  ignores the drag entirely. */
+  isDropTarget?: boolean
+  /** A card in this column started being dragged. */
+  onCardDragStart?: (item: KanbanItem) => void
+  /** The active drag ended (drop or cancel). */
+  onCardDragEnd?: () => void
+  /** A card was dropped on this column (only fires when `isDropTarget`). */
+  onCardDrop?: () => void
 }
 
 export function KanbanColumn({
@@ -53,10 +67,30 @@ export function KanbanColumn({
   selectable,
   selectedIds,
   onToggleSelect,
+  dndEnabled,
+  isDropTarget = false,
+  onCardDragStart,
+  onCardDragEnd,
+  onCardDrop,
 }: KanbanColumnProps) {
   const anySelected = (selectedIds?.size ?? 0) > 0
+  const { isOver, dragHandlers } = useColumnDropTarget(isDropTarget, () =>
+    onCardDrop?.(),
+  )
+
   return (
-    <div className="min-w-[180px] flex-1 flex flex-col h-full min-h-0 rounded-xl bg-secondary">
+    <div
+      {...dragHandlers}
+      className={cn(
+        "min-w-[180px] flex-1 flex flex-col h-full min-h-0 rounded-xl bg-secondary transition-[box-shadow,background-color] duration-150",
+        // Valid drop target during a drag: a faint inset ring hints "drop here".
+        // The column the pointer is over gets a stronger ring + tint.
+        isDropTarget &&
+          (isOver
+            ? "ring-2 ring-inset ring-primary/40 bg-accent"
+            : "ring-1 ring-inset ring-primary/15"),
+      )}
+    >
       {/* Column header */}
       <div className="px-3 py-2.5 flex items-center justify-center relative shrink-0">
         <div className="flex items-center gap-1.5">
@@ -110,6 +144,11 @@ export function KanbanColumn({
                   onToggleSelect={
                     onToggleSelect ? () => onToggleSelect(item) : undefined
                   }
+                  enableDrag={dndEnabled}
+                  onDragStart={
+                    onCardDragStart ? () => onCardDragStart(item) : undefined
+                  }
+                  onDragEnd={onCardDragEnd}
                 />
               )}
             </motion.div>

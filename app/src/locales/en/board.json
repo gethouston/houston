@@ -91,5 +91,8 @@
     "emptyTitle": "No archived missions",
     "emptyDescription": "Archived missions appear here. Reply to one to bring it back.",
     "searchPlaceholder": "Search archived missions"
+  },
+  "dnd": {
+    "moveError": "Couldn't move the mission: {{error}}"
   }
 }

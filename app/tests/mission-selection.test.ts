@@ -4,6 +4,7 @@ import {
   ARCHIVED_STATUS,
   BULK_MOVE_TARGETS,
   areAllSelected,
+  canDropMission,
   isArchived,
   moveTargetsForSection,
   selectActive,
@@ -45,6 +46,24 @@ describe("mission selection", () => {
     // running isn't a move target, so both stay; null = nothing locked.
     deepStrictEqual(moveTargetsForSection("running"), ["done", "needs_you"]);
     deepStrictEqual(moveTargetsForSection(null), ["done", "needs_you"]);
+  });
+
+  it("allows a drag only across sections, to a bulk-move target", () => {
+    // needs_you <-> done are the only legal drops.
+    strictEqual(canDropMission("needs_you", "done"), true);
+    strictEqual(canDropMission("done", "needs_you"), true);
+    // Dropping on the card's own section is a no-op.
+    strictEqual(canDropMission("done", "done"), false);
+    strictEqual(canDropMission("needs_you", "needs_you"), false);
+    // running is never a drop target (matches the bulk-move rule)...
+    strictEqual(canDropMission("done", "running"), false);
+    strictEqual(canDropMission("needs_you", "running"), false);
+    // ...but a running card CAN be dragged out to either section.
+    strictEqual(canDropMission("running", "done"), true);
+    strictEqual(canDropMission("running", "needs_you"), true);
+    // An unknown / out-of-section origin still resolves against the targets.
+    strictEqual(canDropMission(null, "done"), true);
+    strictEqual(canDropMission(null, "archived"), false);
   });
 
   it("computes select-all checkbox state", () => {

@@ -27,6 +27,25 @@ export function moveTargetsForSection(
   return BULK_MOVE_TARGETS.filter((status) => status !== sectionColumnId);
 }
 
+/**
+ * Drag-and-drop eligibility for a single mission card: can a mission currently
+ * in board section `fromColumnId` be dropped on `toColumnId`? Mirrors the bulk-
+ * move rule exactly — only the bulk move targets (`done` / `needs_you`) accept
+ * a drop, `running` never does, and a card can't be dropped on the section it
+ * already lives in (a no-op). Because the bulk move targets are also valid
+ * activity statuses whose names equal their column ids, `toColumnId` doubles as
+ * the resulting status for the move.
+ */
+export function canDropMission(
+  fromColumnId: string | null,
+  toColumnId: string,
+): boolean {
+  return (
+    (BULK_MOVE_TARGETS as readonly string[]).includes(toColumnId) &&
+    toColumnId !== fromColumnId
+  );
+}
+
 /** True when every id in `ids` is selected (and `ids` is non-empty). Drives the
  *  "select all" checkbox state for a section. */
 export function areAllSelected(

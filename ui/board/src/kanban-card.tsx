@@ -8,6 +8,7 @@ import {
 } from "@houston-ai/core"
 import { Trash2, Check, Pencil } from "lucide-react"
 import type { KanbanItem } from "./types"
+import { BOARD_CARD_DRAG_TYPE } from "./dnd"
 
 export interface KanbanCardLabels {
   /** @deprecated kept for backward-compat. Was the visible Approve pill text;
@@ -59,6 +60,14 @@ export interface KanbanCardProps {
   anySelected?: boolean
   /** Toggle this card's membership in the multi-select set. */
   onToggleSelect?: () => void
+  /** Make the card draggable so it can be dropped onto another column.
+   *  Suppressed while renaming or during a multi-select so it doesn't
+   *  collide with those interactions. */
+  enableDrag?: boolean
+  /** Called when a drag of this card starts. */
+  onDragStart?: () => void
+  /** Called when a drag of this card ends (drop or cancel). */
+  onDragEnd?: () => void
 }
 
 export function KanbanCard({
@@ -79,6 +88,9 @@ export function KanbanCard({
   selectedForBulk = false,
   anySelected = false,
   onToggleSelect,
+  enableDrag = false,
+  onDragStart,
+  onDragEnd,
 }: KanbanCardProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
   const isRunning = runningStatuses.includes(item.status)
@@ -87,7 +99,11 @@ export function KanbanCard({
   const [showConfirm, setShowConfirm] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.title)
+  const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  // Don't let a drag start while renaming (the title input owns the gesture)
+  // or while a multi-select is active (the bulk action bar owns moves then).
+  const canDrag = enableDrag && !editing && !anySelected
 
   useEffect(() => {
     if (editing) inputRef.current?.focus()
@@ -121,6 +137,21 @@ export function KanbanCard({
     <>
       <div
         onClick={(e) => { e.stopPropagation(); onSelect() }}
+        draggable={canDrag}
+        onDragStart={
+          canDrag
+            ? (e) => {
+                e.dataTransfer.setData(BOARD_CARD_DRAG_TYPE, item.id)
+                e.dataTransfer.effectAllowed = "move"
+                setDragging(true)
+                onDragStart?.()
+              }
+            : undefined
+        }
+        onDragEnd={() => {
+          setDragging(false)
+          onDragEnd?.()
+        }}
         aria-selected={selected || undefined}
         data-highlighted={highlighted || undefined}
         // For running + active, override the running-glow inner fill
@@ -144,7 +175,9 @@ export function KanbanCard({
           // colliding with the conic-gradient keyframe animation.
           // Restrict transitions to the safe properties we actually
           // care about.
-          "group/card relative rounded-xl p-3 cursor-pointer transition-[background-color,box-shadow,border-color] duration-200",
+          "group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
+          // Grab cursor signals the card can be dragged; plain pointer otherwise.
+          canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
           selected || highlighted ? "bg-accent shadow-md" : "bg-background",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
@@ -163,6 +196,8 @@ export function KanbanCard({
           // own border treatment so a selected running card keeps its glow.
           selectedForBulk &&
             "ring-2 ring-primary ring-offset-1 ring-offset-background",
+          // Dim the card while it's being dragged.
+          dragging && "opacity-40",
         )}
       >
         {/* Top row: agent info + action buttons */}
