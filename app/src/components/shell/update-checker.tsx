@@ -2,6 +2,7 @@ import { AlertCircle, DownloadCloud, Loader2, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUpdateChecker } from "../../hooks/use-update-checker";
 import { normalizeUpdateNotes } from "../../lib/update-details";
+import { UpdateNotes } from "./update-notes";
 import houstonBlack from "../../assets/houston-black.svg";
 import houstonWhite from "../../assets/houston-icon-white.svg";
 
@@ -87,9 +88,9 @@ export function UpdateChecker() {
         <p className="text-xs font-medium text-foreground">
           {t("updateChecker.detailsHeading")}
         </p>
-        <p className="mt-1 max-h-28 overflow-auto whitespace-pre-wrap text-xs leading-relaxed text-muted-foreground">
-          {notes ?? t("updateChecker.noDetails")}
-        </p>
+        <div className="mt-1 max-h-28 overflow-y-auto break-words text-xs leading-relaxed text-muted-foreground">
+          {notes ? <UpdateNotes notes={notes} /> : <p>{t("updateChecker.noDetails")}</p>}
+        </div>
       </div>
 
       {downloading && (
