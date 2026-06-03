@@ -5,9 +5,21 @@ import {
   fallbackLogo,
   isToolkitConnected,
   parseComposioToolkitFromHref,
+  resolveComposioApp,
   shouldSendConnectedFollowup,
+  shouldShowWaitingToConnect,
   type ConnectedFollowupInput,
 } from "../src/components/composio-card-state.ts";
+import type { ComposioAppEntry } from "../src/lib/tauri.ts";
+
+const appEntry = (over: Partial<ComposioAppEntry> = {}): ComposioAppEntry => ({
+  toolkit: "gmail",
+  name: "Gmail",
+  description: "Email",
+  logo_url: "https://logos.example/gmail.png",
+  categories: [],
+  ...over,
+});
 
 describe("deriveComposioCardView (issue #379: status badge vs action)", () => {
   it("shows the Connect CTA when not connected and idle", () => {
@@ -27,6 +39,61 @@ describe("deriveComposioCardView (issue #379: status badge vs action)", () => {
     // mid-flight; the card must show Connected, never a spinner that masks
     // a live connection.
     strictEqual(deriveComposioCardView(true, "connecting"), "connected");
+  });
+});
+
+describe("resolveComposioApp (card display identity)", () => {
+  it("uses the catalog entry's name, description, and logo when found", () => {
+    const app = resolveComposioApp("gmail", [appEntry()], "App integration");
+    strictEqual(app.name, "Gmail");
+    strictEqual(app.description, "Email");
+    strictEqual(app.logoUrl, "https://logos.example/gmail.png");
+  });
+
+  it("matches the catalog across casing (raw fragment vs canonical slug)", () => {
+    const app = resolveComposioApp(
+      "GoogleDrive",
+      [appEntry({ toolkit: "googledrive", name: "Google Drive" })],
+      "App integration",
+    );
+    strictEqual(app.name, "Google Drive");
+  });
+
+  it("falls back to the favicon when the catalog entry has no logo", () => {
+    const app = resolveComposioApp(
+      "gmail",
+      [appEntry({ logo_url: "" })],
+      "App integration",
+    );
+    strictEqual(app.logoUrl, fallbackLogo("gmail"));
+  });
+
+  it("builds a fallback identity when the toolkit is not in the catalog", () => {
+    const app = resolveComposioApp("obscureapp", [appEntry()], "App integration");
+    strictEqual(app.name, "obscureapp");
+    strictEqual(app.description, "App integration");
+    strictEqual(app.logoUrl, fallbackLogo("obscureapp"));
+  });
+
+  it("falls back when the catalog has not loaded yet (undefined)", () => {
+    const app = resolveComposioApp("gmail", undefined, "App integration");
+    strictEqual(app.name, "gmail");
+    strictEqual(app.description, "App integration");
+  });
+});
+
+describe("shouldShowWaitingToConnect (issue #412: explicit hand-off line)", () => {
+  it("shows the waiting line while idle, before the user acts", () => {
+    // The agent linked an app and paused; make the hand-off explicit.
+    strictEqual(shouldShowWaitingToConnect("idle"), true);
+  });
+
+  it("hides it once connecting (the Connecting badge already speaks)", () => {
+    strictEqual(shouldShowWaitingToConnect("connecting"), false);
+  });
+
+  it("hides it once connected (nothing left to wait on)", () => {
+    strictEqual(shouldShowWaitingToConnect("connected"), false);
   });
 });
 

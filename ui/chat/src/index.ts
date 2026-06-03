@@ -179,6 +179,8 @@ export type {
   PrepareAttachments,
 } from "./chat-panel-types";
 export type { ChatProcessLabels } from "./chat-process-block";
+export { ChatStatusLine } from "./chat-status-line";
+export type { ChatStatusLineProps } from "./chat-status-line";
 
 export { ChatInput } from "./chat-input";
 export type { ChatInputProps, ChatComposerLabels } from "./chat-input";

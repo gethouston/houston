@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { ChatStatusLine } from "@houston-ai/chat";
 import {
   useComposioApps,
   useConnectedToolkits,
@@ -12,9 +13,10 @@ import { useUIStore } from "../stores/ui";
 import { analytics } from "../lib/analytics";
 import {
   deriveComposioCardView,
-  fallbackLogo,
   isToolkitConnected,
+  resolveComposioApp,
   shouldSendConnectedFollowup,
+  shouldShowWaitingToConnect,
   type ComposioCardPhase,
 } from "./composio-card-state";
 import { AppLogo, ComposioStatusSlot } from "./composio-card-visuals";
@@ -107,29 +109,7 @@ export function ComposioLinkCard({
   // another agent, CLI, stale cache from a prior session).
   useComposioConnectionWatcher(isConnected);
 
-  const app = (() => {
-    // The catalog reports canonical (lowercased) slugs; `toolkit` is the
-    // raw fragment slug, so normalize both sides or a mis-cased slug falls
-    // back to the bare name + favicon guess instead of the real name/logo.
-    const normalizedToolkit = normalizeToolkitSlug(toolkit);
-    const fromApi = apiApps?.find(
-      (a) => normalizeToolkitSlug(a.toolkit) === normalizedToolkit,
-    );
-    if (fromApi) {
-      return {
-        toolkit: fromApi.toolkit,
-        name: fromApi.name,
-        description: fromApi.description,
-        logoUrl: fromApi.logo_url || fallbackLogo(fromApi.toolkit),
-      };
-    }
-    return {
-      toolkit,
-      name: toolkit,
-      description: t("composio.integration"),
-      logoUrl: fallbackLogo(toolkit),
-    };
-  })();
+  const app = resolveComposioApp(toolkit, apiApps, t("composio.integration"));
   const appName = app.name;
 
   // Watch the real connection status. On the not-connected → connected edge
@@ -196,7 +176,7 @@ export function ComposioLinkCard({
   const view = deriveComposioCardView(isConnected, phase);
 
   return (
-    <span className="not-prose inline-flex my-1 max-w-full align-middle">
+    <span className="not-prose inline-flex flex-col gap-1.5 my-1 max-w-full align-middle">
       <span className="inline-flex items-center gap-3 px-3 py-2.5 rounded-xl border border-black/5 bg-background min-w-0">
         <AppLogo app={app} />
         <span className="flex-1 min-w-0 flex flex-col">
@@ -209,6 +189,13 @@ export function ComposioLinkCard({
         </span>
         <ComposioStatusSlot view={view} onConnect={startConnect} />
       </span>
+      {shouldShowWaitingToConnect(view) && (
+        <ChatStatusLine
+          label={t("composio.waitingToConnect")}
+          active
+          className="px-1 text-muted-foreground/65"
+        />
+      )}
     </span>
   );
 }

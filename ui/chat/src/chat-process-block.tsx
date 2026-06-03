@@ -3,11 +3,10 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
-  HoustonHelmet,
   cn,
 } from "@houston-ai/core";
 import { ChevronDownIcon } from "lucide-react";
-import { Shimmer } from "./ai-elements/shimmer";
+import { ChatStatusLine } from "./chat-status-line";
 import {
   Reasoning,
   ReasoningContent,
@@ -67,12 +66,9 @@ export function ChatProcessBlock({
       onOpenChange={setIsOpen}
     >
       <CollapsibleTrigger
-        className="inline-flex max-w-full items-center gap-1.5 text-xs text-muted-foreground/65 transition-colors hover:text-muted-foreground"
+        className="inline-flex max-w-full items-center gap-1.5 text-muted-foreground/65 transition-colors hover:text-muted-foreground"
       >
-        <HoustonHelmet color="currentColor" size={13} />
-        <span className="min-w-0 truncate text-left">
-          {isActive ? <Shimmer duration={1}>{l.active}</Shimmer> : l.complete}
-        </span>
+        <ChatStatusLine label={isActive ? l.active : l.complete} active={isActive} />
         <ChevronDownIcon
           className={cn(
             "size-3.5 shrink-0 transition-transform",
