@@ -17,18 +17,11 @@ export interface KanbanItem {
 }
 
 /** A matched body fragment shown below a board item during search. `text` is
- *  the display string; `ranges` index into it. */
+ *  the display string; `ranges` index into it for highlighting. Keyed by
+ *  `KanbanItem.id` and passed to the list via `searchSnippets`. */
 export interface BoardSearchSnippet {
   text: string
   ranges: HighlightRange[]
-}
-
-/** Search-match highlighting for the board, keyed by `KanbanItem.id`. When a
- *  keyword is in the title, `titleRanges` highlights it in place; when the match
- *  is only in the body/history, `snippets` shows the surrounding fragment. */
-export interface BoardSearchHighlight {
-  titleRanges?: Record<string, HighlightRange[]>
-  snippets?: Record<string, BoardSearchSnippet>
 }
 
 /** A unified conversation entry — either the primary chat or an activity conversation. */

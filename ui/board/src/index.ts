@@ -20,6 +20,5 @@ export type {
   KanbanItem,
   KanbanColumn as KanbanColumnConfig,
   ConversationEntry,
-  BoardSearchHighlight,
   BoardSearchSnippet,
 } from "./types"

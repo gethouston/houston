@@ -33,7 +33,6 @@ describe("archived search wiring", () => {
     deepStrictEqual(archived.map((m) => m.id), ["a1", "a2"]);
 
     const result = searchMissions(archived, "budget");
-    strictEqual(result.mode, "title");
     deepStrictEqual(result.items.map((m) => m.id), ["a1"]);
   });
 
@@ -51,7 +50,6 @@ describe("archived search wiring", () => {
   it("returns the full archived list when the query is empty", () => {
     const archived = selectArchived(missions);
     const result = searchMissions(archived, "");
-    strictEqual(result.mode, "none");
     strictEqual(result.hasQuery, false);
     deepStrictEqual(result.items.map((m) => m.id), ["a1", "a2"]);
   });

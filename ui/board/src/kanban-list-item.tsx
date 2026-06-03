@@ -6,7 +6,6 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  type HighlightRange,
 } from "@houston-ai/core"
 import { Trash2 } from "lucide-react"
 import type { BoardSearchSnippet, KanbanItem } from "./types"
@@ -21,18 +20,16 @@ export interface KanbanListItemProps {
   onSelect: () => void
   onDelete?: () => void
   labels?: KanbanCardLabels
-  /** Ranges to highlight within the title (search keyword found in title). */
-  titleRanges?: HighlightRange[]
-  /** Matched body/history fragment shown below the title, when the keyword was
-   *  found there rather than in the title. */
+  /** Matched body/history fragment shown below the title when the search match
+   *  was found there rather than in the title (the title is never highlighted). */
   snippet?: BoardSearchSnippet
 }
 
 /**
  * Compact row for the Archived missions list: agent icon + name, mission title,
- * and a delete button. During search the matched keyword is highlighted in the
- * title; when the match is only in the body/history, a short highlighted
- * fragment appears below so the user sees why the mission surfaced.
+ * and a delete button. The title is shown plainly; when a search matched only
+ * in the body/history, a short highlighted fragment appears below so the user
+ * sees why the mission surfaced.
  */
 export function KanbanListItem({
   item,
@@ -41,7 +38,6 @@ export function KanbanListItem({
   onSelect,
   onDelete,
   labels,
-  titleRanges,
   snippet,
 }: KanbanListItemProps) {
   const [confirm, setConfirm] = useState(false)
@@ -71,7 +67,7 @@ export function KanbanListItem({
               </span>
             )}
             <span className="text-[13px] font-medium text-foreground flex-1 truncate">
-              <HighlightedText text={item.title} ranges={titleRanges} />
+              {item.title}
             </span>
           </div>
           {snippet && (
