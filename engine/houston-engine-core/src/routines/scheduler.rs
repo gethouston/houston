@@ -131,8 +131,10 @@ impl AgentScheduler {
     }
 
     fn spawn_cron(&self, routine: &Routine) -> Result<tokio::task::JoinHandle<()>, String> {
-        // 5-field cron → 7-field (seconds + year).
-        let cron_7 = format!("0 {} *", routine.schedule);
+        // 5-field standard cron → 7-field (seconds + year), with the
+        // day-of-week field translated into the `cron` crate's numbering.
+        // See `cron_compat` for why the verbatim string fires on the wrong day.
+        let cron_7 = crate::routines::cron_compat::to_engine_cron(&routine.schedule);
         let schedule = Schedule::from_str(&cron_7)
             .map_err(|e| format!("invalid cron '{}': {e}", routine.schedule))?;
 
@@ -335,6 +337,31 @@ mod tests {
             timezone: tz.map(str::to_string),
             integrations: vec![],
         }
+    }
+
+    #[tokio::test]
+    async fn sunday_routine_spawns_a_job() {
+        // Regression for #389: a Sunday schedule is `0` in standard cron, which
+        // the `cron` crate rejected outright (its day-of-week minimum is 1), so
+        // `spawn_cron` errored and the routine silently never fired. The
+        // dow-normalization shim now maps `0` → `1` and the job spawns.
+        let d = TempDir::new().unwrap();
+        let agent = d.path().to_string_lossy().to_string();
+
+        let mut sunday = mk("sunday", true, None);
+        sunday.schedule = "0 9 * * 0".into();
+        create(d.path(), sunday).unwrap();
+
+        let mut sched = AgentScheduler::new(
+            &agent,
+            "UTC",
+            Arc::new(NoopEventSink),
+            Arc::new(NoopDispatch),
+            Arc::new(NoopSurface),
+        );
+        sched.sync();
+        assert_eq!(sched.jobs.len(), 1);
+        sched.shutdown();
     }
 
     #[tokio::test]

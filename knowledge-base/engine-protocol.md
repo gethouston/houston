@@ -178,6 +178,15 @@ not user-facing copy.
 | POST | `/v1/routines/scheduler/stop` | Stop |
 | POST | `/v1/routines/scheduler/sync` | Re-read routines, rebuild cron jobs |
 
+Routine schedules are **standard Unix cron** (`0`/`7` = Sunday, weekdays `1-5`)
+everywhere a human touches them — the UI builder, the stored `schedule` string,
+and the frontend `nextFire` preview. The backend `cron` crate numbers days
+`1-7` (`1` = Sunday) and rejects `0`, so `routines::cron_compat::to_engine_cron`
+translates the day-of-week field at the single `spawn_cron` boundary. Without it
+every weekly routine fired a day early and Sunday routines never scheduled
+(issue #389). Keep cron generation/parsing on the standard convention; never
+hand a raw `schedule` to `Schedule::from_str`.
+
 **Conversations** (cross-agent read)
 | Method | Path | Description |
 |---|---|---|
