@@ -175,10 +175,12 @@ export function KanbanCard({
           // colliding with the conic-gradient keyframe animation.
           // Restrict transitions to the safe properties we actually
           // care about.
-          "group/card relative rounded-xl p-3 cursor-default transition-[background-color,box-shadow,border-color] duration-200",
-          // The card no longer shows a grab/pointer cursor across its whole
-          // surface — only the title reads as the clickable affordance (see
-          // the title span below). Dragging still works from anywhere.
+          "group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
+          // The card body shows the grab "hand" so the whole card reads as
+          // draggable. The title is the one exception: its own span overrides
+          // this with a pointer + underline (see below) so only the title
+          // reads as the click affordance.
+          canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
           selected || highlighted ? "bg-accent shadow-md" : "bg-background",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
