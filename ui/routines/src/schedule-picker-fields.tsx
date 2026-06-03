@@ -3,7 +3,7 @@
  * and the friendly "every N minutes/hours/days" interval picker.
  */
 import { cn } from "@houston-ai/core"
-import type { ScheduleInterval, IntervalUnit } from "./schedule-interval-utils"
+import type { IntervalUnit } from "./schedule-interval-utils"
 import { INTERVAL_UNIT_LABELS } from "./schedule-interval-utils"
 
 const INTERVAL_UNITS: IntervalUnit[] = ["minutes", "hours", "days"]
@@ -100,71 +100,58 @@ export function DayOfMonthPicker({
 
 /**
  * Friendly "Every [N] [minutes/hours/days]" picker — the non-technical
- * replacement for typing a raw cron expression. Emits a structured interval;
- * the builder turns it into cron.
+ * replacement for typing a raw cron expression. The count is a free-text string
+ * so it can be cleared completely while typing; the builder validates it and
+ * turns the interval into cron.
  */
 export function IntervalPicker({
-  value,
-  onChange,
+  every,
+  unit,
+  invalid,
+  onEveryChange,
+  onUnitChange,
 }: {
-  value: ScheduleInterval
-  onChange: (interval: ScheduleInterval) => void
+  every: string
+  unit: IntervalUnit
+  invalid?: boolean
+  onEveryChange: (every: string) => void
+  onUnitChange: (unit: IntervalUnit) => void
 }) {
   return (
     <div>
       <label className={labelClass}>Run every</label>
       <div className="flex items-center gap-2">
         <input
-          type="number"
-          min={1}
-          max={999}
-          value={value.every}
-          onChange={(e) =>
-            onChange({ ...value, every: Math.max(1, Number(e.target.value) || 1) })
-          }
-          className={cn(inputClass, "w-20")}
+          type="text"
+          inputMode="numeric"
+          value={every}
+          // Keep digits only so the field stays a plain whole number; an empty
+          // string is allowed (and flagged invalid) so it can be fully cleared.
+          onChange={(e) => onEveryChange(e.target.value.replace(/[^\d]/g, ""))}
+          placeholder="1"
+          className={cn(
+            inputClass,
+            "w-20",
+            invalid && "border-red-500/50",
+          )}
         />
         <div className="flex gap-1">
-          {INTERVAL_UNITS.map((unit) => (
+          {INTERVAL_UNITS.map((u) => (
             <button
-              key={unit}
-              onClick={() => onChange({ ...value, unit })}
+              key={u}
+              onClick={() => onUnitChange(u)}
               className={cn(
                 "h-8 px-3 rounded-lg text-xs font-medium transition-colors capitalize",
-                value.unit === unit
+                unit === u
                   ? "bg-primary text-primary-foreground"
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {INTERVAL_UNIT_LABELS[unit]}
+              {INTERVAL_UNIT_LABELS[u]}
             </button>
           ))}
         </div>
       </div>
-    </div>
-  )
-}
-
-export function CronInput({
-  value,
-  onChange,
-}: {
-  value: string
-  onChange: (cron: string) => void
-}) {
-  return (
-    <div>
-      <label className={labelClass}>Cron Expression</label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder="* * * * *"
-        className={cn(inputClass, "w-full font-mono")}
-      />
-      <p className="text-[11px] text-muted-foreground mt-1">
-        Format: minute hour day-of-month month day-of-week
-      </p>
     </div>
   )
 }
