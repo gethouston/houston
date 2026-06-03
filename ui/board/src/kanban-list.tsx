@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion"
+import { KanbanListRail } from "./kanban-list-rail"
 import { KanbanListItem } from "./kanban-list-item"
 import type { KanbanCardLabels } from "./kanban-card"
 import type { KanbanItem } from "./types"
@@ -41,7 +42,7 @@ export function KanbanList({
 
   return (
     <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
-      <div className="mx-auto w-full max-w-2xl space-y-1.5">
+      <KanbanListRail className="space-y-1.5">
         <AnimatePresence mode="popLayout">
           {sorted.map((item) => (
             <motion.div
@@ -63,7 +64,7 @@ export function KanbanList({
             </motion.div>
           ))}
         </AnimatePresence>
-      </div>
+      </KanbanListRail>
     </div>
   )
 }
