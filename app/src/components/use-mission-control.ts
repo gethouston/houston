@@ -53,7 +53,16 @@ export function useMissionControl(agents: Agent[]) {
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [loading, setLoading] = useState<Record<string, boolean>>({});
+  // activityId → agentPath. Keyed by the activity id (the KanbanItem id), used
+  // by the card-level handlers (delete/approve/rename) that operate on item.id.
   const pathMapRef = useRef<Record<string, string>>({});
+  // session_key → { agentPath, activityId }. A routine chat's key is
+  // `routine-{rid}`, NOT `activity-{id}`, so stripping an "activity-" prefix to
+  // recover the agent fails for routines and the chat loads empty. Resolve by
+  // the stored session_key directly instead (#381).
+  const sessionMapRef = useRef<
+    Record<string, { agentPath: string; activityId: string }>
+  >({});
 
   const paths = useMemo(
     () => agents.map((a) => a.folderPath),
@@ -71,12 +80,14 @@ export function useMissionControl(agents: Agent[]) {
   const items: KanbanItem[] = useMemo(() => {
     if (!convos) return [];
     const map: Record<string, string> = {};
+    const sessionMap: Record<string, { agentPath: string; activityId: string }> = {};
     const result = convos
       // Archived missions live in the per-agent Archived tab — keep them off
       // the cross-agent active board.
       .filter((c) => c.type === "activity" && c.status && c.status !== "archived")
       .map((c) => {
         map[c.id] = c.agent_path;
+        sessionMap[c.session_key] = { agentPath: c.agent_path, activityId: c.id };
         return {
           id: c.id,
           title: c.title,
@@ -89,13 +100,13 @@ export function useMissionControl(agents: Agent[]) {
         };
       });
     pathMapRef.current = map;
+    sessionMapRef.current = sessionMap;
     return result;
   }, [convos, agentColorMap]);
 
   const loadHistory = useCallback(
     async (sessionKey: string): Promise<FeedItem[]> => {
-      const activityId = sessionKey.replace("activity-", "");
-      const agentPath = pathMapRef.current[activityId];
+      const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
       if (!agentPath) return [];
       const history = await tauriChat.loadHistory(agentPath, sessionKey);
       return history as FeedItem[];
@@ -141,8 +152,7 @@ export function useMissionControl(agents: Agent[]) {
       // the ChatPanel renders it. Without this Mission Control would
       // open a conversation and show an empty chat (history was loaded
       // but had nowhere to land).
-      const activityId = sessionKey.replace("activity-", "");
-      const agentPath = pathMapRef.current[activityId];
+      const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
       if (!agentPath) return;
       // Server history is authoritative for what's persisted; reconcile it with
       // anything already in the live bucket (optimistic overlay or a WS event
@@ -156,9 +166,9 @@ export function useMissionControl(agents: Agent[]) {
 
   const handleSendMessage = useCallback(
     async (sessionKey: string, text: string, files: File[]) => {
-      const activityId = sessionKey.replace("activity-", "");
-      const agentPath = pathMapRef.current[activityId];
-      if (!agentPath) return;
+      const entry = sessionMapRef.current[sessionKey];
+      if (!entry) return;
+      const { agentPath, activityId } = entry;
       try {
         const paths = await tauriAttachments.save(`activity-${activityId}`, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
@@ -279,8 +289,7 @@ export function useMissionControl(agents: Agent[]) {
     }
     for (const [sessionKey, value] of Object.entries(loading)) {
       if (!value) continue;
-      const activityId = sessionKey.replace("activity-", "");
-      const agentPath = pathMapRef.current[activityId];
+      const agentPath = sessionMapRef.current[sessionKey]?.agentPath;
       const status = agentPath
         ? sessionStatuses[getSessionStatusKey(agentPath, sessionKey)]
         : undefined;

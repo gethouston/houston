@@ -1,7 +1,12 @@
 //! Conversation listing — derived view over `.houston/activity/activity.json`.
 //!
-//! Every conversation is an activity with a UUID-scoped session key
-//! (`activity-{id}`). This module reads the JSON file directly via
+//! A conversation is addressed by its activity's stored `session_key`. Normal
+//! missions use the `activity-{id}` convention; routine chats use a stable
+//! `routine-{routine_id}` key shared by every run (#381), so all of a
+//! routine's runs collapse into one conversation. We surface the row's stored
+//! key verbatim — falling back to `activity-{id}` only for legacy rows written
+//! before the field existed — so Mission Control loads the same history the
+//! per-agent board does. This module reads the JSON file directly via
 //! `houston_agent_files` so it does not depend on the full agent_store
 //! layer. Phase 2 slice 4 will move the activity writer here too and
 //! collapse the duplication with `app/houston-tauri/src/agent_store/`.
@@ -21,6 +26,11 @@ struct ActivityRow {
     description: String,
     #[serde(default)]
     status: String,
+    /// The conversation address this activity persisted. Routine chats store
+    /// `routine-{routine_id}`; normal missions store `activity-{id}`. Legacy
+    /// rows written before this field existed leave it `None`.
+    #[serde(default)]
+    session_key: Option<String>,
     #[serde(default)]
     updated_at: Option<String>,
 }
@@ -36,7 +46,10 @@ pub struct ConversationEntry {
     /// Always `"activity"` today. Field kept for forward compatibility.
     #[serde(rename = "type")]
     pub entry_type: String,
-    /// Session key used to address this conversation (`activity-{id}`).
+    /// Key used to address this conversation. `activity-{id}` for normal
+    /// missions, `routine-{routine_id}` for routine chats (shared by every run
+    /// of the routine). The frontend must NOT re-derive this from `id` — a
+    /// routine's conversation lives under its routine key, not `activity-{id}`.
     pub session_key: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub updated_at: Option<String>,
@@ -73,7 +86,14 @@ pub fn list(root: &Path) -> CoreResult<Vec<ConversationEntry>> {
     Ok(rows
         .into_iter()
         .map(|row| ConversationEntry {
-            session_key: format!("activity-{}", row.id),
+            // Use the activity's stored key verbatim so routine chats resolve
+            // to `routine-{rid}` (where every run's feed aggregates), not a
+            // per-activity key that would load an empty history. Legacy rows
+            // with no stored key fall back to the `activity-{id}` convention.
+            session_key: row
+                .session_key
+                .filter(|key| !key.is_empty())
+                .unwrap_or_else(|| format!("activity-{}", row.id)),
             id: row.id,
             title: row.title,
             description: Some(row.description).filter(|d| !d.is_empty()),
@@ -145,6 +165,58 @@ mod tests {
         assert_eq!(entries[0].entry_type, "activity");
         assert_eq!(entries[0].description.as_deref(), Some("d"));
         assert_eq!(entries[1].description, None); // empty description → None
+    }
+
+    #[test]
+    fn routine_activity_keeps_its_stored_session_key() {
+        // A routine chat persists `routine-{rid}` (shared by every run). The
+        // conversation list MUST surface that key, not rewrite it to
+        // `activity-{id}` — otherwise Mission Control addresses the wrong
+        // conversation and the routine's history loads empty (#381).
+        let d = TempDir::new().unwrap();
+        seed(
+            d.path(),
+            serde_json::json!([
+                { "id": "act-uuid", "title": "Morning digest", "description": "",
+                  "status": "needs_you", "session_key": "routine-abc",
+                  "routine_id": "abc", "updated_at": "2026-02-02T00:00:00Z" },
+            ]),
+        );
+        let entries = list(d.path()).unwrap();
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].id, "act-uuid");
+        assert_eq!(
+            entries[0].session_key, "routine-abc",
+            "routine chats keep their stable per-routine key"
+        );
+    }
+
+    #[test]
+    fn missing_or_empty_session_key_falls_back_to_activity_convention() {
+        // Legacy rows (written before session_key was persisted) and rows that
+        // stored an empty string both fall back to `activity-{id}` so normal
+        // missions still resolve.
+        let d = TempDir::new().unwrap();
+        seed(
+            d.path(),
+            serde_json::json!([
+                { "id": "legacy", "title": "Old", "description": "", "status": "done",
+                  "updated_at": "2026-01-02T00:00:00Z" },
+                { "id": "blank", "title": "Blank", "description": "", "status": "done",
+                  "session_key": "", "updated_at": "2026-01-01T00:00:00Z" },
+            ]),
+        );
+        let entries = list(d.path()).unwrap();
+        let by_id = |id: &str| {
+            entries
+                .iter()
+                .find(|e| e.id == id)
+                .unwrap_or_else(|| panic!("entry {id}"))
+                .session_key
+                .clone()
+        };
+        assert_eq!(by_id("legacy"), "activity-legacy");
+        assert_eq!(by_id("blank"), "activity-blank");
     }
 
     #[test]
