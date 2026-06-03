@@ -104,7 +104,13 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             Some(PersistOptions {
                 db: self.db.clone(),
                 source: "routine".into(),
-                user_message: Some(ctx.prompt.to_string()),
+                // Persist + echo the routine's own prompt as the per-run user
+                // message, NOT `ctx.prompt` — the latter has the internal
+                // "end with ROUTINE_OK" suppression instruction appended, which
+                // is scaffolding the user should never see (#381). The model
+                // still receives the full `ctx.prompt` above; only the
+                // displayed/saved message is the clean one.
+                user_message: Some(ctx.routine.prompt.clone()),
                 claude_session_id: None,
                 lifecycle: Some(Arc::new(RoutineRunLifecycle {
                     root: ctx.working_dir.to_path_buf(),
