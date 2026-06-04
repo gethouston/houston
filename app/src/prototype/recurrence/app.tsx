@@ -11,17 +11,20 @@ import { DEFAULT_RECURRENCE } from "./cron"
 import { Frame } from "./frame"
 import { Switcher, type VariantMeta } from "./switcher"
 import { VariantA } from "./variant-a"
-import { VariantB } from "./variant-b"
-import { VariantC } from "./variant-c"
-import { VariantD } from "./variant-d"
+import { VariantE } from "./variant-e"
+import { VariantF } from "./variant-f"
+import { VariantG } from "./variant-g"
 
 type VariantProps = { rec: Recurrence; onChange: (p: Partial<Recurrence>) => void }
 
+// Round 2: keep A (the "Repeat every…" baseline the user liked) and add three
+// refined takes of it (full-name "Repeat on" day buttons, unit dropdown),
+// grounded in Notion / Apple / Google. B, C, D from round 1 were dropped.
 const VARIANTS: (VariantMeta & { reference: string; Component: ComponentType<VariantProps> })[] = [
-  { key: "A", name: "Repeat-every builder", reference: "Google / Outlook", Component: VariantA },
-  { key: "B", name: "Fill-in-the-sentence", reference: "Todoist spirit", Component: VariantB },
-  { key: "C", name: "Grid-first", reference: "Apple / Notion", Component: VariantC },
-  { key: "D", name: "Type-to-schedule", reference: "Todoist 2026", Component: VariantD },
+  { key: "A", name: "Repeat-every (baseline)", reference: "Google / Outlook", Component: VariantA },
+  { key: "E", name: "Notion Calendar", reference: "Notion / Cron", Component: VariantE },
+  { key: "F", name: "Apple Calendar", reference: "Apple iOS / macOS", Component: VariantF },
+  { key: "G", name: "Houston refined", reference: "production candidate", Component: VariantG },
 ]
 
 function readVariant(): string {

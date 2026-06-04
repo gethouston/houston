@@ -7,15 +7,34 @@
 
 ## The question
 
-Houston routines have a "custom" schedule that today is a single
-"every N [minutes/hours/days]" input (`ui/routines/src/schedule-picker-fields.tsx`).
-It can't express the thing people actually want — *"every Mon / Wed / Fri"*,
-*"the 2nd Tuesday"*, *"weekdays at 9am"*. **What should the richer recurrence
-picker look like**, for a non-technical user who must never see cron?
+Houston routines' "custom" schedule is one "every N [min/hr/day]" input. It
+can't express *"every Mon / Wed / Fri"*, *"the 2nd Tuesday"*, *"weekdays at
+9am"*. **What should the richer recurrence picker look like**, for a
+non-technical user who never sees cron?
 
-Four structurally different answers, switchable from the floating bottom bar
-(or `?variant=A|B|C|D`), all editing **one shared recurrence model** so you
-compare pure UI.
+## Round 1 → Round 2
+
+Round 1 explored four radically different directions (sentence builder, grid,
+natural-language, …). The user picked the **Google-Calendar "Repeat every…"
+direction** and asked for refinements of just that, with full-name "Repeat on"
+day buttons, grounded in Notion / Apple Calendar.
+
+So the current set keeps **A** (the round-1 baseline) and adds **three refined
+takes** — all sharing the requested pattern:
+
+> `Repeat every [N] [unit ▾]` → when **week** is chosen, a `Repeat on` row of
+> **full-name day buttons** (Monday-first, multi-select).
+
+| Key | Name | Distinct execution | Reference |
+|----|------|--------------------|-----------|
+| **A** | Repeat-every (baseline) | round-1 version: unit *pills*, single-letter days, incl. min/hr | Google / Outlook |
+| **E** | Notion Calendar | minimal & inline; live summary as the headline "value"; unit dropdown; full-name day *pills* | Notion / Cron |
+| **F** | Apple Calendar | frequency-first, grouped sectioned rows; vertical full-name day **checklist**; monthly "Each / On the…" dual mode | Apple iOS / macOS |
+| **G** | Houston refined | preset chips + custom-deep; unit dropdown; full-name day *pills*; tuned to Houston's pill/chip system — **the production candidate** | — |
+
+Each sits in the same `Frame` (mirrors the real routine editor's "When it runs"
+card) showing a live **plain-English summary**, a **next-3-runs preview**, and
+an honest **cron-feasibility badge**.
 
 ## How to run
 
@@ -25,77 +44,43 @@ pnpm install      # only if this branch is a fresh checkout
 pnpm dev          # vite dev server on http://localhost:1420
 ```
 
-Open **http://localhost:1420/prototype.html**. No engine, no Tauri, no
-workspace needed — it bypasses the app's EngineGate. Flip variants with the
-bottom bar or ← / → arrow keys.
+Open **http://localhost:1420/prototype.html**. No engine / Tauri / workspace
+(bypasses EngineGate). Flip with the bottom bar or ← / → (also `?variant=A|E|F|G`).
 
-## The four variants
+## What the research said (Notion · Apple · Google)
 
-| Key | Name | Primary affordance | Reference app | File |
-|----|------|--------------------|---------------|------|
-| **A** | Repeat-every builder | stacked form: "every N [unit]" + conditional reveals | Google Calendar / Outlook | `variant-a.tsx` |
-| **B** | Fill-in-the-sentence | one editable sentence; tap underlined tokens → popovers | Todoist spirit / Houston-native | `variant-b.tsx` |
-| **C** | Grid-first | big cadence switch + tap a visual weekday strip / month grid; time as hero | Apple Calendar / Notion | `variant-c.tsx` |
-| **D** | Type-to-schedule | natural-language box → live parse → reflected into the model | Todoist 2026 | `variant-d.tsx` |
+- **Google / Notion**: interval + unit on **one row** ("Repeat every [1] [week ▾]");
+  weekly "Repeat on" reveals day toggles; monthly is a **dropdown** ("on day 15"
+  / "on the second Tuesday"); Ends = Never / On / After N. Notion's signature:
+  the Repeat field **reads back the rule as a summary sentence**.
+- **Apple**: **frequency-first**, grouped sectioned rows; "Every N [unit]" where
+  the unit follows the frequency; weekly is a **vertical full-name checklist**
+  (iOS) with check accessories; monthly is **"Each" (day grid) vs "On the…"
+  (ordinal weekday)**; End Repeat rows.
+- Week-start is locale-driven everywhere; we use **Monday-first** per the spec.
 
-Each variant sits inside the same `Frame` (`frame.tsx`) that mirrors the real
-routine editor's "When it runs" card and shows, for every variant:
+## Cron feasibility (honest, flagged in-UI)
 
-- the **plain-English summary** ("Runs every week on Mon, Wed and Fri at 9:00 AM"),
-- a **next-3-runs preview** (crontab.guru's trust pattern), and
-- an honest **feasibility badge** (green = fires exactly on today's scheduler,
-  amber = needs scheduler work) + the generated cron for reference.
+Routines persist as a **5-field cron string** — infinite + stateless.
 
-## Cross-cutting decisions (baked into all variants)
+- **✅ Native today:** every N min/hr/day · specific weekday(s) (`0 9 * * 1,3,5`)
+  · weekdays/weekends · fixed day-of-month · yearly month+day · time-of-day.
+- **⚠️ Needs scheduler work** (anchor+counter or RRULE): "every N weeks/months/
+  years" (N>1) · "the Nth weekday" (2nd Tuesday) · end conditions ("until
+  <date>", "after N runs"). Shown amber so the UI choice is decoupled from the
+  backend-scope choice.
 
-Pulled from cross-app research (Google, Apple, Notion, Todoist, Outlook,
-crontab.guru / GH Actions / Vercel):
+## Why no tests here
 
-- **Seven-pill `S M T W T F S` weekday toggle** — the one universal control.
-- **Multi-day weekly** (`Mon, Wed, Fri`) — the headline new capability. Maps to
-  a cron day-of-week list (`0 9 * * 1,3,5`), which the engine already supports
-  (`engine/houston-engine-core/src/routines/cron_compat.rs` shifts each item).
-- **Dual monthly choice**: "on the 15th" vs "on the 2nd Tuesday".
-- **Force monthly-by-date XOR weekly-by-day** so we never emit an ambiguous
-  cron with both day-of-month and day-of-week set.
-- **Time-of-day is first-class** (calendar apps bury it; a scheduler shouldn't).
-- **Live summary + next-runs preview** everywhere.
-
-## Feasibility — what cron can and can't do
-
-The backend stores routines as a **5-field cron string**, which is infinite and
-stateless. The prototype is honest about the gap (amber badge + `toCron`
-caveats in `cron.ts`):
-
-**✅ Cron-native today (ship with no backend change):**
-every N minutes/hours/days · specific weekday(s) · "every weekday"/"weekends" ·
-fixed day-of-month · specific month + day (yearly) · time-of-day.
-
-**⚠️ Needs scheduler work (an anchor date + counter, or an RRULE-style model):**
-- **"Every N weeks / months / years"** (N > 1) — cron `*/N` on weekday/dom does
-  *not* mean "every other week".
-- **"On the Nth weekday"** ("2nd Tuesday", "last Friday") — no POSIX cron operator.
-- **End conditions** — "until <date>" and "after N runs" — cron never stops.
-
-The variants still *show* these options (with the amber flag) so the choice of
-UI is decoupled from the choice of how far to extend the backend. Whichever
-variant wins, we decide separately whether to (a) restrict it to the cron-native
-subset for v1, or (b) add the sibling fields / RRULE model to `routines.json`.
-
-## Research sources
-
-Google Calendar Help · Apple Support (repeating events) · Notion (repeating DB
-templates) · Todoist Help (recurring dates + the 2026 visual builder) · Microsoft
-Graph (recurrencePattern + recurrenceRange) · crontab.guru / GitHub Actions /
-Vercel Cron docs. Full per-app breakdown captured in the PR description.
+Throwaway, about to be deleted. The **chosen** variant's logic gets real tests
+when promoted into `ui/routines/src/` (extend
+`ui/routines/tests/schedule-cron-utils.test.ts`).
 
 ## Verdict
 
 _(to be filled once the user picks)_
 
-- **Chosen variant:** …
-- **Steal from others:** …  (e.g. "A's form with B's summary sentence")
+- **Chosen variant:** …  (or a mix — e.g. "G's layout with F's monthly dual-mode")
 - **Backend scope for v1:** cron-native only / + every-N-weeks / + ordinal / + end-dates
-- **Next step:** rewrite the winner into `ui/routines/src/` with tests
-  (extend `ui/routines/tests/schedule-cron-utils.test.ts`), delete this folder
-  + `app/prototype.html`.
+- **Next step:** rewrite the winner into `ui/routines/src/` with tests, delete
+  this folder + `app/prototype.html`.
