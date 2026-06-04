@@ -64,6 +64,11 @@ export interface KanbanCardProps {
    *  Suppressed while renaming or during a multi-select so it doesn't
    *  collide with those interactions. */
   enableDrag?: boolean
+  /** Whether any card on the board is currently being dragged. While true the
+   *  card yields its own cursor so the column/board drag cursor (grab, or
+   *  not-allowed over a forbidden section) shows through instead of the
+   *  resting pointer. */
+  dragActive?: boolean
   /** Called when a drag of this card starts. */
   onDragStart?: () => void
   /** Called when a drag of this card ends (drop or cancel). */
@@ -89,6 +94,7 @@ export function KanbanCard({
   anySelected = false,
   onToggleSelect,
   enableDrag = false,
+  dragActive = false,
   onDragStart,
   onDragEnd,
 }: KanbanCardProps) {
@@ -176,11 +182,11 @@ export function KanbanCard({
           // Restrict transitions to the safe properties we actually
           // care about.
           "group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
-          // The card body shows the grab "hand" so the whole card reads as
-          // draggable. The title is the one exception: its own span overrides
-          // this with a pointer + underline (see below) so only the title
-          // reads as the click affordance.
-          canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          // At rest the whole card reads as clickable: a plain pointer, never
+          // the grab "hand". While a drag is in flight the card yields its
+          // cursor (inherits the column/board's grab, or not-allowed over a
+          // forbidden section) so the drag cursor shows through.
+          dragActive ? "" : "cursor-pointer",
           selected || highlighted ? "bg-accent shadow-md" : "bg-background",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
@@ -314,13 +320,13 @@ export function KanbanCard({
           />
         ) : (
           <p className="text-[13px] font-medium text-foreground line-clamp-2">
-            {/* The title is the explicit click affordance: pointer cursor +
-                underline on hover, scoped to the text glyphs. The click still
-                bubbles to the card's onSelect, and `stopPropagation` keeps a
-                title click from also triggering it twice. */}
+            {/* The title click selects the card (same as the body). It shows a
+                pointer at rest and yields its cursor during a drag so the drag
+                cursor shows through. `stopPropagation` keeps a title click
+                from triggering the body's onSelect twice. */}
             <span
               onClick={(e) => { e.stopPropagation(); onSelect() }}
-              className="cursor-pointer hover:underline"
+              className={dragActive ? "" : "cursor-pointer"}
             >
               {item.title}
             </span>

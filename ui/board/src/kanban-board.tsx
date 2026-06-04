@@ -1,8 +1,9 @@
 import { useCallback, useMemo, useState } from "react"
+import { cn } from "@houston-ai/core"
 import { KanbanColumn } from "./kanban-column"
 import type { KanbanCardLabels } from "./kanban-card"
 import type { KanbanItem, KanbanColumn as KanbanColumnType } from "./types"
-import { defaultCanDropItem } from "./dnd"
+import { columnDragRole, defaultCanDropItem } from "./dnd"
 
 export interface KanbanBoardProps {
   columns: KanbanColumnType[]
@@ -101,12 +102,31 @@ export function KanbanBoard({
   }
 
   return (
-    <div className="flex-1 flex gap-3 p-3 min-h-0 overflow-hidden">
+    <div
+      className={cn(
+        "flex-1 flex gap-3 p-3 min-h-0 overflow-hidden",
+        // Best-effort grab "hand" for the whole drag. The browser owns the
+        // cursor during a native HTML5 drag (move vs not-allowed, by
+        // drop-effect) and ignores CSS on Chromium; WebKit honours this, so we
+        // set it where it lands. The forbidden (running) column overrides it
+        // back to not-allowed for its own subtree.
+        draggingItem != null && "cursor-grabbing",
+      )}
+    >
       {columnData.map((col) => {
-        const isDropTarget =
-          dndEnabled &&
-          draggingItem != null &&
-          resolveCanDrop(draggingItem, col.id)
+        // `idle | origin | drop-target | forbidden` — see `columnDragRole`.
+        // Origin (the card's current section) accepts the drag-over so its
+        // cursor reads as a move, even though the drop is a no-op.
+        const role =
+          dndEnabled && draggingItem != null
+            ? columnDragRole(
+                draggingItem,
+                col,
+                resolveCanDrop(draggingItem, col.id),
+              )
+            : "idle"
+        const isDropTarget = role === "drop-target"
+        const allowDragOver = isDropTarget || role === "origin"
         return (
           <KanbanColumn
             key={col.id}
@@ -136,6 +156,8 @@ export function KanbanBoard({
             onToggleSelect={onToggleSelect}
             dndEnabled={dndEnabled}
             isDropTarget={isDropTarget}
+            allowDragOver={allowDragOver}
+            dragActive={draggingItem != null}
             onCardDragStart={setDraggingItem}
             onCardDragEnd={handleCardDragEnd}
             onCardDrop={() => {

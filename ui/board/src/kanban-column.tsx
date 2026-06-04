@@ -37,6 +37,14 @@ export interface KanbanColumnProps {
    *  the column shows a drop affordance and handles the drop; when false it
    *  ignores the drag entirely. */
   isDropTarget?: boolean
+  /** Whether this column should accept the drag-over without being a real drop
+   *  target (true for `isDropTarget` columns AND the dragged card's own
+   *  section). When true but not a drop target, the cursor reads as a move
+   *  rather than the browser's forbidden marker, and the drop is a no-op. */
+  allowDragOver?: boolean
+  /** Whether any card on the board is currently being dragged. Drives the
+   *  cursor: a forbidden column (e.g. running) shows `not-allowed`. */
+  dragActive?: boolean
   /** A card in this column started being dragged. */
   onCardDragStart?: (item: KanbanItem) => void
   /** The active drag ended (drop or cancel). */
@@ -69,14 +77,21 @@ export function KanbanColumn({
   onToggleSelect,
   dndEnabled,
   isDropTarget = false,
+  allowDragOver = isDropTarget,
+  dragActive = false,
   onCardDragStart,
   onCardDragEnd,
   onCardDrop,
 }: KanbanColumnProps) {
   const anySelected = (selectedIds?.size ?? 0) > 0
-  const { isOver, dragHandlers } = useColumnDropTarget(isDropTarget, () =>
-    onCardDrop?.(),
+  const { isOver, dragHandlers } = useColumnDropTarget(
+    isDropTarget,
+    () => onCardDrop?.(),
+    allowDragOver,
   )
+  // A drag is in flight but this column refuses it (e.g. the running section):
+  // keep the browser's forbidden cursor and reinforce it for the CSS layer.
+  const isForbidden = dragActive && !allowDragOver
 
   return (
     <div
@@ -89,6 +104,10 @@ export function KanbanColumn({
           (isOver
             ? "ring-2 ring-inset ring-primary/40 bg-accent"
             : "ring-1 ring-inset ring-primary/15"),
+        // The forbidden section keeps the not-allowed cursor over its whole
+        // subtree (overriding the board's best-effort grab). Drop targets and
+        // the origin section inherit the board's grab cursor.
+        isForbidden && "cursor-not-allowed",
       )}
     >
       {/* Column header */}
@@ -145,6 +164,7 @@ export function KanbanColumn({
                     onToggleSelect ? () => onToggleSelect(item) : undefined
                   }
                   enableDrag={dndEnabled}
+                  dragActive={dragActive}
                   onDragStart={
                     onCardDragStart ? () => onCardDragStart(item) : undefined
                   }

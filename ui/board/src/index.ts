@@ -19,7 +19,8 @@ export { AIBoard } from "./ai-board"
 export type { AIBoardProps, NewPanelOpener, NewPanelOptions } from "./ai-board"
 export { ConversationList } from "./conversation-list"
 export type { ConversationListProps } from "./conversation-list"
-export { BOARD_CARD_DRAG_TYPE, defaultCanDropItem } from "./dnd"
+export { BOARD_CARD_DRAG_TYPE, columnDragRole, defaultCanDropItem } from "./dnd"
+export type { ColumnDragRole } from "./dnd"
 export type {
   KanbanItem,
   KanbanColumn as KanbanColumnConfig,

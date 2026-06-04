@@ -18,3 +18,30 @@ export function defaultCanDropItem(
 ): boolean {
   return !column.statuses.includes(item.status)
 }
+
+/**
+ * Role a column plays for the in-flight drag. Drives its drop affordance and
+ * cursor:
+ *  - `idle` — nothing is being dragged.
+ *  - `origin` — the dragged card's current section. Dropping here is a no-op,
+ *    but the column still accepts the drag-over so the cursor reads as a move
+ *    ("the hand"), not a forbidden marker. No drop highlight.
+ *  - `drop-target` — a section that accepts the move (highlights + moves on
+ *    drop).
+ *  - `forbidden` — a section that rejects the drop (e.g. running) → the cursor
+ *    stays `not-allowed`.
+ *
+ * `canDrop` is the already-resolved eligibility for THIS column (from the
+ * board's `canDropItem` override or `defaultCanDropItem`).
+ */
+export type ColumnDragRole = "idle" | "origin" | "drop-target" | "forbidden"
+
+export function columnDragRole(
+  draggingItem: KanbanItem | null,
+  column: KanbanColumn,
+  canDrop: boolean,
+): ColumnDragRole {
+  if (!draggingItem) return "idle"
+  if (column.statuses.includes(draggingItem.status)) return "origin"
+  return canDrop ? "drop-target" : "forbidden"
+}
