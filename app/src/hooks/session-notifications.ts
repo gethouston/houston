@@ -2,15 +2,18 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { logger } from "../lib/logger";
 import { isMac } from "../lib/platform";
-import { shouldArmNotificationNav, shouldNavigateOnAppActivation } from "../lib/notification-nav";
+import {
+  activityIdForSessionKey,
+  shouldArmNotificationNav,
+  shouldNavigateOnAppActivation,
+  type NotificationNav,
+} from "../lib/notification-nav";
 import { osShowSessionNotification } from "../lib/os-bridge";
+import { queryClient } from "../lib/query-client";
+import { queryKeys } from "../lib/query-keys";
+import { tauriActivity } from "../lib/tauri";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
-
-interface NotificationNav {
-  agentId: string;
-  activityId: string;
-}
 
 let pendingNotificationNav: NotificationNav | null = null;
 let pendingNavTimer: ReturnType<typeof setTimeout> | null = null;
@@ -19,9 +22,35 @@ export function describePendingNotificationNav() {
   return JSON.stringify(pendingNotificationNav);
 }
 
-export function consumePendingNav() {
+/**
+ * Map the armed session key to the board activity id to open, fetching the
+ * finished agent's activities fresh. A routine's chat is created right *after*
+ * its session completes (#401), so the cache can be a beat behind at click
+ * time; `fetchQuery` re-reads through the same key the board uses, so it both
+ * resolves the routine chat and warms the cache for the agent we switch to.
+ */
+async function resolveActivityId(
+  agentPath: string,
+  sessionKey: string,
+): Promise<string | null> {
+  try {
+    const activities = await queryClient.fetchQuery({
+      queryKey: queryKeys.activity(agentPath),
+      queryFn: () => tauriActivity.list(agentPath),
+    });
+    return activityIdForSessionKey(activities, sessionKey);
+  } catch (e) {
+    // Log-only (no toast): nav is best-effort and this same path fires on a
+    // bare macOS refocus, where a toast would be noise. A standard mission key
+    // still encodes its id, so it can navigate even if the list fetch failed.
+    logger.error(`[notification] failed to list activities for nav (${sessionKey}): ${e}`);
+    return activityIdForSessionKey([], sessionKey);
+  }
+}
+
+export async function consumePendingNav() {
   if (!pendingNotificationNav) return;
-  const { agentId, activityId } = pendingNotificationNav;
+  const { agentId, sessionKey } = pendingNotificationNav;
   pendingNotificationNav = null;
   if (pendingNavTimer) {
     clearTimeout(pendingNavTimer);
@@ -29,14 +58,20 @@ export function consumePendingNav() {
   }
 
   const agents = useAgentStore.getState().agents;
-  logger.debug(`[notification] consuming nav: agentId=${agentId} activityId=${activityId} agents=[${agents.map(a => a.id).join(",")}]`);
+  logger.debug(`[notification] consuming nav: agentId=${agentId} sessionKey=${sessionKey} agents=[${agents.map(a => a.id).join(",")}]`);
   const agent = agents.find((a) => a.id === agentId);
   if (!agent) {
     logger.debug("[notification] agent not found, cannot navigate");
     return;
   }
 
-  logger.debug(`[notification] navigating to agent=${agent.name} activity=${activityId}`);
+  const activityId = await resolveActivityId(agent.folderPath, sessionKey);
+  if (!activityId) {
+    logger.debug(`[notification] no activity matches sessionKey=${sessionKey}, cannot navigate`);
+    return;
+  }
+
+  logger.debug(`[notification] navigating to agent=${agent.name} activity=${activityId} (sessionKey=${sessionKey})`);
   useUIStore.getState().setViewMode("activity");
   useAgentStore.getState().setCurrent(agent);
   useUIStore.getState().setActivityPanelId(activityId, { forceOpen: true });
@@ -87,7 +122,7 @@ export async function sendSessionNotification(
     pendingNavTimer = setTimeout(() => {
       pendingNotificationNav = null;
     }, 5 * 60 * 1000);
-    logger.debug(`[notification] pending nav set: agentId=${nav.agentId} activityId=${nav.activityId}`);
+    logger.debug(`[notification] pending nav set: agentId=${nav.agentId} sessionKey=${nav.sessionKey}`);
   } catch (e) {
     logger.error(`[notification] Failed: ${e}`);
   }
@@ -104,7 +139,9 @@ export function listenForNotificationFocus(): Promise<() => void> | undefined {
     return getCurrentWindow().onFocusChanged(({ payload: focused }) => {
       if (!focused || !pendingNotificationNav) return;
       logger.debug(`[notification] onFocusChanged fired: focused=${focused} pendingNav=${JSON.stringify(pendingNotificationNav)}`);
-      consumePendingNav();
+      consumePendingNav().catch((e) => {
+        logger.error(`[notification] consumePendingNav (focus) failed: ${e}`);
+      });
     });
   } catch (e) {
     logger.debug(`[notification] Tauri focus listener unavailable: ${e}`);
