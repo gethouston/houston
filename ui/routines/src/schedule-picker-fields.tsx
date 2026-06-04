@@ -1,20 +1,17 @@
 /**
- * Picker fields used by ScheduleBuilder — time, day-of-week, day-of-month,
- * and the friendly "every N minutes/hours/days" interval picker.
+ * Picker fields used by ScheduleBuilder — time, day-of-week, day-of-month, and
+ * the "Repeat on" weekday multi-select. The "Repeat every N [unit]" control
+ * lives in schedule-interval-picker.tsx and reuses inputClass/labelClass here.
  */
 import { cn } from "@houston-ai/core"
-import type { IntervalUnit } from "./schedule-interval-utils"
-import { INTERVAL_UNIT_LABELS } from "./schedule-interval-utils"
 
-const INTERVAL_UNITS: IntervalUnit[] = ["minutes", "hours", "days"]
-
-const inputClass = cn(
+export const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",
   "text-sm text-foreground",
   "focus:outline-none focus:shadow-sm transition-shadow",
 )
 
-const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
+export const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
 
 const DAYS_OF_WEEK = [
   { value: 0, label: "Sun" },
@@ -98,60 +95,55 @@ export function DayOfMonthPicker({
   )
 }
 
+const WEEKDAYS_MON_FIRST = [
+  { value: 1, label: "Monday" },
+  { value: 2, label: "Tuesday" },
+  { value: 3, label: "Wednesday" },
+  { value: 4, label: "Thursday" },
+  { value: 5, label: "Friday" },
+  { value: 6, label: "Saturday" },
+  { value: 0, label: "Sunday" },
+]
+
 /**
- * Friendly "Every [N] [minutes/hours/days]" picker — the non-technical
- * replacement for typing a raw cron expression. The count is a free-text string
- * so it can be cleared completely while typing; the builder validates it and
- * turns the interval into cron.
+ * "Repeat on" — full-name weekday multi-select for the custom weekly schedule.
+ * One or more days; Monday-first. (Distinct from DayOfWeekPicker, which is the
+ * single-day Sunday-first picker used by the Weekly preset.)
  */
-export function IntervalPicker({
-  every,
-  unit,
-  invalid,
-  onEveryChange,
-  onUnitChange,
+export function WeekdaysPicker({
+  value,
+  onChange,
 }: {
-  every: string
-  unit: IntervalUnit
-  invalid?: boolean
-  onEveryChange: (every: string) => void
-  onUnitChange: (unit: IntervalUnit) => void
+  value: number[]
+  onChange: (days: number[]) => void
 }) {
+  const toggle = (d: number) =>
+    onChange(value.includes(d) ? value.filter((x) => x !== d) : [...value, d].sort((a, b) => a - b))
   return (
     <div>
-      <label className={labelClass}>Run every</label>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          inputMode="numeric"
-          value={every}
-          // Keep digits only so the field stays a plain whole number; an empty
-          // string is allowed (and flagged invalid) so it can be fully cleared.
-          onChange={(e) => onEveryChange(e.target.value.replace(/[^\d]/g, ""))}
-          placeholder="1"
-          className={cn(
-            inputClass,
-            "w-20",
-            invalid && "border-red-500/50",
-          )}
-        />
-        <div className="flex gap-1">
-          {INTERVAL_UNITS.map((u) => (
+      <label className={labelClass}>Repeat on</label>
+      <div className="flex flex-wrap gap-1.5">
+        {WEEKDAYS_MON_FIRST.map((day) => {
+          const on = value.includes(day.value)
+          return (
             <button
-              key={u}
-              onClick={() => onUnitChange(u)}
+              key={day.value}
+              type="button"
+              aria-pressed={on}
+              onClick={() => toggle(day.value)}
               className={cn(
-                "h-8 px-3 rounded-lg text-xs font-medium transition-colors capitalize",
-                unit === u
+                "h-8 px-3 rounded-full text-xs font-medium transition-colors",
+                on
                   ? "bg-primary text-primary-foreground"
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {INTERVAL_UNIT_LABELS[u]}
+              {day.label}
             </button>
-          ))}
-        </div>
+          )
+        })}
       </div>
     </div>
   )
 }
+

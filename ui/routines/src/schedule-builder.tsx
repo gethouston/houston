@@ -1,7 +1,8 @@
 /**
  * ScheduleBuilder — Visual schedule builder with preset buttons.
  * Presets (daily, weekly, …) cover the common cases; the "Custom" tab offers a
- * friendly "every N minutes/hours/days" interval picker for non-technical users.
+ * "Repeat every N [minutes/hours/days/weeks/months]" picker — choosing weeks
+ * reveals a "Repeat on" day-of-week multi-select, months a day-of-month field.
  * There is no raw-cron input: the picker is the only way to build a custom
  * schedule, and the generated cron is shown read-only for reference.
  *
@@ -14,8 +15,9 @@ import {
   TimePicker,
   DayOfWeekPicker,
   DayOfMonthPicker,
-  IntervalPicker,
+  WeekdaysPicker,
 } from "./schedule-picker-fields"
+import { IntervalPicker } from "./schedule-interval-picker"
 import { useScheduleBuilder } from "./use-schedule-builder"
 
 export interface ScheduleBuilderProps {
@@ -42,6 +44,8 @@ export function ScheduleBuilder({
     setIntervalEvery,
     intervalUnit,
     setIntervalUnit,
+    intervalWeekdays,
+    setIntervalWeekdays,
     everyValid,
     isCustom,
     showTime,
@@ -103,7 +107,21 @@ export function ScheduleBuilder({
               onEveryChange={setIntervalEvery}
               onUnitChange={setIntervalUnit}
             />
-            {intervalUnit === "days" && (
+            {intervalUnit === "weeks" && (
+              <WeekdaysPicker
+                value={intervalWeekdays}
+                onChange={setIntervalWeekdays}
+              />
+            )}
+            {intervalUnit === "months" && (
+              <DayOfMonthPicker
+                value={options.dayOfMonth}
+                onChange={(dayOfMonth) => updateOption({ dayOfMonth })}
+              />
+            )}
+            {(intervalUnit === "days" ||
+              intervalUnit === "weeks" ||
+              intervalUnit === "months") && (
               <TimePicker
                 value={options.time}
                 onChange={(time) => updateOption({ time })}

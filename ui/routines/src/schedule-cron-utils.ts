@@ -3,6 +3,7 @@
  * Converts preset + options into cron expressions and generates summaries.
  */
 import type { SchedulePreset } from "./types"
+import { parseTime, formatTime, ordinal, joinList } from "./schedule-format"
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 
@@ -10,21 +11,6 @@ export interface ScheduleOptions {
   time: string       // "09:00"
   dayOfWeek: number  // 0-6
   dayOfMonth: number // 1-31
-}
-
-/** Parse "HH:MM" into { hour, minute } */
-export function parseTime(time: string): { hour: number; minute: number } {
-  const [h, m] = time.split(":").map(Number)
-  return { hour: h ?? 9, minute: m ?? 0 }
-}
-
-/** Format hour:minute into human-readable time */
-function formatTime(time: string): string {
-  const { hour, minute } = parseTime(time)
-  const ampm = hour >= 12 ? "PM" : "AM"
-  const h12 = hour === 0 ? 12 : hour > 12 ? hour - 12 : hour
-  const mm = String(minute).padStart(2, "0")
-  return `${h12}:${mm} ${ampm}`
 }
 
 /** Build a cron expression from preset and options */
@@ -75,12 +61,6 @@ export function presetSummary(
     case "custom":
       return "Custom cron schedule"
   }
-}
-
-function ordinal(n: number): string {
-  const s = ["th", "st", "nd", "rd"]
-  const v = n % 100
-  return n + (s[(v - 20) % 10] || s[v] || s[0])
 }
 
 /**
@@ -177,6 +157,27 @@ export function cronSummary(cron: string): string {
       const n = Number(domStep[1])
       const t = formatTime(`${hour}:${min}`)
       return n === 1 ? `Runs every day at ${t}` : `Runs every ${n} days at ${t}`
+    }
+
+    // Weekly on specific days: "M H * * d,d,d".
+    if (
+      dom === "*" && month === "*" &&
+      /^\d+$/.test(min) && /^\d+$/.test(hour) && /^[0-6](,[0-6])*$/.test(dow)
+    ) {
+      const t = formatTime(`${hour}:${min}`)
+      const days = dow
+        .split(",")
+        .map(Number)
+        .sort((a, b) => a - b)
+        .map((d) => DAY_NAMES[d].slice(0, 3))
+      return `Runs every week on ${joinList(days)} at ${t}`
+    }
+
+    // Monthly on a day-of-month, every N months: "M H D */N *".
+    const monthStep = month.match(/^\*\/(\d+)$/)
+    if (dow === "*" && monthStep && /^\d+$/.test(min) && /^\d+$/.test(hour) && /^\d+$/.test(dom)) {
+      const t = formatTime(`${hour}:${min}`)
+      return `Runs on the ${ordinal(Number(dom))} of every ${Number(monthStep[1])} months at ${t}`
     }
   }
 

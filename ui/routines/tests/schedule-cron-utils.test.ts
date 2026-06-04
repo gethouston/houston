@@ -100,6 +100,17 @@ describe("cronSummary", () => {
     assert.equal(cronSummary("30 8 */2 * *"), "Runs every 2 days at 8:30 AM")
     assert.equal(cronSummary("0 14 */3 * *"), "Runs every 3 days at 2:00 PM")
   })
+  it("describes weekly-on-days and every-N-month schedules", () => {
+    assert.equal(
+      cronSummary("0 9 * * 1,3,5"),
+      "Runs every week on Mon, Wed and Fri at 9:00 AM",
+    )
+    assert.equal(cronSummary("0 9 * * 6,0"), "Runs every week on Sun and Sat at 9:00 AM")
+    assert.equal(
+      cronSummary("30 8 1 */2 *"),
+      "Runs on the 1st of every 2 months at 8:30 AM",
+    )
+  })
   it("falls back gracefully for irregular crons and empty input", () => {
     assert.equal(cronSummary("0 9 1-3 * *"), "Custom schedule")
     assert.equal(cronSummary(""), "No schedule set")
@@ -119,6 +130,16 @@ describe("intervalToCron", () => {
     assert.equal(intervalToCron({ every: 1, unit: "days" }, "08:30"), "30 8 * * *")
     assert.equal(intervalToCron({ every: 3, unit: "days" }, "08:30"), "30 8 */3 * *")
   })
+  it("builds weekly-on-days crons from the selected weekdays", () => {
+    assert.equal(intervalToCron({ every: 1, unit: "weeks", weekdays: [1, 3, 5] }, "09:00"), "0 9 * * 1,3,5")
+    assert.equal(intervalToCron({ every: 1, unit: "weeks", weekdays: [0] }, "08:30"), "30 8 * * 0")
+    // Unsorted input is normalized.
+    assert.equal(intervalToCron({ every: 1, unit: "weeks", weekdays: [5, 1] }, "09:00"), "0 9 * * 1,5")
+  })
+  it("builds every-N-month crons on a day of month", () => {
+    assert.equal(intervalToCron({ every: 1, unit: "months", dayOfMonth: 15 }, "09:00"), "0 9 15 * *")
+    assert.equal(intervalToCron({ every: 2, unit: "months", dayOfMonth: 1 }, "07:00"), "0 7 1 */2 *")
+  })
   it("clamps the count to at least 1", () => {
     assert.equal(intervalToCron({ every: 0, unit: "minutes" }, "09:00"), "* * * * *")
   })
@@ -133,10 +154,15 @@ describe("cronToInterval", () => {
     assert.deepEqual(cronToInterval("30 8 * * *"), { every: 1, unit: "days" })
     assert.deepEqual(cronToInterval("30 8 */3 * *"), { every: 3, unit: "days" })
   })
+  it("parses weekly-on-days and monthly crons", () => {
+    assert.deepEqual(cronToInterval("0 9 * * 1,3,5"), { every: 1, unit: "weeks", weekdays: [1, 3, 5] })
+    assert.deepEqual(cronToInterval("30 8 * * 0"), { every: 1, unit: "weeks", weekdays: [0] })
+    assert.deepEqual(cronToInterval("0 9 15 * *"), { every: 1, unit: "months", dayOfMonth: 15 })
+    assert.deepEqual(cronToInterval("0 7 1 */2 *"), { every: 2, unit: "months", dayOfMonth: 1 })
+  })
   it("returns null for crons the picker can't represent", () => {
-    assert.equal(cronToInterval("0 9 * * 1-5"), null) // weekdays
-    assert.equal(cronToInterval("0 9 * * 3"), null)   // specific weekday
-    assert.equal(cronToInterval("0 9 15 * *"), null)  // specific day of month
+    assert.equal(cronToInterval("0 9 * * 1-5"), null) // weekday range, not a list
+    assert.equal(cronToInterval("0 9 1-3 * *"), null) // day-of-month range
     assert.equal(cronToInterval("not a cron"), null)
   })
   it("round-trips through intervalToCron", () => {
@@ -145,6 +171,9 @@ describe("cronToInterval", () => {
       { every: 15, unit: "minutes" },
       { every: 2, unit: "hours" },
       { every: 4, unit: "days" },
+      { every: 1, unit: "weeks", weekdays: [1, 3, 5] },
+      { every: 1, unit: "months", dayOfMonth: 15 },
+      { every: 3, unit: "months", dayOfMonth: 1 },
     ]
     for (const interval of cases) {
       const cron = intervalToCron(interval, "07:45")
