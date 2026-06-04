@@ -1,6 +1,6 @@
 [package]
 name = "houston-events"
-version = "0.4.17"
+version = "0.4.18"
 edition = "2021"
 description = "Core event system for AI agent desktop apps — unified input queue"
 license = "MIT"
