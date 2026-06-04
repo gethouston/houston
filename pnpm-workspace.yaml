@@ -4,3 +4,11 @@ packages:
   - "mobile"
   - "houston-relay"
   - "examples/*"
+
+# Approve native build scripts (pnpm 10 blocks dependency postinstall by
+# default). @sentry/cli's postinstall downloads the platform `sentry-cli`
+# binary that `app/scripts/sentry-inject.mjs` + the release.yml Sentry upload
+# steps invoke. Lives here, NOT in package.json's `pnpm` field — recent pnpm no
+# longer reads that field ("The pnpm field in package.json is no longer read").
+onlyBuiltDependencies:
+  - "@sentry/cli"
