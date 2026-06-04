@@ -141,6 +141,8 @@ interface AgentChatPanelProps {
   afterMessages: AIBoardProps["afterMessages"];
   /** Custom Composio inline-link rendering. */
   renderLink: AIBoardProps["renderLink"];
+  /** Appends the Composio "waiting to connect" footer at the message end. */
+  transformContent: AIBoardProps["transformContent"];
   /** Hidden picker dialog mounted in the consumer. */
   pickerDialog: ReactNode;
   /** Effective provider/model for sending. */
