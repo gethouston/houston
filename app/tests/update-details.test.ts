@@ -1,6 +1,9 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { normalizeUpdateNotes } from "../src/lib/update-details.ts";
+import {
+  normalizeUpdateNotes,
+  selectUpdateNotes,
+} from "../src/lib/update-details.ts";
 
 describe("normalizeUpdateNotes", () => {
   it("returns null for empty, whitespace, null, and undefined bodies", () => {
@@ -30,5 +33,74 @@ describe("normalizeUpdateNotes", () => {
       normalizeUpdateNotes(body),
       "## Houston 0.4.16\n\n- Archive missions\n- Manage apps",
     );
+  });
+});
+
+describe("selectUpdateNotes", () => {
+  // Build a body in the shape the release pipeline produces: English base
+  // followed by the trailing i18n comment carrying the translations.
+  const withI18n = (base: string, translations: Record<string, string>) =>
+    `${base}\n\n<!--houston-i18n:${JSON.stringify(translations)}-->\n`;
+
+  it("returns the English base unchanged when there is no i18n marker", () => {
+    strictEqual(
+      selectUpdateNotes("## Houston 1.0\n\n- Thing", "es"),
+      "## Houston 1.0\n\n- Thing",
+    );
+  });
+
+  it("returns null for empty or generic bodies regardless of locale", () => {
+    strictEqual(selectUpdateNotes(null, "es"), null);
+    strictEqual(selectUpdateNotes(undefined, "pt"), null);
+    strictEqual(selectUpdateNotes("", "es"), null);
+    strictEqual(
+      selectUpdateNotes("See the assets to download and install this version.", "pt"),
+      null,
+    );
+  });
+
+  it("picks the translation for the active locale", () => {
+    const body = withI18n("English notes", {
+      es: "Notas en espanol",
+      pt: "Notas em portugues",
+    });
+    strictEqual(selectUpdateNotes(body, "es"), "Notas en espanol");
+    strictEqual(selectUpdateNotes(body, "pt"), "Notas em portugues");
+  });
+
+  it("shows English for en and for locales without a translation", () => {
+    const body = withI18n("English notes", { es: "Notas" });
+    strictEqual(selectUpdateNotes(body, "en"), "English notes");
+    strictEqual(selectUpdateNotes(body, "pt"), "English notes"); // no pt translation
+    strictEqual(selectUpdateNotes(body, "fr"), "English notes"); // unsupported
+    strictEqual(selectUpdateNotes(body, null), "English notes");
+  });
+
+  it("matches region variants to their base locale (pt-BR -> pt)", () => {
+    const body = withI18n("English", { pt: "Portugues" });
+    strictEqual(selectUpdateNotes(body, "pt-BR"), "Portugues");
+    strictEqual(selectUpdateNotes(body, "es-419"), "English"); // no es here
+  });
+
+  it("strips the i18n comment so the marker never leaks into the English body", () => {
+    strictEqual(selectUpdateNotes(withI18n("Clean English", { es: "x" }), "en"), "Clean English");
+  });
+
+  it("normalizes the chosen translation (CRLF + trim)", () => {
+    const body = `English\n\n<!--houston-i18n:${JSON.stringify({
+      es: "\r\n## Notas\r\n\r\n- Uno\r\n",
+    })}-->\n`;
+    strictEqual(selectUpdateNotes(body, "es"), "## Notas\n\n- Uno");
+  });
+
+  it("falls back to the English base when the i18n payload is malformed", () => {
+    strictEqual(selectUpdateNotes("English\n<!--houston-i18n:{not json-->", "es"), "English");
+    strictEqual(selectUpdateNotes('English\n<!--houston-i18n:"a string"-->', "es"), "English");
+    strictEqual(selectUpdateNotes("English\n<!--houston-i18n:[1,2]-->", "es"), "English");
+  });
+
+  it("treats a marker with no terminator as plain notes", () => {
+    const body = 'English body <!--houston-i18n:{"es":"x"}';
+    strictEqual(selectUpdateNotes(body, "es"), body);
   });
 });

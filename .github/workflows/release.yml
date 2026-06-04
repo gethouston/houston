@@ -149,6 +149,72 @@ jobs:
           cat release-notes.md
           echo "----- end -----"
 
+      # Build the notes payload the in-app updater embeds in latest.json. The
+      # Tauri updater carries exactly ONE notes string (latest.json -> notes ->
+      # update.body), so the non-English translations of a release's notes ride
+      # inside it as a trailing HTML comment that every renderer which does NOT
+      # understand it (Streamdown, GitHub, older Houston builds) silently drops,
+      # leaving the English body. New builds strip the comment and swap in the
+      # user's language (see app/src/lib/update-details.ts::selectUpdateNotes).
+      #
+      # The English body is release-notes.md (above). Optional translations
+      # come from sibling files written by whoever drives the release:
+      #   .github/release-notes/<version>.es.md   (Latin-American Spanish)
+      #   .github/release-notes/<version>.pt.md   (Brazilian Portuguese)
+      # A translation only attaches when its authored English source exists, so
+      # the auto-generated changelog (English-only) ships plain, exactly as before.
+      - name: Build localized updater notes
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          DIR=".github/release-notes"
+          EN="$DIR/${VERSION}.md"
+          ES="$DIR/${VERSION}.es.md"
+          PT="$DIR/${VERSION}.pt.md"
+
+          # Start from the resolved English notes (authored OR auto-generated).
+          cp release-notes.md update-notes.txt
+
+          # A translation with no authored English source would describe
+          # different content than the auto-generated changelog, so fail loudly
+          # rather than ship a mismatch.
+          if [ ! -f "$EN" ]; then
+            if [ -f "$ES" ] || [ -f "$PT" ]; then
+              echo "::error::Found a translated release-notes file but no English $EN. Add the English notes, or remove the translations."
+              exit 1
+            fi
+            echo "No authored English notes; updater notes stay English-only."
+            exit 0
+          fi
+
+          # The i18n comment terminates on the first '-->'. A notes file that
+          # contains one would truncate the JSON, so reject it up front.
+          for f in "$EN" "$ES" "$PT"; do
+            if [ -f "$f" ] && grep -q -- '-->' "$f"; then
+              echo "::error::$f contains '-->', which collides with the i18n marker terminator. Remove it."
+              exit 1
+            fi
+          done
+
+          # Compact JSON of the translations that exist. jq handles all string
+          # escaping (quotes, newlines, unicode), so the comment stays one safe line.
+          ARGS=()
+          FILTER='{}'
+          if [ -f "$ES" ]; then ARGS+=(--rawfile es "$ES"); FILTER="$FILTER + {es: \$es}"; fi
+          if [ -f "$PT" ]; then ARGS+=(--rawfile pt "$PT"); FILTER="$FILTER + {pt: \$pt}"; fi
+
+          if [ ${#ARGS[@]} -eq 0 ]; then
+            echo "Authored English notes only; no translations to embed."
+            exit 0
+          fi
+
+          I18N=$(jq -nc "${ARGS[@]}" "$FILTER")
+          printf '\n\n<!--houston-i18n:%s-->\n' "$I18N" >> update-notes.txt
+
+          echo "----- update-notes.txt -----"
+          cat update-notes.txt
+          echo "----- end -----"
+
       - name: Create empty draft release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -169,6 +235,18 @@ jobs:
         with:
           name: release-notes
           path: release-notes.md
+          retention-days: 1
+
+      # The localized notes payload (English body + the i18n comment) goes to
+      # build-macos, which embeds it verbatim as latest.json's `notes`. Kept a
+      # separate artifact from release-notes.md so the GitHub release body and
+      # the Slack preview stay clean English while the updater carries all three
+      # languages.
+      - name: Upload updater-notes artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: update-notes
+          path: update-notes.txt
           retention-days: 1
 
   build-macos:
@@ -781,14 +859,15 @@ jobs:
             > checksums-sha256.txt
           cat checksums-sha256.txt
 
-      # release-notes.md is built once in the `prep` job and shared via
-      # workflow artifact. We need it here because the updater-manifest
-      # step embeds the notes verbatim into latest.json so existing users
-      # see the new-version description on the auto-update prompt.
-      - name: Download release-notes.md artifact
+      # update-notes.txt is built once in the `prep` job and shared via
+      # workflow artifact. We need it here because the updater-manifest step
+      # embeds it verbatim into latest.json's `notes` so existing users see the
+      # new-version description on the auto-update prompt, in their own language
+      # (English body + the trailing houston-i18n comment carrying es/pt).
+      - name: Download updater-notes artifact
         uses: actions/download-artifact@v8
         with:
-          name: release-notes
+          name: update-notes
 
       - name: Generate updater manifest
         run: |
@@ -810,7 +889,7 @@ jobs:
             --arg sig "$SIG" \
             --arg url "$URL" \
             --arg date "$(date -u +%Y-%m-%dT%H:%M:%S.000Z)" \
-            --rawfile notes release-notes.md \
+            --rawfile notes update-notes.txt \
             '{
               version: $v,
               notes: $notes,

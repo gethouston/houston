@@ -17,7 +17,8 @@ import { MessageResponse } from "@houston-ai/chat";
 // manual visual check. The app's `node --test` harness strips TS types but does
 // NOT transform JSX, so a React component cannot be rendered there; only pure
 // `.ts` logic is unit-testable. The input contract (what reaches this component)
-// is guarded by the `normalizeUpdateNotes` tests in update-details.test.ts.
+// is guarded by the `selectUpdateNotes` / `normalizeUpdateNotes` tests in
+// update-details.test.ts.
 const COMPACT = [
   "text-xs leading-relaxed text-muted-foreground",
   "[&_:is(h1,h2,h3,h4,h5,h6)]:mb-1 [&_:is(h1,h2,h3,h4,h5,h6)]:mt-2",
