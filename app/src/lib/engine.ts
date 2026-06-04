@@ -183,3 +183,48 @@ listen<{ baseUrl: string; token: string }>(
 ).catch(() => {
   /* non-Tauri env */
 });
+
+// --- Engine startup failure ------------------------------------------
+//
+// `houston-engine-failed` fires (once) when the Tauri supervisor cannot
+// bring the engine up — binary missing, banner timeout, or /v1/health
+// never passing. The supervisor now runs bring-up on a worker thread (so
+// the window paints immediately, see app/src-tauri/src/lib.rs), which means
+// a failure must reach the user instead of leaving `EngineGate` spinning on
+// its splash forever. `EngineGate` (main.tsx) subscribes via `onEngineFailed`
+// and swaps the splash for an actionable error with a Report-bug button.
+
+export interface EngineFailure {
+  reason: string;
+}
+
+let _failure: EngineFailure | null = null;
+const failureListeners = new Set<(failure: EngineFailure) => void>();
+
+/**
+ * Subscribe to engine-startup failure. If the failure already arrived before
+ * this listener registered (the event is one-shot), it replays immediately.
+ * Returns an unsubscribe function.
+ */
+export function onEngineFailed(
+  listener: (failure: EngineFailure) => void,
+): () => void {
+  if (_failure) listener(_failure);
+  failureListeners.add(listener);
+  return () => {
+    failureListeners.delete(listener);
+  };
+}
+
+listen<EngineFailure>("houston-engine-failed", (ev) => {
+  _failure = ev.payload;
+  for (const listener of failureListeners) {
+    try {
+      listener(ev.payload);
+    } catch (err) {
+      console.error("[engine] failure listener failed", err);
+    }
+  }
+}).catch(() => {
+  /* non-Tauri env */
+});

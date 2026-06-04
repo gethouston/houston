@@ -12,7 +12,13 @@ import { queryClient } from "./lib/query-client";
 import App from "./App";
 import "./styles/globals.css";
 import { initFrontendLogging, logger } from "./lib/logger";
-import { whenEngineReady, isEngineReady } from "./lib/engine";
+import {
+  whenEngineReady,
+  isEngineReady,
+  onEngineFailed,
+  type EngineFailure,
+} from "./lib/engine";
+import { reportBug } from "./lib/bug-report";
 import i18n from "./lib/i18n";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { LanguageGate } from "./components/shell/language-gate";
@@ -103,14 +109,22 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
  */
 function EngineGate({ children }: { children: ReactNode }) {
   const [ready, setReady] = useState(isEngineReady());
+  const [failure, setFailure] = useState<EngineFailure | null>(null);
   useEffect(() => {
     if (ready) return;
     let cancelled = false;
     whenEngineReady().then(() => {
       if (!cancelled) setReady(true);
     });
+    // The supervisor brings the engine up on a worker thread, so a startup
+    // failure arrives as an event rather than a crash. Surface it instead of
+    // spinning on the splash forever.
+    const unsubscribe = onEngineFailed((f) => {
+      if (!cancelled) setFailure(f);
+    });
     return () => {
       cancelled = true;
+      unsubscribe();
     };
   }, [ready]);
 
@@ -119,6 +133,12 @@ function EngineGate({ children }: { children: ReactNode }) {
   // applies it to the live i18n instance, and handles the first-run picker.
   // That gate sits inside <I18nextProvider> and owns the full locale story —
   // the engine, not localStorage, is the source of truth.
+
+  // A late `houston-engine-ready` can still win after a failure (e.g. the
+  // supervisor's restart loop recovered), so `ready` takes precedence.
+  if (failure && !ready) {
+    return <EngineStartupError reason={failure.reason} />;
+  }
 
   if (!ready) {
     // Use the i18n singleton directly — this renders OUTSIDE
@@ -141,6 +161,100 @@ function EngineGate({ children }: { children: ReactNode }) {
     );
   }
   return <>{children}</>;
+}
+
+/**
+ * Shown when the Tauri supervisor reports it could not start the engine
+ * (`houston-engine-failed`). Renders OUTSIDE <I18nextProvider> and the toast
+ * provider, so it uses the i18n singleton directly and a self-contained
+ * Report-bug button rather than the shared toast/Button primitives.
+ *
+ * The raw `reason` is never shown to the user — it can carry technical engine
+ * detail the product voice forbids surfacing — it travels only inside the bug
+ * report (whose payload also bundles the recent engine + app log tail).
+ */
+function EngineStartupError({ reason }: { reason: string }) {
+  const [status, setStatus] = useState<"idle" | "sending" | "sent" | "error">(
+    "idle",
+  );
+
+  const handleReport = () => {
+    if (status === "sending" || status === "sent") return;
+    setStatus("sending");
+    reportBug({
+      command: "engine_startup_failed",
+      error: reason,
+      userEmail: null,
+      timestamp: new Date().toISOString(),
+      appVersion: __APP_VERSION__,
+    })
+      .then(() => setStatus("sent"))
+      .catch((err) => {
+        console.error("[engine] startup-failure bug report failed", err);
+        setStatus("error");
+      });
+  };
+
+  const buttonLabel =
+    status === "sending"
+      ? i18n.t("shell:engineGate.reporting")
+      : status === "sent"
+        ? i18n.t("shell:engineGate.reportSent")
+        : i18n.t("shell:engineGate.reportBug");
+
+  return (
+    <div
+      style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: 12,
+        height: "100vh",
+        padding: 32,
+        textAlign: "center",
+        fontFamily: "system-ui, sans-serif",
+      }}
+    >
+      <div style={{ fontSize: 16, fontWeight: 600, color: "#333" }}>
+        {i18n.t("shell:engineGate.failedTitle")}
+      </div>
+      <p
+        style={{
+          fontSize: 14,
+          color: "#666",
+          maxWidth: 360,
+          lineHeight: 1.5,
+          margin: 0,
+        }}
+      >
+        {i18n.t("shell:engineGate.failedBody")}
+      </p>
+      <button
+        type="button"
+        onClick={handleReport}
+        disabled={status === "sending" || status === "sent"}
+        style={{
+          marginTop: 4,
+          padding: "8px 16px",
+          borderRadius: 9999,
+          border: "1px solid #d0d0d0",
+          background: "#fff",
+          color: "#333",
+          fontSize: 13,
+          cursor:
+            status === "sending" || status === "sent" ? "default" : "pointer",
+        }}
+      >
+        {buttonLabel}
+      </button>
+      {status === "error" && (
+        <p style={{ fontSize: 12, color: "#c0392b", margin: 0 }}>
+          {i18n.t("shell:engineGate.reportFailed")}
+        </p>
+      )}
+    </div>
+  );
 }
 
 // StrictMode intentionally remounts components to catch bugs. In Tauri's

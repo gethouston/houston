@@ -88,9 +88,19 @@ OS-native glue remains in `app/src-tauri/src/commands/`.
   The engine supervisor uses the same crates but speaks HTTP/WS
   externally. **Not part of Engine.**
 - `app/src-tauri/` — Tauri binary. Depends on `houston-tauri` + engine
-  crates. Spawns the engine subprocess in `setup()`, waits for
-  `/v1/health`, injects `window.__HOUSTON_ENGINE__` handshake before
-  the React tree mounts (see `EngineGate` in `app/src/main.tsx`).
+  crates. `setup()` opens the DB + manages state, then hands engine
+  bring-up (migrations, spawn, `/v1/health` poll) to a **worker thread**
+  and returns immediately. **Invariant: never block the `setup` (main/UI)
+  thread on the engine.** On macOS the window can't paint until the run
+  loop starts, so a blocking bring-up — up to ~60s on the slow first
+  launch after an update (Gatekeeper re-scan + claude-code re-install) —
+  froze the window, macOS flagged Houston "not responding", users
+  force-quit, and the next launch showed the "force quit while reopening
+  windows" dialog (#439). The worker delivers the handshake async via
+  `window.eval` + the `houston-engine-ready` event (or
+  `houston-engine-failed` on failure); `EngineGate` (`app/src/main.tsx`)
+  shows a splash until one arrives, then renders the app or an
+  actionable error.
 
 ## App boot — WebView compatibility gate
 

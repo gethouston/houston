@@ -272,7 +272,13 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Iniciando o motor do Houston…"
+    "starting": "Iniciando o motor do Houston…",
+    "failedTitle": "O Houston não abriu",
+    "failedBody": "Algo deu errado ao abrir o Houston. Abra o aplicativo novamente para tentar de novo. Se continuar acontecendo, envie um relato para que possamos corrigir.",
+    "reportBug": "Relatar um problema",
+    "reporting": "Enviando…",
+    "reportSent": "Relato enviado. Obrigado!",
+    "reportFailed": "Não foi possível enviar o relato. Verifique sua conexão e tente novamente."
   },
   "providerError": {
     "rateLimited": {

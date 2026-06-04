@@ -272,7 +272,13 @@
     "continueButton": "Continue"
   },
   "engineGate": {
-    "starting": "Starting Houston engine…"
+    "starting": "Starting Houston engine…",
+    "failedTitle": "Houston couldn't start",
+    "failedBody": "Something went wrong while starting Houston. Please reopen the app to try again. If it keeps happening, send us a report so we can fix it.",
+    "reportBug": "Report a problem",
+    "reporting": "Sending…",
+    "reportSent": "Report sent. Thank you!",
+    "reportFailed": "Couldn't send the report. Check your connection and try again."
   },
   "providerError": {
     "rateLimited": {
