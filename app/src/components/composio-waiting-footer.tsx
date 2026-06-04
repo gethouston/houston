@@ -30,16 +30,17 @@ function ComposioWaitingFooter({ toolkits }: { toolkits: string[] }) {
     [connectedList],
   );
   if (!isWaitingForToolkits(toolkits, connected)) return null;
-  // Render exactly as `ChatProcessBlock` renders the "Mission log" line: a bare
-  // ChatStatusLine, flush with the message's left edge (no `px-1` indent), in
-  // the same muted color. It then lines up vertically with every other
-  // mission-log row, and `MessageContent`'s `gap-2` puts it the same 8px below
-  // the message that a standalone mission log sits below its previous message.
+  // Render like `ChatProcessBlock`'s "Mission log" line: a bare ChatStatusLine,
+  // flush with the message's left edge (no `px-1` indent), in the same muted
+  // color. `mt-2` adds to `MessageContent`'s `gap-2` so the line sits clearly
+  // below the message body. Standalone mission-log rows breathe inside the
+  // feed's `gap-8` flow; this footer lives inside the message bubble, so it
+  // needs the explicit top margin to read the same.
   return (
     <ChatStatusLine
       label={t("composio.waitingToConnect")}
       active
-      className="text-muted-foreground/65"
+      className="mt-2 text-muted-foreground/65"
     />
   );
 }
