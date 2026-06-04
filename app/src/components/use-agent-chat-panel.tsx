@@ -53,6 +53,7 @@ import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
 import { ComposioLinkCard } from "./composio-link-card";
 import { parseComposioToolkitFromHref } from "./composio-card-state";
+import { withComposioWaitingFooter } from "./composio-waiting-footer";
 import {
   ComposioSigninCard,
   isComposioSigninHref,
@@ -353,6 +354,14 @@ export function useAgentChatPanel({
       );
     },
     [handleIntegrationConnected],
+  );
+
+  // Render the "Waiting for you to connect" hand-off line at the end of any
+  // assistant message that links an integration (issue #412), rather than
+  // inline beside the card wherever the link happened to land.
+  const transformContent = useCallback(
+    (content: string) => withComposioWaitingFooter({ content }),
+    [],
   );
 
   // ── File-tool rendering (per-agent path) ──────────────────────────────
@@ -745,6 +754,7 @@ export function useAgentChatPanel({
     mapFeedItems,
     afterMessages,
     renderLink,
+    transformContent,
     pickerDialog,
     effectiveProvider,
     effectiveModel,

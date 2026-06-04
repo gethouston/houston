@@ -973,6 +973,7 @@ export default function BoardTab({ agent, agentDef }: TabProps) {
           getThinkingMessage={panel.getThinkingMessage}
           renderTurnSummary={panel.renderTurnSummary}
           renderLink={panel.renderLink}
+          transformContent={panel.transformContent}
         />
       </div>
       {panel.pickerDialog}

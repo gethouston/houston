@@ -1,4 +1,4 @@
-import { strictEqual } from "node:assert";
+import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   deriveComposioCardView,
@@ -7,9 +7,12 @@ import {
   parseComposioToolkitFromHref,
   resolveComposioApp,
   shouldSendConnectedFollowup,
-  shouldShowWaitingToConnect,
   type ConnectedFollowupInput,
 } from "../src/components/composio-card-state.ts";
+import {
+  extractComposioToolkits,
+  isWaitingForToolkits,
+} from "../src/components/composio-waiting.ts";
 import type { ComposioAppEntry } from "../src/lib/tauri.ts";
 
 const appEntry = (over: Partial<ComposioAppEntry> = {}): ComposioAppEntry => ({
@@ -82,20 +85,98 @@ describe("resolveComposioApp (card display identity)", () => {
   });
 });
 
-describe("shouldShowWaitingToConnect (issue #412: explicit hand-off line)", () => {
-  it("shows the waiting line while idle, before the user acts", () => {
-    // The agent linked an app and paused; make the hand-off explicit.
-    strictEqual(shouldShowWaitingToConnect("idle"), true);
+describe("extractComposioToolkits (issue #412: end-of-message hand-off line)", () => {
+  it("pulls the toolkit slug out of a markdown connect link", () => {
+    deepStrictEqual(
+      extractComposioToolkits(
+        "Let's hook up Gmail: [Connect Gmail](https://composio.dev/c#houston_toolkit=gmail) and we're set.",
+      ),
+      ["gmail"],
+    );
   });
 
-  it("keeps the line up while connecting, until the connection lands", () => {
-    // The auth round-trip can stall, get abandoned, or time back out to
-    // idle, so the agent is still waiting; the message must not vanish.
-    strictEqual(shouldShowWaitingToConnect("connecting"), true);
+  it("collects multiple distinct toolkits in first-seen order", () => {
+    deepStrictEqual(
+      extractComposioToolkits(
+        "[Connect Gmail](https://x/#houston_toolkit=gmail) then " +
+          "[Connect Slack](https://x/#houston_toolkit=slack).",
+      ),
+      ["gmail", "slack"],
+    );
   });
 
-  it("hides it only once connected (the agent can resume)", () => {
-    strictEqual(shouldShowWaitingToConnect("connected"), false);
+  it("dedupes and normalizes repeated / mis-cased links", () => {
+    // Two links to the same app (different casing) collapse to one slug, so
+    // the footer never double-counts a single integration.
+    deepStrictEqual(
+      extractComposioToolkits(
+        "[here](https://x/#houston_toolkit=GoogleDrive) or " +
+          "[here](https://x/#houston_toolkit=googledrive)",
+      ),
+      ["googledrive"],
+    );
+  });
+
+  it("reads the slug through an optional markdown link title", () => {
+    deepStrictEqual(
+      extractComposioToolkits(
+        '[Connect](https://x/#houston_toolkit=notion "Open Notion auth")',
+      ),
+      ["notion"],
+    );
+  });
+
+  it("ignores a bare / auto-linked URL (renders as plain text, not a card)", () => {
+    // The link renderer only turns a real `[label](href)` link into a card;
+    // a raw URL stays plain text. The footer must mirror that, so a bare
+    // connect URL contributes no toolkit.
+    deepStrictEqual(
+      extractComposioToolkits(
+        "https://composio.dev/c#houston_toolkit=gmail",
+      ),
+      [],
+    );
+  });
+
+  it("ignores ordinary markdown links that are not connect URLs", () => {
+    deepStrictEqual(
+      extractComposioToolkits("See [the docs](https://example.com/guide)."),
+      [],
+    );
+  });
+
+  it("returns an empty list when the message links nothing", () => {
+    deepStrictEqual(extractComposioToolkits("All done, no integrations."), []);
+  });
+});
+
+describe("isWaitingForToolkits (issue #412: when the line shows)", () => {
+  it("waits while any linked toolkit is not connected", () => {
+    // The agent linked an app and paused; idle and connecting both read as
+    // not-connected, so the line stays up until the connection lands.
+    strictEqual(isWaitingForToolkits(["slack"], new Set(["gmail"])), true);
+  });
+
+  it("clears once every linked toolkit is connected (agent can resume)", () => {
+    strictEqual(
+      isWaitingForToolkits(["gmail", "slack"], new Set(["gmail", "slack"])),
+      false,
+    );
+  });
+
+  it("still waits when one of several is connected and another is not", () => {
+    strictEqual(
+      isWaitingForToolkits(["gmail", "slack"], new Set(["gmail"])),
+      true,
+    );
+  });
+
+  it("matches connection across casing (normalized membership)", () => {
+    strictEqual(isWaitingForToolkits(["GoogleDrive"], new Set(["googledrive"])), false);
+  });
+
+  it("does not wait when the message linked no integration", () => {
+    strictEqual(isWaitingForToolkits([], new Set()), false);
   });
 });
 

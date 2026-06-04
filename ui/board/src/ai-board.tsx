@@ -111,6 +111,9 @@ export interface AIBoardProps {
   onOpenLink?: import("@houston-ai/chat").ChatPanelProps["onOpenLink"]
   /** Custom renderer for markdown links. Forwarded to ChatPanel. */
   renderLink?: import("@houston-ai/chat").ChatPanelProps["renderLink"]
+  /** Transform an assistant message's content before render, optionally
+   *  appending an `extra` node after it. Forwarded to ChatPanel. */
+  transformContent?: import("@houston-ai/chat").ChatPanelProps["transformContent"]
   /**
    * Composer footer content. When a function, called with `{ hasMessages }` so
    * the consumer can lock the provider for active conversations.
@@ -263,6 +266,7 @@ export function AIBoard({
   onAttachmentRejections,
   onOpenLink,
   renderLink,
+  transformContent,
   footer,
   composerHeader,
   attachMenu,
@@ -608,6 +612,7 @@ export function AIBoard({
           onAttachmentRejections={onAttachmentRejections}
           onOpenLink={onOpenLink}
           renderLink={renderLink}
+          transformContent={transformContent}
           footer={typeof footer === "function" ? footer({ hasMessages: activeFeed.length > 0 }) : footer}
           composerHeader={typeof composerHeader === "function" ? composerHeader({ hasMessages: activeFeed.length > 0 }) : composerHeader}
           attachMenu={
