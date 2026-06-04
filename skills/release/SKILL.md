@@ -68,6 +68,17 @@ Duration: ~15-20 min (2-arch compile).
 ./scripts/version.sh 0.2.0
 ```
 
+## Cutting a release from Linux / Windows
+
+`version.sh` and `bump-cli.sh` are written to behave identically and emit
+byte-identical, LF-only output on macOS, Linux, and Windows git-bash (perl
+in-place edits, no `jq` JSON rewrite, no BSD `sed -i ''`). After touching
+either script, run the cross-OS regression test on each host you cut from:
+
+```bash
+./scripts/test/release-scripts.test.sh   # expect: PASS N  FAIL 0
+```
+
 ## Common CI failures
 
 - **`bundle_dmg.sh` failed** — flaky CI runner. `gh run rerun <id>`.
