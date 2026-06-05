@@ -74,6 +74,22 @@
     "light": "Claro",
     "dark": "Oscuro"
   },
+  "advanced": {
+    "title": "Avanzado",
+    "toggleFailed": "No se pudo cambiar el modo de desarrollador.",
+    "developerMode": {
+      "label": "Modo de desarrollador",
+      "description": "Muestra archivos, carpetas, historial de versiones y otros detalles técnicos. Desactivado por defecto."
+    },
+    "workspaceLocation": {
+      "label": "Ubicación del espacio de trabajo",
+      "description": "Donde Houston guarda todo lo que tú y tus agentes crean.",
+      "change": "Cambiar",
+      "changed": "Se actualizó la ubicación del espacio de trabajo.",
+      "restartHint": "Reinicia Houston para aplicar la nueva ubicación.",
+      "changeFailed": "No se pudo cambiar la ubicación del espacio de trabajo."
+    }
+  },
   "dangerZone": {
     "title": "Zona de peligro",
     "description": "Elimina este espacio de trabajo y todos sus agentes de forma permanente.",

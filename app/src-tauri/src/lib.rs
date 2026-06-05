@@ -387,6 +387,8 @@ pub fn run() {
             commands::os::reveal_path,
             commands::terminal::open_terminal,
             commands::os::check_claude_cli,
+            commands::workspace_root::get_docs_root,
+            commands::workspace_root::set_docs_root,
             commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
             commands::update::current_app_bundle_path,

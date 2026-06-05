@@ -74,6 +74,22 @@
     "light": "Light",
     "dark": "Dark"
   },
+  "advanced": {
+    "title": "Advanced",
+    "toggleFailed": "Could not change developer mode.",
+    "developerMode": {
+      "label": "Developer mode",
+      "description": "Show files, folders, version history, and other technical details. Off by default."
+    },
+    "workspaceLocation": {
+      "label": "Workspace location",
+      "description": "Where Houston keeps everything you and your agents create.",
+      "change": "Change",
+      "changed": "Workspace location updated.",
+      "restartHint": "Restart Houston to apply the new location.",
+      "changeFailed": "Could not change the workspace location."
+    }
+  },
   "dangerZone": {
     "title": "Danger zone",
     "description": "Permanently delete this workspace and all its agents.",

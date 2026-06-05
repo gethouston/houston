@@ -5,3 +5,4 @@ pub mod diagnostics;
 pub mod portable;
 pub mod terminal;
 pub mod update;
+pub mod workspace_root;

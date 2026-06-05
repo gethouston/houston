@@ -58,6 +58,16 @@ export function osPickDirectory(): Promise<string | null> {
   return invoke<string | null>("pick_directory");
 }
 
+/** The workspace-root directory currently in effect (resolved `docsRoot`). */
+export function osGetDocsRoot(): Promise<string> {
+  return invoke<string>("get_docs_root");
+}
+
+/** Persist a new workspace-root location. Takes effect on the next launch. */
+export function osSetDocsRoot(newRoot: string): Promise<void> {
+  return invoke<void>("set_docs_root", { new_root: newRoot });
+}
+
 /** Open a URL in the user's default browser. */
 export function osOpenUrl(url: string): Promise<void> {
   return invoke<void>("open_url", { url });
