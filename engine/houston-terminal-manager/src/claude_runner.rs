@@ -178,6 +178,19 @@ fn configure_claude_command(
     disable_all_tools: bool,
 ) {
     cmd.env("PATH", super::claude_path::shell_path());
+
+    // Houston pins an exact claude-code version in `cli-deps.json` and
+    // manages the managed binary itself (download + sha256-verify +
+    // atomic install via `houston-claude-installer`). claude-code's own
+    // self-updater fights that: left enabled, it swaps the binary out
+    // from under our pin on its own schedule, leaving a stale/mismatched
+    // version on disk (and `.bak` files in the install dir). That drift
+    // is exactly how a 2.1.92 binary ended up under a "2.1.158" install
+    // marker, breaking `--effort xhigh` (only added after 2.1.92). Houston
+    // must be the sole manager of the pinned binary, so disable the
+    // updater on every spawn.
+    cmd.env("DISABLE_AUTOUPDATER", "1");
+
     cmd.arg("-p")
         .arg("--output-format")
         .arg("stream-json")

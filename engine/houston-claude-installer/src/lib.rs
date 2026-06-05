@@ -117,27 +117,50 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
 
     let pinned_version = entry.version.clone();
 
-    // Already installed at the pinned version? Skip the download.
-    let last_version = db
+    // Authoritative check: ask the binary ON DISK what version it is,
+    // instead of trusting the DB marker. The marker only records what we
+    // last installed; the binary can change out from under it — claude-code
+    // ships its own self-updater, and a user can reinstall claude-code by
+    // hand into the same path. Trusting the marker alone let a 2.1.92
+    // binary sit under a "2.1.158" marker and skip every upgrade, which is
+    // the exact drift this probe closes (2.1.92 rejects `--effort xhigh`).
+    // The marker is still read — but only for a friendlier install log and
+    // to keep `/v1/claude/status` honest.
+    let marker_version = db
         .get_preference(PREF_INSTALLED_VERSION)
         .await
         .ok()
         .flatten()
         .unwrap_or_default();
+    let on_disk_version = installed_cli_version().await;
 
-    if is_installed() && last_version == pinned_version {
+    if on_disk_version.as_deref() == Some(pinned_version.as_str()) {
         tracing::info!(
             "[claude-installer] already at pinned version {}, skipping",
             pinned_version
         );
+        // Heal a lagging marker (a prior drift we just confirmed gone, or a
+        // manual reinstall to the pinned version) so the status route stops
+        // reporting a stale value.
+        if marker_version != pinned_version {
+            if let Err(e) = db.set_preference(PREF_INSTALLED_VERSION, &pinned_version).await {
+                tracing::warn!("[claude-installer] failed to reconcile version marker: {e}");
+            }
+        }
         sink.emit(HoustonEvent::ClaudeCliReady);
         return;
     }
 
+    // Prefer the real on-disk version for the "from" label; fall back to
+    // the marker, then to "none" on a fresh install.
+    let from_label = on_disk_version
+        .as_deref()
+        .or_else(|| (!marker_version.is_empty()).then_some(marker_version.as_str()))
+        .unwrap_or("none");
     tracing::info!(
         "[claude-installer] installing claude-code v{} ({} → {})",
         pinned_version,
-        if last_version.is_empty() { "none" } else { &last_version },
+        from_label,
         pinned_version
     );
 
@@ -210,6 +233,49 @@ pub async fn install_pinned(
     let version = entry.version.clone();
     let path = install(&entry, progress).await?;
     Ok((version, path))
+}
+
+/// Probe the version of the claude binary actually on disk by running
+/// `<cli_path> --version`. Returns `None` when the binary is missing or
+/// the probe fails for any reason (spawn error, non-zero exit, timeout,
+/// unparseable output) — each of those means "we can't confirm the pinned
+/// version is installed", so the caller treats `None` as needs-install and
+/// re-downloads.
+///
+/// This is the authoritative source of truth for "what version is on
+/// disk", replacing blind trust in the DB marker (`PREF_INSTALLED_VERSION`),
+/// which silently drifts when claude-code's self-updater or a manual
+/// reinstall swaps the binary. claude-code prints `2.1.158 (Claude Code)`
+/// to stdout; we keep the leading token.
+async fn installed_cli_version() -> Option<String> {
+    if !is_installed() {
+        return None;
+    }
+    // claude-code prints its version to stdout and exits immediately, but a
+    // cold spawn of the ~240 MB binary on Windows isn't free — bound it so a
+    // wedged binary can never hang the boot-time CLI lifecycle task.
+    let output = tokio::time::timeout(
+        std::time::Duration::from_secs(10),
+        tokio::process::Command::new(cli_path())
+            .arg("--version")
+            .kill_on_drop(true)
+            .output(),
+    )
+    .await
+    .ok()? // timed out
+    .ok()?; // spawn / IO error
+    if !output.status.success() {
+        return None;
+    }
+    parse_cli_version(&String::from_utf8_lossy(&output.stdout))
+}
+
+/// Extract the semver from `claude --version` output, e.g.
+/// `"2.1.158 (Claude Code)\n"` → `"2.1.158"`. Returns `None` for empty or
+/// whitespace-only output so a garbled probe degrades to needs-install
+/// rather than matching nothing.
+fn parse_cli_version(raw: &str) -> Option<String> {
+    raw.split_whitespace().next().map(str::to_string)
 }
 
 /// Resolve the `cli-deps.json` manifest. Prefers the bundled copy
@@ -455,6 +521,34 @@ mod tests {
         assert!(checksum_matches("DEADBEEF", "deadbeef"));
         assert!(checksum_matches("abc123", "abc123"));
         assert!(!checksum_matches("abc", "abd"));
+    }
+
+    #[test]
+    fn parse_cli_version_extracts_leading_semver() {
+        // The real `claude --version` shape — the drift check compares the
+        // leading token to the pinned version, so it must drop the suffix.
+        assert_eq!(
+            parse_cli_version("2.1.158 (Claude Code)\n").as_deref(),
+            Some("2.1.158")
+        );
+        assert_eq!(
+            parse_cli_version("2.1.92 (Claude Code)").as_deref(),
+            Some("2.1.92")
+        );
+        // Leading/trailing whitespace must not leak into the token, or the
+        // `== pinned_version` compare would spuriously fail and re-download.
+        assert_eq!(
+            parse_cli_version("  2.1.158  \n").as_deref(),
+            Some("2.1.158")
+        );
+    }
+
+    #[test]
+    fn parse_cli_version_rejects_empty_output() {
+        // A garbled / empty probe must be None so the caller re-installs,
+        // never treats "" as a version that could match the pin.
+        assert_eq!(parse_cli_version(""), None);
+        assert_eq!(parse_cli_version("   \n\t "), None);
     }
 
     #[test]

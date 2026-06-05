@@ -236,11 +236,29 @@ boot:
 
 2. `houston_claude_installer::ensure_and_upgrade` — reads
    `cli-deps.json` for the pinned `claude-code` version and:
-   - If installed at the pinned version → emit `ClaudeCliReady`.
+   - Probes the **actual on-disk** version by running
+     `<cli_path> --version` (`installed_cli_version()`), and compares the
+     leading token to the pinned version. This is the source of truth —
+     **not** the DB marker. If they match → emit `ClaudeCliReady` (and
+     reconcile a lagging marker so `/v1/claude/status` stays honest).
    - Else → stream-download with sha256 verification, atomic rename
-     into `~/.local/bin/claude`, persist version marker, emit
+     into `~/.local/bin/claude` (Win: `%LOCALAPPDATA%\Programs\claude\
+     claude.exe`), persist version marker, emit
      `ClaudeCliInstalling { progress_pct }` then `ClaudeCliReady`.
    - On failure → `ClaudeCliFailed { message }`.
+
+   **Why probe instead of trusting `claude_code_installed_version`?** The
+   marker only records what Houston *last installed*; the binary drifts
+   out from under it (claude-code's own self-updater swapping it, a manual
+   reinstall, a `.bak` rollback). A drifted 2.1.92 binary once sat under a
+   "2.1.158" marker and `--effort xhigh` died on every session because the
+   marker-trust skip never re-downloaded (PR #359 pinned 2.1.158, but it
+   never landed on disk). The probe self-heals that on the next boot.
+
+   **Houston is the sole manager of the pinned binary.** `claude_runner`
+   sets `DISABLE_AUTOUPDATER=1` on every spawn so claude-code's own updater
+   can't swap the pinned binary out from under `cli-deps.json`. Without it,
+   the updater mutates the binary on its schedule and the version drifts.
 
 Both run on independent tasks so a slow claude download never blocks
 composio readiness.
