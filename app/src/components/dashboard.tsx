@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   Empty,
@@ -9,19 +10,20 @@ import {
 import { Plus } from "lucide-react";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
-import { useMissionControlSource } from "./board/use-mission-control-source";
-import { MissionBoard } from "./board/mission-board";
+import { MissionControlActive } from "./board/mission-control-active";
+import { MissionControlArchived } from "./board/mission-control-archived";
 
 /**
- * Mission Control: every agent's missions on one board. All the wiring lives
- * in the shared `<MissionBoard>`; this view only builds the cross-agent data
- * source and handles the no-agents empty state.
+ * Mission Control: every agent's missions on one board. The active board and
+ * the cross-agent Archived view are separate components that swap (not hide)
+ * so only the mounted one's hooks run. This view owns the toggle + the
+ * no-agents empty state; all board wiring lives in the shared `<MissionBoard>`.
  */
 export function Dashboard() {
   const { t } = useTranslation("dashboard");
   const agents = useAgentStore((s) => s.agents);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
-  const source = useMissionControlSource(agents);
+  const [showArchived, setShowArchived] = useState(false);
 
   if (agents.length === 0) {
     return (
@@ -42,7 +44,11 @@ export function Dashboard() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <MissionBoard source={source} />
+      {showArchived ? (
+        <MissionControlArchived agents={agents} onShowActive={() => setShowArchived(false)} />
+      ) : (
+        <MissionControlActive agents={agents} onShowArchived={() => setShowArchived(true)} />
+      )}
     </div>
   );
 }

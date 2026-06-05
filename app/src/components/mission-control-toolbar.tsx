@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { ChevronDown } from "lucide-react";
+import { Archive, ChevronDown } from "lucide-react";
 import { HoustonLogo } from "./shell/experience-card";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 import type { Agent } from "../lib/types";
@@ -23,7 +23,12 @@ interface MissionControlToolbarProps {
   isSearchingText: boolean;
   onFilterPathChange: (path: string) => void;
   onSearchChange: (value: string) => void;
-  onNewMission: () => void;
+  /** Whether the Archived view is currently showing (highlights the toggle). */
+  archivedActive: boolean;
+  /** Toggle between the active board and the cross-agent Archived view. */
+  onToggleArchived: () => void;
+  /** Shown only on the active board (the Archived view doesn't create missions). */
+  onNewMission?: () => void;
 }
 
 export function MissionControlToolbar({
@@ -33,6 +38,8 @@ export function MissionControlToolbar({
   isSearchingText,
   onFilterPathChange,
   onSearchChange,
+  archivedActive,
+  onToggleArchived,
   onNewMission,
 }: MissionControlToolbarProps) {
   const { t } = useTranslation("dashboard");
@@ -82,17 +89,27 @@ export function MissionControlToolbar({
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button data-keep-panel-open onClick={onNewMission}>
-                  <HoustonLogo size={16} />
-                  {t("empty.newMission")}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {shortcutLabel("newMission")}
-              </TooltipContent>
-            </Tooltip>
+            <Button
+              variant={archivedActive ? "secondary" : "outline"}
+              className="rounded-full gap-1.5"
+              onClick={onToggleArchived}
+            >
+              <Archive className="size-4" />
+              {t("archived.button")}
+            </Button>
+            {onNewMission && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button data-keep-panel-open onClick={onNewMission}>
+                    <HoustonLogo size={16} />
+                    {t("empty.newMission")}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  {shortcutLabel("newMission")}
+                </TooltipContent>
+              </Tooltip>
+            )}
           </div>
         </div>
       </div>

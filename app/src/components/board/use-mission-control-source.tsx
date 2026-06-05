@@ -20,7 +20,10 @@ import type { Agent } from "../../lib/types";
  * agent. The active agent that scopes the right panel is whichever the
  * selected card belongs to, or the one just picked for a new mission.
  */
-export function useMissionControlSource(agents: Agent[]): BoardSource {
+export function useMissionControlSource(
+  agents: Agent[],
+  onShowArchived: () => void,
+): BoardSource {
   const { t } = useTranslation(["dashboard", "board"]);
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const addToast = useUIStore((s) => s.addToast);
@@ -120,6 +123,8 @@ export function useMissionControlSource(agents: Agent[]): BoardSource {
       isSearchingText={missionSearch.isSearchingText}
       onFilterPathChange={setFilterPath}
       onSearchChange={setMissionSearchQuery}
+      archivedActive={false}
+      onToggleArchived={onShowArchived}
       onNewMission={newMission.openNewMission}
     />
   );

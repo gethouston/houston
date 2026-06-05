@@ -1,5 +1,8 @@
 {
   "title": "Mission Control",
+  "archived": {
+    "button": "Archived"
+  },
   "filter": {
     "allAgents": "All agents"
   },

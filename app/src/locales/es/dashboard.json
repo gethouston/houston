@@ -1,5 +1,8 @@
 {
   "title": "Centro de misiones",
+  "archived": {
+    "button": "Archivadas"
+  },
   "filter": {
     "allAgents": "Todos los agentes"
   },
