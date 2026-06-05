@@ -1,3 +1,4 @@
+mod app_config;
 mod auth;
 mod bug_report;
 mod commands;
@@ -191,6 +192,12 @@ pub fn run() {
             houston_tauri::houston_terminal_manager::claude_path::init();
 
             let houston = houston_tauri::houston_db::db::houston_dir();
+            // Resolve the workspace-root (`docs`) directory before anything
+            // reads it. From `~/.houston/app-config.json` (`docsRoot`) when the
+            // user picked a visible, git-backed root, else the historical
+            // `$HOUSTON_HOME/workspaces/` default.
+            let app_cfg = app_config::load(&houston);
+            let docs_dir = app_config::resolve_docs_dir(&houston, &app_cfg);
             let db_path = houston.join("db").join("houston.db");
             let db = tauri::async_runtime::block_on(async {
                 Database::connect(&db_path)
@@ -212,7 +219,7 @@ pub fn run() {
             // empty board even though their `.houston/activity.json` was
             // sitting next to it. Walk the workspaces dir here so existing
             // activities, routines, learnings show up immediately.
-            migrate_all_agents(&houston.join("workspaces"));
+            migrate_all_agents(&docs_dir);
 
             // AppState keeps a DB handle for any OS-native lookup (log
             // reading, session search). Domain state now lives in the
@@ -240,12 +247,10 @@ pub fn run() {
             // exported to the engine via env vars. The engine treats these
             // as opaque strings — it has no hardcoded Houston copy.
             //
-            // Also pin HOUSTON_HOME + HOUSTON_DOCS so the engine uses the
-            // same data roots as the app. Workspaces live under
-            // `$HOUSTON_HOME/workspaces/` in both debug (`~/.dev-houston/`)
-            // and release (`~/.houston/`) — everything Houston writes is
-            // rooted at a single discoverable location.
-            let docs_dir = houston.join("workspaces");
+            // Also pin HOUSTON_HOME + HOUSTON_DOCS so the engine uses the same
+            // data roots as the app. `docs_dir` was resolved above from
+            // app-config (`docsRoot`); it defaults to `$HOUSTON_HOME/workspaces/`
+            // until the user opts into a visible root via onboarding.
             let mut engine_env: Vec<(String, String)> = vec![
                 (
                     "HOUSTON_APP_SYSTEM_PROMPT".into(),
