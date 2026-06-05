@@ -2,7 +2,7 @@
  * ScheduleBuilder — Visual schedule builder with preset buttons.
  * Presets (daily, weekly, …) cover the common cases; the "Custom" tab offers a
  * "Repeat every N [minutes/hours/days/weeks/months]" picker — choosing weeks
- * reveals a "Repeat on" day-of-week multi-select, months a day-of-month field.
+ * reveals an "On these days" weekday multi-select, months a day-of-month field.
  * There is no raw-cron input: the picker is the only way to build a custom
  * schedule, and the generated cron is shown read-only for reference.
  *

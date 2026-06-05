@@ -1,11 +1,11 @@
 /**
  * Picker fields used by ScheduleBuilder — time, day-of-week, day-of-month, and
- * the "Repeat on" weekday multi-select. The "Repeat every N [unit]" control
- * lives in schedule-interval-picker.tsx and reuses inputClass/labelClass here.
+ * the "On these days" weekday multi-select. The "Repeat every N [unit]" control
+ * lives in schedule-interval-picker.tsx and reuses labelClass exported here.
  */
 import { cn } from "@houston-ai/core"
 
-export const inputClass = cn(
+const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",
   "text-sm text-foreground",
   "focus:outline-none focus:shadow-sm transition-shadow",
@@ -95,20 +95,20 @@ export function DayOfMonthPicker({
   )
 }
 
-const WEEKDAYS_MON_FIRST = [
-  { value: 1, label: "Monday" },
-  { value: 2, label: "Tuesday" },
-  { value: 3, label: "Wednesday" },
-  { value: 4, label: "Thursday" },
-  { value: 5, label: "Friday" },
-  { value: 6, label: "Saturday" },
-  { value: 0, label: "Sunday" },
+// Single-letter weekday labels (Sunday-first), matching the chosen prototype.
+const WEEKDAYS_MIN = ["S", "M", "T", "W", "T", "F", "S"]
+const WEEKDAYS_SHORT = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"]
+
+const WEEKDAY_SHORTCUTS: { label: string; days: number[] }[] = [
+  { label: "Every day", days: [0, 1, 2, 3, 4, 5, 6] },
+  { label: "Weekdays", days: [1, 2, 3, 4, 5] },
+  { label: "Weekends", days: [0, 6] },
 ]
 
 /**
- * "Repeat on" — full-name weekday multi-select for the custom weekly schedule.
- * One or more days; Monday-first. (Distinct from DayOfWeekPicker, which is the
- * single-day Sunday-first picker used by the Weekly preset.)
+ * "On these days" — multi-select weekday toggle (S M T W T F S) plus quick
+ * shortcuts, for the custom weekly schedule. Multi-select, so distinct from
+ * DayOfWeekPicker (single-day, used by the Weekly preset).
  */
 export function WeekdaysPicker({
   value,
@@ -121,27 +121,40 @@ export function WeekdaysPicker({
     onChange(value.includes(d) ? value.filter((x) => x !== d) : [...value, d].sort((a, b) => a - b))
   return (
     <div>
-      <label className={labelClass}>Repeat on</label>
-      <div className="flex flex-wrap gap-1.5">
-        {WEEKDAYS_MON_FIRST.map((day) => {
-          const on = value.includes(day.value)
+      <label className={labelClass}>On these days</label>
+      <div className="flex gap-1.5">
+        {WEEKDAYS_MIN.map((label, d) => {
+          const on = value.includes(d)
           return (
             <button
-              key={day.value}
+              key={d}
               type="button"
+              aria-label={WEEKDAYS_SHORT[d]}
               aria-pressed={on}
-              onClick={() => toggle(day.value)}
+              onClick={() => toggle(d)}
               className={cn(
-                "h-8 px-3 rounded-full text-xs font-medium transition-colors",
+                "size-9 rounded-full text-xs font-medium transition-colors",
                 on
                   ? "bg-primary text-primary-foreground"
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {day.label}
+              {label}
             </button>
           )
         })}
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        {WEEKDAY_SHORTCUTS.map((s) => (
+          <button
+            key={s.label}
+            type="button"
+            onClick={() => onChange(s.days)}
+            className="h-7 rounded-full border border-border/20 bg-background px-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {s.label}
+          </button>
+        ))}
       </div>
     </div>
   )
