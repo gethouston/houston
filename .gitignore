@@ -11,6 +11,7 @@ target/
 !/store/agents/*/.agents/**
 .claude/skills/
 .windsurf/
+.codex/
 skills-lock.json
 .playwright-mcp/
 .wrangler/
