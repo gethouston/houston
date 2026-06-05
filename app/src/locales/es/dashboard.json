@@ -8,6 +8,7 @@
   },
   "search": {
     "placeholder": "Buscar misiones",
+    "placeholderShort": "Buscar...",
     "clear": "Borrar búsqueda",
     "clearCta": "Borrar búsqueda",
     "searchingText": "Buscando en el texto de las misiones",

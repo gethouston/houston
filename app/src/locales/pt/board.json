@@ -23,6 +23,7 @@
   },
   "search": {
     "placeholder": "Buscar missões",
+    "placeholderShort": "Buscar...",
     "clear": "Limpar busca",
     "clearCta": "Limpar busca",
     "searchingText": "Buscando no texto das missões",
