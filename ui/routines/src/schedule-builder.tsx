@@ -6,8 +6,12 @@
  * There is no raw-cron input: the picker is the only way to build a custom
  * schedule, and the generated cron is shown read-only for reference.
  *
- * State and cron derivation live in useScheduleBuilder; this file is just JSX.
+ * Conditional fields are wrapped in `Reveal` so they animate in/out (and the
+ * card resizes) instead of snapping — switching units never makes the layout
+ * jump. State and cron derivation live in useScheduleBuilder; this file is JSX.
  */
+import type { ReactNode } from "react"
+import { AnimatePresence, motion } from "framer-motion"
 import { cn } from "@houston-ai/core"
 import type { SchedulePreset } from "./types"
 import { SCHEDULE_PRESET_LABELS } from "./types"
@@ -30,6 +34,25 @@ const DEFAULT_PRESETS: SchedulePreset[] = [
   "every_30min", "hourly", "daily", "weekdays", "weekly", "monthly", "custom",
 ]
 
+/**
+ * Animated wrapper for a field that conditionally appears. `layout` lets the
+ * surrounding fields slide to their new positions as this one mounts/unmounts,
+ * so the card grows and shrinks smoothly. Values per design-system.md.
+ */
+function Reveal({ children }: { children: ReactNode }) {
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+    >
+      {children}
+    </motion.div>
+  )
+}
+
 export function ScheduleBuilder({
   value,
   onChange,
@@ -51,6 +74,12 @@ export function ScheduleBuilder({
     showTime,
     summary,
   } = useScheduleBuilder(value, onChange)
+
+  const showCustomTime =
+    isCustom &&
+    (intervalUnit === "days" ||
+      intervalUnit === "weeks" ||
+      intervalUnit === "months")
 
   return (
     <div className="space-y-4">
@@ -75,60 +104,75 @@ export function ScheduleBuilder({
       {/* Summary */}
       <p className="text-sm text-foreground">{summary}</p>
 
-      {/* Preset-specific fields */}
+      {/* Preset-specific fields — animated so the card never snaps */}
       <div className="space-y-3">
-        {showTime && (
-          <TimePicker
-            value={options.time}
-            onChange={(time) => updateOption({ time })}
-          />
-        )}
-
-        {activePreset === "weekly" && (
-          <DayOfWeekPicker
-            value={options.dayOfWeek}
-            onChange={(dayOfWeek) => updateOption({ dayOfWeek })}
-          />
-        )}
-
-        {activePreset === "monthly" && (
-          <DayOfMonthPicker
-            value={options.dayOfMonth}
-            onChange={(dayOfMonth) => updateOption({ dayOfMonth })}
-          />
-        )}
-
-        {isCustom && (
-          <>
-            <IntervalPicker
-              every={intervalEvery}
-              unit={intervalUnit}
-              invalid={!everyValid}
-              onEveryChange={setIntervalEvery}
-              onUnitChange={setIntervalUnit}
-            />
-            {intervalUnit === "weeks" && (
-              <WeekdaysPicker
-                value={intervalWeekdays}
-                onChange={setIntervalWeekdays}
-              />
-            )}
-            {intervalUnit === "months" && (
-              <DayOfMonthPicker
-                value={options.dayOfMonth}
-                onChange={(dayOfMonth) => updateOption({ dayOfMonth })}
-              />
-            )}
-            {(intervalUnit === "days" ||
-              intervalUnit === "weeks" ||
-              intervalUnit === "months") && (
+        <AnimatePresence mode="popLayout" initial={false}>
+          {showTime && (
+            <Reveal key="preset-time">
               <TimePicker
                 value={options.time}
                 onChange={(time) => updateOption({ time })}
               />
-            )}
-          </>
-        )}
+            </Reveal>
+          )}
+
+          {activePreset === "weekly" && (
+            <Reveal key="weekly-dow">
+              <DayOfWeekPicker
+                value={options.dayOfWeek}
+                onChange={(dayOfWeek) => updateOption({ dayOfWeek })}
+              />
+            </Reveal>
+          )}
+
+          {activePreset === "monthly" && (
+            <Reveal key="monthly-dom">
+              <DayOfMonthPicker
+                value={options.dayOfMonth}
+                onChange={(dayOfMonth) => updateOption({ dayOfMonth })}
+              />
+            </Reveal>
+          )}
+
+          {isCustom && (
+            <Reveal key="custom-interval">
+              <IntervalPicker
+                every={intervalEvery}
+                unit={intervalUnit}
+                invalid={!everyValid}
+                onEveryChange={setIntervalEvery}
+                onUnitChange={setIntervalUnit}
+              />
+            </Reveal>
+          )}
+
+          {isCustom && intervalUnit === "weeks" && (
+            <Reveal key="custom-weekdays">
+              <WeekdaysPicker
+                value={intervalWeekdays}
+                onChange={setIntervalWeekdays}
+              />
+            </Reveal>
+          )}
+
+          {isCustom && intervalUnit === "months" && (
+            <Reveal key="custom-dom">
+              <DayOfMonthPicker
+                value={options.dayOfMonth}
+                onChange={(dayOfMonth) => updateOption({ dayOfMonth })}
+              />
+            </Reveal>
+          )}
+
+          {showCustomTime && (
+            <Reveal key="custom-time">
+              <TimePicker
+                value={options.time}
+                onChange={(time) => updateOption({ time })}
+              />
+            </Reveal>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   )

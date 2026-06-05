@@ -3,7 +3,7 @@
  * Converts preset + options into cron expressions and generates summaries.
  */
 import type { SchedulePreset } from "./types"
-import { parseTime, formatTime, ordinal, joinList } from "./schedule-format"
+import { parseTime, formatTime, ordinal, joinList } from "./schedule-format.ts"
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"]
 

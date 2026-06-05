@@ -7,7 +7,7 @@
  * days), months (a day-of-month, every N months). Cron can't express "every N
  * weeks", so the week unit is always weekly — there is no count for it.
  */
-import { parseTime } from "./schedule-format"
+import { parseTime } from "./schedule-format.ts"
 
 /** Unit for the friendly "Repeat every N …" custom-interval picker. */
 export type IntervalUnit = "minutes" | "hours" | "days" | "weeks" | "months"

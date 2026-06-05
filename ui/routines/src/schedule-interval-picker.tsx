@@ -22,24 +22,29 @@ function NumberStepper({
   value,
   onChange,
   invalid,
+  disabled,
 }: {
   value: string
   onChange: (value: string) => void
   invalid?: boolean
+  // "weeks" has no count, so the stepper is disabled (but kept mounted) to hold
+  // its place and stop the unit pills jumping left when that unit is picked.
+  disabled?: boolean
 }) {
   const n = Number(value) || 1
   return (
     <div
       className={cn(
-        "inline-flex items-center rounded-lg border bg-background",
+        "inline-flex items-center rounded-lg border bg-background transition-opacity",
         invalid ? "border-red-500/50" : "border-border/20",
+        disabled && "opacity-40",
       )}
     >
       <button
         type="button"
         aria-label="Decrease"
         onClick={() => onChange(String(Math.max(1, n - 1)))}
-        disabled={n <= 1}
+        disabled={disabled || n <= 1}
         className="grid size-9 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-30"
       >
         <Minus className="size-4" />
@@ -48,16 +53,18 @@ function NumberStepper({
         type="text"
         inputMode="numeric"
         value={value}
+        disabled={disabled}
         // Keep digits only; an empty string is allowed (and flagged invalid) so
         // it can be cleared while typing.
         onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
-        className="w-10 bg-transparent text-center text-sm tabular-nums outline-none"
+        className="w-10 bg-transparent text-center text-sm tabular-nums outline-none disabled:cursor-not-allowed"
       />
       <button
         type="button"
         aria-label="Increase"
         onClick={() => onChange(String(n + 1))}
-        className="grid size-9 place-items-center text-muted-foreground hover:text-foreground"
+        disabled={disabled}
+        className="grid size-9 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-30"
       >
         <Plus className="size-4" />
       </button>
@@ -78,13 +85,20 @@ export function IntervalPicker({
   onEveryChange: (every: string) => void
   onUnitChange: (unit: IntervalUnit) => void
 }) {
-  const showCount = unit !== "weeks"
-  const plural = showCount && Number(every) > 1
+  // "weeks" has no count; keep the stepper mounted-but-disabled so the unit
+  // pills don't shift left when it's hidden.
+  const countDisabled = unit === "weeks"
+  const plural = Number(every) > 1
   return (
     <div>
       <label className={labelClass}>Repeat every</label>
       <div className="flex flex-wrap items-center gap-2">
-        {showCount && <NumberStepper value={every} onChange={onEveryChange} invalid={invalid} />}
+        <NumberStepper
+          value={every}
+          onChange={onEveryChange}
+          invalid={invalid && !countDisabled}
+          disabled={countDisabled}
+        />
         <div className="flex flex-wrap gap-1.5">
           {FREQS.map((f) => (
             <button
