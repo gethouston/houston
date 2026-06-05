@@ -114,6 +114,18 @@ expired OAuth/API-key messages) and `houston-agents-conversations` emits
 `codex login` through `/v1/providers/:name/login` and polls provider status
 until the CLI reports authenticated.
 
+**`ProviderLoginDialog` is a remote-only affordance.** On desktop the engine
+is the co-located sidecar: the provider CLI opens the user's own browser and
+finishes through its `localhost` OAuth callback, so the connect surfaces
+(`ProviderPicker`, `ProviderSettings`) **drop `ProviderLoginUrl` when
+`osIsTauri()`** and show no dialog — they just wait for `ProviderLoginComplete`
+to flip the card (issue #453). Without that guard claude (which prints its
+`https://claude.com/…` URL unconditionally) flashed a paste-back dialog that
+instantly auto-dismissed; codex never did, because its desktop fallback URL is
+`http://localhost:1455/…`, which the relay's `https://`-only regex skips. The
+engine still emits `ProviderLoginUrl` either way — it's frontend-agnostic; the
+client decides whether it can reach a local browser.
+
 **Headless connect uses two completion shapes.** A remote client (the webapp
 or mobile PWA pointed at a hosted engine) can't receive the CLI's `localhost`
 OAuth callback, so the connect surfaces that render `ProviderLoginDialog`

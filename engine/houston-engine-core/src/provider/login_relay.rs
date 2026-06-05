@@ -21,10 +21,13 @@
 //! the relay task emits [`HoustonEvent::ProviderLoginComplete`] so the
 //! frontend can close the sign-in dialog and refresh `providerStatus`.
 //!
-//! Same machinery handles desktop too: claude prints the URL
-//! unconditionally, but completes via its own local callback before
-//! the user needs to interact with the Houston dialog. The dialog
-//! pops, then auto-dismisses on `ProviderLoginComplete`.
+//! The same machinery runs for a co-located desktop client too — claude
+//! prints the URL unconditionally — but there the CLI opens the user's own
+//! browser and finishes via its localhost callback, so the desktop frontend
+//! drops `ProviderLoginUrl` (`osIsTauri()`, issue #453) and shows no dialog;
+//! it just waits for `ProviderLoginComplete`. The URL relay is frontend-
+//! agnostic: the engine always emits it, and each client decides whether it
+//! can reach a local browser.
 
 use crate::error::{CoreError, CoreResult};
 use houston_terminal_manager::Provider;
