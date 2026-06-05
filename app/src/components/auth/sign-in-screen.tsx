@@ -1,20 +1,25 @@
 import { useEffect, useState } from "react";
-import { Button } from "@houston-ai/core";
+import { Button, Separator } from "@houston-ai/core";
 import { HoustonLogo } from "../shell/experience-card";
-import { onAuthError, signInWithGoogle } from "../../lib/auth";
+import {
+  onAuthError,
+  signInWithGoogle,
+  signInWithMicrosoft,
+} from "../../lib/auth";
 import { reportBug } from "../../lib/bug-report";
 import { logger } from "../../lib/logger";
+import { prettifyAuthError } from "./auth-errors";
+import { EmailSignIn } from "./email-sign-in";
 
-// Microsoft sign-in is temporarily disabled in the UI while the Azure
-// App Registration + Supabase azure-provider settings are sorted out.
-// The handler in `auth.ts` (`signInWithMicrosoft`) stays exported so
-// re-enabling is a one-line revert here.
-type Provider = "google";
+type Provider = "google" | "azure";
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
  * configured but no session is present. Keeps copy product-benefit-focused
  * — the audience is non-technical, so no mention of OAuth / tokens / APIs.
+ *
+ * Three ways in: Google, Microsoft (both OAuth via the loopback flow), and
+ * passwordless email (6-digit code, fully in-app — see EmailSignIn).
  *
  * Re-click semantics: the loading spinner is only on while the system
  * browser is being opened (a few ms). After that, the user is free to
@@ -47,7 +52,7 @@ export function SignInScreen() {
     setPending(provider);
     setError(null);
     try {
-      await signInWithGoogle();
+      await (provider === "google" ? signInWithGoogle() : signInWithMicrosoft());
     } catch (e) {
       logger.error(`[auth] ${provider} sign-in failed: ${e}`);
       setError(prettifyAuthError(String(e)));
@@ -101,7 +106,24 @@ export function SignInScreen() {
             <GoogleIcon />
             {pending === "google" ? "Opening browser..." : "Continue with Google"}
           </Button>
+          <Button
+            onClick={handleSignIn("azure")}
+            disabled={pending !== null}
+            variant="outline"
+            className="w-full rounded-full h-11 flex items-center justify-center gap-2"
+          >
+            <MicrosoftIcon />
+            {pending === "azure" ? "Opening browser..." : "Continue with Microsoft"}
+          </Button>
         </div>
+
+        <div className="flex items-center gap-3 w-full">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <Separator className="flex-1" />
+        </div>
+
+        <EmailSignIn />
 
         <p className="text-xs text-muted-foreground text-center">
           Wrong browser profile? Just click again to retry.
@@ -142,40 +164,6 @@ export function SignInScreen() {
   );
 }
 
-/**
- * Map raw provider / Supabase error strings to a short, actionable
- * sentence. The original message is appended in parentheses so support
- * still has the technical detail when triaging from logs.
- */
-function prettifyAuthError(raw: string): string {
-  const msg = raw.toLowerCase();
-  if (msg.includes("identity") && msg.includes("already")) {
-    return "That email is already signed in with another provider. Use the original sign-in option, or contact support to merge accounts.";
-  }
-  if (msg.includes("aadsts50020") || msg.includes("does not exist in tenant")) {
-    return "Your Microsoft account isn't allowed in this Houston workspace. Try a different account, or ask your admin to invite it.";
-  }
-  if (msg.includes("aadsts700016") || msg.includes("application with identifier")) {
-    return "Microsoft sign-in isn't fully configured for Houston yet. Please contact support.";
-  }
-  if (msg.includes("aadsts65001") || msg.includes("consent")) {
-    return "Microsoft needs admin consent before this account can sign in. Ask your IT admin to approve Houston, then try again.";
-  }
-  if (msg.includes("redirect") && msg.includes("invalid")) {
-    return "The sign-in callback URL isn't allow-listed. Please contact support.";
-  }
-  if (msg.includes("provider") && msg.includes("not enabled")) {
-    return "This sign-in option isn't turned on for Houston yet. Try the other provider.";
-  }
-  if (msg.includes("authorization code")) {
-    return "Sign-in didn't complete cleanly. Please try again.";
-  }
-  // Fallback: show the raw message so the user has something to copy
-  // when reporting. Keep it bounded so the UI doesn't blow up.
-  const trimmed = raw.length > 220 ? `${raw.slice(0, 220)}…` : raw;
-  return `Sign-in failed: ${trimmed}`;
-}
-
 function GoogleIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 48 48" aria-hidden="true">
@@ -187,3 +175,13 @@ function GoogleIcon() {
   );
 }
 
+function MicrosoftIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true">
+      <path fill="#F25022" d="M1 1h10v10H1z" />
+      <path fill="#7FBA00" d="M12 1h10v10H12z" />
+      <path fill="#00A4EF" d="M1 12h10v10H1z" />
+      <path fill="#FFB900" d="M12 12h10v10H12z" />
+    </svg>
+  );
+}

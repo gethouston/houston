@@ -2424,7 +2424,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agent-files"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "chrono",
  "serde",
@@ -2438,7 +2438,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agent-portable"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "chrono",
  "serde",
@@ -2451,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agents-conversations"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "houston-db",
  "houston-terminal-manager",
@@ -2465,7 +2465,7 @@ dependencies = [
 
 [[package]]
 name = "houston-app"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2496,7 +2496,7 @@ dependencies = [
 
 [[package]]
 name = "houston-claude-installer"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "futures-util",
  "hex",
@@ -2516,7 +2516,7 @@ dependencies = [
 
 [[package]]
 name = "houston-cli-bundle"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "serde",
  "serde_json",
@@ -2526,7 +2526,7 @@ dependencies = [
 
 [[package]]
 name = "houston-composio"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
@@ -2544,7 +2544,7 @@ dependencies = [
 
 [[package]]
 name = "houston-db"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2557,7 +2557,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-core"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2593,7 +2593,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-protocol"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "chrono",
  "houston-terminal-manager",
@@ -2605,7 +2605,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-server"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2627,6 +2627,8 @@ dependencies = [
  "houston-ui-events",
  "rand 0.8.5",
  "reqwest 0.12.28",
+ "sentry",
+ "sentry-tracing",
  "serde",
  "serde_json",
  "sha2",
@@ -2643,7 +2645,7 @@ dependencies = [
 
 [[package]]
 name = "houston-events"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2657,7 +2659,7 @@ dependencies = [
 
 [[package]]
 name = "houston-file-watcher"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "houston-ui-events",
  "notify",
@@ -2668,7 +2670,7 @@ dependencies = [
 
 [[package]]
 name = "houston-scheduler"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2682,7 +2684,7 @@ dependencies = [
 
 [[package]]
 name = "houston-skills"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "chrono",
  "reqwest 0.12.28",
@@ -2698,7 +2700,7 @@ dependencies = [
 
 [[package]]
 name = "houston-tauri"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "dirs 5.0.1",
  "houston-agent-files",
@@ -2717,7 +2719,7 @@ dependencies = [
 
 [[package]]
 name = "houston-terminal-manager"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "dirs 5.0.1",
  "houston-cli-bundle",
@@ -2730,7 +2732,7 @@ dependencies = [
 
 [[package]]
 name = "houston-tunnel"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2750,7 +2752,7 @@ dependencies = [
 
 [[package]]
 name = "houston-ui-events"
-version = "0.4.17"
+version = "0.4.18"
 dependencies = [
  "houston-terminal-manager",
  "serde",
@@ -5520,6 +5522,7 @@ version = "0.23.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "758025cb5fccfd3bc2fd74708fd4682be41d99e5dff73c377c0646c6012c73a4"
 dependencies = [
+ "log",
  "once_cell",
  "ring",
  "rustls-pki-types",
@@ -5826,6 +5829,7 @@ dependencies = [
  "httpdate",
  "native-tls",
  "reqwest 0.12.28",
+ "rustls 0.23.37",
  "sentry-actix",
  "sentry-backtrace",
  "sentry-contexts",
@@ -7647,10 +7651,12 @@ dependencies = [
  "log",
  "native-tls",
  "percent-encoding",
+ "rustls 0.23.37",
  "rustls-pki-types",
  "ureq-proto",
  "utf8-zero",
  "webpki-root-certs",
+ "webpki-roots 1.0.6",
 ]
 
 [[package]]
