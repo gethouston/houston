@@ -1,10 +1,12 @@
 /**
  * Picker fields used by ScheduleBuilder — time, day-of-week, day-of-month,
  * and the friendly "every N minutes/hours/days" interval picker.
+ *
+ * All visible text arrives via props so the package stays i18n-agnostic;
+ * weekday names come from `Intl` in the given `locale`.
  */
 import { cn } from "@houston-ai/core"
 import type { IntervalUnit } from "./schedule-interval-utils"
-import { INTERVAL_UNIT_LABELS } from "./schedule-interval-utils"
 
 const INTERVAL_UNITS: IntervalUnit[] = ["minutes", "hours", "days"]
 
@@ -16,26 +18,27 @@ const inputClass = cn(
 
 const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
 
-const DAYS_OF_WEEK = [
-  { value: 0, label: "Sun" },
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-]
+/** Short weekday names (Sun…Sat) for `locale`, indexed 0–6. */
+function shortWeekdayNames(locale: string): string[] {
+  const fmt = new Intl.DateTimeFormat(locale, { weekday: "short", timeZone: "UTC" })
+  // Jan 7 2024 (UTC) is a Sunday; +i walks the week.
+  return Array.from({ length: 7 }, (_, i) =>
+    fmt.format(new Date(Date.UTC(2024, 0, 7 + i))),
+  )
+}
 
 export function TimePicker({
+  label,
   value,
   onChange,
 }: {
+  label: string
   value: string
   onChange: (time: string) => void
 }) {
   return (
     <div>
-      <label className={labelClass}>Time</label>
+      <label className={labelClass}>{label}</label>
       <input
         type="time"
         value={value}
@@ -47,28 +50,33 @@ export function TimePicker({
 }
 
 export function DayOfWeekPicker({
+  label,
+  locale = "en-US",
   value,
   onChange,
 }: {
+  label: string
+  locale?: string
   value: number
   onChange: (day: number) => void
 }) {
+  const names = shortWeekdayNames(locale)
   return (
     <div>
-      <label className={labelClass}>Day</label>
+      <label className={labelClass}>{label}</label>
       <div className="flex gap-1">
-        {DAYS_OF_WEEK.map((day) => (
+        {names.map((name, day) => (
           <button
-            key={day.value}
-            onClick={() => onChange(day.value)}
+            key={day}
+            onClick={() => onChange(day)}
             className={cn(
               "size-8 rounded-lg text-xs font-medium transition-colors",
-              value === day.value
+              value === day
                 ? "bg-primary text-primary-foreground"
                 : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
             )}
           >
-            {day.label}
+            {name}
           </button>
         ))}
       </div>
@@ -77,15 +85,17 @@ export function DayOfWeekPicker({
 }
 
 export function DayOfMonthPicker({
+  label,
   value,
   onChange,
 }: {
+  label: string
   value: number
   onChange: (day: number) => void
 }) {
   return (
     <div>
-      <label className={labelClass}>Day of month</label>
+      <label className={labelClass}>{label}</label>
       <input
         type="number"
         min={1}
@@ -105,12 +115,16 @@ export function DayOfMonthPicker({
  * turns the interval into cron.
  */
 export function IntervalPicker({
+  label,
+  unitLabels,
   every,
   unit,
   invalid,
   onEveryChange,
   onUnitChange,
 }: {
+  label: string
+  unitLabels: Record<IntervalUnit, string>
   every: string
   unit: IntervalUnit
   invalid?: boolean
@@ -119,7 +133,7 @@ export function IntervalPicker({
 }) {
   return (
     <div>
-      <label className={labelClass}>Run every</label>
+      <label className={labelClass}>{label}</label>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -147,7 +161,7 @@ export function IntervalPicker({
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {INTERVAL_UNIT_LABELS[u]}
+              {unitLabels[u]}
             </button>
           ))}
         </div>

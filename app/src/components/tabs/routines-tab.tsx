@@ -20,11 +20,13 @@ import {
   useCancelRoutineRun,
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
+import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 
 export default function RoutinesTab({ agent }: TabProps) {
   const { t } = useTranslation("routines");
+  const labels = useRoutineLabels();
   const path = agent.folderPath;
   const tz = useTimezonePreference();
 
@@ -173,6 +175,11 @@ export default function RoutinesTab({ agent }: TabProps) {
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         accountTimezone={tz.timezone}
         hasChanges={!formMatchesRoutine(form, baseline)}
+        labels={labels.editor}
+        scheduleLabels={labels.schedule}
+        nextFireLabels={labels.nextFire}
+        runHistoryLabels={labels.runHistory}
+        locale={labels.locale}
       />
     );
   }
@@ -186,13 +193,11 @@ export default function RoutinesTab({ agent }: TabProps) {
       onSelect={openEditor}
       onCreate={handleCreate}
       onToggle={handleToggle}
-      labels={{
-        loading: t("loading"),
-        emptyTitle: t("grid.emptyTitle"),
-        emptyDescription: t("grid.emptyDescription"),
-        descriptionShort: t("grid.descriptionShort"),
-        newRoutine: t("grid.newRoutine"),
-      }}
+      labels={labels.grid}
+      rowLabels={labels.rowLabels}
+      scheduleSummaryLabels={labels.schedule.summary}
+      nextFireLabels={labels.nextFire}
+      locale={labels.locale}
     />
   );
 }

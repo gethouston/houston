@@ -1,9 +1,128 @@
 {
   "loading": "Carregando…",
   "grid": {
+    "loading": "Carregando…",
     "emptyTitle": "Programe e esqueça",
     "emptyDescription": "As rotinas disparam no horário programado e só te chamam quando algo realmente precisa de atenção.",
     "newRoutine": "Nova rotina",
     "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção."
+  },
+  "editor": {
+    "back": "Voltar para rotinas",
+    "newRoutine": "Nova rotina",
+    "untitled": "Rotina sem título",
+    "stop": "Parar",
+    "starting": "Iniciando…",
+    "runNow": "Executar agora",
+    "saveChanges": "Salvar alterações",
+    "createRoutine": "Criar rotina",
+    "moreActions": "Mais ações",
+    "pauseRoutine": "Pausar rotina",
+    "resumeRoutine": "Retomar rotina",
+    "deleteRoutine": "Excluir rotina",
+    "nameLabel": "Nome",
+    "namePlaceholder": "ex.: Reunião matinal",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Opcional, para que serve esta rotina",
+    "promptLabel": "Instrução",
+    "promptPlaceholder": "O que o agente deve fazer quando isso rodar?",
+    "sectionWhen": "Quando roda",
+    "sectionBehavior": "Comportamento",
+    "sectionRecent": "Execuções recentes",
+    "timezoneLabel": "Fuso horário",
+    "accountDefault": "Padrão da conta · {tz}",
+    "nextRun": "Próxima execução {relative}",
+    "schedulePreview": "Prévia do agendamento",
+    "schedulePreviewHint": "Escolha um agendamento válido para ver quando esta rotina vai rodar.",
+    "notifyTitle": "Avisar só quando for relevante",
+    "notifyDescription": "Se o agente não tiver nada a relatar, a execução não vai aparecer no quadro.",
+    "chatTitle": "Manter os resultados em um só chat",
+    "chatDescription": "Cada execução é adicionada ao mesmo chat. Desative para abrir um novo chat cada vez que esta rotina rodar."
+  },
+  "row": {
+    "untitled": "Sem título",
+    "next": "Próxima {relative}",
+    "noNextRun": "Sem próxima execução",
+    "paused": "Pausada",
+    "waiting": "Aguardando · retoma às {time}",
+    "justRan": "executada agora",
+    "ranMinutes": "há {n}m",
+    "ranHours": "há {n}h",
+    "ranDays": "há {n}d",
+    "pauseRoutine": "Pausar rotina",
+    "resumeRoutine": "Retomar rotina"
+  },
+  "schedule": {
+    "presets": {
+      "every_30min": "A cada 30 minutos",
+      "hourly": "A cada hora",
+      "daily": "Diário",
+      "weekdays": "Só dias úteis",
+      "weekly": "Semanal",
+      "monthly": "Mensal",
+      "custom": "Personalizado"
+    },
+    "units": {
+      "minutes": "minutos",
+      "hours": "horas",
+      "days": "dias"
+    },
+    "timeLabel": "Hora",
+    "dayLabel": "Dia",
+    "dayOfMonthLabel": "Dia do mês",
+    "runEvery": "Executar a cada",
+    "enterNumber": "Digite um número",
+    "summary": {
+      "noSchedule": "Nenhum agendamento definido",
+      "custom": "Agendamento personalizado",
+      "customCron": "Agendamento cron personalizado",
+      "every30": "Roda a cada 30 minutos",
+      "everyHourStart": "Roda no início de cada hora",
+      "everyMinute": "Roda a cada minuto",
+      "everyNMinutes": "Roda a cada {n} minutos",
+      "everyHour": "Roda a cada hora",
+      "everyNHours": "Roda a cada {n} horas",
+      "everyDay": "Roda todos os dias às {time}",
+      "everyNDays": "Roda a cada {n} dias às {time}",
+      "weekdays": "Roda de segunda a sexta às {time}",
+      "weekly": "Roda a cada {day} às {time}",
+      "monthly": "Roda no dia {n} de cada mês às {time}"
+    }
+  },
+  "nextFire": {
+    "lessThanMinute": "em menos de um minuto",
+    "inMinutes": "em {m}m",
+    "inHoursMinutes": "em {h}h {m}m",
+    "inDaysHours": "em {d}d {h}h",
+    "inDays": "em {d}d",
+    "today": "hoje",
+    "tomorrow": "amanhã",
+    "soon": "em breve",
+    "at": "{day} às {time}"
+  },
+  "runHistory": {
+    "empty": "Nenhuma execução ainda, esta rotina não rodou.",
+    "view": "Ver",
+    "stopRun": "Parar execução",
+    "waiting": "Aguardando o limite de uso, retoma às {time}",
+    "status": {
+      "silent": "Silenciosa",
+      "surfaced": "Exibida",
+      "running": "Em execução",
+      "error": "Erro",
+      "cancelled": "Cancelada",
+      "paused": "Pausada"
+    },
+    "today": "Hoje, {time}",
+    "yesterday": "Ontem, {time}",
+    "onDate": "{date}, {time}"
+  },
+  "timezoneGate": {
+    "title": "Qual é o seu fuso horário?",
+    "description": "As rotinas rodam em um horário. Precisamos saber o seu fuso antes que qualquer uma rode, para que 9h seja o seu 9h.",
+    "timezoneLabel": "Fuso horário",
+    "detected": "Detectado pelo seu computador.",
+    "saving": "Salvando…",
+    "confirm": "Confirmar fuso horário"
   }
 }
