@@ -30,6 +30,7 @@ import {
 } from "react";
 import { Streamdown } from "streamdown";
 import { MarkdownCodeBlock } from "../markdown-code-block";
+import { classifyMarkdownLink } from "../markdown-link";
 
 const MessageAvatarContext = createContext<React.ReactNode | undefined>(undefined);
 
@@ -380,22 +381,44 @@ export const MessageResponse = memo(
       return {
         ...sharedComponents,
         a: ({ href, children, node: _node }: AnchorHTMLAttributes<HTMLAnchorElement> & { node?: unknown }) => {
-          // Raw auto-linked URL: children text equals href → plain text, no button
-          if (!href || children === href) {
+          const kind = classifyMarkdownLink(href, children);
+          // No href → nothing to open.
+          if (kind === "plain") {
             return <span>{children}</span>;
           }
-          const onOpen = () => fn?.(href);
-          // If a custom renderer is provided and returns something, use
-          // it. If it returns undefined/null, fall through to the
-          // default button so the app can selectively override only
-          // specific URL patterns.
+          const url = href as string;
+          const onOpen = () => fn?.(url);
+          // The app's custom renderer gets first say on every link (its
+          // contract). When it returns undefined/null we fall through to
+          // the defaults below, so the app can override only specific URL
+          // patterns (e.g. Composio connect cards) and leave the rest alone.
           if (renderLink) {
-            const custom = renderLink({ href, children, onOpen });
+            const custom = renderLink({ href: url, children, onOpen });
             if (custom != null) {
               return <>{custom}</>;
             }
           }
-          // Markdown link with custom text → default button with text + icon
+          // Bare URL the agent dropped in chat → inline, clickable link that
+          // opens in the system browser (issue #358), not dead text. Only
+          // render it interactive when there's an open handler; otherwise it
+          // would look clickable but do nothing.
+          if (kind === "autolink") {
+            if (!fn) return <span>{children}</span>;
+            return (
+              <a
+                href={url}
+                rel="noreferrer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onOpen();
+                }}
+                className="text-primary underline-offset-4 hover:underline [overflow-wrap:anywhere]"
+              >
+                {children}
+              </a>
+            );
+          }
+          // Labeled link (text distinct from URL) → button with text + icon.
           return (
             <Button
               type="button"
