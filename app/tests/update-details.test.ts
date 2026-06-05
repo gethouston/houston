@@ -1,4 +1,4 @@
-import { strictEqual } from "node:assert";
+import { ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   normalizeUpdateNotes,
@@ -102,5 +102,30 @@ describe("selectUpdateNotes", () => {
   it("treats a marker with no terminator as plain notes", () => {
     const body = 'English body <!--houston-i18n:{"es":"x"}';
     strictEqual(selectUpdateNotes(body, "es"), body);
+  });
+
+  // The update card renders the selected notes as markdown. Guard the content
+  // contract the renderer depends on: the bullet/number list syntax must reach
+  // it byte-intact (the marker split + normalize must not swallow the blank
+  // line before a list or rewrite the `- ` / `1. ` line starts), or the
+  // markdown parser would never emit <li>s for it to style.
+  it("preserves markdown list structure through localization + normalize", () => {
+    const en = "## Title\n\n### Added\n\n- One\n- Two\n\n1. First\n2. Second";
+    const es = "## Titulo\n\n### Añadido\n\n- Uno\n- Dos\n\n1. Primero\n2. Segundo";
+    const body = `${en}\n\n<!--houston-i18n:${JSON.stringify({ es })}-->`;
+
+    const outEn = selectUpdateNotes(body, "en");
+    const outEs = selectUpdateNotes(body, "es");
+    strictEqual(outEn, en);
+    strictEqual(outEs, es);
+
+    for (const out of [outEn, outEs]) {
+      const lines = out!.split("\n");
+      // blank line before each list survives (loose-list separation)
+      ok(out!.includes("\n\n- "), "unordered list keeps its leading blank line");
+      ok(out!.includes("\n\n1. "), "ordered list keeps its leading blank line");
+      strictEqual(lines.filter((l) => l.startsWith("- ")).length, 2);
+      strictEqual(lines.filter((l) => /^\d+\. /.test(l)).length, 2);
+    }
   });
 });
