@@ -264,7 +264,7 @@ level; codex has no such fallback, so `max` (an unknown variant to codex) is
 never offered for OpenAI. Default for every effort-capable provider is `medium`.
 
 ## Workspace
-- Storage: `~/.houston/workspaces/workspaces.json` (index) + one dir per workspace `~/.houston/workspaces/{Name}/`. `HOUSTON_DOCS` env var overrides the root.
+- Storage: index `workspaces.json` + one dir per workspace `<docs-root>/{Name}/`. The **docs root** resolves at app boot from `~/.houston/app-config.json` (`docsRoot`), falling back to `~/.houston/workspaces/`; the app passes it to the engine as `HOUSTON_DOCS`. A user-visible root (e.g. `~/Houston`) is git-initialised at engine boot (`houston_engine_core::git_repo::ensure_docs_root_git` — seeds `.gitignore` + initial commit, skips the hidden system root, degrades when git is absent); the hidden default is never a repo. App-side resolution + idempotent migration live in `app/src-tauri/src/app_config.rs`; users change the location via Settings → Advanced (developer mode) → Workspace location (`commands::workspace_root::{get_docs_root,set_docs_root}`, applied on next launch).
 - First launch: welcome screen, create first workspace
 - Engine routes: `GET /v1/workspaces`, `POST /v1/workspaces`, `POST /v1/workspaces/:id/rename`, `DELETE /v1/workspaces/:id`, `PATCH /v1/workspaces/:id/provider`, `GET|PUT /v1/workspaces/:id/context` (`engine/houston-engine-server/src/routes/workspaces.rs`). Frontend reaches them via `@houston-ai/engine-client` — no Tauri commands in the path.
 - Store: `useWorkspaceStore` — `loadWorkspaces()`, `setCurrent()`, `create()`, `rename()`, `delete()`

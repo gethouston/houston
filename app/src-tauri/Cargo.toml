@@ -77,6 +77,9 @@ notify-rust = "4.11"
 # file under `%LOCALAPPDATA%\com.houston.app\auth\<key>.dpapi` instead.
 # DPAPI binds the ciphertext to the Windows user account so a copied
 # file is useless to another user. See `src/auth.rs` storage module.
+[dev-dependencies]
+tempfile = "3"
+
 [target."cfg(target_os = \"windows\")".dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_JobObjects", "Win32_System_Threading"] }
 # Same reason as notify-rust on Linux, but notify-rust's action handling is

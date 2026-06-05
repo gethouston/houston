@@ -1,0 +1,423 @@
+<!doctype html>
+<!--
+---
+type: spec
+slug: agentic-workspace-substrate
+status: candidate
+core_claim: Houston becomes a user-visible, git-backed, bstack-governed agentic workspace by providing the environment and installing skills, not by building engine features.
+related: [[concept/llm-as-index]] [[pattern/capabilities-via-skills]] [[concept/two-root-split]]
+sources: [wf_55e0d214-f5e]
+tags: [houston, bstack, substrate, knowledge-graph, worktrees, governance]
+created: 2026-06-04
+updated: 2026-06-04
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Houston — Agentic Workspace Substrate</title>
+<style>
+  :root{
+    --bg:#0b0d12; --panel:#12151c; --panel2:#161a23; --border:#232838;
+    --text:#e7eaf0; --muted:#98a2b3; --faint:#6b7488;
+    --blue:#6ea8fe; --teal:#3ddc97; --amber:#f4b740; --red:#ff6b6b; --violet:#b794f6;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:var(--sans);
+    line-height:1.6;font-size:15.5px;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1080px;margin:0 auto;padding:0 28px 120px}
+  header.hero{padding:64px 28px 40px;max-width:1080px;margin:0 auto}
+  .eyebrow{font:600 12px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--blue)}
+  h1{font-size:40px;line-height:1.1;margin:16px 0 10px;letter-spacing:-.02em;font-weight:700}
+  .thesis{font-size:19px;color:var(--muted);max-width:760px}
+  .thesis b{color:var(--text);font-weight:600}
+  .meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+  .badge{font:600 11.5px/1 var(--mono);padding:6px 10px;border-radius:999px;border:1px solid var(--border);
+    background:var(--panel);color:var(--muted)}
+  .badge.warn{color:var(--amber);border-color:#3a3320}
+  .badge.ok{color:var(--teal);border-color:#1e3a30}
+  h2{font-size:13px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);
+    margin:64px 0 18px;font-weight:700;font-family:var(--mono)}
+  h3{font-size:21px;margin:30px 0 8px;letter-spacing:-.01em}
+  p{margin:10px 0}
+  a{color:var(--blue);text-decoration:none}
+  a:hover{text-decoration:underline}
+  code{font-family:var(--mono);font-size:.86em;background:var(--panel2);border:1px solid var(--border);
+    padding:1px 6px;border-radius:6px;color:#cdd6e6}
+  .lead{font-size:17px;color:var(--muted)}
+  .card{background:var(--panel);border:1px solid var(--border);border-radius:14px;padding:20px 22px;margin:14px 0}
+  .grid{display:grid;gap:14px}
+  .g2{grid-template-columns:1fr 1fr}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  @media(max-width:820px){.g2,.g3{grid-template-columns:1fr}}
+  .chip{display:inline-flex;align-items:center;gap:7px;font:600 13px/1 var(--sans);
+    padding:9px 13px;border-radius:10px;background:var(--panel2);border:1px solid var(--border);margin:4px 6px 4px 0}
+  .chip .n{font:700 11px/1 var(--mono);color:var(--blue)}
+  figure{margin:24px 0;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:10px}
+  figure svg{display:block;width:100%;height:auto}
+  figcaption{color:var(--faint);font-size:13px;text-align:center;padding:8px 12px 6px}
+  table{width:100%;border-collapse:collapse;margin:16px 0;font-size:14px}
+  th,td{text-align:left;padding:11px 13px;border-bottom:1px solid var(--border);vertical-align:top}
+  th{color:var(--faint);font:600 11.5px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+  tbody tr:hover{background:#0e1117}
+  td code{white-space:nowrap}
+  .callout{border-radius:14px;padding:16px 18px;margin:14px 0;border:1px solid;display:flex;gap:14px}
+  .callout .tag{font:700 11px/1 var(--mono);padding:5px 8px;border-radius:6px;height:fit-content;white-space:nowrap}
+  .callout.red{background:#1a0f12;border-color:#3a2024}
+  .callout.red .tag{background:#3a2024;color:var(--red)}
+  .callout.amber{background:#19150c;border-color:#3a3320}
+  .callout.amber .tag{background:#3a3320;color:var(--amber)}
+  .callout.blue{background:#0e1422;border-color:#1f2d4a}
+  .callout.blue .tag{background:#1f2d4a;color:var(--blue)}
+  .callout b{color:var(--text)}
+  ul{margin:8px 0;padding-left:20px}
+  li{margin:5px 0}
+  .muted{color:var(--muted)}
+  .phase{border-left:3px solid var(--border);padding:4px 0 4px 18px;margin:18px 0}
+  .phase.f{border-color:var(--violet)}
+  .phase.c{border-color:var(--teal)}
+  .phase h4{margin:0 0 4px;font-size:16px}
+  .phase .area{font:600 11px/1 var(--mono);color:var(--faint)}
+  .kv{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  hr{border:0;border-top:1px solid var(--border);margin:40px 0}
+  .foot{color:var(--faint);font-size:13px;margin-top:40px;text-align:center}
+  .pill{display:inline-block;font:700 10.5px/1 var(--mono);padding:4px 7px;border-radius:5px;margin-right:6px}
+  .pill.p{background:#241a33;color:var(--violet)}
+  .pill.b{background:#0e2a22;color:var(--teal)}
+  .pill.a{background:#102036;color:var(--blue)}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="eyebrow">Houston · Design Arc</div>
+  <h1>Agentic Workspace Substrate</h1>
+  <p class="thesis">Turn Houston's hidden bag-of-agents into a <b>user-visible, git-backed, bstack-governed</b> workspace that orchestrates multiple projects, runs agents in worktrees, and shares one second-brain knowledge graph — by <b>providing the environment and installing skills</b>, not by building engine features.</p>
+  <div class="meta">
+    <span class="badge warn">status: proposed — under review</span>
+    <span class="badge">2026-06-04</span>
+    <span class="badge ok">grounded · 5-agent sweep · wf_55e0d214-f5e</span>
+    <span class="badge">canonical spec: agentic-workspace-substrate.md</span>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <h2>The shift</h2>
+  <p class="lead">Today a Houston "workspace" is a bag of agents hidden under <code>~/.houston/workspaces/</code> — no git, no visibility, no shared context. This arc pulls the workspace out into a named, visible, version-controlled root and makes it <b>autonomous-agentic natively</b> — while the non-technical product stays exactly as it is by default. The substrate (git, worktrees, governance, knowledge graph) runs underneath; an advanced mode reveals it.</p>
+
+  <figure>
+    <!-- SVG 1: two roots -->
+    <svg viewBox="0 0 960 360" role="img" aria-label="Two-root model">
+      <defs>
+        <style>
+          .t{fill:#e7eaf0;font-family:var(--sans),sans-serif}
+          .m{fill:#98a2b3;font-family:ui-monospace,monospace;font-size:12px}
+          .h{fill:#e7eaf0;font-weight:700;font-size:15px;font-family:ui-monospace,monospace}
+          .lbl{fill:#6b7488;font:700 11px ui-monospace,monospace;letter-spacing:.1em}
+        </style>
+      </defs>
+      <!-- system root -->
+      <rect x="24" y="60" width="430" height="270" rx="16" fill="#12151c" stroke="#232838"/>
+      <text x="44" y="92" class="lbl">SYSTEM ROOT · HIDDEN · NO GIT</text>
+      <text x="44" y="120" class="h" fill="#ff8a8a">~/.houston/</text>
+      <text x="44" y="142" class="m">how Houston runs · disposable</text>
+      <g class="m" fill="#9aa3b2">
+        <text x="44" y="178">engine.json · houston.db (chat_feed, prefs)</text>
+        <text x="44" y="200">logs/ · installed agent definitions (agents/)</text>
+        <text x="44" y="222">bundled CLIs · tunnel id</text>
+        <text x="44" y="244" fill="#6ea8fe">app-config.json  ← new: root path the boot reads</text>
+      </g>
+      <text x="44" y="296" class="m" fill="#6b7488">never shown to the user · regenerated on reinstall</text>
+
+      <!-- workspace root -->
+      <rect x="506" y="60" width="430" height="270" rx="16" fill="#12151c" stroke="#1e3a30"/>
+      <text x="526" y="92" class="lbl" fill="#3ddc97">WORKSPACE ROOT · VISIBLE · GIT</text>
+      <text x="526" y="120" class="h" fill="#7ef0c0">~/Houston/</text>
+      <text x="526" y="142" class="m">what you + your agents make · precious</text>
+      <g class="m" fill="#9aa3b2">
+        <text x="526" y="178">CLAUDE.md · AGENTS.md · .control/ (governance)</text>
+        <text x="526" y="200">research/entities/ · docs/ (the second brain)</text>
+        <text x="526" y="222">&lt;Workspace&gt;/&lt;Agent&gt;/ · &lt;Project&gt;/ + worktrees</text>
+        <text x="526" y="244">WORKSPACE.md · USER.md · all deliverables</text>
+      </g>
+      <text x="526" y="296" class="m" fill="#6b7488">in Finder · git-tracked · backup-able · portable</text>
+
+      <!-- boot arrow -->
+      <text x="480" y="24" class="lbl" text-anchor="middle">boot</text>
+      <path d="M300 60 C 300 36, 470 36, 470 30" fill="none" stroke="#6ea8fe" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <path d="M470 30 C 470 36, 640 36, 640 60" fill="none" stroke="#6ea8fe" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <text x="470" y="48" class="m" fill="#6ea8fe" text-anchor="middle">reads app-config → HOUSTON_DOCS → spawns engine</text>
+    </svg>
+    <figcaption>Two roots, one rule: <code>~/.houston/</code> = how Houston runs · <code>~/Houston/</code> = what you and your agents make.</figcaption>
+  </figure>
+
+  <h2>Locked decisions</h2>
+  <div>
+    <span class="chip"><span class="n">1</span> Invisible by default + advanced toggle</span>
+    <span class="chip"><span class="n">2</span> Onboarding names the root (<code>~/Houston</code>)</span>
+    <span class="chip"><span class="n">3</span> Project is first-class now</span>
+    <span class="chip"><span class="n">4</span> Full bstack — as environment, not code</span>
+    <span class="chip"><span class="n">5</span> Sessions are addressable graph nodes</span>
+    <span class="chip"><span class="n">6</span> Bookkeeping + PM are agent jobs</span>
+    <span class="chip"><span class="n">7</span> Opinionated, autonomous-native</span>
+    <span class="chip"><span class="n">8</span> Root + per-workspace shared context</span>
+    <span class="chip"><span class="n">9</span> Rich HTML for plans &amp; deep work</span>
+  </div>
+
+  <h2>The reframe — environment, not build</h2>
+  <p class="lead">The load-bearing decision. The grounding sweep confirmed every capability the arc needs is <b>already a shipped bstack skill that runs in-session</b>. Houston's job is to make each workspace root <i>look like</i> a bstack workspace and <b>install the skill roster through the rail it already owns</b> — then get out of the way.</p>
+
+  <figure>
+    <!-- SVG 2: provides / builds / agents -->
+    <svg viewBox="0 0 960 392" role="img" aria-label="Environment, glue, agents">
+      <defs><style>
+        .lane{font:700 12px ui-monospace,monospace;letter-spacing:.08em}
+        .it{fill:#c9d2e3;font-size:12.5px;font-family:var(--sans),sans-serif}
+        .cap{fill:#e7eaf0;font-weight:700;font-size:14px}
+      </style></defs>
+
+      <!-- agents (top) -->
+      <rect x="24" y="24" width="912" height="92" rx="14" fill="#0e1422" stroke="#1f2d4a"/>
+      <text x="44" y="48" class="lane" fill="#6ea8fe">AGENTS DO — in-session, via skills</text>
+      <g class="it">
+        <text x="44" y="74">/autonomous (21-reflex mode)</text>
+        <text x="250" y="74">/kg load · bookkeeping run</text>
+        <text x="470" y="74">/persist · /role-x · /cross-review</text>
+        <text x="720" y="74">/p9 watch · git · gh · Linear</text>
+        <text x="44" y="98" fill="#98a2b3">curate the graph · bridge sessions · run the PR pipeline — themselves</text>
+      </g>
+
+      <!-- glue (middle, thin) -->
+      <rect x="24" y="132" width="912" height="84" rx="14" fill="#0e2a22" stroke="#1e3a30"/>
+      <text x="44" y="156" class="lane" fill="#3ddc97">HOUSTON BUILDS — thin irreducible glue</text>
+      <g class="it">
+        <text x="44" y="182">idempotent governance scaffold</text>
+        <text x="290" y="182">skill provisioning (existing Store rail)</text>
+        <text x="600" y="182">worktree lifecycle + janitor</text>
+        <text x="44" y="204" fill="#7ef0c0">addressable session URI (the one net-new wire contract)</text>
+        <text x="470" y="204">reactivity (mostly free) · per-session runtime env</text>
+      </g>
+
+      <!-- environment (bottom, foundation) -->
+      <rect x="24" y="232" width="912" height="92" rx="14" fill="#12151c" stroke="#232838"/>
+      <text x="44" y="256" class="lane" fill="#b794f6">HOUSTON PROVIDES — the environment</text>
+      <g class="it">
+        <text x="44" y="282">governance tree (CLAUDE/AGENTS/METALAYER/.control)</text>
+        <text x="470" y="282">research/entities/ + catalog + frontmatter</text>
+        <text x="44" y="304">bstack skill roster installed per agent</text>
+        <text x="350" y="304">BROOMVA_ROOT + git/gh/python3 on PATH</text>
+        <text x="700" y="304">git init + worktrees real</text>
+      </g>
+
+      <!-- do not build bar -->
+      <rect x="24" y="344" width="912" height="36" rx="10" fill="#1a0f12" stroke="#3a2024"/>
+      <text x="44" y="367" style="fill:#ff6b6b;font:700 12px ui-monospace,monospace;letter-spacing:.06em">DO NOT BUILD</text>
+      <text x="200" y="367" class="it" fill="#d6a0a0">bookkeeping pipeline · kg loader · persist loop · role-x router · p9 watcher · cross-review · graph DB · embeddings · hook engine · autonomous orchestrator</text>
+    </svg>
+    <figcaption>Houston provides the floor and installs the skills; agents do the work on top. The glue layer is deliberately thin.</figcaption>
+  </figure>
+
+  <table>
+    <thead><tr><th>Houston provides (environment)</th><th>Houston builds (glue)</th><th>Agents do (in-session)</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Governance tree seeded at create: <code>CLAUDE.md</code>/<code>AGENTS.md</code>/<code>METALAYER.md</code> + <code>.control/*</code> + <code>roles/</code></td>
+        <td>Idempotent <b>scaffold</b> (keep-if-exists) in <code>houston-agent-files</code> + <code>agents_crud.rs::create</code></td>
+        <td><code>/autonomous</code> — the 21-reflex operating mode = "autonomous by default"</td>
+      </tr>
+      <tr>
+        <td><code>research/entities/</code> + <code>docs/</code> + <code>knowledge-index.md</code> stub at the <b>workspace root</b> (not under <code>.houston/</code>)</td>
+        <td><b>Skill provisioning</b> = ship the roster as a bundled package on the existing Store <code>.agents/skills/*</code> rail</td>
+        <td><code>/kg load</code> + <code>bookkeeping</code> — LLM-as-index over the entities tree</td>
+      </tr>
+      <tr>
+        <td>The bstack <b>roster</b> installed per agent + per-session <code>BROOMVA_ROOT</code> + <code>git/gh/python3</code> on PATH</td>
+        <td><b>Worktree lifecycle</b> + janitor · <b>addressable session URI</b> · reactivity</td>
+        <td><code>/persist</code> · <code>/role-x</code> · <code>/cross-review</code> · <code>/p9</code> · <code>git</code>/<code>gh</code>/Linear directly</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h2>The make-or-break risks</h2>
+  <p class="lead">The sweep surfaced three things that quietly decide whether the whole arc works.</p>
+
+  <div class="callout red">
+    <span class="tag">CRUX</span>
+    <div><b>Path-assumption mismatch.</b> Every bstack skill hard-codes <code>~/broomva/research/entities</code>, <code>~/.config/broomva</code>, <code>~/.claude/…</code>. Installed as-is they read/write the <b>wrong</b> root. Houston spawns the provider subprocess, so it sets <code>BROOMVA_ROOT=&lt;agent workspace&gt;</code> + CWD per session — <code>kg.py</code>/<code>bookkeeping.py</code> honor it — but skill bodies still need light adaptation to the workspace-relative layout. <span class="muted">This is the single make-or-break wiring detail of the arc.</span></div>
+  </div>
+  <div class="callout amber">
+    <span class="tag">SILENT NO-OP</span>
+    <div><b>Workspace-side hook scripts gap.</b> <code>settings.json</code> references <code>$WORKSPACE/scripts/*-hook.sh</code> that are emitted by <code>control-metalayer-loop</code>'s bootstrap — <b>not shipped in bstack/scripts/</b>. Seed <code>settings.json</code> without seeding these and every hook 404s, so the P1/P2/P6/P7 reflex layer silently no-ops. Houston must seed the scripts.</div>
+  </div>
+  <div class="callout amber">
+    <span class="tag">RUNTIME</span>
+    <div><b>Bundled at install — resolved.</b> <code>python3</code> 3.11+ (tomllib + PyYAML), <code>git</code>, <code>gh</code>, <code>bash</code> 4+, <code>node</code>/<code>npx</code>. Houston <b>bundles + installs them at install time</b> so a bare fresh setup is ready; agents install more on demand. New foundation <b>F0</b> — extends the <code>houston-cli-bundle</code> infra + notarization.</div>
+  </div>
+  <div class="callout blue">
+    <span class="tag">VOICE</span>
+    <div><b>Firewall the jargon.</b> Governance language, <code>Pn</code> primitives, URIs and paths must never leak into non-technical chat — the governance is agent-facing, the user sees outcomes only. <code>advanced.developer_mode</code> relaxes the voice. Skill-picker slugs (<code>kg</code>, <code>role-x</code>) stay out of the prominent surface (no <code>display_name</code> override — RULE 0).</div>
+  </div>
+
+  <h2>Sessions ↔ the knowledge graph</h2>
+  <p class="lead">A Houston session is <b>already addressable</b> — <code>(agent_path, session_key)</code>, resume ids on disk, transcript in <code>chat_feed</code> with an existing FTS5 index. The arc makes that address a first-class URI the graph links to, both directions.</p>
+
+  <figure>
+    <!-- SVG 3: session <-> KG loop -->
+    <svg viewBox="0 0 960 250" role="img" aria-label="Session to knowledge graph loop">
+      <defs>
+        <marker id="ar" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#6ea8fe"/></marker>
+        <marker id="ar2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#3ddc97"/></marker>
+        <style>.nx{fill:#e7eaf0;font-weight:600;font-size:13px;font-family:var(--sans),sans-serif}.sub{fill:#98a2b3;font-size:11px;font-family:ui-monospace,monospace}.edge{fill:#6b7488;font:600 11px var(--sans),sans-serif}</style>
+      </defs>
+      <!-- session -->
+      <rect x="30" y="92" width="180" height="66" rx="12" fill="#0e1422" stroke="#1f2d4a"/>
+      <text x="120" y="120" text-anchor="middle" class="nx">Session</text>
+      <text x="120" y="140" text-anchor="middle" class="sub">houston://…/session/&lt;key&gt;</text>
+      <!-- bridge -->
+      <rect x="290" y="30" width="180" height="60" rx="12" fill="#12151c" stroke="#232838"/>
+      <text x="380" y="55" text-anchor="middle" class="nx">docs/conversations/</text>
+      <text x="380" y="74" text-anchor="middle" class="sub">bridge skill (P1)</text>
+      <!-- entities -->
+      <rect x="560" y="92" width="180" height="66" rx="12" fill="#0e2a22" stroke="#1e3a30"/>
+      <text x="650" y="120" text-anchor="middle" class="nx">research/entities/</text>
+      <text x="650" y="140" text-anchor="middle" class="sub">bookkeeping (P6)</text>
+      <!-- kg load -->
+      <rect x="290" y="170" width="180" height="60" rx="12" fill="#12151c" stroke="#232838"/>
+      <text x="380" y="195" text-anchor="middle" class="nx">/kg load &lt;topic&gt;</text>
+      <text x="380" y="214" text-anchor="middle" class="sub">LLM-as-index</text>
+
+      <path d="M210 110 C 250 80, 270 65, 288 60" fill="none" stroke="#6ea8fe" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="245" y="74" class="edge">writes node</text>
+      <path d="M470 60 C 510 70, 530 90, 558 108" fill="none" stroke="#6ea8fe" stroke-width="1.6" marker-end="url(#ar)"/>
+      <text x="505" y="78" class="edge">promotes</text>
+      <path d="M650 158 C 650 195, 540 205, 472 202" fill="none" stroke="#3ddc97" stroke-width="1.6" marker-end="url(#ar2)"/>
+      <text x="556" y="196" class="edge">surfaces bodies</text>
+      <path d="M310 178 C 240 165, 200 150, 188 158" fill="none" stroke="#3ddc97" stroke-width="1.6" marker-end="url(#ar2)"/>
+      <text x="214" y="182" class="edge">cross-session memory</text>
+
+      <!-- join key -->
+      <text x="380" y="130" text-anchor="middle" style="fill:#b794f6;font:700 12px ui-monospace,monospace">URI = join key</text>
+      <text x="380" y="148" text-anchor="middle" class="sub">frontmatter = edge store · agent = query engine</text>
+    </svg>
+    <figcaption>Entity → session (<code>sessions:&nbsp;[houston://…]</code>) and session → entity (<code>entities:&nbsp;[[slug]]</code>). No DB, no embeddings — markdown frontmatter is the edge store.</figcaption>
+  </figure>
+
+  <h2>The arc</h2>
+  <p class="lead">Two foundations enable five capabilities. Each ships + is tested independently.</p>
+
+  <figure>
+    <!-- SVG 4: dependency graph -->
+    <svg viewBox="0 0 960 300" role="img" aria-label="Arc dependency graph">
+      <defs><marker id="d" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#3a4258"/></marker>
+      <style>.node{font-weight:700;font-size:13px;font-family:ui-monospace,monospace}.cap{fill:#c9d2e3;font-size:11.5px;font-family:var(--sans),sans-serif}</style></defs>
+      <!-- edges -->
+      <g stroke="#2a3145" stroke-width="1.5" fill="none" marker-end="url(#d)">
+        <path d="M170 215 L 250 150"/><path d="M170 215 L 250 90"/>
+        <path d="M430 215 L 480 150"/><path d="M430 215 L 510 150"/><path d="M430 215 L 540 150"/>
+        <path d="M170 215 L 250 215"/>
+      </g>
+      <!-- foundations -->
+      <rect x="40" y="196" width="130" height="56" rx="11" fill="#1a1430" stroke="#3a2d5a"/>
+      <text x="105" y="220" text-anchor="middle" class="node" fill="#b794f6">F1 · Root</text>
+      <text x="105" y="238" text-anchor="middle" class="cap">visible · git</text>
+      <rect x="300" y="196" width="130" height="56" rx="11" fill="#1a1430" stroke="#3a2d5a"/>
+      <text x="365" y="220" text-anchor="middle" class="node" fill="#b794f6">F2 · Env</text>
+      <text x="365" y="238" text-anchor="middle" class="cap">skills · runtime</text>
+
+      <!-- capabilities -->
+      <rect x="250" y="120" width="120" height="50" rx="10" fill="#0e2a22" stroke="#1e3a30"/>
+      <text x="310" y="140" text-anchor="middle" class="node" fill="#3ddc97">C1 Projects</text>
+      <text x="310" y="158" text-anchor="middle" class="cap">open folder</text>
+      <rect x="250" y="60" width="120" height="50" rx="10" fill="#0e2a22" stroke="#1e3a30"/>
+      <text x="310" y="80" text-anchor="middle" class="node" fill="#3ddc97">C2 Worktrees</text>
+      <text x="310" y="98" text-anchor="middle" class="cap">parallel + janitor</text>
+      <rect x="450" y="120" width="120" height="50" rx="10" fill="#0e2a22" stroke="#1e3a30"/>
+      <text x="510" y="140" text-anchor="middle" class="node" fill="#3ddc97">C3 Governance</text>
+      <text x="510" y="158" text-anchor="middle" class="cap">opinionated</text>
+      <rect x="590" y="120" width="120" height="50" rx="10" fill="#0e2a22" stroke="#1e3a30"/>
+      <text x="650" y="140" text-anchor="middle" class="node" fill="#3ddc97">C4 Second brain</text>
+      <text x="650" y="158" text-anchor="middle" class="cap">LLM-as-index</text>
+      <rect x="730" y="120" width="120" height="50" rx="10" fill="#0e2a22" stroke="#1e3a30"/>
+      <text x="790" y="140" text-anchor="middle" class="node" fill="#3ddc97">C5 Session↔KG</text>
+      <text x="790" y="158" text-anchor="middle" class="cap">URI contract</text>
+
+      <!-- cross-cutting -->
+      <rect x="250" y="20" width="600" height="30" rx="9" fill="#0e1422" stroke="#1f2d4a"/>
+      <text x="550" y="40" text-anchor="middle" style="fill:#6ea8fe;font:700 12px ui-monospace,monospace">cross-cutting · voice firewall + advanced mode + i18n + tests</text>
+    </svg>
+    <figcaption>F0 (runtime bundling, install-time) + F1/F2 are the floor; C1–C5 stand on them; the voice firewall + advanced toggle wrap everything.</figcaption>
+  </figure>
+
+  <div class="phase f"><div class="area">FOUNDATION · [build][app] · prereq for F2</div><h4>F0 — Runtime bundling</h4>
+    <p class="muted">Bundle + install <code>python3</code>/<code>git</code>/<code>gh</code>/<code>bash</code>/<code>node</code> at Houston install time so a bare fresh setup is ready; agents extend on demand. Extends <code>houston-cli-bundle</code> + <code>fetch-cli-deps.sh</code>; notarize bundled binaries; per-arch.</p></div>
+  <div class="phase f"><div class="area">FOUNDATION · [engine][app]</div><h4>F1 — Visible git-backed root</h4>
+    <p class="muted"><code>docs_root</code> pref + <code>app-config.json</code> + boot wiring (<code>HOUSTON_DOCS</code> from pref, engine restart); onboarding root-pick (default <code>~/Houston</code>); <code>git init</code> + <code>.gitignore</code>; existing-user migration offer (reuse <code>migrate_legacy_docs_dir</code>).</p></div>
+
+  <div class="phase f"><div class="area">FOUNDATION · [engine][app] · the make-or-break</div><h4>F2 — Agent environment + skill rail</h4>
+    <p class="muted">Guarantee runtime (<code>python3</code>/<code>git</code>/<code>gh</code>); set <code>BROOMVA_ROOT</code> + CWD per session; vendor + provision the bstack roster via the Store <code>.agents/skills/*</code> rail + <code>copy_missing_skill_dirs</code>; seed the hook scripts; adapt skill bodies to workspace-relative roots; voice firewall + <code>advanced.developer_mode</code>.</p></div>
+
+  <div class="phase c"><div class="area">CAPABILITY · [engine][ui][app]</div><h4>C1 — Projects first-class</h4>
+    <p class="muted"><code>Project</code> entity + <code>projects.json</code> + <code>projects.rs</code> + routes; "Open existing folder" / "New project" in the switcher (the original ask); agent↔project via <code>workingDirOverride</code>.</p></div>
+  <div class="phase c"><div class="area">CAPABILITY · [engine][app]</div><h4>C2 — Worktrees + janitor</h4>
+    <p class="muted">Worktree-per-mission; parallel missions; P8 squash-merge cleanup; reactive UI. Reuses <code>worktree.rs</code> wholesale.</p></div>
+  <div class="phase c"><div class="area">CAPABILITY · [engine][app]</div><h4>C3 — Governance scaffold (autonomous-native)</h4>
+    <p class="muted">Idempotent seed of the governance tree (keep-if-exists) + <code>prompt.rs</code> root context layer; <code>/autonomous</code> as the default stance; profile=autonomous with L3 paths still <code>require_human</code>.</p></div>
+  <div class="phase c"><div class="area">CAPABILITY · [engine][app]</div><h4>C4 — Second brain (LLM-as-index)</h4>
+    <p class="muted">Seed <code>research/entities/</code> + catalog stub + frontmatter + hand-authored starter entities; <code>kg</code>/<code>bookkeeping</code> provisioned in F2; reactivity free via the file-watcher catch-all.</p></div>
+  <div class="phase c"><div class="area">CAPABILITY · [engine][app]</div><h4>C5 — Session ↔ KG</h4>
+    <p class="muted">The <code>houston://</code> URI wire contract + history-route exposure + prompt injection; bridge writes session nodes; entity↔session backlinks; session→artifact edges from <code>file_changes.rs</code>.</p></div>
+
+  <h2>Reuse map — wire what exists (RULE 0)</h2>
+  <table>
+    <thead><tr><th>Need</th><th>Existing surface</th></tr></thead>
+    <tbody>
+      <tr><td>Skill provisioning</td><td><code>houston-skills/src/lib.rs</code> (CRUD, <code>build_skills_index</code>), <code>engine-core/skills.rs</code> (<code>ensure_claude_symlink</code>, <code>install_from_repo</code>)</td></tr>
+      <tr><td>Ship roster to existing agents</td><td><code>store/bundled.rs</code> (<code>sync_bundled_agent_instances</code>, <code>copy_missing_skill_dirs</code>, <code>.migrations.json</code>)</td></tr>
+      <tr><td>Scaffold seam</td><td><code>agents_crud.rs::create</code> (packaged-skill copy + seeds map), <code>houston-agent-files/{lib,schemas}.rs</code></td></tr>
+      <tr><td>Context injection</td><td><code>agents/prompt.rs</code> (<code>seed_agent</code>, <code>build_agent_context</code>)</td></tr>
+      <tr><td>Frontmatter tolerance</td><td><code>houston-skills/src/format.rs</code> — serde_yml, unknown-key tolerant (bstack frontmatter parses as-is)</td></tr>
+      <tr><td>Session identity / search</td><td><code>conversations.rs</code> (<code>session_key</code>), <code>sessions/history.rs</code>, <code>houston-db/repo_search.rs</code> (FTS5), <code>file_changes.rs</code></td></tr>
+      <tr><td>Worktrees</td><td><code>engine-core/src/worktree.rs</code> (<code>houston/{name}</code> branches, <code>run_shell</code>)</td></tr>
+      <tr><td>Folder linking / run elsewhere</td><td><code>agents_crud.rs</code> symlink + <code>pickDirectory</code> (dormant <code>link-project</code>) · <code>workingDirOverride</code></td></tr>
+      <tr><td>Root relocation + migration</td><td><code>docs_dir</code>/<code>HOUSTON_DOCS</code> + <code>migrate_legacy_docs_dir</code></td></tr>
+      <tr><td>Reactivity</td><td><code>houston-file-watcher</code> FilesChanged catch-all + <code>use-agent-invalidation.ts</code></td></tr>
+      <tr><td>Advanced flags</td><td><code>advanced.*</code> substrate (FLAG_REGISTRY → KV → FeatureGate → enforcement → KB → tests)</td></tr>
+    </tbody>
+  </table>
+
+  <h2>Decisions — all resolved</h2>
+  <div class="grid g2">
+    <div class="card">
+      <h3 style="margin-top:4px">Resolved</h3>
+      <ul class="muted">
+        <li><b>Sessions</b> → first-class addressable nodes, referenceable both ways.</li>
+        <li><b>Bookkeeping/PM</b> → agent jobs in-session, never a user chore.</li>
+        <li><b>KG/index</b> → LLM-as-index + frontmatter core; no engine pipeline.</li>
+        <li><b>Governance</b> → seed the bstack tree as environment, opinionated.</li>
+        <li><b>Autonomous</b> → profile=autonomous; <code>/autonomous</code> default; L3 <code>require_human</code>.</li>
+        <li><b>Format</b> → bstack conventions; rich HTML for the user.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:4px">Closed (this round)</h3>
+      <ul class="muted">
+        <li>Path fix: <b><code>BROOMVA_ROOT</code> per session + minimal body adaptation</b>.</li>
+        <li>Hooks: <b>seed Houston-authored equivalents</b> (offline, deterministic).</li>
+        <li>Runtime: <b>bundle + install all deps at install time</b> → new foundation F0.</li>
+        <li>Roster: install for every agent, <b>suppressed from the picker</b>.</li>
+        <li>Templates: <b>Houston-tuned, voice-firewalled</b>.</li>
+      </ul>
+    </div>
+  </div>
+
+  <hr>
+  <p class="foot">Arc approved. Next step: execute <b>F1 — Visible git-backed root</b> (numbered chunk plan in chat). Nothing is built yet.<br>
+  Canonical spec: <code>docs/agentic-workspace-substrate.md</code> · grounded by run <code>wf_55e0d214-f5e</code>.</p>
+
+</div>
+</body>
+</html>

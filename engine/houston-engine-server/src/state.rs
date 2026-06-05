@@ -84,6 +84,16 @@ impl ServerState {
             tracing::info!("[boot] repaired {repaired_activities} orphan running activity row(s)");
         }
 
+        // Make the visible workspace root a git repo so the user gets version
+        // history of everything they + their agents create. No-op for the
+        // hidden system root and when git is unavailable. Logged-and-swallowed
+        // because a git-init hiccup must not fail engine boot; onboarding
+        // surfaces git availability to the user, and there is no UI thread here.
+        match houston_engine_core::git_repo::ensure_docs_root_git(paths.docs(), paths.home()) {
+            Ok(outcome) => tracing::info!("[boot] docs-root git: {outcome:?}"),
+            Err(e) => tracing::warn!("[boot] docs-root git-init failed: {e}"),
+        }
+
         let engine = EngineState::new(paths, Arc::new(events.clone()), db.clone())
             .with_app_prompts(
                 config.app_system_prompt.clone(),

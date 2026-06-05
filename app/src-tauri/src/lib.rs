@@ -1,3 +1,4 @@
+mod app_config;
 mod auth;
 mod bug_report;
 mod commands;
@@ -191,6 +192,38 @@ pub fn run() {
             houston_tauri::houston_terminal_manager::claude_path::init();
 
             let houston = houston_tauri::houston_db::db::houston_dir();
+            // Resolve the workspace-root (`docs`) directory before anything
+            // reads it. From `~/.houston/app-config.json` (`docsRoot`) when the
+            // user picked a visible, git-backed root, else the historical
+            // `$HOUSTON_HOME/workspaces/` default.
+            let mut app_cfg = app_config::load(&houston);
+            let docs_dir = app_config::resolve_docs_dir(&houston, &app_cfg);
+
+            // Apply a pending workspace-location change BEFORE the engine
+            // starts, so the move never races a live engine (file watcher,
+            // scheduler, in-flight sessions) still reading the old root. On
+            // failure `migrateFrom` stays set to retry next launch; the
+            // migrator leaves the source intact, so no data is lost.
+            if let Some(from) = app_cfg.migrate_from.clone() {
+                let from_path = app_config::expand_path(&from);
+                match app_config::migrate_docs_root(&from_path, &docs_dir) {
+                    Ok(moved) => {
+                        tracing::info!(
+                            "[migrate] docs-root {} -> {} (moved={moved})",
+                            from_path.display(),
+                            docs_dir.display()
+                        );
+                        app_cfg.migrate_from = None;
+                        if let Err(e) = app_config::save(&houston, &app_cfg) {
+                            tracing::warn!("[migrate] failed to clear migrateFrom: {e}");
+                        }
+                    }
+                    Err(e) => tracing::error!(
+                        "[migrate] docs-root move failed (retrying next launch): {e}"
+                    ),
+                }
+            }
+
             let db_path = houston.join("db").join("houston.db");
             let db = tauri::async_runtime::block_on(async {
                 Database::connect(&db_path)
@@ -203,7 +236,7 @@ pub fn run() {
             // so everything Houston owns is under a single discoverable root.
             // Move the legacy directory if it exists and the new location is
             // empty. Idempotent on subsequent launches.
-            migrate_legacy_docs_dir(&houston);
+            migrate_legacy_docs_dir(&docs_dir);
 
             // Eagerly run the intra-agent data-layout migration on every
             // agent the user already has. Previously this only fired the
@@ -212,7 +245,7 @@ pub fn run() {
             // empty board even though their `.houston/activity.json` was
             // sitting next to it. Walk the workspaces dir here so existing
             // activities, routines, learnings show up immediately.
-            migrate_all_agents(&houston.join("workspaces"));
+            migrate_all_agents(&docs_dir);
 
             // AppState keeps a DB handle for any OS-native lookup (log
             // reading, session search). Domain state now lives in the
@@ -240,12 +273,10 @@ pub fn run() {
             // exported to the engine via env vars. The engine treats these
             // as opaque strings — it has no hardcoded Houston copy.
             //
-            // Also pin HOUSTON_HOME + HOUSTON_DOCS so the engine uses the
-            // same data roots as the app. Workspaces live under
-            // `$HOUSTON_HOME/workspaces/` in both debug (`~/.dev-houston/`)
-            // and release (`~/.houston/`) — everything Houston writes is
-            // rooted at a single discoverable location.
-            let docs_dir = houston.join("workspaces");
+            // Also pin HOUSTON_HOME + HOUSTON_DOCS so the engine uses the same
+            // data roots as the app. `docs_dir` was resolved above from
+            // app-config (`docsRoot`); it defaults to `$HOUSTON_HOME/workspaces/`
+            // until the user opts into a visible root via onboarding.
             let mut engine_env: Vec<(String, String)> = vec![
                 (
                     "HOUSTON_APP_SYSTEM_PROMPT".into(),
@@ -382,6 +413,8 @@ pub fn run() {
             commands::os::reveal_path,
             commands::terminal::open_terminal,
             commands::os::check_claude_cli,
+            commands::workspace_root::get_docs_root,
+            commands::workspace_root::set_docs_root,
             commands::portable::save_portable_agent,
             commands::portable::open_portable_agent,
             commands::update::current_app_bundle_path,
@@ -504,13 +537,12 @@ fn migrate_all_agents(workspaces_root: &std::path::Path) {
 /// first v0.4.2+ boot for anyone who previously ran v0.3.x/v0.4.0–v0.4.1.
 /// On any error we log + bail; the engine will still run against the new
 /// empty path. Original legacy dir is left in place as manual rollback.
-fn migrate_legacy_docs_dir(houston: &std::path::Path) {
+fn migrate_legacy_docs_dir(new_root: &std::path::Path) {
     let home = match dirs::home_dir() {
         Some(h) => h,
         None => return,
     };
     let legacy = home.join("Documents").join("Houston");
-    let new_root = houston.join("workspaces");
 
     let legacy_manifest = legacy.join("workspaces.json");
     if !legacy_manifest.is_file() {
