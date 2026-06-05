@@ -3,6 +3,7 @@
 //! Relocated from `app/houston-tauri/src/agent_store/types.rs`. Wire-compatible
 //! with existing on-disk JSON.
 
+use crate::routines::types::RoutineChatMode;
 use serde::{Deserialize, Serialize};
 
 // -- Activity --
@@ -88,6 +89,10 @@ pub struct Routine {
     /// silently (no activity created on the board).
     #[serde(default = "default_true")]
     pub suppress_when_silent: bool,
+    /// Whether each run reuses one chat or starts a fresh one (#423). Defaults
+    /// to `Shared` so existing routines keep one chat per routine (#381).
+    #[serde(default)]
+    pub chat_mode: RoutineChatMode,
     /// Composio toolkit slugs this routine uses (e.g. `["gmail", "slack"]`).
     /// Mirrors the same field on Skills; surfaced by the share/import flow so
     /// the recipient can wire up the integrations before enabling the routine.
@@ -109,6 +114,7 @@ pub struct RoutineUpdate {
     pub schedule: Option<String>,
     pub enabled: Option<bool>,
     pub suppress_when_silent: Option<bool>,
+    pub chat_mode: Option<RoutineChatMode>,
     pub integrations: Option<Vec<String>>,
 }
 
@@ -124,6 +130,8 @@ pub struct NewRoutine {
     pub enabled: bool,
     #[serde(default = "default_true")]
     pub suppress_when_silent: bool,
+    #[serde(default)]
+    pub chat_mode: RoutineChatMode,
     #[serde(default)]
     pub integrations: Vec<String>,
 }

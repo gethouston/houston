@@ -383,7 +383,10 @@ fn truncate(s: &str, max: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::routines::{create, types::NewRoutine};
+    use crate::routines::{
+        create,
+        types::{NewRoutine, RoutineChatMode},
+    };
     use houston_ui_events::NoopEventSink;
     use std::sync::Mutex;
     use tempfile::TempDir;
@@ -428,6 +431,7 @@ mod tests {
             schedule: "0 9 * * *".into(),
             enabled: true,
             suppress_when_silent: true,
+            chat_mode: RoutineChatMode::Shared,
             timezone: None,
             integrations: vec![],
         }
@@ -520,6 +524,81 @@ mod tests {
         let runs = routine_runs::list(d.path()).unwrap();
         assert_eq!(runs[0].status, "surfaced");
         assert_eq!(runs[0].activity_id.as_deref(), Some("act-1"));
+    }
+
+    #[tokio::test]
+    async fn per_run_chat_mode_surfaces_a_fresh_chat_each_run() {
+        // #423: a routine set to PerRun must create a NEW chat per surfaced run.
+        // Drive two runs through the REAL activity surface and assert two
+        // distinct activities — the Shared default would collapse to one.
+        use crate::agents::activity;
+        use crate::routines::engine_dispatcher::EngineActivitySurface;
+
+        let d = TempDir::new().unwrap();
+        let agent_path = d.path().to_string_lossy().to_string();
+        let mut per_run = sample_routine();
+        per_run.chat_mode = RoutineChatMode::PerRun;
+        // Non-silent every run so both surface.
+        per_run.suppress_when_silent = false;
+        let r = create(d.path(), per_run).unwrap();
+
+        let dispatcher = Arc::new(FakeDispatcher(DispatchOutcome {
+            response_text: "Found something".into(),
+            error: None,
+        }));
+        let surface: Arc<dyn ActivitySurface> = Arc::new(EngineActivitySurface);
+        let events: DynEventSink = Arc::new(NoopEventSink);
+
+        run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &r.id)
+            .await
+            .unwrap();
+        run_routine(events.clone(), dispatcher, surface, &agent_path, &r.id)
+            .await
+            .unwrap();
+
+        let acts = activity::list(d.path()).unwrap();
+        assert_eq!(acts.len(), 2, "per-run mode creates a chat per run");
+
+        let runs = routine_runs::list(d.path()).unwrap();
+        assert_eq!(runs.len(), 2);
+        assert_ne!(
+            runs[0].session_key, runs[1].session_key,
+            "each per-run run carries a unique session key"
+        );
+    }
+
+    #[tokio::test]
+    async fn shared_chat_mode_reuses_one_chat_across_runs() {
+        // Contrast to the per-run case: the Shared default collapses two
+        // surfaced runs into a single chat (#381 behavior, preserved).
+        use crate::agents::activity;
+        use crate::routines::engine_dispatcher::EngineActivitySurface;
+
+        let d = TempDir::new().unwrap();
+        let agent_path = d.path().to_string_lossy().to_string();
+        let mut shared = sample_routine();
+        shared.suppress_when_silent = false; // surface every run
+        let r = create(d.path(), shared).unwrap();
+
+        let dispatcher = Arc::new(FakeDispatcher(DispatchOutcome {
+            response_text: "Found something".into(),
+            error: None,
+        }));
+        let surface: Arc<dyn ActivitySurface> = Arc::new(EngineActivitySurface);
+        let events: DynEventSink = Arc::new(NoopEventSink);
+
+        run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &r.id)
+            .await
+            .unwrap();
+        run_routine(events.clone(), dispatcher, surface, &agent_path, &r.id)
+            .await
+            .unwrap();
+
+        let acts = activity::list(d.path()).unwrap();
+        assert_eq!(acts.len(), 1, "shared mode keeps one chat for all runs");
+
+        let runs = routine_runs::list(d.path()).unwrap();
+        assert_eq!(runs[0].session_key, runs[1].session_key);
     }
 
     #[tokio::test]

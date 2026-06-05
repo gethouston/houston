@@ -1,6 +1,7 @@
 // Types
 export type {
   Routine,
+  RoutineChatMode,
   RoutineRun,
   RunStatus,
   SchedulePreset,

@@ -138,6 +138,7 @@ export function CreateAgentDialog() {
             schedule: routineForm.schedule,
             enabled: true,
             suppress_when_silent: routineForm.suppress_when_silent,
+            chat_mode: routineForm.chat_mode,
             timezone: routineForm.timezone,
           });
           await tauriRoutines.startScheduler(agent.folderPath);
@@ -243,6 +244,7 @@ export function CreateAgentDialog() {
                         prompt: routine.prompt,
                         schedule: routine.schedule,
                         suppress_when_silent: true,
+                        chat_mode: "shared",
                         timezone: null,
                         integrations: [],
                       }

@@ -1,5 +1,12 @@
 // Routine types — mirrors Houston's new file-backed Routine model.
 
+/**
+ * Whether a routine's runs share one chat or each start a fresh one.
+ * `"shared"` (the default) keeps one chat per routine; `"per_run"` surfaces
+ * each run in its own chat.
+ */
+export type RoutineChatMode = "shared" | "per_run"
+
 export interface Routine {
   id: string
   name: string
@@ -11,6 +18,8 @@ export interface Routine {
   enabled: boolean
   /** When true, runs where Claude responds with ROUTINE_OK are auto-completed silently. */
   suppress_when_silent: boolean
+  /** Whether each run reuses one chat or starts a fresh one. */
+  chat_mode: RoutineChatMode
   /** IANA timezone override; absent means use the user's account timezone. */
   timezone?: string | null
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */

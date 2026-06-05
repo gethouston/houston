@@ -6,6 +6,38 @@ fn default_true() -> bool {
     true
 }
 
+// -- Chat mode --
+
+/// Whether a routine's runs share one chat or each surface in a fresh one.
+///
+/// The single lever behind the run's `session_key`: the activity surface +
+/// session history both find-or-create on that key, so the key shape is what
+/// decides how many chats a routine's runs collapse into.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum RoutineChatMode {
+    /// Every run streams into one persistent chat (`routine-{id}`). The
+    /// behavior shipped in #381 and the default for every routine that
+    /// predates this option, so existing routines keep one chat untouched.
+    #[default]
+    Shared,
+    /// Each run surfaces in its own fresh chat (`routine-{id}-run-{run_id}`) —
+    /// the pre-#381 per-run keying, now opt-in (#423).
+    PerRun,
+}
+
+impl RoutineChatMode {
+    /// Build the run's `session_key` for this mode. Shared collapses every run
+    /// into one chat; per-run gives each run a unique key so the surface +
+    /// session history create a new chat for it.
+    pub fn session_key(self, routine_id: &str, run_id: &str) -> String {
+        match self {
+            RoutineChatMode::Shared => format!("routine-{routine_id}"),
+            RoutineChatMode::PerRun => format!("routine-{routine_id}-run-{run_id}"),
+        }
+    }
+}
+
 // -- Routine --
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -23,6 +55,11 @@ pub struct Routine {
     /// (no activity surfaces on the board).
     #[serde(default = "default_true")]
     pub suppress_when_silent: bool,
+    /// Whether each run reuses one chat or starts a fresh one. Defaults to
+    /// `Shared` so every existing routine keeps the one-chat-per-routine
+    /// behavior (#381) until the user opts into a new chat per run (#423).
+    #[serde(default)]
+    pub chat_mode: RoutineChatMode,
     /// IANA timezone override (e.g. `"America/Bogota"`). When `None`, the
     /// scheduler falls back to the user's `timezone` preference, then UTC.
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -49,6 +86,8 @@ pub struct NewRoutine {
     #[serde(default = "default_true")]
     pub suppress_when_silent: bool,
     #[serde(default)]
+    pub chat_mode: RoutineChatMode,
+    #[serde(default)]
     pub timezone: Option<String>,
     #[serde(default)]
     pub integrations: Vec<String>,
@@ -62,6 +101,7 @@ pub struct RoutineUpdate {
     pub schedule: Option<String>,
     pub enabled: Option<bool>,
     pub suppress_when_silent: Option<bool>,
+    pub chat_mode: Option<RoutineChatMode>,
     /// `Some(Some("..."))` sets a tz override, `Some(None)` clears it.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timezone: Option<Option<String>>,

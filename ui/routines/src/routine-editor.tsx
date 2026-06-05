@@ -27,7 +27,7 @@ import {
   CalendarClock,
   MoreHorizontal,
 } from "lucide-react"
-import type { Routine, RoutineRun } from "./types"
+import type { Routine, RoutineChatMode, RoutineRun } from "./types"
 import { ScheduleBuilder } from "./schedule-builder"
 import { RunHistory } from "./run-history"
 import { nextFire, describeNextFire } from "./next-fire"
@@ -39,6 +39,8 @@ export interface RoutineFormData {
   prompt: string
   schedule: string
   suppress_when_silent: boolean
+  /** Whether each run reuses one chat (`"shared"`) or starts a fresh one. */
+  chat_mode: RoutineChatMode
   /** IANA timezone override. `null`/empty means use the account default. */
   timezone?: string | null
   /** Composio toolkit slugs this routine uses. */
@@ -407,6 +409,25 @@ export function RoutineEditor({
                   onChange({ suppress_when_silent: checked })
                 }
                 aria-label="Only notify when relevant"
+              />
+            </div>
+
+            <div className="flex items-center justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-sm text-foreground">
+                  Keep results in one chat
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Every run adds to the same chat. Turn this off to start a new
+                  chat each time this routine runs.
+                </p>
+              </div>
+              <Switch
+                checked={value.chat_mode === "shared"}
+                onCheckedChange={(checked) =>
+                  onChange({ chat_mode: checked ? "shared" : "per_run" })
+                }
+                aria-label="Keep results in one chat"
               />
             </div>
           </SectionCard>

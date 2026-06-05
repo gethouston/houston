@@ -100,17 +100,30 @@ pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     with_runs_lock(root, || create_unlocked(root, routine_id))
 }
 
+/// Derive a run's `session_key` from its routine's `chat_mode` (#423). Reads
+/// the routine config to pick `Shared` (`routine-{id}`) vs. `PerRun`
+/// (`routine-{id}-run-{run_id}`). A routine that can't be found falls back to
+/// `Shared` — the #381 default — so a stray run never fails on key derivation.
+fn session_key_for(root: &Path, routine_id: &str, run_id: &str) -> CoreResult<String> {
+    let chat_mode = crate::routines::list(root)?
+        .into_iter()
+        .find(|r| r.id == routine_id)
+        .map(|r| r.chat_mode)
+        .unwrap_or_default();
+    Ok(chat_mode.session_key(routine_id, run_id))
+}
+
 fn create_unlocked(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     ensure_houston_dir(root)?;
     let mut runs = list(root)?;
     let id = Uuid::new_v4().to_string();
-    // One chat per routine (#381): the session key is stable per routine, NOT
-    // per run, so every run of a routine streams + persists into the same
-    // conversation. The shared key's `.history` file aggregates each run's
-    // provider session id, so opening the routine's chat shows a running log of
-    // all its reports instead of a fresh chat per surfaced run. Runs stay
-    // independent (the dispatcher never resumes) — only the *view* is unified.
-    let session_key = format!("routine-{routine_id}");
+    // The session key is the single lever for how a routine's runs map onto
+    // chats: the activity surface + session history both find-or-create on it.
+    // `Shared` (the #381 default) keeps a stable `routine-{id}` key so every run
+    // streams into one conversation; `PerRun` (#423) makes it unique per run so
+    // each surfaces in a fresh chat. Runs stay independent either way (the
+    // dispatcher never resumes) — only the *view* changes.
+    let session_key = session_key_for(root, routine_id, &id)?;
     let run = RoutineRun {
         id,
         routine_id: routine_id.to_string(),
@@ -258,6 +271,55 @@ mod tests {
 
         let other = create(d.path(), "other").unwrap();
         assert_eq!(other.session_key, "routine-other");
+    }
+
+    #[test]
+    fn session_key_follows_routine_chat_mode() {
+        use crate::routines::types::{NewRoutine, RoutineChatMode};
+
+        let d = TempDir::new().unwrap();
+
+        // Shared routine → stable per-routine key, every run collapses to one.
+        let shared = crate::routines::create(
+            d.path(),
+            NewRoutine {
+                name: "Shared".into(),
+                description: String::new(),
+                prompt: "p".into(),
+                schedule: "0 9 * * *".into(),
+                enabled: true,
+                suppress_when_silent: true,
+                chat_mode: RoutineChatMode::Shared,
+                timezone: None,
+                integrations: vec![],
+            },
+        )
+        .unwrap();
+        let r1 = create(d.path(), &shared.id).unwrap();
+        let r2 = create(d.path(), &shared.id).unwrap();
+        assert_eq!(r1.session_key, format!("routine-{}", shared.id));
+        assert_eq!(r2.session_key, r1.session_key, "shared mode reuses one key");
+
+        // Per-run routine → unique key per run, each run a fresh chat.
+        let per_run = crate::routines::create(
+            d.path(),
+            NewRoutine {
+                name: "PerRun".into(),
+                description: String::new(),
+                prompt: "p".into(),
+                schedule: "0 9 * * *".into(),
+                enabled: true,
+                suppress_when_silent: true,
+                chat_mode: RoutineChatMode::PerRun,
+                timezone: None,
+                integrations: vec![],
+            },
+        )
+        .unwrap();
+        let p1 = create(d.path(), &per_run.id).unwrap();
+        let p2 = create(d.path(), &per_run.id).unwrap();
+        assert_eq!(p1.session_key, format!("routine-{}-run-{}", per_run.id, p1.id));
+        assert_ne!(p1.session_key, p2.session_key, "per-run mode keys are unique");
     }
 
     #[test]

@@ -18,6 +18,7 @@ function routine(overrides: Partial<Routine> = {}): Routine {
     schedule: "0 9 * * 1-5",
     enabled: true,
     suppress_when_silent: false,
+    chat_mode: "shared",
     timezone: "America/Los_Angeles",
     integrations: ["gmail", "slack"],
     created_at: "2026-01-01T00:00:00Z",
@@ -55,6 +56,7 @@ describe("routines tab model — routineToFormData", () => {
       prompt: "Summarize my inbox.",
       schedule: "0 9 * * 1-5",
       suppress_when_silent: false,
+      chat_mode: "shared",
       timezone: "America/Los_Angeles",
       integrations: ["gmail", "slack"],
     });
@@ -75,6 +77,14 @@ describe("routines tab model — formMatchesRoutine", () => {
     const baseline = routineToFormData(routine());
     strictEqual(
       formMatchesRoutine({ ...baseline, name: "Evening digest" }, baseline),
+      false,
+    );
+  });
+
+  it("detects a chat_mode toggle", () => {
+    const baseline = routineToFormData(routine());
+    strictEqual(
+      formMatchesRoutine({ ...baseline, chat_mode: "per_run" }, baseline),
       false,
     );
   });
