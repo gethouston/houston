@@ -137,40 +137,56 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
                               clear: t("board:search.clear"),
                               searchingText: t("board:search.searchingText"),
                             }}
-                            className="relative w-[240px]"
+                            className={cn("relative", missionPanelOpen ? "w-40" : "w-[240px]")}
                             onChange={(value) => {
                               setAgentMissionSearchQuery(currentAgent.folderPath, value);
                               if (viewMode !== "activity") setViewMode("activity");
                             }}
                           />
                         )}
-                        <Button
-                          data-tour-target="appTour"
-                          variant="ghost"
-                          className="rounded-full"
-                          onClick={() => setUiTourActive(true)}
-                        >
-                          <Compass className="size-4" />
-                          {t("shell:tabActions.startTour")}
-                        </Button>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              data-tour-target="appTour"
+                              variant="ghost"
+                              size={missionPanelOpen ? "icon" : "default"}
+                              className="rounded-full"
+                              onClick={() => setUiTourActive(true)}
+                              aria-label={t("shell:tabActions.startTour")}
+                            >
+                              <Compass className="size-4" />
+                              {!missionPanelOpen && t("shell:tabActions.startTour")}
+                            </Button>
+                          </TooltipTrigger>
+                          {missionPanelOpen && (
+                            <TooltipContent side="bottom">
+                              {t("shell:tabActions.startTour")}
+                            </TooltipContent>
+                          )}
+                        </Tooltip>
                         {onStartMission && (
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
                                 data-tour-target="newMission"
+                                size={missionPanelOpen ? "icon" : "default"}
+                                className={cn(missionPanelOpen && "rounded-full")}
                                 onClick={() => {
                                   setViewMode("activity");
                                   setTimeout(() => {
                                     useUIStore.getState().onStartMission?.();
                                   }, 50);
                                 }}
+                                aria-label={t("shell:tabActions.newMission")}
                               >
                                 <HoustonLogo size={16} />
-                                {t("shell:tabActions.newMission")}
+                                {!missionPanelOpen && t("shell:tabActions.newMission")}
                               </Button>
                             </TooltipTrigger>
                             <TooltipContent side="bottom">
-                              {shortcutLabel("newMission")}
+                              {missionPanelOpen
+                                ? t("shell:tabActions.newMission")
+                                : shortcutLabel("newMission")}
                             </TooltipContent>
                           </Tooltip>
                         )}

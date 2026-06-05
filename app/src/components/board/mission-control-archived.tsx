@@ -41,6 +41,7 @@ export function MissionControlArchived({
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const addToast = useUIStore((s) => s.addToast);
   const setMissionPanelOpen = useUIStore((s) => s.setMissionPanelOpen);
+  const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setActivityPanelId = useUIStore((s) => s.setActivityPanelId);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
@@ -139,6 +140,7 @@ export function MissionControlArchived({
         onSearchChange={setSearch}
         archivedActive
         onToggleArchived={onShowActive}
+        collapsed={missionPanelOpen}
       />
       <div className="flex-1 min-h-0">
         <AIBoard

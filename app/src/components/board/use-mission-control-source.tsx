@@ -27,6 +27,7 @@ export function useMissionControlSource(
   const { t } = useTranslation(["dashboard", "board"]);
   const getAgentDef = useAgentCatalogStore((s) => s.getById);
   const addToast = useUIStore((s) => s.addToast);
+  const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
 
   const mc = useMissionControl(agents);
 
@@ -126,6 +127,7 @@ export function useMissionControlSource(
       archivedActive={false}
       onToggleArchived={onShowArchived}
       onNewMission={newMission.openNewMission}
+      collapsed={missionPanelOpen}
     />
   );
 
