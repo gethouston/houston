@@ -87,7 +87,8 @@
       "change": "Cambiar",
       "changed": "Se actualizó la ubicación del espacio de trabajo.",
       "restartHint": "Reinicia Houston para aplicar la nueva ubicación.",
-      "changeFailed": "No se pudo cambiar la ubicación del espacio de trabajo."
+      "changeFailed": "No se pudo cambiar la ubicación del espacio de trabajo.",
+      "loadFailed": "No se pudo leer la ubicación del espacio de trabajo."
     }
   },
   "dangerZone": {

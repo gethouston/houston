@@ -25,7 +25,13 @@ export function AdvancedSection() {
   useEffect(() => {
     osGetDocsRoot()
       .then(setDocsRoot)
-      .catch(() => {});
+      .catch((err) =>
+        addToast({
+          title: t("advanced.workspaceLocation.loadFailed"),
+          description: err instanceof Error ? err.message : String(err),
+          variant: "error",
+        }),
+      );
   }, []);
 
   const handleToggle = async () => {

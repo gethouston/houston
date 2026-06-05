@@ -87,7 +87,8 @@
       "change": "Alterar",
       "changed": "Local do espaço de trabalho atualizado.",
       "restartHint": "Reinicie o Houston para aplicar o novo local.",
-      "changeFailed": "Não foi possível alterar o local do espaço de trabalho."
+      "changeFailed": "Não foi possível alterar o local do espaço de trabalho.",
+      "loadFailed": "Não foi possível ler o local do espaço de trabalho."
     }
   },
   "dangerZone": {

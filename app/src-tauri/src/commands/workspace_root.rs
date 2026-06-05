@@ -1,10 +1,12 @@
 //! Workspace-root selection — view + change the user-visible, git-backed
 //! Houston root (`docsRoot`).
 //!
-//! The chosen root is persisted in `~/.houston/app-config.json` and injected
-//! as `HOUSTON_DOCS` at the next boot, so a change takes effect on the next
-//! launch (the engine binds the root once at spawn). The caller prompts the
-//! user to restart Houston after a successful change.
+//! Changing the location does NOT move data inline — migrating a tree while the
+//! engine is live (file watcher, scheduler, in-flight sessions all reading the
+//! old root) would tear it. Instead `set_docs_root` validates + persists the
+//! new absolute path and stages a `migrateFrom`; the next boot performs the
+//! move BEFORE the engine starts and clears the flag. The caller prompts the
+//! user to restart.
 
 use std::path::PathBuf;
 
@@ -23,28 +25,46 @@ pub fn get_docs_root() -> Result<String, String> {
         .into_owned())
 }
 
-/// Persist a new workspace root and migrate any existing tree into it. The new
-/// location takes effect on the next launch, so the caller must prompt the user
-/// to restart Houston. Migration is idempotent + non-clobbering (see
-/// `app_config::migrate_docs_root`).
+/// Validate + persist a new workspace root and stage a boot-time migration.
+/// The new location takes effect on the next launch, so the caller must prompt
+/// the user to restart Houston.
 #[tauri::command(rename_all = "snake_case")]
 pub fn set_docs_root(new_root: String) -> Result<(), String> {
     let trimmed = new_root.trim();
     if trimmed.is_empty() {
         return Err("Workspace location cannot be empty".into());
     }
+
     let h = houston();
-    let cfg = crate::app_config::load(&h);
+    let mut cfg = crate::app_config::load(&h);
     let old = crate::app_config::resolve_docs_dir(&h, &cfg);
-    let new = houston_tauri::paths::expand_tilde(&PathBuf::from(trimmed));
-    if new != old {
-        crate::app_config::migrate_docs_root(&old, &new).map_err(|e| e.to_string())?;
+
+    // Resolve to a single absolute path NOW and persist that, so the engine's
+    // resolver and the migrator never re-expand the string differently.
+    let new = crate::app_config::expand_path(trimmed);
+    if !new.is_absolute() {
+        return Err("Workspace location must be an absolute path".into());
     }
-    crate::app_config::save(
-        &h,
-        &crate::app_config::AppConfig {
-            docs_root: Some(trimmed.to_string()),
-        },
-    )
-    .map_err(|e| e.to_string())
+    if new.is_file() {
+        return Err("Workspace location must be a folder, not a file".into());
+    }
+
+    let new_abs = new.to_string_lossy().into_owned();
+
+    // No change → persist the explicit (absolute) choice, clear any stale
+    // migration, and stop.
+    if crate::app_config::paths_equal(&new, &old) {
+        cfg.docs_root = Some(new_abs);
+        cfg.migrate_from = None;
+        return crate::app_config::save(&h, &cfg).map_err(|e| e.to_string());
+    }
+
+    // A move between nested locations would move a tree into itself.
+    if crate::app_config::paths_overlap(&new, &old) {
+        return Err("New location cannot be inside the current one (or vice versa)".into());
+    }
+
+    cfg.docs_root = Some(new_abs);
+    cfg.migrate_from = Some(old.to_string_lossy().into_owned());
+    crate::app_config::save(&h, &cfg).map_err(|e| e.to_string())
 }
