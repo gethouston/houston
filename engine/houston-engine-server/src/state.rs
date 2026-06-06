@@ -84,6 +84,11 @@ impl ServerState {
             tracing::info!("[boot] repaired {repaired_activities} orphan running activity row(s)");
         }
 
+        let repaired_workflow_runs = sweep_orphan_workflow_runs(paths.docs(), &events);
+        if repaired_workflow_runs > 0 {
+            tracing::info!("[boot] repaired {repaired_workflow_runs} orphan workflow run row(s)");
+        }
+
         let engine = EngineState::new(paths, Arc::new(events.clone()), db.clone())
             .with_app_prompts(
                 config.app_system_prompt.clone(),
@@ -149,6 +154,51 @@ pub(crate) fn sweep_orphan_activities(docs_dir: &Path, events: &BroadcastEventSi
         }
     }
 
+    repaired
+}
+
+pub(crate) fn sweep_orphan_workflow_runs(docs_dir: &Path, events: &BroadcastEventSink) -> usize {
+    let workspaces = match houston_engine_core::workspaces::list(docs_dir) {
+        Ok(workspaces) => workspaces,
+        Err(e) => {
+            tracing::warn!("[boot] failed to list workspaces for workflow sweep: {e}");
+            return 0;
+        }
+    };
+
+    let mut repaired = 0usize;
+    for workspace in workspaces {
+        let agents = match houston_engine_core::agents_crud::list(docs_dir, &workspace.id) {
+            Ok(agents) => agents,
+            Err(e) => {
+                tracing::warn!(
+                    "[boot] failed to list agents for workspace {} during workflow sweep: {e}",
+                    workspace.id
+                );
+                continue;
+            }
+        };
+
+        for agent in agents {
+            match houston_engine_core::workflows::sweep_orphan_running(Path::new(
+                &agent.folder_path,
+            )) {
+                Ok(0) => {}
+                Ok(count) => {
+                    repaired += count;
+                    events.emit(HoustonEvent::WorkflowRunsChanged {
+                        agent_path: agent.folder_path.clone(),
+                    });
+                }
+                Err(e) => {
+                    tracing::warn!(
+                        "[boot] failed to sweep orphan workflow runs for {}: {e}",
+                        agent.folder_path
+                    );
+                }
+            }
+        }
+    }
     repaired
 }
 

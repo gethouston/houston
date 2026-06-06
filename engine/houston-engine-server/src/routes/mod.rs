@@ -13,6 +13,7 @@ pub mod portable;
 pub mod preferences;
 pub mod providers;
 pub mod routines;
+pub mod workflows;
 pub mod sessions;
 pub mod skills;
 pub mod store;

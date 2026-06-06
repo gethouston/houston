@@ -1,0 +1,192 @@
+//! Workflow run lifecycle — plan, approve, execute, cancel, resume.
+
+use crate::error::{CoreError, CoreResult};
+use crate::routines::runner::expand_tilde;
+use crate::sessions::{self, SessionRuntime};
+use crate::workflows::defs as workflow_defs;
+use crate::workflows::dispatcher::WorkflowDispatcher;
+use crate::workflows::keys::step_session_key;
+use crate::workflows::planner::{self, emit_runs_changed};
+use crate::workflows::runner_execute::execute_run;
+use crate::workflows::runs as workflow_runs;
+use crate::workflows::types::{Workflow, WorkflowRun, WorkflowRunUpdate};
+use crate::worktree::RemoveWorktreeRequest;
+use chrono::Utc;
+use houston_ui_events::DynEventSink;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
+
+pub struct BegunRun {
+    pub working_dir: PathBuf,
+    pub workflow: Workflow,
+    pub run: WorkflowRun,
+}
+
+pub fn begin_run(
+    events: &DynEventSink,
+    agent_path: &str,
+    workflow_id: &str,
+) -> CoreResult<BegunRun> {
+    let working_dir = expand_tilde(Path::new(agent_path));
+    let workflow = workflow_defs::find_by_id(&working_dir, workflow_id)?;
+    let run = workflow_runs::create(&working_dir, workflow_id)?;
+    emit_runs_changed(events, agent_path);
+    Ok(BegunRun {
+        working_dir,
+        workflow,
+        run,
+    })
+}
+
+pub async fn finish_planning(
+    events: DynEventSink,
+    dispatcher: Arc<dyn WorkflowDispatcher>,
+    agent_path: &str,
+    begun: BegunRun,
+) -> CoreResult<()> {
+    planner::run_planner(
+        &events,
+        dispatcher,
+        agent_path,
+        &begun.working_dir,
+        &begun.workflow,
+        &begun.run,
+    )
+    .await
+}
+
+pub async fn approve_run(
+    events: DynEventSink,
+    dispatcher: Arc<dyn WorkflowDispatcher>,
+    rt: SessionRuntime,
+    agent_path: &str,
+    root: &Path,
+    run_id: &str,
+) -> CoreResult<WorkflowRun> {
+    let run = workflow_runs::find_by_id(root, run_id)?;
+    if run.status != "awaiting_approval" {
+        return Err(CoreError::Conflict(format!(
+            "workflow run {run_id} is not awaiting approval (status={})",
+            run.status
+        )));
+    }
+    let workflow = workflow_defs::find_by_id(root, &run.workflow_id)?;
+    let updated = workflow_runs::update(
+        root,
+        run_id,
+        WorkflowRunUpdate {
+            status: Some("running".into()),
+            ..Default::default()
+        },
+    )?;
+    emit_runs_changed(&events, agent_path);
+
+    let agent_path = agent_path.to_string();
+    let root = root.to_path_buf();
+    let run_id_owned = run_id.to_string();
+    let events_spawn = events.clone();
+    tokio::spawn(async move {
+        if let Err(e) = execute_run(
+            events_spawn,
+            dispatcher,
+            rt,
+            &agent_path,
+            &root,
+            workflow,
+            &run_id_owned,
+            false,
+        )
+        .await
+        {
+            tracing::error!("[workflows] execute failed for run {run_id_owned}: {e}");
+        }
+    });
+    Ok(updated)
+}
+
+pub async fn resume_run(
+    events: DynEventSink,
+    dispatcher: Arc<dyn WorkflowDispatcher>,
+    rt: SessionRuntime,
+    agent_path: &str,
+    root: &Path,
+    run_id: &str,
+) -> CoreResult<()> {
+    let run = workflow_runs::find_by_id(root, run_id)?;
+    if !matches!(run.status.as_str(), "error" | "cancelled") {
+        return Err(CoreError::Conflict(format!(
+            "workflow run {run_id} cannot resume (status={})",
+            run.status
+        )));
+    }
+    let workflow = workflow_defs::find_by_id(root, &run.workflow_id)?;
+    workflow_runs::update(
+        root,
+        run_id,
+        WorkflowRunUpdate {
+            status: Some("running".into()),
+            ..Default::default()
+        },
+    )?;
+    emit_runs_changed(&events, agent_path);
+    execute_run(events, dispatcher, rt, agent_path, root, workflow, run_id, true).await
+}
+
+pub async fn cancel_run(
+    rt: &SessionRuntime,
+    events: &DynEventSink,
+    root: &Path,
+    agent_path: &str,
+    run_id: &str,
+) -> CoreResult<WorkflowRun> {
+    let run = workflow_runs::find_by_id(root, run_id)?;
+    if !matches!(
+        run.status.as_str(),
+        "planning" | "awaiting_approval" | "running"
+    ) {
+        return Err(CoreError::Conflict(format!(
+            "workflow run {run_id} is not cancellable (status={})",
+            run.status
+        )));
+    }
+
+    let now = Utc::now().to_rfc3339();
+    let updated = workflow_runs::update(
+        root,
+        run_id,
+        WorkflowRunUpdate {
+            status: Some("cancelled".into()),
+            completed_at: Some(now.clone()),
+            summary: Some("Stopped by user".into()),
+            ..Default::default()
+        },
+    )?;
+
+    sessions::cancel(rt, events, agent_path, &run.session_key).await;
+    for step in &run.steps {
+        if step.status == "running" {
+            let key = step_session_key(&run.workflow_id, run_id, &step.step_id);
+            sessions::cancel(rt, events, agent_path, &key).await;
+        }
+        if let Some(wt) = &step.worktree_path {
+            if let Err(e) = crate::worktree::remove_worktree(RemoveWorktreeRequest {
+                repo_path: root.to_string_lossy().to_string(),
+                worktree_path: wt.clone(),
+            })
+            .await
+            {
+                tracing::error!(
+                    "[workflows] worktree cleanup on cancel for run {run_id} step {}: {e}",
+                    step.step_id
+                );
+            }
+        }
+    }
+
+    emit_runs_changed(events, agent_path);
+    Ok(updated)
+}
+
+#[cfg(test)]
+#[path = "runner_tests.rs"]
+mod runner_tests;
