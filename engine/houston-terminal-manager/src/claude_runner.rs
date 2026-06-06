@@ -9,6 +9,28 @@ use std::ffi::OsString;
 use tokio::process::Command;
 use tokio::sync::mpsc;
 
+/// Tools removed from a `restricted` agent: native filesystem, shell, exec,
+/// and network tools. The agent's only file access is the houston_files MCP
+/// gateway. Re-audit this list whenever cli-deps.json bumps the Claude Code
+/// version (a new file/exec/network tool must be added here).
+const RESTRICTED_DISALLOWED_TOOLS: &[&str] = &[
+    "Bash",
+    "Read",
+    "Glob",
+    "Grep",
+    "LS",
+    "Edit",
+    "Write",
+    "MultiEdit",
+    "NotebookEdit",
+    "NotebookRead",
+    // Task spawns subagents that would not inherit this policy.
+    "Task",
+    // WebFetch can reach file:// URLs and internal network endpoints.
+    "WebFetch",
+    "WebSearch",
+];
+
 /// Absolute path to the Houston-managed `claude` if the runtime installer
 /// dropped it (`~/.local/bin/claude` on Unix,
 /// `%LOCALAPPDATA%\Programs\claude\claude.exe` on Windows). Falls back to
@@ -45,6 +67,10 @@ pub(crate) async fn spawn_claude(
     mcp_config: Option<std::path::PathBuf>,
     disable_builtin_tools: bool,
     disable_all_tools: bool,
+    // Claude CLI has no OS-level sandbox equivalent to Codex's --sandbox flag.
+    // When true, enforcement relies on --disallowedTools + the MCP file gateway.
+    // Reserved for future use (e.g. --allowedDirectories if Claude CLI adds it).
+    _use_provider_sandbox: bool,
 ) {
     tracing::info!(
         "[houston:session] spawning claude -p (resume={:?}, model={:?}, effort={:?})",
@@ -189,16 +215,10 @@ fn configure_claude_command(
     } else {
         cmd.arg("--dangerously-skip-permissions");
         if disable_builtin_tools {
-            cmd.arg("--disallowedTools")
-                .arg("Bash")
-                .arg("Read")
-                .arg("Glob")
-                .arg("Grep")
-                .arg("LS")
-                .arg("Edit")
-                .arg("Write")
-                .arg("MultiEdit")
-                .arg("NotebookEdit");
+            cmd.arg("--disallowedTools");
+            for tool in RESTRICTED_DISALLOWED_TOOLS {
+                cmd.arg(tool);
+            }
         }
     }
 
@@ -311,5 +331,25 @@ mod tests {
             "recovered history + latest"
         );
         assert_eq!(fresh_retry_prompt("latest", None), "latest");
+    }
+
+    #[test]
+    fn restricted_denylist_blocks_read_and_network_tools() {
+        for banned in [
+            "Bash",
+            "Read",
+            "Write",
+            "Edit",
+            "WebFetch",
+            "Task",
+            "NotebookEdit",
+            "NotebookRead",
+            "WebSearch",
+        ] {
+            assert!(
+                RESTRICTED_DISALLOWED_TOOLS.contains(&banned),
+                "{banned} must be in the restricted denylist"
+            );
+        }
     }
 }
