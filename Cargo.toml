@@ -52,6 +52,12 @@ houston-engine-core = { version = "0.4.19", path = "engine/houston-engine-core" 
 houston-engine-protocol = { version = "0.4.19", path = "engine/houston-engine-protocol" }
 houston-engine-server = { version = "0.4.19", path = "engine/houston-engine-server" }
 
+[patch.crates-io]
+# Patched build.rs (std::fs::copy instead of Unix cp). vendor/libsql-ffi is
+# gitignored — run scripts/setup-libsql-ffi-vendor.sh before building on a
+# fresh clone.
+libsql-ffi = { path = "vendor/libsql-ffi" }
+
 # Keep line-table debug info in release binaries so Sentry can symbolicate
 # Rust panics to file:line. Costs ~10-15% binary size; full debug info is
 # stripped, only line tables remain. sentry-cli debug-files upload extracts
