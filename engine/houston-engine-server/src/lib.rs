@@ -7,6 +7,7 @@
 pub mod auth;
 pub mod config;
 pub mod mobile_access;
+pub mod mcp_agent_files;
 pub mod routes;
 pub mod state;
 pub mod ws;
@@ -36,6 +37,7 @@ pub fn build_router(state: Arc<ServerState>) -> Router {
         .merge(routes::store::router())
         .merge(routes::routines::router())
         .merge(routes::agents::router())
+        .merge(routes::agent_audit::router())
         .merge(routes::agent_files::router())
         .merge(routes::composio::router())
         .merge(routes::claude::router())

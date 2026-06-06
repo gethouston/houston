@@ -24,6 +24,7 @@ pub struct EngineState {
 
 impl EngineState {
     pub fn new(paths: EnginePaths, events: DynEventSink, db: Database) -> Self {
+        crate::agent_file_gateway::cleanup_stale_configs();
         Self {
             paths,
             events,

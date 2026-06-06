@@ -20,6 +20,7 @@ pub(crate) async fn spawn_codex(
     model: Option<String>,
     effort: Option<String>,
     system_prompt: Option<String>,
+    use_provider_sandbox: bool,
 ) {
     // Effort is normally resolved upstream (`sessions::resolve_effort`, which
     // applies the provider default when nothing valid is configured). Fall
@@ -50,6 +51,7 @@ pub(crate) async fn spawn_codex(
         model.as_deref(),
         effort.as_deref(),
         system_prompt.as_deref(),
+        use_provider_sandbox,
     );
 
     let outcome = run_cli_process(tx, &mut cmd, &prompt, provider).await;
@@ -62,6 +64,7 @@ pub(crate) async fn spawn_codex(
             model.as_deref(),
             effort.as_deref(),
             system_prompt.as_deref(),
+            use_provider_sandbox,
         );
         run_cli_process(
             tx,
@@ -83,6 +86,7 @@ fn build_codex_command(
     model: Option<&str>,
     effort: Option<&str>,
     system_prompt: Option<&str>,
+    use_provider_sandbox: bool,
 ) -> Command {
     // Always prefer the bundled codex over whatever happens to be on the
     // user's PATH. The user's PATH might point at a stale `nvm` codex that
@@ -102,6 +106,7 @@ fn build_codex_command(
         model,
         effort,
         system_prompt,
+        use_provider_sandbox,
     ));
     if let Some(dir) = working_dir {
         cmd.current_dir(dir);

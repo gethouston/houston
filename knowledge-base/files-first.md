@@ -23,6 +23,9 @@ If app-specific → `.houston/`.
       routine_runs.json + .schema.json
     config/
       config.json + .schema.json
+    policy.json                 AgentPolicy access boundary (allowed roots, shared context opt-in, tool mode)
+    audit/
+      {session_key}.jsonl       Per-session tool/file audit trail
     learnings/
       learnings.json + .schema.json   ({id, text, created_at})
       # Legacy `.houston/memory/learnings.md` auto-migrated on startup
@@ -84,6 +87,66 @@ from being retried by the provider that rejected it.
 
 ## Atomic writes
 All writes: unique temp file + rename. Path-traversal safe via `houston-agent-files::safe_relative`.
+
+## Agent access policy
+
+Every agent has `.houston/policy.json`, seeded by
+`engine/houston-engine-core/src/agent_policy.rs`. Missing files default to:
+
+```json
+{
+  "version": 1,
+  "allowed_roots": ["."],
+  "denied_roots": [],
+  "include_workspace_context": false,
+  "allowed_integrations": [],
+  "denied_integrations": [],
+  "tool_mode": "restricted"
+}
+```
+
+The default is intentionally narrow: an agent can work inside its own folder,
+but workspace-level `WORKSPACE.md` / `USER.md` context is NOT injected unless
+`include_workspace_context` is true. Project-file REST operations reject
+absolute paths, `..`, and paths outside the policy roots. Session start rejects
+a `working_dir` outside the policy roots with `FORBIDDEN`.
+
+Tool mode mapping lives in `agent_policy::tool_config`: `restricted` enables
+provider sandboxing where available and disables Claude native filesystem/shell tools;
+`conversation_only` disables all Claude tools; `full` preserves the old
+unrestricted runner behavior. This is an MVP boundary, not a full OS sandbox
+for every provider.
+
+For Claude sessions, `restricted` also writes a per-session MCP config under
+`.houston/runtime/houston-files-{session_key}.mcp.json` and launches
+`houston-engine mcp-agent-files` as the `houston_files` server. Native Claude
+filesystem/shell tools (`Read`, `Bash`, `Glob`, `Grep`, `LS`, `Edit`, `Write`,
+`MultiEdit`, `NotebookEdit`) are disallowed, so file access goes through:
+
+- `list_allowed_files`
+- `read_allowed_file`
+- `write_allowed_file`
+- `search_allowed_files`
+
+Those tools call the same `agents::files` helpers as the REST file browser and
+enforce `.houston/policy.json` on every path. Codex restricted sessions still
+use Codex's provider sandbox until its MCP/config path is wired to the same
+gateway.
+
+## Agent audit trail
+
+Each chat/routine session creates `.houston/audit/{session_key}.jsonl` via
+`engine/houston-engine-core/src/agent_audit.rs`. The runner observer appends
+JSON lines for session start/status, provider session ids, tool calls, and
+post-run file changes. Tool-call inputs are recursively scanned for path-like
+fields (`path`, `file_path`, `cwd`, etc.) and classified as `allowed`,
+`denied`, or `unknown` against `.houston/policy.json`.
+
+Clients can poll `GET /v1/agents/audit?agent_path=...&session_key=...` while a
+session is running to inspect the current log. The audit log is an operational
+supervision surface, not a kernel-level filesystem monitor: a shell command's
+declared command/input is visible, but every file opened by that subprocess is
+not provable without adding OS sandbox/syscall tracing.
 
 ## Activity statuses
 `running` · `needs_you` · `done` · `error` · `archived`

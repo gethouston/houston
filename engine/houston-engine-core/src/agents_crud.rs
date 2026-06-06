@@ -11,6 +11,7 @@
 use crate::error::{CoreError, CoreResult};
 use crate::paths::{expand_tilde, rename_path, same_fs_entity};
 use crate::workspaces;
+use crate::agent_policy::AgentPolicy;
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -56,6 +57,8 @@ pub struct CreateAgent {
     pub seeds: Option<HashMap<String, String>>,
     #[serde(default)]
     pub existing_path: Option<String>,
+    #[serde(default)]
+    pub policy: Option<AgentPolicy>,
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -261,6 +264,14 @@ pub fn create(root: &Path, workspace_id: &str, req: CreateAgent) -> CoreResult<C
     };
     write_agent_meta(&folder, &meta)?;
 
+    if let Some(policy) = req.policy.as_ref() {
+        let path = crate::agent_policy::policy_path(&folder);
+        if let Some(parent) = path.parent() {
+            fs::create_dir_all(parent)?;
+        }
+        fs::write(&path, serde_json::to_string_pretty(policy)?)?;
+    }
+
     let claude_md_path = folder.join("CLAUDE.md");
     if !claude_md_path.exists() {
         let content = req
@@ -395,6 +406,7 @@ mod tests {
                 installed_path: None,
                 seeds: None,
                 existing_path: None,
+                policy: None,
             },
         )
         .unwrap();
@@ -429,6 +441,7 @@ mod tests {
                 installed_path: None,
                 seeds: Some(seeds),
                 existing_path: None,
+                policy: None,
             },
         )
         .unwrap();
@@ -437,6 +450,35 @@ mod tests {
             fs::read_to_string(d.path().join("alpha/store-agent/.houston/activity.json")).unwrap(),
             "[]"
         );
+    }
+
+    #[test]
+    fn create_persists_initial_policy() {
+        let d = TempDir::new().unwrap();
+        let ws_id = setup_ws(d.path());
+        create(
+            d.path(),
+            &ws_id,
+            CreateAgent {
+                name: "finance".into(),
+                config_id: "blank".into(),
+                color: None,
+                claude_md: None,
+                installed_path: None,
+                seeds: None,
+                existing_path: None,
+                policy: Some(AgentPolicy {
+                    allowed_roots: vec!["reports".into()],
+                    include_workspace_context: true,
+                    ..AgentPolicy::default()
+                }),
+            },
+        )
+        .unwrap();
+
+        let policy = crate::agent_policy::load(&d.path().join("alpha/finance")).unwrap();
+        assert_eq!(policy.allowed_roots, vec!["reports"]);
+        assert!(policy.include_workspace_context);
     }
 
     #[test]
@@ -454,6 +496,7 @@ mod tests {
                 installed_path: None,
                 seeds: None,
                 existing_path: None,
+                policy: None,
             },
         )
         .unwrap();
@@ -492,6 +535,7 @@ mod tests {
                 installed_path: None,
                 seeds: None,
                 existing_path: None,
+                policy: None,
             },
         )
         .unwrap();
@@ -523,6 +567,7 @@ mod tests {
                 installed_path: None,
                 seeds: None,
                 existing_path: None,
+                policy: None,
             },
         )
         .unwrap()

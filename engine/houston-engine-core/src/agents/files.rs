@@ -20,7 +20,7 @@ use crate::error::{CoreError, CoreResult};
 use houston_agent_files as files;
 use houston_ui_events::HoustonEvent;
 use serde::{Deserialize, Serialize};
-use std::path::{Path, PathBuf};
+use std::path::{Component, Path, PathBuf};
 use std::time::UNIX_EPOCH;
 
 // ---------------------------------------------------------------------------
@@ -179,8 +179,14 @@ pub fn list_project_files(agent_root: &Path) -> CoreResult<Vec<ProjectFile>> {
     if !agent_root.is_dir() {
         return Ok(Vec::new());
     }
+    let policy = crate::agent_policy::load(agent_root)?;
     let mut out = Vec::new();
     collect_files(agent_root, agent_root, &mut out);
+    out.retain(|file| {
+        policy
+            .ensure_path_allowed(agent_root, &agent_root.join(&file.path))
+            .is_ok()
+    });
     out.sort_by(|a, b| a.path.cmp(&b.path));
     Ok(out)
 }
@@ -188,17 +194,98 @@ pub fn list_project_files(agent_root: &Path) -> CoreResult<Vec<ProjectFile>> {
 /// Read an arbitrary text file from the agent by relative path.
 pub fn read_project_file(agent_root: &Path, rel_path: &str) -> CoreResult<String> {
     let full = resolve_existing(agent_root, rel_path)?;
+    crate::agent_policy::ensure_path_allowed(agent_root, &full)?;
     std::fs::read_to_string(&full)
         .map_err(|e| CoreError::Internal(format!("failed to read {rel_path}: {e}")))
+}
+
+/// Write a user-facing project file through the agent policy boundary.
+pub fn write_project_file(agent_root: &Path, rel_path: &str, content: &str) -> CoreResult<()> {
+    let full = resolve_new(agent_root, rel_path)?;
+    crate::agent_policy::ensure_path_allowed(agent_root, &full)?;
+    crate::agent_policy::ensure_writable(agent_root, &full)?;
+    if let Some(parent) = full.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&full, content)
+        .map_err(|e| CoreError::Internal(format!("failed to write {rel_path}: {e}")))
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ProjectFileSearchMatch {
+    pub path: String,
+    pub line: Option<usize>,
+    pub preview: String,
+}
+
+/// Search allowed user-facing text files by path/name and line content.
+pub fn search_project_files(
+    agent_root: &Path,
+    query: &str,
+    limit: usize,
+) -> CoreResult<Vec<ProjectFileSearchMatch>> {
+    let q = query.trim();
+    if q.is_empty() {
+        return Err(CoreError::BadRequest("query cannot be empty".into()));
+    }
+    let q_lower = q.to_ascii_lowercase();
+    let mut matches = Vec::new();
+    for file in list_project_files(agent_root)? {
+        if file.is_directory {
+            continue;
+        }
+        if file.path.to_ascii_lowercase().contains(&q_lower)
+            || file.name.to_ascii_lowercase().contains(&q_lower)
+        {
+            matches.push(ProjectFileSearchMatch {
+                path: file.path.clone(),
+                line: None,
+                preview: file.path.clone(),
+            });
+        }
+        if matches.len() >= limit {
+            break;
+        }
+        if file.size > 1_000_000 {
+            continue;
+        }
+        if let Ok(content) = read_project_file(agent_root, &file.path) {
+            for (idx, line) in content.lines().enumerate() {
+                if line.to_ascii_lowercase().contains(&q_lower) {
+                    matches.push(ProjectFileSearchMatch {
+                        path: file.path.clone(),
+                        line: Some(idx + 1),
+                        preview: line.trim().chars().take(240).collect(),
+                    });
+                    if matches.len() >= limit {
+                        return Ok(matches);
+                    }
+                }
+            }
+        }
+    }
+    Ok(matches)
 }
 
 /// Rename a file or folder in the agent.
 pub fn rename_file(agent_root: &Path, rel_path: &str, new_name: &str) -> CoreResult<()> {
     let full = resolve_existing(agent_root, rel_path)?;
+    crate::agent_policy::ensure_path_allowed(agent_root, &full)?;
+    crate::agent_policy::ensure_writable(agent_root, &full)?;
+    if Path::new(new_name).components().any(|c| {
+        matches!(
+            c,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_)
+        )
+    }) {
+        return Err(CoreError::BadRequest("new file name must not be a path".into()));
+    }
     let parent = full
         .parent()
         .ok_or_else(|| CoreError::BadRequest("invalid file path".into()))?;
     let new_path = parent.join(new_name);
+    crate::agent_policy::ensure_path_allowed(agent_root, &new_path)?;
+    crate::agent_policy::ensure_writable(agent_root, &new_path)?;
     std::fs::rename(&full, &new_path)
         .map_err(|e| CoreError::Internal(format!("failed to rename: {e}")))
 }
@@ -206,6 +293,8 @@ pub fn rename_file(agent_root: &Path, rel_path: &str, new_name: &str) -> CoreRes
 /// Delete a file from the agent.
 pub fn delete_file(agent_root: &Path, rel_path: &str) -> CoreResult<()> {
     let full = resolve_existing(agent_root, rel_path)?;
+    crate::agent_policy::ensure_path_allowed(agent_root, &full)?;
+    crate::agent_policy::ensure_writable(agent_root, &full)?;
     std::fs::remove_file(&full)
         .map_err(|e| CoreError::Internal(format!("failed to delete: {e}")))
 }
@@ -218,7 +307,9 @@ pub fn create_folder(agent_root: &Path, relative: &str) -> CoreResult<String> {
     if relative.is_empty() {
         return Err(CoreError::BadRequest("folder name cannot be empty".into()));
     }
-    let target = agent_root.join(relative);
+    let target = resolve_new(agent_root, relative)?;
+    crate::agent_policy::ensure_path_allowed(agent_root, &target)?;
+    crate::agent_policy::ensure_writable(agent_root, &target)?;
     std::fs::create_dir_all(&target)
         .map_err(|e| CoreError::Internal(format!("failed to create folder {relative}: {e}")))?;
     Ok(relative.to_string())
@@ -226,7 +317,7 @@ pub fn create_folder(agent_root: &Path, relative: &str) -> CoreResult<String> {
 
 /// Copy a file from an absolute source path into an agent directory.
 /// Returns the file name used (deduplicated if a clash exists).
-pub fn copy_file_to_dir(dir: &Path, source: &Path) -> CoreResult<String> {
+fn copy_file_to_dir(dir: &Path, source: &Path) -> CoreResult<String> {
     if !source.is_file() {
         return Err(CoreError::BadRequest(format!(
             "source is not a file: {}",
@@ -242,15 +333,6 @@ pub fn copy_file_to_dir(dir: &Path, source: &Path) -> CoreResult<String> {
     let final_name = dest.file_name().unwrap().to_string_lossy().to_string();
     std::fs::copy(source, &dest)
         .map_err(|e| CoreError::Internal(format!("failed to copy {}: {e}", source.display())))?;
-    Ok(final_name)
-}
-
-/// Write raw bytes as a file into an agent directory. Returns the deduped name.
-pub fn write_bytes_dedup(dir: &Path, name: &str, data: &[u8]) -> CoreResult<String> {
-    let dest = deduplicate_name(dir, name);
-    let final_name = dest.file_name().unwrap().to_string_lossy().to_string();
-    std::fs::write(&dest, data)
-        .map_err(|e| CoreError::Internal(format!("failed to write {name}: {e}")))?;
     Ok(final_name)
 }
 
@@ -286,7 +368,8 @@ pub fn import_files(
 ) -> CoreResult<Vec<ProjectFile>> {
     let dest_dir = match target_folder {
         Some(folder) => {
-            let d = agent_root.join(folder);
+            let d = resolve_new(agent_root, folder)?;
+            crate::agent_policy::ensure_path_allowed(agent_root, &d)?;
             std::fs::create_dir_all(&d).map_err(|e| {
                 CoreError::Internal(format!("failed to create directory: {e}"))
             })?;
@@ -294,6 +377,8 @@ pub fn import_files(
         }
         None => agent_root.to_path_buf(),
     };
+    crate::agent_policy::ensure_path_allowed(agent_root, &dest_dir)?;
+    crate::agent_policy::ensure_writable(agent_root, &dest_dir)?;
 
     let mut imported = Vec::new();
     for src_str in file_paths {
@@ -332,8 +417,20 @@ pub fn write_file_bytes(
     file_name: &str,
     bytes: &[u8],
 ) -> CoreResult<ProjectFile> {
-    let final_name = write_bytes_dedup(agent_root, file_name, bytes)?;
-    let dest = agent_root.join(&final_name);
+    if Path::new(file_name).components().any(|c| {
+        matches!(
+            c,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_)
+        )
+    }) {
+        return Err(CoreError::BadRequest("file name must not be a path".into()));
+    }
+    let dest = deduplicate_name(agent_root, file_name);
+    crate::agent_policy::ensure_path_allowed(agent_root, &dest)?;
+    crate::agent_policy::ensure_writable(agent_root, &dest)?;
+    let final_name = dest.file_name().unwrap().to_string_lossy().to_string();
+    std::fs::write(&dest, bytes)
+        .map_err(|e| CoreError::Internal(format!("failed to write {file_name}: {e}")))?;
     let ext = dest
         .extension()
         .map(|e| e.to_string_lossy().to_lowercase())
@@ -356,10 +453,32 @@ pub fn write_file_bytes(
 // ---------------------------------------------------------------------------
 
 fn resolve_existing(agent_root: &Path, rel_path: &str) -> CoreResult<PathBuf> {
-    let full = agent_root.join(rel_path);
+    let full = resolve_inside(agent_root, rel_path)?;
     if !full.exists() {
         return Err(CoreError::NotFound(format!("file: {rel_path}")));
     }
+    Ok(full)
+}
+
+fn resolve_new(agent_root: &Path, rel_path: &str) -> CoreResult<PathBuf> {
+    resolve_inside(agent_root, rel_path)
+}
+
+fn resolve_inside(agent_root: &Path, rel_path: &str) -> CoreResult<PathBuf> {
+    let rel = Path::new(rel_path);
+    if rel.is_absolute() {
+        return Err(CoreError::BadRequest("path must be relative to agent".into()));
+    }
+    if rel.components().any(|c| {
+        matches!(
+            c,
+            Component::ParentDir | Component::RootDir | Component::Prefix(_)
+        )
+    }) {
+        return Err(CoreError::BadRequest("path escapes agent root".into()));
+    }
+    let full = agent_root.join(rel);
+    crate::agent_policy::ensure_path_allowed(agent_root, &full)?;
     Ok(full)
 }
 
@@ -562,11 +681,55 @@ mod tests {
     }
 
     #[test]
+    fn list_project_files_filters_policy_denied_paths() {
+        let d = tmp();
+        std::fs::create_dir_all(d.path().join(".houston")).unwrap();
+        std::fs::create_dir_all(d.path().join("reports")).unwrap();
+        std::fs::write(d.path().join("reports/visible.txt"), "ok").unwrap();
+        std::fs::write(d.path().join("secret.txt"), "no").unwrap();
+        std::fs::write(
+            crate::agent_policy::policy_path(d.path()),
+            r#"{"version":1,"allowed_roots":["reports"]}"#,
+        )
+        .unwrap();
+
+        let files = list_project_files(d.path()).unwrap();
+        let paths: Vec<&str> = files.iter().map(|f| f.path.as_str()).collect();
+        assert!(paths.contains(&"reports"));
+        assert!(paths.contains(&"reports/visible.txt"));
+        assert!(!paths.contains(&"secret.txt"));
+    }
+
+    #[test]
     fn create_folder_round_trip() {
         let d = tmp();
         let made = create_folder(d.path(), "docs/inner").unwrap();
         assert_eq!(made, "docs/inner");
         assert!(d.path().join("docs/inner").is_dir());
+    }
+
+    #[test]
+    fn project_file_read_blocks_parent_traversal() {
+        let d = tmp();
+        let agent = d.path().join("finance");
+        let sales = d.path().join("sales");
+        std::fs::create_dir_all(&agent).unwrap();
+        std::fs::create_dir_all(&sales).unwrap();
+        std::fs::write(sales.join("secret.txt"), "sales").unwrap();
+
+        let err = read_project_file(&agent, "../sales/secret.txt").unwrap_err();
+        assert!(matches!(err, CoreError::BadRequest(_)));
+    }
+
+    #[test]
+    fn project_file_create_folder_blocks_parent_traversal() {
+        let d = tmp();
+        let agent = d.path().join("finance");
+        std::fs::create_dir_all(&agent).unwrap();
+
+        let err = create_folder(&agent, "../sales").unwrap_err();
+        assert!(matches!(err, CoreError::BadRequest(_)));
+        assert!(!d.path().join("sales").exists());
     }
 
     #[test]
@@ -580,11 +743,87 @@ mod tests {
     }
 
     #[test]
+    fn write_project_file_respects_policy() {
+        let d = tmp();
+        std::fs::create_dir_all(d.path().join(".houston")).unwrap();
+        std::fs::create_dir_all(d.path().join("reports")).unwrap();
+        std::fs::write(
+            crate::agent_policy::policy_path(d.path()),
+            r#"{"version":1,"allowed_roots":["reports"]}"#,
+        )
+        .unwrap();
+
+        write_project_file(d.path(), "reports/new.txt", "ok").unwrap();
+        let err = write_project_file(d.path(), "secret.txt", "no").unwrap_err();
+        assert_eq!(err.code(), houston_engine_protocol::ErrorCode::Forbidden);
+    }
+
+    #[test]
+    fn search_project_files_scans_allowed_visible_text() {
+        let d = tmp();
+        std::fs::write(d.path().join("notes.txt"), "alpha\nneedle here").unwrap();
+        std::fs::write(d.path().join("script.py"), "needle hidden").unwrap();
+
+        let found = search_project_files(d.path(), "needle", 10).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].path, "notes.txt");
+        assert_eq!(found[0].line, Some(2));
+    }
+
+    #[test]
+    fn rename_rejects_path_as_new_name() {
+        let d = tmp();
+        std::fs::write(d.path().join("a.txt"), "x").unwrap();
+        let err = rename_file(d.path(), "a.txt", "../b.txt").unwrap_err();
+        assert!(matches!(err, CoreError::BadRequest(_)));
+        assert!(d.path().join("a.txt").exists());
+    }
+
+    #[test]
     fn write_file_bytes_dedupes() {
         let d = tmp();
         let f1 = write_file_bytes(d.path(), "hello.txt", b"first").unwrap();
         let f2 = write_file_bytes(d.path(), "hello.txt", b"second").unwrap();
         assert_eq!(f1.name, "hello.txt");
         assert_eq!(f2.name, "hello (2).txt");
+    }
+
+    #[test]
+    fn write_file_bytes_rejects_path_name() {
+        let d = tmp();
+        let err = write_file_bytes(d.path(), "../hello.txt", b"x").unwrap_err();
+        assert!(matches!(err, CoreError::BadRequest(_)));
+        assert!(!d.path().join("hello.txt").exists());
+    }
+
+    #[test]
+    fn write_rejects_control_plane() {
+        let d = TempDir::new().unwrap();
+        std::fs::create_dir_all(d.path().join(".houston")).unwrap();
+        let err = write_project_file(d.path(), ".houston/policy.json", "{}").unwrap_err();
+        assert_eq!(err.code(), houston_engine_protocol::ErrorCode::Forbidden);
+    }
+
+    #[test]
+    fn write_rejects_claude_hook() {
+        let d = TempDir::new().unwrap();
+        let err = write_project_file(d.path(), ".claude/settings.json", "{}").unwrap_err();
+        assert_eq!(err.code(), houston_engine_protocol::ErrorCode::Forbidden);
+    }
+
+    #[test]
+    fn write_allows_normal_file() {
+        let d = TempDir::new().unwrap();
+        write_project_file(d.path(), "reports/q1.csv", "a,b\n1,2").unwrap();
+        assert!(d.path().join("reports/q1.csv").exists());
+    }
+
+    #[test]
+    fn delete_rejects_control_plane() {
+        let d = TempDir::new().unwrap();
+        std::fs::create_dir_all(d.path().join(".houston")).unwrap();
+        std::fs::write(d.path().join(".houston/policy.json"), "{}").unwrap();
+        let err = delete_file(d.path(), ".houston/policy.json").unwrap_err();
+        assert_eq!(err.code(), houston_engine_protocol::ErrorCode::Forbidden);
     }
 }

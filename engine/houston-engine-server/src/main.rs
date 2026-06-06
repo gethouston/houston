@@ -26,6 +26,11 @@ struct EngineManifest<'a> {
 
 #[tokio::main]
 async fn main() {
+    let args = std::env::args().collect::<Vec<_>>();
+    if args.get(1).map(String::as_str) == Some("mcp-agent-files") {
+        std::process::exit(houston_engine_server::mcp_agent_files::run_from_args(&args[1..]));
+    }
+
     // Sentry BEFORE tracing so the sentry_tracing layer wired into
     // `init_tracing` has a live client from the first log line, and the panic
     // handler is installed before any work runs. The guard is bound for the

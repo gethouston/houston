@@ -32,6 +32,19 @@ pub struct SessionResult {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SessionToolConfig {
+    pub disable_builtin_tools: bool,
+    pub disable_all_tools: bool,
+    pub use_provider_sandbox: bool,
+}
+
+pub trait SessionObserver: Send + Sync {
+    fn on_feed(&self, item: &FeedItem);
+    fn on_session_id(&self, session_id: &str);
+    fn on_status(&self, status: &str, error: Option<&str>);
+}
+
 /// Options for feed persistence.
 #[derive(Clone)]
 pub struct PersistOptions {
@@ -95,12 +108,15 @@ pub fn spawn_and_monitor(
     resume_fallback_prompt: Option<String>,
     working_dir: PathBuf,
     system_prompt: Option<String>,
+    mcp_config: Option<PathBuf>,
     session_id_handle: Option<SessionIdHandle>,
     persist: Option<PersistOptions>,
     pid_map: Option<SessionPidMap>,
     provider: Provider,
     model: Option<String>,
     effort: Option<String>,
+    tool_config: SessionToolConfig,
+    observer: Option<Arc<dyn SessionObserver>>,
 ) -> tokio::task::JoinHandle<SessionResult> {
     // Ensure the user's shell PATH is resolved before spawning.
     // OnceLock inside init() makes this a no-op after the first call.
@@ -118,9 +134,10 @@ pub fn spawn_and_monitor(
         model,
         effort,
         system_prompt,
-        None,  // mcp_config
-        false, // disable_builtin_tools
-        false, // disable_all_tools
+        mcp_config,
+        tool_config.disable_builtin_tools,
+        tool_config.disable_all_tools,
+        tool_config.use_provider_sandbox,
     );
 
     let sink = sink;
@@ -146,6 +163,9 @@ pub fn spawn_and_monitor(
                     continue;
                 }
                 SessionUpdate::Feed(ref item) => {
+                    if let Some(ref obs) = observer {
+                        obs.on_feed(item);
+                    }
                     if let FeedItem::AssistantText(text) = item {
                         response_text = Some(text.clone());
                     }
@@ -293,6 +313,9 @@ pub fn spawn_and_monitor(
                     continue;
                 }
                 SessionUpdate::SessionId(sid) => {
+                    if let Some(ref obs) = observer {
+                        obs.on_session_id(&sid);
+                    }
                     claude_session_id = Some(sid.clone());
                     // SessionIdHandle owns disk persistence — .sid file is written
                     // here so --resume survives app restarts.
@@ -337,7 +360,7 @@ pub fn spawn_and_monitor(
                     }
                 }
                 SessionUpdate::Status(ref status) => {
-                    let (status_str, err) = match status {
+                    let (status_str, err): (String, Option<String>) = match status {
                         SessionStatus::Starting => ("starting".into(), None),
                         SessionStatus::Running => ("running".into(), None),
                         SessionStatus::Completed => ("completed".into(), None),
@@ -346,6 +369,9 @@ pub fn spawn_and_monitor(
                             ("error".into(), Some(e.clone()))
                         }
                     };
+                    if let Some(ref obs) = observer {
+                        obs.on_status(&status_str, err.as_deref());
+                    }
 
                     // Detect auth failures and emit AuthRequired so the frontend
                     // knows to render the inline reconnect card (which reads

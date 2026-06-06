@@ -32,6 +32,7 @@ impl SessionManager {
         disable_builtin_tools: bool,
         // When true, disables ALL tools (--allowedTools ""). Use for pure conversation.
         disable_all_tools: bool,
+        use_provider_sandbox: bool,
     ) -> (mpsc::UnboundedReceiver<SessionUpdate>, SessionHandle) {
         let (tx, rx) = mpsc::unbounded_channel();
 
@@ -51,6 +52,7 @@ impl SessionManager {
                 mcp_config,
                 disable_builtin_tools,
                 disable_all_tools,
+                use_provider_sandbox,
             )
             .await;
         });

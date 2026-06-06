@@ -109,6 +109,8 @@ async fn start_session(
         .as_deref()
         .map(|p| sessions::expand_tilde(std::path::Path::new(p)))
         .unwrap_or_else(|| agent_dir.clone());
+    houston_engine_core::agent_policy::load(&agent_dir)?
+        .ensure_path_allowed(&agent_dir, &working_dir)?;
 
     // Override > agent config > Anthropic default.
     let ResolvedProviderChoice { provider, model } =

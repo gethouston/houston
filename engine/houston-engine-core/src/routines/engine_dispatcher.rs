@@ -58,6 +58,35 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
                 error: Some(format!("seed failed: {e}")),
             };
         }
+        let policy = match crate::agent_policy::load(ctx.working_dir) {
+            Ok(policy) => policy,
+            Err(e) => {
+                return DispatchOutcome {
+                    response_text: String::new(),
+                    error: Some(format!("policy load failed: {e}")),
+                };
+            }
+        };
+        if let Err(e) = policy.ensure_path_allowed(ctx.working_dir, ctx.working_dir) {
+            return DispatchOutcome {
+                response_text: String::new(),
+                error: Some(e.to_string()),
+            };
+        }
+        let tool_config = crate::agent_policy::tool_config(&policy);
+        let mcp_config = match crate::agent_file_gateway::prepare_mcp_config(
+            ctx.working_dir,
+            &ctx.run.session_key,
+            &policy,
+        ) {
+            Ok(config) => config,
+            Err(e) => {
+                return DispatchOutcome {
+                    response_text: String::new(),
+                    error: Some(format!("file gateway setup failed: {e}")),
+                };
+            }
+        };
         let agent_context =
             agent_prompt::build_agent_context(ctx.working_dir, None, None);
         let system_prompt = if self.app_system_prompt.is_empty() {
@@ -67,6 +96,22 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
         };
 
         let resolved = sessions::resolve_provider(ctx.working_dir);
+        let audit = match crate::agent_audit::AgentAudit::start(
+            ctx.working_dir,
+            ctx.working_dir,
+            &ctx.run.session_key,
+            resolved.provider,
+            resolved.model.as_deref(),
+            policy.clone(),
+        ) {
+            Ok(audit) => audit,
+            Err(e) => {
+                return DispatchOutcome {
+                    response_text: String::new(),
+                    error: Some(format!("audit start failed: {e}")),
+                };
+            }
+        };
         let agent_key = format!(
             "{}:{}:{}",
             ctx.working_dir.to_string_lossy(),
@@ -100,6 +145,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             None,
             ctx.working_dir.to_path_buf(),
             Some(system_prompt),
+            mcp_config,
             Some(sid_handle),
             Some(PersistOptions {
                 db: self.db.clone(),
@@ -123,6 +169,8 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             resolved.provider,
             resolved.model,
             sessions::resolve_effort(ctx.working_dir, resolved.provider),
+            tool_config,
+            Some(audit),
         );
 
         match join_handle.await {
