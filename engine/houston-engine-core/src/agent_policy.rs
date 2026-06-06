@@ -13,6 +13,12 @@ use std::path::{Component, Path, PathBuf};
 
 pub const POLICY_PATH: &str = ".houston/policy.json";
 
+/// Directories inside an agent root that hold Houston's control plane —
+/// policy, audit, runtime config, skills, and provider settings/hooks. An
+/// agent must never write here even though these live inside its allowed
+/// roots, or it could widen its own policy or plant executable hooks.
+pub const RESERVED_DIRS: [&str; 3] = [".houston", ".claude", ".agents"];
+
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum ToolMode {
@@ -105,6 +111,25 @@ pub fn seed_if_missing(agent_root: &Path) -> CoreResult<()> {
 pub fn ensure_path_allowed(agent_root: &Path, path: &Path) -> CoreResult<()> {
     let policy = load(agent_root)?;
     policy.ensure_path_allowed(agent_root, path)
+}
+
+/// True when `path` is inside one of [`RESERVED_DIRS`] relative to
+/// `agent_root`. Both sides are normalized so `..` / symlink tricks cannot
+/// dodge the check. Paths outside `agent_root` are not this agent's control
+/// plane and return false (the allowed-roots check governs those).
+pub fn is_control_plane(agent_root: &Path, path: &Path) -> bool {
+    let (Ok(root), Ok(target)) =
+        (normalize_for_policy(agent_root), normalize_for_policy(path))
+    else {
+        // If we cannot normalize, be conservative and treat as control-plane.
+        return true;
+    };
+    let Ok(rel) = target.strip_prefix(&root) else {
+        return false;
+    };
+    rel.components().next().is_some_and(|c| {
+        RESERVED_DIRS.contains(&c.as_os_str().to_string_lossy().as_ref())
+    })
 }
 
 impl AgentPolicy {
@@ -257,5 +282,37 @@ mod tests {
         assert!(cfg.disable_builtin_tools);
         assert!(!cfg.disable_all_tools);
         assert!(cfg.use_provider_sandbox);
+    }
+
+    #[test]
+    fn control_plane_detects_reserved_dirs() {
+        let d = TempDir::new().unwrap();
+        let root = d.path();
+        for reserved in [".houston/policy.json", ".claude/settings.json", ".agents/skills/x.md"] {
+            let p = root.join(reserved);
+            assert!(
+                is_control_plane(root, &p),
+                "expected {reserved} to be control-plane"
+            );
+        }
+    }
+
+    #[test]
+    fn control_plane_allows_normal_files() {
+        let d = TempDir::new().unwrap();
+        let root = d.path();
+        for ok in ["reports/q1.csv", "notes.md", "data/sub/file.txt"] {
+            let p = root.join(ok);
+            assert!(!is_control_plane(root, &p), "expected {ok} to be writable");
+        }
+    }
+
+    #[test]
+    fn control_plane_ignores_reserved_name_outside_root() {
+        let d = TempDir::new().unwrap();
+        let root = d.path().join("agent");
+        std::fs::create_dir_all(&root).unwrap();
+        let other = d.path().join("other").join(".houston").join("x");
+        assert!(!is_control_plane(&root, &other));
     }
 }
