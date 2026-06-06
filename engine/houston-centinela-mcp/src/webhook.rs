@@ -53,6 +53,7 @@ pub async fn serve(addr: SocketAddr, web: Web) {
         .route("/toggle/inspect", post(inspect_toggle))
         .route("/permissions", get(permissions_get))
         .route("/toggle/permission", post(permission_toggle))
+        .route("/demo/request", post(demo_request))
         .layer(CorsLayer::permissive())
         .with_state(web);
     let listener = match tokio::net::TcpListener::bind(addr).await {
@@ -248,6 +249,66 @@ fn effective_caps(web: &Web) -> Capabilities {
         }
     }
     caps
+}
+
+#[derive(Deserialize)]
+struct DemoRequest {
+    #[serde(default = "default_agent")]
+    agent: String,
+    /// A plain-language description of what the agent wants to do.
+    action: String,
+}
+
+fn default_agent() -> String {
+    "asistente-seguro".to_string()
+}
+
+/// Demo trigger: simulate an agent asking to do something sensitive. Sends the
+/// WhatsApp approval to the verified owner and blocks until they reply SI or NO,
+/// so a single terminal command drives the whole step-up flow.
+async fn demo_request(
+    State(web): State<Web>,
+    Json(req): Json<DemoRequest>,
+) -> (StatusCode, Json<Value>) {
+    let Some(notifier) = web.notifier.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "outcome": "error", "message": "WhatsApp no configurado" })),
+        );
+    };
+    let approver = crate::approver::Approver::with_registry(
+        web.registry.clone(),
+        notifier.clone(),
+        web.enrollment.clone(),
+    );
+    let outcome = approver.request(&req.agent, &req.action).await;
+    let (decision, code, message, label) = match outcome {
+        crate::approval::Outcome::Approved => (
+            "allow",
+            "approved",
+            "Aprobado por el titular por WhatsApp.",
+            "approved",
+        ),
+        crate::approval::Outcome::Denied => (
+            "deny",
+            "human_denied",
+            "Rechazado por el titular por WhatsApp.",
+            "denied",
+        ),
+        crate::approval::Outcome::TimedOut => (
+            "deny",
+            "approval_timeout",
+            "Sin respuesta a tiempo: bloqueado por seguridad.",
+            "timeout",
+        ),
+    };
+    if let Some(path) = &web.log_path {
+        crate::journal::append_custom(path, "demo", &req.action, decision, code, message);
+    }
+    (
+        StatusCode::OK,
+        Json(json!({ "outcome": label, "message": message })),
+    )
 }
 
 /// Pull the first inbound message body out of a WhatsApp webhook payload.

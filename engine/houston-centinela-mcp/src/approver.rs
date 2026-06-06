@@ -24,6 +24,22 @@ impl Approver {
         }
     }
 
+    /// Build an approver that resolves replies against an existing shared
+    /// registry: the one the webhook already listens on. This lets a request
+    /// triggered over HTTP be answered by the same SI/NO reply flow.
+    pub fn with_registry(
+        registry: Arc<ApprovalRegistry>,
+        notifier: Arc<dyn Notifier>,
+        enrollment: Arc<Enrollment>,
+    ) -> Self {
+        Self {
+            registry,
+            notifier,
+            enrollment,
+            ttl: Duration::from_secs(120),
+        }
+    }
+
     /// The shared registry the webhook resolves incoming replies against.
     pub fn registry(&self) -> Arc<ApprovalRegistry> {
         Arc::clone(&self.registry)
@@ -69,6 +85,19 @@ mod tests {
                 tokio::time::sleep(Duration::from_millis(5)).await;
             }
         });
+    }
+
+    #[tokio::test]
+    async fn with_registry_shares_the_passed_registry() {
+        let registry = Arc::new(ApprovalRegistry::new());
+        let ap = Approver::with_registry(
+            registry.clone(),
+            Arc::new(MockNotifier::new()),
+            Arc::new(Enrollment::new(Some("573058166527".into()))),
+        );
+        // The HTTP-triggered demo request and the webhook reply must hit the same
+        // registry, so an SI/NO answer resolves the pending approval.
+        assert!(Arc::ptr_eq(&ap.registry(), &registry));
     }
 
     #[tokio::test]
