@@ -15,8 +15,14 @@
 //!   the JS storage adapter) so every Windows user was forced to
 //!   re-sign-in on every app open. DPAPI's `CryptProtectData` has no
 //!   such limit and still binds the ciphertext to the Windows user.
-//! - **Other Unix**: `keyring` falls through to whatever backend the
-//!   user has (libsecret, KWallet, etc.). Not officially supported.
+//! - **Linux**: `keyring` crate's sync Secret Service backend
+//!   (libsecret — gnome-keyring, KWallet, …). Persistent across
+//!   reboots like the macOS Keychain. Requires a secret-service
+//!   provider running on the user's session; if none is present the
+//!   `Entry` calls return an Err that surfaces as a toast (no silent
+//!   fallback). See the keyring features in `Cargo.toml`.
+//! - **Other Unix**: same `keyring` path; backend availability depends
+//!   on the desktop environment. Best-effort, not release-tested.
 //!
 //! Deep-link flow:
 //!   1. Frontend calls `supabase.auth.signInWithOAuth({ provider: "google",

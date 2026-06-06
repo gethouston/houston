@@ -268,14 +268,17 @@ See `knowledge-base/architecture.md` (engine crates),
 
 ---
 
-## 12. Implementation status — Phases 1-3 (uid + Landlock + seccomp + egress)
+## 12. Implementation status — Phases 1-4 (uid + Landlock + seccomp + egress + authz)
 
 **Done.** In-process layers (L1-L4) live in
 `engine/houston-terminal-manager/src/isolation/` (`mod.rs` cross-platform,
 `linux.rs` impl, `seccomp.rs` BPF denylist), wired into the single spawn
 chokepoint `cli_process::run_cli_process`. The egress layer (L5) is container
-config under `always-on/`. All activated by `HOUSTON_ISOLATION` (default OFF →
-desktop/dev untouched).
+config under `always-on/`. The API-authz layer (L7) lives in
+`engine/houston-engine-server/src/agent_scope.rs`, enforced in the
+`auth::require_bearer` middleware. L1-L5 are activated by `HOUSTON_ISOLATION`
+(default OFF → desktop/dev untouched); L7 is always on but transparent to
+unscoped (Full) tokens, so existing clients are unaffected.
 
 `pre_exec` order: Landlock `restrict_self` → drop privileges → seccomp.
 
@@ -299,6 +302,18 @@ desktop/dev untouched).
   Non-tenant uids untouched. Installed at container boot by
   `airlock-entrypoint.sh`; v6 denied wholesale. A *domain* allowlist needs
   the broker (Phase 6) — iptables can't track CDN domains safely.
+- **L7 (per-agent authz):** capability token = `hsta_<b64url(agent_path)>.
+  <b64url(HMAC-SHA256(engine_secret, agent_path))>` — unforgeable,
+  self-describing, no DB row. `auth::require_bearer` resolves a presented
+  bearer to a `Scope` (`Full` for bootstrap/device tokens, `Agent(path)`
+  for a valid capability token) and enforces it **fail-closed**: an
+  `Agent`-scoped token is allowed only on `/health`, `/version`, and
+  requests whose target agent (the `/agents/{path}/sessions…` segment or
+  an `?agent_path=` query) matches its scope; the WS firehose, workspace
+  listings, and body-addressed routes are denied. Mint via
+  `POST /v1/agents/{agent_path}/token` (Full callers only). Revoke by
+  rotating the engine secret (a persisted, individually-revocable variant
+  is future work).
 
 ### Enabling it (Always-On)
 
@@ -341,11 +356,17 @@ run inside the always-on container.
   external IP is BLOCKED by default, ALLOWED once the IP is on the
   allowlist, and root egress is UNAFFECTED. Runs in the container's own
   netns, so the host firewall is untouched.
+- **Red-team proof, L7 (unit):** `agent_scope::tests` — an `Agent(A)` token
+  is allowed on A's `/sessions` and on `?agent_path=A`, DENIED on B's
+  session, on `?agent_path=B`, and (fail-closed) on the WS firehose +
+  workspace listing + body-addressed routes; a forged or wrong-key
+  capability token resolves to no scope (401).
 - The uid-drop layers (L1/L3) need root; their integration test is
   `#[ignore]` and the real-agent gate runs in the container.
 
 ### Not yet (later phases)
 
-per-agent authz (4), the full malicious-agent harness (5), and running a
-**real** `claude` session under the complete jail (uid + Landlock + seccomp
-+ egress) as root in the always-on container (Phase 1.3 gate).
+The full malicious-agent harness (5, unifies all proofs in one run), the
+credential broker (6), and running a **real** `claude` session under the
+complete jail (uid + Landlock + seccomp + egress) as root in the always-on
+container (Phase 1.3 gate).

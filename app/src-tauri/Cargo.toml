@@ -31,7 +31,6 @@ sentry = "0.42"
 # Layer is a no-op until sentry::init has run, so safe to register
 # unconditionally in logging.rs even when SENTRY_DSN is empty.
 sentry-tracing = "0.42"
-keyring = { version = "3", features = ["apple-native", "windows-native"] }
 houston-ui-events = { path = "../../engine/houston-ui-events" }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }
 tracing = { workspace = true }
@@ -45,6 +44,12 @@ tracing-appender = { workspace = true }
 # can pop a dialog at the very top of `run()`.
 [target."cfg(target_os = \"macos\")".dependencies]
 rfd = "0.15"
+# Auth-session storage (`auth.rs`). Keychain via the `keyring` crate. Apple
+# Keychain has no per-blob size limit that matters for our 3-4 KB sessions, so
+# this Just Works. NOT a dependency on Windows (that path uses DPAPI files —
+# see the windows-sys block below) so keyring lives in the per-OS blocks, not
+# the shared `[dependencies]`.
+keyring = { version = "3", features = ["apple-native"] }
 
 # Windows + Linux only: the OS protocol handler launches a fresh
 # `houston-app.exe` for every `houston://` URL it receives (Start-menu
@@ -65,6 +70,17 @@ tauri-plugin-single-instance = { version = "2", features = ["deep-link"] }
 # detect the click. Same crate (and version) the plugin already pulls in.
 [target."cfg(target_os = \"linux\")".dependencies]
 notify-rust = "4.11"
+# Auth-session storage (`auth.rs`) on Linux: freedesktop Secret Service
+# (libsecret-backed — gnome-keyring, KWallet, etc.) via the `keyring` crate's
+# sync Secret Service backend. `crypto-rust` supplies the session-encryption
+# transport the D-Bus Secret Service handshake needs (pure-Rust, no system
+# OpenSSL). Secret Service is persistent across reboots (unlike the kernel
+# `linux-native` keyutils backend, which loses secrets on logout) so sessions
+# survive an app restart the same way Keychain does on macOS. Requires a
+# running secret-service provider on the user's session; if none is present
+# `keyring::Entry` calls return a clear Err that surfaces as a toast (no silent
+# fallback, per the beta no-silent-failures policy).
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
 
 # Windows-only: DPAPI session storage. The Windows Credential Manager
 # (which the `keyring` crate uses) caps `CredentialBlob` at ~2560 bytes,
