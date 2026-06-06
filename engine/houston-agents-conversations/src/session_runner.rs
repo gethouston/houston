@@ -360,7 +360,7 @@ pub fn spawn_and_monitor(
                     }
                 }
                 SessionUpdate::Status(ref status) => {
-                    let (status_str, err) = match status {
+                    let (status_str, err): (String, Option<String>) = match status {
                         SessionStatus::Starting => ("starting".into(), None),
                         SessionStatus::Running => ("running".into(), None),
                         SessionStatus::Completed => ("completed".into(), None),

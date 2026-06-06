@@ -60,6 +60,7 @@ pub(crate) async fn dispatch(
                 mcp_config,
                 disable_builtin_tools,
                 disable_all_tools,
+                use_provider_sandbox,
             )
             .await;
         }
