@@ -11,13 +11,14 @@ layers: `policy.json` (allowed/denied roots), the `houston_files` MCP gateway
 (replaces native filesystem tools in `restricted` mode), and a prompt section.
 A security review surfaced concrete escape vectors that mean the isolation
 guarantee is **not yet airtight**, and currently only meaningful for the
-Anthropic (Claude) provider. This spec closes those holes. It is the
-foundation for two follow-on specs (seamless permission-grant flow; binary
-file parsing) and must land first, because both build on a boundary that
-actually holds.
+Anthropic (Claude) provider. This spec closes those holes for Claude and
+makes `restricted` fail loudly on providers that cannot yet enforce it. It
+must land first, because the follow-on specs build on a boundary that actually
+holds.
 
-This is **feature 1 of 3**. The other two get their own spec → plan →
-implementation cycles.
+This is **spec 1 of 4**: (1) boundary hardening — this doc; (2) seamless
+permission-grant flow; (3) gateway binary parsing; (4) Codex `restricted` via
+the gateway. Each gets its own spec → plan → implementation cycle.
 
 ## Goals
 
@@ -40,7 +41,7 @@ Gemini) — or fail loudly where it cannot.
 | 2 | Plant a `.claude/` hook that runs shell | Agent can write `.claude/settings.json` | Control-plane write guard |
 | 3 | Read engine token from `mcp-config.json` | Config lives in `agent_root/.houston/runtime/` (readable by gateway) | Move MCP config outside any agent root |
 | 4 | Denylist misses a tool (e.g. `NotebookRead`, future tools) | `--disallowedTools <list>` | Switch Claude `restricted` to an allowlist |
-| 5 | Codex `restricted` reads anywhere | `--sandbox workspace-write` confines writes only | Route Codex through the gateway / read-confine |
+| 5 | Codex `restricted` reads anywhere | `--sandbox workspace-write` confines writes only | Fail-safe now (refuse); real gateway routing in its own spec |
 | 6 | Gemini `restricted` has no enforcement | No tool flags, no sandbox, no gateway | Fail-safe: refuse `restricted` on Gemini until supported |
 
 ## Design
@@ -115,19 +116,27 @@ implementation plan includes an explicit enumeration step + a test that an
 allowed agent can still run a normal task end-to-end before the denylist is
 removed.
 
-### 4. Provider parity (terminal-manager)
+### 4. Provider parity — fail-safe (terminal-manager)
 
-- **Codex:** `restricted` must confine reads, not just writes. Codex's OS
-  sandbox has no "read-only-within-workspace" mode, so the fix is to route
-  Codex file access through the same `houston_files` MCP gateway (Codex
-  supports MCP servers via config) and run it with `--sandbox read-only` so
-  native file tools cannot bypass the gateway. If full gateway routing proves
-  larger than this spec, the fallback is the same fail-safe as Gemini (below)
-  until it lands — `restricted` on Codex must not silently allow broad reads.
-- **Gemini:** no enforcement primitive is wired. Until one exists, starting a
-  `restricted` Gemini session returns a typed error surfaced to the user
-  ("This agent's privacy mode isn't supported on its current AI yet"), per the
-  no-silent-failures rule — rather than running with prompt-only "isolation".
+`restricted` must confine reads on every provider, or refuse to run. Today
+only Claude (via the gateway) does. Codex's OS sandbox has no
+"read-only-within-workspace" mode, and Gemini has no enforcement primitive
+wired at all. Rather than let `restricted` silently allow broad reads on those
+providers, both **fail loudly**:
+
+- Starting a `restricted` session on Codex or Gemini returns a typed error
+  surfaced to the user ("This agent's privacy mode isn't supported on its
+  current AI yet"), per the no-silent-failures rule.
+- The check lives at session start (engine), before the provider subprocess
+  spawns, keyed on `provider.id()` ∉ {gateway-capable set}. Today that set is
+  `{anthropic}`; it grows as each provider gets real read-confinement.
+
+Restoring Codex `restricted` properly — routing Codex file access through the
+`houston_files` MCP gateway with `--sandbox read-only` so native tools cannot
+bypass it — is **its own spec** (Codex is not the default provider, and the
+routing is a substantial, provider-specific piece). Until then the fail-safe
+guarantees no false isolation. `full` and `conversation_only` modes are
+unaffected on all providers.
 
 ### 5. Token handling (engine)
 
@@ -145,14 +154,14 @@ gateway to call the engine) inherits a safe channel.
 | `agents/files::ensure_writable` | Gate every mutating op | `is_control_plane`, `ensure_path_allowed` |
 | `agent_file_gateway::prepare_mcp_config` | Write session MCP config to home cache, token in `env` | `EnginePaths` |
 | `claude_runner::configure_claude_command` | Allowlist for `restricted` | allowlist constant |
-| `session_dispatch` (codex/gemini arms) | Apply parity rules | provider sandbox / fail-safe |
+| session-start guard (engine) | Refuse `restricted` on non-gateway providers | `provider.id()`, gateway-capable set |
 
 ## Error handling
 
 - Control-plane write → `Forbidden` / `agent_control_plane`, surfaced to the
   user as a real toast (no silent swallow).
-- Gemini `restricted` (and Codex fallback) → typed `Forbidden`/`Unsupported`
-  error surfaced to the user.
+- `restricted` on Codex/Gemini → typed `Forbidden`/`Unsupported` error
+  surfaced to the user at session start.
 - All new failures follow the existing `CoreError → ApiError → errorMessage`
   surfacing path.
 
@@ -169,9 +178,10 @@ gateway to call the engine) inherits a safe channel.
 - Claude `restricted` builds `--allowedTools` with the gateway tools and
   **not** `--dangerously-skip-permissions`-without-allowlist; `full` unchanged;
   `conversation_only` still `--allowedTools ""`.
-- Codex `restricted` does not run with a read-anywhere sandbox (asserts the
-  chosen sandbox arg).
-- Gemini `restricted` returns the typed unsupported error.
+- `restricted` on Codex returns the typed unsupported error at session start
+  (no provider subprocess spawned).
+- `restricted` on Gemini returns the typed unsupported error.
+- `full` / `conversation_only` on Codex and Gemini are unaffected (still run).
 - Path-traversal + symlink escape remain denied (existing canonicalize
   behavior — add an explicit symlink test to lock it in).
 
@@ -180,9 +190,11 @@ gateway to call the engine) inherits a safe channel.
 - **Spec 2:** seamless permission-grant flow (attachments + native folder
   picker + access-request store/endpoints/WS event + policy mutation).
 - **Spec 3:** gateway parsing of binary documents (xlsx/pdf → text/table).
+- **Spec 4:** Codex `restricted` via the `houston_files` gateway +
+  `--sandbox read-only`, to lift the fail-safe and restore Codex isolation.
 
 ## Open question for implementation
 
-The exact Houston-native tool allowlist (fix #3) must be enumerated from the
-codebase during planning; this design fixes the *mechanism* (allowlist over
+The exact Houston-native tool allowlist (§3, Allowlist) must be enumerated from
+the codebase during planning; this design fixes the *mechanism* (allowlist over
 denylist), not the literal list.
