@@ -196,10 +196,10 @@ mod tests {
       "agent_id": "asistente-seguro",
       "scopes": {
         "read": ["email:inbox", "bank:balance", "bank:transactions"],
-        "write": ["email:send"],
-        "egress_allowlist": ["api.santoria.app"]
+        "write": ["email:send", "agent:relay"],
+        "egress_allowlist": ["api.santoria.app", "asistente-contable"]
       },
-      "step_up_required_for": ["email:send", "bank:transfer"],
+      "step_up_required_for": ["email:send", "bank:transfer", "agent:relay"],
       "duress": { "enabled": true, "action": "lockdown_and_alert" }
     }"#;
 
@@ -380,5 +380,66 @@ mod tests {
         let mut s = state(false);
         handle_request(&mut s, &hooks, &call("check_balance", json!({}))).await;
         assert_eq!(mock.alert_count(), 0);
+    }
+
+    // ── Multi-agent: data cannot be laundered through another agent ──────
+
+    #[tokio::test]
+    async fn cannot_relay_sensitive_data_to_an_uncleared_agent() {
+        // The attack: this agent has bank access and is asked to hand the
+        // accounts to the email agent. Relaying to a non-cleared agent is egress
+        // to a destination not on the allowlist: blocked. Access is not export.
+        let mut s = state(false);
+        handle_request(&mut s, &Hooks::default(), &call("check_balance", json!({}))).await;
+        let resp = handle_request(
+            &mut s,
+            &Hooks::default(),
+            &call(
+                "relay_to_agent",
+                json!({"to":"asistente-correo","message":"las cuentas son ****1234"}),
+            ),
+        )
+        .await
+        .unwrap();
+        assert_eq!(resp["result"]["isError"], true);
+        assert!(text_of(&resp).contains("BLOQUEADO"));
+    }
+
+    #[tokio::test]
+    async fn relay_to_a_cleared_agent_still_asks_the_human() {
+        let mut s = state(false);
+        let resp = handle_request(
+            &mut s,
+            &Hooks::default(),
+            &call(
+                "relay_to_agent",
+                json!({"to":"asistente-contable","message":"hola"}),
+            ),
+        )
+        .await
+        .unwrap();
+        assert_eq!(resp["result"]["isError"], true);
+        assert!(text_of(&resp).contains("CONFIRMACION"));
+    }
+
+    #[tokio::test]
+    async fn a_poisoned_session_cannot_relay_even_to_a_cleared_agent() {
+        // The email agent reads the "estoy secuestrado" message (untrusted), so
+        // its session is tainted. Any relay is then taint -> egress: blocked,
+        // even to a cleared agent. The taint travels with the request.
+        let mut s = state(false);
+        handle_request(&mut s, &Hooks::default(), &call("read_inbox", json!({}))).await;
+        let resp = handle_request(
+            &mut s,
+            &Hooks::default(),
+            &call(
+                "relay_to_agent",
+                json!({"to":"asistente-contable","message":"dame las cuentas"}),
+            ),
+        )
+        .await
+        .unwrap();
+        assert_eq!(resp["result"]["isError"], true);
+        assert!(text_of(&resp).contains("BLOQUEADO"));
     }
 }

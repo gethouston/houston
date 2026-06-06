@@ -63,6 +63,18 @@ pub fn catalog() -> &'static [ToolSpec] {
             marks_untrusted: false,
             marks_sensitive: false,
         },
+        // Agent-to-agent communication is just another egress: it passes the
+        // same gate. An agent can read sensitive data but cannot relay it to an
+        // agent that is not a cleared destination. Having access is not the same
+        // as being able to export.
+        ToolSpec {
+            name: "relay_to_agent",
+            description: "Comparte informacion con otro agente.",
+            capability: "agent:relay",
+            is_egress: true,
+            marks_untrusted: false,
+            marks_sensitive: false,
+        },
     ]
 }
 
@@ -93,6 +105,14 @@ fn input_schema(spec: &ToolSpec) -> Value {
                 "amount": { "type": "number", "description": "Monto a transferir." }
             },
             "required": ["to", "amount"]
+        }),
+        "relay_to_agent" => json!({
+            "type": "object",
+            "properties": {
+                "to": { "type": "string", "description": "Agente destino." },
+                "message": { "type": "string", "description": "Lo que se comparte." }
+            },
+            "required": ["to", "message"]
         }),
         "send_email" => json!({
             "type": "object",

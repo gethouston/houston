@@ -35,12 +35,12 @@ const DEFAULT_SALVOCONDUCTO: &str = r#"{
   "version": "1.0",
   "scopes": {
     "read": ["email:inbox", "bank:balance", "bank:transactions"],
-    "write": ["email:send"],
+    "write": ["email:send", "agent:relay"],
     "money": [],
-    "egress_allowlist": ["api.santoria.app"]
+    "egress_allowlist": ["api.santoria.app", "asistente-contable"]
   },
   "rule_of_two": { "untrusted_input": true, "sensitive_data": true, "external_action": false },
-  "step_up_required_for": ["email:send", "bank:transfer"],
+  "step_up_required_for": ["email:send", "bank:transfer", "agent:relay"],
   "duress": { "enabled": true, "action": "lockdown_and_alert" }
 }"#;
 
