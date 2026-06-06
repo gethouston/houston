@@ -1,0 +1,307 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Salvoconducto - Centinela</title>
+  <style>
+    :root {
+      --bg: #ffffff; --fg: #0d0d0d; --secondary: #f9f9f9; --accent-bg: #f5f5f5;
+      --muted: #676767; --muted-2: #9b9b9b;
+      --border: rgba(0, 0, 0, .08); --border-strong: rgba(0, 0, 0, .15);
+      --success: #00824f; --success-bg: #e7f6ed;
+      --warning: #976d00; --warning-bg: #fbf3da;
+      --danger: #c0241f; --danger-bg: #fde9e8;
+      --radius: 16px;
+    }
+    * { box-sizing: border-box; }
+    html { -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+    body {
+      margin: 0; background: var(--bg); color: var(--fg); overflow-x: hidden;
+      font: 15px/1.55 ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    }
+    .container { max-width: 980px; margin: 0 auto; padding: 0 24px; }
+    header { min-height: 64px; display: flex; align-items: center; flex-wrap: wrap; gap: 6px 12px; padding: 14px 0; border-bottom: 1px solid var(--border); }
+    header .dot { width: 10px; height: 10px; border-radius: 999px; background: var(--fg); }
+    header h1 { margin: 0; font-size: 18px; font-weight: 650; letter-spacing: -.01em; }
+    header .who { color: var(--muted); font-size: 14px; }
+    header .who b { color: var(--fg); font-weight: 600; }
+    .sub { color: var(--muted); font-size: 13.5px; margin: 18px 0 0; }
+
+    .card { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; overflow: hidden; transition: box-shadow .2s ease; }
+    .card:hover { box-shadow: 0 1px 2px rgba(0,0,0,.04), 0 8px 24px rgba(0,0,0,.04); }
+    .card h2 { margin: 0 0 14px; font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted-2); }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 16px; }
+    @media (max-width: 860px) { .grid { grid-template-columns: 1fr; } }
+    @media (max-width: 520px) {
+      .enroll input { min-width: 0; flex: 1 1 100%; }
+      .enroll .btn { flex: 1 1 auto; }
+    }
+
+    /* Enrollment */
+    .enroll { margin-top: 16px; }
+    .enroll .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .enroll input { height: 38px; background: var(--bg); border: 1px solid var(--border-strong); color: var(--fg); border-radius: 10px; padding: 0 12px; font-size: 14px; min-width: 190px; outline: none; }
+    .enroll input:focus { border-color: var(--fg); }
+    .enroll input:disabled { background: var(--accent-bg); color: var(--muted); }
+    .btn { height: 38px; border-radius: 999px; padding: 0 16px; font-size: 14px; font-weight: 550; cursor: pointer; border: 1px solid transparent; transition: background .15s ease, opacity .15s ease; }
+    .btn.primary { background: var(--fg); color: #fff; }
+    .btn.primary:hover { background: #2a2a2a; }
+    .btn.secondary { background: var(--bg); color: var(--fg); border-color: var(--border-strong); }
+    .btn.secondary:hover { background: var(--accent-bg); }
+    .btn:disabled { opacity: .45; cursor: default; }
+    .status { font-size: 13px; color: var(--muted); width: 100%; margin-top: 4px; }
+    .status.ok { color: var(--success); }
+    .status.bad { color: var(--danger); }
+    .hidden { display: none; }
+
+    /* Permissions */
+    .perm { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--border); }
+    .perm:last-child { border-bottom: 0; }
+    .perm .icon { width: 34px; height: 34px; flex: none; border-radius: 10px; background: var(--accent-bg); display: grid; place-items: center; font-size: 17px; }
+    .perm .body { flex: 1; min-width: 0; }
+    .perm .name { font-weight: 550; }
+    .perm .sub2 { font-size: 12.5px; color: var(--muted); }
+    .pill { font-size: 12px; font-weight: 600; padding: 4px 11px; border-radius: 999px; white-space: nowrap; }
+    .pill.allow { color: var(--success); background: var(--success-bg); }
+    .pill.confirm { color: var(--warning); background: var(--warning-bg); }
+    .pill.deny { color: var(--danger); background: var(--danger-bg); }
+
+    /* Live log */
+    .log { display: flex; flex-direction: column; gap: 8px; max-height: 420px; overflow: auto; }
+    .entry { border: 1px solid var(--border); border-left-width: 3px; border-radius: 10px; padding: 11px 13px; }
+    .entry.allow { border-left-color: var(--success); }
+    .entry.deny { border-left-color: var(--danger); }
+    .entry.step_up { border-left-color: var(--warning); }
+    .entry .top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .entry .verdict { font-weight: 700; font-size: 11.5px; letter-spacing: .04em; }
+    .entry.allow .verdict { color: var(--success); }
+    .entry.deny .verdict { color: var(--danger); }
+    .entry.step_up .verdict { color: var(--warning); }
+    .entry .tool { color: var(--muted); font-size: 13px; }
+    .entry .msg { font-size: 13px; margin-top: 4px; color: var(--fg); }
+    .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 6px; color: var(--warning); background: var(--warning-bg); }
+    /* Toggle */
+    .toggle-card { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+    .toggle-card .info { flex: 1; min-width: 0; }
+    .toggle-card .info .t { font-weight: 600; }
+    .toggle-card .info .d { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .switch { position: relative; width: 44px; height: 26px; flex: none; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: var(--border-strong); border-radius: 999px; transition: .2s; cursor: pointer; }
+    .slider::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 999px; transition: .2s; }
+    .switch input:checked + .slider { background: var(--success); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
+    .empty { color: var(--muted-2); font-size: 13px; padding: 6px 2px; }
+
+    footer { color: var(--muted); font-size: 13px; padding: 22px 0 40px; }
+    .legend { display: inline-flex; align-items: center; gap: 6px; margin-right: 14px; }
+    .swatch { width: 9px; height: 9px; border-radius: 999px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <span class="dot"></span>
+      <h1>Salvoconducto</h1>
+      <span class="who">Agente <b id="agent">cargando...</b></span>
+    </header>
+
+    <p class="sub">La frontera vive en el codigo. La persuasion no cambia un permiso.</p>
+
+    <section class="card enroll">
+      <h2>Tu numero de aprobaciones</h2>
+      <div class="row">
+        <input id="num" type="tel" placeholder="573001234567" />
+        <button id="btn-send" class="btn primary" onclick="startEnroll()">Enviar codigo</button>
+        <input id="code" class="hidden" inputmode="numeric" placeholder="codigo de 6 digitos" />
+        <button id="btn-confirm" class="btn secondary hidden" onclick="confirmEnroll()">Verificar</button>
+        <div id="enroll-status" class="status">Solo un numero verificado por codigo puede aprobar acciones. Nadie pone cualquier numero.</div>
+      </div>
+    </section>
+
+    <section class="card toggle-card">
+      <div class="info">
+        <div class="t">Inspeccion de contenido (anti-fugas)</div>
+        <div class="d">Aunque el envio este permitido, bloquea correos que lleven claves de API, llaves privadas, tarjetas o contraseñas.</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="inspect-toggle" onchange="toggleInspect()" /><span class="slider"></span></label>
+    </section>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Permisos de este asistente</h2>
+        <div id="perms"></div>
+      </section>
+      <section class="card">
+        <h2>Decisiones en vivo</h2>
+        <div class="log" id="log"><div class="empty">Esperando actividad del agente...</div></div>
+      </section>
+    </div>
+
+    <footer>
+      <span class="legend"><span class="swatch" style="background:var(--success)"></span>Permitido</span>
+      <span class="legend"><span class="swatch" style="background:var(--warning)"></span>Requiere tu confirmacion</span>
+      <span class="legend"><span class="swatch" style="background:var(--danger)"></span>Bloqueado por codigo</span>
+      <br />Las decisiones las toma el motor de Centinela, no el modelo.
+    </footer>
+  </div>
+
+  <script>
+    const CATALOGO = [
+      { cap: "email:inbox",       label: "Leer tus correos",       sub: "Bandeja de entrada",  icon: "✉️" },
+      { cap: "bank:balance",      label: "Ver el saldo del banco", sub: "Solo lectura",        icon: "🏦" },
+      { cap: "bank:transactions", label: "Ver tus movimientos",    sub: "Solo lectura",        icon: "📊" },
+      { cap: "email:send",        label: "Enviar correos",         sub: "Salida al exterior",  icon: "📤" },
+      { cap: "bank:transfer",     label: "Mover dinero",           sub: "Accion irreversible", icon: "💸" },
+    ];
+    const VERDICT = { allow: "PERMITIDO", deny: "BLOQUEADO", step_up: "CONFIRMA" };
+
+    async function loadSalvo() {
+      const salvo = await fetch("salvoconducto.json").then(r => r.json()).catch(() => ({ agent_id: "asistente-seguro" }));
+      document.getElementById("agent").textContent = salvo.agent_id;
+      // Effective permission state from the gateway (reflects live toggles); fall
+      // back to the static salvoconducto when the gateway is offline.
+      let perms = null;
+      try { const r = await fetch(API + "/permissions"); if (r.ok) perms = await r.json(); } catch (e) {}
+      const stateOf = (cap) => {
+        const p = perms && perms.find(x => x.capability === cap);
+        if (p) return { granted: p.granted, stepUp: p.stepUp };
+        const declared = ["read", "write", "money"].some(k => (salvo.scopes?.[k] || []).includes(cap));
+        return { granted: declared, stepUp: (salvo.step_up_required_for || []).includes(cap) };
+      };
+      const host = document.getElementById("perms");
+      host.innerHTML = "";
+      for (const item of CATALOGO) {
+        const st = stateOf(item.cap);
+        const cls = !st.granted ? "deny" : st.stepUp ? "confirm" : "allow";
+        const txt = !st.granted ? "Bloqueado" : st.stepUp ? "Requiere confirmacion" : "Permitido";
+        const row = document.createElement("div");
+        row.className = "perm";
+        row.innerHTML = `<div class="icon">${item.icon}</div>
+          <div class="body"><div class="name">${item.label}</div><div class="sub2">${item.sub}</div></div>
+          <span class="pill ${cls}">${txt}</span>
+          <label class="switch" style="margin-left:10px"><input type="checkbox" ${st.granted ? "checked" : ""} onchange="togglePerm('${item.cap}', this.checked)"><span class="slider"></span></label>`;
+        host.appendChild(row);
+      }
+    }
+
+    async function togglePerm(cap, on) {
+      try {
+        await fetch(API + "/toggle/permission", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ capability: cap, on }),
+        });
+      } catch (e) { /* gateway offline */ }
+      loadSalvo();
+    }
+
+    function render(entries) {
+      const host = document.getElementById("log");
+      if (!entries.length) { host.innerHTML = '<div class="empty">Esperando actividad del agente...</div>'; return; }
+      host.innerHTML = "";
+      for (const e of entries.slice().reverse()) {
+        const provenance = e.code === "tainted_to_sensitive_sink"
+          ? '<span class="badge">fuente no confiable</span>' : "";
+        const div = document.createElement("div");
+        div.className = "entry " + e.decision;
+        div.innerHTML = `<div class="top">
+            <span class="verdict">${VERDICT[e.decision] || e.decision}</span>
+            <span class="tool">${e.tool} (${e.capability})</span>${provenance}
+          </div>${e.message ? `<div class="msg">${e.message}</div>` : ""}`;
+        host.appendChild(div);
+      }
+    }
+
+    async function poll() {
+      try {
+        const res = await fetch("decisions.jsonl?_=" + Date.now());
+        if (res.ok) {
+          const lines = (await res.text()).split("\n").filter(Boolean);
+          render(lines.map(l => JSON.parse(l)));
+        }
+      } catch (err) { /* file may not exist yet; keep polling */ }
+      setTimeout(poll, 1200);
+    }
+
+    // ── Enrolamiento del numero de aprobaciones (root of trust) ──────────
+    const API = "http://localhost:8787";
+    const $ = (id) => document.getElementById(id);
+    function setEnroll(msg, cls) {
+      const s = $("enroll-status");
+      s.textContent = msg;
+      s.className = "status" + (cls ? " " + cls : "");
+    }
+
+    async function startEnroll() {
+      const number = $("num").value.trim();
+      if (!number) { setEnroll("Escribe tu numero con codigo de pais.", "bad"); return; }
+      $("btn-send").disabled = true;
+      setEnroll("Enviando codigo a " + number + " ...");
+      try {
+        const r = await fetch(API + "/enroll/start", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ number }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          $("code").classList.remove("hidden");
+          $("btn-confirm").classList.remove("hidden");
+          setEnroll("Codigo enviado por WhatsApp. Escribelo aqui.", "ok");
+        } else {
+          setEnroll("No se pudo enviar: " + (d.message || d.status), "bad");
+        }
+      } catch (e) {
+        setEnroll("No hay conexion con el gateway (corre el binario en :8787).", "bad");
+      }
+      $("btn-send").disabled = false;
+    }
+
+    async function confirmEnroll() {
+      const number = $("num").value.trim(), code = $("code").value.trim();
+      $("btn-confirm").disabled = true;
+      try {
+        const r = await fetch(API + "/enroll/confirm", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ number, code }),
+        });
+        if (r.ok) {
+          setEnroll("Numero verificado. Solo " + number + " aprobara las acciones.", "ok");
+          $("code").classList.add("hidden");
+          $("btn-confirm").classList.add("hidden");
+          $("btn-send").disabled = true;
+          $("num").disabled = true;
+        } else {
+          setEnroll("Codigo incorrecto o vencido. Intenta de nuevo.", "bad");
+        }
+      } catch (e) {
+        setEnroll("No hay conexion con el gateway.", "bad");
+      }
+      $("btn-confirm").disabled = false;
+    }
+
+    // ── Toggle de inspeccion de contenido (anti-fugas) ──────────────────
+    async function loadInspect() {
+      try {
+        const r = await fetch(API + "/inspect");
+        if (r.ok) { const d = await r.json(); $("inspect-toggle").checked = !!d.on; }
+      } catch (e) { /* gateway offline */ }
+    }
+    async function toggleInspect() {
+      const on = $("inspect-toggle").checked;
+      try {
+        await fetch(API + "/toggle/inspect", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ on }),
+        });
+      } catch (e) {
+        $("inspect-toggle").checked = !on; // revertir si el gateway no responde
+      }
+    }
+
+    loadSalvo();
+    loadInspect();
+    poll();
+  </script>
+</body>
+</html>

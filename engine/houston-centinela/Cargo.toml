@@ -1,0 +1,12 @@
+[package]
+name = "houston-centinela"
+version = "0.4.19"
+edition = "2021"
+description = "Centinela: deterministic capability firewall for Houston agents"
+license = "MIT"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+regex = "1"

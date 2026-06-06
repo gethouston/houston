@@ -1,0 +1,4 @@
+# Runtime decision journal tailed by the Salvoconducto UI.
+/ui/decisions.jsonl
+# Local MCP client config (machine-specific absolute path; see README).
+/centinela.mcp.json

@@ -1,0 +1,25 @@
+{
+  "id": "asistente-seguro",
+  "name": "Asistente Seguro",
+  "description": "Un asistente con permisos que tu controlas. Cada accion sensible pasa por Centinela, un firewall de capacidades en codigo: lo que no esta en tu salvoconducto no se ejecuta, las acciones irreversibles te piden permiso por WhatsApp, y si alguien intenta saltarse la seguridad te llega una alerta. Lee correos y consulta saldos sin friccion; mover dinero o enviar datos al exterior, nunca sin tu visto bueno.",
+  "icon": "ShieldCheck",
+  "color": "#00a240",
+  "category": "business",
+  "author": "SantorIA",
+  "tags": [
+    "seguridad",
+    "centinela",
+    "capability-gate",
+    "auditor",
+    "aprobacion-whatsapp",
+    "permisos"
+  ],
+  "version": "0.1.0",
+  "integrations": [
+    "gmail"
+  ],
+  "agentSeeds": {
+    "outputs.json": "[]",
+    "capabilities.json": "{\n  \"agent_id\": \"asistente-seguro\",\n  \"version\": \"1.0\",\n  \"scopes\": {\n    \"read\": [\"email:inbox\", \"bank:balance\", \"bank:transactions\"],\n    \"write\": [\"email:send\"],\n    \"money\": [],\n    \"egress_allowlist\": [\"api.santoria.app\"]\n  },\n  \"rule_of_two\": { \"untrusted_input\": true, \"sensitive_data\": true, \"external_action\": false },\n  \"step_up_required_for\": [\"email:send\", \"bank:transfer\"],\n  \"duress\": { \"enabled\": true, \"action\": \"lockdown_and_alert\" }\n}\n"
+  }
+}
