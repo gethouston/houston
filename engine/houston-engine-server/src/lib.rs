@@ -4,6 +4,7 @@
 //! WebSocket. Frontend-agnostic: every client (desktop, mobile, CLI,
 //! third-party) talks to it over the wire.
 
+pub mod agent_scope;
 pub mod auth;
 pub mod config;
 pub mod mobile_access;
@@ -34,6 +35,7 @@ pub fn build_router(state: Arc<ServerState>) -> Router {
         .merge(routes::attachments::router())
         .merge(routes::worktree::router())
         .merge(routes::store::router())
+        .merge(routes::tokens::router())
         .merge(routes::routines::router())
         .merge(routes::agents::router())
         .merge(routes::agent_files::router())

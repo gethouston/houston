@@ -37,6 +37,7 @@ pub(crate) async fn run_cli_process(
     cmd: &mut Command,
     prompt: &str,
     provider: Provider,
+    working_dir: Option<&std::path::Path>,
 ) -> CliRunOutcome {
     let cli_name = provider.cli_name();
 
@@ -44,6 +45,29 @@ pub(crate) async fn run_cli_process(
     cmd.stderr(Stdio::piped());
     cmd.stdin(Stdio::piped());
     configure_process_group(cmd);
+
+    // Airlock: when multi-tenant isolation is enabled (`HOUSTON_ISOLATION`),
+    // drop the agent CLI into a per-tenant uid + Landlock filesystem jail
+    // before exec. `for_agent` returns `None` — spawn exactly as before — on
+    // the desktop app, dev checkouts, and non-Linux. A jail that was requested
+    // but can't be applied is a hard, visible failure: we never fall back to
+    // spawning an un-isolated agent (no-silent-failures policy).
+    if let Some(policy) = crate::isolation::IsolationPolicy::for_agent(working_dir) {
+        if let Err(e) = crate::isolation::apply_to_command(cmd, &policy) {
+            tracing::error!("[houston:session] failed to isolate {cli_name}: {e}");
+            let _ = tx.send(SessionUpdate::Feed(FeedItem::ProviderError(
+                ProviderError::SpawnFailed {
+                    provider: provider.id().to_string(),
+                    cli_name: cli_name.to_string(),
+                    message: format!("isolation setup failed: {e}"),
+                },
+            )));
+            let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
+                "Failed to isolate {cli_name}: {e}"
+            ))));
+            return CliRunOutcome::Failed;
+        }
+    }
 
     let mut child = match cmd.spawn() {
         Ok(c) => c,

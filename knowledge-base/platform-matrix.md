@@ -158,3 +158,68 @@ adds a `windows-x86_64` entry pointing at the MSI + its minisign
 .sig, and re-uploads with `--clobber`. The Tauri updater plugin
 already runs on Windows; users on previous builds will see the
 update prompt automatically the next time they launch.
+
+---
+
+# Linux desktop support (`app/`)
+
+The Houston desktop app (Tauri 2) runs on Linux. Unlike Electron, Tauri
+renders through the **system WebKitGTK** — there is no bundled browser —
+so the app is NOT a single universal binary. Compatibility is gated by
+the libs the host provides.
+
+## What "Linux support" means
+
+- **Works**: modern glibc distros that ship `webkit2gtk-4.1` —
+  Arch / Manjaro, Fedora 36+, Ubuntu 22.04+, Debian 12+, openSUSE
+  Tumbleweed, Pop!_OS, etc.
+- **Does NOT work**: webkit2gtk 4.0-only distros (Ubuntu 20.04 and
+  older), musl distros (Alpine), or anything without a glibc compatible
+  with the build host's glibc. The AppImage is the widest-reach format
+  but still needs a compatible glibc.
+
+## Build/run system dependencies
+
+Tauri's Linux toolchain needs the WebKitGTK + GTK dev stack present at
+**build time** and the matching runtime libs present at **run time**.
+
+| Distro family | Install |
+|---------------|---------|
+| Arch / Manjaro | `sudo pacman -S --needed webkit2gtk-4.1 gtk3 libayatana-appindicator librsvg base-devel curl wget file openssl zenity xdg-utils` |
+| Debian / Ubuntu | `sudo apt install libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev zenity xdg-utils` |
+| Fedora | `sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel zenity xdg-utils @"C Development Tools and Libraries"` |
+
+Runtime-only (no `-dev`/`-devel`) subset is enough on machines that just
+*run* a prebuilt bundle; the AppImage bundles most of it but still
+expects `webkit2gtk-4.1` + `glibc` from the host.
+
+`zenity` powers the directory picker (`commands/os.rs::pick_directory`)
+and `xdg-utils` (`xdg-open`) powers open-url / reveal-in-file-manager.
+Both degrade to a clear "install X" error if missing — no silent
+failure.
+
+## Auth-session storage on Linux
+
+`auth.rs` stores the Supabase session via the `keyring` crate's **sync
+Secret Service** backend (libsecret: gnome-keyring / KWallet). Requires
+a secret-service provider running on the user's session. Headless or
+minimal installs without one get a clear Err surfaced as a toast — the
+engine still runs without an identity (`persisted_user_id` returns
+`None`). See `app/src-tauri/Cargo.toml` keyring features.
+
+## NVIDIA blank-window gotcha
+
+WebKitGTK's DMABUF renderer crashes to a black/blank window on many
+NVIDIA proprietary-driver setups. Workaround is the env var
+`WEBKIT_DISABLE_DMABUF_RENDERER=1` before launch. The bundle should set
+this defensively (tracked in the Linux bundle chunk).
+
+## Sidecar + bundle
+
+- The engine sidecar resolves under the Linux triple
+  `x86_64-unknown-linux-gnu` (`engine_supervisor::host_triple`); build
+  it with `cargo build -p houston-engine-server` before `pnpm tauri
+  dev` (same staleness rule as every other platform — see CLAUDE.md).
+- Bundle targets (appimage / deb / rpm), bundled CLI staging, and
+  updater entries are covered in `cli-bundling.md` and the bundle
+  chunk; dev (`pnpm tauri dev`) needs none of them.

@@ -31,6 +31,10 @@ sentry = { version = "0.42", default-features = false, features = ["backtrace", 
 # until sentry::init has run, so safe to register unconditionally.
 sentry-tracing = "0.42"
 sha2 = "0.10"
+# HMAC-SHA256 for Airlock per-agent capability tokens (L7): a scoped token is
+# HMAC(agent_path) keyed by the engine secret — unforgeable, self-describing,
+# needs no DB row. See agent_scope.rs + knowledge-base/agent-isolation.md.
+hmac = "0.12"
 base64 = "0.22"
 rand = "0.8"
 futures-util = "0.3"

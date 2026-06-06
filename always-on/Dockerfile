@@ -94,17 +94,25 @@ RUN curl -fsSL https://composio.dev/install | bash \
 
 # ---------- Runtime stage ----------
 # Stays slim. Runtime needs: ca-certs for HTTPS, bash + git + python3
-# because agents spawn these through their Bash tool, and the
-# pre-installed provider binaries from `cli-tools`.
+# because agents spawn these through their Bash tool, the pre-installed
+# provider binaries from `cli-tools`, and — for the optional Airlock
+# multi-tenant isolation mode — iptables (egress allowlist) + util-linux
+# (`setpriv`, used by the egress self-test). These two add ~negligible size
+# and are inert unless HOUSTON_ISOLATION is set, so the default deployment is
+# unchanged. See knowledge-base/agent-isolation.md.
 FROM debian:bookworm-slim
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    ca-certificates bash git python3 \
+    ca-certificates bash git python3 iptables util-linux \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --system --create-home --home-dir /data houston \
  && mkdir -p /data/.houston /data/Houston \
  && chown -R houston:houston /data
 
 COPY --from=build /src/target/release/houston-engine /usr/local/bin/houston-engine
+# Airlock scripts (used only in isolation mode via the airlock compose
+# override; harmless and unused in the default deployment).
+COPY always-on/airlock-egress.sh always-on/airlock-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/airlock-egress.sh /usr/local/bin/airlock-entrypoint.sh
 # Provider CLIs land under the houston user's home so the engine
 # resolves them via the standard `~/.local/bin` PATH entry and the
 # `$HOME/.composio/composio` lookup that's already baked in. The

@@ -17,6 +17,7 @@ pub mod gemini_home;
 pub mod gemini_parser;
 mod gemini_parser_state;
 mod gemini_runner;
+pub mod isolation;
 pub mod manager;
 pub mod parser;
 pub mod provider;
