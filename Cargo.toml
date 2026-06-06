@@ -56,5 +56,8 @@ houston-engine-server = { version = "0.4.19", path = "engine/houston-engine-serv
 # Rust panics to file:line. Costs ~10-15% binary size; full debug info is
 # stripped, only line tables remain. sentry-cli debug-files upload extracts
 # these in CI and ships them to the Sentry org for symbolication.
+[patch.crates-io]
+libsql-ffi = { path = "vendor/libsql-ffi" }
+
 [profile.release]
 debug = "line-tables-only"
