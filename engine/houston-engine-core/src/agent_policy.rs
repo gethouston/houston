@@ -227,27 +227,35 @@ pub fn normalize_for_policy(path: &Path) -> CoreResult<PathBuf> {
     Ok(canonical_parent.join(file_name))
 }
 
-/// Providers whose `restricted` mode is enforced by a real read-confining
-/// boundary (the houston_files gateway). Codex/Gemini are not here yet — until
-/// a provider joins this set, `restricted` must refuse to run on it rather than
-/// make a false isolation promise.
+/// How strongly an agent's `restricted` mode is actually enforced on a given
+/// provider. Surfaced to the frontend (the engine stays i18n-agnostic — the app
+/// renders a localized label) so the user knows what privacy they really get.
+#[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum IsolationLevel {
+    /// Native file tools removed; every access flows through the houston_files
+    /// gateway, which enforces the policy on each call. (Claude today.)
+    Strict,
+    /// Best-effort only: prompt instruction plus whatever the provider's own
+    /// sandbox offers. Reads may not be fully confined. (Codex, Gemini.)
+    Soft,
+}
+
+/// Providers whose `restricted` mode is enforced by the read-confining
+/// houston_files gateway. Others still run, but with [`IsolationLevel::Soft`].
 pub fn restricted_supported(provider_id: &str) -> bool {
     provider_id == "anthropic"
 }
 
-/// Returns an error when `policy` requests `restricted` on a provider that
-/// cannot enforce it. Call at session start, before spawning the subprocess.
-pub fn ensure_provider_supports_mode(provider_id: &str, policy: &AgentPolicy) -> CoreResult<()> {
-    if matches!(policy.tool_mode, ToolMode::Restricted) && !restricted_supported(provider_id) {
-        return Err(CoreError::Labeled {
-            code: ErrorCode::Forbidden,
-            kind: "restricted_unsupported_provider",
-            message: format!(
-                "This agent's privacy mode isn't supported on its current AI yet ({provider_id})."
-            ),
-        });
+/// Classify the isolation an agent actually gets this session. Only meaningful
+/// for `restricted` tool-mode; `full` / `conversation_only` are not about read
+/// confinement and report `Soft` (no strict gateway boundary in play).
+pub fn isolation_level(provider_id: &str, policy: &AgentPolicy) -> IsolationLevel {
+    if matches!(policy.tool_mode, ToolMode::Restricted) && restricted_supported(provider_id) {
+        IsolationLevel::Strict
+    } else {
+        IsolationLevel::Soft
     }
-    Ok(())
 }
 
 pub fn tool_config(policy: &AgentPolicy) -> SessionToolConfig {
@@ -368,16 +376,18 @@ mod tests {
     }
 
     #[test]
-    fn ensure_provider_mode_blocks_restricted_codex_allows_full() {
+    fn isolation_level_strict_only_for_restricted_anthropic() {
         let restricted = AgentPolicy::default(); // tool_mode == Restricted
         assert_eq!(
-            ensure_provider_supports_mode("openai", &restricted).unwrap_err().code(),
-            ErrorCode::Forbidden
+            isolation_level("anthropic", &restricted),
+            IsolationLevel::Strict
         );
-        ensure_provider_supports_mode("anthropic", &restricted).unwrap();
+        // Other providers still run, but softly.
+        assert_eq!(isolation_level("openai", &restricted), IsolationLevel::Soft);
+        assert_eq!(isolation_level("gemini", &restricted), IsolationLevel::Soft);
+        // Non-restricted modes are not strict gateway isolation.
         let full = AgentPolicy { tool_mode: ToolMode::Full, ..AgentPolicy::default() };
-        ensure_provider_supports_mode("openai", &full).unwrap();
-        ensure_provider_supports_mode("gemini", &full).unwrap();
+        assert_eq!(isolation_level("anthropic", &full), IsolationLevel::Soft);
     }
 
     /// A symlink inside the agent root pointing outside it must not grant
