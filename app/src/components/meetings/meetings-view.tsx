@@ -161,15 +161,6 @@ function MeetingDetail({ meeting, agentPath, onDelete }: { meeting: Meeting; age
     onDelete();
   };
 
-  // Auto-close the Meet window whenever the meeting stops being live
-  // (covers both: user clicking "End meeting" AND the bridge auto-detecting
-  // that all participants left). meeting_close_window is idempotent.
-  useEffect(() => {
-    if (meeting.status === "processing" || meeting.status === "completed" || meeting.status === "error") {
-      void invoke("meeting_close_window", { meetingId: meeting.id }).catch(() => {});
-    }
-  }, [meeting.status, meeting.id]);
-
   const handleEnd = async () => {
     await invoke("meeting_close_window", { meetingId: meeting.id }).catch(
       (err: unknown) => console.warn("[meetings] close window:", err),
