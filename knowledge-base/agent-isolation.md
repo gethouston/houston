@@ -265,3 +265,52 @@ Headline: from *"native prompt defenses stop a minority of incidents"* to
 See `knowledge-base/architecture.md` (engine crates),
 `knowledge-base/auth.md` (current token model),
 `knowledge-base/engine-server.md` (binary ops).
+
+---
+
+## 12. Implementation status — Phase 1 (uid + Landlock)
+
+**Done.** Code in `engine/houston-terminal-manager/src/isolation/` (`mod.rs`
+cross-platform, `linux.rs` impl), wired into the single spawn chokepoint
+`cli_process::run_cli_process`. Activated by `HOUSTON_ISOLATION` (default
+OFF → desktop/dev untouched).
+
+- **L1/L3 (uid):** per-tenant uid = FNV-1a(agent_path) into
+  `[100000, 160000)`, deterministic across restarts. Parent provisions
+  (`chown 0700` agent dir + tenant home), child drops via
+  `setgroups([])` → `setresgid` → `setresuid` in `pre_exec`.
+- **L2 (Landlock):** ruleset built in the **parent** (fork-safe: all
+  allocation + `landlock_add_rule` before fork), `restrict_self()` applied
+  in the child. `CompatLevel::HardRequirement` → loud failure on a
+  pre-5.13 kernel, never an un-jailed fallback.
+
+### Allowed filesystem paths (the jail)
+
+| Access | Paths | Why |
+|---|---|---|
+| read-write | agent folder, per-tenant `$HOME` | the agent's own data + CLI transcripts |
+| read-write | `$HOME/tmp` (via `TMPDIR`) | private scratch — **no global `/tmp`** (it would be a cross-tenant leak channel) |
+| read-only | `/usr /bin /sbin /lib /lib64 /etc /opt /run /proc` | CLI binary, node, shared libs, TLS roots, DNS |
+| read-only | `/dev/urandom /dev/random /dev/zero /dev/tty` | entropy / tty |
+| read-write | `/dev/null` | discard sink |
+
+The read-only list is the **integration-risk surface**: it's deliberately
+broad for the MVP and tightened in Phase 1.3 against a real `claude -p`
+run inside the always-on container.
+
+### Verified
+
+- `cargo test -p houston-terminal-manager` — 224 pass, full suite green.
+- **Red-team proof (unprivileged, this kernel):**
+  `isolation::linux::tests::landlock_jail_blocks_sibling_read_but_allows_own`
+  spawns a child jailed to an "attacker" folder; reading the "victim"
+  tenant's `secret.txt` fails (`EACCES`), reading its own file succeeds.
+  This is the L2 "agent A cannot read agent B" property enforced by the
+  kernel. The uid-drop layers (L1/L3) need root; their integration test is
+  `#[ignore]` and the real-agent gate runs in the container.
+
+### Not yet (later phases)
+
+seccomp (2), egress allowlist (3), per-agent authz (4), the full
+malicious-agent harness (5), and running a **real** `claude` session under
+the complete jail as root in the always-on container (Phase 1.3 gate).

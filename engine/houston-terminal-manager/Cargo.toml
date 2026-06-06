@@ -21,6 +21,16 @@ dirs = "5"
 # any user-side shell config.
 houston-cli-bundle = { workspace = true }
 
+# Airlock multi-tenant isolation (Linux only). `landlock` builds the
+# filesystem ruleset in the parent; `nix` provides the async-signal-safe
+# setresuid/setresgid syscalls applied in the post-fork `pre_exec` hook.
+# See `knowledge-base/agent-isolation.md`. Both are gated to Linux because
+# the desktop app (macOS/Windows) is single-tenant and needs no sandbox.
+[target.'cfg(target_os = "linux")'.dependencies]
+landlock = "0.4"
+nix = { version = "0.29", features = ["user", "fs"] }
+libc = "0.2"
+
 [dev-dependencies]
 # Used by the Gemini adapter tests to build throwaway
 # `~/.gemini/{settings,google_accounts}.json` fixtures without touching
