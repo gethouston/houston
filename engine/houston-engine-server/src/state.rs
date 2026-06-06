@@ -182,6 +182,7 @@ mod tests {
                 installed_path: None,
                 seeds: None,
                 existing_path: None,
+                policy: None,
             },
         )
         .unwrap()

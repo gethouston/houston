@@ -32,6 +32,13 @@ pub struct SessionResult {
     pub error: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SessionToolConfig {
+    pub disable_builtin_tools: bool,
+    pub disable_all_tools: bool,
+    pub use_provider_sandbox: bool,
+}
+
 /// Options for feed persistence.
 #[derive(Clone)]
 pub struct PersistOptions {
@@ -101,6 +108,7 @@ pub fn spawn_and_monitor(
     provider: Provider,
     model: Option<String>,
     effort: Option<String>,
+    tool_config: SessionToolConfig,
 ) -> tokio::task::JoinHandle<SessionResult> {
     // Ensure the user's shell PATH is resolved before spawning.
     // OnceLock inside init() makes this a no-op after the first call.
@@ -119,8 +127,9 @@ pub fn spawn_and_monitor(
         effort,
         system_prompt,
         None,  // mcp_config
-        false, // disable_builtin_tools
-        false, // disable_all_tools
+        tool_config.disable_builtin_tools,
+        tool_config.disable_all_tools,
+        tool_config.use_provider_sandbox,
     );
 
     let sink = sink;

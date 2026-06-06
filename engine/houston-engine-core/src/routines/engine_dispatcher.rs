@@ -58,6 +58,22 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
                 error: Some(format!("seed failed: {e}")),
             };
         }
+        let policy = match crate::agent_policy::load(ctx.working_dir) {
+            Ok(policy) => policy,
+            Err(e) => {
+                return DispatchOutcome {
+                    response_text: String::new(),
+                    error: Some(format!("policy load failed: {e}")),
+                };
+            }
+        };
+        if let Err(e) = policy.ensure_path_allowed(ctx.working_dir, ctx.working_dir) {
+            return DispatchOutcome {
+                response_text: String::new(),
+                error: Some(e.to_string()),
+            };
+        }
+        let tool_config = crate::agent_policy::tool_config(&policy);
         let agent_context =
             agent_prompt::build_agent_context(ctx.working_dir, None, None);
         let system_prompt = if self.app_system_prompt.is_empty() {
@@ -123,6 +139,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             resolved.provider,
             resolved.model,
             sessions::resolve_effort(ctx.working_dir, resolved.provider),
+            tool_config,
         );
 
         match join_handle.await {

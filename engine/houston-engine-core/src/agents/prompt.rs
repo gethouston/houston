@@ -165,6 +165,9 @@ pub fn seed_agent(dir: &Path) -> Result<(), String> {
         tracing::warn!("[agent] migration failed for {}: {e}", dir.display());
     }
 
+    crate::agent_policy::seed_if_missing(dir)
+        .map_err(|e| format!("Failed to seed policy.json: {e}"))?;
+
     Ok(())
 }
 
@@ -184,6 +187,7 @@ pub fn build_agent_context(
     let prompts_dir = dir.join(".houston/prompts");
 
     let effective_dir = working_dir_override.unwrap_or(dir);
+    let policy = crate::agent_policy::load(dir).unwrap_or_default();
     let working_dir = effective_dir.to_string_lossy();
     parts.push(format!(
         "# Working Directory — MANDATORY\n\n\
@@ -196,6 +200,7 @@ pub fn build_agent_context(
          - If you need a new file or folder, create it HERE.\n\
          - When referencing paths, always use paths relative to or inside `{working_dir}`."
     ));
+    parts.push(crate::agent_policy_prompt::policy_prompt_section(dir, &policy));
 
     if let Some(m) = mode {
         let mode_path = prompts_dir.join(format!("modes/{m}.md"));
@@ -220,9 +225,11 @@ pub fn build_agent_context(
         }
     }
 
-    if let Some(workspace_dir) = dir.parent() {
-        if let Some(section) = crate::workspace_context::build_prompt_section(workspace_dir) {
-            parts.push(section);
+    if policy.include_workspace_context {
+        if let Some(workspace_dir) = dir.parent() {
+            if let Some(section) = crate::workspace_context::build_prompt_section(workspace_dir) {
+                parts.push(section);
+            }
         }
     }
 
@@ -358,7 +365,7 @@ mod tests {
     }
 
     #[test]
-    fn build_agent_context_injects_workspace_and_user_context() {
+    fn build_agent_context_skips_workspace_context_by_default() {
         let ws = TempDir::new().unwrap();
         // Mark the parent as a real workspace by creating its `.houston/` dir.
         fs::create_dir_all(ws.path().join(".houston")).unwrap();
@@ -367,6 +374,29 @@ mod tests {
 
         let agent_dir = ws.path().join("juan-agent");
         fs::create_dir_all(&agent_dir).unwrap();
+
+        let out = build_agent_context(&agent_dir, None, None);
+
+        assert!(!out.contains("# Workspace Context"));
+        assert!(!out.contains("Acme Corp, B2B fintech."));
+        assert!(!out.contains("# User Context"));
+        assert!(!out.contains("Juan, head of sales."));
+    }
+
+    #[test]
+    fn build_agent_context_injects_workspace_context_when_policy_allows_it() {
+        let ws = TempDir::new().unwrap();
+        fs::create_dir_all(ws.path().join(".houston")).unwrap();
+        fs::write(ws.path().join("WORKSPACE.md"), "Acme Corp, B2B fintech.").unwrap();
+        fs::write(ws.path().join("USER.md"), "Juan, head of sales.").unwrap();
+
+        let agent_dir = ws.path().join("juan-agent");
+        fs::create_dir_all(agent_dir.join(".houston")).unwrap();
+        fs::write(
+            crate::agent_policy::policy_path(&agent_dir),
+            r#"{"version":1,"allowed_roots":["."],"include_workspace_context":true}"#,
+        )
+        .unwrap();
 
         let out = build_agent_context(&agent_dir, None, None);
 

@@ -43,6 +43,7 @@ pub(crate) async fn dispatch(
     mcp_config: Option<std::path::PathBuf>,
     disable_builtin_tools: bool,
     disable_all_tools: bool,
+    use_provider_sandbox: bool,
 ) {
     match provider.id() {
         "anthropic" => {
@@ -73,6 +74,7 @@ pub(crate) async fn dispatch(
                 model,
                 effort,
                 system_prompt,
+                use_provider_sandbox,
             )
             .await;
         }

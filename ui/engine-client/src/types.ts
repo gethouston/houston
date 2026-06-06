@@ -106,6 +106,18 @@ export interface Agent {
   lastOpenedAt?: string;
 }
 
+export type AgentToolMode = "restricted" | "full" | "conversation_only";
+
+export interface AgentPolicy {
+  version?: number;
+  allowed_roots?: string[];
+  denied_roots?: string[];
+  include_workspace_context?: boolean;
+  allowed_integrations?: string[];
+  denied_integrations?: string[];
+  tool_mode?: AgentToolMode;
+}
+
 export interface CreateAgent {
   name: string;
   configId: string;
@@ -114,6 +126,7 @@ export interface CreateAgent {
   installedPath?: string;
   seeds?: Record<string, string>;
   existingPath?: string;
+  policy?: AgentPolicy;
 }
 
 export interface CreateAgentResult {

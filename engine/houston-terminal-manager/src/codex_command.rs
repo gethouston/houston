@@ -10,13 +10,16 @@ pub(crate) fn build_args(
     model: Option<&str>,
     effort: Option<&str>,
     system_prompt: Option<&str>,
+    use_provider_sandbox: bool,
 ) -> Vec<OsString> {
-    let mut args = vec![
-        OsString::from("exec"),
-        OsString::from("--json"),
-        OsString::from("--dangerously-bypass-approvals-and-sandbox"),
-        OsString::from("--skip-git-repo-check"),
-    ];
+    let mut args = vec![OsString::from("exec"), OsString::from("--json")];
+    if use_provider_sandbox {
+        args.push(OsString::from("--sandbox"));
+        args.push(OsString::from("workspace-write"));
+    } else {
+        args.push(OsString::from("--dangerously-bypass-approvals-and-sandbox"));
+    }
+    args.push(OsString::from("--skip-git-repo-check"));
 
     if let Some(sp) = system_prompt {
         let json_val = serde_json::to_string(sp).unwrap_or_else(|_| format!("\"{sp}\""));
@@ -80,6 +83,7 @@ mod tests {
             Some("gpt-5.5"),
             Some("medium"),
             Some("system"),
+            false,
         ));
 
         let resume_pos = args.iter().position(|arg| arg == "resume").unwrap();
@@ -94,7 +98,7 @@ mod tests {
 
     #[test]
     fn fresh_args_read_prompt_from_stdin() {
-        let args = strings(build_args(None, None, None, None, None));
+        let args = strings(build_args(None, None, None, None, None, false));
 
         assert_eq!(args.last().map(String::as_str), Some("-"));
         assert!(!args.iter().any(|arg| arg == "resume"));
@@ -102,13 +106,21 @@ mod tests {
 
     #[test]
     fn effort_emits_model_reasoning_effort_override() {
-        let args = strings(build_args(None, None, None, Some("medium"), None));
+        let args = strings(build_args(None, None, None, Some("medium"), None, false));
         let pos = args
             .iter()
             .position(|arg| arg == "model_reasoning_effort=\"medium\"")
             .expect("effort override should be present");
         // Override must arrive as a `-c key=value` pair.
         assert_eq!(args[pos - 1], "-c");
+    }
+
+    #[test]
+    fn sandboxed_args_omit_dangerous_bypass() {
+        let args = strings(build_args(None, None, None, None, None, true));
+        assert!(args.contains(&"--sandbox".to_string()));
+        assert!(args.contains(&"workspace-write".to_string()));
+        assert!(!args.contains(&"--dangerously-bypass-approvals-and-sandbox".to_string()));
     }
 
     #[test]

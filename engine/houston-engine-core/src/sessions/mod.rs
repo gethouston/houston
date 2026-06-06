@@ -238,6 +238,9 @@ async fn run_start(
     }
 
     agent_prompt::seed_agent(&agent_dir).map_err(crate::CoreError::Internal)?;
+    let policy = crate::agent_policy::load(&agent_dir)?;
+    policy.ensure_path_allowed(&agent_dir, &working_dir)?;
+    let tool_config = crate::agent_policy::tool_config(&policy);
 
     // Final system prompt is always `<product_prompt>\n\n---\n\n<agent_context>`.
     // - `product_prompt`: caller-supplied if present, otherwise whatever the
@@ -439,6 +442,7 @@ async fn run_start(
         provider,
         model,
         effort,
+        tool_config,
     );
 
     // Own the end-of-session activity flip engine-side. Before this, the
