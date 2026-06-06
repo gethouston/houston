@@ -19,6 +19,9 @@ pub(crate) fn stderr_feed_item(line: &str, state: &mut StderrState) -> Option<Fe
         state.sent_auth_checking = true;
         return Some(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
     }
+    if is_composio_noise(trimmed) {
+        return None;
+    }
     if is_tool_runtime_stderr(trimmed) {
         if state.sent_tool_runtime {
             return None;
@@ -30,6 +33,18 @@ pub(crate) fn stderr_feed_item(line: &str, state: &mut StderrState) -> Option<Fe
         });
     }
     None
+}
+
+/// Composio prints upgrade banners and PowerShell wraps native stderr as
+/// `NativeCommandError` even on success. Neither is actionable.
+pub(crate) fn is_composio_noise(line: &str) -> bool {
+    let lower = line.trim().to_lowercase();
+    if lower.is_empty() {
+        return false;
+    }
+    lower.contains("nativecommanderror")
+        || (lower.contains("update available") && lower.contains("composio"))
+        || lower.contains("composio upgrade")
 }
 
 pub(crate) fn is_tool_runtime_stderr(line: &str) -> bool {
@@ -72,6 +87,21 @@ mod tests {
         assert!(stderr_feed_item("Reading prompt from stdin...", &mut state).is_none());
         assert!(stderr_feed_item("Downloading model metadata", &mut state).is_none());
         assert!(stderr_feed_item("warning: harmless provider detail", &mut state).is_none());
+    }
+
+    #[test]
+    fn suppresses_composio_upgrade_stderr() {
+        let mut state = StderrState::default();
+        assert!(stderr_feed_item(
+            "Update available: 0.2.23 → 0.2.30. Run composio upgrade to update",
+            &mut state,
+        )
+        .is_none());
+        assert!(stderr_feed_item(
+            "+ FullyQualifiedErrorId : NativeCommandError",
+            &mut state,
+        )
+        .is_none());
     }
 
     #[test]

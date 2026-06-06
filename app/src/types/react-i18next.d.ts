@@ -18,6 +18,7 @@ import type board from "../locales/en/board.json";
 import type agents from "../locales/en/agents.json";
 import type skills from "../locales/en/skills.json";
 import type routines from "../locales/en/routines.json";
+import type workflows from "../locales/en/workflows.json";
 import type integrations from "../locales/en/integrations.json";
 import type providers from "../locales/en/providers.json";
 import type errors from "../locales/en/errors.json";
@@ -40,6 +41,7 @@ declare module "react-i18next" {
       agents: typeof agents;
       skills: typeof skills;
       routines: typeof routines;
+      workflows: typeof workflows;
       integrations: typeof integrations;
       providers: typeof providers;
       errors: typeof errors;

@@ -21,7 +21,9 @@ pub use skills_memory::SELF_IMPROVEMENT_GUIDANCE;
 /// Order: base identity, skills/memory guidance, routines guidance, Composio guidance.
 pub fn system_prompt() -> String {
     format!(
-        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}{COMPOSIO_GUIDANCE}"
+        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}{}{}",
+        COMPOSIO_GUIDANCE,
+        integrations::COMPOSIO_WINDOWS_SHELL,
     )
 }
 
@@ -88,5 +90,20 @@ mod tests {
         assert!(
             prompt.contains("Ask for approval before creating, enabling, or changing a Routine")
         );
+    }
+
+    #[test]
+    fn composio_guidance_requires_inline_json() {
+        let prompt = system_prompt();
+        assert!(prompt.contains("inline JSON on"));
+        assert!(prompt.contains("GMAIL_FETCH_EMAILS"));
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn composio_guidance_includes_powershell_notes_on_windows() {
+        let prompt = system_prompt();
+        assert!(prompt.contains("## Windows PowerShell"));
+        assert!(prompt.contains("NativeCommandError"));
     }
 }

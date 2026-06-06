@@ -248,6 +248,80 @@ export interface RoutineRunUpdate {
   paused_until?: string | null;
 }
 
+// ---------- Workflows ----------
+
+export type WorkflowStepStatus =
+  | "pending"
+  | "running"
+  | "done"
+  | "error"
+  | "cancelled";
+
+export type WorkflowRunStatus =
+  | "planning"
+  | "awaiting_approval"
+  | "running"
+  | "done"
+  | "error"
+  | "cancelled";
+
+export interface WorkflowStep {
+  id: string;
+  task: string;
+  provider?: string;
+  model?: string;
+  effort?: string;
+  use_worktree: boolean;
+  depends_on: string[];
+}
+
+export interface WorkflowPlan {
+  steps: WorkflowStep[];
+}
+
+export interface Workflow {
+  id: string;
+  name: string;
+  description: string;
+  /** Instruction an AI planner uses to generate a [`WorkflowPlan`]. */
+  plan_prompt: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewWorkflow {
+  name: string;
+  description?: string;
+  plan_prompt: string;
+}
+
+export interface WorkflowUpdate {
+  name?: string;
+  description?: string;
+  plan_prompt?: string;
+}
+
+export interface StepState {
+  step_id: string;
+  status: WorkflowStepStatus;
+  summary?: string;
+  /** Set when `use_worktree` is true so cleanup can call `remove_worktree`. */
+  worktree_path?: string;
+}
+
+export interface WorkflowRun {
+  id: string;
+  workflow_id: string;
+  status: WorkflowRunStatus;
+  /** Session key for chat history lookup (`"workflow-{wid}-run-{run_id}"`). */
+  session_key: string;
+  plan?: WorkflowPlan;
+  steps: StepState[];
+  summary?: string;
+  started_at: string;
+  completed_at?: string;
+}
+
 export interface ProjectConfig {
   name?: string;
   provider?: string;

@@ -53,6 +53,10 @@ import type {
   RoutineRun,
   RoutineRunUpdate,
   RoutineUpdate,
+  NewWorkflow,
+  Workflow,
+  WorkflowRun,
+  WorkflowUpdate,
   RunShellRequest,
   SaveSkillRequest,
   SessionCancelResponse,
@@ -381,6 +385,63 @@ export class HoustonClient {
     return this.request("PATCH", `/agents/routine-runs/${this.seg(id)}`, updates, {
       agent_path: agentPath,
     });
+  }
+
+  // ---------- workflows ----------
+
+  listWorkflows(agentPath: string): Promise<Workflow[]> {
+    return this.request("GET", "/workflows", undefined, { agentPath });
+  }
+  createWorkflow(agentPath: string, input: NewWorkflow): Promise<Workflow> {
+    return this.request("POST", "/workflows", input, { agentPath });
+  }
+  updateWorkflow(
+    agentPath: string,
+    id: string,
+    updates: WorkflowUpdate,
+  ): Promise<Workflow> {
+    return this.request("PATCH", `/workflows/${this.seg(id)}`, updates, { agentPath });
+  }
+  deleteWorkflow(agentPath: string, id: string): Promise<void> {
+    return this.request("DELETE", `/workflows/${this.seg(id)}`, undefined, { agentPath });
+  }
+  listWorkflowRuns(agentPath: string, workflowId?: string): Promise<WorkflowRun[]> {
+    return this.request("GET", "/workflow-runs", undefined, {
+      agentPath,
+      workflowId,
+    });
+  }
+  runWorkflow(agentPath: string, workflowId: string): Promise<WorkflowRun> {
+    return this.request(
+      "POST",
+      `/workflows/${this.seg(workflowId)}/run`,
+      undefined,
+      { agentPath },
+    );
+  }
+  approveWorkflowRun(agentPath: string, runId: string): Promise<WorkflowRun> {
+    return this.request(
+      "POST",
+      `/workflow-runs/${this.seg(runId)}/approve`,
+      undefined,
+      { agentPath },
+    );
+  }
+  cancelWorkflowRun(agentPath: string, runId: string): Promise<WorkflowRun> {
+    return this.request(
+      "POST",
+      `/workflow-runs/${this.seg(runId)}/cancel`,
+      undefined,
+      { agentPath },
+    );
+  }
+  resumeWorkflowRun(agentPath: string, runId: string): Promise<void> {
+    return this.request(
+      "POST",
+      `/workflow-runs/${this.seg(runId)}/resume`,
+      undefined,
+      { agentPath },
+    );
   }
 
   // ---------- agents: config ----------

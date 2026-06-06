@@ -21,6 +21,7 @@ pub mod manager;
 pub mod parser;
 pub mod provider;
 pub mod provider_auth;
+mod provider_env;
 mod provider_error;
 pub mod provider_error_kind;
 mod session_dispatch;

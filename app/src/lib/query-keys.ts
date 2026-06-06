@@ -21,6 +21,11 @@ export const queryKeys = {
     routineId
       ? (["routine-runs", agentPath, routineId] as const)
       : (["routine-runs", agentPath] as const),
+  workflows: (agentPath: string) => ["workflows", agentPath] as const,
+  workflowRuns: (agentPath: string, workflowId?: string) =>
+    workflowId
+      ? (["workflow-runs", agentPath, workflowId] as const)
+      : (["workflow-runs", agentPath] as const),
   conversations: (agentPath: string) =>
     ["conversations", agentPath] as const,
   allConversations: (agentPaths: string[]) =>

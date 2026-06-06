@@ -136,7 +136,7 @@ fn build_gemini_command(
     // which is acceptable because production builds ship the bundled
     // version.
     let mut cmd = Command::new(bin);
-    cmd.env("PATH", super::claude_path::shell_path());
+    super::provider_env::apply_provider_subprocess_env(&mut cmd);
     cmd.args(build_gemini_args(resume_session_id, working_dir, model));
     if let Some(dir) = working_dir {
         // Strip the `\\?\` extended-length prefix on Windows for the

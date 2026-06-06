@@ -1,0 +1,24 @@
+{
+  "name": "@houston-ai/workflows",
+  "version": "0.4.19",
+  "type": "module",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "files": [
+    "src"
+  ],
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "@houston-ai/core": "workspace:*"
+  },
+  "dependencies": {
+    "@houston-ai/chat": "workspace:*",
+    "@houston-ai/engine-client": "workspace:*",
+    "lucide-react": "^0.577.0"
+  },
+  "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  }
+}

@@ -53,6 +53,9 @@ importers:
       '@houston-ai/skills':
         specifier: workspace:*
         version: link:../ui/skills
+      '@houston-ai/workflows':
+        specifier: workspace:*
+        version: link:../ui/workflows
       '@sentry/browser':
         specifier: ^10.54.0
         version: 10.54.0
@@ -457,6 +460,27 @@ importers:
       '@houston-ai/core':
         specifier: workspace:*
         version: link:../core
+      lucide-react:
+        specifier: ^0.577.0
+        version: 0.577.0(react@19.2.4)
+      react:
+        specifier: ^19.0.0
+        version: 19.2.4
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.4(react@19.2.4)
+
+  ui/workflows:
+    dependencies:
+      '@houston-ai/chat':
+        specifier: workspace:*
+        version: link:../chat
+      '@houston-ai/core':
+        specifier: workspace:*
+        version: link:../core
+      '@houston-ai/engine-client':
+        specifier: workspace:*
+        version: link:../engine-client
       lucide-react:
         specifier: ^0.577.0
         version: 0.577.0(react@19.2.4)

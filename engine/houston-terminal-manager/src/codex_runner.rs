@@ -95,7 +95,7 @@ fn build_codex_command(
     let bin = houston_cli_bundle::bundled_codex_path()
         .unwrap_or_else(|| std::path::PathBuf::from("codex"));
     let mut cmd = Command::new(&bin);
-    cmd.env("PATH", super::claude_path::shell_path());
+    super::provider_env::apply_provider_subprocess_env(&mut cmd);
     cmd.args(codex_command::build_args(
         resume_session_id,
         working_dir,

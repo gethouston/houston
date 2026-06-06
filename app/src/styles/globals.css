@@ -12,6 +12,7 @@
 @source "../../node_modules/@houston-ai/layout/src";
 @source "../../node_modules/@houston-ai/review/src";
 @source "../../node_modules/@houston-ai/routines/src";
+@source "../../node_modules/@houston-ai/workflows/src";
 @source "../../node_modules/@houston-ai/skills/src";
 @source "../../node_modules/@houston-ai/agent/src";
 

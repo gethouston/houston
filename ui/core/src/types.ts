@@ -115,6 +115,22 @@ export type HoustonEvent =
       data: { agent_path: string };
     }
   | {
+      type: "WorkflowsChanged";
+      data: { agent_path: string };
+    }
+  | {
+      type: "WorkflowRunsChanged";
+      data: { agent_path: string };
+    }
+  | {
+      type: "WorkflowPlanProposed";
+      data: { agent_path: string; run_id: string };
+    }
+  | {
+      type: "WorkflowStepChanged";
+      data: { agent_path: string; run_id: string; step_id: string };
+    }
+  | {
       type: "ConversationsChanged";
       data: { project_id: string; agent_path: string };
     }

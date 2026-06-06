@@ -18,6 +18,8 @@
  * - `events` — EventReceived, EventProcessed
  * - `scheduler` — HeartbeatFired, CronFired
  * - `routines:{agent_path}` — RoutinesChanged, RoutineRunsChanged
+ * - `workflows:{agent_path}` — WorkflowsChanged, WorkflowRunsChanged,
+ *    WorkflowPlanProposed, WorkflowStepChanged
  * - `agent:{agent_path}` — ActivityChanged, SkillsChanged, FilesChanged,
  *    ConfigChanged, ContextChanged, LearningsChanged, ConversationsChanged
  * - `composio` — ComposioCliReady, ComposioCliFailed, ComposioConnectionAdded
@@ -41,6 +43,7 @@ export const topics = {
   session: (sessionKey: string) => `session:${sessionKey}`,
   agent: (agentPath: string) => `agent:${agentPath}`,
   routines: (agentPath: string) => `routines:${agentPath}`,
+  workflows: (agentPath: string) => `workflows:${agentPath}`,
   auth: "auth",
   toast: "toast",
   events: "events",
