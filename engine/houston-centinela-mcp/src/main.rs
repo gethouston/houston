@@ -16,6 +16,7 @@ mod auditor;
 mod enrollment;
 mod journal;
 mod notifier;
+mod profile;
 mod server;
 mod state;
 mod tools;
