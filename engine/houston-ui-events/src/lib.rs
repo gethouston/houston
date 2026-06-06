@@ -176,6 +176,28 @@ pub enum HoustonEvent {
         agent_path: String,
     },
 
+    // ----- Workflows -----
+
+    /// Workflow definitions changed (.houston/workflows/workflows.json).
+    WorkflowsChanged {
+        agent_path: String,
+    },
+    /// Workflow runs changed (.houston/workflow_runs/workflow_runs.json).
+    WorkflowRunsChanged {
+        agent_path: String,
+    },
+    /// Planner finished; run is awaiting user approval.
+    WorkflowPlanProposed {
+        agent_path: String,
+        run_id: String,
+    },
+    /// One step on a workflow run changed status or summary.
+    WorkflowStepChanged {
+        agent_path: String,
+        run_id: String,
+        step_id: String,
+    },
+
     // ----- Agent data changes (AI-native reactivity) -----
     // Emitted by agent_store writes AND by the file watcher.
     // Frontend uses these to invalidate TanStack Query caches.

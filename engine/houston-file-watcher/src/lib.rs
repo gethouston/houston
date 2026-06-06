@@ -75,6 +75,8 @@ fn classify_change(agent_path: &str, relative: &Path) -> Option<HoustonEvent> {
             "activity" => Some(HoustonEvent::ActivityChanged { agent_path }),
             "routines" => Some(HoustonEvent::RoutinesChanged { agent_path }),
             "routine_runs" => Some(HoustonEvent::RoutineRunsChanged { agent_path }),
+            "workflows" => Some(HoustonEvent::WorkflowsChanged { agent_path }),
+            "workflow_runs" => Some(HoustonEvent::WorkflowRunsChanged { agent_path }),
             "config" => Some(HoustonEvent::ConfigChanged { agent_path }),
             "learnings" => Some(HoustonEvent::LearningsChanged { agent_path }),
             _ => None,
@@ -155,4 +157,24 @@ pub fn start_watching(
     Ok(AgentWatcher {
         _debouncer: debouncer,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn classify_workflows_and_workflow_runs() {
+        let agent = "/agent";
+        let wf = classify_change(agent, Path::new(".houston/workflows/workflows.json"));
+        assert!(matches!(
+            wf,
+            Some(HoustonEvent::WorkflowsChanged { agent_path }) if agent_path == agent
+        ));
+        let runs = classify_change(agent, Path::new(".houston/workflow_runs/workflow_runs.json"));
+        assert!(matches!(
+            runs,
+            Some(HoustonEvent::WorkflowRunsChanged { agent_path }) if agent_path == agent
+        ));
+    }
 }

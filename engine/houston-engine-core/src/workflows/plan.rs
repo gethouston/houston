@@ -11,6 +11,29 @@ pub fn parse_plan(raw: &str) -> CoreResult<WorkflowPlan> {
     Ok(plan)
 }
 
+/// Pull a JSON object out of a planner model response (raw JSON or fenced block).
+pub fn extract_plan_json(raw: &str) -> Option<&str> {
+    let trimmed = raw
+        .trim()
+        .trim_start_matches("```json")
+        .trim_start_matches("```")
+        .trim_end_matches("```")
+        .trim();
+    let start = trimmed.find('{')?;
+    let end = trimmed.rfind('}')?;
+    (start <= end).then_some(&trimmed[start..=end])
+}
+
+/// Parse a planner turn response: extract JSON, validate DAG, apply run guards.
+pub fn parse_plan_from_response(raw: &str) -> CoreResult<WorkflowPlan> {
+    let json = extract_plan_json(raw).ok_or_else(|| {
+        CoreError::BadRequest("planner response did not contain a JSON object".into())
+    })?;
+    let plan = parse_plan(json)?;
+    crate::workflows::guards::enforce_run_limits(&plan)?;
+    Ok(plan)
+}
+
 fn validate_plan(plan: &WorkflowPlan) -> CoreResult<()> {
     if plan.steps.is_empty() {
         return Err(CoreError::BadRequest(
@@ -171,5 +194,12 @@ mod tests {
             parse_plan(raw).unwrap_err(),
             CoreError::BadRequest(_)
         ));
+    }
+
+    #[test]
+    fn parse_plan_from_fenced_response() {
+        let raw = format!("```json\n{}\n```", sample_json());
+        let plan = super::parse_plan_from_response(&raw).unwrap();
+        assert_eq!(plan.steps.len(), 2);
     }
 }

@@ -120,6 +120,31 @@ fn update_unlocked(root: &Path, id: &str, updates: WorkflowRunUpdate) -> CoreRes
     Ok(result)
 }
 
+/// Patch one step row on a run (used by the executor for live progress).
+pub fn patch_step(
+    root: &Path,
+    run_id: &str,
+    step_id: &str,
+    mut patch: impl FnMut(&mut StepState),
+) -> CoreResult<WorkflowRun> {
+    with_runs_lock(root, || {
+        let mut runs = list(root)?;
+        let run = runs
+            .iter_mut()
+            .find(|r| r.id == run_id)
+            .ok_or_else(|| CoreError::NotFound(format!("workflow run {run_id}")))?;
+        let step = run
+            .steps
+            .iter_mut()
+            .find(|s| s.step_id == step_id)
+            .ok_or_else(|| CoreError::NotFound(format!("workflow step {step_id}")))?;
+        patch(step);
+        let result = run.clone();
+        write_json(root, FILE, &runs)?;
+        Ok(result)
+    })
+}
+
 /// Build pending step rows when a plan is first attached to a run.
 pub fn step_states_from_plan(plan: &WorkflowPlan) -> Vec<StepState> {
     plan.steps
@@ -128,6 +153,7 @@ pub fn step_states_from_plan(plan: &WorkflowPlan) -> Vec<StepState> {
             step_id: s.id.clone(),
             status: "pending".into(),
             summary: None,
+            worktree_path: None,
         })
         .collect()
 }

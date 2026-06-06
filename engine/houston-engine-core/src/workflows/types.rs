@@ -63,6 +63,9 @@ pub struct StepState {
     pub status: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
+    /// Set when `use_worktree` is true so cleanup can call `remove_worktree`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub worktree_path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

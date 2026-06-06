@@ -1,11 +1,19 @@
-//! Workflows — multi-step orchestrated agent tasks (Phase 1: data foundation).
-//!
-//! Phase 1 provides typed plan schemas and on-disk workflow + run records.
-//! Execution (fan-out, approval gate, events) lands in later phases.
+//! Workflows — multi-step orchestrated agent tasks.
 
 pub mod defs;
+pub mod dispatcher;
+pub mod engine_dispatcher;
+pub mod executor;
+pub mod executor_sched;
+pub mod executor_step;
+pub mod guards;
+pub mod keys;
 pub mod plan;
+pub mod planner;
+pub mod runner;
+pub mod runner_execute;
 pub mod runs;
+pub mod synthesis;
 pub mod types;
 
 use crate::error::CoreResult;
@@ -19,6 +27,10 @@ pub use runs::{
     create as create_workflow_run, find_by_id as find_workflow_run_by_id,
     list as list_workflow_runs, list_for_workflow, step_states_from_plan,
     sweep_orphan_running, update as update_workflow_run,
+};
+pub use guards::{enforce_run_limits, MAX_RECURSION_DEPTH, MAX_STEPS_PER_RUN};
+pub use runner::{
+    approve_run, begin_run, cancel_run, finish_planning, resume_run, BegunRun,
 };
 pub use types::{
     NewWorkflow, StepState, Workflow, WorkflowPlan, WorkflowRun, WorkflowRunUpdate,

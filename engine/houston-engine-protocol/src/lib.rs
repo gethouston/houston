@@ -147,6 +147,12 @@ pub fn event_topic(event: &HoustonEvent) -> String {
         }
         HoustonEvent::RoutinesChanged { agent_path }
         | HoustonEvent::RoutineRunsChanged { agent_path } => format!("routines:{agent_path}"),
+        HoustonEvent::WorkflowsChanged { agent_path }
+        | HoustonEvent::WorkflowRunsChanged { agent_path }
+        | HoustonEvent::WorkflowPlanProposed { agent_path, .. }
+        | HoustonEvent::WorkflowStepChanged { agent_path, .. } => {
+            format!("workflows:{agent_path}")
+        }
         HoustonEvent::ActivityChanged { agent_path }
         | HoustonEvent::SkillsChanged { agent_path }
         | HoustonEvent::FilesChanged { agent_path }
