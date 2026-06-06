@@ -40,7 +40,7 @@ Gemini) — or fail loudly where it cannot.
 | 1 | Self-edit `policy.json` to widen access | `write_*` allows `.houston/policy.json` (inside agent root) | Control-plane write guard |
 | 2 | Plant a `.claude/` hook that runs shell | Agent can write `.claude/settings.json` | Control-plane write guard |
 | 3 | Read engine token from `mcp-config.json` | Config lives in `agent_root/.houston/runtime/` (readable by gateway) | Move MCP config outside any agent root |
-| 4 | Denylist misses a tool (e.g. `NotebookRead`, future tools) | `--disallowedTools <list>` | Switch Claude `restricted` to an allowlist |
+| 4 | Denylist misses a read tool (e.g. `NotebookRead`) | `--disallowedTools <list>` | Harden denylist (+`NotebookRead`, `WebSearch`); re-audit on version bump |
 | 5 | Codex `restricted` reads anywhere | `--sandbox workspace-write` confines writes only | Fail-safe now (refuse); real gateway routing in its own spec |
 | 6 | Gemini `restricted` has no enforcement | No tool flags, no sandbox, no gateway | Fail-safe: refuse `restricted` on Gemini until supported |
 
@@ -93,28 +93,37 @@ guard is moot for it). The engine token (see §5) lives in the MCP config's
 Cleanup: stale files under `<home>/cache/mcp/` older than 24h are removed on
 engine start (best-effort, logged).
 
-### 3. Allowlist for Claude `restricted` (terminal-manager)
+### 3. Harden the Claude `restricted` denylist (terminal-manager)
 
-Replace the `--disallowedTools <denylist>` branch in
-`claude_runner::configure_claude_command` with an explicit
-`--allowedTools <allowlist>` for `restricted`. The allowlist is the **exact
-set of tools an agent legitimately needs**:
+**Decision (revised during implementation):** keep the `--disallowedTools`
+denylist, but harden it — do **not** switch to an allowlist yet.
 
-- The `houston_files` MCP tools: `mcp__houston_files__list_allowed_files`,
-  `…read_allowed_file`, `…write_allowed_file`, `…search_allowed_files`
-  (plus the permission-flow tool added in spec 2).
-- Houston's own agent tools the product depends on — to be **enumerated from
-  the codebase and verified by test**, not guessed. The audit log already
-  shows real usage (e.g. task tools); the implementer captures the full set
-  before flipping the flag.
+Rationale: enumerating real agent tool usage from the audit logs showed agents
+rely on a moving set of built-ins (`ToolSearch`, `TaskList`, `Skill`,
+`AskUserQuestion`, `ListMcpResourcesTool`, `ReadMcpResourceTool`, …). A strict
+allowlist would have shipped incomplete and silently broken agent workflows
+that no test exercised. The Claude Code version is pinned in `cli-deps.json`,
+so the tool surface only changes on a deliberate bump — which makes a
+denylist's "forgot to deny a new tool" risk bounded and reviewable, while the
+allowlist's "forgot to allow a needed tool" risk is unbounded and user-facing.
+
+The concrete gap in the current denylist is **read** tools that bypass the
+gateway. Add the missing ones:
+
+- `NotebookRead` — reads arbitrary `.ipynb` files anywhere on disk.
+- `WebFetch` is already added; add `WebSearch` for completeness (network, not
+  local files, but out of scope for a confined agent).
+
+Current denylist: `Bash, Read, Glob, Grep, LS, Edit, Write, MultiEdit,
+NotebookEdit, Task, WebFetch`. After: add `NotebookRead, WebSearch`.
 
 `disable_all_tools` (conversation_only) keeps `--allowedTools ""`. `full` keeps
-no restriction. Only `restricted` changes from denylist to allowlist.
+no restriction.
 
-**Risk:** an incomplete allowlist breaks agent functionality. Mitigation: the
-implementation plan includes an explicit enumeration step + a test that an
-allowed agent can still run a normal task end-to-end before the denylist is
-removed.
+**Re-audit obligation:** every time `cli-deps.json` bumps the Claude Code
+version, re-audit its tool list for any new file/exec/network tool and add it
+to the denylist. A future spec may revisit a true allowlist once we have
+telemetry on the complete set of tools agents legitimately use.
 
 ### 4. Provider parity — fail-safe (terminal-manager)
 
@@ -153,7 +162,7 @@ gateway to call the engine) inherits a safe channel.
 | `agent_policy::is_control_plane` / `RESERVED_DIRS` | Classify control-plane paths | path normalization |
 | `agents/files::ensure_writable` | Gate every mutating op | `is_control_plane`, `ensure_path_allowed` |
 | `agent_file_gateway::prepare_mcp_config` | Write session MCP config to home cache, token in `env` | `EnginePaths` |
-| `claude_runner::configure_claude_command` | Allowlist for `restricted` | allowlist constant |
+| `claude_runner::configure_claude_command` | Hardened denylist for `restricted` | denylist tool names |
 | session-start guard (engine) | Refuse `restricted` on non-gateway providers | `provider.id()`, gateway-capable set |
 
 ## Error handling
@@ -175,8 +184,8 @@ gateway to call the engine) inherits a safe channel.
 - A normal file write inside `allowed_roots` still succeeds (regression).
 - `prepare_mcp_config` writes outside any agent root and the path is not within
   `resolved_allowed_roots`.
-- Claude `restricted` builds `--allowedTools` with the gateway tools and
-  **not** `--dangerously-skip-permissions`-without-allowlist; `full` unchanged;
+- Claude `restricted` `--disallowedTools` includes `NotebookRead` and
+  `WebSearch` (alongside the existing entries); `full` unchanged;
   `conversation_only` still `--allowedTools ""`.
 - `restricted` on Codex returns the typed unsupported error at session start
   (no provider subprocess spawned).
@@ -193,8 +202,12 @@ gateway to call the engine) inherits a safe channel.
 - **Spec 4:** Codex `restricted` via the `houston_files` gateway +
   `--sandbox read-only`, to lift the fail-safe and restore Codex isolation.
 
-## Open question for implementation
+## Resolved during implementation
 
-The exact Houston-native tool allowlist (§3, Allowlist) must be enumerated from
-the codebase during planning; this design fixes the *mechanism* (allowlist over
-denylist), not the literal list.
+The allowlist approach (original §3) was dropped after enumerating real agent
+tool usage from the audit logs: agents rely on built-ins (`Skill`,
+`AskUserQuestion`, `ToolSearch`, `TaskList`, MCP resource tools) that a hand-
+written allowlist would have missed, silently breaking workflows. The hardened
+denylist (+`NotebookRead`, `WebSearch`) closes the known read gap without that
+risk. A true allowlist remains a future option once tool-usage telemetry is
+complete.
