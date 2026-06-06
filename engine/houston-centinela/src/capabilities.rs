@@ -86,6 +86,18 @@ impl Capabilities {
         self.step_up_required_for.iter().any(|c| c == cap)
     }
 
+    /// Grant or revoke `cap` at runtime. Revoking removes it from every scope;
+    /// granting adds it to the write scope. The owner toggles this from the
+    /// Salvoconducto UI to control the agent's permissions live and revocably.
+    pub fn set_capability(&mut self, cap: &str, granted: bool) {
+        self.scopes.read.retain(|c| c != cap);
+        self.scopes.write.retain(|c| c != cap);
+        self.scopes.money.retain(|c| c != cap);
+        if granted {
+            self.scopes.write.push(cap.to_string());
+        }
+    }
+
     /// Parse a salvoconducto from a JSON string.
     pub fn from_json(s: &str) -> Result<Self, CentinelaError> {
         Ok(serde_json::from_str(s)?)
@@ -161,6 +173,26 @@ mod tests {
         assert!(c.requires_step_up("email:send"));
         assert!(c.requires_step_up("bank:transfer"));
         assert!(!c.requires_step_up("bank:balance"));
+    }
+
+    #[test]
+    fn set_capability_revokes_and_grants() {
+        let mut c = caps();
+        // Revoke a declared capability: gone from every scope.
+        c.set_capability("bank:balance", false);
+        assert!(!c.declares("bank:balance"));
+        // Grant an undeclared one: now declared (idempotent, no duplicates).
+        c.set_capability("bank:transfer", true);
+        c.set_capability("bank:transfer", true);
+        assert!(c.declares("bank:transfer"));
+        assert_eq!(
+            c.scopes
+                .write
+                .iter()
+                .filter(|x| *x == "bank:transfer")
+                .count(),
+            1
+        );
     }
 
     #[test]

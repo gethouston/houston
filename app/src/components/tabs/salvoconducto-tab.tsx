@@ -30,13 +30,26 @@ interface Decision {
   message: string;
 }
 
-function classify(cap: string): { cls: string; txt: string } {
+interface Perm {
+  capability: string;
+  granted: boolean;
+  stepUp: boolean;
+}
+
+/// The effective state of a capability: gateway `/permissions` when available,
+/// else the static salvoconducto as a fallback.
+function permState(cap: string, perms: Perm[] | null): { granted: boolean; stepUp: boolean } {
+  const p = perms?.find((x) => x.capability === cap);
+  if (p) return { granted: p.granted, stepUp: p.stepUp };
   const declared = [SALVO.scopes.read, SALVO.scopes.write, SALVO.scopes.money].some((s) =>
     s.includes(cap),
   );
-  if (!declared) return { cls: "bg-[#fde9e8] text-[#c0241f]", txt: "Bloqueado" };
-  if (SALVO.step_up_required_for.includes(cap))
-    return { cls: "bg-[#fbf3da] text-[#976d00]", txt: "Requiere confirmacion" };
+  return { granted: declared, stepUp: SALVO.step_up_required_for.includes(cap) };
+}
+
+function classify(granted: boolean, stepUp: boolean): { cls: string; txt: string } {
+  if (!granted) return { cls: "bg-[#fde9e8] text-[#c0241f]", txt: "Bloqueado" };
+  if (stepUp) return { cls: "bg-[#fbf3da] text-[#976d00]", txt: "Requiere confirmacion" };
   return { cls: "bg-[#e7f6ed] text-[#00824f]", txt: "Permitido" };
 }
 
@@ -71,6 +84,32 @@ export default function SalvoconductoTab(_props: TabProps) {
       });
     } catch {
       setInspect(!next); // revert if the gateway is offline
+    }
+  };
+
+  const [perms, setPerms] = useState<Perm[] | null>(null);
+
+  const loadPerms = () => {
+    fetch(`${API}/permissions`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setPerms(d))
+      .catch(() => {});
+  };
+  useEffect(loadPerms, []);
+
+  const togglePerm = async (cap: string, on: boolean) => {
+    setPerms((prev) =>
+      prev ? prev.map((p) => (p.capability === cap ? { ...p, granted: on } : p)) : prev,
+    );
+    try {
+      await fetch(`${API}/toggle/permission`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ capability: cap, on }),
+      });
+      loadPerms();
+    } catch {
+      loadPerms(); // resync on failure
     }
   };
 
@@ -233,7 +272,8 @@ export default function SalvoconductoTab(_props: TabProps) {
               Permisos de este asistente
             </h2>
             {CATALOGO.map(({ cap, label, sub, Icon }) => {
-              const s = classify(cap);
+              const st = permState(cap, perms);
+              const s = classify(st.granted, st.stepUp);
               return (
                 <div key={cap} className="flex items-center gap-3 py-3 border-b border-border last:border-0">
                   <div className="w-9 h-9 rounded-xl bg-accent grid place-items-center shrink-0">
@@ -246,6 +286,22 @@ export default function SalvoconductoTab(_props: TabProps) {
                   <span className={`text-xs font-semibold px-3 py-1 rounded-full whitespace-nowrap ${s.cls}`}>
                     {s.txt}
                   </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={st.granted}
+                    aria-label={`Permitir ${label}`}
+                    onClick={() => togglePerm(cap, !st.granted)}
+                    className={`relative w-10 h-[22px] rounded-full transition-colors shrink-0 ${
+                      st.granted ? "bg-[#00824f]" : "bg-black/20"
+                    }`}
+                  >
+                    <span
+                      className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white transition-transform ${
+                        st.granted ? "translate-x-[18px]" : ""
+                      }`}
+                    />
+                  </button>
                 </div>
               );
             })}

@@ -84,7 +84,10 @@ async fn handle_tools_call(
     // The content-inspection toggle is shared with the webhook; read its current
     // value into the session so the gate sees live changes.
     state.session.inspect_content = state.inspect_content.load(Ordering::Relaxed);
-    let decision = evaluate(&state.caps, &state.session, &call);
+    // Evaluate against the live salvoconducto: base capabilities with the owner's
+    // permission toggles applied, so a revoke or grant takes effect immediately.
+    let caps = state.effective_caps();
+    let decision = evaluate(&caps, &state.session, &call);
 
     // No silent failures: the gate verdict goes to stderr and, if configured,
     // to the journal the Salvoconducto UI tails.
@@ -441,5 +444,53 @@ mod tests {
         .unwrap();
         assert_eq!(resp["result"]["isError"], true);
         assert!(text_of(&resp).contains("BLOQUEADO"));
+    }
+
+    // ── Live permission toggles (the owner controls the salvoconducto) ──
+
+    #[tokio::test]
+    async fn revoking_a_permission_blocks_it_live() {
+        let mut s = state(false);
+        let ok = handle_request(&mut s, &Hooks::default(), &call("check_balance", json!({})))
+            .await
+            .unwrap();
+        assert_eq!(ok["result"]["isError"], false);
+        // The owner revokes bank:balance from the UI.
+        s.overrides
+            .lock()
+            .unwrap()
+            .insert("bank:balance".into(), false);
+        let denied = handle_request(&mut s, &Hooks::default(), &call("check_balance", json!({})))
+            .await
+            .unwrap();
+        assert_eq!(denied["result"]["isError"], true);
+        assert!(text_of(&denied).contains("BLOQUEADO"));
+    }
+
+    #[tokio::test]
+    async fn granting_an_undeclared_permission_takes_effect_live() {
+        let mut s = state(false);
+        // bank:transfer is undeclared, so it is a hard scope deny.
+        let blocked = handle_request(
+            &mut s,
+            &Hooks::default(),
+            &call("transfer_money", json!({"to":"x","amount":1})),
+        )
+        .await
+        .unwrap();
+        assert_eq!(blocked["result"]["isError"], true);
+        // The owner grants it: now it is declared and only needs human step-up.
+        s.overrides
+            .lock()
+            .unwrap()
+            .insert("bank:transfer".into(), true);
+        let stepped = handle_request(
+            &mut s,
+            &Hooks::default(),
+            &call("transfer_money", json!({"to":"x","amount":1})),
+        )
+        .await
+        .unwrap();
+        assert!(text_of(&stepped).contains("CONFIRMACION"));
     }
 }

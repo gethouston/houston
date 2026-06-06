@@ -57,9 +57,13 @@ async fn main() {
         std::env::var("CENTINELA_INSPECT").as_deref(),
         Ok("1") | Ok("true")
     )));
+    // Live permission toggles, shared with the webhook so the owner can revoke or
+    // grant capabilities from the UI without restarting.
+    let overrides = Arc::new(std::sync::Mutex::new(std::collections::HashMap::new()));
     let mut state = ServerState::new(caps, duress)
         .with_log(log_path.clone())
-        .with_inspect(inspect.clone());
+        .with_inspect(inspect.clone())
+        .with_overrides(overrides.clone());
     eprintln!(
         "[centinela] gateway MCP activo para '{}' (duress={duress})",
         state.caps.agent_id
@@ -101,12 +105,16 @@ async fn main() {
         .unwrap_or_else(|| Arc::new(approval::ApprovalRegistry::new()));
     tokio::spawn(webhook::serve(
         addr,
-        registry,
-        verify_token,
-        notifier.clone(),
-        enrollment.clone(),
-        log_path.clone(),
-        inspect.clone(),
+        webhook::Web {
+            registry,
+            verify_token,
+            notifier: notifier.clone(),
+            enrollment: enrollment.clone(),
+            log_path: log_path.clone(),
+            inspect_content: inspect.clone(),
+            caps: state.caps.clone(),
+            overrides: overrides.clone(),
+        },
     ));
     eprintln!(
         "[centinela] webhook + UI en :{port} (WhatsApp: {})",

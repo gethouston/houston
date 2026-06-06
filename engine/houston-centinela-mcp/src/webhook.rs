@@ -6,52 +6,42 @@
 use crate::approval::ApprovalRegistry;
 use crate::enrollment::Enrollment;
 use crate::notifier::Notifier;
+use crate::tools;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::Html;
 use axum::routing::{get, post};
 use axum::{Json, Router};
+use houston_centinela::Capabilities;
 use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tower_http::cors::CorsLayer;
 
+/// Everything the webhook needs, assembled by the gateway and handed to
+/// [`serve`]. Carries the base salvoconducto and the live permission overrides
+/// so the UI can read and toggle the agent's permissions.
 #[derive(Clone)]
-struct Web {
-    registry: Arc<ApprovalRegistry>,
-    verify_token: String,
-    notifier: Option<Arc<dyn Notifier>>,
-    enrollment: Arc<Enrollment>,
-    log_path: Option<PathBuf>,
-    inspect_content: Arc<AtomicBool>,
+pub struct Web {
+    pub registry: Arc<ApprovalRegistry>,
+    pub verify_token: String,
+    pub notifier: Option<Arc<dyn Notifier>>,
+    pub enrollment: Arc<Enrollment>,
+    pub log_path: Option<PathBuf>,
+    pub inspect_content: Arc<AtomicBool>,
+    pub caps: Capabilities,
+    pub overrides: Arc<Mutex<HashMap<String, bool>>>,
 }
 
-/// Serve the webhook, fallback links, enrollment, decisions and the
-/// content-inspection toggle. Runs whenever the gateway runs: the UI needs
-/// `/decisions`, `/inspect` and `/toggle/inspect` even without WhatsApp; the
-/// reply and enrollment endpoints no-op when `notifier` is `None`.
-#[allow(clippy::too_many_arguments)]
-pub async fn serve(
-    addr: SocketAddr,
-    registry: Arc<ApprovalRegistry>,
-    verify_token: String,
-    notifier: Option<Arc<dyn Notifier>>,
-    enrollment: Arc<Enrollment>,
-    log_path: Option<PathBuf>,
-    inspect_content: Arc<AtomicBool>,
-) {
-    let web = Web {
-        registry,
-        verify_token,
-        notifier,
-        enrollment,
-        log_path,
-        inspect_content,
-    };
+/// Serve the webhook, fallback links, enrollment, the live decisions feed, and
+/// the content-inspection + permission toggles. Runs whenever the gateway runs:
+/// the UI endpoints work without WhatsApp; the reply and enrollment endpoints
+/// no-op when `notifier` is `None`.
+pub async fn serve(addr: SocketAddr, web: Web) {
     let app = Router::new()
         .route("/webhook", get(verify).post(incoming))
         .route("/approve", get(approve))
@@ -61,6 +51,8 @@ pub async fn serve(
         .route("/decisions", get(decisions))
         .route("/inspect", get(inspect_get))
         .route("/toggle/inspect", post(inspect_toggle))
+        .route("/permissions", get(permissions_get))
+        .route("/toggle/permission", post(permission_toggle))
         .layer(CorsLayer::permissive())
         .with_state(web);
     let listener = match tokio::net::TcpListener::bind(addr).await {
@@ -205,6 +197,57 @@ async fn enroll_confirm(
             Json(json!({ "status": "invalid" })),
         )
     }
+}
+
+#[derive(Deserialize)]
+struct PermissionToggle {
+    capability: String,
+    on: bool,
+}
+
+/// The effective permission state for the tool catalog: the base salvoconducto
+/// with the owner's live toggles applied. The UI renders a switch per capability.
+async fn permissions_get(State(web): State<Web>) -> Json<Value> {
+    let caps = effective_caps(&web);
+    let perms: Vec<Value> = tools::catalog()
+        .iter()
+        .map(|t| {
+            json!({
+                "capability": t.capability,
+                "granted": caps.declares(t.capability),
+                "stepUp": caps.requires_step_up(t.capability),
+            })
+        })
+        .collect();
+    Json(json!(perms))
+}
+
+/// Grant or revoke a capability. The gate reads the overrides on the next call,
+/// so a revoke takes effect immediately, no restart.
+async fn permission_toggle(
+    State(web): State<Web>,
+    Json(req): Json<PermissionToggle>,
+) -> Json<Value> {
+    if let Ok(mut overrides) = web.overrides.lock() {
+        overrides.insert(req.capability.clone(), req.on);
+    }
+    eprintln!(
+        "[centinela] permiso {} -> {}",
+        req.capability,
+        if req.on { "OTORGADO" } else { "REVOCADO" }
+    );
+    Json(json!({ "capability": req.capability, "granted": req.on }))
+}
+
+/// The base salvoconducto with the live permission overrides applied.
+fn effective_caps(web: &Web) -> Capabilities {
+    let mut caps = web.caps.clone();
+    if let Ok(overrides) = web.overrides.lock() {
+        for (cap, granted) in overrides.iter() {
+            caps.set_capability(cap, *granted);
+        }
+    }
+    caps
 }
 
 /// Pull the first inbound message body out of a WhatsApp webhook payload.

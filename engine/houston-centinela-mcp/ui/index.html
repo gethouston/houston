@@ -157,28 +157,43 @@
     ];
     const VERDICT = { allow: "PERMITIDO", deny: "BLOQUEADO", step_up: "CONFIRMA" };
 
-    function classify(cap, salvo) {
-      const declared = ["read", "write", "money"].some(k => (salvo.scopes[k] || []).includes(cap));
-      const stepUp = (salvo.step_up_required_for || []).includes(cap);
-      if (!declared) return { cls: "deny", txt: "Bloqueado" };
-      if (stepUp) return { cls: "confirm", txt: "Requiere confirmacion" };
-      return { cls: "allow", txt: "Permitido" };
-    }
-
     async function loadSalvo() {
-      const salvo = await fetch("salvoconducto.json").then(r => r.json());
+      const salvo = await fetch("salvoconducto.json").then(r => r.json()).catch(() => ({ agent_id: "asistente-seguro" }));
       document.getElementById("agent").textContent = salvo.agent_id;
+      // Effective permission state from the gateway (reflects live toggles); fall
+      // back to the static salvoconducto when the gateway is offline.
+      let perms = null;
+      try { const r = await fetch(API + "/permissions"); if (r.ok) perms = await r.json(); } catch (e) {}
+      const stateOf = (cap) => {
+        const p = perms && perms.find(x => x.capability === cap);
+        if (p) return { granted: p.granted, stepUp: p.stepUp };
+        const declared = ["read", "write", "money"].some(k => (salvo.scopes?.[k] || []).includes(cap));
+        return { granted: declared, stepUp: (salvo.step_up_required_for || []).includes(cap) };
+      };
       const host = document.getElementById("perms");
       host.innerHTML = "";
       for (const item of CATALOGO) {
-        const s = classify(item.cap, salvo);
+        const st = stateOf(item.cap);
+        const cls = !st.granted ? "deny" : st.stepUp ? "confirm" : "allow";
+        const txt = !st.granted ? "Bloqueado" : st.stepUp ? "Requiere confirmacion" : "Permitido";
         const row = document.createElement("div");
         row.className = "perm";
         row.innerHTML = `<div class="icon">${item.icon}</div>
           <div class="body"><div class="name">${item.label}</div><div class="sub2">${item.sub}</div></div>
-          <div class="pill ${s.cls}">${s.txt}</div>`;
+          <span class="pill ${cls}">${txt}</span>
+          <label class="switch" style="margin-left:10px"><input type="checkbox" ${st.granted ? "checked" : ""} onchange="togglePerm('${item.cap}', this.checked)"><span class="slider"></span></label>`;
         host.appendChild(row);
       }
+    }
+
+    async function togglePerm(cap, on) {
+      try {
+        await fetch(API + "/toggle/permission", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ capability: cap, on }),
+        });
+      } catch (e) { /* gateway offline */ }
+      loadSalvo();
     }
 
     function render(entries) {

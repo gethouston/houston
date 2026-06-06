@@ -3,12 +3,14 @@
 //! taint and Rule-of-Two flags accumulate exactly as the session unfolds.
 
 use houston_centinela::{Capabilities, Session};
+use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::atomic::AtomicBool;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 pub struct ServerState {
-    /// The agent's declared, signed-off capabilities. Static for the session.
+    /// The agent's declared, signed-off capabilities. The base salvoconducto;
+    /// the owner's live permission toggles are applied as `overrides` on top.
     pub caps: Capabilities,
     /// Live risk state, mutated as the session reads untrusted data, touches
     /// sensitive sources, or sends to the outside world.
@@ -24,6 +26,10 @@ pub struct ServerState {
     /// Content-inspection toggle, shared with the webhook so the UI can flip it
     /// live. Read into the session before every verdict.
     pub inspect_content: Arc<AtomicBool>,
+    /// Live permission toggles, shared with the webhook: capability -> granted.
+    /// Applied on top of `caps` so the owner can revoke or grant permissions
+    /// from the UI without restarting the agent.
+    pub overrides: Arc<Mutex<HashMap<String, bool>>>,
 }
 
 impl ServerState {
@@ -40,6 +46,7 @@ impl ServerState {
             initialized: false,
             log_path: None,
             inspect_content: Arc::new(AtomicBool::new(false)),
+            overrides: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
@@ -53,5 +60,24 @@ impl ServerState {
     pub fn with_inspect(mut self, flag: Arc<AtomicBool>) -> Self {
         self.inspect_content = flag;
         self
+    }
+
+    /// Share the live permission toggles with the webhook. Chainable.
+    pub fn with_overrides(mut self, overrides: Arc<Mutex<HashMap<String, bool>>>) -> Self {
+        self.overrides = overrides;
+        self
+    }
+
+    /// The base salvoconducto with the owner's live permission toggles applied.
+    /// This is what the gate evaluates against, so revokes and grants take
+    /// effect immediately without a restart.
+    pub fn effective_caps(&self) -> Capabilities {
+        let mut caps = self.caps.clone();
+        if let Ok(overrides) = self.overrides.lock() {
+            for (cap, granted) in overrides.iter() {
+                caps.set_capability(cap, *granted);
+            }
+        }
+        caps
     }
 }
