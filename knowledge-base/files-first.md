@@ -24,6 +24,8 @@ If app-specific → `.houston/`.
     config/
       config.json + .schema.json
     policy.json                 AgentPolicy access boundary (allowed roots, shared context opt-in, tool mode)
+    audit/
+      {session_key}.jsonl       Per-session tool/file audit trail
     learnings/
       learnings.json + .schema.json   ({id, text, created_at})
       # Legacy `.houston/memory/learnings.md` auto-migrated on startup
@@ -114,6 +116,21 @@ provider sandboxing where available and disables Claude write tools;
 `conversation_only` disables all Claude tools; `full` preserves the old
 unrestricted runner behavior. This is an MVP boundary, not a full OS sandbox
 for every provider.
+
+## Agent audit trail
+
+Each chat/routine session creates `.houston/audit/{session_key}.jsonl` via
+`engine/houston-engine-core/src/agent_audit.rs`. The runner observer appends
+JSON lines for session start/status, provider session ids, tool calls, and
+post-run file changes. Tool-call inputs are recursively scanned for path-like
+fields (`path`, `file_path`, `cwd`, etc.) and classified as `allowed`,
+`denied`, or `unknown` against `.houston/policy.json`.
+
+Clients can poll `GET /v1/agents/audit?agent_path=...&session_key=...` while a
+session is running to inspect the current log. The audit log is an operational
+supervision surface, not a kernel-level filesystem monitor: a shell command's
+declared command/input is visible, but every file opened by that subprocess is
+not provable without adding OS sandbox/syscall tracing.
 
 ## Activity statuses
 `running` · `needs_you` · `done` · `error` · `archived`

@@ -164,6 +164,7 @@ not user-facing copy.
 **Agent files** (typed `.houston/` + project file browser)
 | Method | Path | Description |
 |---|---|---|
+| GET | `/v1/agents/audit?agent_path=&session_key=` | Read the current per-session audit JSONL as JSON objects |
 | GET/DELETE | `/v1/agents/files` | List / delete project file |
 | POST | `/v1/agents/files/read` | Read typed data file |
 | POST | `/v1/agents/files/write` | Write typed data file (emits event) |
