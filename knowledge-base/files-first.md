@@ -112,10 +112,26 @@ absolute paths, `..`, and paths outside the policy roots. Session start rejects
 a `working_dir` outside the policy roots with `FORBIDDEN`.
 
 Tool mode mapping lives in `agent_policy::tool_config`: `restricted` enables
-provider sandboxing where available and disables Claude write tools;
+provider sandboxing where available and disables Claude native filesystem/shell tools;
 `conversation_only` disables all Claude tools; `full` preserves the old
 unrestricted runner behavior. This is an MVP boundary, not a full OS sandbox
 for every provider.
+
+For Claude sessions, `restricted` also writes a per-session MCP config under
+`.houston/runtime/houston-files-{session_key}.mcp.json` and launches
+`houston-engine mcp-agent-files` as the `houston_files` server. Native Claude
+filesystem/shell tools (`Read`, `Bash`, `Glob`, `Grep`, `LS`, `Edit`, `Write`,
+`MultiEdit`, `NotebookEdit`) are disallowed, so file access goes through:
+
+- `list_allowed_files`
+- `read_allowed_file`
+- `write_allowed_file`
+- `search_allowed_files`
+
+Those tools call the same `agents::files` helpers as the REST file browser and
+enforce `.houston/policy.json` on every path. Codex restricted sessions still
+use Codex's provider sandbox until its MCP/config path is wired to the same
+gateway.
 
 ## Agent audit trail
 

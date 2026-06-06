@@ -124,6 +124,10 @@ is written before `seed_agent()` so seeding does not overwrite it.
 allowed roots return `FORBIDDEN` with `details.kind = "agent_policy_denied"`.
 The policy also drives provider tool configuration: restricted agents use the
 provider sandbox where supported and avoid unrestricted runner flags.
+For Claude, restricted sessions additionally mount the Houston-controlled
+`houston_files` MCP server and disallow native filesystem/shell tools, so file
+listing/reading/searching/writing flows through the policy-enforcing engine
+gateway.
 
 `POST /v1/sessions/summarize` accepts `{ message, agentPath?, provider?, model? }`.
 It resolves provider/model from explicit fields, then `agentPath`, then default
