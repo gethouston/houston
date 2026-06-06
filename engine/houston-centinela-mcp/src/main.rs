@@ -12,6 +12,7 @@
 
 mod approval;
 mod approver;
+mod enrollment;
 mod journal;
 mod server;
 mod state;
@@ -21,6 +22,7 @@ mod whatsapp;
 
 use houston_centinela::Capabilities;
 use state::ServerState;
+use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 
 /// Demo salvoconducto used when CENTINELA_SALVOCONDUCTO is not set.
@@ -52,11 +54,23 @@ async fn main() {
         state.caps.agent_id
     );
 
+    // The approval trust anchor: seeded from WHATSAPP_RECIPIENT (set by the
+    // trusted operator, out of band) and replaceable only through OTP-verified
+    // enrollment. The agent can never reach or change it.
+    let enrollment = Arc::new(enrollment::Enrollment::new(
+        std::env::var("WHATSAPP_RECIPIENT")
+            .ok()
+            .filter(|v| !v.trim().is_empty()),
+    ));
+
     // WhatsApp approver for step-ups, only if credentials are present. When it
-    // is active we also serve the reply webhook so SI / NO can close the loop.
-    let approver = whatsapp::WhatsApp::from_env().map(approver::Approver::new);
-    match &approver {
-        Some(ap) => {
+    // is active we also serve the reply webhook + enrollment endpoints.
+    let whatsapp = whatsapp::WhatsApp::from_env().map(Arc::new);
+    let approver = whatsapp
+        .as_ref()
+        .map(|wa| approver::Approver::new(wa.clone(), enrollment.clone()));
+    match (&approver, &whatsapp) {
+        (Some(ap), Some(wa)) => {
             let port: u16 = std::env::var("CENTINELA_WEBHOOK_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -64,13 +78,19 @@ async fn main() {
             let verify_token =
                 std::env::var("WHATSAPP_VERIFY_TOKEN").unwrap_or_else(|_| "centinela".to_string());
             let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
-            tokio::spawn(webhook::serve(addr, ap.registry(), verify_token));
+            tokio::spawn(webhook::serve(
+                addr,
+                ap.registry(),
+                verify_token,
+                wa.clone(),
+                enrollment.clone(),
+            ));
             eprintln!(
-                "[centinela] approver WhatsApp activo; webhook escuchando en :{port} (ruta /webhook)"
+                "[centinela] approver WhatsApp activo; webhook + enrolamiento en :{port}"
             );
         }
-        None => eprintln!(
-            "[centinela] approver WhatsApp desactivado (faltan WHATSAPP_TOKEN/PHONE_NUMBER_ID/RECIPIENT); los step-up solo bloquean"
+        _ => eprintln!(
+            "[centinela] approver WhatsApp desactivado (faltan WHATSAPP_TOKEN/PHONE_NUMBER_ID); los step-up solo bloquean"
         ),
     }
 

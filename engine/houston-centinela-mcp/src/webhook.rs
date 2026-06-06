@@ -1,34 +1,52 @@
-//! The reply channel: a tiny HTTP server that Meta's WhatsApp webhook posts to,
-//! plus browser fallback links for the stage. It only ever resolves pending
-//! approvals; it never grants a capability on its own.
+//! The reply + enrollment HTTP server. WhatsApp's webhook posts replies here,
+//! and the Salvoconducto UI calls the enrollment endpoints to verify the owner's
+//! number. It only ever resolves approvals or verifies a number; it never grants
+//! a capability on its own.
 
 use crate::approval::ApprovalRegistry;
+use crate::enrollment::Enrollment;
+use crate::whatsapp::WhatsApp;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::Html;
-use axum::routing::get;
+use axum::routing::{get, post};
 use axum::{Json, Router};
-use serde_json::Value;
+use serde::Deserialize;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::sync::Arc;
+use tower_http::cors::CorsLayer;
 
 #[derive(Clone)]
 struct Web {
     registry: Arc<ApprovalRegistry>,
     verify_token: String,
+    whatsapp: Arc<WhatsApp>,
+    enrollment: Arc<Enrollment>,
 }
 
-/// Serve the webhook and fallback links on `addr` for the life of the process.
-pub async fn serve(addr: SocketAddr, registry: Arc<ApprovalRegistry>, verify_token: String) {
+/// Serve the webhook, fallback links and enrollment endpoints on `addr`.
+pub async fn serve(
+    addr: SocketAddr,
+    registry: Arc<ApprovalRegistry>,
+    verify_token: String,
+    whatsapp: Arc<WhatsApp>,
+    enrollment: Arc<Enrollment>,
+) {
     let web = Web {
         registry,
         verify_token,
+        whatsapp,
+        enrollment,
     };
     let app = Router::new()
         .route("/webhook", get(verify).post(incoming))
         .route("/approve", get(approve))
         .route("/deny", get(deny))
+        .route("/enroll/start", post(enroll_start))
+        .route("/enroll/confirm", post(enroll_confirm))
+        .layer(CorsLayer::permissive())
         .with_state(web);
     let listener = match tokio::net::TcpListener::bind(addr).await {
         Ok(l) => l,
@@ -76,6 +94,59 @@ async fn approve(State(web): State<Web>) -> Html<&'static str> {
 async fn deny(State(web): State<Web>) -> Html<&'static str> {
     web.registry.resolve_latest(false);
     Html("<h2>Rechazado.</h2><p>Puedes cerrar esta pestana.</p>")
+}
+
+#[derive(Deserialize)]
+struct EnrollStart {
+    number: String,
+}
+
+#[derive(Deserialize)]
+struct EnrollConfirm {
+    number: String,
+    code: String,
+}
+
+/// Begin enrollment: generate a code and send it to the candidate number. The
+/// code is never returned in the response, only delivered over WhatsApp.
+async fn enroll_start(
+    State(web): State<Web>,
+    Json(req): Json<EnrollStart>,
+) -> (StatusCode, Json<Value>) {
+    let number = req.number.trim();
+    if number.is_empty() {
+        return (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "status": "error", "message": "numero vacio" })),
+        );
+    }
+    let code = web.enrollment.start(number);
+    match web.whatsapp.send_otp(number, &code).await {
+        Ok(()) => (StatusCode::OK, Json(json!({ "status": "sent" }))),
+        Err(e) => (
+            StatusCode::BAD_GATEWAY,
+            Json(json!({ "status": "error", "message": e })),
+        ),
+    }
+}
+
+/// Confirm enrollment: a correct code verifies the number as the trust anchor.
+async fn enroll_confirm(
+    State(web): State<Web>,
+    Json(req): Json<EnrollConfirm>,
+) -> (StatusCode, Json<Value>) {
+    let number = req.number.trim();
+    if web.enrollment.confirm(number, req.code.trim()) {
+        (
+            StatusCode::OK,
+            Json(json!({ "status": "verified", "number": number })),
+        )
+    } else {
+        (
+            StatusCode::BAD_REQUEST,
+            Json(json!({ "status": "invalid" })),
+        )
+    }
 }
 
 /// Pull the first inbound message body out of a WhatsApp webhook payload.

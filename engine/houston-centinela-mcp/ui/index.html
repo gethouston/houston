@@ -49,6 +49,17 @@
     .entry .msg { font-size: 13px; margin-top: 4px; color: var(--txt); }
     .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 2px 7px; border-radius: 6px; color: #1b1300; background: var(--amber); }
     .empty { color: var(--muted); font-size: 13px; padding: 8px; }
+    .enroll { margin: 18px 28px 0; max-width: 1100px; }
+    .enroll .panel { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .enroll h2 { width: 100%; margin: 0 0 4px; }
+    .enroll input { background: #0b0e14; border: 1px solid var(--line); color: var(--txt); border-radius: 8px; padding: 9px 11px; font-size: 14px; min-width: 170px; }
+    .enroll button { background: var(--accent); color: #07101f; border: none; border-radius: 8px; padding: 9px 14px; font-weight: 700; cursor: pointer; }
+    .enroll button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+    .enroll button:disabled { opacity: .45; cursor: default; }
+    .enroll .status { font-size: 13px; color: var(--muted); width: 100%; margin-top: 2px; }
+    .enroll .status.ok { color: var(--green); }
+    .enroll .status.bad { color: var(--red); }
+    .hidden { display: none; }
     footer { padding: 16px 28px 30px; color: var(--muted); font-size: 13px; max-width: 1100px; }
   </style>
 </head>
@@ -58,6 +69,17 @@
     <span class="who" id="agent">cargando...</span>
     <span class="tag">La frontera vive en el codigo. La persuasion no cambia un permiso.</span>
   </header>
+
+  <section class="enroll">
+    <div class="panel">
+      <h2>Tu numero de aprobaciones</h2>
+      <input id="num" type="tel" placeholder="573001234567" />
+      <button id="btn-send" onclick="startEnroll()">Enviar codigo</button>
+      <input id="code" class="hidden" inputmode="numeric" placeholder="codigo de 6 digitos" />
+      <button id="btn-confirm" class="secondary hidden" onclick="confirmEnroll()">Verificar</button>
+      <div id="enroll-status" class="status">Solo un numero verificado por codigo puede aprobar acciones. Nadie pone cualquier numero.</div>
+    </div>
+  </section>
 
   <div class="wrap">
     <section class="panel">
@@ -135,6 +157,62 @@
         }
       } catch (err) { /* file may not exist yet; keep polling */ }
       setTimeout(poll, 1200);
+    }
+
+    // ── Enrolamiento del numero de aprobaciones (root of trust) ──────────
+    const API = "http://localhost:8787";
+    const $ = (id) => document.getElementById(id);
+    function setEnroll(msg, cls) {
+      const s = $("enroll-status");
+      s.textContent = msg;
+      s.className = "status" + (cls ? " " + cls : "");
+    }
+
+    async function startEnroll() {
+      const number = $("num").value.trim();
+      if (!number) { setEnroll("Escribe tu numero con codigo de pais.", "bad"); return; }
+      $("btn-send").disabled = true;
+      setEnroll("Enviando codigo a " + number + " ...");
+      try {
+        const r = await fetch(API + "/enroll/start", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ number }),
+        });
+        const d = await r.json();
+        if (r.ok) {
+          $("code").classList.remove("hidden");
+          $("btn-confirm").classList.remove("hidden");
+          setEnroll("Codigo enviado por WhatsApp. Escribelo aqui.", "ok");
+        } else {
+          setEnroll("No se pudo enviar: " + (d.message || d.status), "bad");
+        }
+      } catch (e) {
+        setEnroll("No hay conexion con el gateway (corre el binario en :8787).", "bad");
+      }
+      $("btn-send").disabled = false;
+    }
+
+    async function confirmEnroll() {
+      const number = $("num").value.trim(), code = $("code").value.trim();
+      $("btn-confirm").disabled = true;
+      try {
+        const r = await fetch(API + "/enroll/confirm", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ number, code }),
+        });
+        if (r.ok) {
+          setEnroll("Numero verificado. Solo " + number + " aprobara las acciones.", "ok");
+          $("code").classList.add("hidden");
+          $("btn-confirm").classList.add("hidden");
+          $("btn-send").disabled = true;
+          $("num").disabled = true;
+        } else {
+          setEnroll("Codigo incorrecto o vencido. Intenta de nuevo.", "bad");
+        }
+      } catch (e) {
+        setEnroll("No hay conexion con el gateway.", "bad");
+      }
+      $("btn-confirm").disabled = false;
     }
 
     loadSalvo();

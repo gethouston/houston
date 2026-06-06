@@ -50,6 +50,7 @@ export WHATSAPP_PHONE_NUMBER_ID="1234567890"
 export WHATSAPP_RECIPIENT="573001234567"    # tu numero, con codigo de pais, sin + ni espacios
 export WHATSAPP_TEMPLATE="solicitud_permiso" # nombre de tu plantilla aprobada
 export WHATSAPP_TEMPLATE_LANG="es"           # el idioma EXACTO de la plantilla
+export WHATSAPP_OTP_TEMPLATE="codigo_verificacion" # plantilla del OTP (1 var = el codigo); opcional
 export WHATSAPP_VERIFY_TOKEN="centinela"     # lo eliges tu; va igual en Meta
 export CENTINELA_LOG="$PWD/engine/houston-centinela-mcp/ui/decisions.jsonl"
 ```
@@ -91,3 +92,21 @@ Cada paso aparece en vivo en la Salvoconducto UI (http://localhost:8848).
 
 Si el reply por chat falla en el escenario, el mensaje tambien funciona con los
 links `https://....trycloudflare.com/approve` y `/deny`.
+
+## 6. Verificacion del numero (root of trust)
+
+El numero que recibe las aprobaciones es el ancla de confianza: si cualquiera
+pudiera poner cualquier numero, el canal seria bypassable. Por eso un numero
+solo se acepta tras verificar un codigo enviado a el.
+
+- `WHATSAPP_RECIPIENT` siembra el numero (operador de confianza, fuera de banda).
+- La Salvoconducto UI (panel "Tu numero de aprobaciones") permite al usuario
+  enrolar su numero: escribe el numero, recibe un codigo por WhatsApp, lo
+  confirma, y recien ahi queda verificado. Endpoints: `POST /enroll/start`
+  (envia el codigo via `WHATSAPP_OTP_TEMPLATE` o texto libre en la ventana 24h)
+  y `POST /enroll/confirm`.
+- El agente nunca puede cambiarlo: el ancla vive server-side, fuera de su
+  alcance. Sin numero verificado, los step-up se bloquean (fail-closed).
+
+La plantilla OTP es una Utility con UNA variable, ej:
+`Tu codigo de verificacion de Centinela es {{1}}. No lo compartas.`
