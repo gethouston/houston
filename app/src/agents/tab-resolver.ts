@@ -7,6 +7,7 @@ import FilesTab from "../components/tabs/files-tab";
 import IntegrationsTab from "../components/tabs/integrations-tab";
 import JobDescriptionTab from "../components/tabs/job-description-tab";
 import RoutinesTab from "../components/tabs/routines-tab";
+import WorkflowsTab from "../components/tabs/workflows-tab";
 
 const BUILTIN_TABS: Record<string, ComponentType<TabProps>> = {
   board: BoardTab,
@@ -15,6 +16,7 @@ const BUILTIN_TABS: Record<string, ComponentType<TabProps>> = {
   integrations: IntegrationsTab,
   "job-description": JobDescriptionTab,
   routines: RoutinesTab,
+  workflows: WorkflowsTab,
 };
 
 export function resolveTabComponent(tab: AgentTab): ComponentType<TabProps> {

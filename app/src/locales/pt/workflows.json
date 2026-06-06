@@ -1,0 +1,81 @@
+{
+  "loading": "Carregando…",
+  "grid": {
+    "emptyTitle": "Missões em várias etapas",
+    "emptyDescription": "Fluxos de trabalho dividem metas grandes em etapas. Você revisa o plano e depois acompanha cada etapa.",
+    "newWorkflow": "Novo fluxo de trabalho",
+    "descriptionShort": "Missões sob demanda com um plano que você aprova antes do agente começar."
+  },
+  "row": {
+    "untitled": "Sem título",
+    "noRunsYet": "Nenhuma execução ainda",
+    "justRan": "acabou de executar",
+    "ranMinutesAgo": "há {{count}} min",
+    "ranHoursAgo": "há {{count}} h",
+    "ranDaysAgo": "há {{count}} d"
+  },
+  "runStatus": {
+    "planning": "Planejando",
+    "awaiting_approval": "Precisa de aprovação",
+    "running": "Em execução",
+    "done": "Concluído",
+    "error": "Erro",
+    "cancelled": "Cancelado"
+  },
+  "stepStatus": {
+    "pending": "Pendente",
+    "running": "Em execução",
+    "done": "Concluído",
+    "error": "Erro",
+    "cancelled": "Cancelado"
+  },
+  "editor": {
+    "newWorkflow": "Novo fluxo de trabalho",
+    "untitled": "Fluxo sem título",
+    "backAria": "Voltar aos fluxos de trabalho",
+    "run": "Executar",
+    "starting": "Iniciando…",
+    "stop": "Parar",
+    "resume": "Retomar",
+    "save": "Salvar alterações",
+    "create": "Criar fluxo de trabalho",
+    "delete": "Excluir fluxo de trabalho",
+    "moreAria": "Mais ações",
+    "nameLabel": "Nome",
+    "namePlaceholder": "ex.: Lançar o recurso",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Opcional, para que serve este fluxo",
+    "planPromptLabel": "Instrução de planejamento",
+    "planPromptPlaceholder": "O que o agente deve planejar e executar?",
+    "recentRuns": "Execuções recentes"
+  },
+  "activeRun": {
+    "title": "Execução ativa",
+    "completedTitle": "Resultado da execução",
+    "planning": "Planejando suas etapas…",
+    "synthesis": "Resumo",
+    "reviewPlan": "Revisar plano",
+    "approve": "Aprovar",
+    "cancel": "Cancelar"
+  },
+  "approval": {
+    "title": "Revisar plano",
+    "description": "Aprove este plano antes do agente começar a trabalhar.",
+    "approve": "Aprovar e executar",
+    "cancel": "Cancelar execução",
+    "approving": "Aprovando…"
+  },
+  "stepProgress": {
+    "runsTogether": "Estas etapas podem executar juntas"
+  },
+  "history": {
+    "empty": "Nenhuma execução ainda. Inicie uma com Executar.",
+    "resume": "Retomar",
+    "cancel": "Parar",
+    "view": "Ver",
+    "needsApproval": "Precisa da sua aprovação",
+    "steps_one": "{{count}} etapa",
+    "steps_other": "{{count}} etapas",
+    "stepsDone": "{{done}} de {{total}} etapas"
+  }
+}

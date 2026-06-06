@@ -35,6 +35,7 @@ import boardEn from "../locales/en/board.json";
 import agentsEn from "../locales/en/agents.json";
 import skillsEn from "../locales/en/skills.json";
 import routinesEn from "../locales/en/routines.json";
+import workflowsEn from "../locales/en/workflows.json";
 import integrationsEn from "../locales/en/integrations.json";
 import providersEn from "../locales/en/providers.json";
 import errorsEn from "../locales/en/errors.json";
@@ -52,6 +53,7 @@ import boardEs from "../locales/es/board.json";
 import agentsEs from "../locales/es/agents.json";
 import skillsEs from "../locales/es/skills.json";
 import routinesEs from "../locales/es/routines.json";
+import workflowsEs from "../locales/es/workflows.json";
 import integrationsEs from "../locales/es/integrations.json";
 import providersEs from "../locales/es/providers.json";
 import errorsEs from "../locales/es/errors.json";
@@ -69,6 +71,7 @@ import boardPt from "../locales/pt/board.json";
 import agentsPt from "../locales/pt/agents.json";
 import skillsPt from "../locales/pt/skills.json";
 import routinesPt from "../locales/pt/routines.json";
+import workflowsPt from "../locales/pt/workflows.json";
 import integrationsPt from "../locales/pt/integrations.json";
 import providersPt from "../locales/pt/providers.json";
 import errorsPt from "../locales/pt/errors.json";
@@ -126,6 +129,7 @@ const resources = {
     agents: agentsEn,
     skills: skillsEn,
     routines: routinesEn,
+    workflows: workflowsEn,
     integrations: integrationsEn,
     providers: providersEn,
     errors: errorsEn,
@@ -145,6 +149,7 @@ const resources = {
     agents: agentsEs,
     skills: skillsEs,
     routines: routinesEs,
+    workflows: workflowsEs,
     integrations: integrationsEs,
     providers: providersEs,
     errors: errorsEs,
@@ -164,6 +169,7 @@ const resources = {
     agents: agentsPt,
     skills: skillsPt,
     routines: routinesPt,
+    workflows: workflowsPt,
     integrations: integrationsPt,
     providers: providersPt,
     errors: errorsPt,
@@ -203,6 +209,7 @@ void i18n
       "agents",
       "skills",
       "routines",
+      "workflows",
       "integrations",
       "providers",
       "errors",

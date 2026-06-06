@@ -84,25 +84,31 @@ pub async fn ensure_and_upgrade(sink: DynEventSink, db: Database) {
         .flatten()
         .unwrap_or_default();
 
-    if last_version != APP_VERSION && install::is_installed() {
-        tracing::info!(
-            "[composio:lifecycle] Houston version changed ({} → {}) — upgrading CLI",
-            if last_version.is_empty() {
-                "none"
-            } else {
-                &last_version
-            },
-            APP_VERSION
-        );
+    // Standalone installs: keep the CLI current. We used to upgrade only
+    // when Houston's version changed, but an old `~/.composio/composio`
+    // (e.g. 0.2.23) keeps printing "Update available" to stderr on every
+    // agent invocation — PowerShell on Windows surfaces that as a false
+    // failure. `composio upgrade` is idempotent when already current.
+    if install::is_installed() {
+        let reason = if last_version != APP_VERSION {
+            format!(
+                "Houston version changed ({} → {})",
+                if last_version.is_empty() {
+                    "none".to_string()
+                } else {
+                    last_version.clone()
+                },
+                APP_VERSION
+            )
+        } else {
+            "standalone refresh".to_string()
+        };
+        tracing::info!("[composio:lifecycle] upgrading CLI ({reason})");
         match run_upgrade().await {
             Ok(()) => {
                 tracing::info!("[composio:lifecycle] CLI upgrade succeeded");
             }
             Err(e) => {
-                // Upgrade failure is non-fatal — the existing CLI still
-                // works. We log + record the version anyway so we don't
-                // retry every launch; the next Houston update tries
-                // again.
                 tracing::warn!("[composio:lifecycle] CLI upgrade failed (non-fatal): {e}");
             }
         }

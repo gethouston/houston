@@ -30,6 +30,17 @@ export {
   useCancelRoutineRun,
 } from "./use-routines";
 export {
+  useWorkflows,
+  useWorkflowRuns,
+  useCreateWorkflow,
+  useUpdateWorkflow,
+  useDeleteWorkflow,
+  useRunWorkflow,
+  useApproveWorkflowRun,
+  useCancelWorkflowRun,
+  useResumeWorkflowRun,
+} from "./use-workflows";
+export {
   useLearnings,
   useAddLearning,
   useRemoveLearning,

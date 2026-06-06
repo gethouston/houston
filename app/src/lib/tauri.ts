@@ -585,7 +585,9 @@ import * as activityData from "../data/activity";
 import * as configData from "../data/config";
 import type {
   NewRoutine as EngineNewRoutine,
+  NewWorkflow as EngineNewWorkflow,
   RoutineUpdate as EngineRoutineUpdate,
+  WorkflowUpdate as EngineWorkflowUpdate,
 } from "@houston-ai/engine-client";
 
 export const tauriRoutines = {
@@ -628,6 +630,45 @@ export const tauriRoutines = {
   syncScheduler: (agentPath: string) =>
     call<void>("sync_routine_scheduler", () =>
       getEngine().syncRoutineScheduler(agentPath),
+    ),
+};
+
+// ─── Workflows (engine-backed: CRUD + runs) ───────────────────────────
+
+export const tauriWorkflows = {
+  list: (agentPath: string) =>
+    call("list_workflows", () => getEngine().listWorkflows(agentPath)),
+  create: (agentPath: string, input: EngineNewWorkflow) =>
+    call("create_workflow", () => getEngine().createWorkflow(agentPath, input)),
+  update: (
+    agentPath: string,
+    workflowId: string,
+    updates: EngineWorkflowUpdate,
+  ) =>
+    call("update_workflow", () =>
+      getEngine().updateWorkflow(agentPath, workflowId, updates),
+    ),
+  delete: (agentPath: string, workflowId: string) =>
+    call<void>("delete_workflow", () =>
+      getEngine().deleteWorkflow(agentPath, workflowId),
+    ),
+  listRuns: (agentPath: string, workflowId?: string) =>
+    call("list_workflow_runs", () =>
+      getEngine().listWorkflowRuns(agentPath, workflowId),
+    ),
+  run: (agentPath: string, workflowId: string) =>
+    call("run_workflow", () => getEngine().runWorkflow(agentPath, workflowId)),
+  approveRun: (agentPath: string, runId: string) =>
+    call("approve_workflow_run", () =>
+      getEngine().approveWorkflowRun(agentPath, runId),
+    ),
+  cancelRun: (agentPath: string, runId: string) =>
+    call("cancel_workflow_run", () =>
+      getEngine().cancelWorkflowRun(agentPath, runId),
+    ),
+  resumeRun: (agentPath: string, runId: string) =>
+    call<void>("resume_workflow_run", () =>
+      getEngine().resumeWorkflowRun(agentPath, runId),
     ),
 };
 

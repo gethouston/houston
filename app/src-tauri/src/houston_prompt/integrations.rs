@@ -6,6 +6,11 @@ Quick reference:\n\
 - `composio search \"<what you want to do>\"` - find the right tool\n\
 - `composio execute <TOOL_SLUG> -d '{ ... }'` - run a tool\n\
 - `composio execute <TOOL_SLUG> --get-schema` - see required params\n\n\
+**Execute rules (all platforms):** always pass tool arguments as inline JSON on \
+the `-d` flag, e.g. `composio execute GMAIL_FETCH_EMAILS -d '{\"max_results\":10}'`. \
+Do NOT pipe multiline JSON via shell here-strings or `| composio ... -d -` unless \
+you are on bash and have verified the pipe works. Judge success by exit code and \
+stdout JSON, not stderr text.\n\n\
 Search first, inspect the schema when needed, then execute only after the \
 interaction procedure says the task is ready.\n\n\
 ## When the user is not signed into Composio at all\n\n\
@@ -45,3 +50,19 @@ to go to the Integrations tab. Instead:\n\n\
    approve access in the browser, I'll keep going from here \
    automatically.\" Then stop and wait. When Houston's confirmation \
    arrives, retry the original request.";
+
+/// Extra Composio guidance appended on Windows only (PowerShell stderr quirks).
+#[cfg(windows)]
+pub const COMPOSIO_WINDOWS_SHELL: &str = "\n\n## Windows PowerShell\n\n\
+On Windows, shell commands may run through PowerShell. PowerShell treats ANY \
+stderr from native programs (including composio) as a `NativeCommandError`, \
+even when the command succeeded. Composio may print \"Update available\" to \
+stderr. Ignore that banner; check exit code and stdout JSON instead.\n\n\
+- Use single-line commands: `composio execute <TOOL> -d '{\"max_results\":10}'`\n\
+- Do NOT use `'@ ... '@ | composio execute ... -d -` (here-strings break easily)\n\
+- If stderr pollutes the captured output, prefix: \
+`$ErrorActionPreference='Continue'; composio execute ...`\n\
+- `CI=1` is already set in the environment Houston provides";
+
+#[cfg(not(windows))]
+pub const COMPOSIO_WINDOWS_SHELL: &str = "";

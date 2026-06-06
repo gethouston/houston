@@ -177,7 +177,7 @@ fn configure_claude_command(
     disable_builtin_tools: bool,
     disable_all_tools: bool,
 ) {
-    cmd.env("PATH", super::claude_path::shell_path());
+    super::provider_env::apply_provider_subprocess_env(cmd);
     cmd.arg("-p")
         .arg("--output-format")
         .arg("stream-json")

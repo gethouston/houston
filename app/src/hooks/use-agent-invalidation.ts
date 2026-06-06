@@ -51,6 +51,14 @@ export function useAgentInvalidation() {
         case "RoutineRunsChanged":
           qc.invalidateQueries({ queryKey: ["routine-runs", p.data.agent_path] });
           break;
+        case "WorkflowsChanged":
+          qc.invalidateQueries({ queryKey: queryKeys.workflows(p.data.agent_path) });
+          break;
+        case "WorkflowRunsChanged":
+        case "WorkflowPlanProposed":
+        case "WorkflowStepChanged":
+          qc.invalidateQueries({ queryKey: ["workflow-runs", p.data.agent_path] });
+          break;
         case "LearningsChanged":
           qc.invalidateQueries({ queryKey: queryKeys.learnings(p.data.agent_path) });
           break;

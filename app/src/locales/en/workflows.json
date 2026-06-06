@@ -1,0 +1,81 @@
+{
+  "loading": "Loading…",
+  "grid": {
+    "emptyTitle": "Multi-step missions",
+    "emptyDescription": "Workflows break big goals into steps. You review the plan, then watch each step run.",
+    "newWorkflow": "New workflow",
+    "descriptionShort": "On-demand missions with a plan you approve before the agent starts."
+  },
+  "row": {
+    "untitled": "Untitled",
+    "noRunsYet": "No runs yet",
+    "justRan": "just ran",
+    "ranMinutesAgo": "ran {{count}}m ago",
+    "ranHoursAgo": "ran {{count}}h ago",
+    "ranDaysAgo": "ran {{count}}d ago"
+  },
+  "runStatus": {
+    "planning": "Planning",
+    "awaiting_approval": "Needs approval",
+    "running": "Running",
+    "done": "Done",
+    "error": "Error",
+    "cancelled": "Cancelled"
+  },
+  "stepStatus": {
+    "pending": "Pending",
+    "running": "Running",
+    "done": "Done",
+    "error": "Error",
+    "cancelled": "Cancelled"
+  },
+  "editor": {
+    "newWorkflow": "New workflow",
+    "untitled": "Untitled workflow",
+    "backAria": "Back to workflows",
+    "run": "Run",
+    "starting": "Starting…",
+    "stop": "Stop",
+    "resume": "Resume",
+    "save": "Save changes",
+    "create": "Create workflow",
+    "delete": "Delete workflow",
+    "moreAria": "More actions",
+    "nameLabel": "Name",
+    "namePlaceholder": "e.g. Ship the feature",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Optional, what this workflow is for",
+    "planPromptLabel": "Planning prompt",
+    "planPromptPlaceholder": "What should the agent plan and execute?",
+    "recentRuns": "Recent runs"
+  },
+  "activeRun": {
+    "title": "Active run",
+    "completedTitle": "Run result",
+    "planning": "Planning your steps…",
+    "synthesis": "Summary",
+    "reviewPlan": "Review plan",
+    "approve": "Approve",
+    "cancel": "Cancel"
+  },
+  "approval": {
+    "title": "Review plan",
+    "description": "Approve this plan before the agent starts working.",
+    "approve": "Approve and run",
+    "cancel": "Cancel run",
+    "approving": "Approving…"
+  },
+  "stepProgress": {
+    "runsTogether": "These steps can run together"
+  },
+  "history": {
+    "empty": "No runs yet. Start one with Run.",
+    "resume": "Resume",
+    "cancel": "Stop",
+    "view": "View",
+    "needsApproval": "Needs your approval",
+    "steps_one": "{{count}} step",
+    "steps_other": "{{count}} steps",
+    "stepsDone": "{{done}} of {{total}} steps"
+  }
+}
