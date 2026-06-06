@@ -105,6 +105,10 @@ module.
 | POST | `/v1/workspaces/:id/agents/:agent_id/rename` | Rename agent |
 | POST | `/v1/workspaces/install-from-github` | Import workspace template |
 
+`CreateAgent` accepts optional `policy` matching `.houston/policy.json`. If
+omitted, the engine seeds the default restricted policy. If present, the policy
+is written before `seed_agent()` so seeding does not overwrite it.
+
 **Sessions** (`agent_path` path-segment, URL-encoded)
 | Method | Path | Description |
 |---|---|---|
@@ -113,6 +117,13 @@ module.
 | POST | `/v1/agents/:agent_path/sessions/:key:cancel` | SIGTERM CLI |
 | GET | `/v1/agents/:agent_path/sessions/:key/history` | Load chat history |
 | POST | `/v1/sessions/summarize` | Activity title/description |
+
+`POST /v1/agents/:agent_path/sessions` resolves the final `workingDir`
+(`workingDir` body field or the agent directory) and validates it against
+`.houston/policy.json` before accepting the turn. Paths outside the agent's
+allowed roots return `FORBIDDEN` with `details.kind = "agent_policy_denied"`.
+The policy also drives provider tool configuration: restricted agents use the
+provider sandbox where supported and avoid unrestricted runner flags.
 
 `POST /v1/sessions/summarize` accepts `{ message, agentPath?, provider?, model? }`.
 It resolves provider/model from explicit fields, then `agentPath`, then default
@@ -374,7 +385,7 @@ field. When omitted, the engine falls back to whatever the embedding
 app passed in via `HOUSTON_APP_SYSTEM_PROMPT` at subprocess spawn. The
 engine has no hardcoded product copy — it only assembles generic
 per-agent context from disk (working directory, mode overrides,
-skills index, integrations). Final prompt =
+agent access policy, skills index, integrations). Final prompt =
 `<product_prompt>\n\n---\n\n<agent_context>`. Onboarding sessions use
 `HOUSTON_APP_ONBOARDING_PROMPT` as an additional suffix.
 

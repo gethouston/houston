@@ -23,6 +23,7 @@ If app-specific → `.houston/`.
       routine_runs.json + .schema.json
     config/
       config.json + .schema.json
+    policy.json                 AgentPolicy access boundary (allowed roots, shared context opt-in, tool mode)
     learnings/
       learnings.json + .schema.json   ({id, text, created_at})
       # Legacy `.houston/memory/learnings.md` auto-migrated on startup
@@ -84,6 +85,35 @@ from being retried by the provider that rejected it.
 
 ## Atomic writes
 All writes: unique temp file + rename. Path-traversal safe via `houston-agent-files::safe_relative`.
+
+## Agent access policy
+
+Every agent has `.houston/policy.json`, seeded by
+`engine/houston-engine-core/src/agent_policy.rs`. Missing files default to:
+
+```json
+{
+  "version": 1,
+  "allowed_roots": ["."],
+  "denied_roots": [],
+  "include_workspace_context": false,
+  "allowed_integrations": [],
+  "denied_integrations": [],
+  "tool_mode": "restricted"
+}
+```
+
+The default is intentionally narrow: an agent can work inside its own folder,
+but workspace-level `WORKSPACE.md` / `USER.md` context is NOT injected unless
+`include_workspace_context` is true. Project-file REST operations reject
+absolute paths, `..`, and paths outside the policy roots. Session start rejects
+a `working_dir` outside the policy roots with `FORBIDDEN`.
+
+Tool mode mapping lives in `agent_policy::tool_config`: `restricted` enables
+provider sandboxing where available and disables Claude write tools;
+`conversation_only` disables all Claude tools; `full` preserves the old
+unrestricted runner behavior. This is an MVP boundary, not a full OS sandbox
+for every provider.
 
 ## Activity statuses
 `running` · `needs_you` · `done` · `error` · `archived`
