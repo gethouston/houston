@@ -103,13 +103,13 @@ fn repair_json<T: DeserializeOwned + Serialize + Default>(
         return Ok(Some(value));
     }
 
-    if name == "routine_runs" {
+    if matches!(name, "routine_runs" | "workflow_runs") {
         let value = T::default();
         backup_and_write(root, name, contents, &value)?;
         tracing::warn!(
             file = rel,
             error = %err,
-            "reset corrupt routine run history after preserving backup"
+            "reset corrupt run history after preserving backup"
         );
         return Ok(Some(value));
     }
