@@ -75,7 +75,7 @@ pub(crate) async fn spawn_claude(
         disable_builtin_tools,
         disable_all_tools,
     );
-    let outcome = run_cli_process(tx, &mut cmd, &prompt, provider).await;
+    let outcome = run_cli_process(tx, &mut cmd, &prompt, provider, working_dir.as_deref()).await;
     if should_retry_fresh_after_resume_failure(outcome, resume_session_id.as_deref()) {
         tracing::warn!(
             "[houston:session] claude resume failed ({outcome:?}); retrying fresh"
@@ -142,7 +142,8 @@ async fn retry_fresh(
         disable_builtin_tools,
         disable_all_tools,
     );
-    let retry_outcome = run_cli_process(tx, &mut fresh_cmd, prompt, provider).await;
+    let retry_outcome =
+        run_cli_process(tx, &mut fresh_cmd, prompt, provider, working_dir).await;
     if retry_outcome == CliRunOutcome::ProviderRequestMalformedJson {
         send_malformed_provider_json_status(tx);
     } else if retry_outcome == CliRunOutcome::ClaudeResumeCorrupted {

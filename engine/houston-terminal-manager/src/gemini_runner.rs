@@ -119,7 +119,7 @@ pub(crate) async fn spawn_gemini(
     }
 
     let composed = compose_gemini_prompt(system_prompt.as_deref(), &prompt);
-    run_cli_process(tx, &mut cmd, &composed, provider).await;
+    run_cli_process(tx, &mut cmd, &composed, provider, working_dir.as_deref()).await;
 }
 
 fn build_gemini_command(
