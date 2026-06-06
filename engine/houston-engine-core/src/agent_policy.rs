@@ -227,6 +227,29 @@ pub fn normalize_for_policy(path: &Path) -> CoreResult<PathBuf> {
     Ok(canonical_parent.join(file_name))
 }
 
+/// Providers whose `restricted` mode is enforced by a real read-confining
+/// boundary (the houston_files gateway). Codex/Gemini are not here yet — until
+/// a provider joins this set, `restricted` must refuse to run on it rather than
+/// make a false isolation promise.
+pub fn restricted_supported(provider_id: &str) -> bool {
+    provider_id == "anthropic"
+}
+
+/// Returns an error when `policy` requests `restricted` on a provider that
+/// cannot enforce it. Call at session start, before spawning the subprocess.
+pub fn ensure_provider_supports_mode(provider_id: &str, policy: &AgentPolicy) -> CoreResult<()> {
+    if matches!(policy.tool_mode, ToolMode::Restricted) && !restricted_supported(provider_id) {
+        return Err(CoreError::Labeled {
+            code: ErrorCode::Forbidden,
+            kind: "restricted_unsupported_provider",
+            message: format!(
+                "This agent's privacy mode isn't supported on its current AI yet ({provider_id})."
+            ),
+        });
+    }
+    Ok(())
+}
+
 pub fn tool_config(policy: &AgentPolicy) -> SessionToolConfig {
     match policy.tool_mode {
         ToolMode::Full => SessionToolConfig::default(),
@@ -335,5 +358,25 @@ mod tests {
         std::fs::create_dir_all(&root).unwrap();
         let other = d.path().join("other").join(".houston").join("x");
         assert!(!is_control_plane(&root, &other));
+    }
+
+    #[test]
+    fn restricted_supported_only_on_anthropic() {
+        assert!(restricted_supported("anthropic"));
+        assert!(!restricted_supported("openai"));
+        assert!(!restricted_supported("gemini"));
+    }
+
+    #[test]
+    fn ensure_provider_mode_blocks_restricted_codex_allows_full() {
+        let restricted = AgentPolicy::default(); // tool_mode == Restricted
+        assert_eq!(
+            ensure_provider_supports_mode("openai", &restricted).unwrap_err().code(),
+            ErrorCode::Forbidden
+        );
+        ensure_provider_supports_mode("anthropic", &restricted).unwrap();
+        let full = AgentPolicy { tool_mode: ToolMode::Full, ..AgentPolicy::default() };
+        ensure_provider_supports_mode("openai", &full).unwrap();
+        ensure_provider_supports_mode("gemini", &full).unwrap();
     }
 }

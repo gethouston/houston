@@ -239,6 +239,7 @@ async fn run_start(
 
     agent_prompt::seed_agent(&agent_dir).map_err(crate::CoreError::Internal)?;
     let policy = crate::agent_policy::load(&agent_dir)?;
+    crate::agent_policy::ensure_provider_supports_mode(provider.id(), &policy)?;
     policy.ensure_path_allowed(&agent_dir, &working_dir)?;
     let tool_config = crate::agent_policy::tool_config(&policy);
     let mcp_config = crate::agent_file_gateway::prepare_mcp_config(

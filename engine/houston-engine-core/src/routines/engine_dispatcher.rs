@@ -96,6 +96,12 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
         };
 
         let resolved = sessions::resolve_provider(ctx.working_dir);
+        if let Err(e) = crate::agent_policy::ensure_provider_supports_mode(resolved.provider.id(), &policy) {
+            return DispatchOutcome {
+                response_text: String::new(),
+                error: Some(e.to_string()),
+            };
+        }
         let audit = match crate::agent_audit::AgentAudit::start(
             ctx.working_dir,
             ctx.working_dir,
