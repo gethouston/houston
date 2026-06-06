@@ -52,7 +52,7 @@ async fn main() {
         Ok("1") | Ok("true")
     );
     let log_path = std::env::var_os("CENTINELA_LOG").map(std::path::PathBuf::from);
-    let mut state = ServerState::new(caps, duress).with_log(log_path);
+    let mut state = ServerState::new(caps, duress).with_log(log_path.clone());
     eprintln!(
         "[centinela] gateway MCP activo para '{}' (duress={duress})",
         state.caps.agent_id
@@ -93,6 +93,7 @@ async fn main() {
                 verify_token,
                 n.clone(),
                 enrollment.clone(),
+                log_path.clone(),
             ));
             eprintln!(
                 "[centinela] approver + auditor WhatsApp activos; webhook + enrolamiento en :{port}"

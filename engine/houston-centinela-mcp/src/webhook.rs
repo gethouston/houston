@@ -15,6 +15,7 @@ use serde::Deserialize;
 use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
@@ -24,21 +25,24 @@ struct Web {
     verify_token: String,
     notifier: Arc<dyn Notifier>,
     enrollment: Arc<Enrollment>,
+    log_path: Option<PathBuf>,
 }
 
-/// Serve the webhook, fallback links and enrollment endpoints on `addr`.
+/// Serve the webhook, fallback links, enrollment and decisions endpoints.
 pub async fn serve(
     addr: SocketAddr,
     registry: Arc<ApprovalRegistry>,
     verify_token: String,
     notifier: Arc<dyn Notifier>,
     enrollment: Arc<Enrollment>,
+    log_path: Option<PathBuf>,
 ) {
     let web = Web {
         registry,
         verify_token,
         notifier,
         enrollment,
+        log_path,
     };
     let app = Router::new()
         .route("/webhook", get(verify).post(incoming))
@@ -46,6 +50,7 @@ pub async fn serve(
         .route("/deny", get(deny))
         .route("/enroll/start", post(enroll_start))
         .route("/enroll/confirm", post(enroll_confirm))
+        .route("/decisions", get(decisions))
         .layer(CorsLayer::permissive())
         .with_state(web);
     let listener = match tokio::net::TcpListener::bind(addr).await {
@@ -94,6 +99,22 @@ async fn approve(State(web): State<Web>) -> Html<&'static str> {
 async fn deny(State(web): State<Web>) -> Html<&'static str> {
     web.registry.resolve_latest(false);
     Html("<h2>Rechazado.</h2><p>Puedes cerrar esta pestana.</p>")
+}
+
+/// The decision journal as a JSON array (oldest first), for the Salvoconducto UI
+/// and the Houston tab to render the live log. Empty when nothing logged yet.
+async fn decisions(State(web): State<Web>) -> Json<Vec<Value>> {
+    let entries = web
+        .log_path
+        .as_ref()
+        .and_then(|path| std::fs::read_to_string(path).ok())
+        .map(|raw| {
+            raw.lines()
+                .filter_map(|line| serde_json::from_str::<Value>(line).ok())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    Json(entries)
 }
 
 #[derive(Deserialize)]
