@@ -5,7 +5,7 @@
 
 use crate::approval::ApprovalRegistry;
 use crate::enrollment::Enrollment;
-use crate::whatsapp::WhatsApp;
+use crate::notifier::Notifier;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::response::Html;
@@ -22,7 +22,7 @@ use tower_http::cors::CorsLayer;
 struct Web {
     registry: Arc<ApprovalRegistry>,
     verify_token: String,
-    whatsapp: Arc<WhatsApp>,
+    notifier: Arc<dyn Notifier>,
     enrollment: Arc<Enrollment>,
 }
 
@@ -31,13 +31,13 @@ pub async fn serve(
     addr: SocketAddr,
     registry: Arc<ApprovalRegistry>,
     verify_token: String,
-    whatsapp: Arc<WhatsApp>,
+    notifier: Arc<dyn Notifier>,
     enrollment: Arc<Enrollment>,
 ) {
     let web = Web {
         registry,
         verify_token,
-        whatsapp,
+        notifier,
         enrollment,
     };
     let app = Router::new()
@@ -121,7 +121,7 @@ async fn enroll_start(
         );
     }
     let code = web.enrollment.start(number);
-    match web.whatsapp.send_otp(number, &code).await {
+    match web.notifier.send_otp(number, &code).await {
         Ok(()) => (StatusCode::OK, Json(json!({ "status": "sent" }))),
         Err(e) => (
             StatusCode::BAD_GATEWAY,

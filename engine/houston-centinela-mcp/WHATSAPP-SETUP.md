@@ -51,6 +51,7 @@ export WHATSAPP_RECIPIENT="573001234567"    # tu numero, con codigo de pais, sin
 export WHATSAPP_TEMPLATE="solicitud_permiso" # nombre de tu plantilla aprobada
 export WHATSAPP_TEMPLATE_LANG="es"           # el idioma EXACTO de la plantilla
 export WHATSAPP_OTP_TEMPLATE="codigo_verificacion" # plantilla del OTP (1 var = el codigo); opcional
+export WHATSAPP_ALERT_TEMPLATE="alerta_seguridad"  # plantilla de alerta del Auditor (3 vars: agente, permiso, razon); opcional
 export WHATSAPP_VERIFY_TOKEN="centinela"     # lo eliges tu; va igual en Meta
 export CENTINELA_LOG="$PWD/engine/houston-centinela-mcp/ui/decisions.jsonl"
 ```

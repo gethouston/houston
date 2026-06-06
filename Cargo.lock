@@ -2507,6 +2507,7 @@ dependencies = [
 name = "houston-centinela-mcp"
 version = "0.4.19"
 dependencies = [
+ "async-trait",
  "axum 0.7.9",
  "houston-centinela",
  "rand 0.8.5",

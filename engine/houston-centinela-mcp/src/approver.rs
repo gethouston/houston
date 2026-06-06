@@ -1,25 +1,24 @@
 //! The human approver: turns a `STEP_UP` verdict into a WhatsApp question to the
-//! verified trust anchor and waits for the owner's SI or NO. This is the plan's
-//! step-up auth, made real and reachable from a phone.
+//! verified trust anchor and waits for the owner's SI or NO.
 
 use crate::approval::{ApprovalRegistry, Outcome};
 use crate::enrollment::Enrollment;
-use crate::whatsapp::WhatsApp;
+use crate::notifier::Notifier;
 use std::sync::Arc;
 use std::time::Duration;
 
 pub struct Approver {
     registry: Arc<ApprovalRegistry>,
-    whatsapp: Arc<WhatsApp>,
+    notifier: Arc<dyn Notifier>,
     enrollment: Arc<Enrollment>,
     ttl: Duration,
 }
 
 impl Approver {
-    pub fn new(whatsapp: Arc<WhatsApp>, enrollment: Arc<Enrollment>) -> Self {
+    pub fn new(notifier: Arc<dyn Notifier>, enrollment: Arc<Enrollment>) -> Self {
         Self {
             registry: Arc::new(ApprovalRegistry::new()),
-            whatsapp,
+            notifier,
             enrollment,
             ttl: Duration::from_secs(120),
         }
@@ -38,12 +37,71 @@ impl Approver {
             eprintln!("[centinela] no hay numero verificado; el step-up se bloquea (fail-closed)");
             return Outcome::TimedOut;
         };
-        if let Err(e) = self.whatsapp.send_approval(&to, agent, capability).await {
+        if let Err(e) = self.notifier.send_approval(&to, agent, capability).await {
             eprintln!("[centinela] no se pudo enviar la solicitud de aprobacion: {e}");
             return Outcome::TimedOut;
         }
         let (id, rx) = self.registry.open();
         eprintln!("[centinela] aprobacion #{id} enviada por WhatsApp; esperando SI/NO");
         self.registry.wait(id, rx, self.ttl).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::notifier::mock::MockNotifier;
+
+    fn approver(mock: Arc<MockNotifier>, verified: Option<&str>) -> Approver {
+        Approver::new(
+            mock,
+            Arc::new(Enrollment::new(verified.map(str::to_string))),
+        )
+    }
+
+    /// Resolve the (single) pending approval with `answer` once it appears.
+    fn resolve_when_ready(registry: Arc<ApprovalRegistry>, answer: bool) {
+        tokio::spawn(async move {
+            loop {
+                if registry.resolve_latest(answer).is_some() {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_millis(5)).await;
+            }
+        });
+    }
+
+    #[tokio::test]
+    async fn yes_approves_and_sends_one_request() {
+        let mock = Arc::new(MockNotifier::new());
+        let ap = approver(mock.clone(), Some("573058166527"));
+        resolve_when_ready(ap.registry(), true);
+        assert_eq!(
+            ap.request("asistente-seguro", "email:send").await,
+            Outcome::Approved
+        );
+        assert_eq!(mock.approval_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn no_denies() {
+        let mock = Arc::new(MockNotifier::new());
+        let ap = approver(mock.clone(), Some("573058166527"));
+        resolve_when_ready(ap.registry(), false);
+        assert_eq!(ap.request("a", "email:send").await, Outcome::Denied);
+    }
+
+    #[tokio::test]
+    async fn no_verified_number_is_fail_closed() {
+        let mock = Arc::new(MockNotifier::new());
+        let ap = approver(mock.clone(), None);
+        assert_eq!(ap.request("a", "email:send").await, Outcome::TimedOut);
+        assert_eq!(mock.approval_count(), 0); // nothing sent
+    }
+
+    #[tokio::test]
+    async fn send_failure_is_fail_closed() {
+        let ap = approver(Arc::new(MockNotifier::failing()), Some("573058166527"));
+        assert_eq!(ap.request("a", "email:send").await, Outcome::TimedOut);
     }
 }

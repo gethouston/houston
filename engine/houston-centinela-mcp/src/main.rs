@@ -12,8 +12,10 @@
 
 mod approval;
 mod approver;
+mod auditor;
 mod enrollment;
 mod journal;
+mod notifier;
 mod server;
 mod state;
 mod tools;
@@ -21,6 +23,7 @@ mod webhook;
 mod whatsapp;
 
 use houston_centinela::Capabilities;
+use notifier::Notifier;
 use state::ServerState;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
@@ -63,14 +66,19 @@ async fn main() {
             .filter(|v| !v.trim().is_empty()),
     ));
 
-    // WhatsApp approver for step-ups, only if credentials are present. When it
-    // is active we also serve the reply webhook + enrollment endpoints.
-    let whatsapp = whatsapp::WhatsApp::from_env().map(Arc::new);
-    let approver = whatsapp
+    // WhatsApp is the Notifier. The Approver handles step-ups; the Auditor
+    // alerts the owner on bypass attempts. Both talk through it; absent
+    // credentials disable the human channels (step-up blocks, no alerts).
+    let notifier: Option<Arc<dyn Notifier>> =
+        whatsapp::WhatsApp::from_env().map(|wa| Arc::new(wa) as Arc<dyn Notifier>);
+    let approver = notifier
         .as_ref()
-        .map(|wa| approver::Approver::new(wa.clone(), enrollment.clone()));
-    match (&approver, &whatsapp) {
-        (Some(ap), Some(wa)) => {
+        .map(|n| approver::Approver::new(n.clone(), enrollment.clone()));
+    let auditor = notifier
+        .as_ref()
+        .map(|n| auditor::Auditor::new(n.clone(), enrollment.clone()));
+    match (&approver, &notifier) {
+        (Some(ap), Some(n)) => {
             let port: u16 = std::env::var("CENTINELA_WEBHOOK_PORT")
                 .ok()
                 .and_then(|p| p.parse().ok())
@@ -82,15 +90,15 @@ async fn main() {
                 addr,
                 ap.registry(),
                 verify_token,
-                wa.clone(),
+                n.clone(),
                 enrollment.clone(),
             ));
             eprintln!(
-                "[centinela] approver WhatsApp activo; webhook + enrolamiento en :{port}"
+                "[centinela] approver + auditor WhatsApp activos; webhook + enrolamiento en :{port}"
             );
         }
         _ => eprintln!(
-            "[centinela] approver WhatsApp desactivado (faltan WHATSAPP_TOKEN/PHONE_NUMBER_ID); los step-up solo bloquean"
+            "[centinela] canales WhatsApp desactivados (faltan WHATSAPP_TOKEN/PHONE_NUMBER_ID); el step-up bloquea y no hay alertas"
         ),
     }
 
@@ -116,9 +124,11 @@ async fn main() {
                 continue;
             }
         };
-        if let Some(response) =
-            server::handle_request(&mut state, approver.as_ref(), &request).await
-        {
+        let hooks = server::Hooks {
+            approver: approver.as_ref(),
+            auditor: auditor.as_ref(),
+        };
+        if let Some(response) = server::handle_request(&mut state, &hooks, &request).await {
             let mut payload = serde_json::to_string(&response).expect("response is serializable");
             payload.push('\n');
             if stdout.write_all(payload.as_bytes()).await.is_err() || stdout.flush().await.is_err()

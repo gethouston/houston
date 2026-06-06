@@ -1,21 +1,30 @@
 //! MCP server: JSON-RPC 2.0 dispatch over a single mutable session.
 //!
 //! [`handle_request`] is async because a `STEP_UP` verdict may escalate to a
-//! human over WhatsApp and wait for the answer. With no approver configured it
-//! stays a pure decision function: feed it request values and assert the reply.
+//! human over WhatsApp, and the Auditor may alert the owner on a bypass attempt.
+//! With no hooks wired it stays a pure decision function: feed it request values
+//! and assert the reply.
 
 use crate::approver::Approver;
+use crate::auditor::Auditor;
 use crate::tools;
 use crate::{approval::Outcome, journal, state::ServerState};
 use houston_centinela::{evaluate, Decision};
 use serde_json::{json, Value};
 
+/// The optional human channels wired into the gateway: the step-up approver and
+/// the security Auditor. Both default to absent (used by tests).
+#[derive(Default)]
+pub struct Hooks<'a> {
+    pub approver: Option<&'a Approver>,
+    pub auditor: Option<&'a Auditor>,
+}
+
 /// Handle one JSON-RPC message. Returns the response value, or `None` for
-/// notifications (no `id`), which expect no reply. `approver` is the optional
-/// human escalation channel for step-ups.
+/// notifications (no `id`), which expect no reply.
 pub async fn handle_request(
     state: &mut ServerState,
-    approver: Option<&Approver>,
+    hooks: &Hooks<'_>,
     req: &Value,
 ) -> Option<Value> {
     let method = req.get("method").and_then(Value::as_str).unwrap_or("");
@@ -25,7 +34,7 @@ pub async fn handle_request(
         "notifications/initialized" | "initialized" => None,
         "ping" => Some(ok(id, json!({}))),
         "tools/list" => Some(ok(id, json!({ "tools": tools::list_json() }))),
-        "tools/call" => Some(handle_tools_call(state, approver, id, req).await),
+        "tools/call" => Some(handle_tools_call(state, hooks, id, req).await),
         _ if id.is_none() => None,
         _ => Some(err(id, -32601, &format!("metodo no soportado: {method}"))),
     }
@@ -45,10 +54,11 @@ fn initialize_result(state: &mut ServerState, req: &Value) -> Value {
     })
 }
 
-/// The heart of the gateway: gate the call, then run it, block it, or escalate.
+/// The heart of the gateway: gate the call, let the Auditor review it, then run
+/// it, block it, or escalate.
 async fn handle_tools_call(
     state: &mut ServerState,
-    approver: Option<&Approver>,
+    hooks: &Hooks<'_>,
     id: Option<Value>,
     req: &Value,
 ) -> Value {
@@ -82,6 +92,13 @@ async fn handle_tools_call(
         journal::append(path, spec.name, spec.capability, &decision);
     }
 
+    // The Auditor reviews every verdict and alerts the owner on bypass attempts.
+    if let Some(auditor) = hooks.auditor {
+        auditor
+            .audit(&state.caps.agent_id, spec.capability, &decision)
+            .await;
+    }
+
     match decision {
         Decision::Allow => {
             tools::apply_side_effects(spec, state);
@@ -90,7 +107,7 @@ async fn handle_tools_call(
         Decision::Deny { reason } => {
             tool_result(id, &format!("Centinela BLOQUEADO. {reason}"), true)
         }
-        Decision::StepUp { reason } => match approver {
+        Decision::StepUp { reason } => match hooks.approver {
             Some(ap) => escalate(state, ap, spec, &args, id).await,
             None => tool_result(
                 id,
@@ -166,7 +183,10 @@ fn tool_result(id: Option<Value>, text: &str, is_error: bool) -> Value {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::enrollment::Enrollment;
+    use crate::notifier::mock::MockNotifier;
     use houston_centinela::Capabilities;
+    use std::sync::Arc;
 
     const SALVO: &str = r#"{
       "agent_id": "asistente-seguro",
@@ -199,7 +219,9 @@ mod tests {
         let mut s = state(false);
         let req = json!({"jsonrpc":"2.0","id":0,"method":"initialize",
             "params":{"protocolVersion":"2025-06-18","capabilities":{}}});
-        let resp = handle_request(&mut s, None, &req).await.unwrap();
+        let resp = handle_request(&mut s, &Hooks::default(), &req)
+            .await
+            .unwrap();
         assert_eq!(resp["result"]["protocolVersion"], "2025-06-18");
         assert_eq!(resp["result"]["serverInfo"]["name"], "houston-centinela");
         assert!(s.initialized);
@@ -209,7 +231,9 @@ mod tests {
     async fn initialized_notification_gets_no_reply() {
         let mut s = state(false);
         let req = json!({"jsonrpc":"2.0","method":"notifications/initialized"});
-        assert!(handle_request(&mut s, None, &req).await.is_none());
+        assert!(handle_request(&mut s, &Hooks::default(), &req)
+            .await
+            .is_none());
     }
 
     #[tokio::test]
@@ -217,7 +241,7 @@ mod tests {
         let mut s = state(false);
         let resp = handle_request(
             &mut s,
-            None,
+            &Hooks::default(),
             &json!({"jsonrpc":"2.0","id":2,"method":"tools/list"}),
         )
         .await
@@ -236,7 +260,7 @@ mod tests {
     #[tokio::test]
     async fn allows_a_legitimate_balance_read() {
         let mut s = state(false);
-        let resp = handle_request(&mut s, None, &call("check_balance", json!({})))
+        let resp = handle_request(&mut s, &Hooks::default(), &call("check_balance", json!({})))
             .await
             .unwrap();
         assert_eq!(resp["result"]["isError"], false);
@@ -247,7 +271,7 @@ mod tests {
         let mut s = state(false);
         let resp = handle_request(
             &mut s,
-            None,
+            &Hooks::default(),
             &call("transfer_money", json!({"to":"555","amount":9999999})),
         )
         .await
@@ -261,7 +285,7 @@ mod tests {
     #[tokio::test]
     async fn demo2_duress_blocks_even_a_safe_read() {
         let mut s = state(true);
-        let resp = handle_request(&mut s, None, &call("check_balance", json!({})))
+        let resp = handle_request(&mut s, &Hooks::default(), &call("check_balance", json!({})))
             .await
             .unwrap();
         assert_eq!(resp["result"]["isError"], true);
@@ -271,10 +295,10 @@ mod tests {
     #[tokio::test]
     async fn demo3_tainted_read_then_egress_is_blocked() {
         let mut s = state(false);
-        handle_request(&mut s, None, &call("read_inbox", json!({}))).await;
+        handle_request(&mut s, &Hooks::default(), &call("read_inbox", json!({}))).await;
         let resp = handle_request(
             &mut s,
-            None,
+            &Hooks::default(),
             &call(
                 "send_email",
                 json!({"to":"cobros@dominio-malo.example","subject":"x","body":"y"}),
@@ -291,7 +315,7 @@ mod tests {
         let mut s = state(false);
         let resp = handle_request(
             &mut s,
-            None,
+            &Hooks::default(),
             &call(
                 "send_email",
                 json!({"to":"noreply@api.santoria.app","subject":"x","body":"y"}),
@@ -306,9 +330,51 @@ mod tests {
     #[tokio::test]
     async fn unknown_tool_is_a_visible_error() {
         let mut s = state(false);
-        let resp = handle_request(&mut s, None, &call("rm_rf", json!({})))
+        let resp = handle_request(&mut s, &Hooks::default(), &call("rm_rf", json!({})))
             .await
             .unwrap();
         assert_eq!(resp["result"]["isError"], true);
+    }
+
+    // ── Auditor wired into the gateway (mock notifier, no network) ───────
+
+    #[tokio::test]
+    async fn gateway_auditor_alerts_owner_on_blocked_bypass() {
+        let mock = Arc::new(MockNotifier::new());
+        let auditor = Auditor::new(
+            mock.clone(),
+            Arc::new(Enrollment::new(Some("573058166527".into()))),
+        );
+        let hooks = Hooks {
+            approver: None,
+            auditor: Some(&auditor),
+        };
+        let mut s = state(false);
+        let resp = handle_request(
+            &mut s,
+            &hooks,
+            &call("transfer_money", json!({"to":"555","amount":1})),
+        )
+        .await
+        .unwrap();
+        assert_eq!(resp["result"]["isError"], true);
+        // The bypass attempt raised exactly one security alert to the owner.
+        assert_eq!(mock.alert_count(), 1);
+    }
+
+    #[tokio::test]
+    async fn gateway_auditor_stays_silent_on_allow() {
+        let mock = Arc::new(MockNotifier::new());
+        let auditor = Auditor::new(
+            mock.clone(),
+            Arc::new(Enrollment::new(Some("573058166527".into()))),
+        );
+        let hooks = Hooks {
+            approver: None,
+            auditor: Some(&auditor),
+        };
+        let mut s = state(false);
+        handle_request(&mut s, &hooks, &call("check_balance", json!({}))).await;
+        assert_eq!(mock.alert_count(), 0);
     }
 }
