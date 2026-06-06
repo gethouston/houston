@@ -118,6 +118,24 @@ export interface AgentPolicy {
   tool_mode?: AgentToolMode;
 }
 
+export type AgentAuditVerdict = "allowed" | "denied" | "unknown";
+
+export interface AgentAuditAccess {
+  raw: string;
+  resolved?: string | null;
+  verdict: AgentAuditVerdict;
+  reason: string;
+}
+
+export interface AgentAuditLine {
+  ts: string;
+  event: {
+    type: string;
+    accesses?: AgentAuditAccess[];
+    [key: string]: unknown;
+  };
+}
+
 export interface CreateAgent {
   name: string;
   configId: string;

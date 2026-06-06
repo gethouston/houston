@@ -39,6 +39,12 @@ pub struct SessionToolConfig {
     pub use_provider_sandbox: bool,
 }
 
+pub trait SessionObserver: Send + Sync {
+    fn on_feed(&self, item: &FeedItem);
+    fn on_session_id(&self, session_id: &str);
+    fn on_status(&self, status: &str, error: Option<&str>);
+}
+
 /// Options for feed persistence.
 #[derive(Clone)]
 pub struct PersistOptions {
@@ -109,6 +115,7 @@ pub fn spawn_and_monitor(
     model: Option<String>,
     effort: Option<String>,
     tool_config: SessionToolConfig,
+    observer: Option<Arc<dyn SessionObserver>>,
 ) -> tokio::task::JoinHandle<SessionResult> {
     // Ensure the user's shell PATH is resolved before spawning.
     // OnceLock inside init() makes this a no-op after the first call.
@@ -155,6 +162,9 @@ pub fn spawn_and_monitor(
                     continue;
                 }
                 SessionUpdate::Feed(ref item) => {
+                    if let Some(ref obs) = observer {
+                        obs.on_feed(item);
+                    }
                     if let FeedItem::AssistantText(text) = item {
                         response_text = Some(text.clone());
                     }
@@ -302,6 +312,9 @@ pub fn spawn_and_monitor(
                     continue;
                 }
                 SessionUpdate::SessionId(sid) => {
+                    if let Some(ref obs) = observer {
+                        obs.on_session_id(&sid);
+                    }
                     claude_session_id = Some(sid.clone());
                     // SessionIdHandle owns disk persistence — .sid file is written
                     // here so --resume survives app restarts.
@@ -355,6 +368,9 @@ pub fn spawn_and_monitor(
                             ("error".into(), Some(e.clone()))
                         }
                     };
+                    if let Some(ref obs) = observer {
+                        obs.on_status(&status_str, err.as_deref());
+                    }
 
                     // Detect auth failures and emit AuthRequired so the frontend
                     // knows to render the inline reconnect card (which reads

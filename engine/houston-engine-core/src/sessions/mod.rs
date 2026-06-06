@@ -241,6 +241,15 @@ async fn run_start(
     let policy = crate::agent_policy::load(&agent_dir)?;
     policy.ensure_path_allowed(&agent_dir, &working_dir)?;
     let tool_config = crate::agent_policy::tool_config(&policy);
+    let audit = crate::agent_audit::AgentAudit::start(
+        &agent_dir,
+        &working_dir,
+        &session_key,
+        provider,
+        model.as_deref(),
+        policy.clone(),
+    )?;
+    let audit_for_file_changes = audit.clone();
 
     // Final system prompt is always `<product_prompt>\n\n---\n\n<agent_context>`.
     // - `product_prompt`: caller-supplied if present, otherwise whatever the
@@ -443,6 +452,7 @@ async fn run_start(
         model,
         effort,
         tool_config,
+        Some(audit),
     );
 
     // Own the end-of-session activity flip engine-side. Before this, the
@@ -464,6 +474,7 @@ async fn run_start(
                     let changes = file_changes::diff(before, &after);
                     if !changes.is_empty() {
                         let item = FeedItem::FileChanges(changes.clone());
+                        audit_for_file_changes.record_feed(&item);
                         events_for_end.emit(HoustonEvent::FeedItem {
                             agent_path: agent_path_for_end.clone(),
                             session_key: session_key_for_end.clone(),

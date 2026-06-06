@@ -83,6 +83,22 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
         };
 
         let resolved = sessions::resolve_provider(ctx.working_dir);
+        let audit = match crate::agent_audit::AgentAudit::start(
+            ctx.working_dir,
+            ctx.working_dir,
+            &ctx.run.session_key,
+            resolved.provider,
+            resolved.model.as_deref(),
+            policy.clone(),
+        ) {
+            Ok(audit) => audit,
+            Err(e) => {
+                return DispatchOutcome {
+                    response_text: String::new(),
+                    error: Some(format!("audit start failed: {e}")),
+                };
+            }
+        };
         let agent_key = format!(
             "{}:{}:{}",
             ctx.working_dir.to_string_lossy(),
@@ -140,6 +156,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             resolved.model,
             sessions::resolve_effort(ctx.working_dir, resolved.provider),
             tool_config,
+            Some(audit),
         );
 
         match join_handle.await {

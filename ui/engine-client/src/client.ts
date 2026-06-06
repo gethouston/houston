@@ -14,6 +14,7 @@ import type {
   Activity,
   ActivityUpdate,
   Agent,
+  AgentAuditLine,
   AttachmentManifest,
   AttachmentUploadResult,
   ChatHistoryEntry,
@@ -312,6 +313,12 @@ export class HoustonClient {
       agent_path: agentPath,
       file_name: fileName,
       data_base64: dataBase64,
+    });
+  }
+  getAgentAudit(agentPath: string, sessionKey: string): Promise<AgentAuditLine[]> {
+    return this.request("GET", "/agents/audit", undefined, {
+      agent_path: agentPath,
+      session_key: sessionKey,
     });
   }
 
