@@ -81,6 +81,27 @@ pub fn forbidden(message: impl Into<String>) -> CoreError {
     }
 }
 
+pub fn control_plane_denied(message: impl Into<String>) -> CoreError {
+    CoreError::Labeled {
+        code: ErrorCode::Forbidden,
+        kind: "agent_control_plane",
+        message: message.into(),
+    }
+}
+
+/// Gate for mutating operations: deny writes to the control plane even when
+/// the path passes [`ensure_path_allowed`]. Callers run `ensure_path_allowed`
+/// first, then this.
+pub fn ensure_writable(agent_root: &Path, path: &Path) -> CoreResult<()> {
+    if is_control_plane(agent_root, path) {
+        return Err(control_plane_denied(format!(
+            "agent policy denies writing Houston-managed files at {}",
+            path.display()
+        )));
+    }
+    Ok(())
+}
+
 pub fn policy_path(agent_root: &Path) -> PathBuf {
     agent_root.join(POLICY_PATH)
 }
