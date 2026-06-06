@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Salvoconducto - Centinela</title>
+  <style>
+    :root {
+      --bg: #0b0e14; --panel: #131822; --line: #232b3a; --txt: #e6e9ef;
+      --muted: #8a93a6; --green: #34d399; --amber: #fbbf24; --red: #f87171;
+      --accent: #7c9cff;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; background: var(--bg); color: var(--txt);
+      font: 15px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    }
+    header {
+      padding: 22px 28px; border-bottom: 1px solid var(--line);
+      display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap;
+    }
+    header h1 { margin: 0; font-size: 20px; letter-spacing: .2px; }
+    header .who { color: var(--accent); font-weight: 600; }
+    header .tag { color: var(--muted); font-size: 13px; }
+    .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; padding: 24px 28px; max-width: 1100px; }
+    @media (max-width: 820px) { .wrap { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; }
+    .panel h2 { margin: 2px 0 14px; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); }
+    .perm { display: flex; align-items: center; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin-bottom: 10px; }
+    .perm .icon { font-size: 20px; width: 26px; text-align: center; }
+    .perm .body { flex: 1; }
+    .perm .name { font-weight: 600; }
+    .perm .sub { font-size: 12px; color: var(--muted); }
+    .pill { font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 999px; white-space: nowrap; }
+    .pill.allow { color: var(--green); background: rgba(52,211,153,.12); }
+    .pill.confirm { color: var(--amber); background: rgba(251,191,36,.12); }
+    .pill.deny { color: var(--red); background: rgba(248,113,113,.12); }
+    .log { display: flex; flex-direction: column; gap: 8px; max-height: 460px; overflow: auto; }
+    .entry { border: 1px solid var(--line); border-left-width: 3px; border-radius: 8px; padding: 10px 12px; }
+    .entry.allow { border-left-color: var(--green); }
+    .entry.deny { border-left-color: var(--red); }
+    .entry.step_up { border-left-color: var(--amber); }
+    .entry .top { display: flex; align-items: center; gap: 8px; }
+    .entry .verdict { font-weight: 700; font-size: 12px; letter-spacing: .5px; }
+    .entry.allow .verdict { color: var(--green); }
+    .entry.deny .verdict { color: var(--red); }
+    .entry.step_up .verdict { color: var(--amber); }
+    .entry .tool { color: var(--muted); font-size: 13px; }
+    .entry .msg { font-size: 13px; margin-top: 4px; color: var(--txt); }
+    .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .5px; padding: 2px 7px; border-radius: 6px; color: #1b1300; background: var(--amber); }
+    .empty { color: var(--muted); font-size: 13px; padding: 8px; }
+    footer { padding: 16px 28px 30px; color: var(--muted); font-size: 13px; max-width: 1100px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Salvoconducto</h1>
+    <span class="who" id="agent">cargando...</span>
+    <span class="tag">La frontera vive en el codigo. La persuasion no cambia un permiso.</span>
+  </header>
+
+  <div class="wrap">
+    <section class="panel">
+      <h2>Permisos de este asistente</h2>
+      <div id="perms"></div>
+    </section>
+    <section class="panel">
+      <h2>Decisiones en vivo</h2>
+      <div class="log" id="log"><div class="empty">Esperando actividad del agente...</div></div>
+    </section>
+  </div>
+
+  <footer>
+    Verde: permitido. Ambar: requiere tu confirmacion. Rojo: bloqueado por codigo.
+    Las decisiones las toma el motor de Centinela, no el modelo.
+  </footer>
+
+  <script>
+    const CATALOGO = [
+      { cap: "email:inbox",       label: "Leer tus correos",       sub: "Bandeja de entrada",  icon: "✉️" },
+      { cap: "bank:balance",      label: "Ver el saldo del banco", sub: "Solo lectura",        icon: "🏦" },
+      { cap: "bank:transactions", label: "Ver tus movimientos",    sub: "Solo lectura",        icon: "📊" },
+      { cap: "email:send",        label: "Enviar correos",         sub: "Salida al exterior",  icon: "📤" },
+      { cap: "bank:transfer",     label: "Mover dinero",           sub: "Accion irreversible", icon: "💸" },
+    ];
+    const VERDICT = { allow: "PERMITIDO", deny: "BLOQUEADO", step_up: "CONFIRMA" };
+
+    function classify(cap, salvo) {
+      const declared = ["read", "write", "money"].some(k => (salvo.scopes[k] || []).includes(cap));
+      const stepUp = (salvo.step_up_required_for || []).includes(cap);
+      if (!declared) return { cls: "deny", txt: "Bloqueado" };
+      if (stepUp) return { cls: "confirm", txt: "Requiere confirmacion" };
+      return { cls: "allow", txt: "Permitido" };
+    }
+
+    async function loadSalvo() {
+      const salvo = await fetch("salvoconducto.json").then(r => r.json());
+      document.getElementById("agent").textContent = salvo.agent_id;
+      const host = document.getElementById("perms");
+      host.innerHTML = "";
+      for (const item of CATALOGO) {
+        const s = classify(item.cap, salvo);
+        const row = document.createElement("div");
+        row.className = "perm";
+        row.innerHTML = `<div class="icon">${item.icon}</div>
+          <div class="body"><div class="name">${item.label}</div><div class="sub">${item.sub}</div></div>
+          <div class="pill ${s.cls}">${s.txt}</div>`;
+        host.appendChild(row);
+      }
+    }
+
+    function render(entries) {
+      const host = document.getElementById("log");
+      if (!entries.length) { host.innerHTML = '<div class="empty">Esperando actividad del agente...</div>'; return; }
+      host.innerHTML = "";
+      for (const e of entries.slice().reverse()) {
+        const provenance = e.code === "tainted_to_sensitive_sink"
+          ? '<span class="badge">fuente no confiable</span>' : "";
+        const div = document.createElement("div");
+        div.className = "entry " + e.decision;
+        div.innerHTML = `<div class="top">
+            <span class="verdict">${VERDICT[e.decision] || e.decision}</span>
+            <span class="tool">${e.tool} (${e.capability})</span>${provenance}
+          </div>${e.message ? `<div class="msg">${e.message}</div>` : ""}`;
+        host.appendChild(div);
+      }
+    }
+
+    async function poll() {
+      try {
+        const res = await fetch("decisions.jsonl?_=" + Date.now());
+        if (res.ok) {
+          const lines = (await res.text()).split("\n").filter(Boolean);
+          render(lines.map(l => JSON.parse(l)));
+        }
+      } catch (err) { /* file may not exist yet; keep polling */ }
+      setTimeout(poll, 1200);
+    }
+
+    loadSalvo();
+    poll();
+  </script>
+</body>
+</html>

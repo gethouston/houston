@@ -1,0 +1,15 @@
+[package]
+name = "houston-centinela-mcp"
+version = "0.4.19"
+edition = "2021"
+description = "Centinela MCP gateway: every agent tool call passes through the capability firewall before it runs"
+license = "MIT"
+
+[dependencies]
+houston-centinela = { workspace = true }
+tokio = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+tracing = { workspace = true }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+axum = "0.7"

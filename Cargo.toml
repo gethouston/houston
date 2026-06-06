@@ -19,6 +19,8 @@ members = [
     "engine/houston-engine-core",
     "engine/houston-engine-protocol",
     "engine/houston-engine-server",
+    "engine/houston-centinela",
+    "engine/houston-centinela-mcp",
     "app/src-tauri",
 ]
 
@@ -51,6 +53,8 @@ houston-claude-installer = { version = "0.4.19", path = "engine/houston-claude-i
 houston-engine-core = { version = "0.4.19", path = "engine/houston-engine-core" }
 houston-engine-protocol = { version = "0.4.19", path = "engine/houston-engine-protocol" }
 houston-engine-server = { version = "0.4.19", path = "engine/houston-engine-server" }
+houston-centinela = { version = "0.4.19", path = "engine/houston-centinela" }
+houston-centinela-mcp = { version = "0.4.19", path = "engine/houston-centinela-mcp" }
 
 # Keep line-table debug info in release binaries so Sentry can symbolicate
 # Rust panics to file:line. Costs ~10-15% binary size; full debug info is

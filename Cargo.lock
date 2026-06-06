@@ -2495,6 +2495,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "houston-centinela"
+version = "0.4.19"
+dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+]
+
+[[package]]
+name = "houston-centinela-mcp"
+version = "0.4.19"
+dependencies = [
+ "axum 0.7.9",
+ "houston-centinela",
+ "reqwest 0.12.28",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tracing",
+]
+
+[[package]]
 name = "houston-claude-installer"
 version = "0.4.19"
 dependencies = [
