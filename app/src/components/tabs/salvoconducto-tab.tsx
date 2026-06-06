@@ -74,6 +74,53 @@ export default function SalvoconductoTab(_props: TabProps) {
     }
   };
 
+  const [num, setNum] = useState("");
+  const [code, setCode] = useState("");
+  const [enroll, setEnroll] = useState<"idle" | "sent" | "verified">("idle");
+  const [enrollMsg, setEnrollMsg] = useState("");
+
+  const startEnroll = async () => {
+    if (!num.trim()) {
+      setEnrollMsg("Escribe tu numero con codigo de pais.");
+      return;
+    }
+    setEnrollMsg("Enviando codigo...");
+    try {
+      const r = await fetch(`${API}/enroll/start`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ number: num.trim() }),
+      });
+      const d = await r.json();
+      if (r.ok) {
+        setEnroll("sent");
+        setEnrollMsg("Codigo enviado por WhatsApp. Escribelo abajo.");
+      } else {
+        setEnrollMsg("No se pudo enviar: " + (d.message || d.status));
+      }
+    } catch {
+      setEnrollMsg("No hay conexion con el gateway (:8787).");
+    }
+  };
+
+  const confirmEnroll = async () => {
+    try {
+      const r = await fetch(`${API}/enroll/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ number: num.trim(), code: code.trim() }),
+      });
+      if (r.ok) {
+        setEnroll("verified");
+        setEnrollMsg(`Numero verificado. Solo ${num.trim()} aprobara las acciones.`);
+      } else {
+        setEnrollMsg("Codigo incorrecto o vencido. Intenta de nuevo.");
+      }
+    } catch {
+      setEnrollMsg("No hay conexion con el gateway.");
+    }
+  };
+
   useEffect(() => {
     let alive = true;
     const poll = async () => {
@@ -102,6 +149,56 @@ export default function SalvoconductoTab(_props: TabProps) {
         <p className="text-sm text-muted-foreground mb-4">
           La frontera vive en el codigo. La persuasion no cambia un permiso.
         </p>
+
+        <section className="rounded-2xl border border-border p-4 mb-4">
+          <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-3">
+            Tu numero de aprobaciones
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="tel"
+              placeholder="573001234567"
+              value={num}
+              disabled={enroll === "verified"}
+              onChange={(e) => setNum(e.target.value)}
+              className="h-9 px-3 rounded-lg border border-black/15 bg-background text-sm outline-none focus:border-foreground disabled:bg-accent disabled:text-muted-foreground"
+            />
+            <button
+              type="button"
+              onClick={startEnroll}
+              disabled={enroll === "verified"}
+              className="h-9 px-4 rounded-full bg-foreground text-white text-sm font-medium hover:bg-neutral-800 disabled:opacity-40"
+            >
+              Enviar codigo
+            </button>
+            {enroll === "sent" && (
+              <>
+                <input
+                  inputMode="numeric"
+                  placeholder="codigo de 6 digitos"
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  className="h-9 px-3 rounded-lg border border-black/15 bg-background text-sm outline-none focus:border-foreground"
+                />
+                <button
+                  type="button"
+                  onClick={confirmEnroll}
+                  className="h-9 px-4 rounded-full border border-black/15 text-sm font-medium hover:bg-accent"
+                >
+                  Verificar
+                </button>
+              </>
+            )}
+          </div>
+          <div
+            className={`text-xs mt-2 ${
+              enroll === "verified" ? "text-[#00824f]" : "text-muted-foreground"
+            }`}
+          >
+            {enrollMsg ||
+              "Solo un numero verificado por codigo puede aprobar acciones. Nadie pone cualquier numero."}
+          </div>
+        </section>
 
         <section className="rounded-2xl border border-border p-4 mb-4 flex items-center gap-4">
           <div className="flex-1 min-w-0">
