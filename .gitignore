@@ -22,3 +22,6 @@ app/src-tauri/resources/bin/
 
 # Houston engine sidecar staged by build.rs (built from source in CI, not committed)
 app/src-tauri/binaries/
+
+# Local libsql-ffi vendoring for Windows (patched build.rs; not committed)
+vendor/
