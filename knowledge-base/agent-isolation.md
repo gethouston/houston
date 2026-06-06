@@ -268,12 +268,14 @@ See `knowledge-base/architecture.md` (engine crates),
 
 ---
 
-## 12. Implementation status — Phases 1 & 2 (uid + Landlock + seccomp)
+## 12. Implementation status — Phases 1-3 (uid + Landlock + seccomp + egress)
 
-**Done.** Code in `engine/houston-terminal-manager/src/isolation/` (`mod.rs`
-cross-platform, `linux.rs` impl, `seccomp.rs` BPF denylist), wired into the
-single spawn chokepoint `cli_process::run_cli_process`. Activated by
-`HOUSTON_ISOLATION` (default OFF → desktop/dev untouched).
+**Done.** In-process layers (L1-L4) live in
+`engine/houston-terminal-manager/src/isolation/` (`mod.rs` cross-platform,
+`linux.rs` impl, `seccomp.rs` BPF denylist), wired into the single spawn
+chokepoint `cli_process::run_cli_process`. The egress layer (L5) is container
+config under `always-on/`. All activated by `HOUSTON_ISOLATION` (default OFF →
+desktop/dev untouched).
 
 `pre_exec` order: Landlock `restrict_self` → drop privileges → seccomp.
 
@@ -290,6 +292,24 @@ single spawn chokepoint `cli_process::run_cli_process`. Activated by
   `ptrace`, `process_vm_readv`, `process_vm_writev`, `kcmp`,
   `pidfd_getfd`, `process_madvise` → `EPERM`. Closes "read another
   process's memory" at the kernel even for same-uid edge cases.
+- **L5 (egress):** `always-on/airlock-egress.sh` — iptables `owner` match
+  on the tenant uid range (100000-159999, mirrors `mod.rs`). Tenant-owned
+  output goes through the `AIRLOCK_EGRESS` chain: loopback + DNS +
+  `HOUSTON_EGRESS_ALLOW` CIDRs RETURN (allowed), everything else DROP.
+  Non-tenant uids untouched. Installed at container boot by
+  `airlock-entrypoint.sh`; v6 denied wholesale. A *domain* allowlist needs
+  the broker (Phase 6) — iptables can't track CDN domains safely.
+
+### Enabling it (Always-On)
+
+```
+docker compose -f docker-compose.yml -f docker-compose.airlock.yml up -d
+```
+
+The override runs the engine as root-in-container with `NET_ADMIN`,
+`SETUID`, `SETGID`, `CHOWN`, sets `HOUSTON_ISOLATION=1`, and installs the
+egress policy before exec. Set `HOUSTON_EGRESS_ALLOW` to the provider API
+CIDRs (else agents reach only loopback + DNS).
 
 ### Allowed filesystem paths (the jail)
 
@@ -316,11 +336,16 @@ run inside the always-on container.
 - **Red-team proof, L4 (unprivileged, this kernel):**
   `isolation::seccomp::tests::seccomp_blocks_ptrace` installs the filter in
   a child and confirms `ptrace(PTRACE_TRACEME)` is rejected with `EPERM`.
+- **Red-team proof, L5 (live, real iptables in a throwaway container):**
+  `always-on/airlock-egress.sh selftest` — a tenant-uid `curl` to an
+  external IP is BLOCKED by default, ALLOWED once the IP is on the
+  allowlist, and root egress is UNAFFECTED. Runs in the container's own
+  netns, so the host firewall is untouched.
 - The uid-drop layers (L1/L3) need root; their integration test is
   `#[ignore]` and the real-agent gate runs in the container.
 
 ### Not yet (later phases)
 
-egress allowlist (3), per-agent authz (4), the full malicious-agent
-harness (5), and running a **real** `claude` session under the complete
-jail as root in the always-on container (Phase 1.3 gate).
+per-agent authz (4), the full malicious-agent harness (5), and running a
+**real** `claude` session under the complete jail (uid + Landlock + seccomp
++ egress) as root in the always-on container (Phase 1.3 gate).

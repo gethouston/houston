@@ -1,0 +1,26 @@
+# Airlock multi-tenant isolation overlay for the Always-On engine.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.airlock.yml up -d
+#
+# Turns on per-agent OS-level isolation: each agent subprocess is dropped into
+# its own uid + Landlock filesystem jail + seccomp filter (L1-L4, in the
+# engine) behind a per-tenant egress allowlist (L5, iptables). This requires
+# running the engine as root *inside the container* with a few capabilities —
+# the container is still the host boundary, so this is root-in-container, not
+# root-on-host. See knowledge-base/agent-isolation.md.
+services:
+  engine:
+    user: root
+    cap_add:
+      - NET_ADMIN # iptables egress allowlist (L5)
+      - SETUID # drop each agent to its per-tenant uid (L1)
+      - SETGID
+      - CHOWN # chown the agent folder / tenant home to the tenant uid
+    environment:
+      HOUSTON_ISOLATION: "1"
+      # CIDRs the agents are allowed to reach (e.g. the provider API ranges).
+      # Empty → only loopback + DNS are allowed and agents cannot reach the
+      # LLM API; set this, or front everything with the credential broker
+      # (Phase 6) and allow only its loopback address.
+      HOUSTON_EGRESS_ALLOW: "${HOUSTON_EGRESS_ALLOW:-}"
+    entrypoint: ["/usr/local/bin/airlock-entrypoint.sh"]
