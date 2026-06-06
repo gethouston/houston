@@ -241,6 +241,11 @@ async fn run_start(
     let policy = crate::agent_policy::load(&agent_dir)?;
     policy.ensure_path_allowed(&agent_dir, &working_dir)?;
     let tool_config = crate::agent_policy::tool_config(&policy);
+    let mcp_config = crate::agent_file_gateway::prepare_mcp_config(
+        &agent_dir,
+        &session_key,
+        &policy,
+    )?;
     let audit = crate::agent_audit::AgentAudit::start(
         &agent_dir,
         &working_dir,
@@ -445,6 +450,7 @@ async fn run_start(
         resume_recovery_prompt,
         working_dir,
         system_prompt,
+        mcp_config,
         Some(sid_handle),
         persist,
         Some(rt.pid_map.clone()),

@@ -190,8 +190,14 @@ fn configure_claude_command(
         cmd.arg("--dangerously-skip-permissions");
         if disable_builtin_tools {
             cmd.arg("--disallowedTools")
+                .arg("Bash")
+                .arg("Read")
+                .arg("Glob")
+                .arg("Grep")
+                .arg("LS")
                 .arg("Edit")
                 .arg("Write")
+                .arg("MultiEdit")
                 .arg("NotebookEdit");
         }
     }

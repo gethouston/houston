@@ -108,6 +108,7 @@ pub fn spawn_and_monitor(
     resume_fallback_prompt: Option<String>,
     working_dir: PathBuf,
     system_prompt: Option<String>,
+    mcp_config: Option<PathBuf>,
     session_id_handle: Option<SessionIdHandle>,
     persist: Option<PersistOptions>,
     pid_map: Option<SessionPidMap>,
@@ -133,7 +134,7 @@ pub fn spawn_and_monitor(
         model,
         effort,
         system_prompt,
-        None,  // mcp_config
+        mcp_config,
         tool_config.disable_builtin_tools,
         tool_config.disable_all_tools,
         tool_config.use_provider_sandbox,

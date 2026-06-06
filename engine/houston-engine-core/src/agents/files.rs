@@ -199,6 +199,73 @@ pub fn read_project_file(agent_root: &Path, rel_path: &str) -> CoreResult<String
         .map_err(|e| CoreError::Internal(format!("failed to read {rel_path}: {e}")))
 }
 
+/// Write a user-facing project file through the agent policy boundary.
+pub fn write_project_file(agent_root: &Path, rel_path: &str, content: &str) -> CoreResult<()> {
+    let full = resolve_new(agent_root, rel_path)?;
+    crate::agent_policy::ensure_path_allowed(agent_root, &full)?;
+    if let Some(parent) = full.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    std::fs::write(&full, content)
+        .map_err(|e| CoreError::Internal(format!("failed to write {rel_path}: {e}")))
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct ProjectFileSearchMatch {
+    pub path: String,
+    pub line: Option<usize>,
+    pub preview: String,
+}
+
+/// Search allowed user-facing text files by path/name and line content.
+pub fn search_project_files(
+    agent_root: &Path,
+    query: &str,
+    limit: usize,
+) -> CoreResult<Vec<ProjectFileSearchMatch>> {
+    let q = query.trim();
+    if q.is_empty() {
+        return Err(CoreError::BadRequest("query cannot be empty".into()));
+    }
+    let q_lower = q.to_ascii_lowercase();
+    let mut matches = Vec::new();
+    for file in list_project_files(agent_root)? {
+        if file.is_directory {
+            continue;
+        }
+        if file.path.to_ascii_lowercase().contains(&q_lower)
+            || file.name.to_ascii_lowercase().contains(&q_lower)
+        {
+            matches.push(ProjectFileSearchMatch {
+                path: file.path.clone(),
+                line: None,
+                preview: file.path.clone(),
+            });
+        }
+        if matches.len() >= limit {
+            break;
+        }
+        if file.size > 1_000_000 {
+            continue;
+        }
+        if let Ok(content) = read_project_file(agent_root, &file.path) {
+            for (idx, line) in content.lines().enumerate() {
+                if line.to_ascii_lowercase().contains(&q_lower) {
+                    matches.push(ProjectFileSearchMatch {
+                        path: file.path.clone(),
+                        line: Some(idx + 1),
+                        preview: line.trim().chars().take(240).collect(),
+                    });
+                    if matches.len() >= limit {
+                        return Ok(matches);
+                    }
+                }
+            }
+        }
+    }
+    Ok(matches)
+}
+
 /// Rename a file or folder in the agent.
 pub fn rename_file(agent_root: &Path, rel_path: &str, new_name: &str) -> CoreResult<()> {
     let full = resolve_existing(agent_root, rel_path)?;
@@ -666,6 +733,34 @@ mod tests {
         assert!(d.path().join("b.txt").exists());
         delete_file(d.path(), "b.txt").unwrap();
         assert!(!d.path().join("b.txt").exists());
+    }
+
+    #[test]
+    fn write_project_file_respects_policy() {
+        let d = tmp();
+        std::fs::create_dir_all(d.path().join(".houston")).unwrap();
+        std::fs::create_dir_all(d.path().join("reports")).unwrap();
+        std::fs::write(
+            crate::agent_policy::policy_path(d.path()),
+            r#"{"version":1,"allowed_roots":["reports"]}"#,
+        )
+        .unwrap();
+
+        write_project_file(d.path(), "reports/new.txt", "ok").unwrap();
+        let err = write_project_file(d.path(), "secret.txt", "no").unwrap_err();
+        assert_eq!(err.code(), houston_engine_protocol::ErrorCode::Forbidden);
+    }
+
+    #[test]
+    fn search_project_files_scans_allowed_visible_text() {
+        let d = tmp();
+        std::fs::write(d.path().join("notes.txt"), "alpha\nneedle here").unwrap();
+        std::fs::write(d.path().join("script.py"), "needle hidden").unwrap();
+
+        let found = search_project_files(d.path(), "needle", 10).unwrap();
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].path, "notes.txt");
+        assert_eq!(found[0].line, Some(2));
     }
 
     #[test]

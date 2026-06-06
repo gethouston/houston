@@ -6,6 +6,7 @@
 
 pub mod agent_configs;
 pub mod agent_audit;
+pub mod agent_file_gateway;
 pub mod agent_policy;
 pub mod agent_policy_prompt;
 pub mod agents;

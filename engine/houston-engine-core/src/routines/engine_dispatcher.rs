@@ -74,6 +74,19 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             };
         }
         let tool_config = crate::agent_policy::tool_config(&policy);
+        let mcp_config = match crate::agent_file_gateway::prepare_mcp_config(
+            ctx.working_dir,
+            &ctx.run.session_key,
+            &policy,
+        ) {
+            Ok(config) => config,
+            Err(e) => {
+                return DispatchOutcome {
+                    response_text: String::new(),
+                    error: Some(format!("file gateway setup failed: {e}")),
+                };
+            }
+        };
         let agent_context =
             agent_prompt::build_agent_context(ctx.working_dir, None, None);
         let system_prompt = if self.app_system_prompt.is_empty() {
@@ -132,6 +145,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             None,
             ctx.working_dir.to_path_buf(),
             Some(system_prompt),
+            mcp_config,
             Some(sid_handle),
             Some(PersistOptions {
                 db: self.db.clone(),

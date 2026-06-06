@@ -7,6 +7,7 @@
 pub mod auth;
 pub mod config;
 pub mod mobile_access;
+pub mod mcp_agent_files;
 pub mod routes;
 pub mod state;
 pub mod ws;
