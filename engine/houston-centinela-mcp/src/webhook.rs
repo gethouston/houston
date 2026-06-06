@@ -24,20 +24,22 @@ use tower_http::cors::CorsLayer;
 struct Web {
     registry: Arc<ApprovalRegistry>,
     verify_token: String,
-    notifier: Arc<dyn Notifier>,
+    notifier: Option<Arc<dyn Notifier>>,
     enrollment: Arc<Enrollment>,
     log_path: Option<PathBuf>,
     inspect_content: Arc<AtomicBool>,
 }
 
 /// Serve the webhook, fallback links, enrollment, decisions and the
-/// content-inspection toggle.
+/// content-inspection toggle. Runs whenever the gateway runs: the UI needs
+/// `/decisions`, `/inspect` and `/toggle/inspect` even without WhatsApp; the
+/// reply and enrollment endpoints no-op when `notifier` is `None`.
 #[allow(clippy::too_many_arguments)]
 pub async fn serve(
     addr: SocketAddr,
     registry: Arc<ApprovalRegistry>,
     verify_token: String,
-    notifier: Arc<dyn Notifier>,
+    notifier: Option<Arc<dyn Notifier>>,
     enrollment: Arc<Enrollment>,
     log_path: Option<PathBuf>,
     inspect_content: Arc<AtomicBool>,
@@ -170,8 +172,14 @@ async fn enroll_start(
             Json(json!({ "status": "error", "message": "numero vacio" })),
         );
     }
+    let Some(notifier) = web.notifier.as_ref() else {
+        return (
+            StatusCode::SERVICE_UNAVAILABLE,
+            Json(json!({ "status": "error", "message": "WhatsApp no configurado" })),
+        );
+    };
     let code = web.enrollment.start(number);
-    match web.notifier.send_otp(number, &code).await {
+    match notifier.send_otp(number, &code).await {
         Ok(()) => (StatusCode::OK, Json(json!({ "status": "sent" }))),
         Err(e) => (
             StatusCode::BAD_GATEWAY,

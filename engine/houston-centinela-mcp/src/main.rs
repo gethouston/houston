@@ -85,32 +85,33 @@ async fn main() {
     let auditor = notifier
         .as_ref()
         .map(|n| auditor::Auditor::new(n.clone(), enrollment.clone()));
-    match (&approver, &notifier) {
-        (Some(ap), Some(n)) => {
-            let port: u16 = std::env::var("CENTINELA_WEBHOOK_PORT")
-                .ok()
-                .and_then(|p| p.parse().ok())
-                .unwrap_or(8787);
-            let verify_token =
-                std::env::var("WHATSAPP_VERIFY_TOKEN").unwrap_or_else(|_| "centinela".to_string());
-            let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
-            tokio::spawn(webhook::serve(
-                addr,
-                ap.registry(),
-                verify_token,
-                n.clone(),
-                enrollment.clone(),
-                log_path.clone(),
-                inspect.clone(),
-            ));
-            eprintln!(
-                "[centinela] approver + auditor WhatsApp activos; webhook + enrolamiento en :{port}"
-            );
-        }
-        _ => eprintln!(
-            "[centinela] canales WhatsApp desactivados (faltan WHATSAPP_TOKEN/PHONE_NUMBER_ID); el step-up bloquea y no hay alertas"
-        ),
-    }
+    // The webhook serves the UI (live decisions + the inspection toggle) plus the
+    // WhatsApp reply and enrollment endpoints. It runs whenever the gateway runs;
+    // the WhatsApp-only endpoints no-op when credentials are absent.
+    let port: u16 = std::env::var("CENTINELA_WEBHOOK_PORT")
+        .ok()
+        .and_then(|p| p.parse().ok())
+        .unwrap_or(8787);
+    let verify_token =
+        std::env::var("WHATSAPP_VERIFY_TOKEN").unwrap_or_else(|_| "centinela".to_string());
+    let addr = std::net::SocketAddr::from(([0, 0, 0, 0], port));
+    let registry = approver
+        .as_ref()
+        .map(|ap| ap.registry())
+        .unwrap_or_else(|| Arc::new(approval::ApprovalRegistry::new()));
+    tokio::spawn(webhook::serve(
+        addr,
+        registry,
+        verify_token,
+        notifier.clone(),
+        enrollment.clone(),
+        log_path.clone(),
+        inspect.clone(),
+    ));
+    eprintln!(
+        "[centinela] webhook + UI en :{port} (WhatsApp: {})",
+        if notifier.is_some() { "activo" } else { "off" }
+    );
 
     let mut lines = BufReader::new(tokio::io::stdin()).lines();
     let mut stdout = tokio::io::stdout();
