@@ -25,6 +25,8 @@ use std::path::{Path, PathBuf};
 
 #[cfg(target_os = "linux")]
 mod linux;
+#[cfg(target_os = "linux")]
+mod seccomp;
 
 /// Env var that turns multi-tenant isolation ON. Default OFF: the desktop
 /// app and dev checkouts spawn agents exactly as before.

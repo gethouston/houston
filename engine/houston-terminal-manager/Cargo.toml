@@ -30,6 +30,11 @@ houston-cli-bundle = { workspace = true }
 landlock = "0.4"
 nix = { version = "0.29", features = ["user", "fs"] }
 libc = "0.2"
+# seccomp-bpf denylist (Phase 2): blocks cross-process memory/introspection
+# syscalls (ptrace, process_vm_readv/writev, ...) the jailed agent never needs.
+# Program is compiled in the parent and applied via a bare syscall in the
+# post-fork pre_exec hook. `seccompiler` is the Firecracker BPF compiler.
+seccompiler = "0.4"
 
 [dev-dependencies]
 # Used by the Gemini adapter tests to build throwaway

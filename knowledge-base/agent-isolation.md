@@ -268,12 +268,14 @@ See `knowledge-base/architecture.md` (engine crates),
 
 ---
 
-## 12. Implementation status — Phase 1 (uid + Landlock)
+## 12. Implementation status — Phases 1 & 2 (uid + Landlock + seccomp)
 
 **Done.** Code in `engine/houston-terminal-manager/src/isolation/` (`mod.rs`
-cross-platform, `linux.rs` impl), wired into the single spawn chokepoint
-`cli_process::run_cli_process`. Activated by `HOUSTON_ISOLATION` (default
-OFF → desktop/dev untouched).
+cross-platform, `linux.rs` impl, `seccomp.rs` BPF denylist), wired into the
+single spawn chokepoint `cli_process::run_cli_process`. Activated by
+`HOUSTON_ISOLATION` (default OFF → desktop/dev untouched).
+
+`pre_exec` order: Landlock `restrict_self` → drop privileges → seccomp.
 
 - **L1/L3 (uid):** per-tenant uid = FNV-1a(agent_path) into
   `[100000, 160000)`, deterministic across restarts. Parent provisions
@@ -283,6 +285,11 @@ OFF → desktop/dev untouched).
   allocation + `landlock_add_rule` before fork), `restrict_self()` applied
   in the child. `CompatLevel::HardRequirement` → loud failure on a
   pre-5.13 kernel, never an un-jailed fallback.
+- **L4 (seccomp):** BPF denylist compiled in the **parent**
+  (`seccompiler`), applied last in the child. Default-allow; denies
+  `ptrace`, `process_vm_readv`, `process_vm_writev`, `kcmp`,
+  `pidfd_getfd`, `process_madvise` → `EPERM`. Closes "read another
+  process's memory" at the kernel even for same-uid edge cases.
 
 ### Allowed filesystem paths (the jail)
 
@@ -300,17 +307,20 @@ run inside the always-on container.
 
 ### Verified
 
-- `cargo test -p houston-terminal-manager` — 224 pass, full suite green.
-- **Red-team proof (unprivileged, this kernel):**
+- `cargo test -p houston-terminal-manager` — 225 pass, full suite green.
+- **Red-team proof, L2 (unprivileged, this kernel):**
   `isolation::linux::tests::landlock_jail_blocks_sibling_read_but_allows_own`
   spawns a child jailed to an "attacker" folder; reading the "victim"
-  tenant's `secret.txt` fails (`EACCES`), reading its own file succeeds.
-  This is the L2 "agent A cannot read agent B" property enforced by the
-  kernel. The uid-drop layers (L1/L3) need root; their integration test is
+  tenant's `secret.txt` fails (`EACCES`), reading its own file succeeds —
+  the "agent A cannot read agent B" property enforced by the kernel.
+- **Red-team proof, L4 (unprivileged, this kernel):**
+  `isolation::seccomp::tests::seccomp_blocks_ptrace` installs the filter in
+  a child and confirms `ptrace(PTRACE_TRACEME)` is rejected with `EPERM`.
+- The uid-drop layers (L1/L3) need root; their integration test is
   `#[ignore]` and the real-agent gate runs in the container.
 
 ### Not yet (later phases)
 
-seccomp (2), egress allowlist (3), per-agent authz (4), the full
-malicious-agent harness (5), and running a **real** `claude` session under
-the complete jail as root in the always-on container (Phase 1.3 gate).
+egress allowlist (3), per-agent authz (4), the full malicious-agent
+harness (5), and running a **real** `claude` session under the complete
+jail as root in the always-on container (Phase 1.3 gate).

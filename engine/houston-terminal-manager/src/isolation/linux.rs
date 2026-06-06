@@ -49,20 +49,24 @@ pub fn apply_to_command(
     cmd.env("HOME", &policy.tenant_home);
     cmd.env("TMPDIR", policy.tenant_home.join("tmp"));
 
-    // 2. Build the Landlock ruleset in the parent (all allocation + the
-    //    landlock_add_rule syscalls happen here).
+    // 2. Build the Landlock ruleset and seccomp program in the parent (all
+    //    allocation + the landlock_add_rule syscalls happen here).
     let ruleset = build_ruleset(policy)?;
+    let seccomp_program = super::seccomp::build_program()?;
 
-    // 3. Arm the post-fork hook: restrict_self + drop privileges, in that
-    //    order. restrict_self sets PR_SET_NO_NEW_PRIVS; dropping the uid
-    //    afterwards is still permitted (NNP blocks *gaining* privilege via
-    //    setuid binaries, not voluntarily shedding it).
+    // 3. Arm the post-fork hook, in order: Landlock restrict_self → drop
+    //    privileges → seccomp. restrict_self sets PR_SET_NO_NEW_PRIVS; dropping
+    //    the uid afterwards is still permitted (NNP blocks *gaining* privilege
+    //    via setuid binaries, not voluntarily shedding it). seccomp goes last
+    //    as the final lockdown — its denylist excludes setuid/setgroups, so the
+    //    drop above is unaffected either way.
     let uid = policy.tenant_uid;
     let gid = policy.tenant_gid;
     let mut ruleset = Some(ruleset);
     // SAFETY: the closure performs only async-signal-safe syscalls; the
-    // RulesetCreated holds an inherited fd and the rules were already added in
-    // the parent. See the module-level fork-safety note.
+    // RulesetCreated holds an inherited fd, and both the ruleset rules and the
+    // seccomp BPF program were already built in the parent. See the
+    // module-level fork-safety note.
     unsafe {
         cmd.pre_exec(move || {
             if let Some(rs) = ruleset.take() {
@@ -70,6 +74,7 @@ pub fn apply_to_command(
                     .map_err(|e| io::Error::other(format!("landlock: {e}")))?;
             }
             drop_privileges(uid, gid)?;
+            super::seccomp::apply(&seccomp_program)?;
             Ok(())
         });
     }
