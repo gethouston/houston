@@ -379,4 +379,38 @@ mod tests {
         ensure_provider_supports_mode("openai", &full).unwrap();
         ensure_provider_supports_mode("gemini", &full).unwrap();
     }
+
+    /// A symlink inside the agent root pointing outside it must not grant
+    /// access to the target: `normalize_for_policy` canonicalizes the link to
+    /// its real path, which falls outside `allowed_roots`. Cross-platform and
+    /// tolerant — skips when the OS denies symlink creation (e.g. Windows
+    /// without Developer Mode), runs the assertion everywhere it can.
+    #[test]
+    fn symlink_escape_is_denied() {
+        let d = TempDir::new().unwrap();
+        let agent = d.path().join("agent");
+        let secret = d.path().join("secret");
+        std::fs::create_dir_all(&agent).unwrap();
+        std::fs::create_dir_all(&secret).unwrap();
+        std::fs::write(secret.join("f.txt"), "x").unwrap();
+
+        let link = agent.join("link");
+        #[cfg(unix)]
+        let made = std::os::unix::fs::symlink(&secret, &link).is_ok();
+        #[cfg(windows)]
+        let made = std::os::windows::fs::symlink_dir(&secret, &link).is_ok();
+        #[cfg(not(any(unix, windows)))]
+        let made = false;
+
+        if !made {
+            // OS refused symlink creation (no privilege) — nothing to assert.
+            return;
+        }
+
+        let escaped = link.join("f.txt");
+        let err = AgentPolicy::default()
+            .ensure_path_allowed(&agent, &escaped)
+            .unwrap_err();
+        assert_eq!(err.code(), ErrorCode::Forbidden);
+    }
 }
