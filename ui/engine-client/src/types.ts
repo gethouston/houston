@@ -252,6 +252,7 @@ export interface RoutineRunUpdate {
 
 export type WorkflowStepStatus =
   | "pending"
+  | "awaiting_approval"
   | "running"
   | "done"
   | "error"
@@ -273,6 +274,8 @@ export interface WorkflowStep {
   effort?: string;
   use_worktree: boolean;
   depends_on: string[];
+  /** When true, the run pauses for user approval before this step runs. */
+  requires_approval?: boolean;
 }
 
 export interface WorkflowPlan {
@@ -304,6 +307,8 @@ export interface WorkflowUpdate {
 export interface StepState {
   step_id: string;
   status: WorkflowStepStatus;
+  /** User approved a mid-run gate for this step. */
+  approved?: boolean;
   summary?: string;
   /** Set when `use_worktree` is true so cleanup can call `remove_worktree`. */
   worktree_path?: string;

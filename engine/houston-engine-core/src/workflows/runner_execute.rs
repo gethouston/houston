@@ -35,6 +35,10 @@ pub(crate) async fn execute_run(
     )
     .await?;
 
+    if fanout.paused {
+        return Ok(());
+    }
+
     if terminal_cancelled(root, run_id)? {
         return Ok(());
     }

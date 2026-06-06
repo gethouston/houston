@@ -645,6 +645,28 @@ mod tests {
     }
 
     #[test]
+    fn parse_turn_failed_codex_usage_limit_emits_quota_exhausted() {
+        use crate::provider_error_kind::{ProviderError, QuotaScope};
+        let line = r#"{"type":"turn.failed","error":{"message":"You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus), or try again at Jul 5th, 2026 8:21 PM."}}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::QuotaExhausted {
+                scope,
+                upgrade_url,
+                ..
+            }) => {
+                assert_eq!(*scope, QuotaScope::FreeTier);
+                assert_eq!(
+                    upgrade_url.as_deref(),
+                    Some("https://chatgpt.com/explore/plus")
+                );
+            }
+            other => panic!("expected QuotaExhausted, got {other:?}"),
+        }
+    }
+
+    #[test]
     fn parse_turn_failed_model_unsupported_emits_typed_card() {
         // Routes through the typed classifier (provider/openai_classify.rs)
         // — the "is not supported when using Codex with a ChatGPT account"

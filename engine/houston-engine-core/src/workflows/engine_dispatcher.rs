@@ -5,6 +5,8 @@ use crate::sessions::{self, SessionRuntime};
 use crate::workflows::dispatcher::{
     DispatchOutcome, PlannerContext, StepContext, SynthesisContext, WorkflowDispatcher,
 };
+use crate::workflows::planner::PLANNER_SYSTEM_APPENDIX;
+use crate::workflows::step_prompt::STEP_SYSTEM_APPENDIX;
 use async_trait::async_trait;
 use houston_agents_conversations::session_runner::{self, PersistOptions};
 use houston_db::Database;
@@ -27,6 +29,8 @@ impl WorkflowDispatcher for EngineWorkflowDispatcher {
             None,
             None,
             None,
+            Some(PLANNER_SYSTEM_APPENDIX),
+            true,
         )
         .await
     }
@@ -53,6 +57,8 @@ impl WorkflowDispatcher for EngineWorkflowDispatcher {
             Some(provider),
             model,
             effort,
+            Some(STEP_SYSTEM_APPENDIX),
+            false,
         )
         .await
     }
@@ -66,6 +72,8 @@ impl WorkflowDispatcher for EngineWorkflowDispatcher {
             None,
             None,
             None,
+            None,
+            false,
         )
         .await
     }
@@ -81,6 +89,8 @@ impl EngineWorkflowDispatcher {
         provider: Option<houston_terminal_manager::Provider>,
         model: Option<String>,
         effort: Option<String>,
+        system_appendix: Option<&str>,
+        disable_all_tools: bool,
     ) -> DispatchOutcome {
         let _guard = self.rt.acquire_workdir(working_dir).await;
         if let Err(e) = agent_prompt::seed_agent(working_dir) {
@@ -90,11 +100,14 @@ impl EngineWorkflowDispatcher {
             };
         }
         let agent_context = agent_prompt::build_agent_context(working_dir, None, None);
-        let system_prompt = if self.app_system_prompt.is_empty() {
+        let mut system_prompt = if self.app_system_prompt.is_empty() {
             agent_context
         } else {
             format!("{}\n\n---\n\n{agent_context}", self.app_system_prompt)
         };
+        if let Some(appendix) = system_appendix {
+            system_prompt.push_str(appendix);
+        }
         let resolved = sessions::resolve_provider(working_dir);
         let provider = provider.unwrap_or(resolved.provider);
         let model = model.or(resolved.model);
@@ -131,6 +144,10 @@ impl EngineWorkflowDispatcher {
             provider,
             model,
             effort,
+            session_runner::SpawnOptions {
+                disable_builtin_tools: false,
+                disable_all_tools,
+            },
         );
         match handle.await {
             Ok(result) => DispatchOutcome {

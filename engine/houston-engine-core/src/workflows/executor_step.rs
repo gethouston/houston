@@ -6,6 +6,8 @@ use crate::workflows::executor_sched::emit_step;
 use crate::workflows::keys::step_session_key;
 use crate::workflows::planner::emit_runs_changed;
 use crate::workflows::runs as workflow_runs;
+use crate::workflows::step_prompt::build_step_prompt;
+use crate::workflows::step_verify::step_reapproval_only;
 use crate::workflows::types::{Workflow, WorkflowStep};
 use crate::worktree::{self, CreateWorktreeRequest, RemoveWorktreeRequest};
 use houston_terminal_manager::concurrency;
@@ -86,6 +88,17 @@ pub(crate) fn spawn_step(
                 };
             }
         }
+        let approved = run
+            .steps
+            .iter()
+            .find(|s| s.step_id == step.id)
+            .is_some_and(|s| s.approved);
+        let plan_steps = run
+            .plan
+            .as_ref()
+            .map(|p| p.steps.as_slice())
+            .unwrap_or(&[]);
+        let prompt = build_step_prompt(&workflow, plan_steps, &run, &step, approved);
         let outcome = dispatcher
             .dispatch_step(StepContext {
                 agent_path: agent_path.as_str(),
@@ -94,7 +107,7 @@ pub(crate) fn spawn_step(
                 run: &run,
                 step: &step,
                 session_key: &session_key,
-                prompt: &step.task,
+                prompt: &prompt,
             })
             .await;
         StepTaskResult {
@@ -160,6 +173,25 @@ pub(crate) async fn finish_step(
     }
 
     let summary = result.outcome.response_text;
+    let run = workflow_runs::find_by_id(root, run_id)?;
+    let requires_approval = run
+        .plan
+        .as_ref()
+        .and_then(|p| p.steps.iter().find(|s| s.id == result.step_id))
+        .is_some_and(|s| s.requires_approval);
+    if requires_approval && step_reapproval_only(&summary) {
+        let err = "Step completed without performing the approved action. \
+The agent re-asked for approval instead of using connected-app tools."
+            .to_string();
+        workflow_runs::patch_step(root, run_id, &result.step_id, |s| {
+            s.status = "error".into();
+            s.summary = Some(err.clone());
+            s.worktree_path = None;
+        })?;
+        emit_step(events, agent_path, run_id, &result.step_id);
+        emit_runs_changed(events, agent_path);
+        return Ok(false);
+    }
     workflow_runs::patch_step(root, run_id, &result.step_id, |s| {
         s.status = "done".into();
         s.summary = Some(summary.clone());
@@ -228,6 +260,7 @@ mod tests {
                 steps: Some(vec![StepState {
                     step_id: "a".into(),
                     status: "running".into(),
+                    approved: false,
                     summary: None,
                     worktree_path: Some(created.path.clone()),
                 }]),
@@ -262,4 +295,53 @@ mod tests {
         assert!(step.worktree_path.is_none());
     }
 
+    #[tokio::test]
+    async fn finish_step_flags_reapproval_on_gated_step() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let agent = tmp.path().join("agent");
+        std::fs::create_dir_all(&agent).unwrap();
+        let events: DynEventSink = Arc::new(NoopEventSink);
+        let run = workflow_runs::create(&agent, "wf").unwrap();
+        let plan = crate::workflows::plan::parse_plan(
+            r#"{"steps":[{"id":"write","task":"create doc","requires_approval":true}]}"#,
+        )
+        .unwrap();
+        workflow_runs::update(
+            &agent,
+            &run.id,
+            crate::workflows::types::WorkflowRunUpdate {
+                plan: Some(plan),
+                steps: Some(vec![crate::workflows::types::StepState {
+                    step_id: "write".into(),
+                    status: "running".into(),
+                    approved: true,
+                    summary: None,
+                    worktree_path: None,
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let ok = finish_step(
+            &events,
+            "agent",
+            &agent,
+            &run.id,
+            StepTaskResult {
+                step_id: "write".into(),
+                outcome: DispatchOutcome {
+                    response_text: "I need your approval before creating the doc.".into(),
+                    error: None,
+                },
+                worktree_path: None,
+            },
+        )
+        .await
+        .unwrap();
+        assert!(!ok);
+        let run = workflow_runs::find_by_id(&agent, &run.id).unwrap();
+        let step = run.steps.iter().find(|s| s.step_id == "write").unwrap();
+        assert_eq!(step.status, "error");
+    }
 }

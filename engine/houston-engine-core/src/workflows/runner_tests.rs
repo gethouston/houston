@@ -25,6 +25,7 @@ struct ScriptedDispatcher {
     steps: HashMap<String, DispatchOutcome>,
     synthesis: DispatchOutcome,
     order: Mutex<Vec<String>>,
+    prompts: Mutex<HashMap<String, String>>,
     active: AtomicUsize,
     peak: AtomicUsize,
     delay_ms: u64,
@@ -47,6 +48,10 @@ impl WorkflowDispatcher for ScriptedDispatcher {
             .lock()
             .unwrap()
             .push(ctx.step.id.clone());
+        self.prompts
+            .lock()
+            .unwrap()
+            .insert(ctx.step.id.clone(), ctx.prompt.to_string());
         self.steps
             .get(&ctx.step.id)
             .cloned()
@@ -93,6 +98,7 @@ async fn setup_planned_run(
             error: None,
         },
         order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
@@ -127,6 +133,7 @@ fn plan_parse_failure_drives_error() {
         steps: HashMap::new(),
         synthesis: DispatchOutcome::default(),
         order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
@@ -142,6 +149,36 @@ fn plan_parse_failure_drives_error() {
     assert!(runs[0].summary.is_some());
 }
 
+#[test]
+fn planner_dispatch_error_surfaces_provider_message() {
+    let d = TempDir::new().unwrap();
+    let agent_path = d.path().to_string_lossy().to_string();
+    let w = create_workflow(d.path(), sample_workflow()).unwrap();
+    let quota_msg = "You've hit your usage limit. Upgrade to Plus to continue using Codex.";
+    let dispatcher = Arc::new(ScriptedDispatcher {
+        planner: DispatchOutcome {
+            response_text: String::new(),
+            error: Some(quota_msg.into()),
+        },
+        steps: HashMap::new(),
+        synthesis: DispatchOutcome::default(),
+        order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
+        active: AtomicUsize::new(0),
+        peak: AtomicUsize::new(0),
+        delay_ms: 0,
+    });
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    let begun = begin_run(&events, &agent_path, &w.id).unwrap();
+    tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(finish_planning(events, dispatcher, &agent_path, begun))
+        .unwrap();
+    let runs = workflow_runs::list(d.path()).unwrap();
+    assert_eq!(runs[0].status, "error");
+    assert_eq!(runs[0].summary.as_deref(), Some(quota_msg));
+}
+
 #[tokio::test]
 async fn approval_gate_rejects_wrong_status() {
     let d = TempDir::new().unwrap();
@@ -153,6 +190,7 @@ async fn approval_gate_rejects_wrong_status() {
         steps: HashMap::new(),
         synthesis: DispatchOutcome::default(),
         order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
@@ -213,6 +251,7 @@ async fn independent_steps_can_overlap() {
             error: None,
         },
         order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 40,
@@ -293,12 +332,14 @@ async fn resume_skips_done_steps() {
                 StepState {
                     step_id: "a".into(),
                     status: "done".into(),
+                    approved: false,
                     summary: Some("ok".into()),
                     worktree_path: None,
                 },
                 StepState {
                     step_id: "b".into(),
                     status: "error".into(),
+                    approved: false,
                     summary: Some("boom".into()),
                     worktree_path: None,
                 },
@@ -344,6 +385,7 @@ async fn executor_cancelled_mid_run_stops() {
         steps: HashMap::new(),
         synthesis: DispatchOutcome::default(),
         order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 200,
@@ -380,6 +422,170 @@ async fn executor_cancelled_mid_run_stops() {
     handle.await.unwrap().unwrap();
     let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
     assert_eq!(run.status, "cancelled");
+}
+
+#[tokio::test]
+async fn gated_step_pauses_run_for_midrun_approval() {
+    let d = TempDir::new().unwrap();
+    let json = r#"{"steps":[
+      {"id":"research","task":"research competitors"},
+      {"id":"write","task":"create Google Doc","depends_on":["research"],"requires_approval":true}
+    ]}"#;
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, json).await;
+    approve_run(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        if run.status == "awaiting_approval" {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!("run did not pause at approval gate: status={}", run.status);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    let research = run.steps.iter().find(|s| s.step_id == "research").unwrap();
+    let write = run.steps.iter().find(|s| s.step_id == "write").unwrap();
+    assert_eq!(research.status, "done");
+    assert_eq!(write.status, "awaiting_approval");
+    let order = dispatcher.order.lock().unwrap();
+    assert!(!order.contains(&"write".to_string()), "gated step must not dispatch");
+}
+
+#[tokio::test]
+async fn midrun_approve_resumes_gated_step() {
+    let d = TempDir::new().unwrap();
+    let json = r#"{"steps":[
+      {"id":"research","task":"research competitors"},
+      {"id":"write","task":"create Google Doc","depends_on":["research"],"requires_approval":true}
+    ]}"#;
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, json).await;
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    approve_run(
+        events.clone(),
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        if run.status == "awaiting_approval" {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!("run did not pause at approval gate");
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    approve_run(
+        events,
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        if run.status == "done" {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!("run did not finish after mid-run approval: status={}", run.status);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    let order = dispatcher.order.lock().unwrap();
+    assert!(order.contains(&"write".to_string()));
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    let write = run.steps.iter().find(|s| s.step_id == "write").unwrap();
+    assert_eq!(write.status, "done");
+    assert!(write.approved);
+}
+
+#[tokio::test]
+async fn approved_gated_step_prompt_includes_context() {
+    let d = TempDir::new().unwrap();
+    let json = r#"{"steps":[
+      {"id":"research","task":"research competitors"},
+      {"id":"write","task":"create Google Doc","depends_on":["research"],"requires_approval":true}
+    ]}"#;
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, json).await;
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    approve_run(
+        events.clone(),
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        if run.status == "awaiting_approval" {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!("run did not pause at approval gate");
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    approve_run(
+        events,
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        if run.status == "done" {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!("run did not finish after mid-run approval: status={}", run.status);
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    let prompts = dispatcher.prompts.lock().unwrap();
+    let write_prompt = prompts.get("write").expect("write step prompt captured");
+    assert!(write_prompt.contains("already approved this action"));
+    assert!(write_prompt.contains("done research"));
 }
 
 #[test]
@@ -439,6 +645,7 @@ async fn cancel_removes_persisted_worktree() {
             steps: Some(vec![StepState {
                 step_id: "wt".into(),
                 status: "running".into(),
+                approved: false,
                 summary: None,
                 worktree_path: Some(created.path.clone()),
             }]),

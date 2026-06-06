@@ -11,7 +11,7 @@ use crate::Provider;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::sync::mpsc;
 
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct StdoutReadReport {
     pub malformed_provider_json: bool,
     /// True when the provider CLI surfaced an auth failure on stdout (e.g.
@@ -42,6 +42,10 @@ pub struct StdoutReadReport {
     /// transcript, and the user perceived it as the conversation being
     /// frozen and her history vanishing.
     pub saw_resume_corrupted: bool,
+    /// Terminal [`ProviderError`] surfaced on stdout (e.g. Codex
+    /// `turn.failed` quota). On Windows, exit code 1 + empty stderr is
+    /// otherwise misread as a user-initiated stop.
+    pub terminal_provider_error_message: Option<String>,
 }
 
 /// Read all stderr lines, emitting only user-actionable feed items.
@@ -170,6 +174,7 @@ async fn read_claude_stdout(
         }
         let items = parser::parse_event(&line, &mut acc);
         mark_auth_error(&items, &mut report);
+        mark_terminal_provider_error(&items, &mut report);
         item_count += log_and_send(&tx, items);
     }
     tracing::debug!(
@@ -235,6 +240,7 @@ async fn read_codex_stdout(
         let mut items = codex_parser::parse_codex_event(&line, &mut acc);
         mark_auth_error(&items, &mut report);
         mark_model_unsupported(&items, &mut report);
+        mark_terminal_provider_error(&items, &mut report);
         if let Some(pos) = items
             .iter()
             .position(|item| matches!(item, FeedItem::FinalResult { .. }))
@@ -307,6 +313,20 @@ fn mark_model_unsupported(items: &[FeedItem], report: &mut StdoutReadReport) {
     }
 }
 
+fn mark_terminal_provider_error(items: &[FeedItem], report: &mut StdoutReadReport) {
+    if report.terminal_provider_error_message.is_some() {
+        return;
+    }
+    for item in items {
+        if let FeedItem::ProviderError(err) = item {
+            if err.is_terminal_session_failure() {
+                report.terminal_provider_error_message = Some(err.message().to_string());
+                return;
+            }
+        }
+    }
+}
+
 async fn read_gemini_stdout(
     stdout: tokio::process::ChildStdout,
     tx: mpsc::UnboundedSender<SessionUpdate>,
@@ -366,6 +386,7 @@ fn log_and_send(tx: &mpsc::UnboundedSender<SessionUpdate>, items: Vec<FeedItem>)
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::provider_error_kind::QuotaScope;
 
     #[test]
     fn mark_auth_error_flags_401_system_message() {
@@ -376,6 +397,23 @@ mod tests {
         let mut report = StdoutReadReport::default();
         mark_auth_error(&items, &mut report);
         assert!(report.saw_auth_error);
+    }
+
+    #[test]
+    fn mark_terminal_provider_error_flags_quota_exhausted() {
+        let items = vec![FeedItem::ProviderError(ProviderError::QuotaExhausted {
+            provider: "openai".into(),
+            model: None,
+            scope: QuotaScope::FreeTier,
+            message: "You've hit your usage limit.".into(),
+            upgrade_url: None,
+        })];
+        let mut report = StdoutReadReport::default();
+        mark_terminal_provider_error(&items, &mut report);
+        assert_eq!(
+            report.terminal_provider_error_message.as_deref(),
+            Some("You've hit your usage limit.")
+        );
     }
 
     #[test]

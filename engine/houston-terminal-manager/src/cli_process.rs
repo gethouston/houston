@@ -122,8 +122,13 @@ pub(crate) async fn run_cli_process(
             // essentially always print at least one stderr line (a panic,
             // an HTTP error, a model error), so empty-stderr-with-exit-1
             // on Windows is a reliable user-stop signal.
-            let likely_user_stop_windows =
-                cfg!(windows) && status.code() == Some(1) && stderr_lines.is_empty();
+            let likely_user_stop_windows = cfg!(windows)
+                && status.code() == Some(1)
+                && stderr_lines.is_empty()
+                && !stdout_report.saw_resume_corrupted
+                && !stdout_report.saw_auth_error
+                && !stdout_report.saw_model_unsupported_error
+                && stdout_report.terminal_provider_error_message.is_none();
             // The malformed-JSON outcome is provider-agnostic at the
             // detection level (any provider could in principle emit
             // truncated JSON), but only Anthropic's runner currently
@@ -232,6 +237,11 @@ fn handle_failed_exit(
         return CliRunOutcome::Failed;
     }
 
+    if let Some(msg) = &stdout_report.terminal_provider_error_message {
+        let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(msg.clone())));
+        return CliRunOutcome::Failed;
+    }
+
     // Generic fallback. Skip emitting the typed card if the stderr
     // classifier already produced one (`read_stderr_lines` walks the
     // same lines, so re-classifying here tells us whether a typed
@@ -292,6 +302,7 @@ extern "C" {
 mod tests {
     use super::*;
     use crate::types::SessionStatus;
+    use std::str::FromStr;
 
     fn drain(rx: &mut mpsc::UnboundedReceiver<SessionUpdate>) -> Vec<SessionUpdate> {
         let mut out = Vec::new();
@@ -310,6 +321,7 @@ mod tests {
             saw_auth_error: true,
             saw_model_unsupported_error: false,
             saw_resume_corrupted: false,
+            terminal_provider_error_message: None,
         };
 
         let outcome =
@@ -332,6 +344,29 @@ mod tests {
             )),
             "should emit auth-expired status error: {updates:?}"
         );
+    }
+
+    #[test]
+    fn codex_stdout_quota_error_skips_windows_user_stop_path() {
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let msg = "You've hit your usage limit. Upgrade to Plus to continue using Codex.";
+        let stdout_report = session_io::StdoutReadReport {
+            malformed_provider_json: false,
+            saw_auth_error: false,
+            saw_model_unsupported_error: false,
+            saw_resume_corrupted: false,
+            terminal_provider_error_message: Some(msg.into()),
+        };
+
+        let outcome =
+            handle_failed_exit(&tx, "codex", Provider::from_str("openai").unwrap(), &[], &stdout_report);
+        assert_eq!(outcome, CliRunOutcome::Failed);
+
+        let updates = drain(&mut rx);
+        assert!(updates.iter().any(|u| matches!(
+            u,
+            SessionUpdate::Status(SessionStatus::Error(m)) if m.contains("usage limit")
+        )));
     }
 
     #[test]

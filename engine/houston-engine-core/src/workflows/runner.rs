@@ -70,6 +70,21 @@ pub async fn approve_run(
             run.status
         )));
     }
+    let resume = run.steps.iter().any(|s| {
+        matches!(
+            s.status.as_str(),
+            "done" | "error" | "cancelled" | "running"
+        )
+    });
+    for step in &run.steps {
+        if step.status == "awaiting_approval" {
+            let step_id = step.step_id.clone();
+            workflow_runs::patch_step(root, run_id, &step_id, |s| {
+                s.approved = true;
+                s.status = "pending".into();
+            })?;
+        }
+    }
     let workflow = workflow_defs::find_by_id(root, &run.workflow_id)?;
     let updated = workflow_runs::update(
         root,
@@ -94,7 +109,7 @@ pub async fn approve_run(
             &root,
             workflow,
             &run_id_owned,
-            false,
+            resume,
         )
         .await
         {
@@ -167,6 +182,19 @@ pub async fn cancel_run(
         if step.status == "running" {
             let key = step_session_key(&run.workflow_id, run_id, &step.step_id);
             sessions::cancel(rt, events, agent_path, &key).await;
+        }
+        if step.status == "pending" || step.status == "awaiting_approval" {
+            let step_id = step.step_id.clone();
+            if let Err(e) = workflow_runs::patch_step(root, run_id, &step_id, |s| {
+                s.status = "cancelled".into();
+                if s.summary.is_none() {
+                    s.summary = Some("Stopped by user".into());
+                }
+            }) {
+                tracing::error!(
+                    "[workflows] failed to cancel pending step {step_id} on run {run_id}: {e}"
+                );
+            }
         }
         if let Some(wt) = &step.worktree_path {
             if let Err(e) = crate::worktree::remove_worktree(RemoveWorktreeRequest {

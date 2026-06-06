@@ -25,6 +25,13 @@ pub trait SessionLifecycle: Send + Sync {
     fn on_resumed(&self);
 }
 
+/// Tool policy for a spawned session. Defaults keep all tools enabled.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct SpawnOptions {
+    pub disable_builtin_tools: bool,
+    pub disable_all_tools: bool,
+}
+
 /// Result of a completed session.
 pub struct SessionResult {
     pub response_text: Option<String>,
@@ -101,6 +108,7 @@ pub fn spawn_and_monitor(
     provider: Provider,
     model: Option<String>,
     effort: Option<String>,
+    spawn_opts: SpawnOptions,
 ) -> tokio::task::JoinHandle<SessionResult> {
     // Ensure the user's shell PATH is resolved before spawning.
     // OnceLock inside init() makes this a no-op after the first call.
@@ -119,8 +127,8 @@ pub fn spawn_and_monitor(
         effort,
         system_prompt,
         None,  // mcp_config
-        false, // disable_builtin_tools
-        false, // disable_all_tools
+        spawn_opts.disable_builtin_tools,
+        spawn_opts.disable_all_tools,
     );
 
     let sink = sink;
@@ -148,6 +156,11 @@ pub fn spawn_and_monitor(
                 SessionUpdate::Feed(ref item) => {
                     if let FeedItem::AssistantText(text) = item {
                         response_text = Some(text.clone());
+                    }
+                    if let FeedItem::ProviderError(err) = item {
+                        if err.is_terminal_session_failure() {
+                            error = Some(err.message().to_string());
+                        }
                     }
 
                     // Lifecycle hook: usage-limit pause/resume. The CLI

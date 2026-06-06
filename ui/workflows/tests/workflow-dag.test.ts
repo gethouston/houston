@@ -8,6 +8,8 @@ import {
   stepStatusOf,
   doneStepCount,
   plannedStepCount,
+  isMidrunApprovalGate,
+  awaitingGateStepId,
 } from "../src/workflow-dag.ts"
 import type { WorkflowPlan, WorkflowRun } from "../src/types.ts"
 
@@ -122,6 +124,25 @@ describe("stepStatusOf", () => {
   it("defaults to pending", () => {
     const run = mkRun("r1", "w1", "running", "2025-01-01T10:00:00Z")
     assert.equal(stepStatusOf(run, "missing"), "pending")
+  })
+})
+
+describe("isMidrunApprovalGate", () => {
+  it("true when awaiting approval after a done step", () => {
+    const run: WorkflowRun = {
+      ...mkRun("r1", "w1", "awaiting_approval", "2025-01-01T10:00:00Z"),
+      steps: [
+        { step_id: "a", status: "done", approved: false },
+        { step_id: "b", status: "awaiting_approval", approved: false },
+      ],
+    }
+    assert.equal(isMidrunApprovalGate(run), true)
+    assert.equal(awaitingGateStepId(run), "b")
+  })
+
+  it("false for initial plan approval", () => {
+    const run = mkRun("r1", "w1", "awaiting_approval", "2025-01-01T10:00:00Z")
+    assert.equal(isMidrunApprovalGate(run), false)
   })
 })
 

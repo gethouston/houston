@@ -123,6 +123,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             resolved.provider,
             resolved.model,
             sessions::resolve_effort(ctx.working_dir, resolved.provider),
+            session_runner::SpawnOptions::default(),
         );
 
         match join_handle.await {

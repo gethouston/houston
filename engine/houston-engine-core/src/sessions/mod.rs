@@ -439,6 +439,7 @@ async fn run_start(
         provider,
         model,
         effort,
+        session_runner::SpawnOptions::default(),
     );
 
     // Own the end-of-session activity flip engine-side. Before this, the

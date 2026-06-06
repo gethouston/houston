@@ -102,10 +102,13 @@ export default function WorkflowsTab({ agent }: TabProps) {
       activeRun: {
         title: t("activeRun.title"),
         completedTitle: t("activeRun.completedTitle"),
+        actionTitle: t("activeRun.actionTitle"),
         planning: t("activeRun.planning"),
         synthesis: t("activeRun.synthesis"),
         reviewPlan: t("activeRun.reviewPlan"),
+        reviewAction: t("activeRun.reviewAction"),
         approve: t("activeRun.approve"),
+        actionApprove: t("activeRun.actionApprove"),
         cancel: t("activeRun.cancel"),
         runStatus: runStatusLabels,
         approvalDialog: {
@@ -114,6 +117,14 @@ export default function WorkflowsTab({ agent }: TabProps) {
           approve: t("approval.approve"),
           cancel: t("approval.cancel"),
           approving: t("approval.approving"),
+          stepProgress: { runsTogether: t("stepProgress.runsTogether"), stepStatus: stepStatusLabels },
+        },
+        actionApprovalDialog: {
+          title: t("actionApproval.title"),
+          description: t("actionApproval.description"),
+          approve: t("actionApproval.approve"),
+          cancel: t("actionApproval.cancel"),
+          approving: t("actionApproval.approving"),
           stepProgress: { runsTogether: t("stepProgress.runsTogether"), stepStatus: stepStatusLabels },
         },
         stepProgress: {

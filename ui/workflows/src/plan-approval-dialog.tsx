@@ -38,6 +38,7 @@ export interface PlanApprovalDialogProps {
   onApprove: () => void
   onCancel: () => void
   approvePending?: boolean
+  highlightStepId?: string
   labels?: PlanApprovalDialogLabels
 }
 
@@ -48,6 +49,7 @@ export function PlanApprovalDialog({
   onApprove,
   onCancel,
   approvePending,
+  highlightStepId,
   labels,
 }: PlanApprovalDialogProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
@@ -62,7 +64,12 @@ export function PlanApprovalDialog({
           <DialogDescription>{l.description}</DialogDescription>
         </DialogHeader>
         <div className="flex-1 min-h-0 overflow-y-auto py-2">
-          <StepProgress plan={plan} run={run} labels={labels?.stepProgress} />
+          <StepProgress
+            plan={plan}
+            run={run}
+            highlightStepId={highlightStepId}
+            labels={labels?.stepProgress}
+          />
         </div>
         <DialogFooter className="gap-2 sm:gap-0">
           <Button variant="secondary" onClick={onCancel} disabled={approvePending}>

@@ -13,22 +13,25 @@ pub fn parse_plan(raw: &str) -> CoreResult<WorkflowPlan> {
 
 /// Pull a JSON object out of a planner model response (raw JSON or fenced block).
 pub fn extract_plan_json(raw: &str) -> Option<&str> {
-    let trimmed = raw
-        .trim()
-        .trim_start_matches("```json")
-        .trim_start_matches("```")
-        .trim_end_matches("```")
-        .trim();
-    let start = trimmed.find('{')?;
-    let end = trimmed.rfind('}')?;
-    (start <= end).then_some(&trimmed[start..=end])
+    crate::workflows::plan_extract::extract_plan_json(raw)
+}
+
+fn planner_parse_error(raw: &str) -> CoreError {
+    if raw.trim().is_empty() {
+        return CoreError::BadRequest(
+            "planner returned no text. The model may have used tools instead of replying with a plan."
+                .into(),
+        );
+    }
+    let preview: String = raw.chars().take(240).collect();
+    CoreError::BadRequest(format!(
+        "planner response did not contain a JSON object. Start of response: {preview}"
+    ))
 }
 
 /// Parse a planner turn response: extract JSON, validate DAG, apply run guards.
 pub fn parse_plan_from_response(raw: &str) -> CoreResult<WorkflowPlan> {
-    let json = extract_plan_json(raw).ok_or_else(|| {
-        CoreError::BadRequest("planner response did not contain a JSON object".into())
-    })?;
+    let json = extract_plan_json(raw).ok_or_else(|| planner_parse_error(raw))?;
     let plan = parse_plan(json)?;
     crate::workflows::guards::enforce_run_limits(&plan)?;
     Ok(plan)
@@ -199,6 +202,13 @@ mod tests {
     #[test]
     fn parse_plan_from_fenced_response() {
         let raw = format!("```json\n{}\n```", sample_json());
+        let plan = super::parse_plan_from_response(&raw).unwrap();
+        assert_eq!(plan.steps.len(), 2);
+    }
+
+    #[test]
+    fn parse_plan_from_prose_prefix() {
+        let raw = format!("Here is the workflow plan:\n{}", sample_json());
         let plan = super::parse_plan_from_response(&raw).unwrap();
         assert_eq!(plan.steps.len(), 2);
     }

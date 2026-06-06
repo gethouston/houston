@@ -27,6 +27,8 @@ export interface StepProgressProps {
   run?: WorkflowRun
   /** Show full step summaries (completed runs). */
   expandSummaries?: boolean
+  /** Emphasize the step waiting on a mid-run approval gate. */
+  highlightStepId?: string
   labels?: StepProgressLabels
 }
 
@@ -53,6 +55,7 @@ export function StepProgress({
   plan,
   run,
   expandSummaries,
+  highlightStepId,
   labels,
 }: StepProgressProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
@@ -72,20 +75,33 @@ export function StepProgress({
             {layer.map((step) => {
               const status = run ? stepStatusOf(run, step.id) : "pending"
               const summary = run ? stepSummaryOf(run, step.id) : undefined
+              const highlighted = highlightStepId === step.id
               return (
                 <li
                   key={step.id}
                   className={cn(
                     "flex items-start gap-3 rounded-lg bg-background",
                     "border border-black/[0.04] px-3 py-2.5",
+                    highlighted &&
+                      "border-amber-500/40 bg-amber-500/[0.05] shadow-[0_0_0_1px_rgba(245,158,11,0.12)]",
+                    status === "awaiting_approval" &&
+                      !highlighted &&
+                      "border-amber-500/25 bg-amber-500/[0.03]",
                   )}
                 >
                   <StepIcon status={status} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2 flex-wrap">
                       <p className="text-sm text-foreground">{step.task}</p>
-                      <span className="text-[11px] text-muted-foreground">
-                        {statusLabels[status]}
+                      <span
+                        className={cn(
+                          "text-[11px]",
+                          status === "awaiting_approval"
+                            ? "text-amber-700 font-medium"
+                            : "text-muted-foreground",
+                        )}
+                      >
+                        {statusLabels[status] ?? status}
                       </span>
                     </div>
                     {step.depends_on.length > 0 && (

@@ -24,6 +24,7 @@
   },
   "stepStatus": {
     "pending": "Pendiente",
+    "awaiting_approval": "Necesita aprobación",
     "running": "En ejecución",
     "done": "Listo",
     "error": "Error",
@@ -52,16 +53,26 @@
   "activeRun": {
     "title": "Ejecución activa",
     "completedTitle": "Resultado de la ejecución",
+    "actionTitle": "Aprobar la siguiente acción",
     "planning": "Planificando tus pasos…",
     "synthesis": "Resumen",
     "reviewPlan": "Revisar plan",
+    "reviewAction": "Revisar acción",
     "approve": "Aprobar",
+    "actionApprove": "Aprobar y continuar",
     "cancel": "Cancelar"
   },
   "approval": {
     "title": "Revisar plan",
     "description": "Aprueba este plan antes de que el agente empiece a trabajar.",
     "approve": "Aprobar y ejecutar",
+    "cancel": "Cancelar ejecución",
+    "approving": "Aprobando…"
+  },
+  "actionApproval": {
+    "title": "Aprobar la siguiente acción",
+    "description": "El agente quiere cambiar una app conectada o un archivo. Revisa el paso antes de continuar.",
+    "approve": "Aprobar y continuar",
     "cancel": "Cancelar ejecución",
     "approving": "Aprobando…"
   },

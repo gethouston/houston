@@ -3,13 +3,38 @@
 use crate::error::CoreResult;
 use crate::workflows::planner::emit_runs_changed;
 use crate::workflows::runs as workflow_runs;
-use crate::workflows::types::{WorkflowPlan, WorkflowStep};
+use crate::workflows::types::{StepState, WorkflowPlan, WorkflowStep};
 use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::collections::HashSet;
 use std::path::Path;
 
 pub(crate) fn eligible_status(status: &str, resume: bool) -> bool {
     status == "pending" || (resume && (status == "error" || status == "cancelled"))
+}
+
+pub(crate) fn is_gated(step: &WorkflowStep, states: &[StepState]) -> bool {
+    if !step.requires_approval {
+        return false;
+    }
+    states
+        .iter()
+        .find(|s| s.step_id == step.id)
+        .is_none_or(|s| !s.approved)
+}
+
+pub(crate) fn mark_step_awaiting(
+    events: &DynEventSink,
+    agent_path: &str,
+    root: &Path,
+    run_id: &str,
+    step_id: &str,
+) -> CoreResult<()> {
+    workflow_runs::patch_step(root, run_id, step_id, |s| {
+        s.status = "awaiting_approval".into();
+    })?;
+    emit_step(events, agent_path, run_id, step_id);
+    emit_runs_changed(events, agent_path);
+    Ok(())
 }
 
 pub(crate) fn deps_done(step: &WorkflowStep, states: &[crate::workflows::types::StepState]) -> bool {

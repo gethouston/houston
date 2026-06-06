@@ -81,6 +81,24 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
         });
     }
 
+    // Codex on a ChatGPT account: "You've hit your usage limit. Upgrade to
+    // Plus … or try again at <date>." Emitted on stdout `turn.failed`, not
+    // stderr — must be classified here so workflow planner runs surface the
+    // real quota error instead of "planner returned no text".
+    if lower.contains("hit your usage limit")
+        || (lower.contains("usage limit")
+            && (lower.contains("upgrade to plus") || lower.contains("try again at")))
+    {
+        return Some(ProviderError::QuotaExhausted {
+            provider: PROVIDER.into(),
+            model: None,
+            scope: QuotaScope::FreeTier,
+            message: truncate_excerpt(line.trim()),
+            upgrade_url: extract_https_url(line)
+                .or_else(|| Some("https://chatgpt.com/explore/plus".into())),
+        });
+    }
+
     // Quota exhausted — paid plan / org quota.
     if lower.contains("quota") && (lower.contains("exceed") || lower.contains("exhaust")) {
         return Some(ProviderError::QuotaExhausted {
@@ -157,6 +175,19 @@ fn extract_quoted_model(line: &str) -> Option<String> {
         None
     } else {
         Some(model.to_string())
+    }
+}
+
+fn extract_https_url(line: &str) -> Option<String> {
+    let start = line.find("https://")?;
+    let url: String = line[start..]
+        .chars()
+        .take_while(|c| !c.is_whitespace() && *c != ')' && *c != ']')
+        .collect();
+    if url.is_empty() {
+        None
+    } else {
+        Some(url)
     }
 }
 
@@ -247,6 +278,27 @@ mod tests {
         match classify_stderr(line).unwrap() {
             ProviderError::QuotaExhausted { upgrade_url, .. } => {
                 assert!(upgrade_url.unwrap().contains("openai.com"));
+            }
+            other => panic!("expected QuotaExhausted, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn codex_chatgpt_usage_limit_classified_as_quota_exhausted() {
+        let line = "You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus), or try again at Jul 5th, 2026 8:21 PM.";
+        match classify_stderr(line).unwrap() {
+            ProviderError::QuotaExhausted {
+                scope,
+                upgrade_url,
+                message,
+                ..
+            } => {
+                assert_eq!(scope, QuotaScope::FreeTier);
+                assert_eq!(
+                    upgrade_url.as_deref(),
+                    Some("https://chatgpt.com/explore/plus")
+                );
+                assert!(message.contains("usage limit"));
             }
             other => panic!("expected QuotaExhausted, got {other:?}"),
         }

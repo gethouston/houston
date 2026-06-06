@@ -24,6 +24,7 @@
   },
   "stepStatus": {
     "pending": "Pending",
+    "awaiting_approval": "Needs approval",
     "running": "Running",
     "done": "Done",
     "error": "Error",
@@ -52,16 +53,26 @@
   "activeRun": {
     "title": "Active run",
     "completedTitle": "Run result",
+    "actionTitle": "Approve next action",
     "planning": "Planning your steps…",
     "synthesis": "Summary",
     "reviewPlan": "Review plan",
+    "reviewAction": "Review action",
     "approve": "Approve",
+    "actionApprove": "Approve and continue",
     "cancel": "Cancel"
   },
   "approval": {
     "title": "Review plan",
     "description": "Approve this plan before the agent starts working.",
     "approve": "Approve and run",
+    "cancel": "Cancel run",
+    "approving": "Approving…"
+  },
+  "actionApproval": {
+    "title": "Approve next action",
+    "description": "The agent wants to change a connected app or file. Review the step below before it continues.",
+    "approve": "Approve and continue",
     "cancel": "Cancel run",
     "approving": "Approving…"
   },

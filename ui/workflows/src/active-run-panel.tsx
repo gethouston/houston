@@ -1,7 +1,7 @@
 /**
  * ActiveRunPanel — live or completed workflow run: steps, summary, approval.
  */
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { cn, Button, Spinner } from "@houston-ai/core"
 import type { WorkflowRun } from "./types"
 import { StepProgress } from "./step-progress"
@@ -11,29 +11,43 @@ import type { StepProgressLabels } from "./step-progress"
 import { DEFAULT_RUN_STATUS_LABELS } from "./run-status"
 import type { WorkflowRunStatus } from "./types"
 import { WorkflowSummary } from "./workflow-summary"
+import {
+  awaitingGateStepId,
+  isMidrunApprovalGate,
+} from "./workflow-dag"
 
 export interface ActiveRunPanelLabels {
   title?: string
   completedTitle?: string
+  actionTitle?: string
   planning?: string
   synthesis?: string
   reviewPlan?: string
+  reviewAction?: string
   approve?: string
+  actionApprove?: string
   cancel?: string
   runStatus?: Partial<Record<WorkflowRunStatus, string>>
   approvalDialog?: PlanApprovalDialogLabels
+  actionApprovalDialog?: PlanApprovalDialogLabels
   stepProgress?: StepProgressLabels
 }
 
 const DEFAULT_LABELS: Required<
-  Omit<ActiveRunPanelLabels, "runStatus" | "approvalDialog" | "stepProgress">
+  Omit<
+    ActiveRunPanelLabels,
+    "runStatus" | "approvalDialog" | "actionApprovalDialog" | "stepProgress"
+  >
 > = {
   title: "Active run",
   completedTitle: "Run result",
+  actionTitle: "Approve next action",
   planning: "Planning your steps…",
   synthesis: "Summary",
   reviewPlan: "Review plan",
+  reviewAction: "Review action",
   approve: "Approve",
+  actionApprove: "Approve and continue",
   cancel: "Cancel",
 }
 
@@ -48,8 +62,10 @@ export interface ActiveRunPanelProps {
 function panelTitle(
   run: WorkflowRun,
   l: typeof DEFAULT_LABELS,
+  midrunGate: boolean,
 ): string {
   if (run.status === "done") return l.completedTitle
+  if (midrunGate) return l.actionTitle
   return l.title
 }
 
@@ -63,6 +79,15 @@ export function ActiveRunPanel({
   const l = { ...DEFAULT_LABELS, ...labels }
   const statusLabels = { ...DEFAULT_RUN_STATUS_LABELS, ...labels?.runStatus }
   const [dialogOpen, setDialogOpen] = useState(false)
+  const midrunGate = isMidrunApprovalGate(run)
+  const gateStepId = awaitingGateStepId(run)
+
+  const approvalDialogLabels = useMemo((): PlanApprovalDialogLabels | undefined => {
+    if (midrunGate) {
+      return { ...labels?.approvalDialog, ...labels?.actionApprovalDialog }
+    }
+    return labels?.approvalDialog
+  }, [labels?.approvalDialog, labels?.actionApprovalDialog, midrunGate])
 
   useEffect(() => {
     if (run.status === "awaiting_approval") {
@@ -86,6 +111,8 @@ export function ActiveRunPanel({
     run.status === "error" ||
     run.status === "cancelled"
   const showPlan = !!run.plan
+  const reviewLabel = midrunGate ? l.reviewAction : l.reviewPlan
+  const approveLabel = midrunGate ? l.actionApprove : l.approve
 
   return (
     <>
@@ -93,9 +120,14 @@ export function ActiveRunPanel({
         <div className="flex items-center justify-between gap-3 mb-4">
           <div>
             <h3 className="text-sm font-medium text-foreground">
-              {panelTitle(run, l)}
+              {panelTitle(run, l, midrunGate)}
             </h3>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p
+              className={cn(
+                "text-xs mt-0.5",
+                midrunGate ? "text-amber-700" : "text-muted-foreground",
+              )}
+            >
               {statusLabels[run.status]}
             </p>
           </div>
@@ -106,10 +138,10 @@ export function ActiveRunPanel({
                 size="sm"
                 onClick={() => setDialogOpen(true)}
               >
-                {l.reviewPlan}
+                {reviewLabel}
               </Button>
               <Button size="sm" onClick={onApprove} disabled={approvePending}>
-                {approvePending ? "…" : l.approve}
+                {approvePending ? "…" : approveLabel}
               </Button>
             </div>
           )}
@@ -120,6 +152,7 @@ export function ActiveRunPanel({
             plan={run.plan}
             run={run}
             expandSummaries={isTerminal}
+            highlightStepId={gateStepId}
             labels={labels?.stepProgress}
           />
         )}
@@ -146,7 +179,8 @@ export function ActiveRunPanel({
           onApprove={onApprove}
           onCancel={onCancel}
           approvePending={approvePending}
-          labels={labels?.approvalDialog}
+          highlightStepId={gateStepId}
+          labels={approvalDialogLabels}
         />
       )}
     </>

@@ -127,3 +127,13 @@ export function doneStepCount(run: WorkflowRun): number {
 export function plannedStepCount(run: WorkflowRun): number {
   return run.plan?.steps.length ?? 0
 }
+
+/** Run paused at a mid-run gate after at least one step finished. */
+export function isMidrunApprovalGate(run: WorkflowRun): boolean {
+  return run.status === "awaiting_approval" && doneStepCount(run) > 0
+}
+
+/** Step id waiting on a mid-run approval gate, if any. */
+export function awaitingGateStepId(run: WorkflowRun): string | undefined {
+  return run.steps.find((s) => s.status === "awaiting_approval")?.step_id
+}

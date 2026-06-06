@@ -7,7 +7,9 @@ use std::sync::Arc;
 pub fn build_synthesis_prompt(workflow: &Workflow, plan_steps: &[WorkflowStep], run: &WorkflowRun) -> String {
     let mut lines = vec![
         format!("Workflow: {}", workflow.name),
-        "Summarize the completed steps below into a concise final report for the user.".into(),
+        "Summarize what was actually completed below into a concise final report for the user. \
+Report concrete outcomes (created files, sent messages, links). \
+Do not say approval is still pending for steps already marked done.".into(),
         String::new(),
     ];
     for step in plan_steps {
@@ -15,10 +17,11 @@ pub fn build_synthesis_prompt(workflow: &Workflow, plan_steps: &[WorkflowStep], 
             .steps
             .iter()
             .find(|s| s.step_id == step.id);
+        let status = state.map(|s| s.status.as_str()).unwrap_or("pending");
         let summary = state
             .and_then(|s| s.summary.as_deref())
             .unwrap_or("(no output)");
-        lines.push(format!("- [{}] {}: {}", step.id, step.task, summary));
+        lines.push(format!("- [{}] {} (status={}): {}", step.id, step.task, status, summary));
     }
     lines.join("\n")
 }

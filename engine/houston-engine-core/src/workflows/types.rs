@@ -23,6 +23,9 @@ pub struct WorkflowStep {
     pub use_worktree: bool,
     #[serde(default)]
     pub depends_on: Vec<String>,
+    /// When true, the run pauses at this step until the user approves before dispatch.
+    #[serde(default)]
+    pub requires_approval: bool,
 }
 
 // -- Workflow definition --
@@ -59,8 +62,11 @@ pub struct WorkflowUpdate {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StepState {
     pub step_id: String,
-    /// `"pending" | "running" | "done" | "error" | "cancelled"`.
+    /// `"pending" | "awaiting_approval" | "running" | "done" | "error" | "cancelled"`.
     pub status: String,
+    /// User approved a mid-run gate for this step.
+    #[serde(default)]
+    pub approved: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub summary: Option<String>,
     /// Set when `use_worktree` is true so cleanup can call `remove_worktree`.

@@ -212,6 +212,34 @@ impl ProviderError {
             Self::Unknown { .. } => "unknown",
         }
     }
+
+    /// User-facing detail string carried by this variant.
+    pub fn message(&self) -> &str {
+        match self {
+            Self::RateLimited { message, .. }
+            | Self::QuotaExhausted { message, .. }
+            | Self::UsageLimitPaused { message, .. }
+            | Self::ModelUnavailable { message, .. }
+            | Self::Unauthenticated { message, .. }
+            | Self::NetworkUnreachable { message, .. }
+            | Self::ProviderInternal { message, .. }
+            | Self::MalformedResponse { message, .. }
+            | Self::SpawnFailed { message, .. } => message,
+            Self::SessionResumeMissing { .. } => "Session resume data is missing or corrupted",
+            Self::Cancelled { .. } => "Session cancelled",
+            Self::Unknown { raw_excerpt, .. } => raw_excerpt,
+        }
+    }
+
+    /// True when the provider surfaced a real failure the embedder should
+    /// treat as terminal (workflow dispatch, routine runner, etc.).
+    /// `UsageLimitPaused` and `Cancelled` are intentionally excluded.
+    pub fn is_terminal_session_failure(&self) -> bool {
+        !matches!(
+            self,
+            Self::UsageLimitPaused { .. } | Self::Cancelled { .. }
+        )
+    }
 }
 
 #[cfg(test)]

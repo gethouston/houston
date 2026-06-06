@@ -152,6 +152,7 @@ pub fn step_states_from_plan(plan: &WorkflowPlan) -> Vec<StepState> {
         .map(|s| StepState {
             step_id: s.id.clone(),
             status: "pending".into(),
+            approved: false,
             summary: None,
             worktree_path: None,
         })
