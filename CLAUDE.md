@@ -77,6 +77,7 @@ Need specific knowledge? Load on demand:
 - Daily/weekly/monthly data rituals + dashboard reading guide → `knowledge-base/data-rituals.md`
 - UTM conventions, campaign attribution, IRL event tracking → `growth/utm-conventions.md` + `growth/campaigns/_template.md` + `scripts/event-qr.sh`
 - Supabase auth, Google SSO, Keychain → `knowledge-base/auth.md`
+- Multi-tenant agent isolation, Airlock cell, threat model, red-team → `knowledge-base/agent-isolation.md`
 - Translating UI strings, namespaces, ui/ labels prop pattern, `t()` rules → `knowledge-base/i18n.md`
 
 Design work? Skills: `/critique` before, `/polish` after. Else `/clarify` (copy), `/distill` (overloaded screen), `/animate` (micro-interactions), `/audit` (a11y).
