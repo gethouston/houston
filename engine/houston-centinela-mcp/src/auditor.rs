@@ -60,7 +60,8 @@ fn bypass_reason(decision: &Decision) -> Option<String> {
             Reason::DuressActive
             | Reason::CapabilityNotDeclared(_)
             | Reason::TaintedToSensitiveSink
-            | Reason::EgressNotAllowed(_) => Some(reason.to_string()),
+            | Reason::EgressNotAllowed(_)
+            | Reason::SensitiveContent(_) => Some(reason.to_string()),
             // Malformed call, or reasons the gate only ever raises as STEP_UP:
             // not a bypass, so no alert.
             Reason::EgressMissingDest | Reason::RuleOfTwoExceeded | Reason::StepUpRequired(_) => {

@@ -75,6 +75,7 @@ fn main() {
         sensitive_data: true,
         external_action: true,
         duress_active: false,
+        inspect_content: false,
     };
     let envio = ToolCall {
         capability: "email:send".into(),
@@ -82,6 +83,7 @@ fn main() {
         egress_dest: Some("mail.dominio-malo.example".into()),
         inputs_tainted: true,
         sink_sensitive: false,
+        payload: None,
     };
     let inyeccion = evaluate(&cap, &sesion_envenenada, &envio);
     show(

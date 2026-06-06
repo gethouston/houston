@@ -44,7 +44,18 @@ pub fn evaluate(cap: &Capabilities, sess: &Session, call: &ToolCall) -> Decision
         }
     }
 
-    // 5. Rule of Two: combining all three risk properties at once is not
+    // 5. Content inspection (toggle): even a permitted send is blocked when its
+    //    payload carries a secret. Data-leak prevention, not permission: the
+    //    agent may send email, but not your API keys.
+    if sess.inspect_content && call.is_egress {
+        if let Some(payload) = &call.payload {
+            if let Some(kind) = crate::secrets::scan(payload) {
+                return Decision::deny(Reason::SensitiveContent(kind.to_string()));
+            }
+        }
+    }
+
+    // 6. Rule of Two: combining all three risk properties at once is not
     //    autonomous behaviour. Hand it to a human.
     let properties = [
         sess.untrusted_input,
@@ -58,12 +69,12 @@ pub fn evaluate(cap: &Capabilities, sess: &Session, call: &ToolCall) -> Decision
         return Decision::step_up(Reason::RuleOfTwoExceeded);
     }
 
-    // 6. Step-up capabilities: irreversible actions need a passkey / 2FA.
+    // 7. Step-up capabilities: irreversible actions need a passkey / 2FA.
     if cap.requires_step_up(&call.capability) {
         return Decision::step_up(Reason::StepUpRequired(call.capability.clone()));
     }
 
-    // 7. Every gate cleared.
+    // 8. Every gate cleared.
     Decision::Allow
 }
 
@@ -152,6 +163,7 @@ mod tests {
             sensitive_data: true,
             external_action: true,
             duress_active: false,
+            inspect_content: false,
         };
         // bank:transactions is declared and not in the step-up list, so only
         // Rule of Two can fire here.
@@ -224,6 +236,7 @@ mod tests {
             sensitive_data: true,
             external_action: true,
             duress_active: false,
+            inspect_content: false,
         };
         let call = ToolCall {
             capability: "email:send".into(),
@@ -231,9 +244,65 @@ mod tests {
             egress_dest: Some("mail.dominio-malo.example".into()),
             inputs_tainted: true,
             sink_sensitive: false,
+            payload: None,
         };
         let d = evaluate(&caps(), &session, &call);
         // Taint fires before Rule of Two: a hard structural DENY, not a step-up.
         assert_eq!(d, Decision::deny(Reason::TaintedToSensitiveSink));
+    }
+
+    // ── Content inspection (the data-leak toggle) ──────────────────────
+
+    fn open_egress_caps() -> Capabilities {
+        Capabilities::from_json(
+            r#"{"agent_id":"a","scopes":{"read":["sync:push"],"egress_allowlist":["api.santoria.app"]}}"#,
+        )
+        .unwrap()
+    }
+
+    fn outbound(payload: &str) -> ToolCall {
+        ToolCall {
+            capability: "sync:push".into(),
+            is_egress: true,
+            egress_dest: Some("api.santoria.app".into()),
+            payload: Some(payload.into()),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn inspect_blocks_a_secret_in_an_allowed_send() {
+        let session = Session {
+            inspect_content: true,
+            ..Default::default()
+        };
+        let call = outbound("toma la clave: sk-proj-AbCdEf012345abcdef67890");
+        let d = evaluate(&open_egress_caps(), &session, &call);
+        assert!(d.is_deny());
+        assert_eq!(d.reason().unwrap().code(), "sensitive_content");
+    }
+
+    #[test]
+    fn inspect_off_does_not_run_the_content_check() {
+        let session = Session::new(); // inspect_content defaults false
+        let call = outbound("sk-proj-AbCdEf012345abcdef67890");
+        assert_eq!(
+            evaluate(&open_egress_caps(), &session, &call),
+            Decision::Allow
+        );
+    }
+
+    #[test]
+    fn inspect_only_scans_egress_not_reads() {
+        let session = Session {
+            inspect_content: true,
+            ..Default::default()
+        };
+        let call = ToolCall {
+            capability: "bank:balance".into(),
+            payload: Some("sk-proj-AbCdEf012345abcdef67890".into()),
+            ..Default::default()
+        };
+        assert_eq!(evaluate(&caps(), &session, &call), Decision::Allow);
     }
 }

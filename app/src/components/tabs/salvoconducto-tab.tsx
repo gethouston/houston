@@ -46,9 +46,33 @@ const VERDICT: Record<Verdict, { label: string; color: string }> = {
   step_up: { label: "CONFIRMA", color: "#976d00" },
 };
 
+const API = "http://localhost:8787";
+
 export default function SalvoconductoTab(_props: TabProps) {
   const [entries, setEntries] = useState<Decision[]>([]);
   const [connected, setConnected] = useState(true);
+  const [inspect, setInspect] = useState(false);
+
+  useEffect(() => {
+    fetch(`${API}/inspect`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d && setInspect(!!d.on))
+      .catch(() => {});
+  }, []);
+
+  const toggleInspect = async () => {
+    const next = !inspect;
+    setInspect(next);
+    try {
+      await fetch(`${API}/toggle/inspect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ on: next }),
+      });
+    } catch {
+      setInspect(!next); // revert if the gateway is offline
+    }
+  };
 
   useEffect(() => {
     let alive = true;
@@ -78,6 +102,33 @@ export default function SalvoconductoTab(_props: TabProps) {
         <p className="text-sm text-muted-foreground mb-4">
           La frontera vive en el codigo. La persuasion no cambia un permiso.
         </p>
+
+        <section className="rounded-2xl border border-border p-4 mb-4 flex items-center gap-4">
+          <div className="flex-1 min-w-0">
+            <div className="font-medium text-foreground">
+              Inspeccion de contenido (anti-fugas)
+            </div>
+            <div className="text-xs text-muted-foreground mt-0.5">
+              Aunque el envio este permitido, bloquea correos que lleven claves de API,
+              llaves privadas, tarjetas o contraseñas.
+            </div>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={inspect}
+            onClick={toggleInspect}
+            className={`relative w-11 h-6 rounded-full transition-colors shrink-0 ${
+              inspect ? "bg-[#00824f]" : "bg-black/20"
+            }`}
+          >
+            <span
+              className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform ${
+                inspect ? "translate-x-5" : ""
+              }`}
+            />
+          </button>
+        </section>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           <section className="rounded-2xl border border-border p-5">

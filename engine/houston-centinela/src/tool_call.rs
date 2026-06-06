@@ -16,6 +16,10 @@ pub struct ToolCall {
     pub inputs_tainted: bool,
     /// Does this call write into a sensitive sink (bank, private store)?
     pub sink_sensitive: bool,
+    /// The outbound content of the call (e.g. an email subject + body), scanned
+    /// for secrets when content inspection is on. `None` if the call carries no
+    /// inspectable payload.
+    pub payload: Option<String>,
 }
 
 impl ToolCall {

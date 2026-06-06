@@ -2498,6 +2498,7 @@ dependencies = [
 name = "houston-centinela"
 version = "0.4.19"
 dependencies = [
+ "regex",
  "serde",
  "serde_json",
  "thiserror 2.0.18",

@@ -16,6 +16,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::net::SocketAddr;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 
@@ -26,9 +27,12 @@ struct Web {
     notifier: Arc<dyn Notifier>,
     enrollment: Arc<Enrollment>,
     log_path: Option<PathBuf>,
+    inspect_content: Arc<AtomicBool>,
 }
 
-/// Serve the webhook, fallback links, enrollment and decisions endpoints.
+/// Serve the webhook, fallback links, enrollment, decisions and the
+/// content-inspection toggle.
+#[allow(clippy::too_many_arguments)]
 pub async fn serve(
     addr: SocketAddr,
     registry: Arc<ApprovalRegistry>,
@@ -36,6 +40,7 @@ pub async fn serve(
     notifier: Arc<dyn Notifier>,
     enrollment: Arc<Enrollment>,
     log_path: Option<PathBuf>,
+    inspect_content: Arc<AtomicBool>,
 ) {
     let web = Web {
         registry,
@@ -43,6 +48,7 @@ pub async fn serve(
         notifier,
         enrollment,
         log_path,
+        inspect_content,
     };
     let app = Router::new()
         .route("/webhook", get(verify).post(incoming))
@@ -51,6 +57,8 @@ pub async fn serve(
         .route("/enroll/start", post(enroll_start))
         .route("/enroll/confirm", post(enroll_confirm))
         .route("/decisions", get(decisions))
+        .route("/inspect", get(inspect_get))
+        .route("/toggle/inspect", post(inspect_toggle))
         .layer(CorsLayer::permissive())
         .with_state(web);
     let listener = match tokio::net::TcpListener::bind(addr).await {
@@ -115,6 +123,27 @@ async fn decisions(State(web): State<Web>) -> Json<Vec<Value>> {
         })
         .unwrap_or_default();
     Json(entries)
+}
+
+#[derive(Deserialize)]
+struct InspectToggle {
+    on: bool,
+}
+
+/// Current state of the content-inspection toggle, for the UI to reflect.
+async fn inspect_get(State(web): State<Web>) -> Json<Value> {
+    Json(json!({ "on": web.inspect_content.load(Ordering::Relaxed) }))
+}
+
+/// Flip the content-inspection toggle. The Salvoconducto UI calls this so the
+/// owner turns data-leak inspection on or off per agent, live.
+async fn inspect_toggle(State(web): State<Web>, Json(req): Json<InspectToggle>) -> Json<Value> {
+    web.inspect_content.store(req.on, Ordering::Relaxed);
+    eprintln!(
+        "[centinela] inspeccion de contenido: {}",
+        if req.on { "ON" } else { "OFF" }
+    );
+    Json(json!({ "on": req.on }))
 }
 
 #[derive(Deserialize)]

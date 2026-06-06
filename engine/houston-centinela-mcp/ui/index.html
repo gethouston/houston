@@ -81,6 +81,17 @@
     .entry .tool { color: var(--muted); font-size: 13px; }
     .entry .msg { font-size: 13px; margin-top: 4px; color: var(--fg); }
     .badge { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 6px; color: var(--warning); background: var(--warning-bg); }
+    /* Toggle */
+    .toggle-card { display: flex; align-items: center; gap: 14px; margin-top: 16px; }
+    .toggle-card .info { flex: 1; min-width: 0; }
+    .toggle-card .info .t { font-weight: 600; }
+    .toggle-card .info .d { font-size: 12.5px; color: var(--muted); margin-top: 2px; }
+    .switch { position: relative; width: 44px; height: 26px; flex: none; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; inset: 0; background: var(--border-strong); border-radius: 999px; transition: .2s; cursor: pointer; }
+    .slider::before { content: ""; position: absolute; width: 20px; height: 20px; left: 3px; top: 3px; background: #fff; border-radius: 999px; transition: .2s; }
+    .switch input:checked + .slider { background: var(--success); }
+    .switch input:checked + .slider::before { transform: translateX(18px); }
     .empty { color: var(--muted-2); font-size: 13px; padding: 6px 2px; }
 
     footer { color: var(--muted); font-size: 13px; padding: 22px 0 40px; }
@@ -107,6 +118,14 @@
         <button id="btn-confirm" class="btn secondary hidden" onclick="confirmEnroll()">Verificar</button>
         <div id="enroll-status" class="status">Solo un numero verificado por codigo puede aprobar acciones. Nadie pone cualquier numero.</div>
       </div>
+    </section>
+
+    <section class="card toggle-card">
+      <div class="info">
+        <div class="t">Inspeccion de contenido (anti-fugas)</div>
+        <div class="d">Aunque el envio este permitido, bloquea correos que lleven claves de API, llaves privadas, tarjetas o contraseñas.</div>
+      </div>
+      <label class="switch"><input type="checkbox" id="inspect-toggle" onchange="toggleInspect()" /><span class="slider"></span></label>
     </section>
 
     <div class="grid">
@@ -246,7 +265,27 @@
       $("btn-confirm").disabled = false;
     }
 
+    // ── Toggle de inspeccion de contenido (anti-fugas) ──────────────────
+    async function loadInspect() {
+      try {
+        const r = await fetch(API + "/inspect");
+        if (r.ok) { const d = await r.json(); $("inspect-toggle").checked = !!d.on; }
+      } catch (e) { /* gateway offline */ }
+    }
+    async function toggleInspect() {
+      const on = $("inspect-toggle").checked;
+      try {
+        await fetch(API + "/toggle/inspect", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ on }),
+        });
+      } catch (e) {
+        $("inspect-toggle").checked = !on; // revertir si el gateway no responde
+      }
+    }
+
     loadSalvo();
+    loadInspect();
     poll();
   </script>
 </body>

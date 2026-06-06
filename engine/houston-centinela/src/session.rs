@@ -15,6 +15,10 @@ pub struct Session {
     /// Is the duress latch armed? When true the session is in read-only
     /// lockdown and every sensitive capability is denied.
     pub duress_active: bool,
+    /// Content inspection toggle. When on, outbound payloads are scanned for
+    /// secrets (API keys, private keys, cards, passwords) even when the
+    /// capability is permitted: a leak is blocked, not just a forbidden action.
+    pub inspect_content: bool,
 }
 
 impl Session {

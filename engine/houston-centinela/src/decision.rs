@@ -79,6 +79,8 @@ pub enum Reason {
     RuleOfTwoExceeded,
     /// The capability is irreversible and requires a passkey / 2FA.
     StepUpRequired(String),
+    /// Content inspection found a secret in an outbound payload (a leak).
+    SensitiveContent(String),
 }
 
 impl Reason {
@@ -92,6 +94,7 @@ impl Reason {
             Reason::EgressMissingDest => "egress_missing_dest",
             Reason::RuleOfTwoExceeded => "rule_of_two_exceeded",
             Reason::StepUpRequired(_) => "step_up_required",
+            Reason::SensitiveContent(_) => "sensitive_content",
         }
     }
 }
@@ -121,6 +124,9 @@ impl fmt::Display for Reason {
             ),
             Reason::StepUpRequired(cap) => {
                 write!(f, "'{cap}' requiere confirmación con passkey o 2FA")
+            }
+            Reason::SensitiveContent(kind) => {
+                write!(f, "el contenido de esta salida lleva {kind}: posible fuga de datos")
             }
         }
     }

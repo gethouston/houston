@@ -114,13 +114,33 @@ pub fn build_tool_call(spec: &ToolSpec, args: &Value, state: &ServerState) -> To
     } else {
         None
     };
+    // Outbound content to inspect for secrets: all the call's text arguments.
+    let payload = if spec.is_egress {
+        Some(collect_text(args))
+    } else {
+        None
+    };
     ToolCall {
         capability: spec.capability.to_string(),
         is_egress: spec.is_egress,
         egress_dest,
         inputs_tainted: state.tainted,
         sink_sensitive: false,
+        payload,
     }
+}
+
+/// Join every string value in the tool arguments, so the content scanner sees
+/// the full outbound text (subject + body of an email, etc.).
+fn collect_text(args: &Value) -> String {
+    args.as_object()
+        .map(|o| {
+            o.values()
+                .filter_map(Value::as_str)
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .unwrap_or_default()
 }
 
 /// After an allowed call, advance the session's risk state so later calls see

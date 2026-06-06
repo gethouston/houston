@@ -4,6 +4,8 @@
 
 use houston_centinela::{Capabilities, Session};
 use std::path::PathBuf;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 
 pub struct ServerState {
     /// The agent's declared, signed-off capabilities. Static for the session.
@@ -19,6 +21,9 @@ pub struct ServerState {
     /// Where to append the live decision journal, if configured. The
     /// Salvoconducto UI tails this file. `None` disables journaling (tests).
     pub log_path: Option<PathBuf>,
+    /// Content-inspection toggle, shared with the webhook so the UI can flip it
+    /// live. Read into the session before every verdict.
+    pub inspect_content: Arc<AtomicBool>,
 }
 
 impl ServerState {
@@ -34,12 +39,19 @@ impl ServerState {
             tainted: false,
             initialized: false,
             log_path: None,
+            inspect_content: Arc::new(AtomicBool::new(false)),
         }
     }
 
     /// Point the live decision journal at `path`. Chainable from `new`.
     pub fn with_log(mut self, path: Option<PathBuf>) -> Self {
         self.log_path = path;
+        self
+    }
+
+    /// Share the content-inspection toggle with the webhook. Chainable.
+    pub fn with_inspect(mut self, flag: Arc<AtomicBool>) -> Self {
+        self.inspect_content = flag;
         self
     }
 }

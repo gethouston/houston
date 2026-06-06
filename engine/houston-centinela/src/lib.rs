@@ -16,11 +16,13 @@
 mod capabilities;
 mod decision;
 mod evaluate;
+pub mod secrets;
 mod session;
 mod tool_call;
 
 pub use capabilities::{Capabilities, CentinelaError, Duress, RuleOfTwo, Scopes};
 pub use decision::{Decision, Reason};
 pub use evaluate::evaluate;
+pub use secrets::SecretKind;
 pub use session::Session;
 pub use tool_call::ToolCall;

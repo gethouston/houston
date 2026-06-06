@@ -52,7 +52,14 @@ async fn main() {
         Ok("1") | Ok("true")
     );
     let log_path = std::env::var_os("CENTINELA_LOG").map(std::path::PathBuf::from);
-    let mut state = ServerState::new(caps, duress).with_log(log_path.clone());
+    // Content-inspection toggle, shared with the webhook so the UI flips it live.
+    let inspect = Arc::new(std::sync::atomic::AtomicBool::new(matches!(
+        std::env::var("CENTINELA_INSPECT").as_deref(),
+        Ok("1") | Ok("true")
+    )));
+    let mut state = ServerState::new(caps, duress)
+        .with_log(log_path.clone())
+        .with_inspect(inspect.clone());
     eprintln!(
         "[centinela] gateway MCP activo para '{}' (duress={duress})",
         state.caps.agent_id
@@ -94,6 +101,7 @@ async fn main() {
                 n.clone(),
                 enrollment.clone(),
                 log_path.clone(),
+                inspect.clone(),
             ));
             eprintln!(
                 "[centinela] approver + auditor WhatsApp activos; webhook + enrolamiento en :{port}"

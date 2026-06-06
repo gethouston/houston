@@ -11,6 +11,7 @@ use crate::tools;
 use crate::{approval::Outcome, journal, state::ServerState};
 use houston_centinela::{evaluate, Decision};
 use serde_json::{json, Value};
+use std::sync::atomic::Ordering;
 
 /// The optional human channels wired into the gateway: the step-up approver and
 /// the security Auditor. Both default to absent (used by tests).
@@ -80,6 +81,9 @@ async fn handle_tools_call(
     };
 
     let call = tools::build_tool_call(spec, &args, state);
+    // The content-inspection toggle is shared with the webhook; read its current
+    // value into the session so the gate sees live changes.
+    state.session.inspect_content = state.inspect_content.load(Ordering::Relaxed);
     let decision = evaluate(&state.caps, &state.session, &call);
 
     // No silent failures: the gate verdict goes to stderr and, if configured,
