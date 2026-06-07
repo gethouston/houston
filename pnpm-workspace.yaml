@@ -4,6 +4,10 @@ packages:
   - "mobile"
   - "houston-relay"
   - "examples/*"
+  # Shared TypeScript client/contract for the new TS engine, consumed by the
+  # webapp. NOTE: packages/engine itself is intentionally NOT a pnpm member —
+  # it is a self-contained Bun project (see packages/engine/README.md).
+  - "packages/engine-client"
 
 # Approve native build scripts (pnpm 10 blocks dependency postinstall by
 # default). @sentry/cli's postinstall downloads the platform `sentry-cli`
