@@ -54,13 +54,18 @@ The engine exposes a REST + SSE API for the standalone webapp. Contract + typed
 client: **[`@houston/engine-client`](../engine-client)**; full spec:
 **[`docs/engine-api.md`](docs/engine-api.md)**.
 
-Endpoints: `GET /health`, `GET /version`, `GET /auth/status`,
-`POST /auth/anthropic/login` · `/login/complete` · `/logout`,
-`GET /conversations`, `GET|POST /conversations/:id/messages` (POST streams SSE),
+Endpoints: `GET /health`, `GET /version`, `GET /providers`, `PUT /settings`,
+`GET /auth/status`, `POST /auth/:provider/login` · `/login/complete` · `/logout`
+(`:provider` = `anthropic` | `openai-codex`), `GET /conversations`,
+`GET|POST /conversations/:id/messages` (POST streams SSE),
 `POST /conversations/:id/cancel`. CORS is enabled (`HOUSTON_CORS_ORIGIN`, default `*`).
+
+Both subscription logins work: **Claude** (`anthropic`, loopback + paste-code) and
+**Codex** (`openai-codex`, device code). Pick the chat model via `PUT /settings`.
 
 ## Not yet built (next)
 
-Codex/OpenAI subscription login, in-process permission gating for tools,
-context-resume across engine restarts, the paste-code cloud flow end-to-end.
-(API-key auth intentionally dropped — OAuth only.) See the plan file.
+In-process permission gating for tools, context-resume across engine restarts,
+the Anthropic paste-code cloud flow verified end-to-end, conversation
+management (rename/delete). (API-key auth intentionally dropped — OAuth only.)
+See the plan file.

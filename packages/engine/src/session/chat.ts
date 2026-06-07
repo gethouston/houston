@@ -3,11 +3,11 @@ import {
   SessionManager,
   type AgentSession,
 } from "@earendil-works/pi-coding-agent";
-import { getModel } from "@earendil-works/pi-ai";
 import { join } from "node:path";
 import type { WireEvent, ToolCallRecord } from "@houston/engine-client";
 import { config } from "../config";
 import { authStorage, modelRegistry } from "../auth/storage";
+import { resolveModel } from "../ai/providers";
 import { makeHeadlessLoader } from "./resource-loader";
 import { appendAssistantMessage, appendUserMessage } from "../store/conversations";
 
@@ -31,7 +31,7 @@ async function getConversation(id: string): Promise<Conversation> {
   const { session } = await createAgentSession({
     cwd: config.workspaceDir,
     agentDir: config.dataDir,
-    model: getModel("anthropic", config.model as any),
+    model: resolveModel(), // active provider's model (Claude or Codex)
     authStorage,
     modelRegistry,
     sessionManager,

@@ -4,7 +4,10 @@ import type {
   ConversationSummary,
   EngineClientConfig,
   HealthResponse,
-  StartLoginResponse,
+  LoginInfo,
+  ProviderId,
+  ProviderInfo,
+  Settings,
   VersionResponse,
   WireEvent,
 } from "./types";
@@ -74,21 +77,33 @@ export class HoustonEngineClient {
     return this.json<VersionResponse>("/version");
   }
 
-  // --- auth (Claude / Anthropic subscription) ---
+  // --- providers, settings & auth (subscription OAuth) ---
+  listProviders() {
+    return this.json<ProviderInfo[]>("/providers");
+  }
+  setSettings(input: { activeProvider?: ProviderId; model?: string }) {
+    return this.json<Settings>("/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(input),
+    });
+  }
   authStatus() {
     return this.json<AuthStatus>("/auth/status");
   }
-  startAnthropicLogin() {
-    return this.json<StartLoginResponse>("/auth/anthropic/login", { method: "POST" });
+  /** Start login for a provider. Returns a `url` (Claude) or a device code (Codex). */
+  startLogin(provider: ProviderId) {
+    return this.json<LoginInfo>(`/auth/${provider}/login`, { method: "POST" });
   }
-  completeAnthropicLogin(code: string) {
-    return this.json<{ ok: boolean }>("/auth/anthropic/login/complete", {
+  /** Submit a pasted code (Anthropic remote / paste-code path). */
+  completeLogin(provider: ProviderId, code: string) {
+    return this.json<{ ok: boolean }>(`/auth/${provider}/login/complete`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
     });
   }
-  logout(provider = "anthropic") {
+  logout(provider: ProviderId) {
     return this.json<{ ok: boolean }>(`/auth/${provider}/logout`, { method: "POST" });
   }
 

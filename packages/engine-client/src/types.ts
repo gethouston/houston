@@ -24,25 +24,50 @@ export interface VersionResponse {
   protocol: number;
 }
 
+/** Subscription providers. "anthropic" = Claude Pro/Max, "openai-codex" = ChatGPT/Codex. */
+export type ProviderId = "anthropic" | "openai-codex";
+
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
+
+/**
+ * How the user completes a login. Anthropic returns a `url` to open; Codex
+ * returns a device code to enter at `verificationUri`.
+ */
+export type LoginInfo =
+  | { kind: "url"; url: string }
+  | { kind: "device_code"; verificationUri: string; userCode: string };
 
 export interface LoginState {
   status: LoginStatus;
-  /** Provider authorize URL to open in the browser. */
-  url?: string;
+  info?: LoginInfo;
   error?: string;
 }
 
-export interface AuthStatus {
-  /** True once a Claude (Anthropic) subscription credential is stored. */
-  anthropicConfigured: boolean;
-  /** The in-flight login, if any. */
+export interface ProviderAuth {
+  provider: ProviderId;
+  name: string;
+  configured: boolean;
   login: LoginState | null;
 }
 
-export interface StartLoginResponse {
-  /** Open this in a browser; on a remote host, paste the resulting code back. */
-  url: string;
+export interface AuthStatus {
+  providers: ProviderAuth[];
+  /** Provider used for new chats (saved active, else first connected). */
+  activeProvider: ProviderId | null;
+}
+
+export interface ProviderInfo {
+  id: ProviderId;
+  name: string;
+  configured: boolean;
+  isActive: boolean;
+  activeModel: string;
+  models: string[];
+}
+
+export interface Settings {
+  activeProvider?: ProviderId;
+  models?: Partial<Record<ProviderId, string>>;
 }
 
 export type ChatRole = "user" | "assistant";

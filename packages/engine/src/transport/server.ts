@@ -1,12 +1,8 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { readFileSync } from "node:fs";
 import { config } from "../config";
-import {
-  getAuthStatus,
-  startAnthropicLogin,
-  completeAnthropicLogin,
-  logoutAnthropic,
-} from "../auth/anthropic-login";
+import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
+import { listProviders, setSettings } from "../ai/providers";
 import { runTurn, cancelTurn } from "../session/chat";
 import { getHistory, listConversations } from "../store/conversations";
 import { applyCors } from "./cors";
@@ -59,29 +55,39 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
   if (!authorized(req, url)) return json(res, 401, { error: "unauthorized" });
 
-  // --- Auth (Claude Code / Anthropic subscription) ---
-  if (method === "GET" && path === "/auth/status") {
-    return json(res, 200, getAuthStatus());
+  // --- Providers & settings ---
+  if (method === "GET" && path === "/providers") {
+    return json(res, 200, listProviders());
   }
-  if (method === "POST" && path === "/auth/anthropic/login") {
+  if (method === "PUT" && path === "/settings") {
+    const body = await readJson(req);
     try {
-      return json(res, 200, await startAnthropicLogin());
-    } catch (e) {
-      return json(res, 500, { error: e instanceof Error ? e.message : String(e) });
-    }
-  }
-  if (method === "POST" && path === "/auth/anthropic/login/complete") {
-    const { code } = await readJson(req);
-    try {
-      completeAnthropicLogin(String(code || ""));
-      return json(res, 200, { ok: true });
+      return json(res, 200, setSettings(body));
     } catch (e) {
       return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
     }
   }
-  if (method === "POST" && path === "/auth/anthropic/logout") {
-    logoutAnthropic();
-    return json(res, 200, { ok: true });
+
+  // --- Auth (subscription OAuth: anthropic = Claude, openai-codex = Codex) ---
+  if (method === "GET" && path === "/auth/status") {
+    return json(res, 200, getAuthStatus());
+  }
+  const authMatch = path.match(/^\/auth\/([^/]+)\/(login|login\/complete|logout)$/);
+  if (method === "POST" && authMatch) {
+    const provider = authMatch[1];
+    const action = authMatch[2];
+    try {
+      if (action === "login") return json(res, 200, await startLogin(provider));
+      if (action === "login/complete") {
+        const { code } = await readJson(req);
+        completeLogin(provider, String(code || ""));
+        return json(res, 200, { ok: true });
+      }
+      logout(provider);
+      return json(res, 200, { ok: true });
+    } catch (e) {
+      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   // --- Conversations ---
