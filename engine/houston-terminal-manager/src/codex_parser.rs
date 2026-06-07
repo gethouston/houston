@@ -7,7 +7,9 @@ use super::auth_error::{is_auth_retry_noise, AUTH_RETRY_MARKER};
 use super::provider::Provider;
 use super::provider_error_kind::ProviderError;
 use super::types::FeedItem;
-use serde::Deserialize;
+use serde::de::{self, MapAccess, Visitor};
+use serde::{Deserialize, Deserializer};
+use std::fmt;
 use std::str::FromStr;
 
 /// Run the OpenAI / Codex stderr classifier against a Codex
@@ -37,10 +39,18 @@ pub struct CodexEvent {
 }
 
 /// An item payload inside `item.started`, `item.updated`, `item.completed`.
-#[derive(Debug, Clone, Deserialize)]
+///
+/// `Deserialize` is hand-written (see the impl below) rather than derived.
+/// Codex's `web_search` `item.started` serializes the `item` object with TWO
+/// `id` keys — the thread-item id (`item_7`) followed by the underlying OpenAI
+/// Responses API web_search call id (`ws_...`). serde's derived `Deserialize`
+/// rejects any duplicate field, so the whole event was discarded and an error
+/// logged on every web search (Sentry HOUSTON-APP-31, 174+ events). The manual
+/// impl is first-key-wins: it keeps the thread-item id and tolerates the
+/// malformed duplicate instead of dropping the line.
+#[derive(Debug, Clone)]
 pub struct CodexItem {
     pub id: Option<String>,
-    #[serde(rename = "type")]
     pub item_type: String,
     /// Agent text response.
     pub text: Option<String>,
@@ -62,6 +72,93 @@ pub struct CodexItem {
     pub query: Option<String>,
     /// Error message (error items).
     pub message: Option<String>,
+}
+
+impl<'de> Deserialize<'de> for CodexItem {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        struct CodexItemVisitor;
+
+        impl<'de> Visitor<'de> for CodexItemVisitor {
+            type Value = CodexItem;
+
+            fn expecting(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                f.write_str("a Codex item object")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<CodexItem, A::Error>
+            where
+                A: MapAccess<'de>,
+            {
+                let mut id = None;
+                let mut item_type: Option<String> = None;
+                let mut text = None;
+                let mut command = None;
+                let mut aggregated_output = None;
+                let mut exit_code = None;
+                let mut status = None;
+                let mut changes = None;
+                let mut server = None;
+                let mut tool = None;
+                let mut query = None;
+                let mut message = None;
+
+                // First-key-wins. Codex's `web_search` item.started emits a
+                // duplicate `id` (thread-item id, then the `ws_` Responses
+                // call id). Keeping the first preserves the thread-item id and
+                // stops serde from rejecting the line (HOUSTON-APP-31). Applied
+                // to every field so any future duplicate key is tolerated
+                // rather than discarding the whole event.
+                macro_rules! keep_first {
+                    ($slot:ident) => {{
+                        let value = map.next_value()?;
+                        if $slot.is_none() {
+                            $slot = Some(value);
+                        }
+                    }};
+                }
+
+                while let Some(key) = map.next_key::<String>()? {
+                    match key.as_str() {
+                        "id" => keep_first!(id),
+                        "type" => keep_first!(item_type),
+                        "text" => keep_first!(text),
+                        "command" => keep_first!(command),
+                        "aggregated_output" => keep_first!(aggregated_output),
+                        "exit_code" => keep_first!(exit_code),
+                        "status" => keep_first!(status),
+                        "changes" => keep_first!(changes),
+                        "server" => keep_first!(server),
+                        "tool" => keep_first!(tool),
+                        "query" => keep_first!(query),
+                        "message" => keep_first!(message),
+                        _ => {
+                            map.next_value::<de::IgnoredAny>()?;
+                        }
+                    }
+                }
+
+                Ok(CodexItem {
+                    id,
+                    item_type: item_type.ok_or_else(|| de::Error::missing_field("type"))?,
+                    text,
+                    command,
+                    aggregated_output,
+                    exit_code,
+                    status,
+                    changes,
+                    server,
+                    tool,
+                    query,
+                    message,
+                })
+            }
+        }
+
+        deserializer.deserialize_map(CodexItemVisitor)
+    }
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -679,6 +776,31 @@ mod tests {
             FeedItem::ToolCall { name, .. } => assert_eq!(name, "github::list_issues"),
             other => panic!("expected ToolCall, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn web_search_item_with_duplicate_id_parses() {
+        // Regression for Sentry HOUSTON-APP-31. Codex's `web_search`
+        // `item.started` serializes the `item` object with TWO `id` keys: the
+        // thread-item id (`item_1`) then the Responses API web_search call id
+        // (`ws_...`). serde's derived Deserialize rejected the duplicate, so the
+        // whole line was dropped — hiding the WebSearch tool call and logging an
+        // error on every web search (174+ Sentry events). The hand-written
+        // first-key-wins Deserialize must tolerate it and keep the thread-item id.
+        let line = r#"{"type":"item.started","item":{"id":"item_1","type":"web_search","id":"ws_08df916a4f3c6634016a2585d9d5fc81909ccd0f244dfe39cf","query":"","action":{"type":"other"}}}"#;
+
+        // Direct deserialize: the line parses, the FIRST `id` wins, and the
+        // unknown `action` field is ignored.
+        let event: CodexEvent =
+            serde_json::from_str(line).expect("duplicate `id` must not fail to parse");
+        let item = event.item.expect("item present");
+        assert_eq!(item.id.as_deref(), Some("item_1"));
+        assert_eq!(item.item_type, "web_search");
+
+        // End-to-end: the WebSearch tool call is emitted, no longer dropped.
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::ToolCall { name, .. } if name == "WebSearch"));
     }
 
     #[test]
