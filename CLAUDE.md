@@ -143,6 +143,7 @@ Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, co
 | app/ | `cd app && pnpm tsc --noEmit` | `cd app/src-tauri && cargo check` | `cd app && pnpm tauri build` |
 | app/ Win MSI | — | — | `cd app && pnpm tauri build --target x86_64-pc-windows-msvc` (needs Windows host or `xwin` SDK) |
 | app/ i18n | `cd app && pnpm check-locales` | — | — |
+| packages/web | `pnpm --filter houston-web typecheck` (runs Tauri shim-parity guard + tsc) | — | `pnpm --filter houston-web build` |
 | CLI bundle (mac) | — | — | `./scripts/fetch-cli-deps.sh both` |
 | CLI bundle (win) | — | — | `./scripts/fetch-cli-deps.sh windows-x64` (Bun + jq + zstd required) |
 

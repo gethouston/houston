@@ -2,6 +2,7 @@ packages:
   - "ui/*"
   - "app"
   - "mobile"
+  - "packages/*"
   - "houston-relay"
   - "examples/*"
   # Shared TypeScript client/contract for the new TS engine, consumed by the
