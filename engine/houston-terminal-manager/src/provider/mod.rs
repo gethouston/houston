@@ -30,6 +30,7 @@ pub(crate) mod openai_credentials;
 mod openrouter;
 mod openrouter_classify;
 pub(crate) mod openrouter_credentials;
+mod gemini;
 mod resolve;
 
 pub(crate) use anthropic_classify::detect_malformed_provider_json;
@@ -198,6 +199,7 @@ const REGISTRY: &[&dyn ProviderAdapter] = &[
     &anthropic::ANTHROPIC,
     &openai::OPENAI,
     &openrouter::OPENROUTER,
+    &gemini::GEMINI,
 ];
 
 /// Providers that spawn the Codex CLI runner (shared NDJSON parser).

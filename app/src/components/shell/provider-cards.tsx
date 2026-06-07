@@ -6,6 +6,7 @@ import {
   ClaudeLogo,
   OpenAILogo,
   OpenRouterLogo,
+  GeminiLogo,
   DeepSeekLogo,
   MiniMaxLogo,
 } from "./provider-logos";
@@ -34,6 +35,12 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
 
 function ComingSoonLogo({ provider }: { provider: ComingSoonProviderInfo }) {
   switch (provider.id) {
+    case "gemini":
+      // Gemini has a real brand mark — Houston already ships the SVG
+      // for the active-provider card path, so reuse it here while
+      // Gemini sits in the coming-soon slot rather than falling back
+      // to the generic two-letter chip.
+      return <GeminiLogo />;
     case "deepseek":
       return <DeepSeekLogo />;
     case "minimax":

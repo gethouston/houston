@@ -518,6 +518,19 @@ export class HoustonClient {
    * and chmods 0600 on Unix. The next `providerStatus("openrouter")` poll
    * returns `Authenticated` without a Houston restart.
    */
+  /**
+   * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
+   * the key shape, writes atomically, and chmods 0600 on Unix. The
+   * next `providerStatus("gemini")` poll will return `Authenticated`
+   * without requiring a Houston restart.
+   *
+   * Gemini-specific: other providers use the CLI's own OAuth flow via
+   * `providerLogin`. Do NOT generalize this route until a second
+   * provider needs it.
+   */
+  setGeminiApiKey(apiKey: string): Promise<void> {
+    return this.request("POST", "/providers/gemini/credentials", { apiKey });
+  }
   setOpenRouterApiKey(apiKey: string): Promise<void> {
     return this.request("POST", "/providers/openrouter/credentials", { apiKey });
   }

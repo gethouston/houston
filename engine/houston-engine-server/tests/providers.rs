@@ -68,6 +68,106 @@ async fn status_returns_shape_for_known_provider() {
 }
 
 #[tokio::test]
+async fn status_returns_shape_for_gemini() {
+    let (addr, tok) = spawn().await;
+    let body: serde_json::Value = reqwest::Client::new()
+        .get(format!("http://{addr}/v1/providers/gemini/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["provider"], "gemini");
+    assert_eq!(body["cliName"], "gemini");
+    assert!(body["cliInstalled"].is_boolean());
+    assert!(matches!(
+        body["authState"].as_str(),
+        Some("authenticated" | "unauthenticated" | "unknown")
+    ));
+    assert!(matches!(
+        body["installSource"].as_str(),
+        Some("bundled" | "managed" | "path" | "missing")
+    ));
+}
+
+#[tokio::test]
+async fn gemini_credentials_rejects_empty_key() {
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+}
+
+#[tokio::test]
+async fn gemini_credentials_rejects_malformed_key() {
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "abc" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "AIzaTest Key 1234567890" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+}
+
+#[tokio::test]
+async fn gemini_credentials_writes_to_home_dot_env() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    std::env::set_var("HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "AIzaTestKey1234567890" }))
+        .send()
+        .await
+        .unwrap();
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+
+    assert!(status.is_success(), "expected 2xx, got {status} body={body}");
+    let env_file = tmp.path().join(".gemini").join(".env");
+    let contents = std::fs::read_to_string(&env_file).unwrap_or_else(|e| {
+        panic!(
+            "expected {} to exist after credentials write: {e}",
+            env_file.display()
+        )
+    });
+    assert!(
+        contents.contains("GEMINI_API_KEY=AIzaTestKey1234567890"),
+        "expected GEMINI_API_KEY line in {contents:?}"
+    );
+}
+
+#[tokio::test]
 async fn openrouter_credentials_rejects_empty_key() {
     let (addr, tok) = spawn().await;
     let res = reqwest::Client::new()

@@ -817,9 +817,16 @@ export const tauriProvider = {
    */
   cancelLogin: (provider: string) =>
     call<void>("cancel_provider_login", () => getEngine().cancelProviderLogin(provider)),
-  /** Gemini is not wired on the OpenRouter local integration branch. */
-  setGeminiApiKey: (_apiKey: string) =>
-    Promise.reject(new Error("Gemini is not available in this build")),
+  /**
+   * Save a Gemini API key to `~/.gemini/.env` via the engine. Errors
+   * surface through `call`'s standard rejection path; the caller is
+   * expected to render them with `errorMessage(err)` + `addToast`.
+   *
+   * Gemini-only by design (other providers use OAuth via launchLogin).
+   * Never log `apiKey` — it's a SECRET.
+   */
+  setGeminiApiKey: (apiKey: string) =>
+    call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────

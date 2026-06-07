@@ -166,6 +166,8 @@ export function statusPageUrl(provider: string): string | null {
       return "https://status.openai.com/";
     case "openrouter":
       return "https://status.openrouter.ai/";
+    case "gemini":
+      return "https://status.cloud.google.com/";
     default:
       return null;
   }

@@ -18,7 +18,7 @@ export interface ModelOption {
   /**
    * Reasoning-effort levels this model accepts, ordered low→high. Omitted
    * or empty means the model has no effort control and the picker hides the
-   * effort row (e.g. Haiku).
+   * effort row (e.g. Gemini, Haiku).
    */
   effortLevels?: readonly EffortLevel[];
   /**
@@ -340,8 +340,10 @@ export function getContextWindowConfig(
  * Return `providerId` only when it names a currently-active provider in
  * `PROVIDERS`. Used by the chat model selector and the per-chat
  * effective-provider fallback chain to skip stored values that point at
- * providers Houston has retired from `PROVIDERS` (stored configs from older
- * builds may still reference them). Callers chain with `??` to fall through.
+ * providers Houston has moved to `COMING_SOON_PROVIDERS` (e.g. an
+ * activity record from a previous Houston version that selected Gemini
+ * before it was paused). Callers chain it with `??` to fall through to
+ * the next tier of preference.
  */
 export function validProviderOrNull(providerId: string | null | undefined): string | null {
   return providerId && getProvider(providerId) ? providerId : null;
@@ -463,6 +465,11 @@ export interface ComingSoonProviderInfo {
 }
 
 export const COMING_SOON_PROVIDERS: readonly ComingSoonProviderInfo[] = [
+  // Gemini: engine support + bundled CLI machinery are intact in this
+  // codebase. The UI keeps it under "coming soon" until the broader
+  // rollout (account-tier gating, Windows fork-build) is ready. Listed
+  // first so the alphabetised "next up" slot stays prominent.
+  { id: "gemini", name: "Google", subtitle: "Gemini CLI", mark: "GM" },
   { id: "subq", name: "SubQ", subtitle: "SubQ Code", mark: "SQ" },
   { id: "deepseek", name: "DeepSeek", subtitle: "DeepSeek Coder", mark: "DS" },
   { id: "minimax", name: "MiniMax", subtitle: "M2", mark: "MM" },

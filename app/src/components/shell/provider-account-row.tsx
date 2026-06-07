@@ -4,7 +4,7 @@ import type { ProviderInfo } from "../../lib/providers";
 import { providerHarnessI18nKey } from "../../lib/providers";
 import type { ClaudeInstallState } from "../../hooks/use-claude-install";
 import { ClaudeInstallHint } from "./claude-install-hint";
-import { ClaudeLogo, OpenAILogo, OpenRouterLogo } from "./provider-logos";
+import { ClaudeLogo, OpenAILogo, OpenRouterLogo, GeminiLogo } from "./provider-logos";
 
 function ProviderLogo({ provider }: { provider: ProviderInfo }) {
   switch (provider.id) {
@@ -14,6 +14,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <OpenAILogo />;
     case "openrouter":
       return <OpenRouterLogo />;
+    case "gemini":
+      return <GeminiLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">

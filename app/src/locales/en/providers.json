@@ -151,5 +151,24 @@
     "savingModels": "Saving...",
     "saveModelsFailed": "Could not save your OpenRouter models",
     "back": "Back"
+  },
+  "geminiConnect": {
+    "title": "Connect {{name}}",
+    "description": "Sign in with your Google account to use the free Gemini tier, the same one the gemini CLI uses outside Houston.",
+    "signInWithGoogle": "Sign in with Google",
+    "signingIn": "Opening browser...",
+    "signInFailed": "Couldn't start {{name}} sign-in",
+    "signInRecommended": "Recommended. Uses the free personal tier, no payment required.",
+    "or": "or",
+    "useApiKeyAdvanced": "Use an API key (advanced)",
+    "openConsole": "Open the {{name}} console",
+    "openConsoleFailed": "Couldn't open the {{name}} console",
+    "placeholder": "Paste your key here",
+    "show": "Show key",
+    "hide": "Hide key",
+    "saveKey": "Save and connect",
+    "saving": "Saving...",
+    "saveFailed": "Couldn't save your {{name}} key",
+    "cancel": "Cancel"
   }
 }
