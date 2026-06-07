@@ -2,19 +2,27 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
+import {
+  cancelLocalProviderLogin,
+  checkLocalProviderStatus,
+  launchLocalProviderLogin,
+  launchLocalProviderLogout,
+} from "../../lib/local-provider-bridge";
+import type { ProviderStatus } from "../../lib/tauri";
 import {
   PROVIDERS,
   COMING_SOON_PROVIDERS,
+  usesConnectDialog,
   type ProviderInfo,
 } from "../../lib/providers";
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
-import { osIsTauri } from "../../lib/os-bridge";
-import { GeminiConnectDialog } from "./gemini-connect-dialog";
+import { providerUsesDeviceAuth } from "../../lib/provider-device-auth";
+import { ProviderConnectDialog } from "./provider-connect-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderCard, ComingSoonCard } from "./provider-cards";
+import { providerSettingsRowConnected } from "./provider-reconnect-state";
 
 interface Props {
   /** Current workspace provider id (used to push the new default after sign-in). */
@@ -48,17 +56,21 @@ export function ProviderPicker({ onSelect }: Props) {
     // Probe every active provider in parallel. New providers added to the
     // PROVIDERS list are picked up automatically; never hardcode ids here.
     const results = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      PROVIDERS.map(async (p) => [p.id, await checkLocalProviderStatus(p.id)] as const),
     );
     const next: Record<string, ProviderStatus> = {};
     for (const [id, status] of results) {
       next[id] = status;
     }
     for (const prov of PROVIDERS) {
-      const wasConnected =
-        prevStatuses.current[prov.id]?.cli_installed &&
-        prevStatuses.current[prov.id]?.authenticated;
-      const isConnected = next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
+      const prev = prevStatuses.current[prov.id];
+      const cur = next[prov.id];
+      const wasConnected = prev
+        ? providerSettingsRowConnected(prev, prov.loginKind)
+        : false;
+      const isConnected = cur
+        ? providerSettingsRowConnected(cur, prov.loginKind)
+        : false;
       if (!wasConnected && isConnected) {
         analytics.track("provider_configured", { provider: prov.id });
         onSelect(prov.id, prov.defaultModel);
@@ -89,7 +101,8 @@ export function ProviderPicker({ onSelect }: Props) {
   useEffect(() => {
     if (!pendingId) return;
     const status = statuses[pendingId];
-    if (status?.cli_installed && status?.authenticated) {
+    const prov = PROVIDERS.find((p) => p.id === pendingId);
+    if (status && prov && providerSettingsRowConnected(status, prov.loginKind)) {
       setPendingId(null);
     }
   }, [pendingId, statuses]);
@@ -147,10 +160,10 @@ export function ProviderPicker({ onSelect }: Props) {
   }, [addToast, loadStatuses, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
-    // API-key providers (e.g. Gemini) have no CLI login flow. The engine
-    // would return a BadRequest if we called `launchLogin`; instead we open
-    // a dedicated dialog that walks the user through pasting an API key.
-    if (provider.loginKind === "apiKey") {
+    // API-key providers (OpenRouter) have no CLI login flow. The
+    // engine returns BadRequest on `launchLogin`; we open a dialog to paste
+    // an API key instead.
+    if (usesConnectDialog(provider)) {
       setApiKeyDialogFor(provider);
       return;
     }
@@ -160,7 +173,7 @@ export function ProviderPicker({ onSelect }: Props) {
       // engine) can't receive the CLI's localhost OAuth callback, so ask
       // for the headless device-code flow. The engine ignores the flag for
       // providers without a device variant (Claude keeps its paste-back).
-      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri() });
+      await launchLocalProviderLogin(provider.id, { deviceAuth: providerUsesDeviceAuth() });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);
@@ -179,7 +192,7 @@ export function ProviderPicker({ onSelect }: Props) {
     // optimistically — the engine's benign ProviderLoginComplete is the
     // backstop, but the user clicked Cancel and should see it react now.
     try {
-      await tauriProvider.cancelLogin(provider.id);
+      await cancelLocalProviderLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-picker] cancelLogin(${provider.id}) failed:`, msg);
@@ -197,7 +210,7 @@ export function ProviderPicker({ onSelect }: Props) {
   const handleSignOut = async (provider: ProviderInfo) => {
     setPendingId(provider.id);
     try {
-      await tauriProvider.launchLogout(provider.id);
+      await launchLocalProviderLogout(provider.id);
       await loadStatuses();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -222,10 +235,12 @@ export function ProviderPicker({ onSelect }: Props) {
 
   return (
     <>
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid min-w-0 grid-cols-1 sm:grid-cols-2 gap-2">
         {PROVIDERS.map((prov) => {
           const status = statuses[prov.id];
-          const connected = (status?.cli_installed && status?.authenticated) ?? false;
+          const connected = status
+            ? providerSettingsRowConnected(status, prov.loginKind)
+            : false;
           return (
             <ProviderCard
               key={prov.id}
@@ -261,24 +276,16 @@ export function ProviderPicker({ onSelect }: Props) {
         }}
       />
 
-      <GeminiConnectDialog
+      <ProviderConnectDialog
         provider={apiKeyDialogFor}
         onOpenChange={(open) => {
           if (!open) setApiKeyDialogFor(null);
         }}
         onSaved={(providerId) => {
-          // Flipping pendingId arms the 2s status poll defined in this
-          // component, so the card transitions to "Connected" without a
-          // Houston restart. The poll is also responsible for clearing
-          // pendingId once the auth state reads `authenticated`.
           setPendingId(providerId);
           loadStatuses();
         }}
         onLoginStarted={(providerId) => {
-          // OAuth path: gemini-cli is now driving the browser flow.
-          // Arm the picker's status poll so the card flips to
-          // Connected the moment gemini-cli writes its credential
-          // files, same as the API-key save path above.
           setPendingId(providerId);
         }}
       />

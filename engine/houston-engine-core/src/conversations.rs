@@ -38,6 +38,10 @@ struct ActivityRow {
     #[serde(default)]
     worktree_path: Option<String>,
     #[serde(default)]
+    provider: Option<String>,
+    #[serde(default)]
+    model: Option<String>,
+    #[serde(default)]
     updated_at: Option<String>,
 }
 
@@ -69,6 +73,10 @@ pub struct ConversationEntry {
     pub routine_id: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub worktree_path: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 fn read_activities(root: &Path) -> CoreResult<Vec<ActivityRow>> {
@@ -117,6 +125,8 @@ pub fn list(root: &Path) -> CoreResult<Vec<ConversationEntry>> {
             agent: row.agent,
             routine_id: row.routine_id,
             worktree_path: row.worktree_path,
+            provider: row.provider.filter(|p| !p.is_empty()),
+            model: row.model.filter(|m| !m.is_empty()),
         })
         .collect())
 }
@@ -205,6 +215,23 @@ mod tests {
             entries[0].session_key, "routine-abc",
             "routine chats keep their stable per-routine key"
         );
+    }
+
+    #[test]
+    fn preserves_activity_provider_model() {
+        let d = TempDir::new().unwrap();
+        seed(
+            d.path(),
+            serde_json::json!([
+                { "id": "act", "title": "Work", "description": "", "status": "running",
+                  "session_key": "activity-act", "provider": "openrouter",
+                  "model": "qwen/qwen3-coder-next",
+                  "updated_at": "2026-02-02T00:00:00Z" },
+            ]),
+        );
+        let entries = list(d.path()).unwrap();
+        assert_eq!(entries[0].provider.as_deref(), Some("openrouter"));
+        assert_eq!(entries[0].model.as_deref(), Some("qwen/qwen3-coder-next"));
     }
 
     #[test]

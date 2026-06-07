@@ -2,17 +2,26 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
-import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
+import {
+  cancelLocalProviderLogin,
+  checkLocalProviderStatus,
+  launchLocalProviderLogin,
+  launchLocalProviderLogout,
+} from "../../lib/local-provider-bridge";
+import { PROVIDERS, usesConnectDialog, type ProviderInfo } from "../../lib/providers";
 import { useClaudeInstall } from "../../hooks/use-claude-install";
 import { useUIStore } from "../../stores/ui";
+import { useAgentStore } from "../../stores/agents";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
-import { osIsTauri } from "../../lib/os-bridge";
-import { GeminiConnectDialog } from "./gemini-connect-dialog";
+import { providerUsesDeviceAuth } from "../../lib/provider-device-auth";
+import type { ProviderStatus } from "../../lib/tauri";
+import { ProviderConnectDialog } from "./provider-connect-dialog";
+import { OpenRouterManageModelsDialog } from "./openrouter-manage-models-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderAccountRow } from "./provider-account-row";
-import { providerAppearsConnected } from "./provider-reconnect-state";
+import { providerSettingsRowConnected } from "./provider-reconnect-state";
+import { useInvalidateOpenRouterCatalog } from "../../hooks/use-openrouter-catalog";
 
 /**
  * Settings-screen variant of the AI provider UI: accounts only.
@@ -33,7 +42,8 @@ export function ProviderSettings() {
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
-  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
+  const [connectDialogFor, setConnectDialogFor] = useState<ProviderInfo | null>(null);
+  const [manageOpenRouterModels, setManageOpenRouterModels] = useState(false);
   // OAuth URL surfaced by the engine when the CLI couldn't open the
   // user's browser itself (remote/headless deployments). `userCode` is
   // set for codex's device-grant flow (the one-time code to enter on
@@ -45,6 +55,8 @@ export function ProviderSettings() {
     userCode: string | null;
   } | null>(null);
   const addToast = useUIStore((s) => s.addToast);
+  const currentAgent = useAgentStore((s) => s.current);
+  const invalidateOpenRouterCatalog = useInvalidateOpenRouterCatalog();
 
   // First scan is treated as the baseline so opening Settings while a
   // provider is already connected doesn't fire a fake "X connected" toast.
@@ -54,7 +66,7 @@ export function ProviderSettings() {
   const loadStatuses = useCallback(async () => {
     const results = await Promise.all(
       PROVIDERS.map(async (p) => {
-        const status = await tauriProvider.checkStatus(p.id);
+        const status = await checkLocalProviderStatus(p.id);
         // Paint each card the moment ITS probe resolves instead of blocking
         // every card on the slowest provider — each CLI shell-out can take
         // up to its 5s timeout, and gating the whole batch made the section
@@ -71,8 +83,12 @@ export function ProviderSettings() {
       for (const prov of PROVIDERS) {
         const prev = prevStatuses.current[prov.id];
         const cur = next[prov.id];
-        const wasConnected = prev ? providerAppearsConnected(prev) : false;
-        const isConnected = cur ? providerAppearsConnected(cur) : false;
+        const wasConnected = prev
+          ? providerSettingsRowConnected(prev, prov.loginKind)
+          : false;
+        const isConnected = cur
+          ? providerSettingsRowConnected(cur, prov.loginKind)
+          : false;
         if (!wasConnected && isConnected) {
           analytics.track("provider_configured", { provider: prov.id });
         }
@@ -104,8 +120,9 @@ export function ProviderSettings() {
   }, []);
 
   useEffect(() => {
+    setLoading(true);
     loadStatuses();
-  }, [loadStatuses]);
+  }, [loadStatuses, currentAgent?.id]);
 
   // Anthropic's `claude` is a Houston-managed runtime install (the
   // license forbids bundling it). Track that install here so the
@@ -131,7 +148,12 @@ export function ProviderSettings() {
   useEffect(() => {
     if (!pendingId) return;
     const status = statuses[pendingId];
-    if (status && providerAppearsConnected(status)) {
+    const prov = PROVIDERS.find((p) => p.id === pendingId);
+    if (
+      status &&
+      prov &&
+      providerSettingsRowConnected(status, prov.loginKind)
+    ) {
       setPendingId(null);
     }
   }, [pendingId, statuses]);
@@ -197,8 +219,8 @@ export function ProviderSettings() {
   }, [addToast, loadStatuses, patchAuthState, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
-    if (provider.loginKind === "apiKey") {
-      setApiKeyDialogFor(provider);
+    if (usesConnectDialog(provider)) {
+      setConnectDialogFor(provider);
       return;
     }
     setPendingId(provider.id);
@@ -207,7 +229,7 @@ export function ProviderSettings() {
       // engine) can't receive the CLI's localhost OAuth callback, so ask
       // for the headless device-code flow. The engine ignores the flag for
       // providers without a device variant (Claude keeps its paste-back).
-      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri() });
+      await launchLocalProviderLogin(provider.id, { deviceAuth: providerUsesDeviceAuth() });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-settings] launchLogin(${provider.id}) failed:`, msg);
@@ -226,7 +248,7 @@ export function ProviderSettings() {
     // optimistically; the engine's benign ProviderLoginComplete (handled
     // above) is the backstop.
     try {
-      await tauriProvider.cancelLogin(provider.id);
+      await cancelLocalProviderLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-settings] cancelLogin(${provider.id}) failed:`, msg);
@@ -244,11 +266,14 @@ export function ProviderSettings() {
   const handleSignOut = async (provider: ProviderInfo) => {
     setPendingId(provider.id);
     try {
-      await tauriProvider.launchLogout(provider.id);
+      await launchLocalProviderLogout(provider.id);
       // Logout succeeded — flip the card to disconnected now rather than
       // blocking the spinner on the several-second re-probe. loadStatuses
       // reconciles in the background.
       patchAuthState(provider.id, false);
+      if (provider.id === "openrouter") {
+        invalidateOpenRouterCatalog();
+      }
       void loadStatuses();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -273,7 +298,7 @@ export function ProviderSettings() {
     const disconnected: ProviderInfo[] = [];
     for (const p of PROVIDERS) {
       const s = statuses[p.id];
-      if (s && providerAppearsConnected(s)) connected.push(p);
+      if (s && providerSettingsRowConnected(s, p.loginKind)) connected.push(p);
       else disconnected.push(p);
     }
     return [...connected, ...disconnected];
@@ -289,10 +314,12 @@ export function ProviderSettings() {
 
   return (
     <>
-      <div className="grid grid-cols-1 gap-2">
+      <div className="grid min-w-0 grid-cols-1 gap-2">
         {orderedProviders.map((prov) => {
           const status = statuses[prov.id];
-          const connected = status ? providerAppearsConnected(status) : false;
+          const connected = status
+            ? providerSettingsRowConnected(status, prov.loginKind)
+            : false;
           return (
             <ProviderAccountRow
               key={prov.id}
@@ -304,6 +331,11 @@ export function ProviderSettings() {
               onSignOut={() => setConfirmSignOutFor(prov)}
               claudeInstall={prov.id === "anthropic" ? claudeInstall : null}
               onCancel={() => handleCancel(prov)}
+              onManageModels={
+                prov.id === "openrouter" && connected
+                  ? () => setManageOpenRouterModels(true)
+                  : undefined
+              }
             />
           );
         })}
@@ -326,10 +358,10 @@ export function ProviderSettings() {
         }}
       />
 
-      <GeminiConnectDialog
-        provider={apiKeyDialogFor}
+      <ProviderConnectDialog
+        provider={connectDialogFor}
         onOpenChange={(open) => {
-          if (!open) setApiKeyDialogFor(null);
+          if (!open) setConnectDialogFor(null);
         }}
         onSaved={(providerId) => {
           setPendingId(providerId);
@@ -338,6 +370,11 @@ export function ProviderSettings() {
         onLoginStarted={(providerId) => {
           setPendingId(providerId);
         }}
+      />
+
+      <OpenRouterManageModelsDialog
+        open={manageOpenRouterModels}
+        onOpenChange={setManageOpenRouterModels}
       />
 
       <ProviderLoginDialog

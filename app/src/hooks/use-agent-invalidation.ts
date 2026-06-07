@@ -37,6 +37,9 @@ export function useAgentInvalidation() {
           break;
         case "ConfigChanged":
           qc.invalidateQueries({ queryKey: queryKeys.config(p.data.agent_path) });
+          void import("../lib/agentic-model-preflight").then((m) =>
+            m.invalidateAgenticPreflightCache(p.data.agent_path),
+          );
           break;
         case "ContextChanged":
           qc.invalidateQueries({ queryKey: queryKeys.instructions(p.data.agent_path) });
@@ -76,6 +79,7 @@ export function useAgentInvalidation() {
         // cached provider statuses so the chat model picker reflects the new
         // connection without waiting for the next mount (issue #342).
         case "ProviderLoginComplete":
+        case "ProviderCredentialsSynced":
           qc.invalidateQueries({ queryKey: queryKeys.providerStatuses() });
           break;
       }

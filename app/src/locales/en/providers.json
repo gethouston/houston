@@ -1,4 +1,9 @@
 {
+  "harness": {
+    "anthropic": "Claude Code",
+    "openai": "Codex",
+    "openrouter": "OpenRouter"
+  },
   "card": {
     "connected": "Connected",
     "notConnected": "Not connected",
@@ -12,7 +17,9 @@
   "row": {
     "connect": "Connect",
     "signOut": "Sign out",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "syncToCloud": "Sync to cloud",
+    "syncingToCloud": "Syncing..."
   },
   "setup": {
     "installHint": "Install the {{cli}} CLI on your machine. Houston will pick it up automatically.",
@@ -50,7 +57,12 @@
     "signInFailed": "Couldn't open {{provider}} sign-in",
     "signOutFailed": "Couldn't sign out of {{provider}}",
     "signInSucceeded": "Signed in to {{provider}}",
-    "cancelFailed": "Couldn't cancel {{provider}} sign-in"
+    "cancelFailed": "Couldn't cancel {{provider}} sign-in",
+    "cloudSyncSuccess": "AI connection synced to {{agent}}",
+    "cloudSyncFailed": "Could not sync AI connection to {{agent}}",
+    "cloudSyncNeedsLocal": "Connect {{provider}} on this device first",
+    "cloudSyncNeedsLocalDetail": "Add your {{provider}} key here, then it syncs to {{agent}}.",
+    "cloudSyncNeedsLocalDetailOAuth": "Sign in with {{provider}} here, then it syncs to {{agent}}."
   },
   "providerLogin": {
     "title": "Finish signing in to {{name}}",
@@ -76,15 +88,25 @@
     "codeCopyFailed": "Couldn't copy the code",
     "cancel": "Cancel"
   },
-  "geminiConnect": {
+  "dualPathConnect": {
+    "or": "or",
+    "useApiKeyInstead": "Use API key instead"
+  },
+  "cliConnect": {
     "title": "Connect {{name}}",
-    "description": "Sign in with your Google account to use the free Gemini tier, the same one the gemini CLI uses outside Houston.",
-    "signInWithGoogle": "Sign in with Google",
+    "description": "Sign in with your existing account. Houston uses the same CLI login as on your machine.",
+    "descriptionAnthropic": "Sign in with your Claude subscription. Houston uses the same login as Claude Code on your machine.",
+    "descriptionOpenai": "Sign in with your ChatGPT account. Houston uses the same login as Codex on your machine.",
+    "signInWith": "Sign in with {{name}}",
     "signingIn": "Opening browser...",
     "signInFailed": "Couldn't start {{name}} sign-in",
-    "signInRecommended": "Recommended. Uses the free personal tier, no payment required.",
-    "or": "or",
-    "useApiKeyAdvanced": "Use an API key (advanced)",
+    "signInRecommended": "Recommended. Uses your existing subscription.",
+    "cancel": "Cancel"
+  },
+  "apiKeyConnect": {
+    "title": "Connect {{name}}",
+    "description": "Paste an API key from the provider console. Houston stores it locally on your machine.",
+    "connectButton": "Connect {{name}}",
     "openConsole": "Open the {{name}} console",
     "openConsoleFailed": "Couldn't open the {{name}} console",
     "placeholder": "Paste your key here",
@@ -93,6 +115,41 @@
     "saveKey": "Save and connect",
     "saving": "Saving...",
     "saveFailed": "Couldn't save your {{name}} key",
+    "saveUnavailable": "API key connect for this provider is not available yet. Use sign-in above for now.",
     "cancel": "Cancel"
+  },
+  "openrouterConnect": {
+    "description": "Create an API key at OpenRouter and paste it here. Houston stores it locally on your machine.",
+    "testAndContinue": "Test key and continue",
+    "verifyingKey": "Testing key...",
+    "keyRejected": "OpenRouter rejected your API key",
+    "engineStale": "Houston engine is out of date",
+    "engineStaleDetail": "Stop the app, run cargo build -p houston-engine-server, then start pnpm tauri dev again.",
+    "modelsTitle": "Your models",
+    "modelsDescription": "Pick which models appear in chat. You can change this anytime.",
+    "searchPlaceholder": "Search by name",
+    "noModelResults": "No models match your search",
+    "noSelectedModels": "Add at least one model to continue",
+    "freeBadge": "Free",
+    "searchPricingFree": "(free)",
+    "searchPricingPaid": "(paid)",
+    "searchModeChat": "(chat only)",
+    "searchModeAgent": "(agent)",
+    "addModel": "Add model",
+    "addFreeSuggested": "Add free suggestions",
+    "addPaidSuggested": "Add paid suggestions",
+    "pasteModelLink": "Can't find it? Paste the model name",
+    "pasteModelPlaceholder": "provider/model-name",
+    "pasteModelAdd": "Add",
+    "pasteModelInvalid": "That doesn't look like a valid model name",
+    "removeModel": "Remove {{name}}",
+    "manageModels": "Manage models",
+    "manageModelsTitle": "OpenRouter models",
+    "loadingCatalog": "Loading models from OpenRouter...",
+    "catalogFailed": "Could not load OpenRouter models",
+    "finish": "Done",
+    "savingModels": "Saving...",
+    "saveModelsFailed": "Could not save your OpenRouter models",
+    "back": "Back"
   }
 }

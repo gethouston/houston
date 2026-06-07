@@ -180,6 +180,51 @@ instructions. Agent directories already expose `CLAUDE.md` through an
 `AGENTS.md` symlink, and global Codex config writes can land under the active
 TOML table and break Codex startup.
 
+## Houston-managed provider API keys
+
+Houston stores pasted provider API keys under a single layout:
+
+```text
+~/.houston/providers/<provider>/.env
+```
+
+Debug builds use `~/.dev-houston/providers/<provider>/.env` unless
+`HOUSTON_HOME` overrides the data root. Each file holds one
+`KEY=value` line (for example `ANTHROPIC_API_KEY=sk-ant-...`). Writes
+are atomic (`.env.tmp` + rename), mode **0600** on Unix, and other
+`KEY=VALUE` lines in the file are preserved. The engine never logs key
+values, only length/shape.
+
+| Provider | Env var | Legacy read path (migration) |
+|---|---|---|
+| `anthropic` | `ANTHROPIC_API_KEY` | `~/.houston/anthropic/.env` |
+| `openai` | `OPENAI_API_KEY` | `~/.houston/openai/.env` |
+| `gemini` | `GEMINI_API_KEY` | `~/.gemini/.env` |
+| `openrouter` | `OPENROUTER_API_KEY` | `~/.houston/openrouter/.env` |
+
+**Migration.** Reads check the canonical path first, then legacy paths
+in the table. Writes always target the canonical file. Disconnect clears
+the key line from every path (canonical + legacy). Idempotent: old files
+left on disk after upgrade are still honored until the user disconnects
+or saves a new key.
+
+**Auth probes.** `provider_auth::houston_managed_api_key_authenticated`
+(and each provider adapter) treat a non-empty process env var or a
+Houston-managed file as `authenticated` before falling through to CLI
+OAuth probes (`claude auth status`, `codex login status`, gemini
+`settings.json`, etc.).
+
+**Disconnect.** API-key-only providers (`openrouter`, gemini API-key
+path) return **409 Conflict** when the matching env var is set in the
+user's shell, because Houston cannot unset shell env and the probe would
+still report connected. CLI OAuth logout (`claude auth logout`, `codex
+logout`) still runs for subscription users; Houston-managed API key files
+are cleared afterward (or alone when no OAuth session exists).
+
+Shared implementation: `houston-terminal-manager::provider_env` (paths
++ dotenv parse) and `houston-engine-core::provider::provider_env_store`
+(async read/write/strip).
+
 ## Gemini (API key, no CLI login)
 
 Gemini does not have an OAuth-style `gemini auth login`. The CLI reads
@@ -187,7 +232,7 @@ credentials from one of three places, in order:
 
 1. `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) environment variable in the
    spawning shell.
-2. `~/.gemini/.env` file with the same env-var format.
+2. `~/.houston/providers/gemini/.env` (legacy: `~/.gemini/.env`).
 3. `~/.gemini/settings.json` with a `selectedAuthType` and matching
    credential block.
 
@@ -228,8 +273,9 @@ Strings live under the `providers.apiKeyConnect.*` namespace
 
 ### Connect flow (Option A, in-flight)
 
-The follow-up flow writes the key directly to `~/.gemini/.env` so the
-user does not have to fiddle with shell rc files. The engine route is
+The follow-up flow writes the key directly to
+`~/.houston/providers/gemini/.env` so the user does not have to fiddle
+with shell rc files. The engine route is
 `POST /v1/providers/gemini/credentials` (atomic write, mode 0600,
 parent dir ensure). When the in-flight upgrade lands, the dialog gains
 a paste input + Save button and the restart-Houston step disappears.
@@ -246,7 +292,8 @@ etc.) and answers Houston tasks with the wrong context.
 `houston-terminal-manager::gemini_home::ensure_gemini_runtime_home`
 builds a Houston-managed HOME at `~/.houston/runtime/gemini-home/`
 containing only `.gemini/oauth_creds.json` + `google_accounts.json`
-+ `.env` symlinked from the real home (so OAuth and API-key auth
++ `.env` symlinked to `~/.houston/providers/gemini/.env` (legacy:
++ `~/.gemini/.env` when canonical missing) so OAuth and API-key auth
 both keep working without re-auth) plus a minimal
 `.gemini/settings.json` that mirrors the user's `selectedType`. No
 `GEMINI.md` is present, so global memory discovery finds nothing.
@@ -266,3 +313,55 @@ missing source as "skip this entry" instead of erroring. Without
 that, the user-visible toast was: _"Failed to prepare gemini
 runtime home: The system cannot find the file specified. (os
 error 2). Houston cannot spawn gemini safely without it."_
+
+## OpenRouter (API key, Codex runner)
+
+OpenRouter has no OAuth-style `openrouter login`. Houston stores the key
+in **`~/.houston/providers/openrouter/.env`** (legacy:
+`~/.houston/openrouter/.env`) as a single line:
+
+```text
+OPENROUTER_API_KEY=sk-or-v1-...
+```
+
+Writes are atomic (`.env.tmp` + rename), mode **0600** on Unix, and other
+`KEY=VALUE` lines in the file are preserved. The engine never logs the
+key; only length/shape is traced.
+
+At Codex spawn time, `houston-terminal-manager` reads the stored key and
+sets `OPENROUTER_API_KEY` on the subprocess env only. Houston does **not**
+write OpenRouter provider config into `~/.codex/config.toml`; overrides
+are process-local `-c` flags (see `cloud/openrouter-spike.md`).
+
+`OpenRouterAdapter::probe_auth` checks the Houston credential file (and
+treats a non-empty shell `OPENROUTER_API_KEY` as authenticated when
+present in the engine process env). Missing file/key → `unauthenticated`.
+Same path backs `GET /v1/providers/openrouter/status`.
+
+### `launch_login("openrouter")` returns BadRequest
+
+`login_args` is `None`. `launch_login` surfaces
+`BadRequest("openrouter has no CLI login flow, connect via settings instead")`.
+The desktop picker uses `loginKind === "apiKey"` and opens
+`api-key-connect-dialog.tsx` instead of calling login.
+
+### Connect flow
+
+1. User opens `https://openrouter.ai/keys` from the dialog
+   (`apiKeyConsoleUrl` in `providers.ts`).
+2. User pastes the key; frontend calls
+   `POST /v1/providers/openrouter/credentials` with `{ apiKey }`
+   (`engine-client` → `setOpenRouterApiKey`).
+3. Next status poll shows `authenticated`; no app restart required.
+
+Strings live under `providers.apiKeyConnect.*` (shared with Gemini).
+Provider-specific copy uses the `openrouter` provider id in i18n.
+
+### Disconnect
+
+`POST /v1/providers/openrouter/logout` → `disconnect_openrouter()` strips
+the `OPENROUTER_API_KEY=` line from Houston storage (canonical + legacy
+paths, or removes empty files). If `OPENROUTER_API_KEY` is set in the user's
+shell environment, disconnect returns **409 Conflict** because Houston
+cannot unset shell env vars and the probe would still report connected.
+Unset the shell var first, then disconnect from settings.

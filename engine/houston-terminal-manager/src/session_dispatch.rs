@@ -20,7 +20,6 @@
 
 use crate::claude_runner::spawn_claude;
 use crate::codex_runner::spawn_codex;
-use crate::gemini_runner::spawn_gemini;
 use crate::session_update::SessionUpdate;
 use crate::types::SessionStatus;
 use crate::Provider;
@@ -62,7 +61,7 @@ pub(crate) async fn dispatch(
             )
             .await;
         }
-        "openai" => {
+        "openai" | "openrouter" => {
             spawn_codex(
                 tx,
                 provider,
@@ -72,23 +71,6 @@ pub(crate) async fn dispatch(
                 working_dir,
                 model,
                 effort,
-                system_prompt,
-            )
-            .await;
-        }
-        "gemini" => {
-            // Gemini's CLI takes no `effort` / `mcp_config` /
-            // tool-toggle flags today; those parameters are
-            // intentionally not forwarded. If gemini-cli grows an
-            // equivalent in a future release, plumb it through here
-            // rather than silently swallowing.
-            spawn_gemini(
-                tx,
-                provider,
-                prompt,
-                resume_session_id,
-                working_dir,
-                model,
                 system_prompt,
             )
             .await;

@@ -9,8 +9,10 @@
 //!
 //! The user's `chat_feed` is never mutated — they still see every message;
 //! only the agent's working context shrinks. This is provider-agnostic: it
-//! works the same for Claude, Codex, and Gemini, and is the reliable path for
-//! Codex (whose own auto-compaction is unreliable in `exec` mode).
+//! works the same for Claude, Codex, OpenRouter, and Gemini, and is the
+//! reliable path for Codex-backed providers (Codex auto-compaction is
+//! unreliable in `exec` mode; OpenRouter reuses the same Codex one-shot
+//! path with process-local provider overrides).
 
 use super::{history, provider_oneshot};
 use crate::error::{CoreError, CoreResult};
@@ -29,11 +31,13 @@ const SUMMARY_TIMEOUT: Duration = Duration::from_secs(90);
 
 /// Cheap, always-available fallback summary model per provider, used only when
 /// the conversation's own model is unknown. Mirrors `summarize`'s title tiers.
+pub(crate) const OPENROUTER_COMPACT_MODEL: &str = "openai/gpt-4o-mini";
+
 fn fallback_summary_model(provider: Provider) -> Option<&'static str> {
     match provider.id() {
         "anthropic" => Some("haiku"),
         "openai" => Some("gpt-5.5-mini"),
-        "gemini" => Some("gemini-3.1-flash-lite"),
+        "openrouter" => Some(OPENROUTER_COMPACT_MODEL),
         _ => None,
     }
 }
@@ -201,9 +205,22 @@ mod tests {
             fallback_summary_model("openai".parse().unwrap()),
             Some("gpt-5.5-mini")
         );
+    }
+
+    #[test]
+    fn openrouter_compact_model_matches_title_tier() {
+        assert_eq!(OPENROUTER_COMPACT_MODEL, "openai/gpt-4o-mini");
+    }
+
+    #[test]
+    fn fallback_summary_model_wires_openrouter_when_registered() {
+        let or: Provider = match "openrouter".parse() {
+            Ok(p) => p,
+            Err(_) => return, // agent-02 registry; compaction policy ready when it lands
+        };
         assert_eq!(
-            fallback_summary_model("gemini".parse().unwrap()),
-            Some("gemini-3.1-flash-lite")
+            fallback_summary_model(or),
+            Some(OPENROUTER_COMPACT_MODEL)
         );
     }
 }

@@ -1,4 +1,9 @@
 {
+  "harness": {
+    "anthropic": "Claude Code",
+    "openai": "Codex",
+    "openrouter": "OpenRouter"
+  },
   "card": {
     "connected": "Conectado",
     "notConnected": "Sem conexão",
@@ -12,7 +17,9 @@
   "row": {
     "connect": "Conectar",
     "signOut": "Sair",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "syncToCloud": "Sincronizar na nuvem",
+    "syncingToCloud": "Sincronizando..."
   },
   "setup": {
     "installHint": "Instale a CLI {{cli}} no seu computador. Houston detecta sozinho.",
@@ -50,7 +57,12 @@
     "signInFailed": "Não foi possível abrir o login de {{provider}}",
     "signOutFailed": "Não foi possível sair de {{provider}}",
     "signInSucceeded": "Conectado a {{provider}}",
-    "cancelFailed": "Não foi possível cancelar o login de {{provider}}"
+    "cancelFailed": "Não foi possível cancelar o login de {{provider}}",
+    "cloudSyncSuccess": "Conexão de IA sincronizada com {{agent}}",
+    "cloudSyncFailed": "Não foi possível sincronizar a conexão de IA com {{agent}}",
+    "cloudSyncNeedsLocal": "Conecte o {{provider}} neste dispositivo primeiro",
+    "cloudSyncNeedsLocalDetail": "Adicione sua chave do {{provider}} aqui e ela será sincronizada com {{agent}}.",
+    "cloudSyncNeedsLocalDetailOAuth": "Entre com {{provider}} aqui e a conexao sera sincronizada com {{agent}}."
   },
   "providerLogin": {
     "title": "Termine de entrar em {{name}}",
@@ -76,15 +88,25 @@
     "codeCopyFailed": "Não foi possível copiar o código",
     "cancel": "Cancelar"
   },
-  "geminiConnect": {
+  "dualPathConnect": {
+    "or": "ou",
+    "useApiKeyInstead": "Usar chave de API no lugar"
+  },
+  "cliConnect": {
     "title": "Conectar {{name}}",
-    "description": "Entre com sua conta Google para usar o plano gratuito do Gemini, o mesmo que a CLI gemini usa fora do Houston.",
-    "signInWithGoogle": "Entrar com Google",
+    "description": "Entre com sua conta existente. O Houston usa o mesmo login da CLI do seu computador.",
+    "descriptionAnthropic": "Entre com sua assinatura do Claude. O Houston usa o mesmo login do Claude Code no seu computador.",
+    "descriptionOpenai": "Entre com sua conta do ChatGPT. O Houston usa o mesmo login do Codex no seu computador.",
+    "signInWith": "Entrar com {{name}}",
     "signingIn": "Abrindo o navegador...",
     "signInFailed": "Não foi possível iniciar o login de {{name}}",
-    "signInRecommended": "Recomendado. Usa o plano pessoal gratuito, sem pagamento.",
-    "or": "ou",
-    "useApiKeyAdvanced": "Usar uma chave de API (avançado)",
+    "signInRecommended": "Recomendado. Usa sua assinatura existente.",
+    "cancel": "Cancelar"
+  },
+  "apiKeyConnect": {
+    "title": "Conectar {{name}}",
+    "description": "Cole uma chave de API do console do provedor. O Houston guarda localmente no seu computador.",
+    "connectButton": "Conectar {{name}}",
     "openConsole": "Abrir o console do {{name}}",
     "openConsoleFailed": "Não foi possível abrir o console do {{name}}",
     "placeholder": "Cole sua chave aqui",
@@ -93,6 +115,41 @@
     "saveKey": "Salvar e conectar",
     "saving": "Salvando...",
     "saveFailed": "Não foi possível salvar sua chave do {{name}}",
+    "saveUnavailable": "A conexão por chave de API para este provedor ainda não está disponível. Por enquanto use o login acima.",
     "cancel": "Cancelar"
+  },
+  "openrouterConnect": {
+    "description": "Crie uma chave de API no OpenRouter e cole aqui. O Houston guarda no seu computador.",
+    "testAndContinue": "Testar chave e continuar",
+    "verifyingKey": "Testando chave...",
+    "keyRejected": "O OpenRouter rejeitou sua chave de API",
+    "engineStale": "O engine do Houston está desatualizado",
+    "engineStaleDetail": "Feche o app, execute cargo build -p houston-engine-server e inicie pnpm tauri dev de novo.",
+    "modelsTitle": "Seus modelos",
+    "modelsDescription": "Escolha quais aparecem no chat. Você pode mudar isso quando quiser.",
+    "searchPlaceholder": "Pesquisar por nome",
+    "noModelResults": "Nenhum modelo corresponde à pesquisa",
+    "noSelectedModels": "Adicione pelo menos um modelo para continuar",
+    "freeBadge": "Grátis",
+    "searchPricingFree": "(grátis)",
+    "searchPricingPaid": "(pago)",
+    "searchModeChat": "(só chat)",
+    "searchModeAgent": "(agente)",
+    "addModel": "Adicionar modelo",
+    "addFreeSuggested": "Adicionar sugeridos grátis",
+    "addPaidSuggested": "Adicionar sugeridos pagos",
+    "pasteModelLink": "Não encontrou? Cole o nome do modelo",
+    "pasteModelPlaceholder": "provedor/nome-modelo",
+    "pasteModelAdd": "Adicionar",
+    "pasteModelInvalid": "Esse nome de modelo não parece válido",
+    "removeModel": "Remover {{name}}",
+    "manageModels": "Gerenciar modelos",
+    "manageModelsTitle": "Modelos do OpenRouter",
+    "loadingCatalog": "Carregando modelos do OpenRouter...",
+    "catalogFailed": "Não foi possível carregar os modelos do OpenRouter",
+    "finish": "Pronto",
+    "savingModels": "Salvando...",
+    "saveModelsFailed": "Não foi possível salvar seus modelos do OpenRouter",
+    "back": "Voltar"
   }
 }

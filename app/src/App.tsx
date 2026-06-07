@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 
 import { tauriSystem } from "./lib/tauri";
 import { useHoustonInit } from "./hooks/use-houston-init";
+import { useOpenRouterCatalogWarmup } from "./hooks/use-openrouter-catalog";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
@@ -26,6 +27,7 @@ import { shouldAllowNativeContextMenu } from "./lib/context-menu";
 
 export default function App() {
   useHoustonInit();
+  useOpenRouterCatalogWarmup();
   useSessionEvents();
   useAgentInvalidation();
   useAnalyticsSubscriber();

@@ -20,7 +20,7 @@ import {
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
 import { createMissionWorktreeIfEnabled } from "../lib/mission-worktree";
-import { resolveActivityOverride } from "./mission-control-send";
+import { resolveActivityOverride, type SendOverrides } from "./mission-control-send";
 import { formatVisibleMessageText } from "../lib/queued-chat";
 import { queryKeys } from "../lib/query-keys";
 import { missionCardTags } from "../lib/mission-card";
@@ -64,6 +64,7 @@ export function useMissionControl(agents: Agent[]) {
   const sessionMapRef = useRef<
     Record<string, { agentPath: string; activityId: string }>
   >({});
+  const overrideMapRef = useRef<Record<string, SendOverrides>>({});
 
   const paths = useMemo(
     () => agents.map((a) => a.folderPath),
@@ -87,6 +88,7 @@ export function useMissionControl(agents: Agent[]) {
     if (!convos) return [];
     const map: Record<string, string> = {};
     const sessionMap: Record<string, { agentPath: string; activityId: string }> = {};
+    const overrideMap: Record<string, SendOverrides> = {};
     const result = convos
       // Archived missions live in the per-agent Archived tab — keep them off
       // the cross-agent active board.
@@ -96,6 +98,14 @@ export function useMissionControl(agents: Agent[]) {
         const agentModes = agent ? getAgentDef(agent.configId)?.config.agents : undefined;
         map[c.id] = c.agent_path;
         sessionMap[c.session_key] = { agentPath: c.agent_path, activityId: c.id };
+        overrideMap[c.session_key] = resolveActivityOverride(c.session_key, [
+          {
+            id: c.id,
+            session_key: c.session_key,
+            provider: c.provider,
+            model: c.model,
+          },
+        ]);
         return {
           id: c.id,
           title: c.title,
@@ -121,6 +131,7 @@ export function useMissionControl(agents: Agent[]) {
       });
     pathMapRef.current = map;
     sessionMapRef.current = sessionMap;
+    overrideMapRef.current = overrideMap;
     return result;
   }, [convos, agentColorMap, agentMap, getAgentDef, t]);
 
@@ -189,22 +200,13 @@ export function useMissionControl(agents: Agent[]) {
       const entry = sessionMapRef.current[sessionKey];
       if (!entry) return;
       const { agentPath, activityId } = entry;
+      const overrides = overrideMapRef.current[sessionKey] ?? {};
+      setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       try {
         const paths = await tauriAttachments.save(`activity-${activityId}`, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
-        // Mission Control is cross-agent: the activity's stored provider/model
-        // is the per-activity override that the chat picker is showing. The
-        // engine session router only reads agent config when no override is
-        // sent, so dropping the activity's choice here routes the message to
-        // whatever CLI the agent defaults to (e.g. agent=openai but activity
-        // was created with Opus -> spawns codex instead of claude). Look the
-        // activity up and forward its override pair to keep picker and wire
-        // in agreement.
-        const list = await tauriActivity.list(agentPath);
-        const overrides = resolveActivityOverride(sessionKey, list);
-        await tauriChat.send(agentPath, prompt, sessionKey, overrides);
         pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
-        setLoading((prev) => ({ ...prev, [sessionKey]: true }));
+        await tauriChat.send(agentPath, prompt, sessionKey, overrides);
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
         pushFeedItem(agentPath, sessionKey, {

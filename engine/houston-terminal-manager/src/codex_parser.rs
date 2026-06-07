@@ -8,16 +8,13 @@ use super::provider::Provider;
 use super::provider_error_kind::ProviderError;
 use super::types::FeedItem;
 use serde::Deserialize;
-use std::str::FromStr;
 
-/// Run the OpenAI / Codex stderr classifier against a Codex
+/// Run the active provider's stderr classifier against a Codex
 /// `turn.failed.error.message` payload. The message shape mirrors what
 /// the CLI prints to stderr (e.g. `unexpected status 401 Unauthorized`),
 /// so the same patterns apply.
-fn classify_codex_error_message(message: &str) -> Option<ProviderError> {
-    Provider::from_str("openai")
-        .ok()
-        .and_then(|p| p.classify_stderr(message))
+fn classify_codex_error_message(provider: Provider, message: &str) -> Option<ProviderError> {
+    provider.classify_stderr(message)
 }
 
 /// Top-level Codex NDJSON event envelope.
@@ -117,7 +114,11 @@ pub fn extract_thread_id(line: &str) -> Option<String> {
 }
 
 /// Parse a single NDJSON line from Codex's `--json` output into FeedItems.
-pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem> {
+pub fn parse_codex_event(
+    line: &str,
+    acc: &mut CodexAccumulator,
+    provider: Provider,
+) -> Vec<FeedItem> {
     let line = line.trim();
     if line.is_empty() {
         return vec![];
@@ -213,7 +214,7 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                 tracing::info!("[codex] auth retry detected — suppressing raw error");
                 // Return a marker so session_runner can track it, but don't show raw noise.
                 items.push(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
-            } else if let Some(typed) = classify_codex_error_message(&msg) {
+            } else if let Some(typed) = classify_codex_error_message(provider, &msg) {
                 // Typed classifier path. Covers ProviderModelUnsupported
                 // (the "is not supported when using Codex with a ChatGPT
                 // account" pattern → `ModelUnavailable` with a
@@ -421,6 +422,23 @@ fn describe_file_changes(item: &CodexItem) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
+
+    fn openai() -> Provider {
+        Provider::from_str("openai").unwrap()
+    }
+
+    fn openrouter() -> Provider {
+        Provider::from_str("openrouter").unwrap()
+    }
+
+    fn parse(line: &str, acc: &mut CodexAccumulator, provider: Provider) -> Vec<FeedItem> {
+        parse_codex_event(line, acc, provider)
+    }
+
+    fn parse_openai(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem> {
+        parse_codex_event(line, acc, openai())
+    }
 
     fn acc() -> CodexAccumulator {
         CodexAccumulator::new()
@@ -433,7 +451,7 @@ mod tests {
         // `ThinkingStreaming("")` so the chat UI can render
         // "Mission in progress…" without waiting on the model.
         let mut a = acc();
-        let items = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
+        let items = parse(r#"{"type":"turn.started"}"#, &mut a, openai());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::ThinkingStreaming(t) if t.is_empty()));
     }
@@ -446,8 +464,8 @@ mod tests {
         // emitted BEFORE the real item, so the UI sees a complete
         // reasoning block followed by the assistant text.
         let mut a = acc();
-        let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
-        let items = parse_codex_event(
+        let _ = parse_openai(r#"{"type":"turn.started"}"#, &mut a);
+        let items = parse_openai(
             r#"{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"Hi"}}"#,
             &mut a,
         );
@@ -462,8 +480,8 @@ mod tests {
         // the parser must NOT pre-finalize with `Thinking("")` — the real
         // reasoning content owns the buffer instead.
         let mut a = acc();
-        let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
-        let items = parse_codex_event(
+        let _ = parse_openai(r#"{"type":"turn.started"}"#, &mut a);
+        let items = parse_openai(
             r#"{"type":"item.updated","item":{"id":"item_0","type":"reasoning","text":"Let me think"}}"#,
             &mut a,
         );
@@ -476,8 +494,8 @@ mod tests {
         // Edge case: turn ends with no items at all (e.g. cancelled before
         // any output). Placeholder must still be closed out.
         let mut a = acc();
-        let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
-        let items = parse_codex_event(r#"{"type":"turn.completed"}"#, &mut a);
+        let _ = parse_openai(r#"{"type":"turn.started"}"#, &mut a);
+        let items = parse_openai(r#"{"type":"turn.completed"}"#, &mut a);
         assert!(
             items.iter().any(|i| matches!(i, FeedItem::Thinking(t) if t.is_empty())),
             "expected an empty Thinking() to close the placeholder, got {items:?}"
@@ -488,7 +506,7 @@ mod tests {
     fn parse_thread_started() {
         let line =
             r#"{"type":"thread.started","thread_id":"0199a213-81c0-7800-8aa1-bbab2a035a53"}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert!(items.is_empty());
         assert_eq!(
             extract_thread_id(line),
@@ -499,7 +517,7 @@ mod tests {
     #[test]
     fn parse_agent_message_streaming() {
         let line = r#"{"type":"item.updated","item":{"id":"item_1","type":"agent_message","text":"Hello world"}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::AssistantTextStreaming(t) if t == "Hello world"));
     }
@@ -507,7 +525,7 @@ mod tests {
     #[test]
     fn parse_agent_message_completed() {
         let line = r#"{"type":"item.completed","item":{"id":"item_1","type":"agent_message","text":"Final response"}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::AssistantText(t) if t == "Final response"));
     }
@@ -516,12 +534,12 @@ mod tests {
     fn parse_reasoning() {
         let mut a = acc();
         let streaming = r#"{"type":"item.started","item":{"id":"item_2","type":"reasoning","text":"Let me think..."}}"#;
-        let items = parse_codex_event(streaming, &mut a);
+        let items = parse_openai(streaming, &mut a);
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::ThinkingStreaming(t) if t == "Let me think..."));
 
         let completed = r#"{"type":"item.completed","item":{"id":"item_2","type":"reasoning","text":"Full reasoning here"}}"#;
-        let items = parse_codex_event(completed, &mut a);
+        let items = parse_openai(completed, &mut a);
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::Thinking(t) if t == "Full reasoning here"));
     }
@@ -530,7 +548,7 @@ mod tests {
     fn parse_command_execution() {
         let mut a = acc();
         let started = r#"{"type":"item.started","item":{"id":"item_3","type":"command_execution","command":"bash -lc ls","status":"in_progress"}}"#;
-        let items = parse_codex_event(started, &mut a);
+        let items = parse_openai(started, &mut a);
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ToolCall { name, input } => {
@@ -541,7 +559,7 @@ mod tests {
         }
 
         let completed = r#"{"type":"item.completed","item":{"id":"item_3","type":"command_execution","command":"bash -lc ls","aggregated_output":"src/\npackage.json\n","exit_code":0,"status":"completed"}}"#;
-        let items = parse_codex_event(completed, &mut a);
+        let items = parse_openai(completed, &mut a);
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ToolResult { content, is_error } => {
@@ -555,7 +573,7 @@ mod tests {
     #[test]
     fn parse_command_execution_failure() {
         let line = r#"{"type":"item.completed","item":{"id":"item_3","type":"command_execution","command":"bash -lc false","aggregated_output":"","exit_code":1,"status":"failed"}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ToolResult { is_error, .. } => assert!(is_error),
@@ -566,7 +584,7 @@ mod tests {
     #[test]
     fn parse_file_change() {
         let line = r#"{"type":"item.completed","item":{"id":"item_4","type":"file_change","changes":[{"path":"src/main.rs","kind":"update"}],"status":"completed"}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ToolResult { content, is_error } => {
@@ -580,7 +598,7 @@ mod tests {
     #[test]
     fn parse_turn_completed() {
         let line = r#"{"type":"turn.completed","usage":{"input_tokens":24763,"cached_input_tokens":24448,"output_tokens":122}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::FinalResult { result, usage, .. } => {
@@ -601,7 +619,7 @@ mod tests {
         // Rate-limit phrasing now flows through the typed classifier;
         // the SystemMessage branch only fires when no classifier matches.
         let line = r#"{"type":"error","message":"Rate limit exceeded"}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(
             &items[0],
@@ -612,7 +630,7 @@ mod tests {
     #[test]
     fn parse_error_event_unrecognised_falls_back_to_system_message() {
         let line = r#"{"type":"error","message":"Context window exceeded for model"}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Context window")));
     }
@@ -620,7 +638,7 @@ mod tests {
     #[test]
     fn parse_auth_retry_returns_marker() {
         let line = r#"{"type":"error","message":"Reconnecting... 1/5 (unexpected status 401 Unauthorized: Missing bearer)"}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m == "__auth_retry__"));
     }
@@ -628,7 +646,7 @@ mod tests {
     #[test]
     fn parse_codex_auth_failure_classifies_as_typed_unauthenticated() {
         let line = r#"{"type":"turn.failed","error":{"message":"unexpected status 401 Unauthorized: Missing bearer"}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(
             &items[0],
@@ -639,7 +657,7 @@ mod tests {
     #[test]
     fn parse_turn_failed() {
         let line = r#"{"type":"turn.failed","error":{"message":"Context window exceeded"}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Context window")));
     }
@@ -653,7 +671,7 @@ mod tests {
         // ::ProviderModelUnsupported emission.
         use crate::provider_error_kind::ProviderError;
         let line = r#"{"type":"turn.failed","error":{"message":"The 'gpt-5.5-codex' model is not supported when using Codex with a ChatGPT account."}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ProviderError(ProviderError::ModelUnavailable {
@@ -673,7 +691,7 @@ mod tests {
     #[test]
     fn parse_mcp_tool_call() {
         let line = r#"{"type":"item.started","item":{"id":"item_5","type":"mcp_tool_call","server":"github","tool":"list_issues","status":"in_progress"}}"#;
-        let items = parse_codex_event(line, &mut acc());
+        let items = parse_openai(line, &mut acc());
         assert_eq!(items.len(), 1);
         match &items[0] {
             FeedItem::ToolCall { name, .. } => assert_eq!(name, "github::list_issues"),
@@ -683,9 +701,9 @@ mod tests {
 
     #[test]
     fn parse_empty_and_invalid() {
-        assert!(parse_codex_event("", &mut acc()).is_empty());
-        assert!(parse_codex_event("  ", &mut acc()).is_empty());
-        assert!(parse_codex_event("not json", &mut acc()).is_empty());
+        assert!(parse_openai("", &mut acc()).is_empty());
+        assert!(parse_openai("  ", &mut acc()).is_empty());
+        assert!(parse_openai("not json", &mut acc()).is_empty());
     }
 
     #[test]
@@ -693,11 +711,11 @@ mod tests {
         let mut a = acc();
         // Stream some text
         let line = r#"{"type":"item.updated","item":{"id":"item_1","type":"agent_message","text":"partial"}}"#;
-        parse_codex_event(line, &mut a);
+        parse_openai(line, &mut a);
 
         // Turn completes without item.completed for the message
         let done = r#"{"type":"turn.completed","usage":{"input_tokens":100,"output_tokens":50}}"#;
-        let items = parse_codex_event(done, &mut a);
+        let items = parse_openai(done, &mut a);
         // Should flush the text buffer as AssistantText + FinalResult
         assert_eq!(items.len(), 2);
         assert!(matches!(&items[0], FeedItem::AssistantText(t) if t == "partial"));
@@ -708,5 +726,42 @@ mod tests {
     fn extract_thread_id_returns_none_for_non_thread() {
         let line = r#"{"type":"turn.started"}"#;
         assert_eq!(extract_thread_id(line), None);
+    }
+
+    #[test]
+    fn openrouter_turn_failed_401_uses_openrouter_provider() {
+        let line = r#"{"type":"turn.failed","error":{"message":"unexpected status 401 Unauthorized: Invalid API key"}}"#;
+        let items = parse(line, &mut acc(), openrouter());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::Unauthenticated { provider, .. }) => {
+                assert_eq!(provider, "openrouter");
+            }
+            other => panic!("expected Unauthenticated, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn openrouter_turn_failed_402_uses_quota_exhausted() {
+        let line = r#"{"type":"turn.failed","error":{"message":"unexpected status 402 Payment Required: insufficient credits"}}"#;
+        let items = parse(line, &mut acc(), openrouter());
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::QuotaExhausted { provider, .. }) => {
+                assert_eq!(provider, "openrouter");
+            }
+            other => panic!("expected QuotaExhausted, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn openai_turn_failed_still_reports_openai_provider() {
+        let line = r#"{"type":"turn.failed","error":{"message":"unexpected status 401 Unauthorized: Missing bearer"}}"#;
+        let items = parse(line, &mut acc(), openai());
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::Unauthenticated { provider, .. }) => {
+                assert_eq!(provider, "openai");
+            }
+            other => panic!("expected Unauthenticated, got {other:?}"),
+        }
     }
 }

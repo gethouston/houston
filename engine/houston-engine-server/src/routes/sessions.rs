@@ -23,8 +23,8 @@ use axum::{
 };
 use houston_composio::toolkit_display_name;
 use houston_engine_core::sessions::{
-    self, generate_instructions, history, resolve_agent_dir, resolve_provider, summarize,
-    SessionRuntime, StartParams,
+    self, generate_instructions, history, model_supports_agentic_tools, resolve_agent_dir,
+    resolve_provider, summarize, SessionRuntime, StartParams,
 };
 use houston_engine_core::CoreError;
 use houston_terminal_manager::Provider;
@@ -120,6 +120,12 @@ async fn start_session(
     let effort = req
         .effort
         .or_else(|| sessions::resolve_effort(&agent_dir, provider));
+
+    if !model_supports_agentic_tools(provider, model.as_deref()) {
+        return Err(ApiError(CoreError::BadRequest(
+            "model is chat-only and cannot run agent tools".into(),
+        )));
+    }
 
     let params = StartParams {
         agent_dir,

@@ -103,6 +103,14 @@ Focus on pricing.
 - Decoder lives in `@houston-ai/chat`'s `skill-message.ts` so desktop AND mobile render the same card from the same payload. The decoder also accepts a legacy `<!--houston:action ...-->` prefix so chat history persisted before the rename keeps rendering as a card.
 - Encoder (`encodeSkillMessage`) + Claude-prompt assembler (`buildSkillClaudePrompt`) live in `app/src/lib/skill-message.ts` — only the desktop sends Skills today.
 
+## Provider parity
+
+Same Skill files on disk; provider adapters differ on how the CLI discovers and loads them.
+
+- **Claude Code:** engine mirrors `.agents/skills/<slug>/` into `.claude/skills/<slug>` (symlink). Claude's native Skill tool + index; no explicit path in the user prompt.
+- **Codex / OpenRouter:** no Skill tool. App injects a prompt index (name + description list). User invoke line must name the skill slug and the full path: `.agents/skills/<slug>/SKILL.md`.
+- **Marker strip:** engine strips `<!--houston:skill ...-->` (and legacy action markers) from `cli_prompt` before handing text to any CLI (`strip_skill_marker_for_cli` in `agents/prompt.rs`). UI keeps the full persisted body; CLI sees only the invoke prompt.
+
 ## Attachment message marker (chat persistence)
 
 Regular messages with uploaded files follow the same "single persisted body"

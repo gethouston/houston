@@ -195,7 +195,7 @@ fn handle_failed_exit(
     // typed `SessionResumeMissing` variant DOES fire from the
     // line-by-line classifier in `read_stderr_lines`, but that surface
     // is an information panel; the retry routing belongs here.
-    if provider.id() == "openai"
+    if crate::provider::uses_codex_runner(provider.id())
         && stderr_lines
             .iter()
             .any(|line| codex_command::is_missing_rollout_error(line))
@@ -291,6 +291,7 @@ extern "C" {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::str::FromStr;
     use crate::types::SessionStatus;
 
     fn drain(rx: &mut mpsc::UnboundedReceiver<SessionUpdate>) -> Vec<SessionUpdate> {
@@ -332,6 +333,22 @@ mod tests {
             )),
             "should emit auth-expired status error: {updates:?}"
         );
+    }
+
+    #[test]
+    fn openrouter_resume_missing_returns_codex_resume_outcome() {
+        let (tx, _rx) = mpsc::unbounded_channel();
+        let stderr = vec![
+            "Error: thread/resume: thread/resume failed: no rollout found for thread id abc".into(),
+        ];
+        let outcome = handle_failed_exit(
+            &tx,
+            "codex",
+            Provider::from_str("openrouter").unwrap(),
+            &stderr,
+            &session_io::StdoutReadReport::default(),
+        );
+        assert_eq!(outcome, CliRunOutcome::CodexResumeMissing);
     }
 
     #[test]

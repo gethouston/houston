@@ -1,10 +1,11 @@
 //! Anthropic / Claude Code adapter.
 
 use super::anthropic_classify;
+use super::anthropic_credentials;
 use super::resolve::{which_on_path, InstallSource};
 use super::{ProbeFuture, ProviderAdapter};
 use crate::claude_install_path;
-use crate::provider_auth::probe_claude_auth_status;
+use crate::provider_auth::{probe_claude_auth_status, ProviderAuthState};
 use crate::provider_error_kind::ProviderError;
 use std::path::{Path, PathBuf};
 
@@ -37,6 +38,9 @@ impl ProviderAdapter for AnthropicAdapter {
 
     fn probe_auth<'a>(&'a self, cli_path: &'a Path) -> ProbeFuture<'a> {
         Box::pin(async move {
+            if anthropic_credentials::anthropic_api_key_configured() {
+                return ProviderAuthState::Authenticated;
+            }
             let home = dirs::home_dir()
                 .map(|p| p.to_string_lossy().into_owned())
                 .unwrap_or_default();

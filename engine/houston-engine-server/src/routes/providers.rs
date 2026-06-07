@@ -10,20 +10,25 @@ use axum::{
     routing::{get, post},
     Json, Router,
 };
-use houston_engine_core::provider::{self, ProviderStatus};
+use houston_engine_core::provider::{
+    self, CredentialExportRequest, CredentialExportResponse, CredentialImportRequest,
+    CredentialImportResponse, CredentialImportSessionResponse, ProviderStatus,
+};
 use std::sync::Arc;
 
 pub fn router() -> Router<Arc<ServerState>> {
     Router::new()
+        // Static OpenRouter routes before `/providers/:name/*` param routes.
+        .route(
+            "/providers/openrouter/credentials",
+            post(openrouter_set_credentials),
+        )
+        .route(
+            "/providers/openrouter/models",
+            get(openrouter_list_models),
+        )
         .route("/providers/:name/status", get(status))
-        // POST /providers/:name/login covers Gemini too. Under the hood,
-        // `launch_login` detects `provider.id() == "gemini"` and drives
-        // gemini-cli's own OAuth via the ACP `authenticate` JSON-RPC
-        // method — gemini-cli opens the user's browser with its own
-        // Google app identity ("Gemini CLI" on the consent screen) and
-        // writes `~/.gemini/oauth_creds.json` itself. Same pattern as
-        // `claude auth login --claudeai` and `codex login` for the
-        // other providers.
+        // Claude and Codex use their CLI login subcommands here.
         //
         // `?deviceAuth=true` requests the provider's headless device-code
         // flow (OpenAI/codex `--device-auth`). Remote clients (webapp,
@@ -49,12 +54,30 @@ pub fn router() -> Router<Arc<ServerState>> {
         // frees the slot so the user can retry immediately (#237).
         .route("/providers/:name/login/cancel", post(login_cancel))
         .route("/providers/:name/logout", post(logout))
-        // Gemini-only: persist an API key the user pasted in the picker
-        // dialog to `~/.gemini/.env`. Alternative to the OAuth flow for
-        // users who'd rather pay-as-you-go via aistudio.google.com.
+        // Anthropic-only: persist an API key the user pasted in the picker
+        // dialog to `~/.houston/anthropic/.env`. Houston injects
+        // `ANTHROPIC_API_KEY` into Claude Code subprocesses at spawn time.
         .route(
-            "/providers/gemini/credentials",
-            post(gemini_set_credentials),
+            "/providers/anthropic/credentials",
+            post(anthropic_set_credentials),
+        )
+        // OpenAI-only: persist an API key to `~/.houston/openai/.env`.
+        // Houston injects `OPENAI_API_KEY` when no OAuth session exists.
+        .route(
+            "/providers/openai/credentials",
+            post(openai_set_credentials),
+        )
+        .route(
+            "/providers/:name/credential-import/session",
+            post(credential_import_session),
+        )
+        .route(
+            "/providers/:name/credential-export",
+            post(credential_export),
+        )
+        .route(
+            "/providers/:name/credential-import",
+            post(credential_import),
         )
 }
 
@@ -125,18 +148,98 @@ async fn logout(
 
 #[derive(serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
-struct GeminiCredentials {
+struct OpenRouterCredentials {
     /// Raw API key the user pasted in the dialog. Validated + persisted
-    /// by `houston_engine_core::provider::set_gemini_api_key`. NEVER
+    /// by `houston_engine_core::provider::set_openrouter_api_key`. NEVER
     /// logged in plaintext.
     api_key: String,
 }
 
-async fn gemini_set_credentials(
+async fn openrouter_set_credentials(
     State(_st): State<Arc<ServerState>>,
-    Json(body): Json<GeminiCredentials>,
+    Json(body): Json<OpenRouterCredentials>,
 ) -> Result<(), ApiError> {
-    provider::set_gemini_api_key(&body.api_key).await?;
+    provider::set_openrouter_api_key(&body.api_key).await?;
     Ok(())
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenRouterModelsQuery {
+    #[serde(default)]
+    q: Option<String>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenRouterModelsResponse {
+    models: Vec<provider::OpenRouterCatalogModel>,
+}
+
+async fn openrouter_list_models(
+    State(_st): State<Arc<ServerState>>,
+    Query(q): Query<OpenRouterModelsQuery>,
+) -> Result<Json<OpenRouterModelsResponse>, ApiError> {
+    let models = provider::list_openrouter_models(q.q.as_deref()).await?;
+    Ok(Json(OpenRouterModelsResponse { models }))
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenAiCredentials {
+    /// Raw API key the user pasted in the dialog. Validated + persisted
+    /// by `houston_engine_core::provider::set_openai_api_key`. NEVER
+    /// logged in plaintext.
+    api_key: String,
+}
+
+async fn openai_set_credentials(
+    State(_st): State<Arc<ServerState>>,
+    Json(body): Json<OpenAiCredentials>,
+) -> Result<(), ApiError> {
+    provider::set_openai_api_key(&body.api_key).await?;
+    Ok(())
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AnthropicCredentials {
+    /// Raw API key the user pasted in the dialog. Validated + persisted
+    /// by `houston_engine_core::provider::set_anthropic_api_key`. NEVER
+    /// logged in plaintext.
+    api_key: String,
+}
+
+async fn anthropic_set_credentials(
+    State(_st): State<Arc<ServerState>>,
+    Json(body): Json<AnthropicCredentials>,
+) -> Result<(), ApiError> {
+    provider::set_anthropic_api_key(&body.api_key).await?;
+    Ok(())
+}
+
+async fn credential_import_session(
+    State(_st): State<Arc<ServerState>>,
+    Path(name): Path<String>,
+) -> Result<Json<CredentialImportSessionResponse>, ApiError> {
+    Ok(Json(provider::start_import_session(&name)?))
+}
+
+async fn credential_export(
+    State(_st): State<Arc<ServerState>>,
+    Path(name): Path<String>,
+    Json(body): Json<CredentialExportRequest>,
+) -> Result<Json<CredentialExportResponse>, ApiError> {
+    Ok(Json(provider::export_credentials(&name, &body).await?))
+}
+
+async fn credential_import(
+    State(st): State<Arc<ServerState>>,
+    Path(name): Path<String>,
+    Json(body): Json<CredentialImportRequest>,
+) -> Result<Json<CredentialImportResponse>, ApiError> {
+    Ok(Json(
+        provider::import_credentials(&name, &body, st.engine.events.clone()).await?,
+    ))
 }
 

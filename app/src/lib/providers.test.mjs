@@ -2,10 +2,18 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   getEffortLevels,
+  getProvider,
+  modelSupportsAgenticTools,
   validEffortOrDefault,
   validModelOrNull,
   normalizeLegacyModel,
 } from "./providers.ts";
+
+test("catalog loginKind drives connect flows", () => {
+  assert.equal(getProvider("anthropic")?.loginKind, "oauth");
+  assert.equal(getProvider("openai")?.loginKind, "oauth");
+  assert.equal(getProvider("openrouter")?.loginKind, "apiKey");
+});
 
 test("effort levels are per model", () => {
   // Codex: has xhigh, no max.
@@ -42,7 +50,7 @@ test("effort levels are per model", () => {
 });
 
 test("effort levels empty for unknown / effort-less models", () => {
-  assert.deepEqual(getEffortLevels("gemini", "gemini-2.5-pro"), []);
+  assert.deepEqual(getEffortLevels("openrouter", "anthropic/claude-sonnet-4"), []);
   assert.deepEqual(getEffortLevels(null, null), []);
   assert.deepEqual(getEffortLevels("anthropic", "no-such-model"), []);
   // Legacy CLI aliases were retired in favor of explicit version IDs; the
@@ -71,7 +79,10 @@ test("validEffortOrDefault falls back to default when unset or garbage", () => {
 });
 
 test("validEffortOrDefault is undefined for models without effort control", () => {
-  assert.equal(validEffortOrDefault("gemini", "gemini-2.5-pro", "high"), undefined);
+  assert.equal(
+    validEffortOrDefault("openrouter", "anthropic/claude-sonnet-4", "high"),
+    undefined,
+  );
 });
 
 test("validModelOrNull rejects retired aliases and accepts catalog IDs", () => {
@@ -96,6 +107,77 @@ test("normalizeLegacyModel maps retired aliases, passes everything else through"
   assert.equal(normalizeLegacyModel("constructor"), "constructor");
   assert.equal(normalizeLegacyModel("__proto__"), "__proto__");
   assert.equal(normalizeLegacyModel("toString"), "toString");
+});
+
+test("modelSupportsAgenticTools defaults true for catalog OpenRouter models", () => {
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "anthropic/claude-sonnet-4"),
+    true,
+  );
+  assert.equal(modelSupportsAgenticTools("openrouter", "openai/gpt-4.1"), true);
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "google/gemini-2.5-flash"),
+    true,
+  );
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "qwen/qwen3-coder-next"),
+    true,
+  );
+  assert.equal(modelSupportsAgenticTools("anthropic", "claude-sonnet-4-6"), true);
+});
+
+test("modelSupportsAgenticTools rejects chat-only OpenRouter models", () => {
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "openai/gpt-4o-mini"),
+    false,
+  );
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "meta-llama/llama-3.3-70b-instruct"),
+    false,
+  );
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
+    false,
+  );
+});
+
+test("modelSupportsAgenticTools allows curated free OpenRouter models", () => {
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "qwen/qwen3-coder:free"),
+    true,
+  );
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "mistralai/mistral-small-3.1-24b-instruct:free"),
+    true,
+  );
+});
+
+test("modelSupportsAgenticTools treats user OpenRouter slugs as agentic-capable", () => {
+  assert.equal(
+    modelSupportsAgenticTools("openrouter", "deepseek/deepseek-chat-v3-0324"),
+    true,
+  );
+  assert.equal(modelSupportsAgenticTools("anthropic", "unknown-model"), true);
+});
+
+test("validModelOrNull keeps curated and custom OpenRouter slugs", () => {
+  assert.equal(
+    validModelOrNull("openrouter", "deepseek/deepseek-chat-v3-0324"),
+    "deepseek/deepseek-chat-v3-0324",
+  );
+  assert.equal(
+    validModelOrNull("openrouter", "google/gemini-2.5-flash"),
+    "google/gemini-2.5-flash",
+  );
+  assert.equal(
+    validModelOrNull("openrouter", "qwen/qwen3-coder:free"),
+    "qwen/qwen3-coder:free",
+  );
+  assert.equal(
+    validModelOrNull("openrouter", "meta-llama/llama-3.3-70b-instruct:free"),
+    "meta-llama/llama-3.3-70b-instruct:free",
+  );
+  assert.equal(validModelOrNull("openrouter", "not-a-slug"), null);
 });
 
 test("normalized legacy model resolves through validModelOrNull (no Opus->Sonnet downgrade)", () => {

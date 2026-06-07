@@ -1,9 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
 import type { ProviderInfo } from "../../lib/providers";
+import { providerHarnessI18nKey } from "../../lib/providers";
 import type { ClaudeInstallState } from "../../hooks/use-claude-install";
 import { ClaudeInstallHint } from "./claude-install-hint";
-import { ClaudeLogo, OpenAILogo, GeminiLogo } from "./provider-logos";
+import { ClaudeLogo, OpenAILogo, OpenRouterLogo } from "./provider-logos";
 
 function ProviderLogo({ provider }: { provider: ProviderInfo }) {
   switch (provider.id) {
@@ -11,8 +12,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <ClaudeLogo />;
     case "openai":
       return <OpenAILogo />;
-    case "gemini":
-      return <GeminiLogo />;
+    case "openrouter":
+      return <OpenRouterLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
@@ -31,6 +32,10 @@ export function ProviderAccountRow({
   onSignOut,
   claudeInstall,
   onCancel,
+  onManageModels,
+  cloudSyncAvailable = false,
+  cloudSyncPending = false,
+  onCloudSync,
 }: {
   provider: ProviderInfo;
   connected: boolean;
@@ -52,6 +57,10 @@ export function ProviderAccountRow({
    * abandoned the OAuth tab can retry without restarting Houston (#237).
    */
   onCancel: () => void;
+  onManageModels?: () => void;
+  cloudSyncAvailable?: boolean;
+  cloudSyncPending?: boolean;
+  onCloudSync?: () => void;
 }) {
   const { t } = useTranslation("providers");
 
@@ -73,44 +82,77 @@ export function ProviderAccountRow({
   // the bg color, leaving children rendering at their own colors.
   return (
     <div
-      className={`flex gap-3 px-3 py-2.5 rounded-xl transition-colors ${
+      className={`flex min-w-0 w-full overflow-hidden gap-3 px-3 py-2.5 rounded-xl transition-colors ${
         showInstallHint ? "flex-col" : "items-center"
       } ${connected ? "bg-secondary" : "bg-secondary/40"}`}
     >
-      <div className="flex items-center gap-3 w-full">
+      <div className="flex min-w-0 items-center gap-3 w-full">
         <div
-          className={`flex items-center gap-3 flex-1 min-w-0 transition-opacity ${
+          className={`flex items-center gap-3 flex-1 min-w-0 overflow-hidden transition-opacity ${
             connected ? "" : "opacity-50"
           }`}
         >
           <div className="size-8 rounded-lg bg-background flex items-center justify-center shrink-0">
             <ProviderLogo provider={provider} />
           </div>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 overflow-hidden">
             <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
-            <p className="text-[11px] text-muted-foreground truncate">
-              {connected ? t("card.connected") : provider.subtitle}
+            <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1.5 min-w-0">
+              <span className="shrink-0 rounded px-1.5 py-px text-[10px] font-medium tracking-wide text-foreground/75 bg-foreground/5">
+                {t(providerHarnessI18nKey(provider.id))}
+              </span>
+              <span className="truncate">
+                {connected ? t("card.connected") : provider.subtitle}
+              </span>
             </p>
           </div>
         </div>
         {!showInstallHint && (
-          <button
-            type="button"
-            onClick={pending ? onCancel : connected ? onSignOut : onConnect}
-            title={pending ? t("card.cancelTitle", { name: provider.name }) : undefined}
-            className="text-[12px] font-medium px-2.5 py-1 rounded-md border border-input bg-background hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 shrink-0"
-          >
-            {pending ? (
-              <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="size-3.5 animate-spin" />
-                {t("row.cancel")}
-              </span>
-            ) : connected ? (
-              t("row.signOut")
-            ) : (
-              t("row.connect")
+          <div className="flex shrink-0 items-center gap-1.5">
+            {connected && provider.id === "openrouter" && onManageModels ? (
+              <button
+                type="button"
+                onClick={onManageModels}
+                className="text-[12px] font-medium px-2.5 py-1 rounded-md border border-input bg-background hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40"
+              >
+                {t("openrouterConnect.manageModels")}
+              </button>
+            ) : null}
+            {connected && cloudSyncAvailable && onCloudSync && (
+              <button
+                type="button"
+                onClick={onCloudSync}
+                disabled={cloudSyncPending}
+                className="text-[12px] font-medium px-2.5 py-1 rounded-md border border-input bg-background hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:opacity-60"
+              >
+                {cloudSyncPending ? (
+                  <span className="inline-flex items-center gap-1.5">
+                    <Loader2 className="size-3.5 animate-spin" />
+                    {t("row.syncingToCloud")}
+                  </span>
+                ) : (
+                  t("row.syncToCloud")
+                )}
+              </button>
             )}
-          </button>
+            <button
+              type="button"
+              onClick={pending ? onCancel : connected ? onSignOut : onConnect}
+              title={pending ? t("card.cancelTitle", { name: provider.name }) : undefined}
+              className="text-[12px] font-medium px-2.5 py-1 rounded-md border border-input bg-background hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 shrink-0"
+            >
+              {pending ? (
+                <span className="inline-flex items-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  {t("row.cancel")}
+                </span>
+              ) : connected ? (
+                t("row.signOut")
+              ) : (
+                t("row.connect")
+              )}
+            </button>
+          </div>
         )}
       </div>
       {showInstallHint && claudeInstall && (

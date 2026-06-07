@@ -83,6 +83,27 @@ ONE `RateLimited` card, not ten.
    templated by `{{provider}}` — no new keys per provider unless the
    variant truly needs different wording.
 
+## OpenRouter (Codex runner)
+
+OpenRouter routes through the bundled Codex CLI with process-local `-c`
+overrides. Failures surface on **stderr** (HTTP status phrasing from the
+OpenRouter Responses API). `classify_result_error` is a no-op today;
+all mapping lives in `openrouter_classify.rs`.
+
+| Pattern (stderr) | `ProviderError` | Notes |
+|---|---|---|
+| Missing `OPENROUTER_API_KEY` / env var not set | `Unauthenticated` (`cause: no_credentials`) | Pre-spawn or Codex startup |
+| `unexpected status 401`, generic auth errors | `Unauthenticated` | `invalid` + `api key` → `invalid_api_key`; else `unknown` |
+| `unexpected status 402`, insufficient credits/balance | `QuotaExhausted` | `upgrade_url` → `https://openrouter.ai/settings/credits` |
+| `429`, `rate_limit`, `rate limit` | `RateLimited` | Parses `retry-after` when present |
+| `unexpected status 503` or other 5xx | `ProviderInternal` | 503 carries `http_status: 503` |
+| `ECONNREFUSED`, `ENOTFOUND`, `ETIMEDOUT`, … | `NetworkUnreachable` | |
+| Codex `no rollout found` (resume) | `SessionResumeMissing` | Same auto-restart path as OpenAI Codex |
+
+Parser attribution: `codex_parser.rs` calls `Provider::classify_stderr`
+with the session's provider id, so OpenRouter 401/402 lines are **not**
+mislabeled as `openai`. Fixture tests live in `openrouter_classify.rs`.
+
 ## Adding a new variant
 
 Resist if `Unknown` covers it. If you must:
@@ -109,6 +130,7 @@ Resist if `Unknown` covers it. If you must:
 | Anthropic    | `engine/houston-terminal-manager/src/provider/anthropic_classify.rs`              |
 | OpenAI       | `engine/houston-terminal-manager/src/provider/openai_classify.rs`                 |
 | Gemini       | `engine/houston-terminal-manager/src/provider/gemini/classify.rs`                 |
+| OpenRouter   | `engine/houston-terminal-manager/src/provider/openrouter_classify.rs`             |
 | Stderr wire  | `engine/houston-terminal-manager/src/session_io.rs::read_stderr_lines`            |
 | Result wire  | `engine/houston-terminal-manager/src/gemini_parser_state.rs::handle_result`       |
 | Result wire  | `engine/houston-terminal-manager/src/codex_parser.rs::classify_codex_error_message` |

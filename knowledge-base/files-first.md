@@ -36,14 +36,20 @@ If app-specific → `.houston/`.
       openai/{session_key}.sid          current Codex resume id
       openai/{session_key}.history      all Codex resume ids used by this conversation
       openai/{session_key}.invalid      Codex resume ids rejected by the CLI
+      openrouter/{session_key}.sid      current OpenRouter resume id (Codex harness)
+      openrouter/{session_key}.history  all OpenRouter resume ids used by this conversation
+      openrouter/{session_key}.invalid  OpenRouter resume ids rejected by the CLI
       {session_key}.sid                 legacy flat resume id, read as fallback only
   .agents/
     skills/<name>/SKILL.md      Claude Code skill convention
   .claude/
     skills/<name>               symlink → ../../.agents/skills/<name>
   CLAUDE.md                     agent instructions
-  AGENTS.md                     symlink → CLAUDE.md (for Codex)
+  AGENTS.md                     symlink → CLAUDE.md; copy fallback when symlink denied (Codex)
 ```
+
+## Provider session resume IDs
+OpenRouter uses the Codex harness (`spawn_codex`), same as OpenAI, but resume IDs are stored under `.houston/sessions/openrouter/`, not `openai/`. Each provider's `id` matches its subdirectory (`anthropic`, `openai`, `openrouter`); per conversation key: `.sid` (current), `.history`, `.invalid`. Codex and OpenRouter read project memory from `AGENTS.md`; `seed_agent` symlinks it to `CLAUDE.md` when the OS allows, otherwise copies (Windows without Developer Mode).
 
 ## File I/O path
 Frontend never touches the filesystem directly. All `.houston/` reads

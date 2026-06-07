@@ -96,6 +96,8 @@ export interface WorkspaceContext {
 
 // ---------- Workspace-scoped agent CRUD ----------
 
+export type AgentRuntimeMode = "local" | "cloud_24_7";
+
 export interface Agent {
   id: string;
   name: string;
@@ -104,6 +106,7 @@ export interface Agent {
   color?: string;
   createdAt: string;
   lastOpenedAt?: string;
+  runtime?: AgentRuntimeMode;
 }
 
 export interface CreateAgent {
@@ -114,6 +117,7 @@ export interface CreateAgent {
   installedPath?: string;
   seeds?: Record<string, string>;
   existingPath?: string;
+  runtime?: AgentRuntimeMode;
 }
 
 export interface CreateAgentResult {
@@ -287,6 +291,8 @@ export interface ConversationEntry {
   agent?: string;
   routine_id?: string;
   worktree_path?: string | null;
+  provider?: string;
+  model?: string;
 }
 
 // ---------- Skills ----------
@@ -392,6 +398,116 @@ export interface ProviderStatus {
   /** Absolute path to the CLI binary that will be spawned, or `null`
    *  when `installSource === "missing"`. Useful for diagnostics UI. */
   cliPath: string | null;
+}
+
+/** Packaged skill copied into a cloud agent bootstrap bundle. */
+export interface AgentBootstrapSkill {
+  slug: string;
+  skillMd: string;
+}
+
+/** Source metadata for a bootstrap bundle (Store listing, blank, etc.). */
+export interface AgentBootstrapSource {
+  kind: string;
+  id: string;
+  version?: string;
+}
+
+/** Provider/model patch applied after agent files land in cloud. */
+export interface AgentBootstrapConfigPatch {
+  provider?: string;
+  model?: string;
+  effort?: string;
+}
+
+/** Full agent payload exported by the local engine before cloud create. */
+export interface AgentBootstrapBundle {
+  configId: string;
+  name: string;
+  color?: string;
+  claudeMd: string;
+  seeds?: Record<string, string>;
+  skills?: AgentBootstrapSkill[];
+  configPatch?: AgentBootstrapConfigPatch;
+  source?: AgentBootstrapSource;
+}
+
+/** Body for POST `/v1/agents/bootstrap-bundle`. */
+export interface BuildAgentBootstrapRequest {
+  configId: string;
+  name: string;
+  color?: string;
+  claudeMd?: string;
+  installedPath?: string;
+  seeds?: Record<string, string>;
+  provider?: string;
+  model?: string;
+  effort?: string;
+  /** Existing local agent root — exports live disk state for cloud migration. */
+  agentPath?: string;
+}
+
+/** One model row from GET `/v1/providers/openrouter/models`. */
+export interface OpenRouterCatalogModel {
+  id: string;
+  name: string;
+  description: string;
+  isFree: boolean;
+}
+
+export interface OpenRouterModelsResponse {
+  models: OpenRouterCatalogModel[];
+}
+
+/** Body for POST `/v1/providers/openrouter/credentials`. */
+export interface OpenRouterCredentialsRequest {
+  apiKey: string;
+}
+
+/** Body for POST `/v1/providers/openai/credentials`. */
+export interface OpenAiCredentialsRequest {
+  apiKey: string;
+}
+
+/** Ciphertext envelope for E2E provider credential sync (version 1). */
+export interface CredentialCiphertext {
+  version: number;
+  ephemeralPublicKey: string;
+  nonce: string;
+  ciphertext: string;
+}
+
+/** Response for POST `/v1/providers/:name/credential-import/session`. */
+export interface CredentialImportSessionResponse {
+  sessionId: string;
+  publicKey: string;
+  expiresAt: string;
+}
+
+/** Body for POST `/v1/providers/:name/credential-export`. */
+export interface CredentialExportRequest {
+  sessionId: string;
+  publicKey: string;
+}
+
+/** Response for POST `/v1/providers/:name/credential-export`. */
+export interface CredentialExportResponse {
+  provider: string;
+  sessionId: string;
+  ciphertext: CredentialCiphertext;
+}
+
+/** Body for POST `/v1/providers/:name/credential-import`. */
+export interface CredentialImportRequest {
+  sessionId: string;
+  ciphertext: CredentialCiphertext;
+}
+
+/** Response for POST `/v1/providers/:name/credential-import`. */
+export interface CredentialImportResponse {
+  provider: string;
+  authState: string;
+  filesWritten: number;
 }
 
 export interface PreferenceValue {

@@ -23,9 +23,13 @@
 
 mod anthropic;
 pub(crate) mod anthropic_classify;
-mod gemini;
+pub(crate) mod anthropic_credentials;
 mod openai;
 mod openai_classify;
+pub(crate) mod openai_credentials;
+mod openrouter;
+mod openrouter_classify;
+pub(crate) mod openrouter_credentials;
 mod resolve;
 
 pub(crate) use anthropic_classify::detect_malformed_provider_json;
@@ -193,8 +197,13 @@ pub trait ProviderAdapter: Send + Sync + 'static {
 const REGISTRY: &[&dyn ProviderAdapter] = &[
     &anthropic::ANTHROPIC,
     &openai::OPENAI,
-    &gemini::GEMINI,
+    &openrouter::OPENROUTER,
 ];
+
+/// Providers that spawn the Codex CLI runner (shared NDJSON parser).
+pub(crate) fn uses_codex_runner(id: &str) -> bool {
+    matches!(id, "openai" | "openrouter")
+}
 
 /// Default provider used when nothing else is configured. Stays Anthropic
 /// to match historical behavior.
@@ -447,20 +456,26 @@ mod tests {
         let ids: Vec<&str> = all().iter().map(|a| a.id()).collect();
         assert!(ids.contains(&"anthropic"));
         assert!(ids.contains(&"openai"));
-        assert!(ids.contains(&"gemini"));
+        assert!(ids.contains(&"openrouter"));
     }
 
     #[test]
-    fn parse_gemini_alias() {
-        assert_eq!(Provider::from_str("gemini").unwrap().id(), "gemini");
-        assert_eq!(Provider::from_str("google").unwrap().id(), "gemini");
+    fn parse_openrouter_id() {
+        assert_eq!(Provider::from_str("openrouter").unwrap().id(), "openrouter");
+        assert_eq!(Provider::from_str("OPENROUTER").unwrap().id(), "openrouter");
+    }
+
+    #[test]
+    fn uses_codex_runner_includes_openrouter() {
+        assert!(uses_codex_runner("openrouter"));
+        assert!(uses_codex_runner("openai"));
+        assert!(!uses_codex_runner("anthropic"));
     }
 
     #[test]
     fn effort_levels_are_provider_specific() {
         let anthropic = Provider::from_str("anthropic").unwrap();
         let openai = Provider::from_str("openai").unwrap();
-        let gemini = Provider::from_str("gemini").unwrap();
 
         // Claude `--effort` accepts the full range (Opus 4.7/4.8); Claude
         // self-clamps unsupported values per model.
@@ -474,11 +489,7 @@ mod tests {
             openai.effort_levels().to_vec(),
             vec!["low", "medium", "high", "xhigh"]
         );
-        // Gemini CLI takes no effort flag.
-        assert!(gemini.effort_levels().is_empty());
-
-        // Every provider default must be a member of its own level set, and
-        // providers without effort control must have no default.
+        // Every provider default must be a member of its own level set.
         for p in [anthropic, openai] {
             let d = p.default_effort().expect("effort provider has a default");
             assert!(
@@ -486,7 +497,6 @@ mod tests {
                 "{p} default {d} not in its effort_levels"
             );
         }
-        assert!(gemini.default_effort().is_none());
     }
 
     #[test]
@@ -494,18 +504,13 @@ mod tests {
         // Only codex needs a distinct headless flow — plain `codex login`
         // uses a localhost loopback redirect that can't reach a remote
         // engine. Claude's standard login already works headless (paste-back
-        // code) and Gemini drives its own browser identity, so neither
-        // exposes a device variant.
+        // code), so it exposes no device variant.
         let openai = Provider::from_str("openai").unwrap();
         assert_eq!(
             openai.device_login_args().map(|a| a.to_vec()),
             Some(vec!["login", "--device-auth", "-c", "model_reasoning_effort=high"])
         );
         assert!(Provider::from_str("anthropic")
-            .unwrap()
-            .device_login_args()
-            .is_none());
-        assert!(Provider::from_str("gemini")
             .unwrap()
             .device_login_args()
             .is_none());

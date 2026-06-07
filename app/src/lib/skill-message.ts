@@ -3,14 +3,14 @@
  *
  * Decoding + types are owned by `@houston-ai/chat` so the desktop and
  * mobile UIs render the same card. This file keeps the encoder and the
- * Claude-prompt assembler — pieces only the desktop needs since mobile
- * doesn't currently send Skills, only display them.
+ * provider invoke-prompt assembler — pieces only the desktop needs since
+ * mobile doesn't currently send Skills, only display them.
  *
  * Persisted format (single line + body):
  *
  *     <!--houston:skill {"skill":"...","message":"..."}-->
  *
- *     Use the X skill.
+ *     Use the X skill. Read .agents/skills/X/SKILL.md and follow its procedure.
  *
  *     Optional user text.
  */
@@ -58,15 +58,20 @@ export function encodeSkillMessage(
 }
 
 /**
- * Build the explicit prompt sent to Claude for a Skill invocation.
- * Always names the skill so invocation is deterministic. Structured
- * inputs and prompt templates are legacy metadata and are ignored.
+ * Build the explicit prompt sent to the provider for a Skill invocation.
+ * Always names the skill and SKILL.md path so invocation is deterministic
+ * across Claude, Codex, and OpenRouter. Structured inputs and prompt
+ * templates are legacy metadata and are ignored.
  */
 export function buildSkillClaudePrompt(
   skill: SkillSummary,
   userText: string,
 ): string {
   const trimmed = userText.trim();
-  if (!trimmed) return `Use the ${skill.name} skill.`;
-  return `Use the ${skill.name} skill.\n\n${trimmed}`;
+  const invokeLine = `Use the ${skill.name} skill. Read .agents/skills/${skill.name}/SKILL.md and follow its procedure.`;
+  if (!trimmed) return invokeLine;
+  return `${invokeLine}\n\n${trimmed}`;
 }
+
+/** Alias for callers that prefer provider-neutral naming. */
+export const buildSkillInvokePrompt = buildSkillClaudePrompt;

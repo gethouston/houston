@@ -38,4 +38,6 @@ export const queryKeys = {
    * of waiting for the next mount (issue #342).
    */
   providerStatuses: () => ["provider-statuses"] as const,
+  /** OpenRouter tool-capable model catalog from engine (cached server-side 1h). */
+  openRouterCatalog: () => ["openrouter-catalog"] as const,
 };

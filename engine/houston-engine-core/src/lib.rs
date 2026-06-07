@@ -24,5 +24,8 @@ pub mod worktree;
 pub mod workspace_context;
 pub mod workspaces;
 
+#[cfg(test)]
+pub mod test_env_lock;
+
 pub use error::{CoreError, CoreResult};
 pub use state::EngineState;

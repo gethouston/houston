@@ -17,6 +17,7 @@
 //! lives in the adapter today; it will move into `engine-core` in a later
 //! phase once `agent_store` is ported.
 
+mod agentic_model;
 mod compaction;
 mod control;
 pub mod file_changes;
@@ -44,6 +45,7 @@ use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::{Path, PathBuf};
 use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
 
+pub use agentic_model::model_supports_agentic_tools;
 pub use provider::{resolve_effort, resolve_provider, ResolvedProvider};
 
 /// Engine-owned session state. Cheap to clone.
@@ -284,6 +286,7 @@ async fn run_start(
     // for a forced compaction it becomes the summary-seeded prompt, while the
     // persisted/displayed user message stays the original (see `persist`).
     let mut cli_prompt = prompt.clone();
+    cli_prompt = agent_prompt::strip_skill_marker_for_cli(&cli_prompt);
 
     // Forced autocompact (mechanism B): the frontend flagged this turn because
     // the context window is nearly full. Summarize the visible history,

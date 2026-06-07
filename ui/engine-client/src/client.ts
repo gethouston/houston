@@ -14,6 +14,8 @@ import type {
   Activity,
   ActivityUpdate,
   Agent,
+  AgentBootstrapBundle,
+  BuildAgentBootstrapRequest,
   AttachmentManifest,
   AttachmentUploadResult,
   ChatHistoryEntry,
@@ -28,6 +30,11 @@ import type {
   CreateAgent,
   CreateAgentResult,
   CreateAttachmentUploadsResponse,
+  CredentialExportRequest,
+  CredentialExportResponse,
+  CredentialImportRequest,
+  CredentialImportResponse,
+  CredentialImportSessionResponse,
   CreateSkillRequest,
   CreateWorkspace,
   CreateWorktreeRequest,
@@ -81,6 +88,8 @@ import type {
   PortableScanResponse,
   PortableInstallRequest,
   PortableInstalledAgent,
+  OpenRouterCatalogModel,
+  OpenRouterModelsResponse,
 } from "./types";
 import { planAttachmentUploadBatches } from "./attachments";
 
@@ -504,24 +513,81 @@ export class HoustonClient {
     return this.request("POST", `/providers/${this.seg(name)}/login/cancel`);
   }
   /**
-   * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
-   * the key shape, writes atomically, and chmods 0600 on Unix. The
-   * next `providerStatus("gemini")` poll will return `Authenticated`
-   * without requiring a Houston restart.
-   *
-   * Gemini-specific: other providers use the CLI's own OAuth flow via
-   * `providerLogin`. Do NOT generalize this route until a second
-   * provider needs it.
+   * Persist an OpenRouter API key to `~/.houston/providers/openrouter/.env`
+   * (legacy: `~/.houston/openrouter/.env`). The engine validates the key shape
+   * and chmods 0600 on Unix. The next `providerStatus("openrouter")` poll
+   * returns `Authenticated` without a Houston restart.
    */
-  setGeminiApiKey(apiKey: string): Promise<void> {
-    return this.request("POST", "/providers/gemini/credentials", { apiKey });
+  setOpenRouterApiKey(apiKey: string): Promise<void> {
+    return this.request("POST", "/providers/openrouter/credentials", { apiKey });
   }
-  // "Sign in with Google" for Gemini goes through the standard
-  // `providerLogin("gemini")` call — the engine detects the gemini id
-  // and delegates to gemini-cli's own OAuth via the ACP `authenticate`
-  // JSON-RPC method. gemini-cli opens the browser with its own Google
-  // app identity and writes its own credential files. Same shape as
-  // `claude auth login --claudeai` and `codex login`.
+  /** List OpenRouter models (tool-capable text models) using the stored API key. */
+  listOpenRouterModels(query?: string): Promise<OpenRouterCatalogModel[]> {
+    const qs =
+      query && query.trim().length > 0
+        ? `?q=${encodeURIComponent(query.trim())}`
+        : "";
+    return this.request<OpenRouterModelsResponse>(
+      "GET",
+      `/providers/openrouter/models${qs}`,
+    ).then((r) => r.models);
+  }
+  /**
+   * Persist an OpenAI API key to `~/.houston/openai/.env`.
+   * The engine validates the key shape and chmods 0600 on Unix. The next
+   * `providerStatus("openai")` poll returns `Authenticated` without a
+   * Houston restart. OAuth subscription login remains preferred when present.
+   */
+  setOpenAiApiKey(apiKey: string): Promise<void> {
+    return this.request("POST", "/providers/openai/credentials", { apiKey });
+  }
+  /**
+   * Persist an Anthropic API key to `~/.houston/anthropic/.env`.
+   * The engine validates the key shape and chmods 0600 on Unix. The next
+   * `providerStatus("anthropic")` poll returns `Authenticated` without a
+   * Houston restart. OAuth via `providerLogin("anthropic")` remains available.
+   */
+  setAnthropicApiKey(apiKey: string): Promise<void> {
+    return this.request("POST", "/providers/anthropic/credentials", { apiKey });
+  }
+
+  /** Cloud engine: create a one-time import session (public key + expiry). */
+  createProviderCredentialImportSession(
+    name: string,
+  ): Promise<CredentialImportSessionResponse> {
+    return this.request(
+      "POST",
+      `/providers/${this.seg(name)}/credential-import/session`,
+    );
+  }
+
+  /** Local engine: read allowlisted credential files and encrypt for session. */
+  exportProviderCredentials(
+    name: string,
+    req: CredentialExportRequest,
+  ): Promise<CredentialExportResponse> {
+    return this.request(
+      "POST",
+      `/providers/${this.seg(name)}/credential-export`,
+      req,
+    );
+  }
+
+  /** Cloud engine: decrypt bundle, write files, probe provider status. */
+  importProviderCredentials(
+    name: string,
+    req: CredentialImportRequest,
+  ): Promise<CredentialImportResponse> {
+    return this.request(
+      "POST",
+      `/providers/${this.seg(name)}/credential-import`,
+      req,
+    );
+  }
+
+  buildAgentBootstrapBundle(body: BuildAgentBootstrapRequest): Promise<AgentBootstrapBundle> {
+    return this.request("POST", "/agents/bootstrap-bundle", body);
+  }
 
   // ---------- store ----------
 

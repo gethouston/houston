@@ -30,16 +30,18 @@ export function ErrorCard({
   children?: React.ReactNode;
 }) {
   return (
-    <div className="w-full px-1 py-2">
-      <div className="flex items-start gap-4 rounded-2xl bg-secondary p-4 text-left">
+    <div className="w-full min-w-0 overflow-hidden px-1 py-2">
+      <div className="flex min-w-0 items-start gap-4 overflow-hidden rounded-2xl bg-secondary p-4 text-left">
         <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
           {icon}
         </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">{body}</p>
+        <div className="flex min-w-0 flex-1 flex-col gap-1 overflow-hidden">
+          <p className="break-words text-sm font-semibold text-foreground">{title}</p>
+          <p className="break-words text-xs leading-relaxed text-muted-foreground">{body}</p>
           {children && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">{children}</div>
+            <div className="mt-2 flex min-w-0 w-full flex-wrap items-center gap-2">
+              {children}
+            </div>
           )}
         </div>
       </div>
@@ -162,8 +164,8 @@ export function statusPageUrl(provider: string): string | null {
       return "https://status.anthropic.com/";
     case "openai":
       return "https://status.openai.com/";
-    case "gemini":
-      return "https://status.cloud.google.com/";
+    case "openrouter":
+      return "https://status.openrouter.ai/";
     default:
       return null;
   }

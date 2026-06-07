@@ -25,6 +25,10 @@
     "sessionStart": "Failed to start session: {{error}}",
     "modelPersistFailed": "Failed to save model preference"
   },
+  "agenticPreflight": {
+    "blocked": "{{label}} is chat-only and cannot run bash, web search, or file tools. Pick an agentic OpenRouter model such as {{modelsHint}}.",
+    "modelsHint": "Claude Sonnet 4, Gemini 2.5 Flash, or Qwen3 Coder Next"
+  },
   "toolRuntimeError": {
     "retryPrompt": "Try again."
   },
@@ -76,7 +80,8 @@
       "high": "Deeper thinking for harder work.",
       "xhigh": "Best for complex, agentic tasks.",
       "max": "Deepest thinking, no token limit."
-    }
+    },
+    "chatOnly": "Chat only"
   },
   "reasoning": {
     "thinking": "Thinking...",

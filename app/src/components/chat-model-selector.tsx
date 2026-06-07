@@ -6,6 +6,7 @@ import {
   DropdownMenuContent,
 } from "@houston-ai/core";
 import { PROVIDERS, getProvider, getModel } from "../lib/providers";
+import { useOpenRouterModels } from "../hooks/use-openrouter-models";
 import {
   providerPickerState,
   shouldShowProviderInPicker,
@@ -39,19 +40,21 @@ export function ChatModelSelector({
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
+  const { models: openRouterModels } = useOpenRouterModels();
 
   const currentProvider = getProvider(provider);
   const currentModel = getModel(provider, model);
-  const displayLabel = currentModel?.label ?? currentProvider?.subtitle ?? t("modelSelector.selectModel");
+  const displayLabel =
+    currentModel?.label ?? model ?? currentProvider?.subtitle ?? t("modelSelector.selectModel");
+  const displayTitle = currentModel?.label ?? model ?? displayLabel;
 
   // Honour `lockedProvider` only when it points at a currently-active
   // provider that the engine reports as installed. Two cases drop the
   // lock so the user can switch instead of being stuck:
   //
   //   * The locked provider is in `COMING_SOON_PROVIDERS` (or unknown),
-  //     so `getProvider` returns undefined. This happens when Gemini is
-  //     paused in the catalog but a stored activity still references
-  //     it.
+  //     so `getProvider` returns undefined. This happens when a retired
+  //     provider is still referenced in stored activity.
   //   * The locked provider is in `PROVIDERS` but the engine reports
   //     `cli_installed=false` (binary missing on this platform).
   //
@@ -69,16 +72,21 @@ export function ChatModelSelector({
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
     // from interpreting dropdown clicks as "click outside → close panel".
-    <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <div
+      className="min-w-0 max-w-[11rem] shrink"
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+            title={displayTitle}
+            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring min-w-0 max-w-full"
           >
-            <ProviderIcon providerId={provider} className="size-3.5" />
-            <span>{displayLabel}</span>
-            <ChevronDown className="size-3 opacity-60" />
+            <ProviderIcon providerId={provider} className="size-3.5 shrink-0" />
+            <span className="truncate">{displayLabel}</span>
+            <ChevronDown className="size-3 opacity-60 shrink-0" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent
@@ -104,10 +112,12 @@ export function ChatModelSelector({
             ) {
               return null;
             }
+            const providerForList =
+              prov.id === "openrouter" ? { ...prov, models: openRouterModels } : prov;
             return (
               <ProviderModelGroup
                 key={prov.id}
-                provider={prov}
+                provider={providerForList}
                 state={state}
                 isActiveProvider={isActiveProvider}
                 activeModel={isActiveProvider ? model : null}

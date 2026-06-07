@@ -13,13 +13,11 @@ pub mod codex_parser;
 pub mod codex_rollout;
 mod codex_runner;
 pub mod concurrency;
-pub mod gemini_home;
-pub mod gemini_parser;
-mod gemini_parser_state;
-mod gemini_runner;
+pub mod houston_data_root;
 pub mod manager;
 pub mod parser;
 pub mod provider;
+pub mod provider_env;
 pub mod provider_auth;
 mod provider_error;
 pub mod provider_error_kind;
@@ -30,9 +28,11 @@ mod session_update;
 mod stderr_filter;
 pub mod types;
 
+#[cfg(test)]
+pub mod test_env_lock;
+
 // Re-export key types for convenience.
 pub use codex_parser::{extract_thread_id, parse_codex_event, CodexAccumulator};
-pub use gemini_parser::{parse_gemini_event, GeminiAccumulator};
 pub use manager::{SessionHandle, SessionManager};
 pub use parser::{extract_session_id, parse_event, StreamAccumulator};
 pub use provider::{InstallSource, Provider, ProviderAdapter};

@@ -289,6 +289,13 @@ pub enum HoustonEvent {
         success: bool,
         error: Option<String>,
     },
+    /// Provider credentials were synced from local to cloud (or restored).
+    /// Frontend should invalidate `providerStatus` queries.
+    ProviderCredentialsSynced {
+        provider: String,
+        auth_state: String,
+        files_written: usize,
+    },
 }
 
 // ---------------------------------------------------------------------------

@@ -23,7 +23,7 @@ interface ChatEffortSelectorProps {
  * Standalone reasoning-effort picker, rendered beside {@link ChatModelSelector}
  * in the composer. Shows only the levels the active model accepts (Sonnet
  * never offers `xhigh`, Codex never `max`) and renders nothing when the model
- * has no effort control (e.g. Gemini), so the composer row collapses cleanly.
+ * has no effort control (e.g. OpenRouter models), so the composer row collapses cleanly.
  */
 export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEffortSelectorProps) {
   const { t } = useTranslation("chat");

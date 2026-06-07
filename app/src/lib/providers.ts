@@ -18,7 +18,7 @@ export interface ModelOption {
   /**
    * Reasoning-effort levels this model accepts, ordered low→high. Omitted
    * or empty means the model has no effort control and the picker hides the
-   * effort row (e.g. Gemini, Haiku).
+   * effort row (e.g. Haiku).
    */
   effortLevels?: readonly EffortLevel[];
   /**
@@ -45,19 +45,23 @@ export interface ModelOption {
    * gated upward at runtime — e.g. Sonnet 4.6 (200k default → 1M with credits).
    */
   contextWindowMax?: number;
+  /**
+   * When `false`, the model is chat-only under the Codex harness: Houston
+   * blocks sends that need bash, web search, or file tools. OpenRouter models
+   * that do not complete Codex's Responses tool loop (e.g. DeepSeek V3) emit
+   * fake `openrouter_*` calls in plain text instead of real CLI tool events.
+   */
+  agenticTools?: boolean;
 }
 
 /**
  * How a provider authenticates.
  *
- * - `"cli"`: the provider exposes a CLI login command (e.g. `claude login`,
- *   `codex login`). Houston runs it via `tauriProvider.launchLogin` and the
- *   provider's own browser flow takes over.
- * - `"apiKey"`: the provider has NO CLI login flow. The user must paste an
- *   API key from the provider's console and Houston surfaces a dedicated
- *   dialog with the instructions instead of calling `launchLogin`.
+ * - `"cli"`: CLI login command (e.g. `claude login`, `codex login`).
+ * - `"apiKey"`: API-key paste only (OpenRouter).
+ * - `"oauth"`: OAuth-primary connect dialog with optional API-key path (Anthropic, OpenAI).
  */
-export type ProviderLoginKind = "cli" | "apiKey";
+export type ProviderLoginKind = "cli" | "apiKey" | "oauth";
 
 export interface ProviderInfo {
   id: string;
@@ -73,7 +77,7 @@ export interface ProviderInfo {
   loginKind?: ProviderLoginKind;
   /**
    * Optional URL the connect dialog points API-key users at to mint a key.
-   * Only meaningful when `loginKind === "apiKey"`.
+   * Only meaningful when `loginKind === "apiKey"` or `"oauth"`.
    */
   apiKeyConsoleUrl?: string;
   /**
@@ -112,6 +116,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       },
     ],
     defaultModel: "gpt-5.5",
+    loginKind: "oauth",
+    apiKeyConsoleUrl: "https://platform.openai.com/api-keys",
+    apiKeyEnvVar: "OPENAI_API_KEY",
   },
   {
     id: "anthropic",
@@ -158,8 +165,119 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       },
     ],
     defaultModel: "claude-sonnet-4-6",
+    loginKind: "oauth",
+    apiKeyConsoleUrl: "https://console.anthropic.com/settings/keys",
+    apiKeyEnvVar: "ANTHROPIC_API_KEY",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    subtitle: "OpenRouter",
+    cliName: "codex",
+    installUrl: "https://github.com/openai/codex",
+    loginCommand: "codex login",
+    cost: "Pay as you go",
+    loginKind: "apiKey",
+    apiKeyConsoleUrl: "https://openrouter.ai/keys",
+    apiKeyEnvVar: "OPENROUTER_API_KEY",
+    models: [
+      {
+        id: "anthropic/claude-sonnet-4",
+        label: "Claude Sonnet 4",
+        description:
+          "Anthropic Sonnet via OpenRouter. Runs via Codex harness, not native Claude Code.",
+      },
+      {
+        id: "openai/gpt-4.1",
+        label: "GPT-4.1",
+        description: "OpenAI GPT-4.1 via OpenRouter. Runs via Codex harness, not native OpenAI.",
+      },
+      {
+        id: "openai/gpt-4o-mini",
+        label: "GPT-4o Mini",
+        description: "Fast OpenAI model via OpenRouter.",
+        // Chat-only: no OpenRouter Responses tool loop (see ModelOption.agenticTools).
+        agenticTools: false,
+      },
+      {
+        id: "google/gemini-2.5-flash",
+        label: "Gemini 2.5 Flash",
+        description: "Google Flash via OpenRouter. Strong for agents and coding.",
+      },
+      {
+        id: "google/gemini-2.5-pro",
+        label: "Gemini 2.5 Pro",
+        description: "Google Pro via OpenRouter. Deeper reasoning and tools.",
+      },
+      {
+        id: "qwen/qwen3-coder-next",
+        label: "Qwen3 Coder Next",
+        description: "Alibaba Qwen coding model via OpenRouter.",
+      },
+      {
+        id: "mistralai/mistral-large-2512",
+        label: "Mistral Large 3",
+        description: "Mistral flagship via OpenRouter.",
+      },
+      {
+        id: "minimax/minimax-m3",
+        label: "MiniMax M3",
+        description: "MiniMax agentic model via OpenRouter.",
+      },
+      {
+        id: "meta-llama/llama-3.3-70b-instruct",
+        label: "Llama 3.3 70B",
+        description: "Meta open-weight model via OpenRouter.",
+        // Instruct-only: no OpenRouter Responses tool loop (see ModelOption.agenticTools).
+        agenticTools: false,
+      },
+      {
+        id: "qwen/qwen3-coder:free",
+        label: "Qwen3 Coder (Free)",
+        description: "Alibaba Qwen coding model via OpenRouter free tier.",
+      },
+      {
+        id: "google/gemma-3-27b-it:free",
+        label: "Gemma 3 27B (Free)",
+        description: "Google Gemma via OpenRouter free tier.",
+      },
+      {
+        id: "mistralai/mistral-small-3.1-24b-instruct:free",
+        label: "Mistral Small 3.1 (Free)",
+        description: "Mistral small model via OpenRouter free tier.",
+      },
+      {
+        id: "deepseek/deepseek-r1-distill-llama-70b:free",
+        label: "DeepSeek R1 Distill 70B (Free)",
+        description: "DeepSeek distilled reasoning via OpenRouter free tier.",
+      },
+    ],
+    defaultModel: "anthropic/claude-sonnet-4",
   },
 ] as const;
+
+/** Providers whose connect flow is a dedicated dialog, not `launchLogin`. */
+export function usesConnectDialog(provider: ProviderInfo | null | undefined): boolean {
+  return provider?.loginKind === "apiKey" || provider?.loginKind === "oauth";
+}
+
+/** i18n keys under `providers` for CLI harness labels in the picker. */
+export type ProviderHarnessI18nKey =
+  | "harness.anthropic"
+  | "harness.openai"
+  | "harness.openrouter";
+
+/** Typed `providers` key for the harness label shown on provider cards. */
+export function providerHarnessI18nKey(providerId: string): ProviderHarnessI18nKey {
+  switch (providerId) {
+    case "openai":
+      return "harness.openai";
+    case "openrouter":
+      return "harness.openrouter";
+    default:
+      return "harness.anthropic";
+  }
+}
 
 /** Find a provider by id. */
 export function getProvider(id: string): ProviderInfo | undefined {
@@ -168,7 +286,21 @@ export function getProvider(id: string): ProviderInfo | undefined {
 
 /** Find the model object for a provider + model id. */
 export function getModel(providerId: string, modelId: string): ModelOption | undefined {
-  return getProvider(providerId)?.models.find((m) => m.id === modelId);
+  const catalog = getProvider(providerId)?.models.find((m) => m.id === modelId);
+  if (catalog) return catalog;
+  if (providerId === "openrouter" && isOpenRouterCustomSlug(modelId)) {
+    const tail = modelId.split("/").pop() ?? modelId;
+    return {
+      id: modelId,
+      label: tail.replace(/-/g, " "),
+      description: "",
+    };
+  }
+  return undefined;
+}
+
+function isOpenRouterCustomSlug(id: string): boolean {
+  return /^[a-z0-9][a-z0-9._-]*\/[a-z0-9][a-z0-9._:-]*$/i.test(id);
 }
 
 /** Get the default provider + model for a provider id. */
@@ -208,10 +340,8 @@ export function getContextWindowConfig(
  * Return `providerId` only when it names a currently-active provider in
  * `PROVIDERS`. Used by the chat model selector and the per-chat
  * effective-provider fallback chain to skip stored values that point at
- * providers Houston has moved to `COMING_SOON_PROVIDERS` (e.g. an
- * activity record from a previous Houston version that selected Gemini
- * before it was paused). Callers chain it with `??` to fall through to
- * the next tier of preference.
+ * providers Houston has retired from `PROVIDERS` (stored configs from older
+ * builds may still reference them). Callers chain with `??` to fall through.
  */
 export function validProviderOrNull(providerId: string | null | undefined): string | null {
   return providerId && getProvider(providerId) ? providerId : null;
@@ -261,6 +391,43 @@ export function normalizeLegacyModel(model: string | null | undefined): string |
     : model;
 }
 
+/** Strip OpenRouter tier suffixes so `:free` slugs inherit curated metadata. */
+export function openRouterBaseSlug(slug: string): string {
+  return slug.replace(/:free$/i, "");
+}
+
+/** Curated OpenRouter entry by exact slug, then by base slug (e.g. `:free`). */
+export function openRouterCatalogMatch(slug: string): ModelOption | undefined {
+  const models = getProvider("openrouter")?.models;
+  if (!models) return undefined;
+  const exact = models.find((m) => m.id === slug);
+  if (exact) return exact;
+  const base = openRouterBaseSlug(slug);
+  if (base === slug) return undefined;
+  return models.find((m) => m.id === base);
+}
+
+/**
+ * Whether the provider+model can run Codex/Claude agent tools (bash, web
+ * search, edits). Defaults to `true` when the catalog omits the flag.
+ */
+export function modelSupportsAgenticTools(
+  providerId: string | null | undefined,
+  modelId: string | null | undefined,
+): boolean {
+  if (!providerId || !modelId) return true;
+  if (providerId === "openrouter") {
+    const catalog = openRouterCatalogMatch(modelId);
+    if (catalog) return catalog.agenticTools !== false;
+    // User-added slugs from the tools-capable OpenRouter catalog picker.
+    if (isOpenRouterCustomSlug(modelId)) return true;
+    return false;
+  }
+  const model = getModel(providerId, modelId);
+  if (!model) return true;
+  return model.agenticTools !== false;
+}
+
 /** Reasoning-effort levels the given provider+model accepts (low→high). */
 export function getEffortLevels(
   providerId: string | null | undefined,
@@ -296,11 +463,6 @@ export interface ComingSoonProviderInfo {
 }
 
 export const COMING_SOON_PROVIDERS: readonly ComingSoonProviderInfo[] = [
-  // Gemini: engine support + bundled CLI machinery are intact in this
-  // codebase. The UI keeps it under "coming soon" until the broader
-  // rollout (account-tier gating, Windows fork-build) is ready. Listed
-  // first so the alphabetised "next up" slot stays prominent.
-  { id: "gemini", name: "Google", subtitle: "Gemini CLI", mark: "GM" },
   { id: "subq", name: "SubQ", subtitle: "SubQ Code", mark: "SQ" },
   { id: "deepseek", name: "DeepSeek", subtitle: "DeepSeek Coder", mark: "DS" },
   { id: "minimax", name: "MiniMax", subtitle: "M2", mark: "MM" },

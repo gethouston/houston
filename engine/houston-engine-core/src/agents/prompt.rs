@@ -6,9 +6,27 @@
 //! Transport-neutral — the Tauri adapter, REST routes, and tests all consume
 //! the same functions.
 
+use once_cell::sync::Lazy;
+use regex::Regex;
 use serde::Serialize;
 use std::fs;
 use std::path::Path;
+
+static SKILL_MARKER_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^<!--houston:skill (\{[\s\S]*?\})-->\s*\n?\n?")
+        .expect("skill marker regex must compile")
+});
+
+static LEGACY_ACTION_MARKER_RE: Lazy<Regex> = Lazy::new(|| {
+    Regex::new(r"^<!--houston:action (\{[\s\S]*?\})-->\s*\n?\n?")
+        .expect("legacy action marker regex must compile")
+});
+
+/// Strip Houston skill-invocation HTML comment from a prompt before sending to CLI.
+pub fn strip_skill_marker_for_cli(s: &str) -> String {
+    let stripped = SKILL_MARKER_RE.replace(s, "");
+    LEGACY_ACTION_MARKER_RE.replace(&stripped, "").into_owned()
+}
 
 /// Seed a single file into a directory if it doesn't already exist.
 /// Never overwrites user edits.
@@ -403,5 +421,22 @@ mod tests {
         let d = TempDir::new().unwrap();
         let err = read_file(d.path(), "../etc/passwd", &["allowed.md"]).unwrap_err();
         assert!(err.contains("Unknown agent file"));
+    }
+
+    #[test]
+    fn strip_skill_marker_for_cli_removes_skill_marker() {
+        let body = "<!--houston:skill {\"skill\":\"foo\"}-->\n\nUse the foo skill";
+        assert_eq!(strip_skill_marker_for_cli(body), "Use the foo skill");
+    }
+
+    #[test]
+    fn strip_skill_marker_for_cli_removes_legacy_action_marker() {
+        let body = "<!--houston:action {\"skill\":\"bar\"}-->\n\nDo the thing";
+        assert_eq!(strip_skill_marker_for_cli(body), "Do the thing");
+    }
+
+    #[test]
+    fn strip_skill_marker_for_cli_leaves_plain_prompt() {
+        assert_eq!(strip_skill_marker_for_cli("hello world"), "hello world");
     }
 }

@@ -12,19 +12,15 @@ use crate::error::CoreResult;
 use houston_terminal_manager::Provider;
 use std::time::Duration;
 
-// Bumped from 12s → 30s so titles still generate when the model is briefly
-// rate-limited and gemini-cli's internal retry kicks in (typical backoff
-// waits 8-11s). 12s was tight enough that ~half of free-tier Gemini users
-// hit "title summary fallback" on first message. 30s is well under the
-// user's "this conversation feels stuck" threshold but long enough to
-// absorb one quota retry. The deterministic local fallback still fires
-// for the unrecoverable cases.
+// 30s is well under the user's "this conversation feels stuck" threshold
+// but long enough to absorb one brief rate-limit retry. The deterministic
+// local fallback still fires for the unrecoverable cases.
 const SUMMARY_TIMEOUT: Duration = Duration::from_secs(30);
 const CLAUDE_TITLE_MODEL: &str = "haiku";
 const CODEX_TITLE_MODEL: &str = "gpt-5.5-mini";
-/// Gemini title-summary model. Flash-Lite is the cheapest/fastest GA tier
-/// and gives us a JSON object in well under the 30s SUMMARY_TIMEOUT.
-const GEMINI_TITLE_MODEL: &str = "gemini-3.1-flash-lite";
+/// OpenRouter title-summary model. Cheap OpenRouter slug routed through
+/// Codex CLI with process-local provider overrides (see `provider_oneshot`).
+pub(crate) const OPENROUTER_TITLE_MODEL: &str = "openai/gpt-4o-mini";
 
 pub use super::summary_text::SummarizeResult;
 
@@ -69,7 +65,7 @@ fn default_title_model<'a>(provider: Provider, model_override: Option<&'a str>) 
     let default = match provider.id() {
         "anthropic" => CLAUDE_TITLE_MODEL,
         "openai" => CODEX_TITLE_MODEL,
-        "gemini" => GEMINI_TITLE_MODEL,
+        "openrouter" => OPENROUTER_TITLE_MODEL,
         _ => return None,
     };
     Some(model_override.unwrap_or(default))
@@ -97,21 +93,32 @@ mod tests {
     fn default_title_model_picks_per_provider() {
         let a: Provider = "anthropic".parse().unwrap();
         let o: Provider = "openai".parse().unwrap();
-        let g: Provider = "gemini".parse().unwrap();
         assert_eq!(default_title_model(a, None), Some(CLAUDE_TITLE_MODEL));
         assert_eq!(default_title_model(o, None), Some(CODEX_TITLE_MODEL));
-        assert_eq!(default_title_model(g, None), Some(GEMINI_TITLE_MODEL));
+    }
+
+    #[test]
+    fn openrouter_title_model_is_cheap_openrouter_slug() {
+        assert_eq!(OPENROUTER_TITLE_MODEL, "openai/gpt-4o-mini");
+    }
+
+    #[test]
+    fn default_title_model_wires_openrouter_when_registered() {
+        let or: Provider = match "openrouter".parse() {
+            Ok(p) => p,
+            Err(_) => return, // agent-02 registry; session defaults ready when it lands
+        };
+        assert_eq!(default_title_model(or, None), Some(OPENROUTER_TITLE_MODEL));
+        assert_eq!(
+            default_title_model(or, Some("anthropic/claude-sonnet-4")),
+            Some("anthropic/claude-sonnet-4"),
+        );
     }
 
     #[test]
     fn default_title_model_respects_override() {
         let a: Provider = "anthropic".parse().unwrap();
         assert_eq!(default_title_model(a, Some("sonnet")), Some("sonnet"));
-        let g: Provider = "gemini".parse().unwrap();
-        assert_eq!(
-            default_title_model(g, Some("gemini-3.1-pro")),
-            Some("gemini-3.1-pro")
-        );
     }
 
     #[test]

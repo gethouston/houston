@@ -33,6 +33,7 @@ import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
 import { normalizeLegacyModel } from "./providers";
+import { assertAgenticModelPreflight } from "./agentic-model-preflight";
 import { shouldAutocompactForSession } from "./autocompact";
 export { withAttachmentPaths } from "./attachment-message";
 
@@ -218,6 +219,7 @@ export const tauriChat = {
         opts?.providerOverride,
         opts?.modelOverride,
       );
+      await assertAgenticModelPreflight(agentPath, opts?.providerOverride, opts?.modelOverride);
       const res = await getEngine().startSession(agentPath, {
         sessionKey,
         prompt,
@@ -547,6 +549,8 @@ interface RawConversation {
   agent?: string;
   routine_id?: string;
   worktree_path?: string | null;
+  provider?: string;
+  model?: string;
 }
 
 export const tauriConversations = {
@@ -576,6 +580,8 @@ function conversationToRaw(
     agent: c.agent,
     routine_id: c.routine_id,
     worktree_path: c.worktree_path,
+    provider: c.provider,
+    model: c.model,
   };
 }
 
@@ -811,16 +817,9 @@ export const tauriProvider = {
    */
   cancelLogin: (provider: string) =>
     call<void>("cancel_provider_login", () => getEngine().cancelProviderLogin(provider)),
-  /**
-   * Save a Gemini API key to `~/.gemini/.env` via the engine. Errors
-   * surface through `call`'s standard rejection path; the caller is
-   * expected to render them with `errorMessage(err)` + `addToast`.
-   *
-   * Gemini-only by design (other providers use OAuth via launchLogin).
-   * Never log `apiKey` — it's a SECRET.
-   */
-  setGeminiApiKey: (apiKey: string) =>
-    call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
+  /** Gemini is not wired on the OpenRouter local integration branch. */
+  setGeminiApiKey: (_apiKey: string) =>
+    Promise.reject(new Error("Gemini is not available in this build")),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────

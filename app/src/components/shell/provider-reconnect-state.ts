@@ -34,3 +34,53 @@ export function providerIsAuthenticated(status: ProviderReconnectStatus): boolea
 export function providerAppearsConnected(status: ProviderReconnectStatus): boolean {
   return status.cli_installed && status.auth_state !== "unauthenticated";
 }
+
+/**
+ * Settings-row connected state. API-key providers (OpenRouter) require a
+ * confirmed `authenticated` probe — same bar as cloud credential export.
+ * OAuth/CLI providers keep the lenient `unknown`-as-connected rule (#76).
+ */
+export function providerSettingsRowConnected(
+  status: ProviderReconnectStatus,
+  loginKind?: "cli" | "apiKey" | "oauth",
+): boolean {
+  if (loginKind === "apiKey") {
+    return providerIsAuthenticated(status);
+  }
+  return providerAppearsConnected(status);
+}
+
+/** Session auth flag only applies when it matches the composer provider. */
+export function authRequiredForActiveProvider(
+  authRequired: string | null | undefined,
+  activeProviderId: string | null | undefined,
+): string | null {
+  if (!authRequired || !activeProviderId) return null;
+  return authRequired === activeProviderId ? authRequired : null;
+}
+
+export function shouldClearStaleAuthRequired(
+  authRequired: string | null | undefined,
+  activeProviderId: string | null | undefined,
+): boolean {
+  return Boolean(
+    authRequired && activeProviderId && authRequired !== activeProviderId,
+  );
+}
+
+/** Which provider the inline reconnect card should surface, if any. */
+export function resolveReconnectProviderId(args: {
+  authRequired: string | null | undefined;
+  activeProviderId: string | null | undefined;
+  signalNeedsAuth: boolean;
+}): string | null {
+  const matched = authRequiredForActiveProvider(
+    args.authRequired,
+    args.activeProviderId,
+  );
+  if (matched) return matched;
+  if (args.signalNeedsAuth && args.activeProviderId) {
+    return args.activeProviderId;
+  }
+  return null;
+}

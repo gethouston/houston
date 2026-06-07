@@ -1,5 +1,4 @@
 use super::codex_parser;
-use super::gemini_parser;
 use super::parser;
 use super::stderr_filter::{stderr_feed_item, StderrState};
 use super::types::FeedItem;
@@ -109,10 +108,8 @@ pub async fn read_stdout_events(
     // than on the adapter trait. Adding a provider = one new arm.
     match provider.id() {
         "anthropic" => read_claude_stdout(stdout, tx).await,
-        "openai" => read_codex_stdout(stdout, tx).await,
-        "gemini" => {
-            read_gemini_stdout(stdout, tx).await;
-            StdoutReadReport::default()
+        id if crate::provider::uses_codex_runner(id) => {
+            read_codex_stdout(stdout, tx, provider).await
         }
         unknown => {
             tracing::error!(
@@ -208,6 +205,7 @@ fn detect_claude_resume_corrupted(line: &str) -> bool {
 async fn read_codex_stdout(
     stdout: tokio::process::ChildStdout,
     tx: mpsc::UnboundedSender<SessionUpdate>,
+    provider: Provider,
 ) -> StdoutReadReport {
     let reader = BufReader::new(stdout);
     let mut lines = reader.lines();
@@ -232,7 +230,7 @@ async fn read_codex_stdout(
             thread_id = Some(tid.clone());
             let _ = tx.send(SessionUpdate::SessionId(tid));
         }
-        let mut items = codex_parser::parse_codex_event(&line, &mut acc);
+        let mut items = codex_parser::parse_codex_event(&line, &mut acc, provider);
         mark_auth_error(&items, &mut report);
         mark_model_unsupported(&items, &mut report);
         if let Some(pos) = items
@@ -305,31 +303,6 @@ fn mark_model_unsupported(items: &[FeedItem], report: &mut StdoutReadReport) {
     }) {
         report.saw_model_unsupported_error = true;
     }
-}
-
-async fn read_gemini_stdout(
-    stdout: tokio::process::ChildStdout,
-    tx: mpsc::UnboundedSender<SessionUpdate>,
-) {
-    let reader = BufReader::new(stdout);
-    let mut lines = reader.lines();
-    let mut acc = gemini_parser::GeminiAccumulator::new();
-    let mut line_count = 0u64;
-    let mut item_count = 0u64;
-    while let Ok(Some(line)) = lines.next_line().await {
-        line_count += 1;
-        let line_type = line.trim().chars().take(80).collect::<String>();
-        tracing::debug!("[houston:stdout:gemini] line {line_count}: {line_type}");
-
-        if let Some(sid) = gemini_parser::extract_session_id(&line) {
-            let _ = tx.send(SessionUpdate::SessionId(sid));
-        }
-        let items = gemini_parser::parse_gemini_event(&line, &mut acc);
-        item_count += log_and_send(&tx, items);
-    }
-    tracing::debug!(
-        "[houston:stdout:gemini] stream ended. {line_count} lines, {item_count} feed items"
-    );
 }
 
 fn log_and_send(tx: &mpsc::UnboundedSender<SessionUpdate>, items: Vec<FeedItem>) -> u64 {

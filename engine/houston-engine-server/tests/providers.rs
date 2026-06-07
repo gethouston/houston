@@ -5,6 +5,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
+static PROVIDER_ENV_TEST_LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 async fn spawn() -> (SocketAddr, String) {
     let token = "provider-test".to_string();
     let cfg = ServerConfig {
@@ -66,39 +68,10 @@ async fn status_returns_shape_for_known_provider() {
 }
 
 #[tokio::test]
-async fn status_returns_shape_for_gemini() {
-    // Gemini lands as a third provider. Like the anthropic test above,
-    // we only assert wire shape, not boolean values (the CLI may or
-    // may not be bundled into the test binary's resolver path).
-    let (addr, tok) = spawn().await;
-    let body: serde_json::Value = reqwest::Client::new()
-        .get(format!("http://{addr}/v1/providers/gemini/status"))
-        .bearer_auth(&tok)
-        .send()
-        .await
-        .unwrap()
-        .json()
-        .await
-        .unwrap();
-    assert_eq!(body["provider"], "gemini");
-    assert_eq!(body["cliName"], "gemini");
-    assert!(body["cliInstalled"].is_boolean());
-    assert!(matches!(
-        body["authState"].as_str(),
-        Some("authenticated" | "unauthenticated" | "unknown")
-    ));
-    // Must be one of the documented InstallSource variants.
-    assert!(matches!(
-        body["installSource"].as_str(),
-        Some("bundled" | "managed" | "path" | "missing")
-    ));
-}
-
-#[tokio::test]
-async fn gemini_credentials_rejects_empty_key() {
+async fn openrouter_credentials_rejects_empty_key() {
     let (addr, tok) = spawn().await;
     let res = reqwest::Client::new()
-        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
+        .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
         .bearer_auth(&tok)
         .json(&serde_json::json!({ "apiKey": "" }))
         .send()
@@ -108,23 +81,12 @@ async fn gemini_credentials_rejects_empty_key() {
 }
 
 #[tokio::test]
-async fn gemini_credentials_rejects_malformed_key() {
+async fn openrouter_credentials_rejects_malformed_key() {
     let (addr, tok) = spawn().await;
-    // Too short — below the 10-char floor.
     let res = reqwest::Client::new()
-        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
+        .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
         .bearer_auth(&tok)
-        .json(&serde_json::json!({ "apiKey": "abc" }))
-        .send()
-        .await
-        .unwrap();
-    assert_eq!(res.status(), 400);
-
-    // Whitespace in the body.
-    let res = reqwest::Client::new()
-        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
-        .bearer_auth(&tok)
-        .json(&serde_json::json!({ "apiKey": "AIzaTest Key 1234567890" }))
+        .json(&serde_json::json!({ "apiKey": "short" }))
         .send()
         .await
         .unwrap();
@@ -132,38 +94,112 @@ async fn gemini_credentials_rejects_malformed_key() {
 }
 
 #[tokio::test]
-async fn gemini_credentials_writes_to_home_dot_env() {
-    // We cannot easily redirect `dirs::home_dir()` in process, so this
-    // test scopes the write by pointing $HOME at a tempdir. On macOS
-    // `dirs::home_dir()` honors $HOME; same on Linux. Windows uses
-    // %USERPROFILE% — skip cross-write assertion there.
+async fn openrouter_credentials_rejects_whitespace_in_key() {
     if cfg!(target_os = "windows") {
         return;
     }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
     let tmp = tempfile::TempDir::new().unwrap();
-    // Save + restore HOME so we don't poison sibling tests.
     let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
     std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
 
     let (addr, tok) = spawn().await;
     let res = reqwest::Client::new()
-        .post(format!("http://{addr}/v1/providers/gemini/credentials"))
+        .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
         .bearer_auth(&tok)
-        .json(&serde_json::json!({ "apiKey": "AIzaTestKey1234567890" }))
+        .json(&serde_json::json!({ "apiKey": "sk-or-v1-test key1234567890" }))
+        .send()
+        .await
+        .unwrap();
+
+    let env_file = tmp.path().join("providers/openrouter/.env");
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(res.status(), 400);
+    assert!(!env_file.exists(), "whitespace key must not write credentials");
+}
+
+#[tokio::test]
+async fn openrouter_credentials_rejects_quoted_key() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "\"sk-or-v1-testkey1234567890\"" }))
+        .send()
+        .await
+        .unwrap();
+
+    let env_file = tmp.path().join("providers/openrouter/.env");
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(res.status(), 400);
+    assert!(!env_file.exists(), "quoted key must not write credentials");
+}
+
+#[tokio::test]
+async fn openrouter_credentials_writes_to_houston_dot_env() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let key = "sk-or-v1-testkey1234567890";
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
         .send()
         .await
         .unwrap();
     let status = res.status();
     let body = res.text().await.unwrap_or_default();
 
-    // Restore HOME before any assert so a failure doesn't leak it.
     match prior_home {
         Some(v) => std::env::set_var("HOME", v),
         None => std::env::remove_var("HOME"),
     }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
 
     assert!(status.is_success(), "expected 2xx, got {status} body={body}");
-    let env_file = tmp.path().join(".gemini").join(".env");
+    let env_file = tmp.path().join("providers/openrouter/.env");
     let contents = std::fs::read_to_string(&env_file).unwrap_or_else(|e| {
         panic!(
             "expected {} to exist after credentials write: {e}",
@@ -171,8 +207,539 @@ async fn gemini_credentials_writes_to_home_dot_env() {
         )
     });
     assert!(
-        contents.contains("GEMINI_API_KEY=AIzaTestKey1234567890"),
-        "expected GEMINI_API_KEY line in {contents:?}"
+        contents.contains(&format!("OPENROUTER_API_KEY={key}")),
+        "expected OPENROUTER_API_KEY line in {contents:?}"
+    );
+}
+
+#[tokio::test]
+async fn openrouter_models_route_exists_without_stored_key() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .get(format!("http://{addr}/v1/providers/openrouter/models"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap();
+    let status = res.status();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(
+        status,
+        400,
+        "missing key should be a client error, not a missing route"
+    );
+}
+
+#[tokio::test]
+async fn openrouter_status_authenticated_after_credentials_write() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let c = reqwest::Client::new();
+    let key = "sk-or-v1-testkey1234567890";
+    let write = c
+        .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    assert!(write.status().is_success());
+
+    let body: serde_json::Value = c
+        .get(format!("http://{addr}/v1/providers/openrouter/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(body["provider"], "openrouter");
+    assert_eq!(body["authState"], "authenticated");
+}
+
+#[tokio::test]
+async fn openrouter_logout_clears_stored_credentials() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let c = reqwest::Client::new();
+    let key = "sk-or-v1-testkey1234567890";
+    let write = c
+        .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    assert!(write.status().is_success());
+
+    let logout = c
+        .post(format!("http://{addr}/v1/providers/openrouter/logout"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap();
+    assert!(logout.status().is_success());
+
+    let body: serde_json::Value = c
+        .get(format!("http://{addr}/v1/providers/openrouter/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    let env_file = tmp.path().join("providers/openrouter/.env");
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(body["authState"], "unauthenticated");
+    assert!(!env_file.exists(), "credential file should be removed on disconnect");
+}
+
+#[tokio::test]
+async fn openai_credentials_rejects_empty_key() {
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/openai/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+}
+
+#[tokio::test]
+async fn openai_credentials_rejects_malformed_key() {
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/openai/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "short" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+}
+
+#[tokio::test]
+async fn openai_credentials_writes_to_houston_dot_env() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let key = "sk-proj-testkey1234567890";
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/openai/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert!(status.is_success(), "expected 2xx, got {status} body={body}");
+    let env_file = tmp.path().join("providers/openai/.env");
+    let contents = std::fs::read_to_string(&env_file).unwrap_or_else(|e| {
+        panic!(
+            "expected {} to exist after credentials write: {e}",
+            env_file.display()
+        )
+    });
+    assert!(
+        contents.contains(&format!("OPENAI_API_KEY={key}")),
+        "expected OPENAI_API_KEY line in {contents:?}"
+    );
+}
+
+#[tokio::test]
+async fn openai_status_authenticated_after_credentials_write() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let c = reqwest::Client::new();
+    let key = "sk-proj-testkey1234567890";
+    let write = c
+        .post(format!("http://{addr}/v1/providers/openai/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    assert!(write.status().is_success());
+
+    let body: serde_json::Value = c
+        .get(format!("http://{addr}/v1/providers/openai/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(body["provider"], "openai");
+    assert_eq!(body["authState"], "authenticated");
+}
+
+#[tokio::test]
+async fn openai_logout_clears_stored_credentials() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let c = reqwest::Client::new();
+    let key = "sk-proj-testkey1234567890";
+    let write = c
+        .post(format!("http://{addr}/v1/providers/openai/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    assert!(write.status().is_success());
+
+    let logout = c
+        .post(format!("http://{addr}/v1/providers/openai/logout"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap();
+    assert!(logout.status().is_success());
+
+    let body: serde_json::Value = c
+        .get(format!("http://{addr}/v1/providers/openai/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    let env_file = tmp.path().join("providers/openai/.env");
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(body["authState"], "unauthenticated");
+    assert!(!env_file.exists(), "credential file should be removed on disconnect");
+}
+
+#[tokio::test]
+async fn anthropic_credentials_rejects_empty_key() {
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/anthropic/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+}
+
+#[tokio::test]
+async fn anthropic_credentials_rejects_malformed_key() {
+    let (addr, tok) = spawn().await;
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/anthropic/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": "short" }))
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+}
+
+#[tokio::test]
+async fn anthropic_credentials_writes_to_houston_dot_env() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let key = "sk-ant-api03-testkey1234567890";
+    let res = reqwest::Client::new()
+        .post(format!("http://{addr}/v1/providers/anthropic/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    let status = res.status();
+    let body = res.text().await.unwrap_or_default();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert!(status.is_success(), "expected 2xx, got {status} body={body}");
+    let env_file = tmp.path().join("providers/anthropic/.env");
+    let contents = std::fs::read_to_string(&env_file).unwrap_or_else(|e| {
+        panic!(
+            "expected {} to exist after credentials write: {e}",
+            env_file.display()
+        )
+    });
+    assert!(
+        contents.contains(&format!("ANTHROPIC_API_KEY={key}")),
+        "expected ANTHROPIC_API_KEY line in {contents:?}"
+    );
+}
+
+#[tokio::test]
+async fn anthropic_credentials_writes_legacy_path_readable() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let legacy = tmp.path().join(".houston/anthropic/.env");
+    std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+    let key = "sk-ant-api03-testkey1234567890";
+    std::fs::write(&legacy, format!("ANTHROPIC_API_KEY={key}\n")).unwrap();
+
+    let (addr, tok) = spawn().await;
+    let body: serde_json::Value = reqwest::Client::new()
+        .get(format!("http://{addr}/v1/providers/anthropic/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(body["authState"], "authenticated");
+}
+
+#[tokio::test]
+async fn anthropic_status_authenticated_after_credentials_write() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let c = reqwest::Client::new();
+    let key = "sk-ant-api03-testkey1234567890";
+    let write = c
+        .post(format!("http://{addr}/v1/providers/anthropic/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    assert!(write.status().is_success());
+
+    let body: serde_json::Value = c
+        .get(format!("http://{addr}/v1/providers/anthropic/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert_eq!(body["provider"], "anthropic");
+    assert_eq!(body["authState"], "authenticated");
+}
+
+#[tokio::test]
+async fn anthropic_logout_clears_stored_api_key() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+
+    let (addr, tok) = spawn().await;
+    let c = reqwest::Client::new();
+    let key = "sk-ant-api03-testkey1234567890";
+    let write = c
+        .post(format!("http://{addr}/v1/providers/anthropic/credentials"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({ "apiKey": key }))
+        .send()
+        .await
+        .unwrap();
+    assert!(write.status().is_success());
+
+    let logout = c
+        .post(format!("http://{addr}/v1/providers/anthropic/logout"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap();
+    let env_file = tmp.path().join("providers/anthropic/.env");
+    let legacy_file = tmp.path().join(".houston/anthropic/.env");
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
+    }
+
+    assert!(
+        !env_file.exists(),
+        "canonical credential file should be removed on disconnect (logout status={})",
+        logout.status()
+    );
+    assert!(
+        !legacy_file.exists(),
+        "legacy credential file should be removed on disconnect"
     );
 }
 
@@ -237,6 +804,148 @@ async fn login_accepts_optional_device_auth_query() {
         assert_eq!(res.status(), 400, "url={url}");
         let body: serde_json::Value = res.json().await.unwrap();
         assert_eq!(body["error"]["code"], "BAD_REQUEST", "url={url}");
+    }
+}
+
+#[tokio::test]
+async fn credential_sync_round_trip_openai() {
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    std::env::set_var("HOME", tmp.path());
+    let auth_path = tmp.path().join(".codex/auth.json");
+    std::fs::create_dir_all(auth_path.parent().unwrap()).unwrap();
+    std::fs::write(&auth_path, r#"{"tokens":{"access":"x"}}"#).unwrap();
+
+    let (addr, tok) = spawn().await;
+    let client = reqwest::Client::new();
+    let base = format!("http://{addr}/v1/providers/openai");
+
+    let session: serde_json::Value = client
+        .post(format!("{base}/credential-import/session"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let session_id = session["sessionId"].as_str().unwrap();
+    let public_key = session["publicKey"].as_str().unwrap();
+
+    let export: serde_json::Value = client
+        .post(format!("{base}/credential-export"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({
+            "sessionId": session_id,
+            "publicKey": public_key,
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(export["provider"], "openai");
+
+    std::fs::remove_file(&auth_path).unwrap();
+
+    let import: serde_json::Value = client
+        .post(format!("{base}/credential-import"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({
+            "sessionId": session_id,
+            "ciphertext": export["ciphertext"],
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(import["filesWritten"], 1);
+    assert!(auth_path.exists());
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+}
+
+#[tokio::test]
+async fn credential_sync_round_trip_openrouter() {
+    if cfg!(target_os = "windows") {
+        return;
+    }
+    let _guard = PROVIDER_ENV_TEST_LOCK.lock().unwrap();
+    let tmp = tempfile::TempDir::new().unwrap();
+    let prior_home = std::env::var_os("HOME");
+    let prior_houston = std::env::var_os("HOUSTON_HOME");
+    std::env::set_var("HOME", tmp.path());
+    std::env::set_var("HOUSTON_HOME", tmp.path());
+    let key = "sk-or-v1-testkey1234567890";
+    let env_path = tmp.path().join("providers/openrouter/.env");
+    std::fs::create_dir_all(env_path.parent().unwrap()).unwrap();
+    std::fs::write(&env_path, format!("OPENROUTER_API_KEY={key}\n")).unwrap();
+
+    let (addr, tok) = spawn().await;
+    let client = reqwest::Client::new();
+    let base = format!("http://{addr}/v1/providers/openrouter");
+
+    let session: serde_json::Value = client
+        .post(format!("{base}/credential-import/session"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    let session_id = session["sessionId"].as_str().unwrap();
+    let public_key = session["publicKey"].as_str().unwrap();
+
+    let export: serde_json::Value = client
+        .post(format!("{base}/credential-export"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({
+            "sessionId": session_id,
+            "publicKey": public_key,
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(export["provider"], "openrouter");
+
+    std::fs::remove_file(&env_path).unwrap();
+
+    let import: serde_json::Value = client
+        .post(format!("{base}/credential-import"))
+        .bearer_auth(&tok)
+        .json(&serde_json::json!({
+            "sessionId": session_id,
+            "ciphertext": export["ciphertext"],
+        }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(import["filesWritten"], 1);
+    assert!(env_path.exists());
+    let contents = std::fs::read_to_string(&env_path).unwrap();
+    assert!(contents.contains(&format!("OPENROUTER_API_KEY={key}")));
+
+    match prior_home {
+        Some(v) => std::env::set_var("HOME", v),
+        None => std::env::remove_var("HOME"),
+    }
+    match prior_houston {
+        Some(v) => std::env::set_var("HOUSTON_HOME", v),
+        None => std::env::remove_var("HOUSTON_HOME"),
     }
 }
 

@@ -7,6 +7,12 @@
 use houston_ui_events::HoustonEvent;
 use serde::{Deserialize, Serialize};
 
+pub mod bootstrap;
+pub use bootstrap::{
+    AgentBootstrapBundle, BootstrapConfigPatch, BootstrapSkill, BootstrapSource,
+    BuildBootstrapBundleRequest,
+};
+
 /// Re-export the typed [`ProviderError`] taxonomy so every protocol
 /// consumer (engine-server, ui/engine-client, third-party clients) can
 /// import the wire shape from one place. The enum lives in
@@ -160,10 +166,65 @@ pub fn event_topic(event: &HoustonEvent) -> String {
         HoustonEvent::ClaudeCliInstalling { .. }
         | HoustonEvent::ClaudeCliReady
         | HoustonEvent::ClaudeCliFailed { .. } => "claude".into(),
-        HoustonEvent::ProviderLoginUrl { .. } | HoustonEvent::ProviderLoginComplete { .. } => {
-            "providers".into()
-        }
+        HoustonEvent::ProviderLoginUrl { .. }
+        | HoustonEvent::ProviderLoginComplete { .. }
+        | HoustonEvent::ProviderCredentialsSynced { .. } => "providers".into(),
     }
+}
+
+// ---------- Provider credential sync ----------
+
+/// Ciphertext envelope for E2E credential bundles (version 1).
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialCiphertext {
+    pub version: u8,
+    pub ephemeral_public_key: String,
+    pub nonce: String,
+    pub ciphertext: String,
+}
+
+/// Response for `POST /v1/providers/:name/credential-import/session`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialImportSessionResponse {
+    pub session_id: String,
+    pub public_key: String,
+    pub expires_at: String,
+}
+
+/// Body for `POST /v1/providers/:name/credential-export`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialExportRequest {
+    pub session_id: String,
+    pub public_key: String,
+}
+
+/// Response for `POST /v1/providers/:name/credential-export`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialExportResponse {
+    pub provider: String,
+    pub session_id: String,
+    pub ciphertext: CredentialCiphertext,
+}
+
+/// Body for `POST /v1/providers/:name/credential-import`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialImportRequest {
+    pub session_id: String,
+    pub ciphertext: CredentialCiphertext,
+}
+
+/// Response for `POST /v1/providers/:name/credential-import`.
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct CredentialImportResponse {
+    pub provider: String,
+    pub auth_state: String,
+    pub files_written: usize,
 }
 
 /// Whether a feed item is "low severity" — i.e. streaming deltas that can be

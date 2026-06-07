@@ -178,4 +178,12 @@ export type HoustonEvent =
   | {
       type: "ProviderLoginComplete";
       data: { provider: string; success: boolean; error: string | null };
+    }
+  | {
+      type: "ProviderCredentialsSynced";
+      data: {
+        provider: string;
+        auth_state: string;
+        files_written: number;
+      };
     };

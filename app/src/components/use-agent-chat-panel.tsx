@@ -48,6 +48,7 @@ import {
 } from "../lib/tauri";
 import { createMission } from "../lib/create-mission";
 import { createMissionWorktreeIfEnabled } from "../lib/mission-worktree";
+import type { ConfigProvider } from "../data/config";
 import { queryKeys } from "../lib/query-keys";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
@@ -254,7 +255,7 @@ export function useAgentChatPanel({
           const cfg = await tauriConfig.read(path);
           await tauriConfig.write(path, {
             ...cfg,
-            provider: prov as "anthropic" | "openai",
+            provider: prov as ConfigProvider,
             model: mod,
           });
         }

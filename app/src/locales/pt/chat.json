@@ -25,6 +25,10 @@
     "sessionStart": "Não foi possível iniciar a sessão: {{error}}",
     "modelPersistFailed": "Não foi possível salvar a preferência de modelo"
   },
+  "agenticPreflight": {
+    "blocked": "{{label}} é apenas chat e não pode executar bash, pesquisa na web ou ferramentas de arquivo. Escolha um modelo OpenRouter com agente como {{modelsHint}}.",
+    "modelsHint": "Claude Sonnet 4, Gemini 2.5 Flash ou Qwen3 Coder Next"
+  },
   "toolRuntimeError": {
     "retryPrompt": "Tente de novo."
   },
@@ -76,7 +80,8 @@
       "high": "Análise mais profunda para tarefas difíceis.",
       "xhigh": "Ideal para tarefas complexas.",
       "max": "Análise máxima, sem limite de tokens."
-    }
+    },
+    "chatOnly": "Somente chat"
   },
   "reasoning": {
     "thinking": "Pensando...",

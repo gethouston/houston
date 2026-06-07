@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { registerAgentLookup } from "../lib/agent-lookup";
 import { tauriAgents, tauriAttachments, tauriPreferences, tauriRoutines, tauriWatcher } from "../lib/tauri";
 import { useFeedStore } from "./feeds";
 import { useDraftStore } from "./drafts";
@@ -116,3 +117,9 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }));
   },
 }));
+
+registerAgentLookup({
+  agentFromPath: (agentPath) =>
+    useAgentStore.getState().agents.find((a) => a.folderPath === agentPath) ?? null,
+  currentAgent: () => useAgentStore.getState().current,
+});

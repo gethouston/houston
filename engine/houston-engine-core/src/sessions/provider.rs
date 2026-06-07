@@ -77,8 +77,7 @@ fn read_agent_config(agent_dir: &Path) -> Option<AgentConfig> {
 ///    typo) is dropped rather than passed to a CLI that would reject it.
 /// 2. The provider's [`Provider::default_effort`] — the floor every session
 ///    gets when nothing valid is configured.
-/// 3. `None` for providers with no effort control (e.g. Gemini), so the
-///    runner omits the flag.
+/// 3. `None` for providers with no effort control, so the runner omits the flag.
 ///
 /// Effort is per-agent, validated against whichever provider the session
 /// ends up using; callers pass the same agent dir they resolved the
@@ -111,10 +110,6 @@ mod tests {
     fn openai() -> Provider {
         "openai".parse().unwrap()
     }
-    fn gemini() -> Provider {
-        "gemini".parse().unwrap()
-    }
-
     #[test]
     fn default_when_no_config() {
         let d = TempDir::new().unwrap();
@@ -220,13 +215,6 @@ mod tests {
     fn effort_reads_claude_effort_alias() {
         let (_d, agent) = agent_with(r#"{"claude_effort":"xhigh"}"#);
         assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("xhigh"));
-    }
-
-    #[test]
-    fn effort_is_none_for_provider_without_effort_control() {
-        // Gemini has no effort flag — even a configured value yields None.
-        let (_d, agent) = agent_with(r#"{"provider":"gemini","effort":"high"}"#);
-        assert!(resolve_effort(&agent, gemini()).is_none());
     }
 
     #[test]

@@ -5,18 +5,37 @@
 //! key/value store), so `DEFAULT_PROVIDER_KEY` is exposed for callers
 //! that want to `get`/`set` the preference directly.
 //!
-//! API-key providers (Gemini today) write the key to a provider-specific
-//! dotfile from the engine, so the picker can flip to "Connected" on the
-//! next status poll without asking the user to restart Houston. See
-//! [`gemini_credentials`].
+//! API-key providers write keys to `~/.houston/providers/<provider>/.env`
+//! from the engine. Legacy paths are still read for migration. See
+//! [`provider_env_store`] and the per-provider credential modules.
 
-mod gemini_credentials;
-mod gemini_disconnect;
-mod gemini_login;
+pub mod credentials;
+mod provider_env_store;
+mod anthropic_credentials;
+mod anthropic_disconnect;
 mod login_relay;
+mod openai_credentials;
+mod openai_disconnect;
+mod openrouter_credentials;
+mod openrouter_catalog_cache;
+mod openrouter_disconnect;
+mod openrouter_models;
 
-pub use gemini_credentials::set_gemini_api_key;
-pub use gemini_disconnect::disconnect_gemini;
+pub use anthropic_credentials::{read_anthropic_api_key, set_anthropic_api_key};
+pub use anthropic_disconnect::disconnect_anthropic;
+pub use openai_credentials::{
+    codex_oauth_tokens_present, read_openai_api_key, set_openai_api_key,
+};
+pub use openai_disconnect::disconnect_openai;
+pub use openrouter_credentials::{read_openrouter_api_key, set_openrouter_api_key};
+pub use openrouter_disconnect::disconnect_openrouter;
+pub use openrouter_catalog_cache::invalidate_openrouter_catalog_cache;
+pub use openrouter_models::{list_openrouter_models, OpenRouterCatalogModel};
+pub use credentials::{
+    export_credentials, import_credentials, start_import_session, CredentialExportRequest,
+    CredentialExportResponse, CredentialImportRequest, CredentialImportResponse,
+    CredentialImportSessionResponse, CredentialProvider,
+};
 pub use login_relay::{cancel_login, submit_login_code};
 
 use crate::error::{CoreError, CoreResult};
@@ -103,23 +122,6 @@ pub async fn launch_login(
     sink: DynEventSink,
     device_auth: bool,
 ) -> CoreResult<()> {
-    // Gemini has no `gemini auth login` subcommand. Instead, gemini-cli
-    // exposes an `authenticate` JSON-RPC method over its `--acp` mode
-    // (Agent Communication Protocol) that triggers Google's OAuth flow
-    // via the user's browser, using gemini-cli's own app identity. We
-    // delegate there rather than spawning gemini with positional args.
-    // See `gemini_login.rs` for the protocol details + rationale.
-    if provider.id() == "gemini" {
-        let (_, gemini_path) = provider.resolve();
-        let path = gemini_path.ok_or_else(|| {
-            CoreError::BadRequest(
-                "Gemini CLI binary not found. Reinstall Houston to restore the bundled CLI."
-                    .into(),
-            )
-        })?;
-        return gemini_login::launch_login(path).await;
-    }
-
     let ProviderCliCommand {
         cli_name,
         path,
@@ -279,17 +281,26 @@ pub async fn launch_login(
 /// then deletes the local credential file. We await it so the UI can
 /// flip the card to disconnected as soon as it's actually done.
 pub async fn launch_logout(provider: Provider) -> CoreResult<()> {
-    // Gemini has no CLI logout subcommand. The interactive `/auth logout`
-    // slash command added in gemini-cli PR #13383 strips internal
-    // "thoughts" from conversation history as a side effect, which
-    // Houston must NOT do — sessions are user data. Clear the same
-    // credential files that command clears, directly from the engine.
-    // See `gemini_disconnect` for the full set of files touched (and
-    // not touched).
-    if provider.id() == "gemini" {
-        return disconnect_gemini().await;
+    if provider.id() == "openrouter" {
+        return disconnect_openrouter().await;
+    }
+    if provider.id() == "openai" {
+        let had_stored_key = read_openai_api_key().await?.is_some();
+        if had_stored_key && !openai_credentials::codex_oauth_tokens_present() {
+            return disconnect_openai().await;
+        }
+    }
+    if provider.id() == "anthropic" {
+        let had_stored_key = read_anthropic_api_key().await?.is_some();
+        if had_stored_key && !anthropic_credentials::claude_oauth_tokens_present() {
+            return disconnect_anthropic().await;
+        }
+        if had_stored_key {
+            disconnect_anthropic().await?;
+        }
     }
 
+    let provider_id = provider.id();
     let ProviderCliCommand {
         cli_name,
         path,
@@ -313,6 +324,7 @@ pub async fn launch_logout(provider: Provider) -> CoreResult<()> {
     match result {
         Ok(Ok(output)) if output.status.success() => {
             tracing::info!("[houston:provider] {cli_name} logout succeeded");
+            clear_houston_api_key_on_cli_logout(provider_id).await?;
             Ok(())
         }
         Ok(Ok(output)) => {
@@ -342,6 +354,14 @@ pub async fn launch_logout(provider: Provider) -> CoreResult<()> {
                 "{cli_name} logout timed out after 10s"
             )))
         }
+    }
+}
+
+async fn clear_houston_api_key_on_cli_logout(provider_id: &str) -> CoreResult<()> {
+    match provider_id {
+        "anthropic" => anthropic_credentials::strip_anthropic_api_key_storage().await,
+        "openai" => openai_credentials::strip_openai_api_key_storage().await,
+        _ => Ok(()),
     }
 }
 

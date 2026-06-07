@@ -12,8 +12,9 @@
  * program not found` when they aren't.
  *
  * Kept pure (no React, no Tauri, no async) so the lookup + legacy-alias
- * normalization is unit-testable and shared with whatever Mission Control's
- * future send paths grow into.
+ * normalization is unit-testable. Mission Control resolves overrides from
+ * the cached `listAllConversations` payload (provider/model on each row)
+ * instead of re-fetching `activity.json` on every send.
  */
 // Explicit `.ts` extension so this module is also resolvable when loaded
 // directly by `node --test --experimental-strip-types` (Node ESM requires

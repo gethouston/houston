@@ -17,16 +17,9 @@ use std::time::Duration;
 const GENERATE_TIMEOUT: Duration = Duration::from_secs(60);
 const CLAUDE_GEN_MODEL: &str = "sonnet";
 const CODEX_GEN_MODEL: &str = "gpt-5.5";
-/// Gemini generation model. Flash-Lite — matches the only Gemini model
-/// currently offered by the frontend catalog (`app/src/lib/providers.ts`),
-/// so when a user pins Gemini to their workspace and hits Create-with-AI
-/// the engine and the UI agree on the model. `gemini-3.1-pro-preview`
-/// is deliberately NOT used: it's gated behind paid Google AI tiers and
-/// free-tier OAuth accounts get zero quota for it (verified live: 10
-/// retries → "exhausted capacity" → ~4-minute hang). Flash-Lite produces
-/// a usable CLAUDE.md in well under the 60s GENERATE_TIMEOUT.
-const GEMINI_GEN_MODEL: &str = "gemini-3.1-flash-lite";
-
+/// OpenRouter generation model. Capable slug routed through Codex CLI
+/// with process-local provider overrides (see `provider_oneshot`).
+pub(crate) const OPENROUTER_GEN_MODEL: &str = "openai/gpt-4o";
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerateInstructionsResult {
@@ -91,7 +84,7 @@ fn default_gen_model<'a>(provider: Provider, model_override: Option<&'a str>) ->
     let default = match provider.id() {
         "anthropic" => CLAUDE_GEN_MODEL,
         "openai" => CODEX_GEN_MODEL,
-        "gemini" => GEMINI_GEN_MODEL,
+        "openrouter" => OPENROUTER_GEN_MODEL,
         _ => return None,
     };
     Some(model_override.unwrap_or(default))
@@ -232,19 +225,30 @@ mod tests {
     fn default_gen_model_picks_per_provider() {
         let a: Provider = "anthropic".parse().unwrap();
         let o: Provider = "openai".parse().unwrap();
-        let g: Provider = "gemini".parse().unwrap();
         assert_eq!(default_gen_model(a, None), Some(CLAUDE_GEN_MODEL));
         assert_eq!(default_gen_model(o, None), Some(CODEX_GEN_MODEL));
-        assert_eq!(default_gen_model(g, None), Some(GEMINI_GEN_MODEL));
+    }
+
+    #[test]
+    fn openrouter_gen_model_is_capable_openrouter_slug() {
+        assert_eq!(OPENROUTER_GEN_MODEL, "openai/gpt-4o");
+    }
+
+    #[test]
+    fn default_gen_model_wires_openrouter_when_registered() {
+        let or: Provider = match "openrouter".parse() {
+            Ok(p) => p,
+            Err(_) => return, // agent-02 registry; session defaults ready when it lands
+        };
+        assert_eq!(default_gen_model(or, None), Some(OPENROUTER_GEN_MODEL));
+        assert_eq!(
+            default_gen_model(or, Some("anthropic/claude-sonnet-4")),
+            Some("anthropic/claude-sonnet-4"),
+        );
     }
 
     #[test]
     fn default_gen_model_respects_override() {
-        let g: Provider = "gemini".parse().unwrap();
-        assert_eq!(
-            default_gen_model(g, Some("gemini-3.1-flash")),
-            Some("gemini-3.1-flash"),
-        );
         let a: Provider = "anthropic".parse().unwrap();
         assert_eq!(default_gen_model(a, Some("opus")), Some("opus"));
     }

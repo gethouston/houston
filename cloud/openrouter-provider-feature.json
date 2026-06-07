@@ -1,0 +1,304 @@
+{
+  "schemaVersion": 1,
+  "feature": {
+    "id": "openrouter-provider-subscription",
+    "name": "OpenRouter provider subscription",
+    "status": "awaiting_manual_qa",
+    "priority": 1,
+    "goal": "Add OpenRouter as a real selectable Houston provider connection while reusing the existing Codex runner, provider picker, model selector, credentials flow and provider-error UX.",
+    "ux": [
+      "OpenRouter appears in the existing provider picker, settings and model selector.",
+      "The user connects with an API key from the current connection flow.",
+      "The selected OpenRouter provider and model are stored per agent.",
+      "Auth, quota, rate-limit and outage errors show visible provider-specific cards.",
+      "No parallel subscription screen or chat flow is introduced."
+    ],
+    "technicalDecision": {
+      "providerId": "openrouter",
+      "runner": "codex-cli",
+      "wireApi": "responses",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "credentialEnvKey": "OPENROUTER_API_KEY",
+      "doNotMutateGlobalCodexConfig": true,
+      "codexConfigOverrides": [
+        "model_provider=\"openrouter\"",
+        "model_providers.openrouter.name=\"OpenRouter\"",
+        "model_providers.openrouter.base_url=\"https://openrouter.ai/api/v1\"",
+        "model_providers.openrouter.env_key=\"OPENROUTER_API_KEY\"",
+        "model_providers.openrouter.wire_api=\"responses\""
+      ]
+    },
+    "scope": {
+      "included": [
+        "ProviderAdapter for OpenRouter",
+        "Houston-managed OpenRouter API key storage and disconnect",
+        "Codex runner reuse",
+        "Provider-aware parser and error classification",
+        "Provider/model catalog entries",
+        "Config schema and TypeScript provider type widening",
+        "Existing provider picker/settings/onboarding integration",
+        "Tests and knowledge-base updates"
+      ],
+      "excluded": [
+        "Direct OpenRouter HTTP agent loop",
+        "New subscription management page",
+        "Secrets in ~/.codex/config.toml",
+        "Credential copying between agents",
+        "COMING_SOON placeholder"
+      ]
+    },
+    "supervision": {
+      "mode": "supervisor-only",
+      "supervisor": "cursor-main",
+      "baselineCheckedAt": "2026-06-06",
+      "baseline": "No openrouter code in repo yet. Only plan + feature spec exist.",
+      "delegatedAt": "2026-06-06",
+      "activeWorkers": [
+        {"id": "validation-p6", "agents": ["agent-10-docs-qa"], "track": "docs+manual-qa"}
+      ],
+      "phaseOrder": ["p1", "p2", "p3", "p4", "p5", "p6"],
+      "rules": [
+        "Agent marks own task completed in this file before moving on.",
+        "Supervisor verifies acceptance criteria and exitGate before unlocking next phase.",
+        "No phase skip. p2 needs p1. p3 needs p2. p4 needs p3. p5 needs p4. p6 needs p5.",
+        "Supervisor runs validationCommands at p6 and after any agent claims regression risk."
+      ]
+    },
+    "agents": [
+      {
+        "id": "agent-01-spike-e2e",
+        "status": "completed",
+        "phase": "p1",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-01-spike-e2e",
+        "evidence": [
+          "cloud/openrouter-spike.md",
+          "Documents exact codex exec command with OpenRouter -c overrides",
+          "Documents missing OPENROUTER_API_KEY expected failure shapes",
+          "Documents ~/.codex/config.toml must not be mutated (shasum check)",
+          "Manual smoke test plan with real API key for operator"
+        ],
+        "role": "Verify Codex CLI OpenRouter contract",
+        "owns": ["Codex config override proof", "no-key failure proof", "real API-key smoke test plan"],
+        "acceptance": ["Codex accepts custom provider config", "missing key is classified", "global Codex config is unchanged"]
+      },
+      {
+        "id": "agent-02-provider-adapter",
+        "status": "completed",
+        "phase": "p1",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-02-provider-adapter",
+        "evidence": [
+          "engine/houston-terminal-manager/src/provider/openrouter.rs",
+          "engine/houston-terminal-manager/src/provider/openrouter_classify.rs",
+          "engine/houston-terminal-manager/src/provider/mod.rs registry entry",
+          "Provider id stable: openrouter",
+          "cli_name codex with same resolve/probe as OpenAI",
+          "classify_stderr: 401 Unauthenticated, 402 QuotaExhausted, 429 RateLimited, 503 ProviderInternal, missing env key",
+          "classify_result_error with NDJSON fixtures",
+          "cargo test -p houston-terminal-manager: 231 passed"
+        ],
+        "role": "Implement OpenRouter ProviderAdapter",
+        "owns": ["engine/houston-terminal-manager/src/provider/openrouter.rs", "provider registry", "provider classifier"],
+        "acceptance": ["Provider::from_str resolves openrouter", "id is stable", "classifier returns shared ProviderError variants"]
+      },
+      {
+        "id": "agent-03-codex-runner",
+        "status": "completed",
+        "phase": "p2",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-03-codex-runner",
+        "evidence": [
+          "engine/houston-terminal-manager/src/codex_command.rs openrouter -c overrides",
+          "engine/houston-terminal-manager/src/codex_runner.rs OPENROUTER_API_KEY injection + missing-key surface",
+          "engine/houston-terminal-manager/src/session_dispatch.rs openrouter -> spawn_codex",
+          "engine/houston-terminal-manager/src/provider/mod.rs uses_codex_runner helper",
+          "OpenAI args unchanged (no openrouter overrides when provider=openai)"
+        ],
+        "role": "Reuse Codex runner for OpenAI and OpenRouter",
+        "owns": ["codex_command.rs", "codex_runner.rs", "session_dispatch.rs"],
+        "acceptance": ["OpenAI behavior is unchanged", "OpenRouter launches Codex with custom overrides", "OPENROUTER_API_KEY comes from Houston credentials"]
+      },
+      {
+        "id": "agent-04-parser-errors",
+        "status": "completed",
+        "phase": "p2",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-04-parser-errors",
+        "evidence": [
+          "engine/houston-terminal-manager/src/codex_parser.rs provider-aware classify via Provider::classify_stderr",
+          "engine/houston-terminal-manager/src/session_io.rs openrouter uses read_codex_stdout",
+          "engine/houston-terminal-manager/src/cli_process.rs codex resume-missing for openrouter",
+          "Fixture tests: openrouter 401/402 not attributed to openai",
+          "cargo test -p houston-terminal-manager: 232 passed"
+        ],
+        "role": "Make Codex parser and process errors provider-aware",
+        "owns": ["codex_parser.rs", "session_io.rs", "cli_process.rs"],
+        "acceptance": ["OpenRouter errors are not reported as OpenAI", "401 maps to Unauthenticated", "402 maps to QuotaExhausted", "429 maps to RateLimited", "503 maps to ProviderInternal with http_status 503"]
+      },
+      {
+        "id": "agent-05-credentials",
+        "status": "completed",
+        "phase": "p3",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-05-credentials",
+        "evidence": [
+          "engine/houston-engine-core/src/provider/openrouter_credentials.rs",
+          "engine/houston-engine-core/src/provider/openrouter_disconnect.rs",
+          "engine/houston-engine-server/src/routes/providers.rs",
+          "engine/houston-engine-server/tests/providers.rs",
+          "ui/engine-client/src/client.ts",
+          "ui/engine-client/src/types.ts"
+        ],
+        "role": "Add OpenRouter credential routes and storage",
+        "owns": ["openrouter_credentials.rs", "openrouter_disconnect.rs", "provider routes", "engine-client methods"],
+        "acceptance": ["key storage uses restrictive permissions", "disconnect removes or invalidates key", "failures surface as API errors"]
+      },
+      {
+        "id": "agent-06-provider-ux",
+        "status": "completed",
+        "phase": "p4",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-06-provider-ux",
+        "evidence": [
+          "app/src/components/shell/api-key-form.tsx",
+          "app/src/components/shell/api-key-connect-dialog.tsx",
+          "app/src/components/shell/provider-connect-dialog.tsx",
+          "app/src/lib/provider-api-key.ts",
+          "ui/engine-client/src/client.ts setOpenRouterApiKey"
+        ],
+        "role": "Reuse and generalize API-key connection UX",
+        "owns": ["gemini connect dialog", "gemini API-key form", "provider settings", "provider picker"],
+        "acceptance": ["Gemini UX remains working", "OpenRouter uses same pattern", "visible strings use i18n"]
+      },
+      {
+        "id": "agent-07-catalog-selection",
+        "status": "completed",
+        "phase": "p4",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-07-catalog-selection",
+        "evidence": [
+          "app/src/lib/providers.ts openrouter entry",
+          "ui/agent-schemas/src/config.schema.json",
+          "app/src/data/config.ts ConfigProvider",
+          "app/src/components/chat-model-selector.tsx via PROVIDERS"
+        ],
+        "role": "Expose OpenRouter in provider catalog and agent config",
+        "owns": ["providers.ts", "config.ts", "config.schema.json", "model selector", "create/import/onboarding casts"],
+        "acceptance": ["schema accepts openrouter", "model selector can choose OpenRouter", "selected provider persists"]
+      },
+      {
+        "id": "agent-08-session-defaults",
+        "status": "completed",
+        "phase": "p5",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-08-session-defaults",
+        "evidence": [
+          "engine/houston-engine-core/src/sessions/provider_oneshot.rs",
+          "engine/houston-engine-core/src/sessions/summarize.rs",
+          "engine/houston-engine-core/src/sessions/generate_instructions.rs",
+          "engine/houston-engine-core/src/sessions/compaction.rs",
+          "cargo test -p houston-engine-core: 352 passed"
+        ],
+        "role": "Wire OpenRouter into session utilities",
+        "owns": ["provider_oneshot.rs", "summarize.rs", "generate_instructions.rs", "compaction.rs"],
+        "acceptance": ["summary works or fails visibly", "compaction has explicit policy", "unsupported paths are not silent"]
+      },
+      {
+        "id": "agent-09-tests",
+        "status": "completed",
+        "phase": "p6",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-09-tests",
+        "evidence": [
+          "cargo test --workspace -- --test-threads=1: 944 passed, 5 ignored",
+          "cd app && pnpm tsc --noEmit: no errors",
+          "cd app && pnpm check-locales: en/es/pt OK (17 namespaces)",
+          "pnpm typecheck: 15 workspace packages OK",
+          "engine/houston-engine-core/src/provider/login_relay.rs: drain stdout before child.wait (fixes device_auth_relay flake)",
+          "engine/houston-terminal-manager/src/provider/mod.rs: uses_codex_runner_includes_openrouter regression test",
+          "cloud/control-plane: ApiError Debug + agents.patch color move fix (workspace compile blockers)"
+        ],
+        "role": "Add regression coverage",
+        "owns": ["Rust provider tests", "Rust parser fixtures", "TS type/schema checks", "locale checks"],
+        "acceptance": ["cargo test --workspace passes", "app tsc passes", "check-locales passes", "pnpm typecheck passes"]
+      },
+      {
+        "id": "agent-10-docs-qa",
+        "status": "completed",
+        "phase": "p6",
+        "completedAt": "2026-06-06",
+        "completedBy": "agent-10-docs-qa",
+        "evidence": [
+          "knowledge-base/agent-manifest.md — openrouter provider table + effort row",
+          "knowledge-base/provider-errors.md — openrouter_classify mapping table",
+          "knowledge-base/auth.md — ~/.houston/openrouter/.env storage + disconnect",
+          "knowledge-base/engine-protocol.md — POST /v1/providers/openrouter/credentials",
+          "cloud/openrouter-qa-checklist.md — manualAcceptance steps marked pending for operator",
+          "cloud/openrouter-spike.md and openrouter-provider-plan.md reviewed for accuracy vs implementation"
+        ],
+        "role": "Update docs and run manual QA",
+        "owns": ["agent-manifest.md", "provider-errors.md", "auth.md", "engine-protocol.md", "manual QA evidence"],
+        "acceptance": ["docs describe architecture", "manual QA covers connect/select/chat/tool/reconnect/disconnect", "blocked proof is explicit"]
+      }
+    ],
+    "phases": [
+      {"id": "p1", "status": "completed", "name": "Engine provider foundation", "area": "engine/provider", "agents": ["agent-01-spike-e2e", "agent-02-provider-adapter"], "exitGate": "Registry resolves OpenRouter and classifier is tested.", "completedAt": "2026-06-06"},
+      {"id": "p2", "status": "completed", "name": "Codex runner reuse", "area": "engine/runner", "agents": ["agent-03-codex-runner", "agent-04-parser-errors"], "exitGate": "OpenRouter launches Codex with process-local config and provider-owned errors.", "completedAt": "2026-06-06"},
+      {"id": "p3", "status": "completed", "name": "Credentials and API contract", "area": "engine+ui/client", "agents": ["agent-05-credentials"], "exitGate": "App can save, read status and disconnect OpenRouter credentials."},
+      {"id": "p4", "status": "completed", "name": "Frontend connection and selection", "area": "app+ui", "agents": ["agent-06-provider-ux", "agent-07-catalog-selection"], "exitGate": "User can connect OpenRouter and choose an OpenRouter model from existing UI."},
+      {"id": "p5", "status": "completed", "name": "Session utilities", "area": "engine/sessions", "agents": ["agent-08-session-defaults"], "exitGate": "Chat, summarize, generate instructions and compaction have explicit OpenRouter behavior.", "completedAt": "2026-06-06"},
+      {"id": "p6", "status": "completed_automated", "name": "Validation and docs", "area": "tests+docs", "agents": ["agent-09-tests", "agent-10-docs-qa"], "exitGate": "Automated checks pass and manual OpenRouter flow has evidence.", "completedAt": "2026-06-06", "manualQaPending": "cloud/openrouter-qa-checklist.md"}
+    ],
+    "expectedFiles": [
+      "engine/houston-terminal-manager/src/provider/openrouter.rs",
+      "engine/houston-terminal-manager/src/provider/mod.rs",
+      "engine/houston-terminal-manager/src/codex_command.rs",
+      "engine/houston-terminal-manager/src/codex_runner.rs",
+      "engine/houston-terminal-manager/src/codex_parser.rs",
+      "engine/houston-terminal-manager/src/session_dispatch.rs",
+      "engine/houston-terminal-manager/src/session_io.rs",
+      "engine/houston-terminal-manager/src/cli_process.rs",
+      "engine/houston-engine-core/src/provider/openrouter_credentials.rs",
+      "engine/houston-engine-core/src/provider/openrouter_disconnect.rs",
+      "engine/houston-engine-server/src/routes/providers.rs",
+      "ui/engine-client/src/client.ts",
+      "ui/engine-client/src/types.ts",
+      "ui/agent-schemas/src/config.schema.json",
+      "app/src/lib/providers.ts",
+      "app/src/data/config.ts",
+      "app/src/components/chat-model-selector.tsx",
+      "app/src/components/shell/provider-picker.tsx",
+      "app/src/components/shell/provider-settings.tsx",
+      "app/src/components/shell/provider-error-card.tsx",
+      "app/src/components/use-agent-chat-panel.tsx",
+      "app/src/components/shell/create-workspace-dialog.tsx",
+      "app/src/components/portable/import-wizard.tsx",
+      "app/src/components/onboarding/missions/brain.tsx",
+      "app/src/locales/en/*.json",
+      "app/src/locales/es/*.json",
+      "app/src/locales/pt/*.json",
+      "knowledge-base/agent-manifest.md",
+      "knowledge-base/provider-errors.md",
+      "knowledge-base/auth.md",
+      "knowledge-base/engine-protocol.md"
+    ],
+    "validationCommands": ["cargo test --workspace", "cd app && pnpm tsc --noEmit", "cd app && pnpm check-locales", "pnpm typecheck"],
+    "manualAcceptance": [
+      "Connect OpenRouter with a real API key.",
+      "Select an OpenRouter model for an agent.",
+      "Send a normal chat message.",
+      "Run one flow that touches a file or tool.",
+      "Invalidate the key and confirm Unauthenticated provider=openrouter.",
+      "Disconnect OpenRouter and confirm reconnect UI appears.",
+      "Switch back to Claude/OpenAI/Gemini and confirm existing providers still work."
+    ],
+    "externalReferences": [
+      "https://openrouter.ai/docs/api/reference/responses/overview",
+      "https://openrouter.ai/docs/api/reference/authentication",
+      "https://openrouter.ai/docs/api/reference/responses/tool-calling",
+      "https://openrouter.ai/docs/api/reference/errors-and-debugging",
+      "https://openrouter.ai/docs/api/reference/list-available-models"
+    ]
+  }
+}

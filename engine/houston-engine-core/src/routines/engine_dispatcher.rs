@@ -67,6 +67,14 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
         };
 
         let resolved = sessions::resolve_provider(ctx.working_dir);
+        if !sessions::model_supports_agentic_tools(resolved.provider, resolved.model.as_deref()) {
+            return DispatchOutcome {
+                response_text: String::new(),
+                error: Some(
+                    "model is chat-only and cannot run agent tools in routines".into(),
+                ),
+            };
+        }
         let agent_key = format!(
             "{}:{}:{}",
             ctx.working_dir.to_string_lossy(),

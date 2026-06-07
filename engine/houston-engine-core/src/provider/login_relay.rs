@@ -360,7 +360,12 @@ async fn relay_login_output(
                                 }
                             }
                         }
-                        Ok(None) => break, // stdout EOF — fall through to child.wait
+                        // Drain stdout to EOF before reaping the child. Racing
+                        // `child.wait()` here loses URL/code lines when a
+                        // short-lived stand-in (e.g. `cat device.txt`) exits
+                        // before the BufReader finishes — see
+                        // `device_auth_relay_emits_url_then_code`.
+                        Ok(None) => break,
                         Err(e) => {
                             tracing::warn!(
                                 "[houston:provider] {cli_name} login stdout read error: {e}"
@@ -368,9 +373,6 @@ async fn relay_login_output(
                             break;
                         }
                     }
-                }
-                exit = child.wait() => {
-                    return RelayOutcome::Exited(exit);
                 }
             }
         }

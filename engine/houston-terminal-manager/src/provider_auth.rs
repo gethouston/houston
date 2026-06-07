@@ -1,6 +1,8 @@
 //! Provider CLI auth probes shared by status routes and session error handling.
 
+use crate::provider_env::read_stored_api_key;
 use crate::claude_path;
+use crate::provider::openai_credentials;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -19,7 +21,25 @@ impl ProviderAuthState {
     }
 }
 
+/// True when a non-empty API key is set in the process env or Houston storage.
+pub fn houston_managed_api_key_authenticated(provider: &str, env_var: &str) -> bool {
+    if process_env_api_key_present(env_var) {
+        return true;
+    }
+    read_stored_api_key(provider, env_var).is_some()
+}
+
+fn process_env_api_key_present(env_var: &str) -> bool {
+    matches!(
+        std::env::var(env_var),
+        Ok(ref v) if !v.trim().is_empty()
+    )
+}
+
 pub async fn probe_claude_auth_status(cli_path: &Path, home: &str) -> ProviderAuthState {
+    if houston_managed_api_key_authenticated("anthropic", "ANTHROPIC_API_KEY") {
+        return ProviderAuthState::Authenticated;
+    }
     match probe_claude_status_cli(cli_path).await {
         ProviderAuthState::Authenticated => ProviderAuthState::Authenticated,
         ProviderAuthState::Unauthenticated => ProviderAuthState::Unauthenticated,
@@ -58,10 +78,28 @@ async fn probe_claude_status_cli(cli_path: &Path) -> ProviderAuthState {
 }
 
 pub async fn probe_codex_auth_status(cli_path: &Path, home: &str) -> ProviderAuthState {
+    if houston_managed_api_key_authenticated("openai", "OPENAI_API_KEY") {
+        return ProviderAuthState::Authenticated;
+    }
     match probe_codex_login_status(cli_path).await {
         ProviderAuthState::Authenticated => ProviderAuthState::Authenticated,
-        ProviderAuthState::Unauthenticated => ProviderAuthState::Unauthenticated,
-        ProviderAuthState::Unknown => read_codex_auth_file(home),
+        ProviderAuthState::Unauthenticated => {
+            if openai_credentials::openai_api_key_configured() {
+                ProviderAuthState::Authenticated
+            } else {
+                read_codex_auth_file(home)
+            }
+        }
+        ProviderAuthState::Unknown => match read_codex_auth_file(home) {
+            ProviderAuthState::Authenticated => ProviderAuthState::Authenticated,
+            other => {
+                if openai_credentials::openai_api_key_configured() {
+                    ProviderAuthState::Authenticated
+                } else {
+                    other
+                }
+            }
+        },
     }
 }
 
@@ -198,6 +236,7 @@ fn classify_claude_credentials_json(content: &str) -> ProviderAuthState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::test_env_lock::lock_env_test;
 
     #[test]
     fn claude_auth_status_classifies_json_logged_in() {
@@ -270,5 +309,47 @@ mod tests {
         // must read that as signed out so the settings card flips to Connect.
         let state = read_claude_auth_file("/no-such-home-dir-houston-unit-test");
         assert_eq!(state, ProviderAuthState::Unauthenticated);
+    }
+
+    #[test]
+    fn codex_auth_file_with_oauth_tokens_is_authenticated() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let codex_dir = tmp.path().join(".codex");
+        std::fs::create_dir_all(&codex_dir).unwrap();
+        std::fs::write(
+            codex_dir.join("auth.json"),
+            r#"{"tokens":{"access_token":"tok"}}"#,
+        )
+        .unwrap();
+        let state = read_codex_auth_file(tmp.path().to_str().unwrap());
+        assert_eq!(state, ProviderAuthState::Authenticated);
+    }
+
+    #[test]
+    fn houston_managed_key_authenticated_reads_legacy_path() {
+        let _guard = lock_env_test();
+        let tmp = tempfile::TempDir::new().unwrap();
+        let prior_home = std::env::var_os("HOME");
+        let prior_houston = std::env::var_os("HOUSTON_HOME");
+        std::env::set_var("HOME", tmp.path());
+        std::env::set_var("HOUSTON_HOME", tmp.path());
+
+        let legacy = tmp.path().join(".houston/openrouter/.env");
+        std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+        std::fs::write(&legacy, "OPENROUTER_API_KEY=sk-or-v1-test\n").unwrap();
+
+        assert!(houston_managed_api_key_authenticated(
+            "openrouter",
+            "OPENROUTER_API_KEY"
+        ));
+
+        match prior_home {
+            Some(v) => std::env::set_var("HOME", v),
+            None => std::env::remove_var("HOME"),
+        }
+        match prior_houston {
+            Some(v) => std::env::set_var("HOUSTON_HOME", v),
+            None => std::env::remove_var("HOUSTON_HOME"),
+        }
     }
 }
