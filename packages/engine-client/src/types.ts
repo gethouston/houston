@@ -3,7 +3,7 @@
  * This package is the single source of truth for these shapes.
  */
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export interface EngineClientConfig {
   /** Base URL of the engine, e.g. "http://127.0.0.1:4317". */
@@ -100,10 +100,22 @@ export interface ConversationHistory {
 }
 
 /**
- * Streaming turn events (SSE). Each SSE frame is `data: <WireEvent JSON>`.
- * These wrap pi's native agent events in a stable, minimal shape.
+ * Live conversation events (SSE). Delivered over `GET /conversations/:id/events`
+ * — one stream per conversation, strictly id-scoped (no event from another
+ * conversation can ever arrive on this stream). Each SSE frame is
+ * `data: <WireEvent JSON>`.
+ *
+ * - `sync`  — sent once on connect: is a turn running + the assistant text so far
+ *             (so a late/reconnecting client catches up mid-turn).
+ * - `user`  — a user message was added to this conversation (by any client). The
+ *             `nonce` echoes the sender's so it can skip rendering its own message.
+ * - `text` / `thinking` — assistant output deltas.
+ * - `tool_start` / `tool_end` — tool activity within the turn.
+ * - `done` / `error` — the turn ended (success / failure).
  */
 export type WireEvent =
+  | { type: "sync"; data: { running: boolean; partial: string } }
+  | { type: "user"; data: { content: string; ts: number; nonce?: string } }
   | { type: "text"; data: string }
   | { type: "thinking"; data: string }
   | { type: "tool_start"; data: { name: string; args: unknown } }

@@ -4,6 +4,7 @@ import { config } from "../config";
 import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
 import { listProviders, setSettings } from "../ai/providers";
 import { runTurn, cancelTurn } from "../session/chat";
+import { snapshot, subscribe } from "../session/bus";
 import { getHistory, listConversations } from "../store/conversations";
 import { applyCors } from "./cors";
 import { openSSE } from "./sse";
@@ -50,7 +51,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { status: "ok", version: config.version });
   }
   if (method === "GET" && path === "/version") {
-    return json(res, 200, { engine: config.version, protocol: 1 });
+    return json(res, 200, { engine: config.version, protocol: 2 });
   }
 
   if (!authorized(req, url)) return json(res, 401, { error: "unauthorized" });
@@ -95,7 +96,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, listConversations());
   }
 
-  const convMatch = path.match(/^\/conversations\/([^/]+)\/(messages|cancel)$/);
+  const convMatch = path.match(/^\/conversations\/([^/]+)\/(messages|events|cancel)$/);
   if (convMatch) {
     const id = decodeURIComponent(convMatch[1]);
     const action = convMatch[2];
@@ -107,32 +108,36 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         : json(res, 404, { error: "conversation not found" });
     }
 
+    // Subscribe to this conversation's live events (id-scoped SSE). This is the
+    // ONLY event channel: on connect we emit a `sync` frame so a late/reconnecting
+    // client catches the current turn, then live-tail. Strictly one conversation.
+    if (method === "GET" && action === "events") {
+      const sse = openSSE(res);
+      // snapshot + subscribe run in the same sync tick (no await between) so no
+      // event can slip through the gap between catch-up and live-tail.
+      sse.send("sync", snapshot(id));
+      const unsub = subscribe(id, (e) => sse.send(e.type, e.data));
+      req.on("close", () => {
+        unsub();
+        sse.close();
+      });
+      return; // long-lived; do not end the response here
+    }
+
     if (method === "POST" && action === "cancel") {
       await cancelTurn(id);
       return json(res, 200, { ok: true });
     }
 
-    // POST messages -> stream the turn over SSE
+    // Start a turn. Fire-and-forget: the turn's events arrive on the events
+    // stream above (runTurn never rejects — failures surface as `error` events).
     if (method === "POST" && action === "messages") {
-      const { text } = await readJson(req);
+      const { text, nonce } = await readJson(req);
       if (!text || typeof text !== "string") {
         return json(res, 400, { error: "missing 'text'" });
       }
-      const sse = openSSE(res);
-      let aborted = false;
-      req.on("close", () => {
-        aborted = true;
-      });
-      try {
-        await runTurn(id, text, (e) => {
-          if (!aborted) sse.send(e.type, e.data);
-        });
-      } catch (e) {
-        sse.send("error", { message: e instanceof Error ? e.message : String(e) });
-      } finally {
-        sse.close();
-      }
-      return;
+      void runTurn(id, text, typeof nonce === "string" ? nonce : undefined);
+      return json(res, 202, { ok: true, id });
     }
   }
 

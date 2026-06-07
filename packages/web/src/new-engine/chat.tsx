@@ -1,83 +1,48 @@
-import { useEffect, useRef, useState } from "react";
-import type {
-  ChatMessage,
-  ConversationSummary,
-  HoustonEngineClient,
-} from "@houston/engine-client";
+import { type CSSProperties, useCallback, useEffect, useRef, useState } from "react";
+import type { ConversationSummary, HoustonEngineClient } from "@houston/engine-client";
 import { ui } from "./styles";
+import { useConversation, uuid } from "./use-conversation";
 
-type Msg = ChatMessage & { streaming?: boolean };
-
-/** Append to the latest assistant message in place (used while streaming). */
-function bumpAssistant(messages: Msg[], update: (content: string) => string): Msg[] {
-  const out = messages.slice();
-  for (let i = out.length - 1; i >= 0; i--) {
-    if (out[i].role === "assistant") {
-      out[i] = { ...out[i], content: update(out[i].content) };
-      break;
-    }
-  }
-  return out;
-}
-
-/** Conversation sidebar + streaming chat against the new engine. */
+/** Conversation sidebar + an isolated, streaming chat for the active conversation. */
 export function ChatView({ client }: { client: HoustonEngineClient }) {
   const [convos, setConvos] = useState<ConversationSummary[]>([]);
-  const [active, setActive] = useState("main");
-  const [messages, setMessages] = useState<Msg[]>([]);
+  const [active, setActive] = useState(uuid);
   const [input, setInput] = useState("");
-  const [busy, setBusy] = useState(false);
+  const [listError, setListError] = useState<string | null>(null);
   const logRef = useRef<HTMLDivElement>(null);
 
-  const loadConvos = () => client.listConversations().then(setConvos).catch(() => {});
-  useEffect(() => { loadConvos(); }, [client]);
-  useEffect(() => {
+  const { messages, busy, error, send } = useConversation(client, active);
+
+  const loadConvos = useCallback(() => {
     client
-      .getHistory(active)
-      .then((h) => setMessages(h.messages))
-      .catch(() => setMessages([]));
-  }, [client, active]);
+      .listConversations()
+      .then(setConvos)
+      .catch((e) => setListError(e instanceof Error ? e.message : String(e)));
+  }, [client]);
+
+  // Refresh the sidebar on mount and whenever a turn settles (busy → false).
+  useEffect(() => {
+    if (!busy) loadConvos();
+  }, [busy, loadConvos]);
   useEffect(() => {
     logRef.current?.scrollTo(0, logRef.current.scrollHeight);
   }, [messages]);
 
-  const newChat = () => {
-    setActive(`chat-${Date.now().toString(36)}`);
-    setMessages([]);
-  };
-
-  const send = async () => {
+  const submit = async () => {
     const text = input.trim();
     if (!text || busy) return;
     setInput("");
-    setBusy(true);
-    setMessages((m) => [
-      ...m,
-      { role: "user", content: text, ts: Date.now() },
-      { role: "assistant", content: "", ts: Date.now(), streaming: true },
-    ]);
-    try {
-      for await (const ev of client.streamMessage(active, text)) {
-        if (ev.type === "text") setMessages((m) => bumpAssistant(m, (c) => c + ev.data));
-        else if (ev.type === "tool_start")
-          setMessages((m) => bumpAssistant(m, (c) => `${c}\n🔧 ${ev.data.name}\n`));
-        else if (ev.type === "error")
-          setMessages((m) => bumpAssistant(m, (c) => `${c}\n⚠️ ${ev.data.message}`));
-      }
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setMessages((m) => bumpAssistant(m, (c) => `${c}\n⚠️ ${msg}`));
-    } finally {
-      setMessages((m) => m.map((x) => (x.streaming ? { ...x, streaming: false } : x)));
-      setBusy(false);
-      loadConvos();
-    }
+    await send(text);
   };
+
+  const banner = error ?? listError;
 
   return (
     <div style={ui.shell}>
       <aside style={ui.sidebar}>
-        <button style={ui.newChat} onClick={newChat}>+ New chat</button>
+        <button style={ui.newChat} onClick={() => setActive(uuid())}>
+          + New chat
+        </button>
         {convos.map((c) => (
           <button
             key={c.id}
@@ -90,6 +55,7 @@ export function ChatView({ client }: { client: HoustonEngineClient }) {
         ))}
       </aside>
       <main style={ui.main}>
+        {banner ? <div style={errorBanner}>{banner}</div> : null}
         <div ref={logRef} style={ui.log}>
           {messages.map((m, i) => (
             <div key={i} style={m.role === "user" ? ui.userMsg : ui.asstMsg}>
@@ -107,11 +73,11 @@ export function ChatView({ client }: { client: HoustonEngineClient }) {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void send();
+                void submit();
               }
             }}
           />
-          <button style={ui.sendBtn} onClick={() => void send()} disabled={busy}>
+          <button style={ui.sendBtn} onClick={() => void submit()} disabled={busy}>
             Send
           </button>
         </div>
@@ -119,3 +85,12 @@ export function ChatView({ client }: { client: HoustonEngineClient }) {
     </div>
   );
 }
+
+const errorBanner: CSSProperties = {
+  margin: "10px 20px 0",
+  padding: "8px 12px",
+  borderRadius: 8,
+  background: "rgba(229,72,77,0.15)",
+  color: "#ff8a8e",
+  fontSize: 13,
+};
