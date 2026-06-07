@@ -14,6 +14,7 @@ import type {
 import {
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
+  DEFAULT_WORKSPACE_ID,
   syntheticAgent,
   syntheticWorkspace,
   toNewProvider,
@@ -91,19 +92,62 @@ export class HoustonClient {
     return (await this.engine.version()) as never;
   }
   async listWorkspaces(): Promise<Workspace[]> {
-    await this.engine.health(); // reachability — throws if the engine is down
     const { provider, model } = await this.activeOld();
+    console.info("[engine-adapter] listWorkspaces -> 1 synthetic workspace");
     return [syntheticWorkspace(provider, model)];
   }
-  async listAgents() {
+  async listAgents(): Promise<import("../../../../ui/engine-client/src/types").Agent[]> {
+    console.info("[engine-adapter] listAgents -> 1 synthetic agent");
     return [syntheticAgent()];
+  }
+  async createWorkspace(req: { name?: string }): Promise<Workspace> {
+    const { provider, model } = await this.activeOld();
+    return { ...syntheticWorkspace(provider, model), name: req?.name || "Houston" };
+  }
+  async renameWorkspace(): Promise<Workspace> {
+    const { provider, model } = await this.activeOld();
+    return syntheticWorkspace(provider, model);
+  }
+  async deleteWorkspace(): Promise<void> {}
+  async setWorkspaceLocale(_id: string, locale: string | null): Promise<Workspace> {
+    const { provider, model } = await this.activeOld();
+    return { ...syntheticWorkspace(provider, model), locale };
+  }
+  async setWorkspaceProvider(): Promise<Workspace> {
+    const { provider, model } = await this.activeOld();
+    return syntheticWorkspace(provider, model);
+  }
+  async getWorkspaceContext() {
+    return { workspaceMd: "", userMd: "" };
+  }
+  async setWorkspaceContext(_id: string, body: unknown) {
+    return body;
+  }
+  async createAgent() {
+    return { agent: syntheticAgent() };
+  }
+  async renameAgent(_w: string, _id: string, newName: string) {
+    return { ...syntheticAgent(), name: newName };
+  }
+  async updateAgent(_w: string, _id: string, req: { color: string }) {
+    return { ...syntheticAgent(), color: req.color };
+  }
+  async deleteAgent(): Promise<void> {}
+  async generateAgentInstructions() {
+    return { instructions: "" };
   }
   async getPreference(key: string): Promise<string | null> {
     try {
-      return localStorage.getItem(`houston.pref.${key}`);
+      const stored = localStorage.getItem(`houston.pref.${key}`);
+      if (stored !== null) return stored;
     } catch {
-      return null;
+      /* storage disabled */
     }
+    // Default to the synthetic ids so the shell auto-selects the workspace +
+    // agent on first load (otherwise no agent is current and the board is empty).
+    if (key === "last_workspace_id") return DEFAULT_WORKSPACE_ID;
+    if (key === "last_agent_id") return DEFAULT_AGENT_ID;
+    return null;
   }
   async setPreference(key: string, value: string): Promise<void> {
     try {
