@@ -2,6 +2,7 @@ packages:
   - "ui/*"
   - "app"
   - "mobile"
+  - "packages/*"
   - "houston-relay"
   - "examples/*"
 
