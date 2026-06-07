@@ -20,6 +20,7 @@
     "@houston-ai/engine-client": "workspace:*",
     "@houston-ai/events": "workspace:*",
     "@houston-ai/layout": "workspace:*",
+    "@houston/engine-client": "workspace:*",
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",

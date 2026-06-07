@@ -234,6 +234,12 @@ importers:
         specifier: ^6.0.0
         version: 6.4.1(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)
 
+  packages/engine-client:
+    devDependencies:
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   packages/web:
     dependencies:
       '@houston-ai/agent':
@@ -269,6 +275,9 @@ importers:
       '@houston-ai/skills':
         specifier: workspace:*
         version: link:../../ui/skills
+      '@houston/engine-client':
+        specifier: workspace:*
+        version: link:../engine-client
       '@sentry/browser':
         specifier: ^10.54.0
         version: 10.54.0

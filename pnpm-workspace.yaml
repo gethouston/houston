@@ -3,12 +3,12 @@ packages:
   - "app"
   - "mobile"
   - "packages/*"
+  # packages/engine is intentionally NOT a pnpm member — it is a self-contained
+  # Bun project (see packages/engine/README.md). Everything else under packages/*
+  # (web, engine-client) is pnpm-managed.
+  - "!packages/engine"
   - "houston-relay"
   - "examples/*"
-  # Shared TypeScript client/contract for the new TS engine, consumed by the
-  # webapp. NOTE: packages/engine itself is intentionally NOT a pnpm member —
-  # it is a self-contained Bun project (see packages/engine/README.md).
-  - "packages/engine-client"
 
 # Approve native build scripts (pnpm 10 blocks dependency postinstall by
 # default). @sentry/cli's postinstall downloads the platform `sentry-cli`
