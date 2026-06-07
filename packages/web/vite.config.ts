@@ -21,6 +21,17 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
+        // When VITE_NEW_ENGINE_URL is set, swap the engine client for the
+        // new-engine adapter so the entire desktop UI runs on the new TS engine
+        // (packages/engine). Unset → the original old-engine path is untouched.
+        ...(env.VITE_NEW_ENGINE_URL
+          ? [
+              {
+                find: "@houston-ai/engine-client",
+                replacement: path.resolve(__dirname, "src/engine-adapter/index.ts"),
+              },
+            ]
+          : []),
         { find: "@tauri-apps/api/core", replacement: shim("tauri-core.ts") },
         { find: "@tauri-apps/api/event", replacement: shim("tauri-event.ts") },
         { find: "@tauri-apps/api/window", replacement: shim("tauri-window.ts") },

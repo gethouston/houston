@@ -1,15 +1,20 @@
-import { useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useEffect, useMemo, useState } from "react";
 import { HoustonEngineClient, type AuthStatus } from "@houston/engine-client";
 import { ConnectView } from "./connect";
-import { ChatView } from "./chat";
 import { ui } from "./styles";
 
+// The full Houston desktop UI. Lazily imported so its module graph (and the
+// engine-adapter behind @houston-ai/engine-client) only evaluates after the
+// engine config global is set and a provider is connected.
+const AppTree = lazy(() => import("../app-tree"));
+
 /**
- * Standalone app for the new TS engine (packages/engine): OAuth subscription
- * login + streaming chat via @houston/engine-client. No Tauri / old-engine code.
- * Mounted by main.tsx when VITE_NEW_ENGINE_URL is set or `?engine=new`.
+ * Boots the desktop UI on the new engine. First gate: a subscription provider
+ * (Claude / Codex) must be connected via OAuth — otherwise chat can't run.
+ * Once connected, the real desktop tree mounts and talks to the new engine
+ * through the adapter.
  */
-export function NewEngineApp({ baseUrl, token }: { baseUrl: string; token?: string }) {
+export function WebApp({ baseUrl, token }: { baseUrl: string; token?: string }) {
   const client = useMemo(
     () => new HoustonEngineClient({ baseUrl, token }),
     [baseUrl, token],
@@ -41,9 +46,13 @@ export function NewEngineApp({ baseUrl, token }: { baseUrl: string; token?: stri
   if (!status) {
     return <div style={ui.page}><div style={ui.muted}>Connecting to engine…</div></div>;
   }
-  return status.activeProvider ? (
-    <ChatView client={client} />
-  ) : (
-    <ConnectView client={client} onConnected={refresh} />
+  if (!status.activeProvider) {
+    return <ConnectView client={client} onConnected={refresh} />;
+  }
+
+  return (
+    <Suspense fallback={<div style={ui.page}><div style={ui.muted}>Loading Houston…</div></div>}>
+      <AppTree />
+    </Suspense>
   );
 }
