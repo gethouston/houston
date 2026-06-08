@@ -1,34 +1,33 @@
 import type { Activity, NewActivity, ActivityUpdate } from "../../../../ui/engine-client/src/types";
-import { emitEvent } from "./bus";
+import { readAgentFile, writeAgentFile } from "./agent-files";
 
 /**
- * The new engine has no "activity / mission" concept, but the desktop board is
- * built around them: a chat thread is an Activity, keyed by `session_key`. We
- * persist activities locally (one bucket per agentPath) so the board works and
- * survives reloads. Each activity's `session_key` is the new engine's
- * conversation id.
+ * Activities (the board) live in the agent's `.houston/activity/activity.json`,
+ * the SAME file the desktop UI's `data/activity.ts` reads/writes through
+ * `readAgentFile` / `writeAgentFile`. Backing these adapter methods by that file
+ * (rather than a separate bucket) keeps the board, the conversation list, and
+ * mission auto-titling (`getEngine().updateActivity`) on one source of truth.
+ * Each activity's `session_key` is the new engine's conversation id.
  */
-const KEY = "houston.web.activities";
+const ACTIVITY_REL = ".houston/activity/activity.json";
 
-type Store = Record<string, Activity[]>;
-
-function load(): Store {
+function read(agentPath: string): Activity[] {
+  const raw = readAgentFile(agentPath, ACTIVITY_REL);
+  if (!raw) return [];
   try {
-    return JSON.parse(localStorage.getItem(KEY) || "{}") as Store;
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as Activity[]) : [];
   } catch {
-    return {};
+    return [];
   }
 }
-function save(store: Store): void {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(store));
-  } catch {
-    /* storage disabled */
-  }
+
+function write(agentPath: string, items: Activity[]): void {
+  writeAgentFile(agentPath, ACTIVITY_REL, JSON.stringify(items, null, 2));
 }
 
 export function listActivities(agentPath: string): Activity[] {
-  return load()[agentPath] ?? [];
+  return read(agentPath);
 }
 
 export function createActivity(agentPath: string, input: NewActivity): Activity {
@@ -37,7 +36,7 @@ export function createActivity(agentPath: string, input: NewActivity): Activity 
     id,
     title: input.title || "New chat",
     description: input.description ?? "",
-    status: "needs_you",
+    status: "running",
     session_key: `activity-${id}`,
     agent: input.agent,
     worktree_path: input.worktree_path ?? null,
@@ -45,41 +44,38 @@ export function createActivity(agentPath: string, input: NewActivity): Activity 
     model: input.model,
     updated_at: new Date().toISOString(),
   };
-  const store = load();
-  store[agentPath] = [activity, ...(store[agentPath] ?? [])];
-  save(store);
-  emitEvent("ActivityChanged", { agent_path: agentPath });
+  write(agentPath, [...read(agentPath), activity]);
   return activity;
 }
 
 export function updateActivity(agentPath: string, id: string, updates: ActivityUpdate): Activity {
-  const store = load();
-  const list = store[agentPath] ?? [];
-  const idx = list.findIndex((a) => a.id === id);
+  const items = read(agentPath);
+  const idx = items.findIndex((a) => a.id === id);
   if (idx < 0) throw new Error(`activity ${id} not found`);
-  const next: Activity = { ...list[idx], ...updates, updated_at: new Date().toISOString() };
-  list[idx] = next;
-  store[agentPath] = list;
-  save(store);
-  emitEvent("ActivityChanged", { agent_path: agentPath });
+  const next: Activity = { ...items[idx], ...updates, updated_at: new Date().toISOString() };
+  items[idx] = next;
+  write(agentPath, items);
   return next;
 }
 
 export function deleteActivity(agentPath: string, id: string): void {
-  const store = load();
-  store[agentPath] = (store[agentPath] ?? []).filter((a) => a.id !== id);
-  save(store);
-  emitEvent("ActivityChanged", { agent_path: agentPath });
+  write(
+    agentPath,
+    read(agentPath).filter((a) => a.id !== id),
+  );
 }
 
-/** Set an activity's status by its session_key (used by the turn lifecycle). */
+/**
+ * Set an activity's status from a turn's session key. The board creates missions
+ * without an explicit `session_key`, so the chat keys off the `activity-<id>`
+ * convention; match either form.
+ */
 export function setStatusBySessionKey(agentPath: string, sessionKey: string, status: string): void {
-  const store = load();
-  const list = store[agentPath] ?? [];
-  const idx = list.findIndex((a) => a.session_key === sessionKey);
+  const items = read(agentPath);
+  const idx = items.findIndex(
+    (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
+  );
   if (idx < 0) return;
-  list[idx] = { ...list[idx], status, updated_at: new Date().toISOString() };
-  store[agentPath] = list;
-  save(store);
-  emitEvent("ActivityChanged", { agent_path: agentPath });
+  items[idx] = { ...items[idx], status, updated_at: new Date().toISOString() };
+  write(agentPath, items);
 }

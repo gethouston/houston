@@ -3,12 +3,21 @@ import type { Workspace, Agent } from "../../../../ui/engine-client/src/types";
 /**
  * The new engine is single-workspace / single-user with no agent concept, but
  * the desktop UI needs at least one Workspace + Agent to render its shell. We
- * fabricate exactly one of each. The agent's `folderPath` doubles as the
- * feed-store key + conversation namespace.
+ * fabricate one synthetic workspace and seed one default agent (see
+ * `agents.ts`). The agent's `folderPath` doubles as the feed-store key +
+ * conversation namespace.
  */
 export const DEFAULT_WORKSPACE_ID = "default";
 export const DEFAULT_AGENT_ID = "default-agent";
 export const DEFAULT_AGENT_PATH = "houston:default-agent";
+export const DEFAULT_AGENT_COLOR = "#7a5cff";
+/**
+ * Config id the seeded agent renders as. MUST match a real `AgentDefinition`
+ * (`app/src/agents/builtin/*`) or the shell can't resolve `agentDef` and falls
+ * back to its "No agents yet" empty state. The flagship non-technical experience
+ * is `personal-assistant`.
+ */
+export const DEFAULT_AGENT_CONFIG_ID = "personal-assistant";
 const EPOCH = "2024-01-01T00:00:00.000Z";
 
 export function syntheticWorkspace(provider?: string, model?: string): Workspace {
@@ -28,8 +37,8 @@ export function syntheticAgent(): Agent {
     id: DEFAULT_AGENT_ID,
     name: "Houston",
     folderPath: DEFAULT_AGENT_PATH,
-    configId: "default",
-    color: "#7a5cff",
+    configId: DEFAULT_AGENT_CONFIG_ID,
+    color: DEFAULT_AGENT_COLOR,
     createdAt: EPOCH,
     lastOpenedAt: EPOCH,
   };

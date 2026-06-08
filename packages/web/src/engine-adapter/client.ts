@@ -2,25 +2,30 @@ import { HoustonEngineClient } from "@houston/engine-client";
 import type {
   Activity,
   ActivityUpdate,
+  Agent,
   ChatHistoryEntry,
   ConversationEntry,
+  CreateAgent,
+  CreateAgentResult,
   NewActivity,
   ProjectConfig,
   ProviderStatus,
   SessionStartRequest,
   SessionStartResponse,
+  UpdateAgent,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
 import {
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
   DEFAULT_WORKSPACE_ID,
-  syntheticAgent,
   syntheticWorkspace,
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
+import * as agents from "./agents";
 import * as activities from "./activities";
+import { readAgentFile as readAgentFileStore, writeAgentFile as writeAgentFileStore } from "./agent-files";
 import { streamTurn, historyToFeed } from "./translate";
 
 export interface HoustonClientOptions {
@@ -49,9 +54,10 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
 
 /**
  * Drop-in replacement for `@houston-ai/engine-client`'s HoustonClient, backed by
- * the new TS engine. Boot/chat/auth are mapped to the new engine; the single
- * synthetic workspace + agent satisfy the shell; unsupported domains are stubbed
- * (empty) by the Proxy fallback so navigation never hits an undefined method.
+ * the new TS engine. Boot/chat/auth map to the new engine; a single synthetic
+ * workspace holds localStorage-backed agents, their `.houston/**` files, and
+ * their boards; unsupported domains are stubbed (empty) by the Proxy fallback so
+ * navigation never hits an undefined method.
  */
 export class HoustonClient {
   private engine: HoustonEngineClient;
@@ -96,9 +102,8 @@ export class HoustonClient {
     console.info("[engine-adapter] listWorkspaces -> 1 synthetic workspace");
     return [syntheticWorkspace(provider, model)];
   }
-  async listAgents(): Promise<import("../../../../ui/engine-client/src/types").Agent[]> {
-    console.info("[engine-adapter] listAgents -> 1 synthetic agent");
-    return [syntheticAgent()];
+  async listAgents(workspaceId: string): Promise<Agent[]> {
+    return agents.listAgents(workspaceId);
   }
   async createWorkspace(req: { name?: string }): Promise<Workspace> {
     const { provider, model } = await this.activeOld();
@@ -123,16 +128,18 @@ export class HoustonClient {
   async setWorkspaceContext(_id: string, body: unknown) {
     return body;
   }
-  async createAgent() {
-    return { agent: syntheticAgent() };
+  async createAgent(workspaceId: string, req: CreateAgent): Promise<CreateAgentResult> {
+    return agents.createAgent(workspaceId, req);
   }
-  async renameAgent(_w: string, _id: string, newName: string) {
-    return { ...syntheticAgent(), name: newName };
+  async renameAgent(workspaceId: string, agentId: string, newName: string): Promise<Agent> {
+    return agents.renameAgent(workspaceId, agentId, newName);
   }
-  async updateAgent(_w: string, _id: string, req: { color: string }) {
-    return { ...syntheticAgent(), color: req.color };
+  async updateAgent(workspaceId: string, agentId: string, req: UpdateAgent): Promise<Agent> {
+    return agents.updateAgentColor(workspaceId, agentId, req.color);
   }
-  async deleteAgent(): Promise<void> {}
+  async deleteAgent(workspaceId: string, agentId: string): Promise<void> {
+    agents.deleteAgent(workspaceId, agentId);
+  }
   async generateAgentInstructions() {
     return { instructions: "" };
   }
@@ -185,8 +192,19 @@ export class HoustonClient {
     activities.deleteActivity(agentPath, id);
   }
 
+  // ---- agent data files (.houston/**), backed by localStorage ----
+  async readAgentFile(agentPath: string, relPath: string): Promise<string> {
+    return readAgentFileStore(agentPath, relPath);
+  }
+  async writeAgentFile(agentPath: string, relPath: string, content: string): Promise<void> {
+    writeAgentFileStore(agentPath, relPath, content);
+  }
+  async seedAgentSchemas(): Promise<void> {}
+  async migrateAgentFiles(): Promise<void> {}
+
   // ---- conversations / routines / skills (mostly empty) ----
   async listConversations(agentPath: string): Promise<ConversationEntry[]> {
+    const agentName = agents.agentNameByPath(agentPath) ?? "Houston";
     return activities.listActivities(agentPath).map((a) => ({
       id: a.id,
       title: a.title,
@@ -196,7 +214,7 @@ export class HoustonClient {
       session_key: a.session_key ?? `activity-${a.id}`,
       updated_at: a.updated_at,
       agent_path: agentPath,
-      agent_name: "Houston",
+      agent_name: agentName,
     }));
   }
   async listAllConversations(agentPaths: string[]): Promise<ConversationEntry[]> {
