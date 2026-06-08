@@ -27,6 +27,7 @@ import * as agents from "./agents";
 import * as activities from "./activities";
 import { readAgentFile as readAgentFileStore, writeAgentFile as writeAgentFileStore } from "./agent-files";
 import { streamTurn, historyToFeed } from "./translate";
+import { emitEvent } from "./bus";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -61,6 +62,8 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
  */
 export class HoustonClient {
   private engine: HoustonEngineClient;
+  /** Per-provider auth-status pollers that translate login completion into events. */
+  private loginWatchers = new Map<string, ReturnType<typeof setInterval>>();
 
   constructor(opts: HoustonClientOptions) {
     this.engine = new HoustonEngineClient({
@@ -252,21 +255,71 @@ export class HoustonClient {
       cliPath: null,
     } as ProviderStatus;
   }
-  async providerLogin(name: string): Promise<void> {
+  // deviceAuth is ignored: the engine picks the flow itself (Codex → device code,
+  // Claude → loopback or copy-paste per the engine's headless mode).
+  async providerLogin(name: string, _opts?: { deviceAuth?: boolean }): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     const info = await this.engine.startLogin(pid);
-    // `url` + `auth_code` (headless Claude) carry `url`; only Codex carries
-    // `verificationUri`. The headless code is relayed via submitProviderLoginCode.
+
+    // Drive the legacy login dialog. `device_code` carries the code to display;
+    // `url` (loopback) and `auth_code` (headless Claude) leave `user_code` null
+    // so the dialog shows a paste field — which the headless code is pasted into
+    // (and which doubles as a fallback for loopback). The new engine emits no
+    // completion event, so we poll auth status and synthesize one.
     const url = info.kind === "device_code" ? info.verificationUri : info.url;
+    const userCode = info.kind === "device_code" ? info.userCode : null;
+    emitEvent("ProviderLoginUrl", { provider: name, url, user_code: userCode });
     if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
+    this.watchLoginCompletion(pid, name);
   }
   async submitProviderLoginCode(name: string, code: string): Promise<void> {
     const pid = toNewProvider(name);
     if (pid) await this.engine.completeLogin(pid, code);
   }
-  async cancelProviderLogin(): Promise<void> {
-    /* no-op */
+  async cancelProviderLogin(name: string): Promise<void> {
+    if (!toNewProvider(name)) return;
+    this.stopLoginWatch(name);
+    // Benign completion: clears the dialog + spinner without an error toast,
+    // matching the old engine's cancel semantics.
+    emitEvent("ProviderLoginComplete", { provider: name, success: false, error: null });
+  }
+
+  /**
+   * Poll auth status until the in-flight login for `pid` resolves, then emit
+   * `ProviderLoginComplete` so the legacy dialog closes and the card flips.
+   * Covers all three flows: loopback auto-catch, pasted headless code, and
+   * device-code polling.
+   */
+  private watchLoginCompletion(pid: "anthropic" | "openai-codex", name: string): void {
+    this.stopLoginWatch(name);
+    const startedAt = Date.now();
+    const finish = (success: boolean, error: string | null) => {
+      this.stopLoginWatch(name);
+      emitEvent("ProviderLoginComplete", { provider: name, success, error });
+    };
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          const status = await this.engine.authStatus();
+          const pr = status.providers.find((p) => p.provider === pid);
+          if (pr?.configured) finish(true, null);
+          else if (pr?.login?.status === "error") finish(false, pr?.login?.error ?? "Login failed");
+          else if (Date.now() - startedAt > 10 * 60 * 1000) finish(false, "Login timed out");
+        } catch {
+          /* engine briefly unreachable; keep polling */
+        }
+      })();
+    }, 1500);
+    this.loginWatchers.set(name, timer);
+  }
+
+  private stopLoginWatch(name: string): void {
+    const timer = this.loginWatchers.get(name);
+    if (timer !== undefined) {
+      clearInterval(timer);
+      this.loginWatchers.delete(name);
+    }
   }
   async providerLogout(name: string): Promise<void> {
     const pid = toNewProvider(name);
