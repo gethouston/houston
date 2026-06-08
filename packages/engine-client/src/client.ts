@@ -22,22 +22,34 @@ export class EngineError extends Error {
   }
 }
 
-export interface StreamOptions {
+export interface EventStreamOptions {
+  /** Abort to close the stream (e.g. when switching conversations). */
   signal?: AbortSignal;
-  onEvent?: (event: WireEvent) => void;
+  /** Called for every event scoped to this conversation. */
+  onEvent: (event: WireEvent) => void;
+}
+
+export interface SendOptions {
+  /** Echoed back on the `user` event so the sender can dedupe its own message. */
+  nonce?: string;
+  signal?: AbortSignal;
 }
 
 /**
  * Typed client for the Houston engine. Zero dependencies; uses fetch + SSE.
  *
+ * Conversations are fully isolated. Subscribe to ONE conversation's events with
+ * `streamEvents(id)`; trigger a turn with `sendMessage(id, text)`. A conversation's
+ * events only ever arrive on that conversation's stream — never another's.
+ *
  *   const engine = new HoustonEngineClient({ baseUrl: "http://127.0.0.1:4317" });
- *   if (!(await engine.authStatus()).anthropicConfigured) {
- *     const { url } = await engine.startAnthropicLogin();
- *     window.open(url);  // poll authStatus() until anthropicConfigured
- *   }
- *   for await (const ev of engine.streamMessage("main", "hello")) {
- *     if (ev.type === "text") render(ev.data);
- *   }
+ *   const ac = new AbortController();
+ *   engine.streamEvents("abc", {
+ *     signal: ac.signal,
+ *     onEvent: (ev) => { if (ev.type === "text") render(ev.data); },
+ *   });
+ *   await engine.sendMessage("abc", "List the files here");
+ *   // ac.abort() stops observing; the turn keeps running server-side.
  */
 export class HoustonEngineClient {
   private base: string;
@@ -124,24 +136,29 @@ export class HoustonEngineClient {
   }
 
   /**
-   * Send a message and stream the turn's events. Async generator:
-   *   for await (const ev of engine.streamMessage(id, text)) { ... }
+   * Send a message, triggering a turn. Resolves once the turn is accepted (202);
+   * the turn's events stream over `streamEvents(id)`, not this call.
    */
-  async *streamMessage(
-    id: string,
-    text: string,
-    opts: StreamOptions = {},
-  ): AsyncGenerator<WireEvent, void, unknown> {
+  async sendMessage(id: string, text: string, opts: SendOptions = {}): Promise<void> {
+    await this.request(`/conversations/${encodeURIComponent(id)}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, nonce: opts.nonce }),
+      signal: opts.signal,
+    });
+  }
+
+  /**
+   * Subscribe to ONE conversation's live event stream (SSE). Resolves when the
+   * stream closes or `opts.signal` aborts. Events are strictly scoped to `id` —
+   * no other conversation's events can arrive here.
+   */
+  async streamEvents(id: string, opts: EventStreamOptions): Promise<void> {
     const res = await this.request(
-      `/conversations/${encodeURIComponent(id)}/messages`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text }),
-        signal: opts.signal,
-      },
+      `/conversations/${encodeURIComponent(id)}/events`,
+      { method: "GET", headers: { Accept: "text/event-stream" }, signal: opts.signal },
     );
-    if (!res.body) throw new EngineError(0, "no response body for stream");
+    if (!res.body) throw new EngineError(0, "no response body for event stream");
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -155,24 +172,9 @@ export class HoustonEngineClient {
         const frame = buf.slice(0, idx);
         buf = buf.slice(idx + 2);
         const line = frame.split("\n").find((l) => l.startsWith("data:"));
-        if (!line) continue;
-        const event = JSON.parse(line.slice(5).trim()) as WireEvent;
-        opts.onEvent?.(event);
-        yield event;
-        if (event.type === "done" || event.type === "error") return;
+        if (!line) continue; // skip SSE comments (": hb" heartbeats, ": connected")
+        opts.onEvent(JSON.parse(line.slice(5).trim()) as WireEvent);
       }
-    }
-  }
-
-  /** Callback convenience wrapper over streamMessage. */
-  async sendMessage(
-    id: string,
-    text: string,
-    onEvent: (event: WireEvent) => void,
-    signal?: AbortSignal,
-  ): Promise<void> {
-    for await (const _ of this.streamMessage(id, text, { onEvent, signal })) {
-      // onEvent already called
     }
   }
 }

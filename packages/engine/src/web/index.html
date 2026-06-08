@@ -14,6 +14,7 @@
       button, select { font: inherit; padding: 6px 12px; border-radius: 8px; border: 1px solid #8886; background: #7a5cff; color: #fff; cursor: pointer; }
       select { background: transparent; color: inherit; }
       button:disabled { opacity: .5; cursor: default; }
+      #new { background: transparent; color: inherit; }
       #log { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
       .msg { max-width: 80%; padding: 8px 12px; border-radius: 12px; white-space: pre-wrap; word-wrap: break-word; }
       .user { align-self: flex-end; background: #7a5cff; color: #fff; }
@@ -30,6 +31,7 @@
       <h1>🚀 Houston Engine</h1>
       <span id="providers"></span>
       <select id="model" title="model" style="display:none"></select>
+      <button id="new" title="new chat">＋ New</button>
       <span id="status">checking…</span>
     </header>
     <div id="log"></div>
@@ -55,6 +57,8 @@
         $("#text").disabled = !v; $("#send").disabled = !v;
         if (v) $("#text").focus();
       }
+      const newId = () =>
+        globalThis.crypto?.randomUUID ? crypto.randomUUID() : "test-" + Date.now();
 
       async function refresh() {
         let providers;
@@ -119,47 +123,66 @@
         }, 1500);
       }
 
+      // --- One isolated conversation: subscribe to its id-scoped event stream. ---
+      let convId = newId();
+      let events = null;
+      let bubble = null;
+      const ownNonces = new Set();
+
+      function handleEvent(evt) {
+        if (evt.type === "sync") {
+          if (evt.data.running && evt.data.partial) bubble = addMsg("assistant", evt.data.partial);
+        } else if (evt.type === "user") {
+          if (evt.data.nonce && ownNonces.has(evt.data.nonce)) return; // our own echo
+          addMsg("user", evt.data.content);
+        } else if (evt.type === "text") {
+          if (!bubble) bubble = addMsg("assistant", "");
+          bubble.textContent += evt.data; log.scrollTop = log.scrollHeight;
+        } else if (evt.type === "tool_start") {
+          addMsg("tool", "🔧 " + evt.data.name + " " + JSON.stringify(evt.data.args ?? {}));
+        } else if (evt.type === "tool_end") {
+          if (evt.data.isError) addMsg("err", "tool " + evt.data.name + " failed");
+        } else if (evt.type === "error") {
+          addMsg("err", "⚠️ " + evt.data.message); bubble = null;
+        } else if (evt.type === "done") {
+          bubble = null;
+        }
+      }
+
+      function subscribe() {
+        if (events) events.close();
+        bubble = null;
+        events = new EventSource(`/conversations/${encodeURIComponent(convId)}/events`);
+        events.onmessage = (m) => handleEvent(JSON.parse(m.data));
+      }
+
+      function newChat() {
+        convId = newId();
+        ownNonces.clear();
+        log.innerHTML = "";
+        subscribe();
+      }
+
       async function send() {
         const text = $("#text").value.trim();
         if (!text || !activeProvider) return;
         $("#text").value = "";
+        const nonce = newId();
+        ownNonces.add(nonce);
         addMsg("user", text);
-        let bubble = null;
-        const res = await fetch("/conversations/main/messages", {
+        bubble = null;
+        await fetch(`/conversations/${encodeURIComponent(convId)}/messages`, {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ text }),
+          body: JSON.stringify({ text, nonce }),
         });
-        const reader = res.body.getReader();
-        const dec = new TextDecoder();
-        let buf = "";
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buf += dec.decode(value, { stream: true });
-          let i;
-          while ((i = buf.indexOf("\n\n")) >= 0) {
-            const frame = buf.slice(0, i); buf = buf.slice(i + 2);
-            const line = frame.split("\n").find((l) => l.startsWith("data:"));
-            if (!line) continue;
-            const evt = JSON.parse(line.slice(5).trim());
-            if (evt.type === "text") {
-              if (!bubble) bubble = addMsg("assistant", "");
-              bubble.textContent += evt.data; log.scrollTop = log.scrollHeight;
-            } else if (evt.type === "tool_start") {
-              addMsg("tool", "🔧 " + evt.data.name + " " + JSON.stringify(evt.data.args ?? {}));
-            } else if (evt.type === "tool_end" && evt.data.isError) {
-              addMsg("err", "tool " + evt.data.name + " failed");
-            } else if (evt.type === "error") {
-              addMsg("err", "⚠️ " + evt.data.message);
-            } else if (evt.type === "done") { bubble = null; }
-          }
-        }
       }
 
       $("#send").onclick = send;
+      $("#new").onclick = newChat;
       $("#text").addEventListener("keydown", (e) => {
         if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
       });
+      subscribe();
       refresh();
     </script>
   </body>

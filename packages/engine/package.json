@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "bun run src/main.ts",
-    "spike": "bun run spike/phase0.ts"
+    "spike": "bun run spike/phase0.ts",
+    "test": "bun test"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "0.78.1",
@@ -16,6 +17,7 @@
     "@houston/engine-client": "file:../engine-client"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.14",
     "@types/node": "^22"
   }
 }
