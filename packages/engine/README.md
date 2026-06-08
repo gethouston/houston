@@ -20,10 +20,20 @@ HOUSTON_WORKSPACE_DIR="$HOME/some/project" bun run dev
 Then open **http://127.0.0.1:4317**:
 
 1. Click **Connect Claude** → a Claude login tab opens.
-2. Authorize with your Claude Pro/Max subscription. The engine catches the
-   callback on `localhost:53692` and stores the token (auto-refreshed).
+2. Authorize with your Claude Pro/Max subscription. Locally, the engine catches the
+   callback on `localhost:53692` and stores the token (auto-refreshed). Headless,
+   Claude shows a `code#state` instead — paste it back to finish.
 3. Type a message and watch the agent stream its reply (and run tools like
    `read`/`ls`/`bash` in the workspace).
+
+### Headless login (no loopback)
+
+When the browser can't reach the engine's loopback, Claude login switches to a
+copy-paste code flow (the same one Claude Code uses for browserless sign-in): the
+engine returns a `{ kind: "auth_code" }` login, the webapp opens the URL, and the
+user pastes the code Claude shows back via `POST /auth/anthropic/login/complete`.
+Auto-selected from a non-loopback `HOUSTON_HOST`; force it with `HOUSTON_HEADLESS=1`.
+Codex is headless either way (device code). See `src/auth/anthropic-headless.ts`.
 
 ## Config (env)
 
@@ -34,14 +44,16 @@ Then open **http://127.0.0.1:4317**:
 | `HOUSTON_HOST` / `HOUSTON_PORT` | `127.0.0.1` / `4317` | Bind address |
 | `HOUSTON_MODEL` | `claude-sonnet-4-5` | Anthropic model id |
 | `HOUSTON_ENGINE_TOKEN` | _(unset)_ | Bearer token; unset = open (local dev) |
+| `HOUSTON_HEADLESS` | _(inferred)_ | Force the headless Claude login (copy-paste code, no loopback). Inferred from a non-loopback `HOUSTON_HOST`; set `1` to force it, `0` to force loopback |
 
 ## Layout
 
 ```
 spike/phase0.ts          Phase 0 de-risk spike (faux turn + OAuth probe)
-src/config.ts            env config
+src/config.ts            env config (incl. headless detection)
 src/auth/storage.ts      AuthStorage + ModelRegistry (persisted)
-src/auth/anthropic-login.ts   Claude OAuth flow (loopback + paste-code)
+src/auth/login.ts        multi-provider login orchestration (url / auth_code / device_code)
+src/auth/anthropic-headless.ts   headless Claude OAuth (console redirect + paste code)
 src/ai / src/session     headless ResourceLoader, createAgentSession, turn runner
 src/transport/server.ts  node:http router (REST + SSE) + static test page
 src/web/index.html       minimal browser test client
@@ -60,12 +72,12 @@ Endpoints: `GET /health`, `GET /version`, `GET /providers`, `PUT /settings`,
 `GET|POST /conversations/:id/messages` (POST streams SSE),
 `POST /conversations/:id/cancel`. CORS is enabled (`HOUSTON_CORS_ORIGIN`, default `*`).
 
-Both subscription logins work: **Claude** (`anthropic`, loopback + paste-code) and
-**Codex** (`openai-codex`, device code). Pick the chat model via `PUT /settings`.
+Both subscription logins work: **Claude** (`anthropic` — loopback locally, copy-paste
+`auth_code` when headless) and **Codex** (`openai-codex`, device code). Pick the chat
+model via `PUT /settings`.
 
 ## Not yet built (next)
 
 In-process permission gating for tools, context-resume across engine restarts,
-the Anthropic paste-code cloud flow verified end-to-end, conversation
-management (rename/delete). (API-key auth intentionally dropped — OAuth only.)
-See the plan file.
+conversation management (rename/delete). (API-key auth intentionally dropped —
+OAuth only.) See the plan file.

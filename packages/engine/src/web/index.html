@@ -57,6 +57,43 @@
         $("#text").disabled = !v; $("#send").disabled = !v;
         if (v) $("#text").focus();
       }
+
+      // Headless Claude: render a paste box for the code Claude shows, then
+      // POST it to /login/complete. The connect() poll picks up `configured`.
+      function promptForCode(provider, instructions) {
+        const row = addMsg("note", "");
+        row.style.display = "flex"; row.style.gap = "8px"; row.style.flexWrap = "wrap";
+        row.textContent = "";
+        const label = document.createElement("span");
+        label.textContent = instructions || "Paste the code Claude shows you:";
+        label.style.flexBasis = "100%";
+        const input = document.createElement("input");
+        input.placeholder = "code#state";
+        input.style.cssText = "flex:1;min-width:180px;font:inherit;padding:6px 10px;border-radius:8px;border:1px solid #8886;background:transparent;color:inherit";
+        const btn = document.createElement("button");
+        btn.textContent = "Submit code";
+        const submit = async () => {
+          const code = input.value.trim();
+          if (!code) return;
+          btn.disabled = true;
+          try {
+            const r = await fetch(`/auth/${provider}/login/complete`, {
+              method: "POST", headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ code }),
+            });
+            if (!r.ok) throw new Error(await r.text());
+            row.remove();
+            statusEl.textContent = "verifying…";
+          } catch (e) {
+            btn.disabled = false;
+            statusEl.textContent = "code error: " + (e?.message || e);
+          }
+        };
+        btn.onclick = submit;
+        input.addEventListener("keydown", (e) => { if (e.key === "Enter") submit(); });
+        row.append(label, input, btn);
+        input.focus();
+      }
       const newId = () =>
         globalThis.crypto?.randomUUID ? crypto.randomUUID() : "test-" + Date.now();
 
@@ -107,6 +144,10 @@
         if (info.kind === "url") {
           window.open(info.url, "_blank", "noopener");
           statusEl.textContent = "authorize in the new tab…";
+        } else if (info.kind === "auth_code") {
+          window.open(info.url, "_blank", "noopener");
+          statusEl.textContent = "paste the code Claude shows…";
+          promptForCode(provider, info.instructions);
         } else if (info.kind === "device_code") {
           window.open(info.verificationUri, "_blank", "noopener");
           addMsg("note", `Codex: open ${info.verificationUri} and enter code  ${info.userCode}`);

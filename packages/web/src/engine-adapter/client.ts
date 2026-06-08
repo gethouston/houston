@@ -256,7 +256,9 @@ export class HoustonClient {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     const info = await this.engine.startLogin(pid);
-    const url = info.kind === "url" ? info.url : info.verificationUri;
+    // `url` + `auth_code` (headless Claude) carry `url`; only Codex carries
+    // `verificationUri`. The headless code is relayed via submitProviderLoginCode.
+    const url = info.kind === "device_code" ? info.verificationUri : info.url;
     if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
   }
   async submitProviderLoginCode(name: string, code: string): Promise<void> {
