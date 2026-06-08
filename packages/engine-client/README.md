@@ -8,15 +8,18 @@ import { HoustonEngineClient, type WireEvent } from "@houston/engine-client";
 
 const engine = new HoustonEngineClient({ baseUrl: "http://127.0.0.1:4317" });
 
-for await (const ev of engine.streamMessage("main", "hi")) {
-  if (ev.type === "text") console.log(ev.data);
-}
+// One isolated conversation: subscribe to its events, then send into it.
+const id = crypto.randomUUID();
+engine.streamEvents(id, {
+  onEvent: (ev) => { if (ev.type === "text") console.log(ev.data); },
+});
+await engine.sendMessage(id, "hi"); // returns 202; events arrive on the stream above
 ```
 
-- `HoustonEngineClient` — methods: `health`, `version`, `authStatus`,
-  `startAnthropicLogin`, `completeAnthropicLogin`, `logout`, `listConversations`,
-  `getHistory`, `cancel`, `streamMessage` (async generator), `sendMessage`
-  (callback wrapper).
+- `HoustonEngineClient` — methods: `health`, `version`, `listProviders`,
+  `setSettings`, `authStatus`, `startLogin`, `completeLogin`, `logout`,
+  `listConversations`, `getHistory`, `cancel`, `sendMessage` (start a turn),
+  `streamEvents` (subscribe to one conversation's id-scoped SSE).
 - Types: `AuthStatus`, `ConversationSummary`, `ConversationHistory`, `ChatMessage`,
   `WireEvent`, `EngineClientConfig`, … — import for component props.
 

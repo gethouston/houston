@@ -3,7 +3,7 @@
  * This package is the single source of truth for these shapes.
  */
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 export interface EngineClientConfig {
   /** Base URL of the engine, e.g. "http://127.0.0.1:4317". */
@@ -30,11 +30,18 @@ export type ProviderId = "anthropic" | "openai-codex";
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 
 /**
- * How the user completes a login. Anthropic returns a `url` to open; Codex
- * returns a device code to enter at `verificationUri`.
+ * How the user completes a login:
+ * - `url` — open it; the engine catches the redirect on its own loopback
+ *   (local engine only — the browser and engine share a machine). Nothing to paste.
+ * - `auth_code` — open `url`, approve, then copy the code Claude shows and submit it
+ *   via `completeLogin` (`POST /auth/anthropic/login/complete`). The headless path,
+ *   used when there is no shared loopback between the browser and the engine.
+ * - `device_code` — open `verificationUri` and enter `userCode` (Codex; the engine
+ *   polls, so there is no paste step).
  */
 export type LoginInfo =
   | { kind: "url"; url: string }
+  | { kind: "auth_code"; url: string; instructions?: string }
   | { kind: "device_code"; verificationUri: string; userCode: string };
 
 export interface LoginState {
@@ -100,10 +107,22 @@ export interface ConversationHistory {
 }
 
 /**
- * Streaming turn events (SSE). Each SSE frame is `data: <WireEvent JSON>`.
- * These wrap pi's native agent events in a stable, minimal shape.
+ * Live conversation events (SSE). Delivered over `GET /conversations/:id/events`
+ * — one stream per conversation, strictly id-scoped (no event from another
+ * conversation can ever arrive on this stream). Each SSE frame is
+ * `data: <WireEvent JSON>`.
+ *
+ * - `sync`  — sent once on connect: is a turn running + the assistant text so far
+ *             (so a late/reconnecting client catches up mid-turn).
+ * - `user`  — a user message was added to this conversation (by any client). The
+ *             `nonce` echoes the sender's so it can skip rendering its own message.
+ * - `text` / `thinking` — assistant output deltas.
+ * - `tool_start` / `tool_end` — tool activity within the turn.
+ * - `done` / `error` — the turn ended (success / failure).
  */
 export type WireEvent =
+  | { type: "sync"; data: { running: boolean; partial: string } }
+  | { type: "user"; data: { content: string; ts: number; nonce?: string } }
   | { type: "text"; data: string }
   | { type: "thinking"; data: string }
   | { type: "tool_start"; data: { name: string; args: unknown } }
