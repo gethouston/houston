@@ -42,6 +42,7 @@ use houston_db::Database;
 use houston_terminal_manager::{CompactTrigger, FeedItem, Provider};
 use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
 
 pub use provider::{resolve_effort, resolve_provider, ResolvedProvider};
@@ -507,6 +508,31 @@ async fn run_start(
                 "[sessions] skipping file-change attribution for overlapping working_dir={}",
                 working_dir_for_end.display()
             );
+        }
+    }
+
+    if let Ok(result) = &session_result {
+        if result.error.is_none() && !session_key_for_end.starts_with("workflow-") {
+            let dispatcher = Arc::new(crate::workflows::engine_dispatcher::EngineWorkflowDispatcher {
+                rt: rt.clone(),
+                events: events_for_end.clone(),
+                db: db_for_file_changes.clone(),
+                app_system_prompt: app_system_prompt.to_string(),
+            });
+            if let Err(e) = crate::workflows::chat_trigger::maybe_trigger_from_chat(
+                &events_for_end,
+                &db_for_file_changes,
+                dispatcher,
+                &agent_path_for_end,
+                &session_key_for_end,
+                &source_for_file_changes,
+                result.response_text.as_deref(),
+                result.claude_session_id.as_deref(),
+            )
+            .await
+            {
+                tracing::error!("[sessions] chat workflow trigger failed: {e}");
+            }
         }
     }
 

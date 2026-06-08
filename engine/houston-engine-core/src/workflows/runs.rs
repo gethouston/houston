@@ -2,7 +2,7 @@
 
 use crate::error::{CoreError, CoreResult};
 use crate::workflows::types::{
-    StepState, WorkflowPlan, WorkflowRun, WorkflowRunUpdate,
+    InlineRunSpec, StepState, WorkflowPlan, WorkflowRun, WorkflowRunUpdate,
 };
 use crate::workflows::{ensure_houston_dir, read_json, write_json};
 use chrono::Utc;
@@ -63,12 +63,36 @@ pub fn create(root: &Path, workflow_id: &str) -> CoreResult<WorkflowRun> {
     with_runs_lock(root, || create_unlocked(root, workflow_id))
 }
 
+pub fn create_inline(root: &Path, spec: InlineRunSpec) -> CoreResult<WorkflowRun> {
+    if spec.plan_prompt.trim().is_empty() {
+        return Err(CoreError::BadRequest(
+            "inline workflow run plan_prompt must not be empty".into(),
+        ));
+    }
+    with_runs_lock(root, || create_inline_unlocked(root, spec))
+}
+
 fn create_unlocked(root: &Path, workflow_id: &str) -> CoreResult<WorkflowRun> {
-    ensure_houston_dir(root)?;
-    let mut runs = list(root)?;
+    persist_new_run(root, new_run_row(workflow_id, None))
+}
+
+fn create_inline_unlocked(root: &Path, spec: InlineRunSpec) -> CoreResult<WorkflowRun> {
+    let workflow_id = format!("inline-{}", Uuid::new_v4());
+    persist_new_run(root, new_run_row(&workflow_id, Some(&spec)))
+}
+
+fn new_run_row(workflow_id: &str, inline: Option<&InlineRunSpec>) -> WorkflowRun {
     let id = Uuid::new_v4().to_string();
     let session_key = format!("workflow-{workflow_id}-run-{id}");
-    let run = WorkflowRun {
+    let (plan_prompt, name, description) = match inline {
+        Some(spec) => (
+            Some(spec.plan_prompt.clone()),
+            spec.name.clone(),
+            spec.description.clone(),
+        ),
+        None => (None, None, None),
+    };
+    WorkflowRun {
         id,
         workflow_id: workflow_id.to_string(),
         status: "planning".into(),
@@ -78,11 +102,20 @@ fn create_unlocked(root: &Path, workflow_id: &str) -> CoreResult<WorkflowRun> {
         summary: None,
         started_at: Utc::now().to_rfc3339(),
         completed_at: None,
-    };
-    runs.push(run.clone());
+        plan_prompt,
+        name,
+        description,
+    }
+}
+
+fn persist_new_run(root: &Path, run: WorkflowRun) -> CoreResult<WorkflowRun> {
+    ensure_houston_dir(root)?;
+    let mut runs = list(root)?;
+    let result = run.clone();
+    runs.push(run);
     prune(&mut runs);
     write_json(root, FILE, &runs)?;
-    Ok(run)
+    Ok(result)
 }
 
 pub fn update(root: &Path, id: &str, updates: WorkflowRunUpdate) -> CoreResult<WorkflowRun> {
@@ -256,6 +289,46 @@ mod tests {
         .unwrap();
         assert_eq!(done.status, "done");
         assert!(done.completed_at.is_some());
+    }
+
+    #[test]
+    fn create_inline_sets_fields_and_synthetic_id() {
+        let d = TempDir::new().unwrap();
+        let run = create_inline(
+            d.path(),
+            InlineRunSpec {
+                plan_prompt: "Plan from chat".into(),
+                name: Some("My task".into()),
+                description: Some("desc".into()),
+            },
+        )
+        .unwrap();
+        assert!(run.workflow_id.starts_with("inline-"));
+        assert_eq!(run.status, "planning");
+        assert_eq!(run.plan_prompt.as_deref(), Some("Plan from chat"));
+        assert_eq!(run.name.as_deref(), Some("My task"));
+        assert_eq!(run.description.as_deref(), Some("desc"));
+        assert_eq!(
+            run.session_key,
+            format!("workflow-{}-run-{}", run.workflow_id, run.id)
+        );
+    }
+
+    #[test]
+    fn create_inline_rejects_empty_plan_prompt() {
+        let d = TempDir::new().unwrap();
+        assert!(matches!(
+            create_inline(
+                d.path(),
+                InlineRunSpec {
+                    plan_prompt: "  ".into(),
+                    name: None,
+                    description: None,
+                },
+            )
+            .unwrap_err(),
+            CoreError::BadRequest(_)
+        ));
     }
 
     #[test]

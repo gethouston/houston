@@ -220,6 +220,10 @@ pub fn build_agent_context(
         }
     }
 
+    if let Some(section) = crate::workflows::context::build_prompt_section(dir) {
+        parts.push(section);
+    }
+
     if let Some(workspace_dir) = dir.parent() {
         if let Some(section) = crate::workspace_context::build_prompt_section(workspace_dir) {
             parts.push(section);
@@ -383,6 +387,32 @@ mod tests {
         let out = build_agent_context(d.path(), None, None);
         assert!(!out.contains("# Workspace Context"));
         assert!(!out.contains("# User Context"));
+    }
+
+    #[test]
+    fn build_agent_context_includes_available_workflows() {
+        let d = TempDir::new().unwrap();
+        let w = crate::workflows::defs::create(
+            d.path(),
+            crate::workflows::types::NewWorkflow {
+                name: "Security audit".into(),
+                description: "Scan the repo".into(),
+                plan_prompt: "Plan a scan".into(),
+            },
+        )
+        .unwrap();
+
+        let out = build_agent_context(d.path(), None, None);
+        assert!(out.contains("# Available Workflows"));
+        assert!(out.contains(&w.id));
+        assert!(out.contains("Security audit"));
+    }
+
+    #[test]
+    fn build_agent_context_omits_workflows_section_when_none_saved() {
+        let d = TempDir::new().unwrap();
+        let out = build_agent_context(d.path(), None, None);
+        assert!(!out.contains("# Available Workflows"));
     }
 
     #[test]

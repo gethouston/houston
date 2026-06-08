@@ -1,5 +1,7 @@
 //! Workflows — multi-step orchestrated agent tasks.
 
+pub mod chat_trigger;
+pub mod context;
 pub mod defs;
 pub mod dispatcher;
 pub mod engine_dispatcher;
@@ -7,6 +9,7 @@ pub mod executor;
 pub mod executor_sched;
 pub mod executor_step;
 pub mod guards;
+pub mod inline;
 pub mod keys;
 pub mod plan;
 pub mod plan_extract;
@@ -26,18 +29,17 @@ use std::path::Path;
 
 pub use defs::{create as create_workflow, delete as delete_workflow, find_by_id as find_workflow_by_id, list as list_workflows, update as update_workflow};
 pub use plan::parse_plan;
+pub use inline::begin_inline_run;
 pub use runs::{
-    create as create_workflow_run, find_by_id as find_workflow_run_by_id,
-    list as list_workflow_runs, list_for_workflow, step_states_from_plan,
-    sweep_orphan_running, update as update_workflow_run,
+    create as create_workflow_run, create_inline as create_inline_workflow_run,
+    find_by_id as find_workflow_run_by_id, list as list_workflow_runs, list_for_workflow,
+    step_states_from_plan, sweep_orphan_running, update as update_workflow_run,
 };
 pub use guards::{enforce_run_limits, MAX_RECURSION_DEPTH, MAX_STEPS_PER_RUN};
-pub use runner::{
-    approve_run, begin_run, cancel_run, finish_planning, resume_run, BegunRun,
-};
+pub use runner::{approve_run, begin_run, cancel_run, finish_planning, resume_run};
 pub use types::{
-    NewWorkflow, StepState, Workflow, WorkflowPlan, WorkflowRun, WorkflowRunUpdate,
-    WorkflowStep, WorkflowUpdate,
+    BegunRun, InlineRunSpec, NewWorkflow, StepState, Workflow, WorkflowPlan, WorkflowRun,
+    WorkflowRunUpdate, WorkflowStep, WorkflowUpdate,
 };
 
 pub(crate) fn read_json<T: DeserializeOwned + Serialize + Default>(
