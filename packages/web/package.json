@@ -1,0 +1,50 @@
+{
+  "name": "houston-web",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Houston as a standalone web app. Composes the desktop UI (app/src) and runs it in a plain browser against a remote houston-engine, with @tauri-apps/* aliased to web shims.",
+  "scripts": {
+    "dev": "vite",
+    "build": "node ../../scripts/check-tauri-shims.mjs && tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "node ../../scripts/check-tauri-shims.mjs && tsc --noEmit",
+    "check-shims": "node ../../scripts/check-tauri-shims.mjs"
+  },
+  "dependencies": {
+    "@houston-ai/agent": "workspace:*",
+    "@houston-ai/agent-schemas": "workspace:*",
+    "@houston-ai/board": "workspace:*",
+    "@houston-ai/chat": "workspace:*",
+    "@houston-ai/core": "workspace:*",
+    "@houston-ai/engine-client": "workspace:*",
+    "@houston-ai/events": "workspace:*",
+    "@houston-ai/layout": "workspace:*",
+    "@houston/engine-client": "workspace:*",
+    "@houston-ai/review": "workspace:*",
+    "@houston-ai/routines": "workspace:*",
+    "@houston-ai/skills": "workspace:*",
+    "@sentry/browser": "^10.54.0",
+    "@supabase/supabase-js": "^2.45.0",
+    "@tanstack/react-query": "^5.96.2",
+    "ajv": "^8.17.1",
+    "i18next": "^26.0.6",
+    "i18next-browser-languagedetector": "^8.2.1",
+    "lucide-react": "^0.577.0",
+    "posthog-js": "^1.200.0",
+    "qrcode.react": "^4.2.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "react-i18next": "^17.0.4",
+    "zustand": "^5.0.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.8",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^4.5.2",
+    "tailwindcss": "^4.1.8",
+    "typescript": "^6.0.2",
+    "vite": "^6.3.5"
+  }
+}

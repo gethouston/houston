@@ -1,13 +1,14 @@
 # Architecture
 
-Houston = open platform. Organized as **6 products + 3 code libraries**.
+Houston = open platform. Organized as **7 products + 3 code libraries**.
 
-## The 6 products (end-user)
+## The 7 products (end-user)
 
 | Product | Dir | What |
 |---------|-----|------|
 | Houston App | `app/` | Desktop app (Tauri 2). Non-technical users create agents, run parallel terminal sessions. |
-| Houston Mobile | `mobile/` | React PWA served from `tunnel.gethouston.ai`. No native app — pure web, same origin as the relay. |
+| Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab against any remote `houston-engine`. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims, plus a Connect screen for the engine URL+token. No fork, no `app/` changes. See `packages/web/README.md`. |
+| Houston Mobile | `mobile/` | React PWA served from `tunnel.gethouston.ai`. No native app — pure web, same origin as the relay. A lean chat/mission-control client (distinct from Houston Web's full shell). |
 | Houston Store | `store/` | Release-bundled registry of pre-built Houston agents. One-click install. |
 | Houston Website | `website/` | gethouston.ai landing. |
 | Houston Always On | `always-on/` | One-click deploy Engine to VPS/microVM. Agents 24/7. **TBD.** |
@@ -159,6 +160,7 @@ the typed `.houston/<type>/<type>.json` layout.
 | Clear product dirs | ✅ done |
 | App ↔ Engine clear boundary | ✅ `app/houston-tauri` split |
 | UI standalone | ✅ |
+| Full desktop UI in the browser | ✅ `packages/web` composes `app/src` with `@tauri-apps/*` shimmed; typecheck + build green, parity guard in CI. Live engine click-through + web OAuth are the open follow-ups (see `packages/web/README.md`) |
 | Engine reusable by non-Tauri frontends | ✅ binary ships as Tauri sidecar + standalone; desktop app consumes it over HTTP/WS, no in-process coupling |
 | Reference custom-frontend integration | ✅ `examples/smartbooks/` — Vite + React, own brand, ~400 LOC TSX, proven end-to-end |
 | Always On | ✅ Dockerfile + compose + systemd unit + README all shipped |

@@ -1,0 +1,73 @@
+import type { HoustonClient } from "./client";
+import { bus } from "./bus";
+
+/** Same topic helpers shape as the real package (the UI imports `topics`). */
+export const topics = {
+  firehose: "*",
+  session: (sessionKey: string) => `session:${sessionKey}`,
+  agent: (agentPath: string) => `agent:${agentPath}`,
+  routines: (agentPath: string) => `routines:${agentPath}`,
+  auth: "auth",
+  toast: "toast",
+  events: "events",
+  scheduler: "scheduler",
+  composio: "composio",
+  claude: "claude",
+  providers: "providers",
+} as const;
+
+type EnvelopeHandler = (env: unknown) => void;
+type EventHandler = (event: unknown) => void;
+
+/**
+ * Drop-in replacement for the real `EngineWebSocket`. There is no socket: the
+ * new engine streams over SSE (handled inside HoustonClient.startSession), and
+ * those events are delivered here through the in-process `bus`. The public API
+ * matches the original so app/src wiring (subscribeHoustonEvents, etc.) is
+ * unchanged.
+ */
+export class EngineWebSocket {
+  private eventHandlers = new Set<EventHandler>();
+  private envelopeHandlers = new Set<EnvelopeHandler>();
+  private offBus: (() => void) | null = null;
+
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  constructor(_client: HoustonClient) {}
+
+  connect(): void {
+    if (this.offBus) return;
+    this.offBus = bus.on((event) => {
+      for (const h of this.eventHandlers) h(event);
+      if (this.envelopeHandlers.size > 0) {
+        const env = { v: 1, id: crypto.randomUUID(), kind: "event", ts: Date.now(), payload: event };
+        for (const h of this.envelopeHandlers) h(env);
+      }
+    });
+  }
+
+  disconnect(): void {
+    this.offBus?.();
+    this.offBus = null;
+  }
+
+  on(_: "event", handler: EnvelopeHandler): () => void {
+    this.envelopeHandlers.add(handler);
+    return () => this.envelopeHandlers.delete(handler);
+  }
+
+  onEvent(handler: EventHandler): () => void {
+    this.eventHandlers.add(handler);
+    return () => this.eventHandlers.delete(handler);
+  }
+
+  onReconnect(): () => void {
+    // The bus never drops, so reconnect never fires.
+    return () => {};
+  }
+
+  // Subscriptions are no-ops: the bus delivers every event; the UI routes by
+  // the agent_path/session_key carried in each event.
+  subscribe(): void {}
+  unsubscribe(): void {}
+  send(): void {}
+}

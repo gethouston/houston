@@ -2,6 +2,11 @@ packages:
   - "ui/*"
   - "app"
   - "mobile"
+  - "packages/*"
+  # packages/engine is intentionally NOT a pnpm member — it is a self-contained
+  # Bun project (see packages/engine/README.md). Everything else under packages/*
+  # (web, engine-client) is pnpm-managed.
+  - "!packages/engine"
   - "houston-relay"
   - "examples/*"
 

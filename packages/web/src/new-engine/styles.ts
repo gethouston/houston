@@ -1,0 +1,96 @@
+import type { CSSProperties } from "react";
+
+/**
+ * Inline styles for the new-engine surface. Like the Connect screen, this UI
+ * renders in the entry chunk (before any Tailwind/app CSS loads), so it must
+ * carry its own styles. Dark theme to match the desktop app's first paint.
+ */
+export const ui: Record<string, CSSProperties> = {
+  page: {
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    minHeight: "100vh",
+    background: "#0d0d0d",
+    color: "#f5f5f5",
+    fontFamily: "system-ui, -apple-system, sans-serif",
+    padding: 24,
+  },
+  muted: { color: "#9a9a9a", fontSize: 14, textAlign: "center", lineHeight: 1.6 },
+  card: {
+    display: "flex",
+    flexDirection: "column",
+    gap: 12,
+    width: "100%",
+    maxWidth: 380,
+    padding: 32,
+    borderRadius: 16,
+    background: "#161616",
+    border: "1px solid rgba(255,255,255,0.08)",
+  },
+  brand: { fontSize: 22, fontWeight: 600 },
+  subtitle: { margin: "0 0 6px", fontSize: 14, color: "#9a9a9a" },
+  button: {
+    height: 42,
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "#7a5cff",
+    color: "#fff",
+    fontSize: 14,
+    fontWeight: 600,
+    cursor: "pointer",
+  },
+  note: { margin: 0, fontSize: 12.5, color: "#bdbdbd", lineHeight: 1.5 },
+
+  shell: { display: "flex", height: "100vh", background: "#0d0d0d", color: "#f5f5f5", fontFamily: "system-ui, -apple-system, sans-serif" },
+  sidebar: {
+    width: 260,
+    borderRight: "1px solid rgba(255,255,255,0.08)",
+    padding: 10,
+    display: "flex",
+    flexDirection: "column",
+    gap: 6,
+    overflowY: "auto",
+  },
+  newChat: {
+    height: 38,
+    borderRadius: 9,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "transparent",
+    color: "#f5f5f5",
+    fontSize: 13,
+    fontWeight: 600,
+    cursor: "pointer",
+    marginBottom: 4,
+  },
+  convItem: {
+    textAlign: "left",
+    border: "none",
+    background: "transparent",
+    color: "#cfcfcf",
+    padding: "8px 10px",
+    borderRadius: 8,
+    cursor: "pointer",
+  },
+  convActive: { background: "rgba(122,92,255,0.18)", color: "#fff" },
+  convTitle: { fontSize: 13, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+  convLast: { fontSize: 11, opacity: 0.6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+
+  main: { flex: 1, display: "flex", flexDirection: "column", minWidth: 0 },
+  log: { flex: 1, overflowY: "auto", padding: 20, display: "flex", flexDirection: "column", gap: 10 },
+  userMsg: { alignSelf: "flex-end", maxWidth: "78%", background: "#7a5cff", color: "#fff", padding: "9px 13px", borderRadius: 13, whiteSpace: "pre-wrap", wordBreak: "break-word" },
+  asstMsg: { alignSelf: "flex-start", maxWidth: "78%", background: "#1c1c1c", color: "#f0f0f0", padding: "9px 13px", borderRadius: 13, whiteSpace: "pre-wrap", wordBreak: "break-word" },
+  composer: { display: "flex", gap: 8, padding: 14, borderTop: "1px solid rgba(255,255,255,0.08)" },
+  composerInput: {
+    flex: 1,
+    height: 42,
+    padding: "0 14px",
+    borderRadius: 10,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "#0d0d0d",
+    color: "#f5f5f5",
+    fontSize: 14,
+    outline: "none",
+  },
+  sendBtn: { height: 42, padding: "0 18px", borderRadius: 10, border: "none", background: "#f5f5f5", color: "#0d0d0d", fontSize: 14, fontWeight: 600, cursor: "pointer" },
+};
