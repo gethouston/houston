@@ -1,5 +1,9 @@
-import "./config";
+import { config } from "./config";
+import { registerHeadlessAnthropicProvider } from "./auth/anthropic-headless";
 import { startServer } from "./transport/server";
+
+// Swap Claude's loopback OAuth for the headless copy-paste flow when remote.
+if (config.headless) registerHeadlessAnthropicProvider();
 
 const server = startServer();
 

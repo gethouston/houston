@@ -103,11 +103,15 @@ export class HoustonEngineClient {
   authStatus() {
     return this.json<AuthStatus>("/auth/status");
   }
-  /** Start login for a provider. Returns a `url` (Claude) or a device code (Codex). */
+  /**
+   * Start login for a provider. Returns a `LoginInfo`: `url` (local Claude,
+   * loopback), `auth_code` (headless Claude — open the url, then `completeLogin`
+   * with the code Claude shows), or `device_code` (Codex).
+   */
   startLogin(provider: ProviderId) {
     return this.json<LoginInfo>(`/auth/${provider}/login`, { method: "POST" });
   }
-  /** Submit a pasted code (Anthropic remote / paste-code path). */
+  /** Submit a pasted code (the `auth_code` headless Claude path). */
   completeLogin(provider: ProviderId, code: string) {
     return this.json<{ ok: boolean }>(`/auth/${provider}/login/complete`, {
       method: "POST",

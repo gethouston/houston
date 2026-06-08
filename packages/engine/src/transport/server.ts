@@ -151,6 +151,7 @@ export function startServer() {
     console.log(`  data dir:  ${config.dataDir}`);
     console.log(`  model:     ${config.model}`);
     console.log(`  auth:      ${config.token ? "bearer token required" : "open (local dev)"}`);
+    console.log(`  claude:    ${config.headless ? "headless (paste code)" : "loopback (local)"}`);
     console.log(`  cors:      ${config.corsOrigin}`);
   });
   return server;
