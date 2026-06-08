@@ -2,15 +2,19 @@
  * ActiveRunPanel — live or completed workflow run: steps, summary, approval.
  */
 import { useEffect, useMemo, useState } from "react"
-import { cn, Button, Spinner } from "@houston-ai/core"
+import { Button } from "@houston-ai/core"
 import type { WorkflowRun } from "./types"
-import { StepProgress } from "./step-progress"
 import { PlanApprovalDialog } from "./plan-approval-dialog"
 import type { PlanApprovalDialogLabels } from "./plan-approval-dialog"
 import type { StepProgressLabels } from "./step-progress"
 import { DEFAULT_RUN_STATUS_LABELS } from "./run-status"
 import type { WorkflowRunStatus } from "./types"
-import { WorkflowSummary } from "./workflow-summary"
+import {
+  DEFAULT_RUN_CONTENT_LABELS,
+  PlanningRow,
+  RunDetails,
+  RunHeading,
+} from "./run-content"
 import {
   awaitingGateStepId,
   isMidrunApprovalGate,
@@ -39,11 +43,7 @@ const DEFAULT_LABELS: Required<
     "runStatus" | "approvalDialog" | "actionApprovalDialog" | "stepProgress"
   >
 > = {
-  title: "Active run",
-  completedTitle: "Run result",
-  actionTitle: "Approve next action",
-  planning: "Planning your steps…",
-  synthesis: "Summary",
+  ...DEFAULT_RUN_CONTENT_LABELS,
   reviewPlan: "Review plan",
   reviewAction: "Review action",
   approve: "Approve",
@@ -57,16 +57,6 @@ export interface ActiveRunPanelProps {
   onCancel?: () => void
   approvePending?: boolean
   labels?: ActiveRunPanelLabels
-}
-
-function panelTitle(
-  run: WorkflowRun,
-  l: typeof DEFAULT_LABELS,
-  midrunGate: boolean,
-): string {
-  if (run.status === "done") return l.completedTitle
-  if (midrunGate) return l.actionTitle
-  return l.title
 }
 
 export function ActiveRunPanel({
@@ -98,10 +88,7 @@ export function ActiveRunPanel({
   if (run.status === "planning") {
     return (
       <section className="rounded-xl bg-secondary px-5 py-5">
-        <div className="flex items-center gap-3">
-          <Spinner className="size-4" />
-          <p className="text-sm text-muted-foreground">{l.planning}</p>
-        </div>
+        <PlanningRow planningLabel={l.planning} />
       </section>
     )
   }
@@ -110,7 +97,6 @@ export function ActiveRunPanel({
     run.status === "done" ||
     run.status === "error" ||
     run.status === "cancelled"
-  const showPlan = !!run.plan
   const reviewLabel = midrunGate ? l.reviewAction : l.reviewPlan
   const approveLabel = midrunGate ? l.actionApprove : l.approve
 
@@ -118,19 +104,12 @@ export function ActiveRunPanel({
     <>
       <section className="rounded-xl bg-secondary px-5 py-5">
         <div className="flex items-center justify-between gap-3 mb-4">
-          <div>
-            <h3 className="text-sm font-medium text-foreground">
-              {panelTitle(run, l, midrunGate)}
-            </h3>
-            <p
-              className={cn(
-                "text-xs mt-0.5",
-                midrunGate ? "text-amber-700" : "text-muted-foreground",
-              )}
-            >
-              {statusLabels[run.status]}
-            </p>
-          </div>
+          <RunHeading
+            run={run}
+            midrunGate={midrunGate}
+            labels={l}
+            statusLabels={statusLabels}
+          />
           {run.status === "awaiting_approval" && onApprove && (
             <div className="flex items-center gap-1.5 shrink-0">
               <Button
@@ -147,28 +126,13 @@ export function ActiveRunPanel({
           )}
         </div>
 
-        {showPlan && run.plan && (
-          <StepProgress
-            plan={run.plan}
-            run={run}
-            expandSummaries={isTerminal}
-            highlightStepId={gateStepId}
-            labels={labels?.stepProgress}
-          />
-        )}
-
-        {run.summary && (
-          <div
-            className={cn(
-              showPlan && "mt-4 pt-4 border-t border-border/40",
-            )}
-          >
-            <p className="text-xs font-medium text-muted-foreground mb-2">
-              {l.synthesis}
-            </p>
-            <WorkflowSummary content={run.summary} />
-          </div>
-        )}
+        <RunDetails
+          run={run}
+          isTerminal={isTerminal}
+          gateStepId={gateStepId}
+          synthesisLabel={l.synthesis}
+          stepProgressLabels={labels?.stepProgress}
+        />
       </section>
 
       {run.status === "awaiting_approval" && onApprove && onCancel && (
