@@ -1,0 +1,41 @@
+# Houston TS engine — VPS deployment via Docker Compose.
+#
+#   cp .env.example .env        # then set HOUSTON_ENGINE_TOKEN
+#   docker compose up -d --build
+#   docker compose logs -f
+#
+# The build context is the parent `packages/` dir so the image can pull in the
+# sibling @houston/engine-client package (see Dockerfile). The image's
+# HEALTHCHECK and graceful-shutdown handling are inherited as-is.
+
+services:
+  engine:
+    build:
+      context: ..
+      dockerfile: engine/Dockerfile
+    image: houston/ts-engine:local
+    restart: unless-stopped
+    ports:
+      # host:container — the container always listens on 4317 internally.
+      - "${HOUSTON_HOST_PORT:-4317}:4317"
+    environment:
+      # Bind on all interfaces inside the container (default 127.0.0.1 would be
+      # unreachable from outside it).
+      HOUSTON_HOST: "0.0.0.0"
+      HOUSTON_PORT: "4317"
+      HOUSTON_DATA_DIR: "/data"
+      HOUSTON_WORKSPACE_DIR: "/workspace"
+      # Required. Compose errors out if it's unset, so the engine is never
+      # exposed without auth.
+      HOUSTON_ENGINE_TOKEN: "${HOUSTON_ENGINE_TOKEN:?set HOUSTON_ENGINE_TOKEN in .env (try: openssl rand -hex 32)}"
+      HOUSTON_CORS_ORIGIN: "${HOUSTON_CORS_ORIGIN:-*}"
+    volumes:
+      # auth.json + conversation transcripts. Survives container restarts.
+      - houston-data:/data
+      # The directory the agent may read and edit. Swap the named volume for a
+      # bind mount to expose a real project, e.g.  - /srv/my-project:/workspace
+      - houston-workspace:/workspace
+
+volumes:
+  houston-data:
+  houston-workspace:

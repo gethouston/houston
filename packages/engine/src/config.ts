@@ -18,7 +18,7 @@ export const config = {
   host: env.HOUSTON_HOST || "127.0.0.1",
   port: Number(env.HOUSTON_PORT || 4317),
   /** Default Anthropic model (Claude Pro/Max subscription). */
-  model: env.HOUSTON_MODEL || "claude-sonnet-4-5",
+  model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Optional bearer token. Empty = no auth (local dev on loopback). */
   token: env.HOUSTON_ENGINE_TOKEN || "",
   /** Allowed CORS origin for the webapp. "*" (default) or an explicit origin. */
