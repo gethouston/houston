@@ -65,7 +65,6 @@ Need specific knowledge? Load on demand:
 - Colors, typography, components, animation → `knowledge-base/design-system.md`
 - `.houston/` layout, schemas, reactivity → `knowledge-base/files-first.md`
 - Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
-- Workflows (saved + inline runs, chat markers, inline panel) → `knowledge-base/workflows.md`
 - Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
 - Engine wire protocol (REST + WS) → `knowledge-base/engine-protocol.md`
 - Provider error taxonomy + classifier contract → `knowledge-base/provider-errors.md`
