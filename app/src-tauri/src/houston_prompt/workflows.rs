@@ -37,4 +37,5 @@ Rules:
 - Emit at most one marker per reply.
 - `planPrompt` is required for an inline workflow. Without a saved match and without `planPrompt`, the run is rejected.
 - The user approves the generated plan before execution. The marker starts a plan-then-approve flow, not an irreversible action.
+- Write `planPrompt`, `name`, and `description` in the user's current chat language (the same language you are speaking to them). The generated plan is shown to the user. Keep brand names and code identifiers untranslated.
 "#;

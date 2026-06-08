@@ -122,6 +122,16 @@ mod tests {
     }
 
     #[test]
+    fn workflow_guidance_requires_plan_language_match_chat() {
+        let prompt = system_prompt();
+
+        assert!(prompt.contains(
+            "Write `planPrompt`, `name`, and `description` in the user's current chat language"
+        ));
+        assert!(prompt.contains("Keep brand names and code identifiers untranslated"));
+    }
+
+    #[test]
     fn questions_guidance_describes_question_marker() {
         let prompt = system_prompt();
 
