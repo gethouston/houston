@@ -17,14 +17,18 @@ bun install            # first time only
 HOUSTON_WORKSPACE_DIR="$HOME/some/project" bun run dev
 ```
 
-Then open **http://127.0.0.1:4317**:
+The engine is API-only (REST + SSE) with no built-in UI. Drive it with the webapp
+(`pnpm --filter houston-web dev`) or the typed client
+([`@houston/engine-client`](../engine-client)), both pointed at
+`http://127.0.0.1:4317`. To wire up a login from scratch:
 
-1. Click **Connect Claude** → a Claude login tab opens.
-2. Authorize with your Claude Pro/Max subscription. Locally, the engine catches the
-   callback on `localhost:53692` and stores the token (auto-refreshed). Headless,
-   Claude shows a `code#state` instead — paste it back to finish.
-3. Type a message and watch the agent stream its reply (and run tools like
-   `read`/`ls`/`bash` in the workspace).
+1. `POST /auth/anthropic/login` → returns a Claude login URL; open it.
+2. Authorize with your Claude Pro/Max subscription. The engine catches the
+   callback on `localhost:53692` and stores the token (auto-refreshed); poll
+   `GET /auth/status` until `configured: true`. (Headless engines use a
+   copy-paste code instead — see below.)
+3. `POST /conversations/:id/messages` and stream the agent's reply (and tool
+   calls like `read`/`ls`/`bash`) from `GET /conversations/:id/events`.
 
 ### Headless login (no loopback)
 
@@ -55,8 +59,7 @@ src/auth/storage.ts      AuthStorage + ModelRegistry (persisted)
 src/auth/login.ts        multi-provider login orchestration (url / auth_code / device_code)
 src/auth/anthropic-headless.ts   headless Claude OAuth (console redirect + paste code)
 src/ai / src/session     headless ResourceLoader, createAgentSession, turn runner
-src/transport/server.ts  node:http router (REST + SSE) + static test page
-src/web/index.html       minimal browser test client
+src/transport/server.ts  node:http router (REST + SSE)
 src/main.ts              bootstrap
 ```
 

@@ -13,7 +13,7 @@ client live in **`@houston/engine-client`** — prefer that over hand-rolling fe
 - If the engine is started with `HOUSTON_ENGINE_TOKEN`, send `Authorization: Bearer <token>`
   on every request (the SSE stream also accepts `?token=<token>`).
 - If unset (local dev on loopback), the API is open.
-- `GET /` and `GET /health` are always public.
+- `GET /health` and `GET /version` are always public.
 
 ## CORS
 
