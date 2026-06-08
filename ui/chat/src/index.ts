@@ -207,6 +207,24 @@ export type { ProgressPanelProps } from "./progress-panel";
 // (desktop, mobile) can render the same card.
 export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
 export type { SkillInvocation, SkillInvocationField } from "./skill-message";
+export { decodeWorkflowRunMessage } from "./workflow-run-message";
+export type { WorkflowRunLink } from "./workflow-run-message";
+export {
+  decodeQuestionMessage,
+  decodeQuestionAnswerMessage,
+} from "./question-message";
+export type {
+  QuestionOption,
+  QuestionPrompt,
+  QuestionSpec,
+  QuestionAnswer,
+  QuestionAnswerSet,
+  DecodedQuestionMessage,
+  DecodedQuestionAnswerMessage,
+} from "./question-message";
+export { QuestionCard } from "./question-card";
+export type { QuestionCardProps } from "./question-card";
+export type { QuestionCardLabels } from "./question-card-parts";
 export { decodeAttachmentMessage, normalizeAttachmentReferences } from "./attachment-message";
 export type { AttachmentInvocation, AttachmentReference } from "./attachment-message";
 export {
