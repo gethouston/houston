@@ -21,6 +21,7 @@ import {
   useCancelWorkflowRun,
   useResumeWorkflowRun,
 } from "../../hooks/queries";
+import { useActiveRunLabels } from "../../hooks/use-active-run-labels";
 import type { TabProps } from "../../lib/types";
 
 export default function WorkflowsTab({ agent }: TabProps) {
@@ -55,29 +56,7 @@ export default function WorkflowsTab({ agent }: TabProps) {
   }
 
   const lastRuns = useMemo(() => latestRunByWorkflow(allRuns), [allRuns]);
-
-  const runStatusLabels = useMemo(
-    () => ({
-      planning: t("runStatus.planning"),
-      awaiting_approval: t("runStatus.awaiting_approval"),
-      running: t("runStatus.running"),
-      done: t("runStatus.done"),
-      error: t("runStatus.error"),
-      cancelled: t("runStatus.cancelled"),
-    }),
-    [t],
-  );
-
-  const stepStatusLabels = useMemo(
-    () => ({
-      pending: t("stepStatus.pending"),
-      running: t("stepStatus.running"),
-      done: t("stepStatus.done"),
-      error: t("stepStatus.error"),
-      cancelled: t("stepStatus.cancelled"),
-    }),
-    [t],
-  );
+  const { runStatus: runStatusLabels, activeRun } = useActiveRunLabels();
 
   const editorLabels = useMemo(
     () => ({
@@ -99,39 +78,7 @@ export default function WorkflowsTab({ agent }: TabProps) {
       planPromptLabel: t("editor.planPromptLabel"),
       planPromptPlaceholder: t("editor.planPromptPlaceholder"),
       recentRuns: t("editor.recentRuns"),
-      activeRun: {
-        title: t("activeRun.title"),
-        completedTitle: t("activeRun.completedTitle"),
-        actionTitle: t("activeRun.actionTitle"),
-        planning: t("activeRun.planning"),
-        synthesis: t("activeRun.synthesis"),
-        reviewPlan: t("activeRun.reviewPlan"),
-        reviewAction: t("activeRun.reviewAction"),
-        approve: t("activeRun.approve"),
-        actionApprove: t("activeRun.actionApprove"),
-        cancel: t("activeRun.cancel"),
-        runStatus: runStatusLabels,
-        approvalDialog: {
-          title: t("approval.title"),
-          description: t("approval.description"),
-          approve: t("approval.approve"),
-          cancel: t("approval.cancel"),
-          approving: t("approval.approving"),
-          stepProgress: { runsTogether: t("stepProgress.runsTogether"), stepStatus: stepStatusLabels },
-        },
-        actionApprovalDialog: {
-          title: t("actionApproval.title"),
-          description: t("actionApproval.description"),
-          approve: t("actionApproval.approve"),
-          cancel: t("actionApproval.cancel"),
-          approving: t("actionApproval.approving"),
-          stepProgress: { runsTogether: t("stepProgress.runsTogether"), stepStatus: stepStatusLabels },
-        },
-        stepProgress: {
-          runsTogether: t("stepProgress.runsTogether"),
-          stepStatus: stepStatusLabels,
-        },
-      },
+      activeRun,
       runHistory: {
         empty: t("history.empty"),
         resume: t("history.resume"),
@@ -144,7 +91,7 @@ export default function WorkflowsTab({ agent }: TabProps) {
         runStatus: runStatusLabels,
       },
     }),
-    [t, runStatusLabels, stepStatusLabels],
+    [t, activeRun, runStatusLabels],
   );
 
   const handleCreate = useCallback(() => {

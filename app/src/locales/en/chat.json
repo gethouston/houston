@@ -57,6 +57,18 @@
     "signedIn": "Signed in",
     "signIn": "Sign in"
   },
+  "question": {
+    "userInput": "User input",
+    "awaitingResponse": "AWAITING RESPONSE",
+    "answered": "ANSWERED",
+    "typeSomething": "Type something…",
+    "submit": "Submit",
+    "next": "Next",
+    "prev": "Previous",
+    "freeTextPlaceholder": "Your answer…",
+    "answerTitle": "Your answer",
+    "submitFailed": "Could not send your answer"
+  },
   "modelSelector": {
     "selectModel": "Select model",
     "model": "Model",

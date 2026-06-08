@@ -10,18 +10,22 @@ mod integrations;
 mod onboarding;
 mod routines;
 mod skills_memory;
+mod questions;
+mod workflows;
 
 pub use base::HOUSTON_SYSTEM_PROMPT;
 pub use integrations::COMPOSIO_GUIDANCE;
 pub use onboarding::ONBOARDING_GUIDANCE;
 pub use routines::ROUTINES_GUIDANCE;
 pub use skills_memory::SELF_IMPROVEMENT_GUIDANCE;
+pub use questions::QUESTIONS_GUIDANCE;
+pub use workflows::WORKFLOWS_GUIDANCE;
 
 /// Build the composite system prompt the engine uses as its fallback.
-/// Order: base identity, skills/memory guidance, routines guidance, Composio guidance.
+/// Order: base identity, skills/memory guidance, routines guidance, workflows guidance, Composio guidance.
 pub fn system_prompt() -> String {
     format!(
-        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}{}{}",
+        "{HOUSTON_SYSTEM_PROMPT}\n\n---\n\n{SELF_IMPROVEMENT_GUIDANCE}\n\n---\n\n{ROUTINES_GUIDANCE}\n\n---\n\n{WORKFLOWS_GUIDANCE}\n\n---\n\n{QUESTIONS_GUIDANCE}{}{}",
         COMPOSIO_GUIDANCE,
         integrations::COMPOSIO_WINDOWS_SHELL,
     )
@@ -90,6 +94,41 @@ mod tests {
         assert!(
             prompt.contains("Ask for approval before creating, enabling, or changing a Routine")
         );
+    }
+
+    #[test]
+    fn workflow_guidance_describes_trigger_marker() {
+        let prompt = system_prompt();
+
+        assert!(prompt.contains("## How-To Guidance: Workflows"));
+        assert!(prompt.contains("<!--houston:workflow "));
+        assert!(prompt.contains("workflowId"));
+        assert!(prompt.contains("planPrompt"));
+        assert!(prompt.contains("Do not start a Workflow"));
+    }
+
+    #[test]
+    fn workflow_guidance_auto_detects_multi_step_and_clarifies_first() {
+        let prompt = system_prompt();
+
+        assert!(prompt.contains("more than 3 distinct actions"));
+        assert!(prompt.contains("run in parallel"));
+        assert!(prompt.contains("## Clarify before planning"));
+        assert!(prompt.contains("structured question marker"));
+        assert!(prompt.contains(
+            "Do not emit a workflow marker on a turn where you are still asking questions"
+        ));
+        assert!(prompt.contains("fold the user's answers into `planPrompt`"));
+    }
+
+    #[test]
+    fn questions_guidance_describes_question_marker() {
+        let prompt = system_prompt();
+
+        assert!(prompt.contains("## How-To Guidance: Structured questions"));
+        assert!(prompt.contains("<!--houston:question "));
+        assert!(prompt.contains("allowFreeText"));
+        assert!(prompt.contains("Emit at most one question marker per reply"));
     }
 
     #[test]
