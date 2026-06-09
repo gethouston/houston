@@ -1,6 +1,6 @@
 [package]
 name = "houston-file-watcher"
-version = "0.4.19"
+version = "0.4.20"
 edition = "2021"
 description = "Filesystem watcher that classifies changes in an agent directory and emits HoustonEvent variants for UI reactivity"
 license = "MIT"

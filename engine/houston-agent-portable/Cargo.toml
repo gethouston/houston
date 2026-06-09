@@ -1,6 +1,6 @@
 [package]
 name = "houston-agent-portable"
-version = "0.4.19"
+version = "0.4.20"
 edition = "2021"
 description = "Portable agent package format — share an agent's CLAUDE.md, skills, routines, and learnings as a single .houstonagent file."
 license = "MIT"
