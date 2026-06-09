@@ -132,6 +132,26 @@ textarea {
   font-variant-ligatures: none;
 }
 
+/* Kanban card drag cursor (pointer-events based — see @houston-ai/board's
+   use-board-drag). Native HTML5 drag lets each OS pick the drag cursor; the
+   board runs the drag itself, so we force ONE cursor across macOS, Windows and
+   Linux here. The `!important` universal selector beats every element's own
+   cursor (cards rest on `pointer`). `user-select` is killed so a drag never
+   paints a text selection. The forbidden rule (running section) uses two
+   classes, so it outranks the grab rule by specificity regardless of order. */
+body.kanban-dragging,
+body.kanban-dragging * {
+  cursor: grabbing !important;
+}
+body.kanban-dragging {
+  user-select: none;
+  -webkit-user-select: none;
+}
+body.kanban-dragging.kanban-dragging-forbidden,
+body.kanban-dragging.kanban-dragging-forbidden * {
+  cursor: not-allowed !important;
+}
+
 body {
   background-color: var(--color-background);
   color: var(--color-foreground);

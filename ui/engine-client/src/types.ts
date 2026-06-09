@@ -165,6 +165,13 @@ export interface NewActivity {
   model?: string;
 }
 
+/**
+ * Whether a routine's runs share one chat or each start a fresh one.
+ * `"shared"` (the default) keeps one chat per routine; `"per_run"` surfaces
+ * each run in its own chat.
+ */
+export type RoutineChatMode = "shared" | "per_run";
+
 export interface Routine {
   id: string;
   name: string;
@@ -173,6 +180,8 @@ export interface Routine {
   schedule: string;
   enabled: boolean;
   suppress_when_silent: boolean;
+  /** Whether each run reuses one chat or starts a fresh one. */
+  chat_mode: RoutineChatMode;
   /** IANA timezone override; absent means use the user's preference. */
   timezone?: string | null;
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
@@ -188,6 +197,8 @@ export interface NewRoutine {
   schedule: string;
   enabled?: boolean;
   suppress_when_silent?: boolean;
+  /** Defaults to `"shared"` (one chat per routine) when omitted. */
+  chat_mode?: RoutineChatMode;
   /** IANA timezone override (e.g. "America/Bogota"). Falls back to user pref. */
   timezone?: string | null;
   /** Composio toolkit slugs this routine uses. */
@@ -201,6 +212,7 @@ export interface RoutineUpdate {
   schedule?: string;
   enabled?: boolean;
   suppress_when_silent?: boolean;
+  chat_mode?: RoutineChatMode;
   /** Set to a string to override, `null` to clear, omit to leave unchanged. */
   timezone?: string | null;
   integrations?: string[];

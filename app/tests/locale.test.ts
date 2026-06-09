@@ -6,6 +6,7 @@ import {
   resolveEffectiveLocale,
   localeToApply,
   activeWorkspaceLocale,
+  localeGateIsLoading,
 } from "../src/lib/locale.ts";
 
 describe("isSupported", () => {
@@ -109,5 +110,23 @@ describe("activeWorkspaceLocale", () => {
     const list = [ws("a", true), ws("b", false, "pt")];
     strictEqual(activeWorkspaceLocale(list, null), null); // default has no override
     strictEqual(activeWorkspaceLocale(list, "a"), null);
+  });
+});
+
+describe("localeGateIsLoading", () => {
+  it("blocks the first paint until the global preference is loaded and applied", () => {
+    ok(localeGateIsLoading(true, false)); // global still loading
+    ok(localeGateIsLoading(true, true)); // global loading wins regardless of applied
+    ok(localeGateIsLoading(false, false)); // loaded but not yet applied
+    strictEqual(localeGateIsLoading(false, true), false); // loaded + applied -> paint
+  });
+
+  it("does NOT depend on the best-effort workspace override query (gethouston/houston#439)", () => {
+    // The predicate takes no workspace-query argument by design: a non-settling
+    // GET /workspaces must never hold the gate. Once the global preference is
+    // loaded and applied, the gate releases — there is no third input that a
+    // stalled override query could keep true. This is the regression guard for
+    // the v0.4.17 launch hang.
+    strictEqual(localeGateIsLoading(false, true), false);
   });
 });

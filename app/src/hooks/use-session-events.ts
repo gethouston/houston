@@ -128,8 +128,13 @@ export function useSessionEvents() {
               session_key,
               h.getAgent()?.name ?? "Agent",
             );
-            if (!nav && session_key.startsWith("activity-") && !session_key.startsWith("routine-")) {
-              logger.debug(`[notification] completed agent not in loaded list: agent_path=${agent_path}`);
+            if (
+              !nav &&
+              (session_key.startsWith("activity-") || session_key.startsWith("routine-"))
+            ) {
+              logger.debug(
+                `[notification] completed chat not navigable (agent not in loaded list?): agent_path=${agent_path} session_key=${session_key}`,
+              );
             }
 
             sendSessionNotification(
@@ -193,7 +198,9 @@ export function useSessionEvents() {
     import("@tauri-apps/plugin-notification").then(({ onAction }) => {
       onAction((action) => {
         logger.debug(`[notification] onAction fired: ${JSON.stringify(action)} pendingNav=${describePendingNotificationNav()}`);
-        consumePendingNav();
+        consumePendingNav().catch((e) => {
+          logger.error(`[notification] consumePendingNav (onAction) failed: ${e}`);
+        });
       }).then((unlisten) => {
         unlistenNotificationAction = () => { unlisten.unregister(); };
       }).catch((e) => {
@@ -215,7 +222,11 @@ export function useSessionEvents() {
     //    are picked up when the window comes forward.
     const unlistenActivated = listenOsEvent<unknown>("app-activated", () => {
       logger.debug(`[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`);
-      if (shouldNavigateOnAppActivation(isMac)) consumePendingNav();
+      if (shouldNavigateOnAppActivation(isMac)) {
+        consumePendingNav().catch((e) => {
+          logger.error(`[notification] consumePendingNav (app-activated) failed: ${e}`);
+        });
+      }
       const ws = useWorkspaceStore.getState().current;
       if (ws) {
         // Silent refresh — don't flip loading:true, which would unmount the
@@ -229,7 +240,9 @@ export function useSessionEvents() {
     // mission on those platforms. macOS never emits it (uses the focus path).
     const unlistenNotifClick = listenOsEvent<unknown>("notification-clicked", () => {
       logger.debug(`[notification] notification-clicked event fired: pendingNav=${describePendingNotificationNav()}`);
-      consumePendingNav();
+      consumePendingNav().catch((e) => {
+        logger.error(`[notification] consumePendingNav (notification-clicked) failed: ${e}`);
+      });
     });
 
     // Fallback: Tauri window focus event (macOS only — see listenForNotificationFocus).

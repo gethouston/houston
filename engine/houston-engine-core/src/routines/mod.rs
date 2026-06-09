@@ -18,7 +18,7 @@ use serde::Serialize;
 use std::path::Path;
 use uuid::Uuid;
 
-pub use types::{NewRoutine, Routine, RoutineUpdate};
+pub use types::{NewRoutine, Routine, RoutineChatMode, RoutineUpdate};
 
 const FILE: &str = "routines";
 
@@ -59,6 +59,7 @@ pub fn create(root: &Path, input: NewRoutine) -> CoreResult<Routine> {
         schedule: input.schedule,
         enabled: input.enabled,
         suppress_when_silent: input.suppress_when_silent,
+        chat_mode: input.chat_mode,
         timezone: input.timezone,
         integrations: input.integrations,
         created_at: now.clone(),
@@ -93,6 +94,9 @@ pub fn update(root: &Path, id: &str, updates: RoutineUpdate) -> CoreResult<Routi
     }
     if let Some(suppress) = updates.suppress_when_silent {
         routine.suppress_when_silent = suppress;
+    }
+    if let Some(chat_mode) = updates.chat_mode {
+        routine.chat_mode = chat_mode;
     }
     if let Some(tz) = updates.timezone {
         routine.timezone = tz;
@@ -130,6 +134,7 @@ mod tests {
             schedule: "0 9 * * 1-5".into(),
             enabled: true,
             suppress_when_silent: true,
+            chat_mode: RoutineChatMode::Shared,
             timezone: None,
             integrations: vec![],
         }
@@ -176,6 +181,56 @@ mod tests {
         let d = TempDir::new().unwrap();
         let err = update(d.path(), "nope", RoutineUpdate::default()).unwrap_err();
         assert!(matches!(err, CoreError::NotFound(_)));
+    }
+
+    #[test]
+    fn chat_mode_defaults_to_shared_and_round_trips() {
+        // New routines default to one shared chat (#381); the option flips to a
+        // fresh chat per run (#423) and persists across read-back.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), sample()).unwrap();
+        assert_eq!(r.chat_mode, RoutineChatMode::Shared, "default is one shared chat");
+
+        let upd = update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                chat_mode: Some(RoutineChatMode::PerRun),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(upd.chat_mode, RoutineChatMode::PerRun);
+        // Re-read from disk to prove it serialized, not just mutated in memory.
+        let reloaded = list(d.path()).unwrap();
+        assert_eq!(reloaded[0].chat_mode, RoutineChatMode::PerRun);
+    }
+
+    #[test]
+    fn chat_mode_absent_on_disk_reads_as_shared() {
+        // A routine written before this option (no `chat_mode` key) must read
+        // back as Shared so existing routines keep one chat with no migration.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("routines.json"),
+            r#"[{
+              "id": "legacy",
+              "name": "Old",
+              "description": "",
+              "prompt": "p",
+              "schedule": "0 9 * * *",
+              "enabled": true,
+              "suppress_when_silent": true,
+              "integrations": [],
+              "created_at": "2026-05-01T00:00:00Z",
+              "updated_at": "2026-05-01T00:00:00Z"
+            }]"#,
+        )
+        .unwrap();
+        let loaded = list(d.path()).unwrap();
+        assert_eq!(loaded[0].chat_mode, RoutineChatMode::Shared);
     }
 
     #[test]

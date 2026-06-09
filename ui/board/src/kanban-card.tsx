@@ -8,7 +8,6 @@ import {
 } from "@houston-ai/core"
 import { Trash2, Check, Pencil } from "lucide-react"
 import type { KanbanItem } from "./types"
-import { BOARD_CARD_DRAG_TYPE } from "./dnd"
 
 export interface KanbanCardLabels {
   /** @deprecated kept for backward-compat. Was the visible Approve pill text;
@@ -62,12 +61,12 @@ export interface KanbanCardProps {
   onToggleSelect?: () => void
   /** Make the card draggable so it can be dropped onto another column.
    *  Suppressed while renaming or during a multi-select so it doesn't
-   *  collide with those interactions. */
+   *  collide with those interactions. The board reads the resulting
+   *  `data-kanban-draggable` marker to start its pointer drag. */
   enableDrag?: boolean
-  /** Called when a drag of this card starts. */
-  onDragStart?: () => void
-  /** Called when a drag of this card ends (drop or cancel). */
-  onDragEnd?: () => void
+  /** True while THIS card is the one being dragged — dims it. Driven by the
+   *  board's drag state. */
+  dragging?: boolean
 }
 
 export function KanbanCard({
@@ -89,8 +88,7 @@ export function KanbanCard({
   anySelected = false,
   onToggleSelect,
   enableDrag = false,
-  onDragStart,
-  onDragEnd,
+  dragging = false,
 }: KanbanCardProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
   const isRunning = runningStatuses.includes(item.status)
@@ -99,7 +97,6 @@ export function KanbanCard({
   const [showConfirm, setShowConfirm] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editValue, setEditValue] = useState(item.title)
-  const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
   // Don't let a drag start while renaming (the title input owns the gesture)
   // or while a multi-select is active (the bulk action bar owns moves then).
@@ -137,21 +134,12 @@ export function KanbanCard({
     <>
       <div
         onClick={(e) => { e.stopPropagation(); onSelect() }}
-        draggable={canDrag}
-        onDragStart={
-          canDrag
-            ? (e) => {
-                e.dataTransfer.setData(BOARD_CARD_DRAG_TYPE, item.id)
-                e.dataTransfer.effectAllowed = "move"
-                setDragging(true)
-                onDragStart?.()
-              }
-            : undefined
-        }
-        onDragEnd={() => {
-          setDragging(false)
-          onDragEnd?.()
-        }}
+        // The board runs the drag (pointer events, delegated). These markers
+        // tell it which element is a card and whether it may be dragged right
+        // now; `canDrag` already excludes renaming + multi-select. Attribute
+        // names must match board-drag-dom (data-kanban-card / -draggable).
+        data-kanban-card={item.id}
+        data-kanban-draggable={canDrag ? "" : undefined}
         aria-selected={selected || undefined}
         data-highlighted={highlighted || undefined}
         // For running + active, override the running-glow inner fill
@@ -176,11 +164,11 @@ export function KanbanCard({
           // Restrict transitions to the safe properties we actually
           // care about.
           "group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
-          // The card body shows the grab "hand" so the whole card reads as
-          // draggable. The title is the one exception: its own span overrides
-          // this with a pointer + underline (see below) so only the title
-          // reads as the click affordance.
-          canDrag ? "cursor-grab active:cursor-grabbing" : "cursor-pointer",
+          // The whole card reads as clickable: a plain pointer, never the grab
+          // "hand". During a drag the global `body.kanban-dragging` cursor (set
+          // by the board) overrides this everywhere, so the same grab/not-
+          // allowed cursor shows on every OS.
+          "cursor-pointer",
           selected || highlighted ? "bg-accent shadow-md" : "bg-background",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
@@ -314,13 +302,13 @@ export function KanbanCard({
           />
         ) : (
           <p className="text-[13px] font-medium text-foreground line-clamp-2">
-            {/* The title is the explicit click affordance: pointer cursor +
-                underline on hover, scoped to the text glyphs. The click still
-                bubbles to the card's onSelect, and `stopPropagation` keeps a
-                title click from also triggering it twice. */}
+            {/* The title click selects the card (same as the body); no hover
+                underline. The global drag cursor overrides this pointer while a
+                drag is in flight. `stopPropagation` keeps a title click from
+                triggering the body's onSelect twice. */}
             <span
               onClick={(e) => { e.stopPropagation(); onSelect() }}
-              className="cursor-pointer hover:underline"
+              className="cursor-pointer"
             >
               {item.title}
             </span>

@@ -298,7 +298,7 @@ mod tests {
     use super::*;
     use crate::routines::create;
     use crate::routines::runner::{DispatchContext, DispatchOutcome};
-    use crate::routines::types::NewRoutine;
+    use crate::routines::types::{NewRoutine, RoutineChatMode};
     use async_trait::async_trait;
     use houston_ui_events::NoopEventSink;
     use std::path::Path;
@@ -334,6 +334,7 @@ mod tests {
             schedule: "0 9 * * *".into(),
             enabled,
             suppress_when_silent: true,
+            chat_mode: RoutineChatMode::Shared,
             timezone: tz.map(str::to_string),
             integrations: vec![],
         }
@@ -400,6 +401,7 @@ mod tests {
                 schedule: "not a cron".into(),
                 enabled: true,
                 suppress_when_silent: true,
+                chat_mode: RoutineChatMode::Shared,
                 timezone: None,
                 integrations: vec![],
             },

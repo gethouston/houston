@@ -1,12 +1,7 @@
 import * as Sentry from "@sentry/browser";
 import {
-  defaultOptions as tauriSentryDefaults,
-  makeRendererTransport,
-} from "tauri-plugin-sentry-api";
-import { isReplayEnvelope } from "./sentry-replay";
-import {
-  makeSplitTransportSend,
-  makeSplitTransportFlush,
+  eventIdFromEnvelope,
+  isAcceptedStatus,
   resolveCapturedEventId,
 } from "./sentry-transport";
 
@@ -14,9 +9,9 @@ import {
 // string in dev / forks → init bails, every capture is a silent no-op.
 const DSN = typeof __SENTRY_DSN__ !== "undefined" ? __SENTRY_DSN__ : "";
 
-// Release MUST match what the Rust SDK reports (sentry::release_name!() in
-// lib.rs) AND what release.yml uploads sourcemaps + debug-files under,
-// otherwise stack traces won't resolve.
+// Release MUST match what the Rust SDK reports (the explicit
+// `houston-app@<CARGO_PKG_VERSION>` in lib.rs) AND what release.yml uploads
+// sourcemaps + debug-files under, otherwise stack traces won't resolve.
 const RELEASE = `houston-app@${
   typeof __APP_VERSION__ !== "undefined" ? __APP_VERSION__ : "0.0.0"
 }`;
@@ -30,17 +25,38 @@ const REPLAYS_ON_ERROR_SAMPLE_RATE = 1.0;
 
 let initialized = false;
 
+// Per-event delivery outcome recorded by the confirming transport (below) and
+// read+cleared by captureException: true once Sentry accepts the event with a
+// 2xx. Bounded so it can't grow unboundedly from envelopes captured outside
+// captureException (replay envelopes carry no header event_id; the SDK's own
+// GlobalHandlers integration is stripped — see initSentry).
+const deliveryAccepted = new Map<string, boolean>();
+const MAX_TRACKED_DELIVERIES = 64;
+
+function recordDelivery(eventId: string, accepted: boolean): void {
+  if (deliveryAccepted.size >= MAX_TRACKED_DELIVERIES) {
+    const oldest = deliveryAccepted.keys().next().value;
+    if (oldest !== undefined) deliveryAccepted.delete(oldest);
+  }
+  deliveryAccepted.set(eventId, accepted);
+}
+
 /**
- * Init Sentry on the frontend. `defaultOptions` from tauri-plugin-sentry-api
- * pipes the JS transport + breadcrumbs through Tauri IPC into the Rust
- * Sentry SDK — single endpoint, single release tag, no duplicate events
- * even though both lib.rs (Rust) and main.tsx (JS) call sentry::init.
+ * Init Sentry on the frontend.
  *
- * Session Replay is the exception: replay envelopes can't survive the IPC hop
- * (the Rust SDK's envelope parser has no `replay_event` / `replay_recording`
- * variant, so tauri-plugin-sentry drops them). We install a split transport
- * that sends replay envelopes straight to Sentry over HTTP and keeps every
- * other envelope on the Rust IPC path. See ./sentry-replay.
+ * Transport: renderer events go STRAIGHT to Sentry over HTTP
+ * (`makeFetchTransport`), NOT through the tauri-plugin-sentry IPC bridge. The
+ * IPC path silently dropped `@sentry/browser` 10.x error envelopes in packaged
+ * builds (the plugin's Rust `sentry-types` parser rejected the newer envelope
+ * and discarded it with no logging), so JS errors never reached Sentry while
+ * `flush()` still reported success. Direct HTTP is the path Session Replay
+ * already used successfully, so it's proven to work from the Tauri webview.
+ * Native (Rust) crash reporting is unaffected — it's the `sentry` crate's panic
+ * handler from `sentry::init` in lib.rs, not this transport.
+ *
+ * The transport is wrapped to record each send's real HTTP outcome per event
+ * id, so captureException can confirm Sentry actually accepted an event before
+ * the "report sent" toast claims so.
  *
  * Fire-and-forget. Empty DSN → silent no-op (local dev without secrets).
  */
@@ -49,35 +65,46 @@ export function initSentry(): void {
   initialized = true;
 
   Sentry.init({
-    ...tauriSentryDefaults,
     dsn: DSN,
     release: RELEASE,
     environment: import.meta.env.DEV ? "development" : "production",
-    // Strip sensitive query params from URLs in breadcrumbs. Also keep PII off
-    // for Session Replay — Houston serves non-technical users whose chat
-    // messages, prompts, agent + workspace names and file paths must never
-    // enter a recording (the masking integration options below enforce this).
+    // Keep PII off for Session Replay — Houston serves non-technical users
+    // whose chat messages, prompts, agent + workspace names and file paths must
+    // never enter a recording (the masking integration options below enforce
+    // this).
     sendDefaultPii: false,
-    // Split transport: replay -> direct HTTP, everything else -> Rust via IPC.
-    // Routing + combined-flush logic lives in the pure, unit-tested
-    // ./sentry-transport helpers (this factory can't run under node:test).
+    // Direct HTTP transport, wrapped to record real per-event delivery.
     transport: (options) => {
-      const ipcTransport = makeRendererTransport(options);
-      const fetchTransport = Sentry.makeFetchTransport(options);
+      const inner = Sentry.makeFetchTransport(options);
       return {
-        send: makeSplitTransportSend(
-          ipcTransport,
-          fetchTransport,
-          isReplayEnvelope,
-        ),
-        flush: makeSplitTransportFlush(ipcTransport, fetchTransport),
+        send: async (envelope) => {
+          const eventId = eventIdFromEnvelope(envelope);
+          try {
+            const response = await inner.send(envelope);
+            if (eventId) {
+              recordDelivery(eventId, isAcceptedStatus(response?.statusCode));
+            }
+            return response;
+          } catch (err) {
+            // Network error / timeout: the event did NOT reach Sentry.
+            if (eventId) recordDelivery(eventId, false);
+            throw err;
+          }
+        },
+        flush: (timeout) => inner.flush(timeout),
       };
     },
     integrations: (defaultIntegrations) => [
-      // tauri-plugin-sentry strips BrowserSession (app sessions are tracked in
-      // Rust, not browser sessions). Preserve that, then add Session Replay.
+      // - BrowserSession: app release-health sessions are tracked in Rust
+      //   (lib.rs auto_session_tracking), so drop the browser one to avoid
+      //   double counting.
+      // - GlobalHandlers: uncaught errors + unhandled rejections are captured
+      //   AND toasted explicitly in main.tsx (so the user gets the event id);
+      //   drop the SDK's auto-capture to avoid duplicate events.
       ...defaultIntegrations.filter(
-        (integration) => integration.name !== "BrowserSession",
+        (integration) =>
+          integration.name !== "BrowserSession" &&
+          integration.name !== "GlobalHandlers",
       ),
       Sentry.replayIntegration({
         // Privacy-first: mask all text + inputs and block media so recordings
@@ -94,10 +121,13 @@ export function initSentry(): void {
 }
 
 /**
- * Capture an exception and wait for the frontend transport to flush. Returns
- * the event ID only when the SDK confirms the pending envelope left its queue.
- * This is still not a Sentry ingestion guarantee, but it prevents the app from
- * showing a "reported" toast for events that never reached the transport.
+ * Capture an exception and return its Sentry event id ONLY once the transport
+ * flushed AND Sentry accepted the event with a 2xx. Otherwise returns "" so the
+ * caller never shows a "report sent" confirmation for an event that didn't
+ * actually land (offline, timeout, rate-limited, sampled/dropped). This is a
+ * real send/accept confirmation — the direct fetch transport's flush waits for
+ * the HTTP round-trip, unlike the old IPC transport which reported success
+ * unconditionally.
  */
 export async function captureException(
   error: unknown,
@@ -110,7 +140,13 @@ export async function captureException(
     context ? { tags: context } : undefined,
   );
   const flushed = await Sentry.flush(5000);
-  return resolveCapturedEventId(eventId, flushed);
+  // By the time flush resolves, the wrapper's send() has run for this envelope
+  // and recorded its outcome. The exact microtask ordering isn't guaranteed, so
+  // a missing entry is treated as not-accepted — worst case a real send shows no
+  // green toast (conservative), never a false "report sent".
+  const accepted = deliveryAccepted.get(eventId) === true;
+  deliveryAccepted.delete(eventId);
+  return resolveCapturedEventId(eventId, flushed, accepted);
 }
 
 /**

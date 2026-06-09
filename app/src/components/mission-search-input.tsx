@@ -1,8 +1,12 @@
+import { useLayoutEffect, useRef, useState } from "react";
 import { Input } from "@houston-ai/core";
 import { Loader2, Search, X } from "lucide-react";
 
 interface MissionSearchInputLabels {
   placeholder: string;
+  /** Shown only when the input is too narrow to fit `placeholder` without
+   *  clipping (e.g. "Search..."). Omit to always show `placeholder`. */
+  placeholderShort?: string;
   clear: string;
   searchingText: string;
 }
@@ -15,6 +19,16 @@ interface MissionSearchInputProps {
   onChange: (value: string) => void;
 }
 
+// Reused offscreen canvas for measuring placeholder text width.
+let measureCanvas: HTMLCanvasElement | null = null;
+function textWidth(text: string, font: string): number {
+  measureCanvas ??= document.createElement("canvas");
+  const ctx = measureCanvas.getContext("2d");
+  if (!ctx) return 0;
+  ctx.font = font;
+  return ctx.measureText(text).width;
+}
+
 export function MissionSearchInput({
   value,
   isSearchingText,
@@ -22,16 +36,45 @@ export function MissionSearchInput({
   className,
   onChange,
 }: MissionSearchInputProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null);
+  // Visible placeholder: the full text, or the short one when it wouldn't fit.
+  const [placeholder, setPlaceholder] = useState(labels.placeholder);
+  const { placeholder: full, placeholderShort } = labels;
+
+  // Layout effect (not useEffect) so the first measurement happens before paint
+  // — avoids a full→short flicker on mount when the input is already narrow.
+  useLayoutEffect(() => {
+    const el = wrapperRef.current?.querySelector("input");
+    if (!el || !placeholderShort) {
+      setPlaceholder(full);
+      return;
+    }
+    const update = () => {
+      const cs = getComputedStyle(el);
+      const font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
+      const available = Math.max(
+        0,
+        el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0),
+      );
+      // +4px so it switches just before the text would actually clip.
+      setPlaceholder(textWidth(full, font) + 4 <= available ? full : placeholderShort);
+    };
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [full, placeholderShort]);
+
   return (
-    <div className={className ?? "relative"}>
+    <div ref={wrapperRef} className={className ?? "relative"}>
       <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
       <Input
         type="text"
         role="searchbox"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={labels.placeholder}
-        aria-label={labels.placeholder}
+        placeholder={placeholder}
+        aria-label={full}
         autoComplete="off"
         className="rounded-full border-border bg-background pl-9 pr-16 text-sm focus:bg-background"
       />

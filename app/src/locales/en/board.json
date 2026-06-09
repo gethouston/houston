@@ -23,6 +23,7 @@
   },
   "search": {
     "placeholder": "Search missions",
+    "placeholderShort": "Search...",
     "clear": "Clear search",
     "clearCta": "Clear search",
     "searchingText": "Searching mission text",

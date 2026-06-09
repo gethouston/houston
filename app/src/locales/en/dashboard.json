@@ -1,10 +1,16 @@
 {
   "title": "Mission Control",
+  "archived": {
+    "back": "Back",
+    "button": "Archived",
+    "title": "Archived"
+  },
   "filter": {
     "allAgents": "All agents"
   },
   "search": {
     "placeholder": "Search missions",
+    "placeholderShort": "Search...",
     "clear": "Clear search",
     "clearCta": "Clear search",
     "searchingText": "Searching mission text",

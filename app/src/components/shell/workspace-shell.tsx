@@ -127,65 +127,87 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
                     activeTab={viewMode}
                     onTabChange={setViewMode}
                     actions={
-                      <div data-keep-panel-open className="flex items-center gap-2">
+                      <div
+                        data-keep-panel-open
+                        className="flex min-w-0 flex-1 items-center justify-end gap-2"
+                      >
                         {currentAgent && (
                           <MissionSearchInput
                             value={agentMissionSearchQuery}
                             isSearchingText={agentMissionSearchLoading}
                             labels={{
                               placeholder: t("board:search.placeholder"),
+                              placeholderShort: t("board:search.placeholderShort"),
                               clear: t("board:search.clear"),
                               searchingText: t("board:search.searchingText"),
                             }}
-                            className="relative w-[240px]"
+                            className="relative min-w-0 flex-1 max-w-[320px]"
                             onChange={(value) => {
                               setAgentMissionSearchQuery(currentAgent.folderPath, value);
                               if (viewMode !== "activity") setViewMode("activity");
                             }}
                           />
                         )}
-                        <Button
-                          data-tour-target="appTour"
-                          variant="ghost"
-                          className="rounded-full"
-                          onClick={() => setUiTourActive(true)}
-                        >
-                          {t("shell:tabActions.startTour")}
-                          <Compass className="size-4" />
-                        </Button>
-                        {onStartMission && (
+                        <div className="flex shrink-0 items-center gap-2">
                           <Tooltip>
                             <TooltipTrigger asChild>
                               <Button
-                                data-tour-target="newMission"
-                                onClick={() => {
-                                  setViewMode("activity");
-                                  setTimeout(() => {
-                                    useUIStore.getState().onStartMission?.();
-                                  }, 50);
-                                }}
+                                data-tour-target="appTour"
+                                variant="ghost"
+                                size={missionPanelOpen ? "icon" : "default"}
+                                className="rounded-full"
+                                onClick={() => setUiTourActive(true)}
+                                aria-label={t("shell:tabActions.startTour")}
                               >
-                                <HoustonLogo size={16} />
-                                {t("shell:tabActions.newMission")}
+                                <Compass className="size-4" />
+                                {!missionPanelOpen && t("shell:tabActions.startTour")}
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent side="bottom">
-                              {shortcutLabel("newMission")}
-                            </TooltipContent>
+                            {missionPanelOpen && (
+                              <TooltipContent side="bottom">
+                                {t("shell:tabActions.startTour")}
+                              </TooltipContent>
+                            )}
                           </Tooltip>
-                        )}
-                        {boardActions.map((action) => (
-                          <Button
-                            key={action.id}
-                            variant="secondary"
-                            onClick={() => {
-                              setViewMode("activity");
-                              setTimeout(() => action.onClick(), 50);
-                            }}
-                          >
-                            {action.label}
-                          </Button>
-                        ))}
+                          {onStartMission && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  data-tour-target="newMission"
+                                  size={missionPanelOpen ? "icon" : "default"}
+                                  className={cn(missionPanelOpen && "rounded-full")}
+                                  onClick={() => {
+                                    setViewMode("activity");
+                                    setTimeout(() => {
+                                      useUIStore.getState().onStartMission?.();
+                                    }, 50);
+                                  }}
+                                  aria-label={t("shell:tabActions.newMission")}
+                                >
+                                  <HoustonLogo size={16} />
+                                  {!missionPanelOpen && t("shell:tabActions.newMission")}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                {missionPanelOpen
+                                  ? t("shell:tabActions.newMission")
+                                  : shortcutLabel("newMission")}
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          {boardActions.map((action) => (
+                            <Button
+                              key={action.id}
+                              variant="secondary"
+                              onClick={() => {
+                                setViewMode("activity");
+                                setTimeout(() => action.onClick(), 50);
+                              }}
+                            >
+                              {action.label}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     }
                   />

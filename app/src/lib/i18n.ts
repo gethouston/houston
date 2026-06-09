@@ -20,6 +20,7 @@ import {
   resolveEffectiveLocale,
   localeToApply,
   activeWorkspaceLocale,
+  localeGateIsLoading,
   type SupportedLocale,
 } from "./locale";
 
@@ -85,6 +86,7 @@ export {
   resolveEffectiveLocale,
   localeToApply,
   activeWorkspaceLocale,
+  localeGateIsLoading,
 };
 export type { SupportedLocale };
 

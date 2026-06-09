@@ -19,6 +19,7 @@ import {
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
 import { ComposioLinkCard } from "../../composio-link-card";
 import { parseComposioToolkitFromHref } from "../../composio-card-state";
+import { withComposioWaitingFooter } from "../../composio-waiting-footer";
 import {
   ComposioSigninCard,
   isComposioSigninHref,
@@ -197,8 +198,10 @@ export function TryMission({
   );
 
   const transformContent = useCallback((content: string) => {
-    if (!TUTORIAL_END_RE.test(content)) return { content };
-    return { content: content.replace(TUTORIAL_END_STRIP_RE, "").trim() };
+    const stripped = TUTORIAL_END_RE.test(content)
+      ? content.replace(TUTORIAL_END_STRIP_RE, "").trim()
+      : content;
+    return withComposioWaitingFooter({ content: stripped });
   }, []);
 
   // Free-typing path. Wrapped by `useSessionMessageQueue` so messages typed

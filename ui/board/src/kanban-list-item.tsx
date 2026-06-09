@@ -13,7 +13,8 @@ import type { KanbanCardLabels } from "./kanban-card"
 
 export interface KanbanListItemProps {
   item: KanbanItem
-  /** Small agent icon shown at the leading edge. */
+  /** Small agent icon shown at the leading edge. Falls back to the item's own
+   *  `icon` when omitted, so a cross-agent list can show a per-row avatar. */
   avatar?: React.ReactNode
   /** Marks the row whose chat is currently open in the right panel. */
   selected?: boolean
@@ -56,8 +57,8 @@ export function KanbanListItem({
             : "border-border bg-card hover:bg-accent/40",
         )}
       >
-        {avatar && (
-          <span className={cn("shrink-0", snippet && "mt-0.5")}>{avatar}</span>
+        {(avatar ?? item.icon) && (
+          <span className={cn("shrink-0", snippet && "mt-0.5")}>{avatar ?? item.icon}</span>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">

@@ -10,6 +10,7 @@ import {
   applyEngineLocale,
   changeLocale,
   isSupported,
+  localeGateIsLoading,
   resolveEffectiveLocale,
   type SupportedLocale,
 } from "../lib/i18n";
@@ -25,7 +26,11 @@ export interface LocalePreferenceState {
    * picker). Per-workspace overrides do NOT affect first-run.
    */
   locale: SupportedLocale | null;
-  /** True until every source has resolved AND the resolved locale is applied. */
+  /**
+   * True until the GLOBAL preference has resolved AND been applied. The
+   * per-workspace override is applied on arrival and NEVER holds the first
+   * paint — blocking on it hung the app on launch (gethouston/houston#439).
+   */
   isLoading: boolean;
   /**
    * First-run picker write: persist the GLOBAL default (no workspace exists
@@ -62,11 +67,14 @@ export function useLocalePreference(): LocalePreferenceState {
   });
 
   // Boot-time active-workspace override, resolved INDEPENDENTLY of <App/> —
-  // which mounts below <LanguageGate> and only then loads workspaces. Without
-  // this the gate would apply the global default on the first paint and then
-  // flash to the workspace override once <App/> loads. Best-effort: a failure
-  // logs and resolves null (the real error surfaces via the store's
-  // loadWorkspaces), so boot falls back to the global default, never blocks.
+  // which mounts below <LanguageGate> and only then loads workspaces. When this
+  // resolves quickly the first paint already reflects the override (no flash);
+  // when it is slow or never settles it is applied on arrival instead. It is
+  // best-effort and MUST NOT gate the paint: see `localeGateIsLoading` and the
+  // apply effect below. Blocking the gate on this query hung the app on launch
+  // (a non-settling GET /workspaces never released the gate, gethouston/houston#439).
+  // A rejecting fetch logs and resolves null (the real error surfaces via the
+  // store's loadWorkspaces), so boot falls back to the global default.
   const bootWorkspaceQuery = useQuery({
     queryKey: bootWorkspaceKey,
     queryFn: async (): Promise<string | null> => {
@@ -96,13 +104,17 @@ export function useLocalePreference(): LocalePreferenceState {
     : bootWorkspaceQuery.data ?? null;
   const effective = resolveEffectiveLocale(workspaceLocale, globalLocale);
 
-  // Apply the engine-resolved locale to the live i18n instance, and re-apply
-  // when it changes (e.g. switching into a workspace that pins a different
-  // language). Applying is best-effort — the i18next detector already picked a
-  // valid language — so a failure must NOT hold the gate: always un-gate in
+  // Apply the engine-resolved locale to the live i18n instance once the GLOBAL
+  // preference has resolved, and re-apply whenever `effective` changes — which
+  // includes the boot workspace override landing LATER (apply-on-arrival) and
+  // the user switching into a workspace that pins a different language. We do
+  // NOT wait on `bootWorkspaceQuery` here: gating the first paint on it hung
+  // the app when GET /workspaces never settled (gethouston/houston#439).
+  // Applying is best-effort — the i18next detector already picked a valid
+  // language — so a failure must NOT hold the gate: always un-gate in
   // `finally`, and log (never silently swallow) on error.
   useEffect(() => {
-    if (globalQuery.isLoading || bootWorkspaceQuery.isLoading) return;
+    if (globalQuery.isLoading) return;
     let cancelled = false;
     void (async () => {
       try {
@@ -119,7 +131,7 @@ export function useLocalePreference(): LocalePreferenceState {
     return () => {
       cancelled = true;
     };
-  }, [globalQuery.isLoading, bootWorkspaceQuery.isLoading, effective]);
+  }, [globalQuery.isLoading, effective]);
 
   const mutation = useMutation({
     mutationFn: async (locale: SupportedLocale) => {
@@ -141,7 +153,7 @@ export function useLocalePreference(): LocalePreferenceState {
 
   return {
     locale: globalLocale,
-    isLoading: globalQuery.isLoading || bootWorkspaceQuery.isLoading || !applied,
+    isLoading: localeGateIsLoading(globalQuery.isLoading, applied),
     setLocale,
   };
 }

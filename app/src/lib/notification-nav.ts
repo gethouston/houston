@@ -14,22 +14,29 @@ export interface NavAgent {
 
 export interface NotificationNav {
   agentId: string;
-  activityId: string;
+  /**
+   * Session key of the finished chat — `activity-{id}` for a standard mission,
+   * `routine-{routine_id}` for a routine (#401). Resolved to a board activity
+   * id at click time (`consumePendingNav` → `activityIdForSessionKey`) rather
+   * than here, because a routine's chat is created right *after* its session
+   * completes, so the activity may not exist yet when the notification fires.
+   */
+  sessionKey: string;
 }
 
 export interface NotificationTarget {
   /** Agent name for the notification title (the agent that finished). */
   agentName: string;
-  /** Click target, set only when the finished session maps to an activity. */
+  /** Click target, set only when the finished session maps to a chat. */
   nav?: NotificationNav;
 }
 
 /**
  * Match the finished session to its agent by **folder path**, not by whichever
  * agent the user currently has open. This is what lets a notification click
- * jump to the agent + activity that completed even after the user switched
- * agents or closed the chat — `consumePendingNav()` switches the active agent
- * for us, so the only thing missing was a target that survives the switch.
+ * jump to the agent + chat that completed even after the user switched agents
+ * or closed the chat — `consumePendingNav()` switches the active agent for us,
+ * so the only thing missing was a target that survives the switch.
  *
  * `fallbackAgentName` is used for the title only when the finished agent isn't
  * in the loaded list (e.g. it lives in another workspace).
@@ -43,22 +50,49 @@ export function resolveNotificationTarget(
   const finishedAgent = agents.find((a) => a.folderPath === agentPath);
   const agentName = finishedAgent?.name ?? fallbackAgentName;
 
-  // Activity sessions are keyed `activity-<id>`. Routine runs are excluded:
-  // they have no mission chat to open.
-  const isActivitySession =
-    sessionKey.startsWith("activity-") && !sessionKey.startsWith("routine-");
+  // Any finished chat is navigable: standard missions (`activity-{id}`) and
+  // routine chats (`routine-{routine_id}`, #401). The key is resolved to a
+  // board activity id at click time. Non-chat sessions (e.g. the bare `main`
+  // key) carry no board card and simply don't arm a target.
+  const opensAChat =
+    sessionKey.startsWith("activity-") || sessionKey.startsWith("routine-");
 
-  if (finishedAgent && isActivitySession) {
+  if (finishedAgent && opensAChat) {
     return {
       agentName,
-      nav: {
-        agentId: finishedAgent.id,
-        activityId: sessionKey.replace("activity-", ""),
-      },
+      nav: { agentId: finishedAgent.id, sessionKey },
     };
   }
 
   return { agentName };
+}
+
+/**
+ * Resolve a finished session's key to the board activity id to open.
+ *
+ * Standard mission chats are keyed `activity-{id}`; the row usually has no
+ * explicit `session_key`, so the board derives `activity-{id}` from the id.
+ * Routine chats use the routine's stable `routine-{routine_id}` key (#381),
+ * stored explicitly as `session_key` on an activity whose own id is unrelated.
+ * Mirror the board's exact derivation (`session_key ?? activity-{id}`) so the
+ * lookup round-trips for both. The `activity-` prefix fallback covers the case
+ * where the matching row isn't in `activities` (preserving the prior
+ * strip-and-trust behavior for standard missions).
+ *
+ * Pure + store-free so it's unit-testable; the caller fetches the list.
+ */
+export function activityIdForSessionKey(
+  activities: { id: string; session_key?: string }[],
+  sessionKey: string,
+): string | null {
+  const match = activities.find(
+    (a) => (a.session_key ?? `activity-${a.id}`) === sessionKey,
+  );
+  if (match) return match.id;
+  if (sessionKey.startsWith("activity-")) {
+    return sessionKey.slice("activity-".length);
+  }
+  return null;
 }
 
 export interface PendingActivityArgs {

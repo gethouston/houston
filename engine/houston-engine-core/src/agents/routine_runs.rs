@@ -25,12 +25,23 @@ pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     with_runs_lock(root, || create_unlocked(root, routine_id))
 }
 
+/// Derive a run's `session_key` from its routine's `chat_mode` (#423). Mirrors
+/// `routines::runs::session_key_for` so both run-creation paths agree: `Shared`
+/// keeps one chat per routine (#381), `PerRun` gives each run a fresh chat. A
+/// missing routine falls back to `Shared` so a stray run never fails here.
+fn session_key_for(root: &Path, routine_id: &str, run_id: &str) -> CoreResult<String> {
+    let chat_mode = super::routines::list(root)?
+        .into_iter()
+        .find(|r| r.id == routine_id)
+        .map(|r| r.chat_mode)
+        .unwrap_or_default();
+    Ok(chat_mode.session_key(routine_id, run_id))
+}
+
 fn create_unlocked(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {
     let mut runs = list(root)?;
     let id = Uuid::new_v4().to_string();
-    // Stable per routine, NOT per run, so all of a routine's runs share one
-    // chat (#381). Kept in lockstep with `routines::runs::create_unlocked`.
-    let session_key = format!("routine-{routine_id}");
+    let session_key = session_key_for(root, routine_id, &id)?;
     let run = RoutineRun {
         id,
         routine_id: routine_id.to_string(),

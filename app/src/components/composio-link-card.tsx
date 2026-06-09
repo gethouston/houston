@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatStatusLine } from "@houston-ai/chat";
 import {
   useComposioApps,
   useConnectedToolkits,
@@ -16,7 +15,6 @@ import {
   isToolkitConnected,
   resolveComposioApp,
   shouldSendConnectedFollowup,
-  shouldShowWaitingToConnect,
   type ComposioCardPhase,
 } from "./composio-card-state";
 import { AppLogo, ComposioStatusSlot } from "./composio-card-visuals";
@@ -175,8 +173,12 @@ export function ComposioLinkCard({
 
   const view = deriveComposioCardView(isConnected, phase);
 
+  // The "Waiting for you to connect" hand-off line is NOT rendered here: it
+  // belongs at the very end of the agent message, not beside the card
+  // wherever the link happened to land. `ComposioWaitingFooter` (wired via the
+  // chat's `transformContent`) renders it from the same connection state.
   return (
-    <span className="not-prose inline-flex flex-col gap-1.5 my-1 max-w-full align-middle">
+    <span className="not-prose inline-flex my-1 max-w-full align-middle">
       <span className="inline-flex items-center gap-3 px-3 py-2.5 rounded-xl border border-black/5 bg-background min-w-0">
         <AppLogo app={app} />
         <span className="flex-1 min-w-0 flex flex-col">
@@ -189,13 +191,6 @@ export function ComposioLinkCard({
         </span>
         <ComposioStatusSlot view={view} onConnect={startConnect} />
       </span>
-      {shouldShowWaitingToConnect(view) && (
-        <ChatStatusLine
-          label={t("composio.waitingToConnect")}
-          active
-          className="px-1 text-muted-foreground/65"
-        />
-      )}
     </span>
   );
 }

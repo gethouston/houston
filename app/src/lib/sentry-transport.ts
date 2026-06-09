@@ -1,61 +1,59 @@
-// Pure helpers for Houston's split Sentry transport + capture-id resolution.
+// Pure helpers for Houston's Sentry transport + delivery confirmation.
 //
-// Imported by lib/sentry.ts (which wires the real @sentry/browser transports)
-// AND by the node:test runner, so this module stays dependency-free: no
-// @sentry/browser, no tauri-plugin-sentry-api, no DOM. Only structural types +
-// plain logic. See lib/sentry-replay.ts for the same pattern and rationale.
+// Imported BOTH by the browser Sentry init (lib/sentry.ts) and by the Node
+// test runner, so this module stays dependency-free: no @sentry/browser, no
+// DOM. Only structural types + plain logic.
 //
-// Why a split transport: Houston pipes every Sentry envelope through the Tauri
-// IPC transport into the Rust SDK, whose parser can't decode Session Replay
-// items and drops the whole envelope. So replay envelopes are peeled off and
-// sent straight to Sentry over HTTP, while everything else stays on IPC.
+// Why delivery confirmation: Houston sends renderer events straight to Sentry
+// over HTTP (@sentry/browser's fetch transport). lib/sentry.ts wraps that
+// transport so each send's real HTTP outcome is recorded per event id, and
+// only surfaces an event id (the green "report sent" toast) once Sentry has
+// actually accepted the event with a 2xx. The previous Tauri-IPC transport
+// could not do this — it reported success unconditionally, so the toast could
+// show an id for an event that never reached Sentry.
 
-/** Minimal shape of a Sentry transport's `send` — we only ever call it. */
-export interface SendOnly<Env, Res> {
-  send: (envelope: Env) => Res;
+/**
+ * Minimal structural shape of a Sentry envelope: a `[header, …items]` tuple
+ * whose header may carry an `event_id`. The real `Envelope` type is assignable
+ * to this — we only read `header.event_id`, so we avoid importing the SDK type.
+ *
+ * The header is `& Record<string, unknown>` (NOT a bare `{ event_id?: string }`)
+ * on purpose: `Envelope` is a union and several members (SessionEnvelope,
+ * ClientReportEnvelope, …) have headers with no `event_id`. A bare optional-only
+ * header is a TS "weak type" and the union members share no named property with
+ * it, so assignment is rejected. The index signature makes it non-weak.
+ */
+export type EnvelopeLike = readonly [
+  { event_id?: string } & Record<string, unknown>,
+  ...unknown[],
+];
+
+/**
+ * Sentry accepted the event iff the transport response is a 2xx — or carries no
+ * status code at all, which the fetch transport reports for a completed send
+ * with no explicit HTTP status. A rejected send (network error / timeout) never
+ * reaches this with a status; the caller treats that as not-accepted.
+ */
+export function isAcceptedStatus(statusCode: number | undefined): boolean {
+  return statusCode === undefined || (statusCode >= 200 && statusCode < 300);
 }
 
-/** Minimal shape of a Sentry transport's `flush`. Matches the real Sentry
- *  `Transport.flush`, which returns `PromiseLike<boolean>` (not `Promise`). */
-export interface FlushOnly {
-  flush: (timeout?: number) => PromiseLike<boolean>;
+/** Pull the event id from an envelope header, if present. */
+export function eventIdFromEnvelope(envelope: EnvelopeLike): string | undefined {
+  const header = envelope[0];
+  return typeof header?.event_id === "string" ? header.event_id : undefined;
 }
 
 /**
- * Route an envelope to the `fetch` (direct HTTP) transport when `isReplay`
- * matches, otherwise to the `ipc` (Rust SDK) transport. Generic over the
- * envelope + result types so the real Sentry `Transport` slots in unchanged.
+ * The event id to surface to the user: only when the transport BOTH flushed
+ * AND Sentry accepted the event (2xx). Otherwise "" so the caller does NOT show
+ * a "report sent" confirmation it can't honor (offline, timeout, 4xx/429,
+ * sampled/dropped).
  */
-export function makeSplitTransportSend<Env, Res>(
-  ipc: SendOnly<Env, Res>,
-  fetch: SendOnly<Env, Res>,
-  isReplay: (envelope: Env) => boolean,
-): (envelope: Env) => Res {
-  return (envelope) =>
-    isReplay(envelope) ? fetch.send(envelope) : ipc.send(envelope);
-}
-
-/**
- * A combined flush that resolves true only when BOTH underlying transports
- * flush successfully — neither the IPC nor the direct-HTTP queue is left
- * holding events.
- */
-export function makeSplitTransportFlush(
-  ipc: FlushOnly,
-  fetch: FlushOnly,
-): (timeout?: number) => Promise<boolean> {
-  return (timeout) =>
-    Promise.all([ipc.flush(timeout), fetch.flush(timeout)]).then((results) =>
-      results.every(Boolean),
-    );
-}
-
-/**
- * The event id to report back to the caller of `captureException`. Sentry
- * returns an id synchronously, but we only hand it to the UI once the transport
- * confirms the envelope left its queue (`flushed`). On a failed flush we return
- * "" so the caller does NOT show a "report sent" confirmation it can't honor.
- */
-export function resolveCapturedEventId(eventId: string, flushed: boolean): string {
-  return flushed ? eventId : "";
+export function resolveCapturedEventId(
+  eventId: string,
+  flushed: boolean,
+  accepted: boolean,
+): string {
+  return flushed && accepted ? eventId : "";
 }

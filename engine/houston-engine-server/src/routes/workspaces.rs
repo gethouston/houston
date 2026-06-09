@@ -10,6 +10,7 @@ use axum::{
 use houston_engine_core::agents_crud::{self, Agent, CreateAgent, CreateAgentResult, UpdateAgent};
 use houston_engine_core::workspace_context::{self, WorkspaceContext};
 use houston_engine_core::workspaces::{self, CreateWorkspace, RenameWorkspace, Workspace};
+use houston_engine_core::CoreError;
 use serde::Deserialize;
 use std::sync::Arc;
 
@@ -39,7 +40,16 @@ pub fn router() -> Router<Arc<ServerState>> {
 }
 
 async fn list(State(st): State<Arc<ServerState>>) -> Result<Json<Vec<Workspace>>, ApiError> {
-    Ok(Json(workspaces::list(st.engine.paths.docs())?))
+    // `workspaces::list` does synchronous filesystem work (create_dir_all +
+    // read the workspaces dir). This is the call the frontend's boot
+    // `LanguageGate` makes on every launch, so a slow or contended disk read
+    // must not block a tokio worker and starve other requests. Run it on a
+    // blocking thread (gethouston/houston#439).
+    let docs = st.engine.paths.docs().to_path_buf();
+    let workspaces = tokio::task::spawn_blocking(move || workspaces::list(&docs))
+        .await
+        .map_err(|e| CoreError::Internal(format!("workspaces list task failed: {e}")))??;
+    Ok(Json(workspaces))
 }
 
 async fn create(

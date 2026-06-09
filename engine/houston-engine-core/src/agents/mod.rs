@@ -203,6 +203,7 @@ mod tests {
                 schedule: "0 9 * * *".into(),
                 enabled: true,
                 suppress_when_silent: true,
+                chat_mode: crate::routines::RoutineChatMode::Shared,
                 integrations: vec![],
             })
             .unwrap();

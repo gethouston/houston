@@ -24,7 +24,15 @@ import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 // Sentry first so global error handlers below can capture into it from the
 // very first render. Empty DSN → silent no-op (dev / forks).
 initSentry();
-installSentrySmokeShortcuts();
+// Sentry smoke-test triggers (Ctrl+Alt+Shift+J/N + the __HOUSTON_SENTRY_SMOKE__
+// global) are DEV-ONLY. Houston is open source and official release binaries
+// bake the prod SENTRY_DSN, so shipping these error-injectors would let anyone
+// flood the prod Sentry project. The `import.meta.env.DEV` guard is statically
+// false in production builds, so Vite tree-shakes the call + the module away.
+// To re-verify symbolication on a SIGNED build, temporarily drop this guard.
+if (import.meta.env.DEV) {
+  installSentrySmokeShortcuts();
+}
 
 // Initialize file-based logging — patches console.error/warn to write to
 // ~/.houston/logs/frontend.log (or ~/.dev-houston/logs/frontend.log in dev).

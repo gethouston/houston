@@ -22,8 +22,8 @@ export function ArchivedSearchBar({
   if (!visible) return null;
 
   return (
-    <div className="px-3 pt-4 pb-2">
-      <KanbanListRail>
+    <div className="px-8 pt-4 pb-2">
+      <KanbanListRail align="left">
         <MissionSearchInput
           value={value}
           isSearchingText={isSearchingText}

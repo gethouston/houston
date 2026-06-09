@@ -1,19 +1,21 @@
 import { AlertCircle, DownloadCloud, Loader2, RotateCw, X } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { useUpdateChecker } from "../../hooks/use-update-checker";
-import { normalizeUpdateNotes } from "../../lib/update-details";
+import { selectUpdateNotes } from "../../lib/update-details";
 import { UpdateNotes } from "./update-notes";
 import houstonBlack from "../../assets/houston-black.svg";
 import houstonWhite from "../../assets/houston-icon-white.svg";
 
 export function UpdateChecker() {
-  const { t } = useTranslation("shell");
+  const { t, i18n } = useTranslation("shell");
   const { status, installAndRelaunch, relaunchInstalledApp, dismiss } = useUpdateChecker();
 
   if (status.state === "idle") return null;
 
   const info = status.info;
-  const notes = normalizeUpdateNotes(info.body);
+  // The release ships en/es/pt notes in one updater string; pick the one for
+  // the active UI language (which already honors the workspace locale override).
+  const notes = selectUpdateNotes(info.body, i18n.language);
   const downloading = status.state === "downloading";
   const ready = status.state === "ready";
   const error = status.state === "error";

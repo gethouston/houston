@@ -1,0 +1,157 @@
+import { useCallback, useMemo } from "react";
+import { useTranslation } from "react-i18next";
+import type { KanbanItem } from "@houston-ai/board";
+import { mergeFeedHistory } from "@houston-ai/chat";
+import type { FeedItem } from "@houston-ai/chat";
+
+import { useFeedStore } from "../../stores/feeds";
+import { useUIStore } from "../../stores/ui";
+import {
+  useActivity,
+  useDeleteActivity,
+  useUpdateActivity,
+} from "../../hooks/queries";
+import { tauriActivity, tauriChat } from "../../lib/tauri";
+import { selectActive, canDropMission } from "../../lib/mission-selection";
+import { missionCardTags } from "../../lib/mission-card";
+import { missionColumnIdForStatus } from "../mission-board-columns";
+import type { Agent, AgentDefinition } from "../../lib/types";
+
+// Stable empty reference so the feed store selector doesn't return a new
+// object every render when this agent has no feeds yet (which would otherwise
+// trigger "getSnapshot should be cached" / infinite loop in React).
+const EMPTY_FEED_BUCKET: Record<string, never> = Object.freeze({});
+
+/**
+ * Per-agent board data: maps this agent's activities to kanban items, exposes
+ * its feed slice, and the card-level mutations (delete / approve / rename /
+ * drag-move / history). Archived missions live in their own tab, so they're
+ * kept off the active board here.
+ */
+export function useAgentBoardData({
+  agent,
+  agentDef,
+  selectedId,
+  setSelectedId,
+}: {
+  agent: Agent;
+  agentDef: AgentDefinition;
+  selectedId: string | null;
+  setSelectedId: (id: string | null) => void;
+}) {
+  const { t } = useTranslation(["board", "dashboard", "chat"]);
+  const path = agent.folderPath;
+  const agentModes = agentDef.config.agents;
+  const addToast = useUIStore((s) => s.addToast);
+  const setFeed = useFeedStore((s) => s.setFeed);
+  const { data: rawItems } = useActivity(path);
+  const deleteActivity = useDeleteActivity(path);
+  const updateActivity = useUpdateActivity(path);
+
+  const activeRaw = useMemo(() => selectActive(rawItems ?? []), [rawItems]);
+  const items: KanbanItem[] = useMemo(
+    () =>
+      activeRaw.map((activity) => ({
+        id: activity.id,
+        title: activity.title,
+        description: activity.description,
+        status: activity.status,
+        updatedAt: activity.updated_at ?? new Date().toISOString(),
+        group: agent.name,
+        tags: missionCardTags({
+          agent: activity.agent,
+          agentModes,
+          routineId: activity.routine_id,
+          routineLabel: t("board:tags.routine"),
+        }),
+        metadata: {
+          ...(activity.session_key ? { sessionKey: activity.session_key } : {}),
+          ...(activity.routine_id ? { routineId: activity.routine_id } : {}),
+          ...(activity.agent ? { agent: activity.agent } : {}),
+          ...(activity.worktree_path ? { worktreePath: activity.worktree_path } : {}),
+        },
+      })),
+    [agent.name, agentModes, activeRaw, t],
+  );
+
+  const feedBucket = useFeedStore((s) => s.items[path]);
+  const feedItems = feedBucket ?? EMPTY_FEED_BUCKET;
+
+  const sessionKeyFor = useCallback(
+    (activityId: string) => {
+      const item = (rawItems ?? []).find((a) => a.id === activityId);
+      return item?.session_key ?? `activity-${activityId}`;
+    },
+    [rawItems],
+  );
+
+  const loadHistory = useCallback(
+    async (sessionKey: string) => {
+      const history = await tauriChat.loadHistory(path, sessionKey);
+      return history as FeedItem[];
+    },
+    [path],
+  );
+  const handleHistoryLoaded = useCallback(
+    (sessionKey: string, history: FeedItem[]) => {
+      // Reconcile the persisted slice with any live-bucket items (optimistic
+      // or a WS event that landed mid-load) by turn identity so a surfaced
+      // routine isn't rendered twice (#363).
+      const current = useFeedStore.getState().items[path]?.[sessionKey] ?? [];
+      setFeed(path, sessionKey, mergeFeedHistory(history, current));
+    },
+    [path, setFeed],
+  );
+
+  const handleDelete = useCallback(
+    async (item: KanbanItem) => {
+      await deleteActivity.mutateAsync(item.id);
+      if (selectedId === item.id) setSelectedId(null);
+    },
+    [deleteActivity, selectedId, setSelectedId],
+  );
+  const handleApprove = useCallback(
+    async (item: KanbanItem) => {
+      await updateActivity.mutateAsync({ activityId: item.id, update: { status: "done" } });
+    },
+    [updateActivity],
+  );
+  // Drag a card onto another column to change its status. The board only fires
+  // this for a column `canDropItem` accepted, so `toColumnId` doubles as the
+  // new status. Failure surfaces as a toast rather than a silent swallow.
+  const handleItemMove = useCallback(
+    async (item: KanbanItem, toColumnId: string) => {
+      try {
+        await updateActivity.mutateAsync({ activityId: item.id, update: { status: toColumnId } });
+      } catch (err) {
+        addToast({ title: t("board:dnd.moveError", { error: String(err) }), variant: "error" });
+      }
+    },
+    [updateActivity, addToast, t],
+  );
+  const canDropItem = useCallback(
+    (item: KanbanItem, toColumnId: string) =>
+      canDropMission(missionColumnIdForStatus(item.status), toColumnId),
+    [],
+  );
+  const onRename = useCallback(
+    (item: KanbanItem, title: string) => {
+      tauriActivity.update(path, item.id, { title }).catch(console.error);
+    },
+    [path],
+  );
+
+  return {
+    rawItems,
+    items,
+    feedItems,
+    sessionKeyFor,
+    loadHistory,
+    handleHistoryLoaded,
+    handleDelete,
+    handleApprove,
+    handleItemMove,
+    canDropItem,
+    onRename,
+  };
+}

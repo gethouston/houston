@@ -1,10 +1,16 @@
 {
   "title": "Central de missões",
+  "archived": {
+    "back": "Voltar",
+    "button": "Arquivadas",
+    "title": "Arquivadas"
+  },
   "filter": {
     "allAgents": "Todos os agentes"
   },
   "search": {
     "placeholder": "Buscar missões",
+    "placeholderShort": "Buscar...",
     "clear": "Limpar busca",
     "clearCta": "Limpar busca",
     "searchingText": "Buscando no texto das missões",

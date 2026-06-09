@@ -1,4 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion"
+import { cn } from "@houston-ai/core"
 import { KanbanListRail } from "./kanban-list-rail"
 import { KanbanListItem } from "./kanban-list-item"
 import type { KanbanCardLabels } from "./kanban-card"
@@ -15,6 +16,9 @@ export interface KanbanListProps {
   /** Per-item matched body fragment, keyed by `KanbanItem.id`, shown below a row
    *  when the search matched in the body rather than the title. */
   searchSnippets?: Record<string, BoardSearchSnippet>
+  /** Sizing of the list rail. "center" (default) keeps a fixed-width column
+   *  centered; "left" fills the full pane width, left-aligned. */
+  align?: "center" | "left"
 }
 
 /**
@@ -31,6 +35,7 @@ export function KanbanList({
   cardLabels,
   emptyState,
   searchSnippets,
+  align = "center",
 }: KanbanListProps) {
   if (items.length === 0 && emptyState) {
     return (
@@ -45,8 +50,15 @@ export function KanbanList({
   )
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto px-3 py-3">
-      <KanbanListRail className="space-y-1.5">
+    <div
+      className={cn(
+        "flex-1 min-h-0 overflow-y-auto py-3",
+        // The wide (left) variant fills the pane, so the side padding is its
+        // only breathing room — give it more than the centered column needs.
+        align === "left" ? "px-8" : "px-3",
+      )}
+    >
+      <KanbanListRail align={align} className="space-y-1.5">
         <AnimatePresence mode="popLayout">
           {sorted.map((item) => (
             <motion.div

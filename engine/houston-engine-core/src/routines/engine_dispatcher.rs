@@ -208,7 +208,10 @@ impl SessionLifecycle for RoutineRunLifecycle {
 #[cfg(test)]
 mod lifecycle_tests {
     use super::*;
-    use crate::routines::{create, types::NewRoutine};
+    use crate::routines::{
+        create,
+        types::{NewRoutine, RoutineChatMode},
+    };
     use houston_ui_events::NoopEventSink;
     use tempfile::TempDir;
 
@@ -220,6 +223,7 @@ mod lifecycle_tests {
             schedule: "0 9 * * *".into(),
             enabled: true,
             suppress_when_silent: true,
+            chat_mode: RoutineChatMode::Shared,
             timezone: None,
             integrations: vec![],
         }

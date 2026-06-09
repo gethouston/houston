@@ -1,6 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
+  activityIdForSessionKey,
   resolveNotificationTarget,
   resolvePendingActivitySelection,
   shouldArmNotificationNav,
@@ -17,17 +18,17 @@ describe("resolveNotificationTarget", () => {
   it("targets the agent that finished, matched by folder path", () => {
     deepStrictEqual(
       resolveNotificationTarget(agents, "/ws/Writer", "activity-act99", "Writer"),
-      { agentName: "Writer", nav: { agentId: "a2", activityId: "act99" } },
+      { agentName: "Writer", nav: { agentId: "a2", sessionKey: "activity-act99" } },
     );
   });
 
   // Regression for the cross-agent bug: user is on "Researcher" (the fallback)
   // when "Writer" finishes in the background. The click target must still point
-  // at Writer + its activity, not stay on the open agent / go nowhere.
+  // at Writer + its chat, not stay on the open agent / go nowhere.
   it("targets the finished agent even when a different agent is open", () => {
     deepStrictEqual(
       resolveNotificationTarget(agents, "/ws/Writer", "activity-act99", "Researcher"),
-      { agentName: "Writer", nav: { agentId: "a2", activityId: "act99" } },
+      { agentName: "Writer", nav: { agentId: "a2", sessionKey: "activity-act99" } },
     );
   });
 
@@ -38,18 +39,49 @@ describe("resolveNotificationTarget", () => {
     );
   });
 
-  it("sets no nav for routine sessions (no mission chat to open)", () => {
+  // Regression for #401: a routine that finishes with a chat result must arm a
+  // click target so the notification opens the routine's chat (it used to be
+  // excluded, so the click stayed on the last non-routine chat). The routine's
+  // stable key is carried through and resolved to its activity id at click time.
+  it("arms the routine chat's session key for navigation", () => {
     deepStrictEqual(
       resolveNotificationTarget(agents, "/ws/Writer", "routine-r1", "Researcher"),
-      { agentName: "Writer" },
+      { agentName: "Writer", nav: { agentId: "a2", sessionKey: "routine-r1" } },
     );
   });
 
-  it("sets no nav for non-activity session keys", () => {
+  it("sets no nav for non-chat session keys", () => {
     deepStrictEqual(
       resolveNotificationTarget(agents, "/ws/Writer", "main", "Researcher"),
       { agentName: "Writer" },
     );
+  });
+});
+
+describe("activityIdForSessionKey", () => {
+  it("resolves a routine key to the activity id stored on the row", () => {
+    // The routine chat's activity id is unrelated to its `routine-{id}` key —
+    // only the stored `session_key` links them (#381/#401).
+    const activities = [
+      { id: "act-1", session_key: "activity-act-1" },
+      { id: "act-routine", session_key: "routine-r1" },
+    ];
+    strictEqual(activityIdForSessionKey(activities, "routine-r1"), "act-routine");
+  });
+
+  it("resolves a standard mission key whose row has no explicit session_key", () => {
+    // Normal activities omit `session_key`; the board derives `activity-{id}`,
+    // and so must this lookup.
+    const activities = [{ id: "act99" }];
+    strictEqual(activityIdForSessionKey(activities, "activity-act99"), "act99");
+  });
+
+  it("falls back to the encoded id when the activity row isn't in the list", () => {
+    strictEqual(activityIdForSessionKey([], "activity-act99"), "act99");
+  });
+
+  it("returns null for a routine key with no matching activity", () => {
+    strictEqual(activityIdForSessionKey([], "routine-r1"), null);
   });
 });
 

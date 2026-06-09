@@ -91,3 +91,22 @@ export function activeWorkspaceLocale(
     workspaces[0];
   return active.locale ?? null;
 }
+
+/**
+ * Whether the first-run `LanguageGate` must keep blocking the first paint.
+ *
+ * ONLY the global locale preference gates the paint: it decides the language
+ * (and whether to show the first-run picker) and is a tiny KV read. The
+ * per-workspace override (`bootWorkspaceQuery`) is best-effort and applied on
+ * arrival, so it MUST NOT be a factor here — it takes no parameter by design.
+ *
+ * Blocking the gate on that override is what hung the whole app on launch: a
+ * non-settling `GET /workspaces` left the gate loading forever, so `<App/>`
+ * never mounted and the window stayed blank (gethouston/houston#439).
+ */
+export function localeGateIsLoading(
+  globalQueryLoading: boolean,
+  applied: boolean,
+): boolean {
+  return globalQueryLoading || !applied;
+}

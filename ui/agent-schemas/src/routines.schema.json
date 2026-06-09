@@ -14,6 +14,12 @@
       "schedule": { "type": "string", "description": "Cron expression (e.g. '0 9 * * 1-5')." },
       "enabled": { "type": "boolean" },
       "suppress_when_silent": { "type": "boolean", "description": "If true, runs that respond ROUTINE_OK are silent." },
+      "chat_mode": {
+        "type": "string",
+        "enum": ["shared", "per_run"],
+        "default": "shared",
+        "description": "Whether each run reuses one chat ('shared', the default) or starts a fresh chat per run ('per_run')."
+      },
       "integrations": {
         "type": "array",
         "items": { "type": "string" },

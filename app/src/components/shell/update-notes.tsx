@@ -17,13 +17,25 @@ import { MessageResponse } from "@houston-ai/chat";
 // manual visual check. The app's `node --test` harness strips TS types but does
 // NOT transform JSX, so a React component cannot be rendered there; only pure
 // `.ts` logic is unit-testable. The input contract (what reaches this component)
-// is guarded by the `normalizeUpdateNotes` tests in update-details.test.ts.
+// is guarded by the `selectUpdateNotes` / `normalizeUpdateNotes` tests in
+// update-details.test.ts.
 const COMPACT = [
   "text-xs leading-relaxed text-muted-foreground",
   "[&_:is(h1,h2,h3,h4,h5,h6)]:mb-1 [&_:is(h1,h2,h3,h4,h5,h6)]:mt-2",
   "[&_:is(h1,h2,h3,h4,h5,h6)]:text-xs [&_:is(h1,h2,h3,h4,h5,h6)]:font-semibold",
   "[&_:is(h1,h2,h3,h4,h5,h6)]:text-foreground",
-  "[&_p]:my-1 [&_ul]:my-1 [&_ol]:my-1 [&_li]:my-0.5",
+  "[&_p]:my-1",
+  // Streamdown renders ul/ol with `list-inside list-disc|list-decimal`, but
+  // those utilities aren't generated for the app build (the package isn't in
+  // Tailwind's @source and nothing in scanned source uses them), so the markers
+  // fall back to outside position with zero padding and get clipped — the list
+  // looked like plain lines. Style the lists explicitly in the card's own
+  // compact scope: disc/decimal markers, outside position, and left padding so
+  // the markers have room. Descendant selectors (0,1,1) win over Streamdown's
+  // element utilities (0,1,0), so this holds even if the package is scanned later.
+  "[&_:is(ul,ol)]:my-1 [&_:is(ul,ol)]:pl-5 [&_:is(ul,ol)]:list-outside",
+  "[&_ul]:list-disc [&_ol]:list-decimal",
+  "[&_li]:my-0.5 [&_li]:marker:text-muted-foreground",
   "[&_a]:font-medium [&_a]:text-foreground",
 ].join(" ");
 

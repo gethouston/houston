@@ -121,6 +121,26 @@ than blanking the chat. `minimumSystemVersion` in `tauri.conf.json` stays at
 `10.15` (install-time native-binary floor) — the capability gate, not the OS
 version, decides whether the UI can actually run.
 
+## App boot — gate chain must never hang on the engine
+
+After the compat gate, the React tree mounts behind a chain of gates that each
+withhold the first paint until something resolves: `EngineGate` (waits for
+`houston-engine-ready`) → `LanguageGate` (waits for the locale preference) →
+`DisclaimerGate` → `<App/>` (`app/src/main.tsx`). A gate that blocks on an
+engine call with no bound turns a single slow/stalled request into a permanently
+blank window — the engine can be healthy in 50ms and the user still never sees
+a UI. That was issue #439: v0.4.17 (#390) made `LanguageGate` block on a
+best-effort `GET /workspaces` (`use-locale-preference.ts`); when that request
+never settled, `<App/>` never mounted, `frontend.log` went silent, and users
+force-quit (which then triggered macOS's "reopen windows" dialog).
+
+Invariant: **a boot gate may only block on what it strictly needs, and that
+call must be bounded.** Best-effort enrichment (per-workspace locale override,
+etc.) is applied on arrival, never gated on — see `localeGateIsLoading` in
+`app/src/lib/locale.ts`. Engine handlers on the boot path must not run
+synchronous filesystem work directly on the async runtime (`workspaces::list`
+now uses `spawn_blocking`) so a slow disk read can't wedge a tokio worker.
+
 ## UI packages (`ui/`)
 
 11 packages under `@houston-ai/`: `core, chat, board, layout, events,
