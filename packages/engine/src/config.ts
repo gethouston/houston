@@ -39,7 +39,7 @@ export const config = {
   /** Use the headless OAuth flows (Claude via copy-paste code, no loopback). */
   headless: isHeadless(),
   /** Default Anthropic model (Claude Pro/Max subscription). */
-  model: env.HOUSTON_MODEL || "claude-sonnet-4-5",
+  model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Optional bearer token. Empty = no auth (local dev on loopback). */
   token: env.HOUSTON_ENGINE_TOKEN || "",
   /** Allowed CORS origin for the webapp. "*" (default) or an explicit origin. */

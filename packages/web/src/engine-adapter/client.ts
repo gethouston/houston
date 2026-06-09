@@ -89,7 +89,7 @@ export class HoustonClient {
     } catch {
       /* engine unreachable / not authed */
     }
-    return { provider: "anthropic", model: "claude-sonnet-4-5" };
+    return { provider: "anthropic", model: "claude-sonnet-4-6" };
   }
 
   // ---- meta / boot ----
