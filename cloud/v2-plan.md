@@ -14,6 +14,14 @@
 
 ---
 
+## Current live v1 infra (what you're evolving)
+
+- **Frontend:** Cloud Run `https://houston-web-1056698080170.us-east1.run.app`.
+- **Control-plane:** GKE **Autopilot** cluster `houston-cloud` (us-east1, project `gethouston`), LoadBalancer `34.74.83.237`, namespace `houston-system`. Images at `us-east1-docker.pkg.dev/gethouston/houston/{control-plane,runtime,web}`; build via `gcloud builds submit --config cloud/cloudbuild.yaml`.
+- **Auth:** Supabase project `zfpnlvxazrataiannvtq` (ES256/JWKS). **Secrets only in `.context/cloud.env` (gitignored).**
+- **Data:** ~745 real users in `auth.users` — **prod DB ops must be additive + transparent.**
+- v1 is the **reference, and it's live** — don't break it; build v2 alongside and cut over deliberately.
+
 ## Architecture
 
 ```
@@ -68,6 +76,7 @@ Notes:
 - These are the **conservative, reserved-slice** floor. Because an idle agent runs **zero processes**, real idle draw is ~0.02–0.03 vCPU — so with **vCPU oversubscription** (RAM stays the binding constraint) you can pack more workspaces/node and approach **~$3 even on Kata/N2**. Validate real idle-worker RSS first.
 - **Kata-qemu** adds ~100–130 MiB/VM RAM → ~20% less density; **kata-fc** keeps the per-VM RAM floor negligible — prefer it.
 - **Pricing is mode-exclusive:** Spot gets no CUD/SUD; CUDs don't stack with SUDs. Strategy: **committed** node pool for the always-warm baseline (workspaces with routines) + **Spot** pool for burst/wake, with graceful drain (Spot evicts on ~30 s notice — fine for stateless wakes, not for a workspace mid-routine unless checkpointed).
+- **The Intel premium:** the hard-boundary (Kata/Firecracker) path **cannot** use E2/AMD/Arm — nested virtualization is **Intel-only** — so it runs on **N2** (~45% more per vCPU + per GB) plus a ~10% nested-virt CPU tax. That is the entire `~$3 (gVisor/E2) → ~$4.5 (Kata-fc/N2)` gap. It buys the kernel-hard cross-tenant boundary and keeps bwrap; still 20–30× under v1. (`kata-fc` = Firecracker as Kata's hypervisor — light VMM + managed GKE plumbing; drop to `kata-clh` only if Firecracker's minimal device model bites.)
 - vs v1 (~$100/user, ~$74.5k/mo @ 745 users): **20–40× cheaper.**
 
 ---
@@ -166,5 +175,15 @@ Plus a **cgroup v2** per worker: `memory.max=1.5Gi`, `cpu.max="100000 100000"` (
 - Per-VM concurrency cap (max warm workers) + behavior when chat + several routines exceed it (queue / LRU-evict / backpressure).
 - Routine schema: reuse the Rust shape verbatim vs a lean TS subset (cron dialect must match to avoid the Sunday off-by-one bug).
 - Does bwrap need a CAP_SYS_ADMIN helper inside the guest, or do unprivileged userns suffice on the chosen node image?
+
+---
+
+## Picking up this work (read me first if you're the rebuild session)
+
+- The reusable v1 code lives on branch **`cloud-orgs-agent-isolation`** (PR #8). The cleanest start is to **branch v2 from there** (not `main`) so you inherit the ~70% you keep; start fresh only if you judge it cleaner — your call, tell the human which.
+- If your worktree is off `main`, fetch the code + this plan first: `git fetch origin && git checkout cloud-orgs-agent-isolation` (or read it via `gh pr diff 8`).
+- **First decision, before any code: Kata vs gVisor** (the table above). It forks the node type, the cost, the ops load, and whether bwrap survives. Surface your recommendation and get the human's nod before the cluster swap.
+- Then follow the **7-phase plan**, cluster swap first.
+- **v1 is live with real users — keep it running.** Build v2 on its own branch; cut over only when proven.
 
 *(Generated from a 3-agent design pass: hosting-stack + runtime-redesign were thorough; the reuse map was written by hand. All dollar figures are list-price estimates — reconcile against the BigQuery billing export before committing.)*
