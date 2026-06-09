@@ -39,6 +39,8 @@ export {
   useApproveWorkflowRun,
   useCancelWorkflowRun,
   useResumeWorkflowRun,
+  useRetryWorkflowStep,
+  useSaveWorkflowRunAsWorkflow,
 } from "./use-workflows";
 export {
   useLearnings,

@@ -670,6 +670,14 @@ export const tauriWorkflows = {
     call<void>("resume_workflow_run", () =>
       getEngine().resumeWorkflowRun(agentPath, runId),
     ),
+  retryStep: (agentPath: string, runId: string, stepId: string) =>
+    call("retry_workflow_step", () =>
+      getEngine().retryWorkflowStep(agentPath, runId, stepId),
+    ),
+  saveRunAsWorkflow: (agentPath: string, runId: string) =>
+    call("save_workflow_run_as_workflow", () =>
+      getEngine().saveWorkflowRunAsWorkflow(agentPath, runId),
+    ),
 };
 
 export const tauriActivity = {

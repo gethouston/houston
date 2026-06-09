@@ -4,6 +4,7 @@ import {
   layerSteps,
   latestRunByWorkflow,
   activeRun,
+  isCancellable,
   isResumable,
   stepStatusOf,
   doneStepCount,
@@ -124,6 +125,20 @@ describe("stepStatusOf", () => {
   it("defaults to pending", () => {
     const run = mkRun("r1", "w1", "running", "2025-01-01T10:00:00Z")
     assert.equal(stepStatusOf(run, "missing"), "pending")
+  })
+})
+
+describe("isCancellable", () => {
+  it("true for in-flight statuses", () => {
+    assert.equal(isCancellable("planning"), true)
+    assert.equal(isCancellable("awaiting_approval"), true)
+    assert.equal(isCancellable("running"), true)
+  })
+
+  it("false for terminal statuses", () => {
+    assert.equal(isCancellable("done"), false)
+    assert.equal(isCancellable("error"), false)
+    assert.equal(isCancellable("cancelled"), false)
   })
 })
 

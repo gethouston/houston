@@ -4,7 +4,7 @@ use crate::error::CoreResult;
 use crate::workflows::dispatcher::{PlannerContext, WorkflowDispatcher};
 use crate::workflows::plan::parse_plan_from_response;
 use crate::workflows::runs as workflow_runs;
-use crate::workflows::types::{Workflow, WorkflowRun, WorkflowRunUpdate};
+use crate::workflows::types::{Workflow, WorkflowPlan, WorkflowRun, WorkflowRunUpdate};
 use chrono::Utc;
 use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::Path;
@@ -73,20 +73,7 @@ pub async fn run_planner(
 
     match parse_plan_from_response(&outcome.response_text) {
         Ok(plan) => {
-            workflow_runs::update(
-                root,
-                &run.id,
-                WorkflowRunUpdate {
-                    status: Some("awaiting_approval".into()),
-                    plan: Some(plan),
-                    ..Default::default()
-                },
-            )?;
-            events.emit(HoustonEvent::WorkflowPlanProposed {
-                agent_path: agent_path.to_string(),
-                run_id: run.id.clone(),
-            });
-            emit_runs_changed(events, agent_path);
+            attach_frozen_plan(events, agent_path, root, &run.id, &plan)?;
         }
         Err(e) => {
             workflow_runs::update(
@@ -102,6 +89,32 @@ pub async fn run_planner(
             emit_runs_changed(events, agent_path);
         }
     }
+    Ok(())
+}
+
+/// Copy a validated plan onto a run and surface it for user approval.
+pub fn attach_frozen_plan(
+    events: &DynEventSink,
+    agent_path: &str,
+    root: &Path,
+    run_id: &str,
+    plan: &WorkflowPlan,
+) -> CoreResult<()> {
+    let plan = crate::workflows::plan::validate_stored_plan(plan)?;
+    workflow_runs::update(
+        root,
+        run_id,
+        WorkflowRunUpdate {
+            status: Some("awaiting_approval".into()),
+            plan: Some(plan),
+            ..Default::default()
+        },
+    )?;
+    events.emit(HoustonEvent::WorkflowPlanProposed {
+        agent_path: agent_path.to_string(),
+        run_id: run_id.to_string(),
+    });
+    emit_runs_changed(events, agent_path);
     Ok(())
 }
 
@@ -140,6 +153,7 @@ mod tests {
             name: "Audit".into(),
             description: String::new(),
             plan_prompt: "Auditar el repositorio y abrir un PR".into(),
+            plan: None,
             created_at: String::new(),
             updated_at: String::new(),
         };

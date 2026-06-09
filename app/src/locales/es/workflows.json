@@ -48,7 +48,10 @@
     "descriptionPlaceholder": "Opcional, para qué sirve este flujo",
     "planPromptLabel": "Instrucción de planificación",
     "planPromptPlaceholder": "¿Qué debe planificar y ejecutar el agente?",
-    "recentRuns": "Ejecuciones recientes"
+    "savedPlanTitle": "Pasos guardados",
+    "recentRuns": "Ejecuciones recientes",
+    "showDetails": "Mostrar detalles del flujo",
+    "hideDetails": "Ocultar detalles del flujo"
   },
   "activeRun": {
     "title": "Ejecución activa",
@@ -60,7 +63,8 @@
     "reviewAction": "Revisar acción",
     "approve": "Aprobar",
     "actionApprove": "Aprobar y continuar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "stop": "Detener"
   },
   "approval": {
     "title": "Revisar plan",
@@ -77,7 +81,8 @@
     "approving": "Aprobando…"
   },
   "stepProgress": {
-    "runsTogether": "Estos pasos pueden ejecutarse juntos"
+    "runsTogether": "Estos pasos pueden ejecutarse juntos",
+    "retry": "Reintentar"
   },
   "history": {
     "empty": "Sin ejecuciones aún. Inicia una con Ejecutar.",
@@ -88,5 +93,14 @@
     "steps_one": "{{count}} paso",
     "steps_other": "{{count}} pasos",
     "stepsDone": "{{done}} de {{total}} pasos"
+  },
+  "savePrompt": {
+    "title": "¿Guardar este flujo?",
+    "description": "Guarda \"{{name}}\" ({{count}} pasos) para volver a ejecutar el mismo plan desde flujos.",
+    "confirm": "Guardar flujo",
+    "cancel": "Ahora no",
+    "successTitle": "Flujo guardado",
+    "successDescription": "\"{{name}}\" está listo para ejecutarse de nuevo desde la pestaña Flujos.",
+    "untitledRun": "Este flujo"
   }
 }

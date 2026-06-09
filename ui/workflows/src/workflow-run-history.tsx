@@ -5,7 +5,7 @@ import { cn, Button } from "@houston-ai/core"
 import { ChevronRight, Play, Square } from "lucide-react"
 import type { WorkflowRun, WorkflowRunStatus } from "./types"
 import { DEFAULT_RUN_STATUS_LABELS, RUN_STATUS_DOT } from "./run-status"
-import { isResumable } from "./workflow-dag"
+import { isCancellable, isResumable } from "./workflow-dag"
 import { runHint } from "./run-hint"
 
 export interface WorkflowRunHistoryLabels {
@@ -60,14 +60,6 @@ function formatDuration(startedAt: string, completedAt?: string): string | null 
   if (ms < 1000) return `${ms}ms`
   if (ms < 60_000) return `${(ms / 1000).toFixed(1)}s`
   return `${Math.round(ms / 60_000)}m`
-}
-
-function isCancellable(status: WorkflowRunStatus): boolean {
-  return (
-    status === "planning" ||
-    status === "awaiting_approval" ||
-    status === "running"
-  )
 }
 
 export function WorkflowRunHistory({

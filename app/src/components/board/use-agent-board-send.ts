@@ -10,7 +10,8 @@ import {
   useSessionStatusStore,
 } from "../../stores/session-status";
 import type { KanbanItem } from "@houston-ai/board";
-import { tauriChat, tauriAttachments } from "../../lib/tauri";
+import { tauriChat, tauriAttachments, tauriWorkflows } from "../../lib/tauri";
+import { cancellableWorkflowRunId } from "../../lib/active-workflow-run";
 import { createMission } from "../../lib/create-mission";
 import {
   createMissionWorktreeIfEnabled,
@@ -21,6 +22,7 @@ import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { queryKeys } from "../../lib/query-keys";
 import { analytics } from "../../lib/analytics";
 import { classifyFileKind } from "../../lib/file-kind";
+import type { WorkflowRun } from "@houston-ai/workflows";
 import type { Activity } from "../../data/activity";
 import type { Agent, AgentDefinition } from "../../lib/types";
 import type { SendOverrides } from "./board-source";
@@ -159,9 +161,18 @@ export function useAgentBoardSend({
 
   const stopSession = useCallback(
     (sessionKey: string) => {
-      tauriChat.stop(path, sessionKey).catch(console.error);
+      const feedItems = useFeedStore.getState().items[path]?.[sessionKey] ?? [];
+      const runs = queryClient.getQueryData<WorkflowRun[]>(
+        queryKeys.workflowRuns(path),
+      );
+      const workflowRunId = cancellableWorkflowRunId(feedItems, runs);
+      if (workflowRunId) {
+        tauriWorkflows.cancelRun(path, workflowRunId).catch(() => {});
+        return;
+      }
+      tauriChat.stop(path, sessionKey).catch(() => {});
     },
-    [path],
+    [path, queryClient],
   );
 
   const runInTerminal = useCallback(

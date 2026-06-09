@@ -8,7 +8,9 @@ use crate::workflows::executor;
 use crate::workflows::keys::step_session_key;
 use crate::workflows::plan::parse_plan;
 use crate::workflows::inline::begin_inline_run;
-use crate::workflows::runner::{approve_run, begin_run, cancel_run, finish_planning, resume_run};
+use crate::workflows::runner::{
+    approve_run, begin_run, cancel_run, finish_planning, resume_run, retry_step, start_planning,
+};
 use crate::workflows::types::{BegunRun, InlineRunSpec};
 use crate::workflows::runs as workflow_runs;
 use crate::workflows::types::{NewWorkflow, StepState, WorkflowRunUpdate};
@@ -71,6 +73,7 @@ fn sample_workflow() -> NewWorkflow {
         name: "Audit".into(),
         description: String::new(),
         plan_prompt: "Plan a scan".into(),
+        plan: None,
     }
 }
 
@@ -793,4 +796,196 @@ async fn cancel_removes_persisted_worktree() {
     })
     .await
     .unwrap_err();
+}
+
+#[tokio::test]
+async fn frozen_plan_skips_planner_and_awaits_approval() {
+    let d = TempDir::new().unwrap();
+    let agent_path = d.path().to_string_lossy().to_string();
+    let plan = parse_plan(valid_plan_json()).unwrap();
+    let w = create_workflow(
+        d.path(),
+        NewWorkflow {
+            name: "Frozen".into(),
+            description: String::new(),
+            plan_prompt: "Plan a scan".into(),
+            plan: Some(plan.clone()),
+        },
+    )
+    .unwrap();
+    let dispatcher = Arc::new(ScriptedDispatcher {
+        planner: DispatchOutcome {
+            response_text: "should not run".into(),
+            error: None,
+        },
+        steps: HashMap::new(),
+        synthesis: DispatchOutcome::default(),
+        order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
+        active: AtomicUsize::new(0),
+        peak: AtomicUsize::new(0),
+        delay_ms: 0,
+    });
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    let begun = begin_run(&events, &agent_path, &w.id).unwrap();
+    start_planning(
+        events,
+        dispatcher,
+        &agent_path,
+        BegunRun {
+            working_dir: begun.working_dir.clone(),
+            workflow: begun.workflow.clone(),
+            run: begun.run.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    assert_eq!(run.status, "awaiting_approval");
+    assert_eq!(run.plan.as_ref(), Some(&plan));
+    assert_eq!(run.steps.len(), 2);
+}
+
+#[tokio::test]
+async fn retry_step_rejects_non_terminal_run() {
+    let d = TempDir::new().unwrap();
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, valid_plan_json()).await;
+    let err = retry_step(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher,
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+        "a",
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, crate::CoreError::Conflict(_)));
+}
+
+#[tokio::test]
+async fn retry_step_rejects_non_failed_step() {
+    let d = TempDir::new().unwrap();
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, valid_plan_json()).await;
+    let plan = parse_plan(valid_plan_json()).unwrap();
+    workflow_runs::update(
+        d.path(),
+        &begun.run.id,
+        WorkflowRunUpdate {
+            status: Some("error".into()),
+            plan: Some(plan),
+            steps: Some(vec![
+                StepState {
+                    step_id: "a".into(),
+                    status: "done".into(),
+                    approved: false,
+                    summary: Some("ok".into()),
+                    worktree_path: None,
+                },
+                StepState {
+                    step_id: "b".into(),
+                    status: "error".into(),
+                    approved: false,
+                    summary: Some("boom".into()),
+                    worktree_path: None,
+                },
+            ]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    let err = retry_step(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher,
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+        "a",
+    )
+    .await
+    .unwrap_err();
+    assert!(matches!(err, crate::CoreError::Conflict(_)));
+}
+
+#[tokio::test]
+async fn retry_step_resets_subgraph_and_runs_only_pending() {
+    let d = TempDir::new().unwrap();
+    let json = r#"{"steps":[
+      {"id":"a","task":"first"},
+      {"id":"b","task":"second","depends_on":["a"]},
+      {"id":"c","task":"unrelated"}
+    ]}"#;
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, json).await;
+    let plan = parse_plan(json).unwrap();
+    workflow_runs::update(
+        d.path(),
+        &begun.run.id,
+        WorkflowRunUpdate {
+            status: Some("error".into()),
+            plan: Some(plan),
+            steps: Some(vec![
+                StepState {
+                    step_id: "a".into(),
+                    status: "done".into(),
+                    approved: false,
+                    summary: Some("ok".into()),
+                    worktree_path: None,
+                },
+                StepState {
+                    step_id: "b".into(),
+                    status: "error".into(),
+                    approved: false,
+                    summary: Some("boom".into()),
+                    worktree_path: None,
+                },
+                StepState {
+                    step_id: "c".into(),
+                    status: "error".into(),
+                    approved: false,
+                    summary: Some("other".into()),
+                    worktree_path: None,
+                },
+            ]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let updated = retry_step(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+        "b",
+    )
+    .await
+    .unwrap();
+    assert_eq!(updated.status, "running");
+
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    let a = run.steps.iter().find(|s| s.step_id == "a").unwrap();
+    let b = run.steps.iter().find(|s| s.step_id == "b").unwrap();
+    let c = run.steps.iter().find(|s| s.step_id == "c").unwrap();
+    assert_eq!(a.status, "done");
+    assert_eq!(b.status, "pending");
+    assert!(b.summary.is_none());
+    assert_eq!(c.status, "error");
+
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let order = dispatcher.order.lock().unwrap().clone();
+    assert!(!order.contains(&"a".to_string()));
+    assert!(order.contains(&"b".to_string()));
+    assert!(!order.contains(&"c".to_string()));
+
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    let b = run.steps.iter().find(|s| s.step_id == "b").unwrap();
+    let c = run.steps.iter().find(|s| s.step_id == "c").unwrap();
+    assert_eq!(b.status, "done");
+    assert_eq!(c.status, "error");
+    assert_eq!(run.status, "error");
 }

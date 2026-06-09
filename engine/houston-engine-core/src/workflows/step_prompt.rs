@@ -69,6 +69,7 @@ mod tests {
             name: "Competitors".into(),
             description: String::new(),
             plan_prompt: "Research competitors and draft deliverables".into(),
+            plan: None,
             created_at: String::new(),
             updated_at: String::new(),
         }
@@ -126,6 +127,7 @@ mod tests {
             plan_prompt: None,
             name: None,
             description: None,
+            saved_workflow_id: None,
         }
     }
 

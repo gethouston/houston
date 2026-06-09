@@ -94,3 +94,26 @@ export function useResumeWorkflowRun(agentPath: string) {
     },
   });
 }
+
+export function useRetryWorkflowStep(agentPath: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ runId, stepId }: { runId: string; stepId: string }) =>
+      tauriWorkflows.retryStep(agentPath, runId, stepId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["workflow-runs", agentPath] });
+    },
+  });
+}
+
+export function useSaveWorkflowRunAsWorkflow(agentPath: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (runId: string) =>
+      tauriWorkflows.saveRunAsWorkflow(agentPath, runId),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.workflows(agentPath) });
+      qc.invalidateQueries({ queryKey: ["workflow-runs", agentPath] });
+    },
+  });
+}

@@ -22,6 +22,7 @@ pub(crate) fn effective_workflow(root: &Path, run: &WorkflowRun) -> CoreResult<W
                     .unwrap_or_else(|| "Workflow".into()),
                 description: run.description.clone().unwrap_or_default(),
                 plan_prompt: pp.clone(),
+                plan: None,
                 created_at: run.started_at.clone(),
                 updated_at: run.started_at.clone(),
             }),
@@ -62,6 +63,7 @@ mod tests {
             name: "Audit".into(),
             description: "Scan the repo".into(),
             plan_prompt: "Plan a scan".into(),
+            plan: None,
         }
     }
 

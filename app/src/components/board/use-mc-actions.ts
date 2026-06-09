@@ -3,7 +3,9 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import type { KanbanItem } from "@houston-ai/board";
 import { useUIStore } from "../../stores/ui";
-import { tauriActivity, tauriChat } from "../../lib/tauri";
+import { useFeedStore } from "../../stores/feeds";
+import { tauriActivity, tauriChat, tauriWorkflows } from "../../lib/tauri";
+import { cancellableWorkflowRunId } from "../../lib/active-workflow-run";
 import { openMissionWorktreeTerminal } from "../../lib/mission-worktree";
 import { queryKeys } from "../../lib/query-keys";
 import { canDropMission } from "../../lib/mission-selection";
@@ -15,6 +17,7 @@ import {
 } from "../mission-control-session";
 import type { useMissionControl } from "../use-mission-control";
 import type { SendOverrides } from "./board-source";
+import type { WorkflowRun } from "@houston-ai/workflows";
 import type { Agent, AgentDefinition } from "../../lib/types";
 
 /**
@@ -74,11 +77,20 @@ export function useMcActions({
     (sessionKey: string) => {
       const agentPath = missionControlAgentPathForSession(mc.items, sessionKey);
       if (!agentPath) return;
+      const feedItems = useFeedStore.getState().items[agentPath]?.[sessionKey] ?? [];
+      const runs = qc.getQueryData<WorkflowRun[]>(
+        queryKeys.workflowRuns(agentPath),
+      );
+      const workflowRunId = cancellableWorkflowRunId(feedItems, runs);
+      if (workflowRunId) {
+        tauriWorkflows.cancelRun(agentPath, workflowRunId).catch(() => {});
+        return;
+      }
       tauriChat.stop(agentPath, sessionKey).catch((err) => {
         addToast({ title: t("dashboard:errors.stopSession", { error: String(err) }), variant: "error" });
       });
     },
-    [mc.items, addToast, t],
+    [mc.items, qc, addToast, t],
   );
 
   const runInTerminal = useCallback(

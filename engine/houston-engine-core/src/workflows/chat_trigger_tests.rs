@@ -58,6 +58,7 @@ fn sample_workflow() -> NewWorkflow {
         name: "Audit".into(),
         description: String::new(),
         plan_prompt: "Plan a scan".into(),
+        plan: None,
     }
 }
 

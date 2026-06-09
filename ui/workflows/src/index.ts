@@ -14,6 +14,7 @@ export {
   layerSteps,
   latestRunByWorkflow,
   activeRun,
+  isCancellable,
   isResumable,
   stepStatusOf,
   stepSummaryOf,
@@ -46,6 +47,8 @@ export { InlineRunCard } from "./inline-run-card"
 export type {
   InlineRunCardProps,
   InlineRunCardLabels,
+  InlineRunSavePrompt,
+  InlineRunSavePromptLabels,
 } from "./inline-run-card"
 
 export { PlanApprovalDialog } from "./plan-approval-dialog"

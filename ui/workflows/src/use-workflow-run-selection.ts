@@ -44,7 +44,10 @@ export function useWorkflowRunSelection(
     workflowRuns,
     inFlight,
     selectedRun,
+    /** Effective id for history highlight (includes fallback to latest run). */
     selectedRunId: selectedRun?.id ?? null,
+    /** Raw user/in-flight selection — null when only showing latest-run fallback. */
+    explicitRunId: selectedRunId,
     selectRun: setSelectedRunId,
   }
 }

@@ -46,6 +46,7 @@ export function useActiveRunLabels(): {
       approve: t("activeRun.approve"),
       actionApprove: t("activeRun.actionApprove"),
       cancel: t("activeRun.cancel"),
+      stop: t("activeRun.stop"),
       runStatus,
       approvalDialog: {
         title: t("approval.title"),
@@ -71,6 +72,7 @@ export function useActiveRunLabels(): {
       },
       stepProgress: {
         runsTogether: t("stepProgress.runsTogether"),
+        retry: t("stepProgress.retry"),
         stepStatus,
       },
     }),

@@ -5,7 +5,7 @@ use crate::routines::runner::expand_tilde;
 use crate::workflows::defs as workflow_defs;
 use crate::workflows::dispatcher::WorkflowDispatcher;
 use crate::workflows::inline::begin_inline_run;
-use crate::workflows::runner::{begin_run, finish_planning};
+use crate::workflows::runner::{begin_run, start_planning};
 use crate::workflows::types::InlineRunSpec;
 use houston_db::Database;
 use houston_terminal_manager::FeedItem;
@@ -125,8 +125,7 @@ pub async fn maybe_trigger_from_chat(
     let agent_path_owned = agent_path.to_string();
     let events_spawn = events.clone();
     tokio::spawn(async move {
-        if let Err(e) =
-            finish_planning(events_spawn, dispatcher, &agent_path_owned, begun).await
+        if let Err(e) = start_planning(events_spawn, dispatcher, &agent_path_owned, begun).await
         {
             tracing::error!("[workflows] chat trigger planning failed: {e}");
         }
