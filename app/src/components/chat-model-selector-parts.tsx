@@ -63,7 +63,9 @@ export function ProviderModelGroup({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm">{m.label}</div>
-              <div className="text-xs text-muted-foreground leading-snug">{m.description}</div>
+              <div className="text-xs text-muted-foreground leading-snug">
+                {t(`modelSelector.modelDescriptions.${m.id.replace(/\./g, "_")}`, { defaultValue: m.description })}
+              </div>
             </div>
           </DropdownMenuItem>
         );

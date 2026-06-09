@@ -76,6 +76,13 @@
       "high": "Análisis más profundo para tareas difíciles.",
       "xhigh": "Ideal para tareas complejas.",
       "max": "Análisis máximo, sin límite de tokens."
+    },
+    "modelDescriptions": {
+      "gpt-5_5": "El modelo más avanzado de OpenAI.",
+      "claude-sonnet-4-6": "Mejor equilibrio entre velocidad y calidad.",
+      "claude-opus-4-8": "Opus mas reciente. Mejor alineamiento y codigo agente que 4.7.",
+      "claude-fable-5": "El modelo mas capaz. Hasta 2x creditos vs Opus 4.8.",
+      "claude-opus-4-7": "Modelo anterior. Autonomia de codigo y razonamiento complejo."
     }
   },
   "reasoning": {
