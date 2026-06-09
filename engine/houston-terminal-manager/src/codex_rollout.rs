@@ -66,10 +66,7 @@ fn read_rollout_tail(path: &Path) -> Option<String> {
 /// codex without overriding `CODEX_HOME`, so codex uses whatever the engine
 /// inherited (the user's env) or its default — mirror that here.
 fn codex_sessions_dir() -> Option<PathBuf> {
-    let home = std::env::var_os("CODEX_HOME")
-        .map(PathBuf::from)
-        .or_else(|| dirs::home_dir().map(|h| h.join(".codex")))?;
-    Some(home.join("sessions"))
+    Some(crate::prompt_scratch::codex_home()?.join("sessions"))
 }
 
 /// Walk the sessions tree for the newest rollout belonging to `thread_id`. A

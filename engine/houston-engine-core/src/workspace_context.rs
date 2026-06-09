@@ -23,6 +23,17 @@ use std::path::{Path, PathBuf};
 pub const WORKSPACE_MD: &str = "WORKSPACE.md";
 pub const USER_MD: &str = "USER.md";
 
+/// Prompt-injection budget per file. Agents append to these files forever
+/// (the prompt section below tells them to), so the on-disk text grows
+/// without bound — a real workspace hit ~19 KB and, combined with the rest
+/// of the system prompt, broke codex spawns on Windows (32,767-char command
+/// line limit, os error 206). The argv side is fixed separately
+/// (`houston-terminal-manager::prompt_scratch`); this cap keeps the prompt
+/// share bounded the same way `learnings_context` bounds learnings. The
+/// files on disk are never trimmed — only what gets injected per session.
+const WORKSPACE_PROMPT_LIMIT: usize = 12_000;
+const USER_PROMPT_LIMIT: usize = 4_000;
+
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 pub struct WorkspaceContext {
@@ -93,14 +104,14 @@ pub fn build_prompt_section(ws_dir: &Path) -> Option<String> {
          path below.)"
             .to_string()
     } else {
-        workspace.trim_end().to_string()
+        cap_for_prompt(workspace.trim_end(), WORKSPACE_PROMPT_LIMIT)
     };
     let user_body = if user.trim().is_empty() {
         "(empty so far. When the user tells you about their role, goals, or \
          how they like to work, write it to the file path below.)"
             .to_string()
     } else {
-        user.trim_end().to_string()
+        cap_for_prompt(user.trim_end(), USER_PROMPT_LIMIT)
     };
 
     let mut out = String::new();
@@ -123,6 +134,29 @@ pub fn build_prompt_section(ws_dir: &Path) -> Option<String> {
         user_md_path.display(),
     ));
     Some(out)
+}
+
+/// Keep the END of an oversized body (agents append new facts at the
+/// bottom, so the tail is the most recent), cut at a line boundary, and say
+/// so explicitly — silent truncation would read as "this is everything".
+fn cap_for_prompt(body: &str, limit: usize) -> String {
+    if body.len() <= limit {
+        return body.to_string();
+    }
+    let mut cut = body.len() - limit;
+    while !body.is_char_boundary(cut) {
+        cut += 1;
+    }
+    let tail = &body[cut..];
+    // Drop the (likely partial) first line of the tail for a clean start.
+    let tail = match tail.split_once('\n') {
+        Some((_, rest)) => rest,
+        None => tail,
+    };
+    format!(
+        "(beginning omitted from this prompt to keep it bounded; the full \
+         text remains in the file below. Most recent entries follow.)\n{tail}"
+    )
 }
 
 #[cfg(test)]
@@ -188,5 +222,56 @@ mod tests {
         let d = TempDir::new().unwrap();
         // No `.houston/` => not a real workspace; skip injection.
         assert!(build_prompt_section(d.path()).is_none());
+    }
+
+    #[test]
+    fn cap_keeps_small_bodies_untouched() {
+        assert_eq!(cap_for_prompt("Acme Corp.", WORKSPACE_PROMPT_LIMIT), "Acme Corp.");
+    }
+
+    #[test]
+    fn cap_keeps_most_recent_lines_and_says_so() {
+        let body = (0..2_000)
+            .map(|i| format!("- fact number {i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(body.len() > WORKSPACE_PROMPT_LIMIT);
+
+        let capped = cap_for_prompt(&body, WORKSPACE_PROMPT_LIMIT);
+
+        assert!(capped.len() <= WORKSPACE_PROMPT_LIMIT + 200, "marker overhead only");
+        assert!(capped.contains("- fact number 1999"), "newest entries must survive");
+        assert!(!capped.contains("- fact number 0\n"), "oldest entries are dropped");
+        assert!(
+            capped.starts_with("(beginning omitted"),
+            "truncation must be explicit, never silent"
+        );
+    }
+
+    #[test]
+    fn cap_respects_utf8_boundaries() {
+        let body = "🚀".repeat(5_000); // 4 bytes each, no newlines
+        let capped = cap_for_prompt(&body, 1_000);
+        assert!(capped.contains('🚀'));
+        assert!(capped.starts_with("(beginning omitted"));
+    }
+
+    #[test]
+    fn oversized_workspace_file_is_capped_in_prompt_but_not_on_disk() {
+        let d = TempDir::new().unwrap();
+        fs::create_dir_all(d.path().join(".houston")).unwrap();
+        let big = (0..2_000)
+            .map(|i| format!("- workspace fact {i}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        fs::write(d.path().join(WORKSPACE_MD), &big).unwrap();
+
+        let out = build_prompt_section(d.path()).unwrap();
+
+        assert!(out.len() < big.len(), "prompt section must be bounded");
+        assert!(out.contains("- workspace fact 1999"));
+        assert!(out.contains("(beginning omitted"));
+        // The file itself is never trimmed.
+        assert_eq!(fs::read_to_string(d.path().join(WORKSPACE_MD)).unwrap(), big);
     }
 }

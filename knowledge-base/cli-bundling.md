@@ -108,6 +108,16 @@ The manifest is staged into the .app at
 `Resources/bin/cli-deps.json` so the runtime claude-code installer can
 read pinned URLs + checksums without a separate network round-trip.
 
+**Version floors:** codex must stay ≥ 0.137 — the engine passes each
+session's system prompt as a file-based profile
+(`$CODEX_HOME/houston-tmp-*.config.toml` + `-p`, see
+`houston-terminal-manager::prompt_scratch`); older codex `-p` only reads
+`[profiles.*]` tables inside the user's own `config.toml` and would fail
+with "config profile not found". claude-code must stay ≥ a version with
+`--system-prompt-file` (the pinned 2.1.158 has it). Both exist because
+inline prompts on argv exceed Windows' 32,767-char `CreateProcessW`
+limit (os error 206) for agents with large accumulated context.
+
 ## Build pipeline
 
 The same `scripts/fetch-cli-deps.sh` handles both macOS and Windows; the
