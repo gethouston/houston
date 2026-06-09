@@ -25,10 +25,9 @@ await engine.sendMessage(id, "hi"); // returns 202; events arrive on the stream 
 
 Full protocol: [`packages/engine/docs/engine-api.md`](../engine/docs/engine-api.md).
 
-## Build
+## Usage
 
-```bash
-pnpm --filter @houston/engine-client build   # emits dist/ + .d.ts
-```
-
-Types resolve from `src`; runtime entry is `dist/index.js`.
+Consumed as TypeScript source, no build step: `main`/`types`/`exports` all
+resolve to `src/index.ts`, so Vite (webapp) and Bun (engine) bundle/run it
+directly. Type-check it in isolation with
+`pnpm --filter @houston/engine-client typecheck`.
