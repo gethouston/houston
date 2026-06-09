@@ -114,12 +114,12 @@ All request/response shapes are exported types from `@houston/engine-client`
 
 ## Consuming the client package
 
-`@houston/engine-client` is a pnpm workspace package (zero runtime deps). From the
-webapp:
+`@houston/engine-client` is a pnpm workspace package (zero runtime deps),
+consumed as TypeScript source, no build step. From the webapp:
 
 ```bash
 pnpm add @houston/engine-client@workspace:*
-pnpm --filter @houston/engine-client build   # emits dist/ (one-time / on change)
 ```
 
-Types resolve from source; the runtime entry is `dist/index.js`.
+`main`/`types`/`exports` all resolve to `src/index.ts`, so Vite (webapp) and Bun
+(engine) bundle/run it directly.
