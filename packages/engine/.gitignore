@@ -2,3 +2,7 @@ node_modules/
 *.log
 .DS_Store
 data/
+# Deployment secrets — keep the token out of git. `.env.example` is tracked.
+.env
+.env.*
+!.env.example

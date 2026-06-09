@@ -13,7 +13,7 @@ client live in **`@houston/engine-client`** — prefer that over hand-rolling fe
 - If the engine is started with `HOUSTON_ENGINE_TOKEN`, send `Authorization: Bearer <token>`
   on every request (the SSE stream also accepts `?token=<token>`).
 - If unset (local dev on loopback), the API is open.
-- `GET /` and `GET /health` are always public.
+- `GET /health` and `GET /version` are always public.
 
 ## CORS
 
@@ -32,8 +32,8 @@ auth is a bearer token, not a cookie). Lock down with `HOUSTON_CORS_ORIGIN=https
 | GET | `/providers` | — | `ProviderInfo[]` (id, name, configured, isActive, activeModel, models) |
 | PUT | `/settings` | `{ activeProvider?, model? }` | `Settings` |
 | GET | `/auth/status` | — | `AuthStatus` (per-provider) |
-| POST | `/auth/:provider/login` | — | `LoginInfo` — `{kind:"url",url}` (Claude) or `{kind:"device_code",verificationUri,userCode}` (Codex) |
-| POST | `/auth/:provider/login/complete` | `{ code }` | `{ ok }` — paste-code (Anthropic remote) |
+| POST | `/auth/:provider/login` | — | `LoginInfo` — `{kind:"url",url}` (local Claude, loopback), `{kind:"auth_code",url,instructions?}` (headless Claude), or `{kind:"device_code",verificationUri,userCode}` (Codex) |
+| POST | `/auth/:provider/login/complete` | `{ code }` | `{ ok }` — submit the pasted code (the `auth_code` headless Claude path) |
 | POST | `/auth/:provider/logout` | — | `{ ok }` |
 | GET | `/conversations` | — | `ConversationSummary[]` (newest first) |
 | GET | `/conversations/:id/messages` | — | `ConversationHistory` (404 if unknown) |
@@ -57,15 +57,18 @@ the `sync` frame catches you up mid-turn).
 
 ### Login flow (subscription OAuth)
 
-1. `POST /auth/:provider/login` → a `LoginInfo`:
-   - **Claude (`anthropic`)** → `{ kind: "url", url }`. Open `url`.
-     - *Local engine:* the redirect hits the engine's loopback (`localhost:53692`)
-       automatically — nothing else to do.
-     - *Remote engine:* the loopback is unreachable; the user copies the code from
-       the redirect → `POST /auth/anthropic/login/complete { code }`.
+1. `POST /auth/:provider/login` → a `LoginInfo`. Which Claude variant you get is
+   decided by the engine's deploy mode (`HOUSTON_HEADLESS`, else inferred from a
+   non-loopback bind host):
+   - **Claude, local** → `{ kind: "url", url }`. Open `url`; the engine catches the
+     redirect on its own loopback (`localhost:53692`). Nothing else to do.
+   - **Claude, headless** → `{ kind: "auth_code", url, instructions? }`. Open `url`,
+     approve, then the user copies the `code#state` Claude shows and submits it →
+     `POST /auth/anthropic/login/complete { code }`. No loopback needed — the same
+     flow Claude Code itself uses for browserless sign-in.
    - **Codex (`openai-codex`)** → `{ kind: "device_code", verificationUri, userCode }`.
      Show both; the user opens `verificationUri` and enters `userCode` (fully
-     headless — works for remote engines with no paste step).
+     headless — the engine polls, no paste step).
 2. Poll `GET /auth/status` until that provider's `configured: true`. Tokens are
    stored and auto-refreshed by the engine.
 3. Pick the chat model with `PUT /settings { activeProvider, model }` (optional —
@@ -108,8 +111,15 @@ const engine = new HoustonEngineClient({
 
 // 1) Connect a provider (Claude or Codex)
 const info = await engine.startLogin("anthropic"); // or "openai-codex"
-if (info.kind === "url") window.open(info.url, "_blank");
-else showDeviceCode(info.verificationUri, info.userCode); // Codex
+if (info.kind === "url") {
+  window.open(info.url, "_blank"); // local Claude: engine catches the loopback
+} else if (info.kind === "auth_code") {
+  window.open(info.url, "_blank"); // headless Claude: then collect the pasted code
+  const code = await promptForCode(info.instructions);
+  await engine.completeLogin("anthropic", code);
+} else {
+  showDeviceCode(info.verificationUri, info.userCode); // Codex
+}
 // poll engine.authStatus(): providers[].configured / activeProvider
 // optional: await engine.setSettings({ activeProvider: "anthropic", model: "claude-opus-4-5" });
 
