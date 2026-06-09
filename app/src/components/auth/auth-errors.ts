@@ -36,6 +36,9 @@ export function prettifyAuthError(raw: string): string {
   if (msg.includes("rate") && msg.includes("limit")) {
     return "Too many attempts. Wait a minute, then try again.";
   }
+  if (msg.includes("no session")) {
+    return "Sign-in didn't finish. Please try again.";
+  }
   // Fallback: show the raw message so the user has something to copy when
   // reporting. Keep it bounded so the UI doesn't blow up.
   const trimmed = raw.length > 220 ? `${raw.slice(0, 220)}…` : raw;

@@ -176,7 +176,15 @@ export async function verifyEmailOtp(email: string, token: string): Promise<void
     type: "email",
   });
   if (error) throw error;
-  applySessionToCache(data.session ?? null);
+  // verifyOtp can resolve with `error == null` but `session == null` (e.g. a
+  // misconfigured email template, or a code accepted as a confirmation rather
+  // than a sign-in). Caching null here would silently leave the auth gate up
+  // — the user typed a valid code, it "succeeded", and nothing happens. Throw
+  // so EmailSignIn's catch surfaces it (no-silent-failures rule).
+  if (!data.session) {
+    throw new Error("Sign-in succeeded but returned no session.");
+  }
+  applySessionToCache(data.session);
   analytics.track("user_signed_in", { provider: "email" });
   logger.info(`[auth] session established (email otp) for ${data.user?.email}`);
 }
@@ -275,6 +283,11 @@ export function installDeepLinkListener(): () => void {
           emitAuthError(error.message);
           return;
         }
+        if (!data.session) {
+          logger.error("[auth] setSession returned no session");
+          emitAuthError("Sign-in succeeded but returned no session.");
+          return;
+        }
         // Push the session directly into the TanStack Query cache that
         // `useSession` reads. Belt-and-suspenders over Supabase's
         // `onAuthStateChange` listener, which a real Windows v0.4.14
@@ -283,7 +296,7 @@ export function installDeepLinkListener(): () => void {
         // but the auth gate in App.tsx never re-rendered. Writing the
         // cache key directly here makes the UI transition deterministic
         // regardless of whether the listener fires.
-        applySessionToCache(data.session ?? null);
+        applySessionToCache(data.session);
         analytics.track("user_signed_in", { provider: pendingProvider ?? "unknown" });
         pendingProvider = null;
         logger.info(
