@@ -4,7 +4,7 @@
 //! that apps previously implemented manually.
 
 use crate::session_id_tracker::SessionIdHandle;
-use crate::session_pids::SessionPidMap;
+use crate::session_pids::{PidInsert, SessionPidMap};
 use houston_db::Database;
 use houston_terminal_manager::auth_error::{is_auth_error, is_auth_retry_marker};
 use houston_terminal_manager::provider_auth::ProviderAuthState;
@@ -141,7 +141,20 @@ pub fn spawn_and_monitor(
             match update {
                 SessionUpdate::ProcessPid(pid) => {
                     if let Some(ref pm) = pid_map {
-                        pm.insert(key.clone(), pid).await;
+                        if pm.insert(key.clone(), pid).await == PidInsert::AlreadyCancelled {
+                            // Stop was pressed before this PID existed
+                            // (slow prep or a provider retry respawn).
+                            // Kill it now or it runs to completion behind
+                            // the "Stopped by user" message (issue #469).
+                            tracing::info!(
+                                "[session_runner] pid {pid} arrived for cancelled session {key} — terminating"
+                            );
+                            if !crate::process_kill::terminate_process_tree(pid).await {
+                                tracing::error!(
+                                    "[session_runner] could not confirm late-spawn kill for cancelled session {key} (pid {pid})"
+                                );
+                            }
+                        }
                     }
                     continue;
                 }

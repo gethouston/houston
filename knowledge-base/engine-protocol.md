@@ -110,7 +110,7 @@ module.
 |---|---|---|
 | POST | `/v1/agents/:agent_path/sessions` | Start turn |
 | POST | `/v1/agents/:agent_path/sessions/onboarding` | Start onboarding turn |
-| POST | `/v1/agents/:agent_path/sessions/:key:cancel` | SIGTERM CLI |
+| POST | `/v1/agents/:agent_path/sessions/:key:cancel` | Kill CLI process tree (verified, SIGKILL escalation); a tombstone catches a CLI that spawns after Stop |
 | GET | `/v1/agents/:agent_path/sessions/:key/history` | Load chat history |
 | POST | `/v1/sessions/summarize` | Activity title/description |
 

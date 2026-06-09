@@ -317,12 +317,13 @@ async fn rest_cancel_existing_session_emits_events() {
     // side-effect is tolerated (no real process) — we just verify the
     // emitted events land on the `session:{key}` WS topic.
     let (addr, token, state) = spawn_engine().await;
-    state
+    let tracked = state
         .engine
         .sessions
         .pid_map
         .insert("k1".into(), 999_999)
         .await;
+    assert_eq!(tracked, houston_engine_core::sessions::PidInsert::Tracked);
 
     let mut ws = ws_connect(addr, &token).await;
     ws.send(Message::Text(sub_frame(&["session:k1"]))).await.unwrap();

@@ -69,7 +69,7 @@ both.
 
 | Area | File | Unix | Windows |
 |------|------|------|---------|
-| Session cancel | `engine-core/src/sessions/mod.rs::cancel` | `kill -TERM <pid>` | `taskkill /PID <pid> /T /F` |
+| Session cancel | `engine-core/src/sessions/cancel.rs` → `houston-agents-conversations/src/process_kill/` | SIGTERM process group + `pgrep -P` descendant snapshot → poll → SIGKILL escalation, death verified | `taskkill /PID <pid> /T /F`, verified via `tasklist`, retried once |
 | Worktree shell (`run_shell`) | `engine-core/src/worktree.rs::run_shell` | `sh -c <command>` | `cmd /C <command>` (no `sh` on Windows) |
 | `engine.json` perms | `engine-server/src/main.rs::write_manifest` | `chmod 0o600` | inherits NTFS ACL from parent (sufficient; user dir is per-user) |
 | Composio installer | `houston-composio/src/install.rs::install` | `bash -c "curl \| bash"` | returns a clear error — auto-install not wired (see **gaps** below) |
@@ -94,12 +94,15 @@ both.
    `%APPDATA%\nvm\v<ver>\` with a different shape than nvm.sh — not
    yet probed; Node tools installed via nvm-windows won't be picked up
    unless they're on PATH already.
-4. **Process-group kill**: on Unix we `kill -TERM` the single PID we
-   tracked; Windows uses `taskkill /T` which walks the child tree.
-   Semantics differ — Windows is forceful (`/F`) because Console
-   applications don't respond to clean-shutdown signals unless they're
-   in our console group. If this becomes a problem (e.g. sessions that
-   need graceful Claude shutdown to flush token caches), switch to
+4. **Process-group kill**: on Unix we SIGTERM the process group (+ a
+   `pgrep -P` descendant snapshot), verify death, and escalate to
+   SIGKILL; Windows uses `taskkill /T /F` which walks the child tree,
+   verified via `tasklist` and retried once
+   (`houston-agents-conversations/src/process_kill/`). Windows is
+   forceful (`/F`) from the start because Console applications don't
+   respond to clean-shutdown signals unless they're in our console
+   group. If this becomes a problem (e.g. sessions that need graceful
+   Claude shutdown to flush token caches), switch to
    `GenerateConsoleCtrlEvent` via a detached child console.
 5. **MSVC target build**: not verified on the macOS host. CI on Windows
    runners (E₂'s scope) is the authoritative check. Cross-compile from

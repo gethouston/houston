@@ -109,7 +109,7 @@ pub(crate) async fn run_cli_process(
     match child.wait().await {
         Ok(status) => {
             tracing::info!("[houston:session] process exited with {status}");
-            let is_sigterm = status.code() == Some(143);
+            let is_stop_signal = exited_by_stop_signal(&status);
             // On Windows, `sessions::cancel` calls `taskkill /F /T /PID` to
             // tear down the codex / claude process tree when the user
             // clicks Stop. TerminateProcess sets the killed process's exit
@@ -145,22 +145,22 @@ pub(crate) async fn run_cli_process(
             } else if malformed_provider_json {
                 tracing::warn!("[houston:session] claude failed with malformed provider JSON");
                 CliRunOutcome::ProviderRequestMalformedJson
-            } else if status.success() || is_sigterm || likely_user_stop_windows {
+            } else if status.success() || is_stop_signal || likely_user_stop_windows {
                 if likely_user_stop_windows {
                     tracing::info!(
                         "[houston:session] {cli_name} exited with code 1 + empty stderr — treating as user-initiated stop"
                     );
                 }
-                // SIGTERM (143) and the Windows-stop heuristic both
-                // indicate user-initiated cancellation. Emit a typed
-                // `Cancelled` feed item BEFORE Completed so the chat
-                // history carries the structured marker (the dispatcher
-                // intentionally renders nothing for `Cancelled`, but
-                // analytics / debug surfaces / future "show stopped
-                // sessions" filters all key off the typed variant).
-                // A clean exit (`status.success()`) is NOT cancellation,
-                // so we only emit when one of the stop signals fired.
-                if is_sigterm || likely_user_stop_windows {
+                // Stop signals (SIGTERM/SIGKILL) and the Windows-stop
+                // heuristic both indicate user-initiated cancellation.
+                // Emit a typed `Cancelled` feed item BEFORE Completed so
+                // the chat history carries the structured marker (the
+                // dispatcher intentionally renders nothing for
+                // `Cancelled`, but analytics / debug surfaces / future
+                // "show stopped sessions" filters all key off the typed
+                // variant). A clean exit (`status.success()`) is NOT
+                // cancellation, so we only emit when a stop signal fired.
+                if is_stop_signal || likely_user_stop_windows {
                     let _ = tx.send(SessionUpdate::Feed(FeedItem::ProviderError(
                         ProviderError::Cancelled {
                             provider: provider.id().to_string(),
@@ -265,6 +265,29 @@ fn handle_failed_exit(
     CliRunOutcome::Failed
 }
 
+/// Did the process die from a user-initiated stop? `sessions::cancel`
+/// SIGTERMs the provider process group and escalates to SIGKILL when the
+/// CLI (or a child) traps/ignores TERM. On Unix a signal death reports
+/// `code() == None` with `signal()` set — checking `code() == Some(143)`
+/// alone misses every direct signal kill and misfiles it as a runtime
+/// error next to the "Stopped by user" message. The 143/137 codes cover
+/// CLIs that catch the signal and re-exit with the shell convention.
+/// (An OOM-killer SIGKILL is indistinguishable and also lands here —
+/// acceptable: rare, and the session status still resolves.)
+#[cfg(unix)]
+fn exited_by_stop_signal(status: &std::process::ExitStatus) -> bool {
+    use std::os::unix::process::ExitStatusExt;
+    const SIGKILL: i32 = 9;
+    const SIGTERM: i32 = 15;
+    matches!(status.signal(), Some(SIGTERM) | Some(SIGKILL))
+        || matches!(status.code(), Some(143) | Some(137))
+}
+
+#[cfg(not(unix))]
+fn exited_by_stop_signal(status: &std::process::ExitStatus) -> bool {
+    matches!(status.code(), Some(143) | Some(137))
+}
+
 #[cfg(unix)]
 fn configure_process_group(cmd: &mut Command) {
     unsafe {
@@ -299,6 +322,21 @@ mod tests {
             out.push(u);
         }
         out
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn stop_signal_classification_covers_signal_and_code_forms() {
+        use std::os::unix::process::ExitStatusExt;
+        use std::process::ExitStatus;
+        // Raw wait status: low byte = signal, exit code = code << 8.
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(15))); // SIGTERM
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(9))); // SIGKILL
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(143 << 8))); // shell convention
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(137 << 8)));
+        assert!(!exited_by_stop_signal(&ExitStatus::from_raw(0))); // clean exit
+        assert!(!exited_by_stop_signal(&ExitStatus::from_raw(1 << 8))); // real failure
+        assert!(!exited_by_stop_signal(&ExitStatus::from_raw(2))); // SIGINT — not ours
     }
 
     #[test]
