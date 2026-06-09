@@ -151,7 +151,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "claude-fable-5",
         label: "Fable 5",
-        description: "Most capable model. Up to 2x credits vs Opus 4.8.",
+        description: "Most capable model. Costs 2x more credits than Opus 4.8.",
         // Fable 5: full range like Opus 4.8. ultracode is a harness mode, not
         // an effort level — it is intentionally excluded for this model.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
