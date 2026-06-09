@@ -41,6 +41,18 @@ export const ui: Record<string, CSSProperties> = {
     cursor: "pointer",
   },
   note: { margin: 0, fontSize: 12.5, color: "#bdbdbd", lineHeight: 1.5 },
+  label: { display: "flex", flexDirection: "column", gap: 6, fontSize: 12, fontWeight: 500, color: "#bdbdbd" },
+  input: {
+    height: 40,
+    padding: "0 12px",
+    borderRadius: 9,
+    border: "1px solid rgba(255,255,255,0.12)",
+    background: "#0d0d0d",
+    color: "#f5f5f5",
+    fontSize: 14,
+    outline: "none",
+  },
+  error: { margin: 0, fontSize: 13, color: "#ff6b6b" },
 
   shell: { display: "flex", height: "100vh", background: "#0d0d0d", color: "#f5f5f5", fontFamily: "system-ui, -apple-system, sans-serif" },
   sidebar: {
