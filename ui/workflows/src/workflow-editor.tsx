@@ -1,8 +1,8 @@
 /**
  * WorkflowEditor — create/edit a workflow with live run panel + history.
  */
+import { useRef } from "react"
 import {
-  cn,
   Button,
   DropdownMenu,
   DropdownMenuContent,
@@ -11,6 +11,8 @@ import {
 } from "@houston-ai/core"
 import {
   ArrowLeft,
+  ChevronDown,
+  ChevronUp,
   Play,
   Square,
   Trash2,
@@ -20,15 +22,18 @@ import type { Workflow, WorkflowRun } from "./types"
 import { isResumable } from "./workflow-dag"
 import { ActiveRunPanel } from "./active-run-panel"
 import type { ActiveRunPanelLabels } from "./active-run-panel"
+import {
+  SectionCard,
+  WorkflowDefinitionPanel,
+  type WorkflowFormData,
+} from "./workflow-definition-panel"
 import { WorkflowRunHistory } from "./workflow-run-history"
 import type { WorkflowRunHistoryLabels } from "./workflow-run-history"
+import { useWorkflowDefinitionExpanded } from "./use-workflow-definition-expanded"
+import { useScrollToRunPanel } from "./use-scroll-to-run-panel"
 import { useWorkflowRunSelection } from "./use-workflow-run-selection"
 
-export interface WorkflowFormData {
-  name: string
-  description: string
-  plan_prompt: string
-}
+export type { WorkflowFormData }
 
 export interface WorkflowEditorLabels {
   newWorkflow?: string
@@ -42,12 +47,15 @@ export interface WorkflowEditorLabels {
   create?: string
   delete?: string
   moreAria?: string
+  showDetails?: string
+  hideDetails?: string
   nameLabel?: string
   namePlaceholder?: string
   descriptionLabel?: string
   descriptionPlaceholder?: string
   planPromptLabel?: string
   planPromptPlaceholder?: string
+  savedPlanTitle?: string
   recentRuns?: string
   activeRun?: ActiveRunPanelLabels
   runHistory?: WorkflowRunHistoryLabels
@@ -67,36 +75,16 @@ const DEFAULT_LABELS: Required<
   create: "Create workflow",
   delete: "Delete workflow",
   moreAria: "More actions",
+  showDetails: "Show workflow details",
+  hideDetails: "Hide workflow details",
   nameLabel: "Name",
   namePlaceholder: "e.g. Ship the feature",
   descriptionLabel: "Description",
   descriptionPlaceholder: "Optional, what this workflow is for",
   planPromptLabel: "Planning prompt",
   planPromptPlaceholder: "What should the agent plan and execute?",
+  savedPlanTitle: "Saved steps",
   recentRuns: "Recent runs",
-}
-
-function SectionCard({
-  title,
-  children,
-}: {
-  title: string
-  children: React.ReactNode
-}) {
-  return (
-    <section className="rounded-xl bg-secondary px-5 py-5">
-      <h3 className="text-sm font-medium text-foreground mb-4">{title}</h3>
-      {children}
-    </section>
-  )
-}
-
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return (
-    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-      {children}
-    </label>
-  )
 }
 
 export interface WorkflowEditorProps {
@@ -112,6 +100,8 @@ export interface WorkflowEditorProps {
   onApproveRun?: (runId: string) => void
   approvePending?: boolean
   onResumeRun?: (runId: string) => void
+  onRetryStep?: (runId: string, stepId: string) => void
+  retryingStepId?: string
   onDelete?: () => void
   hasChanges?: boolean
   labels?: WorkflowEditorLabels
@@ -130,14 +120,27 @@ export function WorkflowEditor({
   onApproveRun,
   approvePending,
   onResumeRun,
+  onRetryStep,
+  retryingStepId,
   onDelete,
   hasChanges,
   labels,
 }: WorkflowEditorProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
   const isEdit = !!workflow
-  const { workflowRuns, inFlight, selectedRun, selectedRunId, selectRun } =
-    useWorkflowRunSelection(workflow?.id, runs)
+  const runPanelRef = useRef<HTMLDivElement>(null)
+  const {
+    workflowRuns,
+    inFlight,
+    selectedRun,
+    selectedRunId,
+    explicitRunId,
+    selectRun,
+  } = useWorkflowRunSelection(workflow?.id, runs)
+  const { definitionExpanded, toggleDefinition } =
+    useWorkflowDefinitionExpanded(explicitRunId)
+  useScrollToRunPanel(runPanelRef, explicitRunId)
+
   const resumable = runs.find((r) => isResumable(r))
   const canSubmit =
     !!value.name.trim() &&
@@ -147,6 +150,16 @@ export function WorkflowEditor({
   const headerTitle = isEdit
     ? value.name.trim() || workflow?.name || l.untitled
     : l.newWorkflow
+
+  const definitionLabels = {
+    nameLabel: l.nameLabel,
+    namePlaceholder: l.namePlaceholder,
+    descriptionLabel: l.descriptionLabel,
+    descriptionPlaceholder: l.descriptionPlaceholder,
+    planPromptLabel: l.planPromptLabel,
+    planPromptPlaceholder: l.planPromptPlaceholder,
+    savedPlanTitle: l.savedPlanTitle,
+  }
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">
@@ -164,6 +177,16 @@ export function WorkflowEditor({
             {headerTitle}
           </p>
           <div className="flex items-center gap-1.5 shrink-0">
+            {isEdit && (
+              <Button variant="ghost" size="sm" onClick={toggleDefinition}>
+                {definitionExpanded ? (
+                  <ChevronUp className="size-3.5" />
+                ) : (
+                  <ChevronDown className="size-3.5" />
+                )}
+                {definitionExpanded ? l.hideDetails : l.showDetails}
+              </Button>
+            )}
             {isEdit && inFlight && onCancelRun ? (
               <Button
                 variant="ghost"
@@ -225,57 +248,16 @@ export function WorkflowEditor({
 
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="max-w-3xl mx-auto px-6 pt-3 pb-12 space-y-3">
-          <section className="rounded-xl bg-secondary p-5 space-y-4">
-            <div>
-              <FieldLabel>{l.nameLabel}</FieldLabel>
-              <input
-                type="text"
-                value={value.name}
-                onChange={(e) => onChange({ name: e.target.value })}
-                placeholder={l.namePlaceholder}
-                className={cn(
-                  "w-full px-3 py-2 text-sm text-foreground",
-                  "placeholder:text-muted-foreground/60",
-                  "bg-background border border-black/[0.04] rounded-lg",
-                  "outline-none transition-shadow duration-200",
-                  "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
-                )}
-                autoFocus={!isEdit}
-              />
-            </div>
-            <div>
-              <FieldLabel>{l.descriptionLabel}</FieldLabel>
-              <input
-                type="text"
-                value={value.description}
-                onChange={(e) => onChange({ description: e.target.value })}
-                placeholder={l.descriptionPlaceholder}
-                className={cn(
-                  "w-full px-3 py-2 text-sm text-foreground",
-                  "placeholder:text-muted-foreground/60",
-                  "bg-background border border-black/[0.04] rounded-lg",
-                  "outline-none transition-shadow duration-200",
-                  "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
-                )}
-              />
-            </div>
-            <div>
-              <FieldLabel>{l.planPromptLabel}</FieldLabel>
-              <textarea
-                value={value.plan_prompt}
-                onChange={(e) => onChange({ plan_prompt: e.target.value })}
-                placeholder={l.planPromptPlaceholder}
-                rows={5}
-                className={cn(
-                  "w-full px-3 py-2 text-sm text-foreground leading-relaxed",
-                  "placeholder:text-muted-foreground/60",
-                  "bg-background border border-black/[0.04] rounded-lg",
-                  "outline-none resize-none transition-shadow duration-200",
-                  "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
-                )}
-              />
-            </div>
-          </section>
+          <WorkflowDefinitionPanel
+            value={value}
+            onChange={onChange}
+            workflow={workflow}
+            expanded={definitionExpanded}
+            collapsible={isEdit}
+            autoFocus={!isEdit}
+            labels={definitionLabels}
+            stepProgressLabels={l.activeRun?.stepProgress}
+          />
 
           {isEdit && workflowRuns.length > 0 && (
             <SectionCard title={l.recentRuns}>
@@ -291,19 +273,27 @@ export function WorkflowEditor({
           )}
 
           {isEdit && selectedRun && (
-            <ActiveRunPanel
-              run={selectedRun}
-              onApprove={
-                onApproveRun && selectedRun.status === "awaiting_approval"
-                  ? () => onApproveRun(selectedRun.id)
-                  : undefined
-              }
-              onCancel={
-                onCancelRun ? () => onCancelRun(selectedRun.id) : undefined
-              }
-              approvePending={approvePending}
-              labels={l.activeRun}
-            />
+            <div ref={runPanelRef}>
+              <ActiveRunPanel
+                run={selectedRun}
+                onApprove={
+                  onApproveRun && selectedRun.status === "awaiting_approval"
+                    ? () => onApproveRun(selectedRun.id)
+                    : undefined
+                }
+                onCancel={
+                  onCancelRun ? () => onCancelRun(selectedRun.id) : undefined
+                }
+                onRetryStep={
+                  onRetryStep
+                    ? (stepId) => onRetryStep(selectedRun.id, stepId)
+                    : undefined
+                }
+                retryingStepId={retryingStepId}
+                approvePending={approvePending}
+                labels={l.activeRun}
+              />
+            </div>
           )}
         </div>
       </div>

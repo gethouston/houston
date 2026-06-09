@@ -20,6 +20,7 @@ import {
   useApproveWorkflowRun,
   useCancelWorkflowRun,
   useResumeWorkflowRun,
+  useRetryWorkflowStep,
 } from "../../hooks/queries";
 import { useActiveRunLabels } from "../../hooks/use-active-run-labels";
 import type { TabProps } from "../../lib/types";
@@ -37,6 +38,7 @@ export default function WorkflowsTab({ agent }: TabProps) {
   const approveRun = useApproveWorkflowRun(path);
   const cancelRun = useCancelWorkflowRun(path);
   const resumeRun = useResumeWorkflowRun(path);
+  const retryStep = useRetryWorkflowStep(path);
 
   const [view, setView] = useState<View>(() => freshWorkflowsState().view);
   const [form, setForm] = useState<WorkflowFormData>(
@@ -77,7 +79,10 @@ export default function WorkflowsTab({ agent }: TabProps) {
       descriptionPlaceholder: t("editor.descriptionPlaceholder"),
       planPromptLabel: t("editor.planPromptLabel"),
       planPromptPlaceholder: t("editor.planPromptPlaceholder"),
+      savedPlanTitle: t("editor.savedPlanTitle"),
       recentRuns: t("editor.recentRuns"),
+      showDetails: t("editor.showDetails"),
+      hideDetails: t("editor.hideDetails"),
       activeRun,
       runHistory: {
         empty: t("history.empty"),
@@ -162,6 +167,13 @@ export default function WorkflowsTab({ agent }: TabProps) {
     [resumeRun],
   );
 
+  const handleRetryStep = useCallback(
+    (runId: string, stepId: string) => {
+      retryStep.mutate({ runId, stepId });
+    },
+    [retryStep],
+  );
+
   if (view.type === "editor") {
     const editing = view.editId
       ? workflows?.find((w) => w.id === view.editId)
@@ -184,6 +196,12 @@ export default function WorkflowsTab({ agent }: TabProps) {
         approvePending={approveRun.isPending}
         onCancelRun={handleCancelRun}
         onResumeRun={handleResumeRun}
+        onRetryStep={handleRetryStep}
+        retryingStepId={
+          retryStep.isPending && retryStep.variables
+            ? retryStep.variables.stepId
+            : undefined
+        }
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         hasChanges={!formMatchesWorkflow(form, baseline)}
         labels={editorLabels}

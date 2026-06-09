@@ -32,9 +32,14 @@ fn planner_parse_error(raw: &str) -> CoreError {
 /// Parse a planner turn response: extract JSON, validate DAG, apply run guards.
 pub fn parse_plan_from_response(raw: &str) -> CoreResult<WorkflowPlan> {
     let json = extract_plan_json(raw).ok_or_else(|| planner_parse_error(raw))?;
-    let plan = parse_plan(json)?;
-    crate::workflows::guards::enforce_run_limits(&plan)?;
-    Ok(plan)
+    validate_stored_plan(&parse_plan(json)?)
+}
+
+/// Validate a plan already deserialized (saved on a workflow def or run).
+pub fn validate_stored_plan(plan: &WorkflowPlan) -> CoreResult<WorkflowPlan> {
+    validate_plan(plan)?;
+    crate::workflows::guards::enforce_run_limits(plan)?;
+    Ok(plan.clone())
 }
 
 fn validate_plan(plan: &WorkflowPlan) -> CoreResult<()> {

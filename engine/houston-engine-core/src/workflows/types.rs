@@ -38,6 +38,9 @@ pub struct Workflow {
     pub description: String,
     /// Instruction an AI planner uses to generate a [`WorkflowPlan`].
     pub plan_prompt: String,
+    /// When set, re-runs copy this plan and skip the AI planner.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan: Option<WorkflowPlan>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -48,6 +51,8 @@ pub struct NewWorkflow {
     #[serde(default)]
     pub description: String,
     pub plan_prompt: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan: Option<WorkflowPlan>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -55,6 +60,7 @@ pub struct WorkflowUpdate {
     pub name: Option<String>,
     pub description: Option<String>,
     pub plan_prompt: Option<String>,
+    pub plan: Option<WorkflowPlan>,
 }
 
 // -- Workflow run --
@@ -114,6 +120,9 @@ pub struct WorkflowRun {
     pub name: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    /// Set when an inline run is promoted into a saved workflow definition.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub saved_workflow_id: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -123,4 +132,5 @@ pub struct WorkflowRunUpdate {
     pub steps: Option<Vec<StepState>>,
     pub summary: Option<String>,
     pub completed_at: Option<String>,
+    pub saved_workflow_id: Option<String>,
 }

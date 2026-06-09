@@ -1,16 +1,22 @@
 import type {
   WorkflowPlan,
   WorkflowRun,
+  WorkflowRunStatus,
   WorkflowStep,
   WorkflowStepStatus,
 } from "./types"
 
 /** In-flight run statuses (not terminal). */
-const ACTIVE_STATUSES = new Set([
+const ACTIVE_STATUSES = new Set<WorkflowRunStatus>([
   "planning",
   "awaiting_approval",
   "running",
 ])
+
+/** True when a run can be stopped via `cancel_run`. */
+export function isCancellable(status: WorkflowRunStatus): boolean {
+  return ACTIVE_STATUSES.has(status)
+}
 
 /** Topological layers via Kahn's algorithm. Steps in the same layer can run in parallel. */
 export function layerSteps(plan: WorkflowPlan): WorkflowStep[][] {

@@ -288,6 +288,8 @@ export interface Workflow {
   description: string;
   /** Instruction an AI planner uses to generate a [`WorkflowPlan`]. */
   plan_prompt: string;
+  /** When set, re-runs copy this plan and skip the AI planner. */
+  plan?: WorkflowPlan;
   created_at: string;
   updated_at: string;
 }
@@ -296,12 +298,14 @@ export interface NewWorkflow {
   name: string;
   description?: string;
   plan_prompt: string;
+  plan?: WorkflowPlan;
 }
 
 export interface WorkflowUpdate {
   name?: string;
   description?: string;
   plan_prompt?: string;
+  plan?: WorkflowPlan;
 }
 
 export interface StepState {
@@ -329,6 +333,8 @@ export interface WorkflowRun {
   plan_prompt?: string;
   name?: string;
   description?: string;
+  /** Set when an inline run is promoted into a saved workflow definition. */
+  saved_workflow_id?: string;
 }
 
 export interface ProjectConfig {

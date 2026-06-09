@@ -13,13 +13,16 @@ import {
 import { DEFAULT_RUN_STATUS_LABELS } from "./run-status"
 import {
   awaitingGateStepId,
+  isCancellable,
   isMidrunApprovalGate,
 } from "./workflow-dag"
 
 export type InlineRunCardLabels = Omit<
   ActiveRunPanelLabels,
   "reviewPlan" | "reviewAction" | "approvalDialog" | "actionApprovalDialog"
->
+> & {
+  stop?: string
+}
 
 const DEFAULT_LABELS: Required<
   Omit<InlineRunCardLabels, "runStatus" | "stepProgress">
@@ -28,21 +31,88 @@ const DEFAULT_LABELS: Required<
   approve: "Approve",
   actionApprove: "Approve and continue",
   cancel: "Cancel",
+  stop: "Stop",
+}
+
+export interface InlineRunSavePromptLabels {
+  title: string
+  description: string
+  confirm: string
+  cancel: string
+  successTitle: string
+  successDescription: string
+}
+
+export interface InlineRunSavePrompt {
+  /** `offer` shows save/dismiss actions; `saved` shows a confirmation message. */
+  state: "offer" | "saved"
+  savedName?: string
+  onConfirm?: () => void
+  onDismiss?: () => void
+  confirmPending?: boolean
+  labels: InlineRunSavePromptLabels
 }
 
 export interface InlineRunCardProps {
   run: WorkflowRun
   onApprove?: () => void
   onCancel?: () => void
+  onRetryStep?: (stepId: string) => void
+  retryingStepId?: string
   approvePending?: boolean
+  cancelPending?: boolean
+  savePrompt?: InlineRunSavePrompt
   labels?: InlineRunCardLabels
+}
+
+function InlineRunSaveFooter({ savePrompt }: { savePrompt: InlineRunSavePrompt }) {
+  const { labels: l, state } = savePrompt
+
+  if (state === "saved") {
+    return (
+      <div className="mt-4 pt-4 border-t border-border/40 space-y-1">
+        <p className="text-sm font-medium text-foreground">{l.successTitle}</p>
+        <p className="text-xs text-muted-foreground">{l.successDescription}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="mt-4 pt-4 border-t border-border/40 space-y-3">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-foreground">{l.title}</p>
+        <p className="text-xs text-muted-foreground leading-relaxed">{l.description}</p>
+      </div>
+      <div className="flex items-center justify-end gap-1.5">
+        <Button
+          variant="secondary"
+          size="sm"
+          onClick={savePrompt.onDismiss}
+          disabled={savePrompt.confirmPending}
+        >
+          {l.cancel}
+        </Button>
+        <Button
+          size="sm"
+          onClick={savePrompt.onConfirm}
+          disabled={savePrompt.confirmPending}
+        >
+          {savePrompt.confirmPending ? "…" : l.confirm}
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 export function InlineRunCard({
   run,
   onApprove,
   onCancel,
+  onRetryStep,
+  retryingStepId,
   approvePending,
+  cancelPending,
+  savePrompt,
   labels,
 }: InlineRunCardProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
@@ -54,6 +124,18 @@ export function InlineRunCard({
     return (
       <section className="rounded-xl border border-black/5 bg-background px-3 py-2.5">
         <PlanningRow planningLabel={l.planning} />
+        {onCancel && (
+          <div className="flex items-center justify-end mt-4 pt-4 border-t border-border/40">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={onCancel}
+              disabled={cancelPending}
+            >
+              {l.stop}
+            </Button>
+          </div>
+        )}
       </section>
     )
   }
@@ -66,6 +148,8 @@ export function InlineRunCard({
 
   const showApprovalActions =
     run.status === "awaiting_approval" && onApprove && onCancel
+  const showStopAction =
+    run.status === "running" && isCancellable(run.status) && onCancel
 
   return (
     <section className="rounded-xl border border-black/5 bg-background px-3 py-2.5">
@@ -84,6 +168,8 @@ export function InlineRunCard({
         gateStepId={gateStepId}
         synthesisLabel={l.synthesis}
         stepProgressLabels={labels?.stepProgress}
+        onRetryStep={onRetryStep}
+        retryingStepId={retryingStepId}
       />
 
       {showApprovalActions && (
@@ -92,7 +178,7 @@ export function InlineRunCard({
             variant="secondary"
             size="sm"
             onClick={onCancel}
-            disabled={approvePending}
+            disabled={approvePending || cancelPending}
           >
             {l.cancel}
           </Button>
@@ -100,6 +186,23 @@ export function InlineRunCard({
             {approvePending ? "…" : approveLabel}
           </Button>
         </div>
+      )}
+
+      {showStopAction && (
+        <div className="flex items-center justify-end mt-4 pt-4 border-t border-border/40">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onCancel}
+            disabled={cancelPending}
+          >
+            {l.stop}
+          </Button>
+        </div>
+      )}
+
+      {run.status === "done" && savePrompt && (
+        <InlineRunSaveFooter savePrompt={savePrompt} />
       )}
     </section>
   )

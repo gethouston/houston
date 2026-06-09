@@ -105,6 +105,7 @@ fn new_run_row(workflow_id: &str, inline: Option<&InlineRunSpec>) -> WorkflowRun
         plan_prompt,
         name,
         description,
+        saved_workflow_id: None,
     }
 }
 
@@ -146,6 +147,9 @@ fn update_unlocked(root: &Path, id: &str, updates: WorkflowRunUpdate) -> CoreRes
     }
     if let Some(completed_at) = updates.completed_at {
         run.completed_at = Some(completed_at);
+    }
+    if let Some(saved_workflow_id) = updates.saved_workflow_id {
+        run.saved_workflow_id = Some(saved_workflow_id);
     }
 
     let result = run.clone();

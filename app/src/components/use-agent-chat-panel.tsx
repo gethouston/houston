@@ -95,6 +95,7 @@ import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { UserSkillMessage } from "./user-skill-message";
 import { SelectedSkillChip } from "./selected-skill-chip";
 import { InlineWorkflowRunCard } from "./inline-workflow-run-card";
+import { latestWorkflowRunIdFromFeed } from "../lib/active-workflow-run";
 import { InlineQuestionCard } from "./inline-question-card";
 import { UserQuestionAnswerMessage } from "./user-question-answer-message";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
@@ -234,6 +235,10 @@ export function useAgentChatPanel({
     path && selectedSessionKey
       ? s.items[path]?.[selectedSessionKey]
       : undefined,
+  );
+  const latestWorkflowRunId = useMemo(
+    () => latestWorkflowRunIdFromFeed(sessionFeedItems ?? []),
+    [sessionFeedItems],
   );
   const { contextUsage, contextWindow } = useMemo(() => {
     const { latest, peakContextTokens } = sessionContextUsage(sessionFeedItems);
@@ -610,7 +615,11 @@ export function useAgentChatPanel({
       const runLink = decodeWorkflowRunMessage(msg.content);
       if (runLink) {
         return path ? (
-          <InlineWorkflowRunCard agentPath={path} runId={runLink.runId} />
+          <InlineWorkflowRunCard
+            agentPath={path}
+            runId={runLink.runId}
+            allowStepRetry={runLink.runId === latestWorkflowRunId}
+          />
         ) : null;
       }
       if (msg.compaction) return <ContextCompactedDivider />;
@@ -646,7 +655,7 @@ export function useAgentChatPanel({
       if (isProviderAuthMessage(msg.content)) return null;
       return undefined;
     },
-    [effectiveModel, effectiveProvider, effectiveEffort, handleModelSelect, path, pushFeedItem, selectedSessionKey, t],
+    [effectiveModel, effectiveProvider, effectiveEffort, handleModelSelect, latestWorkflowRunId, path, pushFeedItem, selectedSessionKey, t],
   );
   const mapFeedItems = useCallback(
     ({ items }: { sessionKey: string; items: FeedItem[] }) =>

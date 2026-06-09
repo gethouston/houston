@@ -398,6 +398,7 @@ mod tests {
                 name: "Security audit".into(),
                 description: "Scan the repo".into(),
                 plan_prompt: "Plan a scan".into(),
+                plan: None,
             },
         )
         .unwrap();

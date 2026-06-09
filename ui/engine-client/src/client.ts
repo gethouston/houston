@@ -443,6 +443,26 @@ export class HoustonClient {
       { agentPath },
     );
   }
+  retryWorkflowStep(
+    agentPath: string,
+    runId: string,
+    stepId: string,
+  ): Promise<WorkflowRun> {
+    return this.request(
+      "POST",
+      `/workflow-runs/${this.seg(runId)}/steps/${this.seg(stepId)}/retry`,
+      undefined,
+      { agentPath },
+    );
+  }
+  saveWorkflowRunAsWorkflow(agentPath: string, runId: string): Promise<Workflow> {
+    return this.request(
+      "POST",
+      `/workflow-runs/${this.seg(runId)}/save-as-workflow`,
+      undefined,
+      { agentPath },
+    );
+  }
 
   // ---------- agents: config ----------
 

@@ -22,7 +22,7 @@ Multi-step runs Houston **plans**, the user **approves**, then the engine **exec
       workflow_runs.json + workflow_runs.schema.json   # all runs (saved + inline)
 ```
 
-- **Saved workflow** — row in `workflows.json` with `id`, `name`, `description`, `plan_prompt`.
+- **Saved workflow** — row in `workflows.json` with `id`, `name`, `description`, `plan_prompt`, and optional frozen `plan` (step DAG). When `plan` is set, re-runs copy it onto the new run and skip the AI planner; legacy rows without `plan` still plan from `plan_prompt` every run.
 - **Inline run** — no saved definition. Run row carries `workflow_id: "inline-{uuid}"` plus optional `plan_prompt`, `name`, `description` on the run itself. Inline runs appear in run history but **not** in the saved workflows grid.
 
 Engine CRUD: `engine/houston-engine-core/src/workflows/defs.rs` (definitions), `runs.rs` (runs). `inline.rs::effective_workflow()` resolves saved def first, else reconstructs from run fields for planner/executor.
@@ -90,12 +90,14 @@ After a trigger succeeds, the engine emits and persists a system message:
 
 | Surface | Package / file | Notes |
 |---|---|---|
-| Workflows tab (grid + editor) | `app/src/components/tabs/workflows-tab.tsx`, `@houston-ai/workflows` | CRUD saved defs, run history, `ActiveRunPanel` + `PlanApprovalDialog` modal on editor |
-| Inline chat panel | `app/src/components/inline-workflow-run-card.tsx` | `InlineRunCard` with inline approve/cancel; decodes run-link marker in `renderSystemMessage` (`use-agent-chat-panel.tsx`) |
+| Workflows tab (grid + editor) | `app/src/components/tabs/workflows-tab.tsx`, `@houston-ai/workflows` | CRUD saved defs, run history, `ActiveRunPanel` + `PlanApprovalDialog` modal on editor. Editor collapses the definition form + saved plan when execution is focused (Run, history pick, or in-flight on open); header toggle restores them. Scrolls to `ActiveRunPanel` on explicit run focus. |
+| Inline chat panel | `app/src/components/inline-workflow-run-card.tsx` | `InlineRunCard` with inline approve/cancel/stop (approval gate + planning + running); decodes run-link marker in `renderSystemMessage` (`use-agent-chat-panel.tsx`). Chat composer Stop/Esc cancels the linked in-flight run when one exists (`app/src/lib/active-workflow-run.ts`, `use-agent-board-send.ts`). |
 | Run-link decoder | `@houston-ai/chat` `workflow-run-message.ts` | `decodeWorkflowRunMessage(body) → { runId }` |
 | Shared i18n labels | `app/src/hooks/use-active-run-labels.ts` | `workflows` namespace; shared by tab + inline panel |
 
 Inline panel: `useWorkflowRuns(agentPath)` finds run by id, renders `InlineRunCard` with approve/cancel wired to existing mutations. Returns `null` while loading so raw marker text never flashes.
+
+Failed or blocked steps on terminal runs (`error` / `cancelled`) show a per-step **Retry** button in `StepProgress` (Workflows tab run panel + inline chat card). Retry resets the target step, any non-`done` ancestors it needs, and all downstream dependents to `pending`, then re-executes only that subgraph (`POST /v1/workflow-runs/:id/steps/:stepId/retry`). Unrelated failed branches stay as-is. Whole-run **Resume** (`POST .../resume`) still re-runs every failed/cancelled step.
 
 Mobile chat parity for the inline panel is deferred.
 
@@ -116,7 +118,7 @@ WS topic: `workflows:{agent_path}` (`engine/houston-engine-protocol::event_topic
 | `workflows/runs.rs` | Run rows; `create`, `create_inline` |
 | `workflows/inline.rs` | `effective_workflow`, `begin_inline_run` |
 | `workflows/planner.rs` | Plan generation session |
-| `workflows/runner.rs` | Approve, execute, resume, cancel |
+| `workflows/runner.rs` | Approve, execute, resume, retry step, cancel |
 | `workflows/chat_trigger.rs` | Marker parse, route, `maybe_trigger_from_chat` |
 | `workflows/context.rs` | `# Available Workflows` prompt section |
 
@@ -125,5 +127,5 @@ REST routes: `engine/houston-engine-server/src/routes/workflows.rs`. Wire detail
 ## Authoring notes
 
 - Saved workflows: user creates via Workflows tab or agent writes `workflows.json` per schema (same files-first rules as routines/learnings).
-- Chat-triggered inline runs are ephemeral definitions; promote to saved workflow only if the user asks to save one for reuse.
+- Chat-triggered inline runs are ephemeral definitions; after a successful inline run completes, the chat panel asks whether to save it (`POST /v1/workflow-runs/:id/save-as-workflow`), which creates a saved workflow with the run's frozen `plan`.
 - Nested workflow sessions are guarded: chat trigger does not run inside `workflow-*` session keys.

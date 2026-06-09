@@ -197,12 +197,19 @@ hand a raw `schedule` to `Schedule::from_str`.
 | POST | `/v1/workflow-runs/:id/approve` | Approve plan or mid-run gate |
 | POST | `/v1/workflow-runs/:id/cancel` | Cancel run |
 | POST | `/v1/workflow-runs/:id/resume` | Resume after error or approval |
+| POST | `/v1/workflow-runs/:id/steps/:stepId/retry` | Retry one failed/blocked step (scoped cascade: non-done ancestors + dependents reset to pending) |
+| POST | `/v1/workflow-runs/:id/save-as-workflow` | Promote a completed run (with `plan`) into a new saved workflow definition |
 
 Mutating routes emit `WorkflowsChanged` or `WorkflowRunsChanged` (plus
 `WorkflowPlanProposed` / `WorkflowStepChanged` during execution). Chat-triggered
 runs also start from `<!--houston:workflow {...}-->` in an assistant reply;
 the engine persists `<!--houston:workflow-run {"runId":...}-->` as a system
 feed item on the user chat session.
+
+`Workflow` may include optional `plan` (frozen step DAG). When present on a saved
+definition, `POST /v1/workflows/:id/run` skips the planner and attaches the plan
+to the new run for approval. `NewWorkflow` accepts optional `plan` (used by
+save-as-workflow); the Workflows tab UI does not edit plans in v1.
 
 `WorkflowRun` may carry optional inline-spec fields when `workflow_id` is
 `synthetic` (`inline-{uuid}`): `plan_prompt`, `name`, `description`. Omitted on

@@ -56,12 +56,16 @@ export function RunDetails({
   gateStepId,
   synthesisLabel,
   stepProgressLabels,
+  onRetryStep,
+  retryingStepId,
 }: {
   run: WorkflowRun
   isTerminal: boolean
   gateStepId: string | undefined
   synthesisLabel: string
   stepProgressLabels?: StepProgressLabels
+  onRetryStep?: (stepId: string) => void
+  retryingStepId?: string
 }) {
   const showPlan = !!run.plan
 
@@ -73,6 +77,8 @@ export function RunDetails({
           run={run}
           expandSummaries={isTerminal}
           highlightStepId={gateStepId}
+          onRetryStep={onRetryStep}
+          retryingStepId={retryingStepId}
           labels={stepProgressLabels}
         />
       )}

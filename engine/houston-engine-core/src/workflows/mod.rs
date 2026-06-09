@@ -14,6 +14,7 @@ pub mod keys;
 pub mod plan;
 pub mod plan_extract;
 pub mod planner;
+pub mod promote;
 pub mod runner;
 pub mod runner_execute;
 pub mod runs;
@@ -36,7 +37,8 @@ pub use runs::{
     step_states_from_plan, sweep_orphan_running, update as update_workflow_run,
 };
 pub use guards::{enforce_run_limits, MAX_RECURSION_DEPTH, MAX_STEPS_PER_RUN};
-pub use runner::{approve_run, begin_run, cancel_run, finish_planning, resume_run};
+pub use promote::save_run_as_workflow;
+pub use runner::{approve_run, begin_run, cancel_run, finish_planning, resume_run, retry_step, start_planning};
 pub use types::{
     BegunRun, InlineRunSpec, NewWorkflow, StepState, Workflow, WorkflowPlan, WorkflowRun,
     WorkflowRunUpdate, WorkflowStep, WorkflowUpdate,

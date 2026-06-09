@@ -63,6 +63,7 @@ mod tests {
                 name: "Security audit".into(),
                 description: "Scan the repo".into(),
                 plan_prompt: "Plan a scan".into(),
+                plan: None,
             },
         )
         .unwrap();
@@ -72,6 +73,7 @@ mod tests {
                 name: "Onboarding".into(),
                 description: "Welcome new hires".into(),
                 plan_prompt: "Plan onboarding".into(),
+                plan: None,
             },
         )
         .unwrap();
@@ -94,6 +96,7 @@ mod tests {
                 name: "Quick task".into(),
                 description: String::new(),
                 plan_prompt: "Do it".into(),
+                plan: None,
             },
         )
         .unwrap();

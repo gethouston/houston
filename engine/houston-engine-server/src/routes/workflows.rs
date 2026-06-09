@@ -7,10 +7,12 @@ use axum::{
     routing::{get, patch, post},
     Json, Router,
 };
+use houston_engine_core::paths::expand_tilde;
 use houston_engine_core::workflows::{
     self,
     engine_dispatcher::EngineWorkflowDispatcher,
-    runner::{approve_run, begin_run, cancel_run, finish_planning, resume_run},
+    promote::save_run_as_workflow,
+    runner::{approve_run, begin_run, cancel_run, resume_run, retry_step as retry_workflow_step, start_planning},
     types::{NewWorkflow, Workflow, WorkflowRun, WorkflowUpdate},
 };
 use houston_ui_events::HoustonEvent;
@@ -33,7 +35,7 @@ struct RunsQuery {
 }
 
 fn agent_root(p: &str) -> PathBuf {
-    PathBuf::from(p)
+    expand_tilde(std::path::Path::new(p))
 }
 
 fn make_dispatcher(st: &Arc<ServerState>) -> EngineWorkflowDispatcher {
@@ -54,6 +56,8 @@ pub fn router() -> Router<Arc<ServerState>> {
         .route("/workflow-runs/:id/approve", post(approve))
         .route("/workflow-runs/:id/cancel", post(cancel))
         .route("/workflow-runs/:id/resume", post(resume))
+        .route("/workflow-runs/:id/steps/:step_id/retry", post(retry_step))
+        .route("/workflow-runs/:id/save-as-workflow", post(save_as_workflow))
 }
 
 async fn list(
@@ -137,11 +141,25 @@ async fn run_workflow(
         Arc::new(make_dispatcher(&st));
     let agent_path = q.agent_path.clone();
     tokio::spawn(async move {
-        if let Err(e) = finish_planning(events, dispatcher, &agent_path, begun).await {
+        if let Err(e) = start_planning(events, dispatcher, &agent_path, begun).await {
             tracing::error!("[workflows] planning failed for workflow {id}: {e}");
         }
     });
     Ok(Json(run))
+}
+
+async fn save_as_workflow(
+    State(st): State<Arc<ServerState>>,
+    Path(id): Path<String>,
+    Query(q): Query<AgentQuery>,
+) -> Result<Json<Workflow>, ApiError> {
+    let w = save_run_as_workflow(&agent_root(&q.agent_path), &id)?;
+    let agent_path = q.agent_path.clone();
+    st.engine.events.emit(HoustonEvent::WorkflowsChanged {
+        agent_path: agent_path.clone(),
+    });
+    st.engine.events.emit(HoustonEvent::WorkflowRunsChanged { agent_path });
+    Ok(Json(w))
 }
 
 async fn approve(
@@ -196,4 +214,24 @@ async fn resume(
     )
     .await?;
     Ok(())
+}
+
+async fn retry_step(
+    State(st): State<Arc<ServerState>>,
+    Path((id, step_id)): Path<(String, String)>,
+    Query(q): Query<AgentQuery>,
+) -> Result<Json<WorkflowRun>, ApiError> {
+    let dispatcher: Arc<dyn workflows::dispatcher::WorkflowDispatcher> =
+        Arc::new(make_dispatcher(&st));
+    let updated = retry_workflow_step(
+        st.engine.events.clone(),
+        dispatcher,
+        st.engine.sessions.clone(),
+        &q.agent_path,
+        &agent_root(&q.agent_path),
+        &id,
+        &step_id,
+    )
+    .await?;
+    Ok(Json(updated))
 }

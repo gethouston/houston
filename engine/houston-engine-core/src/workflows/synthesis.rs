@@ -67,6 +67,7 @@ mod tests {
             name: "Auditoría".into(),
             description: String::new(),
             plan_prompt: String::new(),
+            plan: None,
             created_at: String::new(),
             updated_at: String::new(),
         };
@@ -101,6 +102,7 @@ mod tests {
             plan_prompt: None,
             name: None,
             description: None,
+            saved_workflow_id: None,
         };
 
         let prompt = build_synthesis_prompt(&workflow, &steps, &run);

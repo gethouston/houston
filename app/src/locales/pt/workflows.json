@@ -48,7 +48,10 @@
     "descriptionPlaceholder": "Opcional, para que serve este fluxo",
     "planPromptLabel": "Instrução de planejamento",
     "planPromptPlaceholder": "O que o agente deve planejar e executar?",
-    "recentRuns": "Execuções recentes"
+    "savedPlanTitle": "Etapas salvas",
+    "recentRuns": "Execuções recentes",
+    "showDetails": "Mostrar detalhes do fluxo",
+    "hideDetails": "Ocultar detalhes do fluxo"
   },
   "activeRun": {
     "title": "Execução ativa",
@@ -60,7 +63,8 @@
     "reviewAction": "Revisar ação",
     "approve": "Aprovar",
     "actionApprove": "Aprovar e continuar",
-    "cancel": "Cancelar"
+    "cancel": "Cancelar",
+    "stop": "Parar"
   },
   "approval": {
     "title": "Revisar plano",
@@ -77,7 +81,8 @@
     "approving": "Aprovando…"
   },
   "stepProgress": {
-    "runsTogether": "Estas etapas podem executar juntas"
+    "runsTogether": "Estas etapas podem executar juntas",
+    "retry": "Tentar novamente"
   },
   "history": {
     "empty": "Nenhuma execução ainda. Inicie uma com Executar.",
@@ -88,5 +93,14 @@
     "steps_one": "{{count}} etapa",
     "steps_other": "{{count}} etapas",
     "stepsDone": "{{done}} de {{total}} etapas"
+  },
+  "savePrompt": {
+    "title": "Salvar este fluxo?",
+    "description": "Salve \"{{name}}\" ({{count}} etapas) para executar o mesmo plano de novo em fluxos.",
+    "confirm": "Salvar fluxo",
+    "cancel": "Agora não",
+    "successTitle": "Fluxo salvo",
+    "successDescription": "\"{{name}}\" está pronto para executar de novo na aba fluxos.",
+    "untitledRun": "Este fluxo"
   }
 }

@@ -48,7 +48,10 @@
     "descriptionPlaceholder": "Optional, what this workflow is for",
     "planPromptLabel": "Planning prompt",
     "planPromptPlaceholder": "What should the agent plan and execute?",
-    "recentRuns": "Recent runs"
+    "savedPlanTitle": "Saved steps",
+    "recentRuns": "Recent runs",
+    "showDetails": "Show workflow details",
+    "hideDetails": "Hide workflow details"
   },
   "activeRun": {
     "title": "Active run",
@@ -60,7 +63,8 @@
     "reviewAction": "Review action",
     "approve": "Approve",
     "actionApprove": "Approve and continue",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "stop": "Stop"
   },
   "approval": {
     "title": "Review plan",
@@ -77,7 +81,8 @@
     "approving": "Approving…"
   },
   "stepProgress": {
-    "runsTogether": "These steps can run together"
+    "runsTogether": "These steps can run together",
+    "retry": "Retry"
   },
   "history": {
     "empty": "No runs yet. Start one with Run.",
@@ -88,5 +93,14 @@
     "steps_one": "{{count}} step",
     "steps_other": "{{count}} steps",
     "stepsDone": "{{done}} of {{total}} steps"
+  },
+  "savePrompt": {
+    "title": "Save this workflow?",
+    "description": "Save \"{{name}}\" ({{count}} steps) so you can run the same plan again from workflows.",
+    "confirm": "Save workflow",
+    "cancel": "Not now",
+    "successTitle": "Workflow saved",
+    "successDescription": "\"{{name}}\" is ready to run again from the workflows tab.",
+    "untitledRun": "This workflow"
   }
 }
