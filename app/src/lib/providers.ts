@@ -138,7 +138,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "claude-opus-4-8",
         label: "Opus 4.8",
-        description: "Newest flagship. Most capable, slower.",
+        description: "Latest Opus. Better alignment and agentic coding than 4.7.",
         // Opus 4.8: full range (same as 4.7). NOTE: `ultracode` is a Claude
         // Code harness mode, NOT an effort level — never add it here.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
@@ -149,9 +149,18 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         contextWindow: 1_000_000,
       },
       {
+        id: "claude-fable-5",
+        label: "Fable 5",
+        description: "Most capable model. Up to 2x credits vs Opus 4.8.",
+        // Fable 5: full range like Opus 4.8. ultracode is a harness mode, not
+        // an effort level — it is intentionally excluded for this model.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        contextWindow: 1_000_000,
+      },
+      {
         id: "claude-opus-4-7",
         label: "Opus 4.7",
-        description: "Previous flagship. Very capable, slower.",
+        description: "Previous flagship. Strong coding autonomy and complex reasoning.",
         // Opus 4.7: full range. Same 1M-on-Max default as Opus 4.8 above.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
         contextWindow: 1_000_000,
