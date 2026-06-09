@@ -123,6 +123,9 @@ mod tests {
             summary: None,
             started_at: String::new(),
             completed_at: None,
+            plan_prompt: None,
+            name: None,
+            description: None,
         }
     }
 

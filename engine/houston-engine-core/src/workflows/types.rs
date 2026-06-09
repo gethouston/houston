@@ -1,6 +1,7 @@
 //! Workflow DTOs — wire shapes for `.houston/workflows/*` and plan JSON.
 
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 // -- Plan (AI planner output) --
 
@@ -58,6 +59,21 @@ pub struct WorkflowUpdate {
 
 // -- Workflow run --
 
+/// A workflow run that has been created but not yet planned or executed.
+pub struct BegunRun {
+    pub working_dir: PathBuf,
+    pub workflow: Workflow,
+    pub run: WorkflowRun,
+}
+
+/// Spec for an inline run whose workflow definition is stored on the run itself.
+#[derive(Debug, Clone)]
+pub struct InlineRunSpec {
+    pub plan_prompt: String,
+    pub name: Option<String>,
+    pub description: Option<String>,
+}
+
 /// Per-step execution snapshot on a run. Phase 2's executor updates these.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StepState {
@@ -91,6 +107,13 @@ pub struct WorkflowRun {
     pub started_at: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub completed_at: Option<String>,
+    /// Inline workflow spec: planner instruction when no saved definition exists.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub plan_prompt: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

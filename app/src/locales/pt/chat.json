@@ -57,6 +57,18 @@
     "signedIn": "Conectado",
     "signIn": "Entrar"
   },
+  "question": {
+    "userInput": "Sua resposta",
+    "awaitingResponse": "AGUARDANDO RESPOSTA",
+    "answered": "RESPONDIDO",
+    "typeSomething": "Digite algo…",
+    "submit": "Enviar",
+    "next": "Próximo",
+    "prev": "Anterior",
+    "freeTextPlaceholder": "Sua resposta…",
+    "answerTitle": "Sua resposta",
+    "submitFailed": "Não foi possível enviar sua resposta"
+  },
   "modelSelector": {
     "selectModel": "Escolha um modelo",
     "model": "Modelo",

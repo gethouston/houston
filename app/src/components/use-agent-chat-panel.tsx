@@ -31,7 +31,11 @@ import { Button } from "@houston-ai/core";
 import { Paperclip, Play } from "lucide-react";
 import {
   decodeAttachmentMessage,
+  decodeQuestionAnswerMessage,
+  decodeQuestionMessage,
+  decodeWorkflowRunMessage,
   UserAttachmentMessage,
+  type QuestionCardLabels,
   type UserAttachmentMessageLabels,
 } from "@houston-ai/chat";
 
@@ -90,6 +94,9 @@ import { SkillCard } from "./skill-card";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { UserSkillMessage } from "./user-skill-message";
 import { SelectedSkillChip } from "./selected-skill-chip";
+import { InlineWorkflowRunCard } from "./inline-workflow-run-card";
+import { InlineQuestionCard } from "./inline-question-card";
+import { UserQuestionAnswerMessage } from "./user-question-answer-message";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
@@ -358,14 +365,6 @@ export function useAgentChatPanel({
     [handleIntegrationConnected],
   );
 
-  // Render the "Waiting for you to connect" hand-off line at the end of any
-  // assistant message that links an integration (issue #412), rather than
-  // inline beside the card wherever the link happened to land.
-  const transformContent = useCallback(
-    (content: string) => withComposioWaitingFooter({ content }),
-    [],
-  );
-
   // ── File-tool rendering (per-agent path) ──────────────────────────────
   const { isSpecialTool, renderToolResult, renderTurnSummary } =
     useFileToolRenderer(path ?? "");
@@ -400,6 +399,63 @@ export function useAgentChatPanel({
       attachmentCount: (count) => t("attachmentMessage.count", { count }),
     }),
     [t],
+  );
+
+  const questionLabels = useMemo<QuestionCardLabels>(
+    () => ({
+      userInput: t("chat:question.userInput"),
+      awaitingResponse: t("chat:question.awaitingResponse"),
+      answered: t("chat:question.answered"),
+      typeSomething: t("chat:question.typeSomething"),
+      submit: t("chat:question.submit"),
+      next: t("chat:question.next"),
+      prev: t("chat:question.prev"),
+      freeTextPlaceholder: t("chat:question.freeTextPlaceholder"),
+    }),
+    [t],
+  );
+
+  const questionAnswerLabels = useMemo(
+    () => ({
+      title: t("chat:question.answerTitle"),
+    }),
+    [t],
+  );
+
+  // Render the "Waiting for you to connect" hand-off line at the end of any
+  // assistant message that links an integration (issue #412), rather than
+  // inline beside the card wherever the link happened to land. Also strips
+  // structured question markers and renders the interactive card beneath prose.
+  const transformContent = useCallback(
+    (content: string) => {
+      const decoded = decodeQuestionMessage(content);
+      const base = decoded
+        ? {
+            content: decoded.content,
+            extra:
+              path && selectedSessionKey ? (
+                <InlineQuestionCard
+                  agentPath={path}
+                  sessionKey={selectedSessionKey}
+                  spec={decoded.spec}
+                  providerOverride={effectiveProvider}
+                  modelOverride={effectiveModel}
+                  effortOverride={effectiveEffort ?? ""}
+                  labels={questionLabels}
+                />
+              ) : undefined,
+          }
+        : { content };
+      return withComposioWaitingFooter(base);
+    },
+    [
+      path,
+      selectedSessionKey,
+      effectiveProvider,
+      effectiveModel,
+      effectiveEffort,
+      questionLabels,
+    ],
   );
 
   // While a Skill is selected, the regular composer still owns text
@@ -529,6 +585,15 @@ export function useAgentChatPanel({
           />
         );
       }
+      const questionAnswer = decodeQuestionAnswerMessage(msg.content);
+      if (questionAnswer) {
+        return (
+          <UserQuestionAnswerMessage
+            decoded={questionAnswer}
+            labels={questionAnswerLabels}
+          />
+        );
+      }
       const attachmentInvocation = decodeAttachmentMessage(msg.content);
       if (!attachmentInvocation) return undefined;
       return (
@@ -538,10 +603,16 @@ export function useAgentChatPanel({
         />
       );
     },
-    [attachmentLabels],
+    [attachmentLabels, questionAnswerLabels],
   );
   const renderSystemMessage = useCallback(
     (msg: ChatMessage) => {
+      const runLink = decodeWorkflowRunMessage(msg.content);
+      if (runLink) {
+        return path ? (
+          <InlineWorkflowRunCard agentPath={path} runId={runLink.runId} />
+        ) : null;
+      }
       if (msg.compaction) return <ContextCompactedDivider />;
       if (isToolRuntimeErrorMessage(msg)) {
         const isModelUnsupported =

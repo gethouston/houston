@@ -42,6 +42,12 @@ export type {
 export { ActiveRunPanel } from "./active-run-panel"
 export type { ActiveRunPanelProps, ActiveRunPanelLabels } from "./active-run-panel"
 
+export { InlineRunCard } from "./inline-run-card"
+export type {
+  InlineRunCardProps,
+  InlineRunCardLabels,
+} from "./inline-run-card"
+
 export { PlanApprovalDialog } from "./plan-approval-dialog"
 export type {
   PlanApprovalDialogProps,

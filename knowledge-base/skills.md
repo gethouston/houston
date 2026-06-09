@@ -121,6 +121,25 @@ Summarize this
 - The UI decodes the marker and renders the user text plus a compact paperclip badge ("1 file attached" / "N files attached"). Absolute paths are never displayed.
 - Decoder + shared badge renderer live in `@houston-ai/chat` (`attachment-message.ts`, `user-attachment-message.tsx`). Desktop encoder lives in `app/src/lib/attachment-message.ts`.
 
+## Workflow markers (chat-triggered runs)
+
+Workflows use the same HTML-comment marker pattern as Skills, but on the **assistant** side (trigger) and **system** side (run link). Full lifecycle, inline runs, and UI wiring: `knowledge-base/workflows.md`.
+
+**Trigger** (assistant reply, engine intercepts post-turn):
+
+```
+<!--houston:workflow {"workflowId":"<id>"}-->
+<!--houston:workflow {"planPrompt":"...","name":"...","description":"..."}-->
+```
+
+**Run link** (system message after run starts; chat renders `ActiveRunPanel` inline):
+
+```
+<!--houston:workflow-run {"runId":"<uuid>"}-->
+```
+
+Decoder: `@houston-ai/chat` `decodeWorkflowRunMessage` (`workflow-run-message.ts`). Parser contract must stay aligned with `RUN_LINK_PREFIX` in `engine/houston-engine-core/src/workflows/chat_trigger.rs`.
+
 ## Authoring a Skill via Claude
 
 When the user asks "create a skill that does X", Claude should:

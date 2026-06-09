@@ -7,9 +7,9 @@ use crate::workflows::dispatcher::{
 use crate::workflows::executor;
 use crate::workflows::keys::step_session_key;
 use crate::workflows::plan::parse_plan;
-use crate::workflows::runner::{
-    approve_run, begin_run, cancel_run, finish_planning, resume_run, BegunRun,
-};
+use crate::workflows::inline::begin_inline_run;
+use crate::workflows::runner::{approve_run, begin_run, cancel_run, finish_planning, resume_run};
+use crate::workflows::types::{BegunRun, InlineRunSpec};
 use crate::workflows::runs as workflow_runs;
 use crate::workflows::types::{NewWorkflow, StepState, WorkflowRunUpdate};
 use crate::sessions::SessionRuntime;
@@ -120,6 +120,53 @@ async fn setup_planned_run(
     (agent_path, begun, dispatcher)
 }
 
+async fn setup_planned_inline_run(
+    d: &TempDir,
+    planner_json: &str,
+) -> (String, BegunRun, Arc<ScriptedDispatcher>) {
+    let agent_path = d.path().to_string_lossy().to_string();
+    let dispatcher = Arc::new(ScriptedDispatcher {
+        planner: DispatchOutcome {
+            response_text: planner_json.into(),
+            error: None,
+        },
+        steps: HashMap::new(),
+        synthesis: DispatchOutcome {
+            response_text: "all good".into(),
+            error: None,
+        },
+        order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
+        active: AtomicUsize::new(0),
+        peak: AtomicUsize::new(0),
+        delay_ms: 0,
+    });
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    let begun = begin_inline_run(
+        &events,
+        &agent_path,
+        InlineRunSpec {
+            plan_prompt: "Plan a scan".into(),
+            name: Some("Inline audit".into()),
+            description: None,
+        },
+    )
+    .unwrap();
+    finish_planning(
+        events,
+        dispatcher.clone(),
+        &agent_path,
+        BegunRun {
+            working_dir: begun.working_dir.clone(),
+            workflow: begun.workflow.clone(),
+            run: begun.run.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    (agent_path, begun, dispatcher)
+}
+
 #[test]
 fn plan_parse_failure_drives_error() {
     let d = TempDir::new().unwrap();
@@ -206,6 +253,75 @@ async fn approval_gate_rejects_wrong_status() {
     .await
     .unwrap_err();
     assert!(matches!(err, crate::CoreError::Conflict(_)));
+}
+
+#[tokio::test]
+async fn inline_run_plans_approves_and_executes() {
+    let d = TempDir::new().unwrap();
+    let (agent_path, begun, dispatcher) = setup_planned_inline_run(&d, valid_plan_json()).await;
+    assert!(begun.run.workflow_id.starts_with("inline-"));
+    assert_eq!(begun.workflow.name, "Inline audit");
+    assert_eq!(begun.workflow.plan_prompt, "Plan a scan");
+
+    approve_run(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher,
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    assert_eq!(run.status, "done");
+}
+
+#[tokio::test]
+async fn inline_run_resume_skips_done_steps() {
+    let d = TempDir::new().unwrap();
+    let (agent_path, begun, dispatcher) = setup_planned_inline_run(&d, valid_plan_json()).await;
+    let plan = parse_plan(valid_plan_json()).unwrap();
+    workflow_runs::update(
+        d.path(),
+        &begun.run.id,
+        WorkflowRunUpdate {
+            status: Some("error".into()),
+            plan: Some(plan),
+            steps: Some(vec![
+                StepState {
+                    step_id: "a".into(),
+                    status: "done".into(),
+                    approved: false,
+                    summary: Some("ok".into()),
+                    worktree_path: None,
+                },
+                StepState {
+                    step_id: "b".into(),
+                    status: "error".into(),
+                    approved: false,
+                    summary: Some("boom".into()),
+                    worktree_path: None,
+                },
+            ]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+    resume_run(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+    let order = dispatcher.order.lock().unwrap().clone();
+    assert!(!order.contains(&"a".to_string()));
+    assert!(order.contains(&"b".to_string()));
 }
 
 #[tokio::test]

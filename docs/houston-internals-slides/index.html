@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Houston Internals — Guia tecnica</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github-dark.min.css">
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2f3e;
+      --text: #e4e6ed;
+      --muted: #8b90a0;
+      --accent: #6c9eff;
+      --accent2: #a78bfa;
+      --code-bg: #12151c;
+      --slide-w: min(1100px, 92vw);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: "Segoe UI", system-ui, sans-serif; }
+    #deck { height: 100%; position: relative; }
+    .slide {
+      display: none; height: 100%; padding: 2.5rem 3rem 4.5rem;
+      flex-direction: column; justify-content: flex-start; overflow-y: auto;
+      max-width: var(--slide-w); margin: 0 auto;
+    }
+    .slide.active { display: flex; animation: fadeIn .25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+    h1 { font-size: 2.2rem; font-weight: 700; margin-bottom: .6rem; line-height: 1.2; }
+    h2 { font-size: 1.55rem; font-weight: 600; margin-bottom: .8rem; color: var(--accent); }
+    h3 { font-size: 1.1rem; font-weight: 600; margin: 1rem 0 .4rem; color: var(--accent2); }
+    p, li { font-size: 1.05rem; line-height: 1.55; color: var(--text); }
+    p { margin-bottom: .6rem; }
+    ul, ol { margin: .4rem 0 .8rem 1.4rem; }
+    li { margin-bottom: .35rem; }
+    .muted { color: var(--muted); font-size: .95rem; }
+    .tag { display: inline-block; background: var(--surface); border: 1px solid var(--border); border-radius: 4px; padding: .15rem .5rem; font-size: .8rem; font-family: monospace; color: var(--accent); margin-bottom: .5rem; }
+    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: .5rem; }
+    @media (max-width: 800px) { .two-col { grid-template-columns: 1fr; } }
+    table { width: 100%; border-collapse: collapse; font-size: .92rem; margin: .6rem 0; }
+    th, td { border: 1px solid var(--border); padding: .45rem .6rem; text-align: left; vertical-align: top; }
+    th { background: var(--surface); color: var(--accent); font-weight: 600; }
+    td code { font-size: .85rem; }
+    pre { margin: .5rem 0; border-radius: 6px; overflow-x: auto; font-size: .82rem; }
+    pre code { background: var(--code-bg) !important; padding: .8rem !important; display: block; }
+    .file-path { font-family: monospace; font-size: .78rem; color: var(--muted); margin-bottom: .25rem; }
+    .mermaid { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1rem; margin: .6rem 0; overflow-x: auto; }
+    .step-num { display: inline-flex; align-items: center; justify-content: center; width: 1.6rem; height: 1.6rem; background: var(--accent); color: var(--bg); border-radius: 50%; font-size: .85rem; font-weight: 700; margin-right: .4rem; }
+    #progress-bar { position: fixed; top: 0; left: 0; height: 3px; background: var(--accent); transition: width .2s; z-index: 100; }
+    #nav { position: fixed; bottom: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: space-between; padding: .6rem 1.5rem; background: rgba(15,17,23,.92); border-top: 1px solid var(--border); z-index: 100; }
+    #nav button { background: var(--surface); border: 1px solid var(--border); color: var(--text); padding: .4rem 1rem; border-radius: 6px; cursor: pointer; font-size: .9rem; }
+    #nav button:hover { border-color: var(--accent); color: var(--accent); }
+    #slide-counter { font-size: .85rem; color: var(--muted); font-family: monospace; }
+    .section-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: .3rem; }
+    kbd { background: var(--surface); border: 1px solid var(--border); border-radius: 3px; padding: .1rem .35rem; font-size: .8rem; font-family: monospace; }
+    .plain-box { background: var(--surface); border-left: 3px solid var(--accent2); padding: .8rem 1rem; margin: .6rem 0; border-radius: 0 6px 6px 0; }
+    .plain-box p:last-child { margin-bottom: 0; }
+    .analogy-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: .8rem; margin: .6rem 0; }
+    @media (max-width: 900px) { .analogy-grid { grid-template-columns: 1fr; } }
+    .analogy-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: .7rem .9rem; }
+    .analogy-card h4 { font-size: .9rem; color: var(--accent); margin-bottom: .4rem; }
+    .analogy-card p, .analogy-card li { font-size: .88rem; }
+    .analogy-card ul { margin: .3rem 0 0 1rem; }
+    .concept-row { display: grid; grid-template-columns: 140px 1fr; gap: .5rem 1rem; align-items: start; margin: .5rem 0; font-size: .95rem; }
+    .concept-label { font-weight: 600; color: var(--accent2); }
+    .story-box { background: #1e2433; border: 1px solid var(--border); border-radius: 8px; padding: .9rem 1rem; margin: .5rem 0 .8rem; }
+    .story-box h3 { margin-top: 0; font-size: 1rem; }
+    .syntax-table { font-size: .88rem; }
+    .syntax-table td:first-child { font-family: monospace; color: var(--accent2); white-space: nowrap; }
+    .step-detail { margin-bottom: 1rem; padding-bottom: .8rem; border-bottom: 1px solid var(--border); }
+    .step-detail:last-child { border-bottom: none; }
+    .step-detail h3 { margin-top: 0; }
+  </style>
+</head>
+<body>
+<div id="progress-bar"></div>
+<div id="deck">
+
+<!-- 0. INTRO -->
+<section class="slide active" data-section="Intro">
+  <div class="section-label">Seccion 0</div>
+  <h1>Houston Internals</h1>
+  <p class="muted">Guia tecnica para desarrolladores que quieren entender y contribuir al motor de Houston.</p>
+  <ul style="margin-top:1.2rem">
+    <li><strong>Houston</strong> = app desktop (Tauri + React) + motor Rust (<code>houston-engine</code>) + CLIs de proveedores (Codex, Claude Code) como subprocesos.</li>
+    <li>El motor es <strong>frontend-agnostic</strong>: no sabe de Tauri ni React. La app solo hace glue OS (file pickers, logs).</li>
+    <li>Toda la logica de dominio vive en <code>engine/</code>. El frontend habla con el motor via <strong>HTTP REST</strong> + <strong>WebSocket</strong>.</li>
+    <li>Esta guia cubre: backend tokio, ciclo de un turno de agente, Workflows, y ejecucion paralela.</li>
+  </ul>
+  <p class="muted" style="margin-top:1rem">Navega con <kbd>&larr;</kbd> <kbd>&rarr;</kbd> o <kbd>Espacio</kbd>. Cada slide cita archivos reales del repo.</p>
+</section>
+
+<section class="slide" data-section="Intro">
+  <div class="section-label">Seccion 0</div>
+  <h2>Mapa mental: 3 procesos</h2>
+  <div class="mermaid">
+flowchart LR
+  App["App Tauri\nReact + Rust glue"]
+  Engine["houston-engine\naxum HTTP+WS"]
+  CLI["CLIs proveedor\ncodex / claude"]
+  App -->|"REST /v1/*\nWS /v1/ws"| Engine
+  Engine -->|"tokio::process::Command\nstdin/stdout/stderr"| CLI
+  CLI -->|"NDJSON lineas"| Engine
+  Engine -->|"HoustonEvent\nbroadcast"| App
+  </div>
+  <ul>
+    <li><strong>App</strong> (<code>app/</code>): spawnea el engine como sidecar, se conecta por HTTP/WS, renderiza UI.</li>
+    <li><strong>Engine</strong> (<code>engine/</code>): orquesta sesiones, workflows, file watcher, DB.</li>
+    <li><strong>CLIs</strong>: Codex (OpenAI) y Claude Code (Anthropic) corren como subprocesos. Houston parsea su stdout NDJSON.</li>
+  </ul>
+  <p class="muted">Datos de usuario: <code>~/.houston/</code> (DB, workspaces, <code>.houston/</code> por agente).</p>
+</section>
+
+<!-- 1. RUST PRIMER -->
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async</div>
+  <h2>Mini crash-course: tipos basicos</h2>
+  <div class="two-col">
+    <div>
+      <h3>Result y Option</h3>
+      <p><code>Result&lt;T, E&gt;</code> = exito o error. <code>Option&lt;T&gt;</code> = algo o nada. El <code>?</code> propaga errores hacia arriba.</p>
+      <div class="file-path">engine/houston-engine-core/src/error.rs</div>
+      <pre><code class="language-rust">pub enum CoreError {
+    NotFound(String),
+    Internal(String),
+    // ...
+}
+pub type CoreResult&lt;T&gt; = Result&lt;T, CoreError&gt;;</code></pre>
+    </div>
+    <div>
+      <h3>enum y trait</h3>
+      <p><code>enum</code> = union discriminada (como union TS). <code>trait</code> = interfaz: define comportamiento que varios tipos implementan.</p>
+      <div class="file-path">engine/houston-terminal-manager/src/session_update.rs</div>
+      <pre><code class="language-rust">pub enum SessionUpdate {
+    Status(SessionStatus),
+    SessionId(String),
+    Feed(FeedItem),
+    ProcessPid(u32),
+    ResumeInvalid,
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async</div>
+  <h2>async / await y tokio::spawn</h2>
+  <p><code>async fn</code> devuelve una tarea suspendible. <code>.await</code> espera sin bloquear el hilo. <code>tokio::spawn</code> lanza trabajo en background.</p>
+  <div class="file-path">engine/houston-engine-server/src/main.rs</div>
+  <pre><code class="language-rust">#[tokio::main]  // crea runtime multi-thread
+async fn main() {
+    let app = build_router(state);
+    axum::serve(listener, app).await;  // loop HTTP forever
+}</code></pre>
+  <div class="file-path">engine/houston-engine-core/src/sessions/mod.rs</div>
+  <pre><code class="language-rust">// start() responde al HTTP de inmediato; el turno corre en background
+tokio::spawn(async move {
+    run_start(params).await;
+});</code></pre>
+  <p class="muted">Patron clave en Houston: el handler HTTP responde rapido; el trabajo pesado (spawn CLI, leer stdout) va en <code>tokio::spawn</code>.</p>
+</section>
+
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async — Slide 5</div>
+  <h2>Como se coordinan las tareas (sin jerga)</h2>
+  <p>Houston no es un solo programa lineal. Hay <strong>muchas cosas pasando a la vez</strong>: varios chats, stdout de CLIs, WebSockets, file watcher. Rust/tokio usa 6 piezas para que eso no sea caos:</p>
+  <div class="plain-box">
+    <div class="concept-row"><span class="concept-label">Canal (mpsc)</span><span>Un tubo de mensajes entre dos tareas. Una escribe, otra lee. Como una cola de WhatsApp entre dos personas: el CLI manda updates, el monitor los consume.</span></div>
+    <div class="concept-row"><span class="concept-label">Broadcast</span><span>Un altavoz: un emisor, <em>muchos</em> oyentes. Cuando el engine tiene un evento nuevo, lo grita y cada cliente WS decide si le importa.</span></div>
+    <div class="concept-row"><span class="concept-label">Arc</span><span>Puntero compartido con contador. Muchas tareas ven el <em>mismo</em> <code>ServerState</code> sin copiarlo. Ver slide siguiente para el detalle.</span></div>
+    <div class="concept-row"><span class="concept-label">Mutex / RwLock</span><span>Candado: solo una tarea toca algo sensible a la vez. Evita que dos turnos de chat pisen el mismo archivo.</span></div>
+    <div class="concept-row"><span class="concept-label">JoinSet</span><span>Varias tareas en paralelo; cuando una termina, la recoges. Leer stdout y stderr del CLI al mismo tiempo.</span></div>
+    <div class="concept-row"><span class="concept-label">select!</span><span>Esperar varias fuentes y reaccionar a la primera que llegue. El WS espera: mensaje saliente, ping, o input del cliente.</span></div>
+  </div>
+  <p class="muted">No necesitas memorizar los nombres. Piensa: <strong>colas</strong>, <strong>altavoz</strong>, <strong>compartir puntero</strong>, <strong>candado</strong>, <strong>paralelo</strong>, <strong>multiplexar esperas</strong>.</p>
+</section>
+
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async — Arc en detalle</div>
+  <h2>Arc: compartir estado sin copiar</h2>
+  <div class="plain-box">
+    <p><strong>El problema en Rust:</strong> por defecto un valor tiene <em>un solo dueno</em>. Si lo pasas a una funcion, se mueve y ya no lo tienes. Si lanzas <code>tokio::spawn</code>, la tarea nueva necesita <em>poseer</em> sus datos. Pero <code>ServerState</code> debe vivir en el handler HTTP, en el WS, en el file watcher, en tareas en background... imposible moverlo a todos.</p>
+  </div>
+  <p><strong>Arc</strong> = <em>A</em>tomically <em>R</em>eference <em>C</em>ounted. Envuelve el dato en un puntero con un contador de "cuantos lo estan usando".</p>
+  <div class="mermaid">
+flowchart LR
+  subgraph heap ["Memoria heap — un solo ServerState"]
+    State["ServerState\nDB, eventos, sesiones"]
+  end
+  H1["Handler POST /sessions"]
+  H2["Handler WS"]
+  H3["tokio::spawn run_start"]
+  H1 -->|"Arc clone (refcount++)"| State
+  H2 -->|"Arc clone"| State
+  H3 -->|"Arc clone"| State
+  </div>
+  <ul>
+    <li><code>Arc::new(estado)</code> crea el dato <strong>una vez</strong> en el heap y pone el contador en 1.</li>
+    <li><code>state.clone()</code> en un <code>Arc</code> <strong>no copia</strong> el <code>ServerState</code>. Solo suma 1 al contador y te da otro puntero al mismo sitio.</li>
+    <li>Cuando cada tarea termina, su <code>Arc</code> muere y el contador baja. Cuando llega a 0, Rust libera la memoria.</li>
+  </ul>
+  <p class="muted">Arc da lectura compartida thread-safe. Si necesitas <em>modificar</em> algo compartido, lo combinas con <code>Mutex</code> o <code>RwLock</code> (ej. <code>Arc&lt;Mutex&lt;HashMap&gt;&gt;</code>).</p>
+</section>
+
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async — Arc en Houston</div>
+  <h2>Arc en Houston: el mismo estado en todas partes</h2>
+  <div class="file-path">engine/houston-engine-server/src/main.rs</div>
+  <pre><code class="language-rust">// Se crea UNA vez al arrancar el engine
+let state = Arc::new(ServerState::new(config, ...).await);
+let app = build_router(state.clone());  // el router guarda un Arc
+axum::serve(listener, app).await;</code></pre>
+  <p>Cada request HTTP recibe una copia barata del <code>Arc</code>:</p>
+  <div class="file-path">engine/houston-engine-server/src/routes/sessions.rs (patron tipico)</div>
+  <pre><code class="language-rust">pub async fn start_session(
+    State(state): State&lt;Arc&lt;ServerState&gt;&gt;,  // axum inyecta el Arc
+    // ...
+) -> Result&lt;Json&lt;...&gt;, ApiError&gt; {
+    sessions::start(&state.engine, params).await?;
+}</code></pre>
+  <p>Y las tareas en background tambien clonan el Arc antes de spawn:</p>
+  <pre><code class="language-rust">let state2 = state.clone();
+tokio::spawn(async move {
+    run_start(state2.engine.clone(), params).await;
+    // state2 es un Arc: la tarea "posee" un puntero, no el ServerState entero
+});</code></pre>
+  <table>
+    <tr><th>Sin Arc (imposible en Rust)</th><th>Con Arc (lo que hace Houston)</th></tr>
+    <tr><td>Mover <code>ServerState</code> al spawn y perderlo en el handler</td><td>Clonar <code>Arc</code>; handler y spawn apuntan al mismo estado</td></tr>
+    <tr><td>Copiar todo el estado en cada request (lento, incoherente)</td><td>Una sola DB, un solo bus de eventos, datos consistentes</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async — Arc en otros lenguajes</div>
+  <h2>Arc vs Go, Java y TypeScript</h2>
+  <p>En lenguajes con GC el runtime ya comparte objetos por referencia. En Rust <em>tu</em> eliges explicitamente <code>Arc</code> para compartir entre hilos de forma segura.</p>
+  <div class="analogy-grid">
+    <div class="analogy-card">
+      <h4>Go</h4>
+      <p>No hay Arc: el GC mantiene vivo lo que cualquier goroutine referencia.</p>
+      <pre><code class="language-go">// Pasas un *ServerState o lo capturas en el closure
+state := &ServerState{...}
+go func(s *ServerState) {
+    s.RunSession()  // mismo puntero, sin refcount manual
+}(state)</code></pre>
+      <p class="muted">Cuidado: si nadie mas usa <code>state</code> y la goroutine aun corre, el GC igual lo mantiene mientras haya referencia.</p>
+    </div>
+    <div class="analogy-card">
+      <h4>Java</h4>
+      <p>Objetos en el heap + GC. Singleton o bean inyectado = un estado para todos.</p>
+      <pre><code class="language-java">@Singleton
+class ServerState { Database db; EventBus bus; }
+
+@Inject ServerState state;  // todos los controllers
+executor.submit(() -> state.runSession());</code></pre>
+      <p class="muted">Lo mas parecido a Arc manual: <code>AtomicReference&lt;ServerState&gt;</code> o contenedor DI (Spring).</p>
+    </div>
+    <div class="analogy-card">
+      <h4>TypeScript / Node</h4>
+      <p>Un modulo o closure compartido. Un solo proceso Node = un objeto en memoria.</p>
+      <pre><code class="language-typescript">// Patron Express: crear una vez, inyectar en cada route
+const state = createServerState();
+app.post('/sessions', (req, res) => startSession(state, req));
+setImmediate(() => runStart(state, params));</code></pre>
+      <p class="muted">Equivalente mental: <code>state</code> es el singleton; no clonas, pasas la misma referencia.</p>
+    </div>
+  </div>
+  <div class="plain-box">
+    <p><strong>Resumen:</strong> <code>Arc&lt;ServerState&gt;</code> en Houston = el mismo "singleton de runtime" que en Express inyectarias en cada route, pero con contador explicito y liberacion determinista cuando el engine apaga (sin GC).</p>
+  </div>
+</section>
+
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async — Slide 6</div>
+  <h2>Lo mismo en Go, Java y TypeScript</h2>
+  <p>Si ya programaste en otro lenguaje, estas piezas te sonaran familiares:</p>
+  <div class="analogy-grid">
+    <div class="analogy-card">
+      <h4>Go</h4>
+      <ul>
+        <li><code>chan T</code> = canal mpsc de tokio</li>
+        <li><code>go f()</code> = <code>tokio::spawn</code></li>
+        <li><code>sync.RWMutex</code> = <code>RwLock</code></li>
+        <li><code>select { case &lt;-ch: }</code> = <code>tokio::select!</code></li>
+        <li><code>sync.WaitGroup</code> = parecido a <code>JoinSet</code></li>
+      </ul>
+      <pre><code class="language-go">// Go: leer stdout en una goroutine
+go func() {
+    scanner := bufio.NewScanner(stdout)
+    for scanner.Scan() {
+        updates &lt;- parse(scanner.Text())
+    }
+}()</code></pre>
+    </div>
+    <div class="analogy-card">
+      <h4>Java</h4>
+      <ul>
+        <li><code>BlockingQueue</code> = canal mpsc</li>
+        <li><code>ExecutorService.submit()</code> = <code>tokio::spawn</code></li>
+        <li><code>ReentrantReadWriteLock</code> = <code>RwLock</code></li>
+        <li><code>CompletableFuture.anyOf()</code> = <code>select!</code></li>
+        <li><code>AtomicReference</code> compartido = idea de <code>Arc</code></li>
+      </ul>
+      <pre><code class="language-java">// Java: event bus a muchos listeners
+eventBus.post(new FeedItemEvent(item));
+// cada WebSocket handler filtra si le interesa</code></pre>
+    </div>
+    <div class="analogy-card">
+      <h4>TypeScript / Node</h4>
+      <ul>
+        <li><code>EventEmitter</code> / RxJS = broadcast</li>
+        <li><code>Promise</code> + <code>async/await</code> = <code>async fn</code></li>
+        <li>cola con <code>p-queue</code> = backpressure del mpsc</li>
+        <li><code>Promise.race()</code> = <code>select!</code></li>
+        <li>estado en closure compartido = <code>Arc&lt;State&gt;</code></li>
+      </ul>
+      <pre><code class="language-typescript">// TS: el patron de Houston en el desktop
+engineWs.on('message', (evt) => {
+  if (evt.type === 'FeedItem') updateChat(evt);
+});
+// React Query invalida cuando llega ActivityChanged</code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-section="Rust async">
+  <div class="section-label">Seccion 1 — Rust async — Slide 7</div>
+  <h2>Donde aparece cada pieza en Houston</h2>
+  <p>Ejemplo concreto: <strong>envias un mensaje en el chat</strong>.</p>
+  <div class="mermaid">
+sequenceDiagram
+  participant User as Tu mensaje
+  participant HTTP as Handler HTTP
+  participant Chan as Canal mpsc
+  participant CLI as Subproceso claude
+  participant Bus as Broadcast eventos
+  participant UI as App React
+
+  User->>HTTP: POST /sessions
+  HTTP->>HTTP: tokio::spawn (no bloquea)
+  HTTP->>Chan: CLI escribe SessionUpdate
+  Chan->>Bus: session_runner emite HoustonEvent
+  Bus->>UI: WebSocket recibe FeedItem
+  Note over HTTP,CLI: Mutex evita 2 turnos a la vez en el mismo chat
+  Note over CLI,Chan: JoinSet lee stdout y stderr en paralelo
+  </div>
+  <table>
+    <tr><th>Pieza</th><th>En esta historia...</th><th>Archivo</th></tr>
+    <tr><td><code>mpsc</code></td><td>El CLI le pasa tokens/errores al monitor de sesion</td><td><code>manager.rs</code></td></tr>
+    <tr><td><code>broadcast</code></td><td>El monitor avisa a todos los clientes WS</td><td><code>houston-ui-events</code></td></tr>
+    <tr><td><code>Arc</code></td><td>Handler HTTP y <code>tokio::spawn</code> comparten el mismo <code>ServerState</code> (misma DB, mismos eventos)</td><td><code>main.rs</code>, <code>lib.rs</code></td></tr>
+    <tr><td><code>Mutex</code></td><td>Solo un turno activo por <code>session_key</code></td><td><code>sessions/control.rs</code></td></tr>
+    <tr><td><code>JoinSet</code></td><td>stdout y stderr del CLI se leen a la vez</td><td><code>cli_process.rs</code></td></tr>
+    <tr><td><code>select!</code></td><td>El WS atiende ping + mensajes + input del cliente</td><td><code>ws.rs</code></td></tr>
+  </table>
+</section>
+
+<!-- 2. MACRO ARCH -->
+<section class="slide" data-section="Arquitectura">
+  <div class="section-label">Seccion 2 — Arquitectura</div>
+  <h2>Arquitectura macro</h2>
+  <div class="mermaid">
+flowchart TB
+  subgraph desktop ["app/ — Desktop Tauri"]
+    React["React UI\n@houston-ai/*"]
+    TauriRust["Rust glue\nfile pickers, spawn engine"]
+  end
+  subgraph engine_crates ["engine/ — Motor Rust"]
+    Server["houston-engine-server\naxum HTTP+WS"]
+    Core["houston-engine-core\ndominio + sesiones"]
+    Terminal["houston-terminal-manager\nspawn CLI + parse NDJSON"]
+    Conv["houston-agents-conversations\nsession_runner"]
+  end
+  subgraph external ["Subprocesos"]
+    Codex["codex exec --json"]
+    Claude["claude -p --output-format stream-json"]
+  end
+  React -->|"fetch + WS"| Server
+  TauriRust -->|"spawn sidecar"| Server
+  Server --> Core
+  Core --> Conv
+  Conv --> Terminal
+  Terminal --> Codex
+  Terminal --> Claude
+  </div>
+  <p class="muted">Cada caja dentro de <code>engine/</code> es un <strong>crate</strong> (paquete Rust). El slide siguiente explica que es eso.</p>
+</section>
+
+<section class="slide" data-section="Arquitectura">
+  <div class="section-label">Seccion 2 — Arquitectura</div>
+  <h2>Que es un crate?</h2>
+  <div class="plain-box">
+    <p>Un <strong>crate</strong> es la unidad de compilacion de Rust: <strong>un paquete de codigo</strong> con nombre, version y dependencias. Es lo mas parecido a un modulo empaquetado que puedes reutilizar o ejecutar.</p>
+    <p>No es un archivo suelto ni una carpeta cualquiera: es un <strong>proyecto Rust completo</strong> definido por su <code>Cargo.toml</code> (como el <code>package.json</code> de npm).</p>
+  </div>
+  <h3>Dos tipos</h3>
+  <table>
+    <tr><th>Tipo</th><th>Que produce</th><th>Ejemplo en Houston</th></tr>
+    <tr><td><strong>Library crate</strong></td><td>Una libreria (.rlib) que otros crates importan</td><td><code>houston-engine-core</code> (logica de dominio)</td></tr>
+    <tr><td><strong>Binary crate</strong></td><td>Un ejecutable (.exe / binario)</td><td><code>houston-engine-server</code> produce <code>houston-engine</code></td></tr>
+  </table>
+  <h3>En la carpeta del repo</h3>
+  <pre><code class="language-text">engine/
+  houston-engine-server/   ← crate (tiene Cargo.toml + src/)
+  houston-engine-core/     ← crate
+  houston-terminal-manager/← crate
+  ...</code></pre>
+  <p>El <strong>workspace</strong> (monorepo) en la raiz del repo lista todos los crates y comparte versiones de dependencias con <code>cargo build --workspace</code>.</p>
+</section>
+
+<section class="slide" data-section="Arquitectura">
+  <div class="section-label">Seccion 2 — Arquitectura</div>
+  <h2>Crate = paquete. Comparalo con lo que ya conoces</h2>
+  <div class="analogy-grid">
+    <div class="analogy-card">
+      <h4>TypeScript / npm</h4>
+      <ul>
+        <li><strong>Crate</strong> ≈ paquete en <code>packages/foo</code> del monorepo</li>
+        <li><code>Cargo.toml</code> ≈ <code>package.json</code></li>
+        <li><code>use houston_engine_core::...</code> ≈ <code>import { ... } from '@houston-ai/engine-core'</code></li>
+        <li>Workspace ≈ pnpm workspace con varios <code>@houston-ai/*</code></li>
+      </ul>
+      <pre><code class="language-typescript">// ui/ tiene @houston-ai/chat, @houston-ai/board...
+// engine/ tiene houston-engine-core, houston-terminal-manager...
+// Misma idea: paquetes chicos con un rol claro</code></pre>
+    </div>
+    <div class="analogy-card">
+      <h4>Java / Maven o Gradle</h4>
+      <ul>
+        <li><strong>Crate</strong> ≈ modulo <code>engine-core</code> en un multi-module project</li>
+        <li><code>Cargo.toml</code> ≈ <code>pom.xml</code> / <code>build.gradle</code></li>
+        <li>Dependencia entre crates ≈ <code>&lt;dependency&gt;</code> entre modulos</li>
+        <li>Binary crate ≈ modulo que genera el JAR ejecutable (Spring Boot app)</li>
+      </ul>
+      <pre><code class="language-java">// houston-engine-server depende de houston-engine-core
+// como controllers dependen de service layer</code></pre>
+    </div>
+    <div class="analogy-card">
+      <h4>Go</h4>
+      <ul>
+        <li><strong>Crate</strong> ≈ modulo Go con su <code>go.mod</code> (o subcarpeta de un repo)</li>
+        <li>Un crate library ≈ <code>package core</code> importable</li>
+        <li>Binary crate ≈ <code>package main</code> con <code>func main()</code></li>
+        <li>Workspace ≈ monorepo con varios modulos bajo <code>./engine/...</code></li>
+      </ul>
+      <pre><code class="language-go">// cmd/houston-engine/main.go  → binary (como houston-engine-server)
+// internal/core/              → library (como houston-engine-core)</code></pre>
+    </div>
+  </div>
+  <div class="plain-box">
+    <p><strong>Por que tantos crates?</strong> Separar responsabilidades: el HTTP no mezcla parsing NDJSON; el dominio no sabe de axum. Compilas y testeas cada pieza por separado. En Houston, <code>houston-engine-server</code> es la "app" y el resto son "librerias internas".</p>
+  </div>
+</section>
+
+<section class="slide" data-section="Arquitectura">
+  <div class="section-label">Seccion 2 — Arquitectura</div>
+  <h2>Crates del engine (tabla de referencia)</h2>
+  <p class="muted">Cada fila = un paquete Rust en <code>engine/&lt;nombre&gt;/</code>. "Responsabilidad" = para que sirve ese paquete.</p>
+  <table>
+    <tr><th>Paquete (crate)</th><th>Para que sirve</th></tr>
+    <tr><td><code>houston-engine-server</code></td><td>Binario <code>houston-engine</code>: axum router, auth, WS firehose</td></tr>
+    <tr><td><code>houston-engine-core</code></td><td>Dominio: workspaces, agents, sessions, workflows, routines</td></tr>
+    <tr><td><code>houston-engine-protocol</code></td><td>DTOs wire, WS envelope, <code>event_topic()</code></td></tr>
+    <tr><td><code>houston-agents-conversations</code></td><td><code>session_runner</code>: spawn CLI, monitor, emit HoustonEvent, persist DB</td></tr>
+    <tr><td><code>houston-terminal-manager</code></td><td>Provider adapters, subprocess I/O, NDJSON parsers</td></tr>
+    <tr><td><code>houston-ui-events</code></td><td><code>HoustonEvent</code> enum + <code>BroadcastEventSink</code></td></tr>
+    <tr><td><code>houston-file-watcher</code></td><td><code>notify</code> debounced: cambios en <code>.houston/</code> emiten eventos</td></tr>
+    <tr><td><code>houston-agent-files</code></td><td>I/O seguro de <code>.houston/&lt;type&gt;/&lt;type&gt;.json</code></td></tr>
+    <tr><td><code>houston-skills</code></td><td>Descubrimiento de skills en <code>.agents/skills/</code></td></tr>
+  </table>
+  <p class="muted">No existe un paquete llamado <code>houston-sessions</code>. La logica de sesiones es un <em>modulo</em> dentro de <code>houston-engine-core/src/sessions/</code> (carpeta de codigo, no un crate aparte).</p>
+</section>
+
+<!-- 3. TOKIO BACKEND -->
+<section class="slide" data-section="Backend tokio">
+  <div class="section-label">Seccion 3 — Backend tokio/axum</div>
+  <h2>Boot del engine</h2>
+  <div class="file-path">engine/houston-engine-server/src/main.rs</div>
+  <pre><code class="language-rust">#[tokio::main]
+async fn main() {
+    init_tracing();
+    spawn_parent_watchdog();  // muere si la app padre desaparece
+
+    let path_init = tokio::task::spawn_blocking(|| {
+        houston_terminal_manager::claude_path::init();
+    });
+
+    let config = ServerConfig::from_env();
+    let listener = TcpListener::bind(&config.bind).await.unwrap();
+    let state = Arc::new(ServerState::new(config, ...).await);
+
+    spawn_cli_lifecycles(state.clone());  // Composio + Claude installer
+    let app = build_router(state);
+    axum::serve(listener, app).await;
+}</code></pre>
+  <p>Secuencia: Sentry/tracing, watchdog, PATH init (blocking), bind TCP, crear estado, tareas background, servir HTTP.</p>
+</section>
+
+<section class="slide" data-section="Backend tokio">
+  <div class="section-label">Seccion 3 — Backend tokio/axum</div>
+  <h2>Router y estado compartido</h2>
+  <div class="file-path">engine/houston-engine-server/src/lib.rs</div>
+  <pre><code class="language-rust">pub fn build_router(state: Arc&lt;ServerState&gt;) -> Router {
+    let v1 = Router::new()
+        .route("/health", get(routes::health::health))
+        .route("/ws", get(ws::ws_upgrade))
+        .merge(routes::sessions::router())
+        .merge(routes::workflows::router())
+        // ... 15+ modulos de rutas
+        .layer(middleware::from_fn_with_state(
+            state.clone(), auth::require_bearer))
+        .with_state(state.clone());
+    Router::new().nest("/v1", v1)
+}</code></pre>
+  <p><code>ServerState</code> contiene <code>EngineState</code> (dominio), <code>BroadcastEventSink</code>, watcher, scheduler.</p>
+  <div class="plain-box">
+    <p><strong>Arc aqui:</strong> <code>build_router(state)</code> guarda un <code>Arc&lt;ServerState&gt;</code>. Cada request clona ese Arc (barato: +1 al contador). Asi 50 requests simultaneos leen la misma DB y el mismo bus de eventos, sin duplicar megabytes de estado. Ver slides de la Seccion 1 "Arc en detalle".</p>
+  </div>
+</section>
+
+<section class="slide" data-section="Backend tokio">
+  <div class="section-label">Seccion 3 — Backend tokio/axum</div>
+  <h2>Sistema de eventos</h2>
+  <div class="mermaid">
+flowchart LR
+  Producers["Productores\nsessions, watcher, CLI"]
+  Sink["BroadcastEventSink\nbroadcast cap 1024"]
+  WS1["WS client A\nmpsc 1024"]
+  WS2["WS client B\nmpsc 1024"]
+  Producers -->|"emit(HoustonEvent)"| Sink
+  Sink --> WS1
+  Sink --> WS2
+  </div>
+  <div class="file-path">engine/houston-ui-events/src/lib.rs</div>
+  <pre><code class="language-rust">pub trait EventSink: Send + Sync + 'static {
+    fn emit(&self, event: HoustonEvent);
+}
+
+pub struct BroadcastEventSink {
+    tx: broadcast::Sender&lt;HoustonEvent&gt;,
+}</code></pre>
+  <p>Productores (session_runner, file watcher, CLI lifecycles) llaman <code>sink.emit(...)</code>. No saben si el backend es broadcast, Tauri, o no-op.</p>
+  <p class="muted">El slide siguiente explica como la app recibe esos eventos en vivo (WebSocket).</p>
+</section>
+
+<section class="slide" data-section="Backend tokio">
+  <div class="section-label">Seccion 3 — Backend tokio/axum</div>
+  <h2>Como la app se entera de todo (sin refrescar)</h2>
+  <div class="plain-box">
+    <p>Cuando el agente escribe en el chat, cambia un archivo o termina un workflow, la UI debe actualizarse <strong>solita</strong>. No puedes estar haciendo <code>fetch</code> cada segundo a ver si hay novedades.</p>
+    <p><strong>WebSocket</strong> = un cable abierto entre la app y el engine. El engine <em>empuja</em> avisos cuando pasa algo ("llego un token", "cambio el board", "workflow listo para aprobar").</p>
+  </div>
+  <h3>Analogia: grupo de WhatsApp</h3>
+  <ul>
+    <li><strong>HTTP normal</strong> = mandar un mensaje y colgar. Cada vez que quieres saber algo, vuelves a llamar.</li>
+    <li><strong>WebSocket</strong> = quedarte en el grupo con la llamada abierta. Te avisan cuando hay mensaje nuevo.</li>
+    <li><strong>Topic</strong> = subgrupo tematico. Ej.: solo avisos del chat <code>mission-abc</code>, o solo del agente <code>bookkeeping</code>.</li>
+    <li><strong>Firehose (<code>"*"</code>)</strong> = "meteme en todos los grupos a la vez". La app desktop hace esto: recibe todo y React decide que pantalla actualizar.</li>
+  </ul>
+  <p class="muted">Firehose = manguera de bomberos: sale <em>todo el agua</em> (todos los eventos). Util cuando eres la app completa y necesitas enterarte de cualquier cosa.</p>
+</section>
+
+<section class="slide" data-section="Backend tokio">
+  <div class="section-label">Seccion 3 — Backend tokio/axum</div>
+  <h2>Que pasa cuando hay mucho ruido</h2>
+  <p>Varios agentes pueden escribir tokens a la vez. El engine no puede tumbar la app por saturacion.</p>
+  <table>
+    <tr><th>Situacion (en criollo)</th><th>Que hace Houston</th></tr>
+    <tr><td>La app va bien</td><td>Cada evento viaja por el WebSocket y la UI se actualiza al instante</td></tr>
+    <tr><td>Llegan tokens muy rapido (streaming)</td><td>Se prioriza lo importante; texto parcial puede no reenviarse si la cola esta llena</td></tr>
+    <tr><td>La app va lenta un momento</td><td>Estados finales ("termino", "error") se agrupan: mandas el ultimo, no 50 iguales</td></tr>
+    <tr><td>La app se quedo muy atras</td><td>Envia <code>LagMarker</code>: "perdiste eventos, refresca esa pantalla"</td></tr>
+    <tr><td>Cada 20 segundos</td><td><strong>Ping</strong> por el cable para comprobar que la conexion sigue viva</td></tr>
+  </table>
+  <div class="plain-box">
+    <p><strong>Topics que veras en el codigo:</strong></p>
+    <ul>
+      <li><code>session:mission-abc</code> — cosas de un chat concreto (tokens, estado)</li>
+      <li><code>agent:Workspaces/MiAgente</code> — el board, skills, activity de ese agente</li>
+      <li><code>workflows:Workspaces/MiAgente</code> — planes y pasos de workflows</li>
+    </ul>
+    <p>Con firehose <code>"*"</code> no tienes que suscribirte uno por uno: la app escucha todo y filtra en el cliente.</p>
+  </div>
+</section>
+
+<section class="slide" data-section="Backend tokio">
+  <div class="section-label">Seccion 3 — Backend tokio/axum — detalle tecnico</div>
+  <h2>WebSocket firehose (codigo)</h2>
+  <div class="file-path">engine/houston-engine-server/src/ws.rs</div>
+  <pre><code class="language-rust">pub const FIREHOSE: &str = "*";
+
+fn is_subscribed(subs: &HashSet&lt;String&gt;, topic: &str) -> bool {
+    subs.contains(FIREHOSE) || subs.contains(topic)
+}
+
+// Por conexion: broadcast receiver -> filtro por topics -> mpsc -> socket
+tokio::select! {
+    frame = out_rx.recv() => { sink.send(Message::Text(f)).await; }
+    _ = heartbeat.tick() => { /* ping cada 20s */ }
+    msg = stream.next() => { /* Sub/Unsub del cliente */ }
+}</code></pre>
+  <ul>
+    <li>Desktop envia <code>Sub { topics: ["*"] }</code> al conectar.</li>
+    <li><code>forward_events</code> filtra cada <code>HoustonEvent</code> por topic antes de meterlo en la cola del socket.</li>
+    <li>Cola acotada (1024): si se llena, aplica la politica del slide anterior (drop, coalesce, LagMarker).</li>
+  </ul>
+  <p class="muted">En TypeScript: <code>engine-client</code> abre el WS; <code>use-agent-invalidation.ts</code> mapea eventos a React Query.</p>
+</section>
+
+<!-- 4. TURN LOOP -->
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Ciclo de un turno</div>
+  <h2>Diagrama de secuencia completo</h2>
+  <div class="mermaid">
+sequenceDiagram
+  participant HTTP as routes/sessions.rs
+  participant Start as sessions/mod.rs
+  participant Runner as session_runner.rs
+  participant Mgr as manager.rs
+  participant Disp as session_dispatch.rs
+  participant CLI as claude/codex CLI
+  participant IO as session_io.rs
+  participant WS as HoustonEvent
+
+  HTTP->>Start: POST /sessions
+  Start->>Start: tokio::spawn(run_start)
+  Start->>Runner: spawn_and_monitor()
+  Runner->>Mgr: spawn_session()
+  Mgr->>Mgr: mpsc + tokio::spawn
+  Mgr->>Disp: dispatch()
+  Disp->>CLI: Command.spawn()
+  par stdout
+    CLI->>IO: NDJSON lines
+    IO->>Mgr: SessionUpdate::Feed
+  and stderr
+    CLI->>IO: stderr lines
+    IO->>Mgr: SessionUpdate::Feed
+  end
+  Mgr-->>Runner: rx.recv() loop
+  Runner->>WS: sink.emit(FeedItem)
+  </div>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 1</div>
+  <h2><span class="step-num">1</span>Entrada REST</h2>
+  <div class="file-path">engine/houston-engine-server/src/routes/sessions.rs</div>
+  <pre><code class="language-rust">// POST /v1/sessions?agentPath=...
+// Body: { message, sessionKey, provider?, model?, effort? }
+let params = StartParams { agent_path, session_key, message, provider, ... };
+let key = sessions::start(&state.engine, params).await?;</code></pre>
+  <p>El handler resuelve provider/model/effort (defaults del agent manifest), construye <code>StartParams</code>, y llama <code>sessions::start()</code>. Responde con <code>session_key</code> de inmediato.</p>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 2</div>
+  <h2><span class="step-num">2</span>Orquestacion: run_start</h2>
+  <div class="file-path">engine/houston-engine-core/src/sessions/mod.rs</div>
+  <pre><code class="language-rust">pub async fn start(engine: &EngineState, params: StartParams) -> CoreResult&lt;String&gt; {
+    let session_key = params.session_key.clone();
+    tokio::spawn(async move {
+        run_start(engine_clone, params).await;
+    });
+    Ok(session_key)
+}</code></pre>
+  <p><code>run_start</code> hace:</p>
+  <ol>
+    <li>Adquiere <strong>turn lock</strong> por <code>session_key</code> (serializa turnos del mismo chat).</li>
+    <li>Construye system prompt (app prompt + agent CLAUDE.md + skills + workflows context).</li>
+    <li>Carga resume session ID de disco (<code>.sid</code> file).</li>
+    <li>Opcional: compaction si contexto muy largo.</li>
+    <li>Llama <code>session_runner::spawn_and_monitor()</code> y espera (<code>handle.await</code>).</li>
+    <li>Post-run: diff de archivos, workflow trigger, flip activity status.</li>
+  </ol>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 3 — Slide 24</div>
+  <h2><span class="step-num">3</span>Provider adapters — que proveedor usar?</h2>
+  <div class="story-box">
+    <h3>En criollo</h3>
+    <p>Houston no hardcodea "usa Claude" o "usa Codex". Tiene una <strong>lista de proveedores</strong> registrados. Cuando llega <code>"claude"</code> o <code>"codex"</code> en el request, busca en esa lista quien sabe manejar ese CLI (donde esta el binario, como hacer login, como leer errores).</p>
+    <p>No hay archivos <code>codex.rs</code> / <code>claude.rs</code>: Codex = paquete <code>openai</code>, Claude = paquete <code>anthropic</code>.</p>
+  </div>
+  <div class="file-path">engine/houston-terminal-manager/src/provider/mod.rs</div>
+  <pre><code class="language-rust">// trait = interfaz (como interface en TypeScript o Java)
+pub trait ProviderAdapter: Send + Sync + 'static {
+    // fn = funcion. &self = metodo sobre "este" adapter (como this en TS)
+    // -&gt; &'static str = devuelve un string fijo en memoria
+    fn id(&self) -> &'static str;       // id canonico: "anthropic", "openai"
+    fn cli_name(&self) -> &'static str;  // nombre del ejecutable: "claude", "codex"
+    fn aliases(&self) -> &'static [&'static str] { &[] }  // nombres alternativos
+
+    // Option&lt;T&gt; = puede devolver algo o None (como T | null en TS)
+    fn resolve(&self) -> (InstallSource, Option&lt;PathBuf&gt;);
+    fn classify_stderr(&self, line: &str) -> Option&lt;ProviderError&gt;;
+}
+
+// const = constante. &[...] = slice (array de referencias)
+const REGISTRY: &[&dyn ProviderAdapter] = &[
+    &anthropic::ANTHROPIC,  // implementa ProviderAdapter para Claude
+    &openai::OPENAI,         // implementa ProviderAdapter para Codex
+    &gemini::GEMINI,
+];
+
+// from_str("claude") busca en REGISTRY por id o alias → anthropic</code></pre>
+  <table class="syntax-table">
+    <tr><th>Rust</th><th>Equivalente mental</th></tr>
+    <tr><td><code>trait</code></td><td><code>interface ProviderAdapter</code> en TypeScript</td></tr>
+    <tr><td><code>&self</code></td><td><code>this</code> — metodo de instancia</td></tr>
+    <tr><td><code>Option&lt;T&gt;</code></td><td><code>T | null</code></td></tr>
+    <tr><td><code>const REGISTRY</code></td><td>Array estatico de plugins registrados al arrancar</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 4 — Slide 25</div>
+  <h2><span class="step-num">4</span>Spawn del subproceso — lanzar claude/codex</h2>
+  <div class="story-box">
+    <h3>En criollo</h3>
+    <p>Aqui Houston hace lo mismo que tu en terminal: ejecuta <code>claude ...</code> o <code>codex ...</code> como <strong>proceso hijo</strong>. Pero antes monta un <strong>tubo de mensajes</strong> (canal): el hijo escribira ahi "empece", "nuevo token", "termine", y quien llamo a <code>spawn_session</code> lee ese tubo por el otro extremo (<code>rx</code>).</p>
+    <p>La tarea pesada corre en background (<code>tokio::spawn</code>) para no bloquear quien espera los updates.</p>
+  </div>
+  <div class="file-path">engine/houston-terminal-manager/src/manager.rs</div>
+  <pre><code class="language-rust">// Devuelve una TUPLA (par): (receptor, handle de la tarea)
+// -&gt; (A, B) en Rust = devuelve dos cosas a la vez
+pub fn spawn_session(...) -> (mpsc::UnboundedReceiver&lt;SessionUpdate&gt;, SessionHandle) {
+
+    // Crea canal: tx = enviar, rx = recibir (como pipe o EventEmitter interno)
+    let (tx, rx) = mpsc::unbounded_channel();
+
+    // async move { } = bloque async que SE LLEVA las variables que usa (tx, provider...)
+    let handle = tokio::spawn(async move {
+        // let _ = ignora error de envio (patron interno; en beta se esta endureciendo)
+        let _ = tx.send(SessionUpdate::Status(SessionStatus::Starting));
+        // .await = espera a que termine dispatch (lanzar CLI y toda su I/O)
+        session_dispatch::dispatch(&tx, provider, prompt, ...).await;
+    });
+
+    // Quien llamo spawn_session se queda con rx para leer updates
+    (rx, SessionHandle { _task: handle })
+}</code></pre>
+  <p><code>session_dispatch</code> arma el comando segun proveedor:</p>
+  <ul>
+    <li><strong>Claude:</strong> <code>claude -p --output-format stream-json ...</code></li>
+    <li><strong>Codex:</strong> <code>codex exec --json ... -</code> (el guion = lee prompt por stdin)</li>
+  </ul>
+  <table class="syntax-table">
+    <tr><th>Rust</th><th>Equivalente mental</th></tr>
+    <tr><td><code>(rx, handle)</code></td><td>Devolver <code>[receiver, task]</code> como array en JS</td></tr>
+    <tr><td><code>async move</code></td><td>Closure async que captura variables por valor</td></tr>
+    <tr><td><code>.await</code></td><td><code>await</code> en TS: pausa hasta que acabe la operacion async</td></tr>
+    <tr><td><code>&tx</code></td><td>Pasar referencia (prestamo) sin mover tx</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 5 — Slide 26</div>
+  <h2><span class="step-num">5</span>Loop de I/O — hablar con el proceso hijo</h2>
+  <div class="story-box">
+    <h3>En criollo</h3>
+    <p>Imagina ejecutar <code>claude</code> en tu terminal pero conectando 3 cables: <strong>stdin</strong> (le mandas el mensaje del usuario), <strong>stdout</strong> (el agente escribe tokens linea a linea), <strong>stderr</strong> (errores y warnings).</p>
+    <p>Houston escribe el prompt en stdin, cierra ese cable (para que el CLI sepa que no hay mas input), y pone <strong>dos lectores en paralelo</strong> en stdout y stderr hasta que el proceso termina.</p>
+  </div>
+  <div class="file-path">engine/houston-terminal-manager/src/cli_process.rs</div>
+  <pre><code class="language-rust">// Conecta los 3 cables al subproceso (no usa la terminal visible del usuario)
+cmd.stdout(Stdio::piped());
+cmd.stderr(Stdio::piped());
+cmd.stdin(Stdio::piped());
+
+// mut = variable mutable (puede cambiar). ? = si falla, salir con error
+let mut child = cmd.spawn()?;
+
+// Escribe el prompt del usuario en stdin del CLI
+stdin.write_all(prompt.as_bytes()).await;
+drop(stdin);  // cerrar stdin = "ya no hay mas input" → el CLI arranca de verdad
+
+// JoinSet = grupo de tareas paralelas; vas recogiendo las que terminan
+let mut io_set = JoinSet::new();
+io_set.spawn(async { read_stderr_lines(stderr, tx, provider) });
+io_set.spawn(async { read_stdout_events(stdout, tx, provider) });
+
+// while let Some(x) = ... = mientras lleguen resultados, procesalos
+while let Some(result) = io_set.join_next().await { ... }
+
+child.wait().await;  // esperar codigo de salida (0 = ok, otro = error)</code></pre>
+  <table class="syntax-table">
+    <tr><th>Rust</th><th>Equivalente mental</th></tr>
+    <tr><td><code>mut</code></td><td><code>let</code> mutable — en JS todo es mutable; Rust lo pide explicito</td></tr>
+    <tr><td><code>?</code></td><td>Si error, propagar hacia arriba (como throw automatico en cadena)</td></tr>
+    <tr><td><code>drop(x)</code></td><td>Cerrar/liberar x ahora (como <code>stdin.end()</code> en Node)</td></tr>
+    <tr><td><code>while let Some</code></td><td><code>while ((r = next()) != null)</code></td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 6 — Slide 27</div>
+  <h2><span class="step-num">6</span>Parsing NDJSON — de texto crudo a eventos de UI</h2>
+  <div class="story-box">
+    <h3>En criollo</h3>
+    <p>Claude y Codex no devuelven HTML: escupen <strong>una linea JSON por evento</strong> (NDJSON = newline-delimited JSON). Cada linea puede ser "trozo de texto", "llamo a una herramienta", "termine", "error de rate limit".</p>
+    <p>Houston lee linea por linea, elige el parser correcto (Claude vs Codex), y traduce a <code>FeedItem</code>: el formato que la app ya sabe pintar en el chat.</p>
+  </div>
+  <div class="file-path">engine/houston-terminal-manager/src/session_io.rs</div>
+  <pre><code class="language-rust">// BufReader = lee en buffer (eficiente). lines() = iterador de lineas
+let reader = BufReader::new(stdout);
+let mut lines = reader.lines();
+
+// Ok(Some(line)) = linea leida bien. Err = fin o error de I/O
+while let Ok(Some(line)) = lines.next_line().await {
+
+    // match = switch por valor (como switch/case en TS o Go)
+    match provider.id() {
+        "anthropic" => parse_event(&line, &mut acc),      // parser Claude
+        "openai"    => parse_codex_event(&line, &mut acc), // parser Codex
+        _ => {}  // otros proveedores
+    }
+    // Cada parser devuelve FeedItems → se envian por el canal:
+    // tx.send(SessionUpdate::Feed(item))
+}</code></pre>
+  <p>Tipos de <code>FeedItem</code> que veras en la UI:</p>
+  <ul>
+    <li><code>AssistantTextStreaming</code> — letra por letra mientras escribe</li>
+    <li><code>ToolCall</code> — "voy a ejecutar esta herramienta"</li>
+    <li><code>FinalResult</code> — respuesta terminada + usage</li>
+    <li><code>ProviderError</code> — rate limit, auth, etc.</li>
+  </ul>
+  <table class="syntax-table">
+    <tr><th>Rust</th><th>Equivalente mental</th></tr>
+    <tr><td><code>match</code></td><td><code>switch (provider.id()) { case "anthropic": ... }</code></td></tr>
+    <tr><td><code>&line</code></td><td>Pasar string por referencia (no copiar todo el texto)</td></tr>
+    <tr><td><code>&mut acc</code></td><td>Accumulator mutable — el parser va pegando trozos de streaming</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 7 — Slide 28</div>
+  <h2><span class="step-num">7</span>Del canal interno al WebSocket de la app</h2>
+  <div class="story-box">
+    <h3>En criollo</h3>
+    <p>El paso 4-6 hablaban en un idioma <em>interno</em> (<code>SessionUpdate</code>). Este paso es el <strong>traductor</strong>: escucha ese tubo, y por cada mensaje hace dos cosas: (1) avisar a la app por WebSocket (<code>HoustonEvent</code>), (2) guardar en base de datos si hace falta.</p>
+    <p>Tambien guarda el PID del proceso (para cancelar con "Stop") y el session id del CLI (para retomar la conversacion mañana).</p>
+  </div>
+
+  <h3>Que es <code>Feed</code> y que hace?</h3>
+  <div class="plain-box">
+    <p><strong><code>Feed</code></strong> es una variante de <code>SessionUpdate</code> que significa: <em>"hay algo nuevo para el chat"</em>. El payload se llama <code>FeedItem</code> (<code>engine/houston-terminal-manager/src/types.rs</code>).</p>
+    <p>Piensa en el <strong>feed del chat</strong> como el timeline de mensajes de WhatsApp: cada burbuja, tool call, error o aviso del sistema es un <code>FeedItem</code> distinto.</p>
+  </div>
+  <table>
+    <tr><th>FeedItem</th><th>Que ves en la app</th></tr>
+    <tr><td><code>AssistantTextStreaming</code></td><td>El agente escribiendo en vivo (letra por letra)</td></tr>
+    <tr><td><code>AssistantText</code></td><td>Bloque de texto final del asistente</td></tr>
+    <tr><td><code>ToolCall</code> / <code>ToolResult</code></td><td>"Ejecuto esta herramienta" + resultado</td></tr>
+    <tr><td><code>ThinkingStreaming</code></td><td>Razonamiento extendido (si el modelo lo muestra)</td></tr>
+    <tr><td><code>ProviderError</code></td><td>Tarjeta de error (rate limit, auth, quota...)</td></tr>
+    <tr><td><code>FinalResult</code></td><td>Turno terminado (coste, duracion, tokens)</td></tr>
+    <tr><td><code>SystemMessage</code></td><td>Aviso interno ("Stopped by user", marker de workflow...)</td></tr>
+    <tr><td><code>FileChanges</code></td><td>Archivos que el agente creo o modifico</td></tr>
+  </table>
+  <p>Cuando llega <code>SessionUpdate::Feed(item)</code>, el runner hace esto:</p>
+  <ol>
+    <li><strong>Emit</strong> — <code>sink.emit(HoustonEvent::FeedItem { ... item })</code> → el WebSocket lo empuja a React</li>
+    <li><strong>Persist</strong> — los items que no son streaming parcial se guardan en la DB (<code>chat_feed</code>) para que el historial sobreviva al cerrar la app</li>
+    <li><strong>Topic</strong> — el evento va al canal <code>session:{session_key}</code> (o firehose <code>*</code>)</li>
+  </ol>
+  <p class="muted">En TypeScript: <code>@houston-ai/chat</code> recibe el JSON y renderiza cada <code>feed_type</code>. No parsea stdout del CLI; solo entiende <code>FeedItem</code>.</p>
+
+  <div class="file-path">engine/houston-agents-conversations/src/session_runner.rs</div>
+  <pre><code class="language-rust">pub async fn spawn_and_monitor(...) -> SessionResult {
+    // Paso 4 nos dio rx = receptor del canal de updates del CLI
+    let (rx, _handle) = SessionManager::spawn_session(...);
+
+    tokio::spawn(async move {
+        // Bucle infinito hasta que el canal se cierra (CLI termino)
+        while let Some(update) = rx.recv().await {
+
+            // match sobre ENUM = cada variante es un tipo de mensaje distinto
+            // (como discriminated union en TypeScript)
+            match update {
+                // FEED = "nuevo item para el timeline del chat"
+                SessionUpdate::Feed(item) => {
+                    // item: FeedItem (texto, tool, error, etc.)
+                    // Lo reenviamos al bus de eventos → WebSocket → UI
+                    sink.emit(HoustonEvent::FeedItem { agent_path, session_key, item });
+                    // Ademas: persistir en DB (salvo deltas de streaming)
+                }
+                SessionUpdate::SessionId(sid) => {
+                    // sid = id de conversacion del CLI → guardar en .sid en disco
+                    persist_sid_to_disk(sid);
+                }
+                SessionUpdate::Status(s) => {
+                    // Starting | Running | Completed | Error
+                    sink.emit(HoustonEvent::SessionStatus { status: s, ... });
+                }
+                SessionUpdate::ProcessPid(pid) => {
+                    // pid = para matar el proceso si el usuario pulsa Stop
+                    pid_map.insert(session_key, pid);
+                }
+                SessionUpdate::ResumeInvalid => {
+                    // la sesion guardada ya no sirve → borrar .sid y empezar fresco
+                    clear_sid_on_disk();
+                }
+            }
+        }
+    });
+}</code></pre>
+  <table class="syntax-table">
+    <tr><th>Rust</th><th>Equivalente mental</th></tr>
+    <tr><td><code>SessionUpdate::Feed(item)</code></td><td><code>if (update.type === 'Feed')</code> — pattern matching</td></tr>
+    <tr><td><code>enum</code> + <code>match</code></td><td>Union discriminada + switch exhaustivo en TS</td></tr>
+    <tr><td><code>rx.recv().await</code></td><td><code>await queue.take()</code> — esperar siguiente mensaje del canal</td></tr>
+    <tr><td><code>_handle</code></td><td>Variable ignorada (el underscore dice "no la uso")</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Paso 8</div>
+  <h2><span class="step-num">8</span>Extras: cancel, resume, titulo</h2>
+  <div class="two-col">
+    <div>
+      <h3>Cancelacion</h3>
+      <div class="file-path">engine/houston-engine-core/src/sessions/mod.rs</div>
+      <pre><code class="language-rust">// sessions::cancel
+let pid = pid_map.remove(&session_key);
+kill_process_group(pid);  // SIGTERM / taskkill
+sink.emit(SessionStatus::Completed);</code></pre>
+    </div>
+    <div>
+      <h3>Titulo one-shot</h3>
+      <div class="file-path">engine/houston-engine-core/src/sessions/summarize.rs</div>
+      <pre><code class="language-rust">// No usa streaming; un solo CLI call
+provider_oneshot::run_provider_oneshot(
+    message, provider, model, timeout: 30s
+);
+// Claude: claude -p --output-format text
+// Codex: codex exec --json - (lee ultimo agent_message)</code></pre>
+    </div>
+  </div>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Recap — Slide 30</div>
+  <h2>Mapa completo: 8 pasos comentados (1/2)</h2>
+
+  <div class="step-detail">
+    <h3><span class="step-num">1</span> REST — la app pide "envia este mensaje"</h3>
+    <p><strong>Que pasa:</strong> La UI hace <code>POST /v1/sessions</code> con el texto del usuario, el agente, y el chat (<code>sessionKey</code>).</p>
+    <p><strong>Archivo:</strong> <code>engine/houston-engine-server/src/routes/sessions.rs</code></p>
+    <p><strong>Detalle:</strong> El handler no espera a que el agente termine. Solo valida el body, elige provider/model por defecto si faltan, y llama <code>sessions::start()</code>. Responde al instante con OK (el trabajo sigue en background).</p>
+  </div>
+
+  <div class="step-detail">
+    <h3><span class="step-num">2</span> Orquestacion — preparar el turno</h3>
+    <p><strong>Que pasa:</strong> <code>start()</code> lanza <code>run_start</code> en otra tarea. Esa funcion es el "director de orquesta" del turno.</p>
+    <p><strong>Archivo:</strong> <code>engine/houston-engine-core/src/sessions/mod.rs</code></p>
+    <p><strong>Detalle:</strong> Pone candado al chat (un turno a la vez). Arma el system prompt (instrucciones de Houston + CLAUDE.md del agente + skills). Busca si hay conversacion previa (<code>.sid</code>). Si el contexto es enorme, puede compactar. Luego llama al runner y espera a que el CLI termine. Al final: detecta archivos cambiados, revisa si el agente pidio un workflow, actualiza el estado del agente en el board.</p>
+  </div>
+
+  <div class="step-detail">
+    <h3><span class="step-num">3</span> Provider — cual CLI usar</h3>
+    <p><strong>Que pasa:</strong> Convierte el string <code>"claude"</code> o <code>"codex"</code> en un adapter concreto del REGISTRY.</p>
+    <p><strong>Archivo:</strong> <code>engine/houston-terminal-manager/src/provider/mod.rs</code></p>
+    <p><strong>Detalle:</strong> El adapter sabe donde esta el binario (bundled, PATH, instalado), como detectar si el usuario hizo login, y como clasificar errores de stderr (rate limit, auth, etc.). Es un plugin, no un if/else gigante esparcido por el codigo.</p>
+  </div>
+
+  <div class="step-detail">
+    <h3><span class="step-num">4</span> Spawn — ejecutar claude/codex</h3>
+    <p><strong>Que pasa:</strong> Se crea un canal interno y se lanza el binario del proveedor como subproceso.</p>
+    <p><strong>Archivos:</strong> <code>manager.rs</code> → <code>session_dispatch.rs</code> → <code>claude_runner.rs</code> / <code>codex_runner.rs</code></p>
+    <p><strong>Detalle:</strong> <code>spawn_session</code> devuelve el receptor del canal (<code>rx</code>) a quien va a monitorear. <code>dispatch</code> construye los argumentos del CLI (modelo, effort, resume, system prompt). Si el resume falla, reintenta sin resume.</p>
+  </div>
+</section>
+
+<section class="slide" data-section="Ciclo de turno">
+  <div class="section-label">Seccion 4 — Recap — Slide 30 (continuacion)</div>
+  <h2>Mapa completo: 8 pasos comentados (2/2)</h2>
+
+  <div class="step-detail">
+    <h3><span class="step-num">5</span> I/O — cables al subproceso</h3>
+    <p><strong>Que pasa:</strong> Se conectan stdin/stdout/stderr, se escribe el prompt, se leen salidas en paralelo.</p>
+    <p><strong>Archivo:</strong> <code>engine/houston-terminal-manager/src/cli_process.rs</code></p>
+    <p><strong>Detalle:</strong> Cerrar stdin es la senal de "ya mande todo el mensaje". Dos tareas leen stdout (tokens) y stderr (errores) al mismo tiempo. Al final, <code>child.wait()</code> obtiene el exit code. Si murio mal, se clasifica el error y se manda <code>SessionStatus::Error</code>.</p>
+  </div>
+
+  <div class="step-detail">
+    <h3><span class="step-num">6</span> Parse — JSON linea a linea</h3>
+    <p><strong>Que pasa:</strong> Cada linea de stdout se parsea a eventos de UI (<code>FeedItem</code>).</p>
+    <p><strong>Archivos:</strong> <code>session_io.rs</code>, <code>parser.rs</code> (Claude), <code>codex_parser.rs</code> (Codex)</p>
+    <p><strong>Detalle:</strong> El streaming de Claude llega en trozos; el accumulator los pega. Codex manda eventos distintos pero convergen al mismo <code>FeedItem</code> para que la UI no se entere del proveedor. Cada item va al canal como <code>SessionUpdate::Feed</code>.</p>
+  </div>
+
+  <div class="step-detail">
+    <h3><span class="step-num">7</span> Bridge — del motor interno a la app</h3>
+    <p><strong>Que pasa:</strong> <code>session_runner</code> traduce <code>SessionUpdate</code> → <code>HoustonEvent</code> y persiste.</p>
+    <p><strong>Archivo:</strong> <code>engine/houston-agents-conversations/src/session_runner.rs</code></p>
+    <p><strong>Detalle:</strong> Tokens van al WebSocket (la UI los pinta). Session id va a disco (retomar manana). PID va a un mapa (boton Stop). Estados van al WS (spinner, done, error). La DB guarda el historial para cuando abras el chat despues.</p>
+  </div>
+
+  <div class="step-detail">
+    <h3><span class="step-num">8</span> Extras — cancelar, resume roto, titulo</h3>
+    <p><strong>Que pasa:</strong> Caminos alternativos que no son el happy path pero el usuario los usa.</p>
+    <p><strong>Archivos:</strong> <code>sessions/mod.rs</code> (cancel), <code>summarize.rs</code> + <code>provider_oneshot.rs</code> (titulo)</p>
+    <p><strong>Detalle:</strong> <strong>Cancel:</strong> busca el PID guardado en el paso 7 y mata el grupo de procesos. <strong>Resume invalid:</strong> el CLI rechazo la sesion guardada → borra <code>.sid</code> y reintenta fresco. <strong>Titulo:</strong> llamada corta al CLI (sin streaming) para generar titulo/descripcion del chat en la sidebar.</p>
+  </div>
+
+  <div class="plain-box">
+    <p><strong>4 capas de background:</strong> (1) <code>sessions::start</code> spawnea <code>run_start</code>, (2) <code>spawn_and_monitor</code> spawnea el monitor del canal, (3) <code>manager</code> spawnea <code>dispatch</code>, (4) <code>cli_process</code> spawnea lectores stdout/stderr. Cada capa responde rapido y delega lo lento.</p>
+  </div>
+</section>
+
+<!-- 5. WORKFLOWS -->
+<section class="slide" data-section="Workflows">
+  <div class="section-label">Seccion 5 — Workflows</div>
+  <h2>Workflow vs chat vs skill vs routine</h2>
+  <table>
+    <tr><th>Patron</th><th>Superficie</th><th>Cuando</th></tr>
+    <tr><td>Chat one-shot</td><td>Chat</td><td>Respuesta directa del agente</td></tr>
+    <tr><td>Skill</td><td><code>.agents/skills/</code></td><td>Procedimiento reutilizable manual</td></tr>
+    <tr><td>Routine</td><td><code>.houston/routines/</code></td><td>Trabajo programado futuro</td></tr>
+    <tr><td><strong>Workflow</strong></td><td><code>.houston/workflows/</code></td><td>Plan multi-paso, aprobar, ejecutar ahora</td></tr>
+  </table>
+  <p>Lifecycle: <code>planning</code> -> <code>awaiting_approval</code> -> <code>running</code> -> <code>done</code> | <code>error</code> | <code>cancelled</code></p>
+</section>
+
+<section class="slide" data-section="Workflows">
+  <div class="section-label">Seccion 5 — Workflows</div>
+  <h2>Storage y tipos</h2>
+  <div class="file-path">engine/houston-engine-core/src/workflows/types.rs</div>
+  <pre><code class="language-rust">pub struct WorkflowPlan {
+    pub steps: Vec&lt;WorkflowStep&gt;,
+}
+pub struct WorkflowStep {
+    pub id: String,
+    pub task: String,
+    pub depends_on: Vec&lt;String&gt;,
+    pub use_worktree: bool,
+    pub requires_approval: bool,
+    // provider, model, effort (opcionales)
+}
+pub struct WorkflowRun {
+    pub id: String,
+    pub workflow_id: String,
+    pub status: String,  // planning | awaiting_approval | running | ...
+    pub session_key: String,  // workflow-{wid}-run-{rid}
+    pub plan: Option&lt;WorkflowPlan&gt;,
+    pub steps: Vec&lt;StepState&gt;,
+}</code></pre>
+  <p>Archivos en disco:</p>
+  <ul>
+    <li><code>{Agent}/.houston/workflows/workflows.json</code> (definiciones guardadas)</li>
+    <li><code>{Agent}/.houston/workflow_runs/workflow_runs.json</code> (ejecuciones)</li>
+  </ul>
+</section>
+
+<section class="slide" data-section="Workflows">
+  <div class="section-label">Seccion 5 — Workflows — Slide 35</div>
+  <h2>Creacion del plan — que es y por que existe</h2>
+  <div class="story-box">
+    <h3>En criollo</h3>
+    <p>Un workflow no ejecuta "a ciegas". Primero Houston pide a la IA que <strong>descomponga el trabajo en pasos</strong>, como un project manager que escribe un checklist antes de asignar tareas.</p>
+    <p>Ese checklist es el <strong>plan</strong> (<code>WorkflowPlan</code>). El usuario lo revisa y aprueba. Solo despues el engine ejecuta paso a paso (Seccion 6).</p>
+    <p><strong>Entrada al planner:</strong> el <code>plan_prompt</code> del workflow guardado, o el <code>planPrompt</code> inline del marker de chat. Ejemplo: <em>"Audita el repo, arregla issues criticos, abre un PR"</em>.</p>
+  </div>
+  <h3>Ejemplo de plan que devuelve la IA</h3>
+  <pre><code class="language-json">{
+  "steps": [
+    { "id": "audit", "task": "Listar issues y deuda tecnica del repo", "depends_on": [] },
+    { "id": "fix",   "task": "Corregir los issues criticos encontrados", "depends_on": ["audit"] },
+    { "id": "pr",    "task": "Crear branch, commit y abrir pull request", "depends_on": ["fix"],
+      "requires_approval": true }
+  ]
+}</code></pre>
+  <p><code>depends_on</code> forma un <strong>DAG</strong> (grafo aciclico): "fix" espera a "audit", "pr" espera a "fix". Pasos sin dependencias entre si pueden correr en paralelo (Seccion 6).</p>
+  <table>
+    <tr><th>Campo del paso</th><th>Significado</th></tr>
+    <tr><td><code>id</code></td><td>Identificador estable (para dependencias y UI)</td></tr>
+    <tr><td><code>task</code></td><td>Instruccion que recibira el agente al ejecutar ese paso</td></tr>
+    <tr><td><code>depends_on</code></td><td>Ids de pasos que deben terminar antes</td></tr>
+    <tr><td><code>use_worktree</code></td><td>Si true, el paso corre en copia git aislada (paralelo seguro)</td></tr>
+    <tr><td><code>requires_approval</code></td><td>Pausa antes de ese paso (ej. enviar email, borrar archivos)</td></tr>
+    <tr><td><code>provider</code> / <code>model</code></td><td>Opcional: otro CLI/modelo solo para ese paso</td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Workflows">
+  <div class="section-label">Seccion 5 — Workflows — Slide 35 (continuacion)</div>
+  <h2>Creacion del plan — flujo paso a paso</h2>
+  <div class="mermaid">
+sequenceDiagram
+  participant User as Usuario
+  participant API as POST run
+  participant Run as workflow_runs.json
+  participant Planner as planner.rs
+  participant AI as Sesion planner
+  participant Parse as plan.rs
+  participant UI as ActiveRunPanel
+
+  User->>API: Run workflow o marker en chat
+  API->>Run: crear run, status planning
+  API->>Planner: tokio::spawn finish_planning
+  Planner->>AI: un turno AI sin herramientas
+  Note over AI: Solo JSON, no ejecuta nada aun
+  AI->>Parse: texto con objeto steps
+  Parse->>Parse: extraer JSON, validar DAG
+  alt plan valido
+    Parse->>Run: status awaiting_approval, guardar plan
+    Parse->>UI: WorkflowPlanProposed
+  else plan invalido
+    Parse->>Run: status error + motivo
+  end
+  </div>
+  <ol>
+    <li><strong>Arranque</strong> — <code>begin_run</code> crea fila en <code>workflow_runs.json</code> con <code>status: "planning"</code> y <code>session_key: workflow-{wid}-run-{rid}</code>.</li>
+    <li><strong>Planner turn</strong> — <code>run_planner</code> concatena <code>plan_prompt</code> + instrucciones de schema JSON. La sesion del planner tiene <strong>tools desactivados</strong>: no puede tocar archivos ni lanzar comandos; solo planificar.</li>
+    <li><strong>Parse</strong> — <code>parse_plan_from_response</code> saca el JSON aunque venga envuelto en markdown; valida ids, tareas no vacias, dependencias existentes, sin ciclos.</li>
+    <li><strong>Guards</strong> — max 20 pasos; rechaza tareas que digan "spawn workflow" (no workflows anidados).</li>
+    <li><strong>Exito</strong> — <code>status → awaiting_approval</code>, evento <code>WorkflowPlanProposed</code>, la UI muestra el plan en Workflows tab o panel inline del chat (<code>ActiveRunPanel</code>).</li>
+    <li><strong>Fallo</strong> — JSON mal formado, ciclo en dependencias, o planner uso tools → <code>status: error</code> con resumen en <code>run.summary</code>.</li>
+  </ol>
+  <div class="file-path">engine/houston-engine-core/src/workflows/planner.rs</div>
+  <pre><code class="language-rust">// Al planner se le dice explicitamente: NO tools, SOLO JSON
+pub const PLANNER_SYSTEM_APPENDIX: &str =
+    "Do not use tools. Respond with ONLY one JSON object ...";
+
+// El prompt del usuario es plan_prompt + esta plantilla de schema
+pub const PLAN_JSON_INSTRUCTION: &str =
+    "{\"steps\":[{\"id\":\"...\",\"task\":\"...\",\"depends_on\":[], ...}]}";</code></pre>
+  <p class="muted">Despues de aprobar: <code>POST /workflow-runs/:id/approve</code> → <code>status: running</code> → executor (Seccion 6). El plan no se regenera salvo que canceles y vuelvas a correr.</p>
+</section>
+
+<section class="slide" data-section="Workflows">
+  <div class="section-label">Seccion 5 — Workflows</div>
+  <h2>Trigger desde chat</h2>
+  <p>El agente puede iniciar un workflow emitiendo un marker HTML en su respuesta:</p>
+  <pre><code class="language-html">&lt;!--houston:workflow {"workflowId":"my-wf"}--&gt;
+&lt;!--houston:workflow {"planPrompt":"...","name":"...","description":"..."}--&gt;</code></pre>
+  <div class="file-path">engine/houston-engine-core/src/workflows/chat_trigger.rs</div>
+  <p>Gancho en <code>sessions/mod.rs</code> (despues de turno exitoso, solo si <code>!session_key.starts_with("workflow-")</code>):</p>
+  <ol>
+    <li><code>parse_trigger</code>: extrae JSON del marker</li>
+    <li><code>route_trigger</code>: saved workflow id o inline planPrompt</li>
+    <li><code>begin_run</code> / <code>begin_inline_run</code></li>
+    <li>Emite marker de run link: <code>&lt;!--houston:workflow-run {"runId":"..."}--&gt;</code></li>
+    <li><code>tokio::spawn(finish_planning)</code></li>
+  </ol>
+</section>
+
+<!-- 6. PARALLEL -->
+<section class="slide" data-section="Paralelismo">
+  <div class="section-label">Seccion 6 — Ejecucion paralela</div>
+  <h2>Fan-out del DAG con JoinSet</h2>
+  <div class="file-path">engine/houston-engine-core/src/workflows/executor.rs</div>
+  <pre><code class="language-rust">pub async fn run_fanout(...) -> CoreResult&lt;FanoutResult&gt; {
+    let mut join_set = JoinSet::new();
+    loop {
+        for step in &plan.steps {
+            if deps_done(step, &run.steps) && eligible_status(...) {
+                spawn_step(..., &mut join_set).await?;
+                in_flight.insert(step.id.clone());
+            }
+        }
+        if let Some(result) = join_set.join_next().await {
+            finish_step(result).await?;
+        }
+        if all_done { break; }
+    }
+}</code></pre>
+  <p>Pasos sin dependencias pendientes corren <strong>al mismo tiempo</strong>. Un paso fallido cancela sus dependientes (<code>cancel_dependents</code>).</p>
+</section>
+
+<section class="slide" data-section="Paralelismo">
+  <div class="section-label">Seccion 6 — Ejecucion paralela</div>
+  <h2>Un subproceso CLI por paso</h2>
+  <div class="file-path">engine/houston-engine-core/src/workflows/keys.rs</div>
+  <pre><code class="language-rust">pub fn step_session_key(workflow_id: &str, run_id: &str, step_id: &str) -> String {
+    format!("workflow-{workflow_id}-run-{run_id}-step-{step_id}")
+}</code></pre>
+  <div class="file-path">engine/houston-engine-core/src/workflows/executor_step.rs</div>
+  <pre><code class="language-rust">pub async fn spawn_step(...) {
+  let permit = session_sem().acquire().await;  // cap global
+  if step.use_worktree {
+      create_git_worktree(...);  // directorio aislado
+  }
+  dispatcher.dispatch_step(...).await;  // -> spawn_and_monitor
+}</code></pre>
+  <p>Cada paso = un turno completo de agente (mismo pipeline de la Seccion 4) con su propia <code>session_key</code>.</p>
+</section>
+
+<section class="slide" data-section="Paralelismo">
+  <div class="section-label">Seccion 6 — Ejecucion paralela</div>
+  <h2>Las 5 capas de concurrencia</h2>
+  <table>
+    <tr><th>Capa</th><th>Mecanismo</th><th>Efecto</th></tr>
+    <tr><td>1. DAG fan-out</td><td><code>JoinSet</code> en <code>executor.rs</code></td><td>Pasos independientes corren juntos</td></tr>
+    <tr><td>2. Cap global</td><td><code>session_sem()</code> (default 15) en <code>concurrency.rs</code></td><td>Max 15 CLIs simultaneos en todo el engine</td></tr>
+    <tr><td>3. Lock por carpeta</td><td><code>acquire_workdir()</code> en <code>workdir_locks.rs</code></td><td>Solo 1 sesion por directorio a la vez</td></tr>
+    <tr><td>4. Worktrees</td><td><code>use_worktree: true</code> en el step</td><td>Directorio aislado = paralelo real de archivos</td></tr>
+    <tr><td>5. Chat del board</td><td>Cada mision tiene su <code>session_key</code></td><td>Multiples chats paralelos (sujeto al cap global)</td></tr>
+  </table>
+  <p class="muted">Sin worktree, pasos que comparten el repo del agente se serializan por el workdir lock aunque el JoinSet los lance juntos.</p>
+</section>
+
+<section class="slide" data-section="Paralelismo">
+  <div class="section-label">Seccion 6 — Ejecucion paralela</div>
+  <h2>Approval gates y synthesis</h2>
+  <div class="two-col">
+    <div>
+      <h3>Gates de aprobacion</h3>
+      <ul>
+        <li><strong>Plan approval:</strong> despues del planner, <code>status = awaiting_approval</code>. Usuario aprueba en UI -> <code>POST /workflow-runs/:id/approve</code>.</li>
+        <li><strong>Mid-run gate:</strong> step con <code>requires_approval: true</code> pausa la ejecucion hasta approve.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Synthesis</h3>
+      <div class="file-path">engine/houston-engine-core/src/workflows/synthesis.rs</div>
+      <p>Despues de que todos los pasos terminan OK, corre un turno de sintesis en la session key del run (<code>workflow-{wid}-run-{rid}</code>) que resume resultados.</p>
+    </div>
+  </div>
+  <div class="mermaid">
+flowchart LR
+  Approve["Usuario aprueba"]
+  Fanout["run_fanout\nJoinSet"]
+  Step1["step-A\nCLI subprocess"]
+  Step2["step-B\nCLI subprocess"]
+  Synth["run_synthesis"]
+  Done["status = done"]
+  Approve --> Fanout
+  Fanout --> Step1
+  Fanout --> Step2
+  Step1 --> Synth
+  Step2 --> Synth
+  Synth --> Done
+  </div>
+</section>
+
+<!-- 7. CHEAT SHEETS -->
+<section class="slide" data-section="Cheat sheets">
+  <div class="section-label">Seccion 7 — Cheat sheets</div>
+  <h2>Indice de archivos clave</h2>
+  <table>
+    <tr><th>Tema</th><th>Archivo</th></tr>
+    <tr><td>Binary entrypoint</td><td><code>engine/houston-engine-server/src/main.rs</code></td></tr>
+    <tr><td>Router + auth</td><td><code>engine/houston-engine-server/src/lib.rs</code></td></tr>
+    <tr><td>WS firehose</td><td><code>engine/houston-engine-server/src/ws.rs</code></td></tr>
+    <tr><td>Server state</td><td><code>engine/houston-engine-server/src/state.rs</code></td></tr>
+    <tr><td>HoustonEvent</td><td><code>engine/houston-ui-events/src/lib.rs</code></td></tr>
+    <tr><td>Session orchestration</td><td><code>engine/houston-engine-core/src/sessions/mod.rs</code></td></tr>
+    <tr><td>Session runner (bridge)</td><td><code>engine/houston-agents-conversations/src/session_runner.rs</code></td></tr>
+    <tr><td>Provider adapters</td><td><code>engine/houston-terminal-manager/src/provider/mod.rs</code></td></tr>
+    <tr><td>Subprocess I/O</td><td><code>engine/houston-terminal-manager/src/cli_process.rs</code></td></tr>
+    <tr><td>NDJSON parsers</td><td><code>engine/houston-terminal-manager/src/parser.rs</code>, <code>codex_parser.rs</code></td></tr>
+    <tr><td>Workflow executor</td><td><code>engine/houston-engine-core/src/workflows/executor.rs</code></td></tr>
+    <tr><td>Workflow planner</td><td><code>engine/houston-engine-core/src/workflows/planner.rs</code></td></tr>
+    <tr><td>Chat trigger</td><td><code>engine/houston-engine-core/src/workflows/chat_trigger.rs</code></td></tr>
+    <tr><td>Concurrency cap</td><td><code>engine/houston-terminal-manager/src/concurrency.rs</code></td></tr>
+  </table>
+</section>
+
+<section class="slide" data-section="Cheat sheets">
+  <div class="section-label">Seccion 7 — Cheat sheets</div>
+  <h2>Session keys y que leer primero</h2>
+  <h3>Mapa de session keys (debugging)</h3>
+  <table>
+    <tr><th>Fase</th><th>Patron de session_key</th></tr>
+    <tr><td>Chat del usuario</td><td>Asignado por el board (ej. <code>mission-abc</code>)</td></tr>
+    <tr><td>Planner + synthesis</td><td><code>workflow-{wid}-run-{rid}</code></td></tr>
+    <tr><td>Step execution</td><td><code>workflow-{wid}-run-{rid}-step-{sid}</code></td></tr>
+  </table>
+  <h3>Que leer primero</h3>
+  <ol>
+    <li><code>knowledge-base/architecture.md</code> — vision general del sistema</li>
+    <li><code>knowledge-base/engine-server.md</code> — operacion del binario</li>
+    <li><code>knowledge-base/engine-protocol.md</code> — contrato REST + WS</li>
+    <li><code>knowledge-base/workflows.md</code> — feature workflows en detalle</li>
+    <li>Este deck — recorrido tecnico del codigo</li>
+  </ol>
+  <p class="muted" style="margin-top:1rem">Regla de oro: cualquier cambio en <code>engine/**</code> requiere <code>cargo build -p houston-engine-server</code> antes de <code>pnpm tauri dev</code> (el sidecar no se recompila solo).</p>
+</section>
+
+</div><!-- /deck -->
+
+<nav id="nav">
+  <button id="btn-prev" aria-label="Anterior">&larr; Anterior</button>
+  <span id="slide-counter">1 / 1</span>
+  <button id="btn-next" aria-label="Siguiente">Siguiente &rarr;</button>
+</nav>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/rust.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/go.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/java.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/typescript.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+(function () {
+  const slides = document.querySelectorAll('.slide');
+  let current = 0;
+  const total = slides.length;
+  const counter = document.getElementById('slide-counter');
+  const progress = document.getElementById('progress-bar');
+  const btnPrev = document.getElementById('btn-prev');
+  const btnNext = document.getElementById('btn-next');
+
+  mermaid.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'loose' });
+
+  function show(idx) {
+    if (idx < 0 || idx >= total) return;
+    slides[current].classList.remove('active');
+    current = idx;
+    slides[current].classList.add('active');
+    counter.textContent = (current + 1) + ' / ' + total;
+    progress.style.width = ((current + 1) / total * 100) + '%';
+    btnPrev.disabled = current === 0;
+    btnNext.disabled = current === total - 1;
+    slides[current].querySelectorAll('pre code').forEach(function (el) {
+      hljs.highlightElement(el);
+    });
+    slides[current].querySelectorAll('.mermaid').forEach(function (el) {
+      if (!el.dataset.rendered) {
+        mermaid.run({ nodes: [el] }).then(function () {
+          el.dataset.rendered = '1';
+        }).catch(function () {});
+      }
+    });
+    history.replaceState(null, '', '#slide-' + (current + 1));
+  }
+
+  function next() { show(current + 1); }
+  function prev() { show(current - 1); }
+
+  btnNext.addEventListener('click', next);
+  btnPrev.addEventListener('click', prev);
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'PageDown') { e.preventDefault(); next(); }
+    if (e.key === 'ArrowLeft' || e.key === 'PageUp') { e.preventDefault(); prev(); }
+    if (e.key === 'Home') { e.preventDefault(); show(0); }
+    if (e.key === 'End') { e.preventDefault(); show(total - 1); }
+  });
+
+  var hash = location.hash.match(/slide-(\d+)/);
+  if (hash) show(Math.min(parseInt(hash[1], 10) - 1, total - 1));
+  else show(0);
+})();
+</script>
+</body>
+</html>

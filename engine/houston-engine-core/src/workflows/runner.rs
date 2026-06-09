@@ -5,22 +5,17 @@ use crate::routines::runner::expand_tilde;
 use crate::sessions::{self, SessionRuntime};
 use crate::workflows::defs as workflow_defs;
 use crate::workflows::dispatcher::WorkflowDispatcher;
+use crate::workflows::inline;
 use crate::workflows::keys::step_session_key;
 use crate::workflows::planner::{self, emit_runs_changed};
 use crate::workflows::runner_execute::execute_run;
 use crate::workflows::runs as workflow_runs;
-use crate::workflows::types::{Workflow, WorkflowRun, WorkflowRunUpdate};
+use crate::workflows::types::{BegunRun, WorkflowRun, WorkflowRunUpdate};
 use crate::worktree::RemoveWorktreeRequest;
 use chrono::Utc;
 use houston_ui_events::DynEventSink;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
-
-pub struct BegunRun {
-    pub working_dir: PathBuf,
-    pub workflow: Workflow,
-    pub run: WorkflowRun,
-}
 
 pub fn begin_run(
     events: &DynEventSink,
@@ -85,7 +80,7 @@ pub async fn approve_run(
             })?;
         }
     }
-    let workflow = workflow_defs::find_by_id(root, &run.workflow_id)?;
+    let workflow = inline::effective_workflow(root, &run)?;
     let updated = workflow_runs::update(
         root,
         run_id,
@@ -134,7 +129,7 @@ pub async fn resume_run(
             run.status
         )));
     }
-    let workflow = workflow_defs::find_by_id(root, &run.workflow_id)?;
+    let workflow = inline::effective_workflow(root, &run)?;
     workflow_runs::update(
         root,
         run_id,

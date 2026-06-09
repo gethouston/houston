@@ -325,6 +325,10 @@ export interface WorkflowRun {
   summary?: string;
   started_at: string;
   completed_at?: string;
+  /** Inline workflow spec: planner instruction when no saved definition exists. */
+  plan_prompt?: string;
+  name?: string;
+  description?: string;
 }
 
 export interface ProjectConfig {

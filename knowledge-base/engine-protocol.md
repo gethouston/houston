@@ -187,6 +187,28 @@ every weekly routine fired a day early and Sunday routines never scheduled
 (issue #389). Keep cron generation/parsing on the standard convention; never
 hand a raw `schedule` to `Schedule::from_str`.
 
+**Workflows** (`?agentPath=` query on all routes; see `knowledge-base/workflows.md`)
+| Method | Path | Description |
+|---|---|---|
+| GET/POST | `/v1/workflows` | List/create saved definitions |
+| PATCH/DELETE | `/v1/workflows/:id` | Update/delete definition |
+| GET | `/v1/workflow-runs` | List runs (optional `?workflowId`) |
+| POST | `/v1/workflows/:id/run` | Start a run from a saved definition |
+| POST | `/v1/workflow-runs/:id/approve` | Approve plan or mid-run gate |
+| POST | `/v1/workflow-runs/:id/cancel` | Cancel run |
+| POST | `/v1/workflow-runs/:id/resume` | Resume after error or approval |
+
+Mutating routes emit `WorkflowsChanged` or `WorkflowRunsChanged` (plus
+`WorkflowPlanProposed` / `WorkflowStepChanged` during execution). Chat-triggered
+runs also start from `<!--houston:workflow {...}-->` in an assistant reply;
+the engine persists `<!--houston:workflow-run {"runId":...}-->` as a system
+feed item on the user chat session.
+
+`WorkflowRun` may carry optional inline-spec fields when `workflow_id` is
+`synthetic` (`inline-{uuid}`): `plan_prompt`, `name`, `description`. Omitted on
+runs backed by a saved definition. TS mirror:
+`ui/engine-client/src/types.ts` (`#[serde(skip_serializing_if = "Option::is_none")]` on Rust).
+
 **Conversations** (cross-agent read)
 | Method | Path | Description |
 |---|---|---|
@@ -329,6 +351,7 @@ forwarder sends — essential for remote clients where bandwidth matters.
 | `session:{key}` | `FeedItem`, `SessionStatus`, `AuthRequired` |
 | `agent:{path}` | `ActivityChanged`, `SkillsChanged`, `FilesChanged`, `ConfigChanged`, `ContextChanged`, `LearningsChanged`, `ConversationsChanged` |
 | `routines:{agent}` | `RoutinesChanged`, `RoutineRunsChanged` |
+| `workflows:{agent}` | `WorkflowsChanged`, `WorkflowRunsChanged`, `WorkflowPlanProposed`, `WorkflowStepChanged` |
 | `composio` | `ComposioCliReady`, `ComposioCliFailed` |
 | `scheduler` | `HeartbeatFired`, `CronFired` |
 | `toast` | `Toast`, `CompletionToast` |

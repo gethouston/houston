@@ -9,7 +9,8 @@ pub fn build_synthesis_prompt(workflow: &Workflow, plan_steps: &[WorkflowStep], 
         format!("Workflow: {}", workflow.name),
         "Summarize what was actually completed below into a concise final report for the user. \
 Report concrete outcomes (created files, sent messages, links). \
-Do not say approval is still pending for steps already marked done.".into(),
+Do not say approval is still pending for steps already marked done. \
+Write the report in the same language as the workflow plan and task descriptions below.".into(),
         String::new(),
     ];
     for step in plan_steps {
@@ -52,4 +53,60 @@ pub async fn run_synthesis(
             prompt: &prompt,
         })
         .await
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::workflows::types::{StepState, Workflow, WorkflowPlan, WorkflowRun, WorkflowStep};
+
+    #[test]
+    fn build_synthesis_prompt_requires_same_language_as_plan() {
+        let workflow = Workflow {
+            id: "wf-1".into(),
+            name: "Auditoría".into(),
+            description: String::new(),
+            plan_prompt: String::new(),
+            created_at: String::new(),
+            updated_at: String::new(),
+        };
+        let steps = vec![WorkflowStep {
+            id: "audit".into(),
+            task: "Revisar el repositorio".into(),
+            provider: None,
+            model: None,
+            effort: None,
+            use_worktree: false,
+            depends_on: vec![],
+            requires_approval: false,
+        }];
+        let run = WorkflowRun {
+            id: "run-1".into(),
+            workflow_id: "wf-1".into(),
+            status: "running".into(),
+            session_key: "workflow-wf-1-run-run-1".into(),
+            plan: Some(WorkflowPlan {
+                steps: steps.clone(),
+            }),
+            steps: vec![StepState {
+                step_id: "audit".into(),
+                status: "done".into(),
+                approved: false,
+                summary: Some("Se encontraron 3 problemas".into()),
+                worktree_path: None,
+            }],
+            summary: None,
+            started_at: String::new(),
+            completed_at: None,
+            plan_prompt: None,
+            name: None,
+            description: None,
+        };
+
+        let prompt = build_synthesis_prompt(&workflow, &steps, &run);
+        assert!(prompt.contains(
+            "Write the report in the same language as the workflow plan and task descriptions below."
+        ));
+        assert!(prompt.contains("Revisar el repositorio"));
+    }
 }

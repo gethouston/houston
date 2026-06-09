@@ -21,6 +21,10 @@ If app-specific → `.houston/`.
       routines.json + .schema.json
     routine_runs/
       routine_runs.json + .schema.json
+    workflows/
+      workflows.json + .schema.json
+    workflow_runs/
+      workflow_runs.json + .schema.json
     config/
       config.json + .schema.json
     learnings/

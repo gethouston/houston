@@ -28,8 +28,9 @@ import { WorkflowsGrid, WorkflowEditor } from "@houston-ai/workflows"
 - `WorkflowRow` — single workflow row with last-run status
 - `WorkflowEditor` — create/edit form with active run panel + history
 - `WorkflowRunHistory` — past runs with cancel/resume controls
-- `ActiveRunPanel` — live planning/progress/synthesis view
-- `PlanApprovalDialog` — review and approve a generated plan
+- `ActiveRunPanel` — live planning/progress/synthesis view (Workflows tab editor; modal approval)
+- `InlineRunCard` — chat inline run card with connect-card styling and inline approve/cancel
+- `PlanApprovalDialog` — review and approve a generated plan (used by ActiveRunPanel)
 - `StepProgress` — dependency-layered step list with status
 - DAG helpers: `layerSteps`, `activeRun`, `latestRunByWorkflow`, `isResumable`
 
