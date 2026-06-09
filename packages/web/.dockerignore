@@ -1,0 +1,11 @@
+# The web image ships only the pre-built dist/ + nginx.conf. Everything else
+# (source, deps, configs) is excluded — the build already happened.
+node_modules
+src
+public
+index.html
+package.json
+tsconfig.json
+vite.config.ts
+*.md
+.gitignore

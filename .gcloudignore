@@ -1,0 +1,10 @@
+# Trims the Cloud Build upload context. CRITICAL: excludes .context/ so local
+# secrets (.context/cloud.env) never leave the machine. The two image builds only
+# COPY packages/{control-plane,runtime,runtime-client}, so heavy trees are dropped.
+.git
+.context
+**/node_modules
+**/target
+**/dist
+**/*.log
+**/.DS_Store

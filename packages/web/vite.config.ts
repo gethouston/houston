@@ -24,7 +24,7 @@ export default defineConfig(({ mode }) => {
         // When VITE_NEW_ENGINE_URL is set, swap the engine client for the
         // new-engine adapter so the entire desktop UI runs on the new TS engine
         // (packages/engine). Unset → the original old-engine path is untouched.
-        ...(env.VITE_NEW_ENGINE_URL
+        ...(env.VITE_NEW_ENGINE_URL || env.VITE_CONTROL_PLANE_URL
           ? [
               {
                 find: "@houston-ai/engine-client",
@@ -67,6 +67,7 @@ export default defineConfig(({ mode }) => {
     // (mirrors app/vite.config.ts).
     optimizeDeps: {
       exclude: [
+        "@houston/runtime-client",
         "@houston-ai/chat",
         "@houston-ai/core",
         "@houston-ai/board",

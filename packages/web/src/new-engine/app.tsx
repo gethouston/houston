@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { HoustonEngineClient, type AuthStatus } from "@houston/engine-client";
+import { HoustonEngineClient, type AuthStatus } from "@houston/runtime-client";
 import { ConnectView } from "./connect";
 import { ui } from "./styles";
 
@@ -14,7 +14,7 @@ const AppTree = lazy(() => import("../app-tree"));
  * Once connected, the real desktop tree mounts and talks to the new engine
  * through the adapter.
  */
-export function WebApp({ baseUrl, token }: { baseUrl: string; token?: string }) {
+export function WebApp({ baseUrl, token, cloud }: { baseUrl: string; token?: string; cloud?: boolean }) {
   const client = useMemo(
     () => new HoustonEngineClient({ baseUrl, token }),
     [baseUrl, token],
@@ -28,7 +28,17 @@ export function WebApp({ baseUrl, token }: { baseUrl: string; token?: string }) 
       .then((s) => { setStatus(s); setError(null); })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
 
-  useEffect(() => { void refresh(); }, [client]);
+  // Cloud is keyless (Supabase auth + control-plane credentials): there is no
+  // per-runtime OAuth gate, so skip the auth probe and mount the app directly.
+  useEffect(() => { if (!cloud) void refresh(); }, [client, cloud]);
+
+  if (cloud) {
+    return (
+      <Suspense fallback={<div style={ui.page}><div style={ui.muted}>Loading Houston…</div></div>}>
+        <AppTree />
+      </Suspense>
+    );
+  }
 
   if (error && !status) {
     return (
@@ -36,7 +46,7 @@ export function WebApp({ baseUrl, token }: { baseUrl: string; token?: string }) 
         <div style={ui.muted}>
           Can't reach the engine at <code>{baseUrl}</code>.
           <br />
-          Start it (`bun run dev` in packages/engine) and reload.
+          Start it (`bun run dev` in packages/runtime) and reload.
           <br />
           <span style={{ opacity: 0.6 }}>{error}</span>
         </div>

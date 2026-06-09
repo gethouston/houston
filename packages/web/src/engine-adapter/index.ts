@@ -1,6 +1,6 @@
 /**
  * Drop-in replacement for `@houston-ai/engine-client`, backed by the new TS
- * engine (packages/engine). Aliased in vite.config.ts when VITE_NEW_ENGINE_URL
+ * engine (packages/runtime). Aliased in vite.config.ts when VITE_NEW_ENGINE_URL
  * is set, so the entire desktop UI (app/src) runs on the new engine unchanged.
  *
  * Types are reused verbatim from the original package; only the HoustonClient
