@@ -79,6 +79,11 @@ pub struct Routine {
     /// When `None`, runs fall back to the agent's configured model.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    /// Reasoning-effort override (e.g. `"high"`, `"max"`). Validated against the
+    /// resolved provider's accepted levels at dispatch — an unsupported value is
+    /// dropped. When `None`, runs fall back to the agent's configured effort.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -104,6 +109,8 @@ pub struct NewRoutine {
     pub provider: Option<String>,
     #[serde(default)]
     pub model: Option<String>,
+    #[serde(default)]
+    pub effort: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -129,6 +136,9 @@ pub struct RoutineUpdate {
     /// Model to pin for this routine; `None` leaves it unchanged.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    /// Reasoning effort to pin (e.g. `"high"`); `None` leaves it unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
 }
 
 // -- RoutineRun --

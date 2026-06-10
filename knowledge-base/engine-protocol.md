@@ -169,10 +169,12 @@ silently dropped `timezone`, was removed.)
 
 All routine + routine-run CRUD lives here (the engine-client targets it); the
 `/v1/agents/routines*` mirror was deleted. Query params are camelCase
-(`?agentPath`, `?routineId`). A routine carries optional `provider`/`model`
-overrides (absent = inherit the agent's configured provider/model at dispatch);
-the dispatcher resolves them via `sessions::resolve_provider_with_overrides`,
-the same precedence a chat turn uses. Create/update/delete + run create/update
+(`?agentPath`, `?routineId`). A routine carries optional
+`provider`/`model`/`effort` overrides (absent = inherit the agent's config at
+dispatch); the dispatcher resolves provider+model via
+`sessions::resolve_provider_with_overrides` and effort via
+`resolve_effort_with_override` (an effort the resolved provider rejects is
+dropped), the same precedence a chat turn uses. Create/update/delete + run create/update
 emit `RoutinesChanged` / `RoutineRunsChanged`.
 
 | Method | Path | Description |

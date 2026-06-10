@@ -28,6 +28,8 @@ export interface Routine {
   provider?: string | null
   /** Model override; absent means inherit the agent's model. */
   model?: string | null
+  /** Reasoning-effort override; absent means inherit the agent's effort. */
+  effort?: string | null
   created_at: string
   updated_at: string
 }

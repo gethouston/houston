@@ -7,7 +7,6 @@ import {
   formMatchesRoutine,
   freshRoutinesState,
   latestRunByRoutine,
-  routineModelPickerDefaults,
   routineToFormData,
   type View,
 } from "./routines-tab-model";
@@ -19,11 +18,10 @@ import {
   useDeleteRoutine,
   useRunRoutineNow,
   useCancelRoutineRun,
-  useAgentConfig,
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
-import { ChatModelSelector } from "../chat-model-selector";
+import { RoutineModelControls } from "./routine-model-controls";
 import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 
@@ -35,7 +33,6 @@ export default function RoutinesTab({ agent }: TabProps) {
 
   const { data: routines, isLoading } = useRoutines(path);
   const { data: allRuns } = useRoutineRuns(path);
-  const { data: agentConfig } = useAgentConfig(path);
   const createRoutine = useCreateRoutine(path);
   const updateRoutine = useUpdateRoutine(path);
   const deleteRoutine = useDeleteRoutine(path);
@@ -138,12 +135,12 @@ export default function RoutinesTab({ agent }: TabProps) {
     [cancelRun],
   );
 
-  // Picking a model pins the routine to that provider + model; leaving the
-  // picker untouched keeps `provider`/`model` null so the run inherits the
-  // agent's configured model at dispatch time.
-  const handleModelSelect = useCallback(
-    (provider: string, model: string) =>
-      setForm((prev) => ({ ...prev, provider, model })),
+  // Single patch-merge for editor field edits, shared by RoutineEditor and the
+  // model/effort controls. A picked provider/model/effort pins it on the form;
+  // untouched fields stay null so the run inherits the agent's config.
+  const handleFormChange = useCallback(
+    (patch: Partial<RoutineFormData>) =>
+      setForm((prev) => ({ ...prev, ...patch })),
     [],
   );
 
@@ -167,13 +164,10 @@ export default function RoutinesTab({ agent }: TabProps) {
       ? (allRuns ?? []).filter((r) => r.routine_id === view.editId)
       : [];
 
-    const { provider: pickerProvider, model: pickerModel } =
-      routineModelPickerDefaults(form, agentConfig);
-
     return (
       <RoutineEditor
         value={form}
-        onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+        onChange={handleFormChange}
         onBack={() => setView({ type: "grid" })}
         onSubmit={handleSubmit}
         routine={editing}
@@ -192,10 +186,10 @@ export default function RoutinesTab({ agent }: TabProps) {
         accountTimezone={tz.timezone}
         hasChanges={!formMatchesRoutine(form, baseline)}
         modelPicker={
-          <ChatModelSelector
-            provider={pickerProvider}
-            model={pickerModel}
-            onSelect={handleModelSelect}
+          <RoutineModelControls
+            agentPath={path}
+            form={form}
+            onChange={handleFormChange}
           />
         }
         labels={labels.editor}

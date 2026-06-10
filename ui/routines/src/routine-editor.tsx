@@ -60,6 +60,8 @@ export interface RoutineFormData {
   provider?: string | null
   /** Model override. `null`/absent means inherit the agent's model. */
   model?: string | null
+  /** Reasoning-effort override. `null`/absent means inherit the agent's effort. */
+  effort?: string | null
 }
 
 export interface RoutineEditorProps {

@@ -436,6 +436,7 @@ mod tests {
             integrations: vec![],
             provider: None,
             model: None,
+            effort: None,
         }
     }
 

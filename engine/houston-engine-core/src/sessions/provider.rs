@@ -127,6 +127,26 @@ pub fn resolve_effort(agent_dir: &Path, provider: Provider) -> Option<String> {
     }
 }
 
+/// Like [`resolve_effort`] but lets a caller-supplied override (e.g. a routine's
+/// pinned effort) win — *only* when the resolved provider accepts it. An
+/// unsupported override (a level for a different provider, or a value the model
+/// rejects) is dropped in favor of the agent's configured/default effort,
+/// exactly as a hand-edited config value would be. Providers with no effort
+/// control (e.g. Gemini) still yield `None`.
+pub fn resolve_effort_with_override(
+    agent_dir: &Path,
+    provider: Provider,
+    override_effort: Option<&str>,
+) -> Option<String> {
+    if let Some(e) = override_effort {
+        let levels = provider.effort_levels();
+        if !levels.is_empty() && levels.iter().any(|&l| l == e) {
+            return Some(e.to_string());
+        }
+    }
+    resolve_effort(agent_dir, provider)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -283,6 +303,44 @@ mod tests {
     fn effort_reads_claude_effort_alias() {
         let (_d, agent) = agent_with(r#"{"claude_effort":"xhigh"}"#);
         assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("xhigh"));
+    }
+
+    #[test]
+    fn effort_override_wins_when_provider_accepts_it() {
+        // A routine pins "max"; Anthropic accepts it, so it overrides the
+        // agent's configured "low".
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","effort":"low"}"#);
+        assert_eq!(
+            resolve_effort_with_override(&agent, anthropic(), Some("max")).as_deref(),
+            Some("max")
+        );
+    }
+
+    #[test]
+    fn effort_override_dropped_when_provider_rejects_it() {
+        // "max" is invalid for Codex → the override is dropped and the agent's
+        // configured/default effort is used instead.
+        let (_d, agent) = agent_with(r#"{"provider":"openai","effort":"high"}"#);
+        assert_eq!(
+            resolve_effort_with_override(&agent, openai(), Some("max")).as_deref(),
+            Some("high"),
+        );
+    }
+
+    #[test]
+    fn effort_override_none_falls_back_to_resolve_effort() {
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","effort":"high"}"#);
+        assert_eq!(
+            resolve_effort_with_override(&agent, anthropic(), None).as_deref(),
+            Some("high")
+        );
+    }
+
+    #[test]
+    fn effort_override_ignored_for_provider_without_effort_control() {
+        // Even a "valid-looking" override yields None for Gemini.
+        let (_d, agent) = agent_with(r#"{"provider":"gemini"}"#);
+        assert!(resolve_effort_with_override(&agent, gemini(), Some("high")).is_none());
     }
 
     #[test]

@@ -190,6 +190,8 @@ export interface Routine {
   provider?: string | null;
   /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
   model?: string | null;
+  /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
+  effort?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -211,6 +213,8 @@ export interface NewRoutine {
   provider?: string | null;
   /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
   model?: string | null;
+  /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
+  effort?: string | null;
 }
 
 export interface RoutineUpdate {
@@ -228,6 +232,8 @@ export interface RoutineUpdate {
   provider?: string | null;
   /** Model to pin (e.g. "gpt-5.5"); omit or null to leave unchanged. */
   model?: string | null;
+  /** Reasoning effort to pin (e.g. "high"); omit or null to leave unchanged. */
+  effort?: string | null;
 }
 
 export type RoutineRunStatus =

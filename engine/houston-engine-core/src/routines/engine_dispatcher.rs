@@ -139,7 +139,11 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             Some(self.rt.pid_map.clone()),
             resolved.provider,
             resolved.model,
-            sessions::resolve_effort(ctx.working_dir, resolved.provider),
+            sessions::resolve_effort_with_override(
+                ctx.working_dir,
+                resolved.provider,
+                ctx.routine.effort.as_deref(),
+            ),
         );
 
         match join_handle.await {
@@ -245,6 +249,7 @@ mod lifecycle_tests {
             integrations: vec![],
             provider: None,
             model: None,
+            effort: None,
         }
     }
 

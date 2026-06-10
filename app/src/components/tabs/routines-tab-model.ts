@@ -2,6 +2,7 @@ import type { Routine, RoutineFormData, RoutineRun } from "@houston-ai/routines"
 import {
   validProviderOrNull,
   validModelOrNull,
+  validEffortOrDefault,
   getDefaultModel,
   normalizeLegacyModel,
 } from "../../lib/providers";
@@ -17,8 +18,10 @@ export type View = { type: "grid" } | { type: "editor"; editId?: string };
  */
 export function routineModelPickerDefaults(
   form: RoutineFormData,
-  agentConfig: { provider?: string | null; model?: string | null } | undefined,
-): { provider: string; model: string } {
+  agentConfig:
+    | { provider?: string | null; model?: string | null; effort?: string | null }
+    | undefined,
+): { provider: string; model: string; effort: string | undefined } {
   const agentModel = normalizeLegacyModel(agentConfig?.model ?? null);
   const provider =
     validProviderOrNull(form.provider ?? null) ??
@@ -28,7 +31,15 @@ export function routineModelPickerDefaults(
     validModelOrNull(provider, form.model ?? null) ??
     validModelOrNull(provider, agentModel) ??
     getDefaultModel(provider);
-  return { provider, model };
+  // Effort is validated against the resolved model: the routine's pin if the
+  // model accepts it, else the agent's effort, else the model's default —
+  // `undefined` for models with no effort control, so the picker hides.
+  const effort = validEffortOrDefault(
+    provider,
+    model,
+    form.effort ?? agentConfig?.effort ?? null,
+  );
+  return { provider, model, effort };
 }
 
 /** Most recent run per routine id, keyed by `routine_id`. */
@@ -56,9 +67,10 @@ export const EMPTY_FORM: RoutineFormData = {
   chat_mode: "shared",
   timezone: null,
   integrations: [],
-  // null = inherit the agent's provider/model until the user picks one.
+  // null = inherit the agent's provider/model/effort until the user picks.
   provider: null,
   model: null,
+  effort: null,
 };
 
 function sameStringList(a: string[], b: string[]): boolean {
@@ -82,6 +94,7 @@ export function formMatchesRoutine(
     (form.timezone ?? null) === (source.timezone ?? null) &&
     (form.provider ?? null) === (source.provider ?? null) &&
     (form.model ?? null) === (source.model ?? null) &&
+    (form.effort ?? null) === (source.effort ?? null) &&
     sameStringList(form.integrations, source.integrations)
   );
 }
@@ -99,6 +112,7 @@ export function routineToFormData(routine: Routine): RoutineFormData {
     integrations: routine.integrations ?? [],
     provider: routine.provider ?? null,
     model: routine.model ?? null,
+    effort: routine.effort ?? null,
   };
 }
 

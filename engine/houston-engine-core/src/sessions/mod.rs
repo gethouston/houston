@@ -49,7 +49,8 @@ use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
 pub use cancel::cancel;
 pub use houston_agents_conversations::session_pids::PidInsert;
 pub use provider::{
-    resolve_effort, resolve_provider, resolve_provider_with_overrides, ResolvedProvider,
+    resolve_effort, resolve_effort_with_override, resolve_provider,
+    resolve_provider_with_overrides, ResolvedProvider,
 };
 
 /// Engine-owned session state. Cheap to clone.

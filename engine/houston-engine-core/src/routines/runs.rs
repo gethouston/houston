@@ -294,6 +294,7 @@ mod tests {
                 integrations: vec![],
                 provider: None,
                 model: None,
+                effort: None,
             },
         )
         .unwrap();
@@ -317,6 +318,7 @@ mod tests {
                 integrations: vec![],
                 provider: None,
                 model: None,
+                effort: None,
             },
         )
         .unwrap();

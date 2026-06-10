@@ -51,6 +51,8 @@ pub struct RoutineEntry {
     pub provider: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub effort: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

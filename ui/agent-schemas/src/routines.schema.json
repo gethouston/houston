@@ -29,6 +29,7 @@
       "timezone": { "type": ["string", "null"], "description": "IANA tz override; null means use account default." },
       "provider": { "type": ["string", "null"], "description": "Provider id override (e.g. 'anthropic', 'openai'); null means inherit the agent's provider." },
       "model": { "type": ["string", "null"], "description": "Model override (e.g. 'claude-opus-4-8', 'gpt-5.5'); null means inherit the agent's model." },
+      "effort": { "type": ["string", "null"], "description": "Reasoning-effort override (e.g. 'high', 'max'); validated per-provider at dispatch; null means inherit the agent's effort." },
       "created_at": { "type": "string", "format": "date-time" },
       "updated_at": { "type": "string", "format": "date-time" }
     },

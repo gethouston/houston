@@ -64,6 +64,7 @@ pub fn create(root: &Path, input: NewRoutine) -> CoreResult<Routine> {
         integrations: input.integrations,
         provider: input.provider,
         model: input.model,
+        effort: input.effort,
         created_at: now.clone(),
         updated_at: now,
     };
@@ -112,6 +113,9 @@ pub fn update(root: &Path, id: &str, updates: RoutineUpdate) -> CoreResult<Routi
     if let Some(model) = updates.model {
         routine.model = Some(model);
     }
+    if let Some(effort) = updates.effort {
+        routine.effort = Some(effort);
+    }
     routine.updated_at = Utc::now().to_rfc3339();
 
     let result = routine.clone();
@@ -147,6 +151,7 @@ mod tests {
             integrations: vec![],
             provider: None,
             model: None,
+            effort: None,
         }
     }
 
@@ -257,15 +262,18 @@ mod tests {
             RoutineUpdate {
                 provider: Some("openai".into()),
                 model: Some("gpt-5.5".into()),
+                effort: Some("high".into()),
                 ..Default::default()
             },
         )
         .unwrap();
         assert_eq!(set.provider.as_deref(), Some("openai"));
         assert_eq!(set.model.as_deref(), Some("gpt-5.5"));
+        assert_eq!(set.effort.as_deref(), Some("high"));
         let reloaded = list(d.path()).unwrap();
         assert_eq!(reloaded[0].provider.as_deref(), Some("openai"), "serialized to disk");
         assert_eq!(reloaded[0].model.as_deref(), Some("gpt-5.5"));
+        assert_eq!(reloaded[0].effort.as_deref(), Some("high"));
 
         let rebound = update(
             d.path(),

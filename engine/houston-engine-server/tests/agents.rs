@@ -129,7 +129,8 @@ async fn routine_and_runs_lifecycle_over_http() {
             "enabled": true,
             "suppress_when_silent": true,
             "provider": "openai",
-            "model": "gpt-5.5"
+            "model": "gpt-5.5",
+            "effort": "high"
         }))
         .send()
         .await
@@ -140,6 +141,7 @@ async fn routine_and_runs_lifecycle_over_http() {
     let rid = routine["id"].as_str().unwrap().to_string();
     assert_eq!(routine["provider"], "openai");
     assert_eq!(routine["model"], "gpt-5.5");
+    assert_eq!(routine["effort"], "high");
 
     // Re-point the override to a different provider + model.
     let rebound: serde_json::Value = c
