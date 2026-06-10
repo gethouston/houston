@@ -58,6 +58,38 @@ pub fn resolve_provider(agent_dir: &Path) -> ResolvedProvider {
     }
 }
 
+/// Resolve provider + model, letting explicit overrides win over the agent's
+/// stored config — the shared precedence used by both a chat turn (request
+/// overrides) and a routine run (per-routine overrides).
+///
+/// Order:
+/// 1. `provider_override` (a provider id like `"openai"`) + `model_override`,
+///    when a provider override is present.
+/// 2. Otherwise [`resolve_provider`] (agent config → Anthropic default), with
+///    `model_override` applied on top if given.
+///
+/// A `provider_override` that doesn't name a known provider is returned as
+/// `Err(message)` so the caller can surface it (a bad chat request → 400; a
+/// bad routine → a visible run error). It is never silently dropped.
+pub fn resolve_provider_with_overrides(
+    agent_dir: &Path,
+    provider_override: Option<&str>,
+    model_override: Option<String>,
+) -> Result<ResolvedProvider, String> {
+    if let Some(p_str) = provider_override {
+        let provider: Provider = p_str.parse()?;
+        return Ok(ResolvedProvider {
+            provider,
+            model: model_override,
+        });
+    }
+    let mut resolved = resolve_provider(agent_dir);
+    if let Some(m) = model_override {
+        resolved.model = Some(m);
+    }
+    Ok(resolved)
+}
+
 fn read_agent_config(agent_dir: &Path) -> Option<AgentConfig> {
     let path = agent_dir.join(".houston/config/config.json");
     let raw = std::fs::read_to_string(&path).ok()?;
@@ -184,6 +216,37 @@ mod tests {
         let agent = d.path().join("ws").join("agent");
         write_json(&agent.join(".houston/config/config.json"), body);
         (d, agent)
+    }
+
+    #[test]
+    fn overrides_win_over_agent_config() {
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","model":"sonnet"}"#);
+        let r = resolve_provider_with_overrides(&agent, Some("openai"), Some("gpt-5.5".into()))
+            .unwrap();
+        assert_eq!(r.provider, openai());
+        assert_eq!(r.model.as_deref(), Some("gpt-5.5"));
+    }
+
+    #[test]
+    fn no_override_falls_back_to_agent_config() {
+        let (_d, agent) = agent_with(r#"{"provider":"openai","model":"gpt-5.5"}"#);
+        let r = resolve_provider_with_overrides(&agent, None, None).unwrap();
+        assert_eq!(r.provider, openai());
+        assert_eq!(r.model.as_deref(), Some("gpt-5.5"));
+    }
+
+    #[test]
+    fn model_override_alone_keeps_agent_provider() {
+        let (_d, agent) = agent_with(r#"{"provider":"openai","model":"gpt-5.5"}"#);
+        let r = resolve_provider_with_overrides(&agent, None, Some("gpt-6".into())).unwrap();
+        assert_eq!(r.provider, openai());
+        assert_eq!(r.model.as_deref(), Some("gpt-6"));
+    }
+
+    #[test]
+    fn bad_provider_override_errors_rather_than_silently_defaulting() {
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic"}"#);
+        assert!(resolve_provider_with_overrides(&agent, Some("nonsense"), None).is_err());
     }
 
     #[test]

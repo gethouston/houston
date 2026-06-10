@@ -17,8 +17,6 @@ pub mod config;
 pub mod files;
 mod learnings_context;
 pub mod prompt;
-pub mod routine_runs;
-pub mod routines;
 pub mod store;
 pub mod types;
 
@@ -60,39 +58,8 @@ impl AgentStore {
         activity::delete(&self.root, id)
     }
 
-    // -- Routines --
-    pub fn list_routines(&self) -> CoreResult<Vec<Routine>> {
-        routines::list(&self.root)
-    }
-    pub fn create_routine(&self, input: NewRoutine) -> CoreResult<Routine> {
-        self.ensure_houston_dir()?;
-        routines::create(&self.root, input)
-    }
-    pub fn update_routine(&self, id: &str, updates: RoutineUpdate) -> CoreResult<Routine> {
-        routines::update(&self.root, id, updates)
-    }
-    pub fn delete_routine(&self, id: &str) -> CoreResult<()> {
-        routines::delete(&self.root, id)
-    }
-
-    // -- Routine Runs --
-    pub fn list_routine_runs(&self) -> CoreResult<Vec<RoutineRun>> {
-        routine_runs::list(&self.root)
-    }
-    pub fn list_routine_runs_for(&self, routine_id: &str) -> CoreResult<Vec<RoutineRun>> {
-        routine_runs::list_for_routine(&self.root, routine_id)
-    }
-    pub fn create_routine_run(&self, routine_id: &str) -> CoreResult<RoutineRun> {
-        self.ensure_houston_dir()?;
-        routine_runs::create(&self.root, routine_id)
-    }
-    pub fn update_routine_run(
-        &self,
-        id: &str,
-        updates: RoutineRunUpdate,
-    ) -> CoreResult<RoutineRun> {
-        routine_runs::update(&self.root, id, updates)
-    }
+    // Routines + routine runs are managed through [`crate::routines`], not the
+    // `AgentStore` facade — see that module for their CRUD.
 
     // -- Config --
     pub fn read_config(&self) -> CoreResult<ProjectConfig> {
@@ -188,56 +155,6 @@ mod tests {
         assert_eq!(r1.model.as_deref(), Some("opus"));
         assert_eq!(r2.provider.as_deref(), Some("openai"));
         assert_eq!(r2.model.as_deref(), Some("gpt-5.4"));
-    }
-
-    #[test]
-    fn routine_lifecycle() {
-        let d = tmp();
-        let s = AgentStore::new(d.path());
-        s.ensure_houston_dir().unwrap();
-        let r = s
-            .create_routine(NewRoutine {
-                name: "morning".into(),
-                description: String::new(),
-                prompt: "do the thing".into(),
-                schedule: "0 9 * * *".into(),
-                enabled: true,
-                suppress_when_silent: true,
-                chat_mode: crate::routines::RoutineChatMode::Shared,
-                integrations: vec![],
-            })
-            .unwrap();
-        assert_eq!(s.list_routines().unwrap().len(), 1);
-
-        let run = s.create_routine_run(&r.id).unwrap();
-        assert_eq!(run.routine_id, r.id);
-        assert_eq!(run.session_key, format!("routine-{}", r.id));
-        assert_eq!(s.list_routine_runs_for(&r.id).unwrap().len(), 1);
-
-        let upd = s
-            .update_routine_run(
-                &run.id,
-                RoutineRunUpdate {
-                    status: Some("surfaced".into()),
-                    ..Default::default()
-                },
-            )
-            .unwrap();
-        assert_eq!(upd.status, "surfaced");
-
-        s.delete_routine(&r.id).unwrap();
-        assert!(s.list_routines().unwrap().is_empty());
-    }
-
-    #[test]
-    fn routine_runs_pruned_at_50() {
-        let d = tmp();
-        let s = AgentStore::new(d.path());
-        s.ensure_houston_dir().unwrap();
-        for _ in 0..60 {
-            s.create_routine_run("rid").unwrap();
-        }
-        assert_eq!(s.list_routine_runs_for("rid").unwrap().len(), 50);
     }
 
     #[test]

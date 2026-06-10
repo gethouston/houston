@@ -139,6 +139,8 @@ export interface RoutineEditorLabels {
   notifyDescription: string
   chatTitle: string
   chatDescription: string
+  modelTitle: string
+  modelDescription: string
 }
 
 /** RoutinesGrid empty state + meta row. */

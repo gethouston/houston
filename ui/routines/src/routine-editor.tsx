@@ -56,6 +56,10 @@ export interface RoutineFormData {
   timezone?: string | null
   /** Composio toolkit slugs this routine uses. */
   integrations: string[]
+  /** Provider id override. `null`/absent means inherit the agent's provider. */
+  provider?: string | null
+  /** Model override. `null`/absent means inherit the agent's model. */
+  model?: string | null
 }
 
 export interface RoutineEditorProps {
@@ -85,6 +89,15 @@ export interface RoutineEditorProps {
   accountTimezone: string
   /** Disable Save when the form hasn't actually been touched. */
   hasChanges?: boolean
+  /**
+   * App-supplied provider + model picker (e.g. the chat model selector),
+   * rendered in the Behavior section. `ui/` stays provider-agnostic per the
+   * library boundary, so the concrete picker — which knows the provider/model
+   * catalog and connection state — is injected from `app/`. Omit it (standalone
+   * callers) and the model row is hidden. The picker drives `value.provider` +
+   * `value.model` through `onChange`.
+   */
+  modelPicker?: React.ReactNode
   /**
    * Localized labels. English defaults so standalone callers still work; the
    * app passes `t()` results in per the library-boundary rule.
@@ -184,6 +197,7 @@ export function RoutineEditor({
   onViewActivity,
   accountTimezone,
   hasChanges,
+  modelPicker,
   labels = DEFAULT_EDITOR_LABELS,
   scheduleLabels = DEFAULT_SCHEDULE_LABELS,
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
@@ -423,6 +437,18 @@ export function RoutineEditor({
           </SectionCard>
 
           <SectionCard title={labels.sectionBehavior}>
+            {modelPicker && (
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm text-foreground">{labels.modelTitle}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {labels.modelDescription}
+                  </p>
+                </div>
+                <div className="shrink-0">{modelPicker}</div>
+              </div>
+            )}
+
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
                 <p className="text-sm text-foreground">{labels.notifyTitle}</p>

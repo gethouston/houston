@@ -19,6 +19,7 @@ use houston_engine_core::routines::{
     runs as routine_runs,
     types::{NewRoutine, Routine, RoutineRun, RoutineUpdate},
 };
+use houston_ui_events::HoustonEvent;
 use serde::Deserialize;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -70,6 +71,9 @@ async fn create(
 ) -> Result<Json<Routine>, ApiError> {
     let r = routines::create(&agent_root(&q.agent_path), req)?;
     st.routine_scheduler.sync_agent(&q.agent_path).await;
+    st.engine.events.emit(HoustonEvent::RoutinesChanged {
+        agent_path: q.agent_path.clone(),
+    });
     Ok(Json(r))
 }
 
@@ -81,6 +85,9 @@ async fn update(
 ) -> Result<Json<Routine>, ApiError> {
     let r = routines::update(&agent_root(&q.agent_path), &id, req)?;
     st.routine_scheduler.sync_agent(&q.agent_path).await;
+    st.engine.events.emit(HoustonEvent::RoutinesChanged {
+        agent_path: q.agent_path.clone(),
+    });
     Ok(Json(r))
 }
 
@@ -110,6 +117,9 @@ async fn remove(
 
     routines::delete(&root, &id)?;
     st.routine_scheduler.sync_agent(&q.agent_path).await;
+    st.engine.events.emit(HoustonEvent::RoutinesChanged {
+        agent_path: q.agent_path.clone(),
+    });
     Ok(())
 }
 
@@ -126,20 +136,28 @@ async fn list_runs(
 }
 
 async fn create_run(
-    State(_st): State<Arc<ServerState>>,
+    State(st): State<Arc<ServerState>>,
     Path(id): Path<String>,
     Query(q): Query<AgentQuery>,
 ) -> Result<Json<RoutineRun>, ApiError> {
-    Ok(Json(routine_runs::create(&agent_root(&q.agent_path), &id)?))
+    let run = routine_runs::create(&agent_root(&q.agent_path), &id)?;
+    st.engine.events.emit(HoustonEvent::RoutineRunsChanged {
+        agent_path: q.agent_path.clone(),
+    });
+    Ok(Json(run))
 }
 
 async fn update_run(
-    State(_st): State<Arc<ServerState>>,
+    State(st): State<Arc<ServerState>>,
     Path(id): Path<String>,
     Query(q): Query<AgentQuery>,
     Json(req): Json<houston_engine_core::routines::types::RoutineRunUpdate>,
 ) -> Result<Json<RoutineRun>, ApiError> {
-    Ok(Json(routine_runs::update(&agent_root(&q.agent_path), &id, req)?))
+    let run = routine_runs::update(&agent_root(&q.agent_path), &id, req)?;
+    st.engine.events.emit(HoustonEvent::RoutineRunsChanged {
+        agent_path: q.agent_path.clone(),
+    });
+    Ok(Json(run))
 }
 
 // -- Scheduler lifecycle --

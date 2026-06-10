@@ -1,7 +1,35 @@
 import type { Routine, RoutineFormData, RoutineRun } from "@houston-ai/routines";
+import {
+  validProviderOrNull,
+  validModelOrNull,
+  getDefaultModel,
+  normalizeLegacyModel,
+} from "../../lib/providers";
 
 /** Editor view state for the Routines tab. */
 export type View = { type: "grid" } | { type: "editor"; editId?: string };
+
+/**
+ * Provider + model the editor's model picker should display: the routine's own
+ * pin if set, else the agent's configured default, else the platform default.
+ * Pure so the resolution stays out of the tab component (it always returns
+ * concrete ids the picker can render).
+ */
+export function routineModelPickerDefaults(
+  form: RoutineFormData,
+  agentConfig: { provider?: string | null; model?: string | null } | undefined,
+): { provider: string; model: string } {
+  const agentModel = normalizeLegacyModel(agentConfig?.model ?? null);
+  const provider =
+    validProviderOrNull(form.provider ?? null) ??
+    validProviderOrNull(agentConfig?.provider ?? null) ??
+    "anthropic";
+  const model =
+    validModelOrNull(provider, form.model ?? null) ??
+    validModelOrNull(provider, agentModel) ??
+    getDefaultModel(provider);
+  return { provider, model };
+}
 
 /** Most recent run per routine id, keyed by `routine_id`. */
 export function latestRunByRoutine(
@@ -28,6 +56,9 @@ export const EMPTY_FORM: RoutineFormData = {
   chat_mode: "shared",
   timezone: null,
   integrations: [],
+  // null = inherit the agent's provider/model until the user picks one.
+  provider: null,
+  model: null,
 };
 
 function sameStringList(a: string[], b: string[]): boolean {
@@ -49,6 +80,8 @@ export function formMatchesRoutine(
     form.suppress_when_silent === source.suppress_when_silent &&
     form.chat_mode === source.chat_mode &&
     (form.timezone ?? null) === (source.timezone ?? null) &&
+    (form.provider ?? null) === (source.provider ?? null) &&
+    (form.model ?? null) === (source.model ?? null) &&
     sameStringList(form.integrations, source.integrations)
   );
 }
@@ -64,6 +97,8 @@ export function routineToFormData(routine: Routine): RoutineFormData {
     chat_mode: routine.chat_mode ?? "shared",
     timezone: routine.timezone ?? null,
     integrations: routine.integrations ?? [],
+    provider: routine.provider ?? null,
+    model: routine.model ?? null,
   };
 }
 

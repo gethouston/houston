@@ -24,6 +24,10 @@ export interface Routine {
   timezone?: string | null
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[]
+  /** Provider id override; absent means inherit the agent's provider. */
+  provider?: string | null
+  /** Model override; absent means inherit the agent's model. */
+  model?: string | null
   created_at: string
   updated_at: string
 }

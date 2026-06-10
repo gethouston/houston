@@ -43,6 +43,14 @@ pub struct RoutineEntry {
     /// stays that on the recipient's machine until they choose otherwise.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub timezone: Option<String>,
+    /// Sender's provider/model intent. Carried like `timezone` so a routine
+    /// pinned to a specific model survives the share; if the recipient lacks
+    /// that provider the run surfaces a visible error and they can re-pick.
+    /// Absent (older packages) means the recipient's agent default is used.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }

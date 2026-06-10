@@ -2,8 +2,11 @@
 //!
 //! Relocated from `app/houston-tauri/src/agent_store/types.rs`. Wire-compatible
 //! with existing on-disk JSON.
+//!
+//! Routine + routine-run types live in [`crate::routines::types`] — the single
+//! canonical source the REST surface, scheduler, and dispatcher all share. This
+//! module intentionally does not duplicate them.
 
-use crate::routines::types::RoutineChatMode;
 use serde::{Deserialize, Serialize};
 
 // -- Activity --
@@ -69,102 +72,6 @@ pub struct NewActivity {
     pub provider: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub model: Option<String>,
-}
-
-// -- Routines --
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Routine {
-    pub id: String,
-    pub name: String,
-    pub description: String,
-    /// The prompt sent to Claude when this routine fires.
-    pub prompt: String,
-    /// Cron expression (e.g. "0 9 * * 1-5").
-    pub schedule: String,
-    /// Whether the routine is active.
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-    /// When true, runs where Claude responds with ROUTINE_OK are auto-completed
-    /// silently (no activity created on the board).
-    #[serde(default = "default_true")]
-    pub suppress_when_silent: bool,
-    /// Whether each run reuses one chat or starts a fresh one (#423). Defaults
-    /// to `Shared` so existing routines keep one chat per routine (#381).
-    #[serde(default)]
-    pub chat_mode: RoutineChatMode,
-    /// Composio toolkit slugs this routine uses (e.g. `["gmail", "slack"]`).
-    /// Mirrors the same field on Skills; surfaced by the share/import flow so
-    /// the recipient can wire up the integrations before enabling the routine.
-    #[serde(default)]
-    pub integrations: Vec<String>,
-    pub created_at: String,
-    pub updated_at: String,
-}
-
-fn default_true() -> bool {
-    true
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct RoutineUpdate {
-    pub name: Option<String>,
-    pub description: Option<String>,
-    pub prompt: Option<String>,
-    pub schedule: Option<String>,
-    pub enabled: Option<bool>,
-    pub suppress_when_silent: Option<bool>,
-    pub chat_mode: Option<RoutineChatMode>,
-    pub integrations: Option<Vec<String>>,
-}
-
-/// Fields for creating a new routine (no id — generated server-side).
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct NewRoutine {
-    pub name: String,
-    #[serde(default)]
-    pub description: String,
-    pub prompt: String,
-    pub schedule: String,
-    #[serde(default = "default_true")]
-    pub enabled: bool,
-    #[serde(default = "default_true")]
-    pub suppress_when_silent: bool,
-    #[serde(default)]
-    pub chat_mode: RoutineChatMode,
-    #[serde(default)]
-    pub integrations: Vec<String>,
-}
-
-// -- Routine Runs --
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct RoutineRun {
-    pub id: String,
-    pub routine_id: String,
-    /// "running" | "silent" | "surfaced" | "error"
-    pub status: String,
-    /// Session key for chat history lookup. Stable per routine
-    /// ("routine-{routine_id}"), shared by every run — one chat per routine,
-    /// not per run (#381).
-    pub session_key: String,
-    /// If surfaced, the activity ID created on the board.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub activity_id: Option<String>,
-    /// Brief summary of the run output.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub summary: Option<String>,
-    pub started_at: String,
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub completed_at: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct RoutineRunUpdate {
-    pub status: Option<String>,
-    pub activity_id: Option<String>,
-    pub summary: Option<String>,
-    pub completed_at: Option<String>,
 }
 
 // -- Config --

@@ -1,5 +1,7 @@
-//! Integration tests for `/v1/agents/*` REST slice — typed CRUD over
-//! `.houston/<type>/<type>.json`.
+//! Integration tests for the per-agent REST slices — typed CRUD over
+//! `.houston/<type>/<type>.json`. Activities + config live under `/v1/agents/*`;
+//! routines + routine runs live under the canonical `/v1/routines` +
+//! `/v1/routine-runs` surface (this file exercises both).
 
 use houston_engine_server::{build_router, ServerConfig, ServerState};
 use std::net::SocketAddr;
@@ -114,9 +116,10 @@ async fn routine_and_runs_lifecycle_over_http() {
     let (addr, tok, agent_path, _docs) = spawn_with_agent().await;
     let c = reqwest::Client::new();
 
+    // Create a routine pinned to an explicit provider + model (HOU-418).
     let routine: serde_json::Value = c
-        .post(format!("http://{addr}/v1/agents/routines"))
-        .query(&[("agent_path", &agent_path)])
+        .post(format!("http://{addr}/v1/routines"))
+        .query(&[("agentPath", &agent_path)])
         .bearer_auth(&tok)
         .json(&serde_json::json!({
             "name": "morning",
@@ -124,7 +127,9 @@ async fn routine_and_runs_lifecycle_over_http() {
             "prompt": "do the thing",
             "schedule": "0 9 * * *",
             "enabled": true,
-            "suppress_when_silent": true
+            "suppress_when_silent": true,
+            "provider": "openai",
+            "model": "gpt-5.5"
         }))
         .send()
         .await
@@ -133,12 +138,29 @@ async fn routine_and_runs_lifecycle_over_http() {
         .await
         .unwrap();
     let rid = routine["id"].as_str().unwrap().to_string();
+    assert_eq!(routine["provider"], "openai");
+    assert_eq!(routine["model"], "gpt-5.5");
 
-    let run: serde_json::Value = c
-        .post(format!("http://{addr}/v1/agents/routine-runs"))
-        .query(&[("agent_path", &agent_path)])
+    // Re-point the override to a different provider + model.
+    let rebound: serde_json::Value = c
+        .patch(format!("http://{addr}/v1/routines/{rid}"))
+        .query(&[("agentPath", &agent_path)])
         .bearer_auth(&tok)
-        .json(&serde_json::json!({ "routine_id": rid }))
+        .json(&serde_json::json!({ "provider": "anthropic", "model": "claude-opus-4-8" }))
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(rebound["provider"], "anthropic");
+    assert_eq!(rebound["model"], "claude-opus-4-8");
+
+    // Create a run — the routine id is a path segment on this surface.
+    let run: serde_json::Value = c
+        .post(format!("http://{addr}/v1/routines/{rid}/runs"))
+        .query(&[("agentPath", &agent_path)])
+        .bearer_auth(&tok)
         .send()
         .await
         .unwrap()
@@ -150,8 +172,8 @@ async fn routine_and_runs_lifecycle_over_http() {
     let run_id = run["id"].as_str().unwrap().to_string();
 
     let runs_for: Vec<serde_json::Value> = c
-        .get(format!("http://{addr}/v1/agents/routine-runs"))
-        .query(&[("agent_path", &agent_path), ("routine_id", &rid)])
+        .get(format!("http://{addr}/v1/routine-runs"))
+        .query(&[("agentPath", &agent_path), ("routineId", &rid)])
         .bearer_auth(&tok)
         .send()
         .await
@@ -162,8 +184,8 @@ async fn routine_and_runs_lifecycle_over_http() {
     assert_eq!(runs_for.len(), 1);
 
     let upd: serde_json::Value = c
-        .patch(format!("http://{addr}/v1/agents/routine-runs/{run_id}"))
-        .query(&[("agent_path", &agent_path)])
+        .patch(format!("http://{addr}/v1/routine-runs/{run_id}"))
+        .query(&[("agentPath", &agent_path)])
         .bearer_auth(&tok)
         .json(&serde_json::json!({ "status": "surfaced" }))
         .send()
@@ -175,8 +197,8 @@ async fn routine_and_runs_lifecycle_over_http() {
     assert_eq!(upd["status"], "surfaced");
 
     let del = c
-        .delete(format!("http://{addr}/v1/agents/routines/{rid}"))
-        .query(&[("agent_path", &agent_path)])
+        .delete(format!("http://{addr}/v1/routines/{rid}"))
+        .query(&[("agentPath", &agent_path)])
         .bearer_auth(&tok)
         .send()
         .await

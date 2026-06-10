@@ -186,6 +186,10 @@ export interface Routine {
   timezone?: string | null;
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[];
+  /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
+  provider?: string | null;
+  /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
+  model?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -203,6 +207,10 @@ export interface NewRoutine {
   timezone?: string | null;
   /** Composio toolkit slugs this routine uses. */
   integrations?: string[];
+  /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
+  provider?: string | null;
+  /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
+  model?: string | null;
 }
 
 export interface RoutineUpdate {
@@ -216,6 +224,10 @@ export interface RoutineUpdate {
   /** Set to a string to override, `null` to clear, omit to leave unchanged. */
   timezone?: string | null;
   integrations?: string[];
+  /** Provider id to pin (e.g. "openai"); omit or null to leave unchanged. */
+  provider?: string | null;
+  /** Model to pin (e.g. "gpt-5.5"); omit or null to leave unchanged. */
+  model?: string | null;
 }
 
 export type RoutineRunStatus =

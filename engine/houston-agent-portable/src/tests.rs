@@ -46,6 +46,8 @@ fn sample_inventory() -> Inventory {
             suppress_when_silent: false,
             integrations: vec!["gmail".into(), "slack".into()],
             timezone: Some("America/Bogota".into()),
+            provider: Some("openai".into()),
+            model: Some("gpt-5.5".into()),
             created_at: "2026-05-15T09:00:00Z".into(),
             updated_at: "2026-05-15T09:00:00Z".into(),
         }],
@@ -91,6 +93,9 @@ fn round_trip_all_items() {
         parsed.inventory.routines[0].timezone.as_deref(),
         Some("America/Bogota")
     );
+    // Provider/model pin survives the share round-trip (carried like timezone).
+    assert_eq!(parsed.inventory.routines[0].provider.as_deref(), Some("openai"));
+    assert_eq!(parsed.inventory.routines[0].model.as_deref(), Some("gpt-5.5"));
     assert_eq!(parsed.inventory.learnings, inv.learnings);
 }
 

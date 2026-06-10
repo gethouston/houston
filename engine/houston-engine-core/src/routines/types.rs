@@ -70,6 +70,15 @@ pub struct Routine {
     /// install it. Defaults to empty for existing routines on disk.
     #[serde(default)]
     pub integrations: Vec<String>,
+    /// Provider id override for this routine's runs (e.g. `"anthropic"`,
+    /// `"openai"`). When `None`, runs fall back to the agent's configured
+    /// provider — the behavior every routine had before this option.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    /// Model override (e.g. `"claude-opus-4-8"`, `"gpt-5.5"`). Provider-specific.
+    /// When `None`, runs fall back to the agent's configured model.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
     pub created_at: String,
     pub updated_at: String,
 }
@@ -91,6 +100,10 @@ pub struct NewRoutine {
     pub timezone: Option<String>,
     #[serde(default)]
     pub integrations: Vec<String>,
+    #[serde(default)]
+    pub provider: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -107,6 +120,15 @@ pub struct RoutineUpdate {
     pub timezone: Option<Option<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub integrations: Option<Vec<String>>,
+    /// Provider id to pin for this routine (e.g. `"openai"`); `None` leaves it
+    /// unchanged. The picker always sends a concrete provider + model together,
+    /// so there is no "clear back to inherit" wire op — legacy routines with no
+    /// override already inherit the agent's provider at dispatch time.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub provider: Option<String>,
+    /// Model to pin for this routine; `None` leaves it unchanged.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub model: Option<String>,
 }
 
 // -- RoutineRun --

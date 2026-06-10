@@ -338,49 +338,44 @@ export class HoustonClient {
     });
   }
 
-  // ---------- agents: routines ----------
+  // ---------- routines ----------
+  //
+  // CRUD lives on the canonical `/routines` + `/routine-runs` surface (the
+  // scheduler, dispatcher, and run-now/cancel all share it). These methods use
+  // the `agentPath` / `routineId` camelCase query params that surface expects.
 
   listRoutines(agentPath: string): Promise<Routine[]> {
-    return this.request("GET", "/agents/routines", undefined, { agent_path: agentPath });
+    return this.request("GET", "/routines", undefined, { agentPath });
   }
   createRoutine(agentPath: string, input: NewRoutine): Promise<Routine> {
-    return this.request("POST", "/agents/routines", input, { agent_path: agentPath });
+    return this.request("POST", "/routines", input, { agentPath });
   }
   updateRoutine(agentPath: string, id: string, updates: RoutineUpdate): Promise<Routine> {
-    return this.request("PATCH", `/agents/routines/${this.seg(id)}`, updates, {
-      agent_path: agentPath,
-    });
+    return this.request("PATCH", `/routines/${this.seg(id)}`, updates, { agentPath });
   }
   deleteRoutine(agentPath: string, id: string): Promise<void> {
-    return this.request("DELETE", `/agents/routines/${this.seg(id)}`, undefined, {
-      agent_path: agentPath,
-    });
+    return this.request("DELETE", `/routines/${this.seg(id)}`, undefined, { agentPath });
   }
 
-  // ---------- agents: routine runs ----------
+  // ---------- routine runs ----------
 
   listRoutineRuns(agentPath: string, routineId?: string): Promise<RoutineRun[]> {
-    return this.request("GET", "/agents/routine-runs", undefined, {
-      agent_path: agentPath,
-      routine_id: routineId,
+    return this.request("GET", "/routine-runs", undefined, {
+      agentPath,
+      routineId,
     });
   }
   createRoutineRun(agentPath: string, routineId: string): Promise<RoutineRun> {
-    return this.request(
-      "POST",
-      "/agents/routine-runs",
-      { routine_id: routineId },
-      { agent_path: agentPath },
-    );
+    return this.request("POST", `/routines/${this.seg(routineId)}/runs`, undefined, {
+      agentPath,
+    });
   }
   updateRoutineRun(
     agentPath: string,
     id: string,
     updates: RoutineRunUpdate,
   ): Promise<RoutineRun> {
-    return this.request("PATCH", `/agents/routine-runs/${this.seg(id)}`, updates, {
-      agent_path: agentPath,
-    });
+    return this.request("PATCH", `/routine-runs/${this.seg(id)}`, updates, { agentPath });
   }
 
   // ---------- agents: config ----------

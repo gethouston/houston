@@ -337,6 +337,8 @@ mod tests {
             chat_mode: RoutineChatMode::Shared,
             timezone: tz.map(str::to_string),
             integrations: vec![],
+            provider: None,
+            model: None,
         }
     }
 
@@ -404,6 +406,8 @@ mod tests {
                 chat_mode: RoutineChatMode::Shared,
                 timezone: None,
                 integrations: vec![],
+                provider: None,
+                model: None,
             },
         )
         .unwrap();

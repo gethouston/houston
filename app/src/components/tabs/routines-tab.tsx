@@ -7,6 +7,7 @@ import {
   formMatchesRoutine,
   freshRoutinesState,
   latestRunByRoutine,
+  routineModelPickerDefaults,
   routineToFormData,
   type View,
 } from "./routines-tab-model";
@@ -18,9 +19,11 @@ import {
   useDeleteRoutine,
   useRunRoutineNow,
   useCancelRoutineRun,
+  useAgentConfig,
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
+import { ChatModelSelector } from "../chat-model-selector";
 import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 
@@ -32,6 +35,7 @@ export default function RoutinesTab({ agent }: TabProps) {
 
   const { data: routines, isLoading } = useRoutines(path);
   const { data: allRuns } = useRoutineRuns(path);
+  const { data: agentConfig } = useAgentConfig(path);
   const createRoutine = useCreateRoutine(path);
   const updateRoutine = useUpdateRoutine(path);
   const deleteRoutine = useDeleteRoutine(path);
@@ -134,6 +138,15 @@ export default function RoutinesTab({ agent }: TabProps) {
     [cancelRun],
   );
 
+  // Picking a model pins the routine to that provider + model; leaving the
+  // picker untouched keeps `provider`/`model` null so the run inherits the
+  // agent's configured model at dispatch time.
+  const handleModelSelect = useCallback(
+    (provider: string, model: string) =>
+      setForm((prev) => ({ ...prev, provider, model })),
+    [],
+  );
+
   // `useTimezonePreference` auto-seeds on first call, so `tz.timezone` is
   // non-null from the first render. We still wait for the roundtrip to
   // finish so the cron schedule renders against the real zone instead of
@@ -153,6 +166,9 @@ export default function RoutinesTab({ agent }: TabProps) {
     const editingRuns = view.editId
       ? (allRuns ?? []).filter((r) => r.routine_id === view.editId)
       : [];
+
+    const { provider: pickerProvider, model: pickerModel } =
+      routineModelPickerDefaults(form, agentConfig);
 
     return (
       <RoutineEditor
@@ -175,6 +191,13 @@ export default function RoutinesTab({ agent }: TabProps) {
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         accountTimezone={tz.timezone}
         hasChanges={!formMatchesRoutine(form, baseline)}
+        modelPicker={
+          <ChatModelSelector
+            provider={pickerProvider}
+            model={pickerModel}
+            onSelect={handleModelSelect}
+          />
+        }
         labels={labels.editor}
         scheduleLabels={labels.schedule}
         nextFireLabels={labels.nextFire}

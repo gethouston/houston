@@ -292,6 +292,8 @@ mod tests {
                 chat_mode: RoutineChatMode::Shared,
                 timezone: None,
                 integrations: vec![],
+                provider: None,
+                model: None,
             },
         )
         .unwrap();
@@ -313,6 +315,8 @@ mod tests {
                 chat_mode: RoutineChatMode::PerRun,
                 timezone: None,
                 integrations: vec![],
+                provider: None,
+                model: None,
             },
         )
         .unwrap();
