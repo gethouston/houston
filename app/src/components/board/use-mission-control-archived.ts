@@ -1,7 +1,7 @@
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
 import { useFeedStore } from "../../stores/feeds";
 import { useAllConversations } from "../../hooks/queries";
@@ -68,7 +68,9 @@ export function useMissionControlArchived(agents: Agent[]) {
         return {
           id: c.id,
           title: c.title,
-          description: c.description,
+          // Decode a Skill / attachment first-message marker to the user's
+          // words; never echo the raw `<!--houston:...-->` on the card (HOU-425).
+          description: messagePreviewText(c.description),
           group: c.agent_name,
           icon: createElement(AgentCardAvatar, { color: agentColorMap[c.agent_path] }),
           status: c.status!,
