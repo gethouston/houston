@@ -66,7 +66,7 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             format!("{}\n\n---\n\n{agent_context}", self.app_system_prompt)
         };
 
-        let resolved = sessions::resolve_provider(ctx.working_dir);
+        let resolved = sessions::resolve_provider(&self.db, ctx.working_dir).await;
         let agent_key = format!(
             "{}:{}:{}",
             ctx.working_dir.to_string_lossy(),

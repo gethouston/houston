@@ -60,6 +60,7 @@ import {
 } from "./composio-signin-card";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ChatEffortSelector } from "./chat-effort-selector";
+import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import {
   getContextWindowConfig,
@@ -193,6 +194,21 @@ export function useAgentChatPanel({
       .catch(() => {});
   }, [path]);
 
+  // Last-used provider preference (`default_provider`, written by setLastUsed
+  // on every provider pick). The fallback when neither the activity nor the
+  // agent config names a provider, so an OpenAI-only user opening a no-provider
+  // agent sees their own provider in the dropdown and forwards it on send,
+  // instead of silently defaulting to Claude and failing auth (#483). One-shot
+  // load mirrors the agent-config read above; the literal "anthropic" below
+  // stays only as the last resort, matching the engine's factory default.
+  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
+  useEffect(() => {
+    tauriProvider
+      .getDefault()
+      .then((p) => setLastUsedProvider(p || null))
+      .catch(() => {});
+  }, []);
+
   const { data: activities } = useActivity(path ?? undefined);
   const selectedActivity = useMemo(() => {
     if (!selectedSessionKey || !activities) return null;
@@ -204,7 +220,11 @@ export function useAgentChatPanel({
   const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
   const selectedActivityId = selectedActivity?.id ?? null;
 
-  const effectiveProvider = activityProvider ?? agentProvider ?? "anthropic";
+  const effectiveProvider = resolveEffectiveProvider(
+    activityProvider,
+    agentProvider,
+    lastUsedProvider,
+  );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??
     validModelOrNull(effectiveProvider, agentModel) ??

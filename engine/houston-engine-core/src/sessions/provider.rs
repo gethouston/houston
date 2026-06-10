@@ -1,14 +1,27 @@
 //! Provider + model resolution for a session.
 //!
-//! Resolution: agent-level `.houston/config/config.json` → `Provider::default()`
-//! (Anthropic, no model). Callers typically pass chat-level overrides in
-//! front of this resolution chain.
+//! Resolution (no caller override): agent-level `.houston/config/config.json`
+//! → user's last-used provider preference (`default_provider`) → the sole
+//! authenticated provider → `Provider::default()` (Anthropic factory default).
+//! Callers typically pass chat-level overrides in front of this chain.
+//!
+//! The point of the preference + auth-aware tail (vs. hardcoding Anthropic) is
+//! that an OpenAI-only user with an agent that has no provider configured
+//! (Store install, hand-edited config, a routine, a Mission-Control send with
+//! no override) must never spawn the Claude CLI, which would only fail auth
+//! (#483). We trust an explicit last-used preference as the user's choice and
+//! probe live auth only when no preference exists — so the desktop hot path
+//! (always post-onboarding, always with a preference) never spawns a CLI here,
+//! and the override-less engine paths (routines, onboarding, summarize,
+//! generate-instructions) still resolve to a provider the user can actually run.
 //!
 //! The workspace layer used to live here as an intermediate fallback. It was
 //! retired in favor of per-agent storage — see
 //! `workspaces::migrate_workspace_provider_into_agents` for the one-shot
 //! backfill that pushed every workspace default down into its agents.
 
+use crate::provider::DEFAULT_PROVIDER_KEY;
+use houston_db::Database;
 use houston_terminal_manager::Provider;
 use serde::Deserialize;
 use std::path::Path;
@@ -17,15 +30,6 @@ use std::path::Path;
 pub struct ResolvedProvider {
     pub provider: Provider,
     pub model: Option<String>,
-}
-
-impl Default for ResolvedProvider {
-    fn default() -> Self {
-        Self {
-            provider: Provider::default(),
-            model: None,
-        }
-    }
 }
 
 #[derive(Deserialize)]
@@ -41,20 +45,86 @@ struct AgentConfig {
 /// Resolve the provider + model for an agent.
 ///
 /// Order:
-/// 1. `agent_dir/.houston/config/config.json` — per-agent setting.
-/// 2. `Provider::default()` (Anthropic), no model — factory fallback.
-pub fn resolve_provider(agent_dir: &Path) -> ResolvedProvider {
-    let Some(from_agent) = read_agent_config(agent_dir) else {
-        return ResolvedProvider::default();
+/// 1. `agent_dir/.houston/config/config.json` — per-agent `provider`.
+/// 2. [`fallback_provider`] — last-used preference → sole authed → factory
+///    default — when the agent config names no provider.
+///
+/// The model is always the agent config's (if any); when we fall back for the
+/// provider, the model stays `None` so the runner uses that provider's default.
+pub async fn resolve_provider(db: &Database, agent_dir: &Path) -> ResolvedProvider {
+    let from_agent = read_agent_config(agent_dir);
+    let configured = from_agent
+        .as_ref()
+        .and_then(|c| c.provider.as_deref())
+        .and_then(|p| p.parse::<Provider>().ok());
+    let provider = match configured {
+        Some(p) => p,
+        None => fallback_provider(db).await,
     };
-    let provider = from_agent
-        .provider
-        .as_deref()
-        .and_then(|p| p.parse::<Provider>().ok())
-        .unwrap_or_default();
     ResolvedProvider {
         provider,
-        model: from_agent.model,
+        model: from_agent.and_then(|c| c.model),
+    }
+}
+
+/// Pick the provider to run when nothing explicit (override or agent config)
+/// names one.
+///
+/// 1. The user's last-used provider preference (`default_provider`, written by
+///    `setLastUsed` on every provider pick). Trusted as the user's choice even
+///    if that provider isn't currently authenticated — the auth-fail UX is
+///    handled elsewhere (#482), and second-guessing an explicit choice on the
+///    hot send path would mean probing CLIs on every turn.
+/// 2. The sole authenticated provider, probed only when there is no preference
+///    (a headless / Always-On engine that never had a UI write one). One
+///    authenticated provider → use it; zero or many → ambiguous.
+/// 3. `Provider::default()` (Anthropic) — the historical factory default.
+pub async fn fallback_provider(db: &Database) -> Provider {
+    if let Some(p) = last_used_provider(db).await {
+        return p;
+    }
+    choose_when_no_pref(&authenticated_providers().await)
+}
+
+/// Read + parse the `default_provider` preference. `None` when unset, blank, or
+/// naming a provider this build doesn't recognize.
+async fn last_used_provider(db: &Database) -> Option<Provider> {
+    crate::preferences::get(db, DEFAULT_PROVIDER_KEY)
+        .await
+        .ok()
+        .flatten()
+        .filter(|s| !s.trim().is_empty())
+        .and_then(|s| s.parse::<Provider>().ok())
+}
+
+/// Probe every registered provider and collect the authenticated ones. A probe
+/// error (CLI hiccup) is logged and skipped rather than aborting the sweep — a
+/// best-effort signal, not a user-initiated action to surface.
+async fn authenticated_providers() -> Vec<Provider> {
+    let mut authed = Vec::new();
+    for adapter in houston_terminal_manager::provider::all() {
+        let provider = Provider::from(*adapter);
+        match crate::provider::check_status(provider).await {
+            Ok(status) if status.auth_state.is_authenticated() => authed.push(provider),
+            Ok(_) => {}
+            Err(e) => {
+                tracing::warn!(
+                    "[provider] auth probe failed for {}: {e}",
+                    provider.id()
+                );
+            }
+        }
+    }
+    authed
+}
+
+/// Pure decision for the no-preference case: the sole authenticated provider,
+/// else the Anthropic factory default. Split out so it is unit-testable without
+/// probing the host's real CLIs.
+fn choose_when_no_pref(authenticated: &[Provider]) -> Provider {
+    match authenticated {
+        [only] => *only,
+        _ => Provider::default(),
     }
 }
 
@@ -115,59 +185,105 @@ mod tests {
         "gemini".parse().unwrap()
     }
 
+    async fn mem_db() -> Database {
+        Database::connect_in_memory().await.unwrap()
+    }
+
+    async fn set_pref(db: &Database, value: &str) {
+        crate::preferences::set(db, DEFAULT_PROVIDER_KEY, value)
+            .await
+            .unwrap();
+    }
+
+    // ── Pure no-preference tail (hermetic: never probes the host) ──────────
+
     #[test]
-    fn default_when_no_config() {
+    fn choose_when_no_pref_no_auth_uses_factory_default() {
+        assert_eq!(choose_when_no_pref(&[]), anthropic());
+    }
+
+    #[test]
+    fn choose_when_no_pref_sole_authed_wins() {
+        assert_eq!(choose_when_no_pref(&[openai()]), openai());
+    }
+
+    #[test]
+    fn choose_when_no_pref_ambiguous_falls_to_factory_default() {
+        // Two authenticated providers is ambiguous → don't guess, take the
+        // factory default rather than silently picking one.
+        assert_eq!(choose_when_no_pref(&[openai(), gemini()]), anthropic());
+    }
+
+    // ── resolve_provider fallback (driven by the preference, hermetic) ─────
+
+    #[tokio::test]
+    async fn no_agent_config_uses_last_used_preference() {
+        // The OpenAI-only user's fix: an agent with no provider config resolves
+        // to their last-used provider, NOT the Anthropic factory default.
+        let db = mem_db().await;
+        set_pref(&db, "openai").await;
         let d = TempDir::new().unwrap();
         let agent = d.path().join("ws").join("agent");
         std::fs::create_dir_all(&agent).unwrap();
-        let r = resolve_provider(&agent);
-        assert_eq!(r.provider, anthropic());
+        let r = resolve_provider(&db, &agent).await;
+        assert_eq!(r.provider, openai());
         assert!(r.model.is_none());
     }
 
-    #[test]
-    fn empty_config_falls_through_to_default() {
+    #[tokio::test]
+    async fn empty_config_falls_through_to_preference() {
+        let db = mem_db().await;
+        set_pref(&db, "openai").await;
         let d = TempDir::new().unwrap();
         let agent = d.path().join("ws").join("agent");
         write_json(&agent.join(".houston/config/config.json"), "{}");
-        let r = resolve_provider(&agent);
-        assert_eq!(r.provider, anthropic());
+        let r = resolve_provider(&db, &agent).await;
+        assert_eq!(r.provider, openai());
         assert!(r.model.is_none());
     }
 
-    #[test]
-    fn agent_config_wins() {
+    #[tokio::test]
+    async fn agent_config_wins_over_preference() {
+        // An explicit agent provider is the user's choice and short-circuits the
+        // fallback — the preference (openai) must not override it.
+        let db = mem_db().await;
+        set_pref(&db, "openai").await;
         let d = TempDir::new().unwrap();
         let agent = d.path().join("ws").join("agent");
         write_json(
             &agent.join(".houston/config/config.json"),
-            r#"{"provider":"openai","model":"gpt-5.5"}"#,
+            r#"{"provider":"anthropic","model":"claude-opus-4-7"}"#,
         );
-        let r = resolve_provider(&agent);
-        assert_eq!(r.provider, openai());
-        assert_eq!(r.model.as_deref(), Some("gpt-5.5"));
+        let r = resolve_provider(&db, &agent).await;
+        assert_eq!(r.provider, anthropic());
+        assert_eq!(r.model.as_deref(), Some("claude-opus-4-7"));
     }
 
-    #[test]
-    fn agent_model_only_uses_default_provider() {
+    #[tokio::test]
+    async fn agent_model_only_uses_preference_provider() {
         // With workspace fallback retired, an agent that only stores `model`
-        // gets the platform-default provider (no longer the workspace's).
-        // Migration backfills concrete provider+model pairs, so this branch
-        // is reachable only for hand-edited configs.
+        // (no provider) takes the fallback provider — now the last-used
+        // preference, not a hardcoded Anthropic. Migration backfills concrete
+        // provider+model pairs, so this branch is reachable only for
+        // hand-edited configs.
+        let db = mem_db().await;
+        set_pref(&db, "openai").await;
         let d = TempDir::new().unwrap();
         let agent = d.path().join("ws").join("agent");
         write_json(&agent.join(".houston/config/config.json"), r#"{"model":"sonnet"}"#);
-        let r = resolve_provider(&agent);
-        assert_eq!(r.provider, anthropic());
+        let r = resolve_provider(&db, &agent).await;
+        assert_eq!(r.provider, openai());
         assert_eq!(r.model.as_deref(), Some("sonnet"));
     }
 
-    #[test]
-    fn reads_folder_config_not_stale_flat() {
+    #[tokio::test]
+    async fn reads_folder_config_not_stale_flat() {
         // After the per-type-folder migration the authoritative model lives in
         // `.houston/config/config.json`. A stale legacy FLAT `.houston/config.json`
         // left behind as a rollback net (still holding the pre-migration alias)
         // must never be read, so the migrated explicit ID always wins.
+        let db = mem_db().await;
+        set_pref(&db, "anthropic").await;
         let d = TempDir::new().unwrap();
         let agent = d.path().join("ws").join("agent");
         write_json(&agent.join(".houston/config.json"), r#"{"model":"opus"}"#);
@@ -175,7 +291,7 @@ mod tests {
             &agent.join(".houston/config/config.json"),
             r#"{"model":"claude-opus-4-7"}"#,
         );
-        let r = resolve_provider(&agent);
+        let r = resolve_provider(&db, &agent).await;
         assert_eq!(r.model.as_deref(), Some("claude-opus-4-7"));
     }
 
