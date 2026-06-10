@@ -150,16 +150,96 @@ fn non_empty(s: String) -> Option<String> {
     }
 }
 
+// ── Scalar emission ────────────────────────────────────────────────
+//
+// Frontmatter values are emitted as YAML scalars. A plain (unquoted) scalar is
+// only safe for a restricted set of strings; anything else MUST be quoted or
+// the document fails to parse back — which silently drops the skill from
+// `list_skills`. The canonical break is a description containing `": "` (a YAML
+// mapping indicator), e.g. the Vercel `ai-sdk` skill.
+
+/// Whether `s` must be double-quoted to survive a YAML block-scalar round-trip.
+fn needs_quote(s: &str) -> bool {
+    if s.is_empty() || s != s.trim() {
+        return true;
+    }
+    // `": "` and a trailing `:` read as a mapping; ` #` starts a comment.
+    if s.contains(": ") || s.ends_with(':') || s.contains(" #") {
+        return true;
+    }
+    if s.contains(|c| matches!(c, '\n' | '\t' | '\r' | '"' | '\'' | '#')) {
+        return true;
+    }
+    // A leading indicator character changes how the scalar is read.
+    let first = s.chars().next().unwrap();
+    if "!&*?{}[]|>@`\"'%#,:- ".contains(first) {
+        return true;
+    }
+    is_reserved_scalar(s)
+}
+
+/// Bare tokens YAML would resolve to a bool / null / number instead of a string.
+fn is_reserved_scalar(s: &str) -> bool {
+    matches!(
+        s.to_ascii_lowercase().as_str(),
+        "true" | "false" | "yes" | "no" | "on" | "off" | "null" | "nan" | "~"
+    ) || s.chars().all(|c| c.is_ascii_digit())
+}
+
+fn double_quote(s: &str) -> String {
+    let mut out = String::with_capacity(s.len() + 2);
+    out.push('"');
+    for c in s.chars() {
+        match c {
+            '\\' => out.push_str("\\\\"),
+            '"' => out.push_str("\\\""),
+            '\n' => out.push_str("\\n"),
+            '\t' => out.push_str("\\t"),
+            '\r' => out.push_str("\\r"),
+            _ => out.push(c),
+        }
+    }
+    out.push('"');
+    out
+}
+
+/// A YAML scalar safe in block context (e.g. `description: <here>`).
+fn yaml_block(s: &str) -> String {
+    if needs_quote(s) {
+        double_quote(s)
+    } else {
+        s.to_string()
+    }
+}
+
+/// A YAML scalar safe inside a flow sequence (e.g. `tags: [<here>, ...]`),
+/// where `,` `[` `]` `{` `}` are additionally significant.
+fn yaml_flow(s: &str) -> String {
+    if needs_quote(s) || s.contains(|c| matches!(c, ',' | '[' | ']' | '{' | '}')) {
+        double_quote(s)
+    } else {
+        s.to_string()
+    }
+}
+
 /// Serialize a SkillSummary + body into SKILL.md content. Field ordering
 /// is fixed for stable diffs; absent optional fields are skipped entirely.
 pub fn serialize(summary: &SkillSummary, body: &str) -> String {
     let mut out = String::with_capacity(384 + body.len());
     out.push_str("---\n");
-    out.push_str(&format!("name: {}\n", summary.name));
-    out.push_str(&format!("description: {}\n", summary.description));
+    out.push_str(&format!("name: {}\n", yaml_block(&summary.name)));
+    out.push_str(&format!(
+        "description: {}\n",
+        yaml_block(&summary.description)
+    ));
     out.push_str(&format!("version: {}\n", summary.version));
     if !summary.tags.is_empty() {
-        let tags_str = summary.tags.join(", ");
+        let tags_str = summary
+            .tags
+            .iter()
+            .map(|t| yaml_flow(t))
+            .collect::<Vec<_>>()
+            .join(", ");
         out.push_str(&format!("tags: [{tags_str}]\n"));
     } else {
         out.push_str("tags: []\n");
@@ -171,25 +251,30 @@ pub fn serialize(summary: &SkillSummary, body: &str) -> String {
         out.push_str(&format!("last_used: {last_used}\n"));
     }
     if let Some(category) = &summary.category {
-        out.push_str(&format!("category: {category}\n"));
+        out.push_str(&format!("category: {}\n", yaml_block(category)));
     }
     if summary.featured {
         out.push_str("featured: yes\n");
     }
     if !summary.integrations.is_empty() {
-        let list = summary.integrations.join(", ");
+        let list = summary
+            .integrations
+            .iter()
+            .map(|i| yaml_flow(i))
+            .collect::<Vec<_>>()
+            .join(", ");
         out.push_str(&format!("integrations: [{list}]\n"));
     }
     if let Some(image) = &summary.image {
-        out.push_str(&format!("image: {image}\n"));
+        out.push_str(&format!("image: {}\n", yaml_block(image)));
     }
     if !summary.inputs.is_empty() {
         out.push_str("inputs:\n");
         for input in &summary.inputs {
-            out.push_str(&format!("  - name: {}\n", input.name));
-            out.push_str(&format!("    label: {}\n", input.label));
+            out.push_str(&format!("  - name: {}\n", yaml_block(&input.name)));
+            out.push_str(&format!("    label: {}\n", yaml_block(&input.label)));
             if let Some(ph) = &input.placeholder {
-                out.push_str(&format!("    placeholder: {ph}\n"));
+                out.push_str(&format!("    placeholder: {}\n", yaml_block(ph)));
             }
             if input.kind != SkillInputKind::default() {
                 out.push_str(&format!("    type: {}\n", input_kind_str(input.kind)));
@@ -198,10 +283,15 @@ pub fn serialize(summary: &SkillSummary, body: &str) -> String {
                 out.push_str("    required: false\n");
             }
             if let Some(d) = &input.default {
-                out.push_str(&format!("    default: {d}\n"));
+                out.push_str(&format!("    default: {}\n", yaml_block(d)));
             }
             if !input.options.is_empty() {
-                let list = input.options.join(", ");
+                let list = input
+                    .options
+                    .iter()
+                    .map(|o| yaml_flow(o))
+                    .collect::<Vec<_>>()
+                    .join(", ");
                 out.push_str(&format!("    options: [{list}]\n"));
             }
         }
@@ -216,7 +306,7 @@ pub fn serialize(summary: &SkillSummary, body: &str) -> String {
                 out.push('\n');
             }
         } else {
-            out.push_str(&format!("prompt_template: {template}\n"));
+            out.push_str(&format!("prompt_template: {}\n", yaml_block(template)));
         }
     }
     out.push_str("---\n");
@@ -309,6 +399,62 @@ mod tests {
         assert_eq!(parsed.tags, vec!["devops", "docker"]);
         assert_eq!(parsed.version, 3);
         assert_eq!(parsed_body.trim(), body.trim());
+    }
+
+    #[test]
+    fn serialize_round_trips_description_with_colon() {
+        // The real-world break: the Vercel `ai-sdk` skill's description contains
+        // ": " (a YAML mapping indicator) and inner quotes. Emitted unquoted it
+        // produces invalid YAML, so the skill silently vanishes from the list.
+        let desc = "Answer questions. Use when developers: (1) call generateText, (2) build agents. Triggers: \"AI SDK\", \"useChat\".";
+        let s = SkillSummary {
+            description: desc.into(),
+            ..fixture()
+        };
+        let serialized = serialize(&s, "body");
+        let (parsed, _) =
+            parse_content(&serialized).expect("a colon-laden description must round-trip");
+        assert_eq!(parsed.description, desc);
+    }
+
+    #[test]
+    fn serialize_round_trips_special_scalars() {
+        let cases = [
+            "leading words then: a colon space",
+            "'single quoted in source'",
+            "has # hash and : colon",
+            "ends with a colon:",
+            "true",                  // reserved-looking
+            "#starts with hash",
+            "café, açaí — non-ascii", // non-ascii + comma + em dash
+        ];
+        for desc in cases {
+            let s = SkillSummary {
+                description: (*desc).into(),
+                category: Some((*desc).into()),
+                image: Some((*desc).into()),
+                ..fixture()
+            };
+            let serialized = serialize(&s, "b");
+            let (parsed, _) = parse_content(&serialized)
+                .unwrap_or_else(|e| panic!("must round-trip {desc:?}: {e}"));
+            assert_eq!(parsed.description, desc, "description {desc:?}");
+            assert_eq!(parsed.category.as_deref(), Some(desc), "category {desc:?}");
+            assert_eq!(parsed.image.as_deref(), Some(desc), "image {desc:?}");
+        }
+    }
+
+    #[test]
+    fn serialize_quotes_flow_items_with_separators() {
+        let s = SkillSummary {
+            tags: vec!["a,b".into(), "normal".into()],
+            integrations: vec!["x[y]".into()],
+            ..fixture()
+        };
+        let serialized = serialize(&s, "b");
+        let (parsed, _) = parse_content(&serialized).expect("flow items must round-trip");
+        assert_eq!(parsed.tags, vec!["a,b", "normal"]);
+        assert_eq!(parsed.integrations, vec!["x[y]"]);
     }
 
     #[test]

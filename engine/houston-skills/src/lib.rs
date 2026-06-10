@@ -649,4 +649,20 @@ mod tests {
         let (s, _) = format::parse_file(&d.path().join("clamp-me/SKILL.md")).unwrap();
         assert!(s.description.len() <= validate::MAX_DESCRIPTION_LEN);
     }
+
+    #[test]
+    fn install_md_colon_description_appears_in_list() {
+        // Regression for the Vercel `ai-sdk` skill: its single-quoted, colon-laden
+        // description used to serialize to invalid YAML, so the installed skill
+        // was on disk but silently skipped by `list_skills`.
+        let d = TempDir::new().unwrap();
+        let raw = "---\nname: ai-sdk\ndescription: 'Use when developers: build agents, call generateText, or ask about \"streamText\"'\n---\n\n# AI SDK\n\nBody\n";
+        install_skill_md(d.path(), "ai-sdk", raw, "fallback").unwrap();
+
+        let listed = list_skills(d.path()).unwrap();
+        assert!(
+            listed.iter().any(|s| s.name == "ai-sdk"),
+            "a skill whose description contains a colon must still appear in the list"
+        );
+    }
 }
