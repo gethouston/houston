@@ -6,7 +6,7 @@
 //! - `list_skills_from_repo()` — discover all SKILL.md files in a repo
 //! - `install_from_repo()` — install selected skills from a repo
 
-use crate::{CreateSkillInput, SkillError};
+use crate::SkillError;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -430,21 +430,18 @@ pub async fn install_skill(
     })?;
     let parsed = parse_skill_md(&raw_md, skill_id);
 
-    let install_name = skill_id.to_string();
+    // Prefer the SKILL.md's own `name:` (the authoritative slug) and fall back
+    // to a slugified id, so a community id that isn't a clean slug still
+    // installs instead of failing name validation.
+    let install_name = extract_frontmatter_name(&raw_md)
+        .filter(|n| crate::validate::name(n).is_ok())
+        .unwrap_or_else(|| slugify(skill_id));
 
     if skills_dir.join(&install_name).exists() {
         return Err(SkillError::AlreadyExists(install_name));
     }
 
-    crate::create_skill(
-        skills_dir,
-        CreateSkillInput {
-            name: install_name.clone(),
-            description: parsed.description,
-            content: parsed.content,
-            tags: vec![],
-        },
-    )?;
+    crate::install_skill_md(skills_dir, &install_name, &raw_md, &parsed.description)?;
 
     Ok(install_name)
 }
@@ -629,13 +626,7 @@ pub async fn install_from_repo(
 
         let raw_md = fetch_skill_md_at_path(&client, source, &skill.path).await?;
         let parsed = parse_skill_md(&raw_md, &skill.id);
-        let input = CreateSkillInput {
-            name: skill.id.clone(),
-            description: parsed.description,
-            content: parsed.content,
-            tags: vec![],
-        };
-        crate::create_skill(skills_dir, input)?;
+        crate::install_skill_md(skills_dir, &skill.id, &raw_md, &parsed.description)?;
         installed.push(skill.id.clone());
     }
 
@@ -822,17 +813,15 @@ fn parse_skill_md(content: &str, fallback_id: &str) -> ParsedSkillMd {
         }
     }
 
-    ParsedSkillMd {
-        name,
-        description,
-        content: body_lines.join("\n").trim().to_string(),
-    }
+    ParsedSkillMd { name, description }
 }
 
+/// Lightweight metadata pulled from a remote `SKILL.md` for listing and for a
+/// fallback description. The body/frontmatter are preserved verbatim at install
+/// time by [`crate::install_skill_md`], so this no longer carries the content.
 struct ParsedSkillMd {
     name: String,
     description: String,
-    content: String,
 }
 
 fn kebab_to_title(s: &str) -> String {
@@ -935,7 +924,6 @@ Use this when testing.";
         let parsed = parse_skill_md(content, "my-skill");
         assert_eq!(parsed.name, "My Awesome Skill");
         assert_eq!(parsed.description, "A test skill for testing");
-        assert!(parsed.content.contains("## When to Use"));
     }
 
     #[test]
@@ -944,7 +932,6 @@ Use this when testing.";
         let parsed = parse_skill_md(content, "plain-skill");
         assert_eq!(parsed.name, "Plain Skill");
         assert!(parsed.description.is_empty());
-        assert!(parsed.content.contains("Just some instructions"));
     }
 
     #[test]
