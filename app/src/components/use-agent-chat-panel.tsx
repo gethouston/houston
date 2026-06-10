@@ -585,9 +585,13 @@ export function useAgentChatPanel({
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
       const signalKey = providerAuthSignalKey(feedItems);
+      // Always hand the card THIS chat's provider so it can match the global
+      // `authRequired` flag against the provider this chat actually uses — a
+      // Claude logout must never surface a reconnect button in an OpenAI chat
+      // (HOU-410). The card stays hidden unless that provider truly needs auth.
       return (
         <ProviderReconnectCard
-          providerId={signalKey ? effectiveProvider : undefined}
+          providerId={effectiveProvider}
           signalKey={signalKey ?? undefined}
         />
       );
