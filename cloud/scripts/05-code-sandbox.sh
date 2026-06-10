@@ -101,12 +101,21 @@ if ! gcloud compute firewall-rules describe code-sandbox-deny-all-egress --proje
 fi
 ok "VPC ${NETWORK} ready with deny-all egress"
 
-# 3. Build the image with Cloud Build (no local Docker needed).
+# 3. Build the image with Cloud Build (no local Docker needed). The Dockerfile
+#    lives at packages/code-sandbox/Dockerfile and the build context is the repo
+#    root (its COPYs reference packages/code-sandbox/*), so this needs an explicit
+#    -f via an inline config — `--tag` would look for a root Dockerfile and fail.
 run_billed "Cloud Build of the code-sandbox image" -- \
   gcloud builds submit "${REPO_ROOT}" \
     --project "${PROJECT_ID}" \
-    --tag "${IMAGE}" \
-    --gcs-log-dir "gs://${PROJECT_ID}_cloudbuild/logs"
+    --config /dev/stdin <<EOF
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-t", "${IMAGE}", "-f", "packages/code-sandbox/Dockerfile", "."]
+images: ["${IMAGE}"]
+options: { machineType: E2_HIGHCPU_8 }
+timeout: 1800s
+EOF
 
 # 4. Ensure the app-layer token secret exists (operator creates the value once).
 if ! gcloud secrets describe "${SECRET}" --project "${PROJECT_ID}" >/dev/null 2>&1; then
