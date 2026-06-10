@@ -1,4 +1,4 @@
-import type { Agent, AgentId, UserId, Workspace, WorkspaceId } from "./domain/types";
+import type { Agent, AgentId, UserId, Workspace, WorkspaceId, WorkspaceRuntime } from "./domain/types";
 
 /**
  * The control plane's outward dependencies, as interfaces ("ports"). Each has at
@@ -24,6 +24,8 @@ export interface WorkspaceStore {
   createAgent(input: { workspaceId: WorkspaceId; name: string }): Promise<Agent>;
   renameAgent(id: AgentId, name: string): Promise<Agent>;
   deleteAgent(id: AgentId): Promise<void>;
+  /** Flip a workspace between hosting runtimes (admin-driven migration control). */
+  setWorkspaceRuntime(id: WorkspaceId, runtime: WorkspaceRuntime): Promise<Workspace>;
 }
 
 /** Verifies a caller's bearer token and resolves it to a principal. */
@@ -96,12 +98,10 @@ export interface CredentialStore {
   remove(workspaceId: WorkspaceId, provider: string): Promise<void>;
 }
 
-/** Per-workspace provider credentials, held only here (Secret Manager in prod). */
+/** Mints/validates the non-secret per-sandbox identity tokens (HMAC). */
 export interface CredentialVault {
-  /** The real provider key for a workspace, injected by the keyless proxy. Never leaves the control plane. */
-  realKeyFor(workspaceId: WorkspaceId, provider: string): Promise<string | null>;
-  /** Mint the non-secret token a sandbox carries to the proxy. */
+  /** Mint the non-secret token a sandbox carries to /sandbox/credential. */
   sandboxToken(workspaceId: WorkspaceId, agentId: AgentId): string;
-  /** Validate + decode a sandbox token presented to the proxy. */
+  /** Validate + decode a sandbox token. */
   validateSandboxToken(token: string): { workspaceId: WorkspaceId; agentId: AgentId } | null;
 }

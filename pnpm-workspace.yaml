@@ -9,6 +9,8 @@ packages:
   - "!packages/runtime"
   # packages/control-plane is likewise a self-contained Bun service (the cloud control plane).
   - "!packages/control-plane"
+  # packages/code-sandbox is the per-task code-execution box (Cloud Run); also a self-contained Bun service.
+  - "!packages/code-sandbox"
   - "houston-relay"
   - "examples/*"
 

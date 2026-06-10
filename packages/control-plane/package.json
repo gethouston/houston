@@ -11,6 +11,8 @@
     "test": "bun test"
   },
   "dependencies": {
+    "@earendil-works/pi-coding-agent": "0.78.1",
+    "@google-cloud/storage": "^7.14.0",
     "@houston/runtime-client": "file:../runtime-client",
     "@kubernetes/client-node": "^0.22.3",
     "jose": "^5.9.6",

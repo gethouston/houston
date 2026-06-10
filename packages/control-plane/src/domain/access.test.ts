@@ -6,6 +6,7 @@ const workspace = (over: Partial<Workspace> = {}): Workspace => ({
   id: "ws-1",
   ownerUserId: "u1",
   kind: "personal",
+  runtime: "gke",
   name: "Personal",
   slug: "u1",
   createdAt: 0,

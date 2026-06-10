@@ -19,29 +19,49 @@ export const config = {
   port: Number(env.HOUSTON_PORT || 4317),
   /** Default Anthropic model (Claude Pro/Max subscription). */
   model: env.HOUSTON_MODEL || "claude-sonnet-4-5",
+  /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
+  codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+
+  /**
+   * Server mode. "server" (default) = the long-lived per-workspace HTTP server.
+   * "turn" = the stateless per-turn cloud runtime: POST /turn hydrates the
+   * agent's object-storage prefix, runs one pi turn, syncs back, wipes.
+   */
+  mode: env.HOUSTON_MODE === "turn" ? ("turn" as const) : ("server" as const),
+  /** App-layer token the control plane presents in X-Internal-Token (turn mode). */
+  turnToken: env.HOUSTON_TURN_TOKEN || "",
+  /** GCS bucket holding workspaces (turn mode, production). */
+  gcsBucket: env.HOUSTON_GCS_BUCKET || "",
+  /** Local directory standing in for the bucket (turn mode, dev/tests). */
+  localStoreDir: env.HOUSTON_LOCAL_STORE_DIR || "",
   /** Optional bearer token. Empty = no auth (local dev on loopback). */
   token: env.HOUSTON_RUNTIME_TOKEN || "",
   /** Allowed CORS origin for the webapp. "*" (default) or an explicit origin. */
   corsOrigin: env.HOUSTON_CORS_ORIGIN || "*",
 
   /**
-   * Cloud mode (HOUSTON_CLOUD=1). When on, the runtime runs KEYLESS inside a
-   * control plane sandbox: it never holds a real provider key and never does
-   * interactive OAuth. Turns are routed through the control plane keyless proxy
-   * (`proxyBaseUrl`) and carry only the non-secret, control-plane-issued sandbox
-   * token. The proxy swaps in the real key.
+   * Connect-once (the ONE cloud credential model): the user's subscription
+   * credential lives centrally in the control plane; this sandbox pulls a
+   * short-TTL access token per turn, authenticated by the control-plane-issued
+   * sandbox token. There is no keyless proxy and no org API key.
    */
-  cloud: env.HOUSTON_CLOUD === "1",
-  /** Base URL of the control plane keyless proxy that pi-ai's `model.baseUrl` points at. */
-  proxyBaseUrl: env.HOUSTON_PROXY_BASE_URL || "",
-  /** Control-plane-issued sandbox token (proves "workspace W's agent A" to the control plane). */
   sandboxToken: env.HOUSTON_SANDBOX_TOKEN || "",
-  /** Connect-once: where the sandbox fetches its workspace's central subscription token. */
+  /** Where the sandbox fetches its workspace's central subscription token. */
   controlPlaneUrl: env.HOUSTON_CONTROL_PLANE_URL || "",
-  /** Provider the cloud sandbox talks to (matches the proxy's upstream). */
-  cloudProvider: env.HOUSTON_CLOUD_PROVIDER || "anthropic",
-  /** Model id used in cloud mode. Falls back to the desktop default model. */
-  cloudModel: env.HOUSTON_CLOUD_MODEL || env.HOUSTON_MODEL || "claude-sonnet-4-5",
+
+  /**
+   * Remote code-execution sandbox (Cloud Run). When set, the agent runs code
+   * THERE via the `run_code` tool instead of holding a local `bash` tool: the
+   * agent process stays cheap and untrusted code executes in a disposable,
+   * isolated box rented per task. Empty on desktop, where pi keeps in-process
+   * bash. See packages/code-sandbox + cloud/code-execution.md.
+   */
+  codeSandboxUrl: env.HOUSTON_CODE_SANDBOX_URL || "",
+  /** App-layer token presented to the code sandbox via X-Sandbox-Token. */
+  codeSandboxToken: env.HOUSTON_CODE_SANDBOX_TOKEN || "",
+  /** Per-workspace run_code budget (Gate #5: one tenant must not saturate the fleet). */
+  runCodeMaxConcurrent: Number(env.HOUSTON_RUN_CODE_MAX_CONCURRENT || 2),
+  runCodePerMinute: Number(env.HOUSTON_RUN_CODE_PER_MINUTE || 10),
 
   version: "0.0.0",
 };

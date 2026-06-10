@@ -12,7 +12,7 @@ const RATES: AutopilotRates = {
 };
 
 function ws(id: string, owner: string, slug: string): Workspace {
-  return { id, ownerUserId: owner, kind: "personal", name: "Personal", slug, createdAt: 1 };
+  return { id, ownerUserId: owner, kind: "personal", runtime: "gke", name: "Personal", slug, createdAt: 1 } as const;
 }
 function agent(id: string, workspaceId: string, name: string): Agent {
   return { id, workspaceId, name, createdAt: 1 };

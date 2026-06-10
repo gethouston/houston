@@ -57,32 +57,3 @@ test("malformed tokens are rejected, never thrown", () => {
   expect(v.validateSandboxToken(token)).toBeNull();
 });
 
-test("realKeyFor resolves an injected per-workspace key and returns null when absent", async () => {
-  const v = new EnvCredentialVault({
-    secret: SECRET,
-    keys: { CP_WORKSPACE_KEY_WS_1_ANTHROPIC: "sk-real-123" },
-  });
-  expect(await v.realKeyFor("ws-1", "anthropic")).toBe("sk-real-123");
-  expect(await v.realKeyFor("ws-1", "openai")).toBeNull();
-  expect(await v.realKeyFor("ws-2", "anthropic")).toBeNull();
-});
-
-test("realKeyFor reads from the environment when not injected", async () => {
-  process.env.CP_WORKSPACE_KEY_ENVWS_ANTHROPIC = "sk-from-env";
-  try {
-    const v = new EnvCredentialVault({ secret: SECRET });
-    expect(await v.realKeyFor("envws", "anthropic")).toBe("sk-from-env");
-  } finally {
-    delete process.env.CP_WORKSPACE_KEY_ENVWS_ANTHROPIC;
-  }
-});
-
-test("workspace/provider name normalization is consistent across mint and lookup", async () => {
-  // Hyphenated workspace id maps to underscored env-style key.
-  const v = new EnvCredentialVault({
-    secret: SECRET,
-    keys: { "CP_WORKSPACE_KEY_ACME_CORP_ANTHROPIC": "sk-acme" },
-  });
-  expect(await v.realKeyFor("acme-corp", "anthropic")).toBe("sk-acme");
-  expect(await v.realKeyFor("acme.corp", "anthropic")).toBe("sk-acme");
-});

@@ -1,6 +1,15 @@
 # Houston Cloud v2 — Plan: one microVM per workspace, bwrap per agent, cron inside
 
-**Status:** design blueprint (not built). v1 (one pod per agent on Autopilot) is live and in PR #8 — keep it as the reference; v2 is a fresh branch off it.
+> **RETIRED (2026-06-10).** This blueprint walled the WHOLE agent in a microVM
+> because the agent had `bash`. The shipped architecture removes that premise:
+> the agent is a cheap per-turn Cloud Run request with clamped file tools and
+> NO bash; arbitrary code runs in the credential-less, egress-locked code
+> sandbox. Paying the Kata/Intel nested-virt premium to wall a bash-less,
+> key-less agent buys nothing. See `cloud/code-execution.md` (the decided
+> model) and `cloud/README.md`. Kept for the cost tables and the bin-packing
+> analysis only — do not build from this.
+
+**Status:** retired design blueprint (never built).
 
 ---
 

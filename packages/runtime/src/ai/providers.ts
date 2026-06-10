@@ -16,7 +16,7 @@ export const PROVIDERS: { id: ProviderId; name: string; defaultModel: string }[]
   {
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
-    defaultModel: process.env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+    defaultModel: config.codexModel,
   },
 ];
 
@@ -76,31 +76,8 @@ export function setSettings(input: { activeProvider?: string; model?: string }):
   return s;
 }
 
-/**
- * Resolve the keyless cloud model: a normal pi-ai model whose `baseUrl` is swung
- * to the control plane proxy, authenticated by the sandbox token (NOT a subscription OAuth
- * token). The sandbox token is seeded as the provider's runtime API key, which is
- * priority #1 in AuthStorage.getApiKey(), so every turn sends it upstream as the
- * credential. The proxy validates it and swaps in the real key — the real key
- * never enters this process. See spike/keyless-proxy.ts.
- */
-function resolveCloudModel() {
-  if (!config.proxyBaseUrl)
-    throw new Error("Cloud mode is on but HOUSTON_PROXY_BASE_URL is not set.");
-  if (!config.sandboxToken)
-    throw new Error("Cloud mode is on but HOUSTON_SANDBOX_TOKEN is not set.");
-
-  const base = getModel(config.cloudProvider as any, config.cloudModel as any);
-  // Seed the keyless credential so createAgentSession's turn picks it up.
-  authStorage.setRuntimeApiKey(config.cloudProvider, config.sandboxToken);
-  // Route all upstream LLM traffic through the control plane keyless proxy.
-  return { ...base, baseUrl: config.proxyBaseUrl };
-}
-
 /** Resolve the pi-ai model for the active provider (used when starting a turn). */
 export function resolveModel() {
-  if (config.cloud) return resolveCloudModel();
-
   const provider = activeProvider();
   if (!provider)
     throw new Error("No provider connected. Log in with Claude or Codex first.");

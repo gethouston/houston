@@ -1,5 +1,12 @@
 import type { WorkspaceStore } from "../ports";
-import type { Agent, AgentId, UserId, Workspace, WorkspaceId } from "../domain/types";
+import type {
+  Agent,
+  AgentId,
+  UserId,
+  Workspace,
+  WorkspaceId,
+  WorkspaceRuntime,
+} from "../domain/types";
 
 /** DNS-safe slug for a workspace (used for the K8s namespace). */
 function slugify(name: string): string {
@@ -20,6 +27,11 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
   private workspaces = new Map<WorkspaceId, Workspace>();
   private agents = new Map<AgentId, Agent>();
   private seq = 0;
+  private readonly defaultRuntime: WorkspaceRuntime;
+
+  constructor(opts: { defaultRuntime?: WorkspaceRuntime } = {}) {
+    this.defaultRuntime = opts.defaultRuntime ?? "gke";
+  }
 
   private id(prefix: string): string {
     this.seq += 1;
@@ -36,6 +48,7 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
       kind: "personal",
       name: "Personal",
       slug: slugify(userId),
+      runtime: this.defaultRuntime,
       createdAt: Date.now(),
     };
     this.workspaces.set(ws.id, ws);
@@ -83,5 +96,13 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
 
   async deleteAgent(id: AgentId): Promise<void> {
     if (!this.agents.delete(id)) throw new Error(`deleteAgent: unknown agent ${id}`);
+  }
+
+  async setWorkspaceRuntime(id: WorkspaceId, runtime: WorkspaceRuntime): Promise<Workspace> {
+    const ws = this.workspaces.get(id);
+    if (!ws) throw new Error(`setWorkspaceRuntime: unknown workspace ${id}`);
+    const next: Workspace = { ...ws, runtime };
+    this.workspaces.set(id, next);
+    return next;
   }
 }

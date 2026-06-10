@@ -1,5 +1,17 @@
 # Houston Cloud — Implementation Plan
 
+> **Architecture update (2026-06-10).** The hosting layer evolved past §"one
+> agent = one GKE pod": workspaces now carry a `runtime` flag. `cloudrun`
+> workspaces (the default for new ones) run agents as PER-TURN Cloud Run
+> requests over GCS-prefix workspaces — no standing pod, no PVC, idle = $0 —
+> dispatched by the control plane behind the SAME `/agents/:id/*` surface
+> (`packages/control-plane/src/turn/*`, `packages/runtime/src/turn/*`).
+> `gke` workspaces keep the pod path below until their PVC migrates
+> (`cloud/scripts/07-migrate-pvc-to-gcs.sh`). The keyless org-key proxy was
+> REMOVED: the one credential model is connect-once user subscriptions
+> (OpenAI/Codex), served access-token-only. Code execution is the locked-down
+> Cloud Run sandbox (`cloud/code-execution.md` — start there).
+
 Multi-tenant cloud platform. Each customer **org** has **users** who chat with **agents**. Every agent runs **fully isolated** from every other agent, on its own machine, on **GKE Agent Sandbox**. The agent runtime is **pi** (`@earendil-works/pi-coding-agent`) wrapped by the Houston TS runtime (`packages/runtime`). A central **control plane** guards access, spawns agents, holds credentials, and tracks what's running.
 
 > **This doc supersedes the two earlier design attempts** (`cloud-design/` and `engine-design/`, now deleted). Both were written for the old Rust `houston-engine` that shelled out to Claude/Codex CLIs. We have since committed to **pi**, which is in-process and has no CLI subprocesses — that pivot invalidated the load-bearing mechanisms of both old plans (see [What we drop](#what-we-drop-from-the-old-plans)). This is the single source of truth.

@@ -25,20 +25,37 @@ export const config = {
    *  default runtime, so a first sandbox schedules even without the Sandbox add-on. */
   runtimeClass: process.env.CP_RUNTIME_CLASS || "",
 
-  /** Signs the non-secret sandbox tokens the keyless credential proxy validates. */
+  /** Signs the non-secret sandbox tokens agents present to /sandbox/credential. */
   sandboxTokenSecret: process.env.CP_SANDBOX_TOKEN_SECRET || "dev-insecure-sandbox-secret",
 
   /** Minutes of inactivity before an agent's sandbox is slept (scale to zero). */
   idleSleepMinutes: Number(process.env.CP_IDLE_SLEEP_MINUTES || 10),
 
-  /** The keyless credential proxy — a separate listener sandboxes call for AI. */
-  proxyPort: Number(process.env.CP_PROXY_PORT || 8081),
-  proxyProvider: process.env.CP_PROXY_PROVIDER || "anthropic",
-  proxyUpstream: process.env.CP_PROXY_UPSTREAM || "https://api.anthropic.com",
-  /** In-cluster URL agent sandboxes call for keyless AI (points at this proxy). */
-  sandboxProxyUrl: process.env.CP_SANDBOX_PROXY_URL || "",
   /** In-cluster URL sandboxes call to serve their workspace's central credential (connect-once). */
   controlPlaneInternalUrl: process.env.CP_INTERNAL_URL || "",
+
+  /**
+   * Per-turn Cloud Run hosting (the cloudrun workspace runtime). When
+   * CP_TURN_RUNTIME_URL is set, workspaces with runtime="cloudrun" dispatch
+   * turns to it instead of a GKE pod: one self-contained POST /turn per turn,
+   * GCS-prefix workspaces, scale-to-zero. The GKE path stays for runtime="gke"
+   * workspaces until the PVC→GCS migration retires it.
+   */
+  turnRuntimeUrl: process.env.CP_TURN_RUNTIME_URL || "",
+  /** App-layer token sent to the turn runtime in X-Internal-Token. */
+  turnToken: process.env.CP_TURN_TOKEN || "",
+  /** GCS bucket holding cloudrun workspaces (must match the runtime's HOUSTON_GCS_BUCKET). */
+  gcsBucket: process.env.CP_GCS_BUCKET || "",
+  /** Runtime for NEWLY-created workspaces: "cloudrun" (default) or "gke". */
+  defaultRuntime: process.env.CP_DEFAULT_RUNTIME === "gke" ? ("gke" as const) : ("cloudrun" as const),
+  /** Per-workspace turn budget (availability: one tenant can't hog the fleet). */
+  turnsPerHour: Number(process.env.CP_TURNS_PER_HOUR || 120),
+  turnMaxConcurrent: Number(process.env.CP_TURN_MAX_CONCURRENT || 3),
+  /** Codex model ids offered in the model picker (the cloud is OpenAI/Codex-only). */
+  codexModels: (process.env.CP_CODEX_MODELS || "gpt-5.5,gpt-5.5-codex,gpt-5.1")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean),
 
   corsOrigin: process.env.CP_CORS_ORIGIN || "*",
 

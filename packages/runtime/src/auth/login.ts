@@ -1,20 +1,5 @@
 import { authStorage } from "./storage";
-import { config } from "../config";
 import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
-
-/**
- * Cloud sandboxes are keyless and never do interactive OAuth: the control plane
- * provisions the sandbox token at spawn. So in cloud mode the login routes are
- * dead — they throw this, which the HTTP layer surfaces as a 400 (never a silent
- * no-op).
- */
-const CLOUD_LOGIN_DISABLED =
-  "Interactive login is disabled in cloud mode; this agent authenticates through the control plane proxy.";
-
-/** Has the control plane handed this sandbox a usable keyless credential? */
-function cloudConnected(): boolean {
-  return config.cloud && !!config.proxyBaseUrl && !!config.sandboxToken;
-}
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
@@ -42,21 +27,6 @@ const active = new Map<ProviderId, LoginState>();
 const known = (id: string): id is ProviderId => PROVIDERS.some((p) => p.id === id);
 
 export function getAuthStatus() {
-  // Cloud mode: report the cloud provider as connected from the injected keyless
-  // creds, with no OAuth login state. There is no auth.json and no login flow.
-  if (config.cloud) {
-    const connected = cloudConnected();
-    return {
-      providers: PROVIDERS.map((p) => ({
-        provider: p.id,
-        name: p.name,
-        configured: connected && p.id === config.cloudProvider,
-        login: null,
-      })),
-      activeProvider: connected ? (config.cloudProvider as ProviderId) : null,
-    };
-  }
-
   return {
     providers: PROVIDERS.map((p) => {
       const st = active.get(p.id);
@@ -72,7 +42,6 @@ export function getAuthStatus() {
 }
 
 export async function startLogin(providerId: string): Promise<LoginInfo> {
-  if (config.cloud) throw new Error(CLOUD_LOGIN_DISABLED);
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   const provider = providerId;
 
@@ -134,14 +103,12 @@ export async function startLogin(providerId: string): Promise<LoginInfo> {
 
 /** Paste-code completion (Anthropic remote path). */
 export function completeLogin(providerId: string, code: string): void {
-  if (config.cloud) throw new Error(CLOUD_LOGIN_DISABLED);
   const state = active.get(providerId as ProviderId);
   if (!state?.resolvePaste) throw new Error(`no active login for ${providerId}`);
   state.resolvePaste(code);
 }
 
 export function logout(providerId: string): void {
-  if (config.cloud) throw new Error(CLOUD_LOGIN_DISABLED);
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   authStorage.logout(providerId);
   active.delete(providerId);

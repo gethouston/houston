@@ -60,9 +60,6 @@ const credentials = new MemoryCredentialStore();
 // Fake vault: a sandbox token is just "sbx:<workspaceId>", so a test can present
 // one for a known workspace.
 const vault: CredentialVault = {
-  async realKeyFor() {
-    return null;
-  },
   sandboxToken(workspaceId) {
     return `sbx:${workspaceId}`;
   },
@@ -212,9 +209,103 @@ test("connect-once: a sandbox serves its workspace's central credential by sandb
     headers: { Authorization: `Bearer sbx:${aliceWs.id}` },
   });
   expect(r.status).toBe(200);
-  const c = (await r.json()) as { access: string; refresh: string; accountId: string };
+  const c = (await r.json()) as Record<string, unknown>;
   expect(c.access).toBe("AT");
   expect(c.accountId).toBe("acct-1");
+  // Gate #2: the refresh token NEVER leaves the control plane.
+  expect("refresh" in c).toBe(false);
+  expect(JSON.stringify(c)).not.toContain("RT");
+});
+
+test("capture stores the credential centrally, then scrubs the sandbox's refresh token", async () => {
+  // A real fake runtime: serves /auth/export like a freshly-connected pod and
+  // records the scrub call that must follow.
+  let scrubCalls = 0;
+  const fakeRuntime = Bun.serve({
+    port: 0,
+    fetch(req) {
+      const u = new URL(req.url);
+      if (u.pathname === "/auth/export") {
+        return Response.json({
+          provider: "openai-codex",
+          access: "AT-cap",
+          refresh: "RT-cap",
+          expires: 1750000000000,
+          accountId: "acct-cap",
+        });
+      }
+      if (u.pathname === "/auth/scrub-refresh" && req.method === "POST") {
+        scrubCalls++;
+        return Response.json({ ok: true, scrubbed: ["openai-codex"] });
+      }
+      return new Response("not found", { status: 404 });
+    },
+  });
+  const deps: ControlPlaneDeps = {
+    ...baseDeps(),
+    sandboxes: {
+      ...sandboxes,
+      async ensureAwake(): Promise<SandboxEndpoint> {
+        return { baseUrl: `http://127.0.0.1:${fakeRuntime.port}`, token: "runtime-token" };
+      },
+    },
+  };
+  const { base: b, close } = await startServer(deps);
+  try {
+    const r = await fetch(`${b}/agents/${aliceSalesId}/credential/capture`, {
+      method: "POST",
+      headers: auth("alice"),
+    });
+    expect(r.status).toBe(200);
+    expect(scrubCalls).toBe(1);
+    const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+    const stored = await credentials.get(aliceWs.id, "openai-codex");
+    expect(stored?.refreshToken).toBe("RT-cap"); // central store holds it…
+    expect(stored?.accessToken).toBe("AT-cap");
+  } finally {
+    await close();
+    fakeRuntime.stop(true);
+  }
+});
+
+test("a failed scrub surfaces as an error (credential still stored)", async () => {
+  const fakeRuntime = Bun.serve({
+    port: 0,
+    fetch(req) {
+      const u = new URL(req.url);
+      if (u.pathname === "/auth/export") {
+        return Response.json({
+          provider: "openai-codex",
+          access: "AT2",
+          refresh: "RT2",
+          expires: 1750000000000,
+        });
+      }
+      return new Response("scrub exploded", { status: 500 });
+    },
+  });
+  const deps: ControlPlaneDeps = {
+    ...baseDeps(),
+    sandboxes: {
+      ...sandboxes,
+      async ensureAwake(): Promise<SandboxEndpoint> {
+        return { baseUrl: `http://127.0.0.1:${fakeRuntime.port}`, token: "runtime-token" };
+      },
+    },
+  };
+  const { base: b, close } = await startServer(deps);
+  try {
+    const r = await fetch(`${b}/agents/${aliceSalesId}/credential/capture`, {
+      method: "POST",
+      headers: auth("alice"),
+    });
+    expect(r.status).toBe(502); // never silent: the user sees the real reason
+    const body = (await r.json()) as { error: string };
+    expect(body.error).toContain("refresh token");
+  } finally {
+    await close();
+    fakeRuntime.stop(true);
+  }
 });
 
 // --- Operator dashboard (/admin/*) ------------------------------------------

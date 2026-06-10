@@ -2,7 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { readFileSync } from "node:fs";
 import { config } from "../config";
 import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
-import { exportCredential } from "../auth/serve";
+import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
 import { runTurn, cancelTurn } from "../session/chat";
 import { snapshot, subscribe } from "../session/bus";
@@ -78,6 +78,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // capture the credential into the workspace's central store. {} when not connected.
   if (method === "GET" && path === "/auth/export") {
     return json(res, 200, exportCredential() ?? {});
+  }
+  // Gate #2 (connect-once): the control plane calls this right after capture so
+  // this sandbox stops holding the user's refresh token. Idempotent.
+  if (method === "POST" && path === "/auth/scrub-refresh") {
+    return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
   }
   const authMatch = path.match(/^\/auth\/([^/]+)\/(login|login\/complete|logout)$/);
   if (method === "POST" && authMatch) {

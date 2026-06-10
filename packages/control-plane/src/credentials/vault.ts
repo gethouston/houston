@@ -4,38 +4,18 @@ import type { AgentId, WorkspaceId } from "../domain/types";
 import { config } from "../config";
 
 /**
- * EnvCredentialVault — the keyless story's secret holder.
- *
- * Two distinct kinds of credential live here, and they must never be confused:
- *
- *   1. REAL provider keys (e.g. an Anthropic API key). Held only inside the control plane
- *      process (env / injected map; Secret Manager in prod). `realKeyFor` is the
- *      ONLY accessor, and the keyless proxy is its only caller. A real key is
- *      never returned to, nor reconstructable by, a sandbox.
- *
- *   2. NON-SECRET sandbox tokens. A sandbox carries one of these to the proxy as
- *      proof of "I am workspace W's agent A". It is an HMAC over {workspaceId,agentId}
- *      keyed by `config.sandboxTokenSecret`, so a sandbox cannot forge a token for a
- *      different workspace/agent, but the token reveals nothing and grants nothing on
- *      its own — the proxy still does the real-key swap.
+ * EnvCredentialVault — mints and validates the NON-SECRET sandbox identity
+ * tokens. A sandbox carries one as proof of "I am workspace W's agent A" when
+ * calling /sandbox/credential. It is an HMAC over {workspaceId, agentId} keyed
+ * by `config.sandboxTokenSecret`, so a sandbox cannot forge a token for a
+ * different workspace/agent, but the token reveals nothing and grants nothing
+ * beyond that one serve endpoint. (Real LLM credentials are the users' own
+ * subscriptions in the CredentialStore — there are no org provider keys.)
  *
  * Token wire format: `base64url(payload).base64url(sig)` where
  *   payload = JSON.stringify({ workspaceId, agentId })
  *   sig     = HMAC-SHA256(payload, sandboxTokenSecret)
  */
-
-type RealKeyMap = Record<string, string>;
-
-/** Env var name for a workspace's real provider key, e.g. CP_WORKSPACE_KEY_ACME_ANTHROPIC. */
-function envKeyName(workspaceId: WorkspaceId, provider: string): string {
-  const norm = (s: string) => s.toUpperCase().replace(/[^A-Z0-9]/g, "_");
-  return `CP_WORKSPACE_KEY_${norm(workspaceId)}_${norm(provider)}`;
-}
-
-/** Map-injection key, mirroring the env var name so dev and prod resolve alike. */
-function mapKey(workspaceId: WorkspaceId, provider: string): string {
-  return envKeyName(workspaceId, provider);
-}
 
 interface SandboxTokenPayload {
   workspaceId: WorkspaceId;
@@ -52,25 +32,10 @@ function isValidPayload(value: unknown): value is SandboxTokenPayload {
 }
 
 export class EnvCredentialVault implements CredentialVault {
-  /** Real keys injected directly (tests / dev), keyed exactly like the env vars. */
-  private readonly injected: RealKeyMap;
   private readonly secret: string;
 
-  constructor(opts: { keys?: RealKeyMap; secret?: string } = {}) {
-    this.injected = opts.keys ?? {};
+  constructor(opts: { secret?: string } = {}) {
     this.secret = opts.secret ?? config.sandboxTokenSecret;
-  }
-
-  async realKeyFor(workspaceId: WorkspaceId, provider: string): Promise<string | null> {
-    const name = mapKey(workspaceId, provider);
-    const injected = this.injected[name];
-    if (injected !== undefined) return injected;
-    const fromEnv = process.env[envKeyName(workspaceId, provider)];
-    if (fromEnv !== undefined) return fromEnv;
-    // Beta fallback: one central key per provider for every workspace, named
-    // CP_<PROVIDER>_KEY (e.g. CP_ANTHROPIC_KEY) — injected map or env.
-    const dflt = `CP_${provider.toUpperCase().replace(/[^A-Z0-9]/g, "_")}_KEY`;
-    return this.injected[dflt] ?? process.env[dflt] ?? null;
   }
 
   sandboxToken(workspaceId: WorkspaceId, agentId: AgentId): string {

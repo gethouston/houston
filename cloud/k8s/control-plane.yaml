@@ -1,11 +1,13 @@
 # The Houston control plane itself: auth + workspace/agent storage + per-agent
-# sandbox lifecycle + routing/SSE + keyless proxy. Deployed into `houston-system`.
+# sandbox lifecycle (legacy gke runtime) + per-turn cloudrun dispatch +
+# routing/SSE. Deployed into `houston-system`.
 #
-# The Supabase DB URL + sandbox-token secret are NOT here — they are created
-# imperatively from .context/cloud.env at deploy time (never committed):
+# Secrets are NOT here — they are created imperatively from .context/cloud.env
+# at deploy time (never committed):
 #   kubectl -n houston-system create secret generic control-plane-secrets \
 #     --from-literal=database-url="$CP_DATABASE_URL" \
-#     --from-literal=sandbox-token-secret="$(openssl rand -hex 32)"
+#     --from-literal=sandbox-token-secret="$(openssl rand -hex 32)" \
+#     --from-literal=turn-token="<value of Secret Manager houston-turn-token>"
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -76,16 +78,14 @@ spec:
         runAsUser: 1000
       containers:
         - name: control-plane
-          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:v2
+          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:v5
           ports:
             - { containerPort: 8080, name: api }
-            - { containerPort: 8081, name: proxy }
           env:
             - { name: CP_HOST, value: "0.0.0.0" }
             - { name: CP_PORT, value: "8080" }
-            - { name: CP_PROXY_PORT, value: "8081" }
             # The per-agent sandbox image + how the SandboxManager schedules pods.
-            - { name: CP_AGENT_IMAGE, value: "us-east1-docker.pkg.dev/gethouston/houston/runtime:v2" }
+            - { name: CP_AGENT_IMAGE, value: "us-east1-docker.pkg.dev/gethouston/houston/runtime:v6" }
             - { name: CP_NAMESPACE_PREFIX, value: "ws-" }
             # Empty for the first deploy (no gVisor): agent pods get standard
             # per-pod + per-volume + NetworkPolicy isolation. gVisor/Kata later.
@@ -93,15 +93,14 @@ spec:
             # Supabase token verification (asymmetric ES256 → JWKS, no secret).
             - { name: CP_SUPABASE_JWKS_URL, value: "https://zfpnlvxazrataiannvtq.supabase.co/auth/v1/.well-known/jwks.json" }
             - { name: CP_SUPABASE_JWT_ISSUER, value: "https://zfpnlvxazrataiannvtq.supabase.co/auth/v1" }
-            # Keyless proxy upstream (the workspace's real key is injected here).
-            - { name: CP_PROXY_UPSTREAM, value: "https://api.anthropic.com" }
-            - { name: CP_PROXY_PROVIDER, value: "anthropic" }
-            # In-cluster address agent sandboxes call for keyless AI (this proxy).
-            - { name: CP_SANDBOX_PROXY_URL, value: "http://control-plane-proxy.houston-system.svc.cluster.local:8081" }
-            # Central beta provider key — optional until the first chat message.
-            - name: CP_ANTHROPIC_KEY
+            # Per-turn Cloud Run hosting (cloudrun workspaces). Set the URL after
+            # cloud/scripts/06-runtime.sh prints it; bucket must match the runtime.
+            - { name: CP_TURN_RUNTIME_URL, value: "" }
+            - { name: CP_GCS_BUCKET, value: "gethouston-workspaces" }
+            - { name: CP_DEFAULT_RUNTIME, value: "cloudrun" }
+            - name: CP_TURN_TOKEN
               valueFrom:
-                secretKeyRef: { name: control-plane-secrets, key: anthropic-key, optional: true }
+                secretKeyRef: { name: control-plane-secrets, key: turn-token, optional: true }
             # Secrets (created imperatively — see header).
             - name: CP_DATABASE_URL
               valueFrom:
@@ -135,16 +134,3 @@ spec:
     app: control-plane
   ports:
     - { name: api, port: 80, targetPort: 8080 }
----
-# In-cluster address the agent sandboxes use to reach the keyless proxy.
-apiVersion: v1
-kind: Service
-metadata:
-  name: control-plane-proxy
-  namespace: houston-system
-spec:
-  type: ClusterIP
-  selector:
-    app: control-plane
-  ports:
-    - { name: proxy, port: 8081, targetPort: 8081 }

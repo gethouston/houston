@@ -1,4 +1,9 @@
-import type { WireEvent } from "@houston/runtime-client";
+import {
+  EMPTY_SNAPSHOT as EMPTY,
+  reduceSnapshot,
+  type ConversationSnapshot,
+  type WireEvent,
+} from "@houston/runtime-client";
 
 /**
  * Per-conversation event bus. This is the ONE place conversation isolation is
@@ -9,42 +14,16 @@ import type { WireEvent } from "@houston/runtime-client";
  * It also keeps a small in-flight snapshot per conversation (is a turn running +
  * the assistant text so far) so a late or reconnecting subscriber can be caught
  * up to the current turn via a `sync` frame, without waiting for it to finish.
+ * The snapshot reducer lives in @houston/runtime-client (shared with the
+ * control plane's turn relay, which must mirror these semantics exactly).
  */
 
-export type ConversationSnapshot = { running: boolean; partial: string };
+export { reduceSnapshot, type ConversationSnapshot };
 
 type Subscriber = (event: WireEvent) => void;
 
 const subscribers = new Map<string, Set<Subscriber>>();
 const snapshots = new Map<string, ConversationSnapshot>();
-
-const EMPTY: ConversationSnapshot = { running: false, partial: "" };
-
-/**
- * Fold a wire event into the running snapshot. Pure — exported for tests.
- * `partial` tracks only assistant *text* (enough to redraw the in-flight bubble);
- * tool/thinking frames keep the turn marked running without touching it.
- */
-export function reduceSnapshot(
-  prev: ConversationSnapshot,
-  event: WireEvent,
-): ConversationSnapshot {
-  switch (event.type) {
-    case "user":
-      return { running: true, partial: "" };
-    case "text":
-      return { running: true, partial: prev.partial + event.data };
-    case "thinking":
-    case "tool_start":
-    case "tool_end":
-      return prev.running ? prev : { running: true, partial: prev.partial };
-    case "done":
-    case "error":
-      return EMPTY;
-    case "sync":
-      return prev; // sync is a read-out, never published back into the bus
-  }
-}
 
 /** Publish an event to exactly one conversation's subscribers. */
 export function publish(id: string, event: WireEvent): void {

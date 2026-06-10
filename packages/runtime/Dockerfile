@@ -1,9 +1,9 @@
-# Houston pi-runtime — per-agent sandbox image (cloud / "control plane" control plane).
-#
-# Replaces the obsolete Rust always-on/Dockerfile. One container == one agent's
-# pi engine, scheduled by the control plane SandboxManager (GKE / Agent-Sandbox). It runs
-# KEYLESS: no real provider key lives here — pi-ai's baseUrl points at the control plane
-# keyless proxy and the sandbox carries only a non-secret control plane-issued token.
+# Houston pi-runtime — the agent runtime image, two modes from one binary:
+#   server (default) — the legacy long-lived per-agent pod (GKE), connect-once
+#                      serve mode: pulls a short-TTL ACCESS token per turn from
+#                      the control plane; never holds a refresh token.
+#   turn (HOUSTON_MODE=turn) — the per-turn Cloud Run hosting layer: one
+#                      POST /turn = hydrate GCS prefix → run pi → sync → wipe.
 #
 # BUILD CONTEXT MUST BE THE MONOREPO ROOT (not packages/runtime), because the
 # engine depends on the sibling package `@houston/runtime-client` via the

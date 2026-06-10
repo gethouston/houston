@@ -19,6 +19,14 @@ export type AgentId = string;
 /** `personal` = free, single-player (built). `org` = paid, multiplayer (future). */
 export type WorkspaceKind = "personal" | "org";
 
+/**
+ * Where this workspace's agents execute.
+ *   `gke`      — legacy: one long-lived pod + PVC per agent.
+ *   `cloudrun` — per-turn Cloud Run + object-storage workspaces (the default
+ *                for new workspaces; existing ones flip after PVC→GCS migration).
+ */
+export type WorkspaceRuntime = "gke" | "cloudrun";
+
 export interface Workspace {
   id: WorkspaceId;
   /** The Supabase user who owns this workspace. For `personal`, the sole member. */
@@ -27,6 +35,7 @@ export interface Workspace {
   name: string;
   /** DNS-safe slug; the K8s namespace that holds this workspace's agent sandboxes. */
   slug: string;
+  runtime: WorkspaceRuntime;
   createdAt: number;
 }
 

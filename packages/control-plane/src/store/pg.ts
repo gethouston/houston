@@ -1,6 +1,13 @@
 import type { Pool } from "pg";
 import type { WorkspaceStore } from "../ports";
-import type { Agent, AgentId, UserId, Workspace, WorkspaceId } from "../domain/types";
+import type {
+  Agent,
+  AgentId,
+  UserId,
+  Workspace,
+  WorkspaceId,
+  WorkspaceRuntime,
+} from "../domain/types";
 
 /** DNS-safe slug for a workspace (used for the K8s namespace). Matches MemoryWorkspaceStore. */
 function slugify(name: string): string {
@@ -27,6 +34,7 @@ interface WorkspaceRow {
   kind: string;
   name: string;
   slug: string;
+  runtime: string;
   created_at: string;
 }
 interface AgentRow {
@@ -42,12 +50,16 @@ function toWorkspace(r: WorkspaceRow): Workspace {
     // a user error — surface it loudly rather than coercing to a default.
     throw new Error(`invalid workspace kind in row: ${r.kind}`);
   }
+  if (r.runtime !== "gke" && r.runtime !== "cloudrun") {
+    throw new Error(`invalid workspace runtime in row: ${r.runtime}`);
+  }
   return {
     id: r.id,
     ownerUserId: r.owner_user_id,
     kind: r.kind,
     name: r.name,
     slug: r.slug,
+    runtime: r.runtime,
     createdAt: Number(r.created_at),
   };
 }
@@ -71,12 +83,15 @@ function toAgent(r: AgentRow): Agent {
  * shape without connecting.
  */
 export class PgWorkspaceStore implements WorkspaceStore {
-  constructor(private readonly pool: Pool) {}
+  constructor(
+    private readonly pool: Pool,
+    private readonly opts: { defaultRuntime?: WorkspaceRuntime } = {},
+  ) {}
 
   async getOrCreatePersonalWorkspace(userId: UserId): Promise<Workspace> {
     // Fast path: the user's existing personal workspace.
     const existing = await this.pool.query<WorkspaceRow>(
-      `SELECT id, owner_user_id, kind, name, slug, created_at
+      `SELECT id, owner_user_id, kind, name, slug, runtime, created_at
          FROM workspaces
         WHERE owner_user_id = $1 AND kind = 'personal'`,
       [userId],
@@ -93,15 +108,16 @@ export class PgWorkspaceStore implements WorkspaceStore {
       kind: "personal",
       name: "Personal",
       slug: slugify(userId),
+      runtime: this.opts.defaultRuntime ?? "gke",
       createdAt: Date.now(),
     };
     const inserted = await this.pool.query<WorkspaceRow>(
-      `INSERT INTO workspaces (id, owner_user_id, kind, name, slug, created_at)
-         VALUES ($1, $2, 'personal', $3, $4, $5)
+      `INSERT INTO workspaces (id, owner_user_id, kind, name, slug, runtime, created_at)
+         VALUES ($1, $2, 'personal', $3, $4, $5, $6)
        ON CONFLICT (owner_user_id) WHERE kind = 'personal'
        DO NOTHING
-       RETURNING id, owner_user_id, kind, name, slug, created_at`,
-      [ws.id, ws.ownerUserId, ws.name, ws.slug, ws.createdAt],
+       RETURNING id, owner_user_id, kind, name, slug, runtime, created_at`,
+      [ws.id, ws.ownerUserId, ws.name, ws.slug, ws.runtime, ws.createdAt],
     );
     const row = inserted.rows[0];
     if (row) return toWorkspace(row);
@@ -109,7 +125,7 @@ export class PgWorkspaceStore implements WorkspaceStore {
     // ON CONFLICT DO NOTHING returned no row: a concurrent caller won the race.
     // Re-read their workspace — it must exist now.
     const after = await this.pool.query<WorkspaceRow>(
-      `SELECT id, owner_user_id, kind, name, slug, created_at
+      `SELECT id, owner_user_id, kind, name, slug, runtime, created_at
          FROM workspaces
         WHERE owner_user_id = $1 AND kind = 'personal'`,
       [userId],
@@ -125,7 +141,7 @@ export class PgWorkspaceStore implements WorkspaceStore {
 
   async getWorkspace(id: WorkspaceId): Promise<Workspace | null> {
     const res = await this.pool.query<WorkspaceRow>(
-      "SELECT id, owner_user_id, kind, name, slug, created_at FROM workspaces WHERE id = $1",
+      "SELECT id, owner_user_id, kind, name, slug, runtime, created_at FROM workspaces WHERE id = $1",
       [id],
     );
     const row = res.rows[0];
@@ -151,7 +167,7 @@ export class PgWorkspaceStore implements WorkspaceStore {
 
   async listWorkspaces(): Promise<Workspace[]> {
     const res = await this.pool.query<WorkspaceRow>(
-      "SELECT id, owner_user_id, kind, name, slug, created_at FROM workspaces ORDER BY created_at ASC",
+      "SELECT id, owner_user_id, kind, name, slug, runtime, created_at FROM workspaces ORDER BY created_at ASC",
     );
     return res.rows.map(toWorkspace);
   }
@@ -186,6 +202,17 @@ export class PgWorkspaceStore implements WorkspaceStore {
     const row = res.rows[0];
     if (!row) throw new Error(`renameAgent: unknown agent ${id}`);
     return toAgent(row);
+  }
+
+  async setWorkspaceRuntime(id: WorkspaceId, runtime: WorkspaceRuntime): Promise<Workspace> {
+    const res = await this.pool.query<WorkspaceRow>(
+      `UPDATE workspaces SET runtime = $2 WHERE id = $1
+       RETURNING id, owner_user_id, kind, name, slug, runtime, created_at`,
+      [id, runtime],
+    );
+    const row = res.rows[0];
+    if (!row) throw new Error(`setWorkspaceRuntime: unknown workspace ${id}`);
+    return toWorkspace(row);
   }
 
   async deleteAgent(id: AgentId): Promise<void> {

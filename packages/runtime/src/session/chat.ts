@@ -4,7 +4,8 @@ import {
   type AgentSession,
 } from "@earendil-works/pi-coding-agent";
 import { join } from "node:path";
-import type { ToolCallRecord, WireEvent } from "@houston/runtime-client";
+import type { ToolCallRecord } from "@houston/runtime-client";
+import { toWire } from "./wire";
 import { config } from "../config";
 import { authStorage, modelRegistry } from "../auth/storage";
 import { resolveModel } from "../ai/providers";
@@ -12,8 +13,40 @@ import { makeHeadlessLoader } from "./resource-loader";
 import { appendAssistantMessage, appendUserMessage } from "../store/conversations";
 import { publish } from "./bus";
 import { syncServedCredential } from "../auth/serve";
+import { makeRunCodeTool } from "./tools/run-code";
+import { makeIdTokenProvider } from "./tools/gcp-id-token";
+import { CLAMPED_FILE_TOOL_NAMES, makeClampedFileTools } from "./tools/clamped-fs";
 
-const TOOLS = ["read", "ls", "grep", "find", "edit", "write", "bash"];
+// Workspace-clamped file tools (security Gate #1). These shadow pi's builtins
+// by name: pi's defaults resolve absolute paths as-is, so without the clamp a
+// prompt-injected agent could read /etc/passwd or its own auth.json with no
+// bash tool. See tools/clamped-fs.ts.
+const FILE_TOOLS = [...CLAMPED_FILE_TOOL_NAMES];
+const fileTools = makeClampedFileTools(config.workspaceDir);
+
+// The code-execution split. When a remote sandbox is configured (cloud), the
+// agent runs code THERE via `run_code` and we drop the local `bash` tool — the
+// agent process stays cheap and untrusted code executes in a disposable box.
+// With no sandbox configured (desktop), pi keeps its in-process `bash`.
+const useRemoteSandbox = !!config.codeSandboxUrl;
+const runCodeTool = useRemoteSandbox
+  ? makeRunCodeTool({
+      baseUrl: config.codeSandboxUrl,
+      token: config.codeSandboxToken,
+      workspaceDir: config.workspaceDir,
+      limits: {
+        maxConcurrent: config.runCodeMaxConcurrent,
+        maxPerMinute: config.runCodePerMinute,
+      },
+      idToken: makeIdTokenProvider(config.codeSandboxUrl),
+    })
+  : null;
+
+// pi filters ALL tools (built-in and custom) against this name allowlist. A
+// built-in like `bash` needs only its name here; a custom tool like `run_code`
+// needs BOTH its name here AND its object in `customTools` (below) — omit either
+// and pi filters it out. This is the pi SDK's design, not accidental duplication.
+const TOOLS = useRemoteSandbox ? [...FILE_TOOLS, "run_code"] : [...FILE_TOOLS, "bash"];
 
 type Conversation = { session: AgentSession; queue: Promise<unknown> };
 const conversations = new Map<string, Conversation>();
@@ -47,6 +80,7 @@ async function getConversation(id: string): Promise<Conversation> {
     sessionManager,
     resourceLoader: loader as any,
     tools: TOOLS,
+    customTools: [...fileTools, ...(runCodeTool ? [runCodeTool] : [])],
   });
 
   const conv: Conversation = { session, queue: Promise.resolve() };
@@ -54,24 +88,6 @@ async function getConversation(id: string): Promise<Conversation> {
   return conv;
 }
 
-/** Map a pi AgentSession event to our wire event (or null to drop it). */
-function toWire(e: any): WireEvent | null {
-  switch (e.type) {
-    case "message_update": {
-      const a = e.assistantMessageEvent;
-      if (a?.type === "text_delta") return { type: "text", data: a.delta ?? "" };
-      if (a?.type === "thinking_delta")
-        return { type: "thinking", data: a.delta ?? "" };
-      return null;
-    }
-    case "tool_execution_start":
-      return { type: "tool_start", data: { name: e.toolName, args: e.args } };
-    case "tool_execution_end":
-      return { type: "tool_end", data: { name: e.toolName, isError: !!e.isError } };
-    default:
-      return null;
-  }
-}
 
 /**
  * Execute one turn: record the user + assistant messages durably and publish

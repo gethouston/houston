@@ -59,6 +59,7 @@ test("PgWorkspaceStore implements every WorkspaceStore method", () => {
     "createAgent",
     "renameAgent",
     "deleteAgent",
+    "setWorkspaceRuntime",
   ];
   for (const m of methods) {
     expect(typeof store[m]).toBe("function");
@@ -77,6 +78,7 @@ test("every method issues only parameterized queries (no input interpolation)", 
                 id: "ws-x",
                 owner_user_id: "u-123",
                 kind: "personal",
+                runtime: "gke",
                 name: "Personal",
                 slug: "u-123",
                 created_at: "1",
@@ -97,6 +99,7 @@ test("every method issues only parameterized queries (no input interpolation)", 
   await store.listAllAgents();
   await store.createAgent({ workspaceId: "ws-456", name: "Robert'); DROP TABLE workspaces;--" });
   await store.renameAgent("a-789", "Mallory");
+  await store.setWorkspaceRuntime("ws-x", "cloudrun");
   await store.deleteAgent("a-789");
 
   for (const { text, params } of calls) {
@@ -120,6 +123,7 @@ test("getOrCreatePersonalWorkspace returns the existing personal workspace witho
     id: "ws-existing",
     owner_user_id: "u-1",
     kind: "personal",
+    runtime: "gke",
     name: "Personal",
     slug: "u-1",
     created_at: "1717000000000",
@@ -145,6 +149,7 @@ test("getOrCreatePersonalWorkspace returns the existing personal workspace witho
     id: "ws-existing",
     ownerUserId: "u-1",
     kind: "personal",
+    runtime: "gke",
     name: "Personal",
     slug: "u-1",
     createdAt: 1717000000000,
@@ -161,6 +166,7 @@ test("getOrCreatePersonalWorkspace inserts a personal workspace upsert when none
             id: "ws-new",
             owner_user_id: "u-2",
             kind: "personal",
+            runtime: "gke",
             name: "Personal",
             slug: "u-2",
             created_at: "1717000000001",
@@ -197,6 +203,7 @@ test("getOrCreatePersonalWorkspace re-reads the winner when the upsert is a no-o
     id: "ws-winner",
     owner_user_id: "u-3",
     kind: "personal",
+    runtime: "gke",
     name: "Personal",
     slug: "u-3",
     created_at: "1717000000002",
@@ -234,6 +241,7 @@ test("getWorkspace binds the id and maps snake_case → domain", async () => {
               id: "ws-1",
               owner_user_id: "u-1",
               kind: "org",
+              runtime: "gke",
               name: "Acme",
               slug: "acme",
               created_at: "42",
@@ -249,6 +257,7 @@ test("getWorkspace binds the id and maps snake_case → domain", async () => {
     id: "ws-1",
     ownerUserId: "u-1",
     kind: "org",
+    runtime: "gke",
     name: "Acme",
     slug: "acme",
     createdAt: 42,

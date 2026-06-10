@@ -15,16 +15,23 @@ import { FakeSandboxManager } from "./sandbox/fake";
 import { GkeSandboxManager, type AgentResolver } from "./sandbox/gke";
 import { EnvCredentialVault } from "./credentials/vault";
 import { forward } from "./proxy/route";
-import { createKeylessProxy } from "./proxy/credentials";
 import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
 import { BigQueryBillingReader, type AutopilotRates } from "./admin/billing";
 import type { CredentialStore, CredentialVault, SandboxManager, WorkspaceStore } from "./ports";
 import type { Agent } from "./domain/types";
+import type { TurnDeps } from "./turn/deps";
+import { TurnRelay } from "./turn/relay";
+import { TurnQuota } from "./turn/quota";
+import { ConnectManager } from "./turn/connect";
+import { GcsObjectFiles, MemoryObjectFiles } from "./turn/objects";
+import { makeIdTokenProvider } from "./turn/id-token";
+import { refreshCredential } from "./credentials/refresh";
 
 /**
- * Boot the control plane. Two listeners:
- *   - the frontend-facing API (auth + access + routing/SSE)      :CP_PORT
- *   - the keyless credential proxy sandboxes call for AI         :CP_PROXY_PORT
+ * Boot the control plane: one frontend-facing API listener (auth + access +
+ * routing/SSE + per-turn dispatch) on :CP_PORT. Credentials are connect-once
+ * subscriptions (user's own OpenAI/Codex plan) served access-token-only —
+ * there is no keyless proxy and no org API key.
  *
  * `dev` mode wires in-memory fakes (no Postgres, no cluster) so it boots and is
  * exercisable end-to-end with a single local runtime. Production swaps in the
@@ -33,14 +40,35 @@ import type { Agent } from "./domain/types";
 
 /** Workspace store + the connect-once credential store, sharing one Pool in prod. */
 function buildStores(): { store: WorkspaceStore; credentials: CredentialStore } {
+  const runtime = { defaultRuntime: config.defaultRuntime };
   if (config.dev) {
-    return { store: new MemoryWorkspaceStore(), credentials: new MemoryCredentialStore() };
+    return { store: new MemoryWorkspaceStore(runtime), credentials: new MemoryCredentialStore() };
   }
   if (!config.databaseUrl) {
     throw new Error("CP_DATABASE_URL is required outside dev mode (CP_DEV=1)");
   }
   const pool = new Pool({ connectionString: config.databaseUrl });
-  return { store: new PgWorkspaceStore(pool), credentials: new PgCredentialStore(pool) };
+  return { store: new PgWorkspaceStore(pool, runtime), credentials: new PgCredentialStore(pool) };
+}
+
+/** Per-turn Cloud Run dispatch wiring; undefined until CP_TURN_RUNTIME_URL is set. */
+function buildTurn(credentials: CredentialStore): TurnDeps | undefined {
+  if (!config.turnRuntimeUrl) return undefined;
+  if (!config.dev && !config.gcsBucket) {
+    throw new Error("CP_GCS_BUCKET is required when CP_TURN_RUNTIME_URL is set");
+  }
+  return {
+    runtimeUrl: config.turnRuntimeUrl,
+    turnToken: config.turnToken,
+    relay: new TurnRelay(),
+    quota: new TurnQuota({ maxConcurrent: config.turnMaxConcurrent, perHour: config.turnsPerHour }),
+    objects: config.dev ? new MemoryObjectFiles() : new GcsObjectFiles(config.gcsBucket),
+    credentials,
+    connect: new ConnectManager(credentials),
+    refresh: refreshCredential,
+    idToken: makeIdTokenProvider(config.turnRuntimeUrl),
+    codexModels: config.codexModels,
+  };
 }
 
 function buildSandboxes(
@@ -126,24 +154,12 @@ function main(): void {
     credentials,
     vault,
     admin: buildAdmin(kubeConfig),
+    turn: buildTurn(credentials),
     corsOrigin: config.corsOrigin,
   };
 
   createControlPlaneServer(deps).listen(config.port, config.host, () => {
     console.log(`[control-plane] API   http://${config.host}:${config.port}  (dev=${config.dev})`);
-  });
-
-  // The keyless proxy: sandboxes send AI calls here with only a control-plane-issued
-  // token; the vault swaps in the workspace's real provider key. No real key ever
-  // enters a sandbox.
-  createKeylessProxy({
-    upstream: config.proxyUpstream,
-    provider: config.proxyProvider,
-    vault,
-  }).listen(config.proxyPort, config.host, () => {
-    console.log(
-      `[control-plane] proxy http://${config.host}:${config.proxyPort} -> ${config.proxyUpstream} (${config.proxyProvider})`,
-    );
   });
 }
 

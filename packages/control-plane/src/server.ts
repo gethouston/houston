@@ -1,5 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
-import type { Agent, UserId } from "./domain/types";
+import type { Agent, UserId, Workspace } from "./domain/types";
 import type {
   CredentialStore,
   CredentialVault,
@@ -14,6 +14,8 @@ import { isExpiring, refreshCredential } from "./credentials/refresh";
 import type { ClusterReader } from "./admin/cluster";
 import type { AutopilotRates, BillingActualsReader } from "./admin/billing";
 import { buildBillingReport, buildOverview, type ActualsStatus } from "./admin/overview";
+import { dispatchCloudrun } from "./turn/dispatch";
+import { prefixFor, type TurnDeps } from "./turn/deps";
 
 /**
  * Forwards an authorized per-agent request to its sandbox runtime and streams the
@@ -52,6 +54,8 @@ export interface ControlPlaneDeps {
   vault: CredentialVault;
   /** Operator dashboard wiring; omit to disable the `/admin/*` API entirely. */
   admin?: AdminDeps;
+  /** Per-turn Cloud Run dispatch; omit and cloudrun workspaces answer 503. */
+  turn?: TurnDeps;
   corsOrigin?: string;
 }
 
@@ -97,7 +101,9 @@ async function principal(deps: ControlPlaneDeps, req: IncomingMessage, url: URL)
   return verified?.userId ?? null;
 }
 
-type AgentAuthz = { ok: true; agent: Agent } | { ok: false; status: number; reason: string };
+type AgentAuthz =
+  | { ok: true; agent: Agent; workspace: Workspace }
+  | { ok: false; status: number; reason: string };
 
 /** Load an agent + its workspace and run the ownership check in one place. */
 async function authorizeAgent(deps: ControlPlaneDeps, userId: UserId, agentId: string): Promise<AgentAuthz> {
@@ -107,8 +113,8 @@ async function authorizeAgent(deps: ControlPlaneDeps, userId: UserId, agentId: s
   if (!access.ok) {
     return { ok: false, status: access.reason === "agent not found" ? 404 : 403, reason: access.reason };
   }
-  if (!agent) return { ok: false, status: 404, reason: "agent not found" }; // narrows the type
-  return { ok: true, agent };
+  if (!agent || !workspace) return { ok: false, status: 404, reason: "agent not found" }; // narrows the type
+  return { ok: true, agent, workspace };
 }
 
 async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerResponse): Promise<void> {
@@ -142,12 +148,12 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
       cred = await refreshCredential(cred);
       await deps.credentials.put(cred);
     }
-    // Full pi auth.json entry: the ChatGPT backend needs accountId, so the runtime
-    // can write a complete file rather than just an injected key.
+    // Access token ONLY (Gate #2): the refresh token never leaves this process.
+    // A stolen sandbox credential is then worth minutes, not an account. The
+    // ChatGPT backend needs accountId, so that still ships.
     return json(res, 200, {
       provider: cred.provider,
       access: cred.accessToken,
-      refresh: cred.refreshToken,
       expires: cred.expiresAt,
       accountId: cred.accountId ?? null,
     });
@@ -160,6 +166,21 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
   // Operator dashboard (cross-tenant: every user's pods + spend). Gated by an
   // explicit user-id allowlist. Disabled → 404 (no such route); enabled but the
   // caller isn't an operator → 403. It never falls open.
+  // Migration control: flip one workspace between gke and cloudrun hosting.
+  const adminRuntime = path.match(/^\/admin\/workspaces\/([^/]+)\/runtime$/);
+  if (adminRuntime && method === "POST") {
+    const admin = deps.admin;
+    if (!admin || admin.adminUserIds.length === 0) return json(res, 404, { error: "not found" });
+    if (!admin.adminUserIds.includes(userId)) return json(res, 403, { error: "forbidden" });
+    const wsId = adminRuntime[1];
+    const { runtime } = await readJson(req);
+    if (runtime !== "gke" && runtime !== "cloudrun") {
+      return json(res, 400, { error: "runtime must be 'gke' or 'cloudrun'" });
+    }
+    if (!wsId) return json(res, 404, { error: "not found" });
+    return json(res, 200, await deps.store.setWorkspaceRuntime(wsId, runtime));
+  }
+
   if (path === "/admin/overview" || path === "/admin/billing") {
     const admin = deps.admin;
     if (!admin || admin.adminUserIds.length === 0) return json(res, 404, { error: "not found" });
@@ -221,9 +242,14 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
       return json(res, 200, await deps.store.renameAgent(agentId, name));
     }
     if (method === "DELETE") {
-      // Tear the sandbox down first (so a failure is retryable with the record intact),
-      // then drop the record. Errors surface — never a silent orphan.
-      await deps.sandboxes.destroy(agentId, { dropVolume: true });
+      // Tear the agent's state down first (so a failure is retryable with the
+      // record intact), then drop the record. Errors surface — never a silent orphan.
+      if (authz.workspace.runtime === "cloudrun") {
+        if (!deps.turn) return json(res, 503, { error: "cloudrun runtime not configured" });
+        await deps.turn.objects.deletePrefix(prefixFor(authz.workspace, authz.agent));
+      } else {
+        await deps.sandboxes.destroy(agentId, { dropVolume: true });
+      }
       await deps.store.deleteAgent(agentId);
       return json(res, 200, { ok: true });
     }
@@ -238,6 +264,15 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
     if (!agentId) return json(res, 404, { error: "not found" });
     const authz = await authorizeAgent(deps, userId, agentId);
     if (!authz.ok) return json(res, authz.status, { error: authz.reason });
+
+    // cloudrun workspaces connect through the control plane itself (turn/connect.ts):
+    // the credential is already central, so capture just confirms it.
+    if (authz.workspace.runtime === "cloudrun") {
+      const cred = await deps.credentials.get(authz.workspace.id, "openai-codex");
+      return cred
+        ? json(res, 200, { ok: true, provider: cred.provider })
+        : json(res, 400, { error: "agent is not connected yet" });
+    }
 
     const endpoint = await deps.sandboxes.ensureAwake(authz.agent);
     const exp = await fetch(`${endpoint.baseUrl}/auth/export`, {
@@ -264,6 +299,20 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
       accountId: c.accountId,
       expiresAt: c.expires,
     });
+    // Gate #2: now that the refresh token is stored centrally, the sandbox must
+    // stop holding it. A scrub failure is security-relevant and surfaces — the
+    // connection itself succeeded; reconnecting retries capture + scrub.
+    const scrub = await fetch(`${endpoint.baseUrl}/auth/scrub-refresh`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${endpoint.token}` },
+    });
+    if (!scrub.ok) {
+      return json(res, 502, {
+        error:
+          "credential stored, but the agent sandbox could not be scrubbed of the refresh token — reconnect to retry",
+        detail: await scrub.text().catch(() => ""),
+      });
+    }
     return json(res, 200, { ok: true, provider: c.provider });
   }
 
@@ -280,6 +329,13 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
 
     const authz = await authorizeAgent(deps, userId, agentId);
     if (!authz.ok) return json(res, authz.status, { error: authz.reason });
+
+    // Per-turn Cloud Run workspaces never touch a pod: the dispatch serves the
+    // same wire surface against the turn runtime + object storage.
+    if (authz.workspace.runtime === "cloudrun") {
+      if (!deps.turn) return json(res, 503, { error: "cloudrun runtime not configured" });
+      return dispatchCloudrun(deps.turn, authz.workspace, authz.agent, method, rest, req, res);
+    }
 
     // First touch spins the pod up (a cold start can take a minute or two).
     const endpoint = await deps.sandboxes.ensureAwake(authz.agent);
