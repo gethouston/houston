@@ -155,7 +155,8 @@ mod tests {
     fn deserialize_legacy_workflow_without_plan_field() {
         let d = TempDir::new().unwrap();
         let w = create(d.path(), sample()).unwrap();
-        let raw = std::fs::read_to_string(d.path().join(".houston/workflows/workflows.json")).unwrap();
+        let raw =
+            std::fs::read_to_string(d.path().join(".houston/workflows/workflows.json")).unwrap();
         assert!(!raw.contains("\"plan\""));
         let found = find_by_id(d.path(), &w.id).unwrap();
         assert!(found.plan.is_none());

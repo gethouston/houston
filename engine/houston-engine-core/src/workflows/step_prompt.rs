@@ -9,8 +9,13 @@ No human can answer mid-step. Never pause to ask for approval or confirmation; \
 Houston already handled approval at the workflow gate when required. \
 Complete the task using your connected-app tools and local capabilities. \
 Report concretely what you created, sent, or changed (names, links, ids). \
-If a required integration is genuinely unavailable, fail with one clear reason \
-instead of asking a question.";
+If Composio itself is not signed in, output exactly \
+`<!--houston:workflow-connection {\"type\":\"composio_signin\"}-->`. \
+If a required Composio app is not connected, output exactly \
+`<!--houston:workflow-connection {\"type\":\"composio_toolkit\",\"toolkit\":\"<slug>\"}-->` \
+using the required toolkit slug. Never describe a missing Composio connection in prose; \
+emit the marker only. Emit one blocker only, with no question or normal error text. \
+Houston will show the connection UI and retry this step after authorization.";
 
 const APPROVED_GATE_INSTRUCTION: &str = "The user already approved this action in Houston. \
 Do it now using your connected-app tools. Do not ask for approval again; \
@@ -92,6 +97,7 @@ mod tests {
                         use_worktree: false,
                         depends_on: vec![],
                         requires_approval: false,
+                        toolkits: vec![],
                     },
                     WorkflowStep {
                         id: "write".into(),
@@ -102,6 +108,7 @@ mod tests {
                         use_worktree: false,
                         depends_on: vec!["research".into()],
                         requires_approval: true,
+                        toolkits: vec![],
                     },
                 ],
             }),
@@ -112,6 +119,7 @@ mod tests {
                     approved: false,
                     summary: Some(research_summary.into()),
                     worktree_path: None,
+                    blocker: None,
                 },
                 StepState {
                     step_id: "write".into(),
@@ -119,6 +127,7 @@ mod tests {
                     approved: true,
                     summary: None,
                     worktree_path: None,
+                    blocker: None,
                 },
             ],
             summary: None,

@@ -125,8 +125,7 @@ pub async fn maybe_trigger_from_chat(
     let agent_path_owned = agent_path.to_string();
     let events_spawn = events.clone();
     tokio::spawn(async move {
-        if let Err(e) = start_planning(events_spawn, dispatcher, &agent_path_owned, begun).await
-        {
+        if let Err(e) = start_planning(events_spawn, dispatcher, &agent_path_owned, begun).await {
             tracing::error!("[workflows] chat trigger planning failed: {e}");
         }
     });

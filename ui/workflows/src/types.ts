@@ -8,4 +8,5 @@ export type {
   StepState,
   WorkflowStepStatus,
   WorkflowRunStatus,
+  WorkflowConnectionBlocker,
 } from "@houston-ai/engine-client"

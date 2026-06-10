@@ -37,7 +37,10 @@ pub(crate) fn mark_step_awaiting(
     Ok(())
 }
 
-pub(crate) fn deps_done(step: &WorkflowStep, states: &[crate::workflows::types::StepState]) -> bool {
+pub(crate) fn deps_done(
+    step: &WorkflowStep,
+    states: &[crate::workflows::types::StepState],
+) -> bool {
     step.depends_on.iter().all(|dep| {
         states
             .iter()
@@ -175,6 +178,7 @@ mod tests {
             approved: false,
             summary: None,
             worktree_path: None,
+            blocker: None,
         }
     }
 

@@ -21,10 +21,12 @@ every `task` in the same language as the request above.";
 
 pub const PLAN_JSON_INSTRUCTION: &str = "\n\n---\n\
 Respond with ONLY a JSON object (no markdown, no commentary) matching this schema:\n\
-{\"steps\":[{\"id\":\"unique-id\",\"task\":\"what to do\",\"depends_on\":[],\"use_worktree\":false,\"requires_approval\":false}]}\n\
+{\"steps\":[{\"id\":\"unique-id\",\"task\":\"what to do\",\"depends_on\":[],\"use_worktree\":false,\"requires_approval\":false,\"toolkits\":[]}]}\n\
 Each step needs a unique `id`, non-empty `task`, optional `depends_on` (step ids), \
 optional `provider`/`model`/`effort`, `use_worktree` (boolean, default false), \
-and `requires_approval` (boolean, default false). \
+`requires_approval` (boolean, default false), and `toolkits` (array of lowercase Composio \
+toolkit slugs this step will use, e.g. `gmail`, `googledrive`, `googledocs`, `slack`; \
+empty when the step uses no connected app). \
 Set `requires_approval` to true on any step that creates, edits, sends, or deletes data \
 in a connected app (email, calendar, Drive, Slack, etc.) or writes/deletes files on disk. \
 Do not add standalone steps whose only job is to ask for approval; the engine pauses automatically. \
@@ -131,19 +133,21 @@ mod tests {
 
     #[test]
     fn plan_json_instruction_preserves_request_language() {
-        assert!(PLAN_JSON_INSTRUCTION.contains(
-            "Write every `task` value in the same language as the request above."
-        ));
+        assert!(PLAN_JSON_INSTRUCTION
+            .contains("Write every `task` value in the same language as the request above."));
+    }
+
+    #[test]
+    fn plan_json_instruction_mentions_toolkits() {
+        assert!(PLAN_JSON_INSTRUCTION.contains("\"toolkits\":[]"));
+        assert!(PLAN_JSON_INSTRUCTION.contains("`googledrive`"));
     }
 
     #[test]
     fn planner_system_appendix_requires_user_facing_task_language() {
-        assert!(PLANNER_SYSTEM_APPENDIX.contains(
-            "each step's `task` text is shown to the user"
-        ));
-        assert!(PLANNER_SYSTEM_APPENDIX.contains(
-            "write every `task` in the same language as the request above"
-        ));
+        assert!(PLANNER_SYSTEM_APPENDIX.contains("each step's `task` text is shown to the user"));
+        assert!(PLANNER_SYSTEM_APPENDIX
+            .contains("write every `task` in the same language as the request above"));
     }
 
     #[test]
@@ -159,8 +163,8 @@ mod tests {
         };
         let prompt = build_planner_prompt(&workflow);
         assert!(prompt.contains("Auditar el repositorio"));
-        assert!(prompt.contains(
-            "Write every `task` value in the same language as the request above."
-        ));
+        assert!(
+            prompt.contains("Write every `task` value in the same language as the request above.")
+        );
     }
 }

@@ -5,10 +5,10 @@ use crate::routines::runner::expand_tilde;
 use crate::sessions::{self, SessionRuntime};
 use crate::workflows::defs as workflow_defs;
 use crate::workflows::dispatcher::WorkflowDispatcher;
+use crate::workflows::executor_sched::retry_reset_ids;
 use crate::workflows::inline;
 use crate::workflows::keys::step_session_key;
 use crate::workflows::planner::{self, emit_runs_changed};
-use crate::workflows::executor_sched::retry_reset_ids;
 use crate::workflows::runner_execute::execute_run;
 use crate::workflows::runs as workflow_runs;
 use crate::workflows::types::{BegunRun, WorkflowRun, WorkflowRunUpdate};
@@ -59,13 +59,7 @@ pub async fn start_planning(
     begun: BegunRun,
 ) -> CoreResult<()> {
     if let Some(plan) = &begun.workflow.plan {
-        planner::attach_frozen_plan(
-            &events,
-            agent_path,
-            &begun.working_dir,
-            &begun.run.id,
-            plan,
-        )?;
+        planner::attach_frozen_plan(&events, agent_path, &begun.working_dir, &begun.run.id, plan)?;
         Ok(())
     } else {
         finish_planning(events, dispatcher, agent_path, begun).await
@@ -146,7 +140,10 @@ pub async fn retry_step(
     step_id: &str,
 ) -> CoreResult<WorkflowRun> {
     let run = workflow_runs::find_by_id(root, run_id)?;
-    if !matches!(run.status.as_str(), "error" | "cancelled") {
+    if !matches!(
+        run.status.as_str(),
+        "error" | "cancelled" | "waiting_for_connection"
+    ) {
         return Err(CoreError::Conflict(format!(
             "workflow run {run_id} cannot retry a step (status={})",
             run.status
@@ -164,7 +161,10 @@ pub async fn retry_step(
         .iter()
         .find(|s| s.step_id == step_id)
         .ok_or_else(|| CoreError::NotFound(format!("workflow step {step_id}")))?;
-    if !matches!(step_state.status.as_str(), "error" | "cancelled") {
+    if !matches!(
+        step_state.status.as_str(),
+        "error" | "cancelled" | "waiting_for_connection"
+    ) {
         return Err(CoreError::Conflict(format!(
             "workflow step {step_id} is not retryable (status={})",
             step_state.status
@@ -177,6 +177,7 @@ pub async fn retry_step(
             s.status = "pending".into();
             s.summary = None;
             s.worktree_path = None;
+            s.blocker = None;
         })?;
     }
     let updated = workflow_runs::update(
@@ -238,7 +239,10 @@ pub async fn resume_run(
         },
     )?;
     emit_runs_changed(&events, agent_path);
-    execute_run(events, dispatcher, rt, agent_path, root, workflow, run_id, true).await
+    execute_run(
+        events, dispatcher, rt, agent_path, root, workflow, run_id, true,
+    )
+    .await
 }
 
 pub async fn cancel_run(
@@ -251,7 +255,7 @@ pub async fn cancel_run(
     let run = workflow_runs::find_by_id(root, run_id)?;
     if !matches!(
         run.status.as_str(),
-        "planning" | "awaiting_approval" | "running"
+        "planning" | "awaiting_approval" | "waiting_for_connection" | "running"
     ) {
         return Err(CoreError::Conflict(format!(
             "workflow run {run_id} is not cancellable (status={})",
@@ -277,13 +281,17 @@ pub async fn cancel_run(
             let key = step_session_key(&run.workflow_id, run_id, &step.step_id);
             sessions::cancel(rt, events, agent_path, &key).await;
         }
-        if step.status == "pending" || step.status == "awaiting_approval" {
+        if matches!(
+            step.status.as_str(),
+            "pending" | "awaiting_approval" | "waiting_for_connection"
+        ) {
             let step_id = step.step_id.clone();
             if let Err(e) = workflow_runs::patch_step(root, run_id, &step_id, |s| {
                 s.status = "cancelled".into();
                 if s.summary.is_none() {
                     s.summary = Some("Stopped by user".into());
                 }
+                s.blocker = None;
             }) {
                 tracing::error!(
                     "[workflows] failed to cancel pending step {step_id} on run {run_id}: {e}"

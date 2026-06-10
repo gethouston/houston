@@ -24,6 +24,7 @@ import {
 } from "../../hooks/queries";
 import { useActiveRunLabels } from "../../hooks/use-active-run-labels";
 import type { TabProps } from "../../lib/types";
+import { WorkflowConnectionBlockerCard } from "../workflow-connection-blocker-card";
 
 export default function WorkflowsTab({ agent }: TabProps) {
   const { t } = useTranslation("workflows");
@@ -201,6 +202,17 @@ export default function WorkflowsTab({ agent }: TabProps) {
           retryStep.isPending && retryStep.variables
             ? retryStep.variables.stepId
             : undefined
+        }
+        renderStepDetail={(_step, state, detailRun) =>
+          state && detailRun ? (
+            <WorkflowConnectionBlockerCard
+              run={detailRun}
+              state={state}
+              onRetry={(blockedRunId, stepId) =>
+                retryStep.mutate({ runId: blockedRunId, stepId })
+              }
+            />
+          ) : null
         }
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         hasChanges={!formMatchesWorkflow(form, baseline)}

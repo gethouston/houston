@@ -27,6 +27,9 @@ pub struct WorkflowStep {
     /// When true, the run pauses at this step until the user approves before dispatch.
     #[serde(default)]
     pub requires_approval: bool,
+    /// Lowercase Composio toolkit slugs this step needs (e.g. `gmail`, `googledrive`).
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub toolkits: Vec<String>,
 }
 
 // -- Workflow definition --
@@ -84,7 +87,7 @@ pub struct InlineRunSpec {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct StepState {
     pub step_id: String,
-    /// `"pending" | "awaiting_approval" | "running" | "done" | "error" | "cancelled"`.
+    /// `"pending" | "awaiting_approval" | "waiting_for_connection" | "running" | "done" | "error" | "cancelled"`.
     pub status: String,
     /// User approved a mid-run gate for this step.
     #[serde(default)]
@@ -94,13 +97,22 @@ pub struct StepState {
     /// Set when `use_worktree` is true so cleanup can call `remove_worktree`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub worktree_path: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub blocker: Option<WorkflowConnectionBlocker>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum WorkflowConnectionBlocker {
+    ComposioSignin,
+    ComposioToolkit { toolkit: String },
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowRun {
     pub id: String,
     pub workflow_id: String,
-    /// `"planning" | "awaiting_approval" | "running" | "done" | "error" | "cancelled"`.
+    /// `"planning" | "awaiting_approval" | "waiting_for_connection" | "running" | "done" | "error" | "cancelled"`.
     pub status: String,
     /// Session key for chat history lookup (`"workflow-{wid}-run-{run_id}"`).
     pub session_key: String,

@@ -3,7 +3,13 @@
  */
 import { cn, Button } from "@houston-ai/core"
 import { Check, RotateCcw } from "lucide-react"
-import type { WorkflowPlan, WorkflowRun } from "./types"
+import type { ReactNode } from "react"
+import type {
+  StepState,
+  WorkflowPlan,
+  WorkflowRun,
+  WorkflowStep,
+} from "./types"
 import { layerSteps } from "./workflow-dag"
 import { stepStatusOf, stepSummaryOf } from "./workflow-dag"
 import {
@@ -33,6 +39,11 @@ export interface StepProgressProps {
   highlightStepId?: string
   onRetryStep?: (stepId: string) => void
   retryingStepId?: string
+  renderStepDetail?: (
+    step: WorkflowStep,
+    state: StepState | undefined,
+    run: WorkflowRun | undefined,
+  ) => ReactNode
   labels?: StepProgressLabels
 }
 
@@ -77,6 +88,7 @@ export function StepProgress({
   highlightStepId,
   onRetryStep,
   retryingStepId,
+  renderStepDetail,
   labels,
 }: StepProgressProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
@@ -101,6 +113,7 @@ export function StepProgress({
               stepIndex += 1
               const status = showStatus ? stepStatusOf(run, step.id) : undefined
               const summary = showStatus ? stepSummaryOf(run, step.id) : undefined
+              const state = run?.steps.find((item) => item.step_id === step.id)
               const highlighted = showStatus && highlightStepId === step.id
               const canRetry =
                 runIsRetryable &&
@@ -164,6 +177,7 @@ export function StepProgress({
                         {summary}
                       </p>
                     )}
+                    {renderStepDetail?.(step, state, run)}
                   </div>
                   {canRetry && (
                     <Button

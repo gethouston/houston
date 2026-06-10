@@ -5,10 +5,11 @@
  */
 
 import { useEffect, useMemo, useState } from "react"
+import type { ReactNode } from "react"
 
 import { Button } from "@houston-ai/core"
 
-import type { WorkflowRun } from "./types"
+import type { StepState, WorkflowRun, WorkflowStep } from "./types"
 
 import { PlanApprovalDialog } from "./plan-approval-dialog"
 
@@ -118,6 +119,12 @@ export interface ActiveRunPanelProps {
 
   retryingStepId?: string
 
+  renderStepDetail?: (
+    step: WorkflowStep,
+    state: StepState | undefined,
+    run: WorkflowRun | undefined,
+  ) => ReactNode
+
   approvePending?: boolean
 
   labels?: ActiveRunPanelLabels
@@ -137,6 +144,8 @@ export function ActiveRunPanel({
   onRetryStep,
 
   retryingStepId,
+
+  renderStepDetail,
 
   approvePending,
 
@@ -279,6 +288,8 @@ export function ActiveRunPanel({
           onRetryStep={onRetryStep}
 
           retryingStepId={retryingStepId}
+
+          renderStepDetail={renderStepDetail}
 
         />
 

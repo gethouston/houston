@@ -6,7 +6,8 @@ use std::collections::{HashMap, HashSet};
 
 /// Deserialize `raw` as a [`WorkflowPlan`] and validate structure.
 pub fn parse_plan(raw: &str) -> CoreResult<WorkflowPlan> {
-    let plan: WorkflowPlan = serde_json::from_str(raw)?;
+    let mut plan: WorkflowPlan = serde_json::from_str(raw)?;
+    normalize_plan(&mut plan);
     validate_plan(&plan)?;
     Ok(plan)
 }
@@ -37,9 +38,24 @@ pub fn parse_plan_from_response(raw: &str) -> CoreResult<WorkflowPlan> {
 
 /// Validate a plan already deserialized (saved on a workflow def or run).
 pub fn validate_stored_plan(plan: &WorkflowPlan) -> CoreResult<WorkflowPlan> {
-    validate_plan(plan)?;
-    crate::workflows::guards::enforce_run_limits(plan)?;
-    Ok(plan.clone())
+    let mut plan = plan.clone();
+    normalize_plan(&mut plan);
+    validate_plan(&plan)?;
+    crate::workflows::guards::enforce_run_limits(&plan)?;
+    Ok(plan)
+}
+
+fn normalize_plan(plan: &mut WorkflowPlan) {
+    for step in &mut plan.steps {
+        let mut seen = std::collections::HashSet::new();
+        step.toolkits = step
+            .toolkits
+            .iter()
+            .map(|t| t.trim().to_lowercase())
+            .filter(|t| !t.is_empty())
+            .filter(|t| seen.insert(t.clone()))
+            .collect();
+    }
 }
 
 fn validate_plan(plan: &WorkflowPlan) -> CoreResult<()> {
@@ -216,5 +232,12 @@ mod tests {
         let raw = format!("Here is the workflow plan:\n{}", sample_json());
         let plan = super::parse_plan_from_response(&raw).unwrap();
         assert_eq!(plan.steps.len(), 2);
+    }
+
+    #[test]
+    fn normalizes_toolkit_slugs() {
+        let raw = r#"{"steps":[{"id":"a","task":"create folder","toolkits":[" Gmail ","GOOGLEDRIVE","gmail",""]}]}"#;
+        let plan = parse_plan(raw).unwrap();
+        assert_eq!(plan.steps[0].toolkits, vec!["gmail", "googledrive"]);
     }
 }

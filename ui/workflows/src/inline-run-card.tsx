@@ -2,7 +2,8 @@
  * InlineRunCard — chat inline workflow run with connect-card styling.
  */
 import { Button } from "@houston-ai/core"
-import type { WorkflowRun } from "./types"
+import type { ReactNode } from "react"
+import type { StepState, WorkflowRun, WorkflowStep } from "./types"
 import type { ActiveRunPanelLabels } from "./active-run-panel"
 import {
   DEFAULT_RUN_CONTENT_LABELS,
@@ -59,6 +60,11 @@ export interface InlineRunCardProps {
   onCancel?: () => void
   onRetryStep?: (stepId: string) => void
   retryingStepId?: string
+  renderStepDetail?: (
+    step: WorkflowStep,
+    state: StepState | undefined,
+    run: WorkflowRun | undefined,
+  ) => ReactNode
   approvePending?: boolean
   cancelPending?: boolean
   savePrompt?: InlineRunSavePrompt
@@ -110,6 +116,7 @@ export function InlineRunCard({
   onCancel,
   onRetryStep,
   retryingStepId,
+  renderStepDetail,
   approvePending,
   cancelPending,
   savePrompt,
@@ -149,7 +156,7 @@ export function InlineRunCard({
   const showApprovalActions =
     run.status === "awaiting_approval" && onApprove && onCancel
   const showStopAction =
-    run.status === "running" && isCancellable(run.status) && onCancel
+    run.status !== "awaiting_approval" && isCancellable(run.status) && onCancel
 
   return (
     <section className="rounded-xl border border-black/5 bg-background px-3 py-2.5">
@@ -170,6 +177,7 @@ export function InlineRunCard({
         stepProgressLabels={labels?.stepProgress}
         onRetryStep={onRetryStep}
         retryingStepId={retryingStepId}
+        renderStepDetail={renderStepDetail}
       />
 
       {showApprovalActions && (

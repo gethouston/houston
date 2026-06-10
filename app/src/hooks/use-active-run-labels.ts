@@ -14,6 +14,7 @@ export function useActiveRunLabels(): {
     () => ({
       planning: t("runStatus.planning"),
       awaiting_approval: t("runStatus.awaiting_approval"),
+      waiting_for_connection: t("runStatus.waiting_for_connection"),
       running: t("runStatus.running"),
       done: t("runStatus.done"),
       error: t("runStatus.error"),
@@ -26,6 +27,7 @@ export function useActiveRunLabels(): {
     () => ({
       pending: t("stepStatus.pending"),
       awaiting_approval: t("stepStatus.awaiting_approval"),
+      waiting_for_connection: t("stepStatus.waiting_for_connection"),
       running: t("stepStatus.running"),
       done: t("stepStatus.done"),
       error: t("stepStatus.error"),

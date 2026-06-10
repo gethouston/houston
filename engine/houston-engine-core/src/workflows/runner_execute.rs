@@ -2,6 +2,7 @@
 
 use crate::error::CoreResult;
 use crate::sessions::SessionRuntime;
+use crate::workflows::connections::{ComposioConnectionChecker, ConnectionChecker};
 use crate::workflows::dispatcher::WorkflowDispatcher;
 use crate::workflows::executor;
 use crate::workflows::planner::emit_runs_changed;
@@ -23,10 +24,12 @@ pub(crate) async fn execute_run(
     run_id: &str,
     resume: bool,
 ) -> CoreResult<()> {
+    let connection_checker: Arc<dyn ConnectionChecker> = Arc::new(ComposioConnectionChecker);
     let fanout = executor::run_fanout(
         &events,
         dispatcher.clone(),
         &rt,
+        connection_checker,
         agent_path,
         root,
         &workflow,
@@ -44,14 +47,8 @@ pub(crate) async fn execute_run(
     }
 
     let run = workflow_runs::find_by_id(root, run_id)?;
-    let synthesis_out = synthesis::run_synthesis(
-        dispatcher,
-        agent_path,
-        root,
-        &workflow,
-        &run,
-    )
-    .await;
+    let synthesis_out =
+        synthesis::run_synthesis(dispatcher, agent_path, root, &workflow, &run).await;
     let now = Utc::now().to_rfc3339();
 
     if terminal_cancelled(root, run_id)? {

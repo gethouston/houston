@@ -2571,6 +2571,7 @@ dependencies = [
  "houston-agents-conversations",
  "houston-claude-installer",
  "houston-cli-bundle",
+ "houston-composio",
  "houston-db",
  "houston-engine-protocol",
  "houston-skills",
