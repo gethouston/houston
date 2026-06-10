@@ -42,6 +42,16 @@ pub struct StdoutReadReport {
     /// transcript, and the user perceived it as the conversation being
     /// frozen and her history vanishing.
     pub saw_resume_corrupted: bool,
+    /// True when the stdout parser already emitted a typed
+    /// [`FeedItem::ProviderError`] for this stream (rate-limit, internal
+    /// 5xx, quota, malformed, `Unknown`, …). `handle_failed_exit` reads
+    /// this to avoid stacking its generic spawn-failure card on top of the
+    /// already-shown typed card — claude reports API failures (e.g. a 429)
+    /// as a `result` event on stdout with empty stderr, so without this the
+    /// failed-exit path emitted a second `SpawnFailed` card next to the real
+    /// `RateLimited` one. Auth + model-unsupported keep their own dedicated
+    /// flags (they drive extra control flow); this is the catch-all.
+    pub saw_provider_error: bool,
 }
 
 /// Read all stderr lines, emitting only user-actionable feed items.
@@ -170,6 +180,7 @@ async fn read_claude_stdout(
         }
         let items = parser::parse_event(&line, &mut acc);
         mark_auth_error(&items, &mut report);
+        mark_provider_error(&items, &mut report);
         item_count += log_and_send(&tx, items);
     }
     tracing::debug!(
@@ -235,6 +246,7 @@ async fn read_codex_stdout(
         let mut items = codex_parser::parse_codex_event(&line, &mut acc);
         mark_auth_error(&items, &mut report);
         mark_model_unsupported(&items, &mut report);
+        mark_provider_error(&items, &mut report);
         if let Some(pos) = items
             .iter()
             .position(|item| matches!(item, FeedItem::FinalResult { .. }))
@@ -304,6 +316,25 @@ fn mark_model_unsupported(items: &[FeedItem], report: &mut StdoutReadReport) {
         )
     }) {
         report.saw_model_unsupported_error = true;
+    }
+}
+
+/// Flag that the parser emitted a typed [`ProviderError`] card from the
+/// stdout stream so [`crate::cli_process::handle_failed_exit`] does not stack
+/// its generic spawn-failure card on top. `Cancelled` is excluded — it is a
+/// user-stop marker, not a failure that the exit path would otherwise want to
+/// explain.
+fn mark_provider_error(items: &[FeedItem], report: &mut StdoutReadReport) {
+    if report.saw_provider_error {
+        return;
+    }
+    if items.iter().any(|item| {
+        matches!(
+            item,
+            FeedItem::ProviderError(e) if !matches!(e, ProviderError::Cancelled { .. })
+        )
+    }) {
+        report.saw_provider_error = true;
     }
 }
 
@@ -400,6 +431,36 @@ mod tests {
             report.saw_auth_error,
             "claude 401 result event should set saw_auth_error"
         );
+    }
+
+    #[test]
+    fn mark_provider_error_flags_claude_429_result_via_parser() {
+        // claude reports a 429 as a stdout `result` event with empty stderr.
+        // The parser emits ProviderError::RateLimited; the flag must be set so
+        // handle_failed_exit does not stack a second SpawnFailed card.
+        let line = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"interrupted"}"#;
+        let mut acc = parser::StreamAccumulator::new();
+        let items = parser::parse_event(line, &mut acc);
+        let mut report = StdoutReadReport::default();
+        mark_provider_error(&items, &mut report);
+        assert!(report.saw_provider_error);
+    }
+
+    #[test]
+    fn mark_provider_error_ignores_cancelled_and_plain_items() {
+        let mut report = StdoutReadReport::default();
+        mark_provider_error(
+            &[FeedItem::ProviderError(ProviderError::Cancelled {
+                provider: "anthropic".to_string(),
+            })],
+            &mut report,
+        );
+        assert!(
+            !report.saw_provider_error,
+            "Cancelled is a user-stop marker, not a failure card"
+        );
+        mark_provider_error(&[FeedItem::AssistantText("hi".to_string())], &mut report);
+        assert!(!report.saw_provider_error);
     }
 
     #[test]

@@ -182,6 +182,7 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
             subtype,
             result,
             is_error,
+            api_error_status,
             cost_usd,
             duration_ms,
             usage: result_usage,
@@ -197,7 +198,19 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
                 // than a dead-end string.
                 let message = result.unwrap_or_else(|| "Unknown error".to_string());
                 let subtype_str = subtype.as_deref().unwrap_or("error");
-                let typed = anthropic_classify::classify_result_error(subtype_str, &message)
+                // Prefer the authoritative `api_error_status` HTTP code
+                // (e.g. 429) over the human `result` text. claude-code sets
+                // `is_error:true` with `api_error_status:429` but `subtype`
+                // can still be `"success"` and the `result` string often
+                // omits the word "rate limit" — so text matching alone
+                // misfiles a throttle as `Unknown`. Fall back to text
+                // classification when the code is absent/unrecognised, then
+                // to `Unknown` (always a Report-bug CTA, never a dead end).
+                let typed = api_error_status
+                    .and_then(|status| {
+                        anthropic_classify::classify_api_error_status(status, &message)
+                    })
+                    .or_else(|| anthropic_classify::classify_result_error(subtype_str, &message))
                     .unwrap_or_else(|| ProviderError::Unknown {
                         provider: ANTHROPIC.into(),
                         raw_excerpt: truncate_excerpt(&message),
@@ -683,6 +696,63 @@ mod tests {
             FeedItem::ProviderError(_) => {}
             other => panic!("expected ProviderError, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn result_api_error_status_429_classifies_as_rate_limited() {
+        // Production case (Luis, 2026-06-09): `subtype:"success"` yet
+        // `is_error:true` with `api_error_status:429`, and a `result` string
+        // that never says "rate limit". The numeric status must drive the
+        // card to RateLimited instead of the misleading Unknown/Report-bug.
+        let line = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"Claude's response was interrupted"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::RateLimited { provider, .. }) => {
+                assert_eq!(provider, "anthropic");
+            }
+            other => panic!("expected RateLimited, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn result_api_error_status_5xx_classifies_as_provider_internal() {
+        let line = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":529,"result":"overloaded"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::ProviderInternal {
+                http_status: Some(529),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn result_without_api_error_status_falls_back_to_text_classification() {
+        // No numeric code → the existing text classifier still promotes the
+        // auth phrasing to a typed Unauthenticated card.
+        let line = r#"{"type":"result","subtype":"error","is_error":true,"result":"Claude Code is not authenticated. Run claude auth login"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
+        ));
+    }
+
+    #[test]
+    fn result_with_unremarkable_api_error_status_falls_back_to_unknown() {
+        // A 400 has no dedicated card and the message carries no known
+        // phrasing → Unknown (still a Report-bug CTA, never a dead end).
+        let line = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":400,"result":"weird unmatched failure"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unknown { .. })
+        ));
     }
 
     fn final_result_usage(items: &[FeedItem]) -> Option<TokenUsage> {

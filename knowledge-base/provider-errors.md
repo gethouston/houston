@@ -70,6 +70,39 @@ Live in `engine/houston-terminal-manager/src/session_io.rs`
 one card per `kind` (deduped) so a 10-attempt backoff loop produces
 ONE `RateLimited` card, not ten.
 
+**Anthropic result events classify by HTTP code first.** claude-code sets
+`is_error:true` with a numeric `api_error_status` (e.g. `429`) but the
+`subtype` is often `"success"` and the human `result` string omits the
+status word — so `parser.rs` tries `anthropic_classify::classify_api_error_status`
+(429→`RateLimited`, 401/403→`Unauthenticated`, 5xx→`ProviderInternal`)
+BEFORE the text-based `classify_result_error`, then falls back to
+`Unknown`. Text matching alone misfiled rate-limits as `Unknown`
+("Report bug") — see Luis / 2026-06-09.
+
+**No double cards.** claude reports these failures on stdout with empty
+stderr, then exits non-zero. `cli_process::handle_failed_exit` would
+otherwise add its generic `SpawnFailed` fallback on top of the parser's
+typed card, so the stdout reader sets `StdoutReadReport::saw_provider_error`
+(via `mark_provider_error`) and the fallback is skipped when it is set
+(alongside the existing `saw_auth_error` / `saw_model_unsupported_error`
+guards).
+
+**Codex terminal auth surfaces from stdout, like claude.** When ChatGPT
+kills the login session server-side it returns `app_session_terminated` /
+"Your session has ended. Please log in again." and codex loops
+`Reconnecting... N/5` forever. The parser used to treat ALL of that as
+deferred retry noise (`AUTH_RETRY_MARKER`), and the only `Unauthenticated`
+card came from a stderr line emitted BEFORE `thread.started` — so it was
+never persisted and vanished on reload, leaving the chat with just a red
+border. Now `codex_parser` distinguishes a TERMINAL auth failure
+(`auth_error::is_terminal_auth_error`) from a transient reconnect: terminal
+emits `ProviderError::Unauthenticated` once (deduped via
+`CodexAccumulator::auth_card_emitted`), fires after `thread.started` so it
+persists, and renders the same login-button `UnauthenticatedCard` Claude
+gets. Transient reconnects keep the deferred marker. The frontend
+(`feed-to-messages`) also dedupes provider-error cards by `(kind, provider)`
+so the transient stderr card and the persisted stdout card collapse to one.
+
 ## Adding a new provider
 
 1. Implement `classify_stderr` + `classify_result_error` on the new

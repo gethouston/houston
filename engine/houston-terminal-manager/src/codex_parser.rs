@@ -3,9 +3,9 @@
 //! Maps Codex events to the same `FeedItem` variants used by the Claude parser,
 //! so the rest of the stack (session_runner, frontend) is provider-agnostic.
 
-use super::auth_error::{is_auth_retry_noise, AUTH_RETRY_MARKER};
+use super::auth_error::{is_auth_retry_noise, is_terminal_auth_error, AUTH_RETRY_MARKER};
 use super::provider::Provider;
-use super::provider_error_kind::ProviderError;
+use super::provider_error_kind::{truncate_excerpt, AuthFailureCause, ProviderError};
 use super::types::FeedItem;
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
@@ -195,6 +195,11 @@ pub struct CodexAccumulator {
     /// block transitions out of its streaming state and doesn't strand a
     /// permanent shimmer in the chat.
     thinking_placeholder_open: bool,
+    /// True once a terminal-auth `Unauthenticated` card has been emitted for
+    /// this session. codex prints the "Reconnecting... N/5 (session ended)"
+    /// banner up to 5× and then restarts the whole turn, so without this the
+    /// feed would stack a reconnect card per retry. One per session is enough.
+    auth_card_emitted: bool,
 }
 
 impl CodexAccumulator {
@@ -305,11 +310,38 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                 items.push(FeedItem::Thinking(std::mem::take(&mut acc.thinking_buffer)));
             }
             // Auth retry noise (e.g. "Reconnecting... 1/5 (unexpected status 401 Unauthorized...)")
-            // Show a single friendly "Checking connection..." instead of raw retries.
             if is_auth_retry_noise(&msg) {
-                tracing::info!("[codex] auth retry detected — suppressing raw error");
-                // Return a marker so session_runner can track it, but don't show raw noise.
-                items.push(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
+                if is_terminal_auth_error(&msg) {
+                    // TERMINAL auth: ChatGPT killed the session server-side
+                    // (`app_session_terminated` / "Your session has ended")
+                    // and codex will loop "Reconnecting... N/5" forever
+                    // without recovering. Surface a real reconnect card NOW
+                    // instead of the deferred marker — this fires after
+                    // `thread.started`, so it persists and survives a history
+                    // reload, giving OpenAI chats the same login-button card
+                    // Claude already gets from its `result` auth error. The
+                    // transient pre-session-id stderr card was never
+                    // persisted, which is why the user saw only a red border.
+                    // Emit once; later retries (and the turn restart) are
+                    // dropped by `auth_card_emitted`.
+                    if !acc.auth_card_emitted {
+                        acc.auth_card_emitted = true;
+                        tracing::info!("[codex] terminal auth detected — emitting Unauthenticated card");
+                        let typed = classify_codex_error_message(&msg).unwrap_or_else(|| {
+                            ProviderError::Unauthenticated {
+                                provider: "openai".to_string(),
+                                cause: AuthFailureCause::Unknown,
+                                message: truncate_excerpt(&msg),
+                            }
+                        });
+                        items.push(FeedItem::ProviderError(typed));
+                    }
+                } else {
+                    // Transient reconnect (a bare 401 codex may refresh past).
+                    // Defer via the marker so a recovered turn shows no error.
+                    tracing::info!("[codex] auth retry detected — suppressing raw error");
+                    items.push(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
+                }
             } else if let Some(typed) = classify_codex_error_message(&msg) {
                 // Typed classifier path. Covers ProviderModelUnsupported
                 // (the "is not supported when using Codex with a ChatGPT
@@ -731,6 +763,48 @@ mod tests {
             &items[0],
             FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
         ));
+    }
+
+    #[test]
+    fn terminal_auth_retry_emits_persisted_unauthenticated_card() {
+        // Production case (Luis, 2026-06-09): codex wraps a server-side session
+        // kill in its retry banner. Even though it says "Reconnecting", the
+        // session has ended for good — so we surface a real reconnect card
+        // (login button) instead of the deferred __auth_retry__ marker. This
+        // is what gives OpenAI chats parity with Claude's auth card.
+        let line = r#"{"type":"error","message":"Reconnecting... 1/5 (Failed to refresh token: 400 Bad Request: Your session has ended. Please log in again.)"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { provider, .. }) if provider == "openai"
+        ));
+    }
+
+    #[test]
+    fn terminal_auth_card_emitted_once_per_session() {
+        // codex prints the banner up to 5× then restarts the turn — the feed
+        // must not stack a reconnect card per retry.
+        let mut a = acc();
+        let line = r#"{"type":"error","message":"Reconnecting... 2/5 (Failed to refresh token: 400 Bad Request: Your session has ended. Please log in again.)"}"#;
+        let first = parse_codex_event(line, &mut a);
+        assert_eq!(first.len(), 1);
+        assert!(matches!(
+            &first[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
+        ));
+        let second = parse_codex_event(line, &mut a);
+        assert!(second.is_empty(), "duplicate terminal-auth retries must be dropped, got {second:?}");
+    }
+
+    #[test]
+    fn transient_auth_retry_still_defers_via_marker() {
+        // A bare 401 (no terminal phrasing) codex may refresh past keeps the
+        // deferred marker so a recovered turn shows no error.
+        let line = r#"{"type":"error","message":"Reconnecting... 1/5 (unexpected status 401 Unauthorized: Missing bearer)"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m == "__auth_retry__"));
     }
 
     #[test]

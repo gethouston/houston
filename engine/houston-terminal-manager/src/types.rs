@@ -31,6 +31,12 @@ pub enum ClaudeEvent {
         subtype: Option<String>,
         result: Option<String>,
         is_error: Option<bool>,
+        /// HTTP status claude-code attaches when the terminal API request
+        /// failed (e.g. `api_error_status:429`). The human `result` string
+        /// frequently omits the status, so this numeric field is the
+        /// authoritative signal for rate-limit / server-error / auth
+        /// classification. `null` (or absent) on a clean turn.
+        api_error_status: Option<u16>,
         cost_usd: Option<f64>,
         duration_ms: Option<u64>,
         session_id: Option<String>,

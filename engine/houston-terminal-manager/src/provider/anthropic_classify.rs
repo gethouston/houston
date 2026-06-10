@@ -155,6 +155,41 @@ pub(crate) fn classify_result_error(
     classify_stderr(error_message)
 }
 
+/// Map a claude-code `api_error_status` HTTP code to a typed [`ProviderError`].
+///
+/// claude-code attaches this numeric field to terminal `result` events when
+/// the underlying API request failed (e.g. `{"is_error":true,
+/// "api_error_status":429,...}`). It is the AUTHORITATIVE signal: the human
+/// `result` string regularly omits the status text (and the `subtype` is even
+/// `"success"` on these), so classifying from `result` text alone misfiles a
+/// rate-limit as `Unknown` ("Report bug"). Callers should try this first and
+/// fall back to [`classify_result_error`] only when the code is absent or
+/// unrecognised.
+pub(crate) fn classify_api_error_status(status: u16, message: &str) -> Option<ProviderError> {
+    match status {
+        429 => Some(ProviderError::RateLimited {
+            provider: PROVIDER.into(),
+            model: None,
+            retry_after_seconds: parse_retry_after_seconds(message),
+            message: truncate_excerpt(message),
+        }),
+        401 | 403 => Some(ProviderError::Unauthenticated {
+            provider: PROVIDER.into(),
+            cause: AuthFailureCause::Unknown,
+            message: truncate_excerpt(message),
+        }),
+        500..=599 => Some(ProviderError::ProviderInternal {
+            provider: PROVIDER.into(),
+            http_status: Some(status),
+            message: truncate_excerpt(message),
+        }),
+        // 2xx/3xx/4xx-other: no dedicated card — let the caller fall back to
+        // text classification (and ultimately Unknown, which still carries a
+        // Report-bug CTA).
+        _ => None,
+    }
+}
+
 /// Extract the human-readable reset hint from a claude-code usage-limit
 /// banner like `"Claude usage limit reached. Your limit will reset at
 /// 5pm (America/Los_Angeles)"`. Returns the substring after `reset at`
@@ -352,5 +387,60 @@ mod tests {
         assert!(classify_stderr("Reading prompt from stdin...").is_none());
         assert!(classify_stderr("warning: harmless detail").is_none());
         assert!(classify_stderr("").is_none());
+    }
+
+    #[test]
+    fn api_error_status_429_is_rate_limited_even_with_generic_message() {
+        // The production case (Luis, 2026-06-09): claude exits with
+        // `is_error:true, api_error_status:429` but a `result` string that
+        // carries no "rate limit" text. The numeric code must drive the
+        // classification so the user sees RateLimited, not Unknown.
+        match classify_api_error_status(429, "Claude's response was interrupted").unwrap() {
+            ProviderError::RateLimited { provider, .. } => assert_eq!(provider, "anthropic"),
+            other => panic!("expected RateLimited, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn api_error_status_429_extracts_retry_after() {
+        match classify_api_error_status(429, "throttled, retry after 42 seconds").unwrap() {
+            ProviderError::RateLimited {
+                retry_after_seconds: Some(42),
+                ..
+            } => {}
+            other => panic!("expected RateLimited retry_after=42, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn api_error_status_401_and_403_are_unauthenticated() {
+        assert!(matches!(
+            classify_api_error_status(401, "unauthorized").unwrap(),
+            ProviderError::Unauthenticated { .. }
+        ));
+        assert!(matches!(
+            classify_api_error_status(403, "forbidden").unwrap(),
+            ProviderError::Unauthenticated { .. }
+        ));
+    }
+
+    #[test]
+    fn api_error_status_5xx_is_provider_internal() {
+        match classify_api_error_status(529, "overloaded").unwrap() {
+            ProviderError::ProviderInternal {
+                http_status: Some(529),
+                ..
+            } => {}
+            other => panic!("expected ProviderInternal 529, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn api_error_status_unremarkable_codes_return_none() {
+        // 2xx/3xx and 4xx-other have no dedicated card — the caller falls
+        // back to text classification (then Unknown).
+        assert!(classify_api_error_status(200, "ok").is_none());
+        assert!(classify_api_error_status(400, "bad request").is_none());
+        assert!(classify_api_error_status(404, "not found").is_none());
     }
 }

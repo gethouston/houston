@@ -236,16 +236,19 @@ fn handle_failed_exit(
     // Generic fallback. Skip emitting the typed card if the stderr
     // classifier already produced one (`read_stderr_lines` walks the
     // same lines, so re-classifying here tells us whether a typed
-    // variant was sent), or if the line matched the local-tool runtime
-    // filter (codex_core router exec_command failures keep their
-    // dedicated card path).
+    // variant was sent), if the stdout parser already emitted a typed
+    // ProviderError (e.g. claude reports a 429 as a `result` event on
+    // stdout with empty stderr — without this guard we'd stack a
+    // `SpawnFailed` card on top of the real `RateLimited` one), or if the
+    // line matched the local-tool runtime filter (codex_core router
+    // exec_command failures keep their dedicated card path).
     let already_emitted_typed = stderr_lines
         .iter()
         .any(|line| provider.classify_stderr(line).is_some());
     let is_tool_runtime = stderr_lines
         .iter()
         .any(|line| crate::stderr_filter::is_tool_runtime_stderr(line));
-    if !already_emitted_typed && !is_tool_runtime {
+    if !already_emitted_typed && !is_tool_runtime && !stdout_report.saw_provider_error {
         let stderr_summary = if stderr_lines.is_empty() {
             "no stderr output captured".to_string()
         } else {
@@ -367,6 +370,7 @@ mod tests {
             saw_auth_error: true,
             saw_model_unsupported_error: false,
             saw_resume_corrupted: false,
+            saw_provider_error: false,
         };
 
         let outcome =
@@ -411,6 +415,37 @@ mod tests {
             u,
             SessionUpdate::Feed(FeedItem::ProviderError(ProviderError::SpawnFailed { message, .. }))
                 if message == "no stderr output captured"
+        )));
+    }
+
+    #[test]
+    fn stdout_provider_error_skips_generic_spawn_failure_card() {
+        // The double-card regression: claude reports a 429 as a stdout
+        // `result` event (the parser already emitted ProviderError::RateLimited
+        // and set saw_provider_error), with empty stderr. handle_failed_exit
+        // must NOT pile a second SpawnFailed card on top.
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let stdout_report = session_io::StdoutReadReport {
+            saw_provider_error: true,
+            ..session_io::StdoutReadReport::default()
+        };
+
+        let outcome =
+            handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
+        assert_eq!(outcome, CliRunOutcome::Failed);
+
+        let updates = drain(&mut rx);
+        assert!(
+            !updates.iter().any(|u| matches!(
+                u,
+                SessionUpdate::Feed(FeedItem::ProviderError(_))
+            )),
+            "must not emit a second ProviderError card when the parser already did: {updates:?}"
+        );
+        // Status error still flips so the session resolves.
+        assert!(updates.iter().any(|u| matches!(
+            u,
+            SessionUpdate::Status(SessionStatus::Error(_))
         )));
     }
 
