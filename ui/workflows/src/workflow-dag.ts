@@ -10,6 +10,7 @@ import type {
 const ACTIVE_STATUSES = new Set<WorkflowRunStatus>([
   "planning",
   "awaiting_approval",
+  "waiting_for_connection",
   "running",
 ])
 

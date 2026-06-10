@@ -30,13 +30,18 @@ Engine CRUD: `engine/houston-engine-core/src/workflows/defs.rs` (definitions), `
 ## Run lifecycle
 
 ```
-planning → awaiting_approval → running → done | error | cancelled
+planning → awaiting_approval → running → waiting_for_connection → running → done | error | cancelled
 ```
 
-1. **Planner** — dedicated session (`session_key` = `workflow-{wid}-run-{run_id}`) turns `plan_prompt` into a `WorkflowPlan` (DAG of steps with optional `depends_on`, `use_worktree`, `requires_approval`).
+1. **Planner** — dedicated session (`session_key` = `workflow-{wid}-run-{run_id}`) turns `plan_prompt` into a `WorkflowPlan` (DAG of steps with optional `depends_on`, `use_worktree`, `requires_approval`, `toolkits`).
 2. **Approval** — user approves or cancels from Workflows tab editor or inline chat panel (`ActiveRunPanel`).
 3. **Executor** — steps run in dependency order; independent steps may overlap. Mid-run gates pause on `requires_approval` until the user approves that step.
-4. **Summary** — final synthesis written to `run.summary`.
+4. **Connection gates** — three layers block a step with `waiting_for_connection` until the user connects Composio or the required app:
+   - **Pre-flight** — the planner annotates each step with `toolkits` (lowercase Composio slugs). Before dispatch, the executor checks sign-in and connected toolkits; a missing requirement sets the blocker immediately without running the step.
+   - **Runtime marker** — if a step runs and the agent emits `<!--houston:workflow-connection {...}-->` in its response, the same blocker path applies.
+   - **Recovery probe** — if the step finishes without a marker but prose looks like a Composio connection failure (CLI strings or en/es/pt phrasing, with no action evidence), the executor runs one extra probe turn in the same step session. The probe must reply with a marker or `NO_BLOCKER` only; a marker sets the blocker, `NO_BLOCKER` lets the step complete normally, and garbage or dispatch errors mark the step `error` while keeping the original summary.
+   Dependents stay pending, independent branches continue, and synthesis waits. Supported blockers are `composio_signin` and `composio_toolkit` with a toolkit slug.
+5. **Summary** — final synthesis written to `run.summary`.
 
 Manual start: Workflows tab → Run → `POST /v1/workflows/:id/run`.
 Chat start: agent emits trigger marker (below); engine intercepts after the user chat turn.
@@ -99,6 +104,8 @@ Inline panel: `useWorkflowRuns(agentPath)` finds run by id, renders `InlineRunCa
 
 Failed or blocked steps on terminal runs (`error` / `cancelled`) show a per-step **Retry** button in `StepProgress` (Workflows tab run panel + inline chat card). Retry resets the target step, any non-`done` ancestors it needs, and all downstream dependents to `pending`, then re-executes only that subgraph (`POST /v1/workflow-runs/:id/steps/:stepId/retry`). Unrelated failed branches stay as-is. Whole-run **Resume** (`POST .../resume`) still re-runs every failed/cancelled step.
 
+Connection-blocked steps render the existing Composio sign-in or toolkit card through `@houston-ai/workflows`' generic `renderStepDetail` prop. The app generates toolkit authorization URLs on click, watches live connection state, and retries the blocked step once when the requirement is satisfied. Stop remains available while the run waits.
+
 Mobile chat parity for the inline panel is deferred.
 
 ## Reactivity
@@ -118,6 +125,8 @@ WS topic: `workflows:{agent_path}` (`engine/houston-engine-protocol::event_topic
 | `workflows/runs.rs` | Run rows; `create`, `create_inline` |
 | `workflows/inline.rs` | `effective_workflow`, `begin_inline_run` |
 | `workflows/planner.rs` | Plan generation session |
+| `workflows/connections.rs` | Composio pre-flight connection checker |
+| `workflows/connection_probe.rs` | Prose connection-failure recovery probe |
 | `workflows/runner.rs` | Approve, execute, resume, retry step, cancel |
 | `workflows/chat_trigger.rs` | Marker parse, route, `maybe_trigger_from_chat` |
 | `workflows/context.rs` | `# Available Workflows` prompt section |

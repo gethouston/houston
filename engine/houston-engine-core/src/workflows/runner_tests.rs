@@ -1,20 +1,21 @@
 //! Integration-style tests for the workflow runner and executor.
 
+use crate::sessions::SessionRuntime;
+use crate::workflows::connections::{ConnectionChecker, FakeConnectionChecker};
 use crate::workflows::defs::create as create_workflow;
 use crate::workflows::dispatcher::{
     DispatchOutcome, PlannerContext, StepContext, SynthesisContext, WorkflowDispatcher,
 };
 use crate::workflows::executor;
+use crate::workflows::inline::begin_inline_run;
 use crate::workflows::keys::step_session_key;
 use crate::workflows::plan::parse_plan;
-use crate::workflows::inline::begin_inline_run;
 use crate::workflows::runner::{
     approve_run, begin_run, cancel_run, finish_planning, resume_run, retry_step, start_planning,
 };
-use crate::workflows::types::{BegunRun, InlineRunSpec};
 use crate::workflows::runs as workflow_runs;
+use crate::workflows::types::{BegunRun, InlineRunSpec};
 use crate::workflows::types::{NewWorkflow, StepState, WorkflowRunUpdate};
-use crate::sessions::SessionRuntime;
 use async_trait::async_trait;
 use houston_ui_events::{DynEventSink, NoopEventSink};
 use std::collections::HashMap;
@@ -46,10 +47,7 @@ impl WorkflowDispatcher for ScriptedDispatcher {
             tokio::time::sleep(std::time::Duration::from_millis(self.delay_ms)).await;
         }
         self.active.fetch_sub(1, Ordering::SeqCst);
-        self.order
-            .lock()
-            .unwrap()
-            .push(ctx.step.id.clone());
+        self.order.lock().unwrap().push(ctx.step.id.clone());
         self.prompts
             .lock()
             .unwrap()
@@ -82,6 +80,16 @@ fn valid_plan_json() -> &'static str {
       {"id":"a","task":"first"},
       {"id":"b","task":"second","depends_on":["a"]}
     ]}"#
+}
+
+fn all_connected_checker() -> Arc<dyn ConnectionChecker> {
+    Arc::new(FakeConnectionChecker {
+        signed_in: true,
+        connected: ["gmail", "googledrive", "googledocs", "slack"]
+            .into_iter()
+            .map(String::from)
+            .collect(),
+    })
 }
 
 async fn setup_planned_run(
@@ -299,6 +307,7 @@ async fn inline_run_resume_skips_done_steps() {
                     approved: false,
                     summary: Some("ok".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
                 StepState {
                     step_id: "b".into(),
@@ -306,6 +315,7 @@ async fn inline_run_resume_skips_done_steps() {
                     approved: false,
                     summary: Some("boom".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
             ]),
             ..Default::default()
@@ -408,6 +418,94 @@ async fn independent_steps_can_overlap() {
 }
 
 #[tokio::test]
+async fn connection_blocker_pauses_only_its_branch() {
+    let d = TempDir::new().unwrap();
+    let plan_json = r#"{"steps":[
+      {"id":"blocked","task":"send email"},
+      {"id":"dependent","task":"confirm send","depends_on":["blocked"]},
+      {"id":"independent","task":"write local notes"}
+    ]}"#;
+    let agent_path = d.path().to_string_lossy().to_string();
+    let w = create_workflow(d.path(), sample_workflow()).unwrap();
+    let dispatcher = Arc::new(ScriptedDispatcher {
+        planner: DispatchOutcome {
+            response_text: plan_json.into(),
+            error: None,
+        },
+        steps: HashMap::from([(
+            "blocked".into(),
+            DispatchOutcome {
+                response_text: r#"<!--houston:workflow-connection {"type":"composio_toolkit","toolkit":"gmail"}-->"#.into(),
+                error: None,
+            },
+        )]),
+        synthesis: DispatchOutcome {
+            response_text: "synthesis must not run".into(),
+            error: Some("synthesis must not run".into()),
+        },
+        order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
+        active: AtomicUsize::new(0),
+        peak: AtomicUsize::new(0),
+        delay_ms: 0,
+    });
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    let begun = begin_run(&events, &agent_path, &w.id).unwrap();
+    finish_planning(
+        events,
+        dispatcher.clone(),
+        &agent_path,
+        BegunRun {
+            working_dir: begun.working_dir.clone(),
+            workflow: begun.workflow.clone(),
+            run: begun.run.clone(),
+        },
+    )
+    .await
+    .unwrap();
+
+    approve_run(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher,
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+    tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    assert_eq!(run.status, "waiting_for_connection");
+    assert!(run.summary.is_none());
+    assert_eq!(
+        run.steps
+            .iter()
+            .find(|s| s.step_id == "blocked")
+            .unwrap()
+            .status,
+        "waiting_for_connection"
+    );
+    assert_eq!(
+        run.steps
+            .iter()
+            .find(|s| s.step_id == "dependent")
+            .unwrap()
+            .status,
+        "pending"
+    );
+    assert_eq!(
+        run.steps
+            .iter()
+            .find(|s| s.step_id == "independent")
+            .unwrap()
+            .status,
+        "done"
+    );
+}
+
+#[tokio::test]
 async fn cancel_marks_terminal() {
     let d = TempDir::new().unwrap();
     let (agent_path, begun, dispatcher) = setup_planned_run(&d, valid_plan_json()).await;
@@ -423,15 +521,9 @@ async fn cancel_marks_terminal() {
     .unwrap();
     let rt = SessionRuntime::default();
     let events: DynEventSink = Arc::new(NoopEventSink);
-    let updated = cancel_run(
-        &rt,
-        &events,
-        d.path(),
-        &agent_path,
-        &begun.run.id,
-    )
-    .await
-    .unwrap();
+    let updated = cancel_run(&rt, &events, d.path(), &agent_path, &begun.run.id)
+        .await
+        .unwrap();
     assert_eq!(updated.status, "cancelled");
     drop(dispatcher);
 }
@@ -454,6 +546,7 @@ async fn resume_skips_done_steps() {
                     approved: false,
                     summary: Some("ok".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
                 StepState {
                     step_id: "b".into(),
@@ -461,6 +554,7 @@ async fn resume_skips_done_steps() {
                     approved: false,
                     summary: Some("boom".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
             ]),
             ..Default::default()
@@ -478,7 +572,10 @@ async fn resume_skips_done_steps() {
     .await
     .unwrap();
     let order = dispatcher.order.lock().unwrap().clone();
-    assert!(!order.contains(&"a".to_string()), "done step must be skipped");
+    assert!(
+        !order.contains(&"a".to_string()),
+        "done step must be skipped"
+    );
     assert!(order.contains(&"b".to_string()));
 }
 
@@ -520,6 +617,7 @@ async fn executor_cancelled_mid_run_stops() {
             &events_fanout,
             dispatcher,
             &rt,
+            all_connected_checker(),
             &agent_path_clone,
             &root,
             &wf,
@@ -580,7 +678,10 @@ async fn gated_step_pauses_run_for_midrun_approval() {
     assert_eq!(research.status, "done");
     assert_eq!(write.status, "awaiting_approval");
     let order = dispatcher.order.lock().unwrap();
-    assert!(!order.contains(&"write".to_string()), "gated step must not dispatch");
+    assert!(
+        !order.contains(&"write".to_string()),
+        "gated step must not dispatch"
+    );
 }
 
 #[tokio::test]
@@ -633,7 +734,10 @@ async fn midrun_approve_resumes_gated_step() {
             break;
         }
         if std::time::Instant::now() >= deadline {
-            panic!("run did not finish after mid-run approval: status={}", run.status);
+            panic!(
+                "run did not finish after mid-run approval: status={}",
+                run.status
+            );
         }
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
@@ -696,7 +800,10 @@ async fn approved_gated_step_prompt_includes_context() {
             break;
         }
         if std::time::Instant::now() >= deadline {
-            panic!("run did not finish after mid-run approval: status={}", run.status);
+            panic!(
+                "run did not finish after mid-run approval: status={}",
+                run.status
+            );
         }
         tokio::time::sleep(std::time::Duration::from_millis(50)).await;
     }
@@ -767,6 +874,7 @@ async fn cancel_removes_persisted_worktree() {
                 approved: false,
                 summary: None,
                 worktree_path: Some(created.path.clone()),
+                blocker: None,
             }]),
             ..Default::default()
         },
@@ -883,6 +991,7 @@ async fn retry_step_rejects_non_failed_step() {
                     approved: false,
                     summary: Some("ok".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
                 StepState {
                     step_id: "b".into(),
@@ -890,6 +999,7 @@ async fn retry_step_rejects_non_failed_step() {
                     approved: false,
                     summary: Some("boom".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
             ]),
             ..Default::default()
@@ -908,6 +1018,60 @@ async fn retry_step_rejects_non_failed_step() {
     .await
     .unwrap_err();
     assert!(matches!(err, crate::CoreError::Conflict(_)));
+}
+
+#[tokio::test]
+async fn retry_step_accepts_waiting_connection_and_clears_blocker() {
+    let d = TempDir::new().unwrap();
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, valid_plan_json()).await;
+    let plan = parse_plan(valid_plan_json()).unwrap();
+    workflow_runs::update(
+        d.path(),
+        &begun.run.id,
+        WorkflowRunUpdate {
+            status: Some("waiting_for_connection".into()),
+            plan: Some(plan),
+            steps: Some(vec![
+                StepState {
+                    step_id: "a".into(),
+                    status: "waiting_for_connection".into(),
+                    approved: false,
+                    summary: None,
+                    worktree_path: None,
+                    blocker: Some(
+                        crate::workflows::types::WorkflowConnectionBlocker::ComposioSignin,
+                    ),
+                },
+                StepState {
+                    step_id: "b".into(),
+                    status: "pending".into(),
+                    approved: false,
+                    summary: None,
+                    worktree_path: None,
+                    blocker: None,
+                },
+            ]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let updated = retry_step(
+        Arc::new(NoopEventSink) as DynEventSink,
+        dispatcher,
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+        "a",
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(updated.status, "running");
+    let a = updated.steps.iter().find(|s| s.step_id == "a").unwrap();
+    assert_eq!(a.status, "pending");
+    assert!(a.blocker.is_none());
 }
 
 #[tokio::test]
@@ -933,6 +1097,7 @@ async fn retry_step_resets_subgraph_and_runs_only_pending() {
                     approved: false,
                     summary: Some("ok".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
                 StepState {
                     step_id: "b".into(),
@@ -940,6 +1105,7 @@ async fn retry_step_resets_subgraph_and_runs_only_pending() {
                     approved: false,
                     summary: Some("boom".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
                 StepState {
                     step_id: "c".into(),
@@ -947,6 +1113,7 @@ async fn retry_step_resets_subgraph_and_runs_only_pending() {
                     approved: false,
                     summary: Some("other".into()),
                     worktree_path: None,
+                    blocker: None,
                 },
             ]),
             ..Default::default()

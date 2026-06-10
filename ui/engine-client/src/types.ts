@@ -253,6 +253,7 @@ export interface RoutineRunUpdate {
 export type WorkflowStepStatus =
   | "pending"
   | "awaiting_approval"
+  | "waiting_for_connection"
   | "running"
   | "done"
   | "error"
@@ -261,6 +262,7 @@ export type WorkflowStepStatus =
 export type WorkflowRunStatus =
   | "planning"
   | "awaiting_approval"
+  | "waiting_for_connection"
   | "running"
   | "done"
   | "error"
@@ -276,6 +278,8 @@ export interface WorkflowStep {
   depends_on: string[];
   /** When true, the run pauses for user approval before this step runs. */
   requires_approval?: boolean;
+  /** Lowercase Composio toolkit slugs this step needs (e.g. gmail, googledrive). */
+  toolkits?: string[];
 }
 
 export interface WorkflowPlan {
@@ -316,7 +320,12 @@ export interface StepState {
   summary?: string;
   /** Set when `use_worktree` is true so cleanup can call `remove_worktree`. */
   worktree_path?: string;
+  blocker?: WorkflowConnectionBlocker;
 }
+
+export type WorkflowConnectionBlocker =
+  | { type: "composio_signin" }
+  | { type: "composio_toolkit"; toolkit: string };
 
 export interface WorkflowRun {
   id: string;

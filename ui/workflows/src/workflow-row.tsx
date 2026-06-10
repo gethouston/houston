@@ -69,6 +69,7 @@ export function WorkflowRow({
   const isActive =
     status === "planning" ||
     status === "awaiting_approval" ||
+    status === "waiting_for_connection" ||
     status === "running"
 
   return (

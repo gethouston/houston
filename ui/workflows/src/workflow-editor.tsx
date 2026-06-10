@@ -2,6 +2,7 @@
  * WorkflowEditor — create/edit a workflow with live run panel + history.
  */
 import { useRef } from "react"
+import type { ReactNode } from "react"
 import {
   Button,
   DropdownMenu,
@@ -18,7 +19,12 @@ import {
   Trash2,
   MoreHorizontal,
 } from "lucide-react"
-import type { Workflow, WorkflowRun } from "./types"
+import type {
+  StepState,
+  Workflow,
+  WorkflowRun,
+  WorkflowStep,
+} from "./types"
 import { isResumable } from "./workflow-dag"
 import { ActiveRunPanel } from "./active-run-panel"
 import type { ActiveRunPanelLabels } from "./active-run-panel"
@@ -102,6 +108,11 @@ export interface WorkflowEditorProps {
   onResumeRun?: (runId: string) => void
   onRetryStep?: (runId: string, stepId: string) => void
   retryingStepId?: string
+  renderStepDetail?: (
+    step: WorkflowStep,
+    state: StepState | undefined,
+    run: WorkflowRun | undefined,
+  ) => ReactNode
   onDelete?: () => void
   hasChanges?: boolean
   labels?: WorkflowEditorLabels
@@ -122,6 +133,7 @@ export function WorkflowEditor({
   onResumeRun,
   onRetryStep,
   retryingStepId,
+  renderStepDetail,
   onDelete,
   hasChanges,
   labels,
@@ -290,6 +302,7 @@ export function WorkflowEditor({
                     : undefined
                 }
                 retryingStepId={retryingStepId}
+                renderStepDetail={renderStepDetail}
                 approvePending={approvePending}
                 labels={l.activeRun}
               />

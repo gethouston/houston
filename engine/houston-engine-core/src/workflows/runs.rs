@@ -14,7 +14,12 @@ const FILE: &str = "workflow_runs";
 const MAX_RUNS_PER_WORKFLOW: usize = 50;
 
 /// Non-terminal statuses reaped by [`sweep_orphan_running`] after an engine restart.
-const ORPHAN_STATUSES: &[&str] = &["planning", "awaiting_approval", "running"];
+const ORPHAN_STATUSES: &[&str] = &[
+    "planning",
+    "awaiting_approval",
+    "waiting_for_connection",
+    "running",
+];
 
 pub fn list(root: &Path) -> CoreResult<Vec<WorkflowRun>> {
     read_json::<Vec<WorkflowRun>>(root, FILE)
@@ -192,6 +197,7 @@ pub fn step_states_from_plan(plan: &WorkflowPlan) -> Vec<StepState> {
             approved: false,
             summary: None,
             worktree_path: None,
+            blocker: None,
         })
         .collect()
 }
@@ -263,10 +269,7 @@ mod tests {
         assert_eq!(run.status, "planning");
         assert_eq!(run.session_key, format!("workflow-wid-run-{}", run.id));
 
-        let plan = parse_plan(
-            r#"{"steps":[{"id":"a","task":"scan"}]}"#,
-        )
-        .unwrap();
+        let plan = parse_plan(r#"{"steps":[{"id":"a","task":"scan"}]}"#).unwrap();
         let mid = update(
             d.path(),
             &run.id,
@@ -429,10 +432,8 @@ mod tests {
         assert_eq!(runs.len(), 1);
         assert_eq!(runs[0].id, "run-1");
 
-        let repaired = fs::read_to_string(
-            d.path().join(".houston/workflow_runs/workflow_runs.json"),
-        )
-        .unwrap();
+        let repaired =
+            fs::read_to_string(d.path().join(".houston/workflow_runs/workflow_runs.json")).unwrap();
         assert!(serde_json::from_str::<Vec<WorkflowRun>>(&repaired).is_ok());
         assert_eq!(backups(d.path()).len(), 1);
     }
@@ -445,10 +446,8 @@ mod tests {
 
         let runs = list(d.path()).unwrap();
         assert!(runs.is_empty());
-        let repaired = fs::read_to_string(
-            d.path().join(".houston/workflow_runs/workflow_runs.json"),
-        )
-        .unwrap();
+        let repaired =
+            fs::read_to_string(d.path().join(".houston/workflow_runs/workflow_runs.json")).unwrap();
         assert_eq!(repaired.trim(), "[]");
         assert_eq!(backups(d.path()).len(), 1);
     }

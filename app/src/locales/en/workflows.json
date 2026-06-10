@@ -17,6 +17,7 @@
   "runStatus": {
     "planning": "Planning",
     "awaiting_approval": "Needs approval",
+    "waiting_for_connection": "Needs connection",
     "running": "Running",
     "done": "Done",
     "error": "Error",
@@ -25,6 +26,7 @@
   "stepStatus": {
     "pending": "Pending",
     "awaiting_approval": "Needs approval",
+    "waiting_for_connection": "Needs connection",
     "running": "Running",
     "done": "Done",
     "error": "Error",

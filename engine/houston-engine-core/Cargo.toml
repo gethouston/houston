@@ -23,6 +23,7 @@ houston-skills = { workspace = true, features = ["remote"] }
 houston-engine-protocol = { workspace = true }
 houston-agents-conversations = { workspace = true }
 houston-cli-bundle = { workspace = true }
+houston-composio = { workspace = true }
 houston-claude-installer = { workspace = true }
 dirs-next = "2"
 dirs = "5"

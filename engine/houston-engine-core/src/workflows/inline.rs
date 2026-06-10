@@ -16,20 +16,14 @@ pub(crate) fn effective_workflow(root: &Path, run: &WorkflowRun) -> CoreResult<W
         Err(CoreError::NotFound(_)) => match &run.plan_prompt {
             Some(pp) => Ok(Workflow {
                 id: run.workflow_id.clone(),
-                name: run
-                    .name
-                    .clone()
-                    .unwrap_or_else(|| "Workflow".into()),
+                name: run.name.clone().unwrap_or_else(|| "Workflow".into()),
                 description: run.description.clone().unwrap_or_default(),
                 plan_prompt: pp.clone(),
                 plan: None,
                 created_at: run.started_at.clone(),
                 updated_at: run.started_at.clone(),
             }),
-            None => Err(CoreError::NotFound(format!(
-                "workflow {}",
-                run.workflow_id
-            ))),
+            None => Err(CoreError::NotFound(format!("workflow {}", run.workflow_id))),
         },
         Err(e) => Err(e),
     }

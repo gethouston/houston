@@ -4,25 +4,30 @@ use crate::workflows::dispatcher::{DispatchOutcome, SynthesisContext, WorkflowDi
 use crate::workflows::types::{Workflow, WorkflowRun, WorkflowStep};
 use std::sync::Arc;
 
-pub fn build_synthesis_prompt(workflow: &Workflow, plan_steps: &[WorkflowStep], run: &WorkflowRun) -> String {
+pub fn build_synthesis_prompt(
+    workflow: &Workflow,
+    plan_steps: &[WorkflowStep],
+    run: &WorkflowRun,
+) -> String {
     let mut lines = vec![
         format!("Workflow: {}", workflow.name),
         "Summarize what was actually completed below into a concise final report for the user. \
 Report concrete outcomes (created files, sent messages, links). \
 Do not say approval is still pending for steps already marked done. \
-Write the report in the same language as the workflow plan and task descriptions below.".into(),
+Write the report in the same language as the workflow plan and task descriptions below."
+            .into(),
         String::new(),
     ];
     for step in plan_steps {
-        let state = run
-            .steps
-            .iter()
-            .find(|s| s.step_id == step.id);
+        let state = run.steps.iter().find(|s| s.step_id == step.id);
         let status = state.map(|s| s.status.as_str()).unwrap_or("pending");
         let summary = state
             .and_then(|s| s.summary.as_deref())
             .unwrap_or("(no output)");
-        lines.push(format!("- [{}] {} (status={}): {}", step.id, step.task, status, summary));
+        lines.push(format!(
+            "- [{}] {} (status={}): {}",
+            step.id, step.task, status, summary
+        ));
     }
     lines.join("\n")
 }
@@ -80,6 +85,7 @@ mod tests {
             use_worktree: false,
             depends_on: vec![],
             requires_approval: false,
+            toolkits: vec![],
         }];
         let run = WorkflowRun {
             id: "run-1".into(),
@@ -95,6 +101,7 @@ mod tests {
                 approved: false,
                 summary: Some("Se encontraron 3 problemas".into()),
                 worktree_path: None,
+                blocker: None,
             }],
             summary: None,
             started_at: String::new(),

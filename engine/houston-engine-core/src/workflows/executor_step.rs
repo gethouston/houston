@@ -2,16 +2,12 @@
 
 use crate::error::CoreResult;
 use crate::workflows::dispatcher::{DispatchOutcome, StepContext, WorkflowDispatcher};
-use crate::workflows::executor_sched::emit_step;
 use crate::workflows::keys::step_session_key;
-use crate::workflows::planner::emit_runs_changed;
 use crate::workflows::runs as workflow_runs;
 use crate::workflows::step_prompt::build_step_prompt;
-use crate::workflows::step_verify::step_reapproval_only;
 use crate::workflows::types::{Workflow, WorkflowStep};
-use crate::worktree::{self, CreateWorktreeRequest, RemoveWorktreeRequest};
+use crate::worktree::{self, CreateWorktreeRequest};
 use houston_terminal_manager::concurrency;
-use houston_ui_events::DynEventSink;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::task::JoinSet;
@@ -20,6 +16,13 @@ pub(crate) struct StepTaskResult {
     pub step_id: String,
     pub outcome: DispatchOutcome,
     pub worktree_path: Option<String>,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) enum StepFinish {
+    Done,
+    Failed,
+    WaitingForConnection,
 }
 
 pub(crate) fn spawn_step(
@@ -93,11 +96,7 @@ pub(crate) fn spawn_step(
             .iter()
             .find(|s| s.step_id == step.id)
             .is_some_and(|s| s.approved);
-        let plan_steps = run
-            .plan
-            .as_ref()
-            .map(|p| p.steps.as_slice())
-            .unwrap_or(&[]);
+        let plan_steps = run.plan.as_ref().map(|p| p.steps.as_slice()).unwrap_or(&[]);
         let prompt = build_step_prompt(&workflow, plan_steps, &run, &step, approved);
         let outcome = dispatcher
             .dispatch_step(StepContext {
@@ -136,79 +135,68 @@ async fn prepare_workdir(
     Ok((PathBuf::from(&info.path), Some(info.path)))
 }
 
-pub(crate) async fn finish_step(
-    events: &DynEventSink,
-    agent_path: &str,
-    root: &Path,
-    run_id: &str,
-    result: StepTaskResult,
-) -> CoreResult<bool> {
-    if let Some(wt) = result.worktree_path.as_deref() {
-        if let Err(e) = worktree::remove_worktree(RemoveWorktreeRequest {
-            repo_path: root.to_string_lossy().to_string(),
-            worktree_path: wt.to_string(),
-        })
-        .await
-        {
-            workflow_runs::patch_step(root, run_id, &result.step_id, |s| {
-                s.status = "error".into();
-                s.summary = Some(format!("worktree cleanup failed: {e}"));
-                s.worktree_path = None;
-            })?;
-            emit_step(events, agent_path, run_id, &result.step_id);
-            emit_runs_changed(events, agent_path);
-            return Ok(false);
-        }
-    }
-
-    if let Some(err) = result.outcome.error {
-        workflow_runs::patch_step(root, run_id, &result.step_id, |s| {
-            s.status = "error".into();
-            s.summary = Some(err.clone());
-            s.worktree_path = None;
-        })?;
-        emit_step(events, agent_path, run_id, &result.step_id);
-        emit_runs_changed(events, agent_path);
-        return Ok(false);
-    }
-
-    let summary = result.outcome.response_text;
-    let run = workflow_runs::find_by_id(root, run_id)?;
-    let requires_approval = run
-        .plan
-        .as_ref()
-        .and_then(|p| p.steps.iter().find(|s| s.id == result.step_id))
-        .is_some_and(|s| s.requires_approval);
-    if requires_approval && step_reapproval_only(&summary) {
-        let err = "Step completed without performing the approved action. \
-The agent re-asked for approval instead of using connected-app tools."
-            .to_string();
-        workflow_runs::patch_step(root, run_id, &result.step_id, |s| {
-            s.status = "error".into();
-            s.summary = Some(err.clone());
-            s.worktree_path = None;
-        })?;
-        emit_step(events, agent_path, run_id, &result.step_id);
-        emit_runs_changed(events, agent_path);
-        return Ok(false);
-    }
-    workflow_runs::patch_step(root, run_id, &result.step_id, |s| {
-        s.status = "done".into();
-        s.summary = Some(summary.clone());
-        s.worktree_path = None;
-    })?;
-    emit_step(events, agent_path, run_id, &result.step_id);
-    emit_runs_changed(events, agent_path);
-    Ok(true)
-}
+#[path = "executor_step_finish.rs"]
+mod executor_step_finish;
+pub(crate) use executor_step_finish::finish_step;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::workflows::types::StepState;
+    use crate::workflows::connection_probe::PROBE_NO_BLOCKER;
+    use crate::workflows::dispatcher::{PlannerContext, SynthesisContext};
+    use crate::workflows::types::{StepState, Workflow};
+    use async_trait::async_trait;
     use houston_ui_events::{DynEventSink, NoopEventSink};
     use std::sync::Arc;
     use tokio::process::Command;
+
+    struct NoopDispatcher;
+
+    #[async_trait]
+    impl WorkflowDispatcher for NoopDispatcher {
+        async fn dispatch_planner(&self, _ctx: PlannerContext<'_>) -> DispatchOutcome {
+            DispatchOutcome::default()
+        }
+
+        async fn dispatch_step(&self, _ctx: StepContext<'_>) -> DispatchOutcome {
+            DispatchOutcome::default()
+        }
+
+        async fn dispatch_synthesis(&self, _ctx: SynthesisContext<'_>) -> DispatchOutcome {
+            DispatchOutcome::default()
+        }
+    }
+
+    struct ProbeDispatcher {
+        response: DispatchOutcome,
+    }
+
+    #[async_trait]
+    impl WorkflowDispatcher for ProbeDispatcher {
+        async fn dispatch_planner(&self, _ctx: PlannerContext<'_>) -> DispatchOutcome {
+            DispatchOutcome::default()
+        }
+
+        async fn dispatch_step(&self, _ctx: StepContext<'_>) -> DispatchOutcome {
+            self.response.clone()
+        }
+
+        async fn dispatch_synthesis(&self, _ctx: SynthesisContext<'_>) -> DispatchOutcome {
+            DispatchOutcome::default()
+        }
+    }
+
+    fn sample_workflow() -> Workflow {
+        Workflow {
+            id: "wf".into(),
+            name: "Test".into(),
+            description: String::new(),
+            plan_prompt: "Plan".into(),
+            plan: None,
+            created_at: String::new(),
+            updated_at: String::new(),
+        }
+    }
 
     async fn git(dir: &Path, args: &[&str]) {
         let out = Command::new("git")
@@ -263,6 +251,7 @@ mod tests {
                     approved: false,
                     summary: None,
                     worktree_path: Some(created.path.clone()),
+                    blocker: None,
                 }]),
                 ..Default::default()
             },
@@ -270,11 +259,13 @@ mod tests {
         .unwrap();
         let run_id = run.id;
 
-        let ok = finish_step(
+        let finish = finish_step(
             &events,
             "agent",
             &agent,
             &run_id,
+            &sample_workflow(),
+            Arc::new(NoopDispatcher),
             StepTaskResult {
                 step_id: "a".into(),
                 outcome: DispatchOutcome {
@@ -286,7 +277,7 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(ok);
+        assert_eq!(finish, StepFinish::Done);
         assert!(!wt_path.exists());
 
         let run = workflow_runs::find_by_id(&agent, &run_id).unwrap();
@@ -317,17 +308,20 @@ mod tests {
                     approved: true,
                     summary: None,
                     worktree_path: None,
+                    blocker: None,
                 }]),
                 ..Default::default()
             },
         )
         .unwrap();
 
-        let ok = finish_step(
+        let finish = finish_step(
             &events,
             "agent",
             &agent,
             &run.id,
+            &sample_workflow(),
+            Arc::new(NoopDispatcher),
             StepTaskResult {
                 step_id: "write".into(),
                 outcome: DispatchOutcome {
@@ -339,9 +333,225 @@ mod tests {
         )
         .await
         .unwrap();
-        assert!(!ok);
+        assert_eq!(finish, StepFinish::Failed);
         let run = workflow_runs::find_by_id(&agent, &run.id).unwrap();
         let step = run.steps.iter().find(|s| s.step_id == "write").unwrap();
         assert_eq!(step.status, "error");
+    }
+
+    #[tokio::test]
+    async fn finish_step_persists_connection_blocker() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let agent = tmp.path().join("agent");
+        std::fs::create_dir_all(&agent).unwrap();
+        let events: DynEventSink = Arc::new(NoopEventSink);
+        let run = workflow_runs::create(&agent, "wf").unwrap();
+        workflow_runs::update(
+            &agent,
+            &run.id,
+            crate::workflows::types::WorkflowRunUpdate {
+                steps: Some(vec![StepState {
+                    step_id: "send".into(),
+                    status: "running".into(),
+                    approved: false,
+                    summary: None,
+                    worktree_path: None,
+                    blocker: None,
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let finish = finish_step(
+            &events,
+            "agent",
+            &agent,
+            &run.id,
+            &sample_workflow(),
+            Arc::new(NoopDispatcher),
+            StepTaskResult {
+                step_id: "send".into(),
+                outcome: DispatchOutcome {
+                    response_text: r#"<!--houston:workflow-connection {"type":"composio_toolkit","toolkit":"gmail"}-->"#.into(),
+                    error: None,
+                },
+                worktree_path: None,
+            },
+        )
+        .await
+        .unwrap();
+
+        assert_eq!(finish, StepFinish::WaitingForConnection);
+        let run = workflow_runs::find_by_id(&agent, &run.id).unwrap();
+        let step = run.steps.iter().find(|s| s.step_id == "send").unwrap();
+        assert_eq!(step.status, "waiting_for_connection");
+        assert_eq!(
+            step.blocker,
+            Some(
+                crate::workflows::types::WorkflowConnectionBlocker::ComposioToolkit {
+                    toolkit: "gmail".into()
+                }
+            )
+        );
+        assert!(step.summary.is_none());
+    }
+
+    async fn setup_probe_step(agent: &Path, step_id: &str, plan_json: &str) -> String {
+        let run = workflow_runs::create(agent, "wf").unwrap();
+        let plan = crate::workflows::plan::parse_plan(plan_json).unwrap();
+        workflow_runs::update(
+            agent,
+            &run.id,
+            crate::workflows::types::WorkflowRunUpdate {
+                plan: Some(plan),
+                steps: Some(vec![StepState {
+                    step_id: step_id.into(),
+                    status: "running".into(),
+                    approved: false,
+                    summary: None,
+                    worktree_path: None,
+                    blocker: None,
+                }]),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        run.id
+    }
+
+    #[tokio::test]
+    async fn finish_step_probe_recovers_connection_blocker_from_prose() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let agent = tmp.path().join("agent");
+        std::fs::create_dir_all(&agent).unwrap();
+        let events: DynEventSink = Arc::new(NoopEventSink);
+        let run_id = setup_probe_step(
+            &agent,
+            "folder",
+            r#"{"steps":[{"id":"folder","task":"create Drive folder","toolkits":["googledrive"]}]}"#,
+        )
+        .await;
+        let prose = "No pude crear la carpeta porque Google Drive no está conectado en Composio. \
+Resultado del intento: No active connection for toolkit googledrive";
+        let finish = finish_step(
+            &events,
+            "agent",
+            &agent,
+            &run_id,
+            &sample_workflow(),
+            Arc::new(ProbeDispatcher {
+                response: DispatchOutcome {
+                    response_text: r#"<!--houston:workflow-connection {"type":"composio_toolkit","toolkit":"googledrive"}-->"#.into(),
+                    error: None,
+                },
+            }),
+            StepTaskResult {
+                step_id: "folder".into(),
+                outcome: DispatchOutcome {
+                    response_text: prose.into(),
+                    error: None,
+                },
+                worktree_path: None,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(finish, StepFinish::WaitingForConnection);
+        let run = workflow_runs::find_by_id(&agent, &run_id).unwrap();
+        let step = run.steps.iter().find(|s| s.step_id == "folder").unwrap();
+        assert_eq!(step.status, "waiting_for_connection");
+        assert_eq!(
+            step.blocker,
+            Some(crate::workflows::types::WorkflowConnectionBlocker::ComposioToolkit {
+                toolkit: "googledrive".into()
+            })
+        );
+    }
+
+    #[tokio::test]
+    async fn finish_step_probe_no_blocker_marks_done() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let agent = tmp.path().join("agent");
+        std::fs::create_dir_all(&agent).unwrap();
+        let events: DynEventSink = Arc::new(NoopEventSink);
+        let run_id = setup_probe_step(
+            &agent,
+            "folder",
+            r#"{"steps":[{"id":"folder","task":"create Drive folder","toolkits":["googledrive"]}]}"#,
+        )
+        .await;
+        let prose = "No active connection for toolkit googledrive";
+        let finish = finish_step(
+            &events,
+            "agent",
+            &agent,
+            &run_id,
+            &sample_workflow(),
+            Arc::new(ProbeDispatcher {
+                response: DispatchOutcome {
+                    response_text: PROBE_NO_BLOCKER.into(),
+                    error: None,
+                },
+            }),
+            StepTaskResult {
+                step_id: "folder".into(),
+                outcome: DispatchOutcome {
+                    response_text: prose.into(),
+                    error: None,
+                },
+                worktree_path: None,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(finish, StepFinish::Done);
+        let run = workflow_runs::find_by_id(&agent, &run_id).unwrap();
+        let step = run.steps.iter().find(|s| s.step_id == "folder").unwrap();
+        assert_eq!(step.status, "done");
+        assert_eq!(step.summary.as_deref(), Some(prose));
+    }
+
+    #[tokio::test]
+    async fn finish_step_probe_garbage_marks_error() {
+        let tmp = tempfile::TempDir::new().unwrap();
+        let agent = tmp.path().join("agent");
+        std::fs::create_dir_all(&agent).unwrap();
+        let events: DynEventSink = Arc::new(NoopEventSink);
+        let run_id = setup_probe_step(
+            &agent,
+            "folder",
+            r#"{"steps":[{"id":"folder","task":"create Drive folder","toolkits":["googledrive"]}]}"#,
+        )
+        .await;
+        let prose = "not connected to composio for googledrive";
+        let finish = finish_step(
+            &events,
+            "agent",
+            &agent,
+            &run_id,
+            &sample_workflow(),
+            Arc::new(ProbeDispatcher {
+                response: DispatchOutcome {
+                    response_text: "still broken".into(),
+                    error: None,
+                },
+            }),
+            StepTaskResult {
+                step_id: "folder".into(),
+                outcome: DispatchOutcome {
+                    response_text: prose.into(),
+                    error: None,
+                },
+                worktree_path: None,
+            },
+        )
+        .await
+        .unwrap();
+        assert_eq!(finish, StepFinish::Failed);
+        let run = workflow_runs::find_by_id(&agent, &run_id).unwrap();
+        let step = run.steps.iter().find(|s| s.step_id == "folder").unwrap();
+        assert_eq!(step.status, "error");
+        assert_eq!(step.summary.as_deref(), Some(prose));
     }
 }

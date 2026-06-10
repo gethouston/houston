@@ -36,7 +36,7 @@ interface ComposioLinkCardProps {
    * the user clicks Connect — opens the authorization URL in the
    * system browser.
    */
-  onOpen: () => void;
+  onOpen: () => void | Promise<void>;
   /**
    * Fired once when a connection the user started from THIS card actually
    * lands. The chat panel uses it to proactively nudge the agent ("I've
@@ -163,7 +163,9 @@ export function ComposioLinkCard({
     hasInitiated.current = true;
     setPhase("connecting");
     markWaitingForAuth(toolkit);
-    onOpen();
+    void Promise.resolve(onOpen()).catch(() => {
+      setPhase("idle");
+    });
     if (graceTimer.current !== null) window.clearTimeout(graceTimer.current);
     graceTimer.current = window.setTimeout(() => {
       setPhase((p) => (p === "connecting" ? "idle" : p));

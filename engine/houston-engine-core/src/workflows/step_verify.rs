@@ -12,7 +12,7 @@ pub fn step_reapproval_only(response: &str) -> bool {
     has_reapproval_phrasing(trimmed)
 }
 
-fn has_action_evidence(text: &str) -> bool {
+pub(crate) fn has_action_evidence(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
     if lower.contains("http://") || lower.contains("https://") {
         return true;

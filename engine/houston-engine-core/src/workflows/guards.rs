@@ -57,6 +57,7 @@ mod tests {
                     use_worktree: false,
                     depends_on: vec![],
                     requires_approval: false,
+                    toolkits: vec![],
                 })
                 .collect(),
         }
@@ -87,6 +88,7 @@ mod tests {
                 use_worktree: false,
                 depends_on: vec![],
                 requires_approval: false,
+                toolkits: vec![],
             }],
         };
         assert!(matches!(

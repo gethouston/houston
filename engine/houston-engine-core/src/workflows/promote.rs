@@ -115,7 +115,10 @@ mod tests {
         assert_eq!(saved.plan.as_ref(), Some(&plan));
 
         let updated = workflow_runs::find_by_id(d.path(), &run.id).unwrap();
-        assert_eq!(updated.saved_workflow_id.as_deref(), Some(saved.id.as_str()));
+        assert_eq!(
+            updated.saved_workflow_id.as_deref(),
+            Some(saved.id.as_str())
+        );
 
         let again = save_run_as_workflow(d.path(), &run.id).unwrap();
         assert_eq!(again.id, saved.id);

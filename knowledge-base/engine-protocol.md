@@ -216,6 +216,12 @@ save-as-workflow); the Workflows tab UI does not edit plans in v1.
 runs backed by a saved definition. TS mirror:
 `ui/engine-client/src/types.ts` (`#[serde(skip_serializing_if = "Option::is_none")]` on Rust).
 
+Workflow run and step statuses include `waiting_for_connection`. A blocked
+`StepState` carries an optional discriminated `blocker`:
+`{"type":"composio_signin"}` or
+`{"type":"composio_toolkit","toolkit":"gmail"}`. The retry endpoint accepts
+these steps, clears the blocker, and resumes only the affected subgraph.
+
 **Conversations** (cross-agent read)
 | Method | Path | Description |
 |---|---|---|

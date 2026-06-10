@@ -2,7 +2,13 @@
  * run-content — shared rendering for ActiveRunPanel and InlineRunCard.
  */
 import { cn, Spinner } from "@houston-ai/core"
-import type { WorkflowRun, WorkflowRunStatus } from "./types"
+import type { ReactNode } from "react"
+import type {
+  StepState,
+  WorkflowRun,
+  WorkflowRunStatus,
+  WorkflowStep,
+} from "./types"
 import { StepProgress } from "./step-progress"
 import type { StepProgressLabels } from "./step-progress"
 import { WorkflowSummary } from "./workflow-summary"
@@ -58,6 +64,7 @@ export function RunDetails({
   stepProgressLabels,
   onRetryStep,
   retryingStepId,
+  renderStepDetail,
 }: {
   run: WorkflowRun
   isTerminal: boolean
@@ -66,6 +73,11 @@ export function RunDetails({
   stepProgressLabels?: StepProgressLabels
   onRetryStep?: (stepId: string) => void
   retryingStepId?: string
+  renderStepDetail?: (
+    step: WorkflowStep,
+    state: StepState | undefined,
+    run: WorkflowRun | undefined,
+  ) => ReactNode
 }) {
   const showPlan = !!run.plan
 
@@ -79,6 +91,7 @@ export function RunDetails({
           highlightStepId={gateStepId}
           onRetryStep={onRetryStep}
           retryingStepId={retryingStepId}
+          renderStepDetail={renderStepDetail}
           labels={stepProgressLabels}
         />
       )}

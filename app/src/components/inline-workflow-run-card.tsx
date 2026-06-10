@@ -26,6 +26,8 @@ import { useActiveRunLabels } from "../hooks/use-active-run-labels";
 
 import { useUIStore } from "../stores/ui";
 
+import { WorkflowConnectionBlockerCard } from "./workflow-connection-blocker-card";
+
 
 
 export interface InlineWorkflowRunCardProps {
@@ -265,6 +267,28 @@ export function InlineWorkflowRunCard({
         approvePending={approve.isPending}
 
         cancelPending={cancel.isPending}
+
+        renderStepDetail={(_step, state, detailRun) =>
+
+          state && detailRun ? (
+
+            <WorkflowConnectionBlockerCard
+
+              run={detailRun}
+
+              state={state}
+
+              onRetry={(blockedRunId, stepId) =>
+
+                retryStep.mutate({ runId: blockedRunId, stepId })
+
+              }
+
+            />
+
+          ) : null
+
+        }
 
         savePrompt={savePrompt}
 

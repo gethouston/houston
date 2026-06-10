@@ -7,6 +7,7 @@ export type {
   StepState,
   WorkflowStepStatus,
   WorkflowRunStatus,
+  WorkflowConnectionBlocker,
 } from "./types"
 
 // DAG helpers

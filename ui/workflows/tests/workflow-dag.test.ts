@@ -91,6 +91,13 @@ describe("activeRun", () => {
     ]
     assert.equal(activeRun(runs, "w1"), undefined)
   })
+
+  it("treats connection-blocked runs as active", () => {
+    const runs = [
+      mkRun("r1", "w1", "waiting_for_connection", "2025-01-01T10:00:00Z"),
+    ]
+    assert.equal(activeRun(runs, "w1")?.id, "r1")
+  })
 })
 
 describe("isResumable", () => {
@@ -132,6 +139,7 @@ describe("isCancellable", () => {
   it("true for in-flight statuses", () => {
     assert.equal(isCancellable("planning"), true)
     assert.equal(isCancellable("awaiting_approval"), true)
+    assert.equal(isCancellable("waiting_for_connection"), true)
     assert.equal(isCancellable("running"), true)
   })
 
