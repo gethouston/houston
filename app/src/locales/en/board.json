@@ -60,7 +60,6 @@
     "selected_one": "{{count}} selected",
     "selected_other": "{{count}} selected",
     "moveTo": "Move to",
-    "selectAll": "Select all",
     "archive": "Archive",
     "delete": "Delete",
     "clear": "Clear selection",
@@ -85,12 +84,9 @@
       "action": "Delete"
     }
   },
-  "doneArchive": {
-    "tooltip": "Archive all done",
-    "confirmTitle": "Archive done missions?",
-    "confirmDescription_one": "Archive {{count}} mission in Done? You can reopen it from the Archived tab.",
-    "confirmDescription_other": "Archive {{count}} missions in Done? You can reopen them from the Archived tab.",
-    "confirmAction": "Archive all"
+  "column": {
+    "menu": "Column actions",
+    "selectAll": "Select all in column"
   },
   "archived": {
     "emptyTitle": "No archived missions",

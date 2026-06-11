@@ -60,7 +60,6 @@
     "selected_one": "{{count}} selecionada",
     "selected_other": "{{count}} selecionadas",
     "moveTo": "Mover para",
-    "selectAll": "Selecionar tudo",
     "archive": "Arquivar",
     "delete": "Excluir",
     "clear": "Limpar seleção",
@@ -85,12 +84,9 @@
       "action": "Excluir"
     }
   },
-  "doneArchive": {
-    "tooltip": "Arquivar tudo de Pronto",
-    "confirmTitle": "Arquivar as missões Prontas?",
-    "confirmDescription_one": "Arquivar {{count}} missão em Pronto? Você pode reabrir pela aba Arquivadas.",
-    "confirmDescription_other": "Arquivar {{count}} missões em Pronto? Você pode reabrir pela aba Arquivadas.",
-    "confirmAction": "Arquivar tudo"
+  "column": {
+    "menu": "Ações da coluna",
+    "selectAll": "Selecionar toda a coluna"
   },
   "archived": {
     "emptyTitle": "Nenhuma missão arquivada",

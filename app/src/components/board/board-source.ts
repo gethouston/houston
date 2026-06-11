@@ -31,7 +31,7 @@ export interface SendOverrides {
 /**
  * Multi-select state + bulk mutations for one board. The set-state half is
  * identical for both views (see `useSelectionSet`); only the bulk dispatch
- * (`move` / `archive` / `remove` / `archiveIds`) differs — per-agent for the
+ * (`move` / `archive` / `remove`) differs — per-agent for the
  * board tab, grouped-by-agent for cross-agent Mission Control. The section
  * lock, toggle guard, header actions, and bulk-bar labels are derived by
  * `<MissionBoard>` and stay out of here.
@@ -41,8 +41,10 @@ export interface BoardSelectionModel {
   /** Add/remove a single card. The shared component applies the section-lock
    *  guard before calling this. */
   toggle: (item: KanbanItem) => void;
-  /** Toggle a whole section's ids at once (the column header "select all"). */
-  toggleAll: (ids: string[]) => void;
+  /** Add a whole section's ids to the selection (the column header
+   *  "Select all in column"). Additive + idempotent — deselect is the bulk
+   *  bar's "Clear", never this. */
+  selectAll: (ids: string[]) => void;
   clear: () => void;
   /** Move every selected card to `status` (a bulk move target). */
   move: (status: string) => Promise<void>;
@@ -50,9 +52,6 @@ export interface BoardSelectionModel {
   archive: () => Promise<void>;
   /** Delete every selected card. */
   remove: () => Promise<void>;
-  /** Archive an explicit id list (the Done column "archive all"), independent
-   *  of the current selection. */
-  archiveIds: (ids: string[]) => Promise<void>;
 }
 
 /**
