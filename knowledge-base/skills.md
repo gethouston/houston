@@ -110,6 +110,23 @@ instead of rebuilding a bare one. Two invariants matter:
   on the cards. Bookkeeping (version/created/last_used) is reset to a fresh
   install.
 
+### Repo input parsing (the "Install from another repo" field)
+
+`normalize_source` in `engine/houston-skills/src/remote.rs` is the single
+front door for whatever the user types into the repo field. It anchors on the
+`github.com` host wherever it appears, so it recovers `owner/repo` from the
+short form, a full URL (`.git`, `/tree/main`, `?query`, `#frag` all tolerated),
+the SSH form (`git@github.com:owner/repo`), and even a whole pasted shell
+command (`npx skills add https://github.com/owner/repo --skill x`). The
+extracted pair is then validated against GitHub's owner/repo charset before any
+network call. Unparseable input (a bare word like `reconciliation`, free text,
+a command with no GitHub link) returns the typed `SkillError::InvalidRepoSource`
+→ `kind: "invalid_repo_source"` → a "type owner/repo" hint, instead of firing a
+doomed GitHub lookup that 404s and echoes the garbage back. This was HOU-440:
+users pasted commands and got `Couldn't find a repo named 'npx skills add ...'`.
+When you add a `SkillError` variant, mirror its `kind` in
+`ui/skills/src/skill-error-kinds.ts` (that union is the TS source of truth).
+
 ## Skill invocation marker (chat persistence)
 
 When the user runs a Skill, the persisted user_message body is:

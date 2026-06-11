@@ -47,6 +47,14 @@ pub enum SkillError {
     /// expected path. Different from `NotFound` (which is local).
     #[error("Couldn't find that skill in the repo. The author may have renamed or removed it.")]
     SkillNotInRepo(String),
+    /// The user's repo reference couldn't be parsed into an `owner/repo` —
+    /// they pasted a whole command (`npx skills add ...`), a bare word, or
+    /// free text. Distinct from `RepoNotFound` (a well-formed `owner/repo`
+    /// GitHub simply doesn't have) so the UI can coach the format instead of
+    /// implying the repo is missing, and so we never fire a doomed GitHub
+    /// lookup on garbage. (HOU-440)
+    #[error("Enter a GitHub repo as owner/repo, or paste its GitHub link.")]
+    InvalidRepoSource(String),
     #[error("That repo is private. Only public repos are supported.")]
     RepoPrivate,
     #[error("Couldn't find a repo named '{0}'. Check the owner/repo.")]
