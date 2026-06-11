@@ -55,7 +55,10 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       // 1. Get the login URL from the backend.
       logger.info("[composio-auth] calling startOAuth...");
       const { login_url, cli_key } = await tauriConnections.startOAuth();
-      logger.info(`[composio-auth] startOAuth returned: url=${login_url} key=${cli_key}`);
+      // Never log `cli_key`: it is the login-session credential later passed
+      // to the engine as `--key`, and frontend.log is bundled into bug
+      // reports (HOU-431).
+      logger.info(`[composio-auth] startOAuth returned: url=${login_url}`);
 
       // 2. ALWAYS surface the URL and open the browser — no stale-gen
       //    check here. Even if the component re-rendered during the

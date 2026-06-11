@@ -15,6 +15,8 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
+mod sentry_scrub;
+
 #[derive(Serialize)]
 struct EngineManifest<'a> {
     version: &'a str,
@@ -276,6 +278,11 @@ fn init_sentry() -> Option<sentry::ClientInitGuard> {
         sentry::ClientOptions {
             release: Some(release),
             environment: Some(environment),
+            // Defense-in-depth: strip `--key <value>` composio credentials from
+            // any outbound event/breadcrumb in case a future code path formats
+            // one into a tracing error (HOU-431). The real fix is redaction at
+            // the source in `houston_composio::cli`; this is the safety net.
+            before_send: Some(Arc::new(sentry_scrub::scrub_event)),
             // No `auto_session_tracking` field: the engine's Cargo.toml leaves
             // the `release-health` feature OFF (default-features = false), which
             // cfg-gates that field out entirely. That is intentional — the
