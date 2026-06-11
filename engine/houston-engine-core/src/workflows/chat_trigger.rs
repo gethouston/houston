@@ -6,7 +6,8 @@ use crate::workflows::defs as workflow_defs;
 use crate::workflows::dispatcher::WorkflowDispatcher;
 use crate::workflows::inline::begin_inline_run;
 use crate::workflows::runner::{begin_run, start_planning};
-use crate::workflows::types::InlineRunSpec;
+use crate::workflows::runs as workflow_runs;
+use crate::workflows::types::{BegunRun, InlineRunSpec};
 use houston_db::Database;
 use houston_terminal_manager::FeedItem;
 use houston_ui_events::{DynEventSink, HoustonEvent};
@@ -111,6 +112,8 @@ pub async fn maybe_trigger_from_chat(
         }
     };
 
+    workflow_runs::link_to_chat_session(&root, &begun.run.id, session_key)?;
+
     emit_and_persist_run_link(
         events,
         db,
@@ -124,6 +127,10 @@ pub async fn maybe_trigger_from_chat(
 
     let agent_path_owned = agent_path.to_string();
     let events_spawn = events.clone();
+    let begun = BegunRun {
+        run: workflow_runs::find_by_id(&root, &begun.run.id)?,
+        ..begun
+    };
     tokio::spawn(async move {
         if let Err(e) = start_planning(events_spawn, dispatcher, &agent_path_owned, begun).await {
             tracing::error!("[workflows] chat trigger planning failed: {e}");

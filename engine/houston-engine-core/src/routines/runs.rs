@@ -318,8 +318,14 @@ mod tests {
         .unwrap();
         let p1 = create(d.path(), &per_run.id).unwrap();
         let p2 = create(d.path(), &per_run.id).unwrap();
-        assert_eq!(p1.session_key, format!("routine-{}-run-{}", per_run.id, p1.id));
-        assert_ne!(p1.session_key, p2.session_key, "per-run mode keys are unique");
+        assert_eq!(
+            p1.session_key,
+            format!("routine-{}-run-{}", per_run.id, p1.id)
+        );
+        assert_ne!(
+            p1.session_key, p2.session_key,
+            "per-run mode keys are unique"
+        );
     }
 
     #[test]

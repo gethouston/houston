@@ -344,6 +344,8 @@ export interface WorkflowRun {
   description?: string;
   /** Set when an inline run is promoted into a saved workflow definition. */
   saved_workflow_id?: string;
+  /** User chat session that triggered this run (for plan review actions in chat). */
+  source_chat_session_key?: string;
 }
 
 export interface ProjectConfig {

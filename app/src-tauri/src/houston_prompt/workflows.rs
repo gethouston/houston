@@ -38,4 +38,21 @@ Rules:
 - `planPrompt` is required for an inline workflow. Without a saved match and without `planPrompt`, the run is rejected.
 - The user approves the generated plan before execution. The marker starts a plan-then-approve flow, not an irreversible action.
 - Write `planPrompt`, `name`, and `description` in the user's current chat language (the same language you are speaking to them). The generated plan is shown to the user. Keep brand names and code identifiers untranslated.
+
+## After the plan is shown
+
+When `# Active workflow run (awaiting your review)` is present in your context:
+
+- If the user asks to **change** the plan, emit exactly one replan marker with their feedback folded in:
+<!--houston:workflow-replan {"runId":"<id from context>","feedback":"<what to change>"}-->
+
+- If the user clearly confirms they want to **start** (for example "go ahead", "start", "looks good", "run it"), emit exactly one approve marker:
+<!--houston:workflow-approve {"runId":"<id from context>"}-->
+
+Rules:
+- Use the `runId` from the active workflow run section. Do not guess.
+- At most one workflow action marker per reply.
+- Never show marker syntax to the user.
+- Do not emit a workflow **trigger** marker for a run that is already open and awaiting review.
+- Pair the marker with one short user-voice sentence acknowledging the choice.
 "#;

@@ -19,6 +19,8 @@ export {
   isResumable,
   stepStatusOf,
   stepSummaryOf,
+  visibleStepSummary,
+  shouldShowRunSynthesis,
 } from "./workflow-dag"
 
 // Components

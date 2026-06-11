@@ -1,5 +1,6 @@
 //! Workflows — multi-step orchestrated agent tasks.
 
+pub mod chat_actions;
 pub mod chat_trigger;
 pub mod connection_blocker;
 pub mod connection_probe;
@@ -42,7 +43,8 @@ pub use inline::begin_inline_run;
 pub use plan::parse_plan;
 pub use promote::save_run_as_workflow;
 pub use runner::{
-    approve_run, begin_run, cancel_run, finish_planning, resume_run, retry_step, start_planning,
+    approve_run, begin_run, cancel_run, finish_planning, replan_run, resume_run, retry_step,
+    start_planning,
 };
 pub use runs::{
     create as create_workflow_run, create_inline as create_inline_workflow_run,

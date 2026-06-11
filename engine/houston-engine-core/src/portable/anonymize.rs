@@ -168,9 +168,7 @@ fn redact_string(body: &str) -> AnonymizedString {
     // instead?" — a placeholder-only learning is worse than no learning.
     let placeholder = Regex::new(r"<[a-zA-Z_-]+>").unwrap();
     let stripped: String = placeholder.replace_all(&after, "").to_string();
-    let became_empty = !stripped
-        .chars()
-        .any(|c| c.is_alphanumeric());
+    let became_empty = !stripped.chars().any(|c| c.is_alphanumeric());
     let summary = summarise(body, &after);
     AnonymizedString {
         before: body.to_string(),
@@ -199,10 +197,13 @@ fn redact_text(body: &str) -> String {
 fn summarise(before: &str, after: &str) -> String {
     let kinds = [
         ("email", count_matches(&EMAIL, before)),
-        ("path", count_matches(&PATH_USERS_MAC, before)
-            + count_matches(&PATH_USERS_LINUX, before)
-            + count_matches(&PATH_USERS_WIN, before)
-            + count_matches(&ABSOLUTE_PATH, before)),
+        (
+            "path",
+            count_matches(&PATH_USERS_MAC, before)
+                + count_matches(&PATH_USERS_LINUX, before)
+                + count_matches(&PATH_USERS_WIN, before)
+                + count_matches(&ABSOLUTE_PATH, before),
+        ),
         ("phone", count_matches(&PHONE, before)),
         ("handle", count_matches(&SLACK_HANDLE, before)),
         ("url", count_matches(&URL, before)),
@@ -227,9 +228,8 @@ fn count_matches(re: &Regex, s: &str) -> usize {
 
 // ── Patterns ────────────────────────────────────────────────────────────
 
-static EMAIL: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").unwrap()
-});
+static EMAIL: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}").unwrap());
 
 static PHONE: Lazy<Regex> = Lazy::new(|| {
     // Matches `+1 555-555-1212`, `(555) 555-1212`, `+57 311 234 5678`.
@@ -244,21 +244,16 @@ static SLACK_HANDLE: Lazy<Regex> = Lazy::new(|| {
     Regex::new(r"(?:^|[\s,.;:!])@([a-zA-Z][a-zA-Z0-9._-]{2,})").unwrap()
 });
 
-static URL: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"https?://[^\s<>\)\]]+").unwrap()
-});
+static URL: Lazy<Regex> = Lazy::new(|| Regex::new(r"https?://[^\s<>\)\]]+").unwrap());
 
-static PATH_USERS_MAC: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(/Users/)([A-Za-z0-9._-]+)").unwrap()
-});
+static PATH_USERS_MAC: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(/Users/)([A-Za-z0-9._-]+)").unwrap());
 
-static PATH_USERS_LINUX: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"(/home/)([A-Za-z0-9._-]+)").unwrap()
-});
+static PATH_USERS_LINUX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"(/home/)([A-Za-z0-9._-]+)").unwrap());
 
-static PATH_USERS_WIN: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"([Cc]:\\Users\\)([A-Za-z0-9._-]+)").unwrap()
-});
+static PATH_USERS_WIN: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"([Cc]:\\Users\\)([A-Za-z0-9._-]+)").unwrap());
 
 static ABSOLUTE_PATH: Lazy<Regex> = Lazy::new(|| {
     // Catches remaining absolute paths in other root dirs (`/var/log/...`,

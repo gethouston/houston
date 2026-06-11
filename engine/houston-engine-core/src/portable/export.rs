@@ -174,24 +174,26 @@ pub fn build_preview(inv: &Inventory) -> InventoryPreview {
     let skills = inv
         .skills
         .iter()
-        .map(|s| match houston_skills::format::parse_content(&s.skill_md) {
-            Ok((summary, _body)) => SkillPreview {
-                slug: s.slug.clone(),
-                description: summary.description,
-                category: summary.category,
-                image: summary.image,
-                integrations: summary.integrations,
-                featured: summary.featured,
+        .map(
+            |s| match houston_skills::format::parse_content(&s.skill_md) {
+                Ok((summary, _body)) => SkillPreview {
+                    slug: s.slug.clone(),
+                    description: summary.description,
+                    category: summary.category,
+                    image: summary.image,
+                    integrations: summary.integrations,
+                    featured: summary.featured,
+                },
+                Err(_) => SkillPreview {
+                    slug: s.slug.clone(),
+                    description: String::new(),
+                    category: None,
+                    image: None,
+                    integrations: Vec::new(),
+                    featured: false,
+                },
             },
-            Err(_) => SkillPreview {
-                slug: s.slug.clone(),
-                description: String::new(),
-                category: None,
-                image: None,
-                integrations: Vec::new(),
-                featured: false,
-            },
-        })
+        )
         .collect();
 
     let routines = inv
@@ -255,10 +257,7 @@ fn read_optional(path: &Path) -> CoreResult<Option<String>> {
     match fs::read_to_string(path) {
         Ok(s) => Ok(Some(s)),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => Ok(None),
-        Err(e) => Err(CoreError::Internal(format!(
-            "read {}: {e}",
-            path.display()
-        ))),
+        Err(e) => Err(CoreError::Internal(format!("read {}: {e}", path.display()))),
     }
 }
 
@@ -283,9 +282,8 @@ fn gather_skills(agent_root: &Path) -> CoreResult<Vec<InventorySkill>> {
         if !skill_md.exists() {
             continue;
         }
-        let body = fs::read_to_string(&skill_md).map_err(|e| {
-            CoreError::Internal(format!("read {}: {e}", skill_md.display()))
-        })?;
+        let body = fs::read_to_string(&skill_md)
+            .map_err(|e| CoreError::Internal(format!("read {}: {e}", skill_md.display())))?;
         out.push(InventorySkill {
             slug: slug.to_string(),
             skill_md: body,

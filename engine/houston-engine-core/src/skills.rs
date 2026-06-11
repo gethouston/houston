@@ -476,7 +476,11 @@ mod tests {
         let loaded = load(&ws, "my-skill").unwrap();
         assert!(loaded.content.contains("Do stuff"));
 
-        assert!(d.path().join(".claude/skills/my-skill").symlink_metadata().is_ok());
+        assert!(d
+            .path()
+            .join(".claude/skills/my-skill")
+            .symlink_metadata()
+            .is_ok());
     }
 
     #[test]
@@ -552,10 +556,18 @@ mod tests {
             },
         )
         .unwrap();
-        assert!(d.path().join(".claude/skills/gone").symlink_metadata().is_ok());
+        assert!(d
+            .path()
+            .join(".claude/skills/gone")
+            .symlink_metadata()
+            .is_ok());
         delete(&events, &ws, "gone").unwrap();
         assert!(!d.path().join(".agents/skills/gone").exists());
-        assert!(d.path().join(".claude/skills/gone").symlink_metadata().is_err());
+        assert!(d
+            .path()
+            .join(".claude/skills/gone")
+            .symlink_metadata()
+            .is_err());
     }
 
     #[test]

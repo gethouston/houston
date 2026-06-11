@@ -99,7 +99,7 @@ impl EngineWorkflowDispatcher {
                 error: Some(format!("seed failed: {e}")),
             };
         }
-        let agent_context = agent_prompt::build_agent_context(working_dir, None, None);
+        let agent_context = agent_prompt::build_agent_context(working_dir, None, None, None);
         let mut system_prompt = if self.app_system_prompt.is_empty() {
             agent_context
         } else {

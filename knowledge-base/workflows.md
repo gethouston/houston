@@ -35,7 +35,7 @@ planning → awaiting_approval → running → waiting_for_connection → runnin
 
 1. **Planner** — dedicated session (`session_key` = `workflow-{wid}-run-{run_id}`) turns `plan_prompt` into a `WorkflowPlan` (DAG of steps with optional `depends_on`, `use_worktree`, `requires_approval`, `toolkits`).
 2. **Approval** — user approves or cancels from Workflows tab editor or inline chat panel (`ActiveRunPanel`).
-3. **Executor** — steps run in dependency order; independent steps may overlap. Mid-run gates pause on `requires_approval` until the user approves that step.
+3. **Executor** — steps run in dependency order; independent steps may overlap. Mid-run gates pause on `requires_approval` until the user approves that step. Approval stays available while other branches are still running or waiting for connection; approving a gated step does not wait for unrelated in-flight steps to finish.
 4. **Connection gates** — three layers block a step with `waiting_for_connection` until the user connects Composio or the required app:
    - **Pre-flight** — the planner annotates each step with `toolkits` (lowercase Composio slugs). Before dispatch, the executor checks sign-in and connected toolkits; a missing requirement sets the blocker immediately without running the step.
    - **Runtime marker** — if a step runs and the agent emits `<!--houston:workflow-connection {...}-->` in its response, the same blocker path applies.
@@ -89,20 +89,33 @@ After a trigger succeeds, the engine emits and persists a system message:
 
 **Auto-detection threshold:** the agent starts a Workflow when fulfilling the request takes more than 3 distinct actions, when two or more actions could run in parallel, or when several dependent steps are needed. Simple 1-3 step requests stay in chat.
 
-**Clarify-first:** before emitting the trigger marker, the agent asks a short set of clarifying questions via the structured question card (`<!--houston:question {...}-->` — see `QUESTIONS_GUIDANCE` in `app/src-tauri/src/houston_prompt/questions.rs`). It does not emit the workflow marker on a turn where it is still asking questions. After the user answers, it triggers the workflow with answers folded into `planPrompt`. The generated plan is shown in the inline chat panel (`InlineRunCard` via `InlineWorkflowRunCard`); the user approves or cancels inline before execution.
+**Clarify-first:** before emitting the trigger marker, the agent asks a short set of clarifying questions via the structured question card (`<!--houston:question {...}-->` — see `QUESTIONS_GUIDANCE` in `app/src-tauri/src/houston_prompt/questions.rs`). It does not emit the workflow marker on a turn where it is still asking questions. After the user answers, it triggers the workflow with answers folded into `planPrompt`. The generated plan is shown in the inline chat panel (`InlineRunCard` via `InlineWorkflowRunCard`); the user can refine or start from chat, or approve/cancel inline before execution.
+
+### Plan review (engine → chat)
+
+When planning finishes, the run stores `source_chat_session_key` linking it to the user chat that triggered it. `build_agent_context` injects `# Active workflow run (awaiting your review)` with `runId` and step tasks while status is `awaiting_approval`.
+
+After a user chat turn, the assistant may emit:
+
+```
+<!--houston:workflow-approve {"runId":"<run-uuid>"}-->
+<!--houston:workflow-replan {"runId":"<run-uuid>","feedback":"<what to change>"}-->
+```
+
+Parsed in `workflows/chat_actions.rs` (hooked from `sessions::run_start` after the trigger check). Approve calls `approve_run`; replan resets the run to `planning` with augmented `plan_prompt` and re-invokes the planner.
 
 ## UI
 
 | Surface | Package / file | Notes |
 |---|---|---|
 | Workflows tab (grid + editor) | `app/src/components/tabs/workflows-tab.tsx`, `@houston-ai/workflows` | CRUD saved defs, run history, `ActiveRunPanel` + `PlanApprovalDialog` modal on editor. Editor collapses the definition form + saved plan when execution is focused (Run, history pick, or in-flight on open); header toggle restores them. Scrolls to `ActiveRunPanel` on explicit run focus. |
-| Inline chat panel | `app/src/components/inline-workflow-run-card.tsx` | `InlineRunCard` with inline approve/cancel/stop (approval gate + planning + running); decodes run-link marker in `renderSystemMessage` (`use-agent-chat-panel.tsx`). Chat composer Stop/Esc cancels the linked in-flight run when one exists (`app/src/lib/active-workflow-run.ts`, `use-agent-board-send.ts`). |
+| Inline chat panel | `app/src/components/inline-workflow-run-card.tsx` | `InlineRunCard` with inline approve/cancel/stop (approval gate + planning + running). At initial plan approval on inline runs, shows a plan-ready invite nudging the user to refine or start from chat. Approve/cancel render on the gated step row and in a sticky strip under the heading so parallel step lists do not hide them. Decodes run-link marker in `renderSystemMessage` (`use-agent-chat-panel.tsx`). Chat composer Stop/Esc cancels the linked in-flight run when one exists (`app/src/lib/active-workflow-run.ts`, `use-agent-board-send.ts`). |
 | Run-link decoder | `@houston-ai/chat` `workflow-run-message.ts` | `decodeWorkflowRunMessage(body) → { runId }` |
 | Shared i18n labels | `app/src/hooks/use-active-run-labels.ts` | `workflows` namespace; shared by tab + inline panel |
 
 Inline panel: `useWorkflowRuns(agentPath)` finds run by id, renders `InlineRunCard` with approve/cancel wired to existing mutations. Returns `null` while loading so raw marker text never flashes.
 
-Failed or blocked steps on terminal runs (`error` / `cancelled`) show a per-step **Retry** button in `StepProgress` (Workflows tab run panel + inline chat card). Retry resets the target step, any non-`done` ancestors it needs, and all downstream dependents to `pending`, then re-executes only that subgraph (`POST /v1/workflow-runs/:id/steps/:stepId/retry`). Unrelated failed branches stay as-is. Whole-run **Resume** (`POST .../resume`) still re-runs every failed/cancelled step.
+Failed or blocked steps on terminal runs (`error` / `cancelled`) show a per-step **Retry** button in `StepProgress` (Workflows tab run panel + inline chat card). Retry resets the target step, any non-`done` ancestors it needs, and all downstream dependents to `pending`, then re-executes only that subgraph (`POST /v1/workflow-runs/:id/steps/:stepId/retry`). Unrelated failed branches stay as-is. Whole-run **Resume** (`POST .../resume`) still re-runs every failed/cancelled step. Both retry and resume call `runs::reopen_run`, which clears the prior run synthesis and `completed_at` before execution restarts; the UI hides run/step summaries until the run is terminal again.
 
 Connection-blocked steps render the existing Composio sign-in or toolkit card through `@houston-ai/workflows`' generic `renderStepDetail` prop. The app generates toolkit authorization URLs on click, watches live connection state, and retries the blocked step once when the requirement is satisfied. Stop remains available while the run waits.
 
@@ -129,6 +142,7 @@ WS topic: `workflows:{agent_path}` (`engine/houston-engine-protocol::event_topic
 | `workflows/connection_probe.rs` | Prose connection-failure recovery probe |
 | `workflows/runner.rs` | Approve, execute, resume, retry step, cancel |
 | `workflows/chat_trigger.rs` | Marker parse, route, `maybe_trigger_from_chat` |
+| `workflows/chat_actions.rs` | Approve/replan markers from chat, `maybe_workflow_action_from_chat` |
 | `workflows/context.rs` | `# Available Workflows` prompt section |
 
 REST routes: `engine/houston-engine-server/src/routes/workflows.rs`. Wire details in `knowledge-base/engine-protocol.md`.

@@ -110,6 +110,7 @@ mod tests {
             name: None,
             description: None,
             saved_workflow_id: None,
+            source_chat_session_key: None,
         };
 
         let prompt = build_synthesis_prompt(&workflow, &steps, &run);

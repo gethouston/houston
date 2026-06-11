@@ -11,6 +11,12 @@ import {
   plannedStepCount,
   isMidrunApprovalGate,
   awaitingGateStepId,
+  hasAwaitingStep,
+  needsStepApproval,
+  isRunAwaitingUserAction,
+  runStatusSubtitle,
+  visibleStepSummary,
+  shouldShowRunSynthesis,
 } from "../src/workflow-dag.ts"
 import type { WorkflowPlan, WorkflowRun } from "../src/types.ts"
 
@@ -150,6 +156,49 @@ describe("isCancellable", () => {
   })
 })
 
+describe("hasAwaitingStep / needsStepApproval", () => {
+  it("detects awaiting steps while the run is still running", () => {
+    const run: WorkflowRun = {
+      ...mkRun("r1", "w1", "running", "2025-01-01T10:00:00Z"),
+      steps: [
+        { step_id: "a", status: "done", approved: false },
+        { step_id: "b", status: "awaiting_approval", approved: false },
+        { step_id: "c", status: "running", approved: false },
+      ],
+    }
+    assert.equal(hasAwaitingStep(run), true)
+    assert.equal(needsStepApproval(run), true)
+  })
+
+  it("false when no step awaits approval", () => {
+    const run = mkRun("r1", "w1", "running", "2025-01-01T10:00:00Z")
+    assert.equal(hasAwaitingStep(run), false)
+    assert.equal(needsStepApproval(run), false)
+  })
+
+  it("true when awaiting step while run waits for connection", () => {
+    const run: WorkflowRun = {
+      ...mkRun("r1", "w1", "waiting_for_connection", "2025-01-01T10:00:00Z"),
+      steps: [
+        { step_id: "a", status: "done", approved: false },
+        { step_id: "b", status: "awaiting_approval", approved: false },
+        { step_id: "c", status: "waiting_for_connection", approved: false },
+      ],
+    }
+    assert.equal(needsStepApproval(run), true)
+    assert.equal(isRunAwaitingUserAction(run), true)
+  })
+
+  it("false during planning even if steps exist", () => {
+    const run: WorkflowRun = {
+      ...mkRun("r1", "w1", "planning", "2025-01-01T10:00:00Z"),
+      steps: [{ step_id: "a", status: "awaiting_approval", approved: false }],
+    }
+    assert.equal(needsStepApproval(run), false)
+    assert.equal(isRunAwaitingUserAction(run), false)
+  })
+})
+
 describe("isMidrunApprovalGate", () => {
   it("true when awaiting approval after a done step", () => {
     const run: WorkflowRun = {
@@ -163,9 +212,51 @@ describe("isMidrunApprovalGate", () => {
     assert.equal(awaitingGateStepId(run), "b")
   })
 
+  it("true while parallel steps are still running", () => {
+    const run: WorkflowRun = {
+      ...mkRun("r1", "w1", "running", "2025-01-01T10:00:00Z"),
+      steps: [
+        { step_id: "a", status: "done", approved: false },
+        { step_id: "b", status: "awaiting_approval", approved: false },
+        { step_id: "c", status: "running", approved: false },
+      ],
+    }
+    assert.equal(isMidrunApprovalGate(run), true)
+    assert.equal(awaitingGateStepId(run), "b")
+  })
+
   it("false for initial plan approval", () => {
     const run = mkRun("r1", "w1", "awaiting_approval", "2025-01-01T10:00:00Z")
     assert.equal(isMidrunApprovalGate(run), false)
+  })
+})
+
+describe("runStatusSubtitle", () => {
+  const statusLabels = {
+    planning: "Planning",
+    awaiting_approval: "Needs approval",
+    waiting_for_connection: "Needs connection",
+    running: "Running",
+    done: "Done",
+    error: "Error",
+    cancelled: "Cancelled",
+  }
+
+  it("prefers approval label while parallel steps run", () => {
+    const run: WorkflowRun = {
+      ...mkRun("r1", "w1", "running", "2025-01-01T10:00:00Z"),
+      steps: [
+        { step_id: "a", status: "done", approved: false },
+        { step_id: "b", status: "awaiting_approval", approved: false },
+        { step_id: "c", status: "running", approved: false },
+      ],
+    }
+    assert.equal(runStatusSubtitle(run, statusLabels), "Needs approval")
+  })
+
+  it("uses run status when no step awaits approval", () => {
+    const run = mkRun("r1", "w1", "running", "2025-01-01T10:00:00Z")
+    assert.equal(runStatusSubtitle(run, statusLabels), "Running")
   })
 })
 
@@ -204,3 +295,31 @@ function mkRun(
     started_at: startedAt,
   }
 }
+
+describe("visibleStepSummary", () => {
+  it("hides summary while step is in flight", () => {
+    assert.equal(visibleStepSummary("pending", "boom"), undefined)
+    assert.equal(visibleStepSummary("running", "boom"), undefined)
+  })
+
+  it("shows summary for terminal step statuses", () => {
+    assert.equal(visibleStepSummary("done", "ok"), "ok")
+    assert.equal(visibleStepSummary("error", "boom"), "boom")
+    assert.equal(visibleStepSummary("cancelled", "stopped"), "stopped")
+  })
+})
+
+describe("shouldShowRunSynthesis", () => {
+  it("hides synthesis while run is in flight", () => {
+    assert.equal(
+      shouldShowRunSynthesis(false, "one or more workflow steps failed"),
+      false,
+    )
+  })
+
+  it("shows synthesis only for terminal runs with content", () => {
+    assert.equal(shouldShowRunSynthesis(true, "all done"), true)
+    assert.equal(shouldShowRunSynthesis(true, undefined), false)
+    assert.equal(shouldShowRunSynthesis(false, "stale error"), false)
+  })
+})

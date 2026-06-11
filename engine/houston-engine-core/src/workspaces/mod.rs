@@ -95,7 +95,10 @@ pub fn create(root: &Path, req: CreateWorkspace) -> CoreResult<Workspace> {
 
 pub fn rename(root: &Path, id: &str, req: RenameWorkspace) -> CoreResult<Workspace> {
     let mut workspaces = read_all(root)?;
-    if workspaces.iter().any(|w| w.name == req.new_name && w.id != id) {
+    if workspaces
+        .iter()
+        .any(|w| w.name == req.new_name && w.id != id)
+    {
         return Err(CoreError::Conflict(format!(
             "workspace named {:?} already exists",
             req.new_name
@@ -181,7 +184,13 @@ mod tests {
     #[test]
     fn create_then_list() {
         let d = tmp();
-        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        let ws = create(
+            d.path(),
+            CreateWorkspace {
+                name: "alpha".into(),
+            },
+        )
+        .unwrap();
         assert_eq!(ws.name, "alpha");
         let all = list(d.path()).unwrap();
         assert_eq!(all.len(), 1);
@@ -200,7 +209,14 @@ mod tests {
     fn rename_and_delete() {
         let d = tmp();
         let ws = create(d.path(), CreateWorkspace { name: "a".into() }).unwrap();
-        let renamed = rename(d.path(), &ws.id, RenameWorkspace { new_name: "b".into() }).unwrap();
+        let renamed = rename(
+            d.path(),
+            &ws.id,
+            RenameWorkspace {
+                new_name: "b".into(),
+            },
+        )
+        .unwrap();
         assert_eq!(renamed.name, "b");
         delete(d.path(), &ws.id).unwrap();
         assert!(list(d.path()).unwrap().is_empty());
@@ -209,7 +225,13 @@ mod tests {
     #[test]
     fn set_locale_roundtrip_and_clear() {
         let d = tmp();
-        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        let ws = create(
+            d.path(),
+            CreateWorkspace {
+                name: "alpha".into(),
+            },
+        )
+        .unwrap();
         assert!(ws.locale.is_none(), "new workspace has no locale override");
 
         let updated = set_locale(d.path(), &ws.id, Some("es".into())).unwrap();
@@ -238,12 +260,20 @@ mod tests {
     #[test]
     fn locale_survives_rename() {
         let d = tmp();
-        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        let ws = create(
+            d.path(),
+            CreateWorkspace {
+                name: "alpha".into(),
+            },
+        )
+        .unwrap();
         set_locale(d.path(), &ws.id, Some("pt".into())).unwrap();
         rename(
             d.path(),
             &ws.id,
-            RenameWorkspace { new_name: "beta".into() },
+            RenameWorkspace {
+                new_name: "beta".into(),
+            },
         )
         .unwrap();
         let all = list(d.path()).unwrap();
@@ -271,7 +301,13 @@ mod tests {
     #[test]
     fn rename_to_same_name_is_noop() {
         let d = tmp();
-        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        let ws = create(
+            d.path(),
+            CreateWorkspace {
+                name: "alpha".into(),
+            },
+        )
+        .unwrap();
         let renamed = rename(
             d.path(),
             &ws.id,
@@ -291,7 +327,13 @@ mod tests {
     #[test]
     fn rename_case_only_change() {
         let d = tmp();
-        let ws = create(d.path(), CreateWorkspace { name: "Acme".into() }).unwrap();
+        let ws = create(
+            d.path(),
+            CreateWorkspace {
+                name: "Acme".into(),
+            },
+        )
+        .unwrap();
         let renamed = rename(
             d.path(),
             &ws.id,
@@ -302,7 +344,11 @@ mod tests {
         .unwrap();
         assert_eq!(renamed.name, "ACME");
         let all = list(d.path()).unwrap();
-        assert_eq!(all.len(), 1, "case-only rename must not duplicate workspace");
+        assert_eq!(
+            all.len(),
+            1,
+            "case-only rename must not duplicate workspace"
+        );
         assert_eq!(all[0].name, "ACME");
         assert!(d.path().join("ACME").is_dir());
     }
@@ -316,7 +362,13 @@ mod tests {
         use std::sync::Arc;
         use std::thread;
         let d = tmp();
-        let ws = create(d.path(), CreateWorkspace { name: "alpha".into() }).unwrap();
+        let ws = create(
+            d.path(),
+            CreateWorkspace {
+                name: "alpha".into(),
+            },
+        )
+        .unwrap();
         let root = Arc::new(d.path().to_path_buf());
         let id = Arc::new(ws.id.clone());
         let mut handles = Vec::new();
@@ -328,7 +380,9 @@ mod tests {
                 let _ = rename(
                     &root,
                     &id,
-                    RenameWorkspace { new_name: next.into() },
+                    RenameWorkspace {
+                        new_name: next.into(),
+                    },
                 );
             }));
         }

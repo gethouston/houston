@@ -11,7 +11,7 @@ use crate::workflows::keys::step_session_key;
 use crate::workflows::planner::{self, emit_runs_changed};
 use crate::workflows::runner_execute::execute_run;
 use crate::workflows::runs as workflow_runs;
-use crate::workflows::types::{BegunRun, WorkflowRun, WorkflowRunUpdate};
+use crate::workflows::types::{BegunRun, Workflow, WorkflowRun, WorkflowRunUpdate};
 use crate::worktree::RemoveWorktreeRequest;
 use chrono::Utc;
 use houston_ui_events::DynEventSink;
@@ -29,6 +29,37 @@ pub fn begin_run(
     emit_runs_changed(events, agent_path);
     Ok(BegunRun {
         working_dir,
+        workflow,
+        run,
+    })
+}
+
+/// Reset an awaiting-approval run and return a [`BegunRun`] ready for replanning.
+pub fn replan_run(
+    root: &Path,
+    run_id: &str,
+    feedback: &str,
+) -> CoreResult<BegunRun> {
+    let run = workflow_runs::find_by_id(root, run_id)?;
+    if run.status != "awaiting_approval" {
+        return Err(CoreError::Conflict(format!(
+            "workflow run {run_id} cannot replan (status={})",
+            run.status
+        )));
+    }
+    let base_prompt = run
+        .plan_prompt
+        .clone()
+        .or_else(|| inline::effective_workflow(root, &run).ok().map(|w| w.plan_prompt))
+        .filter(|p| !p.trim().is_empty())
+        .ok_or_else(|| {
+            CoreError::BadRequest("workflow run has no plan prompt to replan from".into())
+        })?;
+    let augmented = format!("{base_prompt}\n\nUser requested plan changes:\n{feedback}");
+    let run = workflow_runs::reset_for_replan(root, run_id, &augmented)?;
+    let workflow = inline::effective_workflow(root, &run)?;
+    Ok(BegunRun {
+        working_dir: root.to_path_buf(),
         workflow,
         run,
     })
@@ -66,6 +97,49 @@ pub async fn start_planning(
     }
 }
 
+fn patch_awaiting_steps(
+    root: &Path,
+    run_id: &str,
+    awaiting_step_ids: &[String],
+) -> CoreResult<()> {
+    for step_id in awaiting_step_ids {
+        workflow_runs::patch_step(root, run_id, step_id, |s| {
+            s.approved = true;
+            s.status = "pending".into();
+        })?;
+    }
+    Ok(())
+}
+
+fn spawn_execute_run(
+    events: DynEventSink,
+    dispatcher: Arc<dyn WorkflowDispatcher>,
+    rt: SessionRuntime,
+    agent_path: String,
+    root: std::path::PathBuf,
+    workflow: Workflow,
+    run_id: String,
+    resume: bool,
+    log_label: &'static str,
+) {
+    tokio::spawn(async move {
+        if let Err(e) = execute_run(
+            events,
+            dispatcher,
+            rt,
+            &agent_path,
+            &root,
+            workflow,
+            &run_id,
+            resume,
+        )
+        .await
+        {
+            tracing::error!("[workflows] {log_label} failed for run {run_id}: {e}");
+        }
+    });
+}
+
 pub async fn approve_run(
     events: DynEventSink,
     dispatcher: Arc<dyn WorkflowDispatcher>,
@@ -75,27 +149,38 @@ pub async fn approve_run(
     run_id: &str,
 ) -> CoreResult<WorkflowRun> {
     let run = workflow_runs::find_by_id(root, run_id)?;
-    if run.status != "awaiting_approval" {
-        return Err(CoreError::Conflict(format!(
-            "workflow run {run_id} is not awaiting approval (status={})",
-            run.status
-        )));
+    let awaiting_step_ids: Vec<String> = run
+        .steps
+        .iter()
+        .filter(|s| s.status == "awaiting_approval")
+        .map(|s| s.step_id.clone())
+        .collect();
+    let has_awaiting_steps = !awaiting_step_ids.is_empty();
+
+    match run.status.as_str() {
+        "awaiting_approval" if !has_awaiting_steps => {}
+        "awaiting_approval" | "running" | "waiting_for_connection" if has_awaiting_steps => {}
+        other => {
+            return Err(CoreError::Conflict(format!(
+                "workflow run {run_id} is not awaiting approval (status={other})"
+            )));
+        }
     }
+
+    let executor_still_fanning = run.status == "running" && has_awaiting_steps;
+    patch_awaiting_steps(root, run_id, &awaiting_step_ids)?;
+    emit_runs_changed(&events, agent_path);
+
+    if executor_still_fanning {
+        return workflow_runs::find_by_id(root, run_id);
+    }
+
     let resume = run.steps.iter().any(|s| {
         matches!(
             s.status.as_str(),
             "done" | "error" | "cancelled" | "running"
         )
     });
-    for step in &run.steps {
-        if step.status == "awaiting_approval" {
-            let step_id = step.step_id.clone();
-            workflow_runs::patch_step(root, run_id, &step_id, |s| {
-                s.approved = true;
-                s.status = "pending".into();
-            })?;
-        }
-    }
     let workflow = inline::effective_workflow(root, &run)?;
     let updated = workflow_runs::update(
         root,
@@ -107,26 +192,17 @@ pub async fn approve_run(
     )?;
     emit_runs_changed(&events, agent_path);
 
-    let agent_path = agent_path.to_string();
-    let root = root.to_path_buf();
-    let run_id_owned = run_id.to_string();
-    let events_spawn = events.clone();
-    tokio::spawn(async move {
-        if let Err(e) = execute_run(
-            events_spawn,
-            dispatcher,
-            rt,
-            &agent_path,
-            &root,
-            workflow,
-            &run_id_owned,
-            resume,
-        )
-        .await
-        {
-            tracing::error!("[workflows] execute failed for run {run_id_owned}: {e}");
-        }
-    });
+    spawn_execute_run(
+        events,
+        dispatcher,
+        rt,
+        agent_path.to_string(),
+        root.to_path_buf(),
+        workflow,
+        run_id.to_string(),
+        resume,
+        "execute",
+    );
     Ok(updated)
 }
 
@@ -180,14 +256,7 @@ pub async fn retry_step(
             s.blocker = None;
         })?;
     }
-    let updated = workflow_runs::update(
-        root,
-        run_id,
-        WorkflowRunUpdate {
-            status: Some("running".into()),
-            ..Default::default()
-        },
-    )?;
+    let updated = workflow_runs::reopen_run(root, run_id)?;
     emit_runs_changed(&events, agent_path);
 
     let workflow = inline::effective_workflow(root, &updated)?;
@@ -230,14 +299,7 @@ pub async fn resume_run(
         )));
     }
     let workflow = inline::effective_workflow(root, &run)?;
-    workflow_runs::update(
-        root,
-        run_id,
-        WorkflowRunUpdate {
-            status: Some("running".into()),
-            ..Default::default()
-        },
-    )?;
+    workflow_runs::reopen_run(root, run_id)?;
     emit_runs_changed(&events, agent_path);
     execute_run(
         events, dispatcher, rt, agent_path, root, workflow, run_id, true,

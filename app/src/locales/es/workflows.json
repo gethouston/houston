@@ -66,7 +66,11 @@
     "approve": "Aprobar",
     "actionApprove": "Aprobar y continuar",
     "cancel": "Cancelar",
-    "stop": "Detener"
+    "stop": "Detener",
+    "planReadyInvite": {
+      "title": "Tu plan está listo",
+      "description": "Dime qué quieres ajustar, o avísame cuando quieras que empiece."
+    }
   },
   "approval": {
     "title": "Revisar plan",

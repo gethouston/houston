@@ -39,7 +39,11 @@ import {
 
   isMidrunApprovalGate,
 
+  needsStepApproval,
+
 } from "./workflow-dag"
+
+import type { PlanReadyInviteLabels } from "./plan-ready-invite"
 
 
 
@@ -67,6 +71,8 @@ export interface ActiveRunPanelLabels {
 
   stop?: string
 
+  planReadyInvite?: PlanReadyInviteLabels
+
   runStatus?: Partial<Record<WorkflowRunStatus, string>>
 
   approvalDialog?: PlanApprovalDialogLabels
@@ -85,7 +91,12 @@ const DEFAULT_LABELS: Required<
 
     ActiveRunPanelLabels,
 
-    "runStatus" | "approvalDialog" | "actionApprovalDialog" | "stepProgress" | "stop"
+    | "runStatus"
+    | "approvalDialog"
+    | "actionApprovalDialog"
+    | "stepProgress"
+    | "stop"
+    | "planReadyInvite"
 
   >
 
@@ -179,15 +190,17 @@ export function ActiveRunPanel({
 
 
 
+  const awaitingApproval = needsStepApproval(run)
+
   useEffect(() => {
 
-    if (run.status === "awaiting_approval") {
+    if (awaitingApproval) {
 
       setDialogOpen(true)
 
     }
 
-  }, [run.status, run.id])
+  }, [awaitingApproval, run.id])
 
 
 
@@ -241,7 +254,7 @@ export function ActiveRunPanel({
 
           />
 
-          {run.status === "awaiting_approval" && onApprove && (
+          {awaitingApproval && onApprove && (
 
             <div className="flex items-center gap-1.5 shrink-0">
 
@@ -291,13 +304,23 @@ export function ActiveRunPanel({
 
           renderStepDetail={renderStepDetail}
 
+          onApprove={awaitingApproval && onApprove ? onApprove : undefined}
+
+          onCancel={awaitingApproval && onCancel ? onCancel : undefined}
+
+          approvePending={approvePending}
+
+          approveLabel={approveLabel}
+
+          cancelLabel={l.cancel}
+
         />
 
       </section>
 
 
 
-      {run.status === "awaiting_approval" && onApprove && onCancel && (
+      {awaitingApproval && onApprove && onCancel && (
 
         <PlanApprovalDialog
 

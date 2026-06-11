@@ -18,7 +18,10 @@ pub fn list(root: &Path) -> CoreResult<Vec<RoutineRun>> {
 
 pub fn list_for_routine(root: &Path, routine_id: &str) -> CoreResult<Vec<RoutineRun>> {
     let runs = list(root)?;
-    Ok(runs.into_iter().filter(|r| r.routine_id == routine_id).collect())
+    Ok(runs
+        .into_iter()
+        .filter(|r| r.routine_id == routine_id)
+        .collect())
 }
 
 pub fn create(root: &Path, routine_id: &str) -> CoreResult<RoutineRun> {

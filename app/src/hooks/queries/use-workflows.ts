@@ -1,5 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import type { NewWorkflow, WorkflowUpdate } from "@houston-ai/engine-client";
+import type {
+  NewWorkflow,
+  WorkflowRun,
+  WorkflowUpdate,
+} from "@houston-ai/engine-client";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriWorkflows } from "../../lib/tauri";
 
@@ -100,7 +104,11 @@ export function useRetryWorkflowStep(agentPath: string) {
   return useMutation({
     mutationFn: ({ runId, stepId }: { runId: string; stepId: string }) =>
       tauriWorkflows.retryStep(agentPath, runId, stepId),
-    onSuccess: () => {
+    onSuccess: (updatedRun: WorkflowRun) => {
+      qc.setQueriesData<WorkflowRun[]>(
+        { queryKey: ["workflow-runs", agentPath] },
+        (old) => old?.map((r) => (r.id === updatedRun.id ? updatedRun : r)),
+      );
       qc.invalidateQueries({ queryKey: ["workflow-runs", agentPath] });
     },
   });

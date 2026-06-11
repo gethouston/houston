@@ -189,7 +189,11 @@ mod tests {
         // fresh chat per run (#423) and persists across read-back.
         let d = TempDir::new().unwrap();
         let r = create(d.path(), sample()).unwrap();
-        assert_eq!(r.chat_mode, RoutineChatMode::Shared, "default is one shared chat");
+        assert_eq!(
+            r.chat_mode,
+            RoutineChatMode::Shared,
+            "default is one shared chat"
+        );
 
         let upd = update(
             d.path(),

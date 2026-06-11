@@ -179,6 +179,7 @@ pub fn build_agent_context(
     dir: &Path,
     working_dir_override: Option<&Path>,
     mode: Option<&str>,
+    chat_session_key: Option<&str>,
 ) -> String {
     let mut parts: Vec<String> = Vec::new();
     let prompts_dir = dir.join(".houston/prompts");
@@ -224,6 +225,14 @@ pub fn build_agent_context(
         parts.push(section);
     }
 
+    if let Some(session_key) = chat_session_key {
+        if let Some(section) =
+            crate::workflows::context::build_chat_pending_run_section(dir, session_key)
+        {
+            parts.push(section);
+        }
+    }
+
     if let Some(workspace_dir) = dir.parent() {
         if let Some(section) = crate::workspace_context::build_prompt_section(workspace_dir) {
             parts.push(section);
@@ -232,22 +241,19 @@ pub fn build_agent_context(
 
     let integrations_path = dir.join(".houston/integrations.json");
     if let Ok(content) = fs::read_to_string(&integrations_path) {
-        let names: Vec<String> =
-            serde_json::from_str::<Vec<serde_json::Value>>(&content)
-                .ok()
-                .map(|arr| {
-                    arr.iter()
-                        .filter_map(|v| {
-                            v.get("toolkit").and_then(|t| t.as_str()).map(String::from)
-                        })
-                        .collect()
-                })
-                .or_else(|| {
-                    serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&content)
-                        .ok()
-                        .map(|map| map.keys().cloned().collect())
-                })
-                .unwrap_or_default();
+        let names: Vec<String> = serde_json::from_str::<Vec<serde_json::Value>>(&content)
+            .ok()
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.get("toolkit").and_then(|t| t.as_str()).map(String::from))
+                    .collect()
+            })
+            .or_else(|| {
+                serde_json::from_str::<serde_json::Map<String, serde_json::Value>>(&content)
+                    .ok()
+                    .map(|map| map.keys().cloned().collect())
+            })
+            .unwrap_or_default();
 
         if !names.is_empty() {
             parts.push(format!(
@@ -272,7 +278,10 @@ mod tests {
         let d = TempDir::new().unwrap();
         seed_file(d.path(), "CLAUDE.md", "first").unwrap();
         seed_file(d.path(), "CLAUDE.md", "second").unwrap();
-        assert_eq!(fs::read_to_string(d.path().join("CLAUDE.md")).unwrap(), "first");
+        assert_eq!(
+            fs::read_to_string(d.path().join("CLAUDE.md")).unwrap(),
+            "first"
+        );
     }
 
     #[cfg(unix)]
@@ -354,7 +363,7 @@ mod tests {
         )
         .unwrap();
 
-        let out = build_agent_context(d.path(), None, None);
+        let out = build_agent_context(d.path(), None, None, None);
 
         assert!(out.contains("# Persistent Learnings - Frozen Snapshot"));
         assert!(out.contains("User calls this contact Mr. Perkins."));
@@ -372,7 +381,7 @@ mod tests {
         let agent_dir = ws.path().join("juan-agent");
         fs::create_dir_all(&agent_dir).unwrap();
 
-        let out = build_agent_context(&agent_dir, None, None);
+        let out = build_agent_context(&agent_dir, None, None, None);
 
         assert!(out.contains("# Workspace Context"));
         assert!(out.contains("Acme Corp, B2B fintech."));
@@ -384,7 +393,7 @@ mod tests {
     fn build_agent_context_skips_workspace_section_when_no_workspace_marker() {
         let d = TempDir::new().unwrap();
         // No `.houston/` in parent => not a workspace child.
-        let out = build_agent_context(d.path(), None, None);
+        let out = build_agent_context(d.path(), None, None, None);
         assert!(!out.contains("# Workspace Context"));
         assert!(!out.contains("# User Context"));
     }
@@ -403,7 +412,7 @@ mod tests {
         )
         .unwrap();
 
-        let out = build_agent_context(d.path(), None, None);
+        let out = build_agent_context(d.path(), None, None, None);
         assert!(out.contains("# Available Workflows"));
         assert!(out.contains(&w.id));
         assert!(out.contains("Security audit"));
@@ -412,7 +421,7 @@ mod tests {
     #[test]
     fn build_agent_context_omits_workflows_section_when_none_saved() {
         let d = TempDir::new().unwrap();
-        let out = build_agent_context(d.path(), None, None);
+        let out = build_agent_context(d.path(), None, None, None);
         assert!(!out.contains("# Available Workflows"));
     }
 

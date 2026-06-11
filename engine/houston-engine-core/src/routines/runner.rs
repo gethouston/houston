@@ -415,10 +415,11 @@ mod tests {
             _routine_id: &str,
             _routine_run_id: &str,
         ) -> Result<String, String> {
-            self.calls
-                .lock()
-                .unwrap()
-                .push((title.to_string(), description.to_string(), "act-1".into()));
+            self.calls.lock().unwrap().push((
+                title.to_string(),
+                description.to_string(),
+                "act-1".into(),
+            ));
             Ok("act-1".into())
         }
     }
@@ -549,9 +550,15 @@ mod tests {
         let surface: Arc<dyn ActivitySurface> = Arc::new(EngineActivitySurface);
         let events: DynEventSink = Arc::new(NoopEventSink);
 
-        run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &r.id)
-            .await
-            .unwrap();
+        run_routine(
+            events.clone(),
+            dispatcher.clone(),
+            surface.clone(),
+            &agent_path,
+            &r.id,
+        )
+        .await
+        .unwrap();
         run_routine(events.clone(), dispatcher, surface, &agent_path, &r.id)
             .await
             .unwrap();
@@ -587,9 +594,15 @@ mod tests {
         let surface: Arc<dyn ActivitySurface> = Arc::new(EngineActivitySurface);
         let events: DynEventSink = Arc::new(NoopEventSink);
 
-        run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &r.id)
-            .await
-            .unwrap();
+        run_routine(
+            events.clone(),
+            dispatcher.clone(),
+            surface.clone(),
+            &agent_path,
+            &r.id,
+        )
+        .await
+        .unwrap();
         run_routine(events.clone(), dispatcher, surface, &agent_path, &r.id)
             .await
             .unwrap();
@@ -656,8 +669,20 @@ mod tests {
         let events: DynEventSink = Arc::new(NoopEventSink);
 
         let (ra, rb) = tokio::join!(
-            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &a.id),
-            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &b.id),
+            run_routine(
+                events.clone(),
+                dispatcher.clone(),
+                surface.clone(),
+                &agent_path,
+                &a.id
+            ),
+            run_routine(
+                events.clone(),
+                dispatcher.clone(),
+                surface.clone(),
+                &agent_path,
+                &b.id
+            ),
         );
         ra.unwrap();
         rb.unwrap();
@@ -667,7 +692,9 @@ mod tests {
         assert!(
             runs.iter().all(|r| r.status == "silent"),
             "both runs reached a terminal status: {:?}",
-            runs.iter().map(|r| (&r.routine_id, &r.status)).collect::<Vec<_>>()
+            runs.iter()
+                .map(|r| (&r.routine_id, &r.status))
+                .collect::<Vec<_>>()
         );
         // One run per routine id.
         assert!(runs.iter().any(|r| r.routine_id == a.id));
@@ -716,15 +743,30 @@ mod tests {
         let events: DynEventSink = Arc::new(NoopEventSink);
 
         let (ra, rb) = tokio::join!(
-            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &a.id),
-            run_routine(events.clone(), dispatcher.clone(), surface.clone(), &agent_path, &b.id),
+            run_routine(
+                events.clone(),
+                dispatcher.clone(),
+                surface.clone(),
+                &agent_path,
+                &a.id
+            ),
+            run_routine(
+                events.clone(),
+                dispatcher.clone(),
+                surface.clone(),
+                &agent_path,
+                &b.id
+            ),
         );
         ra.unwrap();
         rb.unwrap();
 
         let runs = routine_runs::list(d.path()).unwrap();
         assert_eq!(runs.len(), 2, "both routines ran");
-        assert!(runs.iter().all(|r| r.status == "silent"), "both reached terminal");
+        assert!(
+            runs.iter().all(|r| r.status == "silent"),
+            "both reached terminal"
+        );
         assert_eq!(
             peak.load(Ordering::SeqCst),
             1,

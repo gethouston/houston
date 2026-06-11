@@ -44,19 +44,21 @@ mod tests {
         let first = locks.acquire(dir.path()).await;
 
         // A second acquire on the held folder must not resolve immediately…
-        assert!(
-            tokio::time::timeout(std::time::Duration::from_millis(20), locks.acquire(dir.path()))
-                .await
-                .is_err()
-        );
+        assert!(tokio::time::timeout(
+            std::time::Duration::from_millis(20),
+            locks.acquire(dir.path())
+        )
+        .await
+        .is_err());
 
         // …but does once the first guard drops.
         drop(first);
-        assert!(
-            tokio::time::timeout(std::time::Duration::from_millis(50), locks.acquire(dir.path()))
-                .await
-                .is_ok()
-        );
+        assert!(tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            locks.acquire(dir.path())
+        )
+        .await
+        .is_ok());
     }
 
     #[tokio::test]
@@ -88,12 +90,18 @@ mod tests {
         let locks = WorkdirLocks::default();
 
         // Distinct folders never contend — both acquire without waiting.
-        let _first = tokio::time::timeout(std::time::Duration::from_millis(50), locks.acquire(one.path()))
-            .await
-            .expect("first folder acquires immediately");
-        let _second = tokio::time::timeout(std::time::Duration::from_millis(50), locks.acquire(two.path()))
-            .await
-            .expect("second folder acquires immediately");
+        let _first = tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            locks.acquire(one.path()),
+        )
+        .await
+        .expect("first folder acquires immediately");
+        let _second = tokio::time::timeout(
+            std::time::Duration::from_millis(50),
+            locks.acquire(two.path()),
+        )
+        .await
+        .expect("second folder acquires immediately");
     }
 
     #[tokio::test]
@@ -104,10 +112,11 @@ mod tests {
 
         let _first = locks.acquire(dir.path()).await;
         // `dir` and `dir/.` canonicalize to the same key → the second waits.
-        assert!(
-            tokio::time::timeout(std::time::Duration::from_millis(20), locks.acquire(&equivalent))
-                .await
-                .is_err()
-        );
+        assert!(tokio::time::timeout(
+            std::time::Duration::from_millis(20),
+            locks.acquire(&equivalent)
+        )
+        .await
+        .is_err());
     }
 }
