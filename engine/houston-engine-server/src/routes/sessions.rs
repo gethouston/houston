@@ -110,9 +110,15 @@ async fn start_session(
         .map(|p| sessions::expand_tilde(std::path::Path::new(p)))
         .unwrap_or_else(|| agent_dir.clone());
 
-    // Override > agent config > Anthropic default.
-    let ResolvedProviderChoice { provider, model } =
-        resolve_provider_with_overrides(&agent_dir, req.provider.as_deref(), req.model.clone())?;
+    // Override > agent config > Anthropic default. Shared with routine
+    // dispatch via `sessions::resolve_provider_with_overrides`.
+    let resolved = sessions::resolve_provider_with_overrides(
+        &agent_dir,
+        req.provider.as_deref(),
+        req.model.clone(),
+    )
+    .map_err(CoreError::BadRequest)?;
+    let (provider, model) = (resolved.provider, resolved.model);
 
     // Reasoning effort: an explicit request override wins (the onboarding
     // tutorial forces a known-good value); otherwise resolve the agent's
@@ -307,35 +313,6 @@ async fn cancel_session(
 }
 
 // ---------------------------------------------------------------------------
-
-struct ResolvedProviderChoice {
-    provider: Provider,
-    model: Option<String>,
-}
-
-fn resolve_provider_with_overrides(
-    agent_dir: &std::path::Path,
-    provider_override: Option<&str>,
-    model_override: Option<String>,
-) -> Result<ResolvedProviderChoice, ApiError> {
-    if let Some(p_str) = provider_override {
-        let provider: Provider = p_str
-            .parse()
-            .map_err(|e: String| CoreError::BadRequest(e))?;
-        return Ok(ResolvedProviderChoice {
-            provider,
-            model: model_override,
-        });
-    }
-    let mut resolved = resolve_provider(agent_dir);
-    if let Some(m) = model_override {
-        resolved.model = Some(m);
-    }
-    Ok(ResolvedProviderChoice {
-        provider: resolved.provider,
-        model: resolved.model,
-    })
-}
 
 #[cfg(test)]
 mod tests {

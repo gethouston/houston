@@ -144,11 +144,12 @@ not user-facing copy.
 |---|---|---|
 | GET/POST | `/v1/agents/activities` | List/create |
 | PATCH/DELETE | `/v1/agents/activities/:id` | Update/delete |
-| GET/POST | `/v1/agents/routines` | List/create |
-| PATCH/DELETE | `/v1/agents/routines/:id` | Update/delete |
-| GET/POST | `/v1/agents/routine-runs` | List/create |
-| PATCH | `/v1/agents/routine-runs/:id` | Update |
 | GET/PUT | `/v1/agents/config` | Read/write project config |
+
+Routine + routine-run CRUD is **not** here — there is one canonical surface
+under `/v1/routines` + `/v1/routine-runs` (below); the engine-client points all
+routine CRUD at it. (The old duplicate `/v1/agents/routines*` mirror, which
+silently dropped `timezone`, was removed.)
 
 **Agent files** (typed `.houston/` + project file browser)
 | Method | Path | Description |
@@ -164,7 +165,18 @@ not user-facing copy.
 | POST | `/v1/agents/files/import` | Import paths |
 | POST | `/v1/agents/files/import-bytes` | Import base64 bytes |
 
-**Routines (separate scheduler surface)**
+**Routines (the single routine surface — CRUD + scheduler)**
+
+All routine + routine-run CRUD lives here (the engine-client targets it); the
+`/v1/agents/routines*` mirror was deleted. Query params are camelCase
+(`?agentPath`, `?routineId`). A routine carries optional
+`provider`/`model`/`effort` overrides (absent = inherit the agent's config at
+dispatch); the dispatcher resolves provider+model via
+`sessions::resolve_provider_with_overrides` and effort via
+`resolve_effort_with_override` (an effort the resolved provider rejects is
+dropped), the same precedence a chat turn uses. Create/update/delete + run create/update
+emit `RoutinesChanged` / `RoutineRunsChanged`.
+
 | Method | Path | Description |
 |---|---|---|
 | GET/POST | `/v1/routines` | List/create (by `?agentPath`) |

@@ -66,7 +66,24 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             format!("{}\n\n---\n\n{agent_context}", self.app_system_prompt)
         };
 
-        let resolved = sessions::resolve_provider(ctx.working_dir);
+        // Per-routine provider/model override, falling back to the agent's
+        // configured provider/model when the routine pins neither (legacy
+        // routines, or ones left on the agent default). Same precedence a chat
+        // turn uses. A bad provider id surfaces as a run error instead of
+        // silently reverting, so the run row shows why it didn't start.
+        let resolved = match sessions::resolve_provider_with_overrides(
+            ctx.working_dir,
+            ctx.routine.provider.as_deref(),
+            ctx.routine.model.clone(),
+        ) {
+            Ok(resolved) => resolved,
+            Err(e) => {
+                return DispatchOutcome {
+                    response_text: String::new(),
+                    error: Some(format!("invalid provider for routine: {e}")),
+                };
+            }
+        };
         let agent_key = format!(
             "{}:{}:{}",
             ctx.working_dir.to_string_lossy(),
@@ -122,7 +139,11 @@ impl RoutineDispatcher for EngineRoutineDispatcher {
             Some(self.rt.pid_map.clone()),
             resolved.provider,
             resolved.model,
-            sessions::resolve_effort(ctx.working_dir, resolved.provider),
+            sessions::resolve_effort_with_override(
+                ctx.working_dir,
+                resolved.provider,
+                ctx.routine.effort.as_deref(),
+            ),
         );
 
         match join_handle.await {
@@ -226,6 +247,9 @@ mod lifecycle_tests {
             chat_mode: RoutineChatMode::Shared,
             timezone: None,
             integrations: vec![],
+            provider: None,
+            model: None,
+            effort: None,
         }
     }
 

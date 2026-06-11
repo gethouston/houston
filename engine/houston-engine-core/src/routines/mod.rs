@@ -62,6 +62,9 @@ pub fn create(root: &Path, input: NewRoutine) -> CoreResult<Routine> {
         chat_mode: input.chat_mode,
         timezone: input.timezone,
         integrations: input.integrations,
+        provider: input.provider,
+        model: input.model,
+        effort: input.effort,
         created_at: now.clone(),
         updated_at: now,
     };
@@ -104,6 +107,15 @@ pub fn update(root: &Path, id: &str, updates: RoutineUpdate) -> CoreResult<Routi
     if let Some(integrations) = updates.integrations {
         routine.integrations = integrations;
     }
+    if let Some(provider) = updates.provider {
+        routine.provider = Some(provider);
+    }
+    if let Some(model) = updates.model {
+        routine.model = Some(model);
+    }
+    if let Some(effort) = updates.effort {
+        routine.effort = Some(effort);
+    }
     routine.updated_at = Utc::now().to_rfc3339();
 
     let result = routine.clone();
@@ -137,6 +149,9 @@ mod tests {
             chat_mode: RoutineChatMode::Shared,
             timezone: None,
             integrations: vec![],
+            provider: None,
+            model: None,
+            effort: None,
         }
     }
 
@@ -231,6 +246,105 @@ mod tests {
         .unwrap();
         let loaded = list(d.path()).unwrap();
         assert_eq!(loaded[0].chat_mode, RoutineChatMode::Shared);
+    }
+
+    #[test]
+    fn provider_model_round_trip_and_rebind() {
+        // A routine pins a provider/model override that survives read-back, and
+        // a later update can re-point it to a different provider/model.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), sample()).unwrap();
+        assert!(r.provider.is_none() && r.model.is_none(), "new routines inherit by default");
+
+        let set = update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                provider: Some("openai".into()),
+                model: Some("gpt-5.5".into()),
+                effort: Some("high".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(set.provider.as_deref(), Some("openai"));
+        assert_eq!(set.model.as_deref(), Some("gpt-5.5"));
+        assert_eq!(set.effort.as_deref(), Some("high"));
+        let reloaded = list(d.path()).unwrap();
+        assert_eq!(reloaded[0].provider.as_deref(), Some("openai"), "serialized to disk");
+        assert_eq!(reloaded[0].model.as_deref(), Some("gpt-5.5"));
+        assert_eq!(reloaded[0].effort.as_deref(), Some("high"));
+
+        let rebound = update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                provider: Some("anthropic".into()),
+                model: Some("claude-opus-4-8".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(rebound.provider.as_deref(), Some("anthropic"));
+        assert_eq!(rebound.model.as_deref(), Some("claude-opus-4-8"));
+    }
+
+    #[test]
+    fn provider_model_unchanged_when_update_omits_them() {
+        // `None` (omitted) must leave an existing override untouched.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), sample()).unwrap();
+        update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                provider: Some("anthropic".into()),
+                model: Some("claude-opus-4-8".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let after = update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                name: Some("renamed".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(after.name, "renamed");
+        assert_eq!(after.provider.as_deref(), Some("anthropic"), "override preserved");
+        assert_eq!(after.model.as_deref(), Some("claude-opus-4-8"));
+    }
+
+    #[test]
+    fn provider_model_absent_on_disk_reads_as_none() {
+        // A routine written before this option (no provider/model keys) must
+        // read back with no override so it inherits the agent's provider/model
+        // at run time — no migration required.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("routines.json"),
+            r#"[{
+              "id": "legacy",
+              "name": "Old",
+              "description": "",
+              "prompt": "p",
+              "schedule": "0 9 * * *",
+              "enabled": true,
+              "suppress_when_silent": true,
+              "integrations": [],
+              "created_at": "2026-05-01T00:00:00Z",
+              "updated_at": "2026-05-01T00:00:00Z"
+            }]"#,
+        )
+        .unwrap();
+        let loaded = list(d.path()).unwrap();
+        assert!(loaded[0].provider.is_none());
+        assert!(loaded[0].model.is_none());
     }
 
     #[test]
