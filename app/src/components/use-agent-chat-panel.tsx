@@ -38,6 +38,7 @@ import {
 import { useFeedStore } from "../stores/feeds";
 import { useUIStore } from "../stores/ui";
 import { useActivity, useSkills } from "../hooks/queries";
+import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import {
   tauriActivity,
   tauriAttachments,
@@ -220,10 +221,23 @@ export function useAgentChatPanel({
   const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
   const selectedActivityId = selectedActivity?.id ?? null;
 
+  // Which providers the user is actually logged into (reactive + cached). The
+  // fallback below picks an authenticated one rather than a stale preference,
+  // so a no-provider agent never lands on a logged-out CLI (#483).
+  const { statuses: providerStatuses } = useProviderStatuses();
+  const authedProviders = useMemo(
+    () =>
+      Object.values(providerStatuses)
+        .filter((s) => s.authenticated)
+        .map((s) => s.provider),
+    [providerStatuses],
+  );
+
   const effectiveProvider = resolveEffectiveProvider(
     activityProvider,
     agentProvider,
     lastUsedProvider,
+    authedProviders,
   );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??

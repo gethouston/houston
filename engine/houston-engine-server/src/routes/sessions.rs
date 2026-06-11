@@ -25,7 +25,7 @@ use houston_composio::toolkit_display_name;
 use houston_db::Database;
 use houston_engine_core::sessions::{
     self, fallback_provider, generate_instructions, history, resolve_agent_dir, resolve_provider,
-    summarize, SessionRuntime, StartParams,
+    summarize, ResolveMode, SessionRuntime, StartParams,
 };
 use houston_engine_core::CoreError;
 use houston_terminal_manager::Provider;
@@ -213,7 +213,9 @@ async fn summarize_activity(
         (provider, req.model)
     } else if let Some(agent_path) = req.agent_path.as_deref() {
         let agent_dir = resolve_agent_dir(&st.engine.paths, agent_path);
-        let resolved = resolve_provider(&st.engine.db, &agent_dir).await;
+        // Unattended title summary: auth-gate even an explicit agent provider.
+        let resolved =
+            resolve_provider(&st.engine.db, &agent_dir, ResolveMode::Unattended).await;
         (resolved.provider, req.model.or(resolved.model))
     } else {
         // No provider override and no agent to resolve against: fall back to
@@ -340,7 +342,10 @@ async fn resolve_provider_with_overrides(
             model: model_override,
         });
     }
-    let mut resolved = resolve_provider(db, agent_dir).await;
+    // Chat send with no explicit override: honor an explicit agent provider
+    // as-is (Interactive) so a logged-out one surfaces the reconnect card rather
+    // than silently switching provider mid-conversation.
+    let mut resolved = resolve_provider(db, agent_dir, ResolveMode::Interactive).await;
     if let Some(m) = model_override {
         resolved.model = Some(m);
     }

@@ -49,7 +49,9 @@ use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
 
 pub use cancel::cancel;
 pub use houston_agents_conversations::session_pids::PidInsert;
-pub use provider::{fallback_provider, resolve_effort, resolve_provider, ResolvedProvider};
+pub use provider::{
+    fallback_provider, resolve_effort, resolve_provider, ResolveMode, ResolvedProvider,
+};
 
 /// Engine-owned session state. Cheap to clone.
 #[derive(Default, Clone)]
@@ -623,7 +625,7 @@ pub async fn start_onboarding(
     // appends its own agent context in `start()` below.
     let product_prompt = format!("{app_system_prompt}{app_onboarding_prompt}");
 
-    let resolved = resolve_provider(&db, &agent_dir).await;
+    let resolved = resolve_provider(&db, &agent_dir, ResolveMode::Unattended).await;
     let effort = resolve_effort(&agent_dir, resolved.provider);
 
     start(
