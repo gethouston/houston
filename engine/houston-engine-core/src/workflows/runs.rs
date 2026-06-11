@@ -111,7 +111,62 @@ fn new_run_row(workflow_id: &str, inline: Option<&InlineRunSpec>) -> WorkflowRun
         name,
         description,
         saved_workflow_id: None,
+        source_chat_session_key: None,
     }
+}
+
+/// Link a run to the user chat session that triggered it.
+pub fn link_to_chat_session(
+    root: &Path,
+    run_id: &str,
+    session_key: &str,
+) -> CoreResult<WorkflowRun> {
+    with_runs_lock(root, || {
+        let mut runs = list(root)?;
+        let run = runs
+            .iter_mut()
+            .find(|r| r.id == run_id)
+            .ok_or_else(|| CoreError::NotFound(format!("workflow run {run_id}")))?;
+        run.source_chat_session_key = Some(session_key.to_string());
+        let result = run.clone();
+        write_json(root, FILE, &runs)?;
+        Ok(result)
+    })
+}
+
+/// Clear plan state and return a run to planning for chat-driven replan.
+pub fn reset_for_replan(
+    root: &Path,
+    run_id: &str,
+    plan_prompt: &str,
+) -> CoreResult<WorkflowRun> {
+    with_runs_lock(root, || {
+        let mut runs = list(root)?;
+        let run = runs
+            .iter_mut()
+            .find(|r| r.id == run_id)
+            .ok_or_else(|| CoreError::NotFound(format!("workflow run {run_id}")))?;
+        run.status = "planning".into();
+        run.plan = None;
+        run.steps = Vec::new();
+        run.plan_prompt = Some(plan_prompt.to_string());
+        let result = run.clone();
+        write_json(root, FILE, &runs)?;
+        Ok(result)
+    })
+}
+
+/// Find a chat-linked run awaiting initial plan approval, if any.
+pub fn find_chat_pending_run(
+    root: &Path,
+    chat_session_key: &str,
+) -> CoreResult<Option<WorkflowRun>> {
+    Ok(list(root)?
+        .into_iter()
+        .find(|r| {
+            r.source_chat_session_key.as_deref() == Some(chat_session_key)
+                && r.status == "awaiting_approval"
+        }))
 }
 
 fn persist_new_run(root: &Path, run: WorkflowRun) -> CoreResult<WorkflowRun> {
@@ -157,6 +212,25 @@ fn update_unlocked(root: &Path, id: &str, updates: WorkflowRunUpdate) -> CoreRes
         run.saved_workflow_id = Some(saved_workflow_id);
     }
 
+    let result = run.clone();
+    write_json(root, FILE, &runs)?;
+    Ok(result)
+}
+
+/// Clear terminal metadata and mark a run in-flight again (retry / resume).
+pub fn reopen_run(root: &Path, id: &str) -> CoreResult<WorkflowRun> {
+    with_runs_lock(root, || reopen_run_unlocked(root, id))
+}
+
+fn reopen_run_unlocked(root: &Path, id: &str) -> CoreResult<WorkflowRun> {
+    let mut runs = list(root)?;
+    let run = runs
+        .iter_mut()
+        .find(|r| r.id == id)
+        .ok_or_else(|| CoreError::NotFound(format!("workflow run {id}")))?;
+    run.status = "running".into();
+    run.summary = None;
+    run.completed_at = None;
     let result = run.clone();
     write_json(root, FILE, &runs)?;
     Ok(result)
@@ -345,6 +419,28 @@ mod tests {
             find_by_id(d.path(), "nope").unwrap_err(),
             CoreError::NotFound(_)
         ));
+    }
+
+    #[test]
+    fn reopen_run_clears_terminal_metadata() {
+        let d = TempDir::new().unwrap();
+        let run = create(d.path(), "wid").unwrap();
+        update(
+            d.path(),
+            &run.id,
+            WorkflowRunUpdate {
+                status: Some("error".into()),
+                summary: Some("one or more workflow steps failed".into()),
+                completed_at: Some(Utc::now().to_rfc3339()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let reopened = reopen_run(d.path(), &run.id).unwrap();
+        assert_eq!(reopened.status, "running");
+        assert!(reopened.summary.is_none());
+        assert!(reopened.completed_at.is_none());
     }
 
     #[test]

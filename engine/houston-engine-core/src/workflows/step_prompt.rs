@@ -137,6 +137,7 @@ mod tests {
             name: None,
             description: None,
             saved_workflow_id: None,
+            source_chat_session_key: None,
         }
     }
 

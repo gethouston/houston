@@ -23,9 +23,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::error::{CoreError, CoreResult};
-use crate::portable::export::{
-    build_preview, InventoryPreview,
-};
+use crate::portable::export::{build_preview, InventoryPreview};
 
 const CACHE_TTL: Duration = Duration::from_secs(15 * 60);
 
@@ -34,8 +32,7 @@ struct CachedUpload {
     received_at: Instant,
 }
 
-static CACHE: Lazy<Mutex<HashMap<String, CachedUpload>>> =
-    Lazy::new(|| Mutex::new(HashMap::new()));
+static CACHE: Lazy<Mutex<HashMap<String, CachedUpload>>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
 fn evict_expired(cache: &mut HashMap<String, CachedUpload>) {
     let now = Instant::now();
@@ -151,8 +148,7 @@ pub fn get_uploaded(package_id: &str) -> CoreResult<ParsedPackage> {
         .map(|c| c.parsed.clone())
         .ok_or_else(|| {
             CoreError::NotFound(
-                "Upload not found or expired. Please re-upload the .houstonagent file."
-                    .into(),
+                "Upload not found or expired. Please re-upload the .houstonagent file.".into(),
             )
         })
 }
@@ -221,7 +217,12 @@ pub fn install(docs_dir: &Path, req: InstallRequest) -> CoreResult<InstalledAgen
     let mut chosen_skills: Vec<&houston_agent_portable::InventorySkill> = inventory
         .skills
         .iter()
-        .filter(|s| req.selection.include_skill_slugs.iter().any(|x| x == &s.slug))
+        .filter(|s| {
+            req.selection
+                .include_skill_slugs
+                .iter()
+                .any(|x| x == &s.slug)
+        })
         .collect();
     chosen_skills.sort_by(|a, b| a.slug.cmp(&b.slug));
 
@@ -248,7 +249,12 @@ pub fn install(docs_dir: &Path, req: InstallRequest) -> CoreResult<InstalledAgen
     let chosen_learnings: Vec<_> = inventory
         .learnings
         .iter()
-        .filter(|l| req.selection.include_learning_ids.iter().any(|x| x == &l.id))
+        .filter(|l| {
+            req.selection
+                .include_learning_ids
+                .iter()
+                .any(|x| x == &l.id)
+        })
         .cloned()
         .collect();
     let learnings_json = serde_json::to_string_pretty(&chosen_learnings)?;
@@ -289,7 +295,11 @@ fn aggregate_integrations(
 ) -> Vec<String> {
     let mut set = std::collections::BTreeSet::new();
     for skill in &inv.skills {
-        if !selection.include_skill_slugs.iter().any(|x| x == &skill.slug) {
+        if !selection
+            .include_skill_slugs
+            .iter()
+            .any(|x| x == &skill.slug)
+        {
             continue;
         }
         if let Ok((summary, _)) = houston_skills::format::parse_content(&skill.skill_md) {

@@ -84,10 +84,7 @@ pub async fn get_legal_acceptance(db: &Database) -> CoreResult<Option<LegalAccep
 }
 
 /// Persist the user's disclaimer acceptance.
-pub async fn set_legal_acceptance(
-    db: &Database,
-    acceptance: &LegalAcceptance,
-) -> CoreResult<()> {
+pub async fn set_legal_acceptance(db: &Database, acceptance: &LegalAcceptance) -> CoreResult<()> {
     let encoded = serde_json::to_string(acceptance)
         .map_err(|e| CoreError::Internal(format!("legal_acceptance encode: {e}")))?;
     set(db, LEGAL_ACCEPTANCE_KEY, &encoded).await

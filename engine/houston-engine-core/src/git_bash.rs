@@ -143,10 +143,7 @@ mod tests {
     #[test]
     fn sanitize_accepts_nested() {
         let p = sanitize_entry_path("usr/bin/bash.exe").unwrap();
-        assert_eq!(
-            p,
-            std::path::Path::new("usr").join("bin").join("bash.exe")
-        );
+        assert_eq!(p, std::path::Path::new("usr").join("bin").join("bash.exe"));
     }
 
     #[test]
@@ -158,10 +155,7 @@ mod tests {
     #[test]
     fn sanitize_strips_curdir() {
         let p = sanitize_entry_path("./usr/bin/bash.exe").unwrap();
-        assert_eq!(
-            p,
-            std::path::Path::new("usr").join("bin").join("bash.exe")
-        );
+        assert_eq!(p, std::path::Path::new("usr").join("bin").join("bash.exe"));
     }
 }
 
@@ -202,10 +196,7 @@ mod imp {
     /// always present and is what Claude Code actually wants (the
     /// launcher in /bin/ is a wrapper meant for opening a terminal,
     /// not for non-interactive execution).
-    const BASH_CANDIDATES: &[&[&str]] = &[
-        &["usr", "bin", "bash.exe"],
-        &["bin", "bash.exe"],
-    ];
+    const BASH_CANDIDATES: &[&[&str]] = &[&["usr", "bin", "bash.exe"], &["bin", "bash.exe"]];
 
     fn locate_bash(target_dir: &Path) -> Option<PathBuf> {
         BASH_CANDIDATES.iter().find_map(|parts| {

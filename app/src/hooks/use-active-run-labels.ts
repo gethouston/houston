@@ -49,6 +49,10 @@ export function useActiveRunLabels(): {
       actionApprove: t("activeRun.actionApprove"),
       cancel: t("activeRun.cancel"),
       stop: t("activeRun.stop"),
+      planReadyInvite: {
+        title: t("activeRun.planReadyInvite.title"),
+        description: t("activeRun.planReadyInvite.description"),
+      },
       runStatus,
       approvalDialog: {
         title: t("approval.title"),

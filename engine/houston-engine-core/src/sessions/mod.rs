@@ -22,8 +22,8 @@ mod control;
 pub mod file_changes;
 pub mod generate_instructions;
 pub mod history;
-mod provider_oneshot;
 pub mod provider;
+mod provider_oneshot;
 pub mod suggested_routine;
 pub mod summarize;
 mod summary_text;
@@ -245,8 +245,17 @@ async fn run_start(
     //   embedding app (Houston desktop) passed in via `HOUSTON_APP_SYSTEM_PROMPT`.
     // - `agent_context`: assembled by the engine from disk (working-dir header,
     //   mode overlay, skills index, integrations list). Product-neutral.
-    let agent_context =
-        agent_prompt::build_agent_context(&agent_dir, Some(working_dir.as_path()), None);
+    let chat_session_key = if session_key.starts_with("workflow-") {
+        None
+    } else {
+        Some(session_key.as_str())
+    };
+    let agent_context = agent_prompt::build_agent_context(
+        &agent_dir,
+        Some(working_dir.as_path()),
+        None,
+        chat_session_key,
+    );
     let product_prompt = system_prompt
         .as_deref()
         .filter(|s| !s.is_empty())
@@ -511,28 +520,47 @@ async fn run_start(
         }
     }
 
-    if let Ok(result) = &session_result {
-        if result.error.is_none() && !session_key_for_end.starts_with("workflow-") {
-            let dispatcher = Arc::new(crate::workflows::engine_dispatcher::EngineWorkflowDispatcher {
+    let should_check_chat_workflow_trigger = matches!(
+        &session_result,
+        Ok(result) if result.error.is_none() && !session_key_for_end.starts_with("workflow-")
+    );
+    if should_check_chat_workflow_trigger {
+        let Ok(result) = &session_result else {
+            unreachable!("workflow trigger gate only passes successful session results");
+        };
+        let dispatcher = Arc::new(
+            crate::workflows::engine_dispatcher::EngineWorkflowDispatcher {
                 rt: rt.clone(),
                 events: events_for_end.clone(),
                 db: db_for_file_changes.clone(),
                 app_system_prompt: app_system_prompt.to_string(),
-            });
-            if let Err(e) = crate::workflows::chat_trigger::maybe_trigger_from_chat(
-                &events_for_end,
-                &db_for_file_changes,
-                dispatcher,
-                &agent_path_for_end,
-                &session_key_for_end,
-                &source_for_file_changes,
-                result.response_text.as_deref(),
-                result.claude_session_id.as_deref(),
-            )
-            .await
-            {
-                tracing::error!("[sessions] chat workflow trigger failed: {e}");
-            }
+            },
+        );
+        if let Err(e) = crate::workflows::chat_trigger::maybe_trigger_from_chat(
+            &events_for_end,
+            &db_for_file_changes,
+            dispatcher.clone(),
+            &agent_path_for_end,
+            &session_key_for_end,
+            &source_for_file_changes,
+            result.response_text.as_deref(),
+            result.claude_session_id.as_deref(),
+        )
+        .await
+        {
+            tracing::error!("[sessions] chat workflow trigger failed: {e}");
+        }
+        if let Err(e) = crate::workflows::chat_actions::maybe_workflow_action_from_chat(
+            &events_for_end,
+            dispatcher,
+            rt.clone(),
+            &agent_path_for_end,
+            &session_key_for_end,
+            result.response_text.as_deref(),
+        )
+        .await
+        {
+            tracing::error!("[sessions] chat workflow action failed: {e}");
         }
     }
 

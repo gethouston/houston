@@ -81,9 +81,8 @@ async fn run_provider_summary(
     model: Option<&str>,
 ) -> Result<String, String> {
     let prompt = title_prompt(message);
-    let model = default_title_model(provider, model).ok_or_else(|| {
-        format!("no title model wired up for provider {:?}", provider.id())
-    })?;
+    let model = default_title_model(provider, model)
+        .ok_or_else(|| format!("no title model wired up for provider {:?}", provider.id()))?;
     provider_oneshot::run_provider_oneshot(&prompt, provider, model, SUMMARY_TIMEOUT)
         .await
         .map_err(|e| truncate_chars(&normalize_spaces(&e), DESCRIPTION_MAX_CHARS))

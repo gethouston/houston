@@ -36,15 +36,12 @@ const ENV_VAR: &str = "GEMINI_API_KEY";
 pub async fn set_gemini_api_key(api_key: &str) -> CoreResult<()> {
     let trimmed = validate_key(api_key)?;
     let env_path = resolve_env_path()?;
-    let parent = env_path.parent().ok_or_else(|| {
-        CoreError::Internal("gemini env path has no parent directory".into())
-    })?;
-    tokio::fs::create_dir_all(parent).await.map_err(|e| {
-        CoreError::Internal(format!(
-            "failed to create {}: {e}",
-            parent.display()
-        ))
-    })?;
+    let parent = env_path
+        .parent()
+        .ok_or_else(|| CoreError::Internal("gemini env path has no parent directory".into()))?;
+    tokio::fs::create_dir_all(parent)
+        .await
+        .map_err(|e| CoreError::Internal(format!("failed to create {}: {e}", parent.display())))?;
     let existing = read_existing(&env_path).await?;
     let updated = merge_env_contents(&existing, trimmed);
     write_atomic(&env_path, updated.as_bytes()).await?;
@@ -151,13 +148,15 @@ pub(super) async fn write_atomic(final_path: &std::path::Path, bytes: &[u8]) -> 
         })?;
     }
     apply_owner_only_perms(&tmp_path)?;
-    tokio::fs::rename(&tmp_path, final_path).await.map_err(|e| {
-        CoreError::Internal(format!(
-            "failed to rename {} to {}: {e}",
-            tmp_path.display(),
-            final_path.display()
-        ))
-    })?;
+    tokio::fs::rename(&tmp_path, final_path)
+        .await
+        .map_err(|e| {
+            CoreError::Internal(format!(
+                "failed to rename {} to {}: {e}",
+                tmp_path.display(),
+                final_path.display()
+            ))
+        })?;
     Ok(())
 }
 
@@ -182,10 +181,7 @@ fn apply_owner_only_perms(path: &std::path::Path) -> CoreResult<()> {
     use std::os::unix::fs::PermissionsExt;
     let perms = std::fs::Permissions::from_mode(0o600);
     std::fs::set_permissions(path, perms).map_err(|e| {
-        CoreError::Internal(format!(
-            "failed to chmod 0600 on {}: {e}",
-            path.display()
-        ))
+        CoreError::Internal(format!("failed to chmod 0600 on {}: {e}", path.display()))
     })
 }
 
@@ -201,27 +197,15 @@ mod tests {
 
     #[test]
     fn validate_rejects_empty() {
-        assert!(matches!(
-            validate_key(""),
-            Err(CoreError::BadRequest(_))
-        ));
-        assert!(matches!(
-            validate_key("   "),
-            Err(CoreError::BadRequest(_))
-        ));
+        assert!(matches!(validate_key(""), Err(CoreError::BadRequest(_))));
+        assert!(matches!(validate_key("   "), Err(CoreError::BadRequest(_))));
     }
 
     #[test]
     fn validate_rejects_too_short_or_long() {
-        assert!(matches!(
-            validate_key("abc"),
-            Err(CoreError::BadRequest(_))
-        ));
+        assert!(matches!(validate_key("abc"), Err(CoreError::BadRequest(_))));
         let huge = "a".repeat(300);
-        assert!(matches!(
-            validate_key(&huge),
-            Err(CoreError::BadRequest(_))
-        ));
+        assert!(matches!(validate_key(&huge), Err(CoreError::BadRequest(_))));
     }
 
     #[test]
@@ -263,8 +247,7 @@ mod tests {
 
     #[test]
     fn merge_replaces_existing_key_line_in_place() {
-        let existing =
-            "GOOGLE_API_KEY=other\nGEMINI_API_KEY=old\nOTHER_VAR=hello\n";
+        let existing = "GOOGLE_API_KEY=other\nGEMINI_API_KEY=old\nOTHER_VAR=hello\n";
         let out = merge_env_contents(existing, "AIzaTestKey1234567890");
         assert_eq!(
             out,
@@ -314,8 +297,17 @@ mod tests {
         write_atomic(&target, b"GEMINI_API_KEY=hello\n")
             .await
             .unwrap();
-        let mode = tokio::fs::metadata(&target).await.unwrap().permissions().mode();
-        assert_eq!(mode & 0o777, 0o600, "expected mode 0600, got {:o}", mode & 0o777);
+        let mode = tokio::fs::metadata(&target)
+            .await
+            .unwrap()
+            .permissions()
+            .mode();
+        assert_eq!(
+            mode & 0o777,
+            0o600,
+            "expected mode 0600, got {:o}",
+            mode & 0o777
+        );
     }
 
     #[tokio::test]

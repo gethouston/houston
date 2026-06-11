@@ -135,6 +135,9 @@ pub struct WorkflowRun {
     /// Set when an inline run is promoted into a saved workflow definition.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub saved_workflow_id: Option<String>,
+    /// User chat session that triggered this run (for plan review actions in chat).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source_chat_session_key: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

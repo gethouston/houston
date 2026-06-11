@@ -374,7 +374,9 @@ mod tests {
     fn setup_ws(root: &Path) -> String {
         workspaces::create(
             root,
-            CreateWorkspace { name: "alpha".into() },
+            CreateWorkspace {
+                name: "alpha".into(),
+            },
         )
         .unwrap()
         .id
@@ -560,7 +562,11 @@ mod tests {
         assert_eq!(renamed.id, agent.id);
         assert_eq!(renamed.name, "PERa");
         let all = list(d.path(), &ws_id).unwrap();
-        assert_eq!(all.len(), 1, "case-only rename must not duplicate the agent");
+        assert_eq!(
+            all.len(),
+            1,
+            "case-only rename must not duplicate the agent"
+        );
         assert_eq!(all[0].name, "PERa");
     }
 

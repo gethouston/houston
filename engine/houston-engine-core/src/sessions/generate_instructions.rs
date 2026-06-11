@@ -51,8 +51,8 @@ pub async fn generate_instructions(
 fn build_prompt(description: &str) -> String {
     // JSON-encode the user text so quotes/newlines in it can't break out of
     // the prompt context and inject instructions. Encoded form keeps quotes.
-    let description = serde_json::to_string(description)
-        .unwrap_or_else(|_| format!("{description:?}"));
+    let description =
+        serde_json::to_string(description).unwrap_or_else(|_| format!("{description:?}"));
     format!(
         r#"You are an expert at writing AI agent job descriptions (CLAUDE.md files).
 
@@ -104,7 +104,10 @@ async fn run_provider_generate(
 ) -> Result<String, String> {
     let prompt = build_prompt(description);
     let model = default_gen_model(provider, model).ok_or_else(|| {
-        format!("no generate model wired up for provider {:?}", provider.id())
+        format!(
+            "no generate model wired up for provider {:?}",
+            provider.id()
+        )
     })?;
     provider_oneshot::run_provider_oneshot(&prompt, provider, model, GENERATE_TIMEOUT).await
 }
@@ -117,8 +120,7 @@ fn parse_result(raw: &str) -> Result<GenerateInstructionsResult, String> {
         .trim_end_matches("```")
         .trim();
 
-    let v: Value =
-        serde_json::from_str(cleaned).map_err(|e| format!("JSON parse failed: {e}"))?;
+    let v: Value = serde_json::from_str(cleaned).map_err(|e| format!("JSON parse failed: {e}"))?;
 
     let name = v
         .get("name")

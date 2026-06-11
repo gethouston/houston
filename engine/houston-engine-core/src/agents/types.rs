@@ -177,10 +177,18 @@ pub struct ProjectConfig {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub provider: Option<String>,
     /// Model override (e.g. "sonnet", "gpt-5.5"). Provider-specific.
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "claude_model")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "claude_model"
+    )]
     pub model: Option<String>,
     /// Effort level override (e.g. "low", "medium", "high"). Provider-specific.
-    #[serde(default, skip_serializing_if = "Option::is_none", alias = "claude_effort")]
+    #[serde(
+        default,
+        skip_serializing_if = "Option::is_none",
+        alias = "claude_effort"
+    )]
     pub effort: Option<String>,
     /// Extra fields from the frontend (worktreeMode, devCommand, etc.)
     #[serde(flatten)]

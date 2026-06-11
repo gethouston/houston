@@ -2,6 +2,7 @@
  * InlineRunCard — chat inline workflow run with connect-card styling.
  */
 import { Button } from "@houston-ai/core"
+import { RunApprovalActions } from "./run-approval-actions"
 import type { ReactNode } from "react"
 import type { StepState, WorkflowRun, WorkflowStep } from "./types"
 import type { ActiveRunPanelLabels } from "./active-run-panel"
@@ -16,17 +17,21 @@ import {
   awaitingGateStepId,
   isCancellable,
   isMidrunApprovalGate,
+  needsStepApproval,
+  showsPlanReadyInvite,
 } from "./workflow-dag"
+import { PlanReadyInvite, type PlanReadyInviteLabels } from "./plan-ready-invite"
 
 export type InlineRunCardLabels = Omit<
   ActiveRunPanelLabels,
   "reviewPlan" | "reviewAction" | "approvalDialog" | "actionApprovalDialog"
 > & {
   stop?: string
+  planReadyInvite?: PlanReadyInviteLabels
 }
 
 const DEFAULT_LABELS: Required<
-  Omit<InlineRunCardLabels, "runStatus" | "stepProgress">
+  Omit<InlineRunCardLabels, "runStatus" | "stepProgress" | "planReadyInvite">
 > = {
   ...DEFAULT_RUN_CONTENT_LABELS,
   approve: "Approve",
@@ -153,10 +158,13 @@ export function InlineRunCard({
     run.status === "cancelled"
   const approveLabel = midrunGate ? l.actionApprove : l.approve
 
-  const showApprovalActions =
-    run.status === "awaiting_approval" && onApprove && onCancel
+  const awaitingApproval = needsStepApproval(run)
+  const showApprovalActions = awaitingApproval && onApprove && onCancel
+  const showPlanReadyInvite =
+    showsPlanReadyInvite(run) && labels?.planReadyInvite
+  const approvalOnSteps = showApprovalActions && !showPlanReadyInvite
   const showStopAction =
-    run.status !== "awaiting_approval" && isCancellable(run.status) && onCancel
+    !awaitingApproval && isCancellable(run.status) && onCancel
 
   return (
     <section className="rounded-xl border border-black/5 bg-background px-3 py-2.5">
@@ -178,21 +186,29 @@ export function InlineRunCard({
         onRetryStep={onRetryStep}
         retryingStepId={retryingStepId}
         renderStepDetail={renderStepDetail}
+        onApprove={approvalOnSteps ? onApprove : undefined}
+        onCancel={approvalOnSteps ? onCancel : undefined}
+        approvePending={approvePending}
+        cancelPending={cancelPending}
+        approveLabel={approveLabel}
+        cancelLabel={l.cancel}
       />
 
-      {showApprovalActions && (
-        <div className="flex items-center justify-end gap-1.5 mt-4 pt-4 border-t border-border/40">
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onCancel}
-            disabled={approvePending || cancelPending}
-          >
-            {l.cancel}
-          </Button>
-          <Button size="sm" onClick={onApprove} disabled={approvePending}>
-            {approvePending ? "…" : approveLabel}
-          </Button>
+      {(showPlanReadyInvite || showApprovalActions) && (
+        <div className="mt-4 pt-4 border-t border-border/40 space-y-3">
+          {showPlanReadyInvite && (
+            <PlanReadyInvite labels={labels.planReadyInvite!} />
+          )}
+          {showApprovalActions && (
+            <RunApprovalActions
+              onApprove={onApprove}
+              onCancel={onCancel}
+              approveLabel={approveLabel}
+              cancelLabel={l.cancel}
+              approvePending={approvePending}
+              cancelPending={cancelPending}
+            />
+          )}
         </div>
       )}
 

@@ -24,9 +24,8 @@ pub fn houston_dir(root: &Path) -> PathBuf {
 /// Creates `.houston/` if it doesn't exist.
 pub fn ensure_houston_dir(root: &Path) -> CoreResult<()> {
     let dir = houston_dir(root);
-    std::fs::create_dir_all(&dir).map_err(|e| {
-        CoreError::Internal(format!("failed to create .houston directory: {e}"))
-    })?;
+    std::fs::create_dir_all(&dir)
+        .map_err(|e| CoreError::Internal(format!("failed to create .houston directory: {e}")))?;
     Ok(())
 }
 

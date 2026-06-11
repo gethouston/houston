@@ -66,7 +66,11 @@
     "approve": "Approve",
     "actionApprove": "Approve and continue",
     "cancel": "Cancel",
-    "stop": "Stop"
+    "stop": "Stop",
+    "planReadyInvite": {
+      "title": "Your plan is ready",
+      "description": "Tell me what to change, or say when you want me to start."
+    }
   },
   "approval": {
     "title": "Review plan",

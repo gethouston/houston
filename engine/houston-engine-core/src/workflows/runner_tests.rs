@@ -11,7 +11,8 @@ use crate::workflows::inline::begin_inline_run;
 use crate::workflows::keys::step_session_key;
 use crate::workflows::plan::parse_plan;
 use crate::workflows::runner::{
-    approve_run, begin_run, cancel_run, finish_planning, resume_run, retry_step, start_planning,
+    approve_run, begin_run, cancel_run, finish_planning, replan_run, resume_run, retry_step,
+    start_planning,
 };
 use crate::workflows::runs as workflow_runs;
 use crate::workflows::types::{BegunRun, InlineRunSpec};
@@ -32,6 +33,7 @@ struct ScriptedDispatcher {
     active: AtomicUsize,
     peak: AtomicUsize,
     delay_ms: u64,
+    step_delay_ms: HashMap<String, u64>,
 }
 
 #[async_trait]
@@ -43,8 +45,13 @@ impl WorkflowDispatcher for ScriptedDispatcher {
     async fn dispatch_step(&self, ctx: StepContext<'_>) -> DispatchOutcome {
         let n = self.active.fetch_add(1, Ordering::SeqCst) + 1;
         self.peak.fetch_max(n, Ordering::SeqCst);
-        if self.delay_ms > 0 {
-            tokio::time::sleep(std::time::Duration::from_millis(self.delay_ms)).await;
+        let delay = self
+            .step_delay_ms
+            .get(&ctx.step.id)
+            .copied()
+            .unwrap_or(self.delay_ms);
+        if delay > 0 {
+            tokio::time::sleep(std::time::Duration::from_millis(delay)).await;
         }
         self.active.fetch_sub(1, Ordering::SeqCst);
         self.order.lock().unwrap().push(ctx.step.id.clone());
@@ -113,6 +120,7 @@ async fn setup_planned_run(
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
+        step_delay_ms: HashMap::new(),
     });
     let events: DynEventSink = Arc::new(NoopEventSink);
     let begun = begin_run(&events, &agent_path, &w.id).unwrap();
@@ -151,6 +159,7 @@ async fn setup_planned_inline_run(
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
+        step_delay_ms: HashMap::new(),
     });
     let events: DynEventSink = Arc::new(NoopEventSink);
     let begun = begin_inline_run(
@@ -195,6 +204,7 @@ fn plan_parse_failure_drives_error() {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
+        step_delay_ms: HashMap::new(),
     });
     let events: DynEventSink = Arc::new(NoopEventSink);
     let begun = begin_run(&events, &agent_path, &w.id).unwrap();
@@ -225,6 +235,7 @@ fn planner_dispatch_error_surfaces_provider_message() {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
+        step_delay_ms: HashMap::new(),
     });
     let events: DynEventSink = Arc::new(NoopEventSink);
     let begun = begin_run(&events, &agent_path, &w.id).unwrap();
@@ -252,6 +263,7 @@ async fn approval_gate_rejects_wrong_status() {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
+        step_delay_ms: HashMap::new(),
     });
     let err = approve_run(
         Arc::new(NoopEventSink) as DynEventSink,
@@ -384,6 +396,7 @@ async fn independent_steps_can_overlap() {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 40,
+        step_delay_ms: HashMap::new(),
     });
     let events: DynEventSink = Arc::new(NoopEventSink);
     let begun = begin_run(&events, &agent_path, &w.id).unwrap();
@@ -448,6 +461,7 @@ async fn connection_blocker_pauses_only_its_branch() {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
+        step_delay_ms: HashMap::new(),
     });
     let events: DynEventSink = Arc::new(NoopEventSink);
     let begun = begin_run(&events, &agent_path, &w.id).unwrap();
@@ -538,6 +552,8 @@ async fn resume_skips_done_steps() {
         &begun.run.id,
         WorkflowRunUpdate {
             status: Some("error".into()),
+            summary: Some("one or more workflow steps failed".into()),
+            completed_at: Some("2026-01-01T00:00:00Z".into()),
             plan: Some(plan),
             steps: Some(vec![
                 StepState {
@@ -580,6 +596,99 @@ async fn resume_skips_done_steps() {
 }
 
 #[tokio::test]
+async fn resume_run_clears_terminal_metadata_before_execute() {
+    let d = TempDir::new().unwrap();
+    let (agent_path, begun, _) = setup_planned_run(&d, valid_plan_json()).await;
+    let plan = parse_plan(valid_plan_json()).unwrap();
+    workflow_runs::update(
+        d.path(),
+        &begun.run.id,
+        WorkflowRunUpdate {
+            status: Some("error".into()),
+            summary: Some("one or more workflow steps failed".into()),
+            completed_at: Some("2026-01-01T00:00:00Z".into()),
+            plan: Some(plan),
+            steps: Some(vec![
+                StepState {
+                    step_id: "a".into(),
+                    status: "done".into(),
+                    approved: false,
+                    summary: Some("ok".into()),
+                    worktree_path: None,
+                    blocker: None,
+                },
+                StepState {
+                    step_id: "b".into(),
+                    status: "error".into(),
+                    approved: false,
+                    summary: Some("boom".into()),
+                    worktree_path: None,
+                    blocker: None,
+                },
+            ]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let mut step_delay_ms = HashMap::new();
+    step_delay_ms.insert("b".into(), 2_000);
+    let dispatcher = Arc::new(ScriptedDispatcher {
+        planner: DispatchOutcome::default(),
+        steps: HashMap::from([(
+            "b".into(),
+            DispatchOutcome {
+                response_text: "ok".into(),
+                error: None,
+            },
+        )]),
+        synthesis: DispatchOutcome {
+            response_text: "done".into(),
+            error: None,
+        },
+        order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
+        active: AtomicUsize::new(0),
+        peak: AtomicUsize::new(0),
+        delay_ms: 0,
+        step_delay_ms,
+    });
+
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    let agent_path_bg = agent_path.clone();
+    let root = d.path().to_path_buf();
+    let run_id = begun.run.id.clone();
+    let dispatcher_bg = dispatcher.clone();
+    let events_bg = events.clone();
+    let handle = tokio::spawn(async move {
+        resume_run(
+            events_bg,
+            dispatcher_bg,
+            SessionRuntime::default(),
+            &agent_path_bg,
+            &root,
+            &run_id,
+        )
+        .await
+    });
+
+    let mut saw_running = false;
+    for _ in 0..50 {
+        tokio::time::sleep(std::time::Duration::from_millis(20)).await;
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        if run.status == "running" {
+            assert!(run.summary.is_none());
+            assert!(run.completed_at.is_none());
+            saw_running = true;
+            break;
+        }
+    }
+    handle.abort();
+    let _ = handle.await;
+    assert!(saw_running, "resume must reopen run to running before step dispatch");
+}
+
+#[tokio::test]
 async fn executor_cancelled_mid_run_stops() {
     let d = TempDir::new().unwrap();
     let json = r#"{"steps":[{"id":"slow","task":"wait"}]}"#;
@@ -605,6 +714,7 @@ async fn executor_cancelled_mid_run_stops() {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 200,
+        step_delay_ms: HashMap::new(),
     });
     let rt = SessionRuntime::default();
     let root = d.path().to_path_buf();
@@ -748,6 +858,194 @@ async fn midrun_approve_resumes_gated_step() {
     let write = run.steps.iter().find(|s| s.step_id == "write").unwrap();
     assert_eq!(write.status, "done");
     assert!(write.approved);
+}
+
+#[tokio::test]
+async fn midrun_approve_while_parallel_steps_running() {
+    let d = TempDir::new().unwrap();
+    let json = r#"{"steps":[
+      {"id":"slow","task":"slow step"},
+      {"id":"fast","task":"fast step"},
+      {"id":"gated","task":"gated step","depends_on":["fast"],"requires_approval":true}
+    ]}"#;
+    let agent_path = d.path().to_string_lossy().to_string();
+    let w = create_workflow(d.path(), sample_workflow()).unwrap();
+    let dispatcher = Arc::new(ScriptedDispatcher {
+        planner: DispatchOutcome {
+            response_text: json.into(),
+            error: None,
+        },
+        steps: HashMap::new(),
+        synthesis: DispatchOutcome {
+            response_text: "all good".into(),
+            error: None,
+        },
+        order: Mutex::new(Vec::new()),
+        prompts: Mutex::new(HashMap::new()),
+        active: AtomicUsize::new(0),
+        peak: AtomicUsize::new(0),
+        delay_ms: 0,
+        step_delay_ms: [("slow".to_string(), 1_500)].into_iter().collect(),
+    });
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    let begun = begin_run(&events, &agent_path, &w.id).unwrap();
+    finish_planning(
+        events.clone(),
+        dispatcher.clone(),
+        &agent_path,
+        BegunRun {
+            working_dir: begun.working_dir.clone(),
+            workflow: begun.workflow.clone(),
+            run: begun.run.clone(),
+        },
+    )
+    .await
+    .unwrap();
+    approve_run(
+        events.clone(),
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        let gated = run.steps.iter().find(|s| s.step_id == "gated").unwrap();
+        let slow = run.steps.iter().find(|s| s.step_id == "slow").unwrap();
+        if run.status == "running"
+            && gated.status == "awaiting_approval"
+            && slow.status == "running"
+        {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!(
+                "run did not reach gated-awaiting while slow runs: status={} gated={} slow={}",
+                run.status, gated.status, slow.status
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    approve_run(
+        events.clone(),
+        dispatcher.clone(),
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+    let gated = run.steps.iter().find(|s| s.step_id == "gated").unwrap();
+    assert_eq!(run.status, "running");
+    assert!(gated.approved);
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        let gated = run.steps.iter().find(|s| s.step_id == "gated").unwrap();
+        let slow = run.steps.iter().find(|s| s.step_id == "slow").unwrap();
+        if gated.status == "running" || gated.status == "done" {
+            assert_eq!(
+                slow.status, "running",
+                "gated step should start before slow finishes"
+            );
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!(
+                "gated step did not dispatch after in-flight approval: gated={} slow={}",
+                gated.status, slow.status
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
+    loop {
+        let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
+        if run.status == "done" {
+            break;
+        }
+        if std::time::Instant::now() >= deadline {
+            panic!(
+                "run did not finish after in-flight approval: status={}",
+                run.status
+            );
+        }
+        tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+    }
+
+    let order = dispatcher.order.lock().unwrap();
+    assert!(order.contains(&"gated".to_string()));
+}
+
+#[tokio::test]
+async fn approve_midrun_gate_while_waiting_for_connection() {
+    let d = TempDir::new().unwrap();
+    let plan_json = r#"{"steps":[
+      {"id":"blocked","task":"send email"},
+      {"id":"gated","task":"create doc","requires_approval":true}
+    ]}"#;
+    let (agent_path, begun, dispatcher) = setup_planned_run(&d, plan_json).await;
+    let plan = parse_plan(plan_json).unwrap();
+    workflow_runs::update(
+        d.path(),
+        &begun.run.id,
+        WorkflowRunUpdate {
+            status: Some("waiting_for_connection".into()),
+            plan: Some(plan),
+            steps: Some(vec![
+                StepState {
+                    step_id: "blocked".into(),
+                    status: "waiting_for_connection".into(),
+                    approved: false,
+                    summary: None,
+                    worktree_path: None,
+                    blocker: Some(
+                        crate::workflows::types::WorkflowConnectionBlocker::ComposioToolkit {
+                            toolkit: "gmail".into(),
+                        },
+                    ),
+                },
+                StepState {
+                    step_id: "gated".into(),
+                    status: "awaiting_approval".into(),
+                    approved: false,
+                    summary: None,
+                    worktree_path: None,
+                    blocker: None,
+                },
+            ]),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let events: DynEventSink = Arc::new(NoopEventSink);
+    let updated = approve_run(
+        events,
+        dispatcher,
+        SessionRuntime::default(),
+        &agent_path,
+        d.path(),
+        &begun.run.id,
+    )
+    .await
+    .unwrap();
+
+    assert_eq!(updated.status, "running");
+    let gated = updated.steps.iter().find(|s| s.step_id == "gated").unwrap();
+    assert!(gated.approved);
+    assert_eq!(gated.status, "pending");
 }
 
 #[tokio::test]
@@ -933,6 +1231,7 @@ async fn frozen_plan_skips_planner_and_awaits_approval() {
         active: AtomicUsize::new(0),
         peak: AtomicUsize::new(0),
         delay_ms: 0,
+        step_delay_ms: HashMap::new(),
     });
     let events: DynEventSink = Arc::new(NoopEventSink);
     let begun = begin_run(&events, &agent_path, &w.id).unwrap();
@@ -1089,6 +1388,8 @@ async fn retry_step_resets_subgraph_and_runs_only_pending() {
         &begun.run.id,
         WorkflowRunUpdate {
             status: Some("error".into()),
+            summary: Some("one or more workflow steps failed".into()),
+            completed_at: Some("2026-01-01T00:00:00Z".into()),
             plan: Some(plan),
             steps: Some(vec![
                 StepState {
@@ -1133,6 +1434,8 @@ async fn retry_step_resets_subgraph_and_runs_only_pending() {
     .await
     .unwrap();
     assert_eq!(updated.status, "running");
+    assert!(updated.summary.is_none());
+    assert!(updated.completed_at.is_none());
 
     let run = workflow_runs::find_by_id(d.path(), &begun.run.id).unwrap();
     let a = run.steps.iter().find(|s| s.step_id == "a").unwrap();
@@ -1142,6 +1445,8 @@ async fn retry_step_resets_subgraph_and_runs_only_pending() {
     assert_eq!(b.status, "pending");
     assert!(b.summary.is_none());
     assert_eq!(c.status, "error");
+    assert!(run.summary.is_none());
+    assert!(run.completed_at.is_none());
 
     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
     let order = dispatcher.order.lock().unwrap().clone();
@@ -1155,4 +1460,32 @@ async fn retry_step_resets_subgraph_and_runs_only_pending() {
     assert_eq!(b.status, "done");
     assert_eq!(c.status, "error");
     assert_eq!(run.status, "error");
+}
+
+#[test]
+fn replan_run_resets_awaiting_run_to_planning() {
+    let d = TempDir::new().unwrap();
+    let w = create_workflow(d.path(), sample_workflow()).unwrap();
+    let run = workflow_runs::create(d.path(), &w.id).unwrap();
+    let plan = parse_plan(valid_plan_json()).unwrap();
+    workflow_runs::update(
+        d.path(),
+        &run.id,
+        WorkflowRunUpdate {
+            status: Some("awaiting_approval".into()),
+            plan: Some(plan),
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let begun = replan_run(d.path(), &run.id, "merge the first two steps").unwrap();
+    assert_eq!(begun.run.status, "planning");
+    assert!(begun.run.plan.is_none());
+    assert!(begun.run.steps.is_empty());
+    assert!(begun
+        .run
+        .plan_prompt
+        .as_deref()
+        .is_some_and(|p| p.contains("merge the first two steps")));
 }

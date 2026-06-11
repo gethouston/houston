@@ -17,6 +17,11 @@ import {
   panelTitle,
   type RunContentLabels,
 } from "./run-content-labels"
+import {
+  hasAwaitingStep,
+  runStatusSubtitle,
+  shouldShowRunSynthesis,
+} from "./workflow-dag"
 
 export {
   DEFAULT_RUN_CONTENT_LABELS,
@@ -47,10 +52,12 @@ export function RunHeading({
       <p
         className={cn(
           "text-xs mt-0.5",
-          midrunGate ? "text-amber-700" : "text-muted-foreground",
+          midrunGate || hasAwaitingStep(run)
+            ? "text-amber-700"
+            : "text-muted-foreground",
         )}
       >
-        {statusLabels[run.status]}
+        {runStatusSubtitle(run, statusLabels)}
       </p>
     </div>
   )
@@ -65,6 +72,12 @@ export function RunDetails({
   onRetryStep,
   retryingStepId,
   renderStepDetail,
+  onApprove,
+  onCancel,
+  approvePending,
+  cancelPending,
+  approveLabel,
+  cancelLabel,
 }: {
   run: WorkflowRun
   isTerminal: boolean
@@ -78,8 +91,17 @@ export function RunDetails({
     state: StepState | undefined,
     run: WorkflowRun | undefined,
   ) => ReactNode
+  onApprove?: () => void
+  onCancel?: () => void
+  approvePending?: boolean
+  cancelPending?: boolean
+  approveLabel?: string
+  cancelLabel?: string
 }) {
   const showPlan = !!run.plan
+  const synthesis = shouldShowRunSynthesis(isTerminal, run.summary)
+    ? run.summary
+    : undefined
 
   return (
     <>
@@ -92,18 +114,24 @@ export function RunDetails({
           onRetryStep={onRetryStep}
           retryingStepId={retryingStepId}
           renderStepDetail={renderStepDetail}
+          onApprove={onApprove}
+          onCancel={onCancel}
+          approvePending={approvePending}
+          cancelPending={cancelPending}
+          approveLabel={approveLabel}
+          cancelLabel={cancelLabel}
           labels={stepProgressLabels}
         />
       )}
 
-      {run.summary && (
+      {synthesis && (
         <div
           className={cn(showPlan && "mt-4 pt-4 border-t border-border/40")}
         >
           <p className="text-xs font-medium text-muted-foreground mb-2">
             {synthesisLabel}
           </p>
-          <WorkflowSummary content={run.summary} />
+          <WorkflowSummary content={synthesis} />
         </div>
       )}
     </>

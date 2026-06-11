@@ -25,7 +25,7 @@ import type {
   WorkflowRun,
   WorkflowStep,
 } from "./types"
-import { isResumable } from "./workflow-dag"
+import { isResumable, needsStepApproval } from "./workflow-dag"
 import { ActiveRunPanel } from "./active-run-panel"
 import type { ActiveRunPanelLabels } from "./active-run-panel"
 import {
@@ -289,7 +289,7 @@ export function WorkflowEditor({
               <ActiveRunPanel
                 run={selectedRun}
                 onApprove={
-                  onApproveRun && selectedRun.status === "awaiting_approval"
+                  onApproveRun && needsStepApproval(selectedRun)
                     ? () => onApproveRun(selectedRun.id)
                     : undefined
                 }

@@ -70,12 +70,14 @@ pub async fn build_compaction_seed(
     let pre_tokens = latest_context_tokens(&entries);
     let capped = history::truncate_history_tail(rendered, MAX_HISTORY_BYTES);
 
-    let summary_model = model.or_else(|| fallback_summary_model(provider)).ok_or_else(|| {
-        CoreError::Internal(format!(
-            "no summary model available for provider {:?}",
-            provider.id()
-        ))
-    })?;
+    let summary_model = model
+        .or_else(|| fallback_summary_model(provider))
+        .ok_or_else(|| {
+            CoreError::Internal(format!(
+                "no summary model available for provider {:?}",
+                provider.id()
+            ))
+        })?;
 
     let summary = provider_oneshot::run_provider_oneshot(
         &summary_request_prompt(&capped),

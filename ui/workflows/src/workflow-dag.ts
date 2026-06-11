@@ -125,6 +125,26 @@ export function stepSummaryOf(
   return run.steps.find((s) => s.step_id === stepId)?.summary
 }
 
+/** Step summary visible only once the step has reached a terminal state. */
+export function visibleStepSummary(
+  status: WorkflowStepStatus | undefined,
+  summary: string | undefined,
+): string | undefined {
+  if (!summary || status === undefined) return undefined
+  if (status === "done" || status === "error" || status === "cancelled") {
+    return summary
+  }
+  return undefined
+}
+
+/** Run synthesis is shown only after the run has finished. */
+export function shouldShowRunSynthesis(
+  isTerminal: boolean,
+  summary: string | undefined,
+): boolean {
+  return isTerminal && !!summary
+}
+
 /** Count of finished steps on a run (for history row hints). */
 export function doneStepCount(run: WorkflowRun): number {
   return run.steps.filter((s) => s.status === "done").length
@@ -135,12 +155,59 @@ export function plannedStepCount(run: WorkflowRun): number {
   return run.plan?.steps.length ?? 0
 }
 
+/** True when any step is waiting on a user approval gate. */
+export function hasAwaitingStep(run: WorkflowRun): boolean {
+  return run.steps.some((s) => s.status === "awaiting_approval")
+}
+
+const TERMINAL_STATUSES = new Set<WorkflowRunStatus>([
+  "done",
+  "error",
+  "cancelled",
+])
+
+/** True when the run is in-flight and waiting on user approval (any step). */
+export function isRunAwaitingUserAction(run: WorkflowRun): boolean {
+  if (run.status === "planning") return false
+  if (TERMINAL_STATUSES.has(run.status)) return false
+  return hasAwaitingStep(run) || run.status === "awaiting_approval"
+}
+
+/** Run or step state where the user can approve the next action. */
+export function needsStepApproval(run: WorkflowRun): boolean {
+  return isRunAwaitingUserAction(run)
+}
+
 /** Run paused at a mid-run gate after at least one step finished. */
 export function isMidrunApprovalGate(run: WorkflowRun): boolean {
-  return run.status === "awaiting_approval" && doneStepCount(run) > 0
+  return hasAwaitingStep(run) && doneStepCount(run) > 0
+}
+
+/** True when the inline chat card should show the plan-ready invite. */
+export function showsPlanReadyInvite(run: WorkflowRun): boolean {
+  return (
+    run.workflow_id.startsWith("inline-") &&
+    run.status === "awaiting_approval" &&
+    !isMidrunApprovalGate(run)
+  )
 }
 
 /** Step id waiting on a mid-run approval gate, if any. */
 export function awaitingGateStepId(run: WorkflowRun): string | undefined {
   return run.steps.find((s) => s.status === "awaiting_approval")?.step_id
+}
+
+/** User-facing run status line; prefers approval-needed when a step is gated. */
+export function runStatusSubtitle(
+  run: WorkflowRun,
+  statusLabels: Record<WorkflowRunStatus, string>,
+): string {
+  if (
+    hasAwaitingStep(run) &&
+    run.status !== "awaiting_approval" &&
+    run.status !== "planning"
+  ) {
+    return statusLabels.awaiting_approval
+  }
+  return statusLabels[run.status]
 }

@@ -181,7 +181,11 @@ async fn run_command(
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        return Err(format!("process exited {}: {}", output.status, stderr.trim()));
+        return Err(format!(
+            "process exited {}: {}",
+            output.status,
+            stderr.trim()
+        ));
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())

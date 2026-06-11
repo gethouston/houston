@@ -1,6 +1,7 @@
-//! Saved workflows index for system prompt injection.
+//! Saved workflows index and chat-linked pending-run context for system prompts.
 
 use crate::workflows::defs;
+use crate::workflows::runs as workflow_runs;
 use crate::workflows::types::Workflow;
 use std::path::Path;
 
@@ -41,11 +42,44 @@ fn render_section(workflows: &[Workflow]) -> String {
     lines.join("\n")
 }
 
+/// Inject the chat-linked workflow run awaiting plan review, if any.
+pub fn build_chat_pending_run_section(
+    root: &Path,
+    chat_session_key: &str,
+) -> Option<String> {
+    let run = workflow_runs::find_chat_pending_run(root, chat_session_key).ok()??;
+    let title = run
+        .name
+        .as_deref()
+        .filter(|n| !n.trim().is_empty())
+        .unwrap_or("Workflow");
+    let mut lines = vec![
+        "# Active workflow run (awaiting your review)".to_string(),
+        String::new(),
+        format!("runId: `{}`", run.id),
+        format!("Title: {title}"),
+        String::new(),
+        "Steps:".to_string(),
+    ];
+    if let Some(plan) = &run.plan {
+        for (idx, step) in plan.steps.iter().enumerate() {
+            lines.push(format!("  {}. [{}] {}", idx + 1, step.id, step.task));
+        }
+    } else {
+        lines.push("  (plan not loaded)".to_string());
+    }
+    Some(lines.join("\n"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::workflows::defs::create as create_workflow;
-    use crate::workflows::types::NewWorkflow;
+    use crate::workflows::plan::parse_plan;
+    use crate::workflows::runs::{
+        create_inline, link_to_chat_session, update, find_chat_pending_run,
+    };
+    use crate::workflows::types::{InlineRunSpec, NewWorkflow, WorkflowRunUpdate};
     use tempfile::TempDir;
 
     #[test]
@@ -104,5 +138,47 @@ mod tests {
         let section = build_prompt_section(d.path()).expect("section");
         assert!(section.contains(&format!("  * {} -- Quick task", w.id)));
         assert!(!section.contains("Quick task:"));
+    }
+
+    #[test]
+    fn chat_pending_run_section_lists_run_id_and_steps() {
+        let d = TempDir::new().unwrap();
+        let run = create_inline(
+            d.path(),
+            InlineRunSpec {
+                plan_prompt: "Plan a launch".into(),
+                name: Some("Launch plan".into()),
+                description: None,
+            },
+        )
+        .unwrap();
+        link_to_chat_session(d.path(), &run.id, "chat-session-1").unwrap();
+        let plan = parse_plan(
+            r#"{"steps":[{"id":"draft","task":"Draft announcement","depends_on":[],"use_worktree":false,"requires_approval":false,"toolkits":[]}]}"#,
+        )
+        .unwrap();
+        update(
+            d.path(),
+            &run.id,
+            WorkflowRunUpdate {
+                status: Some("awaiting_approval".into()),
+                plan: Some(plan),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+
+        let section =
+            build_chat_pending_run_section(d.path(), "chat-session-1").expect("section");
+        assert!(section.contains("# Active workflow run (awaiting your review)"));
+        assert!(section.contains(&format!("runId: `{}`", run.id)));
+        assert!(section.contains("Draft announcement"));
+    }
+
+    #[test]
+    fn chat_pending_run_section_omits_when_none() {
+        let d = TempDir::new().unwrap();
+        assert!(build_chat_pending_run_section(d.path(), "chat-session-1").is_none());
+        assert!(find_chat_pending_run(d.path(), "chat-session-1").unwrap().is_none());
     }
 }

@@ -204,10 +204,7 @@ mod tests {
 
     #[test]
     fn blocking_env_var_ignores_whitespace_only_values() {
-        let r = reader(env(&[
-            ("GEMINI_API_KEY", "   "),
-            ("GOOGLE_API_KEY", ""),
-        ]));
+        let r = reader(env(&[("GEMINI_API_KEY", "   "), ("GOOGLE_API_KEY", "")]));
         assert_eq!(blocking_env_var_with(r), None);
     }
 
@@ -325,13 +322,19 @@ mod tests {
 
         disconnect_gemini_at(dir).await.unwrap();
 
-        assert!(dir.join("settings.json").exists(), "settings.json must survive");
+        assert!(
+            dir.join("settings.json").exists(),
+            "settings.json must survive"
+        );
         assert!(
             dir.join("history").join("session.json").exists(),
             "history must survive"
         );
         assert!(dir.join("GEMINI.md").exists(), "GEMINI.md must survive");
-        assert!(dir.join("projects.json").exists(), "projects.json must survive");
+        assert!(
+            dir.join("projects.json").exists(),
+            "projects.json must survive"
+        );
         assert!(
             dir.join("trustedFolders.json").exists(),
             "trustedFolders.json must survive"
