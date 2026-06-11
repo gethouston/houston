@@ -1,34 +1,16 @@
 use super::types::{FeedItem, SessionStatus};
-use crate::claude_install_path;
+use crate::claude_command::{
+    claude_command_name, configure_claude_command, fresh_retry_prompt,
+    should_retry_fresh_after_resume_failure,
+};
 use crate::cli_process::{run_cli_process, CliRunOutcome};
+use crate::prompt_scratch;
 use crate::provider_error::MALFORMED_PROVIDER_JSON_MESSAGE;
 use crate::provider_error_kind::ProviderError;
 use crate::session_update::SessionUpdate;
 use crate::Provider;
-use std::ffi::OsString;
 use tokio::process::Command;
 use tokio::sync::mpsc;
-
-/// Absolute path to the Houston-managed `claude` if the runtime installer
-/// dropped it (`~/.local/bin/claude` on Unix,
-/// `%LOCALAPPDATA%\Programs\claude\claude.exe` on Windows). Falls back to
-/// the bare name `"claude"` (PATH lookup) only when the installer hasn't
-/// run yet, e.g. dev checkouts without `cli-deps.json`.
-///
-/// Spawning the absolute path matters: we pin a specific claude-code
-/// version in `cli-deps.json` and pass flags
-/// (`--include-partial-messages`, `--dangerously-skip-permissions`, ...)
-/// that only newer versions support. PATH lookup can hit an older
-/// `claude` from npm-global, homebrew, or a prior install, which then
-/// rejects the flag with `error: unknown option '--include-partial-messages'`
-/// and the session dies before producing any output.
-fn claude_command_name() -> OsString {
-    if claude_install_path::is_installed() {
-        claude_install_path::cli_path().into_os_string()
-    } else {
-        OsString::from("claude")
-    }
-}
 
 /// Spawn a Claude CLI session (`claude -p --output-format stream-json`).
 #[allow(clippy::too_many_arguments)]
@@ -63,6 +45,23 @@ pub(crate) async fn spawn_claude(
         }
     }
 
+    // The system prompt travels via `--system-prompt-file`, never as an argv
+    // token (`--system-prompt <text>` broke `CreateProcessW` on Windows once
+    // the prompt outgrew the 32,767-char command-line limit). The scratch
+    // value owns the temp file; it is deleted when this fn returns.
+    let system_prompt_file = match system_prompt.as_deref() {
+        None => None,
+        Some(sp) => match prompt_scratch::claude_system_prompt_file(sp) {
+            Ok(f) => Some(f),
+            Err(e) => {
+                let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
+                    "Failed to prepare claude instructions: {e}"
+                ))));
+                return;
+            }
+        },
+    };
+
     let mut cmd = Command::new(claude_command_name());
     configure_claude_command(
         &mut cmd,
@@ -70,7 +69,7 @@ pub(crate) async fn spawn_claude(
         working_dir.as_deref(),
         model.as_deref(),
         effort.as_deref(),
-        system_prompt.as_deref(),
+        system_prompt_file.as_ref().map(|f| f.path()),
         mcp_config.as_deref(),
         disable_builtin_tools,
         disable_all_tools,
@@ -89,7 +88,7 @@ pub(crate) async fn spawn_claude(
             working_dir.as_deref(),
             model.as_deref(),
             effort.as_deref(),
-            system_prompt.as_deref(),
+            system_prompt_file.as_ref().map(|f| f.path()),
             mcp_config.as_deref(),
             disable_builtin_tools,
             disable_all_tools,
@@ -125,7 +124,7 @@ async fn retry_fresh(
     working_dir: Option<&std::path::Path>,
     model: Option<&str>,
     effort: Option<&str>,
-    system_prompt: Option<&str>,
+    system_prompt_file: Option<&std::path::Path>,
     mcp_config: Option<&std::path::Path>,
     disable_builtin_tools: bool,
     disable_all_tools: bool,
@@ -137,7 +136,7 @@ async fn retry_fresh(
         working_dir,
         model,
         effort,
-        system_prompt,
+        system_prompt_file,
         mcp_config,
         disable_builtin_tools,
         disable_all_tools,
@@ -165,145 +164,8 @@ async fn retry_fresh(
     }
 }
 
-#[allow(clippy::too_many_arguments)]
-fn configure_claude_command(
-    cmd: &mut Command,
-    resume_session_id: Option<&str>,
-    working_dir: Option<&std::path::Path>,
-    model: Option<&str>,
-    effort: Option<&str>,
-    system_prompt: Option<&str>,
-    mcp_config: Option<&std::path::Path>,
-    disable_builtin_tools: bool,
-    disable_all_tools: bool,
-) {
-    cmd.env("PATH", super::claude_path::shell_path());
-    cmd.arg("-p")
-        .arg("--output-format")
-        .arg("stream-json")
-        .arg("--verbose")
-        .arg("--include-partial-messages");
-
-    if disable_all_tools {
-        cmd.arg("--allowedTools").arg("");
-    } else {
-        cmd.arg("--dangerously-skip-permissions");
-        if disable_builtin_tools {
-            cmd.arg("--disallowedTools")
-                .arg("Edit")
-                .arg("Write")
-                .arg("NotebookEdit");
-        }
-    }
-
-    if let Some(m) = model {
-        cmd.arg("--model").arg(m);
-    }
-    if let Some(e) = effort {
-        cmd.arg("--effort").arg(e);
-    }
-    if let Some(sp) = system_prompt {
-        cmd.arg("--system-prompt").arg(sp);
-    }
-    if let Some(mcp) = mcp_config {
-        cmd.arg("--mcp-config").arg(mcp);
-    }
-    if let Some(session_id) = resume_session_id {
-        cmd.arg("--resume").arg(session_id);
-    }
-
-    cmd.env_remove("CLAUDE_CODE_ENTRYPOINT");
-    cmd.env_remove("CLAUDECODE");
-
-    if let Some(dir) = working_dir {
-        cmd.current_dir(dir);
-    }
-}
-
-/// Two failure modes share the "retry without `--resume`" recovery path:
-/// 1. `ProviderRequestMalformedJson` — Anthropic API rejected the resumed
-///    transcript as having an unpaired UTF-16 surrogate (a single bad
-///    emoji or pasted character anywhere in history poisons it forever).
-/// 2. `ClaudeResumeCorrupted` — the on-disk transcript JSONL at
-///    `~/.claude/projects/<encoded-cwd>/<session-id>.jsonl` is structurally
-///    broken (truncated trailing line, dangling tool_use without
-///    tool_result). The CLI crashes before contacting the API.
-///
-/// In both cases the cure is the same: clear the persisted session id,
-/// re-spawn `claude -p` without `--resume`, and let the user continue.
-/// Without a resume id there is nothing to strip — fall through to the
-/// outer error-surfacing branches so the user still gets feedback.
-fn should_retry_fresh_after_resume_failure(
-    outcome: CliRunOutcome,
-    resume_session_id: Option<&str>,
-) -> bool {
-    matches!(
-        outcome,
-        CliRunOutcome::ProviderRequestMalformedJson | CliRunOutcome::ClaudeResumeCorrupted
-    ) && resume_session_id.is_some()
-}
-
-fn fresh_retry_prompt<'a>(prompt: &'a str, resume_fallback_prompt: Option<&'a str>) -> &'a str {
-    resume_fallback_prompt.unwrap_or(prompt)
-}
-
 fn send_malformed_provider_json_status(tx: &mpsc::UnboundedSender<SessionUpdate>) {
     let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(
         MALFORMED_PROVIDER_JSON_MESSAGE.to_string(),
     )));
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn retries_malformed_provider_json_only_for_resume() {
-        assert!(should_retry_fresh_after_resume_failure(
-            CliRunOutcome::ProviderRequestMalformedJson,
-            Some("claude-session-id"),
-        ));
-        assert!(!should_retry_fresh_after_resume_failure(
-            CliRunOutcome::ProviderRequestMalformedJson,
-            None,
-        ));
-    }
-
-    #[test]
-    fn retries_corrupted_resume_only_when_resume_id_present() {
-        assert!(should_retry_fresh_after_resume_failure(
-            CliRunOutcome::ClaudeResumeCorrupted,
-            Some("claude-session-id"),
-        ));
-        // No resume to strip — the runner surfaces a SpawnFailed card instead.
-        assert!(!should_retry_fresh_after_resume_failure(
-            CliRunOutcome::ClaudeResumeCorrupted,
-            None,
-        ));
-    }
-
-    #[test]
-    fn does_not_retry_other_outcomes() {
-        assert!(!should_retry_fresh_after_resume_failure(
-            CliRunOutcome::Failed,
-            Some("claude-session-id"),
-        ));
-        assert!(!should_retry_fresh_after_resume_failure(
-            CliRunOutcome::Completed,
-            Some("claude-session-id"),
-        ));
-        assert!(!should_retry_fresh_after_resume_failure(
-            CliRunOutcome::CodexResumeMissing,
-            Some("claude-session-id"),
-        ));
-    }
-
-    #[test]
-    fn fresh_retry_uses_recovery_prompt_when_available() {
-        assert_eq!(
-            fresh_retry_prompt("latest", Some("recovered history + latest")),
-            "recovered history + latest"
-        );
-        assert_eq!(fresh_retry_prompt("latest", None), "latest");
-    }
 }

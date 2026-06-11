@@ -18,6 +18,7 @@ export {
 } from "./use-skills";
 export { useFiles, useDeleteFile, useRenameFile, useCreateFolder } from "./use-files";
 export { useInstructions, useSaveInstructions } from "./use-instructions";
+export { useAgentConfig } from "./use-agent-config";
 export { useConversations, useAllConversations, useChatHistory } from "./use-conversations";
 export { useConnections, useComposioApps, useConnectedToolkits, useInvalidateConnections, useResetConnections } from "./use-connections";
 export {

@@ -6,6 +6,7 @@
 pub mod auth_error;
 pub mod claude_install_path;
 pub mod claude_path;
+mod claude_command;
 mod claude_runner;
 mod cli_process;
 mod codex_command;
@@ -18,6 +19,7 @@ pub mod gemini_parser;
 mod gemini_parser_state;
 mod gemini_runner;
 pub mod manager;
+mod prompt_scratch;
 pub mod parser;
 pub mod provider;
 pub mod provider_auth;

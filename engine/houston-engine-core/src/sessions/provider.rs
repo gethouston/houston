@@ -1,28 +1,23 @@
 //! Provider + model resolution for a session.
 //!
-//! Resolution starts from the most specific signal — the agent's
-//! `.houston/config/config.json` `provider`, else the user's last-used
-//! preference (`default_provider`), else the Anthropic factory default — and is
-//! then **auth-gated** per [`ResolveMode`]. (Callers still pass per-chat
-//! overrides in front of this whole chain.)
+//! Resolution honors the most specific *explicit* signal and only auth-gates the
+//! no-config fallback:
 //!
-//! - [`ResolveMode::Unattended`] (routines, onboarding, title summaries):
-//!   auth-gate *everything*, including an explicit agent config. There is no one
-//!   present to click "reconnect", so a Claude-configured routine run while only
-//!   OpenAI is connected switches to OpenAI rather than failing auth unattended
-//!   (#483). On a switch the configured model is dropped (a Claude model id
-//!   can't run on Codex) and the new provider's default is used.
-//! - [`ResolveMode::Interactive`] (a chat send with no override): honor an
-//!   explicit agent provider as-is — never silently move the user to a different
-//!   model mid-conversation. A logged-out configured provider instead surfaces
-//!   the reconnect card. Only the no-config fallback is auth-gated (picking an
-//!   authenticated provider for a never-configured agent is initial selection,
-//!   not a switch).
+//! 1. A caller override — a chat request's provider, or a routine's pinned
+//!    provider ([`resolve_provider_with_overrides`]). Honored as-is.
+//! 2. The agent's `.houston/config/config.json` `provider`. Honored as-is.
+//! 3. When neither names a provider, [`fallback_provider`] picks an
+//!    **authenticated** one: the user's last-used provider (`default_provider`)
+//!    if logged in, else whichever provider they ARE logged into, else the
+//!    Anthropic factory default. This is what stops an OpenAI-only user with an
+//!    agent that has no provider configured (Store install, blank/hand-edited
+//!    config) from spawning the Claude CLI just to fail auth (#483).
 //!
-//! The gate only changes anything when the desired provider is logged out;
-//! otherwise it is used unchanged. Live auth is probed only when the gate can
-//! act, so an Interactive resolve of an explicitly-configured agent never spawns
-//! a CLI here.
+//! An explicit choice is never auth-overridden: if you configured an agent (or a
+//! routine) for Claude and you're logged out, that surfaces as a reconnect card
+//! (chat) or a visible run error (routine) — we do NOT silently switch you to a
+//! different provider + model. Live auth is therefore probed only on the no-config
+//! fallback, never when an override or agent provider is present.
 //!
 //! The workspace layer used to live here as an intermediate fallback. It was
 //! retired in favor of per-agent storage — see
@@ -51,74 +46,69 @@ struct AgentConfig {
     effort: Option<String>,
 }
 
-/// How aggressively [`resolve_provider`] auth-gates an *explicit* agent config.
-/// The no-config fallback is auth-gated either way.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ResolveMode {
-    /// Interactive chat (a send with no override): honor an explicit agent
-    /// provider as-is even when it's logged out — a reconnect card handles that.
-    /// Never silently switch provider mid-conversation.
-    Interactive,
-    /// Unattended (routines, onboarding, title summaries): auth-gate an explicit
-    /// provider too, so a logged-out configured provider is switched to one the
-    /// user can actually run instead of failing with no one there to fix it
-    /// (#483).
-    Unattended,
-}
-
-/// Resolve the provider + model for an agent. See [`ResolveMode`] and the module
-/// docs for the auth-gating rules. When auth-gating switches off the configured
-/// provider, the configured model is dropped ([`model_for`]).
-pub async fn resolve_provider(
-    db: &Database,
-    agent_dir: &Path,
-    mode: ResolveMode,
-) -> ResolvedProvider {
+/// Resolve the provider + model for an agent.
+///
+/// Order:
+/// 1. `agent_dir/.houston/config/config.json` `provider` — honored as-is.
+/// 2. [`fallback_provider`] — an authenticated provider — when the agent config
+///    names no provider.
+///
+/// The configured model is kept only when the final provider is the one it was
+/// configured for ([`model_for`]); the no-config fallback drops it so the runner
+/// uses the chosen provider's default rather than risk a cross-provider model id.
+pub async fn resolve_provider(db: &Database, agent_dir: &Path) -> ResolvedProvider {
     let from_agent = read_agent_config(agent_dir);
     let configured = from_agent
         .as_ref()
         .and_then(|c| c.provider.as_deref())
         .and_then(|p| p.parse::<Provider>().ok());
-    let provider = match (configured, mode) {
-        // Chat: explicit provider honored as-is; a logged-out one surfaces the
-        // reconnect card rather than a silent mid-conversation switch.
-        (Some(p), ResolveMode::Interactive) => p,
-        // Unattended: auth-gate the explicit provider too.
-        (Some(p), ResolveMode::Unattended) => {
-            choose_fallback(Some(p), &authenticated_providers().await)
-        }
-        // No configured provider: auth-gate the preference/default in both modes
-        // (initial selection for a never-configured agent, not a mid-chat switch).
-        (None, _) => {
-            choose_fallback(last_used_provider(db).await, &authenticated_providers().await)
-        }
+    let provider = match configured {
+        Some(p) => p,
+        None => fallback_provider(db).await,
     };
     let model = model_for(configured, provider, from_agent.and_then(|c| c.model));
     ResolvedProvider { provider, model }
 }
 
-/// Keep the agent's configured model only when the final provider is the one it
-/// was configured for. Auth-gating can switch us off the configured provider,
-/// and a provider can't run another provider's model id (a Claude model on
-/// Codex), so on a switch we drop it and let the runner use the new provider's
-/// default. Pure + unit-testable.
-fn model_for(
-    configured: Option<Provider>,
-    final_provider: Provider,
-    configured_model: Option<String>,
-) -> Option<String> {
-    match configured {
-        Some(p) if p == final_provider => configured_model,
-        _ => None,
+/// Resolve provider + model, letting explicit overrides win over the agent's
+/// stored config — the shared precedence used by both a chat turn (request
+/// overrides) and a routine run (per-routine overrides).
+///
+/// Order:
+/// 1. `provider_override` (a provider id like `"openai"`) + `model_override`,
+///    when a provider override is present — honored as-is, never auth-gated.
+/// 2. Otherwise [`resolve_provider`] (agent config → authenticated fallback),
+///    with `model_override` applied on top if given.
+///
+/// A `provider_override` that doesn't name a known provider is returned as
+/// `Err(message)` so the caller can surface it (a bad chat request → 400; a bad
+/// routine → a visible run error). It is never silently dropped.
+pub async fn resolve_provider_with_overrides(
+    db: &Database,
+    agent_dir: &Path,
+    provider_override: Option<&str>,
+    model_override: Option<String>,
+) -> Result<ResolvedProvider, String> {
+    if let Some(p_str) = provider_override {
+        let provider: Provider = p_str.parse()?;
+        return Ok(ResolvedProvider {
+            provider,
+            model: model_override,
+        });
     }
+    let mut resolved = resolve_provider(db, agent_dir).await;
+    if let Some(m) = model_override {
+        resolved.model = Some(m);
+    }
+    Ok(resolved)
 }
 
 /// Pick the provider to run when nothing explicit (override or agent config)
-/// names one. **Auth-gated**: never returns a provider the user is logged out
-/// of while another is available.
+/// names one. **Auth-gated**: never returns a provider the user is logged out of
+/// while another is available.
 ///
-/// Probes live auth (only reached on override-less engine paths, so off the
-/// desktop hot path) and defers the decision to [`choose_fallback`]:
+/// Probes live auth (only reached on the no-config fallback, so off the explicit
+/// chat/routine paths) and defers to [`choose_fallback`]:
 /// preferred-if-authenticated → any authenticated provider → preferred.
 pub async fn fallback_provider(db: &Database) -> Provider {
     let preferred = last_used_provider(db).await;
@@ -148,17 +138,14 @@ async fn authenticated_providers() -> Vec<Provider> {
             Ok(status) if status.auth_state.is_authenticated() => authed.push(provider),
             Ok(_) => {}
             Err(e) => {
-                tracing::warn!(
-                    "[provider] auth probe failed for {}: {e}",
-                    provider.id()
-                );
+                tracing::warn!("[provider] auth probe failed for {}: {e}", provider.id());
             }
         }
     }
     authed
 }
 
-/// Pure fallback decision, split out so it is unit-testable without probing the
+/// Pure no-config decision, split out so it is unit-testable without probing the
 /// host's real CLIs.
 ///
 /// - `preferred` is the user's last-used provider (`None` → the Anthropic
@@ -174,6 +161,21 @@ fn choose_fallback(preferred: Option<Provider>, authenticated: &[Provider]) -> P
         return preferred;
     }
     authenticated.first().copied().unwrap_or(preferred)
+}
+
+/// Keep the agent's configured model only when the final provider is the one it
+/// was configured for. The no-config fallback can land on a different provider,
+/// and a provider can't run another provider's model id (a Claude model on
+/// Codex), so we drop it and let the runner use the new provider's default. Pure.
+fn model_for(
+    configured: Option<Provider>,
+    final_provider: Provider,
+    configured_model: Option<String>,
+) -> Option<String> {
+    match configured {
+        Some(p) if p == final_provider => configured_model,
+        _ => None,
+    }
 }
 
 fn read_agent_config(agent_dir: &Path) -> Option<AgentConfig> {
@@ -213,6 +215,26 @@ pub fn resolve_effort(agent_dir: &Path, provider: Provider) -> Option<String> {
     }
 }
 
+/// Like [`resolve_effort`] but lets a caller-supplied override (e.g. a routine's
+/// pinned effort) win — *only* when the resolved provider accepts it. An
+/// unsupported override (a level for a different provider, or a value the model
+/// rejects) is dropped in favor of the agent's configured/default effort,
+/// exactly as a hand-edited config value would be. Providers with no effort
+/// control (e.g. Gemini) still yield `None`.
+pub fn resolve_effort_with_override(
+    agent_dir: &Path,
+    provider: Provider,
+    override_effort: Option<&str>,
+) -> Option<String> {
+    if let Some(e) = override_effort {
+        let levels = provider.effort_levels();
+        if !levels.is_empty() && levels.iter().any(|&l| l == e) {
+            return Some(e.to_string());
+        }
+    }
+    resolve_effort(agent_dir, provider)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -243,12 +265,18 @@ mod tests {
             .unwrap();
     }
 
-    // ── Pure auth-gated fallback decision (hermetic: never probes host) ────
+    fn agent_with(body: &str) -> (TempDir, std::path::PathBuf) {
+        let d = TempDir::new().unwrap();
+        let agent = d.path().join("ws").join("agent");
+        write_json(&agent.join(".houston/config/config.json"), body);
+        (d, agent)
+    }
+
+    // ── Pure no-config decision (hermetic: never probes the host) ──────────
 
     #[test]
     fn choose_fallback_uses_preferred_when_authenticated() {
-        // Logged into both; the preferred (last-used openai) is honored — so a
-        // user logged into both doesn't regress to Anthropic.
+        // Logged into both; last-used openai is honored (no regress to Anthropic).
         assert_eq!(
             choose_fallback(Some(openai()), &[anthropic(), openai()]),
             openai(),
@@ -257,30 +285,47 @@ mod tests {
 
     #[test]
     fn choose_fallback_defaults_to_anthropic_when_no_preference() {
-        // No preference, Anthropic authenticated → the factory default.
         assert_eq!(choose_fallback(None, &[anthropic(), openai()]), anthropic());
     }
 
     #[test]
     fn choose_fallback_switches_when_preferred_is_logged_out() {
-        // The stale-preference fix: last-used says Anthropic but the user is only
-        // logged into OpenAI → use OpenAI, never spawn the logged-out Claude CLI.
+        // last-used says Anthropic but only OpenAI is connected → OpenAI.
         assert_eq!(choose_fallback(Some(anthropic()), &[openai()]), openai());
     }
 
     #[test]
     fn choose_fallback_picks_sole_authed_when_no_preference() {
-        // The OpenAI-only user with no preference: the one provider they are
-        // logged into wins over the Anthropic factory default.
         assert_eq!(choose_fallback(None, &[openai()]), openai());
     }
 
     #[test]
     fn choose_fallback_keeps_preferred_when_nothing_authenticated() {
-        // Nothing connected → still choose *some* provider (the preferred one) so
-        // the auth-failure UX can take over instead of resolving to nonsense.
         assert_eq!(choose_fallback(Some(openai()), &[]), openai());
         assert_eq!(choose_fallback(None, &[]), anthropic());
+    }
+
+    // ── Model drop on a no-config switch (pure) ────────────────────────────
+
+    #[test]
+    fn model_for_keeps_configured_model_when_provider_unchanged() {
+        assert_eq!(
+            model_for(Some(anthropic()), anthropic(), Some("claude-opus-4-7".into())).as_deref(),
+            Some("claude-opus-4-7"),
+        );
+    }
+
+    #[test]
+    fn model_for_drops_model_when_provider_differs() {
+        assert_eq!(
+            model_for(Some(anthropic()), openai(), Some("claude-opus-4-7".into())),
+            None,
+        );
+    }
+
+    #[test]
+    fn model_for_drops_model_when_no_configured_provider() {
+        assert_eq!(model_for(None, anthropic(), Some("sonnet".into())), None);
     }
 
     // ── Preference read (hermetic: DB only) ────────────────────────────────
@@ -295,33 +340,6 @@ mod tests {
         assert!(last_used_provider(&db).await.is_none());
         set_pref(&db, "not-a-provider").await;
         assert!(last_used_provider(&db).await.is_none());
-    }
-
-    // ── Model drop on auth-switch (pure, hermetic) ─────────────────────────
-
-    #[test]
-    fn model_for_keeps_configured_model_when_provider_unchanged() {
-        assert_eq!(
-            model_for(Some(anthropic()), anthropic(), Some("claude-opus-4-7".into())).as_deref(),
-            Some("claude-opus-4-7"),
-        );
-    }
-
-    #[test]
-    fn model_for_drops_model_when_auth_switched_provider() {
-        // Configured for Claude but auth-gated onto OpenAI: a Claude model id
-        // can't run on Codex, so drop it and let the runner use the default.
-        assert_eq!(
-            model_for(Some(anthropic()), openai(), Some("claude-opus-4-7".into())),
-            None,
-        );
-    }
-
-    #[test]
-    fn model_for_drops_model_when_no_configured_provider() {
-        // Model present but no configured provider (hand-edited): the model isn't
-        // tied to the resolved provider, so don't risk handing it to the wrong CLI.
-        assert_eq!(model_for(None, anthropic(), Some("sonnet".into())), None);
     }
 
     // ── Config read precedence (hermetic: no auth probe) ───────────────────
@@ -343,33 +361,56 @@ mod tests {
         assert_eq!(cfg.model.as_deref(), Some("claude-opus-4-7"));
     }
 
-    // ── Interactive (chat) honors explicit config (hermetic: no auth probe) ─
+    // ── Overrides + explicit config honored without probing (hermetic) ─────
 
     #[tokio::test]
-    async fn interactive_honors_explicit_config_and_never_probes() {
-        // Chat: an explicit agent provider is used as-is regardless of the
-        // last-used preference and WITHOUT probing live auth — a logged-out one
-        // surfaces the reconnect card instead of a silent switch. (Unattended
-        // auth-gating of an explicit provider is covered by `choose_fallback_*`.)
+    async fn overrides_win_over_agent_config() {
         let db = mem_db().await;
-        set_pref(&db, "openai").await;
-        let d = TempDir::new().unwrap();
-        let agent = d.path().join("ws").join("agent");
-        write_json(
-            &agent.join(".houston/config/config.json"),
-            r#"{"provider":"anthropic","model":"claude-opus-4-7"}"#,
-        );
-        let r = resolve_provider(&db, &agent, ResolveMode::Interactive).await;
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","model":"sonnet"}"#);
+        let r = resolve_provider_with_overrides(&db, &agent, Some("openai"), Some("gpt-5.5".into()))
+            .await
+            .unwrap();
+        assert_eq!(r.provider, openai());
+        assert_eq!(r.model.as_deref(), Some("gpt-5.5"));
+    }
+
+    #[tokio::test]
+    async fn no_override_honors_explicit_agent_config() {
+        // Explicit agent provider is honored as-is — and probes nothing, so this
+        // stays hermetic regardless of the host's real auth state.
+        let db = mem_db().await;
+        set_pref(&db, "openai").await; // must NOT override the explicit config
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","model":"claude-opus-4-7"}"#);
+        let r = resolve_provider_with_overrides(&db, &agent, None, None)
+            .await
+            .unwrap();
         assert_eq!(r.provider, anthropic());
         assert_eq!(r.model.as_deref(), Some("claude-opus-4-7"));
     }
 
-    fn agent_with(body: &str) -> (TempDir, std::path::PathBuf) {
-        let d = TempDir::new().unwrap();
-        let agent = d.path().join("ws").join("agent");
-        write_json(&agent.join(".houston/config/config.json"), body);
-        (d, agent)
+    #[tokio::test]
+    async fn model_override_alone_keeps_agent_provider() {
+        let db = mem_db().await;
+        let (_d, agent) = agent_with(r#"{"provider":"openai","model":"gpt-5.5"}"#);
+        let r = resolve_provider_with_overrides(&db, &agent, None, Some("gpt-6".into()))
+            .await
+            .unwrap();
+        assert_eq!(r.provider, openai());
+        assert_eq!(r.model.as_deref(), Some("gpt-6"));
     }
+
+    #[tokio::test]
+    async fn bad_provider_override_errors_rather_than_silently_defaulting() {
+        let db = mem_db().await;
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic"}"#);
+        assert!(
+            resolve_provider_with_overrides(&db, &agent, Some("nonsense"), None)
+                .await
+                .is_err()
+        );
+    }
+
+    // ── Effort (sync, unchanged from main) ─────────────────────────────────
 
     #[test]
     fn effort_uses_configured_value_when_provider_accepts_it() {
@@ -405,6 +446,44 @@ mod tests {
     fn effort_reads_claude_effort_alias() {
         let (_d, agent) = agent_with(r#"{"claude_effort":"xhigh"}"#);
         assert_eq!(resolve_effort(&agent, anthropic()).as_deref(), Some("xhigh"));
+    }
+
+    #[test]
+    fn effort_override_wins_when_provider_accepts_it() {
+        // A routine pins "max"; Anthropic accepts it, so it overrides the
+        // agent's configured "low".
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","effort":"low"}"#);
+        assert_eq!(
+            resolve_effort_with_override(&agent, anthropic(), Some("max")).as_deref(),
+            Some("max")
+        );
+    }
+
+    #[test]
+    fn effort_override_dropped_when_provider_rejects_it() {
+        // "max" is invalid for Codex → the override is dropped and the agent's
+        // configured/default effort is used instead.
+        let (_d, agent) = agent_with(r#"{"provider":"openai","effort":"high"}"#);
+        assert_eq!(
+            resolve_effort_with_override(&agent, openai(), Some("max")).as_deref(),
+            Some("high"),
+        );
+    }
+
+    #[test]
+    fn effort_override_none_falls_back_to_resolve_effort() {
+        let (_d, agent) = agent_with(r#"{"provider":"anthropic","effort":"high"}"#);
+        assert_eq!(
+            resolve_effort_with_override(&agent, anthropic(), None).as_deref(),
+            Some("high")
+        );
+    }
+
+    #[test]
+    fn effort_override_ignored_for_provider_without_effort_control() {
+        // Even a "valid-looking" override yields None for Gemini.
+        let (_d, agent) = agent_with(r#"{"provider":"gemini"}"#);
+        assert!(resolve_effort_with_override(&agent, gemini(), Some("high")).is_none());
     }
 
     #[test]

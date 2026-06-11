@@ -41,7 +41,7 @@ fn classify_change(agent_path: &str, relative: &Path) -> Option<HoustonEvent> {
         });
     }
 
-    // .claude/skills/ (Claude Code convention — symlinks to .agents/skills/)
+    // .claude/skills/ (Claude Code convention — live links to .agents/skills/)
     // Agents delete skills here, so we must emit SkillsChanged for these too.
     if rel_str.starts_with(".claude/skills") {
         return Some(HoustonEvent::SkillsChanged {

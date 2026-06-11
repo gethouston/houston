@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
 
 import { useFeedStore } from "../../stores/feeds";
@@ -54,7 +54,9 @@ export function useAgentBoardData({
       activeRaw.map((activity) => ({
         id: activity.id,
         title: activity.title,
-        description: activity.description,
+        // A Skill / attachment first message persists as a marker; show the
+        // user's words on the card, never the raw `<!--houston:...-->` (HOU-425).
+        description: messagePreviewText(activity.description),
         status: activity.status,
         updatedAt: activity.updated_at ?? new Date().toISOString(),
         group: agent.name,

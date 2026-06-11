@@ -49,7 +49,8 @@ pub(crate) async fn run_cli_process(
         Ok(c) => c,
         Err(e) => {
             let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
-                "Failed to spawn {cli_name}: {e}"
+                "Failed to spawn {cli_name}: {e}{}",
+                spawn_error_hint(e.raw_os_error())
             ))));
             return CliRunOutcome::Failed;
         }
@@ -311,6 +312,24 @@ extern "C" {
     fn setpgid(pid: i32, pgid: i32) -> i32;
 }
 
+/// Decorate a raw spawn errno with an actionable hint. 206 is Windows'
+/// `ERROR_FILENAME_EXCED_RANGE`: `CreateProcessW` rejected the command line
+/// for exceeding 32,767 chars before the CLI ever started. The localized OS
+/// string ("El nombre del archivo o la extensión es demasiado largo") gives
+/// the user no path forward, so spell out what actually happened. 206 is not
+/// a spawn errno on Unix, so the match needs no platform gate.
+fn spawn_error_hint(raw_os_error: Option<i32>) -> &'static str {
+    match raw_os_error {
+        Some(206) => {
+            " — the command line passed to the provider exceeded Windows' \
+             32,767-character limit. This is a Houston bug (the agent's \
+             instructions should never ride on the command line); please \
+             report it from the menu."
+        }
+        _ => "",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -393,5 +412,12 @@ mod tests {
             SessionUpdate::Feed(FeedItem::ProviderError(ProviderError::SpawnFailed { message, .. }))
                 if message == "no stderr output captured"
         )));
+    }
+
+    #[test]
+    fn spawn_error_hint_explains_windows_cmdline_overflow() {
+        assert!(spawn_error_hint(Some(206)).contains("32,767"));
+        assert_eq!(spawn_error_hint(Some(2)), "");
+        assert_eq!(spawn_error_hint(None), "");
     }
 }

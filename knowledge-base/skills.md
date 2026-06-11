@@ -6,9 +6,18 @@ A Skill is a reusable procedure stored as a markdown file with YAML frontmatter.
 
 ```
 .agents/skills/<slug>/SKILL.md       # source of truth, YAML frontmatter + body
-.claude/skills/<slug>                # symlink → ../../.agents/skills/<slug>
+.claude/skills/<slug>                # live link → ../../.agents/skills/<slug>
                                      # auto-created by engine on `list_skills`
 ```
+
+The `.claude/skills/<slug>` discovery node is what makes a skill visible to
+Claude Code natively. On Unix it is a relative symlink. On Windows a real
+symlink needs Developer Mode or admin (os error 1314), so the engine falls back
+to a **directory junction** — privilege-free and, crucially, *live*: it always
+reflects the source `SKILL.md`, so a skill the agent later rewrites never goes
+stale behind the mirror. A plain copy is the last resort for the rare non-NTFS
+volume that rejects junctions. See `ensure_claude_mirror` in
+`engine/houston-engine-core/src/skills.rs`.
 
 Houston Store agent packages may also include `.agents/skills/*`.
 Install copies the package to `~/.houston/agents/<id>/`; creating a
@@ -85,6 +94,22 @@ temporary 429/network failure. App search callers handle remaining failures
 inline in the Add Skills UI; they should not show global "Houston problem" bug
 toasts for marketplace search misses.
 
+## Installing a community / repo skill
+
+`install_skill` (skills.sh) and `install_from_repo` (GitHub) both route the
+fetched `SKILL.md` through `houston_skills::install_skill_md`, which **preserves
+the author's frontmatter** (description, category, integrations, image, inputs)
+instead of rebuilding a bare one. Two invariants matter:
+
+- The install slug owns the on-disk directory **and** the frontmatter `name`
+  (derived from the source `name:` when valid, else a slugified id), so the two
+  never drift and `list_skills` always finds the installed skill.
+- Installed skills are marked `featured: true`. A user who explicitly installs
+  a skill must be able to find it: the chat empty state shows only featured
+  skills when any exist, so a non-featured install would silently never appear
+  on the cards. Bookkeeping (version/created/last_used) is reset to a fresh
+  install.
+
 ## Skill invocation marker (chat persistence)
 
 When the user runs a Skill, the persisted user_message body is:
@@ -102,6 +127,7 @@ Focus on pricing.
 - If files were uploaded with the Skill, `attachments` carries `{name,path}` entries. The renderer shows only the count badge; the Claude-facing body still contains the `[User attached these files...]` path block.
 - Decoder lives in `@houston-ai/chat`'s `skill-message.ts` so desktop AND mobile render the same card from the same payload. The decoder also accepts a legacy `<!--houston:action ...-->` prefix so chat history persisted before the rename keeps rendering as a card.
 - Encoder (`encodeSkillMessage`) + Claude-prompt assembler (`buildSkillClaudePrompt`) live in `app/src/lib/skill-message.ts` — only the desktop sends Skills today.
+- The persisted body is also the activity's `description`, which surfaces as the **mission-card / archived-list subtitle**. Those mapping sites run it through `@houston-ai/chat`'s `messagePreviewText` so the card shows the user's words (or the Skill's one-line description when sent on its own), never the raw `<!--houston:skill ...-->` marker. This was HOU-425: a Skill sent as the first message rendered the marker JSON as the card subtitle.
 
 ## Attachment message marker (chat persistence)
 
@@ -185,4 +211,5 @@ The engine applies the rename per workspace on the next sync. If only the old sl
 | Selected Skill chip | [`app/src/components/selected-skill-chip.tsx`](../app/src/components/selected-skill-chip.tsx) |
 | Card on user message | [`app/src/components/user-skill-message.tsx`](../app/src/components/user-skill-message.tsx) (desktop) and [`mobile/src/components/user-skill-message.tsx`](../mobile/src/components/user-skill-message.tsx) |
 | Marker codec | [`ui/chat/src/skill-message.ts`](../ui/chat/src/skill-message.ts) (decode) and [`app/src/lib/skill-message.ts`](../app/src/lib/skill-message.ts) (encode) |
+| Card/list preview text | [`ui/chat/src/message-preview.ts`](../ui/chat/src/message-preview.ts) — `messagePreviewText` decodes a marker → mission-card subtitle (HOU-425) |
 | System prompt template | [`app/src-tauri/src/houston_prompt/skills_memory.rs`](../app/src-tauri/src/houston_prompt/skills_memory.rs) (`SELF_IMPROVEMENT_GUIDANCE`) |

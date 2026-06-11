@@ -11,8 +11,7 @@
 //! - [`cancel`] — kill the running CLI process tree for a given session_key
 //!   (verified, with SIGKILL escalation) and emit a "Stopped by user" feed
 //!   item + `completed` status. See [`cancel`] (module `cancel.rs`).
-//! - [`resolve_provider`] — agent-config → last-used preference → sole
-//!   authenticated provider → Anthropic factory default.
+//! - [`resolve_provider`] — agent config → authenticated fallback (#483).
 //!
 //! Callers (REST handlers, Tauri adapter) supply the already-resolved
 //! `working_dir` and an optional pre-built `system_prompt`. Prompt assembly
@@ -50,7 +49,8 @@ use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
 pub use cancel::cancel;
 pub use houston_agents_conversations::session_pids::PidInsert;
 pub use provider::{
-    fallback_provider, resolve_effort, resolve_provider, ResolveMode, ResolvedProvider,
+    fallback_provider, resolve_effort, resolve_effort_with_override, resolve_provider,
+    resolve_provider_with_overrides, ResolvedProvider,
 };
 
 /// Engine-owned session state. Cheap to clone.
@@ -625,7 +625,7 @@ pub async fn start_onboarding(
     // appends its own agent context in `start()` below.
     let product_prompt = format!("{app_system_prompt}{app_onboarding_prompt}");
 
-    let resolved = resolve_provider(&db, &agent_dir, ResolveMode::Unattended).await;
+    let resolved = resolve_provider(&db, &agent_dir).await;
     let effort = resolve_effort(&agent_dir, resolved.provider);
 
     start(

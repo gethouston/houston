@@ -22,13 +22,11 @@ use axum::{
     Json, Router,
 };
 use houston_composio::toolkit_display_name;
-use houston_db::Database;
 use houston_engine_core::sessions::{
     self, fallback_provider, generate_instructions, history, resolve_agent_dir, resolve_provider,
-    summarize, ResolveMode, SessionRuntime, StartParams,
+    summarize, SessionRuntime, StartParams,
 };
 use houston_engine_core::CoreError;
-use houston_terminal_manager::Provider;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -111,14 +109,17 @@ async fn start_session(
         .map(|p| sessions::expand_tilde(std::path::Path::new(p)))
         .unwrap_or_else(|| agent_dir.clone());
 
-    // Override > agent config > last-used preference > sole authed > Anthropic.
-    let ResolvedProviderChoice { provider, model } = resolve_provider_with_overrides(
+    // Override > agent config > authenticated fallback. Shared with routine
+    // dispatch via `sessions::resolve_provider_with_overrides`.
+    let resolved = sessions::resolve_provider_with_overrides(
         &st.engine.db,
         &agent_dir,
         req.provider.as_deref(),
         req.model.clone(),
     )
-    .await?;
+    .await
+    .map_err(CoreError::BadRequest)?;
+    let (provider, model) = (resolved.provider, resolved.model);
 
     // Reasoning effort: an explicit request override wins (the onboarding
     // tutorial forces a known-good value); otherwise resolve the agent's
@@ -213,14 +214,11 @@ async fn summarize_activity(
         (provider, req.model)
     } else if let Some(agent_path) = req.agent_path.as_deref() {
         let agent_dir = resolve_agent_dir(&st.engine.paths, agent_path);
-        // Unattended title summary: auth-gate even an explicit agent provider.
-        let resolved =
-            resolve_provider(&st.engine.db, &agent_dir, ResolveMode::Unattended).await;
+        let resolved = resolve_provider(&st.engine.db, &agent_dir).await;
         (resolved.provider, req.model.or(resolved.model))
     } else {
-        // No provider override and no agent to resolve against: fall back to
-        // the user's last-used provider (or sole authed) so an OpenAI-only
-        // user's title summary doesn't spawn the Claude CLI (#483).
+        // No provider + no agent to resolve against: auth-aware fallback so an
+        // OpenAI-only user's title summary doesn't spawn the Claude CLI (#483).
         (fallback_provider(&st.engine.db).await, req.model)
     };
     Ok(Json(
@@ -272,10 +270,8 @@ async fn generate_agent_instructions(
             .map_err(|e: String| CoreError::BadRequest(e))?;
         (provider, req.model)
     } else {
-        // No override: fall back to the user's last-used provider (or sole
-        // authed), same as `summarize_activity`, so generating an agent's
-        // instructions for an OpenAI-only user doesn't spawn the Claude CLI
-        // (#483).
+        // No override: auth-aware fallback (same as summarize) so generating an
+        // agent's instructions for an OpenAI-only user doesn't spawn Claude (#483).
         (fallback_provider(&st.engine.db).await, req.model)
     };
     let result =
@@ -321,39 +317,6 @@ async fn cancel_session(
 }
 
 // ---------------------------------------------------------------------------
-
-struct ResolvedProviderChoice {
-    provider: Provider,
-    model: Option<String>,
-}
-
-async fn resolve_provider_with_overrides(
-    db: &Database,
-    agent_dir: &std::path::Path,
-    provider_override: Option<&str>,
-    model_override: Option<String>,
-) -> Result<ResolvedProviderChoice, ApiError> {
-    if let Some(p_str) = provider_override {
-        let provider: Provider = p_str
-            .parse()
-            .map_err(|e: String| CoreError::BadRequest(e))?;
-        return Ok(ResolvedProviderChoice {
-            provider,
-            model: model_override,
-        });
-    }
-    // Chat send with no explicit override: honor an explicit agent provider
-    // as-is (Interactive) so a logged-out one surfaces the reconnect card rather
-    // than silently switching provider mid-conversation.
-    let mut resolved = resolve_provider(db, agent_dir, ResolveMode::Interactive).await;
-    if let Some(m) = model_override {
-        resolved.model = Some(m);
-    }
-    Ok(ResolvedProviderChoice {
-        provider: resolved.provider,
-        model: resolved.model,
-    })
-}
 
 #[cfg(test)]
 mod tests {

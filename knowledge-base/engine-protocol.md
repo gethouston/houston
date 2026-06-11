@@ -144,11 +144,12 @@ not user-facing copy.
 |---|---|---|
 | GET/POST | `/v1/agents/activities` | List/create |
 | PATCH/DELETE | `/v1/agents/activities/:id` | Update/delete |
-| GET/POST | `/v1/agents/routines` | List/create |
-| PATCH/DELETE | `/v1/agents/routines/:id` | Update/delete |
-| GET/POST | `/v1/agents/routine-runs` | List/create |
-| PATCH | `/v1/agents/routine-runs/:id` | Update |
 | GET/PUT | `/v1/agents/config` | Read/write project config |
+
+Routine + routine-run CRUD is **not** here — there is one canonical surface
+under `/v1/routines` + `/v1/routine-runs` (below); the engine-client points all
+routine CRUD at it. (The old duplicate `/v1/agents/routines*` mirror, which
+silently dropped `timezone`, was removed.)
 
 **Agent files** (typed `.houston/` + project file browser)
 | Method | Path | Description |
@@ -164,7 +165,18 @@ not user-facing copy.
 | POST | `/v1/agents/files/import` | Import paths |
 | POST | `/v1/agents/files/import-bytes` | Import base64 bytes |
 
-**Routines (separate scheduler surface)**
+**Routines (the single routine surface — CRUD + scheduler)**
+
+All routine + routine-run CRUD lives here (the engine-client targets it); the
+`/v1/agents/routines*` mirror was deleted. Query params are camelCase
+(`?agentPath`, `?routineId`). A routine carries optional
+`provider`/`model`/`effort` overrides (absent = inherit the agent's config at
+dispatch); the dispatcher resolves provider+model via
+`sessions::resolve_provider_with_overrides` and effort via
+`resolve_effort_with_override` (an effort the resolved provider rejects is
+dropped), the same precedence a chat turn uses. Create/update/delete + run create/update
+emit `RoutinesChanged` / `RoutineRunsChanged`.
+
 | Method | Path | Description |
 |---|---|---|
 | GET/POST | `/v1/routines` | List/create (by `?agentPath`) |
@@ -377,6 +389,20 @@ per-agent context from disk (working directory, mode overrides,
 skills index, integrations). Final prompt =
 `<product_prompt>\n\n---\n\n<agent_context>`. Onboarding sessions use
 `HOUSTON_APP_ONBOARDING_PROMPT` as an additional suffix.
+
+The assembled prompt reaches the provider CLIs via **scratch files,
+never argv** (`houston-terminal-manager::prompt_scratch`): codex gets a
+per-session profile at `$CODEX_HOME/houston-tmp-*.config.toml` selected
+with `-p` (requires the file-based profiles in codex ≥ 0.137 — keep the
+`cli-deps.json` pin at or above that), claude gets a temp file via
+`--system-prompt-file`. Argv tokens are capped at 32,767 chars total by
+Windows `CreateProcessW`; carrying the prompt inline (`-c
+developer_instructions=…` / `--system-prompt <text>`) broke every spawn
+with os error 206 once an agent's accumulated context outgrew the limit.
+Growth is also bounded at the source: `workspace_context` caps the
+`WORKSPACE.md`/`USER.md` prompt share (12 KB / 4 KB, newest-first, with
+an explicit omission marker) the same way `learnings_context` caps
+learnings — files on disk are never trimmed.
 
 ### Feed-item streaming needs a reducer
 

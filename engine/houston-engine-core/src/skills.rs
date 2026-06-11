@@ -200,12 +200,14 @@ fn skills_dir(workspace_path: &str) -> PathBuf {
 /// Create `.claude/skills/{name}` so Claude Code discovers the skill natively.
 ///
 /// On Unix this is a relative symlink to `../../.agents/skills/{name}`. On
-/// Windows, symlink creation needs Developer Mode or admin (os error 1314), so
-/// we try a directory symlink and, failing that, copy the skill directory —
-/// the same "symlink, else copy" fallback the engine uses for agent role
-/// files. The copy is kept current by [`refresh_claude_mirror`] on edit.
-/// Idempotent: skips when the node already exists.
-fn ensure_claude_symlink(workspace_path: &str, skill_name: &str) {
+/// Windows a real symlink needs Developer Mode or admin (os error 1314), so we
+/// fall back to a **directory junction**: it needs no special privilege and,
+/// unlike a copy, stays *live* — it always reflects the source `SKILL.md`, so a
+/// skill the agent later rewrites can never go stale behind the mirror. A plain
+/// copy is the last resort for the rare non-NTFS volume that rejects junctions.
+///
+/// Idempotent: skips when a node already exists at the link path.
+fn ensure_claude_mirror(workspace_path: &str, skill_name: &str) {
     let root = expand_tilde(&PathBuf::from(workspace_path));
     let claude_skills = root.join(".claude/skills");
     if let Err(e) = std::fs::create_dir_all(&claude_skills) {
@@ -216,66 +218,99 @@ fn ensure_claude_symlink(workspace_path: &str, skill_name: &str) {
     if link.exists() {
         return;
     }
+    create_claude_mirror(workspace_path, skill_name, &link);
+}
+
+/// Build the discovery node at `link`. Split out so [`refresh_claude_mirror`]
+/// can rebuild it after the source `SKILL.md` changes.
+fn create_claude_mirror(workspace_path: &str, skill_name: &str, link: &Path) {
     #[cfg(unix)]
     {
+        let _ = workspace_path;
         let target = Path::new("../../.agents/skills").join(skill_name);
-        if let Err(e) = std::os::unix::fs::symlink(&target, &link) {
+        if let Err(e) = std::os::unix::fs::symlink(&target, link) {
             tracing::warn!("[skills] could not symlink {skill_name} into .claude: {e}");
         }
     }
     #[cfg(windows)]
     {
-        let target = Path::new("..\\..\\.agents\\skills").join(skill_name);
-        if std::os::windows::fs::symlink_dir(&target, &link).is_err() {
-            // No symlink privilege: copy so Claude Code still finds the skill.
-            let source = skills_dir(workspace_path).join(skill_name);
-            if let Err(e) = crate::store::copy_dir_all(&source, &link) {
-                tracing::warn!("[skills] could not mirror {skill_name} into .claude: {e}");
-            }
+        // 1. Real symlink — relative, drift-free. Works only with Developer Mode
+        //    or admin; otherwise CreateSymbolicLink fails with os error 1314.
+        let rel = Path::new("..\\..\\.agents\\skills").join(skill_name);
+        if std::os::windows::fs::symlink_dir(&rel, link).is_ok() {
+            return;
+        }
+        // 2. Directory junction — the stock-Windows path. No privilege required,
+        //    and it stays live (always reflects the source), so the agent never
+        //    runs a stale copy of its own skill. Junctions need an ABSOLUTE target.
+        let target = skills_dir(workspace_path).join(skill_name);
+        match junction::create(&target, link) {
+            Ok(()) => return,
+            Err(e) => tracing::warn!(
+                "[skills] junction for {skill_name} failed ({e}); copying as a last resort"
+            ),
+        }
+        // 3. Copy — last resort for non-NTFS volumes that reject junctions. A
+        //    point-in-time snapshot, rebuilt by `refresh_claude_mirror` on edit.
+        if let Err(e) = crate::store::copy_dir_all(&target, link) {
+            tracing::warn!("[skills] could not mirror {skill_name} into .claude: {e}");
         }
     }
 }
 
-/// Remove the `.claude/skills/{name}` discovery node, whether it is a symlink
-/// (Unix, or Windows with Developer Mode) or a copied directory (the Windows
-/// fallback). Routes by node type because a Windows directory symlink must be
-/// removed with `remove_dir`, not `remove_file`.
-fn remove_claude_symlink(workspace_path: &str, skill_name: &str) {
+/// Remove the `.claude/skills/{name}` discovery node — a symlink (Unix, or
+/// Windows with Developer Mode), a directory junction (the Windows fallback), or
+/// a copied directory (the non-NTFS last resort). A junction and a directory
+/// symlink are detached with `remove_dir`, which drops the link **without
+/// touching the source skill behind it**; only a real copied directory is
+/// recursively deleted.
+fn remove_claude_mirror(workspace_path: &str, skill_name: &str) {
     let root = expand_tilde(&PathBuf::from(workspace_path));
     let link = root.join(".claude/skills").join(skill_name);
     let Ok(meta) = link.symlink_metadata() else {
         return;
     };
-    let ft = meta.file_type();
-    let res = if ft.is_symlink() {
-        remove_symlink_node(&link)
-    } else if ft.is_dir() {
-        std::fs::remove_dir_all(&link)
-    } else {
-        std::fs::remove_file(&link)
-    };
-    if let Err(e) = res {
+    if let Err(e) = remove_mirror_node(&link, &meta) {
         tracing::warn!("[skills] could not remove {skill_name} from .claude: {e}");
     }
 }
 
-/// Remove a symlink node. Windows directory symlinks need `remove_dir`;
-/// everywhere else `remove_file` handles both file and directory symlinks.
-fn remove_symlink_node(link: &Path) -> std::io::Result<()> {
-    #[cfg(windows)]
-    let r = std::fs::remove_dir(link);
-    #[cfg(not(windows))]
-    let r = std::fs::remove_file(link);
-    r
+/// Detach a discovery node by its on-disk shape. A directory symlink and a
+/// junction are both reparse points over a directory: `remove_dir` drops the
+/// link itself and never follows through to the source.
+#[cfg(windows)]
+fn remove_mirror_node(link: &Path, meta: &std::fs::Metadata) -> std::io::Result<()> {
+    if meta.is_symlink() || junction::exists(link).unwrap_or(false) {
+        std::fs::remove_dir(link)
+    } else if meta.is_dir() {
+        std::fs::remove_dir_all(link)
+    } else {
+        std::fs::remove_file(link)
+    }
 }
 
-/// Keep the Claude Code discovery mirror current after a skill's content
-/// changes. On Unix the mirror is a live symlink, so there is nothing to do; on
-/// Windows it may be a copy, so rebuild it.
+#[cfg(not(windows))]
+fn remove_mirror_node(link: &Path, meta: &std::fs::Metadata) -> std::io::Result<()> {
+    if meta.is_symlink() {
+        // remove_file detaches a symlink (file or directory) without touching
+        // its target.
+        std::fs::remove_file(link)
+    } else if meta.is_dir() {
+        std::fs::remove_dir_all(link)
+    } else {
+        std::fs::remove_file(link)
+    }
+}
+
+/// Rebuild the Claude Code discovery mirror after a skill's content changes.
+/// Symlinks and junctions are live, so this only does real work for the copied
+/// last-resort fallback — and rebuilding unconditionally also upgrades any copy
+/// left behind by an older Houston into a live junction the next time the user
+/// edits the skill.
 #[cfg(windows)]
 fn refresh_claude_mirror(workspace_path: &str, skill_name: &str) {
-    remove_claude_symlink(workspace_path, skill_name);
-    ensure_claude_symlink(workspace_path, skill_name);
+    remove_claude_mirror(workspace_path, skill_name);
+    ensure_claude_mirror(workspace_path, skill_name);
 }
 #[cfg(not(windows))]
 fn refresh_claude_mirror(_workspace_path: &str, _skill_name: &str) {}
@@ -292,7 +327,7 @@ pub fn list(workspace_path: &str) -> CoreResult<Vec<SkillSummaryResponse>> {
     let dir = skills_dir(workspace_path);
     let summaries = houston_skills::list_skills(&dir)?;
     for s in &summaries {
-        ensure_claude_symlink(workspace_path, &s.name);
+        ensure_claude_mirror(workspace_path, &s.name);
     }
     Ok(summaries
         .into_iter()
@@ -352,7 +387,7 @@ pub fn create(events: &DynEventSink, req: CreateSkillRequest) -> CoreResult<()> 
             tags: vec![],
         },
     )?;
-    ensure_claude_symlink(&req.workspace_path, &req.name);
+    ensure_claude_mirror(&req.workspace_path, &req.name);
     emit_skills_changed(events, &req.workspace_path);
     Ok(())
 }
@@ -360,7 +395,7 @@ pub fn create(events: &DynEventSink, req: CreateSkillRequest) -> CoreResult<()> 
 pub fn delete(events: &DynEventSink, workspace_path: &str, name: &str) -> CoreResult<()> {
     let dir = skills_dir(workspace_path);
     houston_skills::delete_skill(&dir, name)?;
-    remove_claude_symlink(workspace_path, name);
+    remove_claude_mirror(workspace_path, name);
     emit_skills_changed(events, workspace_path);
     Ok(())
 }
@@ -396,7 +431,7 @@ pub async fn install_from_repo(
         .collect();
     let names = houston_skills::remote::install_from_repo(&dir, &req.source, &repo_skills).await?;
     for n in &names {
-        ensure_claude_symlink(&req.workspace_path, n);
+        ensure_claude_mirror(&req.workspace_path, n);
     }
     emit_skills_changed(events, &req.workspace_path);
     Ok(names)
@@ -423,7 +458,7 @@ pub async fn install_community(
 ) -> CoreResult<String> {
     let dir = skills_dir(&req.workspace_path);
     let name = houston_skills::remote::install_skill(&dir, &req.source, &req.skill_id).await?;
-    ensure_claude_symlink(&req.workspace_path, &name);
+    ensure_claude_mirror(&req.workspace_path, &name);
     emit_skills_changed(events, &req.workspace_path);
     Ok(name)
 }
@@ -556,6 +591,97 @@ mod tests {
         delete(&events, &ws, "gone").unwrap();
         assert!(!d.path().join(".agents/skills/gone").exists());
         assert!(d.path().join(".claude/skills/gone").symlink_metadata().is_err());
+    }
+
+    #[test]
+    fn mirror_reflects_source_edits() {
+        // The `.claude/skills/<name>` discovery node must be a *live* link to the
+        // source, not a point-in-time copy: a skill the agent later rewrites has
+        // to stay in sync behind the mirror. Editing the source `SKILL.md` and
+        // reading it back through the mirror proves the link is live. (On Windows
+        // CI this exercises the symlink/junction path; a copy would fail here.)
+        let d = TempDir::new().unwrap();
+        let ws = d.path().to_string_lossy().to_string();
+        let (events, _) = sink();
+        create(
+            &events,
+            CreateSkillRequest {
+                workspace_path: ws.clone(),
+                name: "live".into(),
+                description: "".into(),
+                content: "original-body".into(),
+            },
+        )
+        .unwrap();
+
+        let source = d.path().join(".agents/skills/live/SKILL.md");
+        let mut body = std::fs::read_to_string(&source).unwrap();
+        body.push_str("\nEDITED-AFTER-INSTALL\n");
+        std::fs::write(&source, body).unwrap();
+
+        let through_mirror =
+            std::fs::read_to_string(d.path().join(".claude/skills/live/SKILL.md")).unwrap();
+        assert!(
+            through_mirror.contains("EDITED-AFTER-INSTALL"),
+            "mirror must reflect source edits (live link, not a stale copy)"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_mirror_is_a_link_not_a_copy() {
+        let d = TempDir::new().unwrap();
+        let ws = d.path().to_string_lossy().to_string();
+        let (events, _) = sink();
+        create(
+            &events,
+            CreateSkillRequest {
+                workspace_path: ws.clone(),
+                name: "winlink".into(),
+                description: "".into(),
+                content: "body".into(),
+            },
+        )
+        .unwrap();
+
+        let link = d.path().join(".claude/skills/winlink");
+        let is_symlink = link.symlink_metadata().unwrap().file_type().is_symlink();
+        let is_junction = junction::exists(&link).unwrap_or(false);
+        assert!(
+            is_symlink || is_junction,
+            "Windows discovery mirror must be a symlink or junction, never a plain copy"
+        );
+    }
+
+    #[cfg(windows)]
+    #[test]
+    fn windows_removing_mirror_keeps_source() {
+        let d = TempDir::new().unwrap();
+        let ws = d.path().to_string_lossy().to_string();
+        let (events, _) = sink();
+        create(
+            &events,
+            CreateSkillRequest {
+                workspace_path: ws.clone(),
+                name: "winsafe".into(),
+                description: "".into(),
+                content: "body".into(),
+            },
+        )
+        .unwrap();
+
+        // Detaching the junction/symlink must not follow through and delete the
+        // real skill behind it.
+        remove_claude_mirror(&ws, "winsafe");
+        assert!(
+            d.path().join(".agents/skills/winsafe/SKILL.md").exists(),
+            "removing the .claude mirror must not delete the source skill"
+        );
+        assert!(d
+            .path()
+            .join(".claude/skills/winsafe")
+            .symlink_metadata()
+            .is_err());
     }
 
     #[test]
