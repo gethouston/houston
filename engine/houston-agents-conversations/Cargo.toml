@@ -1,6 +1,6 @@
 [package]
 name = "houston-agents-conversations"
-version = "0.4.21"
+version = "0.4.22"
 edition = "2021"
 description = "Orchestrates multi-session conversation lifecycle for Houston agents — spawn, monitor, persist, supervise"
 license = "MIT"
