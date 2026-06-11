@@ -361,4 +361,41 @@ mod tests {
         delete(d.path(), &r.id).unwrap();
         assert!(list(d.path()).unwrap().is_empty());
     }
+
+    #[test]
+    fn bom_prefixed_routines_file_still_lists() {
+        // HOU-436: a tool (editor, cloud-sync, Windows writer) rewrote
+        // routines.json with a leading UTF-8 BOM. serde rejects it with
+        // `expected value at line 1 column 1`; the BOM must be stripped so
+        // the user's routines load losslessly instead of 500-ing list.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), sample()).unwrap();
+        let path = d.path().join(".houston/routines/routines.json");
+        let body = std::fs::read_to_string(&path).unwrap();
+        std::fs::write(&path, format!("\u{feff}{body}")).unwrap();
+
+        let all = list(d.path()).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, r.id);
+    }
+
+    #[test]
+    fn corrupt_routines_file_recovers_instead_of_erroring() {
+        // HOU-436: before this fix, an unparseable routines.json made every
+        // list_routines call return `json error: expected value at line 1
+        // column 1`, bricking the routines screen (and create, which lists
+        // first). It must degrade to an empty list and stay usable.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("routines.json"), "\0\0not json\0").unwrap();
+
+        assert!(list(d.path()).unwrap().is_empty(), "recovers, does not error");
+
+        // Surface is not bricked: creating a routine works and persists.
+        let r = create(d.path(), sample()).unwrap();
+        let all = list(d.path()).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, r.id);
+    }
 }
