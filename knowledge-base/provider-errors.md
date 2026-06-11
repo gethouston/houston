@@ -123,6 +123,24 @@ this chat's provider — the persisted inline card is the stable surface.
 (The underlying probe false-positive is still unfixed; it needs a
 server-validating auth check.)
 
+**Where the card actually mounts (don't let this regress).** A
+`FeedItem::ProviderError` becomes a `ChatMessage` with `providerError` set
+and `content: ""` (`ui/chat/feed-to-messages.ts`). The ONLY thing that
+renders it is the app's `renderSystemMessage`
+(`app/src/components/use-agent-chat-panel.tsx`), which must return
+`<ProviderErrorCard error={msg.providerError} … />`. `chat-messages.tsx`
+calls `renderSystemMessage(msg)` and, if it returns `undefined`, falls back
+to rendering `msg.content` — which is `""`, i.e. NOTHING. For a long time
+`renderSystemMessage` had no `providerError` branch, so EVERY typed card
+(rate-limit, quota, the OpenAI/Claude reconnect button, …) silently
+rendered as an empty span; the only auth UI that worked was the separate
+store-driven `ProviderReconnectCard` in `afterMessages`. If you add a
+variant, the dispatcher in `provider-error-card.tsx` is necessary but NOT
+sufficient — the card only appears because `renderSystemMessage` mounts it.
+`afterMessages` receives the RAW (unfiltered) feed (`@houston-ai/board`
+`ai-board.tsx`), so its "suppress the store card when an inline auth card
+exists" check can see the `provider_error` item.
+
 ## Adding a new provider
 
 1. Implement `classify_stderr` + `classify_result_error` on the new
