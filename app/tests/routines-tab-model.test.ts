@@ -59,6 +59,9 @@ describe("routines tab model — routineToFormData", () => {
       chat_mode: "shared",
       timezone: "America/Los_Angeles",
       integrations: ["gmail", "slack"],
+      provider: null,
+      model: null,
+      effort: null,
     });
   });
 

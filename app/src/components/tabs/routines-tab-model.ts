@@ -5,7 +5,7 @@ import {
   validEffortOrDefault,
   getDefaultModel,
   normalizeLegacyModel,
-} from "../../lib/providers";
+} from "../../lib/providers.ts";
 
 /** Editor view state for the Routines tab. */
 export type View = { type: "grid" } | { type: "editor"; editId?: string };
