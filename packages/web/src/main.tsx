@@ -25,9 +25,14 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
     createRoot(rootEl).render(<AdminDashboard controlPlaneUrl={controlPlaneUrl} />),
   );
 } else if (controlPlaneUrl) {
-  // Cloud mode: a Supabase login gate signs the user in, then boots the desktop
-  // UI in control-plane mode with their access token. CloudApp sets
-  // window.__HOUSTON_ENGINE__ + __HOUSTON_CP__ before <WebApp> mounts.
+  // Cloud mode: the app's own Supabase auth gates sign-in, then the desktop UI
+  // boots in control-plane mode. app/src/lib/engine.ts reads these globals at
+  // module-eval (which fires as soon as cloud-login statically imports the app
+  // tree), so they MUST be set before that import — otherwise EngineGate hangs
+  // on "Starting Houston engine". CloudApp keeps the token in sync with the
+  // live session; the engine adapter reads it live per request.
+  window.__HOUSTON_CP__ = true;
+  window.__HOUSTON_ENGINE__ = { baseUrl: controlPlaneUrl, token: "" };
   void import("./cloud-login").then(({ CloudApp }) =>
     createRoot(rootEl).render(<CloudApp controlPlaneUrl={controlPlaneUrl} />),
   );
