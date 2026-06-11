@@ -26,6 +26,7 @@ pub(crate) mod anthropic_classify;
 mod gemini;
 mod openai;
 mod openai_classify;
+pub(crate) mod openai_login;
 mod resolve;
 
 pub(crate) use anthropic_classify::detect_malformed_provider_json;
@@ -45,6 +46,26 @@ pub use resolve::{which_on_path, InstallSource};
 /// trait stays object-safe without the `async-trait` macro (which would
 /// allocate a `Pin<Box<dyn Future>>` on every call anyway).
 pub type ProbeFuture<'a> = Pin<Box<dyn Future<Output = ProviderAuthState> + Send + 'a>>;
+
+/// An actionable, recoverable diagnosis of a provider *login* subprocess that
+/// exited non-zero. Produced by [`ProviderAdapter::diagnose_login_failure`].
+///
+/// Login failures are surfaced as plain strings (a toast description over the
+/// REST login call, or the `error` field of a `ProviderLoginComplete` WS
+/// event) — NOT as the session-level [`ProviderError`] card taxonomy
+/// ([`ProviderAdapter::classify_stderr`] et al.), which only applies to a
+/// *running* chat session. So this carries a ready-to-show `message` plus a
+/// stable `kind` the frontend can later match for localized copy.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LoginFailureHint {
+    /// Stable machine-readable tag (e.g. `"codex_login_server_unavailable"`).
+    /// Surfaces as `CoreError::Labeled.kind` → `error.details.kind`.
+    pub kind: &'static str,
+    /// User-facing, recoverable English message. Shown as the toast
+    /// description; the engine is i18n-agnostic, so this is English like every
+    /// other login-error detail.
+    pub message: String,
+}
 
 /// One AI provider's CLI integration. Every method is intended to be
 /// cheap to call repeatedly — the registry hands out shared `&'static`
@@ -158,6 +179,20 @@ pub trait ProviderAdapter: Send + Sync + 'static {
             cli_name: self.cli_name().into(),
             message: truncate_excerpt(stderr_excerpt),
         }
+    }
+
+    /// Diagnose a *login* subprocess that exited non-zero, from its captured
+    /// `stdout` + `stderr`. Returns [`Some`] with an actionable, recoverable
+    /// [`LoginFailureHint`] when the adapter recognizes a known startup-failure
+    /// signature, otherwise [`None`] so the caller surfaces the raw CLI output.
+    ///
+    /// Default is `None` (no special diagnosis). OpenAI overrides it because
+    /// plain `codex login` runs a fixed-port `localhost:1455` loopback server
+    /// whose benign startup banner used to leak as the error string when the
+    /// server failed to start (HOU-446). Unlike [`Self::classify_stderr`], this
+    /// is NOT on a hot path — it runs once, only when a login attempt fails.
+    fn diagnose_login_failure(&self, _stdout: &str, _stderr: &str) -> Option<LoginFailureHint> {
+        None
     }
 
     // -------------------------------------------------------------------
@@ -307,6 +342,12 @@ impl Provider {
         stderr_excerpt: &str,
     ) -> ProviderError {
         self.0.classify_spawn_failure(exit_code, stderr_excerpt)
+    }
+
+    /// Diagnose a non-zero login-subprocess exit. See
+    /// [`ProviderAdapter::diagnose_login_failure`].
+    pub fn diagnose_login_failure(self, stdout: &str, stderr: &str) -> Option<LoginFailureHint> {
+        self.0.diagnose_login_failure(stdout, stderr)
     }
 
     /// Reasoning-effort levels this provider accepts. See
@@ -487,6 +528,30 @@ mod tests {
             );
         }
         assert!(gemini.default_effort().is_none());
+    }
+
+    #[test]
+    fn diagnose_login_failure_only_for_openai() {
+        // The codex loopback login-server banner / port-1455 failure is
+        // diagnosed for OpenAI and surfaced as a recoverable hint...
+        let openai = Provider::from_str("openai").unwrap();
+        let hint = openai
+            .diagnose_login_failure("", "Starting local login server on http://localhost:1455.")
+            .expect("openai diagnoses the codex login-server failure");
+        assert_eq!(hint.kind, "codex_login_server_unavailable");
+        assert!(hint.message.contains("1455"));
+
+        // ...while providers that don't run a loopback login server keep the
+        // trait default (None) and let their raw stderr surface.
+        for id in ["anthropic", "gemini"] {
+            assert!(
+                Provider::from_str(id)
+                    .unwrap()
+                    .diagnose_login_failure("", "Starting local login server on http://localhost:1455.")
+                    .is_none(),
+                "{id} must not borrow codex's login-server diagnosis"
+            );
+        }
     }
 
     #[test]

@@ -171,6 +171,42 @@ Resist if `Unknown` covers it. If you must:
 7. `cargo test --workspace`, `pnpm tsc --noEmit`, `pnpm check-locales`,
    `pnpm vite build` — every gate green before committing.
 
+## Login-flow failures (separate from session classification)
+
+Everything above is about a **running session** — stderr / result events from a
+spawned chat run, classified into the `ProviderError` card taxonomy. The
+**login** flow (`provider::launch_login` in `houston-engine-core`) is a
+different surface, and its failures are plain strings, not cards:
+
+- sub-3s probe exit → `CoreError` → REST → toast description.
+- >3s relay exit → `ProviderLoginComplete.error` (string) → toast description.
+
+The login probe used to surface the CLI's first non-empty output stream
+verbatim as the error. For codex that leaked its benign startup banner
+`Starting local login server on http://localhost:1455.` as
+`internal: codex login: <banner>` — no cause, no recovery (HOU-446). Plain
+`codex login` runs a **fixed-port (1455)** loopback callback server; when it
+can't start (port held by an orphaned prior login, or blocked by a firewall /
+VPN / security tool) codex dies right after printing that banner.
+
+The adapter now owns login diagnosis:
+`ProviderAdapter::diagnose_login_failure(stdout, stderr) -> Option<LoginFailureHint>`
+(default `None`). OpenAI overrides it (`provider/openai_login.rs`) to recognize
+the login-server / port-1455 / address-in-use signature and return a clean,
+recoverable message plus a stable `kind`. Both failure paths
+(`login_early_exit_error` in `provider/mod.rs`, `make_login_error` in
+`provider/login_relay.rs`) prefer the diagnosis; with none they fall back to the
+raw stderr — still the actionable detail for a genuine login error. The
+diagnosed error surfaces as
+`CoreError::Labeled { code: Unavailable, kind, message }`: clean (no `internal:`
+prefix), with `kind` reaching `error.details.kind` for future localized copy.
+
+This is NOT a new `ProviderError` variant — login failures never render as
+session cards, so they stay out of the taxonomy table above.
+
+(Same fix biased the relay's stdout/exit `select!` so a fast-exiting CLI's
+login URL is always drained before its exit is observed — see `login_relay.rs`.)
+
 ## File map
 
 | Layer        | Path                                                                              |
@@ -179,6 +215,7 @@ Resist if `Unknown` covers it. If you must:
 | Trait        | `engine/houston-terminal-manager/src/provider/mod.rs`                             |
 | Anthropic    | `engine/houston-terminal-manager/src/provider/anthropic_classify.rs`              |
 | OpenAI       | `engine/houston-terminal-manager/src/provider/openai_classify.rs`                 |
+| Codex login  | `engine/houston-terminal-manager/src/provider/openai_login.rs` (login-flow diag)  |
 | Gemini       | `engine/houston-terminal-manager/src/provider/gemini/classify.rs`                 |
 | Stderr wire  | `engine/houston-terminal-manager/src/session_io.rs::read_stderr_lines`            |
 | Result wire  | `engine/houston-terminal-manager/src/gemini_parser_state.rs::handle_result`       |
