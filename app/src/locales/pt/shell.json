@@ -302,7 +302,12 @@
       "bodyInvalidApiKey": "A chave de API do {{provider}} que o Houston tem não é mais válida. Atualize e tente de novo.",
       "bodyTokenRevoked": "Seu acesso ao {{provider}} foi revogado. Entre novamente para continuar.",
       "bodyUnknown": "O Houston não conseguiu se autenticar no {{provider}}. Reconecte e tente novamente.",
-      "reconnect": "Reconectar"
+      "reconnect": "Reconectar",
+      "waiting": "Conclua o login no seu navegador",
+      "reconnectedTitle": "Reconectado a {{provider}}",
+      "reconnectedBody": "Você entrou de novo. Continue de onde parou.",
+      "sendAgain": "Tentar novamente",
+      "failedBody": "O login de {{provider}} não foi concluído. Tente novamente. {{detail}}"
     },
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",

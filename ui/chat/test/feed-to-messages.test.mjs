@@ -46,6 +46,24 @@ test("collapses duplicate provider-error cards to one per kind+provider", () => 
   assert.equal(cards[0].providerError.provider, "openai");
 });
 
+test("provider-error dedup resets at each user message (per turn)", () => {
+  // Re-failure in a LATER turn must show a fresh card: after a successful
+  // reconnect, the session can die again, and the new turn's error must not
+  // be swallowed by the previous turn's dedup entry.
+  const auth = {
+    feed_type: "provider_error",
+    data: { kind: "unauthenticated", provider: "openai", cause: "unknown", message: "ended" },
+  };
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "first" },
+    auth,
+    auth, // same turn → deduped
+    { feed_type: "user_message", data: "second" },
+    auth, // new turn → fresh card
+  ]);
+  assert.equal(messages.filter((m) => m.providerError).length, 2);
+});
+
 test("keeps provider-error cards of different kinds", () => {
   const messages = feedItemsToMessages([
     {
