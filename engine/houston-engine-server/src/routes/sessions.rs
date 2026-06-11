@@ -27,6 +27,7 @@ use houston_engine_core::sessions::{
     summarize, SessionRuntime, StartParams,
 };
 use houston_engine_core::CoreError;
+use houston_terminal_manager::Provider;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
