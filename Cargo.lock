@@ -2424,7 +2424,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agent-files"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "chrono",
  "serde",
@@ -2438,7 +2438,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agent-portable"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "chrono",
  "serde",
@@ -2451,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agents-conversations"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "houston-db",
  "houston-terminal-manager",
@@ -2465,7 +2465,7 @@ dependencies = [
 
 [[package]]
 name = "houston-app"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2496,7 +2496,7 @@ dependencies = [
 
 [[package]]
 name = "houston-claude-installer"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "futures-util",
  "hex",
@@ -2516,7 +2516,7 @@ dependencies = [
 
 [[package]]
 name = "houston-cli-bundle"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "serde",
  "serde_json",
@@ -2526,7 +2526,7 @@ dependencies = [
 
 [[package]]
 name = "houston-composio"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
@@ -2544,7 +2544,7 @@ dependencies = [
 
 [[package]]
 name = "houston-db"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2557,7 +2557,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-core"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2594,7 +2594,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-protocol"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "chrono",
  "houston-terminal-manager",
@@ -2606,7 +2606,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-server"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2646,7 +2646,7 @@ dependencies = [
 
 [[package]]
 name = "houston-events"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2660,7 +2660,7 @@ dependencies = [
 
 [[package]]
 name = "houston-file-watcher"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "houston-ui-events",
  "notify",
@@ -2671,7 +2671,7 @@ dependencies = [
 
 [[package]]
 name = "houston-scheduler"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2685,7 +2685,7 @@ dependencies = [
 
 [[package]]
 name = "houston-skills"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "chrono",
  "reqwest 0.12.28",
@@ -2701,7 +2701,7 @@ dependencies = [
 
 [[package]]
 name = "houston-tauri"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "dirs 5.0.1",
  "houston-agent-files",
@@ -2720,7 +2720,7 @@ dependencies = [
 
 [[package]]
 name = "houston-terminal-manager"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "dirs 5.0.1",
  "houston-cli-bundle",
@@ -2734,7 +2734,7 @@ dependencies = [
 
 [[package]]
 name = "houston-tunnel"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2754,7 +2754,7 @@ dependencies = [
 
 [[package]]
 name = "houston-ui-events"
-version = "0.4.21"
+version = "0.4.22"
 dependencies = [
  "houston-terminal-manager",
  "serde",
