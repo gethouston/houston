@@ -279,6 +279,25 @@ pub enum FeedItem {
     },
     /// Visible files created or changed during the session.
     FileChanges(FileChanges),
+    /// The conversation was handed off to a DIFFERENT provider mid-session.
+    ///
+    /// Provider CLI sessions are not portable across providers (Claude's
+    /// resume id means nothing to Codex), so the new provider runs a FRESH
+    /// session seeded with prior context — the full transcript verbatim when
+    /// it fits the new model's window (`summarized = false`), or an
+    /// AI-generated summary when it does not (`summarized = true`). The user's
+    /// visible `chat_feed` is never mutated; this is a boundary divider, like
+    /// [`Self::ContextCompacted`]. `pre_tokens` is how full the leaving
+    /// provider's context was just before the switch, when known.
+    ProviderSwitched {
+        /// Provider id the conversation was handed off TO (e.g. "openai").
+        provider: String,
+        /// Whether prior context was summarized to fit (`true`) or carried
+        /// over verbatim (`false`).
+        summarized: bool,
+        #[serde(default)]
+        pre_tokens: Option<u64>,
+    },
 }
 
 /// In-memory buffer for a live session's feed items.

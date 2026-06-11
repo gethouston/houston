@@ -104,5 +104,15 @@
   },
   "filesUpdated_one": "1 arquivo atualizado",
   "filesUpdated_other": "{{count}} arquivos atualizados",
-  "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar"
+  "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar",
+  "providerSwitch": {
+    "title": "Mudar para {{provider}}?",
+    "replayBody": "Mudar leva toda esta conversa para o {{provider}} continuar com todo o contexto. Recarregar a conversa usa uma quantidade considerável de tokens, e mais quanto maior a conversa estiver agora. Continuar?",
+    "replayConfirm": "Recarregar e mudar",
+    "summaryBody": "O {{provider}} tem uma janela de contexto menor, então a conversa inteira não cabe. Vamos resumi-la para o {{provider}} continuar. Resumir usa tokens e pode perder algum detalhe. Continuar?",
+    "summaryConfirm": "Resumir e mudar",
+    "cancel": "Cancelar",
+    "dividerFull": "Continuou com {{provider}}",
+    "dividerSummary": "Continuou com {{provider}}, resumido para caber"
+  }
 }

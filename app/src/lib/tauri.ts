@@ -34,6 +34,7 @@ import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
 import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
+import { useProviderSwitchStore } from "../stores/provider-switch";
 export { withAttachmentPaths } from "./attachment-message";
 
 interface EngineCallOptions {
@@ -208,16 +209,27 @@ export const tauriChat = {
     },
   ) =>
     call<string>("send_message", async () => {
+      // A staged provider switch (the user changed providers mid-conversation)
+      // takes precedence over autocompact: the engine reseeds a fresh session
+      // on the new provider, so same-provider context-full compaction doesn't
+      // apply. PEEK, don't clear — the handoff is cleared only when the engine
+      // confirms the switch with a `provider_switched` event, so a failed seed
+      // is retried on the next send instead of silently continuing blank.
+      const handoff = useProviderSwitchStore
+        .getState()
+        .peekPending(agentPath, sessionKey);
       // Centralized autocompact decision: when this session's context is
       // nearly full, ask the engine to summarize + reseed before this turn.
       // Computed here so every send path gets it; new conversations have no
       // usage yet and resolve to `false`.
-      const compact = shouldAutocompactForSession(
-        agentPath,
-        sessionKey,
-        opts?.providerOverride,
-        opts?.modelOverride,
-      );
+      const compact = handoff
+        ? false
+        : shouldAutocompactForSession(
+            agentPath,
+            sessionKey,
+            opts?.providerOverride,
+            opts?.modelOverride,
+          );
       const res = await getEngine().startSession(agentPath, {
         sessionKey,
         prompt,
@@ -227,6 +239,9 @@ export const tauriChat = {
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
         compact,
+        providerSwitch: handoff
+          ? { mode: handoff.mode, fromProvider: handoff.fromProvider }
+          : undefined,
       });
       return res.sessionKey;
     }),

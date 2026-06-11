@@ -104,5 +104,15 @@
   },
   "filesUpdated_one": "1 file updated",
   "filesUpdated_other": "{{count}} files updated",
-  "contextCompacted": "Earlier conversation summarized so the chat can keep going"
+  "contextCompacted": "Earlier conversation summarized so the chat can keep going",
+  "providerSwitch": {
+    "title": "Switch to {{provider}}?",
+    "replayBody": "Switching brings this whole conversation over to {{provider}} so it can continue with full context. Reloading the conversation uses a considerable amount of tokens, and more the larger the conversation is right now. Continue?",
+    "replayConfirm": "Reload and switch",
+    "summaryBody": "{{provider}} has a smaller context window, so the whole conversation won't fit. We'll summarize it so {{provider}} can continue. Summarizing uses tokens and may lose some detail. Continue?",
+    "summaryConfirm": "Summarize and switch",
+    "cancel": "Cancel",
+    "dividerFull": "Continued with {{provider}}",
+    "dividerSummary": "Continued with {{provider}}, summarized to fit"
+  }
 }

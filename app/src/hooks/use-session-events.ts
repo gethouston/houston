@@ -7,6 +7,7 @@ import { useUIStore } from "../stores/ui";
 import { useWorkspaceStore } from "../stores/workspaces";
 import { useAgentStore } from "../stores/agents";
 import { useSessionStatusStore } from "../stores/session-status";
+import { useProviderSwitchStore } from "../stores/provider-switch";
 import { subscribeHoustonEvents, listenOsEvent } from "../lib/events";
 import { logger } from "../lib/logger";
 import { isMac } from "../lib/platform";
@@ -65,17 +66,28 @@ export function useSessionEvents() {
       const h = handlersRef.current;
 
       switch (payload.type) {
-        case "FeedItem":
+        case "FeedItem": {
+          const item = payload.data.item as FeedItem;
           // Mark WS-delivered so a re-broadcast user_message echo (the engine
           // emits one at session-id time for cross-client sync) dedupes against
           // a turn the feed already shows instead of duplicating it (#363).
           h.pushFeedItem(
             payload.data.agent_path,
             payload.data.session_key,
-            payload.data.item as FeedItem,
+            item,
             { fromWs: true },
           );
+          // The engine confirmed a mid-session provider switch by emitting the
+          // boundary divider — clear the staged handoff so later normal turns
+          // don't re-trigger a reseed. A failed seed never emits this, so the
+          // handoff stays staged and the next send retries the switch.
+          if (item.feed_type === "provider_switched") {
+            useProviderSwitchStore
+              .getState()
+              .clearPending(payload.data.agent_path, payload.data.session_key);
+          }
           break;
+        }
         case "SessionStatus": {
           const { status, error, session_key, agent_path } = payload.data;
           if (

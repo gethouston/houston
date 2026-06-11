@@ -557,6 +557,19 @@ export interface SessionStartRequest {
    * when there's an existing session to compact; ignored on the first turn.
    */
   compact?: boolean;
+  /**
+   * Set when the user switches this conversation to a DIFFERENT provider
+   * mid-stream. Provider CLI sessions are not portable, so the engine reseeds
+   * a fresh session on the new provider with prior context: the full
+   * transcript verbatim (`mode: "replay"`) when it fits the new model's
+   * window, or an AI summary (`mode: "summarize"`) when it does not.
+   * `fromProvider` is the provider being left. Takes precedence over
+   * `compact`; absent for normal turns.
+   */
+  providerSwitch?: {
+    mode: "replay" | "summarize";
+    fromProvider: string;
+  };
 }
 
 export interface SessionStartResponse {

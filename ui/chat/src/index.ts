@@ -12,6 +12,7 @@ export type {
 export type {
   ToolEntry,
   ChatMessage,
+  ChatCompactionInfo,
   FileChangeEntry,
 } from "./feed-to-messages";
 export type { TurnEndSummary } from "./turn-tools";

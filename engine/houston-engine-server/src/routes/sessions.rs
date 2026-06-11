@@ -89,6 +89,23 @@ pub struct StartRequest {
     /// clients deserialize unchanged.
     #[serde(default)]
     pub compact: bool,
+    /// Set when the user switched this conversation to a DIFFERENT provider
+    /// mid-stream. Reseeds a fresh session on the new provider with prior
+    /// context (verbatim or summarized — see [`ProviderSwitchRequest`]). Takes
+    /// precedence over `compact`. Absent for normal turns.
+    #[serde(default)]
+    pub provider_switch: Option<ProviderSwitchRequest>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderSwitchRequest {
+    /// `"replay"` (carry the full transcript verbatim) or `"summarize"`
+    /// (AI-summarize to fit the new provider's smaller window).
+    pub mode: String,
+    /// Provider id being LEFT (e.g. `"anthropic"`). The provider being switched
+    /// TO is `provider`. Used to anchor the boundary divider in history.
+    pub from_provider: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -128,6 +145,24 @@ async fn start_session(
         .effort
         .or_else(|| sessions::resolve_effort(&agent_dir, provider));
 
+    // Parse the optional provider-switch handoff. Invalid mode / provider is a
+    // client error, not a silent drop.
+    let handoff = match req.provider_switch {
+        Some(sw) => {
+            let mode: sessions::SeedMode =
+                sw.mode.parse().map_err(|e: String| CoreError::BadRequest(e))?;
+            let from_provider: Provider = sw
+                .from_provider
+                .parse()
+                .map_err(|e: String| CoreError::BadRequest(e))?;
+            Some(sessions::ProviderHandoff {
+                mode,
+                from_provider,
+            })
+        }
+        None => None,
+    };
+
     let params = StartParams {
         agent_dir,
         working_dir,
@@ -139,6 +174,7 @@ async fn start_session(
         model,
         effort,
         compact: req.compact,
+        handoff,
     };
 
     let rt = SessionRuntime::clone(&st.engine.sessions);

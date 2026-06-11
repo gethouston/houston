@@ -470,6 +470,23 @@ fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
             let data = serde_json::json!({ "trigger": trigger, "pre_tokens": pre_tokens });
             Some(("context_compacted".into(), data.to_string()))
         }
+        FeedItem::ProviderSwitched {
+            provider,
+            summarized,
+            pre_tokens,
+        } => {
+            // Persist the provider-switch divider so it survives a history
+            // reload, matching the live FeedItem wire shape (`data` = the
+            // variant fields). Engine-core emits + persists this directly at the
+            // switch boundary (see `sessions::run_start`); this arm keeps the
+            // FeedItem → feed_type mapping total for any future emitter.
+            let data = serde_json::json!({
+                "provider": provider,
+                "summarized": summarized,
+                "pre_tokens": pre_tokens,
+            });
+            Some(("provider_switched".into(), data.to_string()))
+        }
         // Skip streaming items — they get replaced by finals.
         FeedItem::AssistantTextStreaming(_) | FeedItem::ThinkingStreaming(_) => None,
     }

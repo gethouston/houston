@@ -514,6 +514,27 @@ summary failure the engine logs and falls back to a normal resume (the CLI's own
 auto-compaction is the backstop), so a turn never fails because compaction
 couldn't run.
 
+### Provider switch (`provider_switched`)
+
+`POST .../sessions` accepts an optional `providerSwitch: { mode: "replay" |
+"summarize", fromProvider }` (HOU-424). It is set by the client when the user
+moves a live conversation to a DIFFERENT provider mid-stream. Provider CLI
+sessions aren't portable, so the engine reseeds a FRESH session on the resolved
+(new) provider with prior context — the full transcript verbatim (`replay`) or
+an AI summary (`summarize`) — and clears any current resume id for the resolved
+provider so a switch-back never resumes a stale cross-provider session. It takes
+precedence over `compact`. The seed is built from the DB `chat_feed`, and the
+summary (for `summarize`) runs on the TARGET provider, so a switch away from an
+out-of-credits provider still works. Unlike `compact`, a switch seed failure is
+NOT swallowed: it surfaces as a `SessionStatus` error (beta no-silent-failure
+policy).
+
+The boundary is recorded as a `feed_type: "provider_switched"` item (`data: {
+provider, summarized, pre_tokens? }`, Rust `FeedItem::ProviderSwitched`),
+rendered as a subtle divider like `context_compacted`. `provider` is the
+provider switched TO; `summarized` distinguishes the verbatim carry from the
+summarized one. The full `chat_feed` above and below stays visible.
+
 ### Binary file downloads
 
 The `read-project` route returns text only. For xlsx, pdf, images,

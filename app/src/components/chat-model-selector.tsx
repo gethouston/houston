@@ -17,25 +17,23 @@ import {
 } from "./chat-model-selector-parts";
 
 interface ChatModelSelectorProps {
-  /** Current provider id (from workspace/agent config). */
+  /** Current provider id (from agent config / per-mission override). */
   provider: string;
   /** Current model id. */
   model: string;
-  /** Called when user picks a provider + model. */
-  onSelect: (provider: string, model: string) => void;
   /**
-   * When set, the provider is locked (conversation already started).
-   * The user can still switch models within this provider, but not
-   * change to a different provider.
+   * Called when the user picks a provider + model. The provider is never
+   * locked: picking a different provider mid-conversation is supported, and
+   * the consumer (`use-agent-chat-panel`) stages the handoff so the engine
+   * carries context across.
    */
-  lockedProvider?: string | null;
+  onSelect: (provider: string, model: string) => void;
 }
 
 export function ChatModelSelector({
   provider,
   model,
   onSelect,
-  lockedProvider,
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
@@ -43,28 +41,6 @@ export function ChatModelSelector({
   const currentProvider = getProvider(provider);
   const currentModel = getModel(provider, model);
   const displayLabel = currentModel?.label ?? currentProvider?.subtitle ?? t("modelSelector.selectModel");
-
-  // Honour `lockedProvider` only when it points at a currently-active
-  // provider that the engine reports as installed. Two cases drop the
-  // lock so the user can switch instead of being stuck:
-  //
-  //   * The locked provider is in `COMING_SOON_PROVIDERS` (or unknown),
-  //     so `getProvider` returns undefined. This happens when Gemini is
-  //     paused in the catalog but a stored activity still references
-  //     it.
-  //   * The locked provider is in `PROVIDERS` but the engine reports
-  //     `cli_installed=false` (binary missing on this platform).
-  //
-  // In both cases every send would route to a provider the user cannot
-  // currently invoke, so the dropdown must expose installed
-  // alternatives instead of pinning the broken choice.
-  const lockedProviderEntry = lockedProvider ? getProvider(lockedProvider) : undefined;
-  const lockedStatus = lockedProvider ? statuses[lockedProvider] : undefined;
-  const lockedProviderInstalled = lockedStatus?.cli_installed ?? true;
-  const effectiveLock =
-    lockedProvider && lockedProviderEntry && lockedProviderInstalled
-      ? lockedProvider
-      : null;
 
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
@@ -92,14 +68,13 @@ export function ChatModelSelector({
             // Keep every provider visible while statuses are still loading so
             // the list doesn't collapse to a single "Not connected" entry
             // (issue #342); once known, hide disconnected non-active
-            // providers. A lock (conversation already started) still shows
-            // only the locked provider — see the lock-override comment above.
+            // providers. Every connected provider stays selectable — switching
+            // provider mid-conversation is supported.
             if (
               !shouldShowProviderInPicker({
                 providerId: prov.id,
                 state,
                 isActiveProvider,
-                effectiveLock,
               })
             ) {
               return null;
@@ -112,7 +87,7 @@ export function ChatModelSelector({
                 isActiveProvider={isActiveProvider}
                 activeModel={isActiveProvider ? model : null}
                 onSelect={onSelect}
-                showSeparator={idx > 0 && !effectiveLock}
+                showSeparator={idx > 0}
               />
             );
           })}

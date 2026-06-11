@@ -37,7 +37,9 @@ use crate::CoreResult;
 use control::{
     SessionControl, SessionIdentity, SessionTurnGuard, SessionTurnLocks, WorkdirActivity,
 };
-use houston_agents_conversations::session_id_tracker::SessionIdTracker;
+use houston_agents_conversations::session_id_tracker::{
+    session_ids_for_history, SessionIdTracker,
+};
 use houston_agents_conversations::session_pids::SessionPidMap;
 use houston_agents_conversations::session_runner::{self, PersistOptions};
 use houston_db::Database;
@@ -111,6 +113,60 @@ pub struct StartParams {
     /// Honored only when there's an existing session to compact; ignored on
     /// the first turn. See [`compaction`].
     pub compact: bool,
+    /// Set when the user moved this conversation to a DIFFERENT provider
+    /// mid-stream. The new provider has no resume session, so the turn reseeds
+    /// fresh with prior context — verbatim or summarized, see [`SeedMode`] —
+    /// and any stale resume id for the resolved provider is cleared so a
+    /// switch-back never resumes a session missing the other provider's turns.
+    /// Takes precedence over `compact`. See [`compaction`].
+    pub handoff: Option<ProviderHandoff>,
+}
+
+/// How prior context is carried over when a conversation is handed to a
+/// different provider. Provider CLI sessions aren't portable, so the new
+/// provider always starts fresh; this picks the seed strategy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeedMode {
+    /// Re-send the full visible transcript verbatim. Lossless; chosen by the
+    /// client when the conversation fits the new provider's context window.
+    Replay,
+    /// Summarize the conversation with the TARGET provider, then seed the fresh
+    /// session with the summary. Lossy; chosen when a verbatim replay would not
+    /// fit. Costs one summarizer call on the target provider (never the one
+    /// being left, so it works even when the old provider is out of credits).
+    Summarize,
+}
+
+impl std::fmt::Display for SeedMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            SeedMode::Replay => "replay",
+            SeedMode::Summarize => "summarize",
+        })
+    }
+}
+
+impl std::str::FromStr for SeedMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "replay" => Ok(SeedMode::Replay),
+            "summarize" => Ok(SeedMode::Summarize),
+            other => Err(format!(
+                "unknown seed mode {other:?} (expected \"replay\" or \"summarize\")"
+            )),
+        }
+    }
+}
+
+/// A mid-session provider switch requested by the client. The provider being
+/// switched TO is the session's resolved provider; `from_provider` is the one
+/// being left — used only to anchor the boundary divider at the right place in
+/// the persisted history.
+#[derive(Debug, Clone, Copy)]
+pub struct ProviderHandoff {
+    pub mode: SeedMode,
+    pub from_provider: Provider,
 }
 
 /// Start a session turn. The request is accepted immediately. Turns with the
@@ -206,6 +262,7 @@ async fn run_start(
         model,
         effort,
         compact,
+        handoff,
     } = params;
 
     if !agent_dir.exists() {
@@ -266,12 +323,146 @@ async fn run_start(
     // persisted/displayed user message stays the original (see `persist`).
     let mut cli_prompt = prompt.clone();
 
-    // Forced autocompact (mechanism B): the frontend flagged this turn because
-    // the context window is nearly full. Summarize the visible history,
-    // abandon the current resume id (kept in `.history` so the chat stays
-    // visible), and run this turn on a FRESH provider session seeded with the
-    // summary. The user's chat_feed is never mutated.
-    if compact {
+    // Provider switch (takes precedence over autocompact): the user moved this
+    // conversation to a different provider. The new provider has no portable
+    // resume session, so reseed a FRESH session with prior context — the full
+    // transcript verbatim (`Replay`, when it fits the new window) or an
+    // AI-generated summary (`Summarize`, when it doesn't). Both read our
+    // `chat_feed`, never the leaving provider's CLI, so a switch away from an
+    // out-of-credits provider still works. The summarizer (when used) runs on
+    // the TARGET provider. Always clears any current resume id for the resolved
+    // provider so a switch-BACK never resumes a session missing the other
+    // provider's turns.
+    if let Some(handoff) = handoff {
+        let seed = match handoff.mode {
+            SeedMode::Replay => compaction::build_replay_seed(
+                &db,
+                &working_dir,
+                &agent_dir,
+                &session_key,
+                &prompt,
+            )
+            .await
+            .map(|opt| opt.map(|s| (s.prompt, s.pre_tokens))),
+            SeedMode::Summarize => compaction::build_compaction_seed(
+                &db,
+                &working_dir,
+                &agent_dir,
+                &session_key,
+                &prompt,
+                provider,
+                model.as_deref(),
+            )
+            .await
+            .map(|opt| opt.map(|s| (s.prompt, s.pre_tokens))),
+        };
+        match seed {
+            Ok(maybe_seed) => {
+                // The switch SUCCEEDED whether or not there was prior context to
+                // carry. `Some` carries a seed; `None` means the engine saw no
+                // visible history (e.g. the frontend's streaming-feed
+                // `conversationStarted` ran ahead of the persisted `chat_feed`),
+                // so the new provider just starts fresh. EITHER WAY we emit +
+                // persist the divider: it's the success signal the frontend uses
+                // to clear the staged handoff, so a switch that emitted nothing
+                // would re-fire on every later send. Only a true seed FAILURE
+                // (Err) keeps the handoff staged for retry.
+                let pre_tokens = maybe_seed.as_ref().and_then(|(_, pt)| *pt);
+                let seeded = maybe_seed.is_some();
+                if let Some((seed_prompt, _)) = maybe_seed {
+                    cli_prompt = seed_prompt;
+                }
+                let summarized = matches!(handoff.mode, SeedMode::Summarize);
+                // Live divider so the boundary shows immediately.
+                events.emit(HoustonEvent::FeedItem {
+                    agent_path: agent_path.clone(),
+                    session_key: session_key.clone(),
+                    item: FeedItem::ProviderSwitched {
+                        provider: provider.id().to_string(),
+                        summarized,
+                        pre_tokens,
+                    },
+                });
+                // Persist the divider under an id in THIS conversation's id set
+                // so a history reload loads it. `chat_feed` sorts by timestamp,
+                // so any anchor places the marker at the boundary (after the old
+                // turns, before the new). Prefer the leaving provider's current
+                // id, then the resolved provider's (a switch-back's stale id),
+                // then any id from the full history set — the last guarantees
+                // persistence even when neither provider holds a current sid
+                // (e.g. the leaving provider only ever errored), as long as the
+                // seed read non-empty history.
+                let leaving_agent_key = format!(
+                    "{}:{}:{}",
+                    working_dir.to_string_lossy(),
+                    handoff.from_provider,
+                    session_key
+                );
+                let leaving_id = rt
+                    .session_ids
+                    .get_for_session(
+                        &leaving_agent_key,
+                        &working_dir,
+                        &session_key,
+                        handoff.from_provider,
+                    )
+                    .await
+                    .get()
+                    .await
+                    .or_else(|| resume_id.clone())
+                    .or_else(|| {
+                        session_ids_for_history(&working_dir, &session_key)
+                            .into_iter()
+                            .next_back()
+                    });
+                if let Some(leaving_id) = leaving_id {
+                    let data = serde_json::json!({
+                        "provider": provider.id(),
+                        "summarized": summarized,
+                        "pre_tokens": pre_tokens,
+                    })
+                    .to_string();
+                    if let Err(e) = db
+                        .add_chat_feed_item_by_session(
+                            &leaving_id,
+                            "provider_switched",
+                            &data,
+                            &source,
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            "[sessions] failed to persist provider-switch marker: {e} (session_key={session_key})"
+                        );
+                    }
+                }
+                sid_handle.clear_current_preserving_history().await;
+                resume_id = None;
+                tracing::info!(
+                    "[sessions] provider switch to {provider} (mode={}, summarized={summarized}, seeded={seeded}) for session_key={session_key}",
+                    handoff.mode
+                );
+            }
+            Err(e) => {
+                // The user explicitly switched (and for Summarize consented to
+                // the token cost). There is NO safe fallback here — a normal
+                // resume would be blank (new provider) or a stale cross-provider
+                // session, and an unusable/empty summary is a failure too. Surface
+                // it rather than silently degrade (beta no-silent-failure policy);
+                // the start wrapper flips the activity to `error` and emits a
+                // SessionStatus error. The frontend keeps the handoff staged, so
+                // the next send retries the switch.
+                return Err(crate::CoreError::Internal(format!(
+                    "couldn't switch to {provider}: {e}"
+                )));
+            }
+        }
+    } else if compact {
+        // Forced autocompact (mechanism B): the frontend flagged this turn
+        // because the context window is nearly full. Summarize the visible
+        // history, abandon the current resume id (kept in `.history` so the
+        // chat stays visible), and run this turn on a FRESH provider session
+        // seeded with the summary. The user's chat_feed is never mutated.
         if let Some(old_id) = resume_id.clone() {
             match compaction::build_compaction_seed(
                 &db,
@@ -644,6 +835,7 @@ pub async fn start_onboarding(
             model: resolved.model,
             effort,
             compact: false,
+            handoff: None,
         },
     )
     .await
@@ -712,6 +904,7 @@ mod tests {
                     model: None,
                     effort: None,
                     compact: false,
+                    handoff: None,
                 },
             ),
         )
