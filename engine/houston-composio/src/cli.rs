@@ -235,10 +235,36 @@ pub async fn start_link(toolkit: &str) -> Result<StartLinkResponse, String> {
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
-    let stdout_trimmed = stdout.trim();
+    let stderr = String::from_utf8_lossy(&output.stderr);
+    interpret_link_output(toolkit, &stdout, &stderr)
+}
 
-    // The CLI returns empty stdout when the toolkit is already connected.
-    if stdout_trimmed.is_empty() {
+/// Interpret the stdout of a successful `composio link <toolkit> --no-wait`.
+///
+/// The CLI's `--no-wait` output is not a single stable shape. Depending on
+/// the toolkit's auth scheme (and CLI version) a successful run prints ONE of:
+///   1. a JSON object `{redirect_url, connected_account_id, toolkit}`, or
+///   2. a bare authorization URL on a single line, e.g.
+///      `https://dashboard.composio.dev/<ws>/~/connect/apps/<toolkit>?open=true`,
+/// and it prints nothing at all when the toolkit is already connected.
+///
+/// All three are normal CLI behavior. Only the bare-URL case used to crash
+/// (`Unexpected composio link --no-wait output: expected value at line 1
+/// column 1`, HOU-433) because the engine assumed JSON and fed a URL to
+/// serde. The frontend only ever opens `redirect_url`, so a bare URL is a
+/// complete, usable response; `connected_account_id` is unknown until the
+/// user authorizes and is not consumed downstream (the connection watcher
+/// keys off the toolkit slug, not the account id).
+fn interpret_link_output(
+    toolkit: &str,
+    stdout: &str,
+    stderr: &str,
+) -> Result<StartLinkResponse, String> {
+    let stdout = stdout.trim();
+    let stderr = stderr.trim();
+
+    // Empty stdout: the CLI no-ops when the toolkit is already connected.
+    if stdout.is_empty() {
         return Err(format!(
             "{toolkit} is already connected. Disconnect it first in the Composio dashboard if you want to re-link."
         ));
@@ -251,17 +277,48 @@ pub async fn start_link(toolkit: &str) -> Result<StartLinkResponse, String> {
         toolkit: String,
     }
 
-    let payload: Payload = serde_json::from_str(stdout_trimmed).map_err(|e| {
-        format!(
-            "Unexpected composio link --no-wait output: {e}\nstdout was: {stdout_trimmed}"
-        )
-    })?;
+    // Mode 1: full JSON payload.
+    if let Ok(p) = serde_json::from_str::<Payload>(stdout) {
+        return Ok(StartLinkResponse {
+            redirect_url: p.redirect_url,
+            connected_account_id: p.connected_account_id,
+            toolkit: p.toolkit,
+        });
+    }
 
-    Ok(StartLinkResponse {
-        redirect_url: payload.redirect_url,
-        connected_account_id: payload.connected_account_id,
-        toolkit: payload.toolkit,
-    })
+    // Mode 2: a single bare authorization URL. That URL is exactly what the
+    // frontend opens, so treat it as the redirect_url instead of crashing.
+    if let Some(url) = bare_url(stdout) {
+        return Ok(StartLinkResponse {
+            redirect_url: url.to_string(),
+            connected_account_id: String::new(),
+            toolkit: toolkit.to_string(),
+        });
+    }
+
+    // Neither JSON nor a URL: surface the CLI's own stdout/stderr so the bug
+    // report shows what actually happened instead of a bare parse error.
+    Err(format!(
+        "composio link --no-wait produced unrecognized output for {toolkit}.\nstdout: {stdout}{}",
+        if stderr.is_empty() {
+            String::new()
+        } else {
+            format!("\nstderr: {stderr}")
+        }
+    ))
+}
+
+/// `Some(url)` when `s` is exactly one `http(s)://` URL token with no
+/// surrounding prose or whitespace. Requiring the whole trimmed string to be
+/// the URL avoids mistaking a URL embedded in an error message ("...see
+/// https://docs... for help") for a redirect target.
+fn bare_url(s: &str) -> Option<&str> {
+    let s = s.trim();
+    if (s.starts_with("https://") || s.starts_with("http://")) && !s.contains(char::is_whitespace) {
+        Some(s)
+    } else {
+        None
+    }
 }
 
 // -- Internal helpers --
@@ -866,5 +923,50 @@ mod tests {
         assert!(parse_redirect_url(&serde_json::json!({ "redirect_url": null })).is_none());
         assert!(parse_redirect_url(&serde_json::json!({ "redirect_url": "" })).is_none());
         assert!(parse_redirect_url(&serde_json::json!({ "id": "ca_1" })).is_none());
+    }
+
+    #[test]
+    fn link_output_parses_json_payload() {
+        let json = r#"{"redirect_url":"https://backend.composio.dev/auth/redirect/abc","connected_account_id":"ca_123","toolkit":"gmail"}"#;
+        let r = interpret_link_output("gmail", json, "").unwrap();
+        assert_eq!(r.redirect_url, "https://backend.composio.dev/auth/redirect/abc");
+        assert_eq!(r.connected_account_id, "ca_123");
+        assert_eq!(r.toolkit, "gmail");
+    }
+
+    #[test]
+    fn link_output_accepts_bare_url() {
+        // Verbatim stdout from the HOU-433 Sentry crash (toolkit "highlevel").
+        let url = "https://dashboard.composio.dev/hola_workspace/~/connect/apps/highlevel?open=true";
+        let r = interpret_link_output("highlevel", &format!("{url}\n"), "").unwrap();
+        assert_eq!(r.redirect_url, url);
+        assert_eq!(r.toolkit, "highlevel");
+        assert!(r.connected_account_id.is_empty());
+    }
+
+    #[test]
+    fn link_output_empty_is_already_connected() {
+        for s in ["", "   ", "\n\t"] {
+            let err = interpret_link_output("slack", s, "").unwrap_err();
+            assert!(err.contains("already connected"), "got: {err}");
+            assert!(err.contains("slack"), "got: {err}");
+        }
+    }
+
+    #[test]
+    fn link_output_unrecognized_surfaces_stdout_and_stderr() {
+        let err =
+            interpret_link_output("github", "totally not json or a url", "boom from cli").unwrap_err();
+        assert!(err.contains("totally not json or a url"), "got: {err}");
+        assert!(err.contains("boom from cli"), "got: {err}");
+        // Must NOT leak a raw serde message ("expected value...") as the error.
+        assert!(!err.contains("expected value"), "got: {err}");
+    }
+
+    #[test]
+    fn bare_url_rejects_prose_with_embedded_url() {
+        assert!(bare_url("see https://docs.composio.dev/errors for help").is_none());
+        assert!(bare_url("https://dashboard.composio.dev/x?open=true").is_some());
+        assert!(bare_url("not-a-url").is_none());
     }
 }
