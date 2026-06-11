@@ -6,6 +6,7 @@ import { tauriTunnel } from "../../../lib/tauri";
 import { analytics } from "../../../lib/analytics";
 import { logger } from "../../../lib/logger";
 import { useUIStore } from "../../../stores/ui";
+import { canResetPhoneAccess } from "./connect-phone-state";
 
 interface TunnelInfo {
   connected: boolean;
@@ -80,16 +81,23 @@ export function ConnectPhoneSection() {
       ? `${info.publicHost.startsWith("localhost") ? "http" : "https"}://${info.publicHost}/pair/${pairingCode}`
       : null;
 
+  const canReset = canResetPhoneAccess(info);
+
   const handleReset = async () => {
     if (resetting) return;
     setResetting(true);
     try {
       await tauriTunnel.resetAccess();
-      setConfirmOpen(false);
       setPairingCode(null);
       void loadStatus();
       addToast({ title: t("settings:connectPhone.reset.toast") });
+    } catch {
+      // `tauriTunnel.resetAccess` routes through `call`, which already
+      // surfaced the failure (toast + Sentry capture). Swallow here only so a
+      // rejected reset can't escape as an unhandled rejection — the bug behind
+      // HOU-443, where reset fired before the tunnel had finished allocating.
     } finally {
+      setConfirmOpen(false);
       setResetting(false);
     }
   };
@@ -160,11 +168,16 @@ export function ConnectPhoneSection() {
         <Button
           variant="outline"
           className="rounded-full"
-          disabled={resetting}
+          disabled={resetting || !canReset}
           onClick={() => setConfirmOpen(true)}
         >
           {t("settings:connectPhone.reset.button")}
         </Button>
+        {!canReset && (
+          <p className="mt-2 text-[11px] text-muted-foreground leading-relaxed">
+            {t("settings:connectPhone.reset.unavailable")}
+          </p>
+        )}
       </div>
 
       <ConfirmDialog

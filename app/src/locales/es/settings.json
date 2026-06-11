@@ -59,7 +59,8 @@
       "confirmTitle": "¿Desconectar todos los celulares?",
       "confirmDescription": "Esto restablece el QR y cierra la sesión de todos los celulares conectados a esta computadora. Escanea el nuevo QR para conectarte otra vez.",
       "confirmLabel": "Desconectar",
-      "toast": "Acceso desde el celular restablecido"
+      "toast": "Acceso desde el celular restablecido",
+      "unavailable": "Disponible cuando la conexión con tu celular esté lista."
     }
   },
   "timezone": {

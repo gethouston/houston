@@ -59,7 +59,8 @@
       "confirmTitle": "Disconnect all phones?",
       "confirmDescription": "This resets the QR and signs out every phone currently connected to this computer. Scan the new QR to connect again.",
       "confirmLabel": "Disconnect",
-      "toast": "Phone access reset"
+      "toast": "Phone access reset",
+      "unavailable": "Available once your phone connection is ready."
     }
   },
   "timezone": {
