@@ -199,6 +199,33 @@ Format:
 
 The engine applies the rename per workspace on the next sync. If only the old slug exists, it's renamed in place — body content preserved, `name:` field fixed, rest of the frontmatter refreshed from the new package. If both old and new slugs already exist (because a prior sync without migrations copied the new one alongside the old), the **old one is deleted**: the bundled package no longer ships it, every cross-reference points to the new slug, so keeping it would just leave a duplicate in the picker. See `store/README.md` for the full mechanism, including the recipe for shipping a follow-up migration step when the rename was published before the migration mechanism existed.
 
+## Skill identity = directory slug (drift-resilient)
+
+The **directory slug is the one canonical identity** for a skill. `load_skill`,
+`save`, `delete`, and the `.claude/skills/<slug>` mirror all resolve by
+`skills_dir.join(<name>)` — the directory, never the frontmatter. So the name a
+caller hands `load_skill` MUST be a directory slug.
+
+Therefore `list_skills` (and the system-prompt `index::build`) report each
+skill's **directory name** as `name`, overriding whatever the frontmatter `name:`
+says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:`
+(e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`).
+Before HOU-441 the list handed the UI the phrase, the user clicked it, and
+`load_skill("Redactar Outreach ESG")` found no such directory → a hard
+`skill_not_found` (red bug toast + Sentry). Reporting the directory slug makes
+the list → click → load round-trip consistent and gives the `.claude` mirror a
+real target. `load_skill` also **heals** the frontmatter `name:` to the slug on
+open (it already rewrites the file for `last_used`), so Claude Code's native
+tool name stops drifting too. No bulk migration — identity is fixed at read
+time and self-heals on access.
+
+Genuinely missing skills still happen (deleted, never installed, a stale
+selection). `skill_not_found` is an expected, explainable state, **not** a
+Houston bug: `tauriSkills.load` tags it via `silenceKinds: ["skill_not_found"]`
+(see `app/src/lib/missing-skill.ts`) so it skips the red bug toast + Sentry
+report, and `useSkillSurface` surfaces it inline (a friendly info toast, clears
+the selection, refetches the list so the dead card vanishes).
+
 ## Files of interest
 
 | What | Where |

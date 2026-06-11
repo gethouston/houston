@@ -182,7 +182,19 @@ pub fn list_skills(skills_dir: &Path) -> Result<Vec<SkillSummary>, SkillError> {
             continue;
         }
         match format::parse_file(&skill_md) {
-            Ok((summary, _body)) => summaries.push(summary),
+            Ok((mut summary, _body)) => {
+                // Identity = the on-disk directory slug. `load_skill`, `save`,
+                // `delete`, and the `.claude` discovery mirror all resolve by
+                // directory, so the name we hand back here is the one a caller
+                // will pass to `load_skill`. A SKILL.md whose frontmatter `name:`
+                // drifted from its directory (common for agent-authored skills
+                // that carry a display phrase) must still round-trip — trust the
+                // directory, not the frontmatter. (HOU-441)
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    summary.name = dir_name.to_string();
+                }
+                summaries.push(summary);
+            }
             Err(e) => tracing::warn!("[houston-skills] skipping {}: {e}", path.display()),
         }
     }
@@ -244,6 +256,13 @@ pub fn load_skill(skills_dir: &Path, name: &str) -> Result<Skill, SkillError> {
         return Err(SkillError::NotFound(name.to_string()));
     }
     let (mut summary, body) = format::parse_file(&skill_md)?;
+    // Pin identity to the directory slug we were asked for. If the frontmatter
+    // `name:` drifted from the directory (agent-authored skills often store a
+    // display phrase here), heal it on open so the file, the `.claude` mirror,
+    // and Claude Code's native tool name all agree with the slug everything
+    // else loads by. `load_skill` already rewrites the file for `last_used`, so
+    // this is free. (HOU-441)
+    summary.name = name.to_string();
     let today = chrono::Local::now().format("%Y-%m-%d").to_string();
     summary.last_used = Some(today);
     let updated = format::serialize(&summary, &body);
@@ -484,6 +503,45 @@ mod tests {
         let skill = load_skill(dir, "loader-test").unwrap();
         assert_eq!(skill.summary.name, "loader-test");
         assert!(skill.content.contains("Test body"));
+    }
+
+    #[test]
+    fn list_and_load_use_directory_slug_when_frontmatter_name_drifts() {
+        // HOU-441: an agent-authored SKILL.md can carry a display phrase in its
+        // frontmatter `name:` while living in a kebab-slug directory. `list_skills`
+        // must report the *directory* slug — the id `load_skill` resolves by — or
+        // the UI round-trip (list -> click -> load) hard-errors "Skill not found".
+        let tmp = TempDir::new().unwrap();
+        let dir = tmp.path();
+        let slug = "redactar-outreach-esg";
+        let skill_dir = dir.join(slug);
+        std::fs::create_dir_all(&skill_dir).unwrap();
+        std::fs::write(
+            skill_dir.join("SKILL.md"),
+            "---\nname: Redactar Outreach ESG\ndescription: Draft ESG outreach\n---\n\n## Procedure\nDraft it.\n",
+        )
+        .unwrap();
+
+        // list reports the directory slug, not the drifted frontmatter phrase.
+        let skills = list_skills(dir).unwrap();
+        assert_eq!(skills.len(), 1);
+        assert_eq!(skills[0].name, slug);
+
+        // The id `list_skills` handed back round-trips cleanly through `load_skill`.
+        let loaded = load_skill(dir, &skills[0].name).unwrap();
+        assert_eq!(loaded.summary.name, slug);
+        assert!(loaded.content.contains("Draft it."));
+
+        // Opening the skill heals the on-disk frontmatter name to the slug.
+        let healed = std::fs::read_to_string(skill_dir.join("SKILL.md")).unwrap();
+        assert!(healed.contains(&format!("name: {slug}")));
+        assert!(!healed.contains("Redactar Outreach ESG"));
+
+        // The drifted phrase never named a real directory — still NotFound.
+        assert!(matches!(
+            load_skill(dir, "Redactar Outreach ESG"),
+            Err(SkillError::NotFound(_))
+        ));
     }
 
     #[test]

@@ -66,7 +66,15 @@ fn list_summaries(skills_dir: &Path) -> Result<Vec<SkillSummary>, crate::SkillEr
             continue;
         }
         match format::parse_file(&skill_md) {
-            Ok((summary, _body)) => summaries.push(summary),
+            Ok((mut summary, _body)) => {
+                // Identity = directory slug, matching `list_skills` and what
+                // `load_skill` resolves by. Keeps the system-prompt index in
+                // step even when frontmatter `name:` drifted. (HOU-441)
+                if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                    summary.name = dir_name.to_string();
+                }
+                summaries.push(summary);
+            }
             Err(e) => tracing::warn!("[houston-skills] skipping {}: {e}", path.display()),
         }
     }
