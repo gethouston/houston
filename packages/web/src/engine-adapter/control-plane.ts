@@ -60,11 +60,22 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
   };
 }
 
+/**
+ * The current control-plane bearer: the live Supabase access token off the
+ * engine global (kept in sync with auth state by CloudApp), falling back to the
+ * token captured at construction. Read per request so a silent token refresh is
+ * picked up without rebuilding the client.
+ */
+export function liveToken(fallback: string): string {
+  const t = typeof window !== "undefined" ? window.__HOUSTON_ENGINE__?.token : undefined;
+  return t || fallback;
+}
+
 async function cpFetch(cfg: ControlPlaneConfig, path: string, init?: RequestInit): Promise<Response> {
   const res = await fetch(`${cfg.baseUrl}${path}`, {
     ...init,
     headers: {
-      Authorization: `Bearer ${cfg.token}`,
+      Authorization: `Bearer ${liveToken(cfg.token)}`,
       "Content-Type": "application/json",
       ...init?.headers,
     },
@@ -127,6 +138,6 @@ export async function captureCredential(cfg: ControlPlaneConfig, agentId: string
 export function runtimeClientFor(cfg: ControlPlaneConfig, agentId: string): HoustonEngineClient {
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/agents/${encodeURIComponent(agentId)}`,
-    token: cfg.token || undefined,
+    token: liveToken(cfg.token) || undefined,
   });
 }

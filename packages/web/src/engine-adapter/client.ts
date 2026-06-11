@@ -251,7 +251,7 @@ export class HoustonClient {
     const res = await fetch(`${this.cp!.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`, {
       ...init,
       headers: {
-        Authorization: `Bearer ${this.cp!.token}`,
+        Authorization: `Bearer ${controlPlane.liveToken(this.cp!.token)}`,
         "Content-Type": "application/json",
         ...init?.headers,
       },
