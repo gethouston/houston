@@ -74,6 +74,7 @@ import {
 import {
   decideHandoffMode,
   estimateConversationTokens,
+  type ProviderHandoffMode,
 } from "../lib/provider-switch";
 import { useProviderSwitchStore } from "../stores/provider-switch";
 import { ProviderSwitchDialog } from "./provider-switch-dialog";
@@ -183,11 +184,12 @@ export function useAgentChatPanel({
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
-  // A summarize-and-switch awaiting the user's consent (lossy + spends tokens).
+  // A provider switch awaiting the user's consent (both modes spend tokens).
   const [switchDialog, setSwitchDialog] = useState<{
     toProvider: string;
     toModel: string;
     fromProvider: string;
+    mode: ProviderHandoffMode;
   } | null>(null);
   useEffect(() => {
     if (!path) {
@@ -333,6 +335,11 @@ export function useAgentChatPanel({
       const fromProvider =
         useProviderSwitchStore.getState().peekPending(path, selectedSessionKey)
           ?.fromProvider ?? effectiveProvider;
+      // Both handoff modes spend tokens — `replay` reloads the whole
+      // conversation into the new provider; `summarize` (when it won't fit) is
+      // also lossy — so ALWAYS ask first. The size only decides which mode the
+      // dialog explains and which handoff we stage on confirm. The
+      // provider/model change is applied only in `confirmProviderSwitch`.
       const mode = decideHandoffMode({
         currentContextTokens: contextUsage?.context_tokens ?? null,
         estimatedTokens: estimateConversationTokens(sessionFeedItems),
@@ -340,25 +347,7 @@ export function useAgentChatPanel({
         // DEFAULT window, not a snapped-up estimate.
         targetWindowTokens: getContextWindowConfig(prov, mod)?.default ?? null,
       });
-      if (mode === "summarize") {
-        // Lossy + spends a summarizer call: get explicit consent first. The
-        // provider/model change is applied only when the user confirms.
-        setSwitchDialog({ toProvider: prov, toModel: mod, fromProvider });
-        return;
-      }
-      // Fits the new window: carry the full conversation over verbatim, no
-      // dialog. Stage the handoff for the next send (consumed in
-      // `tauriChat.send`), then persist the new provider/model.
-      useProviderSwitchStore.getState().setPending(path, selectedSessionKey, {
-        mode: "replay",
-        fromProvider,
-      });
-      await applyProviderModel(prov, mod);
-      addToast({
-        title: t("chat:providerSwitch.replayToast", {
-          provider: getProvider(prov)?.name ?? prov,
-        }),
-      });
+      setSwitchDialog({ toProvider: prov, toModel: mod, fromProvider, mode });
     },
     [
       conversationStarted,
@@ -368,19 +357,18 @@ export function useAgentChatPanel({
       contextUsage,
       sessionFeedItems,
       applyProviderModel,
-      addToast,
-      t,
     ],
   );
 
-  // The user confirmed the summarize-and-switch dialog: stage the summarize
-  // handoff for the next send, then persist the new provider/model.
+  // The user confirmed the switch dialog: stage the handoff (replay or
+  // summarize, as decided when the dialog opened) for the next send, then
+  // persist the new provider/model.
   const confirmProviderSwitch = useCallback(async () => {
     const pending = switchDialog;
     setSwitchDialog(null);
     if (!pending || !path || !selectedSessionKey) return;
     useProviderSwitchStore.getState().setPending(path, selectedSessionKey, {
-      mode: "summarize",
+      mode: pending.mode,
       fromProvider: pending.fromProvider,
     });
     await applyProviderModel(pending.toProvider, pending.toModel);
@@ -857,6 +845,7 @@ export function useAgentChatPanel({
             ? getProvider(switchDialog.toProvider)?.name ?? switchDialog.toProvider
             : ""
         }
+        mode={switchDialog?.mode ?? "replay"}
         onConfirm={confirmProviderSwitch}
         onCancel={() => setSwitchDialog(null)}
       />

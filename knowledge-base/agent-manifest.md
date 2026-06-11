@@ -242,9 +242,13 @@ different provider at any time (HOU-424). Provider CLI sessions are not portable
 on the new provider seeded with prior context, reusing the compaction machinery:
 
 - **Fits the new model's window** → carry the full transcript over verbatim
-  (`replay`). Lossless.
-- **Doesn't fit** → summarize with the TARGET provider to fit, behind an
-  explicit consent dialog (lossy + spends a summarizer call).
+  (`replay`). Lossless, but reloading the whole conversation costs tokens.
+- **Doesn't fit** → summarize with the TARGET provider to fit (`summarize`).
+  Lossy + spends a summarizer call.
+
+**Both** modes ask for confirmation first via `ProviderSwitchDialog` (they both
+spend tokens, scaling with the current conversation size), with mode-specific
+copy. The switch is staged only on confirm.
 
 The size decision is frontend-only — the context-window catalog lives in
 `app/src/lib/providers.ts` (`app/src/lib/provider-switch.ts::decideHandoffMode`).
