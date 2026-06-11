@@ -7,7 +7,7 @@
 //! Tauri command decorators live in the adapter crate (`houston-tauri`),
 //! keeping this crate frontend-agnostic.
 
-use crate::cli::{self, ComposioStatus, StartLinkResponse, StartLoginResponse};
+use crate::cli::{self, ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginResponse};
 use crate::install;
 use crate::toolkits::normalize_toolkit_slugs;
 
@@ -32,8 +32,10 @@ pub async fn start_composio_oauth() -> Result<StartLoginResponse, String> {
     cli::start_login().await
 }
 
-/// Finish the login flow started by `start_composio_oauth`.
-pub async fn complete_composio_login(cli_key: String) -> Result<(), String> {
+/// Finish the login flow started by `start_composio_oauth`. The typed
+/// error lets the engine server distinguish an expected "user never
+/// approved" timeout from a genuine CLI fault (see `cli::complete_login`).
+pub async fn complete_composio_login(cli_key: String) -> Result<(), CompleteLoginError> {
     cli::complete_login(&cli_key).await
 }
 

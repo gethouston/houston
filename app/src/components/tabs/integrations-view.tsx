@@ -135,6 +135,7 @@ export function IntegrationsView({ title }: IntegrationsViewProps) {
         state={auth.state}
         onClose={auth.close}
         onReopenBrowser={auth.reopenBrowser}
+        onRetry={auth.startAuth}
       />
 
       <ConfirmDialog

@@ -29,6 +29,7 @@ import type {
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
 } from "@houston-ai/engine-client";
+import { isHoustonEngineError } from "@houston-ai/engine-client";
 import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
@@ -46,6 +47,11 @@ interface EngineCallOptions {
    *  genuinely fire-and-forget calls or ones with their own report path. */
   capture?: boolean;
 }
+
+/** Typed engine error `kind`s that are expected user-flow outcomes, fully
+ *  surfaced by their own inline UI. Never toasted, never sent to Sentry —
+ *  the same treatment as an aborted request. */
+const EXPECTED_INLINE_KINDS = new Set<string>(["composio_login_timeout"]);
 
 /** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
 async function call<T>(
@@ -75,6 +81,12 @@ async function surfaceError(
   // Aborted requests (user typed again, navigated away, cancelled a sign-in)
   // are expected, not failures — never toast or report them.
   if (err instanceof Error && err.name === "AbortError") return;
+
+  // Typed engine errors that are expected user-flow outcomes (e.g. the
+  // user closed the Composio sign-in tab so the login poll timed out) own
+  // their inline UI — never toast or report them. Reporting these is
+  // exactly the Sentry noise HOU-434 surfaced.
+  if (isHoustonEngineError(err) && err.kind && EXPECTED_INLINE_KINDS.has(err.kind)) return;
 
   const shouldToast = options?.toast !== false;
   const shouldCapture = options?.capture !== false;
@@ -477,7 +489,15 @@ export const tauriConnections = {
       return { login_url: r.login_url, cli_key: r.cli_key };
     }),
   completeLogin: (cliKey: string) =>
-    call<void>("complete_composio_login", () => getEngine().composioCompleteLogin(cliKey)),
+    call<void>(
+      "complete_composio_login",
+      () => getEngine().composioCompleteLogin(cliKey),
+      undefined,
+      // The sign-in dialog renders failures inline; don't double-surface
+      // as a toast. Genuine faults still capture to Sentry; the expected
+      // timeout is carved out in surfaceError (EXPECTED_INLINE_KINDS).
+      { toast: false },
+    ),
   logout: () => call<void>("logout_composio", () => getEngine().composioLogout()),
   isCliInstalled: () =>
     call<boolean>("is_composio_cli_installed", () => getEngine().composioCliInstalled()),
