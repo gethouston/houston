@@ -81,19 +81,96 @@ import type {
   PortableScanResponse,
   PortableInstallRequest,
   PortableInstalledAgent,
-} from "./types";
-import { planAttachmentUploadBatches } from "./attachments";
+} from "./types.ts";
+import { planAttachmentUploadBatches } from "./attachments.ts";
+
+/**
+ * Transport retry tuning. Defaults target the desktop loopback sidecar +
+ * mobile reverse-tunnel; tests override with tiny delays for determinism.
+ */
+export interface RetryConfig {
+  /** Hard cap on total attempts (initial + retries). */
+  maxAttempts: number;
+  /** First backoff in ms, doubled each retry up to `maxDelayMs`. */
+  baseDelayMs: number;
+  /** Per-wait backoff ceiling in ms. */
+  maxDelayMs: number;
+  /** Overall wall-clock budget in ms; once exceeded we stop retrying. */
+  deadlineMs: number;
+}
+
+const DEFAULT_RETRY: RetryConfig = {
+  maxAttempts: 8,
+  baseDelayMs: 200,
+  maxDelayMs: 2_000,
+  deadlineMs: 10_000,
+};
+
+/** 502/504 (gateway) + 503 (unavailable) — the mobile reverse-tunnel path
+ *  can surface these while the far end is restarting. The desktop loopback
+ *  engine never returns them, so this only matters for tunneled clients. */
+const RETRYABLE_STATUS = new Set([502, 503, 504]);
+
+/** Methods safe to replay after a SERVER response (a mutation may have
+ *  partially run). A thrown network error is handled separately and IS safe
+ *  to replay for any method — see `HoustonClient.send`. */
+function isIdempotentMethod(method: string): boolean {
+  return (
+    method === "GET" ||
+    method === "HEAD" ||
+    method === "PUT" ||
+    method === "DELETE" ||
+    method === "OPTIONS"
+  );
+}
+
+function isAbortError(err: unknown): boolean {
+  return err instanceof Error && err.name === "AbortError";
+}
+
+function makeAbortError(): Error {
+  if (typeof DOMException !== "undefined") {
+    return new DOMException("The operation was aborted.", "AbortError");
+  }
+  const e = new Error("The operation was aborted.");
+  e.name = "AbortError";
+  return e;
+}
 
 export interface HoustonClientOptions {
   baseUrl: string;
   token: string;
+  /** Override transport retry tuning (tests, latency-sensitive hosts). */
+  retry?: Partial<RetryConfig>;
+  /** Injectable `fetch` for tests / non-browser hosts. Defaults to global `fetch`. */
+  fetchImpl?: typeof fetch;
 }
 
 export class HoustonClient {
-  private readonly baseUrl: string;
-  private readonly token: string;
+  // Mutable so the desktop supervisor can repoint us at a fresh
+  // `{baseUrl, token}` when it restarts a crashed engine on a NEW random port
+  // (HOU-432) — without every cached client reference going stale. In-flight
+  // retries re-read these on each attempt, so they recover transparently.
+  private baseUrl: string;
+  private token: string;
+  private readonly retryConfig: RetryConfig;
+  private readonly fetchImpl: typeof fetch;
 
   constructor(opts: HoustonClientOptions) {
+    this.baseUrl = opts.baseUrl.replace(/\/$/, "");
+    this.token = opts.token;
+    this.retryConfig = { ...DEFAULT_RETRY, ...opts.retry };
+    this.fetchImpl = opts.fetchImpl ?? ((input, init) => fetch(input, init));
+  }
+
+  /**
+   * Point this client at a new engine endpoint in place. The desktop app
+   * calls this when the supervisor respawns the engine on a fresh port so
+   * requests already mid-flight (and every hook holding this instance)
+   * recover on their next retry instead of hammering the dead port. See
+   * `app/src/lib/engine.ts`.
+   */
+  setEndpoint(opts: { baseUrl: string; token: string }): void {
     this.baseUrl = opts.baseUrl.replace(/\/$/, "");
     this.token = opts.token;
   }
@@ -106,25 +183,36 @@ export class HoustonClient {
     body?: unknown,
     query?: Record<string, string | undefined>,
     signal?: AbortSignal,
+    retryable?: boolean,
   ): Promise<T> {
-    let url = `${this.baseUrl}/v1${path}`;
-    if (query) {
-      const q = new URLSearchParams();
-      for (const [k, v] of Object.entries(query)) {
-        if (v !== undefined && v !== null) q.set(k, v);
-      }
-      const s = q.toString();
-      if (s) url += `?${s}`;
-    }
-    const res = await fetch(url, {
-      method,
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    const res = await this.send(
+      () => {
+        let url = `${this.baseUrl}/v1${path}`;
+        if (query) {
+          const q = new URLSearchParams();
+          for (const [k, v] of Object.entries(query)) {
+            if (v !== undefined && v !== null) q.set(k, v);
+          }
+          const s = q.toString();
+          if (s) url += `?${s}`;
+        }
+        return {
+          url,
+          init: {
+            method,
+            headers: {
+              Authorization: `Bearer ${this.token}`,
+              ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+            },
+            body: body !== undefined ? JSON.stringify(body) : undefined,
+          },
+        };
       },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      // Idempotent methods replay safely; a POST only replays when the caller
+      // explicitly marks it read-only (see `replaySafe` doc on `send`).
+      retryable ?? isIdempotentMethod(method),
       signal,
-    });
+    );
     if (!res.ok) {
       throw await this.toError(res);
     }
@@ -140,15 +228,18 @@ export class HoustonClient {
     body?: BodyInit,
     contentType?: string,
   ): Promise<T> {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${this.token}`,
-    };
-    if (contentType) headers["Content-Type"] = contentType;
-    const res = await fetch(`${this.baseUrl}/v1${path}`, {
-      method,
-      headers,
-      body,
-    });
+    const res = await this.send(
+      () => {
+        const headers: Record<string, string> = {
+          Authorization: `Bearer ${this.token}`,
+        };
+        if (contentType) headers["Content-Type"] = contentType;
+        return { url: `${this.baseUrl}/v1${path}`, init: { method, headers, body } };
+      },
+      // Attachment uploads are PUTs to a keyed URL (idempotent); the only
+      // non-idempotent rawRequest is the import-preview POST, which stays off.
+      isIdempotentMethod(method),
+    );
     if (!res.ok) {
       throw await this.toError(res);
     }
@@ -156,6 +247,107 @@ export class HoustonClient {
       return undefined as T;
     }
     return (await res.json()) as T;
+  }
+
+  /**
+   * Single retrying fetch path shared by every request. `build` is invoked
+   * once per attempt so retries pick up the CURRENT endpoint + token (the
+   * supervisor may have swapped them via `setEndpoint` after an engine
+   * restart). This is the core of the HOU-432 fix: a localhost sidecar that
+   * WebKit drops under burst load, or that the supervisor restarts on a new
+   * port, would otherwise surface a bare `TypeError: Load failed` to the user.
+   *
+   * Retry is gated on `replaySafe` because `fetch` CANNOT distinguish "the
+   * request never reached the engine" from "the engine ran it, but the
+   * response was lost" — both surface as a thrown `TypeError`. Replaying the
+   * latter double-executes a side effect (e.g. `startSession` spawns the chat
+   * turn before it flushes its 200, with no server-side dedup → a duplicate
+   * agent turn + double provider billing). So:
+   *
+   *   - `replaySafe` is true for idempotent HTTP methods (GET/HEAD/PUT/DELETE/
+   *     OPTIONS) and for the curated read-only POSTs that mark themselves
+   *     (`readAgentFile`, `listConversations`, …). For these, a thrown
+   *     `TypeError` AND a 502/503/504 response are retried.
+   *   - Mutating POSTs (`startSession`, `create*`, `install*`, …) are
+   *     `replaySafe: false` and never auto-retried — a real failure surfaces
+   *     immediately so the user can re-issue the action deliberately.
+   *   - `AbortError` (caller cancelled) is never retried, and any failure that
+   *     races a cancellation is normalized to an `AbortError` so the app's
+   *     "abort suppresses the toast" contract holds.
+   *
+   * Bounded by `maxAttempts` AND a wall-clock `deadlineMs`; on exhaustion the
+   * last error / response propagates so the UI still surfaces a real failure
+   * toast — no silent swallowing.
+   */
+  private async send(
+    build: () => { url: string; init: RequestInit },
+    replaySafe: boolean,
+    signal?: AbortSignal,
+  ): Promise<Response> {
+    const { maxAttempts, deadlineMs } = this.retryConfig;
+    const start = Date.now();
+    let attempt = 0;
+    for (;;) {
+      if (signal?.aborted) throw makeAbortError();
+      attempt += 1;
+      const { url, init } = build();
+      const remaining = () => deadlineMs - (Date.now() - start);
+      const canRetryAgain = () => replaySafe && attempt < maxAttempts && remaining() > 0;
+      try {
+        const res = await this.fetchImpl(url, { ...init, signal });
+        if (res.ok) return res;
+        if (RETRYABLE_STATUS.has(res.status) && canRetryAgain()) {
+          await this.backoff(attempt, remaining(), signal);
+          continue;
+        }
+        // A non-ok response we won't retry: if the caller cancelled in the
+        // meantime, report the cancellation rather than the stale status.
+        if (signal?.aborted) throw makeAbortError();
+        return res;
+      } catch (err) {
+        // Caller cancelled — surface as AbortError (the app suppresses those),
+        // even if the underlying rejection was a racing transport TypeError.
+        if (signal?.aborted) throw makeAbortError();
+        if (isAbortError(err)) throw err;
+        // `fetch` reports every transport failure as a TypeError; that's our
+        // retry signal for replay-safe requests.
+        if (err instanceof TypeError && canRetryAgain()) {
+          await this.backoff(attempt, remaining(), signal);
+          continue;
+        }
+        throw err;
+      }
+    }
+  }
+
+  /**
+   * Full-jitter exponential backoff, abortable via `signal` and clamped to the
+   * remaining deadline budget so a late wait can't overshoot it. Assumes the
+   * request body is re-readable (JSON string / File / Blob / typed array) —
+   * never use a one-shot streaming body on a replay-safe request.
+   */
+  private backoff(attempt: number, remainingMs: number, signal?: AbortSignal): Promise<void> {
+    const { baseDelayMs, maxDelayMs } = this.retryConfig;
+    const ceil = Math.min(maxDelayMs, baseDelayMs * 2 ** (attempt - 1), Math.max(0, remainingMs));
+    const delay = Math.random() * ceil;
+    return new Promise<void>((resolve, reject) => {
+      const onAbort = () => {
+        clearTimeout(timer);
+        reject(makeAbortError());
+      };
+      const timer = setTimeout(() => {
+        signal?.removeEventListener("abort", onAbort);
+        resolve();
+      }, delay);
+      if (signal) {
+        if (signal.aborted) {
+          clearTimeout(timer);
+          reject(makeAbortError());
+          return;
+        }
+        signal.addEventListener("abort", onAbort, { once: true });
+      }
+    });
   }
 
   private async toError(res: Response): Promise<HoustonEngineError> {
@@ -243,10 +435,15 @@ export class HoustonClient {
   // ---------- agent files (typed .houston data) ----------
 
   readAgentFile(agentPath: string, relPath: string): Promise<string> {
-    return this.request<{ content: string }>("POST", "/agents/files/read", {
-      agent_path: agentPath,
-      rel_path: relPath,
-    }).then((r) => r.content);
+    // Read-only POST → replay-safe (this is the route that dominated HOU-432).
+    return this.request<{ content: string }>(
+      "POST",
+      "/agents/files/read",
+      { agent_path: agentPath, rel_path: relPath },
+      undefined,
+      undefined,
+      true,
+    ).then((r) => r.content);
   }
   writeAgentFile(agentPath: string, relPath: string, content: string): Promise<void> {
     return this.request("POST", "/agents/files/write", {
@@ -268,10 +465,15 @@ export class HoustonClient {
     return this.request("GET", "/agents/files", undefined, { agent_path: agentPath });
   }
   readProjectFile(agentPath: string, relPath: string): Promise<string> {
-    return this.request<{ content: string }>("POST", "/agents/files/read-project", {
-      agent_path: agentPath,
-      rel_path: relPath,
-    }).then((r) => r.content);
+    // Read-only POST → replay-safe.
+    return this.request<{ content: string }>(
+      "POST",
+      "/agents/files/read-project",
+      { agent_path: agentPath, rel_path: relPath },
+      undefined,
+      undefined,
+      true,
+    ).then((r) => r.content);
   }
   renameFile(agentPath: string, relPath: string, newName: string): Promise<void> {
     return this.request("POST", "/agents/files/rename", {
@@ -396,10 +598,19 @@ export class HoustonClient {
   // ---------- conversations ----------
 
   listConversations(agentPath: string): Promise<ConversationEntry[]> {
-    return this.request("POST", "/conversations/list", { agentPath });
+    // Read-only POST → replay-safe.
+    return this.request("POST", "/conversations/list", { agentPath }, undefined, undefined, true);
   }
   listAllConversations(agentPaths: string[]): Promise<ConversationEntry[]> {
-    return this.request("POST", "/conversations/list-all", { agentPaths });
+    // Read-only POST → replay-safe.
+    return this.request(
+      "POST",
+      "/conversations/list-all",
+      { agentPaths },
+      undefined,
+      undefined,
+      true,
+    );
   }
 
   // ---------- skills ----------
@@ -420,16 +631,19 @@ export class HoustonClient {
     return this.request("DELETE", `/skills/${this.seg(name)}`, undefined, { workspacePath });
   }
   searchCommunitySkills(query: string, signal?: AbortSignal): Promise<CommunitySkill[]> {
-    return this.request("POST", "/skills/community/search", { query }, undefined, signal);
+    // Read-only search POST → replay-safe.
+    return this.request("POST", "/skills/community/search", { query }, undefined, signal, true);
   }
   popularCommunitySkills(signal?: AbortSignal): Promise<CommunitySkill[]> {
-    return this.request("POST", "/skills/community/popular", undefined, undefined, signal);
+    // Read-only POST → replay-safe.
+    return this.request("POST", "/skills/community/popular", undefined, undefined, signal, true);
   }
   installCommunitySkill(req: InstallCommunityRequest, signal?: AbortSignal): Promise<string> {
     return this.request("POST", "/skills/community/install", req, undefined, signal);
   }
   listSkillsFromRepo(source: string, signal?: AbortSignal): Promise<RepoSkill[]> {
-    return this.request("POST", "/skills/repo/list", { source }, undefined, signal);
+    // Read-only listing POST → replay-safe.
+    return this.request("POST", "/skills/repo/list", { source }, undefined, signal, true);
   }
   installSkillsFromRepo(req: InstallFromRepoRequest, signal?: AbortSignal): Promise<string[]> {
     return this.request("POST", "/skills/repo/install", req, undefined, signal);
@@ -536,7 +750,8 @@ export class HoustonClient {
     return this.request("POST", "/agents/install-from-github", req);
   }
   checkAgentUpdates(): Promise<string[]> {
-    return this.request("POST", "/agents/check-updates");
+    // Read-only update check POST → replay-safe.
+    return this.request("POST", "/agents/check-updates", undefined, undefined, undefined, true);
   }
 
   // ---------- attachments ----------
@@ -610,7 +825,8 @@ export class HoustonClient {
     return this.request("POST", "/worktrees", req);
   }
   listWorktrees(req: ListWorktreesRequest): Promise<WorktreeInfo[]> {
-    return this.request("POST", "/worktrees/list", req);
+    // Read-only listing POST → replay-safe.
+    return this.request("POST", "/worktrees/list", req, undefined, undefined, true);
   }
   removeWorktree(req: RemoveWorktreeRequest): Promise<void> {
     return this.request("POST", "/worktrees/remove", req);
@@ -815,16 +1031,21 @@ export class HoustonClient {
     agentPath: string,
     req: PortableExportRequest,
   ): Promise<ArrayBuffer> {
-    const res = await fetch(
-      `${this.baseUrl}/v1/agents/portable/package?agentPath=${encodeURIComponent(agentPath)}`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.token}`,
-          "Content-Type": "application/json",
+    const res = await this.send(
+      () => ({
+        url: `${this.baseUrl}/v1/agents/portable/package?agentPath=${encodeURIComponent(
+          agentPath,
+        )}`,
+        init: {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.token}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(req),
         },
-        body: JSON.stringify(req),
-      },
+      }),
+      false, // heavy export POST — re-issue on the user's command, don't auto-replay
     );
     if (!res.ok) throw await this.toError(res);
     return await res.arrayBuffer();
@@ -863,8 +1084,13 @@ export class HoustonClient {
 }
 
 export class HoustonEngineError extends Error {
-  constructor(public status: number, public body: ErrorBody | null) {
+  status: number;
+  body: ErrorBody | null;
+
+  constructor(status: number, body: ErrorBody | null) {
     super(body?.error.message ?? `Engine error ${status}`);
+    this.status = status;
+    this.body = body;
     this.name = "HoustonEngineError";
   }
 

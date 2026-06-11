@@ -3,6 +3,12 @@
     "target": "ES2022",
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    // @houston-ai/engine-client is consumed as TS source and uses explicit
+    // `.ts` import specifiers (so it's runnable under Node's type-stripping
+    // test runner); allow following into them. Vite handles the actual build,
+    // so noEmit here is just the typecheck gate.
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "strict": true,
