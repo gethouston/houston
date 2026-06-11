@@ -12,6 +12,7 @@ import {
   type TurnDeps,
 } from "./deps";
 import { startTurn } from "./start-turn";
+import { handleFileRequest } from "./files";
 
 /**
  * The cloudrun dispatch: serves the SAME /agents/:id/* wire surface the GKE
@@ -30,6 +31,13 @@ export async function dispatchCloudrun(
   res: ServerResponse,
 ): Promise<void> {
   const prefix = prefixFor(ws, agent);
+
+  // Files browser (list/read/rename/delete/folder) against the GCS workspace.
+  if (rest === "files" || rest.startsWith("files/")) {
+    const query = new URL(req.url || "", "http://control-plane.local").searchParams;
+    if (await handleFileRequest(deps, prefix, method, rest, req, res, query)) return;
+    return json(res, 404, { error: "not found" });
+  }
 
   if (method === "GET" && rest === "conversations") {
     const out: ConversationSummary[] = [];

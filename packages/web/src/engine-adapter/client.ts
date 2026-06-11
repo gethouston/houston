@@ -9,6 +9,7 @@ import type {
   CreateAgentResult,
   NewActivity,
   ProjectConfig,
+  ProjectFile,
   ProviderStatus,
   SessionStartRequest,
   SessionStartResponse,
@@ -241,6 +242,53 @@ export class HoustonClient {
   }
   async seedAgentSchemas(): Promise<void> {}
   async migrateAgentFiles(): Promise<void> {}
+
+  // ---- project files (the agent's REAL workspace) ----
+  // In cloud mode the workspace is a GCS prefix served by the control plane at
+  // /agents/:id/files*. agentPath IS the agentId here (folderPath = agent.id).
+  // In synthetic/local web mode there is no real workspace, so these are inert.
+  private async cpFilesFetch(agentId: string, path: string, init?: RequestInit): Promise<Response> {
+    const res = await fetch(`${this.cp!.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`, {
+      ...init,
+      headers: {
+        Authorization: `Bearer ${this.cp!.token}`,
+        "Content-Type": "application/json",
+        ...init?.headers,
+      },
+    });
+    if (!res.ok) throw new HoustonEngineError(res.status, await res.json().catch(() => ({})));
+    return res;
+  }
+  async listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
+    if (!this.cp) return [];
+    return (await (await this.cpFilesFetch(agentPath, "files")).json()) as ProjectFile[];
+  }
+  async readProjectFile(agentPath: string, relPath: string): Promise<string> {
+    if (!this.cp) return "";
+    const res = await this.cpFilesFetch(agentPath, `files/read?path=${encodeURIComponent(relPath)}`);
+    const body = (await res.json()) as { content: string; base64: boolean };
+    return body.base64 ? atob(body.content) : body.content;
+  }
+  async deleteFile(agentPath: string, relPath: string): Promise<void> {
+    if (!this.cp) return;
+    await this.cpFilesFetch(agentPath, `files?path=${encodeURIComponent(relPath)}`, { method: "DELETE" });
+  }
+  async renameFile(agentPath: string, relPath: string, newName: string): Promise<void> {
+    if (!this.cp) return;
+    await this.cpFilesFetch(agentPath, "files/rename", {
+      method: "POST",
+      body: JSON.stringify({ path: relPath, newName }),
+    });
+  }
+  async createFolder(agentPath: string, folderName: string): Promise<{ created: string }> {
+    if (!this.cp) return { created: folderName };
+    return (await (
+      await this.cpFilesFetch(agentPath, "files/folder", {
+        method: "POST",
+        body: JSON.stringify({ path: folderName }),
+      })
+    ).json()) as { created: string };
+  }
 
   // ---- conversations / routines / skills (mostly empty) ----
   async listConversations(agentPath: string): Promise<ConversationEntry[]> {

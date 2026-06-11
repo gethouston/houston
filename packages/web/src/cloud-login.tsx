@@ -15,40 +15,59 @@ const env = (import.meta as { env?: Record<string, string | undefined> }).env ??
 const SUPABASE_URL = env.VITE_CP_SUPABASE_URL || "";
 const SUPABASE_ANON = env.VITE_CP_SUPABASE_ANON_KEY || "";
 
+// Light, grayscale, ChatGPT-like — matches the app's design system (see
+// knowledge-base/design-system.md): white surface, near-black #0d0d0d primary,
+// system fonts, borders as rgba(13,13,13,opacity). Self-contained inline styles
+// because this gate renders BEFORE the app tree (and its Tailwind) mounts.
+const FONT = "ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif";
+const INK = "#0d0d0d";
+
 const box: React.CSSProperties = {
   minHeight: "100vh",
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  background: "#0b0b0f",
-  color: "#e7e7ea",
-  fontFamily: "ui-sans-serif, system-ui, sans-serif",
+  background: "#ffffff",
+  color: INK,
+  fontFamily: FONT,
 };
 const card: React.CSSProperties = {
-  width: 340,
-  padding: 28,
+  width: 360,
+  padding: 32,
   borderRadius: 16,
-  background: "#15151c",
-  border: "1px solid #26262f",
+  background: "#ffffff",
+  border: "1px solid rgba(13,13,13,0.10)",
+  boxShadow: "0 1px 2px rgba(13,13,13,0.04), 0 12px 32px rgba(13,13,13,0.06)",
   display: "flex",
   flexDirection: "column",
   gap: 12,
 };
+// Primary = near-black with white text (design-system button token).
 const btn: React.CSSProperties = {
-  padding: "10px 14px",
+  padding: "11px 14px",
   borderRadius: 10,
-  border: "1px solid #34343f",
-  background: "#7a5cff",
-  color: "white",
-  fontWeight: 600,
+  border: "1px solid transparent",
+  background: INK,
+  color: "#ffffff",
+  fontSize: 14,
+  fontWeight: 500,
   cursor: "pointer",
 };
+// Secondary = white with a subtle border (used for Google + email submit).
+const btnSecondary: React.CSSProperties = {
+  ...btn,
+  background: "#ffffff",
+  color: INK,
+  border: "1px solid rgba(13,13,13,0.15)",
+};
 const input: React.CSSProperties = {
-  padding: "10px 12px",
+  padding: "11px 12px",
   borderRadius: 10,
-  border: "1px solid #34343f",
-  background: "#0e0e13",
-  color: "#e7e7ea",
+  border: "1px solid rgba(13,13,13,0.15)",
+  background: "#ffffff",
+  color: INK,
+  fontSize: 14,
+  fontFamily: FONT,
 };
 
 /**
@@ -75,16 +94,16 @@ function CloudProfile({ email, onLogout }: { email: string; onLogout: () => void
             position: "absolute",
             bottom: 46,
             left: 0,
-            width: 224,
-            background: "#15151c",
-            border: "1px solid #26262f",
+            width: 232,
+            background: "#ffffff",
+            border: "1px solid rgba(13,13,13,0.10)",
             borderRadius: 12,
             padding: 8,
-            boxShadow: "0 10px 34px rgba(0,0,0,0.55)",
+            boxShadow: "0 1px 2px rgba(13,13,13,0.04), 0 12px 32px rgba(13,13,13,0.12)",
           }}
         >
-          <div style={{ fontSize: 11, opacity: 0.5, padding: "4px 8px 0" }}>Signed in as</div>
-          <div style={{ fontSize: 13, color: "#e7e7ea", padding: "2px 8px 10px", wordBreak: "break-all" }}>
+          <div style={{ fontSize: 11, color: "#9b9b9b", padding: "4px 8px 0" }}>Signed in as</div>
+          <div style={{ fontSize: 13, color: "#0d0d0d", padding: "2px 8px 10px", wordBreak: "break-all" }}>
             {email}
           </div>
           <button
@@ -93,10 +112,11 @@ function CloudProfile({ email, onLogout }: { email: string; onLogout: () => void
               width: "100%",
               padding: "9px 10px",
               borderRadius: 8,
-              border: "1px solid #34343f",
-              background: "#26262f",
-              color: "#ff9a9a",
-              fontWeight: 600,
+              border: "1px solid rgba(13,13,13,0.10)",
+              background: "#ffffff",
+              color: "#e02e2a",
+              fontSize: 14,
+              fontWeight: 500,
               cursor: "pointer",
               textAlign: "left",
             }}
@@ -114,11 +134,11 @@ function CloudProfile({ email, onLogout }: { email: string; onLogout: () => void
           gap: 8,
           padding: "5px 12px 5px 5px",
           borderRadius: 999,
-          background: "#15151c",
-          border: "1px solid #26262f",
-          color: "#e7e7ea",
+          background: "#ffffff",
+          border: "1px solid rgba(13,13,13,0.10)",
+          color: "#0d0d0d",
           cursor: "pointer",
-          boxShadow: "0 4px 18px rgba(0,0,0,0.4)",
+          boxShadow: "0 1px 2px rgba(13,13,13,0.04), 0 4px 16px rgba(13,13,13,0.08)",
         }}
       >
         <span
@@ -126,19 +146,19 @@ function CloudProfile({ email, onLogout }: { email: string; onLogout: () => void
             width: 26,
             height: 26,
             borderRadius: 999,
-            background: "#7a5cff",
+            background: "#0d0d0d",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
             fontSize: 12,
-            fontWeight: 700,
+            fontWeight: 600,
             color: "white",
           }}
         >
           {initial}
         </span>
         <span
-          style={{ fontSize: 12, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+          style={{ fontSize: 13, maxWidth: 150, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
         >
           {email}
         </span>
@@ -214,14 +234,18 @@ export function CloudApp({ controlPlaneUrl }: { controlPlaneUrl: string }) {
   return (
     <div style={box}>
       <div style={card}>
-        <div style={{ fontSize: 20, fontWeight: 700 }}>Houston Cloud</div>
-        <div style={{ opacity: 0.6, fontSize: 13, marginBottom: 4 }}>
-          {ready ? "Sign in to your workspace." : "Loading…"}
+        <div style={{ fontSize: 24, fontWeight: 400, letterSpacing: "-0.01em" }}>Houston</div>
+        <div style={{ color: "#5d5d5d", fontSize: 14, marginBottom: 8 }}>
+          {ready ? "Sign in to your workspace" : "Loading…"}
         </div>
-        <button style={btn} onClick={google} disabled={busy}>
+        <button style={btnSecondary} onClick={google} disabled={busy}>
           Continue with Google
         </button>
-        <div style={{ textAlign: "center", opacity: 0.4, fontSize: 12 }}>or</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "2px 0" }}>
+          <div style={{ flex: 1, height: 1, background: "rgba(13,13,13,0.10)" }} />
+          <span style={{ color: "#9b9b9b", fontSize: 12 }}>or</span>
+          <div style={{ flex: 1, height: 1, background: "rgba(13,13,13,0.10)" }} />
+        </div>
         <form onSubmit={withPassword} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <input
             style={input}
@@ -239,11 +263,11 @@ export function CloudApp({ controlPlaneUrl }: { controlPlaneUrl: string }) {
             onChange={(e) => setPassword(e.target.value)}
             autoComplete="current-password"
           />
-          <button style={{ ...btn, background: "#26262f" }} type="submit" disabled={busy || !email || !password}>
+          <button style={btn} type="submit" disabled={busy || !email || !password}>
             Sign in with email
           </button>
         </form>
-        {error && <div style={{ color: "#ff7a7a", fontSize: 12 }}>{error}</div>}
+        {error && <div style={{ color: "#e02e2a", fontSize: 13 }}>{error}</div>}
       </div>
     </div>
   );
