@@ -11,9 +11,17 @@
  * until that event lands, then flips to a green confirmation with a
  * "try again" CTA, or shows the failure and re-arms the button. A
  * benign cancel (`success:false`, no error) just re-arms.
+ *
+ * Every press goes through cancelLogin → launchLogin: the engine keeps
+ * one login slot per provider and rejects a second launch as "already
+ * pending", so relaunching from the waiting state (lost the OAuth tab)
+ * must free the slot first. cancelLogin is idempotent, so the first
+ * press pays one no-op call. The benign ProviderLoginComplete our own
+ * cancel triggers is ignored via `relaunchingRef` so the card does not
+ * flicker back to idle mid-relaunch.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { CheckCircle2Icon, KeyIcon } from "lucide-react";
 import { Button, Spinner } from "@houston-ai/core";
@@ -36,7 +44,9 @@ export function UnauthenticatedCard({
   const { t } = useTranslation("shell");
   const setAuthRequired = useUIStore((s) => s.setAuthRequired);
   const [phase, setPhase] = useState<LoginPhase>("idle");
+  const [launching, setLaunching] = useState(false);
   const [failureDetail, setFailureDetail] = useState<string | null>(null);
+  const relaunchingRef = useRef(false);
   const provider = providerLabel(error.provider);
 
   useEffect(() => {
@@ -55,8 +65,11 @@ export function UnauthenticatedCard({
       } else if (ev.data.error) {
         setPhase("failed");
         setFailureDetail(ev.data.error);
-      } else {
+      } else if (!relaunchingRef.current) {
         // Benign cancel (user gave up on the OAuth tab) — re-arm quietly.
+        // Skipped when WE issued the cancel as the first half of a
+        // relaunch: the new login is already spawning and the card must
+        // stay in its waiting state.
         setPhase("idle");
       }
     });
@@ -82,15 +95,22 @@ export function UnauthenticatedCard({
   })();
 
   const reconnect = async () => {
-    if (phase === "waiting") return;
+    if (launching) return;
+    setLaunching(true);
+    relaunchingRef.current = true;
     setFailureDetail(null);
     try {
+      // Free the engine's single login slot (idempotent no-op when
+      // nothing is pending) so a relaunch is never rejected as
+      // "already pending", then spawn a fresh browser sign-in.
+      await tauriProvider.cancelLogin(error.provider);
       await tauriProvider.launchLogin(error.provider);
-      // Spawn succeeded — now the user finishes in the browser. Stay in
-      // "waiting" until ProviderLoginComplete resolves it.
       setPhase("waiting");
     } catch {
       setPhase("failed");
+    } finally {
+      relaunchingRef.current = false;
+      setLaunching(false);
     }
   };
 
@@ -111,6 +131,7 @@ export function UnauthenticatedCard({
     );
   }
 
+  const waiting = phase === "waiting";
   return (
     <ErrorCard
       icon={<KeyIcon className="size-5" />}
@@ -124,30 +145,26 @@ export function UnauthenticatedCard({
           : t(bodyKey, { provider })
       }
     >
-      {phase === "waiting" ? (
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Spinner className="size-3.5" />
-            <span>{t("providerError.unauthenticated.waiting")}</span>
-          </div>
-          <button
-            type="button"
-            onClick={() => void reconnect()}
-            className="text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {t("providerError.unauthenticated.reconnect")}
-          </button>
+      {waiting && (
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <Spinner className="size-3.5" />
+          <span>{t("providerError.unauthenticated.waiting")}</span>
         </div>
-      ) : (
-        <Button
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={() => void reconnect()}
-        >
-          <KeyIcon className="size-3.5" />
-          {t("providerError.unauthenticated.reconnect")}
-        </Button>
       )}
+      <Button
+        size="sm"
+        variant={waiting ? "outline" : "default"}
+        className="h-8 gap-2 rounded-full px-3 text-xs"
+        disabled={launching}
+        onClick={() => void reconnect()}
+      >
+        {launching ? (
+          <Spinner className="size-3.5" />
+        ) : (
+          <KeyIcon className="size-3.5" />
+        )}
+        {t("providerError.unauthenticated.reconnect")}
+      </Button>
     </ErrorCard>
   );
 }
