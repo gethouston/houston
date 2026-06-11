@@ -43,10 +43,18 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
         });
     }
 
-    // Auth — the codex CLI prints "Please run codex login" and 401s.
+    // Auth — the codex CLI prints "Please run codex login", 401s, and
+    // server-side session kills ("Your access token could not be refreshed.
+    // Please log out and sign in again." / "Your session has ended.").
     if is_auth_error(line) {
-        let cause = if lower.contains("expired") {
+        let cause = if lower.contains("expired")
+            || lower.contains("could not be refreshed")
+            || lower.contains("session has ended")
+            || lower.contains("sign in again")
+        {
             AuthFailureCause::TokenExpired
+        } else if lower.contains("invalidated") || lower.contains("revoked") {
+            AuthFailureCause::TokenRevoked
         } else if lower.contains("invalid") && lower.contains("api key") {
             AuthFailureCause::InvalidApiKey
         } else if lower.contains("not authenticated")
@@ -56,8 +64,6 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
             || lower.contains("no auth credentials")
         {
             AuthFailureCause::NoCredentials
-        } else if lower.contains("revoked") {
-            AuthFailureCause::TokenRevoked
         } else {
             AuthFailureCause::Unknown
         };

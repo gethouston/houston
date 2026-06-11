@@ -584,6 +584,19 @@ export function useAgentChatPanel({
   );
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
+      // The persisted inline `UnauthenticatedCard` (a provider_error feed item)
+      // is the stable reconnect surface. When it's already present for THIS
+      // chat's provider, don't also render the store-driven card — it flickers
+      // (auto-dismisses) when the provider's auth probe is unreliable, e.g.
+      // codex reporting "authenticated" off a stale ~/.codex/auth.json after a
+      // server-side session kill. One card, and it stays put.
+      const hasInlineAuthCard = feedItems.some(
+        (it) =>
+          it.feed_type === "provider_error" &&
+          it.data.kind === "unauthenticated" &&
+          it.data.provider === effectiveProvider,
+      );
+      if (hasInlineAuthCard) return null;
       const signalKey = providerAuthSignalKey(feedItems);
       // Always hand the card THIS chat's provider so it can match the global
       // `authRequired` flag against the provider this chat actually uses — a

@@ -103,6 +103,26 @@ gets. Transient reconnects keep the deferred marker. The frontend
 (`feed-to-messages`) also dedupes provider-error cards by `(kind, provider)`
 so the transient stderr card and the persisted stdout card collapse to one.
 
+Codex prints the kill in more than one phrasing — `is_auth_error` /
+`is_terminal_auth_error` cover both "Your session has ended. Please log in
+again." AND "Your access token could not be refreshed. Please log out and
+sign in again." (the latter is NOT wrapped in `Reconnecting`, so it arrives
+as a plain `error` event). EVERY codex auth failure — retry-wrapped or
+plain — now funnels to a single `auth_card_emitted`-deduped
+`Unauthenticated` card; before, the plain refresh-failure fell through to a
+raw `Error: …` SystemMessage shown twice.
+
+**Auth cards: prefer the persisted inline card over the store card.** The
+store-driven `ProviderReconnectCard` (anchored to the `authRequired` flag,
+rendered in `ChatPanel.afterMessages`) AUTO-DISMISSES for codex: its 3s
+`checkStatus` poll sees `~/.codex/auth.json` still present and clears
+`authRequired`, so the login button flashes then vanishes. So
+`use-agent-chat-panel.afterMessages` suppresses the store card whenever the
+feed already carries an inline `provider_error` `unauthenticated` card for
+this chat's provider — the persisted inline card is the stable surface.
+(The underlying probe false-positive is still unfixed; it needs a
+server-validating auth check.)
+
 ## Adding a new provider
 
 1. Implement `classify_stderr` + `classify_result_error` on the new

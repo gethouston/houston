@@ -28,6 +28,13 @@ pub fn is_auth_error(message: &str) -> bool {
         || lower.contains("no auth credentials")
         || lower.contains("please login")
         || lower.contains("please log in")
+        || lower.contains("log in again")
+        || lower.contains("sign in again")
+        || lower.contains("signing in again")
+        || lower.contains("could not be refreshed")
+        || lower.contains("session has ended")
+        || lower.contains("session_terminated")
+        || lower.contains("has been invalidated")
         || lower.contains("please run /login")
         || lower.contains("run claude auth login")
         || lower.contains("run codex login")
@@ -108,5 +115,14 @@ mod tests {
             "Reconnecting... 1/5 (unexpected status 401 Unauthorized)"
         ));
         assert!(!is_terminal_auth_error("rate limit exceeded"));
+    }
+
+    #[test]
+    fn refresh_failure_phrasing_is_auth_and_terminal() {
+        // Verbatim codex error the user hit in the app (shown twice, as raw
+        // "Error: ..." text, because neither classifier matched it before).
+        let msg = "Your access token could not be refreshed. Please log out and sign in again.";
+        assert!(is_auth_error(msg), "must classify as auth → Unauthenticated card");
+        assert!(is_terminal_auth_error(msg), "refresh failure is unrecoverable");
     }
 }
