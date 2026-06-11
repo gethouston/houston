@@ -437,9 +437,10 @@ pub async fn install_skill(
         .filter(|n| crate::validate::name(n).is_ok())
         .unwrap_or_else(|| slugify(skill_id));
 
-    // `install_skill_md` decides the already-installed case: a healthy existing
-    // skill errors as AlreadyExists; a corrupt one (e.g. left by an older
-    // Houston) is replaced so a reinstall heals it.
+    // `install_skill_md` handles the already-installed case idempotently: a
+    // healthy existing skill is a no-op success (you already have it), and a
+    // corrupt one (e.g. left by an older Houston) is replaced so a reinstall
+    // heals it. Either way the user never sees an "already installed" error.
     crate::install_skill_md(skills_dir, &install_name, &raw_md, &parsed.description)?;
 
     Ok(install_name)

@@ -300,6 +300,10 @@ pub fn create_skill(skills_dir: &Path, input: CreateSkillInput) -> Result<(), Sk
 /// Falls back to a minimal skill (`fallback_description` + the raw body) when
 /// the source has no parseable frontmatter, so a bare `SKILL.md` still installs
 /// instead of failing.
+///
+/// Idempotent: if a healthy skill is already installed under `install_name`,
+/// this is a no-op success that leaves the existing copy (and any local edits)
+/// untouched. A corrupt existing skill is replaced so a reinstall heals it.
 pub fn install_skill_md(
     skills_dir: &Path,
     install_name: &str,
@@ -310,12 +314,15 @@ pub fn install_skill_md(
 
     let skill_dir = skills_dir.join(install_name);
     if skill_dir.exists() {
-        // Block reinstalling a healthy skill, but let a reinstall REPLACE one
-        // whose SKILL.md is missing or unparseable (e.g. corrupted by an older
-        // Houston) — otherwise the user is wedged: it never lists, yet a
-        // reinstall reports "already installed".
+        // Installing is idempotent: a healthy skill that's already present is
+        // the goal state, so treat it as success (no-op) instead of erroring —
+        // clicking "install" on something you already have must never fail
+        // (HOU-439). Preserve the existing copy so local edits and version
+        // bumps survive. A corrupt or unparseable SKILL.md (e.g. left by an
+        // older Houston) falls through and is REPLACED, so a reinstall heals a
+        // wedged skill that never lists yet blocks a fresh install.
         if format::parse_file(&skill_dir.join("SKILL.md")).is_ok() {
-            return Err(SkillError::AlreadyExists(install_name.to_string()));
+            return Ok(());
         }
         std::fs::remove_dir_all(&skill_dir).map_err(|e| SkillError::Io(e.to_string()))?;
     }
@@ -696,14 +703,31 @@ mod tests {
     }
 
     #[test]
-    fn install_md_rejects_a_healthy_existing_skill() {
+    fn install_md_is_idempotent_and_preserves_local_edits() {
         let d = TempDir::new().unwrap();
-        let raw = "---\nname: dup\ndescription: ok\n---\n\nBody\n";
+        let raw = "---\nname: dup\ndescription: ok\n---\n\nOriginal body\n";
         install_skill_md(d.path(), "dup", raw, "f").unwrap();
-        let err = install_skill_md(d.path(), "dup", raw, "f").unwrap_err();
+
+        // Simulate a local edit made after the first install (the user tweaked
+        // the skill, or `edit_skill` bumped its version).
+        let edited = "---\nname: dup\ndescription: ok\nversion: 4\n---\n\nLocally edited body\n";
+        std::fs::write(d.path().join("dup/SKILL.md"), edited).unwrap();
+
+        // Reinstalling a healthy skill is a no-op success, not an error
+        // (HOU-439): installing what you already have must not fail...
+        let upstream = "---\nname: dup\ndescription: ok\n---\n\nUpstream body\n";
+        install_skill_md(d.path(), "dup", upstream, "f").unwrap();
+
+        // ...and it must NOT clobber the local copy.
+        let skill = load_skill(d.path(), "dup").unwrap();
         assert!(
-            matches!(err, SkillError::AlreadyExists(_)),
-            "a healthy skill must still block reinstall"
+            skill.content.contains("Locally edited body"),
+            "idempotent reinstall must preserve the existing copy, not overwrite it"
+        );
+        assert_eq!(
+            list_skills(d.path()).unwrap().iter().filter(|s| s.name == "dup").count(),
+            1,
+            "the skill must still list exactly once after a reinstall"
         );
     }
 }
