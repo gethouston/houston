@@ -98,7 +98,7 @@ spec:
       terminationGracePeriodSeconds: 30
       containers:
         - name: control-plane
-          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:v7
+          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:v8
           # Endpoint removal from the LB races SIGTERM delivery; sleeping a few
           # seconds before SIGTERM lets kube-proxy/LB converge so no request
           # lands on a terminating pod.
@@ -133,6 +133,11 @@ spec:
             - name: CP_REDIS_URL
               valueFrom:
                 secretKeyRef: { name: control-plane-secrets, key: redis-url, optional: true }
+            # Static service tokens (nightly evals): "<token>=<userId>,...".
+            # Optional: absent → only Supabase JWTs authenticate.
+            - name: CP_SERVICE_TOKENS
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: service-tokens, optional: true }
             # "Send feedback" intake (web build → Linear). Optional: absent →
             # POST /feedback answers 503 and the web dialog says so.
             - name: CP_LINEAR_API_KEY
