@@ -74,6 +74,7 @@ export function ComposioSigninCard() {
         state={auth.state}
         onClose={auth.close}
         onReopenBrowser={auth.reopenBrowser}
+        onRetry={auth.startAuth}
       />
     </span>
   );

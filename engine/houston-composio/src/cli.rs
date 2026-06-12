@@ -170,33 +170,83 @@ pub async fn start_login() -> Result<StartLoginResponse, String> {
     })
 }
 
+/// How long `complete_login` waits for the user to approve the sign-in
+/// in their browser before giving up.
+///
+/// The composio CLI's `login --key` polls the pending-login session for
+/// up to **10 minutes** — the session's own lifetime (`expiresAt -
+/// cachedAt` in `~/.composio/pending-login-session.json` is exactly
+/// 600s). Crucially the CLI stays completely silent the whole time (no
+/// stdout, no stderr) even for an invalid or already-expired key
+/// (verified by probing the bundled binary), so there is no early
+/// failure signal to surface — this wall-clock cap is the de-facto
+/// outcome for any login the user does not approve.
+///
+/// 180s comfortably covers a real browser OAuth (the happy path returns
+/// within seconds of the user approving) while surfacing an actionable,
+/// retryable error ~2.5 minutes sooner than the previous 330s. That 330s
+/// rested on a wrong "5 minute session" assumption AND was shorter than
+/// the CLI's real 10-minute poll, so it cut still-valid sessions off
+/// mid-flight and handed the user a raw internal timeout string (HOU-434).
+const LOGIN_POLL_TIMEOUT_SECS: u64 = 180;
+
+/// Why `complete_login` failed, so the caller can tell an expected "user
+/// never finished in the browser" timeout apart from a genuine CLI fault.
+/// The engine server maps `TimedOut` to a typed, localized, user-
+/// actionable error (`kind = "composio_login_timeout"`) and leaves
+/// `Failed` as an internal error worth a bug report.
+#[derive(Debug)]
+pub enum CompleteLoginError {
+    /// We hit `LOGIN_POLL_TIMEOUT_SECS` before the CLI completed — the
+    /// user almost certainly closed the tab or walked away. Not a bug.
+    TimedOut,
+    /// Spawn failure or a non-zero CLI exit. Carries internal detail for
+    /// logs / the bug report; never shown verbatim to the user.
+    Failed(String),
+}
+
+impl std::fmt::Display for CompleteLoginError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::TimedOut => write!(
+                f,
+                "composio login timed out after {LOGIN_POLL_TIMEOUT_SECS}s waiting for browser approval"
+            ),
+            Self::Failed(detail) => write!(f, "{detail}"),
+        }
+    }
+}
+
 /// Complete the login flow started by `start_login`. Shells out to
-/// `composio login --key <cli_key>` which internally polls Composio's
-/// backend for the user's approval and exits once the credentials are
+/// `composio login --key <cli_key>`, which polls Composio's backend for
+/// the user's browser approval and exits once the credentials are
 /// written to `~/.composio/user_data.json`.
 ///
-/// Wrapped in a 330s timeout so a stuck subprocess can't hang the
-/// Houston UI forever — the CLI's own session expiry is 5 minutes, so
-/// 330s gives it ~30s of slack before Houston gives up and returns an
-/// error. `kill_on_drop` on the Command ensures the subprocess is
-/// terminated if we time out.
-pub async fn complete_login(cli_key: &str) -> Result<(), String> {
+/// Bounded by `LOGIN_POLL_TIMEOUT_SECS`; `kill_on_drop` on the Command
+/// (see `run_cli_with_timeout`) terminates the subprocess if we time out
+/// so it can't leak.
+pub async fn complete_login(cli_key: &str) -> Result<(), CompleteLoginError> {
     let args = ["login", "--key", cli_key, "--no-skill-install", "-y"];
-    let result = run_cli_with_timeout(&args, std::time::Duration::from_secs(330)).await;
+    let timeout = std::time::Duration::from_secs(LOGIN_POLL_TIMEOUT_SECS);
 
-    match result {
+    match run_cli_with_timeout(&args, timeout).await {
         Ok(output) if output.status.success() => {
             tracing::info!("[composio:cli] login completed via cli_key");
             Ok(())
         }
         Ok(output) => {
+            // CLI exited non-zero before our cap. Rare — the CLI polls
+            // silently for invalid/expired keys rather than failing fast
+            // — so a fast non-zero exit is a genuine fault. No argv here,
+            // so the `--key` secret can't leak into the message.
             let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-            Err(format!(
+            Err(CompleteLoginError::Failed(format!(
                 "composio login --key failed (exit {}): {}",
                 output.status, stderr
-            ))
+            )))
         }
-        Err(e) => Err(e),
+        Err(CliError::TimedOut) => Err(CompleteLoginError::TimedOut),
+        Err(CliError::Spawn(detail)) => Err(CompleteLoginError::Failed(detail)),
     }
 }
 
@@ -326,9 +376,34 @@ async fn whoami() -> Result<Option<WhoamiResponse>, String> {
 /// `login --key` call uses a custom, much larger timeout.
 const DEFAULT_CLI_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// Short alias for the common 30s timeout case.
+/// Short alias for the common 30s timeout case. Flattens the typed
+/// `CliError` to a string — only `complete_login` needs to tell a
+/// timeout apart from a spawn failure.
 async fn run_cli(args: &[&str]) -> Result<std::process::Output, String> {
-    run_cli_with_timeout(args, DEFAULT_CLI_TIMEOUT).await
+    run_cli_with_timeout(args, DEFAULT_CLI_TIMEOUT)
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// Failure modes of a CLI invocation. Kept distinct so `complete_login`
+/// can map a wall-clock timeout to a user-actionable message while every
+/// other caller flattens both arms to a string via `run_cli`.
+enum CliError {
+    /// The process did not exit before the caller's timeout elapsed.
+    TimedOut,
+    /// Failed to spawn or wait on the process.
+    Spawn(String),
+}
+
+impl std::fmt::Display for CliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            // No argv in the message: a `login --key` timeout must never
+            // surface the secret cli_key (HOU-431 / HOU-434).
+            Self::TimedOut => write!(f, "composio CLI timed out"),
+            Self::Spawn(detail) => write!(f, "{detail}"),
+        }
+    }
 }
 
 /// Spawn the `composio` CLI with stdout/stderr captured, a hard
@@ -343,8 +418,9 @@ async fn run_cli(args: &[&str]) -> Result<std::process::Output, String> {
 async fn run_cli_with_timeout(
     args: &[&str],
     timeout: std::time::Duration,
-) -> Result<std::process::Output, String> {
-    let bin = cli_binary()?;
+) -> Result<std::process::Output, CliError> {
+    // A missing binary is a spawn precondition failure, not a timeout.
+    let bin = cli_binary().map_err(CliError::Spawn)?;
     let start = std::time::Instant::now();
     tracing::debug!(
         "[composio:cli] → spawn {:?} {:?} (timeout={:?})",
@@ -377,12 +453,8 @@ async fn run_cli_with_timeout(
     let fut = cmd.output();
     let result = match tokio::time::timeout(timeout, fut).await {
         Ok(Ok(out)) => Ok(out),
-        Ok(Err(e)) => Err(format!("Failed to spawn composio CLI: {e}")),
-        Err(_) => Err(format!(
-            "composio CLI timed out after {:?}: args={:?}",
-            timeout,
-            redact_secret_args(args)
-        )),
+        Ok(Err(e)) => Err(CliError::Spawn(format!("Failed to spawn composio CLI: {e}"))),
+        Err(_) => Err(CliError::TimedOut),
     };
 
     let elapsed = start.elapsed();
@@ -411,12 +483,21 @@ async fn run_cli_with_timeout(
                 );
             }
         }
-        Err(e) => {
-            tracing::error!(
-                "[composio:cli] ← error in {:?}: {}",
-                elapsed,
-                e
+        Err(CliError::TimedOut) => {
+            // A timeout is transient/expected — most often the user never
+            // approved a `login` in the browser. Log at warn! (a Sentry
+            // breadcrumb, NOT an event) so an abandoned sign-in stops
+            // spamming crash reporting (HOU-434); `sentry_tracing` would
+            // ship an error! here as a full event. Log only the
+            // subcommand, never argv — `login` carries the secret key.
+            tracing::warn!(
+                "[composio:cli] ← `{}` timed out after {:?}",
+                args.first().copied().unwrap_or("?"),
+                elapsed
             );
+        }
+        Err(CliError::Spawn(detail)) => {
+            tracing::error!("[composio:cli] ← error in {:?}: {detail}", elapsed);
         }
     }
     result
@@ -861,6 +942,30 @@ mod tests {
     fn redact_secret_args_passes_through_non_key() {
         assert_eq!(redact_secret_args(&["whoami"]), vec!["whoami"]);
         assert_eq!(redact_secret_args(&["logout"]), vec!["logout"]);
+    }
+
+    #[test]
+    fn complete_login_timeout_message_has_no_secret_argv() {
+        let msg = CompleteLoginError::TimedOut.to_string();
+        assert!(msg.contains("timed out"), "msg: {msg}");
+        assert!(msg.contains("180"), "should name the cap: {msg}");
+        // The login argv carries the secret `--key`; it must never reach
+        // a message we hand back to the user / logs (HOU-431 / HOU-434).
+        assert!(!msg.contains("--key"), "leaked argv: {msg}");
+        assert!(!msg.contains("args"), "leaked argv: {msg}");
+    }
+
+    #[test]
+    fn complete_login_failed_passes_detail_through() {
+        let msg = CompleteLoginError::Failed("exit 1: boom".into()).to_string();
+        assert_eq!(msg, "exit 1: boom");
+    }
+
+    #[test]
+    fn cli_timeout_message_has_no_secret_argv() {
+        let msg = CliError::TimedOut.to_string();
+        assert!(msg.contains("timed out"), "msg: {msg}");
+        assert!(!msg.contains("--key"), "leaked argv: {msg}");
     }
 
     #[test]

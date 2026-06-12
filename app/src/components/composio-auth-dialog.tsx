@@ -9,17 +9,22 @@ interface ComposioAuthDialogProps {
   state: ComposioAuthState;
   onClose: () => void;
   onReopenBrowser: () => void;
+  /** Restart the whole sign-in flow. Shown in the error state because a
+   *  timed-out login session is dead — reopening the old URL is useless,
+   *  the user needs a fresh attempt. */
+  onRetry: () => void;
 }
 
 /**
- * Sign-in dialog for Composio. Always shows the login URL as a
- * clickable button as soon as `state.loginUrl` is set, so the user
- * can always manually open it even if the auto-open failed.
+ * Sign-in dialog for Composio. While waiting, shows the login URL as a
+ * clickable button (in case auto-open failed). On failure it swaps to an
+ * actionable "Try again" that mints a fresh session.
  */
 export function ComposioAuthDialog({
   state,
   onClose,
   onReopenBrowser,
+  onRetry,
 }: ComposioAuthDialogProps) {
   const { t } = useTranslation("integrations");
   return (
@@ -52,13 +57,24 @@ export function ComposioAuthDialog({
           </p>
         )}
 
-        {state.loginUrl && (
+        {/* While waiting, let the user re-open the live login URL if the
+            auto-open failed. Hidden once we error: that session is dead. */}
+        {state.phase === "waiting" && state.loginUrl && (
           <button
             onClick={onReopenBrowser}
             className="inline-flex items-center gap-1.5 h-9 px-4 rounded-full border border-border bg-background text-foreground text-sm font-medium hover:bg-secondary transition-colors duration-200 self-start"
           >
             {t("authDialog.openInBrowser")}
             <ExternalLink className="size-3.5" />
+          </button>
+        )}
+
+        {state.phase === "error" && (
+          <button
+            onClick={onRetry}
+            className="inline-flex items-center justify-center h-9 px-4 rounded-full bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 transition-colors duration-200 self-start"
+          >
+            {t("authDialog.tryAgain")}
           </button>
         )}
       </DialogContent>

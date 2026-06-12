@@ -141,6 +141,13 @@ impl From<SkillError> for CoreError {
                 kind: "skill_not_in_repo",
                 message: s,
             },
+            SkillError::InvalidRepoSource(_) => CoreError::Labeled {
+                code: ErrorCode::BadRequest,
+                kind: "invalid_repo_source",
+                message:
+                    "Enter a GitHub repo as owner/repo (like anthropics/skills), or paste its GitHub link."
+                        .into(),
+            },
             SkillError::PatchNotFound => CoreError::Labeled {
                 code: ErrorCode::BadRequest,
                 kind: "patch_not_found",

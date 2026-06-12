@@ -48,7 +48,8 @@
     "githubDescription": "Importa una plantilla de espacio de trabajo desde GitHub. Crea un espacio con todos sus agentes listos para usar.",
     "githubPlaceholder": "usuario/repo",
     "githubImport": "Importar",
-    "githubImporting": "Importando espacio de trabajo y agentes..."
+    "githubImporting": "Importando espacio de trabajo y agentes...",
+    "createFailed": "No pudimos crear el espacio de trabajo. Inténtalo de nuevo."
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",

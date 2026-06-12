@@ -12,10 +12,13 @@ use axum::{
     Json, Router,
 };
 use houston_composio::apps::ComposioAppEntry;
-use houston_composio::cli::{ComposioStatus, StartLinkResponse, StartLoginResponse};
+use houston_composio::cli::{
+    ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginResponse,
+};
 use houston_composio::commands as inner;
 use houston_composio::connection_watcher;
 use houston_engine_core::CoreError;
+use houston_engine_protocol::ErrorCode;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
@@ -73,6 +76,24 @@ fn lift(e: String) -> ApiError {
     ApiError(CoreError::Internal(e))
 }
 
+/// Map a login-completion failure to the wire error.
+///
+/// A `TimedOut` is an expected outcome — the user closed the sign-in tab
+/// or never approved — so it surfaces as a typed `composio_login_timeout`
+/// the frontend renders as localized, retryable copy (and deliberately
+/// does NOT report to crash tracking; that reporting was the HOU-434
+/// Sentry noise). Anything else is an internal fault worth a bug report.
+fn map_complete_login_err(e: CompleteLoginError) -> ApiError {
+    match e {
+        CompleteLoginError::TimedOut => ApiError(CoreError::Labeled {
+            code: ErrorCode::Unavailable,
+            kind: "composio_login_timeout",
+            message: "Sign-in timed out waiting for browser approval.".to_string(),
+        }),
+        CompleteLoginError::Failed(detail) => ApiError(CoreError::Internal(detail)),
+    }
+}
+
 async fn status(State(_st): State<Arc<ServerState>>) -> Json<ComposioStatus> {
     Json(inner::list_composio_connections().await)
 }
@@ -99,7 +120,7 @@ async fn complete_login(
 ) -> Result<(), ApiError> {
     inner::complete_composio_login(req.cli_key)
         .await
-        .map_err(lift)
+        .map_err(map_complete_login_err)
 }
 
 async fn logout(State(_st): State<Arc<ServerState>>) -> Result<(), ApiError> {
@@ -164,4 +185,27 @@ async fn watch_connection(
     }
     connection_watcher::watch(toolkit, Arc::new(st.events.clone()));
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn timeout_maps_to_typed_login_timeout() {
+        let err = map_complete_login_err(CompleteLoginError::TimedOut).0;
+        // Frontend matches on `kind` to render localized, retryable copy.
+        assert_eq!(err.kind(), Some("composio_login_timeout"));
+        assert_eq!(err.code(), ErrorCode::Unavailable);
+        // The wire message must not carry the secret `--key` argv.
+        assert!(!err.to_string().contains("--key"));
+    }
+
+    #[test]
+    fn cli_failure_maps_to_internal_bug() {
+        let err = map_complete_login_err(CompleteLoginError::Failed("boom".into())).0;
+        assert_eq!(err.kind(), None);
+        assert_eq!(err.code(), ErrorCode::Internal);
+        assert_eq!(err.to_string(), "internal: boom");
+    }
 }

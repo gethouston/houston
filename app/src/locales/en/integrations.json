@@ -68,7 +68,10 @@
     "title": "Connecting your integrations provider",
     "description": "Complete the sign-in in your browser, then return here.",
     "waiting": "Waiting for you to approve in the browser…",
-    "openInBrowser": "Open link in browser"
+    "openInBrowser": "Open link in browser",
+    "errorTimeout": "Sign-in timed out. Make sure you finished approving in the browser, then try again.",
+    "errorGeneric": "Something went wrong while connecting. Please try again.",
+    "tryAgain": "Try again"
   },
   "linkCard": {
     "integration": "App integration",

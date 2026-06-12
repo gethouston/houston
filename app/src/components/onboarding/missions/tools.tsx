@@ -91,6 +91,7 @@ export function ToolsMission({ onContinue }: ToolsMissionProps) {
         state={auth.state}
         onClose={auth.close}
         onReopenBrowser={auth.reopenBrowser}
+        onRetry={auth.startAuth}
       />
     </div>
   );

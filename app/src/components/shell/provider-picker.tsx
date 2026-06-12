@@ -169,7 +169,9 @@ export function ProviderPicker({ onSelect }: Props) {
       // engine) can't receive the CLI's localhost OAuth callback, so ask
       // for the headless device-code flow. The engine ignores the flag for
       // providers without a device variant (Claude keeps its paste-back).
-      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri() });
+      // `toast: false`: the catch below renders the provider-specific failure
+      // toast, so `call` must not also toast the same message (it showed twice).
+      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri(), toast: false });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);

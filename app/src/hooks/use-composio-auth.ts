@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { isHoustonEngineError } from "@houston-ai/engine-client";
 import { tauriConnections, tauriSystem } from "../lib/tauri";
 import { logger } from "../lib/logger";
 
@@ -28,6 +30,7 @@ export interface ComposioAuthState {
 }
 
 export function useComposioAuth(onSuccess: () => void | Promise<void>) {
+  const { t } = useTranslation("integrations");
   const [state, setState] = useState<ComposioAuthState>({
     open: false,
     phase: "idle",
@@ -90,13 +93,18 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
     } catch (e) {
       logger.error("[composio-auth] flow error:", String(e));
       if (!mountedRef.current || genRef.current !== myGen) return;
-      setState((s) => ({
-        ...s,
-        phase: "error",
-        error: String(e),
-      }));
+      // Localize for the user. A `composio_login_timeout` is the expected
+      // "you didn't finish approving in the browser" case; everything
+      // else collapses to a generic retry prompt so we never surface a
+      // raw engine string. The real detail is logged above and (for
+      // genuine faults) captured to Sentry by the engine-call wrapper.
+      const message =
+        isHoustonEngineError(e) && e.kind === "composio_login_timeout"
+          ? t("authDialog.errorTimeout")
+          : t("authDialog.errorGeneric");
+      setState((s) => ({ ...s, phase: "error", error: message }));
     }
-  }, [onSuccess]);
+  }, [onSuccess, t]);
 
   const reopenBrowser = useCallback(() => {
     if (state.loginUrl) {
@@ -108,7 +116,7 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
     // Cancel the in-flight flow by bumping the generation: any
     // pending completeLogin resolution from this generation will be
     // discarded when it finally returns. The Rust subprocess will
-    // still run to completion (its own 5 min timeout), but the UI
+    // still run to completion (the engine's 3 min cap), but the UI
     // won't react to it. A proper backend cancel is a follow-up.
     genRef.current += 1;
     setState({ open: false, phase: "idle", loginUrl: null, error: null });

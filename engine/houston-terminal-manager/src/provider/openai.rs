@@ -104,4 +104,12 @@ impl ProviderAdapter for OpenAiAdapter {
     ) -> Option<ProviderError> {
         openai_classify::classify_result_error(error_type, error_message)
     }
+
+    fn diagnose_login_failure(&self, stdout: &str, stderr: &str) -> Option<super::LoginFailureHint> {
+        // Recognize the `codex login` loopback server failing to start on its
+        // fixed port 1455 (HOU-446) and return a recoverable message instead
+        // of leaking codex's benign "Starting local login server" banner as
+        // the error. See `openai_login::diagnose`.
+        super::openai_login::diagnose(stdout, stderr)
+    }
 }
