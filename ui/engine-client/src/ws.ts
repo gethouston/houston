@@ -9,23 +9,8 @@
  * ws.connect();
  * ```
  *
- * The engine topic map (see `engine/houston-engine-protocol/src/lib.rs::event_topic`):
- * - `*` — firehose; matches every topic below (see
- *    `engine/houston-engine-server/src/ws.rs::is_subscribed`)
- * - `session:{session_key}` — FeedItem, SessionStatus
- * - `auth` — AuthRequired
- * - `toast` — Toast, CompletionToast
- * - `events` — EventReceived, EventProcessed
- * - `scheduler` — HeartbeatFired, CronFired
- * - `routines:{agent_path}` — RoutinesChanged, RoutineRunsChanged
- * - `agent:{agent_path}` — ActivityChanged, SkillsChanged, FilesChanged,
- *    ConfigChanged, ContextChanged, LearningsChanged, ConversationsChanged
- * - `composio` — ComposioCliReady, ComposioCliFailed, ComposioConnectionAdded
- * - `claude` — ClaudeCliInstalling, ClaudeCliReady, ClaudeCliFailed
- * - `providers` — ProviderLoginUrl, ProviderLoginComplete
- *
- * (The legacy `sync` topic was removed — mobile now uses the same WS
- * directly through the reverse tunnel.)
+ * Topic constants live in `./topics` — import `topics` from the package
+ * entry to subscribe to specific channels.
  */
 
 import type { EngineEnvelope } from "./types";
@@ -33,23 +18,6 @@ import type { HoustonClient } from "./client";
 
 type EnvelopeHandler = (env: EngineEnvelope) => void;
 type EventHandler = (event: unknown) => void;
-
-/** Convenience topic helpers. */
-export const topics = {
-  /** Firehose — matches every scoped event. Use for desktop-style clients. */
-  firehose: "*",
-  session: (sessionKey: string) => `session:${sessionKey}`,
-  agent: (agentPath: string) => `agent:${agentPath}`,
-  routines: (agentPath: string) => `routines:${agentPath}`,
-  auth: "auth",
-  toast: "toast",
-  events: "events",
-  scheduler: "scheduler",
-  composio: "composio",
-  claude: "claude",
-  providers: "providers",
-} as const;
-
 type ReconnectHandler = () => void;
 
 export class EngineWebSocket {
@@ -81,6 +49,31 @@ export class EngineWebSocket {
     if (this.reconnectTimer) clearTimeout(this.reconnectTimer);
     this.socket?.close();
     this.socket = null;
+  }
+
+  /**
+   * Swap the underlying client and force a reconnect.
+   *
+   * Needed for cloud mode: when the signed-in user changes (and so does
+   * the per-tenant engine pod they should talk to), `setCloudEngineConfig`
+   * has to point the WS at the new pod with the new token. Without this,
+   * REST goes to the new tenant but the WS keeps using the previous
+   * client's `wsUrl()` — i.e. the previous token — and either reconnects
+   * to the wrong pod or 401s against the right one. Either way events
+   * like `ProviderLoginUrl` never reach the UI.
+   *
+   * Event handlers and topic subscriptions are preserved across the
+   * swap: subscriptions are re-sent automatically in `onopen` after the
+   * new socket connects.
+   */
+  setClient(client: HoustonClient): void {
+    if (this.client === client) return;
+    this.client = client;
+    if (this.shouldRun) {
+      // Close the current socket; `onclose` will schedule a reconnect
+      // which uses the new `client.wsUrl()`.
+      this.socket?.close();
+    }
   }
 
   /** Raw envelope handler — called for every frame. */

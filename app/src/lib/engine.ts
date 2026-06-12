@@ -45,6 +45,16 @@ const _ready: Promise<void> = new Promise((resolve) => {
 function applyConfig(config: { baseUrl: string; token: string }) {
   window.__HOUSTON_ENGINE__ = config;
   _client = new HoustonClient(config);
+  // Cloud mode: a tenant switch (different user signs in) calls applyConfig
+  // with a new baseUrl/token. The REST client above is now correct, but if
+  // a long-lived WS already exists it still references the previous client
+  // — so its reconnects would carry the previous token in the URL and 401
+  // against the new tenant's pod. Push the new client into the WS so its
+  // next reconnect picks up the new wsUrl(). Handlers + topic subscriptions
+  // are preserved by `setClient`.
+  if (_ws) {
+    _ws.setClient(_client);
+  }
   if (_resolveReady) {
     _resolveReady();
     _resolveReady = null;
@@ -117,6 +127,17 @@ export function getEngine(): HoustonClient {
   return _client;
 }
 
+/**
+ * Cloud-mode entry point. Called by <CloudGate> once the Supabase
+ * tenants row flips to 'ready' and we have the per-user engine URL +
+ * token in hand. Replaces whatever config was resolved synchronously
+ * at module load (typically nothing in cloud mode, since the env-var
+ * fallback is left blank when VITE_HOUSTON_CLOUD_MODE=1).
+ */
+export function setCloudEngineConfig(config: { baseUrl: string; token: string }): void {
+  applyConfig(config);
+}
+
 /** Lazily-created shared WS instance. */
 let _ws: EngineWebSocket | null = null;
 export function getEngineWs(): EngineWebSocket {
@@ -148,38 +169,50 @@ function notifyEngineRestarted() {
 
 // --- Tauri event wiring ----------------------------------------------
 //
-// `houston-engine-ready` fires ONCE after initial /v1/health passes. This
-// is how the frontend learns the port+token when `window.eval` injection
-// lost the race against React mount.
-//
+// `houston-engine-ready` fires ONCE after initial /v1/health passes.
 // `houston-engine-restarted` fires when the supervisor respawns the
-// engine after a crash — rebuild the client + WS so in-flight hooks pick
-// up the new transport.
-listen<{ baseUrl: string; token: string }>(
-  "houston-engine-ready",
-  (ev) => {
-    if (!_client) {
-      applyConfig(ev.payload);
-    }
-  },
-).catch(() => {
-  // Non-Tauri environment (tests, mobile web) — no-op.
-});
-
-listen<{ baseUrl: string; token: string }>(
-  "houston-engine-restarted",
-  (ev) => {
-    applyConfig(ev.payload);
-    if (_ws) {
-      try {
-        _ws.disconnect();
-      } catch {
-        /* ignore */
+// engine after a crash.
+//
+// Both `listen()` calls happen at module load. In a plain browser
+// (cloud-mode webapp), `@tauri-apps/api/event`'s listen() throws
+// SYNCHRONOUSLY when it tries to read window.__TAURI_INTERNALS__,
+// which isn't there. The bare .catch() below only catches Promise
+// rejections — a sync throw escapes as an uncaught error and the
+// global handler in main.tsx surfaces it as a toast. Hence the outer
+// try/catch.
+try {
+  listen<{ baseUrl: string; token: string }>(
+    "houston-engine-ready",
+    (ev) => {
+      if (!_client) {
+        applyConfig(ev.payload);
       }
-      _ws = null;
-    }
-    notifyEngineRestarted();
-  },
-).catch(() => {
-  /* non-Tauri env */
-});
+    },
+  ).catch(() => {
+    // Non-Tauri environment — no-op.
+  });
+} catch {
+  /* listen() unavailable (non-Tauri runtime) — no-op */
+}
+
+try {
+  listen<{ baseUrl: string; token: string }>(
+    "houston-engine-restarted",
+    (ev) => {
+      applyConfig(ev.payload);
+      if (_ws) {
+        try {
+          _ws.disconnect();
+        } catch {
+          /* ignore */
+        }
+        _ws = null;
+      }
+      notifyEngineRestarted();
+    },
+  ).catch(() => {
+    /* non-Tauri env */
+  });
+} catch {
+  /* listen() unavailable (non-Tauri runtime) — no-op */
+}

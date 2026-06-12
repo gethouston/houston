@@ -13,3 +13,4 @@
 export * from "./types";
 export * from "./client";
 export * from "./ws";
+export * from "./topics";
