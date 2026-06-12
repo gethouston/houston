@@ -84,8 +84,28 @@ export async function dispatchCloudrun(
       const send = (type: string, data: unknown) => {
         if (!res.writableEnded) res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
       };
-      send("sync", deps.relay.snapshot(key));
-      const unsub = deps.relay.subscribe(key, (e) => send(e.type, e.data));
+      // Subscribe FIRST (buffering), then read the snapshot, then flush the
+      // buffer through the (turnId, seq) watermark: frames the snapshot
+      // already folded in are dropped, frames it hasn't are delivered. No
+      // gap, no duplicates — even though the snapshot read is async.
+      let live = false;
+      let snapTurn = "";
+      let snapSeq = 0;
+      const buffered: { e: import("@houston/runtime-client").WireEvent; turnId: string; seq: number }[] = [];
+      const deliver = (e: { type: string; data: unknown }, turnId: string, seq: number) => {
+        if (turnId === snapTurn && seq <= snapSeq) return; // already in the sync frame
+        send(e.type, e.data);
+      };
+      const unsub = deps.relay.subscribe(key, (e, meta) => {
+        if (live) deliver(e, meta.turnId, meta.seq);
+        else buffered.push({ e, ...meta });
+      });
+      const snap = await deps.relay.snapshot(key);
+      snapTurn = snap.turnId;
+      snapSeq = snap.seq;
+      send("sync", snap.snapshot);
+      for (const b of buffered) deliver(b.e, b.turnId, b.seq);
+      live = true;
       const heartbeat = setInterval(() => {
         if (!res.writableEnded) res.write(": hb\n\n");
       }, 15_000);
@@ -98,7 +118,7 @@ export async function dispatchCloudrun(
     }
 
     if (method === "POST" && action === "cancel") {
-      deps.relay.cancel(agent.id);
+      await deps.relay.cancel(agent.id);
       return json(res, 200, { ok: true });
     }
 
@@ -147,7 +167,7 @@ export async function dispatchCloudrun(
 
   if (method === "GET" && rest === "auth/status") {
     const cred = await deps.credentials.get(ws.id, PROVIDER);
-    const login = deps.connect.status(ws.id);
+    const login = await deps.connect.status(ws.id);
     return json(res, 200, {
       providers: [{ provider: PROVIDER, name: PROVIDER_NAME, configured: !!cred, login }],
       activeProvider: cred ? PROVIDER : null,

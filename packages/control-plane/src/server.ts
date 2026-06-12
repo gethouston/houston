@@ -16,6 +16,7 @@ import type { AutopilotRates, BillingActualsReader } from "./admin/billing";
 import { buildBillingReport, buildOverview, type ActualsStatus } from "./admin/overview";
 import { dispatchCloudrun } from "./turn/dispatch";
 import { prefixFor, type TurnDeps } from "./turn/deps";
+import { parseFeedbackPayload, type FeedbackSender } from "./feedback";
 
 /**
  * Forwards an authorized per-agent request to its sandbox runtime and streams the
@@ -56,6 +57,8 @@ export interface ControlPlaneDeps {
   admin?: AdminDeps;
   /** Per-turn Cloud Run dispatch; omit and cloudrun workspaces answer 503. */
   turn?: TurnDeps;
+  /** "Send feedback" intake (web build → Linear); omit and POST /feedback answers 503. */
+  feedback?: FeedbackSender;
   corsOrigin?: string;
 }
 
@@ -214,6 +217,20 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
       }
     }
     return json(res, 200, buildBillingReport(overview, admin.rates, actuals, actualsStatus, actualsError, now));
+  }
+
+  // "Send feedback" from the web build: same payload the desktop files to Linear
+  // via Tauri, fronted here so the browser never holds the Linear key. Errors
+  // surface as real statuses — the dialog shows them (beta policy: no silent loss).
+  if (path === "/feedback" && method === "POST") {
+    if (!deps.feedback) return json(res, 503, { error: "feedback intake not configured" });
+    let payload;
+    try {
+      payload = parseFeedbackPayload(await readJson(req));
+    } catch (err) {
+      return json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+    }
+    return json(res, 200, { id: await deps.feedback.send(payload, userId) });
   }
 
   // The user's own agents — their personal workspace, auto-provisioned on first hit.

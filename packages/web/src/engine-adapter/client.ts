@@ -271,6 +271,21 @@ export class HoustonClient {
     const body = (await res.json()) as { content: string; base64: boolean };
     return body.base64 ? atob(body.content) : body.content;
   }
+  /** Raw bytes of a workspace file (binary-safe) plus its served MIME type. */
+  async downloadProjectFile(
+    agentPath: string,
+    relPath: string,
+  ): Promise<{ blob: Blob; contentType: string }> {
+    if (!this.cp) throw new Error("downloads need a cloud workspace");
+    const res = await this.cpFilesFetch(
+      agentPath,
+      `files/download?path=${encodeURIComponent(relPath)}`,
+    );
+    return {
+      blob: await res.blob(),
+      contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    };
+  }
   async deleteFile(agentPath: string, relPath: string): Promise<void> {
     if (!this.cp) return;
     await this.cpFilesFetch(agentPath, `files?path=${encodeURIComponent(relPath)}`, { method: "DELETE" });

@@ -135,6 +135,28 @@ export async function invoke<T = unknown>(
       return bytes as T;
     }
 
+    case "report_bug": {
+      // Cloud mode: the control plane fronts the same Linear intake the desktop
+      // reaches via Tauri (POST /feedback, Supabase-authed). Outside cloud mode
+      // there is nowhere to send it, so fall through to the desktop-only error.
+      const cp = window.__HOUSTON_CP__ ? window.__HOUSTON_ENGINE__ : undefined;
+      if (!cp?.baseUrl) return notAvailable(cmd);
+      const res = await fetch(`${cp.baseUrl.replace(/\/+$/, "")}/feedback`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${cp.token ?? ""}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(args?.payload ?? {}),
+      });
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string };
+        throw new Error(body.error || `feedback failed (${res.status})`);
+      }
+      const out = (await res.json()) as { id: string | null };
+      return out.id as T;
+    }
+
     // ── Harmless no-ops (feature simply absent on web) ──────────────────
     case "write_frontend_log":
       // Browser devtools already shows console output; nothing to persist.
@@ -157,7 +179,6 @@ export async function invoke<T = unknown>(
     case "open_terminal":
     case "current_app_bundle_path":
     case "relaunch_app_from_path":
-    case "report_bug":
     case "sentry_native_stack_smoke_test":
       return notAvailable(cmd);
 

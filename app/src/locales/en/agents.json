@@ -105,7 +105,17 @@
       "open": "Open",
       "rename": "Rename",
       "reveal": "Show in File Manager",
-      "delete": "Move to Trash"
+      "delete": "Move to Trash",
+      "preview": "Preview",
+      "download": "Download"
+    },
+    "preview": {
+      "loading": "Loading preview…",
+      "unsupportedTitle": "No preview for this file type",
+      "unsupportedDescription": "Download it to open it on your computer.",
+      "download": "Download",
+      "close": "Close",
+      "errorTitle": "Couldn't load the file"
     }
   }
 }

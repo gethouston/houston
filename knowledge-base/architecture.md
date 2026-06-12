@@ -166,7 +166,7 @@ the typed `.houston/<type>/<type>.json` layout.
 | Always On | ✅ Dockerfile + compose + systemd unit + README all shipped |
 | Teams / Cloud | 🟢 Cloud is LIVE (beta): per-turn Cloud Run hosting + locked-down code sandbox + GCS workspaces + connect-once subscriptions, behind the control plane on GKE (`cloud/code-execution.md`). Teams (org workspaces, per-seat) modeled but not built. |
 | Store populated | 🟡 release-bundled MVP: `store/catalog.json` + `store/agents/*`; community sharing TBD |
-| Binary file read route (xlsx, pdf download through HTTP) | ❌ workaround: use `/v1/shell` with `open`/`xdg-open` to hand binary files to host OS |
+| Binary file read route (xlsx, pdf download through HTTP) | ✅ `GET /v1/agents/files/download` (engine) + `GET /agents/:id/files/download` (cloud control plane); web Files tab gets Preview + Download, desktop keeps OS open/reveal |
 | Windows support (Rust engine layer) | ✅ `cargo check --target x86_64-pc-windows-gnu` clean across the workspace; platform-specific branches (taskkill vs kill, PATH separator, symlink_dir) covered. See `knowledge-base/platform-matrix.md`. |
 
 ## Direction of work

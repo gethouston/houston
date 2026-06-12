@@ -4,13 +4,14 @@
  */
 import type { ReactNode } from "react"
 import { createPortal } from "react-dom"
-import { ExternalLink, FolderSearch, Pencil, Trash2 } from "lucide-react"
+import { Download, ExternalLink, FolderSearch, Pencil, Trash2 } from "lucide-react"
 import type { FileEntry } from "./types"
 
 export interface FileMenuLabels {
   open?: string
   rename?: string
   reveal?: string
+  download?: string
   delete?: string
 }
 
@@ -18,6 +19,7 @@ const DEFAULT_LABELS: Required<FileMenuLabels> = {
   open: "Open",
   rename: "Rename",
   reveal: "Show in File Manager",
+  download: "Download",
   delete: "Move to Trash",
 }
 
@@ -28,6 +30,7 @@ export function FileMenu({
   onOpen,
   onRename,
   onReveal,
+  onDownload,
   onDelete,
   labels,
 }: {
@@ -37,6 +40,7 @@ export function FileMenu({
   onOpen?: (file: FileEntry) => void
   onRename?: () => void
   onReveal?: (file: FileEntry) => void
+  onDownload?: (file: FileEntry) => void
   onDelete?: (file: FileEntry) => void
   labels?: FileMenuLabels
 }) {
@@ -62,7 +66,10 @@ export function FileMenu({
         {onReveal && (
           <MenuItem onClick={() => { onReveal(file); onClose() }} icon={<FolderSearch />} label={l.reveal} />
         )}
-        {(onOpen || onRename || onReveal) && onDelete && <div className="-mx-1 my-1 h-px bg-border" />}
+        {onDownload && (
+          <MenuItem onClick={() => { onDownload(file); onClose() }} icon={<Download />} label={l.download} />
+        )}
+        {(onOpen || onRename || onReveal || onDownload) && onDelete && <div className="-mx-1 my-1 h-px bg-border" />}
         {onDelete && (
           <MenuItem onClick={() => { onDelete(file); onClose() }} icon={<Trash2 />} label={l.delete} destructive />
         )}

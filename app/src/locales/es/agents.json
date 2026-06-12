@@ -105,7 +105,17 @@
       "open": "Abrir",
       "rename": "Cambiar nombre",
       "reveal": "Mostrar en el Explorador de Archivos",
-      "delete": "Mover a la Papelera"
+      "delete": "Mover a la Papelera",
+      "preview": "Vista previa",
+      "download": "Descargar"
+    },
+    "preview": {
+      "loading": "Cargando vista previa…",
+      "unsupportedTitle": "No hay vista previa para este tipo de archivo",
+      "unsupportedDescription": "Descárgalo para abrirlo en tu computador.",
+      "download": "Descargar",
+      "close": "Cerrar",
+      "errorTitle": "No se pudo cargar el archivo"
     }
   }
 }

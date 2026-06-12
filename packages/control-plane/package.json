@@ -15,6 +15,7 @@
     "@google-cloud/storage": "^7.14.0",
     "@houston/runtime-client": "file:../runtime-client",
     "@kubernetes/client-node": "^0.22.3",
+    "ioredis": "^5.11.1",
     "jose": "^5.9.6",
     "pg": "^8.13.1"
   },

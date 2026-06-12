@@ -110,15 +110,58 @@ export class DevTokenVerifier implements TokenVerifier {
 }
 
 /**
+ * Static service tokens for unattended callers (the nightly evals harness):
+ * `CP_SERVICE_TOKENS="<token>=<userId>,..."`. Off by default. A match resolves
+ * to its mapped principal; a miss falls through to the wrapped verifier, so
+ * user JWTs keep working unchanged. Tokens are full-length secrets minted with
+ * `openssl rand -hex 32` — never user-chosen strings.
+ */
+export class ServiceTokenVerifier implements TokenVerifier {
+  constructor(
+    private readonly tokens: Map<string, UserId>,
+    private readonly next: TokenVerifier,
+  ) {}
+
+  async verify(bearer: string): Promise<{ userId: UserId } | null> {
+    const token = stripBearer(bearer);
+    const userId = this.tokens.get(token);
+    if (userId) return { userId };
+    return this.next.verify(bearer);
+  }
+}
+
+/** Parse `tok=user,tok2=user2`; malformed entries are a startup error, not a skip. */
+export function parseServiceTokens(raw: string): Map<string, UserId> {
+  const map = new Map<string, UserId>();
+  for (const entry of raw.split(",").map((s) => s.trim()).filter(Boolean)) {
+    const eq = entry.indexOf("=");
+    const token = eq > 0 ? entry.slice(0, eq).trim() : "";
+    const userId = eq > 0 ? entry.slice(eq + 1).trim() : "";
+    if (!token || !userId) {
+      throw new Error(`CP_SERVICE_TOKENS entry is not <token>=<userId>: "${entry}"`);
+    }
+    if (token.length < 32) {
+      throw new Error("CP_SERVICE_TOKENS tokens must be at least 32 chars (mint with `openssl rand -hex 32`)");
+    }
+    map.set(token, userId);
+  }
+  return map;
+}
+
+/**
  * Picks the verifier for the current mode: DevTokenVerifier in `dev`, the real
  * Supabase verifier otherwise. The Supabase verifier's constructor enforces
- * that at least one verification method is configured.
+ * that at least one verification method is configured. CP_SERVICE_TOKENS, when
+ * set, wraps either with the static service-token map (evals harness).
  */
 export function makeTokenVerifier(): TokenVerifier {
-  if (config.dev) return new DevTokenVerifier();
-  return new SupabaseTokenVerifier({
-    jwtSecret: config.supabaseJwtSecret,
-    jwksUrl: config.supabaseJwksUrl,
-    issuer: config.supabaseJwtIssuer,
-  });
+  const base: TokenVerifier = config.dev
+    ? new DevTokenVerifier()
+    : new SupabaseTokenVerifier({
+        jwtSecret: config.supabaseJwtSecret,
+        jwksUrl: config.supabaseJwksUrl,
+        issuer: config.supabaseJwtIssuer,
+      });
+  const tokens = parseServiceTokens(config.serviceTokens);
+  return tokens.size > 0 ? new ServiceTokenVerifier(tokens, base) : base;
 }

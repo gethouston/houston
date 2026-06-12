@@ -23,6 +23,8 @@ export interface ObjectFiles {
   /** Raw bytes, or null when the key does not exist (binary downloads). */
   readBytes(key: string): Promise<Buffer | null>;
   writeText(key: string, content: string): Promise<void>;
+  /** Raw-bytes write (binary uploads/seeds). Content type inferred by consumers. */
+  writeBytes(key: string, content: Buffer): Promise<void>;
   /** Delete a single key. No-op when absent. */
   deleteKey(key: string): Promise<void>;
   /** Copy then delete (rename). Throws if the source is missing. */
@@ -57,6 +59,10 @@ export class MemoryObjectFiles implements ObjectFiles {
 
   async writeText(key: string, content: string): Promise<void> {
     this.files.set(key, { content: Buffer.from(content, "utf8"), updatedMs: this.clock++ });
+  }
+
+  async writeBytes(key: string, content: Buffer): Promise<void> {
+    this.files.set(key, { content, updatedMs: this.clock++ });
   }
 
   async deleteKey(key: string): Promise<void> {
@@ -119,6 +125,10 @@ export class GcsObjectFiles implements ObjectFiles {
 
   async writeText(key: string, content: string): Promise<void> {
     await this.bucket.file(key).save(content, { contentType: "application/json" });
+  }
+
+  async writeBytes(key: string, content: Buffer): Promise<void> {
+    await this.bucket.file(key).save(content, { contentType: "application/octet-stream" });
   }
 
   async deleteKey(key: string): Promise<void> {

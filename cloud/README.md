@@ -46,6 +46,11 @@ The control plane and supporting artifacts are **built and tested** here. What r
 | K8s / Agent-Sandbox manifests | ✅ validated | `cloud/k8s/*` |
 | gcloud provisioning (P0/P1) | ✅ scripts · confirm-before-billing | `cloud/scripts/*` |
 | **Frontend un-faking (web → control plane)** | ⏳ remaining in-repo work | `packages/web/src/engine-adapter/*` |
+| Files download/preview (GCS workspace → browser) | ✅ built · tested | `packages/control-plane/src/turn/files.ts` (`files/download`), web Files tab Preview/Download |
+| "Send feedback" intake (web → Linear) | ✅ built · tested (set `CP_LINEAR_API_KEY`/`CP_LINEAR_TEAM_ID`) | `packages/control-plane/src/feedback.ts`, `POST /feedback`, web shim `report_bug` |
+| Shared turn-state bus (2+ CP replicas) | ✅ built · tested (Memory default; Redis via `CP_REDIS_URL` — run `09-redis.sh`, then bump replicas) | `packages/control-plane/src/turn/{bus,bus-redis,relay,quota,connect}.ts` |
+| Turn-quality evals (deck/xlsx/chart, nightly) | ✅ harness + CI workflow (needs `EVAL_*` secrets + eval user) | `cloud/evals/*`, `.github/workflows/evals.yml`, `CP_SERVICE_TOKENS` |
+| Custom domain (app.gethouston.ai) | ⏳ script ready; needs DNS + Supabase allow-list | `cloud/scripts/08-custom-domain.sh` |
 | Live provisioning · pen-test · load-test | ⏳ needs your accounts | run `cloud/scripts/*` |
 
 Run the control plane locally (all fakes, one local runtime): `cd packages/control-plane && CP_DEV=1 bun run dev`. Tests: `bun test` in `packages/control-plane` and `packages/runtime` (91 passing).

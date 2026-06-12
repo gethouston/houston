@@ -64,6 +64,11 @@ export CLUSTER_NAME=houston-control-plane
 ./02-cluster.sh        # create Autopilot cluster + Agent Sandbox  (BILLED, gated)
 ./03-verify-sandbox.sh # apply a gVisor Pod + deny-all egress, verify it runs
 ./04-billing.sh        # cost-allocation + BigQuery export + IAM for the dashboard (IAM gated)
+./05-code-sandbox.sh   # egress-locked Cloud Run code sandbox                (BILLED, gated)
+./06-runtime.sh        # per-turn Cloud Run agent runtime                    (BILLED, gated)
+./07-migrate-pvc-to-gcs.sh  # move a gke workspace's PVC files → GCS, flip runtime
+./08-custom-domain.sh  # map app.gethouston.ai → houston-web Cloud Run service (gated)
+./09-redis.sh          # Memorystore bus for 2+ control-plane replicas       (BILLED, gated)
 ```
 
 Add `--yes` (or `-y`) to any script to skip the `CONFIRM` prompts.
@@ -97,6 +102,18 @@ Add `--yes` (or `-y`) to any script to skip the `CONFIRM` prompts.
   one Console-only step (enable the **detailed** billing export) and the env vars
   to set. The live estimate needs none of this — only `CP_ADMIN_USER_IDS`. Full
   story in `cloud/billing.md`.
+
+- **`08-custom-domain.sh`** — Maps `app.gethouston.ai` (override with `DOMAIN`)
+  to the `houston-web` Cloud Run service: checks domain verification, creates
+  the domain mapping, prints the registrar DNS record(s), and lists the two
+  manual follow-ups (DNS + Supabase Redirect URLs). Re-runs are safe — an
+  existing mapping is detected and only re-described. The SPA stays
+  domain-agnostic when built with `VITE_CONTROL_PLANE_URL=/api`.
+- **`09-redis.sh`** — Provisions the Memorystore (Redis) instance behind the
+  control plane's shared turn-state bus (`CP_REDIS_URL`), which is what allows
+  `replicas: 2+` on the control-plane Deployment. Prints the redis-url to add
+  to `control-plane-secrets` and the rollout steps. 1 GiB basic tier ≈ $35/mo;
+  the create is `CONFIRM`-gated.
 
 ### `lib.sh`
 

@@ -60,6 +60,29 @@ export const config = {
   corsOrigin: process.env.CP_CORS_ORIGIN || "*",
 
   /**
+   * Shared turn-state bus. Unset = in-process (single replica, the default).
+   * Set to a Redis URL (Memorystore) and the relay/quota/connect state is
+   * shared, which is what allows `replicas: 2+` on the control plane.
+   */
+  redisUrl: process.env.CP_REDIS_URL || "",
+
+  /**
+   * Static service tokens for unattended callers (nightly evals): a
+   * comma-separated `<token>=<userId>` map. Each token authenticates as that
+   * user through the normal authz path (own workspace only). Empty = off.
+   */
+  serviceTokens: process.env.CP_SERVICE_TOKENS || "",
+
+  /**
+   * "Send feedback" intake (web build → Linear). Same Linear team/label the
+   * desktop app files to; unset = POST /feedback answers 503 and the dialog
+   * surfaces "not configured" instead of silently dropping the report.
+   */
+  linearApiKey: process.env.CP_LINEAR_API_KEY || "",
+  linearTeamId: process.env.CP_LINEAR_TEAM_ID || "",
+  linearBugLabelName: process.env.CP_LINEAR_BUG_LABEL_NAME || "User Bug",
+
+  /**
    * Operator dashboard (`/admin/*`). Only these Supabase user ids (the JWT `sub`)
    * may read the cross-tenant pod + spend views. Empty = the admin API is OFF
    * (every `/admin/*` request 403s) — it never falls open. Comma-separated.

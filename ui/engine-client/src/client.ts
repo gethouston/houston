@@ -273,6 +273,23 @@ export class HoustonClient {
       rel_path: relPath,
     }).then((r) => r.content);
   }
+  /** Raw bytes of a project file (binary-safe) plus its served MIME type. */
+  async downloadProjectFile(
+    agentPath: string,
+    relPath: string,
+  ): Promise<{ blob: Blob; contentType: string }> {
+    const q = new URLSearchParams({ agent_path: agentPath, rel_path: relPath });
+    const res = await fetch(`${this.baseUrl}/v1/agents/files/download?${q}`, {
+      headers: { Authorization: `Bearer ${this.token}` },
+    });
+    if (!res.ok) {
+      throw await this.toError(res);
+    }
+    return {
+      blob: await res.blob(),
+      contentType: res.headers.get("content-type") ?? "application/octet-stream",
+    };
+  }
   renameFile(agentPath: string, relPath: string, newName: string): Promise<void> {
     return this.request("POST", "/agents/files/rename", {
       agent_path: agentPath,

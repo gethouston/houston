@@ -7,7 +7,10 @@
 #   kubectl -n houston-system create secret generic control-plane-secrets \
 #     --from-literal=database-url="$CP_DATABASE_URL" \
 #     --from-literal=sandbox-token-secret="$(openssl rand -hex 32)" \
-#     --from-literal=turn-token="<value of Secret Manager houston-turn-token>"
+#     --from-literal=turn-token="<value of Secret Manager houston-turn-token>" \
+#     --from-literal=linear-api-key="$LINEAR_API_KEY" \
+#     --from-literal=linear-team-id="$LINEAR_TEAM_ID"
+# (linear-* are optional — they power the web build's "Send feedback" → Linear.)
 apiVersion: v1
 kind: Namespace
 metadata:
@@ -65,8 +68,13 @@ spec:
   replicas: 1
   # Zero-downtime deploys: bring the replacement up and Ready BEFORE the old
   # pod drains (the pod itself drains gracefully on SIGTERM — see
-  # packages/control-plane/src/shutdown.ts). True multi-replica HA needs the
-  # in-memory turn relay/connect state moved to a shared bus first.
+  # packages/control-plane/src/shutdown.ts).
+  #
+  # Multi-replica HA: the turn relay/quota/connect state rides the TurnBus
+  # (packages/control-plane/src/turn/bus.ts). With CP_REDIS_URL unset the bus
+  # is in-process and replicas MUST stay 1. To go to 2+: provision Memorystore
+  # (cloud/scripts/09-redis.sh), add the `redis-url` key to
+  # control-plane-secrets, then bump replicas here.
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -120,6 +128,19 @@ spec:
             - name: CP_TURN_TOKEN
               valueFrom:
                 secretKeyRef: { name: control-plane-secrets, key: turn-token, optional: true }
+            # Shared turn-state bus (Memorystore). Optional: absent → in-process
+            # bus, which requires replicas: 1 above.
+            - name: CP_REDIS_URL
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: redis-url, optional: true }
+            # "Send feedback" intake (web build → Linear). Optional: absent →
+            # POST /feedback answers 503 and the web dialog says so.
+            - name: CP_LINEAR_API_KEY
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: linear-api-key, optional: true }
+            - name: CP_LINEAR_TEAM_ID
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: linear-team-id, optional: true }
             # Secrets (created imperatively — see header).
             - name: CP_DATABASE_URL
               valueFrom:

@@ -39,6 +39,8 @@ export interface FilesBrowserProps {
   onSelect?: (file: FileEntry) => void
   onOpen?: (file: FileEntry) => void
   onReveal?: (file: FileEntry) => void
+  /** Save the file to the user's machine (browser builds; desktop uses onOpen/onReveal). */
+  onDownload?: (file: FileEntry) => void
   onDelete?: (file: FileEntry) => void
   onFilesDropped?: (files: File[], targetFolder?: string) => void
   /** Move a file/folder to a new location (null = root) */
@@ -57,7 +59,7 @@ export interface FilesBrowserProps {
 }
 
 export function FilesBrowser({
-  files, loading, selectedPath: controlledSelected, onSelect, onOpen, onReveal, onDelete,
+  files, loading, selectedPath: controlledSelected, onSelect, onOpen, onReveal, onDownload, onDelete,
   onFilesDropped, onMove, onRename, onCreateFolder, onBrowse,
   emptyTitle = "No files yet",
   emptyDescription = "When agents create files, they\u2019ll appear here.",
@@ -192,7 +194,7 @@ export function FilesBrowser({
                   <FolderSection
                     key={child.path} node={child} depth={0}
                     selectedPath={selectedPath} onSelect={handleSelect}
-                    onOpen={onOpen} onReveal={onReveal} onDelete={onDelete}
+                    onOpen={onOpen} onReveal={onReveal} onDownload={onDownload} onDelete={onDelete}
                     onRename={onRename}
                     onFilesDropped={onFilesDropped} onDragActive={onDragActive} onMove={onMove}
                     menuLabels={menuLabels}
@@ -202,7 +204,7 @@ export function FilesBrowser({
                     key={child.entry.path} file={child.entry}
                     selected={selectedPath === child.entry.path}
                     onSelect={handleSelect} onOpen={onOpen}
-                    onReveal={onReveal} onDelete={onDelete} onRename={onRename} onMove={onMove}
+                    onReveal={onReveal} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onMove={onMove}
                     menuLabels={menuLabels}
                   />
                 ),

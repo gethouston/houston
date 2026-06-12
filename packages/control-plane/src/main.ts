@@ -23,9 +23,12 @@ import type { TurnDeps } from "./turn/deps";
 import { TurnRelay } from "./turn/relay";
 import { TurnQuota } from "./turn/quota";
 import { ConnectManager } from "./turn/connect";
+import { MemoryTurnBus, type TurnBus } from "./turn/bus";
+import { RedisTurnBus } from "./turn/bus-redis";
 import { GcsObjectFiles, MemoryObjectFiles } from "./turn/objects";
 import { makeIdTokenProvider } from "./turn/id-token";
 import { refreshCredential } from "./credentials/refresh";
+import { LinearFeedbackSender, type FeedbackSender } from "./feedback";
 import { installGracefulShutdown } from "./shutdown";
 
 /**
@@ -58,14 +61,20 @@ function buildTurn(credentials: CredentialStore): TurnDeps | undefined {
   if (!config.dev && !config.gcsBucket) {
     throw new Error("CP_GCS_BUCKET is required when CP_TURN_RUNTIME_URL is set");
   }
+  // The shared turn-state bus: Redis when CP_REDIS_URL is set (2+ replicas),
+  // in-process otherwise (single replica — see cloud/k8s/control-plane.yaml).
+  const bus: TurnBus = config.redisUrl ? new RedisTurnBus(config.redisUrl) : new MemoryTurnBus();
   return {
     runtimeUrl: config.turnRuntimeUrl,
     turnToken: config.turnToken,
-    relay: new TurnRelay(),
-    quota: new TurnQuota({ maxConcurrent: config.turnMaxConcurrent, perHour: config.turnsPerHour }),
+    relay: new TurnRelay(bus),
+    quota: new TurnQuota(
+      { maxConcurrent: config.turnMaxConcurrent, perHour: config.turnsPerHour },
+      { bus },
+    ),
     objects: config.dev ? new MemoryObjectFiles() : new GcsObjectFiles(config.gcsBucket),
     credentials,
-    connect: new ConnectManager(credentials),
+    connect: new ConnectManager(credentials, bus),
     refresh: refreshCredential,
     idToken: makeIdTokenProvider(config.turnRuntimeUrl),
     codexModels: config.codexModels,
@@ -129,6 +138,16 @@ function buildAdmin(kubeConfig: KubeConfig | null): AdminDeps {
   };
 }
 
+/** Web "Send feedback" → Linear; undefined until the Linear env is set. */
+function buildFeedback(): FeedbackSender | undefined {
+  if (!config.linearApiKey || !config.linearTeamId) return undefined;
+  return new LinearFeedbackSender({
+    apiKey: config.linearApiKey,
+    teamId: config.linearTeamId,
+    labelName: config.linearBugLabelName,
+  });
+}
+
 function main(): void {
   const { store, credentials } = buildStores();
   const vault = new EnvCredentialVault();
@@ -156,6 +175,7 @@ function main(): void {
     vault,
     admin: buildAdmin(kubeConfig),
     turn: buildTurn(credentials),
+    feedback: buildFeedback(),
     corsOrigin: config.corsOrigin,
   };
 

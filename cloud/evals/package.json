@@ -1,0 +1,14 @@
+{
+  "name": "houston-evals",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Turn-quality evals: drive the canonical agent tasks (deck, spreadsheet, chart) against a Houston control plane and score the artifacts.",
+  "scripts": {
+    "evals": "bun run run.ts",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "jszip": "^3.10.1"
+  }
+}

@@ -1,0 +1,40 @@
+# Nightly turn-quality evals against production: drive the canonical tasks
+# (deck / spreadsheet / chart) through the live control plane and score the
+# artifacts. Fails red when an artifact stops opening — the demo-able story is
+# continuously measured, not assumed.
+#
+# Required repo secrets:
+#   EVAL_CP_URL  — control-plane base, e.g. https://app.gethouston.ai/api
+#   EVAL_TOKEN   — a CP_SERVICE_TOKENS entry mapped to a dedicated eval user
+#                  (mint with `openssl rand -hex 32`; see cloud/evals/README.md)
+name: evals
+on:
+  schedule:
+    - cron: "17 6 * * *" # nightly 06:17 UTC (off the top-of-hour stampede)
+  workflow_dispatch: {}
+
+jobs:
+  evals:
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == 'gethouston' }}
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - name: Install
+        working-directory: cloud/evals
+        run: bun install --frozen-lockfile
+      - name: Run evals
+        working-directory: cloud/evals
+        env:
+          EVAL_CP_URL: ${{ secrets.EVAL_CP_URL }}
+          EVAL_TOKEN: ${{ secrets.EVAL_TOKEN }}
+        run: bun run run.ts
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-results
+          path: cloud/evals/eval-results.json

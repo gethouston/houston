@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import { SignJWT } from "jose";
-import { DevTokenVerifier, SupabaseTokenVerifier } from "./verify";
+import { DevTokenVerifier, ServiceTokenVerifier, SupabaseTokenVerifier, parseServiceTokens } from "./verify";
 
 const SECRET = "test-shared-secret-which-is-suitably-long-for-hs256";
 const ISSUER = "https://proj.supabase.co/auth/v1";
@@ -105,4 +105,25 @@ test("DevTokenVerifier rejects non-dev and empty-id tokens", async () => {
   expect(await v.verify("dev:")).toBeNull();
   expect(await v.verify("")).toBeNull();
   expect(await v.verify("bearer:u123")).toBeNull();
+});
+
+test("ServiceTokenVerifier matches a static token, else falls through", async () => {
+  const tok = "a".repeat(64);
+  const v = new ServiceTokenVerifier(parseServiceTokens(`${tok}=eval-user`), new DevTokenVerifier());
+  expect(await v.verify(tok)).toEqual({ userId: "eval-user" });
+  expect(await v.verify(`Bearer ${tok}`)).toEqual({ userId: "eval-user" });
+  // Fall-through: still a working dev verifier underneath.
+  expect(await v.verify("dev:u1")).toEqual({ userId: "u1" });
+  expect(await v.verify("nope")).toBeNull();
+});
+
+test("parseServiceTokens enforces shape and minimum token length", () => {
+  expect(parseServiceTokens("").size).toBe(0);
+  const tok1 = "b".repeat(32);
+  const tok2 = "c".repeat(40);
+  const map = parseServiceTokens(` ${tok1}=u1 , ${tok2}=u2 `);
+  expect(map.get(tok1)).toBe("u1");
+  expect(map.get(tok2)).toBe("u2");
+  expect(() => parseServiceTokens("short=u1")).toThrow(/at least 32 chars/);
+  expect(() => parseServiceTokens("justatokenwithnouseridxxxxxxxxxxxxxx")).toThrow(/<token>=<userId>/);
 });

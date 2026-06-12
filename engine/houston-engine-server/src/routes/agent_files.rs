@@ -11,6 +11,8 @@ use crate::routes::error::ApiError;
 use crate::state::ServerState;
 use axum::{
     extract::{Query, State},
+    http::header,
+    response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
@@ -31,6 +33,7 @@ pub fn router() -> Router<Arc<ServerState>> {
         .route("/agents/files/seed-schemas", post(seed_schemas))
         .route("/agents/files/migrate", post(migrate))
         .route("/agents/files/read-project", post(read_project))
+        .route("/agents/files/download", get(download))
         .route("/agents/files/rename", post(rename))
         .route("/agents/files/folder", post(create_folder))
         .route("/agents/files/import", post(import))
@@ -186,6 +189,65 @@ async fn read_project(
     let root = resolve_root(&body.agent_path)?;
     let content = files::read_project_file(&root, &body.rel_path)?;
     Ok(Json(FileContent { content }))
+}
+
+/// Raw-bytes download for a project file. Closes the "binary file read route"
+/// gap: a browser client (Houston Web) fetches deck.pptx / sheet.xlsx straight
+/// over HTTP instead of shelling out to `open` on the engine host.
+async fn download(
+    State(_st): State<Arc<ServerState>>,
+    Query(q): Query<DeleteFileQuery>,
+) -> Result<impl IntoResponse, ApiError> {
+    let root = resolve_root(&q.agent_path)?;
+    let bytes = files::read_project_file_bytes(&root, &q.rel_path)?;
+    let name = q
+        .rel_path
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or(&q.rel_path)
+        .to_string();
+    // RFC 6266: quoted filename, with non-ASCII carried by filename* (UTF-8).
+    let ascii: String = name
+        .chars()
+        .map(|c| if c.is_ascii() && c != '"' && c != '\\' { c } else { '_' })
+        .collect();
+    let disposition = format!(
+        "attachment; filename=\"{ascii}\"; filename*=UTF-8''{}",
+        urlencoding::encode(&name)
+    );
+    Ok((
+        [
+            (header::CONTENT_TYPE, mime_for(&name).to_string()),
+            (header::CONTENT_DISPOSITION, disposition),
+        ],
+        bytes,
+    ))
+}
+
+/// Extension → MIME for the file types agents actually produce. Anything
+/// unknown downloads as a generic binary stream.
+fn mime_for(name: &str) -> &'static str {
+    let ext = name.rsplit('.').next().unwrap_or("").to_ascii_lowercase();
+    match ext.as_str() {
+        "pptx" => "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        "xlsx" => "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        "docx" => "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "pdf" => "application/pdf",
+        "csv" => "text/csv; charset=utf-8",
+        "txt" | "md" => "text/plain; charset=utf-8",
+        "json" => "application/json; charset=utf-8",
+        "html" | "htm" => "text/html; charset=utf-8",
+        "png" => "image/png",
+        "jpg" | "jpeg" => "image/jpeg",
+        "gif" => "image/gif",
+        "svg" => "image/svg+xml",
+        "webp" => "image/webp",
+        "zip" => "application/zip",
+        "mp3" => "audio/mpeg",
+        "wav" => "audio/wav",
+        "mp4" => "video/mp4",
+        _ => "application/octet-stream",
+    }
 }
 
 async fn rename(

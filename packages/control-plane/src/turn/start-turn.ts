@@ -36,15 +36,15 @@ export async function startTurn(
   nonce: string | undefined,
   res: ServerResponse,
 ): Promise<void> {
-  let release: () => void;
+  let release: () => Promise<void>;
   try {
-    release = deps.quota.acquire(ws.id);
+    release = await deps.quota.acquire(ws.id);
   } catch (err) {
     if (err instanceof TurnQuotaError) return json(res, 429, { error: err.message });
     throw err;
   }
   const prefix = prefixFor(ws, agent);
-  const started = deps.relay.start(agent.id, `${agent.id}/${cid}`, async (publish, signal) => {
+  const started = await deps.relay.start(agent.id, `${agent.id}/${cid}`, async (publish, signal) => {
     try {
       const cred = await freshCredential(deps, ws.id);
       const idToken = await deps.idToken();
@@ -80,11 +80,11 @@ export async function startTurn(
       }
       await pumpSse(upstream.body, publish);
     } finally {
-      release();
+      await release();
     }
   });
   if (!started) {
-    release();
+    await release();
     return json(res, 409, { error: "a turn is already running for this agent" });
   }
   return json(res, 202, { ok: true });

@@ -20,7 +20,7 @@ const TRIANGLE_AREA = 16
 export const COL_GRID = "1fr 190px 80px 130px"
 
 export function FolderSection({
-  node, depth, selectedPath, onSelect, onOpen, onReveal, onDelete,
+  node, depth, selectedPath, onSelect, onOpen, onReveal, onDownload, onDelete,
   onRename, onFilesDropped, onDragActive, onMove, menuLabels,
 }: {
   node: FolderNode
@@ -29,6 +29,7 @@ export function FolderSection({
   onSelect?: (file: FileEntry) => void
   onOpen?: (file: FileEntry) => void
   onReveal?: (file: FileEntry) => void
+  onDownload?: (file: FileEntry) => void
   onDelete?: (file: FileEntry) => void
   onRename?: (file: FileEntry, newName: string) => void
   onFilesDropped?: (files: File[], targetFolder?: string) => void
@@ -79,7 +80,7 @@ export function FolderSection({
             <FolderSection
               key={child.path} node={child} depth={depth + 1}
               selectedPath={selectedPath} onSelect={onSelect}
-              onOpen={onOpen} onReveal={onReveal} onDelete={onDelete}
+              onOpen={onOpen} onReveal={onReveal} onDownload={onDownload} onDelete={onDelete}
               onRename={onRename}
               onFilesDropped={onFilesDropped} onDragActive={onDragActive} onMove={onMove}
               menuLabels={menuLabels}
@@ -89,7 +90,7 @@ export function FolderSection({
               key={child.entry.path} file={child.entry} depth={depth + 1}
               selected={selectedPath === child.entry.path}
               onSelect={onSelect} onOpen={onOpen}
-              onReveal={onReveal} onDelete={onDelete} onRename={onRename} onMove={onMove}
+              onReveal={onReveal} onDownload={onDownload} onDelete={onDelete} onRename={onRename} onMove={onMove}
               menuLabels={menuLabels}
             />
           ),
@@ -99,7 +100,7 @@ export function FolderSection({
 }
 
 export function FileRow({
-  file, depth = 0, selected, onSelect, onOpen, onReveal, onDelete, onRename, onMove, menuLabels,
+  file, depth = 0, selected, onSelect, onOpen, onReveal, onDownload, onDelete, onRename, onMove, menuLabels,
 }: {
   file: FileEntry
   depth?: number
@@ -107,6 +108,7 @@ export function FileRow({
   onSelect?: (file: FileEntry) => void
   onOpen?: (file: FileEntry) => void
   onReveal?: (file: FileEntry) => void
+  onDownload?: (file: FileEntry) => void
   onDelete?: (file: FileEntry) => void
   onRename?: (file: FileEntry, newName: string) => void
   onMove?: (sourcePath: string, targetFolder: string | null) => void
@@ -118,7 +120,7 @@ export function FileRow({
   const [renameValue, setRenameValue] = useState("")
   const renameRef = useRef<HTMLInputElement>(null)
   const padLeft = BASE_INDENT + depth * DEPTH_INDENT + TRIANGLE_AREA
-  const hasMenu = onOpen || onReveal || onDelete
+  const hasMenu = onOpen || onReveal || onDownload || onDelete
   const sec = selected ? "text-primary-foreground/80" : "text-muted-foreground"
 
   const startRename = () => {
@@ -194,7 +196,7 @@ export function FileRow({
         <FileMenu
           file={file} position={menu}
           onClose={() => setMenu(null)}
-          onOpen={onOpen} onRename={onRename ? startRename : undefined} onReveal={onReveal} onDelete={onDelete}
+          onOpen={onOpen} onRename={onRename ? startRename : undefined} onReveal={onReveal} onDownload={onDownload} onDelete={onDelete}
           labels={menuLabels}
         />
       )}

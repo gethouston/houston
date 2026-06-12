@@ -2,9 +2,12 @@ import { test, expect } from "bun:test";
 import { MemoryObjectFiles } from "./objects";
 import {
   FilePathError,
+  contentDisposition,
   createWorkspaceFolder,
   deleteWorkspaceFile,
+  handleFileRequest,
   listWorkspace,
+  mimeFor,
   readWorkspaceFile,
   renameWorkspaceFile,
 } from "./files";
@@ -99,4 +102,93 @@ test("path traversal and absolute paths are rejected everywhere", async () => {
   await expect(renameWorkspaceFile(d, PREFIX, "a.txt", "../evil")).rejects.toThrow(FilePathError);
   await expect(renameWorkspaceFile(d, PREFIX, "a.txt", "sub/evil")).rejects.toThrow(FilePathError);
   await expect(createWorkspaceFolder(d, PREFIX, "../evil")).rejects.toThrow(FilePathError);
+});
+
+
+function fakeRes() {
+  const state = { status: 0, headers: {} as Record<string, unknown>, body: null as Buffer | null };
+  const res = {
+    writeHead(code: number, h?: Record<string, unknown>) {
+      state.status = code;
+      if (h) Object.assign(state.headers, h);
+      return this;
+    },
+    end(buf?: Buffer | string) {
+      if (buf !== undefined) state.body = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
+    },
+  };
+  return { res: res as never, state };
+}
+
+test("download serves raw bytes with the right MIME + disposition", async () => {
+  const { deps: d, objects } = deps();
+  // Non-UTF-8 payload: must come back byte-for-byte, not JSON/base64.
+  const payload = Buffer.from([0x50, 0x4b, 0x03, 0x04, 0xff, 0x00, 0x80]);
+  await objects.writeBytes(`${PREFIX}/workspace/deck.pptx`, payload);
+
+  const { res, state } = fakeRes();
+  const handled = await handleFileRequest(
+    d,
+    PREFIX,
+    "GET",
+    "files/download",
+    { url: "/x" } as never,
+    res,
+    new URLSearchParams({ path: "deck.pptx" }),
+  );
+  expect(handled).toBe(true);
+  expect(state.status).toBe(200);
+  expect(state.headers["Content-Type"]).toBe(
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  );
+  expect(String(state.headers["Content-Disposition"])).toContain('attachment; filename="deck.pptx"');
+  expect(Buffer.compare(state.body!, payload)).toBe(0);
+});
+
+test("download honors disposition=inline, 404s on missing, rejects traversal", async () => {
+  const { deps: d, objects } = deps();
+  await objects.writeBytes(`${PREFIX}/workspace/chart.png`, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+
+  expect(mimeFor("Reporte Ventas.PDF")).toBe("application/pdf");
+  expect(mimeFor("weird.bin")).toBe("application/octet-stream");
+  expect(contentDisposition("inline", "caf\u00e9.pdf")).toBe(
+    `inline; filename="caf_.pdf"; filename*=UTF-8''caf%C3%A9.pdf`,
+  );
+
+  const inline = fakeRes();
+  await handleFileRequest(
+    d,
+    PREFIX,
+    "GET",
+    "files/download",
+    { url: "/x" } as never,
+    inline.res,
+    new URLSearchParams({ path: "chart.png", disposition: "inline" }),
+  );
+  expect(inline.state.status).toBe(200);
+  expect(String(inline.state.headers["Content-Disposition"]).startsWith("inline;")).toBe(true);
+
+  const missing = fakeRes();
+  await handleFileRequest(
+    d,
+    PREFIX,
+    "GET",
+    "files/download",
+    { url: "/x" } as never,
+    missing.res,
+    new URLSearchParams({ path: "missing.pdf" }),
+  );
+  expect(missing.state.status).toBe(404);
+
+  const evil = fakeRes();
+  await handleFileRequest(
+    d,
+    PREFIX,
+    "GET",
+    "files/download",
+    { url: "/x" } as never,
+    evil.res,
+    new URLSearchParams({ path: "../data/conversations/c1.json" }),
+  );
+  expect(evil.state.status).toBe(400);
 });

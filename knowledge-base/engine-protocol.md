@@ -159,6 +159,7 @@ not user-facing copy.
 | POST | `/v1/agents/files/seed-schemas` | Seed `.houston/<type>/<type>.schema.json` |
 | POST | `/v1/agents/files/migrate` | Run idempotent migrations |
 | POST | `/v1/agents/files/read-project` | Read project file |
+| GET | `/v1/agents/files/download` | Raw project-file bytes + MIME + Content-Disposition (binary-safe) |
 | POST | `/v1/agents/files/rename` | Rename |
 | POST | `/v1/agents/files/folder` | Create folder |
 | POST | `/v1/agents/files/import` | Import paths |

@@ -84,8 +84,10 @@ local log files.
   `detectSessionInUrl` / code exchange on load) is the remaining piece. Until
   then, ship with empty Supabase env (sign-in is skipped). Note: needs a Supabase
   dashboard redirect-URL allowlist entry too, so it's infra + code.
-- **Report Bug** button throws a "desktop-only" toast on web (no local logs to
-  bundle); a web bug-intake endpoint could replace it.
+- **Report Bug / Send feedback** works in CLOUD mode: the shim posts the same
+  payload to the control plane's `POST /feedback` (→ Linear; set
+  `CP_LINEAR_API_KEY`/`CP_LINEAR_TEAM_ID`). Outside cloud mode it still throws
+  the "desktop-only" toast (nowhere to send it).
 - **"Reveal in folder"** on a portable-agent export throws a graceful
   "desktop-only" toast (the export download itself works). Hiding the button
   needs a one-line `osIsTauri()` guard in `app/src/components/portable` —

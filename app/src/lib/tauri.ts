@@ -489,6 +489,15 @@ export const tauriFiles = {
     osOpenFile(agentPath, relativePath),
   reveal: (agentPath: string, relativePath: string) =>
     osRevealFile(agentPath, relativePath),
+  /** Raw bytes over HTTP — powers in-browser preview + download (web build).
+   *  Pass `{ toast: false }` when the caller renders the failure inline. */
+  download: (agentPath: string, relativePath: string, options?: { toast?: boolean }) =>
+    call<{ blob: Blob; contentType: string }>(
+      "download_project_file",
+      () => getEngine().downloadProjectFile(agentPath, relativePath),
+      { agentPath, relativePath },
+      options,
+    ),
   delete: (agentPath: string, relativePath: string) =>
     call<void>("delete_file", () => getEngine().deleteFile(agentPath, relativePath)),
   rename: (agentPath: string, relativePath: string, newName: string) =>

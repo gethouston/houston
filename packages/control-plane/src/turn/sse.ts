@@ -4,10 +4,12 @@ import type { WireEvent } from "@houston/runtime-client";
  * Pump `data: <WireEvent JSON>` SSE frames out of a fetch body. Comments and
  * heartbeats (lines starting with ":") are skipped; a malformed data line
  * throws — a garbled turn stream must surface, not silently drop frames.
+ * Each event is awaited before the next is parsed so the relay's snapshot
+ * writes + broadcasts keep the stream's ordering.
  */
 export async function pumpSse(
   body: ReadableStream<Uint8Array>,
-  onEvent: (e: WireEvent) => void,
+  onEvent: (e: WireEvent) => void | Promise<void>,
 ): Promise<void> {
   const reader = body.getReader();
   const decoder = new TextDecoder();
@@ -22,7 +24,7 @@ export async function pumpSse(
       buf = buf.slice(sep + 2);
       for (const line of frame.split("\n")) {
         if (line.startsWith("data: ")) {
-          onEvent(JSON.parse(line.slice(6)) as WireEvent);
+          await onEvent(JSON.parse(line.slice(6)) as WireEvent);
         }
       }
     }
