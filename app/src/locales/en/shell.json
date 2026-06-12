@@ -48,7 +48,8 @@
     "githubDescription": "Import a workspace template from GitHub. This creates a workspace with all its agents ready to use.",
     "githubPlaceholder": "owner/repo",
     "githubImport": "Import",
-    "githubImporting": "Importing workspace and agents..."
+    "githubImporting": "Importing workspace and agents...",
+    "createFailed": "We couldn't create the workspace. Please try again."
   },
   "uiTour": {
     "counter": "Tour {{current}} of {{total}}",
