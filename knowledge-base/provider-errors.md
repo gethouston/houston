@@ -25,7 +25,7 @@ and mirrored in `ui/chat/src/types.ts`. The two MUST stay in sync.
 |----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------|
 | `RateLimited`              | Per-minute / short-window throttle. Wait helps.                                         | Retry, Switch model, optional `retry_after_seconds`. |
 | `QuotaExhausted`           | Long-window / billing-period limit. Wait won't help.                                    | Upgrade plan (`upgrade_url`), Switch provider.       |
-| `UsageLimitPaused`         | CLI is sleeping internally until the plan-window reset (today: Anthropic claude-code).  | None — non-terminal. Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
+| `UsageLimitPaused`         | Plan-window limit hit (today: Anthropic claude-code's 5-hour subscription session limit). Fires from `rate_limit_event` `status:"rejected"` (structured `resetsAt` epoch), a `429` result whose body names a session/usage limit + reset, or the stderr "usage limit ... reset at" banner. Retrying now fails — wait for the reset. | Chat: `UsageLimitPausedCard` (title + "resets at {time}" from `resets_at`, plus Switch model — a different provider has its own limit). Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
 | `ModelUnavailable`         | The requested model isn't available to this account (preview, deprecated, regioned).    | Switch to `suggested_fallback`, Pick another model.  |
 | `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect (drives `tauriProvider.launchLogin`); the card then WAITS on the `ProviderLoginComplete` WS event (launchLogin resolves at CLI spawn, not completion) and flips to a green "Reconnected" state with a retry CTA, or shows the failure and re-arms. |
 | `NetworkUnreachable`       | Cannot reach the provider's API (DNS, connect refused, ECONNRESET).                     | Retry, Check status page.                            |
@@ -74,10 +74,24 @@ ONE `RateLimited` card, not ten.
 `is_error:true` with a numeric `api_error_status` (e.g. `429`) but the
 `subtype` is often `"success"` and the human `result` string omits the
 status word — so `parser.rs` tries `anthropic_classify::classify_api_error_status`
-(429→`RateLimited`, 401/403→`Unauthenticated`, 5xx→`ProviderInternal`)
-BEFORE the text-based `classify_result_error`, then falls back to
-`Unknown`. Text matching alone misfiled rate-limits as `Unknown`
-("Report bug") — see Luis / 2026-06-09.
+(401/403→`Unauthenticated`, 5xx→`ProviderInternal`) BEFORE the text-based
+`classify_result_error`, then falls back to `Unknown`. Text matching alone
+misfiled rate-limits as `Unknown` ("Report bug") — see Luis / 2026-06-09.
+
+**429 splits two ways.** claude-code returns `429` for BOTH a genuine
+short-window throttle AND the 5-hour subscription *session* limit. So
+`classify_api_error_status(429, msg)` inspects the body: a session/usage limit
+naming a reset ("You've hit your session limit · resets 3:30pm") →
+`UsageLimitPaused` (wait, no "Retry now"); otherwise → `RateLimited` with the
+`retry after Ns` countdown. The same limit also arrives mid-stream as
+`rate_limit_event` events — `parse_rate_limit_event` keeps `allowed`/
+`allowed_warning` SILENT (a warning is still allowed), maps `rejected` →
+`UsageLimitPaused` reading the structured `resetsAt` epoch
+(`anthropic_classify::format_reset_time`), and leaves genuine throttles as
+`RateLimited`. Feed dedup by `(kind, provider)` collapses the mid-stream + the
+terminal card to one. Before this, every `allowed_warning` raised a spurious
+RateLimited card and the session limit showed a per-minute "Retry" card with
+claude's raw English body — see Esteban / 2026-06-11.
 
 **No double cards.** claude reports these failures on stdout with empty
 stderr, then exits non-zero. `cli_process::handle_failed_exit` would

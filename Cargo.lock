@@ -2722,6 +2722,7 @@ dependencies = [
 name = "houston-terminal-manager"
 version = "0.4.23"
 dependencies = [
+ "chrono",
  "dirs 5.0.1",
  "houston-cli-bundle",
  "serde",

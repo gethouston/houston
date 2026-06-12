@@ -283,6 +283,12 @@
       "retry": "Tentar de novo",
       "switchModel": "Trocar de modelo"
     },
+    "usageLimitPaused": {
+      "title": "Você atingiu o limite do seu plano",
+      "body": "Por enquanto você esgotou seu plano. Aguarde ele ser restabelecido e continue.",
+      "bodyWithReset": "Por enquanto você esgotou seu plano. Ele é restabelecido às {{time}} e você poderá continuar.",
+      "switchModel": "Trocar de modelo"
+    },
     "quotaExhausted": {
       "title": "Sem capacidade disponível",
       "body": "Seu plano do {{provider}} chegou ao limite. Faça upgrade ou troque de provedor para continuar.",

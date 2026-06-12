@@ -99,6 +99,13 @@ export type ProviderError =
       upgrade_url: string | null;
     }
   | {
+      kind: "usage_limit_paused";
+      provider: string;
+      /** Human-readable reset hint (e.g. "3:30 PM" or "5pm (America/Bogota)"); null if unknown. */
+      resets_at: string | null;
+      message: string;
+    }
+  | {
       kind: "model_unavailable";
       provider: string;
       model: string;

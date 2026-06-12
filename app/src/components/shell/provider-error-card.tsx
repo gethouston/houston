@@ -35,6 +35,7 @@ import {
   NetworkUnreachableCard,
   ProviderInternalCard,
   RateLimitedCard,
+  UsageLimitPausedCard,
 } from "./provider-error-cards/transient";
 
 interface ProviderErrorCardProps {
@@ -61,6 +62,10 @@ export function ProviderErrorCard({
           onRetry={onRetry}
           onSwitchModel={onSwitchModel}
         />
+      );
+    case "usage_limit_paused":
+      return (
+        <UsageLimitPausedCard error={error} onSwitchModel={onSwitchModel} />
       );
     case "quota_exhausted":
       return <QuotaExhaustedCard error={error} onSwitchModel={onSwitchModel} />;

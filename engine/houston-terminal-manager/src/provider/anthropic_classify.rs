@@ -58,6 +58,20 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
         });
     }
 
+    // Subscription "session limit" — the 5-hour plan window (distinct from
+    // the older "usage limit ... reset at" banner). claude-code phrases it
+    // "You've hit your session limit · resets 3:30pm (America/Bogota)". It is
+    // NOT a per-minute throttle: retrying now fails, the only fix is to wait
+    // for the reset. Must precede the generic 429 / rate-limit branch below so
+    // it doesn't get misfiled as `RateLimited`.
+    if lower.contains("session limit") {
+        return Some(ProviderError::UsageLimitPaused {
+            provider: PROVIDER.into(),
+            resets_at: parse_resets_at_hint(line),
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
     // 429 + rate limit phrasing — claude-code surfaces this with a
     // `retry after Ns` hint we can extract for the countdown CTA.
     if lower.contains("429") || lower.contains("rate limit") || lower.contains("rate_limit") {
@@ -167,12 +181,30 @@ pub(crate) fn classify_result_error(
 /// unrecognised.
 pub(crate) fn classify_api_error_status(status: u16, message: &str) -> Option<ProviderError> {
     match status {
-        429 => Some(ProviderError::RateLimited {
-            provider: PROVIDER.into(),
-            model: None,
-            retry_after_seconds: parse_retry_after_seconds(message),
-            message: truncate_excerpt(message),
-        }),
+        429 => {
+            // claude-code returns 429 for BOTH a genuine short-window throttle
+            // and the plan-window session/usage limit. The latter names a reset
+            // time and can't be retried away, so surface it as the non-terminal
+            // `UsageLimitPaused` (wait, don't "Retry now"). A throttle carries a
+            // `retry after Ns` hint and stays `RateLimited`.
+            let lower = message.to_lowercase();
+            let is_plan_window = lower.contains("session limit")
+                || (lower.contains("usage limit") && lower.contains("reset"));
+            if is_plan_window {
+                Some(ProviderError::UsageLimitPaused {
+                    provider: PROVIDER.into(),
+                    resets_at: parse_resets_at_hint(message),
+                    message: truncate_excerpt(message),
+                })
+            } else {
+                Some(ProviderError::RateLimited {
+                    provider: PROVIDER.into(),
+                    model: None,
+                    retry_after_seconds: parse_retry_after_seconds(message),
+                    message: truncate_excerpt(message),
+                })
+            }
+        }
         401 | 403 => Some(ProviderError::Unauthenticated {
             provider: PROVIDER.into(),
             cause: AuthFailureCause::Unknown,
@@ -190,16 +222,17 @@ pub(crate) fn classify_api_error_status(status: u16, message: &str) -> Option<Pr
     }
 }
 
-/// Extract the human-readable reset hint from a claude-code usage-limit
-/// banner like `"Claude usage limit reached. Your limit will reset at
-/// 5pm (America/Los_Angeles)"`. Returns the substring after `reset at`
-/// trimmed of trailing punctuation, or `None` if the marker isn't present.
-fn parse_resets_at_hint(line: &str) -> Option<String> {
+/// Extract the human-readable reset hint from a claude-code usage/session-limit
+/// banner like `"...will reset at 5pm (America/Los_Angeles)"` or the newer
+/// session-limit phrasing `"...resets 3:30pm (America/Bogota)"`. Returns the
+/// substring after the marker, trimmed of trailing punctuation, or `None` if no
+/// marker is present. The `... at ` forms are tried before the bare
+/// `resets `/`reset ` forms so `"resets at 9am"` yields `"9am"`, not `"at 9am"`.
+pub(crate) fn parse_resets_at_hint(line: &str) -> Option<String> {
     let lower = line.to_lowercase();
-    let marker_idx = lower
-        .find("reset at ")
-        .map(|i| i + "reset at ".len())
-        .or_else(|| lower.find("resets at ").map(|i| i + "resets at ".len()))?;
+    let marker_idx = ["reset at ", "resets at ", "resets ", "reset "]
+        .iter()
+        .find_map(|marker| lower.find(marker).map(|i| i + marker.len()))?;
     let hint = line[marker_idx..]
         .trim()
         .trim_end_matches(|c: char| c == '.' || c == ',')
@@ -209,6 +242,18 @@ fn parse_resets_at_hint(line: &str) -> Option<String> {
     } else {
         Some(hint.to_string())
     }
+}
+
+/// Format claude-code's structured `resetsAt` unix timestamp (seconds) into a
+/// short local-time hint like `"3:30 PM"`. Uses the engine host's local
+/// timezone — on the desktop that is the user's own machine, so it matches the
+/// time they expect. Returns `None` for an out-of-range timestamp.
+pub(crate) fn format_reset_time(epoch_secs: i64) -> Option<String> {
+    use chrono::{Local, TimeZone};
+    Local
+        .timestamp_opt(epoch_secs, 0)
+        .single()
+        .map(|dt| dt.format("%-I:%M %p").to_string())
 }
 
 /// Pull `N` from "retry after N seconds" / "retry-after: N" patterns.
@@ -348,6 +393,50 @@ mod tests {
             classify_stderr(without_reset).unwrap(),
             ProviderError::QuotaExhausted { .. }
         ));
+    }
+
+    #[test]
+    fn session_limit_stderr_classified_as_paused() {
+        // claude-code subscription session limit (the 5-hour plan window).
+        // Newer phrasing than the "usage limit ... reset at" banner, and it
+        // must win UsageLimitPaused over the generic 429/quota branches.
+        let line = "You've hit your session limit · resets 3:30pm (America/Bogota)";
+        match classify_stderr(line).unwrap() {
+            ProviderError::UsageLimitPaused { resets_at, .. } => {
+                assert_eq!(resets_at.as_deref(), Some("3:30pm (America/Bogota)"));
+            }
+            other => panic!("expected UsageLimitPaused, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn session_limit_429_result_classified_as_paused() {
+        // The terminal `result {is_error:true, api_error_status:429}` whose body
+        // names the session limit must be UsageLimitPaused (wait for reset), not
+        // the per-minute RateLimited card.
+        let msg = "You've hit your session limit · resets 3:30pm (America/Bogota)";
+        match classify_api_error_status(429, msg).unwrap() {
+            ProviderError::UsageLimitPaused { resets_at, .. } => {
+                assert_eq!(resets_at.as_deref(), Some("3:30pm (America/Bogota)"));
+            }
+            other => panic!("expected UsageLimitPaused, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn throttle_429_result_stays_rate_limited() {
+        // A genuine short-window throttle 429 (no session/usage-limit phrasing)
+        // keeps the RateLimited card and its retry countdown.
+        let msg = "API error 429: rate limit exceeded, retry after 30 seconds";
+        match classify_api_error_status(429, msg).unwrap() {
+            ProviderError::RateLimited {
+                retry_after_seconds,
+                ..
+            } => {
+                assert_eq!(retry_after_seconds, Some(30));
+            }
+            other => panic!("expected RateLimited, got {other:?}"),
+        }
     }
 
     #[test]

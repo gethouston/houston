@@ -283,6 +283,12 @@
       "retry": "Try again",
       "switchModel": "Switch model"
     },
+    "usageLimitPaused": {
+      "title": "You've reached your plan's limit",
+      "body": "You've used up your plan for now. Wait for it to reset, then keep going.",
+      "bodyWithReset": "You've used up your plan for now. It resets at {{time}}, then you can keep going.",
+      "switchModel": "Switch model"
+    },
     "quotaExhausted": {
       "title": "Out of capacity",
       "body": "Your {{provider}} plan reached its quota. Upgrade or switch to a different provider to keep going.",

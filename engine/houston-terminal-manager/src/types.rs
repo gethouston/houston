@@ -54,7 +54,10 @@ pub enum ClaudeEvent {
         #[serde(flatten)]
         extra: serde_json::Value,
     },
-    /// Rate limit info — silently ignored.
+    /// Rate-limit state from claude-code. Parsed in `parse_rate_limit_event`:
+    /// `allowed`/`allowed_warning` stay silent, `rejected` becomes a
+    /// `UsageLimitPaused` card (with the reset time), genuine throttles become
+    /// `RateLimited`.
     #[serde(rename = "rate_limit_event")]
     RateLimitEvent {
         #[serde(flatten)]

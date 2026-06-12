@@ -24,6 +24,10 @@ dirs = "5"
 # so subprocess spawns of `claude`/`codex`/`composio` find them without
 # any user-side shell config.
 houston-cli-bundle = { workspace = true }
+# Format claude-code's structured `resetsAt` unix timestamp (the plan-window
+# reset moment on `rate_limit_event`) into a short local-time hint for the
+# usage-limit-paused card.
+chrono = { workspace = true }
 
 [dev-dependencies]
 # Used by the Gemini adapter tests to build throwaway

@@ -1,8 +1,9 @@
 /**
- * Transient typed-provider-error variants — rate-limited, network,
- * provider-internal, malformed-response. All four share the
- * "wait/retry" recovery shape; differing only in icon + body copy +
- * status-page CTA target.
+ * Transient typed-provider-error variants — rate-limited, usage-limit-paused,
+ * network, provider-internal, malformed-response. They share the "wait"
+ * recovery shape; differing only in icon + body copy + CTA (rate-limited and
+ * usage-limit-paused offer "switch model", the network/internal ones a
+ * status-page link).
  */
 
 import { useState } from "react";
@@ -11,6 +12,7 @@ import {
   AlertTriangleIcon,
   Clock,
   ServerCrashIcon,
+  TimerResetIcon,
   WifiOffIcon,
 } from "lucide-react";
 import type { ProviderError } from "@houston-ai/chat";
@@ -71,6 +73,45 @@ export function RateLimitedCard({
             {onSwitchModel && (
               <RowCardButton
                 label={t("providerError.rateLimited.switchModel")}
+                onClick={onSwitchModel}
+                variant="outline"
+              />
+            )}
+          </>
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * Plan-window usage limit (Anthropic's 5-hour subscription session limit).
+ * Distinct from RateLimited: retrying now fails, so there is NO retry CTA —
+ * the user waits for the reset. We surface the reset time when the engine
+ * could resolve it, and offer "switch model" as the one way to keep going
+ * (a different provider has its own limit).
+ */
+export function UsageLimitPausedCard({
+  error,
+  onSwitchModel,
+}: BaseProps & {
+  error: Extract<ProviderError, { kind: "usage_limit_paused" }>;
+}) {
+  const { t } = useTranslation("shell");
+  const body = error.resets_at
+    ? t("providerError.usageLimitPaused.bodyWithReset", { time: error.resets_at })
+    : t("providerError.usageLimitPaused.body");
+  return (
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<TimerResetIcon className="size-5" />}
+        title={t("providerError.usageLimitPaused.title")}
+        description={body}
+        action={
+          <>
+            {onSwitchModel && (
+              <RowCardButton
+                label={t("providerError.usageLimitPaused.switchModel")}
                 onClick={onSwitchModel}
                 variant="outline"
               />

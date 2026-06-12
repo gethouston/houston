@@ -29,6 +29,13 @@ pub struct StreamAccumulator {
     /// turn, so this never carries a stale reading into a later turn — the
     /// success path also `.take()`s it for hygiene.
     last_usage: Option<TokenUsage>,
+    /// Set once a `rate_limit_event` with `status:"rejected"` arrives — the
+    /// plan-window (5-hour session) limit was hit mid-stream. The terminal
+    /// `result {is_error, api_error_status:429}` that follows is the SAME
+    /// limit, so we force it to `UsageLimitPaused` too (instead of letting an
+    /// ambiguous body classify it as `RateLimited`), keeping both to one
+    /// deduped card.
+    saw_plan_window_rejection: bool,
 }
 
 #[derive(Debug)]
@@ -198,6 +205,18 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
                 // than a dead-end string.
                 let message = result.unwrap_or_else(|| "Unknown error".to_string());
                 let subtype_str = subtype.as_deref().unwrap_or("error");
+                // A plan-window rejection already surfaced mid-stream this turn:
+                // the terminal 429 is that SAME 5-hour session limit. Force
+                // UsageLimitPaused so it dedupes against the card already
+                // emitted, instead of an ambiguous body stacking a second
+                // RateLimited card on top.
+                if acc.saw_plan_window_rejection && api_error_status == Some(429) {
+                    return vec![FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+                        provider: ANTHROPIC.into(),
+                        resets_at: anthropic_classify::parse_resets_at_hint(&message),
+                        message: truncate_excerpt(&message),
+                    })];
+                }
                 // Prefer the authoritative `api_error_status` HTTP code
                 // (e.g. 429) over the human `result` text. claude-code sets
                 // `is_error:true` with `api_error_status:429` but `subtype`
@@ -233,42 +252,72 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
             }]
         }
         ClaudeEvent::StreamEvent { event: inner, .. } => acc.handle(inner),
-        ClaudeEvent::RateLimitEvent { extra } => parse_rate_limit_event(extra),
+        ClaudeEvent::RateLimitEvent { extra } => parse_rate_limit_event(extra, acc),
     }
 }
 
 /// Parse Claude's `rate_limit_event` into a typed [`ProviderError`].
 ///
-/// Replaces the historical silent drop. The CLI emits these events when
-/// the Anthropic API throttles the request — `rate_limit_info.status` is
-/// `"allowed"` for routine heartbeat events (no UI needed) and one of
-/// `"rate_limited"` / `"throttled"` / `"queued"` when the user should be
-/// told to wait. We only emit a feed item for the throttled cases so a
-/// healthy stream stays quiet.
-fn parse_rate_limit_event(extra: serde_json::Value) -> Vec<FeedItem> {
+/// `rate_limit_info.status` reports the unified rate-limit state:
+/// - `"allowed"` / `"allowed_warning"` — the request went through (the latter
+///   is just a "you're approaching the limit" heads-up). Both stay SILENT so a
+///   healthy stream shows no card.
+/// - `"rejected"` — the plan-window limit (e.g. the 5-hour subscription
+///   session) was hit and the request was blocked. The event carries the reset
+///   moment as a unix `resetsAt` timestamp. Surface the non-terminal
+///   [`ProviderError::UsageLimitPaused`] (wait for the reset; retrying now
+///   fails) rather than a misleading per-minute throttle card.
+/// - anything else (`"rate_limited"` / `"throttled"` / `"queued"`) — a genuine
+///   short-window throttle with a `reset_in_seconds` countdown, surfaced as
+///   [`ProviderError::RateLimited`].
+fn parse_rate_limit_event(
+    extra: serde_json::Value,
+    acc: &mut StreamAccumulator,
+) -> Vec<FeedItem> {
     let info = extra.get("rate_limit_info").unwrap_or(&extra);
     let status = info.get("status").and_then(|v| v.as_str()).unwrap_or("");
-    if status.is_empty() || status == "allowed" {
+
+    // Healthy heartbeat + the "approaching limit" warning are not errors.
+    if matches!(status, "" | "allowed" | "allowed_warning") {
         return vec![];
     }
+
+    let message = info.get("message").and_then(|v| v.as_str());
+
+    if status == "rejected" {
+        // Remember it so the terminal 429 result this turn dedupes to the same
+        // UsageLimitPaused card instead of stacking a second RateLimited one.
+        acc.saw_plan_window_rejection = true;
+        // Prefer the structured `resetsAt` epoch (reliable) over any text the
+        // event carries; fall back to a text hint, then to no hint at all.
+        let resets_at = info
+            .get("resetsAt")
+            .and_then(|v| v.as_i64())
+            .and_then(anthropic_classify::format_reset_time)
+            .or_else(|| message.and_then(anthropic_classify::parse_resets_at_hint));
+        return vec![FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+            provider: ANTHROPIC.into(),
+            resets_at,
+            message: message
+                .map(truncate_excerpt)
+                .unwrap_or_else(|| "Claude session limit reached.".to_string()),
+        })];
+    }
+
+    // Genuine short-window throttle: keep the per-minute RateLimited card.
     let retry_after_seconds = info
         .get("reset_in_seconds")
         .or_else(|| info.get("retry_after_seconds"))
         .or_else(|| info.get("retry_after"))
         .and_then(|v| v.as_u64())
         .and_then(|n| u32::try_from(n).ok());
-    let message = info
-        .get("message")
-        .and_then(|v| v.as_str())
-        .map(truncate_excerpt)
-        .unwrap_or_else(|| {
-            format!("Anthropic rate-limit signal: {status}")
-        });
     vec![FeedItem::ProviderError(ProviderError::RateLimited {
         provider: ANTHROPIC.into(),
         model: None,
         retry_after_seconds,
-        message,
+        message: message
+            .map(truncate_excerpt)
+            .unwrap_or_else(|| format!("Anthropic rate-limit signal: {status}")),
     })]
 }
 
@@ -737,6 +786,62 @@ mod tests {
             }
             other => panic!("expected RateLimited, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn rate_limit_event_with_allowed_warning_is_silent() {
+        // "approaching your limit" heads-up — the request still went through,
+        // so it must NOT raise a card. Pre-fix this fell through and emitted a
+        // spurious RateLimited card on every warning event.
+        let line = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","resetsAt":1781209800},"uuid":"u1","session_id":"s1"}"#;
+        assert!(parse_event(line, &mut acc()).is_empty());
+    }
+
+    #[test]
+    fn rate_limit_event_rejected_is_usage_limit_paused_with_reset_time() {
+        // The 5-hour subscription session limit: claude-code blocks the request
+        // (`status:"rejected"`) and carries the reset moment as a unix
+        // `resetsAt`. Must surface the non-terminal UsageLimitPaused (wait for
+        // the reset) WITH a reset-time hint, NOT a per-minute RateLimited card.
+        // Verbatim shape from a real claude 2.1.x run.
+        let line = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","resetsAt":1781209800},"uuid":"u1","session_id":"s1"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+                provider, resets_at, ..
+            }) => {
+                assert_eq!(provider, "anthropic");
+                // Formatted from the structured epoch — exact string is
+                // local-tz dependent, so just assert it resolved to a hint.
+                assert!(resets_at.is_some(), "expected a reset-time hint");
+            }
+            other => panic!("expected UsageLimitPaused, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejected_then_terminal_429_both_usage_limit_paused() {
+        // A mid-stream plan-window rejection followed by the terminal 429 result
+        // is ONE limit. Even when the result body lacks "session limit" phrasing,
+        // the terminal card must stay UsageLimitPaused (same kind) so the two
+        // dedupe to a single card downstream — never UsageLimitPaused + a stray
+        // RateLimited.
+        let mut a = acc();
+        let rejected = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","resetsAt":1781209800},"uuid":"u1","session_id":"s1"}"#;
+        assert!(matches!(
+            parse_event(rejected, &mut a).as_slice(),
+            [FeedItem::ProviderError(ProviderError::UsageLimitPaused { .. })]
+        ));
+        let result = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"Request failed"}"#;
+        let second = parse_event(result, &mut a);
+        assert!(
+            matches!(
+                second.as_slice(),
+                [FeedItem::ProviderError(ProviderError::UsageLimitPaused { .. })]
+            ),
+            "terminal 429 after a rejection must stay UsageLimitPaused, got {second:?}"
+        );
     }
 
     #[test]
