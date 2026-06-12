@@ -158,10 +158,11 @@ pub async fn start_login() -> Result<StartLoginResponse, String> {
     }
 
     let payload: Payload = serde_json::from_str(result.trim()).map_err(|e| {
-        format!(
-            "Unexpected composio login --no-wait output: {e}\nstdout: {}",
-            result.trim()
-        )
+        // Do NOT echo the raw stdout: it is the `{login_url, cli_key}` payload
+        // and both fields carry the login-session secret (`login_url` embeds
+        // it as `?cliKey=`). The serde message names the failing field/offset
+        // without dumping the blob (HOU-431).
+        format!("Unexpected composio login --no-wait output: {e}")
     })?;
 
     Ok(StartLoginResponse {
