@@ -445,20 +445,71 @@ pub async fn install_skill(
     Ok(install_name)
 }
 
-/// Normalize a user-supplied repo reference into `owner/repo`.
+/// Extract a GitHub `owner/repo` from arbitrary user-supplied input.
 ///
-/// Accepts full URLs (`https://github.com/owner/repo`) or short form (`owner/repo`).
-fn normalize_source(source: &str) -> String {
-    let s = source.trim().trim_end_matches('/');
-    // Strip common URL prefixes
-    for prefix in &["https://github.com/", "http://github.com/", "github.com/"] {
-        if let Some(rest) = s.strip_prefix(prefix) {
-            // Only keep the first two path segments (owner/repo)
-            let parts: Vec<&str> = rest.splitn(3, '/').collect();
-            return parts[..parts.len().min(2)].join("/");
-        }
-    }
-    s.to_string()
+/// Accepts the clean short form (`owner/repo`), full GitHub URLs
+/// (`https://github.com/owner/repo`, with or without a scheme, a `.git`
+/// suffix, extra path segments like `/tree/main`, a query string, or a
+/// fragment), the SSH form (`git@github.com:owner/repo.git`), and even a
+/// whole shell command a user pasted in
+/// (`npx skills add https://github.com/owner/repo --skill x`) by anchoring on
+/// the `github.com` host wherever it appears in the string.
+///
+/// Returns `None` when no `owner/repo` shape can be recovered — a bare word
+/// (`reconciliation`), free text with no GitHub link, or anything whose two
+/// segments aren't a valid GitHub owner/repo. Callers turn `None` into
+/// [`SkillError::InvalidRepoSource`] so the user gets a "type owner/repo"
+/// hint instead of a doomed GitHub lookup that 404s on the garbage and
+/// echoes it back. (HOU-440)
+fn normalize_source(source: &str) -> Option<String> {
+    let trimmed = source
+        .trim()
+        .trim_matches(|c| c == '"' || c == '\'' || c == '`');
+
+    // Anchor on the host if present: handles bare URLs, a URL embedded in a
+    // pasted command, and the SSH `git@github.com:owner/repo` form (the host
+    // is followed by `/` for HTTPS, `:` for SSH). Falls back to the raw input
+    // for the bare `owner/repo` short form.
+    let after_host = ["github.com/", "github.com:"]
+        .iter()
+        .find_map(|marker| trimmed.split_once(marker).map(|(_, rest)| rest))
+        .unwrap_or(trimmed);
+
+    // A pasted command carries trailing args; a URL may carry a query or
+    // fragment. Keep only the first whitespace-delimited token, truncated at
+    // any `?`/`#`.
+    let candidate = after_host
+        .split_whitespace()
+        .next()
+        .unwrap_or("")
+        .split(['?', '#'])
+        .next()
+        .unwrap_or("");
+
+    // First two non-empty path segments, with a trailing `.git` dropped.
+    let mut segments = candidate.split('/').filter(|s| !s.is_empty());
+    let owner = segments.next()?;
+    let repo = segments.next()?.trim_end_matches(".git");
+
+    let normalized = format!("{owner}/{repo}");
+    is_valid_owner_repo(&normalized).then_some(normalized)
+}
+
+/// True when `s` is a well-formed GitHub `owner/repo`: exactly two non-empty
+/// segments using GitHub's allowed charsets (owner `[A-Za-z0-9-]`, repo
+/// `[A-Za-z0-9._-]`). Guards the network call from garbage like a pasted
+/// command, free text, or a bare word.
+fn is_valid_owner_repo(s: &str) -> bool {
+    let mut parts = s.split('/');
+    let (Some(owner), Some(repo), None) = (parts.next(), parts.next(), parts.next()) else {
+        return false;
+    };
+    !owner.is_empty()
+        && !repo.is_empty()
+        && owner.chars().all(|c| c.is_ascii_alphanumeric() || c == '-')
+        && repo
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_' | '.'))
 }
 
 /// Discover all SKILL.md files in a GitHub repo.
@@ -467,7 +518,8 @@ fn normalize_source(source: &str) -> String {
 /// concerns. Returns one `RepoSkill` per SKILL.md found.
 /// Accepts `owner/repo` or full GitHub URLs.
 pub async fn list_skills_from_repo(source: &str) -> Result<Vec<RepoSkill>, SkillError> {
-    let source = normalize_source(source);
+    let source = normalize_source(source)
+        .ok_or_else(|| SkillError::InvalidRepoSource(source.trim().to_string()))?;
     let source = source.as_str();
     let client = build_client()?;
 
@@ -606,7 +658,8 @@ pub async fn install_from_repo(
     source: &str,
     skills: &[RepoSkill],
 ) -> Result<Vec<String>, SkillError> {
-    let normalized = normalize_source(source);
+    let normalized = normalize_source(source)
+        .ok_or_else(|| SkillError::InvalidRepoSource(source.trim().to_string()))?;
     let source = normalized.as_str();
     std::fs::create_dir_all(skills_dir).map_err(|e| SkillError::Io(e.to_string()))?;
 
@@ -846,27 +899,118 @@ mod tests {
     use wiremock::matchers::{method, path};
     use wiremock::{Mock, MockServer, ResponseTemplate};
 
+    fn norm(s: &str) -> Option<String> {
+        normalize_source(s)
+    }
+
     #[test]
     fn normalize_github_urls() {
-        assert_eq!(normalize_source("owner/repo"), "owner/repo");
+        assert_eq!(norm("owner/repo").as_deref(), Some("owner/repo"));
         assert_eq!(
-            normalize_source("https://github.com/owner/repo"),
-            "owner/repo"
+            norm("https://github.com/owner/repo").as_deref(),
+            Some("owner/repo")
         );
         assert_eq!(
-            normalize_source("https://github.com/owner/repo/"),
-            "owner/repo"
+            norm("https://github.com/owner/repo/").as_deref(),
+            Some("owner/repo")
         );
         assert_eq!(
-            normalize_source("http://github.com/owner/repo"),
-            "owner/repo"
+            norm("http://github.com/owner/repo").as_deref(),
+            Some("owner/repo")
         );
-        assert_eq!(normalize_source("github.com/owner/repo"), "owner/repo");
-        // Extra path segments are stripped
+        assert_eq!(norm("github.com/owner/repo").as_deref(), Some("owner/repo"));
+        // Extra path segments are stripped.
         assert_eq!(
-            normalize_source("https://github.com/owner/repo/tree/main"),
-            "owner/repo"
+            norm("https://github.com/owner/repo/tree/main").as_deref(),
+            Some("owner/repo")
         );
+    }
+
+    #[test]
+    fn normalize_handles_url_extras() {
+        // `.git` suffix, query string, fragment, surrounding whitespace/quotes.
+        assert_eq!(
+            norm("https://github.com/owner/repo.git").as_deref(),
+            Some("owner/repo")
+        );
+        assert_eq!(
+            norm("https://github.com/owner/repo?tab=readme").as_deref(),
+            Some("owner/repo")
+        );
+        assert_eq!(
+            norm("https://github.com/owner/repo#skills").as_deref(),
+            Some("owner/repo")
+        );
+        assert_eq!(norm("  owner/repo  ").as_deref(), Some("owner/repo"));
+        assert_eq!(norm("\"owner/repo\"").as_deref(), Some("owner/repo"));
+        assert_eq!(norm("owner/repo/").as_deref(), Some("owner/repo"));
+        // SSH clone form.
+        assert_eq!(
+            norm("git@github.com:owner/repo.git").as_deref(),
+            Some("owner/repo")
+        );
+    }
+
+    #[test]
+    fn normalize_recovers_repo_from_pasted_command() {
+        // HOU-440: the exact prod crash input — a whole `npx skills add ...`
+        // command pasted into the repo field. We recover the real repo from
+        // the embedded URL instead of 404ing on the command string.
+        assert_eq!(
+            norm("npx skills add https://github.com/shadcn/improve --skill improve").as_deref(),
+            Some("shadcn/improve")
+        );
+        // A bare host reference buried in a sentence still resolves.
+        assert_eq!(
+            norm("check out github.com/foo/bar it's great").as_deref(),
+            Some("foo/bar")
+        );
+    }
+
+    #[test]
+    fn normalize_rejects_unparseable_input() {
+        // HOU-440 / APP-12Y: a bare word can't be coerced into owner/repo.
+        assert_eq!(norm("reconciliation"), None);
+        // Free text with no GitHub link.
+        assert_eq!(norm("please install my skills for me"), None);
+        // Empty / whitespace.
+        assert_eq!(norm(""), None);
+        assert_eq!(norm("   "), None);
+        // A command with no GitHub URL — the first token isn't owner/repo.
+        assert_eq!(norm("npx skills add reconciliation"), None);
+        // A token GitHub would never accept (invalid charset) is rejected, so
+        // we never fire an API request on garbage.
+        assert_eq!(norm("@owner/repo!"), None);
+        assert_eq!(norm("$(rm -rf /)"), None);
+    }
+
+    #[test]
+    fn valid_owner_repo_charset() {
+        assert!(is_valid_owner_repo("anthropics/skills"));
+        assert!(is_valid_owner_repo("My-Org/cool.skill_repo-2"));
+        // Owners can't contain underscores or dots.
+        assert!(!is_valid_owner_repo("my_org/repo"));
+        // Must be exactly two segments.
+        assert!(!is_valid_owner_repo("owner"));
+        assert!(!is_valid_owner_repo("owner/repo/extra"));
+        assert!(!is_valid_owner_repo("/repo"));
+        assert!(!is_valid_owner_repo("owner/"));
+    }
+
+    #[tokio::test]
+    async fn list_rejects_unparseable_source_before_network() {
+        // A bare word never reaches GitHub — `normalize_source` returns None
+        // and we surface the typed `InvalidRepoSource` immediately. (HOU-440)
+        let err = list_skills_from_repo("reconciliation").await.unwrap_err();
+        assert!(matches!(err, SkillError::InvalidRepoSource(_)));
+    }
+
+    #[tokio::test]
+    async fn list_rejects_pasted_command_without_github_url() {
+        let err = list_skills_from_repo("npx skills add some-skill")
+            .await
+            .unwrap_err();
+        assert!(matches!(err, SkillError::InvalidRepoSource(_)));
     }
 
     #[test]

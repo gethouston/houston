@@ -110,6 +110,23 @@ instead of rebuilding a bare one. Two invariants matter:
   on the cards. Bookkeeping (version/created/last_used) is reset to a fresh
   install.
 
+### Repo input parsing (the "Install from another repo" field)
+
+`normalize_source` in `engine/houston-skills/src/remote.rs` is the single
+front door for whatever the user types into the repo field. It anchors on the
+`github.com` host wherever it appears, so it recovers `owner/repo` from the
+short form, a full URL (`.git`, `/tree/main`, `?query`, `#frag` all tolerated),
+the SSH form (`git@github.com:owner/repo`), and even a whole pasted shell
+command (`npx skills add https://github.com/owner/repo --skill x`). The
+extracted pair is then validated against GitHub's owner/repo charset before any
+network call. Unparseable input (a bare word like `reconciliation`, free text,
+a command with no GitHub link) returns the typed `SkillError::InvalidRepoSource`
+→ `kind: "invalid_repo_source"` → a "type owner/repo" hint, instead of firing a
+doomed GitHub lookup that 404s and echoes the garbage back. This was HOU-440:
+users pasted commands and got `Couldn't find a repo named 'npx skills add ...'`.
+When you add a `SkillError` variant, mirror its `kind` in
+`ui/skills/src/skill-error-kinds.ts` (that union is the TS source of truth).
+
 ## Skill invocation marker (chat persistence)
 
 When the user runs a Skill, the persisted user_message body is:
@@ -198,6 +215,33 @@ Format:
 ```
 
 The engine applies the rename per workspace on the next sync. If only the old slug exists, it's renamed in place — body content preserved, `name:` field fixed, rest of the frontmatter refreshed from the new package. If both old and new slugs already exist (because a prior sync without migrations copied the new one alongside the old), the **old one is deleted**: the bundled package no longer ships it, every cross-reference points to the new slug, so keeping it would just leave a duplicate in the picker. See `store/README.md` for the full mechanism, including the recipe for shipping a follow-up migration step when the rename was published before the migration mechanism existed.
+
+## Skill identity = directory slug (drift-resilient)
+
+The **directory slug is the one canonical identity** for a skill. `load_skill`,
+`save`, `delete`, and the `.claude/skills/<slug>` mirror all resolve by
+`skills_dir.join(<name>)` — the directory, never the frontmatter. So the name a
+caller hands `load_skill` MUST be a directory slug.
+
+Therefore `list_skills` (and the system-prompt `index::build`) report each
+skill's **directory name** as `name`, overriding whatever the frontmatter `name:`
+says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:`
+(e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`).
+Before HOU-441 the list handed the UI the phrase, the user clicked it, and
+`load_skill("Redactar Outreach ESG")` found no such directory → a hard
+`skill_not_found` (red bug toast + Sentry). Reporting the directory slug makes
+the list → click → load round-trip consistent and gives the `.claude` mirror a
+real target. `load_skill` also **heals** the frontmatter `name:` to the slug on
+open (it already rewrites the file for `last_used`), so Claude Code's native
+tool name stops drifting too. No bulk migration — identity is fixed at read
+time and self-heals on access.
+
+Genuinely missing skills still happen (deleted, never installed, a stale
+selection). `skill_not_found` is an expected, explainable state, **not** a
+Houston bug: `tauriSkills.load` tags it via `silenceKinds: ["skill_not_found"]`
+(see `app/src/lib/missing-skill.ts`) so it skips the red bug toast + Sentry
+report, and `useSkillSurface` surfaces it inline (a friendly info toast, clears
+the selection, refetches the list so the dead card vanishes).
 
 ## Files of interest
 

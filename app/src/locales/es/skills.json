@@ -78,6 +78,10 @@
   },
   "detail": {
     "notFound": "Skill no encontrado",
+    "unavailableToast": {
+      "title": "Skill no disponible",
+      "description": "Este skill ya no está disponible. Es posible que lo hayan renombrado o eliminado."
+    },
     "backAria": "Volver a skills",
     "moreOptions": "Más opciones",
     "saveChanges": "Guardar cambios",
