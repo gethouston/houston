@@ -66,7 +66,6 @@ import { ContextCompactedDivider } from "./context-compacted-divider";
 import {
   getContextWindowConfig,
   getDefaultModel,
-  getModel,
   getProvider,
   validModelOrNull,
   validEffortOrDefault,
@@ -295,7 +294,6 @@ export function useAgentChatPanel({
         effectiveContextWindow(cfg, peakContextTokens) ?? undefined,
     };
   }, [sessionFeedItems, effectiveProvider, effectiveModel]);
-  const modelLabel = getModel(effectiveProvider, effectiveModel)?.label;
 
   // Whether the current conversation has produced provider output already, so a
   // provider session exists to hand off FROM. A switch only matters once it has.
@@ -851,12 +849,11 @@ export function useAgentChatPanel({
           <ContextIndicator
             usage={contextUsage}
             contextWindow={contextWindow}
-            modelLabel={modelLabel}
           />
         </div>
       </div>
     );
-  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect, contextUsage, contextWindow, modelLabel]);
+  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect, contextUsage, contextWindow]);
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
