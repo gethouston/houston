@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import type { HoustonEngineClient, ProviderId, ProviderInfo } from "@houston/engine-client";
+import type { HoustonEngineClient, ProviderId, ProviderInfo } from "@houston/runtime-client";
 import { ui } from "./styles";
 
 /**

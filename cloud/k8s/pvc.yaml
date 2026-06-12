@@ -1,0 +1,35 @@
+# Per-agent PersistentVolumeClaim.
+#
+# Cloud Plan §2 / §6: "one agent = one sandbox = one volume". This is the volume.
+# SalesAgent's box mounts ONLY this claim; HR's files do not exist in it. The
+# Deployment mounts this at /data (the engine's HOUSTON_WORKSPACE_DIR).
+#
+# One PVC per agent, lives for the agent's whole life. On sleep (§7) the
+# Deployment scales to zero but THIS PVC is kept, so the workspace survives a
+# wake. destroy(agentId) deletes the Deployment but keeps the PVC unless
+# opts.dropVolume is set, in which case the SandboxManager deletes this object too.
+#
+# Placeholders the SandboxManager fills before apply:
+#   {{AGENT_ID}}        the AgentId (opaque) — names the claim and labels it
+#   {{WORKSPACE_NS}}    the workspace namespace this PVC lives in
+#   {{WORKSPACE_ID}}    owning workspace, for audit
+#   {{VOLUME_SIZE}}     requested size, e.g. "10Gi"
+#   {{STORAGE_CLASS}}   GKE storage class, e.g. "standard-rwo" (Persistent Disk)
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: "agent-{{AGENT_ID}}-data"
+  namespace: "{{WORKSPACE_NS}}"
+  labels:
+    houston.ai/agent-id: "{{AGENT_ID}}"
+    houston.ai/workspace-id: "{{WORKSPACE_ID}}"
+    houston.ai/component: agent-volume
+spec:
+  accessModes:
+    # ReadWriteOnce: the disk is mounted by exactly one node at a time. A single
+    # agent pod is the only writer, which is the isolation guarantee we want.
+    - ReadWriteOnce
+  storageClassName: "{{STORAGE_CLASS}}"
+  resources:
+    requests:
+      storage: "{{VOLUME_SIZE}}"

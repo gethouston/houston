@@ -1,4 +1,4 @@
-import type { HoustonEngineClient, ChatMessage, WireEvent } from "@houston/engine-client";
+import type { HoustonEngineClient, ChatMessage, WireEvent } from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
 import { setStatusBySessionKey } from "./activities";

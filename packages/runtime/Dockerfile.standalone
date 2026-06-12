@@ -1,0 +1,81 @@
+# syntax=docker/dockerfile:1
+
+# Houston TS engine — standalone deployment image (single workspace, single user).
+#
+# The engine runs the agent loop in-process on Bun and talks to providers
+# directly (no provider CLIs). It serves a REST + SSE API plus a tiny test page
+# on :4317. Full deploy guide: packages/runtime/README.md.
+#
+# IMPORTANT — build context is the `packages/` directory, NOT packages/runtime.
+# The engine depends on its sibling `@houston/runtime-client` via
+# `file:../runtime-client`. That dependency is a *type-only* import at runtime
+# (bun erases it), but bun still has to see the package on disk to resolve the
+# link during `bun install`, so the context has to include both directories.
+#
+#   # from the repo root:
+#   docker build -f packages/runtime/Dockerfile -t houston/ts-engine ./packages
+#   docker run --rm -p 4317:4317 \
+#     -e HOUSTON_RUNTIME_TOKEN="$(openssl rand -hex 32)" \
+#     -v houston-data:/data -v houston-workspace:/workspace \
+#     houston/ts-engine
+#
+# Or just `docker compose up -d --build` from packages/runtime (see
+# docker-compose.yml) — that wires the context and volumes for you.
+
+# Pin the Bun minor line. For a fully reproducible build, swap this for a digest
+# (oven/bun@sha256:...). The Debian variant ships bash + coreutils, which the
+# agent's shell/file tools rely on.
+FROM oven/bun:1.3-debian
+
+# Extra tools the agent commonly reaches for through its bash tool. bash +
+# coreutils are already in the Debian base; git + python3 are the usual extras,
+# ca-certificates is for outbound HTTPS to the model providers.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      git python3 ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# runtime-client is a *type-only* dependency at runtime, but bun must see it here
+# to resolve the `file:../runtime-client` link below.
+COPY runtime-client/ /app/runtime-client/
+
+# Dependency layer first, so it stays cached until the manifest or lockfile
+# changes (source edits below won't bust it).
+COPY engine/package.json engine/bun.lock /app/engine/
+WORKDIR /app/engine
+RUN bun install --frozen-lockfile --production \
+ && rm -rf /root/.bun/install/cache
+
+# Engine source. node_modules is excluded via Dockerfile.dockerignore, so the
+# layer installed above survives this copy.
+COPY engine/ /app/engine/
+
+# Persisted data (auth.json + conversation JSONL) and the directory the agent is
+# allowed to read/edit. Owned by the non-root `bun` user so named volumes
+# mounted here come up writable.
+RUN mkdir -p /data /workspace \
+ && chown -R bun:bun /app /data /workspace
+
+ENV NODE_ENV=production \
+    HOUSTON_HOST=0.0.0.0 \
+    HOUSTON_PORT=4317 \
+    HOUSTON_DATA_DIR=/data \
+    HOUSTON_WORKSPACE_DIR=/workspace
+# HOUSTON_MODEL is intentionally NOT pinned here: the default model lives in ONE
+# place, packages/runtime/src/config.ts (claude-sonnet-4-6). Override per-run with
+# the env var, or at runtime via PUT /settings.
+# HOUSTON_RUNTIME_TOKEN is deliberately NOT defaulted: an unset token leaves the
+# engine open to anyone who can reach the port. Always set it on a VPS.
+
+USER bun
+EXPOSE 4317
+
+# /health is public (no token required). Uses bun so we don't depend on curl
+# being present in the image.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD bun -e "fetch('http://127.0.0.1:'+(process.env.HOUSTON_PORT||4317)+'/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+
+# Exec form -> bun is PID 1 and receives SIGTERM from `docker stop`, which
+# main.ts handles for a graceful shutdown.
+CMD ["bun", "run", "src/main.ts"]

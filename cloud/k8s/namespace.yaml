@@ -1,0 +1,29 @@
+# Per-workspace namespace template.
+#
+# Cloud Plan §6 (tenancy data model): "each workspace's agents live in its own
+# namespace". config.ts: namespace name is `<namespacePrefix><workspace-slug>`
+# (default prefix "ws-").
+#
+# The SandboxManager creates exactly one of these per workspace, the first time
+# any agent in that workspace is spawned. Every agent of the workspace (its
+# Deployment, Service, PVC, ServiceAccount, NetworkPolicy) is created INSIDE this
+# namespace, which is the unit GKE network policies and quotas are scoped to.
+#
+# Placeholders the SandboxManager fills before apply:
+#   {{WORKSPACE_NS}}   final namespace name, e.g. "ws-acme"   (namespacePrefix + workspace.slug)
+#   {{WORKSPACE_ID}}   the WorkspaceId (opaque), recorded as a label for audit/correlation
+#   {{WORKSPACE_SLUG}} the human-readable workspace slug
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: "{{WORKSPACE_NS}}"
+  labels:
+    # Stable selectors the NetworkPolicy and the control plane use to find a workspace's pods.
+    houston.ai/tenant: workspace
+    houston.ai/workspace-id: "{{WORKSPACE_ID}}"
+    houston.ai/workspace-slug: "{{WORKSPACE_SLUG}}"
+    # Pod Security Admission: enforce the "restricted" profile namespace-wide so a
+    # mis-templated pod cannot run privileged / as root / with host access.
+    pod-security.kubernetes.io/enforce: restricted
+    pod-security.kubernetes.io/enforce-version: latest
+    pod-security.kubernetes.io/warn: restricted

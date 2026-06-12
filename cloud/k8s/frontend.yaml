@@ -1,0 +1,50 @@
+# The Houston Cloud web app (static SPA on nginx). Served over HTTP from the
+# cluster so it shares the control-plane's HTTP scheme (no browser mixed-content
+# on the temporary IP). HTTPS + a domain is a hardening follow-up.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web
+  namespace: houston-system
+  labels:
+    houston.ai/component: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: web
+  template:
+    metadata:
+      labels:
+        app: web
+        houston.ai/component: web
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 101 # nginx-unprivileged
+      containers:
+        - name: web
+          image: us-east1-docker.pkg.dev/gethouston/houston/web:v1
+          ports:
+            - { containerPort: 8080 }
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 3
+            periodSeconds: 10
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 250m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: web
+  namespace: houston-system
+  labels:
+    houston.ai/component: web
+spec:
+  type: LoadBalancer
+  selector:
+    app: web
+  ports:
+    - { name: http, port: 80, targetPort: 8080 }

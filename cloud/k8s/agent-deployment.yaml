@@ -1,0 +1,191 @@
+# Per-agent Deployment + Service template.
+#
+# Cloud Plan §1/§3: "one engine instance IS one agent sandbox". This runs exactly
+# one pi-engine process (the Worker) for one agent, sealed in a gVisor sandbox,
+# mounting only that agent's volume. The SandboxManager creates one of these per
+# agent and scales replicas 1<->0 for wake/sleep (§7).
+#
+# Placeholders the SandboxManager fills before apply:
+#   {{AGENT_ID}}        the AgentId — names the Deployment/Service and labels pods
+#   {{AGENT_NAME}}      human-readable agent name (label only)
+#   {{WORKSPACE_NS}}    the workspace namespace (namespacePrefix + workspace.slug)
+#   {{WORKSPACE_ID}}    owning workspace, for audit
+#   {{IMAGE}}           the pi-engine image ref (config.agentImage), e.g.
+#                       "us-docker.pkg.dev/<proj>/houston/agent-engine:<tag>"
+#   {{RUNTIME_CLASS}}   config.runtimeClass — "gvisor" v1 (Plan §8), "kata" v2
+#   {{PROXY_BASE_URL}}  the control plane keyless-proxy base URL the sandbox's pi-ai points
+#                       baseUrl at (§5), e.g. "https://cp.houston.ai/proxy"
+#   {{CPU_REQUEST}} {{CPU_LIMIT}} {{MEM_REQUEST}} {{MEM_LIMIT}}  resource sizing
+#
+# Two Secrets must already exist in {{WORKSPACE_NS}} (created by the SandboxManager, NOT
+# templated here because they carry sensitive values):
+#   agent-{{AGENT_ID}}-sandbox-token  key "token"  -> the control plane-issued, NON-secret
+#       sandbox token (CredentialVault.sandboxToken). pi-ai sends it to the proxy;
+#       the proxy swaps in the real key. It never holds a real provider key.
+#   agent-{{AGENT_ID}}-engine-token   key "token"  -> the bearer the engine itself
+#       requires on inbound requests (HOUSTON_RUNTIME_TOKEN); the control plane presents it
+#       when routing. This is what SandboxEndpoint.token carries.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: "agent-{{AGENT_ID}}"
+  namespace: "{{WORKSPACE_NS}}"
+  labels:
+    houston.ai/agent-id: "{{AGENT_ID}}"
+    houston.ai/workspace-id: "{{WORKSPACE_ID}}"
+    houston.ai/component: agent-engine
+spec:
+  # Exactly one process per agent. Sleep = scale to 0 (§7); wake = scale to 1.
+  replicas: 1
+  selector:
+    matchLabels:
+      houston.ai/agent-id: "{{AGENT_ID}}"
+  # Recreate (not RollingUpdate): the PVC is ReadWriteOnce, so two pods can never
+  # mount it at once. Tear the old pod down before the new one starts.
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        houston.ai/agent-id: "{{AGENT_ID}}"
+        houston.ai/workspace-id: "{{WORKSPACE_ID}}"
+        houston.ai/component: agent-engine
+        # Selector the NetworkPolicy targets to apply default-deny to this pod.
+        houston.ai/sandbox: "true"
+      annotations:
+        houston.ai/agent-name: "{{AGENT_NAME}}"
+    spec:
+      # gVisor (v1) / Kata (v2): the managed isolation runtime. THIS is the wall
+      # (§2), not pi. Without it the agent's bash would share the host kernel.
+      runtimeClassName: "{{RUNTIME_CLASS}}"
+      serviceAccountName: "agent-{{AGENT_ID}}"
+      # Workload Identity needs the projected SA token mounted so the pod can
+      # authenticate to GCP as its (least-privilege) GSA. Kept true to stay
+      # consistent with serviceaccount.yaml; the metadata endpoint is still
+      # blocked at the network layer (networkpolicy.yaml) as defense in depth.
+      automountServiceAccountToken: true
+      # Pod-level securityContext: never root, no privilege escalation, locked
+      # down to satisfy the namespace's "restricted" Pod Security profile.
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        fsGroupChangePolicy: OnRootMismatch
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: engine
+          image: "{{IMAGE}}"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              # The pi engine's HTTP/SSE port (engine config.ts default 4317).
+              containerPort: 4317
+          env:
+            # --- Cloud mode + keyless proxy wiring (Plan §5) ------------------
+            # Flips the engine into cloud/keyless mode (consumed by the engine's
+            # cloud-mode work; see lead note). Without it the engine would expect
+            # local OAuth (auth.json), which cannot ship to cloud.
+            - name: HOUSTON_CLOUD
+              value: "1"
+            # pi-ai's model.baseUrl points here. The sandbox sends only the
+            # sandbox token; the control plane proxy injects the real workspace key upstream.
+            - name: HOUSTON_PROXY_BASE_URL
+              value: "{{PROXY_BASE_URL}}"
+            # The NON-secret, control plane-issued sandbox token (CredentialVault). Sourced
+            # from a Secret, never a real provider key. Validated by the proxy.
+            - name: HOUSTON_SANDBOX_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: "agent-{{AGENT_ID}}-sandbox-token"
+                  key: token
+            # --- Engine server wiring ----------------------------------------
+            # Bind all interfaces so the in-namespace Service (and thus the control plane)
+            # can reach the engine. Default 127.0.0.1 would be pod-local only.
+            - name: HOUSTON_HOST
+              value: "0.0.0.0"
+            - name: HOUSTON_PORT
+              value: "4317"
+            # Bearer the engine requires on inbound calls; the control plane presents it
+            # when routing (SandboxEndpoint.token). Sourced from a Secret.
+            - name: HOUSTON_RUNTIME_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: "agent-{{AGENT_ID}}-engine-token"
+                  key: token
+            # The agent's workspace == its mounted volume. One agent, one disk.
+            - name: HOUSTON_WORKSPACE_DIR
+              value: /data
+            - name: HOUSTON_DATA_DIR
+              value: /data/.houston
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            # readOnlyRootFilesystem is true (below), so pi/Bun need writable
+            # scratch. /tmp is an ephemeral emptyDir; all durable state goes to
+            # /data (the PVC). Nothing of value lives on the root fs.
+            - name: tmp
+              mountPath: /tmp
+          resources:
+            requests:
+              cpu: "{{CPU_REQUEST}}"
+              memory: "{{MEM_REQUEST}}"
+            limits:
+              cpu: "{{CPU_LIMIT}}"
+              memory: "{{MEM_LIMIT}}"
+          # Readiness: keep the pod out of the Service until the engine answers.
+          # The control plane waits for Ready before routing the first message (ensureAwake).
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 2
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          # Liveness: restart a wedged engine process.
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 3
+            failureThreshold: 4
+          # Container-level hardening (satisfies "restricted" PSA).
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+            capabilities:
+              drop: ["ALL"]
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: "agent-{{AGENT_ID}}-data"
+        - name: tmp
+          emptyDir: {}
+---
+# Stable in-namespace address for the agent's engine. The control plane resolves the
+# SandboxEndpoint.baseUrl to this Service (e.g.
+# http://agent-{{AGENT_ID}}.{{WORKSPACE_NS}}.svc.cluster.local:4317) and proxies the
+# SSE stream through to it (Plan §3/§4).
+apiVersion: v1
+kind: Service
+metadata:
+  name: "agent-{{AGENT_ID}}"
+  namespace: "{{WORKSPACE_NS}}"
+  labels:
+    houston.ai/agent-id: "{{AGENT_ID}}"
+    houston.ai/workspace-id: "{{WORKSPACE_ID}}"
+    houston.ai/component: agent-engine
+spec:
+  type: ClusterIP
+  selector:
+    houston.ai/agent-id: "{{AGENT_ID}}"
+  ports:
+    - name: http
+      port: 4317
+      targetPort: http

@@ -1,0 +1,11 @@
+# Cloud Build context for the web image. We DO want dist/ uploaded (it's the
+# built SPA, normally gitignored), and we drop everything the nginx image
+# doesn't need. Without this file gcloud would fall back to .gitignore and skip dist/.
+node_modules
+src
+public
+*.ts
+*.tsx
+tsconfig.json
+*.md
+.gitignore

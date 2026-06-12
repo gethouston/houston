@@ -1,0 +1,29 @@
+# Builds the two Houston Cloud images (control-plane + runtime) and pushes them
+# to Artifact Registry. Run from the repo root:
+#   gcloud builds submit --config cloud/cloudbuild.yaml --project gethouston .
+# (No local Docker needed — Cloud Build builds in GCP.)
+steps:
+  - name: gcr.io/cloud-builders/docker
+    id: control-plane
+    args:
+      - build
+      - -f
+      - packages/control-plane/Dockerfile
+      - -t
+      - us-east1-docker.pkg.dev/gethouston/houston/control-plane:v7
+      - .
+  - name: gcr.io/cloud-builders/docker
+    id: runtime
+    args:
+      - build
+      - -f
+      - packages/runtime/Dockerfile
+      - -t
+      - us-east1-docker.pkg.dev/gethouston/houston/runtime:v6
+      - .
+images:
+  - us-east1-docker.pkg.dev/gethouston/houston/control-plane:v7
+  - us-east1-docker.pkg.dev/gethouston/houston/runtime:v6
+options:
+  machineType: E2_HIGHCPU_8
+timeout: 1800s

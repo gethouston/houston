@@ -1,4 +1,5 @@
 import { listen } from "@tauri-apps/api/event";
+import { isTauri } from "@tauri-apps/api/core";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, isAuthConfigured } from "./supabase";
 import { queryClient } from "./query-client";
@@ -46,6 +47,19 @@ async function signInWithProvider(
   }
 
   pendingProvider = provider;
+
+  // Web build (no Tauri webview / deep link): a normal in-browser redirect to
+  // `/auth/callback`, where Supabase's URL sniffer (detectSessionInUrl) trades
+  // the `?code=` for a session. The desktop flow below opens the system browser
+  // and waits for the `houston://` deep link instead.
+  if (!isTauri()) {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider,
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) throw error;
+    return; // Supabase navigates the page to the consent screen.
+  }
 
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider,

@@ -29,10 +29,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        // New-engine mode (see `useNewEngine` above): route
-        // @houston-ai/engine-client through the new-engine adapter so the whole
-        // desktop UI runs on the new TS engine (packages/engine).
-        ...(useNewEngine
+        // New-engine mode (see `useNewEngine` above) and cloud mode
+        // (VITE_CONTROL_PLANE_URL) both route @houston-ai/engine-client through
+        // the new-engine adapter so the whole desktop UI runs on the new TS
+        // runtime / the control plane.
+        ...(useNewEngine || env.VITE_CONTROL_PLANE_URL
           ? [
               {
                 find: "@houston-ai/engine-client",
@@ -75,6 +76,7 @@ export default defineConfig(({ mode }) => {
     // (mirrors app/vite.config.ts).
     optimizeDeps: {
       exclude: [
+        "@houston/runtime-client",
         "@houston-ai/chat",
         "@houston-ai/core",
         "@houston-ai/board",

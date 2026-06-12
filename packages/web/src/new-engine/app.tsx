@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useMemo, useState } from "react";
-import { HoustonEngineClient, type AuthStatus } from "@houston/engine-client";
+import { HoustonEngineClient, type AuthStatus } from "@houston/runtime-client";
 import { ConnectView } from "./connect";
 import { ui } from "./styles";
 
@@ -17,10 +17,13 @@ const AppTree = lazy(() => import("../app-tree"));
 export function WebApp({
   baseUrl,
   token,
+  cloud,
   onChangeEngine,
 }: {
   baseUrl: string;
   token?: string;
+  /** Cloud (control-plane) mode: skip the per-runtime OAuth gate. */
+  cloud?: boolean;
   onChangeEngine?: () => void;
 }) {
   const client = useMemo(
@@ -36,7 +39,17 @@ export function WebApp({
       .then((s) => { setStatus(s); setError(null); })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
 
-  useEffect(() => { void refresh(); }, [client]);
+  // Cloud is keyless (Supabase auth + control-plane credentials): there is no
+  // per-runtime OAuth gate, so skip the auth probe and mount the app directly.
+  useEffect(() => { if (!cloud) void refresh(); }, [client, cloud]);
+
+  if (cloud) {
+    return (
+      <Suspense fallback={<div style={ui.page}><div style={ui.muted}>Loading Houston…</div></div>}>
+        <AppTree />
+      </Suspense>
+    );
+  }
 
   if (error && !status) {
     return (

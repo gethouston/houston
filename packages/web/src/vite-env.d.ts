@@ -23,4 +23,6 @@ interface ImportMetaEnv {
 // that module's global augmentation (compatible merge).
 interface Window {
   __HOUSTON_ENGINE__?: { baseUrl: string; token: string };
+  /** When true, the engine-adapter routes agents + chat through the control plane (cloud). */
+  __HOUSTON_CP__?: boolean;
 }

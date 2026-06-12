@@ -1,0 +1,29 @@
+# Kustomization bundling the per-agent + per-workspace manifests.
+#
+# These are TEMPLATES, not directly-appliable manifests: they carry {{...}}
+# placeholders the SandboxManager substitutes per workspace/agent at spawn time.
+# This kustomization exists to (a) lint/validate the set as a unit
+# (`kustomize build cloud/k8s`) and (b) document apply order.
+#
+# Apply order matters: namespace -> serviceaccount -> pvc -> networkpolicy ->
+# deployment. kustomize emits Namespace first; the SandboxManager applies the
+# workspace-scoped resources (namespace, networkpolicy) once per workspace and the
+# agent-scoped resources (serviceaccount, pvc, deployment) once per agent.
+#
+# NOTE: the two Secrets the Deployment references
+# (agent-<id>-sandbox-token, agent-<id>-engine-token) are intentionally NOT
+# listed here — they carry sensitive values and are created imperatively by the
+# SandboxManager (from CredentialVault / the engine token), never committed.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - namespace.yaml
+  - serviceaccount.yaml
+  - pvc.yaml
+  - networkpolicy.yaml
+  - agent-deployment.yaml
+
+# Common labels stamped on every object for cross-cutting selection/audit.
+commonLabels:
+  houston.ai/managed-by: control-plane

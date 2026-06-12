@@ -1,0 +1,106 @@
+# Per-workspace (per-namespace) NetworkPolicy — the §2 "default-deny networking" wall.
+#
+# Cloud Plan §2.3 / §8: sandboxes get outbound internet (tools need it) but NO
+# path to each other, to internal infra, or to the cloud metadata endpoint
+# (169.254.169.254). Ingress is allowed ONLY from the control plane. This is the third of
+# the three walls; the filesystem wall (§2.1) is worthless without it.
+#
+# Requires a NetworkPolicy-enforcing CNI (GKE Autopilot ships Calico/Cilium;
+# Agent Sandbox relies on it). On a cluster with no enforcer these rules are
+# silently inert — verify enforcement during P7 (Plan §9).
+#
+# Placeholders the SandboxManager fills before apply:
+#   {{WORKSPACE_NS}}  the workspace namespace this policy lives in
+#   {{WORKSPACE_ID}}  owning workspace, for audit
+#   {{CP_NS}}       the namespace the control plane control plane runs in (ingress source)
+#   {{POD_CIDR}}      the cluster Pod CIDR to BLOCK on egress (e.g. 10.0.0.0/14)
+#   {{SERVICE_CIDR}}  the cluster Service CIDR to BLOCK on egress (e.g. 10.4.0.0/20)
+#
+# NOTE: {{POD_CIDR}}/{{SERVICE_CIDR}} are excised from the egress allow block
+# below (the "except" lists) so that "allow the internet" never accidentally
+# permits agent->agent or agent->internal-Service traffic.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: "agent-sandbox-isolation"
+  namespace: "{{WORKSPACE_NS}}"
+  labels:
+    houston.ai/workspace-id: "{{WORKSPACE_ID}}"
+    houston.ai/component: agent-network-policy
+spec:
+  # Apply to every agent-engine pod in the namespace.
+  podSelector:
+    matchLabels:
+      houston.ai/sandbox: "true"
+  # Selecting both types with the rules below means: default-deny everything,
+  # then re-allow ONLY what the rules name.
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    # ALLOW INGRESS — only from the control plane control plane, only to the engine port.
+    # The control plane is the single front door (Plan §3); nothing else may open a
+    # connection to the sandbox — not the browser, not another agent.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              houston.ai/component: control-plane
+      ports:
+        - protocol: TCP
+          port: 4317
+
+  egress:
+    # ALLOW EGRESS (1/3) — DNS. Pods must resolve names to reach the internet.
+    # Scoped to kube-dns in kube-system on 53/udp+tcp; not "anywhere".
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+
+    # ALLOW EGRESS (2/3) — outbound HTTPS to the public internet ONLY.
+    # 443 is all an agent's tools need. The ipBlock is 0.0.0.0/0 minus the
+    # ranges we must keep it OUT of, enforced by the `except` list:
+    #   169.254.169.254/32 — GKE/GCP metadata server. Blocked so the agent can
+    #                        never mint node/Workload-Identity tokens over HTTP
+    #                        (defense in depth alongside the scoped GSA).
+    #   169.254.0.0/16     — the rest of link-local (metadata lives here too).
+    #   {{POD_CIDR}}       — every other agent pod. No agent->agent reachability.
+    #   {{SERVICE_CIDR}}   — every internal Service / ClusterIP. No internal infra.
+    #   10/172.16/192.168  — RFC-1918 private space. Blocks any other internal
+    #                        endpoint (shared DBs, internal APIs) the §2 model
+    #                        forbids a differently-scoped agent from reaching.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 169.254.169.254/32
+              - 169.254.0.0/16
+              - "{{POD_CIDR}}"
+              - "{{SERVICE_CIDR}}"
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+
+    # ALLOW EGRESS (3/3) — return path to the control plane. The keyless LLM proxy (§5)
+    # and any control plane-side callbacks live in the control plane namespace; the agent's pi-ai
+    # baseUrl points at the proxy, so the sandbox MUST be able to reach the control plane
+    # even though the rest of the cluster is blocked above. Scoped to the control plane
+    # namespace only.
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              houston.ai/component: control-plane
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 8080

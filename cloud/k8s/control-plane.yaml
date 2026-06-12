@@ -1,0 +1,169 @@
+# The Houston control plane itself: auth + workspace/agent storage + per-agent
+# sandbox lifecycle (legacy gke runtime) + per-turn cloudrun dispatch +
+# routing/SSE. Deployed into `houston-system`.
+#
+# Secrets are NOT here — they are created imperatively from .context/cloud.env
+# at deploy time (never committed):
+#   kubectl -n houston-system create secret generic control-plane-secrets \
+#     --from-literal=database-url="$CP_DATABASE_URL" \
+#     --from-literal=sandbox-token-secret="$(openssl rand -hex 32)" \
+#     --from-literal=turn-token="<value of Secret Manager houston-turn-token>"
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: houston-system
+  labels:
+    houston.ai/component: control-plane
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: control-plane
+  namespace: houston-system
+---
+# The control plane creates per-agent namespaces + workloads on demand, so it
+# needs cluster-wide rights over exactly the resources its SandboxManager touches.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: houston-control-plane
+rules:
+  - apiGroups: [""]
+    resources: [namespaces, services, persistentvolumeclaims, secrets, pods]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    # deployments/scale is a SEPARATE RBAC resource from deployments — the
+    # SandboxManager patches it to wake a slept sandbox, so it must be granted
+    # explicitly or the scale patch 403s.
+    resources: [deployments, deployments/scale]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: houston-control-plane
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: houston-control-plane
+subjects:
+  - kind: ServiceAccount
+    name: control-plane
+    namespace: houston-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-plane
+  namespace: houston-system
+  labels:
+    houston.ai/component: control-plane
+spec:
+  replicas: 1
+  # Zero-downtime deploys: bring the replacement up and Ready BEFORE the old
+  # pod drains (the pod itself drains gracefully on SIGTERM — see
+  # packages/control-plane/src/shutdown.ts). True multi-replica HA needs the
+  # in-memory turn relay/connect state moved to a shared bus first.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: control-plane
+  template:
+    metadata:
+      labels:
+        app: control-plane
+        houston.ai/component: control-plane
+    spec:
+      serviceAccountName: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      # SIGTERM → drain in-flight requests; SSE streams are force-closed after
+      # the app's 20s grace, so 30s covers drain + exit comfortably.
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: control-plane
+          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:v7
+          # Endpoint removal from the LB races SIGTERM delivery; sleeping a few
+          # seconds before SIGTERM lets kube-proxy/LB converge so no request
+          # lands on a terminating pod.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+          ports:
+            - { containerPort: 8080, name: api }
+          env:
+            - { name: CP_HOST, value: "0.0.0.0" }
+            - { name: CP_PORT, value: "8080" }
+            # The per-agent sandbox image + how the SandboxManager schedules pods.
+            - { name: CP_AGENT_IMAGE, value: "us-east1-docker.pkg.dev/gethouston/houston/runtime:v6" }
+            - { name: CP_NAMESPACE_PREFIX, value: "ws-" }
+            # Empty for the first deploy (no gVisor): agent pods get standard
+            # per-pod + per-volume + NetworkPolicy isolation. gVisor/Kata later.
+            - { name: CP_RUNTIME_CLASS, value: "" }
+            # Supabase token verification (asymmetric ES256 → JWKS, no secret).
+            - { name: CP_SUPABASE_JWKS_URL, value: "https://zfpnlvxazrataiannvtq.supabase.co/auth/v1/.well-known/jwks.json" }
+            - { name: CP_SUPABASE_JWT_ISSUER, value: "https://zfpnlvxazrataiannvtq.supabase.co/auth/v1" }
+            # Per-turn Cloud Run hosting (cloudrun workspaces). Set the URL after
+            # cloud/scripts/06-runtime.sh prints it; bucket must match the runtime.
+            - { name: CP_TURN_RUNTIME_URL, value: "https://houston-turn-runtime-3lcmczurpa-ue.a.run.app" }
+            - { name: CP_GCS_BUCKET, value: "gethouston-workspaces" }
+            - { name: CP_DEFAULT_RUNTIME, value: "cloudrun" }
+            - name: CP_TURN_TOKEN
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: turn-token, optional: true }
+            # Secrets (created imperatively — see header).
+            - name: CP_DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: database-url }
+            - name: CP_SANDBOX_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: sandbox-token-secret }
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+# External entry point the frontend talks to (API on 8080, exposed on :80).
+apiVersion: v1
+kind: Service
+metadata:
+  name: control-plane
+  namespace: houston-system
+  labels:
+    houston.ai/component: control-plane
+spec:
+  type: LoadBalancer
+  selector:
+    app: control-plane
+  ports:
+    - { name: api, port: 80, targetPort: 8080 }
+---
+# Voluntary disruptions (node drains/upgrades) must wait for a replacement:
+# with one replica this makes GKE Autopilot surge-then-drain instead of
+# kill-then-reschedule, closing the brief 502 window on node maintenance.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: control-plane
+  namespace: houston-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: control-plane

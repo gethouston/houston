@@ -3,10 +3,14 @@ packages:
   - "app"
   - "mobile"
   - "packages/*"
-  # packages/engine is intentionally NOT a pnpm member — it is a self-contained
-  # Bun project (see packages/engine/README.md). Everything else under packages/*
+  # packages/runtime is intentionally NOT a pnpm member — it is a self-contained
+  # Bun project (see packages/runtime/README.md). Everything else under packages/*
   # (web, engine-client) is pnpm-managed.
-  - "!packages/engine"
+  - "!packages/runtime"
+  # packages/control-plane is likewise a self-contained Bun service (the cloud control plane).
+  - "!packages/control-plane"
+  # packages/code-sandbox is the per-task code-execution box (Cloud Run); also a self-contained Bun service.
+  - "!packages/code-sandbox"
   - "houston-relay"
   - "examples/*"
 

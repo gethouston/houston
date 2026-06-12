@@ -7,7 +7,7 @@
  * in the entry chunk, before the app's Tailwind/i18n stack loads.
  */
 import { useState, type FormEvent } from "react";
-import { HoustonEngineClient } from "@houston/engine-client";
+import { HoustonEngineClient } from "@houston/runtime-client";
 import { ui } from "./styles";
 import type { EngineConfig } from "../engine-config";
 

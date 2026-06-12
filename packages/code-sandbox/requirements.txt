@@ -1,0 +1,10 @@
+# Python "batteries" baked into the sandbox image so the common agent tasks work
+# without a per-run pip install (which would add network + cold-start latency).
+# Keep this list curated and small — every addition grows the image and the cold
+# start. Anything exotic, the agent can pip-install at runtime within its task.
+python-pptx==1.0.2     # PowerPoint decks (the headline use case)
+openpyxl==3.1.5        # xlsx spreadsheets
+pandas==2.2.3          # tabular data
+matplotlib==3.9.2      # charts/plots
+Pillow==11.0.0         # image manipulation
+requests==2.32.3       # HTTP (subject to the sandbox egress policy)

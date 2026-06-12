@@ -73,6 +73,7 @@ Need specific knowledge? Load on demand:
 - Windows testing loop from a Mac (UTM VM, SSH bridge, cross-compile, log fetch) → `knowledge-base/windows-testing.md`
 - Custom frontend on `houston-engine` (integration reference) → `examples/smartbooks/README.md`
 - Mobile PWA (tunnel, pairing, reactivity) → `docs/mobile-architecture.md` + `docs/relay-operations.md`
+- Houston Cloud (control plane, per-turn runtime, code sandbox, credential model) → `cloud/README.md` + `cloud/code-execution.md`
 - Updater, analytics, Sentry, env vars, CI → `knowledge-base/production-infra.md`
 - Daily/weekly/monthly data rituals + dashboard reading guide → `knowledge-base/data-rituals.md`
 - UTM conventions, campaign attribution, IRL event tracking → `growth/utm-conventions.md` + `growth/campaigns/_template.md` + `scripts/event-qr.sh`
