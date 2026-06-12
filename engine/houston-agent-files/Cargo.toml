@@ -1,6 +1,6 @@
 [package]
 name = "houston-agent-files"
-version = "0.4.22"
+version = "0.4.23"
 edition = "2021"
 description = "Generic read/write access to agent files under .houston/<type>/<type>.json with JSON Schema co-location"
 license = "MIT"
