@@ -37,7 +37,7 @@ pub use codex_parser::{extract_thread_id, parse_codex_event, CodexAccumulator};
 pub use gemini_parser::{parse_gemini_event, GeminiAccumulator};
 pub use manager::{SessionHandle, SessionManager};
 pub use parser::{extract_session_id, parse_event, StreamAccumulator};
-pub use provider::{InstallSource, Provider, ProviderAdapter};
+pub use provider::{InstallSource, LoginFailureHint, Provider, ProviderAdapter};
 pub use provider_auth::ProviderAuthState;
 pub use provider_error_kind::{
     AuthFailureCause, ModelUnavailableReason, ProviderError, QuotaScope,

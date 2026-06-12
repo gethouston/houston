@@ -32,6 +32,7 @@ import type {
 import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
+import { engineCallSurface } from "./engine-call-policy";
 import { MISSING_SKILL_KIND } from "./missing-skill";
 import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
@@ -79,10 +80,6 @@ async function surfaceError(
     err instanceof Error ? err.message : typeof err === "string" ? err : String(err);
   logger.error(`[engine:${label}] ${message}`, context ? JSON.stringify(context) : undefined);
 
-  // Aborted requests (user typed again, navigated away, cancelled a sign-in)
-  // are expected, not failures — never toast or report them.
-  if (err instanceof Error && err.name === "AbortError") return;
-
   // Expected, explainable engine errors the caller surfaces inline. Logged
   // above for the local log tail, but no red bug toast and no Sentry report.
   const kind =
@@ -91,8 +88,12 @@ async function surfaceError(
       : undefined;
   if (typeof kind === "string" && options?.silenceKinds?.includes(kind)) return;
 
-  const shouldToast = options?.toast !== false;
-  const shouldCapture = options?.capture !== false;
+  // Aborted requests are expected; `toast: false` callers render their own
+  // failure UI but the error is still captured. See `engineCallSurface`.
+  const { toast: shouldToast, capture: shouldCapture } = engineCallSurface(
+    err instanceof Error ? err.name : undefined,
+    options,
+  );
   if (!shouldToast && !shouldCapture) return;
 
   const { showErrorToast, reportError } = await import("./error-toast");
@@ -822,8 +823,18 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  launchLogin: (provider: string, opts?: { deviceAuth?: boolean }) =>
-    call<void>("launch_provider_login", () => getEngine().providerLogin(provider, opts)),
+  launchLogin: (provider: string, opts?: { deviceAuth?: boolean; toast?: boolean }) =>
+    call<void>(
+      "launch_provider_login",
+      () => getEngine().providerLogin(provider, opts),
+      undefined,
+      // Callers that render their OWN failure toast (the picker, settings, and
+      // the Gemini dialog) pass `toast: false` so `call`'s generic toast does
+      // not fire on top of theirs — the engine error message showed twice
+      // otherwise. Sentry capture still happens. Callers that surface the
+      // failure inline (reconnect cards / banner) omit it and keep this toast.
+      opts?.toast === false ? { toast: false } : undefined,
+    ),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
   /**

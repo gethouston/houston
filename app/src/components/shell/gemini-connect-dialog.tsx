@@ -91,7 +91,9 @@ export function GeminiConnectDialog({
       // `oauth-personal` method, gemini-cli opens the user's browser.
       // The call returns once gemini-cli has acknowledged the request
       // (it's then waiting on the browser flow externally).
-      await tauriProvider.launchLogin(provider.id);
+      // `toast: false`: the catch below renders its own failure toast, so
+      // `call` must not also toast the same message (it showed twice).
+      await tauriProvider.launchLogin(provider.id, { toast: false });
       // Hand off to the picker's polling loop — it watches
       // `checkStatus("gemini")` every 1.5-2s and flips to Connected
       // when gemini-cli writes its credential files. Close the dialog
