@@ -68,8 +68,8 @@
       "minutes": { "one": "minute", "other": "minutes" },
       "hours": { "one": "hour", "other": "hours" },
       "days": { "one": "day", "other": "days" },
-      "weeks": { "one": "week", "other": "weeks" },
-      "months": { "one": "month", "other": "months" }
+      "weeks": { "one": "weekly", "other": "weekly" },
+      "months": { "one": "monthly", "other": "months" }
     },
     "timeLabel": "Time",
     "dayLabel": "Day",
