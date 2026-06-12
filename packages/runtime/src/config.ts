@@ -44,6 +44,15 @@ export const config = {
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
 
   /**
+   * Override for the skills directory. Default is <workspace>/.agents/skills —
+   * the Agent Skills standard (SKILL.md folders), the same layout Houston has
+   * always kept on disk. An absent directory simply means no skills.
+   */
+  skillsDirOverride: env.HOUSTON_SKILLS_DIR || "",
+  /** Product system prompt injected by the host/app. Empty = built-in default. */
+  systemPrompt: env.HOUSTON_SYSTEM_PROMPT || "",
+
+  /**
    * Server mode. "server" (default) = the long-lived per-workspace HTTP server.
    * "turn" = the stateless per-turn cloud runtime: POST /turn hydrates the
    * agent's object-storage prefix, runs one pi turn, syncs back, wipes.

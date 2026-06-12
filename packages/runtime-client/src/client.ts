@@ -138,6 +138,26 @@ export class HoustonEngineClient {
       { method: "POST" },
     );
   }
+  renameConversation(id: string, title: string) {
+    return this.json<{ ok: boolean }>(`/conversations/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ title }),
+    });
+  }
+  /** Delete the conversation: transcript, live session, and pi session history. */
+  deleteConversation(id: string) {
+    return this.json<{ ok: boolean }>(`/conversations/${encodeURIComponent(id)}`, {
+      method: "DELETE",
+    });
+  }
+  /** Generate + persist a short LLM title; returns it. */
+  summarizeTitle(id: string) {
+    return this.json<{ title: string }>(
+      `/conversations/${encodeURIComponent(id)}/title`,
+      { method: "POST" },
+    );
+  }
 
   /**
    * Send a message, triggering a turn. Resolves once the turn is accepted (202);

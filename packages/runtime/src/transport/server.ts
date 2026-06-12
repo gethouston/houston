@@ -3,9 +3,15 @@ import { config } from "../config";
 import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
-import { runTurn, cancelTurn } from "../session/chat";
+import { runTurn, cancelTurn, disposeConversation } from "../session/chat";
+import { summarizeTitle } from "../session/summarize";
 import { snapshot, subscribe } from "../session/bus";
-import { getHistory, listConversations } from "../store/conversations";
+import {
+  deleteConversation,
+  getHistory,
+  listConversations,
+  renameConversation,
+} from "../store/conversations";
 import { applyCors } from "./cors";
 import { openSSE } from "./sse";
 
@@ -100,7 +106,29 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, listConversations());
   }
 
-  const convMatch = path.match(/^\/conversations\/([^/]+)\/(messages|events|cancel)$/);
+  // Rename / delete a conversation. Delete also drops the live pi session and
+  // its on-disk session history — the conversation is gone, not just hidden.
+  const convRootMatch = path.match(/^\/conversations\/([^/]+)$/);
+  if (convRootMatch) {
+    const id = decodeURIComponent(convRootMatch[1]);
+    if (method === "PATCH") {
+      const { title } = await readJson(req);
+      if (!title || typeof title !== "string") {
+        return json(res, 400, { error: "missing 'title'" });
+      }
+      return renameConversation(id, title)
+        ? json(res, 200, { ok: true })
+        : json(res, 404, { error: "conversation not found" });
+    }
+    if (method === "DELETE") {
+      await disposeConversation(id, { deleteSessions: true });
+      return deleteConversation(id)
+        ? json(res, 200, { ok: true })
+        : json(res, 404, { error: "conversation not found" });
+    }
+  }
+
+  const convMatch = path.match(/^\/conversations\/([^/]+)\/(messages|events|cancel|title)$/);
   if (convMatch) {
     const id = decodeURIComponent(convMatch[1]);
     const action = convMatch[2];
@@ -131,6 +159,18 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     if (method === "POST" && action === "cancel") {
       await cancelTurn(id);
       return json(res, 200, { ok: true });
+    }
+
+    // Generate + persist a short LLM title for the conversation.
+    if (method === "POST" && action === "title") {
+      try {
+        const title = await summarizeTitle(id);
+        return title
+          ? json(res, 200, { title })
+          : json(res, 404, { error: "conversation not found" });
+      } catch (e) {
+        return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      }
     }
 
     // Start a turn. Fire-and-forget: the turn's events arrive on the events

@@ -9,8 +9,10 @@ import type {
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,
+  deleteConversationAt,
   getHistoryAt,
   listConversationsAt,
+  renameConversationAt,
 } from "./conversation-file";
 
 /**
@@ -39,4 +41,12 @@ export function getHistory(id: string): ConversationHistory | null {
 
 export function listConversations(): ConversationSummary[] {
   return listConversationsAt(dir);
+}
+
+export function renameConversation(id: string, title: string): boolean {
+  return renameConversationAt(dir, id, title);
+}
+
+export function deleteConversation(id: string): boolean {
+  return deleteConversationAt(dir, id);
 }

@@ -5,6 +5,7 @@ import {
   readFileSync,
   readdirSync,
   renameSync,
+  rmSync,
   writeFileSync,
 } from "node:fs";
 import type {
@@ -79,6 +80,22 @@ export function appendAssistantMessageAt(
   });
   conv.updatedAt = Date.now();
   save(dir, conv);
+}
+
+export function renameConversationAt(dir: string, id: string, title: string): boolean {
+  const conv = loadConversation(dir, id);
+  if (!conv) return false;
+  conv.title = title;
+  conv.updatedAt = Date.now();
+  save(dir, conv);
+  return true;
+}
+
+export function deleteConversationAt(dir: string, id: string): boolean {
+  const f = fileFor(dir, id);
+  if (!existsSync(f)) return false;
+  rmSync(f);
+  return true;
 }
 
 export function getHistoryAt(dir: string, id: string): ConversationHistory | null {

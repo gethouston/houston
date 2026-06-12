@@ -50,6 +50,11 @@ Codex is headless either way (device code). See `src/auth/anthropic-headless.ts`
 | `HOUSTON_RUNTIME_TOKEN` | _(unset)_ | Bearer token; unset = open (local dev) |
 | `HOUSTON_HEADLESS` | _(inferred)_ | Force the headless Claude login (copy-paste code, no loopback). Inferred from a non-loopback `HOUSTON_HOST`; set `1` to force it, `0` to force loopback |
 | `HOUSTON_CORS_ORIGIN` | `*` | Allowed CORS origin for the webapp |
+| `HOUSTON_SKILLS_DIR` | `<workspace>/.agents/skills` | SKILL.md skills dir (Agent Skills standard); absent dir = no skills |
+| `HOUSTON_SYSTEM_PROMPT` | _(built-in)_ | Product system prompt injected by the host/app |
+
+The agent also reads the workspace-root context file (`AGENTS.md` else
+`CLAUDE.md`, root only — never ancestor directories) as its role/instructions.
 
 ## Deploy (Docker / VPS)
 
@@ -132,6 +137,5 @@ model via `PUT /settings`.
 
 ## Not yet built (next)
 
-In-process permission gating for tools, context-resume across engine restarts,
-conversation management (rename/delete). (API-key auth intentionally dropped —
-OAuth only.) See the plan file.
+In-process permission gating for tools, context-resume across engine restarts.
+(API-key auth intentionally dropped — OAuth only.) See the plan file.

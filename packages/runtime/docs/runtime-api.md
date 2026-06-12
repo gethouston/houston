@@ -40,6 +40,9 @@ auth is a bearer token, not a cookie). Lock down with `HOUSTON_CORS_ORIGIN=https
 | GET | `/conversations/:id/events` | — | **SSE stream** of `WireEvent` for this conversation only |
 | POST | `/conversations/:id/messages` | `{ text, nonce? }` | `202 { ok, id }` — starts a turn; events arrive on the events stream |
 | POST | `/conversations/:id/cancel` | — | `{ ok }` — abort the in-flight turn |
+| PATCH | `/conversations/:id` | `{ title }` | `{ ok }` — rename (404 if unknown) |
+| DELETE | `/conversations/:id` | — | `{ ok }` — delete transcript + live session + pi session history (404 if unknown) |
+| POST | `/conversations/:id/title` | — | `{ title }` — generate + persist a short LLM title (404 if unknown/empty) |
 
 `:id` is any client-chosen conversation id (use a uuid — `crypto.randomUUID()`).
 A conversation is materialized on its first message; there is no explicit create.

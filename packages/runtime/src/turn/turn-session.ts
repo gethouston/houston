@@ -9,7 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { ToolCallRecord, WireEvent } from "@houston/runtime-client";
 import { config } from "../config";
-import { makeHeadlessLoader } from "../session/resource-loader";
+import { makeAgentLoader } from "../session/resource-loader";
 import { toWire } from "../session/wire";
 import { CLAMPED_FILE_TOOL_NAMES, makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeRunCodeTool } from "../session/tools/run-code";
@@ -69,7 +69,7 @@ export async function runPiTurn(
   try {
     const authStorage = AuthStorage.create(join(dataDir, "auth.json"));
     const modelRegistry = ModelRegistry.create(authStorage, join(dataDir, "models.json"));
-    const loader = makeHeadlessLoader(workspaceDir);
+    const loader = makeAgentLoader(workspaceDir);
     await loader.reload();
 
     const sandbox = config.codeSandboxUrl

@@ -3,13 +3,14 @@ import {
   SessionManager,
   type AgentSession,
 } from "@earendil-works/pi-coding-agent";
+import { rmSync } from "node:fs";
 import { join } from "node:path";
 import type { ToolCallRecord } from "@houston/runtime-client";
 import { toWire } from "./wire";
 import { config } from "../config";
 import { authStorage, modelRegistry } from "../auth/storage";
 import { resolveModel } from "../ai/providers";
-import { makeHeadlessLoader } from "./resource-loader";
+import { makeAgentLoader } from "./resource-loader";
 import { appendAssistantMessage, appendUserMessage } from "../store/conversations";
 import { publish } from "./bus";
 import { syncServedCredential } from "../auth/serve";
@@ -57,7 +58,7 @@ async function getConversation(id: string): Promise<Conversation> {
   const existing = conversations.get(id);
   if (existing) return existing;
 
-  const loader = makeHeadlessLoader(config.workspaceDir);
+  const loader = makeAgentLoader(config.workspaceDir);
   await loader.reload();
 
   // Continue this conversation's pi session if one is already on disk, else start
@@ -162,4 +163,24 @@ export async function runTurn(id: string, text: string, nonce?: string): Promise
 export async function cancelTurn(id: string): Promise<void> {
   const conv = conversations.get(id);
   if (conv) await conv.session.abort();
+}
+
+/**
+ * Drop a conversation's live session (aborting any in-flight turn) and, when
+ * requested, its on-disk pi session history. Used by DELETE /conversations/:id;
+ * the transcript file itself is the store's job (deleteConversation).
+ */
+export async function disposeConversation(
+  id: string,
+  opts?: { deleteSessions?: boolean },
+): Promise<void> {
+  const conv = conversations.get(id);
+  if (conv) {
+    conversations.delete(id);
+    await conv.session.abort();
+    conv.session.dispose();
+  }
+  if (opts?.deleteSessions) {
+    rmSync(join(config.dataDir, "sessions", id), { recursive: true, force: true });
+  }
 }
