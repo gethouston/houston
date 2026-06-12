@@ -1,3 +1,5 @@
+import { getOAuthProvider } from "@earendil-works/pi-ai/oauth";
+import type { LoginInfo } from "@houston/runtime-client";
 import { authStorage } from "./storage";
 import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
 
@@ -5,14 +7,11 @@ import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
  *
  * - anthropic (Claude): PKCE. Locally the loopback (127.0.0.1:53692) catches the
- *   redirect; remotely the user pastes the code (completeLogin).
+ *   redirect (`url`). Headless, the user pastes the code Claude shows (`auth_code`
+ *   + completeLogin) — see auth/anthropic-headless.ts.
  * - openai-codex (ChatGPT/Codex): device code — user enters a code on their own
  *   device while the runtime polls. Fully headless.
  */
-
-export type LoginInfo =
-  | { kind: "url"; url: string }
-  | { kind: "device_code"; verificationUri: string; userCode: string };
 
 type LoginState = {
   status: "starting" | "awaiting_user" | "complete" | "error";
@@ -64,8 +63,12 @@ export async function startLogin(providerId: string): Promise<LoginInfo> {
 
   void authStorage
     .login(provider, {
-      onAuth: ({ url }) => {
-        state.info = { kind: "url", url };
+      onAuth: ({ url, instructions }) => {
+        // A provider with no loopback server (the headless Claude flow) can't
+        // catch a redirect — the user must paste the code back. Signal that to
+        // the webapp with `auth_code` so it shows a paste box.
+        const needsCode = getOAuthProvider(provider)?.usesCallbackServer === false;
+        state.info = needsCode ? { kind: "auth_code", url, instructions } : { kind: "url", url };
         state.status = "awaiting_user";
         resolveInfo(state.info);
       },

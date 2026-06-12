@@ -17,14 +17,23 @@ const shim = (file: string) => path.resolve(__dirname, "src/shims", file);
 
 export default defineConfig(({ mode }) => {
   const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
+  // Target the new TS engine (packages/engine) when VITE_NEW_ENGINE is truthy,
+  // or when a URL is baked via VITE_NEW_ENGINE_URL. In that mode we swap the
+  // engine client for the new-engine adapter so the entire desktop UI (app/src)
+  // runs on the new engine. Otherwise the old-engine path is untouched.
+  const useNewEngine =
+    env.VITE_NEW_ENGINE === "1" ||
+    env.VITE_NEW_ENGINE === "true" ||
+    Boolean(env.VITE_NEW_ENGINE_URL);
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        // When VITE_NEW_ENGINE_URL is set, swap the engine client for the
-        // new-engine adapter so the entire desktop UI runs on the new TS engine
-        // (packages/engine). Unset → the original old-engine path is untouched.
-        ...(env.VITE_NEW_ENGINE_URL || env.VITE_CONTROL_PLANE_URL
+        // New-engine mode (see `useNewEngine` above) and cloud mode
+        // (VITE_CONTROL_PLANE_URL) both route @houston-ai/engine-client through
+        // the new-engine adapter so the whole desktop UI runs on the new TS
+        // runtime / the control plane.
+        ...(useNewEngine || env.VITE_CONTROL_PLANE_URL
           ? [
               {
                 find: "@houston-ai/engine-client",

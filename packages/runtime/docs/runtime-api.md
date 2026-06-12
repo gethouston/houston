@@ -1,6 +1,6 @@
-# Houston Runtime API (for the webapp)
+# Houston Engine API (for the webapp)
 
-The runtime is a single-workspace, single-user HTTP server. The webapp talks to it
+The engine is a single-workspace, single-user HTTP server. The webapp talks to it
 over **REST for commands + SSE for live conversation events**. The typed contract +
 client live in **`@houston/runtime-client`** — prefer that over hand-rolling fetch.
 
@@ -10,10 +10,10 @@ client live in **`@houston/runtime-client`** — prefer that over hand-rolling f
 
 ## Auth
 
-- If the runtime is started with `HOUSTON_RUNTIME_TOKEN`, send `Authorization: Bearer <token>`
+- If the engine is started with `HOUSTON_RUNTIME_TOKEN`, send `Authorization: Bearer <token>`
   on every request (the SSE stream also accepts `?token=<token>`).
 - If unset (local dev on loopback), the API is open.
-- `GET /` and `GET /health` are always public.
+- `GET /health` and `GET /version` are always public.
 
 ## CORS
 
@@ -32,8 +32,8 @@ auth is a bearer token, not a cookie). Lock down with `HOUSTON_CORS_ORIGIN=https
 | GET | `/providers` | — | `ProviderInfo[]` (id, name, configured, isActive, activeModel, models) |
 | PUT | `/settings` | `{ activeProvider?, model? }` | `Settings` |
 | GET | `/auth/status` | — | `AuthStatus` (per-provider) |
-| POST | `/auth/:provider/login` | — | `LoginInfo` — `{kind:"url",url}` (Claude) or `{kind:"device_code",verificationUri,userCode}` (Codex) |
-| POST | `/auth/:provider/login/complete` | `{ code }` | `{ ok }` — paste-code (Anthropic remote) |
+| POST | `/auth/:provider/login` | — | `LoginInfo` — `{kind:"url",url}` (local Claude, loopback), `{kind:"auth_code",url,instructions?}` (headless Claude), or `{kind:"device_code",verificationUri,userCode}` (Codex) |
+| POST | `/auth/:provider/login/complete` | `{ code }` | `{ ok }` — submit the pasted code (the `auth_code` headless Claude path) |
 | POST | `/auth/:provider/logout` | — | `{ ok }` |
 | GET | `/conversations` | — | `ConversationSummary[]` (newest first) |
 | GET | `/conversations/:id/messages` | — | `ConversationHistory` (404 if unknown) |
@@ -48,7 +48,7 @@ A conversation is materialized on its first message; there is no explicit create
 
 Each conversation is fully isolated. Subscribing to `/conversations/:id/events`
 opens a stream scoped to **exactly that id** — no event from another conversation
-can ever arrive on it (the runtime partitions subscribers per conversation; there is
+can ever arrive on it (the engine partitions subscribers per conversation; there is
 no global firehose). Sending a message and observing a conversation are decoupled:
 `POST …/messages` only *triggers* the turn, and **all** events — including the user
 message echo — are delivered on the events stream. This means a conversation can be
@@ -57,24 +57,27 @@ the `sync` frame catches you up mid-turn).
 
 ### Login flow (subscription OAuth)
 
-1. `POST /auth/:provider/login` → a `LoginInfo`:
-   - **Claude (`anthropic`)** → `{ kind: "url", url }`. Open `url`.
-     - *Local runtime:* the redirect hits the runtime's loopback (`localhost:53692`)
-       automatically — nothing else to do.
-     - *Remote runtime:* the loopback is unreachable; the user copies the code from
-       the redirect → `POST /auth/anthropic/login/complete { code }`.
+1. `POST /auth/:provider/login` → a `LoginInfo`. Which Claude variant you get is
+   decided by the engine's deploy mode (`HOUSTON_HEADLESS`, else inferred from a
+   non-loopback bind host):
+   - **Claude, local** → `{ kind: "url", url }`. Open `url`; the engine catches the
+     redirect on its own loopback (`localhost:53692`). Nothing else to do.
+   - **Claude, headless** → `{ kind: "auth_code", url, instructions? }`. Open `url`,
+     approve, then the user copies the `code#state` Claude shows and submits it →
+     `POST /auth/anthropic/login/complete { code }`. No loopback needed — the same
+     flow Claude Code itself uses for browserless sign-in.
    - **Codex (`openai-codex`)** → `{ kind: "device_code", verificationUri, userCode }`.
      Show both; the user opens `verificationUri` and enters `userCode` (fully
-     headless — works for remote runtimes with no paste step).
+     headless — the engine polls, no paste step).
 2. Poll `GET /auth/status` until that provider's `configured: true`. Tokens are
-   stored and auto-refreshed by the runtime.
+   stored and auto-refreshed by the engine.
 3. Pick the chat model with `PUT /settings { activeProvider, model }` (optional —
    sensible defaults apply). `GET /providers` lists available models per provider.
 
 ### Live events (SSE)
 
 `GET /conversations/:id/events` returns `text/event-stream`. Each frame is
-`data: <WireEvent JSON>\n\n`. On connect the runtime sends a `sync` frame, then
+`data: <WireEvent JSON>\n\n`. On connect the engine sends a `sync` frame, then
 live-tails the turn:
 
 ```
@@ -103,13 +106,20 @@ import { HoustonEngineClient } from "@houston/runtime-client";
 
 const engine = new HoustonEngineClient({
   baseUrl: import.meta.env.VITE_ENGINE_URL ?? "http://127.0.0.1:4317",
-  // token: import.meta.env.VITE_ENGINE_TOKEN,   // only if the runtime sets one
+  // token: import.meta.env.VITE_ENGINE_TOKEN,   // only if the engine sets one
 });
 
 // 1) Connect a provider (Claude or Codex)
 const info = await engine.startLogin("anthropic"); // or "openai-codex"
-if (info.kind === "url") window.open(info.url, "_blank");
-else showDeviceCode(info.verificationUri, info.userCode); // Codex
+if (info.kind === "url") {
+  window.open(info.url, "_blank"); // local Claude: engine catches the loopback
+} else if (info.kind === "auth_code") {
+  window.open(info.url, "_blank"); // headless Claude: then collect the pasted code
+  const code = await promptForCode(info.instructions);
+  await engine.completeLogin("anthropic", code);
+} else {
+  showDeviceCode(info.verificationUri, info.userCode); // Codex
+}
 // poll engine.authStatus(): providers[].configured / activeProvider
 // optional: await engine.setSettings({ activeProvider: "anthropic", model: "claude-opus-4-5" });
 
@@ -142,12 +152,12 @@ All request/response shapes are exported types from `@houston/runtime-client`
 
 ## Consuming the client package
 
-`@houston/runtime-client` is a pnpm workspace package (zero runtime deps). From the
-webapp:
+`@houston/runtime-client` is a pnpm workspace package (zero runtime deps),
+consumed as TypeScript source, no build step. From the webapp:
 
 ```bash
 pnpm add @houston/runtime-client@workspace:*
-pnpm --filter @houston/runtime-client build   # emits dist/ (one-time / on change)
 ```
 
-Types resolve from source; the runtime entry is `dist/index.js`.
+`main`/`types`/`exports` all resolve to `src/index.ts`, so Vite (webapp) and Bun
+(engine) bundle/run it directly.

@@ -30,11 +30,18 @@ export type ProviderId = "anthropic" | "openai-codex";
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 
 /**
- * How the user completes a login. Anthropic returns a `url` to open; Codex
- * returns a device code to enter at `verificationUri`.
+ * How the user completes a login:
+ * - `url` — open it; the engine catches the redirect on its own loopback
+ *   (local engine only — the browser and engine share a machine). Nothing to paste.
+ * - `auth_code` — open `url`, approve, then copy the code Claude shows and submit it
+ *   via `completeLogin` (`POST /auth/anthropic/login/complete`). The headless path,
+ *   used when there is no shared loopback between the browser and the engine.
+ * - `device_code` — open `verificationUri` and enter `userCode` (Codex; the engine
+ *   polls, so there is no paste step).
  */
 export type LoginInfo =
   | { kind: "url"; url: string }
+  | { kind: "auth_code"; url: string; instructions?: string }
   | { kind: "device_code"; verificationUri: string; userCode: string };
 
 export interface LoginState {

@@ -1,6 +1,6 @@
 # @houston/runtime-client
 
-Typed, zero-dependency client + wire contract for the Houston runtime. This is the
+Typed, zero-dependency client + wire contract for the Houston engine. This is the
 single source of truth for the request/response/event shapes the webapp builds on.
 
 ```ts
@@ -23,12 +23,11 @@ await engine.sendMessage(id, "hi"); // returns 202; events arrive on the stream 
 - Types: `AuthStatus`, `ConversationSummary`, `ConversationHistory`, `ChatMessage`,
   `WireEvent`, `EngineClientConfig`, … — import for component props.
 
-Full protocol: [`packages/runtime/docs/runtime-api.md`](../runtime/docs/runtime-api.md).
+Full protocol: [`packages/runtime/docs/engine-api.md`](../engine/docs/engine-api.md).
 
-## Build
+## Usage
 
-```bash
-pnpm --filter @houston/runtime-client build   # emits dist/ + .d.ts
-```
-
-Types resolve from `src`; runtime entry is `dist/index.js`.
+Consumed as TypeScript source, no build step: `main`/`types`/`exports` all
+resolve to `src/index.ts`, so Vite (webapp) and Bun (engine) bundle/run it
+directly. Type-check it in isolation with
+`pnpm --filter @houston/runtime-client typecheck`.

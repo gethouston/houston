@@ -1,0 +1,21 @@
+# Build context is the `packages/` directory (see Dockerfile header). Keep only
+# what the engine image needs: engine/ source + runtime-client/ source.
+# Paths are relative to that context root.
+
+**/node_modules
+**/.git
+**/*.log
+**/.DS_Store
+**/.env
+**/dist
+
+# The webapp package is not part of the engine image.
+web/
+
+# Local dev artifacts that must never leak into the image.
+engine/data/
+engine/.env
+runtime/Dockerfile.standalone
+runtime/Dockerfile.standalone.dockerignore
+engine/docker-compose.yml
+engine/.env.example

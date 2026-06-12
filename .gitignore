@@ -22,6 +22,7 @@ app/src-tauri/resources/bin/
 
 # Houston engine sidecar staged by build.rs (built from source in CI, not committed)
 app/src-tauri/binaries/
+.vercel
 
 # local MCP config (may hold tokens)
 .mcp.json

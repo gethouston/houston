@@ -1,5 +1,4 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
-import { readFileSync } from "node:fs";
 import { config } from "../config";
 import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
@@ -9,8 +8,6 @@ import { snapshot, subscribe } from "../session/bus";
 import { getHistory, listConversations } from "../store/conversations";
 import { applyCors } from "./cors";
 import { openSSE } from "./sse";
-
-const INDEX_HTML = readFileSync(new URL("../web/index.html", import.meta.url), "utf8");
 
 function json(res: ServerResponse, status: number, body: unknown) {
   const buf = Buffer.from(JSON.stringify(body));
@@ -43,11 +40,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   const path = url.pathname;
   const method = req.method || "GET";
 
-  // Public: test page + health + version.
-  if (method === "GET" && path === "/") {
-    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
-    return res.end(INDEX_HTML);
-  }
+  // Public: health + version.
   if (method === "GET" && path === "/health") {
     return json(res, 200, { status: "ok", version: config.version });
   }
@@ -169,8 +162,8 @@ export function startServer() {
     console.log(`  data dir:  ${config.dataDir}`);
     console.log(`  model:     ${config.model}`);
     console.log(`  auth:      ${config.token ? "bearer token required" : "open (local dev)"}`);
+    console.log(`  claude:    ${config.headless ? "headless (paste code)" : "loopback (local)"}`);
     console.log(`  cors:      ${config.corsOrigin}`);
-    console.log(`\nOpen http://${config.host}:${config.port} to connect Claude and chat.\n`);
   });
   return server;
 }

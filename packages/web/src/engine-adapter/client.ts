@@ -71,6 +71,8 @@ export class HoustonClient {
   private cp: ControlPlaneConfig | null;
   /** In-flight cloud device-code logins, keyed `${agentId}:${providerId}` — the poll guard. */
   private activeLogins = new Set<string>();
+  /** Per-provider auth-status pollers that translate login completion into events (local mode). */
+  private loginWatchers = new Map<string, ReturnType<typeof setInterval>>();
 
   constructor(opts: HoustonClientOptions) {
     const useCp =
@@ -99,7 +101,7 @@ export class HoustonClient {
     } catch {
       /* engine unreachable / not authed */
     }
-    return { provider: "anthropic", model: "claude-sonnet-4-5" };
+    return { provider: "anthropic", model: "claude-sonnet-4-6" };
   }
 
   /** The CP agent the user has selected (persisted as last_agent_id), or null. */
@@ -347,15 +349,23 @@ export class HoustonClient {
       cliPath: null,
     } as ProviderStatus;
   }
+  // deviceAuth is ignored: the runtime picks the flow itself (Codex → device
+  // code, Claude → loopback or copy-paste per the runtime's headless mode).
   async providerLogin(name: string, _opts?: { deviceAuth?: boolean }): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
 
     if (!this.cp) {
-      // Local single runtime: open the OAuth URL in a tab (unchanged).
+      // Local single runtime. Drive the legacy login dialog: `device_code`
+      // carries the code to display; `url` (loopback) and `auth_code`
+      // (headless Claude) leave `user_code` null so the dialog shows a paste
+      // field. The runtime emits no completion event, so poll and synthesize.
       const info = await this.engine.startLogin(pid);
-      const url = info.kind === "url" ? info.url : info.verificationUri;
+      const url = info.kind === "device_code" ? info.verificationUri : info.url;
+      const userCode = info.kind === "device_code" ? info.userCode : null;
+      emitEvent("ProviderLoginUrl", { provider: name, url, user_code: userCode });
       if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
+      this.watchLoginCompletion(pid, name);
       return;
     }
 
@@ -381,10 +391,54 @@ export class HoustonClient {
     await engine.completeLogin(pid, code);
   }
   async cancelProviderLogin(name?: string): Promise<void> {
-    if (!this.cp || !name) return;
-    const pid = toNewProvider(name);
-    const agentId = this.currentAgentId();
-    if (pid && agentId) this.activeLogins.delete(`${agentId}:${pid}`); // stop the poll
+    if (!name || !toNewProvider(name)) return;
+    if (this.cp) {
+      const pid = toNewProvider(name);
+      const agentId = this.currentAgentId();
+      if (pid && agentId) this.activeLogins.delete(`${agentId}:${pid}`); // stop the poll
+      return;
+    }
+    this.stopLoginWatch(name);
+    // Benign completion: clears the dialog + spinner without an error toast,
+    // matching the old engine's cancel semantics.
+    emitEvent("ProviderLoginComplete", { provider: name, success: false, error: null });
+  }
+
+  /**
+   * Poll auth status until the in-flight login for `pid` resolves, then emit
+   * `ProviderLoginComplete` so the legacy dialog closes and the card flips.
+   * Covers all three flows: loopback auto-catch, pasted headless code, and
+   * device-code polling. Local mode only (cloud uses pollProviderConnect).
+   */
+  private watchLoginCompletion(pid: "anthropic" | "openai-codex", name: string): void {
+    this.stopLoginWatch(name);
+    const startedAt = Date.now();
+    const finish = (success: boolean, error: string | null) => {
+      this.stopLoginWatch(name);
+      emitEvent("ProviderLoginComplete", { provider: name, success, error });
+    };
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          const status = await this.engine.authStatus();
+          const pr = status.providers.find((p) => p.provider === pid);
+          if (pr?.configured) finish(true, null);
+          else if (pr?.login?.status === "error") finish(false, pr?.login?.error ?? "Login failed");
+          else if (Date.now() - startedAt > 10 * 60 * 1000) finish(false, "Login timed out");
+        } catch {
+          /* engine briefly unreachable; keep polling */
+        }
+      })();
+    }, 1500);
+    this.loginWatchers.set(name, timer);
+  }
+
+  private stopLoginWatch(name: string): void {
+    const timer = this.loginWatchers.get(name);
+    if (timer !== undefined) {
+      clearInterval(timer);
+      this.loginWatchers.delete(name);
+    }
   }
   async providerLogout(name: string): Promise<void> {
     const pid = toNewProvider(name);

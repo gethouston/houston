@@ -14,7 +14,18 @@ const AppTree = lazy(() => import("../app-tree"));
  * Once connected, the real desktop tree mounts and talks to the new engine
  * through the adapter.
  */
-export function WebApp({ baseUrl, token, cloud }: { baseUrl: string; token?: string; cloud?: boolean }) {
+export function WebApp({
+  baseUrl,
+  token,
+  cloud,
+  onChangeEngine,
+}: {
+  baseUrl: string;
+  token?: string;
+  /** Cloud (control-plane) mode: skip the per-runtime OAuth gate. */
+  cloud?: boolean;
+  onChangeEngine?: () => void;
+}) {
   const client = useMemo(
     () => new HoustonEngineClient({ baseUrl, token }),
     [baseUrl, token],
@@ -46,9 +57,18 @@ export function WebApp({ baseUrl, token, cloud }: { baseUrl: string; token?: str
         <div style={ui.muted}>
           Can't reach the engine at <code>{baseUrl}</code>.
           <br />
-          Start it (`bun run dev` in packages/runtime) and reload.
+          Make sure it's running and reachable over HTTPS, then retry.
           <br />
           <span style={{ opacity: 0.6 }}>{error}</span>
+          {onChangeEngine ? (
+            <>
+              <br />
+              <br />
+              <button style={ui.button} onClick={onChangeEngine}>
+                Use a different engine
+              </button>
+            </>
+          ) : null}
         </div>
       </div>
     );
