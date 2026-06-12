@@ -1,12 +1,7 @@
 import { useTranslation } from "react-i18next";
-import { ChevronDown, Check, Gauge } from "lucide-react";
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@houston-ai/core";
 import { getEffortLevels, type EffortLevel } from "../lib/providers";
+import { nextEffort } from "../lib/effort-cycle";
+import { EffortIcon } from "./effort-icon";
 
 interface ChatEffortSelectorProps {
   /** Active provider id — used to look up the model's effort levels. */
@@ -15,95 +10,67 @@ interface ChatEffortSelectorProps {
   model: string;
   /** Current effective effort for the active model. */
   effort?: string;
-  /** Called when the user picks a level. */
+  /** Called when the user advances to the next level. */
   onSelect: (effort: EffortLevel) => void;
 }
 
 /**
- * Standalone reasoning-effort picker, rendered beside {@link ChatModelSelector}
- * in the composer. Shows only the levels the active model accepts (Sonnet
- * never offers `xhigh`, Codex never `max`) and renders nothing when the model
- * has no effort control (e.g. Gemini), so the composer row collapses cleanly.
+ * Reasoning-effort cycle button, rendered beside {@link ChatModelSelector} in
+ * the composer. One click advances to the next level the active model accepts,
+ * wrapping after the last (low → … → max → low). The icon's filled bars and
+ * the label both track the level, so the control reads at a glance without a
+ * menu. Renders nothing when the model has no effort control (e.g. Gemini), so
+ * the composer row collapses cleanly.
  */
 export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEffortSelectorProps) {
   const { t } = useTranslation("chat");
   const levels = getEffortLevels(provider, model);
   if (levels.length === 0) return null;
 
-  const labels: Record<EffortLevel, { label: string; description: string }> = {
-    low: {
-      label: t("modelSelector.effortLevels.low"),
-      description: t("modelSelector.effortDescriptions.low"),
-    },
-    medium: {
-      label: t("modelSelector.effortLevels.medium"),
-      description: t("modelSelector.effortDescriptions.medium"),
-    },
-    high: {
-      label: t("modelSelector.effortLevels.high"),
-      description: t("modelSelector.effortDescriptions.high"),
-    },
-    xhigh: {
-      label: t("modelSelector.effortLevels.xhigh"),
-      description: t("modelSelector.effortDescriptions.xhigh"),
-    },
-    max: {
-      label: t("modelSelector.effortLevels.max"),
-      description: t("modelSelector.effortDescriptions.max"),
-    },
+  const labels: Record<EffortLevel, string> = {
+    low: t("modelSelector.effortLevels.low"),
+    medium: t("modelSelector.effortLevels.medium"),
+    high: t("modelSelector.effortLevels.high"),
+    xhigh: t("modelSelector.effortLevels.xhigh"),
+    max: t("modelSelector.effortLevels.max"),
   };
-  const activeLabel =
-    effort && labels[effort as EffortLevel]
-      ? labels[effort as EffortLevel].label
-      : t("modelSelector.effort");
+  const descriptions: Record<EffortLevel, string> = {
+    low: t("modelSelector.effortDescriptions.low"),
+    medium: t("modelSelector.effortDescriptions.medium"),
+    high: t("modelSelector.effortDescriptions.high"),
+    xhigh: t("modelSelector.effortDescriptions.xhigh"),
+    max: t("modelSelector.effortDescriptions.max"),
+  };
+
+  // The current level (only when the stored value is one this model accepts)
+  // and the level a click advances to, wrapping past the last back to the first.
+  const activeLevel =
+    effort && levels.includes(effort as EffortLevel) ? (effort as EffortLevel) : undefined;
+  const nextLevel = nextEffort(levels, effort);
+
+  const activeLabel = activeLevel ? labels[activeLevel] : t("modelSelector.effort");
 
   return (
-    // Stop pointer events from bubbling — keeps the board detail panel from
-    // reading dropdown clicks as "click outside → close panel".
-    <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            aria-label={t("modelSelector.effort")}
-            className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
-          >
-            <Gauge className="size-3.5" />
-            <span>{activeLabel}</span>
-            <ChevronDown className="size-3 opacity-60" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent
-          align="start"
-          className="w-56"
-          onCloseAutoFocus={(e) => e.preventDefault()}
-        >
-          {levels.map((level) => {
-            const isActive = level === effort;
-            return (
-              <DropdownMenuItem
-                key={level}
-                onPointerDown={(e) => e.stopPropagation()}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onSelect(level);
-                }}
-                className="flex items-start gap-2.5 py-1.5"
-              >
-                <div className="w-4 shrink-0 mt-0.5 flex justify-center">
-                  {isActive && <Check className="h-3.5 w-3.5 text-foreground" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm">{labels[level].label}</div>
-                  <div className="text-xs text-muted-foreground leading-snug">
-                    {labels[level].description}
-                  </div>
-                </div>
-              </DropdownMenuItem>
-            );
-          })}
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <button
+      type="button"
+      // Announce the value (the visible label alone reads as a bare "High").
+      aria-label={
+        activeLevel
+          ? t("modelSelector.effortValue", { level: activeLabel })
+          : t("modelSelector.effort")
+      }
+      title={activeLevel ? descriptions[activeLevel] : t("modelSelector.effort")}
+      // Stop pointer events from bubbling — keeps the board detail panel from
+      // reading the click as "click outside → close panel".
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => {
+        e.stopPropagation();
+        if (nextLevel) onSelect(nextLevel);
+      }}
+      className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
+    >
+      <EffortIcon levels={levels} active={effort} className="size-3.5" />
+      <span>{activeLabel}</span>
+    </button>
   );
 }
