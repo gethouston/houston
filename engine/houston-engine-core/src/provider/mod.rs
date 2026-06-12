@@ -122,16 +122,23 @@ pub async fn launch_login(
     }
 
     // A previous sign-in for this provider may still be pending: the user
-    // abandoned the OAuth tab, lost the browser window, or the app restarted
-    // while the relay's 10-minute timeout was still counting down. Left as-is,
-    // the `insert_session` guard below would reject this fresh attempt as
-    // "already pending" and the user would be stuck with no way to retry
-    // (HOU-438) — worse on desktop, where the sign-in dialog and its Cancel
-    // button are hidden (#453). A fresh Connect must win: silently tear the
-    // stale session down (kill its subprocess, free the slot) before we spawn.
-    // Silent — no `ProviderLoginComplete` — because THIS launch immediately
-    // takes the slot's place, so a benign completion would only clear the new
-    // attempt's spinner. Idempotent no-op when nothing is pending.
+    // abandoned the OAuth tab, or — on a remote/persistent engine (Always-On,
+    // container, mobile against a hosted engine) that outlives the client — a
+    // reconnect landed while the relay's 10-minute timeout was still counting
+    // down. (On the co-located desktop sidecar an app restart kills the engine
+    // and wipes LOGIN_SESSIONS, so there the window is one engine lifetime.)
+    // Left as-is, the `insert_session` guard below would reject this fresh
+    // attempt as "already pending" and the user would be stuck (HOU-438). The
+    // frontend's cancel-before-retry recovery is applied inconsistently — the
+    // in-chat reconnect surfaces (`provider-reconnect-card`) call `launchLogin`
+    // with no cancel and expose no Cancel button, and the Settings/Picker
+    // Cancel button is bound to local `pendingId` that the error path clears
+    // and that a fresh mount resets (no endpoint resyncs in-flight sessions) —
+    // so UI recovery can't be guaranteed. A fresh Connect must win: silently
+    // tear the stale session down (kill its subprocess, free the slot) before
+    // we spawn. Silent — no `ProviderLoginComplete` — because THIS launch
+    // immediately takes the slot's place, so a benign completion would only
+    // clear the new attempt's spinner. Idempotent no-op when nothing is pending.
     login_relay::supersede_session(provider.id(), provider.cli_name()).await;
 
     let ProviderCliCommand {
