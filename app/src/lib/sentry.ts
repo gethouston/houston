@@ -4,6 +4,7 @@ import {
   isAcceptedStatus,
   resolveCapturedEventId,
 } from "./sentry-transport";
+import { fingerprintForEvent } from "./sentry-fingerprint";
 
 // __SENTRY_DSN__ baked at build time by Vite (see vite.config.ts). Empty
 // string in dev / forks → init bails, every capture is a silent no-op.
@@ -73,6 +74,17 @@ export function initSentry(): void {
     // never enter a recording (the masking integration options below enforce
     // this).
     sendDefaultPii: false,
+    // Stable issue grouping (HOU-449): renderer errors are synthetic Errors
+    // whose message often embeds the sidecar's RANDOM port
+    // ("Failed to fetch (127.0.0.1:<port>)") or other volatile data, so the
+    // default name+value grouping spawns a new issue per port. Override the
+    // fingerprint with the message's volatile tokens masked so each family
+    // collapses into ONE issue. Mirrors the engine's `sentry_grouping.rs`.
+    beforeSend: (event) => {
+      const fingerprint = fingerprintForEvent(event);
+      if (fingerprint) event.fingerprint = fingerprint;
+      return event;
+    },
     // Direct HTTP transport, wrapped to record real per-event delivery.
     transport: (options) => {
       const inner = Sentry.makeFetchTransport(options);

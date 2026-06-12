@@ -33,6 +33,8 @@ sentry-tracing = "0.42"
 sha2 = "0.10"
 base64 = "0.22"
 rand = "0.8"
+# Volatile-token masking for stable Sentry issue grouping (sentry_grouping.rs).
+regex = "1"
 futures-util = "0.3"
 houston-engine-protocol = { version = "0.4.0", path = "../houston-engine-protocol" }
 houston-engine-core = { version = "0.4.0", path = "../houston-engine-core" }

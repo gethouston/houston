@@ -15,6 +15,7 @@ use std::net::SocketAddr;
 use std::sync::Arc;
 use tokio::net::TcpListener;
 
+mod sentry_grouping;
 mod sentry_scrub;
 
 #[derive(Serialize)]
@@ -278,11 +279,19 @@ fn init_sentry() -> Option<sentry::ClientInitGuard> {
         sentry::ClientOptions {
             release: Some(release),
             environment: Some(environment),
-            // Defense-in-depth: strip `--key <value>` composio credentials from
-            // any outbound event/breadcrumb in case a future code path formats
-            // one into a tracing error (HOU-431). The real fix is redaction at
-            // the source in `houston_composio::cli`; this is the safety net.
-            before_send: Some(Arc::new(sentry_scrub::scrub_event)),
+            // before_send runs two passes, in order:
+            //   1. scrub `--key <value>` composio credentials from any outbound
+            //      event/breadcrumb, in case a future code path formats one into
+            //      a tracing error (HOU-431). Defense-in-depth; the real fix is
+            //      redaction at the source in `houston_composio::cli`.
+            //   2. stamp a deterministic fingerprint so a family of
+            //      near-identical messages (e.g. the Codex parser's per-column
+            //      errors) collapses into ONE Sentry issue instead of dozens
+            //      (HOU-449). Runs AFTER the scrub so the key is computed from
+            //      the already-redacted message.
+            before_send: Some(Arc::new(|event| {
+                sentry_scrub::scrub_event(event).map(sentry_grouping::with_stable_fingerprint)
+            })),
             // No `auto_session_tracking` field: the engine's Cargo.toml leaves
             // the `release-health` feature OFF (default-features = false), which
             // cfg-gates that field out entirely. That is intentional — the
