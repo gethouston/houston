@@ -15,32 +15,52 @@ use sentry::protocol::{Event, Value};
 
 const REDACTED: &str = "<redacted>";
 
-/// Redact the value that follows any `--key` token in `input`.
+/// Tokens that introduce a composio login-session secret. The same value
+/// surfaces three ways: the `--key` argv flag, the `cliKey` query param
+/// embedded in `login_url`, and the `cli_key` JSON field of the CLI's
+/// start-login output (HOU-431).
+const SECRET_MARKERS: [&str; 3] = ["--key", "cliKey", "cli_key"];
+
+/// Redact the value that follows any [`SECRET_MARKERS`] token in `input`.
 ///
-/// Handles the three shapes a composio key can take inside a captured string:
+/// Handles every shape the secret takes inside a captured string:
 ///   - shell:        `--key cf7f2461-...`
 ///   - joined:       `--key=cf7f2461-...`
 ///   - Rust `{:?}`:  `"--key", "cf7f2461-..."`
+///   - URL param:    `?cliKey=cf7f2461-...`
+///   - JSON field:   `"cli_key":"cf7f2461-..."`
 ///
-/// Anything that is not a `--key` value passes through untouched. UTF-8 safe:
+/// Anything not following a marker passes through untouched. UTF-8 safe:
 /// only ever slices on `char_indices` boundaries.
 pub fn scrub_key_secrets(input: &str) -> String {
-    if !input.contains("--key") {
+    if !SECRET_MARKERS.iter().any(|m| input.contains(m)) {
         return input.to_string();
     }
 
+    // Separators between a marker and its value: quote / comma / `=` / `:` /
+    // whitespace — covers `--key `, `--key=`, the Debug form `"--key", "`,
+    // the URL `cliKey=`, and the JSON `"cli_key":"`.
+    let is_sep = |c: char| matches!(c, '"' | '\'' | ',' | '=' | ':') || c.is_whitespace();
+    // The value ends at the first quote / comma / bracket / brace / ampersand
+    // (argv-Debug, JSON, and URL-query delimiters) or whitespace.
+    let is_boundary = |c: char| matches!(c, '"' | '\'' | ',' | ']' | '}' | '&') || c.is_whitespace();
+
     let mut out = String::with_capacity(input.len());
     let mut rest = input;
-    while let Some(pos) = rest.find("--key") {
-        // Emit everything up to and including the `--key` flag.
+    loop {
+        // Earliest marker remaining in `rest`.
+        let Some((pos, marker)) = SECRET_MARKERS
+            .iter()
+            .filter_map(|m| rest.find(m).map(|p| (p, *m)))
+            .min_by_key(|&(p, _)| p)
+        else {
+            break;
+        };
         out.push_str(&rest[..pos]);
-        out.push_str("--key");
-        rest = &rest[pos + "--key".len()..];
+        out.push_str(marker);
+        rest = &rest[pos + marker.len()..];
 
-        // Copy the separators between the flag and its value verbatim
-        // (quote / comma / whitespace / `=` — covers `--key=`, `--key `, and
-        // the Debug form `"--key", "`).
-        let is_sep = |c: char| c == '"' || c == '\'' || c == ',' || c == '=' || c.is_whitespace();
+        // Copy the separators between the marker and its value verbatim.
         let sep_end = rest
             .char_indices()
             .find(|&(_, c)| !is_sep(c))
@@ -49,10 +69,7 @@ pub fn scrub_key_secrets(input: &str) -> String {
         out.push_str(&rest[..sep_end]);
         rest = &rest[sep_end..];
 
-        // Replace the value run (until the next quote / comma / whitespace /
-        // closing bracket) with a single placeholder.
-        let is_boundary =
-            |c: char| c == '"' || c == '\'' || c == ',' || c == ']' || c.is_whitespace();
+        // Replace the value run with a single placeholder.
         let val_end = rest
             .char_indices()
             .find(|&(_, c)| is_boundary(c))
@@ -124,6 +141,28 @@ mod tests {
     #[test]
     fn scrubs_joined_form() {
         assert_eq!(scrub_key_secrets("--key=secret-uuid"), "--key=<redacted>");
+    }
+
+    #[test]
+    fn scrubs_url_query_clikey() {
+        // `login_url` embeds the secret as `?cliKey=<cli_key>` (HOU-431).
+        let input =
+            "url=https://dashboard.composio.dev/?cliKey=6490d0eb-66c6-4a50-ae7f-28b3ac147ef9";
+        let out = scrub_key_secrets(input);
+        assert!(!out.contains("6490d0eb"), "secret leaked: {out}");
+        assert!(out.contains("cliKey=<redacted>"), "got: {out}");
+        assert!(out.contains("https://dashboard.composio.dev/"));
+    }
+
+    #[test]
+    fn scrubs_json_cli_key_field() {
+        // The CLI's start-login stdout carries the secret twice: in the
+        // `login_url` query and in the `cli_key` field. Both must go.
+        let input = r#"{"login_url":"https://x/?cliKey=abc-123","cli_key":"abc-123"}"#;
+        let out = scrub_key_secrets(input);
+        assert!(!out.contains("abc-123"), "secret leaked: {out}");
+        assert!(out.contains("cliKey=<redacted>"), "got: {out}");
+        assert!(out.contains(r#""cli_key":"<redacted>""#), "got: {out}");
     }
 
     #[test]
