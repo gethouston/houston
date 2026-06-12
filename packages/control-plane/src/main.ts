@@ -26,6 +26,7 @@ import { ConnectManager } from "./turn/connect";
 import { GcsObjectFiles, MemoryObjectFiles } from "./turn/objects";
 import { makeIdTokenProvider } from "./turn/id-token";
 import { refreshCredential } from "./credentials/refresh";
+import { installGracefulShutdown } from "./shutdown";
 
 /**
  * Boot the control plane: one frontend-facing API listener (auth + access +
@@ -158,9 +159,13 @@ function main(): void {
     corsOrigin: config.corsOrigin,
   };
 
-  createControlPlaneServer(deps).listen(config.port, config.host, () => {
+  const server = createControlPlaneServer(deps);
+  server.listen(config.port, config.host, () => {
     console.log(`[control-plane] API   http://${config.host}:${config.port}  (dev=${config.dev})`);
   });
+  // Zero-downtime deploys: drain on SIGTERM so the RollingUpdate replacement
+  // takes over without dropped requests (see shutdown.ts + k8s strategy).
+  installGracefulShutdown(server);
 }
 
 main();

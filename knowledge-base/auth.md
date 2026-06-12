@@ -16,6 +16,33 @@ One-click Google sign-in on first launch. CI release tokens live in macOS Keycha
 10. `supabase.auth.onAuthStateChange` fires → `useSession()` re-queries → `App.tsx` dismisses `SignInScreen` → sidebar footer `UserMenu` + Settings → Account section appear.
 11. PostHog: `analytics.alias(userId, { email, name })` merges the anonymous `install_id` history into the identified user.
 
+## Web / Cloud (same components, browser flow)
+
+The cloud web build (`packages/web`, cloud mode) reuses the SAME native auth UI —
+`SignInScreen` for sign-in and the sidebar `UserMenu` for the signed-in account.
+Don't build bespoke login UIs for new surfaces; configure the app's own Supabase
+client instead (bake `SUPABASE_URL`/`SUPABASE_ANON_KEY` at build time) and the
+native components activate. Platform differences are `isTauri()`-guarded:
+
+- **Desktop**: system browser + `houston://` deep link + manual
+  `exchangeCodeForSession` (steps above); `detectSessionInUrl: false`.
+- **Web**: a normal in-page redirect to `${origin}/auth/callback`;
+  `detectSessionInUrl: true` lets supabase-js consume the `?code=` on load.
+  Storage is localStorage (no Keychain in a browser).
+
+**Gotcha that bit us live:** every web origin must be in Supabase
+**Authentication → URL Configuration → Redirect URLs** (e.g.
+`https://<cloud-run-host>/**`). When `redirectTo` isn't allow-listed, Supabase
+silently falls back to the project Site URL — which is the DESKTOP bridge at
+`gethouston.ai/auth/callback`, so browser users get bounced into the desktop
+app. The Site URL must stay the desktop bridge; add web origins to the
+allow-list instead.
+
+In cloud mode the Supabase access token doubles as the control-plane bearer:
+`CloudApp` (packages/web/src/cloud-login.tsx) mirrors the live session token
+into `window.__HOUSTON_ENGINE__`, and the engine adapter reads it per request
+(`control-plane.liveToken`) so silent refreshes are picked up without a reload.
+
 ## Keychain boundary
 
 | Piece | Where |

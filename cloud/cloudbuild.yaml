@@ -10,7 +10,7 @@ steps:
       - -f
       - packages/control-plane/Dockerfile
       - -t
-      - us-east1-docker.pkg.dev/gethouston/houston/control-plane:v5
+      - us-east1-docker.pkg.dev/gethouston/houston/control-plane:v7
       - .
   - name: gcr.io/cloud-builders/docker
     id: runtime
@@ -22,7 +22,7 @@ steps:
       - us-east1-docker.pkg.dev/gethouston/houston/runtime:v6
       - .
 images:
-  - us-east1-docker.pkg.dev/gethouston/houston/control-plane:v5
+  - us-east1-docker.pkg.dev/gethouston/houston/control-plane:v7
   - us-east1-docker.pkg.dev/gethouston/houston/runtime:v6
 options:
   machineType: E2_HIGHCPU_8

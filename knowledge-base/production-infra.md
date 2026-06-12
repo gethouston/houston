@@ -92,6 +92,37 @@ Per-event short URLs (e.g. `gethouston.ai/yc-demo-day-2026`) live in `website/sr
 ### BigQuery export (optional)
 PostHog → BigQuery plugin → target GCP project (burns credits). SQL-queryable event history forever, immune to PostHog retention limits. Useful for investor-update analytics.
 
+## Houston Cloud (GCP project `gethouston`, us-east1)
+
+Live beta. Four deployables; agent compute scales to zero (see
+`cloud/unit-economics.md` for the cost model, `cloud/code-execution.md` for the
+security architecture):
+
+| Service | Runs on | Image | Deploy |
+|---|---|---|---|
+| `control-plane` | GKE Autopilot `houston-cloud`, ns `houston-system`, LB `34.74.83.237` | `houston/control-plane:v7` | `gcloud builds submit --config cloud/cloudbuild.yaml` then `kubectl apply -f cloud/k8s/control-plane.yaml` |
+| `houston-turn-runtime` | Cloud Run (per-turn agents; IAM-gated, concurrency=1) | `houston/runtime:v6` | `cloud/scripts/06-runtime.sh` |
+| `houston-code-sandbox` | Cloud Run (untrusted code; zero-IAM SA, deny-all-egress VPC) | `houston/code-sandbox:v2` | `cloud/scripts/05-code-sandbox.sh` |
+| `houston-web` | Cloud Run (nginx SPA + `/api` proxy → control plane) | `houston/web:v11` | build SPA with `VITE_CONTROL_PLANE_URL=/api` + `SUPABASE_URL`/`SUPABASE_ANON_KEY` baked, then `gcloud builds submit packages/web --tag …/web:vN` + `gcloud run services update houston-web --image …` |
+
+Rules learned in production:
+- **`cloud/k8s/control-plane.yaml` IS the live truth** — image tag, turn env
+  (`CP_TURN_RUNTIME_URL`, `CP_GCS_BUCKET`, `CP_DEFAULT_RUNTIME`), agent image.
+  Never let it drift: a stale `kubectl apply` silently wipes live config.
+- **Zero-downtime deploys**: the CP drains on SIGTERM
+  (`packages/control-plane/src/shutdown.ts`) and the Deployment rolls with
+  `maxUnavailable: 0` + preStop sleep + a PDB. Single replica is deliberate
+  (in-memory turn relay); multi-replica HA needs that state on a shared bus.
+- **Secrets**: app-layer tokens are Secret Manager `houston-code-sandbox-token`
+  / `houston-turn-token`. Create values with `printf '%s' "$(openssl rand -hex 32)"`
+  — `openssl | gcloud` appends a newline that desyncs both sides.
+- **DB migrations**: additive only (745 real users); apply with
+  `CP_DATABASE_URL=… bun packages/control-plane/scripts/run-migration.ts <file>`
+  (no psql needed).
+- **gcloud auth**: org policy re-prompts ~hourly; non-interactive shells then
+  fail with "Reauthentication failed" — rerun `gcloud auth login`. The account
+  with `gethouston` IAM is `julian@jointaxflow.ai`.
+
 ## Auth (`@supabase/supabase-js` + Google SSO)
 
 - **Session storage:** CI releases use macOS Keychain / Windows Credential Manager via the `keyring` crate (`app/src-tauri/src/auth.rs`). Local builds use browser storage scoped per worktree to avoid macOS Keychain prompts from changing local signatures. Override with `HOUSTON_AUTH_STORAGE=keychain` or `HOUSTON_AUTH_STORAGE=browser`.

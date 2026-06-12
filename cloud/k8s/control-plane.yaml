@@ -63,6 +63,15 @@ metadata:
     houston.ai/component: control-plane
 spec:
   replicas: 1
+  # Zero-downtime deploys: bring the replacement up and Ready BEFORE the old
+  # pod drains (the pod itself drains gracefully on SIGTERM — see
+  # packages/control-plane/src/shutdown.ts). True multi-replica HA needs the
+  # in-memory turn relay/connect state moved to a shared bus first.
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   selector:
     matchLabels:
       app: control-plane
@@ -76,9 +85,19 @@ spec:
       securityContext:
         runAsNonRoot: true
         runAsUser: 1000
+      # SIGTERM → drain in-flight requests; SSE streams are force-closed after
+      # the app's 20s grace, so 30s covers drain + exit comfortably.
+      terminationGracePeriodSeconds: 30
       containers:
         - name: control-plane
-          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:v5
+          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:v7
+          # Endpoint removal from the LB races SIGTERM delivery; sleeping a few
+          # seconds before SIGTERM lets kube-proxy/LB converge so no request
+          # lands on a terminating pod.
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
           ports:
             - { containerPort: 8080, name: api }
           env:
@@ -95,7 +114,7 @@ spec:
             - { name: CP_SUPABASE_JWT_ISSUER, value: "https://zfpnlvxazrataiannvtq.supabase.co/auth/v1" }
             # Per-turn Cloud Run hosting (cloudrun workspaces). Set the URL after
             # cloud/scripts/06-runtime.sh prints it; bucket must match the runtime.
-            - { name: CP_TURN_RUNTIME_URL, value: "" }
+            - { name: CP_TURN_RUNTIME_URL, value: "https://houston-turn-runtime-3lcmczurpa-ue.a.run.app" }
             - { name: CP_GCS_BUCKET, value: "gethouston-workspaces" }
             - { name: CP_DEFAULT_RUNTIME, value: "cloudrun" }
             - name: CP_TURN_TOKEN
@@ -134,3 +153,17 @@ spec:
     app: control-plane
   ports:
     - { name: api, port: 80, targetPort: 8080 }
+---
+# Voluntary disruptions (node drains/upgrades) must wait for a replacement:
+# with one replica this makes GKE Autopilot surge-then-drain instead of
+# kill-then-reschedule, closing the brief 502 window on node maintenance.
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: control-plane
+  namespace: houston-system
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: control-plane

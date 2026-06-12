@@ -7,7 +7,7 @@ Houston = open platform. Organized as **7 products + 3 code libraries**.
 | Product | Dir | What |
 |---------|-----|------|
 | Houston App | `app/` | Desktop app (Tauri 2). Non-technical users create agents, run parallel terminal sessions. |
-| Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab against any remote `houston-engine`. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims, plus a Connect screen for the engine URL+token. No fork, no `app/` changes. See `packages/web/README.md`. |
+| Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims. Two modes: connect to any remote `houston-engine` (URL+token), or **cloud mode** (`VITE_CONTROL_PLANE_URL`) — Supabase sign-in via the app's NATIVE auth (same `SignInScreen`/sidebar `UserMenu` as desktop), agents served by the control plane. No fork, no `app/` changes. See `packages/web/README.md`. |
 | Houston Mobile | `mobile/` | React PWA served from `tunnel.gethouston.ai`. No native app — pure web, same origin as the relay. A lean chat/mission-control client (distinct from Houston Web's full shell). |
 | Houston Store | `store/` | Release-bundled registry of pre-built Houston agents. One-click install. |
 | Houston Website | `website/` | gethouston.ai landing. |
@@ -20,7 +20,7 @@ Houston = open platform. Organized as **7 products + 3 code libraries**.
 |---------|-----|------|-----------|
 | Houston UI | `ui/` | `@houston-ai/*` React components | App, Mobile, future hosted products' frontends |
 | Houston Engine | `engine/` | Rust crates. **Frontend-agnostic backend.** Open source. Anyone self-hosts or uses as desktop-app backend. | App (via `app/houston-tauri` adapter), Always On, Teams, Cloud customers |
-| Houston Cloud | `cloud/` | Managed Engine deployments. **TBD.** | Third-party devs building on Engine |
+| Houston Cloud | `cloud/` + `packages/{control-plane,runtime,code-sandbox,web}` | **LIVE (beta).** Hosted multi-tenant agents on GCP: agent = a DB row + a GCS prefix; a turn = ONE Cloud Run request (hydrate → run pi → sync → wipe, scale-to-zero); untrusted code runs in a separate egress-locked Cloud Run microVM sandbox. Credentials = connect-once user subscriptions (OpenAI/Codex), served access-token-only. Workspaces carry a `runtime` flag (`cloudrun` default; `gke` legacy pods until PVC→GCS migration). Start at `cloud/code-execution.md` + `cloud/README.md`. | Houston Web (cloud mode) users |
 
 ## Key distinction: Engine is standalone
 
@@ -164,7 +164,7 @@ the typed `.houston/<type>/<type>.json` layout.
 | Engine reusable by non-Tauri frontends | ✅ binary ships as Tauri sidecar + standalone; desktop app consumes it over HTTP/WS, no in-process coupling |
 | Reference custom-frontend integration | ✅ `examples/smartbooks/` — Vite + React, own brand, ~400 LOC TSX, proven end-to-end |
 | Always On | ✅ Dockerfile + compose + systemd unit + README all shipped |
-| Teams / Cloud | 🟡 Identity foundation shipped (Supabase Google SSO + Keychain sessions — see `knowledge-base/auth.md`); Cloud API surface TBD |
+| Teams / Cloud | 🟢 Cloud is LIVE (beta): per-turn Cloud Run hosting + locked-down code sandbox + GCS workspaces + connect-once subscriptions, behind the control plane on GKE (`cloud/code-execution.md`). Teams (org workspaces, per-seat) modeled but not built. |
 | Store populated | 🟡 release-bundled MVP: `store/catalog.json` + `store/agents/*`; community sharing TBD |
 | Binary file read route (xlsx, pdf download through HTTP) | ❌ workaround: use `/v1/shell` with `open`/`xdg-open` to hand binary files to host OS |
 | Windows support (Rust engine layer) | ✅ `cargo check --target x86_64-pc-windows-gnu` clean across the workspace; platform-specific branches (taskkill vs kill, PATH separator, symlink_dir) covered. See `knowledge-base/platform-matrix.md`. |
