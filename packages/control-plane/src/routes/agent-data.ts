@@ -15,6 +15,7 @@ import {
   saveLearnings,
   saveRoutines,
   upsertById,
+  validateSchedule,
 } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
@@ -120,6 +121,13 @@ export async function handleAgentData(
           return true;
         }
       }
+      // Reject a bad cron NOW — otherwise the routine saves and silently never
+      // fires (the scheduler would skip it forever, with no signal to the user).
+      const scheduleErr = validateSchedule(body.schedule, body.timezone);
+      if (scheduleErr) {
+        json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+        return true;
+      }
       const { items } = await loadRoutines(vfs, root);
       const routine = createRoutine(body, crypto.randomUUID(), nowIso);
       await saveRoutines(vfs, root, upsertById(items, routine));
@@ -135,7 +143,14 @@ export async function handleAgentData(
         return true;
       }
       if (method === "PATCH") {
-        const next = applyRoutineUpdate(current, await readJson(req), nowIso);
+        const update = await readJson(req);
+        const next = applyRoutineUpdate(current, update, nowIso);
+        // A PATCH may change schedule and/or timezone — validate the result.
+        const scheduleErr = validateSchedule(next.schedule, next.timezone);
+        if (scheduleErr) {
+          json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
+          return true;
+        }
         await saveRoutines(vfs, root, upsertById(items, next));
         fireChange();
         json(res, 200, next);

@@ -23,6 +23,7 @@
   "dependencies": {
     "@houston-ai/agent-schemas": "file:../../ui/agent-schemas",
     "@houston/protocol": "file:../protocol",
+    "croner": "^10.0.1",
     "yaml": "^2.9.0"
   },
   "devDependencies": {

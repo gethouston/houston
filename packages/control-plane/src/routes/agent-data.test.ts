@@ -140,6 +140,23 @@ test("routines: created with schema defaults; timezone clears with null", async 
   expect(((await runs.json()) as { items: unknown[] }).items).toEqual([]);
 });
 
+test("routines: an invalid cron is rejected at create (400), never saved to fail silently", async () => {
+  const bad = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ name: "Broken", prompt: "p", schedule: "not a cron" }),
+  });
+  expect(bad.status).toBe(400);
+  expect(((await bad.json()) as { error: string }).error).toContain("invalid schedule");
+
+  const badTz = await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ name: "BadTz", prompt: "p", schedule: "0 9 * * *", timezone: "Mars/Phobos" }),
+  });
+  expect(badTz.status).toBe(400);
+});
+
 test("config: PUT replaces, GET reads back", async () => {
   const put = await fetch(`${base}/agents/${agentId}/config`, {
     method: "PUT",
