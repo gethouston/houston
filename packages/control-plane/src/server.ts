@@ -8,6 +8,7 @@ import { bearer, json, readJson } from "./routes/http";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleAdmin, type AdminDeps } from "./routes/admin";
 import { handleAgents } from "./routes/agents";
+import { handleAccount } from "./routes/account";
 import { handleEventStream } from "./routes/events-stream";
 import { parseFeedbackPayload, type FeedbackSender } from "./feedback";
 
@@ -107,6 +108,9 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
     }
     return json(res, 200, { id: await deps.feedback.send(payload, userId) });
   }
+
+  // User-level resources (workspaces, preferences) — no agent in the path.
+  if (await handleAccount(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 
