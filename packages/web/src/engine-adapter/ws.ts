@@ -30,12 +30,14 @@ export class EngineWebSocket {
   private eventHandlers = new Set<EventHandler>();
   private envelopeHandlers = new Set<EnvelopeHandler>();
   private offBus: (() => void) | null = null;
+  private offServer: (() => void) | null = null;
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  constructor(_client: HoustonClient) {}
+  constructor(private readonly client: HoustonClient) {}
 
   connect(): void {
     if (this.offBus) return;
+    // Cloud: also pull the host's domain-change events onto the bus.
+    this.offServer = this.client.subscribeServerEvents();
     this.offBus = bus.on((event) => {
       for (const h of this.eventHandlers) h(event);
       if (this.envelopeHandlers.size > 0) {
@@ -46,6 +48,8 @@ export class EngineWebSocket {
   }
 
   disconnect(): void {
+    this.offServer?.();
+    this.offServer = null;
     this.offBus?.();
     this.offBus = null;
   }

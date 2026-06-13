@@ -1,5 +1,14 @@
 import { HoustonEngineClient } from "@houston/runtime-client";
-import type { Agent } from "../../../../ui/engine-client/src/types";
+import type {
+  Activity,
+  ActivityUpdate,
+  Agent,
+  NewActivity,
+  Routine,
+  RoutineRun,
+  SkillSummary,
+  Workspace,
+} from "../../../../ui/engine-client/src/types";
 import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 import { HoustonEngineError } from "./client";
 
@@ -140,4 +149,83 @@ export function runtimeClientFor(cfg: ControlPlaneConfig, agentId: string): Hous
     baseUrl: `${cfg.baseUrl}/agents/${encodeURIComponent(agentId)}`,
     token: liveToken(cfg.token) || undefined,
   });
+}
+
+// --- The typed .houston families, now served REALLY by the host (P3). The list
+// routes return `{ items, diagnostics }`; the UI wants bare arrays. ---
+
+const agentPath = (id: string) => `/agents/${encodeURIComponent(id)}`;
+
+export async function listActivities(cfg: ControlPlaneConfig, agentId: string): Promise<Activity[]> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/activities`);
+  return ((await res.json()) as { items: Activity[] }).items;
+}
+export async function createActivity(cfg: ControlPlaneConfig, agentId: string, input: NewActivity): Promise<Activity> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/activities`, { method: "POST", body: JSON.stringify(input) });
+  return (await res.json()) as Activity;
+}
+export async function updateActivity(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  id: string,
+  updates: ActivityUpdate,
+): Promise<Activity> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/activities/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return (await res.json()) as Activity;
+}
+export async function deleteActivity(cfg: ControlPlaneConfig, agentId: string, id: string): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/activities/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function listRoutines(cfg: ControlPlaneConfig, agentId: string): Promise<Routine[]> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/routines`);
+  return ((await res.json()) as { items: Routine[] }).items;
+}
+export async function listRoutineRuns(cfg: ControlPlaneConfig, agentId: string): Promise<RoutineRun[]> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/routine_runs`);
+  return ((await res.json()) as { items: RoutineRun[] }).items;
+}
+
+export async function listSkills(cfg: ControlPlaneConfig, agentId: string): Promise<SkillSummary[]> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/skills`);
+  const items = ((await res.json()) as { items: Omit<SkillSummary, "inputs" | "promptTemplate">[] }).items;
+  // The host dropped the legacy structured-inputs/prompt-template fields (the UI
+  // ignores them); restore them as empty so the v1 SkillSummary type is satisfied.
+  return items.map((s) => ({ ...s, inputs: [], promptTemplate: null }));
+}
+
+export async function listWorkspaces(cfg: ControlPlaneConfig): Promise<Workspace[]> {
+  const res = await cpFetch(cfg, "/v1/workspaces");
+  return (await res.json()) as Workspace[];
+}
+
+export async function getPreference(cfg: ControlPlaneConfig, key: string): Promise<string | null> {
+  const res = await cpFetch(cfg, `/v1/preferences/${encodeURIComponent(key)}`);
+  return ((await res.json()) as { value: string | null }).value;
+}
+export async function setPreference(cfg: ControlPlaneConfig, key: string, value: string): Promise<void> {
+  await cpFetch(cfg, `/v1/preferences/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ value }) });
+}
+
+/**
+ * Subscribe to the host's global reactivity stream (`GET /v1/events`, SSE).
+ * EventSource can't send an Authorization header, so the token rides in the
+ * query (the host's bearer() reads `?token=`). Host events are `{ type, agentPath }`;
+ * the UI's invalidation map reads `{ type, data: { agent_path } }`, so translate.
+ */
+export function subscribeEvents(cfg: ControlPlaneConfig, onEvent: (event: unknown) => void): () => void {
+  const url = `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`;
+  const es = new EventSource(url);
+  es.onmessage = (e) => {
+    try {
+      const ev = JSON.parse(e.data) as { type: string; agentPath?: string; workspaceId?: string };
+      onEvent({ type: ev.type, data: { agent_path: ev.agentPath, workspace_id: ev.workspaceId } });
+    } catch {
+      /* a malformed frame is dropped, never thrown into the UI */
+    }
+  };
+  return () => es.close();
 }

@@ -30,7 +30,7 @@ import { readAgentFile as readAgentFileStore, writeAgentFile as writeAgentFileSt
 import { streamTurn, historyToFeed } from "./translate";
 import * as controlPlane from "./control-plane";
 import type { ControlPlaneConfig } from "./control-plane";
-import { emitEvent } from "./bus";
+import { bus, emitEvent } from "./bus";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -91,6 +91,18 @@ export class HoustonClient {
         };
       },
     });
+  }
+
+  /**
+   * Cloud mode: open the host's global reactivity stream (`/v1/events`, SSE) and
+   * fan it onto the in-process bus the UI already listens on — so an activity,
+   * routine, or skill changing server-side invalidates the right query. Tied to
+   * the EngineWebSocket connect/disconnect lifecycle (returns the unsubscribe).
+   * Standalone web mode has no host stream, so this is a no-op.
+   */
+  subscribeServerEvents(): () => void {
+    if (!this.cp) return () => {};
+    return controlPlane.subscribeEvents(this.cp, (e) => bus.emit(e));
   }
 
   private async activeOld(): Promise<{ provider: string; model: string }> {
@@ -221,17 +233,23 @@ export class HoustonClient {
     return [];
   }
 
-  // ---- activities (board / missions), backed locally ----
+  // ---- activities (board / missions) ----
+  // Cloud: the host serves them off the agent's workspace (.houston/activity).
+  // Standalone web: localStorage-backed (no host).
   async listActivities(agentPath: string): Promise<Activity[]> {
+    if (this.cp) return controlPlane.listActivities(this.cp, agentPath);
     return activities.listActivities(agentPath);
   }
   async createActivity(agentPath: string, input: NewActivity): Promise<Activity> {
+    if (this.cp) return controlPlane.createActivity(this.cp, agentPath, input);
     return activities.createActivity(agentPath, input);
   }
   async updateActivity(agentPath: string, id: string, updates: ActivityUpdate): Promise<Activity> {
+    if (this.cp) return controlPlane.updateActivity(this.cp, agentPath, id, updates);
     return activities.updateActivity(agentPath, id, updates);
   }
   async deleteActivity(agentPath: string, id: string): Promise<void> {
+    if (this.cp) return controlPlane.deleteActivity(this.cp, agentPath, id);
     activities.deleteActivity(agentPath, id);
   }
 
@@ -326,13 +344,16 @@ export class HoustonClient {
     const all = await Promise.all(agentPaths.map((p) => this.listConversations(p)));
     return all.flat();
   }
-  async listRoutines() {
+  async listRoutines(agentPath: string) {
+    if (this.cp) return controlPlane.listRoutines(this.cp, agentPath);
     return [];
   }
-  async listRoutineRuns() {
+  async listRoutineRuns(agentPath: string) {
+    if (this.cp) return controlPlane.listRoutineRuns(this.cp, agentPath);
     return [];
   }
-  async listSkills() {
+  async listSkills(agentPath: string) {
+    if (this.cp) return controlPlane.listSkills(this.cp, agentPath);
     return [];
   }
 
