@@ -29,6 +29,7 @@ import { MemoryTurnBus, type TurnBus } from "./turn/bus";
 import { RedisTurnBus } from "./turn/bus-redis";
 import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
 import { BusEventHub } from "./events/hub";
+import { CloudPaths } from "./paths";
 import { Scheduler } from "./schedule/scheduler";
 import { ChannelRoutineFirer } from "./schedule/firer";
 import { makeIdTokenProvider } from "./turn/id-token";
@@ -200,6 +201,7 @@ function main(): void {
   const bus = buildBus();
   const turn = buildTurn(credentials, vfs, bus);
   const events = new BusEventHub(bus);
+  const paths = new CloudPaths();
 
   // One channel per hosting model: gke workspaces proxy to standing pods,
   // cloudrun workspaces dispatch per-turn. A missing channel answers 503.
@@ -214,6 +216,7 @@ function main(): void {
     credentials,
     vault,
     vfs,
+    paths,
     events,
     channels,
     capabilities: CLOUD_CAPABILITIES,
@@ -235,7 +238,7 @@ function main(): void {
   // Every replica scans; the bus's setNx arbitrates so each run fires once.
   // The timer is unref'd, so it never blocks graceful shutdown.
   if (vfs) {
-    const scheduler = new Scheduler({ store, vfs, lock: bus, firer: new ChannelRoutineFirer(channels), events });
+    const scheduler = new Scheduler({ store, vfs, paths, lock: bus, firer: new ChannelRoutineFirer(channels), events });
     scheduler.start();
     console.log("[control-plane] scheduler started");
   }

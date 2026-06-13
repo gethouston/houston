@@ -9,8 +9,8 @@ import {
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
+import type { WorkspacePaths } from "../paths";
 import type { EventHub } from "../events/hub";
-import { workspaceRoot } from "../routes/agent-data";
 import { reconcileAgentRuns } from "./reconcile";
 
 /** A due routine to run, with its resolved conversation + run id. */
@@ -40,6 +40,7 @@ export interface FireLock {
 export interface SchedulerDeps {
   store: WorkspaceStore;
   vfs: Vfs;
+  paths: WorkspacePaths;
   /** Cross-replica dedup so a routine fires once per scheduled instant. */
   lock: FireLock;
   firer: RoutineFirer;
@@ -105,7 +106,7 @@ export class Scheduler {
 
     for (const ws of await this.deps.store.listWorkspaces()) {
       for (const agent of await this.deps.store.listAgents(ws.id)) {
-        const root = workspaceRoot(ws, agent);
+        const root = this.deps.paths.agentRoot(ws, agent);
         const { items: routines } = await loadRoutines(this.deps.vfs, root);
         for (const routine of routines) {
           const at = dueAt(routine, since, now);
@@ -120,7 +121,14 @@ export class Scheduler {
         }
         // Complete runs whose turn has finished (silent/surfaced/timeout).
         await reconcileAgentRuns(
-          { vfs: this.deps.vfs, lock: this.deps.lock, events: this.deps.events, now: this.now, newId: this.newId },
+          {
+            vfs: this.deps.vfs,
+            paths: this.deps.paths,
+            lock: this.deps.lock,
+            events: this.deps.events,
+            now: this.now,
+            newId: this.newId,
+          },
           ws,
           agent,
         );

@@ -10,7 +10,7 @@ import {
 import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
-import { workspaceRoot } from "./agent-data";
+import type { WorkspacePaths } from "../paths";
 import { json, readJson } from "./http";
 
 /**
@@ -22,6 +22,7 @@ import { json, readJson } from "./http";
  */
 export async function handleSkills(
   vfs: Vfs | undefined,
+  paths: WorkspacePaths,
   ctx: { workspace: Workspace; agent: Agent },
   method: string,
   rest: string,
@@ -37,7 +38,7 @@ export async function handleSkills(
     json(res, 503, { error: "agent data not configured" });
     return true;
   }
-  const root = workspaceRoot(ctx.workspace, ctx.agent);
+  const root = paths.agentRoot(ctx.workspace, ctx.agent);
   const fireChange = () => emit?.({ type: "SkillsChanged", agentPath: ctx.agent.id });
 
   if (method === "GET" && !slug) {

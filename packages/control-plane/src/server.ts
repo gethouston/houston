@@ -3,6 +3,7 @@ import { PROTOCOL_VERSION, type Capabilities } from "@houston/protocol";
 import type { UserId, WorkspaceRuntime } from "./domain/types";
 import type { CredentialStore, CredentialVault, RuntimeChannel, TokenVerifier, WorkspaceStore } from "./ports";
 import type { Vfs } from "./vfs";
+import type { WorkspacePaths } from "./paths";
 import type { EventHub } from "./events/hub";
 import { bearer, json, readJson } from "./routes/http";
 import { handleSandboxCredential } from "./routes/credential";
@@ -30,6 +31,8 @@ export interface ControlPlaneDeps {
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
   /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
+  /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
+  paths?: WorkspacePaths;
   /** Global reactivity fan-out (the `/v1/events` channel); absent → that route 503s. */
   events?: EventHub;
   /** What this deployment can do; served at /v1/capabilities for the UI to gate on. */

@@ -5,6 +5,7 @@ import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { MemoryTurnBus } from "../turn/bus";
 import { workspaceRoot } from "../routes/agent-data";
+import { CloudPaths } from "../paths";
 import { Scheduler, type FiringJob, type RoutineFirer } from "./scheduler";
 
 /**
@@ -50,6 +51,7 @@ function makeScheduler(env: Awaited<ReturnType<typeof setup>>, firer: RoutineFir
   const s = new Scheduler({
     store: env.store,
     vfs: env.vfs,
+    paths: new CloudPaths(),
     lock,
     firer,
     now: () => SINCE, // start() pins lastTick to SINCE

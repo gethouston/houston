@@ -5,8 +5,9 @@ import type { Agent, UserId, Workspace, WorkspaceRuntime } from "../domain/types
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
+import { CloudPaths, type WorkspacePaths } from "../paths";
 import { canUseAgent } from "../domain/access";
-import { handleAgentData, workspaceRoot } from "./agent-data";
+import { handleAgentData } from "./agent-data";
 import { handleSkills } from "./skills";
 import { json, readJson } from "./http";
 
@@ -16,9 +17,13 @@ export interface AgentRouteDeps {
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
   /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
+  /** Where agent files live in the vfs (cloud prefixes vs local tree). Default: cloud. */
+  paths?: WorkspacePaths;
   /** Global reactivity fan-out; absent → mutations succeed but emit nothing. */
   events?: EventHub;
 }
+
+const DEFAULT_PATHS = new CloudPaths();
 
 type AgentAuthz =
   | { ok: true; agent: Agent; workspace: Workspace }
@@ -76,7 +81,7 @@ export async function handleAgents(
     // Seed the .houston JSON schemas beside the (future) docs so the agent and
     // external tools can validate what they write. Skipped only when no vfs is
     // wired (legacy gke-only deploys); the typed-data routes 503 there anyway.
-    if (deps.vfs) await seedSchemas(deps.vfs, workspaceRoot(ws, agent));
+    if (deps.vfs) await seedSchemas(deps.vfs, (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent));
     deps.events?.emit(ws.ownerUserId, { type: "AgentsChanged", workspaceId: ws.id });
     json(res, 201, agent);
     return true;
@@ -175,8 +180,9 @@ export async function handleAgents(
 
     // Typed .houston families + skills are served by the HOST off the workspace
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.
-    if (await handleAgentData(deps.vfs, ctx, method, rest, req, res, emit)) return true;
-    if (await handleSkills(deps.vfs, ctx, method, rest, req, res, emit)) return true;
+    const paths = deps.paths ?? DEFAULT_PATHS;
+    if (await handleAgentData(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
+    if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
 
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {

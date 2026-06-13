@@ -6,6 +6,7 @@ import { MemoryVfs } from "../vfs";
 import { MemoryTurnBus } from "../turn/bus";
 import { conversationKey, prefixFor } from "../turn/deps";
 import { workspaceRoot } from "../routes/agent-data";
+import { CloudPaths } from "../paths";
 import { reconcileAgentRuns } from "./reconcile";
 
 /**
@@ -38,6 +39,7 @@ async function seedReply(vfs: MemoryVfs, ws: { id: string }, agent: { id: string
 
 const deps = (vfs: MemoryVfs, now: Date) => ({
   vfs,
+  paths: new CloudPaths(),
   lock: new MemoryTurnBus(),
   now: () => now,
   newId: () => "act-1",

@@ -12,8 +12,7 @@ import {
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
-import { conversationKey, prefixFor } from "../turn/deps";
-import { workspaceRoot } from "../routes/agent-data";
+import { conversationKey, type WorkspacePaths } from "../paths";
 
 /** A run still 'running' after this long with no agent reply is declared timed-out. */
 const RUN_TIMEOUT_MS = 15 * 60 * 1000;
@@ -34,6 +33,7 @@ function replyAfter(conversation: StoredConversation | null, startedAtMs: number
 
 export interface ReconcileDeps {
   vfs: Vfs;
+  paths: WorkspacePaths;
   /** Atomic guard so two replicas don't double-surface the same run. */
   lock: { setNx(key: string, value: string, ttlSec: number): Promise<boolean> };
   events?: EventHub;
@@ -49,13 +49,12 @@ export interface ReconcileDeps {
  * a per-run setNx lock arbitrates, and a terminal run is never revisited.
  */
 export async function reconcileAgentRuns(deps: ReconcileDeps, ws: Workspace, agent: Agent): Promise<void> {
-  const root = workspaceRoot(ws, agent);
+  const root = deps.paths.agentRoot(ws, agent);
   const { items: runs } = await loadRoutineRuns(deps.vfs, root);
   const running = runs.filter((r) => r.status === "running");
   if (running.length === 0) return;
 
   const { items: routines } = await loadRoutines(deps.vfs, root);
-  const prefix = prefixFor(ws, agent);
   const nowMs = deps.now().getTime();
   let changed = false;
   let activitiesTouched = false;
@@ -65,7 +64,7 @@ export async function reconcileAgentRuns(deps: ReconcileDeps, ws: Workspace, age
     const routine = routines.find((r) => r.id === run.routine_id);
     if (!routine) continue; // routine deleted; leave the run to the next sweep
 
-    const raw = await deps.vfs.readText(conversationKey(prefix, run.session_key));
+    const raw = await deps.vfs.readText(conversationKey(deps.paths, ws, agent, run.session_key));
     const conversation = raw ? (JSON.parse(raw) as StoredConversation) : null;
     const reply = replyAfter(conversation, Date.parse(run.started_at));
 

@@ -20,11 +20,13 @@ import {
 import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
-import { prefixFor } from "../turn/deps";
+import type { WorkspacePaths } from "../paths";
 import { json, readJson } from "./http";
 
-/** The agent's workspace root inside the Vfs — where `.houston/` lives. */
-export const workspaceRoot = (ws: Workspace, agent: Agent) => `${prefixFor(ws, agent)}/workspace`;
+// The cloud-layout root, kept as a convenience for cloud tests + callers that
+// don't carry a WorkspacePaths instance. Production handlers use the injected
+// `paths` so the local profile gets its own layout. See paths.ts.
+export { workspaceRoot } from "../paths";
 
 /** Each typed family's reactivity event — emitted after a successful mutation. */
 const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {
@@ -47,6 +49,7 @@ const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {
  */
 export async function handleAgentData(
   vfs: Vfs | undefined,
+  paths: WorkspacePaths,
   ctx: { workspace: Workspace; agent: Agent },
   method: string,
   rest: string,
@@ -63,7 +66,7 @@ export async function handleAgentData(
     json(res, 503, { error: "agent data not configured" });
     return true;
   }
-  const root = workspaceRoot(ctx.workspace, ctx.agent);
+  const root = paths.agentRoot(ctx.workspace, ctx.agent);
   const nowIso = new Date().toISOString();
   // Fire this family's reactivity event AFTER a successful write. agentPath is
   // the agent's opaque id (the UI scopes query invalidation by it).
