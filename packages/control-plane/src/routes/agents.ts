@@ -90,7 +90,7 @@ export async function handleAgents(
   // Rename / delete a single agent (owner-only — in personal mode, everyone for their own).
   const single = path.match(/^\/agents\/([^/]+)$/);
   if (single && (method === "PATCH" || method === "DELETE")) {
-    const agentId = single[1];
+    const agentId = single[1] ? decodeURIComponent(single[1]) : undefined;
     if (!agentId) {
       json(res, 404, { error: "not found" });
       return true;
@@ -133,7 +133,7 @@ export async function handleAgents(
   // new) serves from it. Must precede the generic dispatch.
   const capture = path.match(/^\/agents\/([^/]+)\/credential\/capture$/);
   if (capture && method === "POST") {
-    const agentId = capture[1];
+    const agentId = capture[1] ? decodeURIComponent(capture[1]) : undefined;
     if (!agentId) {
       json(res, 404, { error: "not found" });
       return true;
@@ -161,7 +161,7 @@ export async function handleAgents(
   // one ownership-checked dispatch.
   const dispatch = path.match(/^\/agents\/([^/]+)\/(.+)$/);
   if (dispatch) {
-    const agentId = dispatch[1];
+    const agentId = dispatch[1] ? decodeURIComponent(dispatch[1]) : undefined;
     const rest = dispatch[2];
     if (!agentId || !rest) {
       json(res, 404, { error: "not found" });

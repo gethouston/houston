@@ -41,11 +41,10 @@ test("CloudPaths agrees with the per-turn dispatch's own helpers (one set of key
   expect(settingsKey(p, ws, agent)).toBe(turnSettingsKey(prefix));
 });
 
-test("LocalPaths maps to the desktop tree (human names, .houston directly under the agent dir)", () => {
+test("LocalPaths maps to the desktop tree (agent.id IS the <Workspace>/<Agent> path)", () => {
   const p = new LocalPaths();
-  // Local ids ARE the folder names.
   const localWs = { ...ws, id: "Work" };
-  const localAgent = { ...agent, id: "Sales" };
+  const localAgent = { ...agent, id: "Work/Sales", workspaceId: "Work" };
   expect(p.agentPrefix(localWs, localAgent)).toBe("Work/Sales");
   expect(p.agentRoot(localWs, localAgent)).toBe("Work/Sales");
   expect(p.dataRoot(localWs, localAgent)).toBe("Work/Sales/.houston/runtime");
@@ -54,10 +53,10 @@ test("LocalPaths maps to the desktop tree (human names, .houston directly under 
   );
 });
 
-test("local agentRoot has NO workspace/ split — .houston sits where the watcher classifier expects it", () => {
-  // The FsWatcher classifies <Workspace>/<Agent>/.houston/... — agentRoot must be
-  // exactly that prefix so a host write and a watched write target the same path.
+test("local agentRoot == agent.id, so a host write and a watched write hit the same path", () => {
+  // The FsWatcher emits agentPath = "<Workspace>/<Agent>" (= agent.id), and
+  // agentRoot is that exact prefix — host-written and user-written files align.
   const p = new LocalPaths();
-  const root = p.agentRoot({ ...ws, id: "Work" }, { ...agent, id: "Sales" });
+  const root = p.agentRoot({ ...ws, id: "Work" }, { ...agent, id: "Work/Sales" });
   expect(`${root}/.houston/activity/activity.json`).toBe("Work/Sales/.houston/activity/activity.json");
 });

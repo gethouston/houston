@@ -20,6 +20,8 @@ export interface WorkspaceStore {
   listAgents(workspaceId: WorkspaceId): Promise<Agent[]>;
   /** Every workspace (admin/operator only — the dashboard enumerates all tenants). */
   listWorkspaces(): Promise<Workspace[]>;
+  /** The caller's own workspaces — cloud personal-tier returns one, local many. */
+  listWorkspacesForUser(userId: UserId): Promise<Workspace[]>;
   /** Every agent across all workspaces (admin/operator only). */
   listAllAgents(): Promise<Agent[]>;
   createAgent(input: { workspaceId: WorkspaceId; name: string }): Promise<Agent>;

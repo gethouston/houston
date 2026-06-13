@@ -71,6 +71,10 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
     return [...this.workspaces.values()];
   }
 
+  async listWorkspacesForUser(userId: UserId): Promise<Workspace[]> {
+    return [...this.workspaces.values()].filter((w) => w.ownerUserId === userId);
+  }
+
   async listAllAgents(): Promise<Agent[]> {
     return [...this.agents.values()];
   }

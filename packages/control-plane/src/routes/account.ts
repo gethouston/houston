@@ -38,10 +38,12 @@ export async function handleAccount(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
-  // The user's workspaces (personal tier: exactly one, auto-provisioned).
+  // The user's workspaces — cloud personal-tier returns one (auto-provisioned on
+  // first touch), the local profile returns every workspace on disk.
   if (path === "/v1/workspaces" && method === "GET") {
-    const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-    json(res, 200, [await toWire(deps, ws)]);
+    await deps.store.getOrCreatePersonalWorkspace(userId); // ensure ≥1 exists (cloud)
+    const owned = await deps.store.listWorkspacesForUser(userId);
+    json(res, 200, await Promise.all(owned.map((ws) => toWire(deps, ws))));
     return true;
   }
 

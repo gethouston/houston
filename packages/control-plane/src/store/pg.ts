@@ -172,6 +172,14 @@ export class PgWorkspaceStore implements WorkspaceStore {
     return res.rows.map(toWorkspace);
   }
 
+  async listWorkspacesForUser(userId: UserId): Promise<Workspace[]> {
+    const res = await this.pool.query<WorkspaceRow>(
+      "SELECT id, owner_user_id, kind, name, slug, runtime, created_at FROM workspaces WHERE owner_user_id = $1 ORDER BY created_at ASC",
+      [userId],
+    );
+    return res.rows.map(toWorkspace);
+  }
+
   async listAllAgents(): Promise<Agent[]> {
     const res = await this.pool.query<AgentRow>(
       "SELECT id, workspace_id, name, created_at FROM agents ORDER BY created_at ASC",

@@ -24,8 +24,10 @@ export type WorkspaceKind = "personal" | "org";
  *   `gke`      — legacy: one long-lived pod + PVC per agent.
  *   `cloudrun` — per-turn Cloud Run + object-storage workspaces (the default
  *                for new workspaces; existing ones flip after PVC→GCS migration).
+ *   `local`    — a pi-runtime SUBPROCESS on the user's own machine (the desktop
+ *                profile; dispatched by ProxyChannel over a ProcessLauncher).
  */
-export type WorkspaceRuntime = "gke" | "cloudrun";
+export type WorkspaceRuntime = "gke" | "cloudrun" | "local";
 
 export interface Workspace {
   id: WorkspaceId;

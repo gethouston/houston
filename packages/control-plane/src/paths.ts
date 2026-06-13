@@ -49,18 +49,21 @@ export class CloudPaths implements WorkspacePaths {
 
 /**
  * Local layout — the desktop tree under the FsVfs root (`~/.houston/workspaces`).
- * Agent/workspace ids ARE the on-disk folder names (the local store assigns
- * them that way), so the keys map 1:1 to the user's existing directories.
+ * The agent's id IS its `<Workspace>/<Agent>` path (the local store assigns it
+ * that way), so the keys map 1:1 to the user's existing directories and the
+ * same id flows through events + the FsWatcher unchanged. The id carries a
+ * slash, so URL transport encodes it and the server decodes it back (a no-op
+ * for cloud uuids).
  */
 export class LocalPaths implements WorkspacePaths {
-  agentPrefix(ws: Workspace, agent: Agent): string {
-    return `${ws.id}/${agent.id}`;
+  agentPrefix(_ws: Workspace, agent: Agent): string {
+    return agent.id;
   }
-  agentRoot(ws: Workspace, agent: Agent): string {
-    return this.agentPrefix(ws, agent);
+  agentRoot(_ws: Workspace, agent: Agent): string {
+    return agent.id;
   }
-  dataRoot(ws: Workspace, agent: Agent): string {
-    return `${this.agentPrefix(ws, agent)}/.houston/runtime`;
+  dataRoot(_ws: Workspace, agent: Agent): string {
+    return `${agent.id}/.houston/runtime`;
   }
 }
 
