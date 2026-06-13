@@ -1,10 +1,10 @@
 /**
  * ScheduleBuilder — Visual schedule builder with preset buttons.
- * Presets (daily, weekly, …) cover the common cases; the "Custom" tab offers a
- * "Repeat every N [minutes/hours/days/weeks/months]" picker — choosing weeks
- * reveals an "On these days" weekday multi-select, months a day-of-month field.
- * There is no raw-cron input: the picker is the only way to build a custom
- * schedule, and the generated cron is shown read-only for reference.
+ * Presets (daily, weekly, …) cover the common cases; the Weekly preset reveals
+ * an "On these days" weekday multi-select. The "Custom" tab offers a "Repeat
+ * every N [minutes/hours/days/months]" picker — choosing months reveals a
+ * day-of-month field. There is no raw-cron input: the picker is the only way to
+ * build a custom schedule, and the generated cron is shown read-only.
  *
  * Conditional fields are wrapped in `Reveal` so they animate in/out (and the
  * card resizes) instead of snapping — switching units never makes the layout
@@ -20,7 +20,6 @@ import type { SchedulePreset } from "./types"
 import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels"
 import {
   TimePicker,
-  DayOfWeekPicker,
   DayOfMonthPicker,
   WeekdaysPicker,
 } from "./schedule-picker-fields"
@@ -38,7 +37,7 @@ export interface ScheduleBuilderProps {
 }
 
 const DEFAULT_PRESETS: SchedulePreset[] = [
-  "every_30min", "hourly", "daily", "weekdays", "weekly", "monthly", "custom",
+  "every_30min", "hourly", "daily", "weekly", "monthly", "custom",
 ]
 
 /**
@@ -76,8 +75,6 @@ export function ScheduleBuilder({
     setIntervalEvery,
     intervalUnit,
     setIntervalUnit,
-    intervalWeekdays,
-    setIntervalWeekdays,
     everyValid,
     isCustom,
     showTime,
@@ -85,10 +82,7 @@ export function ScheduleBuilder({
   } = useScheduleBuilder(value, onChange, labels, locale)
 
   const showCustomTime =
-    isCustom &&
-    (intervalUnit === "days" ||
-      intervalUnit === "weeks" ||
-      intervalUnit === "months")
+    isCustom && (intervalUnit === "days" || intervalUnit === "months")
 
   return (
     <div className="space-y-4">
@@ -127,12 +121,13 @@ export function ScheduleBuilder({
           )}
 
           {activePreset === "weekly" && (
-            <Reveal key="weekly-dow">
-              <DayOfWeekPicker
-                label={labels.dayLabel}
+            <Reveal key="weekly-days">
+              <WeekdaysPicker
+                label={labels.onTheseDays}
                 locale={locale}
-                value={options.dayOfWeek}
-                onChange={(dayOfWeek) => updateOption({ dayOfWeek })}
+                shortcuts={labels.shortcuts}
+                value={options.daysOfWeek}
+                onChange={(daysOfWeek) => updateOption({ daysOfWeek })}
               />
             </Reveal>
           )}
@@ -159,18 +154,6 @@ export function ScheduleBuilder({
                 invalid={!everyValid}
                 onEveryChange={setIntervalEvery}
                 onUnitChange={setIntervalUnit}
-              />
-            </Reveal>
-          )}
-
-          {isCustom && intervalUnit === "weeks" && (
-            <Reveal key="custom-weekdays">
-              <WeekdaysPicker
-                label={labels.onTheseDays}
-                locale={locale}
-                shortcuts={labels.shortcuts}
-                value={intervalWeekdays}
-                onChange={setIntervalWeekdays}
               />
             </Reveal>
           )}

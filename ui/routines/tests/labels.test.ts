@@ -39,7 +39,6 @@ const ES_SUMMARY: ScheduleSummaryLabels = {
   everyNHours: "Se ejecuta cada {n} horas",
   everyDay: "Se ejecuta todos los días a las {time}",
   everyNDays: "Se ejecuta cada {n} días a las {time}",
-  weekdays: "Se ejecuta de lunes a viernes a las {time}",
   weekly: "Se ejecuta cada {day} a las {time}",
   everyWeekOnDays: "Se ejecuta cada semana los {days} a las {time}",
   monthly: "Se ejecuta el día {n} de cada mes a las {time}",
@@ -81,26 +80,35 @@ describe("cronSummary localization", () => {
 })
 
 describe("presetSummary localization", () => {
-  it("renders the weekday name from the locale", () => {
-    // Wednesday (dayOfWeek 3) in the default English locale.
+  it("renders a single-day Weekly as the weekday name", () => {
+    // Wednesday (day 3) in the default English locale.
     assert.equal(
-      presetSummary("weekly", { time: "09:00", dayOfWeek: 3, dayOfMonth: 1 }),
+      presetSummary("weekly", { time: "09:00", daysOfWeek: [3], dayOfMonth: 1 }),
       "Runs every Wednesday at 9:00 AM",
     )
     // ...and in Spanish, both the template and the day name localize.
     assert.match(
-      presetSummary("weekly", { time: "09:00", dayOfWeek: 3, dayOfMonth: 1 }, ES_SUMMARY, "es"),
+      presetSummary("weekly", { time: "09:00", daysOfWeek: [3], dayOfMonth: 1 }, ES_SUMMARY, "es"),
       /Se ejecuta cada miércoles a las/,
     )
   })
+  it("renders a multi-day Weekly as a localized day list", () => {
+    assert.equal(
+      presetSummary("weekly", { time: "09:00", daysOfWeek: [1, 3, 5], dayOfMonth: 1 }),
+      "Runs every week on Mon, Wed, and Fri at 9:00 AM",
+    )
+    const es = presetSummary("weekly", { time: "09:00", daysOfWeek: [1, 3, 5], dayOfMonth: 1 }, ES_SUMMARY, "es")
+    assert.match(es, /^Se ejecuta cada semana los /)
+    assert.doesNotMatch(es, /Mon|Wed|Fri| and /)
+  })
   it("renders the monthly ordinal in English", () => {
     assert.equal(
-      presetSummary("monthly", { time: "09:00", dayOfWeek: 1, dayOfMonth: 15 }),
+      presetSummary("monthly", { time: "09:00", daysOfWeek: [1], dayOfMonth: 15 }),
       "Runs on the 15th of every month at 9:00 AM",
     )
     // Spanish uses the plain day number, not an English ordinal.
     assert.match(
-      presetSummary("monthly", { time: "09:00", dayOfWeek: 1, dayOfMonth: 15 }, ES_SUMMARY, "es"),
+      presetSummary("monthly", { time: "09:00", daysOfWeek: [1], dayOfMonth: 15 }, ES_SUMMARY, "es"),
       /^Se ejecuta el día 15 de cada mes a las /,
     )
   })

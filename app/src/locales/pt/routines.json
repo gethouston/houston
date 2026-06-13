@@ -59,7 +59,6 @@
       "every_30min": "A cada 30 minutos",
       "hourly": "A cada hora",
       "daily": "Diário",
-      "weekdays": "Só dias úteis",
       "weekly": "Semanal",
       "monthly": "Mensal",
       "custom": "Personalizado"
@@ -68,11 +67,9 @@
       "minutes": { "one": "minuto", "other": "minutos" },
       "hours": { "one": "hora", "other": "horas" },
       "days": { "one": "dia", "other": "dias" },
-      "weeks": { "one": "semanal", "other": "semanal" },
       "months": { "one": "mensal", "other": "meses" }
     },
     "timeLabel": "Hora",
-    "dayLabel": "Dia",
     "dayOfMonthLabel": "Dia do mês",
     "repeatEvery": "Repetir a cada",
     "enterNumber": "Digite um número",
@@ -93,7 +90,6 @@
       "everyNHours": "Roda a cada {n} horas",
       "everyDay": "Roda todos os dias às {time}",
       "everyNDays": "Roda a cada {n} dias às {time}",
-      "weekdays": "Roda de segunda a sexta às {time}",
       "weekly": "Roda a cada {day} às {time}",
       "everyWeekOnDays": "Roda toda semana em {days} às {time}",
       "monthly": "Roda no dia {n} de cada mês às {time}",

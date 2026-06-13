@@ -17,7 +17,7 @@ interface AiRoutineStepProps {
 
 // No every_30min/hourly/custom: keep schedules cheap and understandable for
 // the users
-const PRESETS: SchedulePreset[] = ["daily", "weekdays", "weekly", "monthly"];
+const PRESETS: SchedulePreset[] = ["daily", "weekly", "monthly"];
 
 export function AiRoutineStep({
   routine,
