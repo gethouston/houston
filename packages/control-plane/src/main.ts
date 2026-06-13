@@ -28,6 +28,7 @@ import { ConnectManager } from "./turn/connect";
 import { MemoryTurnBus, type TurnBus } from "./turn/bus";
 import { RedisTurnBus } from "./turn/bus-redis";
 import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
+import { BusEventHub } from "./events/hub";
 import { makeIdTokenProvider } from "./turn/id-token";
 import { refreshCredential } from "./credentials/refresh";
 import { LinearFeedbackSender, type FeedbackSender } from "./feedback";
@@ -67,15 +68,22 @@ function buildVfs(): Vfs | undefined {
   return config.gcsBucket ? new GcsVfs(config.gcsBucket) : undefined;
 }
 
+/**
+ * The shared turn-state bus, built once: Redis when CP_REDIS_URL is set (2+
+ * replicas), in-process otherwise (single replica — see cloud/k8s). Shared by
+ * the per-turn machinery AND the global event hub so one Redis connection backs
+ * both — and so a domain-change emit on replica A reaches an SSE subscriber on B.
+ */
+function buildBus(): TurnBus {
+  return config.redisUrl ? new RedisTurnBus(config.redisUrl) : new MemoryTurnBus();
+}
+
 /** Per-turn Cloud Run dispatch wiring; undefined until CP_TURN_RUNTIME_URL is set. */
-function buildTurn(credentials: CredentialStore, vfs: Vfs | undefined): TurnDeps | undefined {
+function buildTurn(credentials: CredentialStore, vfs: Vfs | undefined, bus: TurnBus): TurnDeps | undefined {
   if (!config.turnRuntimeUrl) return undefined;
   if (!vfs) {
     throw new Error("CP_GCS_BUCKET is required when CP_TURN_RUNTIME_URL is set");
   }
-  // The shared turn-state bus: Redis when CP_REDIS_URL is set (2+ replicas),
-  // in-process otherwise (single replica — see cloud/k8s/control-plane.yaml).
-  const bus: TurnBus = config.redisUrl ? new RedisTurnBus(config.redisUrl) : new MemoryTurnBus();
   return {
     runtimeUrl: config.turnRuntimeUrl,
     turnToken: config.turnToken,
@@ -187,7 +195,9 @@ function main(): void {
     ? new FakeLauncher()
     : buildSandboxes(store, vault, kubeConfig!);
   const vfs = buildVfs();
-  const turn = buildTurn(credentials, vfs);
+  const bus = buildBus();
+  const turn = buildTurn(credentials, vfs, bus);
+  const events = new BusEventHub(bus);
 
   const deps: ControlPlaneDeps = {
     verifier,
@@ -195,6 +205,7 @@ function main(): void {
     credentials,
     vault,
     vfs,
+    events,
     // One channel per hosting model: gke workspaces proxy to standing pods,
     // cloudrun workspaces dispatch per-turn. A missing channel answers 503.
     channels: {

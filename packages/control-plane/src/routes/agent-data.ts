@@ -16,6 +16,7 @@ import {
   saveRoutines,
   upsertById,
 } from "@houston/domain";
+import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
 import { prefixFor } from "../turn/deps";
@@ -23,6 +24,15 @@ import { json, readJson } from "./http";
 
 /** The agent's workspace root inside the Vfs — where `.houston/` lives. */
 export const workspaceRoot = (ws: Workspace, agent: Agent) => `${prefixFor(ws, agent)}/workspace`;
+
+/** Each typed family's reactivity event — emitted after a successful mutation. */
+const FAMILY_EVENT: Record<string, (agentPath: string) => HoustonEvent> = {
+  activities: (agentPath) => ({ type: "ActivityChanged", agentPath }),
+  routines: (agentPath) => ({ type: "RoutinesChanged", agentPath }),
+  routine_runs: (agentPath) => ({ type: "RoutineRunsChanged", agentPath }),
+  config: (agentPath) => ({ type: "ConfigChanged", agentPath }),
+  learnings: (agentPath) => ({ type: "LearningsChanged", agentPath }),
+};
 
 /**
  * The typed `.houston` families (activities, routines + runs, config,
@@ -41,6 +51,7 @@ export async function handleAgentData(
   rest: string,
   req: IncomingMessage,
   res: ServerResponse,
+  emit?: (event: HoustonEvent) => void,
 ): Promise<boolean> {
   const m = rest.match(/^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/);
   if (!m) return false;
@@ -53,6 +64,9 @@ export async function handleAgentData(
   }
   const root = workspaceRoot(ctx.workspace, ctx.agent);
   const nowIso = new Date().toISOString();
+  // Fire this family's reactivity event AFTER a successful write. agentPath is
+  // the agent's opaque id (the UI scopes query invalidation by it).
+  const fireChange = () => emit?.(FAMILY_EVENT[family]!(ctx.agent.id));
 
   if (family === "activities") {
     if (method === "GET" && !itemId) {
@@ -68,6 +82,7 @@ export async function handleAgentData(
       const { items } = await loadActivities(vfs, root);
       const activity = createActivity(body, crypto.randomUUID(), nowIso);
       await saveActivities(vfs, root, upsertById(items, activity));
+      fireChange();
       json(res, 201, activity);
       return true;
     }
@@ -81,9 +96,11 @@ export async function handleAgentData(
       if (method === "PATCH") {
         const next = applyActivityUpdate(current, await readJson(req), nowIso);
         await saveActivities(vfs, root, upsertById(items, next));
+        fireChange();
         json(res, 200, next);
       } else {
         await saveActivities(vfs, root, removeById(items, itemId).items);
+        fireChange();
         json(res, 200, { ok: true });
       }
       return true;
@@ -106,6 +123,7 @@ export async function handleAgentData(
       const { items } = await loadRoutines(vfs, root);
       const routine = createRoutine(body, crypto.randomUUID(), nowIso);
       await saveRoutines(vfs, root, upsertById(items, routine));
+      fireChange();
       json(res, 201, routine);
       return true;
     }
@@ -119,9 +137,11 @@ export async function handleAgentData(
       if (method === "PATCH") {
         const next = applyRoutineUpdate(current, await readJson(req), nowIso);
         await saveRoutines(vfs, root, upsertById(items, next));
+        fireChange();
         json(res, 200, next);
       } else {
         await saveRoutines(vfs, root, removeById(items, itemId).items);
+        fireChange();
         json(res, 200, { ok: true });
       }
       return true;
@@ -141,6 +161,7 @@ export async function handleAgentData(
     if (method === "PUT") {
       const body = await readJson(req);
       await saveConfig(vfs, root, body);
+      fireChange();
       json(res, 200, body);
       return true;
     }
@@ -158,6 +179,7 @@ export async function handleAgentData(
         return true;
       }
       await saveLearnings(vfs, root, body.items);
+      fireChange();
       json(res, 200, { ok: true });
       return true;
     }

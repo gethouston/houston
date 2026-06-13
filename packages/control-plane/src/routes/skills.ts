@@ -7,6 +7,7 @@ import {
   skillKey,
   slugify,
 } from "@houston/domain";
+import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
@@ -26,6 +27,7 @@ export async function handleSkills(
   rest: string,
   req: IncomingMessage,
   res: ServerResponse,
+  emit?: (event: HoustonEvent) => void,
 ): Promise<boolean> {
   const m = rest.match(/^skills(?:\/([^/]+))?$/);
   if (!m) return false;
@@ -36,6 +38,7 @@ export async function handleSkills(
     return true;
   }
   const root = workspaceRoot(ctx.workspace, ctx.agent);
+  const fireChange = () => emit?.({ type: "SkillsChanged", agentPath: ctx.agent.id });
 
   if (method === "GET" && !slug) {
     json(res, 200, await loadSkills(vfs, root));
@@ -71,6 +74,7 @@ export async function handleSkills(
       skillKey(root, newSlug),
       composeSkillMd({ name: newSlug, description: body.description, content: body.content, createdIsoDate: today }),
     );
+    fireChange();
     const detail = await loadSkillDetail(vfs, root, newSlug);
     json(res, 201, detail);
     return true;
@@ -87,6 +91,7 @@ export async function handleSkills(
       return true;
     }
     await vfs.writeText(skillKey(root, slug), body.content);
+    fireChange();
     json(res, 200, { ok: true });
     return true;
   }
@@ -97,6 +102,7 @@ export async function handleSkills(
       return true;
     }
     await vfs.deletePrefix(skillDirKey(root, slug));
+    fireChange();
     json(res, 200, { ok: true });
     return true;
   }

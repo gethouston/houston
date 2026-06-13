@@ -3,10 +3,12 @@ import { PROTOCOL_VERSION, type Capabilities } from "@houston/protocol";
 import type { UserId, WorkspaceRuntime } from "./domain/types";
 import type { CredentialStore, CredentialVault, RuntimeChannel, TokenVerifier, WorkspaceStore } from "./ports";
 import type { Vfs } from "./vfs";
+import type { EventHub } from "./events/hub";
 import { bearer, json, readJson } from "./routes/http";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleAdmin, type AdminDeps } from "./routes/admin";
 import { handleAgents } from "./routes/agents";
+import { handleEventStream } from "./routes/events-stream";
 import { parseFeedbackPayload, type FeedbackSender } from "./feedback";
 
 export type { AdminDeps } from "./routes/admin";
@@ -27,6 +29,8 @@ export interface ControlPlaneDeps {
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
   /** Workspace file store backing the typed .houston families; absent → those routes 503. */
   vfs?: Vfs;
+  /** Global reactivity fan-out (the `/v1/events` channel); absent → that route 503s. */
+  events?: EventHub;
   /** What this deployment can do; served at /v1/capabilities for the UI to gate on. */
   capabilities: Capabilities;
   /** Operator dashboard wiring; omit to disable the `/admin/*` API entirely. */
@@ -80,6 +84,13 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
   if (!userId) return json(res, 401, { error: "unauthorized" });
+
+  // The global reactivity stream (SSE): this user's domain-change events only.
+  // Long-lived — do not fall through, and never end the response here.
+  if (method === "GET" && path === "/v1/events") {
+    if (!deps.events) return json(res, 503, { error: "events not configured" });
+    return handleEventStream(deps.events, userId, res, (cb) => req.on("close", cb));
+  }
 
   if (await handleAdmin(deps, userId, method, path, url, req, res)) return;
 
