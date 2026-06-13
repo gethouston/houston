@@ -1,5 +1,5 @@
 import type { Agent, Workspace } from "../domain/types";
-import { namespaceFor } from "../sandbox/names";
+import { namespaceFor } from "../launcher/names";
 import { bytesToGiB, bytesToMiB } from "./quantity";
 import type { ClusterSnapshot, PodInfo, VolumeInfo } from "./cluster";
 import {

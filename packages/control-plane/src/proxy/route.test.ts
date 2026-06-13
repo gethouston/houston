@@ -2,7 +2,7 @@ import { test, expect } from "bun:test";
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
 import { AddressInfo } from "node:net";
 import { forward } from "./route";
-import type { SandboxEndpoint } from "../ports";
+import type { RuntimeEndpoint } from "../ports";
 
 /** Spin up a node:http server on an ephemeral port and resolve its base URL. */
 function listen(handler: (req: IncomingMessage, res: ServerResponse) => void): Promise<{
@@ -49,7 +49,7 @@ test("forward relays method + sub-path + query + body under the sandbox Bearer, 
     res.end(JSON.stringify({ ok: true }));
   });
 
-  const endpoint: SandboxEndpoint = { baseUrl, token: "sbx-abc" };
+  const endpoint: RuntimeEndpoint = { baseUrl, token: "sbx-abc" };
   let done: Promise<void> | undefined;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
     done = forward(
@@ -86,7 +86,7 @@ test("forward relays a runtime error response AS ITSELF (e.g. 400), never maskin
     res.end(JSON.stringify({ error: "login already in progress" }));
   });
 
-  const endpoint: SandboxEndpoint = { baseUrl, token: "t" };
+  const endpoint: RuntimeEndpoint = { baseUrl, token: "t" };
   let done: Promise<void> | undefined;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
     done = forward(
@@ -117,7 +117,7 @@ test("forward pipes a text/event-stream response 1:1, including the heartbeat co
     res.end();
   });
 
-  const endpoint: SandboxEndpoint = { baseUrl, token: "sbx-stream" };
+  const endpoint: RuntimeEndpoint = { baseUrl, token: "sbx-stream" };
   let done: Promise<void> | undefined;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
     done = forward(endpoint, { method: "GET", path: "/conversations/c1/events", search: "" }, res);
@@ -147,7 +147,7 @@ test("forward aborts the upstream stream when the client disconnects (clean reso
     // intentionally no res.end() — a long-lived stream
   });
 
-  const endpoint: SandboxEndpoint = { baseUrl, token: "t" };
+  const endpoint: RuntimeEndpoint = { baseUrl, token: "t" };
   let resolved = false;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
     forward(endpoint, { method: "GET", path: "/conversations/c/events", search: "" }, res).then(() => {
@@ -176,7 +176,7 @@ test("forward surfaces an unreachable runtime as a 502 (no swallow)", async () =
   const { server: dead, baseUrl: deadUrl } = await listen(() => {});
   await close(dead);
 
-  const endpoint: SandboxEndpoint = { baseUrl: deadUrl, token: "t" };
+  const endpoint: RuntimeEndpoint = { baseUrl: deadUrl, token: "t" };
   let err: unknown;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
     forward(endpoint, { method: "GET", path: "/auth/status", search: "" }, res).catch((e) => {

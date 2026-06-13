@@ -1,7 +1,7 @@
 /**
  * Validates the cloud/k8s manifest TEMPLATES without a cluster.
  *
- * These manifests carry {{...}} placeholders the control plane SandboxManager fills, so
+ * These manifests carry {{...}} placeholders the control plane GkeLauncher fills, so
  * raw `kubectl apply` / `kustomize build` would choke on them. This validator
  * instead:
  *   1. parses every *.yaml as YAML (catches syntax errors),
@@ -18,7 +18,7 @@ import { fileURLToPath } from "node:url";
 
 const K8S_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 
-/** Dummy values for every placeholder the SandboxManager would substitute. */
+/** Dummy values for every placeholder the GkeLauncher would substitute. */
 export const DUMMY_VALUES: Record<string, string> = {
   WORKSPACE_NS: "ws-acme",
   WORKSPACE_ID: "ws_123",

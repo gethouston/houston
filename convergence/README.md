@@ -24,8 +24,8 @@ Drift prevention: domain logic exists once in the host; adapters pass shared **c
 ## Phases
 
 - **P0 — Spikes + decisions.** ✅ done — see `phase0-findings.md`.
-- **P1 — Protocol v3 + runtime additions.** `packages/protocol`; runtime: rename/delete, skills dir, context files, summarize. ∥ P2.
-- **P2 — control-plane → host.** Generalize SandboxManager→RuntimeLauncher, ObjectFiles→Vfs, extract RuntimeChannel/Identity ports. Pure refactor, cloud deploys continuously.
+- **P1 — Protocol v3 + runtime additions.** ✅ done (#21, #22). `packages/protocol`; runtime: rename/delete, skills dir, context files, summarize.
+- **P2 — control-plane → host.** ✅ ports done: RuntimeChannel (ProxyChannel/TurnChannel — the server never branches on hosting model), RuntimeLauncher (was SandboxManager), Vfs (was ObjectFiles; Memory/Gcs/**Fs** adapters + shared contract suite), SingleUserVerifier, /v1/version + /v1/capabilities live on the cloud host. The `packages/control-plane` → `packages/host` DIRECTORY rename is deliberately deferred to the start of P4 (one commit together with cloud deploy scripts/k8s refs, so live deploys never point at a half-renamed tree).
 - **P3 — Domain in TS.** `packages/domain`: `.houston` layout + schemas (source: `ui/agent-schemas`) + migration chain port. Host routes per family. Each slice ships to cloud first (cloud gains skills/routines before desktop even switches).
 - **P4 — Local profile.** ProcessLauncher, FS watcher adapter, single-user identity, local connect-once credentials, host-as-sidecar packaging (ONE compiled artifact, host+runtime modes).
 - **P5 — Desktop cutover + migration.** Tauri spawns host sidecar (same supervisor contract). Migration: idempotent, versioned, copy-never-move. Reconnect-onboarding card. Beta gate: parity checklist + migration verified on real data + signed Windows builds. Downgrade always works.

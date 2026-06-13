@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import { MemoryObjectFiles } from "./objects";
+import { MemoryVfs } from "../vfs";
 import {
   FilePathError,
   contentDisposition,
@@ -22,12 +22,12 @@ import type { TurnDeps } from "./deps";
 
 const PREFIX = "ws/w1/agent-1";
 
-function deps(): { deps: TurnDeps; objects: MemoryObjectFiles } {
-  const objects = new MemoryObjectFiles();
-  return { deps: { objects } as unknown as TurnDeps, objects };
+function deps(): { deps: TurnDeps; objects: MemoryVfs } {
+  const objects = new MemoryVfs();
+  return { deps: { vfs: objects } as unknown as TurnDeps, objects };
 }
 
-async function seed(objects: MemoryObjectFiles, rel: string, content: string) {
+async function seed(objects: MemoryVfs, rel: string, content: string) {
   await objects.writeText(`${PREFIX}/workspace/${rel}`, content);
 }
 

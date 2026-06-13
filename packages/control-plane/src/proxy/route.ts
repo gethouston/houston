@@ -1,6 +1,6 @@
 import { Readable } from "node:stream";
 import type { ServerResponse } from "node:http";
-import type { ForwardRequest, SandboxEndpoint } from "../ports";
+import type { ForwardRequest, RuntimeEndpoint } from "../ports";
 
 /**
  * A transparent, content-negotiated reverse proxy from a control-plane client to
@@ -39,7 +39,7 @@ function joinUrl(baseUrl: string, path: string): string {
  * already flushed) and rethrows — never swallowed.
  */
 export async function forward(
-  endpoint: SandboxEndpoint,
+  endpoint: RuntimeEndpoint,
   request: ForwardRequest,
   res: ServerResponse,
 ): Promise<void> {

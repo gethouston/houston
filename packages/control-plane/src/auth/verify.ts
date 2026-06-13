@@ -110,6 +110,28 @@ export class DevTokenVerifier implements TokenVerifier {
 }
 
 /**
+ * The local profile's identity adapter: one machine, one human. Every request
+ * carrying the host's boot token resolves to the owner principal, so the
+ * ENTIRE authorize() seam runs unchanged locally — same code path as cloud,
+ * degenerate adapter. The token is still required: the local host binds
+ * loopback with a random per-boot token (the Tauri shell reads it from the
+ * startup banner), so other local processes can't drive the agents.
+ */
+export class SingleUserVerifier implements TokenVerifier {
+  constructor(
+    private readonly opts: { token: string; userId?: UserId },
+  ) {
+    if (!opts.token) throw new Error("SingleUserVerifier requires a non-empty boot token");
+  }
+
+  async verify(bearer: string): Promise<{ userId: UserId } | null> {
+    const token = stripBearer(bearer);
+    if (token !== this.opts.token) return null;
+    return { userId: this.opts.userId ?? "local-owner" };
+  }
+}
+
+/**
  * Static service tokens for unattended callers (the nightly evals harness):
  * `CP_SERVICE_TOKENS="<token>=<userId>,..."`. Off by default. A match resolves
  * to its mapped principal; a miss falls through to the wrapped verifier, so

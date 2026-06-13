@@ -8,7 +8,7 @@ import { MemoryCredentialStore } from "../credentials/store";
 import { ConnectManager } from "./connect";
 import { dispatchCloudrun } from "./dispatch";
 import type { TurnDeps } from "./deps";
-import { MemoryObjectFiles } from "./objects";
+import { MemoryVfs } from "../vfs";
 import { TurnQuota } from "./quota";
 import { TurnRelay } from "./relay";
 
@@ -55,15 +55,15 @@ beforeAll(async () => {
 
 afterAll(() => fakeRuntime.close());
 
-function makeDeps(): { deps: TurnDeps; objects: MemoryObjectFiles; credentials: MemoryCredentialStore } {
-  const objects = new MemoryObjectFiles();
+function makeDeps(): { deps: TurnDeps; objects: MemoryVfs; credentials: MemoryCredentialStore } {
+  const objects = new MemoryVfs();
   const credentials = new MemoryCredentialStore();
   const deps: TurnDeps = {
     runtimeUrl,
     turnToken: "turn-secret",
     relay: new TurnRelay(),
     quota: new TurnQuota({ maxConcurrent: 2, perHour: 100 }),
-    objects,
+    vfs: objects,
     credentials,
     connect: new ConnectManager(credentials),
     refresh: async (cred: WorkspaceCredential) => ({

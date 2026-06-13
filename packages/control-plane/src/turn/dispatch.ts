@@ -41,9 +41,9 @@ export async function dispatchCloudrun(
 
   if (method === "GET" && rest === "conversations") {
     const out: ConversationSummary[] = [];
-    for (const key of await deps.objects.list(`${prefix}/data/conversations`)) {
+    for (const key of await deps.vfs.list(`${prefix}/data/conversations`)) {
       if (!key.endsWith(".json")) continue;
-      const raw = await deps.objects.readText(key);
+      const raw = await deps.vfs.readText(key);
       if (!raw) continue;
       const conv = JSON.parse(raw) as ConversationSummary & { messages: { content: string }[] };
       const last = conv.messages[conv.messages.length - 1];
@@ -64,7 +64,7 @@ export async function dispatchCloudrun(
     const action = conv[2]!;
 
     if (method === "GET" && action === "messages") {
-      const raw = await deps.objects.readText(conversationKey(prefix, cid));
+      const raw = await deps.vfs.readText(conversationKey(prefix, cid));
       if (!raw) return json(res, 404, { error: "conversation not found" });
       const c = JSON.parse(raw) as { id: string; title: string; messages: unknown[] };
       return json(res, 200, { id: c.id, title: c.title, messages: c.messages });
@@ -161,7 +161,7 @@ export async function dispatchCloudrun(
     if (typeof body.model === "string") {
       settings.models = { ...settings.models, [PROVIDER]: body.model };
     }
-    await deps.objects.writeText(`${prefix}/data/settings.json`, JSON.stringify(settings));
+    await deps.vfs.writeText(`${prefix}/data/settings.json`, JSON.stringify(settings));
     return json(res, 200, settings);
   }
 

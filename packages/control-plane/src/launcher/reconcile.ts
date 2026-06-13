@@ -19,7 +19,7 @@ import {
 } from "./names";
 
 /**
- * Low-level, idempotent apiserver reconcile steps used by GkeSandboxManager.
+ * Low-level, idempotent apiserver reconcile steps used by GkeLauncher.
  * Each "ensure" reads-then-creates so a re-run is a no-op; the only swallowed
  * statuses are 404 (read miss -> create) and 409 (raced create -> already
  * there). Every other apiserver error propagates per the no-silent-failure rule.

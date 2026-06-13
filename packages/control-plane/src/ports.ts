@@ -1,3 +1,4 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Agent, AgentId, UserId, Workspace, WorkspaceId, WorkspaceRuntime } from "./domain/types";
 
 /**
@@ -11,7 +12,7 @@ import type { Agent, AgentId, UserId, Workspace, WorkspaceId, WorkspaceRuntime }
 export interface WorkspaceStore {
   /** The user's personal workspace, creating it on first access (lazy provisioning). */
   getOrCreatePersonalWorkspace(userId: UserId): Promise<Workspace>;
-  /** A workspace by id — the SandboxManager needs its slug for the K8s namespace. */
+  /** A workspace by id — the RuntimeLauncher needs its slug for the K8s namespace. */
   getWorkspace(id: WorkspaceId): Promise<Workspace | null>;
 
   getAgent(id: AgentId): Promise<Agent | null>;
@@ -35,7 +36,7 @@ export interface TokenVerifier {
 }
 
 /** Where an agent's sandbox can be reached once it is awake. */
-export interface SandboxEndpoint {
+export interface RuntimeEndpoint {
   /** Base URL of the agent's runtime, e.g. http://10.0.3.4:4317 */
   baseUrl: string;
   /** Bearer the runtime expects (per-sandbox, control-plane-issued). */
@@ -60,17 +61,53 @@ export interface ForwardRequest {
   body?: Buffer;
 }
 
-export type SandboxState = "running" | "asleep" | "absent";
+export type RuntimeState = "running" | "asleep" | "absent";
 
-/** Lifecycle of an agent's isolated sandbox on GKE. Impls: FakeSandboxManager, GkeSandboxManager. */
-export interface SandboxManager {
-  /** Ensure the agent's sandbox is running (spawn or wake it). Returns where to reach it. */
-  ensureAwake(agent: Agent): Promise<SandboxEndpoint>;
-  /** Sleep the sandbox (scale to zero), persisting its volume. */
+/**
+ * Lifecycle of an agent's STANDING runtime instance. Impls: FakeLauncher,
+ * GkeLauncher (one pod + PVC per agent); the local profile adds a subprocess
+ * launcher (P4). Per-turn runtimes (cloudrun) have no launcher — nothing stands.
+ */
+export interface RuntimeLauncher {
+  /** Ensure the agent's runtime is running (spawn or wake it). Returns where to reach it. */
+  ensureAwake(agent: Agent): Promise<RuntimeEndpoint>;
+  /** Sleep the runtime (scale to zero / SIGTERM), persisting its state. */
   sleep(agentId: AgentId): Promise<void>;
-  /** Permanently delete the sandbox. Keeps the volume unless dropVolume. */
+  /** Permanently delete the runtime. Keeps the volume unless dropVolume. */
   destroy(agentId: AgentId, opts?: { dropVolume?: boolean }): Promise<void>;
-  status(agentId: AgentId): Promise<SandboxState>;
+  status(agentId: AgentId): Promise<RuntimeState>;
+}
+
+/** The (workspace, agent) pair every channel operation is scoped to. */
+export interface ChannelCtx {
+  workspace: Workspace;
+  agent: Agent;
+}
+
+export type CaptureResult =
+  | { ok: true; provider: string }
+  | { ok: false; status: number; error: string; detail?: string };
+
+/**
+ * How the host reaches an agent's runtime surface. ONE interface, one adapter
+ * per hosting model — ProxyChannel (standing runtime: GKE pod today, local
+ * subprocess in P4) and TurnChannel (per-turn Cloud Run). The server picks the
+ * channel by `workspace.runtime` and never branches on the hosting model again.
+ */
+export interface RuntimeChannel {
+  /** Serve one runtime-surface request (chat, SSE events, providers, settings, files) 1:1. */
+  dispatch(
+    ctx: ChannelCtx,
+    method: string,
+    rest: string,
+    url: URL,
+    req: IncomingMessage,
+    res: ServerResponse,
+  ): Promise<void>;
+  /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
+  teardown(ctx: ChannelCtx): Promise<void>;
+  /** Connect-once: pull/confirm the workspace credential after the user connects. */
+  captureCredential(ctx: ChannelCtx): Promise<CaptureResult>;
 }
 
 /**

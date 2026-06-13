@@ -35,7 +35,7 @@ The control plane and supporting artifacts are **built and tested** here. What r
 | Control plane foundation — domain, `authorize()`, ports, in-memory store | ✅ built · tested | `packages/control-plane/src/{domain,ports.ts,store/memory.ts}` |
 | Control plane auth — Supabase JWT verifier (+ dev) | ✅ tested | `packages/control-plane/src/auth/verify.ts` |
 | Control plane RBAC store — Postgres + migration | ✅ built · integration-noted | `packages/control-plane/src/store/pg.ts`, `cloud/migrations/0001_rbac.sql` |
-| Control plane SandboxManager — GKE lifecycle + fake | ✅ built · GKE integration-noted | `packages/control-plane/src/sandbox/*` |
+|  Control plane GkeLauncher — GKE lifecycle + fake | ✅ built · GKE integration-noted | `packages/control-plane/src/launcher/*` |
 | Control plane routing + 1:1 SSE pass-through proxy | ✅ tested | `packages/control-plane/src/proxy/route.ts` |
 | Control plane keyless credential proxy + vault | ✅ tested | `packages/control-plane/src/proxy/credentials.ts`, `src/credentials/vault.ts` |
 | Control plane HTTP server + authz boundary + `main` | ✅ tested (John's scenario) | `packages/control-plane/src/{server.ts,main.ts}` |

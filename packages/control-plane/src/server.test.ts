@@ -1,9 +1,12 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
 import type { Server } from "node:http";
-import { createControlPlaneServer, type AdminDeps, type ControlPlaneDeps, type SandboxRouter } from "./server";
+import type { Capabilities } from "@houston/protocol";
+import { createControlPlaneServer, type AdminDeps, type ControlPlaneDeps } from "./server";
+import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
+import { SingleUserVerifier } from "./auth/verify";
 import { MemoryWorkspaceStore } from "./store/memory";
 import { MemoryCredentialStore } from "./credentials/store";
-import type { CredentialVault, SandboxEndpoint, SandboxManager, TokenVerifier } from "./ports";
+import type { CredentialVault, RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "./ports";
 import type { Agent } from "./domain/types";
 import { FakeClusterReader } from "./admin/cluster";
 import type { AutopilotRates } from "./admin/billing";
@@ -24,8 +27,8 @@ const verifier: TokenVerifier = {
   },
 };
 
-const sandboxes: SandboxManager = {
-  async ensureAwake(): Promise<SandboxEndpoint> {
+const sandboxes: RuntimeLauncher = {
+  async ensureAwake(): Promise<RuntimeEndpoint> {
     return { baseUrl: "http://sandbox.local", token: "runtime-token" };
   },
   async sleep() {},
@@ -38,7 +41,7 @@ const sandboxes: SandboxManager = {
 // Records every forwarded request and answers like a sandbox runtime would:
 // an SSE stream for /events, JSON otherwise.
 const forwarded: { method: string; path: string; body?: string }[] = [];
-const router: SandboxRouter = {
+const router: RuntimeProxy = {
   async forward(_endpoint, request, res) {
     forwarded.push({
       method: request.method,
@@ -74,8 +77,22 @@ let aliceHrId = "";
 let bobAgentId = "";
 const auth = (who: string) => ({ Authorization: `Bearer tok:${who}` });
 
+// Standing-runtime channel over a given launcher — the gke wiring main.ts builds.
+const channelsWith = (launcher: RuntimeLauncher) => ({
+  gke: new ProxyChannel({ launcher, proxy: router, credentials }),
+});
+
+const TEST_CAPABILITIES: Capabilities = {
+  profile: "cloud",
+  revealInOs: false,
+  terminal: false,
+  tunnel: false,
+  codeExecution: "remote-sandbox",
+  providers: ["openai-codex"],
+};
+
 beforeAll(async () => {
-  const deps: ControlPlaneDeps = { verifier, store, sandboxes, router, credentials, vault };
+  const deps: ControlPlaneDeps = baseDeps();
   server = createControlPlaneServer(deps);
   await new Promise<void>((r) => server.listen(0, "127.0.0.1", () => r()));
   const addr = server.address();
@@ -243,12 +260,12 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
   });
   const deps: ControlPlaneDeps = {
     ...baseDeps(),
-    sandboxes: {
+    channels: channelsWith({
       ...sandboxes,
-      async ensureAwake(): Promise<SandboxEndpoint> {
+      async ensureAwake(): Promise<RuntimeEndpoint> {
         return { baseUrl: `http://127.0.0.1:${fakeRuntime.port}`, token: "runtime-token" };
       },
-    },
+    }),
   };
   const { base: b, close } = await startServer(deps);
   try {
@@ -286,12 +303,12 @@ test("a failed scrub surfaces as an error (credential still stored)", async () =
   });
   const deps: ControlPlaneDeps = {
     ...baseDeps(),
-    sandboxes: {
+    channels: channelsWith({
       ...sandboxes,
-      async ensureAwake(): Promise<SandboxEndpoint> {
+      async ensureAwake(): Promise<RuntimeEndpoint> {
         return { baseUrl: `http://127.0.0.1:${fakeRuntime.port}`, token: "runtime-token" };
       },
-    },
+    }),
   };
   const { base: b, close } = await startServer(deps);
   try {
@@ -317,7 +334,14 @@ const RATES: AutopilotRates = {
   clusterHourUsd: 0.1,
 };
 
-const baseDeps = () => ({ verifier, store, sandboxes, router, credentials, vault });
+const baseDeps = () => ({
+  verifier,
+  store,
+  credentials,
+  vault,
+  channels: channelsWith(sandboxes),
+  capabilities: TEST_CAPABILITIES,
+});
 
 async function startServer(deps: ControlPlaneDeps): Promise<{ base: string; close: () => Promise<void> }> {
   const s = createControlPlaneServer(deps);
@@ -419,6 +443,50 @@ test("admin routes reject non-GET with 405", async () => {
   try {
     const r = await fetch(`${abase}/admin/overview`, { method: "POST", headers: auth("alice") });
     expect(r.status).toBe(405);
+  } finally {
+    await close();
+  }
+});
+
+// --- v3 meta surface + the local-profile identity adapter ---------------------
+
+test("/v1/version and /v1/capabilities are public and serve the v3 contract", async () => {
+  const v = await fetch(`${base}/v1/version`);
+  expect(v.status).toBe(200);
+  expect((await v.json()) as object).toMatchObject({ engine: "houston-host", protocol: 3 });
+
+  const c = await fetch(`${base}/v1/capabilities`);
+  expect(c.status).toBe(200);
+  const caps = (await c.json()) as Capabilities;
+  expect(caps.profile).toBe("cloud");
+  expect(caps.codeExecution).toBe("remote-sandbox");
+  expect(caps.providers).toEqual(["openai-codex"]);
+});
+
+test("SingleUserVerifier: the boot token resolves to the owner; anything else is 401", async () => {
+  const { base: b, close } = await startServer({
+    ...baseDeps(),
+    verifier: new SingleUserVerifier({ token: "boot-secret" }),
+  });
+  try {
+    // The owner's token reaches the same authorize() seam as cloud users.
+    const ok = await fetch(`${b}/agents`, { headers: { Authorization: "Bearer boot-secret" } });
+    expect(ok.status).toBe(200);
+
+    // A wrong/missing token is rejected — loopback neighbors can't drive the agents.
+    expect((await fetch(`${b}/agents`, { headers: { Authorization: "Bearer guess" } })).status).toBe(401);
+    expect((await fetch(`${b}/agents`)).status).toBe(401);
+  } finally {
+    await close();
+  }
+});
+
+test("a workspace whose hosting model has no channel wired answers 503", async () => {
+  const { base: b, close } = await startServer({ ...baseDeps(), channels: {} });
+  try {
+    const r = await fetch(`${b}/agents/${aliceSalesId}/auth/status`, { headers: auth("alice") });
+    expect(r.status).toBe(503);
+    expect(((await r.json()) as { error: string }).error).toContain("not configured");
   } finally {
     await close();
   }

@@ -9,13 +9,13 @@ import {
   MANAGED_BY_LABEL,
   MANAGED_BY_VALUE,
   WORKSPACE_LABEL,
-} from "../sandbox/names";
+} from "../launcher/names";
 import { parseCpuToCores, parseMemToBytes } from "./quantity";
 
 /**
  * A read-only, cross-namespace view of the agent sandboxes the control plane
  * manages — the raw material for the operator dashboard's "pods per user" and
- * live cost estimate. It is deliberately separate from SandboxManager (which acts
+ * live cost estimate. It is deliberately separate from RuntimeLauncher (which acts
  * on one agent at a time): the dashboard needs ONE cheap cluster-wide sweep, not
  * N per-agent reads. Selects strictly on the managed-by label so it can never see
  * or count anything the control plane didn't create.

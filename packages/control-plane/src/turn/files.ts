@@ -93,7 +93,7 @@ export const contentDisposition = (kind: "attachment" | "inline", name: string):
  */
 export async function listWorkspace(deps: TurnDeps, prefix: string): Promise<ProjectFile[]> {
   const base = `${prefix}/${WORKSPACE}`;
-  const stats = await deps.objects.listDetailed(base);
+  const stats = await deps.vfs.listDetailed(base);
   const files: ProjectFile[] = [];
   const dirs = new Map<string, number>(); // dir path -> latest mtime under it
 
@@ -134,7 +134,7 @@ export async function readWorkspaceFile(
   prefix: string,
   rel: string,
 ): Promise<{ content: string; base64: boolean } | null> {
-  const buf = await deps.objects.readBytes(workspaceKey(prefix, safeRel(rel)));
+  const buf = await deps.vfs.readBytes(workspaceKey(prefix, safeRel(rel)));
   if (buf === null) return null;
   // Treat a buffer as text only if it round-trips through UTF-8 without
   // replacement chars (so a .pptx comes back as base64 for download, not garbage).
@@ -147,12 +147,12 @@ export async function readWorkspaceFile(
 
 export async function deleteWorkspaceFile(deps: TurnDeps, prefix: string, rel: string): Promise<void> {
   const norm = safeRel(rel);
-  const stats = await deps.objects.listDetailed(`${prefix}/${WORKSPACE}/${norm}`);
+  const stats = await deps.vfs.listDetailed(`${prefix}/${WORKSPACE}/${norm}`);
   if (stats.length > 0) {
     // A directory: delete everything under it.
-    for (const s of stats) await deps.objects.deleteKey(s.key);
+    for (const s of stats) await deps.vfs.deleteKey(s.key);
   }
-  await deps.objects.deleteKey(workspaceKey(prefix, norm));
+  await deps.vfs.deleteKey(workspaceKey(prefix, norm));
 }
 
 export async function renameWorkspaceFile(
@@ -165,12 +165,12 @@ export async function renameWorkspaceFile(
   if (newName.includes("/") || newName.includes("\\") || newName === "" || newName.includes(".."))
     throw new FilePathError(newName);
   const parent = from.includes("/") ? from.slice(0, from.lastIndexOf("/") + 1) : "";
-  await deps.objects.move(workspaceKey(prefix, from), workspaceKey(prefix, `${parent}${newName}`));
+  await deps.vfs.move(workspaceKey(prefix, from), workspaceKey(prefix, `${parent}${newName}`));
 }
 
 export async function createWorkspaceFolder(deps: TurnDeps, prefix: string, folder: string): Promise<string> {
   const norm = safeRel(folder);
-  await deps.objects.writeText(workspaceKey(prefix, `${norm}/${FOLDER_KEEP}`), "");
+  await deps.vfs.writeText(workspaceKey(prefix, `${norm}/${FOLDER_KEEP}`), "");
   return norm;
 }
 
@@ -195,7 +195,7 @@ export async function handleFileRequest(
     }
     if (method === "GET" && rest === "files/download") {
       const rel = safeRel(query.get("path") ?? "");
-      const buf = await deps.objects.readBytes(workspaceKey(prefix, rel));
+      const buf = await deps.vfs.readBytes(workspaceKey(prefix, rel));
       if (buf === null) return (json(res, 404, { error: "file not found" }), true);
       const name = rel.split("/").pop()!;
       const kind = query.get("disposition") === "inline" ? "inline" : "attachment";

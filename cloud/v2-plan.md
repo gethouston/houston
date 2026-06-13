@@ -108,7 +108,7 @@ Notes:
 - `runtime/src/session/chat.ts`: drop the inline `syncServedCredential()` (the manager guarantees a fresh `auth.json` before forwarding).
 
 **REPLACE (the real rebuild):**
-- `control-plane/src/sandbox/{gke,manifest,reconcile,names}.ts`: per-agent Deployment/Service/PVC → **per-workspace microVM** lifecycle (ensure/sleep/destroy keyed by workspace, Kata RuntimeClass).
+- `control-plane/src/launcher/{gke,manifest,reconcile,names}.ts`: per-agent Deployment/Service/PVC → **per-workspace microVM** lifecycle (ensure/sleep/destroy keyed by workspace, Kata RuntimeClass).
 - `cloud/k8s/*` + `cloud/scripts/02-cluster.sh`: Autopilot + `--enable-agent-sandbox` → **GKE Standard + Intel nested-virt node pool + Kata RuntimeClass install** (or gVisor-on-Autopilot for the fallback).
 - `runtime/src/main.ts`: becomes the **manager** entrypoint.
 

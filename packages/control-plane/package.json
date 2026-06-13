@@ -8,7 +8,8 @@
   },
   "scripts": {
     "dev": "bun run src/main.ts",
-    "test": "bun test"
+    "test": "bun test",
+    "typecheck": "tsgo -p tsconfig.json"
   },
   "dependencies": {
     "@earendil-works/pi-coding-agent": "0.78.1",
@@ -17,11 +18,13 @@
     "@kubernetes/client-node": "^0.22.3",
     "ioredis": "^5.11.1",
     "jose": "^5.9.6",
-    "pg": "^8.13.1"
+    "pg": "^8.13.1",
+    "@houston/protocol": "file:../protocol"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
     "@types/node": "^22",
-    "@types/pg": "^8.11.10"
+    "@types/pg": "^8.11.10",
+    "@typescript/native-preview": "7.0.0-dev.20260607.1"
   }
 }

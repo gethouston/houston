@@ -6,9 +6,9 @@ import {
 import type { Agent, AgentId } from "../domain/types";
 import type {
   CredentialVault,
-  SandboxEndpoint,
-  SandboxManager,
-  SandboxState,
+  RuntimeEndpoint,
+  RuntimeLauncher,
+  RuntimeState,
 } from "../ports";
 import {
   deploymentName,
@@ -53,7 +53,7 @@ export interface GkeDeps {
   pollIntervalMs?: number;
 }
 
-export class GkeSandboxManager implements SandboxManager {
+export class GkeLauncher implements RuntimeLauncher {
   private readonly core: CoreV1Api;
   private readonly apps: AppsV1Api;
   private readonly readyTimeoutMs: number;
@@ -68,7 +68,7 @@ export class GkeSandboxManager implements SandboxManager {
     this.pollIntervalMs = deps.pollIntervalMs ?? 1_000;
   }
 
-  async ensureAwake(agent: Agent): Promise<SandboxEndpoint> {
+  async ensureAwake(agent: Agent): Promise<RuntimeEndpoint> {
     const workspaceSlug = await this.deps.workspaceSlugFor(agent);
     const ns = namespaceFor(workspaceSlug);
     const token = this.deps.vault.sandboxToken(agent.workspaceId, agent.id);
@@ -109,7 +109,7 @@ export class GkeSandboxManager implements SandboxManager {
     }
   }
 
-  async status(agentId: AgentId): Promise<SandboxState> {
+  async status(agentId: AgentId): Promise<RuntimeState> {
     const { agent, workspaceSlug } = await this.deps.resolver.resolve(agentId);
     const ns = namespaceFor(workspaceSlug);
     try {

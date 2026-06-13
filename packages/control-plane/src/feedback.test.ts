@@ -129,10 +129,12 @@ test("LinearFeedbackSender surfaces GraphQL errors instead of swallowing", async
 // Route-level: POST /feedback on the control-plane server
 // ---------------------------------------------------------------------------
 
+import type { Capabilities } from "@houston/protocol";
 import { createControlPlaneServer, type ControlPlaneDeps } from "./server";
+import { ProxyChannel } from "./channel/proxy";
 import { MemoryWorkspaceStore } from "./store/memory";
 import { MemoryCredentialStore } from "./credentials/store";
-import type { SandboxEndpoint, SandboxManager, TokenVerifier } from "./ports";
+import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "./ports";
 
 function routeDeps(feedback?: ControlPlaneDeps["feedback"]): ControlPlaneDeps {
   const verifier: TokenVerifier = {
@@ -140,8 +142,8 @@ function routeDeps(feedback?: ControlPlaneDeps["feedback"]): ControlPlaneDeps {
       return bearer.startsWith("tok:") ? { userId: bearer.slice(4) } : null;
     },
   };
-  const sandboxes: SandboxManager = {
-    async ensureAwake(): Promise<SandboxEndpoint> {
+  const launcher: RuntimeLauncher = {
+    async ensureAwake(): Promise<RuntimeEndpoint> {
       return { baseUrl: "http://sandbox.local", token: "t" };
     },
     async sleep() {},
@@ -150,13 +152,22 @@ function routeDeps(feedback?: ControlPlaneDeps["feedback"]): ControlPlaneDeps {
       return "running";
     },
   };
+  const credentials = new MemoryCredentialStore();
+  const capabilities: Capabilities = {
+    profile: "cloud",
+    revealInOs: false,
+    terminal: false,
+    tunnel: false,
+    codeExecution: "remote-sandbox",
+    providers: ["openai-codex"],
+  };
   return {
     verifier,
     store: new MemoryWorkspaceStore(),
-    sandboxes,
-    router: { async forward() {} },
-    credentials: new MemoryCredentialStore(),
+    credentials,
     vault: { sandboxToken: () => "x", validateSandboxToken: () => null },
+    channels: { gke: new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials }) },
+    capabilities,
     feedback,
   };
 }

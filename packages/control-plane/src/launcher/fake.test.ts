@@ -1,18 +1,18 @@
 import { test, expect } from "bun:test";
 import type { Agent } from "../domain/types";
-import { FakeSandboxManager } from "./fake";
+import { FakeLauncher } from "./fake";
 
 function agent(id: string): Agent {
   return { id, workspaceId: "ws-1", name: `Agent ${id}`, createdAt: Date.now() };
 }
 
 test("absent before anything happens", async () => {
-  const sb = new FakeSandboxManager();
+  const sb = new FakeLauncher();
   expect(await sb.status("never-seen")).toBe("absent");
 });
 
 test("ensureAwake -> running -> sleep -> asleep -> destroy -> absent", async () => {
-  const sb = new FakeSandboxManager();
+  const sb = new FakeLauncher();
   const a = agent("a1");
 
   const ep = await sb.ensureAwake(a);
@@ -28,7 +28,7 @@ test("ensureAwake -> running -> sleep -> asleep -> destroy -> absent", async () 
 });
 
 test("ensureAwake is idempotent and wakes a slept sandbox", async () => {
-  const sb = new FakeSandboxManager();
+  const sb = new FakeLauncher();
   const a = agent("a2");
 
   await sb.ensureAwake(a);
@@ -44,18 +44,18 @@ test("ensureAwake is idempotent and wakes a slept sandbox", async () => {
 });
 
 test("configurable endpoint via constructor and env default", async () => {
-  const sb = new FakeSandboxManager({ baseUrl: "http://10.0.0.5:9000", token: "tok-xyz" });
+  const sb = new FakeLauncher({ baseUrl: "http://10.0.0.5:9000", token: "tok-xyz" });
   const ep = await sb.ensureAwake(agent("a3"));
   expect(ep).toEqual({ baseUrl: "http://10.0.0.5:9000", token: "tok-xyz" });
 });
 
 test("sleeping an unknown agent surfaces an error (no silent absent)", async () => {
-  const sb = new FakeSandboxManager();
+  const sb = new FakeLauncher();
   await expect(sb.sleep("ghost")).rejects.toThrow(/unknown agent ghost/);
 });
 
 test("destroy is idempotent (absent stays absent)", async () => {
-  const sb = new FakeSandboxManager();
+  const sb = new FakeLauncher();
   const a = agent("a4");
   await sb.ensureAwake(a);
   await sb.destroy(a.id);
@@ -64,7 +64,7 @@ test("destroy is idempotent (absent stays absent)", async () => {
 });
 
 test("independent agents track state separately", async () => {
-  const sb = new FakeSandboxManager();
+  const sb = new FakeLauncher();
   const a = agent("a5");
   const b = agent("b5");
   await sb.ensureAwake(a);

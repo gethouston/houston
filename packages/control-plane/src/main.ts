@@ -1,23 +1,25 @@
 import { KubeConfig } from "@kubernetes/client-node";
 import { Pool } from "pg";
 import { config } from "./config";
+import type { Capabilities } from "@houston/protocol";
 import {
   createControlPlaneServer,
   type AdminDeps,
   type ControlPlaneDeps,
-  type SandboxRouter,
 } from "./server";
+import { ProxyChannel } from "./channel/proxy";
+import { TurnChannel } from "./channel/turn";
 import { makeTokenVerifier } from "./auth/verify";
 import { MemoryWorkspaceStore } from "./store/memory";
 import { PgWorkspaceStore } from "./store/pg";
 import { MemoryCredentialStore, PgCredentialStore } from "./credentials/store";
-import { FakeSandboxManager } from "./sandbox/fake";
-import { GkeSandboxManager, type AgentResolver } from "./sandbox/gke";
+import { FakeLauncher } from "./launcher/fake";
+import { GkeLauncher, type AgentResolver } from "./launcher/gke";
 import { EnvCredentialVault } from "./credentials/vault";
 import { forward } from "./proxy/route";
 import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
 import { BigQueryBillingReader, type AutopilotRates } from "./admin/billing";
-import type { CredentialStore, CredentialVault, SandboxManager, WorkspaceStore } from "./ports";
+import type { CredentialStore, CredentialVault, RuntimeLauncher, WorkspaceStore } from "./ports";
 import type { Agent } from "./domain/types";
 import type { TurnDeps } from "./turn/deps";
 import { TurnRelay } from "./turn/relay";
@@ -25,7 +27,7 @@ import { TurnQuota } from "./turn/quota";
 import { ConnectManager } from "./turn/connect";
 import { MemoryTurnBus, type TurnBus } from "./turn/bus";
 import { RedisTurnBus } from "./turn/bus-redis";
-import { GcsObjectFiles, MemoryObjectFiles } from "./turn/objects";
+import { GcsVfs, MemoryVfs } from "./vfs";
 import { makeIdTokenProvider } from "./turn/id-token";
 import { refreshCredential } from "./credentials/refresh";
 import { LinearFeedbackSender, type FeedbackSender } from "./feedback";
@@ -39,7 +41,7 @@ import { installGracefulShutdown } from "./shutdown";
  *
  * `dev` mode wires in-memory fakes (no Postgres, no cluster) so it boots and is
  * exercisable end-to-end with a single local runtime. Production swaps in the
- * Postgres store and the live GKE SandboxManager — same interfaces.
+ * Postgres store and the live GKE RuntimeLauncher — same interfaces.
  */
 
 /** Workspace store + the connect-once credential store, sharing one Pool in prod. */
@@ -72,7 +74,7 @@ function buildTurn(credentials: CredentialStore): TurnDeps | undefined {
       { maxConcurrent: config.turnMaxConcurrent, perHour: config.turnsPerHour },
       { bus },
     ),
-    objects: config.dev ? new MemoryObjectFiles() : new GcsObjectFiles(config.gcsBucket),
+    vfs: config.dev ? new MemoryVfs() : new GcsVfs(config.gcsBucket),
     credentials,
     connect: new ConnectManager(credentials, bus),
     refresh: refreshCredential,
@@ -85,7 +87,7 @@ function buildSandboxes(
   store: WorkspaceStore,
   vault: CredentialVault,
   kubeConfig: KubeConfig,
-): SandboxManager {
+): RuntimeLauncher {
   if (!config.agentImage) {
     throw new Error("CP_AGENT_IMAGE is required outside dev mode");
   }
@@ -103,7 +105,7 @@ function buildSandboxes(
       return { agent, workspaceSlug: await workspaceSlugFor(agent) };
     },
   };
-  return new GkeSandboxManager({ kubeConfig, vault, resolver, workspaceSlugFor });
+  return new GkeLauncher({ kubeConfig, vault, resolver, workspaceSlugFor });
 }
 
 /** Operator-dashboard wiring: cluster reader + optional BigQuery actuals + rates. */
@@ -148,33 +150,47 @@ function buildFeedback(): FeedbackSender | undefined {
   });
 }
 
+/** What the cloud deployment can do (served at /v1/capabilities). */
+const CLOUD_CAPABILITIES: Capabilities = {
+  profile: "cloud",
+  revealInOs: false,
+  terminal: false,
+  tunnel: false,
+  codeExecution: "remote-sandbox",
+  providers: ["openai-codex"],
+};
+
 function main(): void {
   const { store, credentials } = buildStores();
   const vault = new EnvCredentialVault();
   const verifier = makeTokenVerifier();
 
-  // One KubeConfig, shared by the sandbox lifecycle manager and the admin cluster
-  // reader. Null in dev (everything runs against fakes).
+  // One KubeConfig, shared by the launcher and the admin cluster reader. Null
+  // in dev (everything runs against fakes).
   let kubeConfig: KubeConfig | null = null;
   if (!config.dev) {
     kubeConfig = new KubeConfig();
     kubeConfig.loadFromDefault(); // in-cluster service account, or local kubeconfig
   }
 
-  const sandboxes: SandboxManager = config.dev
-    ? new FakeSandboxManager()
+  const launcher: RuntimeLauncher = config.dev
+    ? new FakeLauncher()
     : buildSandboxes(store, vault, kubeConfig!);
-  const router: SandboxRouter = { forward };
+  const turn = buildTurn(credentials);
 
   const deps: ControlPlaneDeps = {
     verifier,
     store,
-    sandboxes,
-    router,
     credentials,
     vault,
+    // One channel per hosting model: gke workspaces proxy to standing pods,
+    // cloudrun workspaces dispatch per-turn. A missing channel answers 503.
+    channels: {
+      gke: new ProxyChannel({ launcher, proxy: { forward }, credentials }),
+      ...(turn ? { cloudrun: new TurnChannel(turn) } : {}),
+    },
+    capabilities: CLOUD_CAPABILITIES,
     admin: buildAdmin(kubeConfig),
-    turn: buildTurn(credentials),
     feedback: buildFeedback(),
     corsOrigin: config.corsOrigin,
   };

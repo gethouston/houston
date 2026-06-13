@@ -2,7 +2,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Agent, Workspace } from "../domain/types";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 import type { ConnectManager } from "./connect";
-import type { ObjectFiles } from "./objects";
+import type { Vfs } from "../vfs";
 import type { TurnQuota } from "./quota";
 import type { TurnRelay } from "./relay";
 
@@ -15,7 +15,7 @@ export interface TurnDeps {
   turnToken: string;
   relay: TurnRelay;
   quota: TurnQuota;
-  objects: ObjectFiles;
+  vfs: Vfs;
   credentials: CredentialStore;
   connect: ConnectManager;
   /** Central refresher (injectable for tests). */
@@ -47,7 +47,7 @@ export const conversationKey = (p: string, cid: string) =>
   `${p}/data/conversations/${encodeURIComponent(cid)}.json`;
 
 export async function readSettings(deps: TurnDeps, prefix: string): Promise<Settings> {
-  const raw = await deps.objects.readText(settingsKey(prefix));
+  const raw = await deps.vfs.readText(settingsKey(prefix));
   if (!raw) return {};
   return JSON.parse(raw) as Settings;
 }
