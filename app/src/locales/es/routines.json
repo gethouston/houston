@@ -67,7 +67,7 @@
       "minutes": { "one": "minuto", "other": "minutos" },
       "hours": { "one": "hora", "other": "horas" },
       "days": { "one": "día", "other": "días" },
-      "months": { "one": "mensual", "other": "meses" }
+      "months": { "one": "mes", "other": "meses" }
     },
     "timeLabel": "Hora",
     "dayOfMonthLabel": "Día del mes",

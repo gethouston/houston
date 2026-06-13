@@ -71,7 +71,7 @@ export const DEFAULT_SCHEDULE_LABELS: ScheduleLabels = {
     minutes: { one: "minute", other: "minutes" },
     hours: { one: "hour", other: "hours" },
     days: { one: "day", other: "days" },
-    months: { one: "monthly", other: "months" },
+    months: { one: "month", other: "months" },
   },
   timeLabel: "Time",
   dayOfMonthLabel: "Day of month",
