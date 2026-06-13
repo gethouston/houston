@@ -33,6 +33,11 @@ client, rewritten onto this in convergence P2/P6). See `convergence/README.md`.
 /sandbox/credential                           runtime-facing (HMAC sandbox token)
 ```
 
+Typed-family list GETs (`activities`, `routines`, `routine_runs`, `learnings`,
+and `config`) return an envelope — `{ items, diagnostics }` / `{ config,
+diagnostics }` — because agents write these files with file tools: malformed
+entries are dropped AND reported, never silently lost (beta policy).
+
 Families not yet typed here (added with their P3 slice): attachments, portable
 agents, store listings. Rust-CLI-era DTOs (Composio, Claude-installer,
 CLI install sources, worktree/shell) die with the Rust engine and are

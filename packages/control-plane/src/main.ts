@@ -27,7 +27,7 @@ import { TurnQuota } from "./turn/quota";
 import { ConnectManager } from "./turn/connect";
 import { MemoryTurnBus, type TurnBus } from "./turn/bus";
 import { RedisTurnBus } from "./turn/bus-redis";
-import { GcsVfs, MemoryVfs } from "./vfs";
+import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
 import { makeIdTokenProvider } from "./turn/id-token";
 import { refreshCredential } from "./credentials/refresh";
 import { LinearFeedbackSender, type FeedbackSender } from "./feedback";
@@ -57,10 +57,20 @@ function buildStores(): { store: WorkspaceStore; credentials: CredentialStore } 
   return { store: new PgWorkspaceStore(pool, runtime), credentials: new PgCredentialStore(pool) };
 }
 
+/**
+ * The one workspace Vfs for this deployment, shared by the typed .houston
+ * data routes AND the per-turn dispatch. Undefined only on a legacy gke-only
+ * deploy with no bucket (typed-data routes answer 503 there).
+ */
+function buildVfs(): Vfs | undefined {
+  if (config.dev) return new MemoryVfs();
+  return config.gcsBucket ? new GcsVfs(config.gcsBucket) : undefined;
+}
+
 /** Per-turn Cloud Run dispatch wiring; undefined until CP_TURN_RUNTIME_URL is set. */
-function buildTurn(credentials: CredentialStore): TurnDeps | undefined {
+function buildTurn(credentials: CredentialStore, vfs: Vfs | undefined): TurnDeps | undefined {
   if (!config.turnRuntimeUrl) return undefined;
-  if (!config.dev && !config.gcsBucket) {
+  if (!vfs) {
     throw new Error("CP_GCS_BUCKET is required when CP_TURN_RUNTIME_URL is set");
   }
   // The shared turn-state bus: Redis when CP_REDIS_URL is set (2+ replicas),
@@ -74,7 +84,7 @@ function buildTurn(credentials: CredentialStore): TurnDeps | undefined {
       { maxConcurrent: config.turnMaxConcurrent, perHour: config.turnsPerHour },
       { bus },
     ),
-    vfs: config.dev ? new MemoryVfs() : new GcsVfs(config.gcsBucket),
+    vfs,
     credentials,
     connect: new ConnectManager(credentials, bus),
     refresh: refreshCredential,
@@ -176,13 +186,15 @@ function main(): void {
   const launcher: RuntimeLauncher = config.dev
     ? new FakeLauncher()
     : buildSandboxes(store, vault, kubeConfig!);
-  const turn = buildTurn(credentials);
+  const vfs = buildVfs();
+  const turn = buildTurn(credentials, vfs);
 
   const deps: ControlPlaneDeps = {
     verifier,
     store,
     credentials,
     vault,
+    vfs,
     // One channel per hosting model: gke workspaces proxy to standing pods,
     // cloudrun workspaces dispatch per-turn. A missing channel answers 503.
     channels: {

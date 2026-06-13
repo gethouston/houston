@@ -19,7 +19,8 @@
     "ioredis": "^5.11.1",
     "jose": "^5.9.6",
     "pg": "^8.13.1",
-    "@houston/protocol": "file:../protocol"
+    "@houston/protocol": "file:../protocol",
+    "@houston/domain": "file:../domain"
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",

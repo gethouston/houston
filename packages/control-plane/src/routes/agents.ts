@@ -1,13 +1,18 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { seedSchemas } from "@houston/domain";
 import type { Agent, UserId, Workspace, WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import type { Vfs } from "../vfs";
 import { canUseAgent } from "../domain/access";
+import { handleAgentData, workspaceRoot } from "./agent-data";
 import { json, readJson } from "./http";
 
 export interface AgentRouteDeps {
   store: WorkspaceStore;
   /** RuntimeChannel per workspace hosting model; a missing entry answers 503. */
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
+  /** Workspace file store backing the typed .houston families; absent → those routes 503. */
+  vfs?: Vfs;
 }
 
 type AgentAuthz =
@@ -62,7 +67,12 @@ export async function handleAgents(
       return true;
     }
     const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-    json(res, 201, await deps.store.createAgent({ workspaceId: ws.id, name }));
+    const agent = await deps.store.createAgent({ workspaceId: ws.id, name });
+    // Seed the .houston JSON schemas beside the (future) docs so the agent and
+    // external tools can validate what they write. Skipped only when no vfs is
+    // wired (legacy gke-only deploys); the typed-data routes 503 there anyway.
+    if (deps.vfs) await seedSchemas(deps.vfs, workspaceRoot(ws, agent));
+    json(res, 201, agent);
     return true;
   }
 
@@ -148,12 +158,18 @@ export async function handleAgents(
       json(res, authz.status, { error: authz.reason });
       return true;
     }
+    const ctx = { workspace: authz.workspace, agent: authz.agent };
+
+    // Typed .houston families are served by the HOST off the workspace vfs —
+    // the runtime surface (chat, auth, settings, files) goes to the channel.
+    if (await handleAgentData(deps.vfs, ctx, method, rest, req, res)) return true;
+
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    await channel.dispatch({ workspace: authz.workspace, agent: authz.agent }, method, rest, url, req, res);
+    await channel.dispatch(ctx, method, rest, url, req, res);
     return true;
   }
 

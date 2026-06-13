@@ -1,0 +1,168 @@
+import type { IncomingMessage, ServerResponse } from "node:http";
+import {
+  applyActivityUpdate,
+  applyRoutineUpdate,
+  createActivity,
+  createRoutine,
+  loadActivities,
+  loadConfig,
+  loadLearnings,
+  loadRoutineRuns,
+  loadRoutines,
+  removeById,
+  saveActivities,
+  saveConfig,
+  saveLearnings,
+  saveRoutines,
+  upsertById,
+} from "@houston/domain";
+import type { Agent, Workspace } from "../domain/types";
+import type { Vfs } from "../vfs";
+import { prefixFor } from "../turn/deps";
+import { json, readJson } from "./http";
+
+/** The agent's workspace root inside the Vfs — where `.houston/` lives. */
+export const workspaceRoot = (ws: Workspace, agent: Agent) => `${prefixFor(ws, agent)}/workspace`;
+
+/**
+ * The typed `.houston` families (activities, routines + runs, config,
+ * learnings) served straight off the workspace Vfs — the SAME domain code
+ * over GCS in cloud and the real agent directory locally. Intercepted before
+ * channel dispatch; the runtime never sees these. Returns true when handled.
+ *
+ * List GETs return `{ items, diagnostics }`: agents write these files with
+ * file tools, so malformed entries are dropped AND reported (beta policy —
+ * the UI can surface the noise instead of silently losing it).
+ */
+export async function handleAgentData(
+  vfs: Vfs | undefined,
+  ctx: { workspace: Workspace; agent: Agent },
+  method: string,
+  rest: string,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<boolean> {
+  const m = rest.match(/^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/);
+  if (!m) return false;
+  const family = m[1]!;
+  const itemId = m[2] ? decodeURIComponent(m[2]) : null;
+
+  if (!vfs) {
+    json(res, 503, { error: "agent data not configured" });
+    return true;
+  }
+  const root = workspaceRoot(ctx.workspace, ctx.agent);
+  const nowIso = new Date().toISOString();
+
+  if (family === "activities") {
+    if (method === "GET" && !itemId) {
+      json(res, 200, await loadActivities(vfs, root));
+      return true;
+    }
+    if (method === "POST" && !itemId) {
+      const body = await readJson(req);
+      if (!body.title || typeof body.title !== "string") {
+        json(res, 400, { error: "missing 'title'" });
+        return true;
+      }
+      const { items } = await loadActivities(vfs, root);
+      const activity = createActivity(body, crypto.randomUUID(), nowIso);
+      await saveActivities(vfs, root, upsertById(items, activity));
+      json(res, 201, activity);
+      return true;
+    }
+    if ((method === "PATCH" || method === "DELETE") && itemId) {
+      const { items } = await loadActivities(vfs, root);
+      const current = items.find((a) => a.id === itemId);
+      if (!current) {
+        json(res, 404, { error: "activity not found" });
+        return true;
+      }
+      if (method === "PATCH") {
+        const next = applyActivityUpdate(current, await readJson(req), nowIso);
+        await saveActivities(vfs, root, upsertById(items, next));
+        json(res, 200, next);
+      } else {
+        await saveActivities(vfs, root, removeById(items, itemId).items);
+        json(res, 200, { ok: true });
+      }
+      return true;
+    }
+  }
+
+  if (family === "routines") {
+    if (method === "GET" && !itemId) {
+      json(res, 200, await loadRoutines(vfs, root));
+      return true;
+    }
+    if (method === "POST" && !itemId) {
+      const body = await readJson(req);
+      for (const field of ["name", "prompt", "schedule"]) {
+        if (!body[field] || typeof body[field] !== "string") {
+          json(res, 400, { error: `missing '${field}'` });
+          return true;
+        }
+      }
+      const { items } = await loadRoutines(vfs, root);
+      const routine = createRoutine(body, crypto.randomUUID(), nowIso);
+      await saveRoutines(vfs, root, upsertById(items, routine));
+      json(res, 201, routine);
+      return true;
+    }
+    if ((method === "PATCH" || method === "DELETE") && itemId) {
+      const { items } = await loadRoutines(vfs, root);
+      const current = items.find((r) => r.id === itemId);
+      if (!current) {
+        json(res, 404, { error: "routine not found" });
+        return true;
+      }
+      if (method === "PATCH") {
+        const next = applyRoutineUpdate(current, await readJson(req), nowIso);
+        await saveRoutines(vfs, root, upsertById(items, next));
+        json(res, 200, next);
+      } else {
+        await saveRoutines(vfs, root, removeById(items, itemId).items);
+        json(res, 200, { ok: true });
+      }
+      return true;
+    }
+  }
+
+  if (family === "routine_runs" && method === "GET" && !itemId) {
+    json(res, 200, await loadRoutineRuns(vfs, root));
+    return true;
+  }
+
+  if (family === "config" && !itemId) {
+    if (method === "GET") {
+      json(res, 200, await loadConfig(vfs, root));
+      return true;
+    }
+    if (method === "PUT") {
+      const body = await readJson(req);
+      await saveConfig(vfs, root, body);
+      json(res, 200, body);
+      return true;
+    }
+  }
+
+  if (family === "learnings" && !itemId) {
+    if (method === "GET") {
+      json(res, 200, await loadLearnings(vfs, root));
+      return true;
+    }
+    if (method === "PUT") {
+      const body = await readJson(req);
+      if (!Array.isArray(body.items)) {
+        json(res, 400, { error: "missing 'items' array" });
+        return true;
+      }
+      await saveLearnings(vfs, root, body.items);
+      json(res, 200, { ok: true });
+      return true;
+    }
+  }
+
+  json(res, 405, { error: "method not allowed" });
+  return true;
+}

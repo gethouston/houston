@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse, type Server } 
 import { PROTOCOL_VERSION, type Capabilities } from "@houston/protocol";
 import type { UserId, WorkspaceRuntime } from "./domain/types";
 import type { CredentialStore, CredentialVault, RuntimeChannel, TokenVerifier, WorkspaceStore } from "./ports";
+import type { Vfs } from "./vfs";
 import { bearer, json, readJson } from "./routes/http";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleAdmin, type AdminDeps } from "./routes/admin";
@@ -24,6 +25,8 @@ export interface ControlPlaneDeps {
    * runtime has no channel wired answers 503.
    */
   channels: Partial<Record<WorkspaceRuntime, RuntimeChannel>>;
+  /** Workspace file store backing the typed .houston families; absent → those routes 503. */
+  vfs?: Vfs;
   /** What this deployment can do; served at /v1/capabilities for the UI to gate on. */
   capabilities: Capabilities;
   /** Operator dashboard wiring; omit to disable the `/admin/*` API entirely. */

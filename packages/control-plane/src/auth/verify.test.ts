@@ -42,10 +42,14 @@ test("HS256: accepts a token carrying the 'Bearer ' scheme prefix", async () => 
 test("HS256: tampered signature returns null", async () => {
   const v = new SupabaseTokenVerifier({ jwtSecret: SECRET, jwksUrl: "", issuer: "" });
   const token = await mintHs256({ sub: "u123" });
-  // Flip the last character of the signature segment.
+  // Flip a MID-signature character. Never the last one: a 256-bit MAC in
+  // base64url is 43 chars whose final char carries 2 ignored padding bits, so
+  // a last-char A↔B flip can decode to the IDENTICAL signature (~6% of mints)
+  // and verification rightly succeeds — this test used to flake exactly there.
   const parts = token.split(".");
   const sig = parts[2] ?? "";
-  const flipped = sig.slice(0, -1) + (sig.endsWith("A") ? "B" : "A");
+  const i = 10;
+  const flipped = sig.slice(0, i) + (sig[i] === "A" ? "B" : "A") + sig.slice(i + 1);
   const tampered = `${parts[0]}.${parts[1]}.${flipped}`;
   expect(await v.verify(tampered)).toBeNull();
 });

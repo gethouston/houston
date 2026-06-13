@@ -234,6 +234,25 @@ importers:
         specifier: ^6.0.0
         version: 6.4.1(@types/node@25.6.0)(jiti@2.6.1)(lightningcss@1.32.0)
 
+  packages/domain:
+    dependencies:
+      '@houston-ai/agent-schemas':
+        specifier: file:../../ui/agent-schemas
+        version: link:../../ui/agent-schemas
+      '@houston/protocol':
+        specifier: file:../protocol
+        version: link:../protocol
+    devDependencies:
+      '@types/bun':
+        specifier: ^1.3.14
+        version: 1.3.14
+      '@typescript/native-preview':
+        specifier: 7.0.0-dev.20260607.1
+        version: 7.0.0-dev.20260607.1
+      typescript:
+        specifier: ^6.0.2
+        version: 6.0.2
+
   packages/protocol:
     devDependencies:
       '@typescript/native-preview':
@@ -2716,6 +2735,9 @@ packages:
   '@types/babel__traverse@7.28.0':
     resolution: {integrity: sha512-8PvcXf70gTDZBgt9ptxJ8elBeBjcLOAcOtoO/mPJjtji1+CdGbHgm77om1GrsPxsiE+uXIpNSK64UYaIwQXd4Q==}
 
+  '@types/bun@1.3.14':
+    resolution: {integrity: sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw==}
+
   '@types/d3-array@3.2.2':
     resolution: {integrity: sha512-hOLWVbm7uRza0BYXpIIW5pxfrKe0W+D5lrFiAEYR+pb6w3N2SwSMaJbXdUfSEv+dT4MfHBLtn5js0LAWaO6otw==}
 
@@ -3003,6 +3025,9 @@ packages:
     resolution: {integrity: sha512-ZC5Bd0LgJXgwGqUknZY/vkUQ04r8NXnJZ3yYi4vDmSiZmC/pdSN0NbNRPxZpbtO4uAfDUAFffO8IZoM3Gj8IkA==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
+
+  bun-types@1.3.14:
+    resolution: {integrity: sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ==}
 
   cac@6.7.14:
     resolution: {integrity: sha512-b6Ilus+c3RrdDk+JhLKUAQfzzgLEPy6wcXqS7f/xe1EETvsDP6GORG7SFuOs6cID5YkqchW/LXZbX5bc8j7ZcQ==}
@@ -6661,6 +6686,10 @@ snapshots:
     dependencies:
       '@babel/types': 7.29.0
 
+  '@types/bun@1.3.14':
+    dependencies:
+      bun-types: 1.3.14
+
   '@types/d3-array@3.2.2': {}
 
   '@types/d3-axis@3.0.6':
@@ -6967,6 +6996,10 @@ snapshots:
       electron-to-chromium: 1.5.329
       node-releases: 2.0.36
       update-browserslist-db: 1.2.3(browserslist@4.28.1)
+
+  bun-types@1.3.14:
+    dependencies:
+      '@types/node': 25.6.0
 
   cac@6.7.14: {}
 
