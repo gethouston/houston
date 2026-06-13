@@ -11,6 +11,7 @@ import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
 import { workspaceRoot } from "../routes/agent-data";
+import { reconcileAgentRuns } from "./reconcile";
 
 /** A due routine to run, with its resolved conversation + run id. */
 export interface FiringJob {
@@ -117,6 +118,12 @@ export class Scheduler {
           );
           if (won) await this.fireRoutine(ws, agent, routine, root, now);
         }
+        // Complete runs whose turn has finished (silent/surfaced/timeout).
+        await reconcileAgentRuns(
+          { vfs: this.deps.vfs, lock: this.deps.lock, events: this.deps.events, now: this.now, newId: this.newId },
+          ws,
+          agent,
+        );
       }
     }
   }

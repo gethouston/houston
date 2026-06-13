@@ -1,3 +1,4 @@
+import { routinePrompt } from "@houston/domain";
 import type { WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel } from "../ports";
 import type { FiringJob, RoutineFirer } from "./scheduler";
@@ -14,10 +15,12 @@ export class ChannelRoutineFirer implements RoutineFirer {
   async fire(job: FiringJob): Promise<void> {
     const channel = this.channels[job.workspace.runtime];
     if (!channel) throw new Error(`${job.workspace.runtime} runtime not configured`);
+    // The suppression instruction (when opted in) rides on the prompt so the
+    // agent knows to emit ROUTINE_OK for a silent run — reconcile reads it back.
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },
       job.conversationId,
-      job.routine.prompt,
+      routinePrompt(job.routine),
     );
   }
 }
