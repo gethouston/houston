@@ -35,6 +35,9 @@ export class BunRuntimeSpawner implements RuntimeSpawner {
         HOUSTON_WORKSPACE_DIR: spec.workspaceDir,
         HOUSTON_DATA_DIR: spec.dataDir,
         HOUSTON_RUNTIME_TOKEN: spec.token,
+        // Connect-once: keyless runtime fetches its token from the host.
+        ...(spec.sandboxToken ? { HOUSTON_SANDBOX_TOKEN: spec.sandboxToken } : {}),
+        ...(spec.controlPlaneUrl ? { HOUSTON_CONTROL_PLANE_URL: spec.controlPlaneUrl } : {}),
       },
       stdio: this.opts.onLog ? ["ignore", "pipe", "pipe"] : "inherit",
     });

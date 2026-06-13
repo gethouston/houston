@@ -19,6 +19,10 @@ export interface SpawnSpec {
   token: string;
   /** Loopback port the runtime must bind. */
   port: number;
+  /** Connect-once: the runtime fetches its access token from the host with this. */
+  sandboxToken?: string;
+  /** The host's own URL, where the runtime fetches `/sandbox/credential`. */
+  controlPlaneUrl?: string;
 }
 
 /** Launches one pi-runtime process. Injectable so the lifecycle is unit-testable. */
@@ -34,6 +38,15 @@ export interface ProcessLauncherOptions {
   dataDirFor: (agent: Agent) => string;
   /** Per-process bearer token (reuse the HMAC vault). */
   mintToken: (agent: Agent) => string;
+  /**
+   * Connect-once credential serving: the runtime is keyless and fetches its
+   * access token from the host's /sandbox/credential. Omit to let the runtime
+   * use its own auth.json (loopback OAuth) instead.
+   */
+  credentialServing?: {
+    controlPlaneUrl: string;
+    mintSandboxToken: (agent: Agent) => string;
+  };
   /** Allocate a free loopback port. Default: ask the OS. Injectable for tests. */
   allocatePort?: () => Promise<number>;
   /** Poll the runtime's /health until ready. Injectable for tests. */
@@ -100,11 +113,15 @@ export class ProcessLauncher implements RuntimeLauncher {
 
     const token = this.opts.mintToken(agent);
     const port = await this.allocatePort();
+    const cred = this.opts.credentialServing;
     const handle = this.opts.spawner.spawn({
       workspaceDir: this.opts.workspaceDirFor(agent),
       dataDir: this.opts.dataDirFor(agent),
       token,
       port,
+      ...(cred
+        ? { sandboxToken: cred.mintSandboxToken(agent), controlPlaneUrl: cred.controlPlaneUrl }
+        : {}),
     });
     this.running.set(agent.id, { handle, token });
     try {
