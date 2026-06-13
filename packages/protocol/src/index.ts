@@ -6,3 +6,4 @@ export * from "./domain/activity";
 export * from "./domain/routine";
 export * from "./domain/skill";
 export * from "./domain/config";
+export * from "./domain/portable";

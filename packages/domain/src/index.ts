@@ -6,3 +6,4 @@ export * from "./config";
 export * from "./skills";
 export * from "./schedule";
 export * from "./preferences";
+export * from "./portable";

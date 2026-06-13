@@ -9,6 +9,7 @@ import { CloudPaths, type WorkspacePaths } from "../paths";
 import { canUseAgent } from "../domain/access";
 import { handleAgentData } from "./agent-data";
 import { handleSkills } from "./skills";
+import { handlePortableExport } from "./portable";
 import { json, readJson } from "./http";
 
 export interface AgentRouteDeps {
@@ -183,6 +184,7 @@ export async function handleAgents(
     const paths = deps.paths ?? DEFAULT_PATHS;
     if (await handleAgentData(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
     if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
+    if (await handlePortableExport({ vfs: deps.vfs, paths }, ctx, method, rest, req, res)) return true;
 
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {

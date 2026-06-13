@@ -24,6 +24,7 @@
     "@houston-ai/agent-schemas": "file:../../ui/agent-schemas",
     "@houston/protocol": "file:../protocol",
     "croner": "^10.0.1",
+    "fflate": "^0.8.3",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
