@@ -27,20 +27,31 @@ export async function freshCredential(
   return cred;
 }
 
-export async function startTurn(
+/** Outcome of asking the per-turn runtime to start a turn. */
+export type TurnStart =
+  | { status: "accepted" }
+  | { status: "busy" }
+  | { status: "quota"; message: string };
+
+/**
+ * The transport-free core: claim the quota + relay slot and kick off the POST
+ * /turn (the runtime streams back through the relay). Returns an outcome rather
+ * than writing HTTP, so BOTH the user-message route (startTurn → status code)
+ * and the scheduler's routine firer (RoutineFirer → run record) share one path.
+ */
+export async function dispatchTurn(
   deps: TurnDeps,
   ws: Workspace,
   agent: Agent,
   cid: string,
   text: string,
   nonce: string | undefined,
-  res: ServerResponse,
-): Promise<void> {
+): Promise<TurnStart> {
   let release: () => Promise<void>;
   try {
     release = await deps.quota.acquire(ws.id);
   } catch (err) {
-    if (err instanceof TurnQuotaError) return json(res, 429, { error: err.message });
+    if (err instanceof TurnQuotaError) return { status: "quota", message: err.message };
     throw err;
   }
   const prefix = prefixFor(ws, agent);
@@ -85,7 +96,23 @@ export async function startTurn(
   });
   if (!started) {
     await release();
-    return json(res, 409, { error: "a turn is already running for this agent" });
+    return { status: "busy" };
   }
+  return { status: "accepted" };
+}
+
+/** The user-message route: dispatch a turn and map the outcome to a status code. */
+export async function startTurn(
+  deps: TurnDeps,
+  ws: Workspace,
+  agent: Agent,
+  cid: string,
+  text: string,
+  nonce: string | undefined,
+  res: ServerResponse,
+): Promise<void> {
+  const outcome = await dispatchTurn(deps, ws, agent, cid, text, nonce);
+  if (outcome.status === "quota") return json(res, 429, { error: outcome.message });
+  if (outcome.status === "busy") return json(res, 409, { error: "a turn is already running for this agent" });
   return json(res, 202, { ok: true });
 }

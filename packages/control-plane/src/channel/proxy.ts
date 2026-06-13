@@ -69,6 +69,25 @@ export class ProxyChannel implements RuntimeChannel {
     );
   }
 
+  async fireTurn(ctx: ChannelCtx, conversationId: string, text: string): Promise<void> {
+    // Wake the standing runtime and POST the routine's prompt as a normal
+    // message — the runtime starts the turn (202) and persists the reply into
+    // the conversation, exactly as a user message would. A non-2xx throws so
+    // the scheduler records an errored run.
+    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(
+      `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
+      {
+        method: "POST",
+        headers: { "content-type": "application/json", Authorization: `Bearer ${endpoint.token}` },
+        body: JSON.stringify({ text }),
+      },
+    );
+    if (!res.ok) {
+      throw new Error(`runtime ${res.status}: ${await res.text().catch(() => "")}`);
+    }
+  }
+
   async teardown(ctx: ChannelCtx): Promise<void> {
     await this.opts.launcher.destroy(ctx.agent.id, { dropVolume: true });
   }

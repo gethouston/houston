@@ -104,6 +104,13 @@ export interface RuntimeChannel {
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void>;
+  /**
+   * Programmatically start a turn (no HTTP request behind it) — the scheduler's
+   * path for firing a routine's prompt into a conversation. Resolves once the
+   * turn is ACCEPTED; throws when it can't be started (busy / quota / transport)
+   * so the caller records an errored run instead of a silent miss.
+   */
+  fireTurn(ctx: ChannelCtx, conversationId: string, text: string): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /** Connect-once: pull/confirm the workspace credential after the user connects. */

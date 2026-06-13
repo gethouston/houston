@@ -29,6 +29,8 @@ import { MemoryTurnBus, type TurnBus } from "./turn/bus";
 import { RedisTurnBus } from "./turn/bus-redis";
 import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
 import { BusEventHub } from "./events/hub";
+import { Scheduler } from "./schedule/scheduler";
+import { ChannelRoutineFirer } from "./schedule/firer";
 import { makeIdTokenProvider } from "./turn/id-token";
 import { refreshCredential } from "./credentials/refresh";
 import { LinearFeedbackSender, type FeedbackSender } from "./feedback";
@@ -199,6 +201,13 @@ function main(): void {
   const turn = buildTurn(credentials, vfs, bus);
   const events = new BusEventHub(bus);
 
+  // One channel per hosting model: gke workspaces proxy to standing pods,
+  // cloudrun workspaces dispatch per-turn. A missing channel answers 503.
+  const channels: ControlPlaneDeps["channels"] = {
+    gke: new ProxyChannel({ launcher, proxy: { forward }, credentials }),
+    ...(turn ? { cloudrun: new TurnChannel(turn) } : {}),
+  };
+
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -206,12 +215,7 @@ function main(): void {
     vault,
     vfs,
     events,
-    // One channel per hosting model: gke workspaces proxy to standing pods,
-    // cloudrun workspaces dispatch per-turn. A missing channel answers 503.
-    channels: {
-      gke: new ProxyChannel({ launcher, proxy: { forward }, credentials }),
-      ...(turn ? { cloudrun: new TurnChannel(turn) } : {}),
-    },
+    channels,
     capabilities: CLOUD_CAPABILITIES,
     admin: buildAdmin(kubeConfig),
     feedback: buildFeedback(),
@@ -225,6 +229,16 @@ function main(): void {
   // Zero-downtime deploys: drain on SIGTERM so the RollingUpdate replacement
   // takes over without dropped requests (see shutdown.ts + k8s strategy).
   installGracefulShutdown(server);
+
+  // Routines: scan + fire on a cron. Needs the workspace vfs to read routines;
+  // a gke-only deploy without a bucket has no typed data, so nothing to scan.
+  // Every replica scans; the bus's setNx arbitrates so each run fires once.
+  // The timer is unref'd, so it never blocks graceful shutdown.
+  if (vfs) {
+    const scheduler = new Scheduler({ store, vfs, lock: bus, firer: new ChannelRoutineFirer(channels), events });
+    scheduler.start();
+    console.log("[control-plane] scheduler started");
+  }
 }
 
 main();
