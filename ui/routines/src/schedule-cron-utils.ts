@@ -23,9 +23,9 @@ import {
 } from "./schedule-format.ts"
 
 export interface ScheduleOptions {
-  time: string       // "09:00"
-  dayOfWeek: number  // 0-6
-  dayOfMonth: number // 1-31
+  time: string         // "09:00"
+  daysOfWeek: number[] // 0-6, one or more (Weekly preset)
+  dayOfMonth: number   // 1-31
 }
 
 /** Build a cron expression from preset and options */
@@ -42,10 +42,8 @@ export function presetToCron(
       return "0 * * * *"
     case "daily":
       return `${minute} ${hour} * * *`
-    case "weekdays":
-      return `${minute} ${hour} * * 1-5`
     case "weekly":
-      return `${minute} ${hour} * * ${options.dayOfWeek}`
+      return `${minute} ${hour} * * ${[...options.daysOfWeek].sort((a, b) => a - b).join(",")}`
     case "monthly":
       return `${minute} ${hour} ${options.dayOfMonth} * *`
     case "custom":
@@ -69,13 +67,20 @@ export function presetSummary(
       return labels.everyHourStart
     case "daily":
       return interp(labels.everyDay, { time: t })
-    case "weekdays":
-      return interp(labels.weekdays, { time: t })
-    case "weekly":
-      return interp(labels.weekly, {
-        day: weekdayName(options.dayOfWeek, locale),
+    case "weekly": {
+      const days = [...options.daysOfWeek].sort((a, b) => a - b)
+      if (days.length <= 1) {
+        return interp(labels.weekly, {
+          day: weekdayName(days[0] ?? 1, locale),
+          time: t,
+        })
+      }
+      const shorts = shortWeekdayNames(locale)
+      return interp(labels.everyWeekOnDays, {
+        days: joinList(days.map((d) => shorts[d]), locale),
         time: t,
       })
+    }
     case "monthly":
       return interp(labels.monthly, {
         n: options.dayOfMonth,
@@ -105,10 +110,32 @@ export function cronToPreset(cron: string): SchedulePreset | null {
   if (trimmed === "*/30 * * * *") return "every_30min"
   if (trimmed === "0 * * * *") return "hourly"
   if (/^\d+ \d+ \* \* \*$/.test(trimmed)) return "daily"
-  if (/^\d+ \d+ \* \* 1-5$/.test(trimmed)) return "weekdays"
-  if (/^\d+ \d+ \* \* [0-6]$/.test(trimmed)) return "weekly"
+  // Weekly on one or more days: a comma list ("3", "1,3,5") or a legacy
+  // day-range ("1-5", saved by the removed "Weekdays only" preset — kept so
+  // those routines still open correctly; re-saving normalizes them to a list).
+  if (/^\d+ \d+ \* \* [0-6](,[0-6])*$/.test(trimmed)) return "weekly"
+  if (/^\d+ \d+ \* \* [0-6]-[0-6]$/.test(trimmed)) return "weekly"
   if (/^\d+ \d+ \d+ \* \*$/.test(trimmed)) return "monthly"
   return "custom"
+}
+
+/**
+ * Parse a cron day-of-week field into a sorted day list. Accepts a comma list
+ * ("1,3,5") or a single day ("3"), plus a legacy `a-b` range ("1-5") so crons
+ * saved by the removed "Weekdays only" preset still expand to selected days.
+ * Returns `null` for `*` or anything non-numeric.
+ */
+function parseWeekdayField(dow: string): number[] | null {
+  if (/^[0-6](,[0-6])*$/.test(dow)) {
+    return dow.split(",").map(Number).sort((a, b) => a - b)
+  }
+  const range = dow.match(/^([0-6])-([0-6])$/)
+  if (range) {
+    const a = Number(range[1])
+    const b = Number(range[2])
+    if (a <= b) return Array.from({ length: b - a + 1 }, (_, i) => a + i)
+  }
+  return null
 }
 
 /** Extract time/day options from a cron expression (best-effort) */
@@ -124,10 +151,8 @@ export function cronToOptions(cron: string): Partial<ScheduleOptions> {
     result.time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`
   }
 
-  const dayOfWeek = Number(dow)
-  if (!isNaN(dayOfWeek) && dayOfWeek >= 0 && dayOfWeek <= 6) {
-    result.dayOfWeek = dayOfWeek
-  }
+  const daysOfWeek = parseWeekdayField(dow)
+  if (daysOfWeek) result.daysOfWeek = daysOfWeek
 
   const dayOfMonth = Number(dom)
   if (!isNaN(dayOfMonth) && dayOfMonth >= 1 && dayOfMonth <= 31) {
@@ -159,7 +184,7 @@ export function cronSummary(
       preset,
       {
         time: o.time ?? "09:00",
-        dayOfWeek: o.dayOfWeek ?? 1,
+        daysOfWeek: o.daysOfWeek ?? [1],
         dayOfMonth: o.dayOfMonth ?? 1,
       },
       labels,
@@ -193,21 +218,6 @@ export function cronSummary(
       return n === 1
         ? interp(labels.everyDay, { time: t })
         : interp(labels.everyNDays, { n, time: t })
-    }
-
-    // Weekly on specific days: "M H * * d,d,d".
-    if (
-      dom === "*" && month === "*" &&
-      /^\d+$/.test(min) && /^\d+$/.test(hour) && /^[0-6](,[0-6])*$/.test(dow)
-    ) {
-      const t = formatTime(`${hour}:${min}`, locale)
-      const shorts = shortWeekdayNames(locale)
-      const days = dow
-        .split(",")
-        .map(Number)
-        .sort((a, b) => a - b)
-        .map((d) => shorts[d])
-      return interp(labels.everyWeekOnDays, { days: joinList(days, locale), time: t })
     }
 
     // Monthly on a day-of-month, every N months: "M H D */N *".

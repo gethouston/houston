@@ -43,9 +43,8 @@ export interface ScheduleSummaryLabels {
   everyNHours: string
   everyDay: string
   everyNDays: string
-  weekdays: string
   weekly: string
-  /** Custom weekly on a list of days. `{days}` is a localized weekday list. */
+  /** Weekly on a list of days. `{days}` is a localized weekday list. */
   everyWeekOnDays: string
   monthly: string
   /** Custom every-N-months on a day of month. `{ordinal}`/`{n}` day, `{months}` count. */
@@ -90,12 +89,11 @@ export interface ScheduleLabels {
   /** Unit names for the custom-interval pills, with singular + plural forms. */
   units: Record<import("./schedule-interval-utils").IntervalUnit, { one: string; other: string }>
   timeLabel: string
-  dayLabel: string
   dayOfMonthLabel: string
   /** "Repeat every" — label above the count stepper. */
   repeatEvery: string
   enterNumber: string
-  /** Validation hint when the custom "weeks" unit has no day selected. */
+  /** Validation hint when the Weekly preset has no day selected. */
   pickDay: string
   /** WeekdaysPicker heading ("On these days"). */
   onTheseDays: string

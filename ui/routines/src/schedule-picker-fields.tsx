@@ -1,13 +1,13 @@
 /**
- * Picker fields used by ScheduleBuilder — time, day-of-week, day-of-month, and
- * the "On these days" weekday multi-select. The "Repeat every N [unit]" control
- * lives in schedule-interval-picker.tsx and reuses labelClass exported here.
+ * Picker fields used by ScheduleBuilder — time, day-of-month, and the "On these
+ * days" weekday multi-select. The "Repeat every N [unit]" control lives in
+ * schedule-interval-picker.tsx and reuses labelClass exported here.
  *
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
  */
 import { cn } from "@houston-ai/core"
-import { narrowWeekdayNames, shortWeekdayNames, longWeekdayNames } from "./schedule-format.ts"
+import { narrowWeekdayNames, longWeekdayNames } from "./schedule-format.ts"
 
 const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",
@@ -35,41 +35,6 @@ export function TimePicker({
         onChange={(e) => onChange(e.target.value)}
         className={cn(inputClass, "w-full")}
       />
-    </div>
-  )
-}
-
-export function DayOfWeekPicker({
-  label,
-  locale = "en-US",
-  value,
-  onChange,
-}: {
-  label: string
-  locale?: string
-  value: number
-  onChange: (day: number) => void
-}) {
-  const names = shortWeekdayNames(locale)
-  return (
-    <div>
-      <label className={labelClass}>{label}</label>
-      <div className="flex gap-1">
-        {names.map((name, day) => (
-          <button
-            key={day}
-            onClick={() => onChange(day)}
-            className={cn(
-              "size-8 rounded-lg text-xs font-medium transition-colors",
-              value === day
-                ? "bg-primary text-primary-foreground"
-                : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
     </div>
   )
 }
@@ -106,9 +71,9 @@ const WEEKDAY_SHORTCUT_DAYS: { key: "everyDay" | "weekdays" | "weekends"; days: 
 
 /**
  * "On these days" — multi-select weekday toggle (single-letter, Sunday-first)
- * plus quick shortcuts, for the custom weekly schedule. Multi-select, so
- * distinct from DayOfWeekPicker (single-day, used by the Weekly preset). Day
- * letters + accessible names come from `Intl` in the given `locale`.
+ * plus quick shortcuts (Every day / Weekdays / Weekends), used by the Weekly
+ * preset to pick one or more days. Day letters + accessible names come from
+ * `Intl` in the given `locale`.
  */
 export function WeekdaysPicker({
   label,

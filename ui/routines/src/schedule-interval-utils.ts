@@ -3,20 +3,17 @@
  * ScheduleBuilder. Keeps the non-technical interval model and its mapping to and
  * from cron expressions in one place, separate from the preset cron logic.
  *
- * Units: minutes / hours / days (run on an interval), weeks (weekly on chosen
- * days), months (a day-of-month, every N months). Cron can't express "every N
- * weeks", so the week unit is always weekly — there is no count for it.
+ * Units: minutes / hours / days (run on an interval) and months (a day-of-month,
+ * every N months). Weekly-on-chosen-days lives in the Weekly preset, not here.
  */
 import { parseTime } from "./schedule-format.ts"
 
 /** Unit for the friendly "Repeat every N …" custom-interval picker. */
-export type IntervalUnit = "minutes" | "hours" | "days" | "weeks" | "months"
+export type IntervalUnit = "minutes" | "hours" | "days" | "months"
 
 export interface ScheduleInterval {
-  every: number // 1, 2, 3, …  (ignored for "weeks")
+  every: number // 1, 2, 3, …
   unit: IntervalUnit
-  /** Days-of-week (0=Sun … 6=Sat) for the "weeks" unit. */
-  weekdays?: number[]
   /** Day-of-month (1–31) for the "months" unit. */
   dayOfMonth?: number
 }
@@ -25,7 +22,6 @@ export interface ScheduleInterval {
  * Build a cron expression from a friendly interval.
  * - minutes/hours: run around the clock (`*​/N`).
  * - days: `*​/N` in the day-of-month field, at a fixed time.
- * - weeks: weekly on the chosen day-of-week list, at a fixed time.
  * - months: a fixed day-of-month, every N months (`*​/N` in the month field).
  */
 export function intervalToCron(
@@ -43,13 +39,6 @@ export function intervalToCron(
       return every === 1
         ? `${minute} ${hour} * * *`
         : `${minute} ${hour} */${every} * *`
-    case "weeks": {
-      const days =
-        interval.weekdays && interval.weekdays.length
-          ? [...interval.weekdays].sort((a, b) => a - b).join(",")
-          : "*"
-      return `${minute} ${hour} * * ${days}`
-    }
     case "months": {
       const dom = interval.dayOfMonth && interval.dayOfMonth >= 1 ? interval.dayOfMonth : 1
       return every === 1
@@ -58,8 +47,6 @@ export function intervalToCron(
     }
   }
 }
-
-const WEEKDAY_LIST = /^[0-6](,[0-6])*$/
 
 /**
  * Parse a cron expression back into a friendly interval, when it maps cleanly
@@ -71,15 +58,6 @@ export function cronToInterval(cron: string): ScheduleInterval | null {
   if (parts.length !== 5) return null
   const [min, hour, dom, month, dow] = parts
   const numericTime = /^\d+$/.test(min) && /^\d+$/.test(hour)
-
-  // Weekly on specific days: "M H * * <day-list>".
-  if (numericTime && dom === "*" && month === "*" && WEEKDAY_LIST.test(dow)) {
-    return {
-      every: 1,
-      unit: "weeks",
-      weekdays: dow.split(",").map(Number).sort((a, b) => a - b),
-    }
-  }
 
   // Monthly on a day-of-month: "M H <dom> <*|*/N> *".
   if (numericTime && dow === "*" && /^\d+$/.test(dom)) {
