@@ -10,6 +10,12 @@ export interface TextStore {
   writeText(key: string, content: string): Promise<void>;
 }
 
+/** TextStore + key listing — what directory-shaped families (skills) need. */
+export interface FileStore extends TextStore {
+  /** All keys under `prefix/` (sorted). */
+  list(prefix: string): Promise<string[]>;
+}
+
 /** A dropped/repaired entry, surfaced to the caller (beta policy: no silent loss). */
 export interface DocDiagnostic {
   key: string;

@@ -5,6 +5,7 @@ import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import { canUseAgent } from "../domain/access";
 import { handleAgentData, workspaceRoot } from "./agent-data";
+import { handleSkills } from "./skills";
 import { json, readJson } from "./http";
 
 export interface AgentRouteDeps {
@@ -160,9 +161,10 @@ export async function handleAgents(
     }
     const ctx = { workspace: authz.workspace, agent: authz.agent };
 
-    // Typed .houston families are served by the HOST off the workspace vfs —
-    // the runtime surface (chat, auth, settings, files) goes to the channel.
+    // Typed .houston families + skills are served by the HOST off the workspace
+    // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.
     if (await handleAgentData(deps.vfs, ctx, method, rest, req, res)) return true;
+    if (await handleSkills(deps.vfs, ctx, method, rest, req, res)) return true;
 
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {

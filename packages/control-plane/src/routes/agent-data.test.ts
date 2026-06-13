@@ -170,6 +170,54 @@ test("another user is walled off from the data families (403)", async () => {
   expect(r.status).toBe(403);
 });
 
+test("skills: create → list → read → edit → delete, full lifecycle over the host", async () => {
+  const created = await fetch(`${base}/agents/${agentId}/skills`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Summarize Inbox",
+      description: "Summarize unread email",
+      content: "## Procedure\nDo the thing.",
+    }),
+  });
+  expect(created.status).toBe(201);
+  const detail = (await created.json()) as { name: string; content: string };
+  expect(detail.name).toBe("summarize-inbox");
+  expect(detail.content).toContain("## Procedure");
+
+  // Duplicate create → 409, never a silent overwrite.
+  const dup = await fetch(`${base}/agents/${agentId}/skills`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({ name: "Summarize Inbox", description: "d", content: "c" }),
+  });
+  expect(dup.status).toBe(409);
+
+  const list = await fetch(`${base}/agents/${agentId}/skills`, { headers: auth("alice") });
+  const skills = (await list.json()) as { items: { name: string; featured: boolean }[] };
+  expect(skills.items.map((s) => s.name)).toContain("summarize-inbox");
+
+  const put = await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, {
+    method: "PUT",
+    headers: auth("alice"),
+    body: JSON.stringify({ content: "---\nname: summarize-inbox\ndescription: v2\nversion: 2\n---\n\nNew body.\n" }),
+  });
+  expect(put.status).toBe(200);
+  const read = await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, { headers: auth("alice") });
+  expect(((await read.json()) as { version: number }).version).toBe(2);
+
+  const del = await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, {
+    method: "DELETE",
+    headers: auth("alice"),
+  });
+  expect(del.status).toBe(200);
+  expect((await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, { headers: auth("alice") })).status).toBe(404);
+});
+
+test("skills are walled off across users (403) like every agent surface", async () => {
+  expect((await fetch(`${base}/agents/${agentId}/skills`, { headers: auth("bob") })).status).toBe(403);
+});
+
 test("no vfs wired → typed data routes answer 503, runtime dispatch unaffected", async () => {
   const noVfs = createControlPlaneServer({ ...deps(), vfs: undefined });
   await new Promise<void>((r) => noVfs.listen(0, "127.0.0.1", () => r()));
