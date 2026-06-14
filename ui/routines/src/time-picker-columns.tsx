@@ -5,7 +5,7 @@
  */
 import { useEffect, useRef } from "react"
 import { cn } from "@houston-ai/core"
-import { pad2, type Period } from "./time-picker-utils.ts"
+import { pad2, centerPadding, centerScrollTop, type Period } from "./time-picker-utils.ts"
 
 /**
  * One scrollable column of zero-padded numbers. The selected value is kept
@@ -32,10 +32,10 @@ export function TimeColumn({
     const c = containerRef.current
     const el = selectedRef.current
     if (!c || !el) return
-    // Pad the ends to half the viewport so the extreme values can also center,
-    // then bring the current selection to the middle.
-    c.style.paddingBlock = `${Math.max(0, (c.clientHeight - el.clientHeight) / 2)}px`
-    c.scrollTop = el.offsetTop - c.clientHeight / 2 + el.clientHeight / 2
+    // Pad the ends so the extreme values can also center, then bring the current
+    // selection to the middle. (offsetTop reflects the padding once it's set.)
+    c.style.paddingBlock = `${centerPadding(c.clientHeight, el.clientHeight)}px`
+    c.scrollTop = centerScrollTop(el.offsetTop, c.clientHeight, el.clientHeight)
   }, [selected])
 
   return (

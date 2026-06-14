@@ -64,3 +64,25 @@ export function hourOptions(twelveHour: boolean): number[] {
 export function minuteOptions(): number[] {
   return Array.from({ length: 60 }, (_, i) => i)
 }
+
+/**
+ * Padding for each end of a short picker column so the first and last values can
+ * still scroll to the vertical center. Half the leftover viewport, never < 0.
+ */
+export function centerPadding(viewportHeight: number, itemHeight: number): number {
+  return Math.max(0, (viewportHeight - itemHeight) / 2)
+}
+
+/**
+ * The `scrollTop` that places an item — at `offsetTop` within the (end-padded)
+ * scroll content, `itemHeight` tall — at the vertical center of `viewportHeight`.
+ * The browser clamps to the scroll range, which is exactly why the end padding
+ * is needed for the first/last items to truly center.
+ */
+export function centerScrollTop(
+  offsetTop: number,
+  viewportHeight: number,
+  itemHeight: number,
+): number {
+  return offsetTop - viewportHeight / 2 + itemHeight / 2
+}

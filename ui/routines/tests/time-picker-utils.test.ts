@@ -9,6 +9,8 @@ import {
   pad2,
   hourOptions,
   minuteOptions,
+  centerPadding,
+  centerScrollTop,
   type Period,
 } from "../src/time-picker-utils.ts"
 
@@ -77,5 +79,40 @@ describe("option builders", () => {
     assert.equal(mins.length, 60)
     assert.equal(mins[0], 0)
     assert.equal(mins[59], 59)
+  })
+})
+
+describe("centerPadding", () => {
+  it("is half the leftover viewport", () => {
+    assert.equal(centerPadding(112, 32), 40)
+  })
+
+  it("clamps at 0 when the item is as tall or taller than the viewport", () => {
+    assert.equal(centerPadding(32, 32), 0)
+    assert.equal(centerPadding(20, 32), 0)
+  })
+})
+
+describe("centerScrollTop", () => {
+  it("lands the first (end-padded) item at scrollTop 0", () => {
+    // With centerPadding(112, 32) = 40px of top padding, the first item sits at
+    // offsetTop 40 — and centering it must require no scroll.
+    assert.equal(centerScrollTop(40, 112, 32), 0)
+  })
+
+  it("scrolls a mid-list item to the middle", () => {
+    assert.equal(centerScrollTop(400, 112, 32), 360)
+  })
+
+  it("puts the item's center on the viewport's center, for any inputs", () => {
+    for (const [offsetTop, vh, ih] of [
+      [40, 112, 32],
+      [400, 112, 32],
+      [1060, 128, 34],
+    ]) {
+      const scrollTop = centerScrollTop(offsetTop, vh, ih)
+      // item center, measured from the scrolled viewport's top, is the midpoint
+      assert.equal(offsetTop + ih / 2 - scrollTop, vh / 2)
+    }
   })
 })
