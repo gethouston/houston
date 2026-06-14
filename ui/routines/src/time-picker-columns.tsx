@@ -38,7 +38,7 @@ export function TimeColumn({
       ref={containerRef}
       role="group"
       aria-label={ariaLabel}
-      className="relative flex h-48 w-14 flex-col gap-0.5 overflow-y-auto scroll-smooth"
+      className="relative flex h-28 w-14 flex-col gap-0.5 overflow-y-auto scroll-smooth"
     >
       {options.map((n) => {
         const on = n === selected

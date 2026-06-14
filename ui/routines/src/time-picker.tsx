@@ -81,7 +81,7 @@ export function TimePicker({
             <Clock className="size-4 text-muted-foreground" aria-hidden />
           </button>
         </PopoverTrigger>
-        <PopoverContent align="start" className="w-auto p-2">
+        <PopoverContent align="start" className="w-auto rounded-2xl p-2">
           <div className="flex gap-1" role="group" aria-label={label}>
             <TimeColumn
               ariaLabel={labels.hour}
