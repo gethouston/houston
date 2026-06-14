@@ -8,10 +8,11 @@ import { cn } from "@houston-ai/core"
 import { pad2, type Period } from "./time-picker-utils.ts"
 
 /**
- * One scrollable column of zero-padded numbers. On mount (the popover opens) the
- * selected value is centered so the user lands on the current time, not the top
- * of the list. We set `scrollTop` directly rather than `scrollIntoView` so only
- * the column scrolls — never the surrounding page or popover.
+ * One scrollable column of zero-padded numbers. The selected value is kept
+ * centered: the column is padded at both ends so even the first/last number can
+ * sit dead-center, and `scrollTop` is re-set whenever the selection changes so
+ * the current value never drifts off-center. We set `scrollTop` directly rather
+ * than `scrollIntoView` so only the column scrolls — never the page or popover.
  */
 export function TimeColumn({
   ariaLabel,
@@ -30,8 +31,12 @@ export function TimeColumn({
   useEffect(() => {
     const c = containerRef.current
     const el = selectedRef.current
-    if (c && el) c.scrollTop = el.offsetTop - c.clientHeight / 2 + el.clientHeight / 2
-  }, [])
+    if (!c || !el) return
+    // Pad the ends to half the viewport so the extreme values can also center,
+    // then bring the current selection to the middle.
+    c.style.paddingBlock = `${Math.max(0, (c.clientHeight - el.clientHeight) / 2)}px`
+    c.scrollTop = el.offsetTop - c.clientHeight / 2 + el.clientHeight / 2
+  }, [selected])
 
   return (
     <div
@@ -82,7 +87,11 @@ export function PeriodColumn({
     { key: "pm", label: periods.pm },
   ]
   return (
-    <div role="group" aria-label={ariaLabel} className="flex w-14 flex-col gap-0.5">
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="flex w-14 flex-col justify-center gap-0.5"
+    >
       {items.map((it) => {
         const on = it.key === selected
         return (
