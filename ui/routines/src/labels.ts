@@ -102,6 +102,8 @@ export interface ScheduleLabels {
   /** aria-labels for the count stepper's − / + buttons. */
   decrease: string
   increase: string
+  /** Accessible names for the time picker's hour / minute / AM-PM columns. */
+  timePicker: { hour: string; minute: string; period: string }
   summary: ScheduleSummaryLabels
 }
 
