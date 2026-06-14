@@ -12,3 +12,5 @@ packages:
 # longer reads that field ("The pnpm field in package.json is no longer read").
 onlyBuiltDependencies:
   - "@sentry/cli"
+patchedDependencies:
+  remend@1.3.0: patches/remend@1.3.0.patch

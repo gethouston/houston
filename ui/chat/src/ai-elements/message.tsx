@@ -437,7 +437,11 @@ export const MessageResponse = memo(
     return (
       // Degrade to the raw markdown text if a render-time failure escapes
       // Streamdown (e.g. shiki's JS regex engine on an older WebView) so a
-      // single message can't blank the whole chat.
+      // single message can't blank the whole chat. This only catches throws
+      // during RENDER; a dependency that throws at module-eval time (as
+      // remend's lookbehind regex did on older WebKit, HOU-458) is evaluated
+      // before React renders and must be fixed at the source instead, see
+      // patches/remend@1.3.0.patch.
       <ErrorBoundary
         fallback={
           <div className="size-full whitespace-pre-wrap break-words">
