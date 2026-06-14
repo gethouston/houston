@@ -78,6 +78,11 @@
     "shortcuts": { "everyDay": "Every day", "weekdays": "Weekdays", "weekends": "Weekends" },
     "decrease": "Decrease",
     "increase": "Increase",
+    "timePicker": {
+      "hour": "Hour",
+      "minute": "Minute",
+      "period": "AM/PM"
+    },
     "summary": {
       "noSchedule": "No schedule set",
       "custom": "Custom schedule",

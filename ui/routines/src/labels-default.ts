@@ -82,6 +82,7 @@ export const DEFAULT_SCHEDULE_LABELS: ScheduleLabels = {
   shortcuts: { everyDay: "Every day", weekdays: "Weekdays", weekends: "Weekends" },
   decrease: "Decrease",
   increase: "Increase",
+  timePicker: { hour: "Hour", minute: "Minute", period: "AM/PM" },
   summary: DEFAULT_SCHEDULE_SUMMARY_LABELS,
 }
 

@@ -18,11 +18,8 @@ import { AnimatePresence, motion } from "framer-motion"
 import { cn } from "@houston-ai/core"
 import type { SchedulePreset } from "./types"
 import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels"
-import {
-  TimePicker,
-  DayOfMonthPicker,
-  WeekdaysPicker,
-} from "./schedule-picker-fields"
+import { DayOfMonthPicker, WeekdaysPicker } from "./schedule-picker-fields"
+import { TimePicker } from "./time-picker"
 import { IntervalPicker } from "./schedule-interval-picker"
 import { useScheduleBuilder } from "./use-schedule-builder"
 
@@ -116,6 +113,8 @@ export function ScheduleBuilder({
                 label={labels.timeLabel}
                 value={options.time}
                 onChange={(time) => updateOption({ time })}
+                locale={locale}
+                labels={labels.timePicker}
               />
             </Reveal>
           )}
@@ -174,6 +173,8 @@ export function ScheduleBuilder({
                 label={labels.timeLabel}
                 value={options.time}
                 onChange={(time) => updateOption({ time })}
+                locale={locale}
+                labels={labels.timePicker}
               />
             </Reveal>
           )}
