@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Spinner } from "@houston-ai/core";
+import { AsyncButton, Spinner } from "@houston-ai/core";
 import { useUIStore } from "../../stores/ui";
 import { tauriProvider } from "../../lib/tauri";
 import { getProvider } from "../../lib/providers";
@@ -126,7 +126,7 @@ export function ProviderReconnectCard({
 
           <div className="mt-2">
             {!loginLaunched ? (
-              <Button
+              <AsyncButton
                 onClick={handleSignIn}
                 className="h-8 rounded-full gap-2 text-xs px-3"
                 size="sm"
@@ -137,7 +137,7 @@ export function ProviderReconnectCard({
                   <OpenAILogoSmall />
                 )}
                 {t("shell:authReconnect.signInWith", { provider: provider.name })}
-              </Button>
+              </AsyncButton>
             ) : (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
