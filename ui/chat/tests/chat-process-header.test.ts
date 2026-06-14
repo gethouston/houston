@@ -2,7 +2,7 @@ import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   buildProcessHeaderLabel,
-  getActiveToolName,
+  getCurrentActionToolName,
 } from "../src/chat-process-header.ts";
 import type { ChatProcessSegment } from "../src/chat-process-groups.ts";
 
@@ -20,27 +20,38 @@ function seg(tools: ToolStub[]): ChatProcessSegment {
 }
 
 // HOU-448: the header is the whole story while the log stays collapsed. It must
-// surface only the ONE action in progress, fall back cleanly when nothing is in
-// flight, and never leak a count.
+// surface the one current action, hold it across the reasoning gaps between
+// tools (so it isn't a brief flash), fall back cleanly before the first tool,
+// and never leak a count.
 describe("buildProcessHeaderLabel", () => {
-  it("names the one tool in progress while active", () => {
+  it("names the tool currently running while active", () => {
     strictEqual(
       buildProcessHeaderLabel({ isActive: true, segments: [seg([{ name: "Read" }])] }),
       "Mission in progress: Reading file",
     );
   });
 
-  it("falls back to the bare active label when the last tool has finished", () => {
+  it("keeps naming the latest tool after it finishes (sticky, not just while running)", () => {
     strictEqual(
       buildProcessHeaderLabel({
         isActive: true,
         segments: [seg([{ name: "Read", result: RESULT }])],
       }),
-      "Mission in progress...",
+      "Mission in progress: Reading file",
     );
   });
 
-  it("falls back to the bare active label for a reasoning-only segment", () => {
+  it("holds the prior tool through a following reasoning-only segment", () => {
+    strictEqual(
+      buildProcessHeaderLabel({
+        isActive: true,
+        segments: [seg([{ name: "Edit", result: RESULT }]), seg([])],
+      }),
+      "Mission in progress: Editing file",
+    );
+  });
+
+  it("falls back to the bare active label before any tool has run", () => {
     strictEqual(
       buildProcessHeaderLabel({ isActive: true, segments: [seg([])] }),
       "Mission in progress...",
@@ -90,23 +101,32 @@ describe("buildProcessHeaderLabel", () => {
   });
 });
 
-// The in-progress action must come from the live edge of the run, not an
-// earlier step — otherwise the header would lie about what's happening now.
-describe("getActiveToolName", () => {
-  it("returns the last unresolved tool of the LAST segment only", () => {
+// The current action tracks the most recent tool of the active turn — across
+// segment boundaries — so the header narrates each step the agent takes.
+describe("getCurrentActionToolName", () => {
+  it("returns the last tool of the LAST segment that has tools", () => {
     const segments = [
-      seg([{ name: "Bash" }]), // earlier segment, ignored even though unresolved
+      seg([{ name: "Bash" }]),
       seg([{ name: "Read", result: RESULT }, { name: "Grep" }]),
     ];
-    strictEqual(getActiveToolName(segments), "Grep");
+    strictEqual(getCurrentActionToolName(segments), "Grep");
   });
 
-  it("returns undefined when the last segment's last tool already has a result", () => {
+  it("returns a tool even when it already has a result", () => {
     const segments = [seg([{ name: "Read" }, { name: "Grep", result: RESULT }])];
-    strictEqual(getActiveToolName(segments), undefined);
+    strictEqual(getCurrentActionToolName(segments), "Grep");
+  });
+
+  it("skips a trailing reasoning-only segment to find the prior tool", () => {
+    const segments = [seg([{ name: "Write" }]), seg([])];
+    strictEqual(getCurrentActionToolName(segments), "Write");
+  });
+
+  it("returns undefined when no segment has any tool", () => {
+    strictEqual(getCurrentActionToolName([seg([]), seg([])]), undefined);
   });
 
   it("returns undefined for empty segments", () => {
-    strictEqual(getActiveToolName([]), undefined);
+    strictEqual(getCurrentActionToolName([]), undefined);
   });
 });
