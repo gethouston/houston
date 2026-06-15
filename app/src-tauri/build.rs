@@ -166,10 +166,7 @@ fn stage_engine_sidecar() -> Result<(), String> {
         );
     }
     candidates.push(workspace.join("target").join("debug").join(bin_name));
-    let src = candidates
-        .iter()
-        .find(|p| p.exists())
-        .ok_or(format!("houston-engine not built — tried {:?}", candidates))?;
+    let src = candidates.iter().find(|p| p.exists());
 
     let dest_dir = manifest.join("binaries");
     std::fs::create_dir_all(&dest_dir).map_err(|e| format!("mkdir binaries: {e}"))?;
@@ -181,7 +178,32 @@ fn stage_engine_sidecar() -> Result<(), String> {
         format!("houston-engine-{triple}")
     };
     let dest = dest_dir.join(&dest_name);
-    std::fs::copy(src, &dest).map_err(|e| format!("copy engine sidecar: {e}"))?;
+    match src {
+        Some(src) => {
+            std::fs::copy(src, &dest).map_err(|e| format!("copy engine sidecar: {e}"))?;
+            println!("cargo:rerun-if-changed={}", src.display());
+        }
+        None => {
+            // The Rust engine isn't built — the single-engine cutover dev loop
+            // runs the desktop against the external Houston host and never
+            // spawns this sidecar (see lib.rs host_mode). Tauri's externalBin
+            // bundling still requires the file to exist, so stage a harmless
+            // placeholder. Host mode skips spawning it; a real Rust build would
+            // spawn it and (correctly) fail the /v1/health gate, signalling
+            // "build houston-engine-server first".
+            let placeholder = if cfg!(windows) {
+                "@echo off\r\nexit /b 0\r\n"
+            } else {
+                "#!/bin/sh\n# placeholder houston-engine (real engine not built)\nsleep 2147483647\n"
+            };
+            std::fs::write(&dest, placeholder)
+                .map_err(|e| format!("write placeholder sidecar: {e}"))?;
+            println!(
+                "cargo:warning=houston-engine not built — staged a placeholder at {} (cutover/host mode skips it; build houston-engine-server for a real Rust build)",
+                dest.display()
+            );
+        }
+    }
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -191,6 +213,5 @@ fn stage_engine_sidecar() -> Result<(), String> {
         perms.set_mode(0o755);
         std::fs::set_permissions(&dest, perms).map_err(|e| format!("chmod sidecar: {e}"))?;
     }
-    println!("cargo:rerun-if-changed={}", src.display());
     Ok(())
 }

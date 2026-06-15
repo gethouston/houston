@@ -228,133 +228,147 @@ pub fn run() {
             // All domain calls go through the engine over HTTP/WS. The
             // supervisor thread restarts it with exponential backoff on
             // crash and emits a toast via `houston-event` on each reconnect.
-            let resource_dir = app.path().resource_dir().ok();
-            let binary = resolve_engine_binary(resource_dir.as_ref())
-                .expect("houston-engine binary missing — check externalBin bundling");
-            tracing::info!("[engine] spawning {}", binary.display());
-
-            let cb: Arc<TauriSupervisorCallbacks> = Arc::new(TauriSupervisorCallbacks {
-                handle: app.handle().clone(),
-            });
-            // Product-layer prompts live in the `houston_prompt` module and are
-            // exported to the engine via env vars. The engine treats these
-            // as opaque strings — it has no hardcoded Houston copy.
             //
-            // Also pin HOUSTON_HOME + HOUSTON_DOCS so the engine uses the
-            // same data roots as the app. Workspaces live under
-            // `$HOUSTON_HOME/workspaces/` in both debug (`~/.dev-houston/`)
-            // and release (`~/.houston/`) — everything Houston writes is
-            // rooted at a single discoverable location.
-            let docs_dir = houston.join("workspaces");
-            let mut engine_env: Vec<(String, String)> = vec![
-                (
-                    "HOUSTON_APP_SYSTEM_PROMPT".into(),
-                    houston_prompt::system_prompt(),
-                ),
-                (
-                    "HOUSTON_APP_ONBOARDING_PROMPT".into(),
-                    houston_prompt::onboarding_prompt(),
-                ),
-                ("HOUSTON_HOME".into(), houston.display().to_string()),
-                ("HOUSTON_DOCS".into(), docs_dir.display().to_string()),
-            ];
-            if let Some(store_dir) = resource_dir
-                .as_ref()
-                .map(|dir| dir.join("store"))
-                .filter(|dir| dir.join("catalog.json").exists())
-            {
-                engine_env.push(("HOUSTON_STORE_DIR".into(), store_dir.display().to_string()));
-            }
-            // If a Supabase session is already persisted in Keychain (user
-            // signed in on a previous launch), stamp the subprocess with the
-            // user_id so future cloud-side operations can attribute work to
-            // a user. Engine is prompt-agnostic about identity — treats this
-            // as an opaque string. Local/ad-hoc builds compile auth storage
-            // in browser mode, so this returns before touching Keychain.
-            if let Some(user_id) = auth::persisted_user_id() {
-                engine_env.push(("HOUSTON_APP_USER_ID".into(), user_id));
-            }
-            // Pass through `HOUSTON_TUNNEL_URL` for local relay dev
-            // (`wrangler dev` on localhost:8787). Production uses the
-            // engine's baked-in default (`tunnel.gethouston.ai`).
-            if let Ok(v) = std::env::var("HOUSTON_TUNNEL_URL") {
-                if !v.is_empty() {
-                    engine_env.push(("HOUSTON_TUNNEL_URL".into(), v));
-                }
-            }
-            // Hand our Sentry config to the engine subprocess so engine-side
-            // panics + `tracing::error!` land in the SAME Sentry project, under
-            // the SAME release, tagged `runtime=engine` (the engine reads these
-            // in `main::init_sentry`). Gated on the app actually having a DSN so
-            // forks / dev builds inject nothing and the engine stays a silent
-            // no-op. The engine debug files CI uploads then become useful.
-            if !sentry_dsn.is_empty() {
-                engine_env.push(("SENTRY_DSN".into(), sentry_dsn.to_string()));
-                engine_env.push(("SENTRY_RELEASE".into(), sentry_release.clone()));
-                engine_env.push((
-                    "SENTRY_ENVIRONMENT".into(),
-                    sentry_environment.to_string(),
-                ));
-            }
-            // 30s banner timeout: first-run Gatekeeper scan on a notarized
-            // sidecar can take 15–20s on slow machines.
-            let slot = spawn_supervisor(binary, Duration::from_secs(30), engine_env, cb)
-                .expect("failed to spawn houston-engine");
-            let handshake = {
-                let guard = slot.lock().expect("engine slot poisoned");
-                guard
+            // Cutover host mode: when VITE_NEW_ENGINE_URL is set the frontend
+            // talks to an external Houston host (see app/src/lib/engine.ts), so
+            // don't spawn or health-check the Rust engine sidecar at all — the
+            // frontend reads its config from the env, no handshake injection
+            // needed here. Lets `pnpm tauri dev` run without a built engine.
+            let host_mode = std::env::var("VITE_NEW_ENGINE_URL")
+                .map(|v| !v.trim().is_empty())
+                .unwrap_or(false);
+            if host_mode {
+                tracing::info!(
+                    "[engine] host mode (VITE_NEW_ENGINE_URL) — skipping the Rust engine sidecar"
+                );
+                // Keep get_engine_handshake callable (the frontend skips it here).
+                app.manage(EngineHandshakeState::default());
+            } else {
+                let resource_dir = app.path().resource_dir().ok();
+                let binary = resolve_engine_binary(resource_dir.as_ref())
+                    .expect("houston-engine binary missing — check externalBin bundling");
+                tracing::info!("[engine] spawning {}", binary.display());
+
+                let cb: Arc<TauriSupervisorCallbacks> = Arc::new(TauriSupervisorCallbacks {
+                    handle: app.handle().clone(),
+                });
+                // Product-layer prompts live in the `houston_prompt` module and are
+                // exported to the engine via env vars. The engine treats these
+                // as opaque strings — it has no hardcoded Houston copy.
+                //
+                // Also pin HOUSTON_HOME + HOUSTON_DOCS so the engine uses the
+                // same data roots as the app. Workspaces live under
+                // `$HOUSTON_HOME/workspaces/` in both debug (`~/.dev-houston/`)
+                // and release (`~/.houston/`) — everything Houston writes is
+                // rooted at a single discoverable location.
+                let docs_dir = houston.join("workspaces");
+                let mut engine_env: Vec<(String, String)> = vec![
+                    (
+                        "HOUSTON_APP_SYSTEM_PROMPT".into(),
+                        houston_prompt::system_prompt(),
+                    ),
+                    (
+                        "HOUSTON_APP_ONBOARDING_PROMPT".into(),
+                        houston_prompt::onboarding_prompt(),
+                    ),
+                    ("HOUSTON_HOME".into(), houston.display().to_string()),
+                    ("HOUSTON_DOCS".into(), docs_dir.display().to_string()),
+                ];
+                if let Some(store_dir) = resource_dir
                     .as_ref()
-                    .expect("engine subprocess missing after spawn")
-                    .handshake
-                    .clone()
-            };
-            // 30s matches the banner timeout above. On first launch the
-            // engine has to import the bundled certificates, run a
-            // login-shell PATH probe, and (on Windows) kick off
-            // PortableGit extraction in the background. The shorter
-            // 5s budget we used before turned out to be the trigger
-            // for a Windows crash loop: any startup path that crossed
-            // it killed the engine subprocess, which on Windows meant
-            // an in-flight PortableGit extraction was never finalized
-            // and re-fired identically on every relaunch.
-            wait_until_healthy(&handshake, Duration::from_secs(30))
-                .expect("engine did not pass /v1/health in time");
-
-            // Stash the handshake so the frontend can pull it via
-            // `get_engine_handshake` — wins the race when the one-shot
-            // `houston-engine-ready` event fires before the webview's
-            // `listen()` registers (common in dev + cold Vite).
-            let handshake_state = EngineHandshakeState::default();
-            *handshake_state.0.lock().unwrap() = Some(handshake.clone());
-            app.manage(handshake_state);
-
-            // Inject bootstrap so `app/src/lib/engine.ts::resolveConfig`
-            // picks it up before any HoustonClient call fires.
-            //
-            // Two delivery paths because the webview + React may mount
-            // BEFORE `setup()` finishes waiting on /v1/health:
-            //   1. `window.eval` — fastest path, wins if the webview hasn't
-            //      loaded the JS bundle yet.
-            //   2. `houston-engine-ready` Tauri event — the frontend's
-            //      `EngineGate` awaits this before rendering the app, so a
-            //      slow health check simply shows a splash instead of
-            //      crashing the React tree.
-            let init_script = format!(
-                "window.__HOUSTON_ENGINE__ = {{ baseUrl: \"{}\", token: \"{}\" }};",
-                handshake.base_url(),
-                handshake.token.replace('"', "\\\"")
-            );
-            if let Some(window) = app.get_webview_window("main") {
-                if let Err(e) = window.eval(&init_script) {
-                    tracing::error!("[engine] failed to inject bootstrap: {e}");
+                    .map(|dir| dir.join("store"))
+                    .filter(|dir| dir.join("catalog.json").exists())
+                {
+                    engine_env.push(("HOUSTON_STORE_DIR".into(), store_dir.display().to_string()));
                 }
-            }
-            let ready_payload = serde_json::json!({
-                "baseUrl": handshake.base_url(),
-                "token": handshake.token,
-            });
-            if let Err(e) = app.emit("houston-engine-ready", ready_payload) {
-                tracing::error!("[engine] failed to emit ready event: {e}");
+                // If a Supabase session is already persisted in Keychain (user
+                // signed in on a previous launch), stamp the subprocess with the
+                // user_id so future cloud-side operations can attribute work to
+                // a user. Engine is prompt-agnostic about identity — treats this
+                // as an opaque string. Local/ad-hoc builds compile auth storage
+                // in browser mode, so this returns before touching Keychain.
+                if let Some(user_id) = auth::persisted_user_id() {
+                    engine_env.push(("HOUSTON_APP_USER_ID".into(), user_id));
+                }
+                // Pass through `HOUSTON_TUNNEL_URL` for local relay dev
+                // (`wrangler dev` on localhost:8787). Production uses the
+                // engine's baked-in default (`tunnel.gethouston.ai`).
+                if let Ok(v) = std::env::var("HOUSTON_TUNNEL_URL") {
+                    if !v.is_empty() {
+                        engine_env.push(("HOUSTON_TUNNEL_URL".into(), v));
+                    }
+                }
+                // Hand our Sentry config to the engine subprocess so engine-side
+                // panics + `tracing::error!` land in the SAME Sentry project, under
+                // the SAME release, tagged `runtime=engine` (the engine reads these
+                // in `main::init_sentry`). Gated on the app actually having a DSN so
+                // forks / dev builds inject nothing and the engine stays a silent
+                // no-op. The engine debug files CI uploads then become useful.
+                if !sentry_dsn.is_empty() {
+                    engine_env.push(("SENTRY_DSN".into(), sentry_dsn.to_string()));
+                    engine_env.push(("SENTRY_RELEASE".into(), sentry_release.clone()));
+                    engine_env.push(("SENTRY_ENVIRONMENT".into(), sentry_environment.to_string()));
+                }
+                // 30s banner timeout: first-run Gatekeeper scan on a notarized
+                // sidecar can take 15–20s on slow machines.
+                let slot = spawn_supervisor(binary, Duration::from_secs(30), engine_env, cb)
+                    .expect("failed to spawn houston-engine");
+                let handshake = {
+                    let guard = slot.lock().expect("engine slot poisoned");
+                    guard
+                        .as_ref()
+                        .expect("engine subprocess missing after spawn")
+                        .handshake
+                        .clone()
+                };
+                // 30s matches the banner timeout above. On first launch the
+                // engine has to import the bundled certificates, run a
+                // login-shell PATH probe, and (on Windows) kick off
+                // PortableGit extraction in the background. The shorter
+                // 5s budget we used before turned out to be the trigger
+                // for a Windows crash loop: any startup path that crossed
+                // it killed the engine subprocess, which on Windows meant
+                // an in-flight PortableGit extraction was never finalized
+                // and re-fired identically on every relaunch.
+                wait_until_healthy(&handshake, Duration::from_secs(30))
+                    .expect("engine did not pass /v1/health in time");
+
+                // Stash the handshake so the frontend can pull it via
+                // `get_engine_handshake` — wins the race when the one-shot
+                // `houston-engine-ready` event fires before the webview's
+                // `listen()` registers (common in dev + cold Vite).
+                let handshake_state = EngineHandshakeState::default();
+                *handshake_state.0.lock().unwrap() = Some(handshake.clone());
+                app.manage(handshake_state);
+
+                // Inject bootstrap so `app/src/lib/engine.ts::resolveConfig`
+                // picks it up before any HoustonClient call fires.
+                //
+                // Two delivery paths because the webview + React may mount
+                // BEFORE `setup()` finishes waiting on /v1/health:
+                //   1. `window.eval` — fastest path, wins if the webview hasn't
+                //      loaded the JS bundle yet.
+                //   2. `houston-engine-ready` Tauri event — the frontend's
+                //      `EngineGate` awaits this before rendering the app, so a
+                //      slow health check simply shows a splash instead of
+                //      crashing the React tree.
+                let init_script = format!(
+                    "window.__HOUSTON_ENGINE__ = {{ baseUrl: \"{}\", token: \"{}\" }};",
+                    handshake.base_url(),
+                    handshake.token.replace('"', "\\\"")
+                );
+                if let Some(window) = app.get_webview_window("main") {
+                    if let Err(e) = window.eval(&init_script) {
+                        tracing::error!("[engine] failed to inject bootstrap: {e}");
+                    }
+                }
+                let ready_payload = serde_json::json!({
+                    "baseUrl": handshake.base_url(),
+                    "token": handshake.token,
+                });
+                if let Err(e) = app.emit("houston-engine-ready", ready_payload) {
+                    tracing::error!("[engine] failed to emit ready event: {e}");
+                }
             }
 
             // Size window to 80% of the screen so it looks good on any display
