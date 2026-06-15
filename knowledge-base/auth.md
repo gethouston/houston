@@ -141,9 +141,9 @@ device-code regex, leaving `user_code` unset and the dialog wrongly stuck on
 paste-back. Claude has no device variant —
 its standard login already completes headlessly via the paste-back code
 (`/v1/providers/:name/login/code`), so the flag is a no-op for it. Note the
-mid-chat `ProviderReconnectCard` / `auth-reconnect-banner` don't render the
-dialog, so headless re-auth currently routes through the picker/settings; the
-device-code requires the user's OpenAI account to have device sign-in enabled.
+mid-chat `ProviderReconnectCard` doesn't render the dialog, so headless
+re-auth currently routes through the picker/settings; the device-code
+requires the user's OpenAI account to have device sign-in enabled.
 
 ### Cancelling / retrying a stuck sign-in
 

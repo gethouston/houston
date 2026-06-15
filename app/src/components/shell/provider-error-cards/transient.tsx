@@ -64,7 +64,7 @@ export function RateLimitedCard({
             {onRetry && (
               <RowCardButton
                 label={t("providerError.rateLimited.retry")}
-                onClick={() => void retry()}
+                onClick={retry}
                 loading={retrying}
               />
             )}

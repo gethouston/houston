@@ -86,12 +86,16 @@ describe("HOU-467 card unification", () => {
     }
   });
 
-  it("RowCardButton makes the icon optional", () => {
+  it("RowCardButton makes the icon optional + keeps the rage-click guard", () => {
     const src = read("../src/components/cards/row-card-button.tsx");
     ok(src.includes("icon?:"), "icon prop is optional");
     ok(
       src.includes("iconPosition"),
       "supports leading/trailing icon placement",
+    );
+    ok(
+      src.includes("AsyncButton"),
+      "built on the shared AsyncButton (HOU-465 rage-click guard)",
     );
   });
 });

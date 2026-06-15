@@ -138,7 +138,7 @@ export function UnauthenticatedCard({
             onRetry && (
               <RowCardButton
                 label={t("providerError.unauthenticated.sendAgain")}
-                onClick={() => void sendAgain()}
+                onClick={sendAgain}
                 loading={retrying}
               />
             )
@@ -167,7 +167,7 @@ export function UnauthenticatedCard({
         action={
           <RowCardButton
             label={t("providerError.unauthenticated.reconnect")}
-            onClick={() => void reconnect()}
+            onClick={reconnect}
             loading={launching}
             variant={waiting ? "outline" : "default"}
           />
