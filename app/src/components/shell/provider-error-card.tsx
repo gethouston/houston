@@ -41,13 +41,11 @@ import {
 interface ProviderErrorCardProps {
   error: ProviderError;
   onRetry?: () => Promise<void> | void;
-  onSwitchModel?: () => void;
 }
 
 export function ProviderErrorCard({
   error,
   onRetry,
-  onSwitchModel,
 }: ProviderErrorCardProps) {
   // Cancellation has no UI surface; feed-to-messages should drop it
   // before we get here, but guard defensively in case it ever sneaks
@@ -56,23 +54,13 @@ export function ProviderErrorCard({
 
   switch (error.kind) {
     case "rate_limited":
-      return (
-        <RateLimitedCard
-          error={error}
-          onRetry={onRetry}
-          onSwitchModel={onSwitchModel}
-        />
-      );
+      return <RateLimitedCard error={error} onRetry={onRetry} />;
     case "usage_limit_paused":
-      return (
-        <UsageLimitPausedCard error={error} onSwitchModel={onSwitchModel} />
-      );
+      return <UsageLimitPausedCard error={error} />;
     case "quota_exhausted":
-      return <QuotaExhaustedCard error={error} onSwitchModel={onSwitchModel} />;
+      return <QuotaExhaustedCard error={error} />;
     case "model_unavailable":
-      return (
-        <ModelUnavailableCard error={error} onSwitchModel={onSwitchModel} />
-      );
+      return <ModelUnavailableCard error={error} />;
     case "unauthenticated":
       return <UnauthenticatedCard error={error} onRetry={onRetry} />;
     case "network_unreachable":

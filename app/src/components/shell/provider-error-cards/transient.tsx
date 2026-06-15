@@ -1,9 +1,9 @@
 /**
  * Transient typed-provider-error variants — rate-limited, usage-limit-paused,
  * network, provider-internal, malformed-response. They share the "wait"
- * recovery shape; differing only in icon + body copy + CTA (rate-limited and
- * usage-limit-paused offer "switch model", the network/internal ones a
- * status-page link).
+ * recovery shape; rate-limited/network/internal offer a retry (and the
+ * network/internal ones a status-page link), while usage-limit-paused is
+ * informational — the user waits for the plan window to reset.
  */
 
 import { useState } from "react";
@@ -27,13 +27,11 @@ import {
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;
-  onSwitchModel?: () => void;
 }
 
 export function RateLimitedCard({
   error,
   onRetry,
-  onSwitchModel,
 }: BaseProps & {
   error: Extract<ProviderError, { kind: "rate_limited" }>;
 }) {
@@ -62,22 +60,13 @@ export function RateLimitedCard({
         title={t("providerError.rateLimited.title")}
         description={body}
         action={
-          <>
-            {onRetry && (
-              <RowCardButton
-                label={t("providerError.rateLimited.retry")}
-                onClick={retry}
-                loading={retrying}
-              />
-            )}
-            {onSwitchModel && (
-              <RowCardButton
-                label={t("providerError.rateLimited.switchModel")}
-                onClick={onSwitchModel}
-                variant="outline"
-              />
-            )}
-          </>
+          onRetry && (
+            <RowCardButton
+              label={t("providerError.rateLimited.retry")}
+              onClick={retry}
+              loading={retrying}
+            />
+          )
         }
       />
     </div>
@@ -86,15 +75,13 @@ export function RateLimitedCard({
 
 /**
  * Plan-window usage limit (Anthropic's 5-hour subscription session limit).
- * Distinct from RateLimited: retrying now fails, so there is NO retry CTA —
- * the user waits for the reset. We surface the reset time when the engine
- * could resolve it, and offer "switch model" as the one way to keep going
- * (a different provider has its own limit).
+ * Distinct from RateLimited: retrying now fails, so there is no action — the
+ * user just waits for the reset. We surface the reset time when the engine
+ * could resolve it.
  */
 export function UsageLimitPausedCard({
   error,
-  onSwitchModel,
-}: BaseProps & {
+}: {
   error: Extract<ProviderError, { kind: "usage_limit_paused" }>;
 }) {
   const { t } = useTranslation("shell");
@@ -107,17 +94,6 @@ export function UsageLimitPausedCard({
         media={<TimerResetIcon className="size-5" />}
         title={t("providerError.usageLimitPaused.title")}
         description={body}
-        action={
-          <>
-            {onSwitchModel && (
-              <RowCardButton
-                label={t("providerError.usageLimitPaused.switchModel")}
-                onClick={onSwitchModel}
-                variant="outline"
-              />
-            )}
-          </>
-        }
       />
     </div>
   );

@@ -280,27 +280,22 @@
       "title": "Alcanzaste un límite de velocidad",
       "body": "La API de {{provider}} está limitando las solicitudes. Espera un momento e inténtalo de nuevo.",
       "bodyWithRetry": "La API de {{provider}} está limitando las solicitudes. Vuelve a intentar en {{seconds}}s.",
-      "retry": "Reintentar",
-      "switchModel": "Cambiar de modelo"
+      "retry": "Reintentar"
     },
     "usageLimitPaused": {
       "title": "Llegaste al límite de tu plan",
       "body": "Por ahora agotaste tu plan. Espera a que se restablezca y continúa.",
-      "bodyWithReset": "Por ahora agotaste tu plan. Se restablece a las {{time}} y podrás continuar.",
-      "switchModel": "Cambiar de modelo"
+      "bodyWithReset": "Por ahora agotaste tu plan. Se restablece a las {{time}} y podrás continuar."
     },
     "quotaExhausted": {
       "title": "Sin capacidad disponible",
       "body": "Tu plan de {{provider}} llegó al límite. Mejora tu plan o cambia de proveedor para continuar.",
       "upgrade": "Mejorar plan",
-      "switchProvider": "Cambiar de proveedor",
       "useApiKey": "Usar clave de API en su lugar"
     },
     "modelUnavailable": {
       "title": "Modelo no disponible",
-      "body": "{{model}} no está disponible en tu cuenta de {{provider}}.",
-      "switchToFallback": "Cambiar a {{model}}",
-      "pickAnother": "Elegir otro modelo"
+      "body": "{{model}} no está disponible en tu cuenta de {{provider}}."
     },
     "unauthenticated": {
       "title": "Conéctate a {{provider}} de nuevo",

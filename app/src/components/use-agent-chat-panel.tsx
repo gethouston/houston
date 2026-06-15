@@ -732,14 +732,13 @@ export function useAgentChatPanel({
                 data: text,
               });
             }}
-            onSwitchModel={() => setPickerOpen(true)}
           />
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
       return undefined;
     },
-    [effectiveModel, effectiveProvider, effectiveEffort, handleModelSelect, path, pushFeedItem, selectedSessionKey, setPickerOpen, t],
+    [effectiveModel, effectiveProvider, effectiveEffort, handleModelSelect, path, pushFeedItem, selectedSessionKey, t],
   );
   const mapFeedItems = useCallback(
     ({ items }: { sessionKey: string; items: FeedItem[] }) =>
