@@ -1,19 +1,27 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { posix } from "node:path";
-import { json, readJson, type TurnDeps } from "./deps";
+import type { Workspace, Agent } from "../domain/types";
+import type { WorkspacePaths } from "../paths";
+import type { Vfs } from "../vfs";
+import { json, readJson } from "./deps";
 
 /**
- * Files browser for cloudrun agents. An agent's workspace is the GCS subprefix
- * `<prefix>/workspace/`; the agent writes deck.pptx / sheet.xlsx / etc. there
- * during a turn (the runtime syncs them back). These endpoints let the web
- * Files tab list, read, rename, delete, and create folders against that prefix
- * — the cloud equivalent of the desktop's local-filesystem Files tab.
+ * Files browser for an agent's workspace — the HOST serves it for EVERY
+ * deployment profile (cloud GCS prefix, local real FS) off the shared Vfs, so
+ * the web Files tab behaves identically everywhere with no drift. `root` is the
+ * agent's workspace root (`WorkspacePaths.agentRoot`): cloud `<prefix>/workspace`,
+ * local `<Workspace>/<Agent>`. The agent writes deck.pptx / sheet.xlsx / etc.
+ * there during a turn; these endpoints list, read, download, rename, delete, and
+ * create folders against it.
  *
- * Path safety: every model/UI-supplied relative path is validated to stay
- * inside `<prefix>/workspace/` (no `..`, no absolute) before it touches storage.
+ * Internal Houston state — the top-level `.houston/` (typed data) and `.agents/`
+ * (skills) dot-directories — is hidden from the listing and refused by every
+ * path op, so the Files tab can neither show nor clobber it.
+ *
+ * Path safety: every model/UI-supplied relative path is validated to stay inside
+ * `root` (no `..`, no absolute, no top-level dot-dir) before it touches storage.
  */
 
-const WORKSPACE = "workspace";
 const FOLDER_KEEP = ".keep"; // marker that lets an empty folder show up in a listing
 
 /** The desktop ProjectFile shape the FilesBrowser renders. */
@@ -33,7 +41,7 @@ export class FilePathError extends Error {
   }
 }
 
-/** Normalize a UI-supplied relative path and require it to stay inside the workspace. */
+/** Normalize a UI-supplied relative path; require it to stay inside the workspace and clear of internal dot-dirs. */
 function safeRel(rel: string): string {
   const cleaned = rel.replace(/\\/g, "/");
   // Absolute (POSIX or Windows-drive) paths are anomalous — reject, don't silently clamp.
@@ -42,10 +50,13 @@ function safeRel(rel: string): string {
   if (norm === "" || norm === "." || norm.startsWith("..") || norm.split("/").includes("..")) {
     throw new FilePathError(rel);
   }
+  // Internal Houston state lives in top-level dot-dirs (.houston, .agents). The
+  // Files tab must never read or write there.
+  if (norm.split("/")[0]!.startsWith(".")) throw new FilePathError(rel);
   return norm;
 }
 
-const workspaceKey = (prefix: string, rel: string) => `${prefix}/${WORKSPACE}/${rel}`;
+const fileKey = (root: string, rel: string) => `${root}/${rel}`;
 const extOf = (name: string) => {
   const dot = name.lastIndexOf(".");
   return dot > 0 ? name.slice(dot + 1) : "";
@@ -88,19 +99,20 @@ export const contentDisposition = (kind: "attachment" | "inline", name: string):
 /**
  * List every file under the agent's workspace, plus a synthesized entry for
  * each directory that contains something — so the browser can render folders.
- * The `.keep` markers that back empty folders are hidden but still surface
- * their directory.
+ * The `.keep` markers that back empty folders are hidden but still surface their
+ * directory; internal top-level dot-dirs (`.houston`, `.agents`) are hidden whole.
  */
-export async function listWorkspace(deps: TurnDeps, prefix: string): Promise<ProjectFile[]> {
-  const base = `${prefix}/${WORKSPACE}`;
-  const stats = await deps.vfs.listDetailed(base);
+export async function listWorkspace(vfs: Vfs, root: string): Promise<ProjectFile[]> {
+  const stats = await vfs.listDetailed(root);
   const files: ProjectFile[] = [];
   const dirs = new Map<string, number>(); // dir path -> latest mtime under it
 
   for (const s of stats) {
-    const rel = s.key.slice(base.length + 1);
+    const rel = s.key.slice(root.length + 1);
     if (!rel) continue;
     const segments = rel.split("/");
+    // Hide internal Houston state (top-level .houston / .agents) from the browser.
+    if (segments[0]!.startsWith(".")) continue;
     // Record every ancestor directory (with the freshest mtime beneath it).
     for (let i = 1; i < segments.length; i++) {
       const dir = segments.slice(0, i).join("/");
@@ -130,11 +142,11 @@ export async function listWorkspace(deps: TurnDeps, prefix: string): Promise<Pro
 
 /** Read one workspace file. Text comes back as `content`; binary as base64. */
 export async function readWorkspaceFile(
-  deps: TurnDeps,
-  prefix: string,
+  vfs: Vfs,
+  root: string,
   rel: string,
 ): Promise<{ content: string; base64: boolean } | null> {
-  const buf = await deps.vfs.readBytes(workspaceKey(prefix, safeRel(rel)));
+  const buf = await vfs.readBytes(fileKey(root, safeRel(rel)));
   if (buf === null) return null;
   // Treat a buffer as text only if it round-trips through UTF-8 without
   // replacement chars (so a .pptx comes back as base64 for download, not garbage).
@@ -145,57 +157,71 @@ export async function readWorkspaceFile(
     : { content: buf.toString("base64"), base64: true };
 }
 
-export async function deleteWorkspaceFile(deps: TurnDeps, prefix: string, rel: string): Promise<void> {
+export async function deleteWorkspaceFile(vfs: Vfs, root: string, rel: string): Promise<void> {
   const norm = safeRel(rel);
-  const stats = await deps.vfs.listDetailed(`${prefix}/${WORKSPACE}/${norm}`);
+  const stats = await vfs.listDetailed(fileKey(root, norm));
   if (stats.length > 0) {
     // A directory: delete everything under it.
-    for (const s of stats) await deps.vfs.deleteKey(s.key);
+    for (const s of stats) await vfs.deleteKey(s.key);
   }
-  await deps.vfs.deleteKey(workspaceKey(prefix, norm));
+  await vfs.deleteKey(fileKey(root, norm));
 }
 
 export async function renameWorkspaceFile(
-  deps: TurnDeps,
-  prefix: string,
+  vfs: Vfs,
+  root: string,
   rel: string,
   newName: string,
 ): Promise<void> {
   const from = safeRel(rel);
-  if (newName.includes("/") || newName.includes("\\") || newName === "" || newName.includes(".."))
+  if (
+    newName.includes("/") ||
+    newName.includes("\\") ||
+    newName === "" ||
+    newName.includes("..") ||
+    newName.startsWith(".")
+  )
     throw new FilePathError(newName);
   const parent = from.includes("/") ? from.slice(0, from.lastIndexOf("/") + 1) : "";
-  await deps.vfs.move(workspaceKey(prefix, from), workspaceKey(prefix, `${parent}${newName}`));
+  await vfs.move(fileKey(root, from), fileKey(root, `${parent}${newName}`));
 }
 
-export async function createWorkspaceFolder(deps: TurnDeps, prefix: string, folder: string): Promise<string> {
+export async function createWorkspaceFolder(vfs: Vfs, root: string, folder: string): Promise<string> {
   const norm = safeRel(folder);
-  await deps.vfs.writeText(workspaceKey(prefix, `${norm}/${FOLDER_KEEP}`), "");
+  await vfs.writeText(fileKey(root, `${norm}/${FOLDER_KEEP}`), "");
   return norm;
 }
 
 /**
- * HTTP handler for `files*` routes (called from dispatchCloudrun). Returns true
- * when it handled the request. Path-safety failures surface as 400; nothing is
- * swallowed.
+ * HTTP handler for `files*` routes, intercepted by the host BEFORE the runtime
+ * channel (the runtime has no /files route). Returns true when it owns the
+ * request (every `files*` path — so a files request is never forwarded to the
+ * runtime). A missing vfs 503s; path-safety failures 400. Nothing is swallowed.
  */
-export async function handleFileRequest(
-  deps: TurnDeps,
-  prefix: string,
+export async function handleFiles(
+  vfs: Vfs | undefined,
+  paths: WorkspacePaths,
+  ctx: { workspace: Workspace; agent: Agent },
   method: string,
   rest: string,
   req: IncomingMessage,
   res: ServerResponse,
   query: URLSearchParams,
 ): Promise<boolean> {
+  if (rest !== "files" && !rest.startsWith("files/")) return false;
+  if (!vfs) {
+    json(res, 503, { error: "files not configured" });
+    return true;
+  }
+  const root = paths.agentRoot(ctx.workspace, ctx.agent);
   try {
     if (method === "GET" && rest === "files") {
-      await json(res, 200, await listWorkspace(deps, prefix));
+      await json(res, 200, await listWorkspace(vfs, root));
       return true;
     }
     if (method === "GET" && rest === "files/download") {
       const rel = safeRel(query.get("path") ?? "");
-      const buf = await deps.vfs.readBytes(workspaceKey(prefix, rel));
+      const buf = await vfs.readBytes(fileKey(root, rel));
       if (buf === null) return (json(res, 404, { error: "file not found" }), true);
       const name = rel.split("/").pop()!;
       const kind = query.get("disposition") === "inline" ? "inline" : "attachment";
@@ -209,29 +235,32 @@ export async function handleFileRequest(
       return true;
     }
     if (method === "GET" && rest === "files/read") {
-      const got = await readWorkspaceFile(deps, prefix, query.get("path") ?? "");
+      const got = await readWorkspaceFile(vfs, root, query.get("path") ?? "");
       if (!got) return (json(res, 404, { error: "file not found" }), true);
       await json(res, 200, got);
       return true;
     }
     if (method === "DELETE" && rest === "files") {
-      await deleteWorkspaceFile(deps, prefix, query.get("path") ?? "");
+      await deleteWorkspaceFile(vfs, root, query.get("path") ?? "");
       await json(res, 200, { ok: true });
       return true;
     }
     if (method === "POST" && rest === "files/rename") {
       const b = await readJson(req);
-      await renameWorkspaceFile(deps, prefix, String(b.path ?? ""), String(b.newName ?? ""));
+      await renameWorkspaceFile(vfs, root, String(b.path ?? ""), String(b.newName ?? ""));
       await json(res, 200, { ok: true });
       return true;
     }
     if (method === "POST" && rest === "files/folder") {
       const b = await readJson(req);
-      const created = await createWorkspaceFolder(deps, prefix, String(b.path ?? b.folder_name ?? ""));
+      const created = await createWorkspaceFolder(vfs, root, String(b.path ?? b.folder_name ?? ""));
       await json(res, 200, { created });
       return true;
     }
-    return false;
+    // A files* path we don't serve — own it with a 404 rather than forward it
+    // to the runtime (which has no /files route either).
+    json(res, 404, { error: "not found" });
+    return true;
   } catch (err) {
     if (err instanceof FilePathError) return (json(res, 400, { error: err.message }), true);
     throw err;

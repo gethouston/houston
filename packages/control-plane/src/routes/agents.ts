@@ -10,6 +10,7 @@ import { canUseAgent } from "../domain/access";
 import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { handleSkills } from "./skills";
+import { handleFiles } from "../turn/files";
 import { handlePortableExport } from "./portable";
 import { json, readJson } from "./http";
 
@@ -186,6 +187,9 @@ export async function handleAgents(
     if (await handleAgentData(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
     if (await handleAgentFile(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
     if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
+    // The Files tab: served by the HOST off the workspace vfs for every profile
+    // (the runtime has no /files route). Same handler cloud + local — zero drift.
+    if (await handleFiles(deps.vfs, paths, ctx, method, rest, req, res, url.searchParams)) return true;
     if (await handlePortableExport({ vfs: deps.vfs, paths }, ctx, method, rest, req, res)) return true;
 
     const channel = channelFor(deps, authz.workspace);
