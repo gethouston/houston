@@ -213,18 +213,6 @@ export function RoutinesGrid({
   return (
     <div className="flex-1 min-h-0 overflow-y-auto bg-background">
       <div className="max-w-3xl mx-auto px-6 py-7">
-        {/* Account-wide timezone — governs every routine in the list below. */}
-        {onTimezoneChange && (
-          <TimezoneCard
-            accountTimezone={accountTimezone}
-            timezones={timezones}
-            onTimezoneChange={onTimezoneChange}
-            label={l.timezoneLabel}
-            hint={l.timezoneHint}
-            className="mb-3"
-          />
-        )}
-
         {/* Description + CTA. No page title — tab handles it. */}
         <div className="flex items-center justify-between gap-4 mb-4">
           <p className="text-xs text-muted-foreground max-w-md">
@@ -237,6 +225,18 @@ export function RoutinesGrid({
             </Button>
           )}
         </div>
+
+        {/* Account-wide timezone — governs every routine in the list below. */}
+        {onTimezoneChange && (
+          <TimezoneCard
+            accountTimezone={accountTimezone}
+            timezones={timezones}
+            onTimezoneChange={onTimezoneChange}
+            label={l.timezoneLabel}
+            hint={l.timezoneHint}
+            className="mb-3"
+          />
+        )}
 
         {/* List card — gray, divides hold rows */}
         <div
