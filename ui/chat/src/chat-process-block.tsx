@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -18,11 +18,10 @@ import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import { ToolsAndCards } from "./chat-helpers";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatProcessSegment } from "./chat-process-groups";
+import { buildProcessHeaderLabel } from "./chat-process-header";
+import type { ChatProcessLabels } from "./chat-process-header";
 
-export interface ChatProcessLabels {
-  active?: string;
-  complete?: string;
-}
+export type { ChatProcessLabels } from "./chat-process-header";
 
 export interface ChatProcessBlockProps {
   segments: ChatProcessSegment[];
@@ -34,11 +33,6 @@ export interface ChatProcessBlockProps {
   getThinkingMessage?: ReasoningTriggerProps["getThinkingMessage"];
 }
 
-const DEFAULT_LABELS: Required<ChatProcessLabels> = {
-  active: "Mission in progress...",
-  complete: "Mission log",
-};
-
 export function ChatProcessBlock({
   segments,
   isActive,
@@ -48,24 +42,27 @@ export function ChatProcessBlock({
   renderToolResult,
   getThinkingMessage,
 }: ChatProcessBlockProps) {
-  const l = useMemo(() => ({ ...DEFAULT_LABELS, ...labels }), [labels]);
-  const [isOpen, setIsOpen] = useState(isActive);
-  const wasActiveRef = useRef(isActive);
+  // HOU-448: the log is hidden by default and the user clicks the chevron to
+  // reveal it. We never auto-open while the agent works (the header alone shows
+  // the one action in progress) and never auto-close when it settles, so a
+  // manual open stays open for the life of the mounted block.
+  const [isOpen, setIsOpen] = useState(false);
 
-  useEffect(() => {
-    if (isActive) {
-      setIsOpen(true);
-    } else if (wasActiveRef.current) {
-      setIsOpen(false);
-    }
-    wasActiveRef.current = isActive;
-  }, [isActive]);
+  // The single trigger line. While active it surfaces only the one in-progress
+  // action ("Mission in progress: Reading file"); settled it reads "Mission
+  // log". Never a count of how many tool calls ran.
+  const headerLabel = useMemo(
+    () => buildProcessHeaderLabel({ isActive, segments, labels, toolLabels }),
+    [isActive, segments, labels, toolLabels],
+  );
 
-  // While the agent works, tool calls stream into this one open accordion.
-  // Pin the latest one into view inside the height-capped pane so the user
-  // sees live progress without the list swallowing the conversation. The hook
-  // releases the lock the moment the user scrolls up to read an earlier step,
-  // and on a settled (re-opened) log it starts at the top instead of jumping.
+  // Once the user opens the (now closed-by-default) pane during an active run,
+  // tool calls keep streaming in; pin the latest into view inside the
+  // height-capped pane so the live step stays visible without the list
+  // swallowing the conversation (HOU-426 — the cap is the sole guard now that
+  // the pane is opened on demand rather than auto-opened). The hook releases
+  // the lock the moment the user scrolls up, and a settled log starts at the
+  // top instead of jumping.
   const { scrollRef, contentRef } = useStickToBottom({
     initial: isActive ? "instant" : false,
     resize: "smooth",
@@ -80,7 +77,7 @@ export function ChatProcessBlock({
       <CollapsibleTrigger
         className="inline-flex max-w-full items-center gap-1.5 text-muted-foreground/65 transition-colors hover:text-muted-foreground"
       >
-        <ChatStatusLine label={isActive ? l.active : l.complete} active={isActive} />
+        <ChatStatusLine label={headerLabel} active={isActive} />
         <ChevronDownIcon
           className={cn(
             "size-3.5 shrink-0 transition-transform",

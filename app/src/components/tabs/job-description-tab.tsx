@@ -89,6 +89,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
             <SkillsContent
               skills={surface.skills}
               loading={surface.skillsLoading}
+              loadingSkillName={surface.loadingSkillName}
               onSkillClick={surface.selectSkill}
               onSearch={surface.handleSearch}
               onPopular={surface.handlePopular}

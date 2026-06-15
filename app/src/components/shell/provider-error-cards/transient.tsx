@@ -5,15 +5,17 @@
  * status-page CTA target.
  */
 
+import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangleIcon,
+  Clock,
   ServerCrashIcon,
-  TimerIcon,
   WifiOffIcon,
 } from "lucide-react";
-import { Button } from "@houston-ai/core";
 import type { ProviderError } from "@houston-ai/chat";
+import { RowCard } from "../../cards/row-card";
+import { RowCardButton } from "../../cards/row-card-button";
 import {
   ErrorCard,
   RetryButton,
@@ -35,32 +37,48 @@ export function RateLimitedCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
+  const [retrying, setRetrying] = useState(false);
   const body = error.retry_after_seconds
     ? t("providerError.rateLimited.bodyWithRetry", {
         provider,
         seconds: error.retry_after_seconds,
       })
     : t("providerError.rateLimited.body", { provider });
+  const retry = async () => {
+    if (!onRetry || retrying) return;
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  };
   return (
-    <ErrorCard
-      icon={<TimerIcon className="size-5" />}
-      title={t("providerError.rateLimited.title")}
-      body={body}
-    >
-      {onRetry && (
-        <RetryButton onRetry={onRetry} label={t("providerError.rateLimited.retry")} />
-      )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.rateLimited.switchModel")}
-        </Button>
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<Clock className="size-5" />}
+        title={t("providerError.rateLimited.title")}
+        description={body}
+        action={
+          <>
+            {onRetry && (
+              <RowCardButton
+                label={t("providerError.rateLimited.retry")}
+                onClick={retry}
+                loading={retrying}
+              />
+            )}
+            {onSwitchModel && (
+              <RowCardButton
+                label={t("providerError.rateLimited.switchModel")}
+                onClick={onSwitchModel}
+                variant="outline"
+              />
+            )}
+          </>
+        }
+      />
+    </div>
   );
 }
 

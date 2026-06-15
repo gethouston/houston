@@ -94,8 +94,17 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       setState({ open: false, phase: "idle", loginUrl: null, error: null });
       await onSuccess();
     } catch (e) {
-      logger.error("[composio-auth] flow error:", String(e));
       if (!mountedRef.current || genRef.current !== myGen) return;
+      // Already signed in (the CLI no-ops when creds exist, e.g. signed in
+      // elsewhere or a stale status). Not an error: close and refresh so the
+      // UI snaps to the connected state.
+      if (isHoustonEngineError(e) && e.kind === "composio_already_signed_in") {
+        logger.info("[composio-auth] already signed in, refreshing");
+        setState({ open: false, phase: "idle", loginUrl: null, error: null });
+        await onSuccess();
+        return;
+      }
+      logger.error("[composio-auth] flow error:", String(e));
       // Localize for the user. A `composio_login_timeout` is the expected
       // "you didn't finish approving in the browser" case; everything
       // else collapses to a generic retry prompt so we never surface a

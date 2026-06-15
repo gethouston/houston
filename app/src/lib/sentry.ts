@@ -4,10 +4,26 @@ import {
   isAcceptedStatus,
   resolveCapturedEventId,
 } from "./sentry-transport";
+import { sentrySendInDevEnabled } from "./sentry-dev";
 
 // __SENTRY_DSN__ baked at build time by Vite (see vite.config.ts). Empty
 // string in dev / forks → init bails, every capture is a silent no-op.
 const DSN = typeof __SENTRY_DSN__ !== "undefined" ? __SENTRY_DSN__ : "";
+
+// Opt-in (truthy __SENTRY_SEND_IN_DEV__) to send Sentry events from a dev
+// build. Unset by default.
+const SEND_IN_DEV = sentrySendInDevEnabled(
+  typeof __SENTRY_SEND_IN_DEV__ !== "undefined" ? __SENTRY_SEND_IN_DEV__ : "",
+);
+
+/**
+ * True when this is a dev build (`pnpm tauri dev`) and the SENTRY_SEND_IN_DEV
+ * opt-in is NOT set. In that state Sentry is hard-disabled — `initSentry` bails
+ * so nothing reaches the prod project — and `error-toast` surfaces a dev-only
+ * "no issue sent" notice instead of the green "report sent" toast. Release
+ * builds are never suppressed (`import.meta.env.DEV` is false).
+ */
+export const sentrySuppressedInDev = import.meta.env.DEV && !SEND_IN_DEV;
 
 // Release MUST match what the Rust SDK reports (the explicit
 // `houston-app@<CARGO_PKG_VERSION>` in lib.rs) AND what release.yml uploads
@@ -59,9 +75,11 @@ function recordDelivery(eventId: string, accepted: boolean): void {
  * the "report sent" toast claims so.
  *
  * Fire-and-forget. Empty DSN → silent no-op (local dev without secrets).
+ * Dev build without the SENTRY_SEND_IN_DEV opt-in → also a no-op, so dev
+ * errors never reach the prod Sentry project (see `sentrySuppressedInDev`).
  */
 export function initSentry(): void {
-  if (initialized || !DSN) return;
+  if (initialized || !DSN || sentrySuppressedInDev) return;
   initialized = true;
 
   Sentry.init({

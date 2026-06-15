@@ -22,7 +22,7 @@ import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import { ChatProcessBlock } from "./chat-process-block";
 import type { ChatProcessLabels } from "./chat-process-block";
-import { getChatDisplayItems } from "./chat-process-groups";
+import { getChatDisplayItems, shouldShowThinkingIndicator } from "./chat-process-groups";
 import { computeTurnEndSummary } from "./turn-tools";
 import type { TurnEndSummary } from "./turn-tools";
 import type { ChatMessage } from "./feed-to-messages";
@@ -31,6 +31,9 @@ export interface ChatMessagesProps {
   messages: ChatMessage[];
   status: "ready" | "streaming" | "submitted";
   thinkingIndicator: ReactNode;
+  /** Static glyph rendered after the agent's reply once the turn settles
+   *  (e.g. a non-blinking Houston helmet). Omitted → nothing renders. */
+  endOfTurnIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -68,6 +71,7 @@ export function ChatMessages({
   messages,
   status,
   thinkingIndicator,
+  endOfTurnIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -91,6 +95,18 @@ export function ChatMessages({
     () => getChatDisplayItems(messages, status),
     [messages, status],
   );
+  // HOU-471: show the standalone "Mission in progress..." line only when no
+  // active process block is already surfacing it (see the helper) — otherwise
+  // the two would duplicate while the agent runs tools.
+  const showThinkingIndicator = shouldShowThinkingIndicator(displayItems, status);
+  // HOU-471: once the turn settles, the agent's reply ends with a static
+  // (never-blinking) helmet — same slot the loader used. The consumer supplies
+  // the glyph, so it stays opt-in per surface.
+  const lastMessage = messages[messages.length - 1];
+  const showEndOfTurnIndicator =
+    status === "ready" &&
+    lastMessage?.from === "assistant" &&
+    Boolean(endOfTurnIndicator);
   return (
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
@@ -190,10 +206,17 @@ export function ChatMessages({
             </Message>
           );
         })}
-        {status === "submitted" && (
+        {showThinkingIndicator && (
           <Message from="assistant">
             <MessageContent>
               {thinkingIndicator}
+            </MessageContent>
+          </Message>
+        )}
+        {showEndOfTurnIndicator && (
+          <Message from="assistant">
+            <MessageContent>
+              {endOfTurnIndicator}
             </MessageContent>
           </Message>
         )}

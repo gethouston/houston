@@ -7,7 +7,7 @@
 
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
-import { applyBulkPatch, applyBulkRemove } from "./activity-bulk";
+import { applyBulkPatch, applyBulkRemove, applyRemove } from "./activity-bulk";
 
 /** Every status a mission can have. Mirrors the `status` enum in
  *  `activity.schema.json` (the on-disk source of truth). */
@@ -102,10 +102,18 @@ export async function update(
   return merged;
 }
 
+/**
+ * Delete an activity. Idempotent: removing an id that's already gone is a
+ * no-op success — the desired end state (row absent) already holds, so there's
+ * nothing to write. Mirrors `bulkRemove`'s "unknown ids are silently no-ops"
+ * semantics and stops a double-delete (a UI click racing an agent / file-watcher
+ * write that already removed the row) from rejecting as an unhandled rejection.
+ * Genuine write failures still propagate.
+ */
 export async function remove(agentPath: string, id: string): Promise<void> {
   const items = await list(agentPath);
-  const next = items.filter((a) => a.id !== id);
-  if (next.length === items.length) throw new Error(`Activity not found: ${id}`);
+  const next = applyRemove(items, id);
+  if (next.length === items.length) return; // already gone — nothing to write
   await writeAgentJson(agentPath, NAME, s, next);
 }
 

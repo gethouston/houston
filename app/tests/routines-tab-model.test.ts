@@ -19,7 +19,6 @@ function routine(overrides: Partial<Routine> = {}): Routine {
     enabled: true,
     suppress_when_silent: false,
     chat_mode: "shared",
-    timezone: "America/Los_Angeles",
     integrations: ["gmail", "slack"],
     created_at: "2026-01-01T00:00:00Z",
     updated_at: "2026-01-02T00:00:00Z",
@@ -57,16 +56,11 @@ describe("routines tab model — routineToFormData", () => {
       schedule: "0 9 * * 1-5",
       suppress_when_silent: false,
       chat_mode: "shared",
-      timezone: "America/Los_Angeles",
       integrations: ["gmail", "slack"],
       provider: null,
       model: null,
       effort: null,
     });
-  });
-
-  it("normalizes an absent timezone to null", () => {
-    strictEqual(routineToFormData(routine({ timezone: undefined })).timezone, null);
   });
 });
 
@@ -101,14 +95,6 @@ describe("routines tab model — formMatchesRoutine", () => {
     strictEqual(
       formMatchesRoutine({ ...baseline, integrations: ["gmail"] }, baseline),
       false,
-    );
-  });
-
-  it("treats null and undefined timezone as equal", () => {
-    const baseline = routineToFormData(routine({ timezone: null }));
-    strictEqual(
-      formMatchesRoutine({ ...baseline, timezone: undefined }, baseline),
-      true,
     );
   });
 });

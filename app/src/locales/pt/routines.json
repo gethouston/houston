@@ -5,7 +5,9 @@
     "emptyTitle": "Programe e esqueça",
     "emptyDescription": "As rotinas disparam no horário programado e só te chamam quando algo realmente precisa de atenção.",
     "newRoutine": "Nova rotina",
-    "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção."
+    "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção.",
+    "timezoneLabel": "Fuso horário",
+    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário."
   },
   "editor": {
     "back": "Voltar para rotinas",
@@ -29,8 +31,6 @@
     "sectionWhen": "Quando roda",
     "sectionBehavior": "Comportamento",
     "sectionRecent": "Execuções recentes",
-    "timezoneLabel": "Fuso horário",
-    "accountDefault": "Padrão da conta · {tz}",
     "nextRun": "Próxima execução {relative}",
     "schedulePreview": "Prévia do agendamento",
     "schedulePreviewHint": "Escolha um agendamento válido para ver quando esta rotina vai rodar.",
@@ -78,6 +78,11 @@
     "shortcuts": { "everyDay": "Todos os dias", "weekdays": "Dias úteis", "weekends": "Fins de semana" },
     "decrease": "Diminuir",
     "increase": "Aumentar",
+    "timePicker": {
+      "hour": "Hora",
+      "minute": "Minuto",
+      "period": "AM/PM"
+    },
     "summary": {
       "noSchedule": "Nenhum agendamento definido",
       "custom": "Agendamento personalizado",
@@ -124,12 +129,8 @@
     "yesterday": "Ontem, {time}",
     "onDate": "{date}, {time}"
   },
-  "timezoneGate": {
-    "title": "Qual é o seu fuso horário?",
-    "description": "As rotinas rodam em um horário. Precisamos saber o seu fuso antes que qualquer uma rode, para que 9h seja o seu 9h.",
-    "timezoneLabel": "Fuso horário",
-    "detected": "Detectado pelo seu computador.",
-    "saving": "Salvando…",
-    "confirm": "Confirmar fuso horário"
+  "toasts": {
+    "timezoneSet": "Fuso horário definido como {{zone}}",
+    "timezoneError": "Não foi possível atualizar o fuso horário"
   }
 }

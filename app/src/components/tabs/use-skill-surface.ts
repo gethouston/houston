@@ -17,6 +17,7 @@ import { tauriSkills } from "../../lib/tauri";
 import { isMissingSkillError } from "../../lib/missing-skill";
 import { useUIStore } from "../../stores/ui";
 import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
+import { resolveLoadingSkillName } from "./skill-loading-model";
 
 export function useSkillSurface(agentPath: string) {
   const { t } = useTranslation("skills");
@@ -32,9 +33,19 @@ export function useSkillSurface(agentPath: string) {
     setPrevAgentPath(agentPath);
     setSelectedSkillName(null);
   }
-  const { data: skillDetail, error: skillDetailError } = useSkillDetail(
-    agentPath,
-    selectedSkillName ?? undefined,
+  const {
+    data: skillDetail,
+    error: skillDetailError,
+    isFetching: skillDetailFetching,
+  } = useSkillDetail(agentPath, selectedSkillName ?? undefined);
+
+  // The skill whose `load_skill` fetch is in flight, so the grid can disable
+  // and spin just that card instead of letting a slow/failed load get
+  // rage-clicked into duplicate fetches (HOU-464).
+  const loadingSkillName = resolveLoadingSkillName(
+    selectedSkillName,
+    skillDetailFetching,
+    !!skillDetail,
   );
 
   // A selected skill that no longer resolves (renamed, deleted, or never
@@ -144,6 +155,7 @@ export function useSkillSurface(agentPath: string) {
     skills: summaries ?? [],
     skillsLoading,
     selectedSkill,
+    loadingSkillName,
     selectSkill: setSelectedSkillName,
     clearSelectedSkill,
     handleSkillSave,

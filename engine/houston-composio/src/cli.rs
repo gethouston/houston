@@ -86,6 +86,28 @@ pub async fn status() -> ComposioStatus {
     }
 }
 
+/// Why `start_login` failed, so the engine server can tell a benign
+/// "you're already signed in" no-op apart from a genuine CLI fault.
+#[derive(Debug)]
+pub enum StartLoginError {
+    /// `login --no-wait` printed nothing because the user is already
+    /// authenticated (e.g. signed in elsewhere, or a stale status). Not a
+    /// bug: the UI treats it as success and refreshes.
+    AlreadySignedIn,
+    /// Spawn failure, non-zero exit, or unparseable output. Carries internal
+    /// detail for logs / the bug report; never shown verbatim to the user.
+    Failed(String),
+}
+
+impl std::fmt::Display for StartLoginError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AlreadySignedIn => write!(f, "already signed in to composio"),
+            Self::Failed(detail) => write!(f, "{detail}"),
+        }
+    }
+}
+
 /// Begin the login flow. Returns a URL for the user to open in their
 /// browser and a `cli_key` that `complete_login` will use to finalize.
 ///
@@ -96,17 +118,22 @@ pub async fn status() -> ComposioStatus {
 /// command returned in ~500 ms from a plain shell but hung indefinitely
 /// through tokio's async pipe handling. The sync+file approach has zero
 /// tokio pipe involvement.
-pub async fn start_login() -> Result<StartLoginResponse, String> {
-    let bin = cli_binary()?;
+pub async fn start_login() -> Result<StartLoginResponse, StartLoginError> {
+    let bin = cli_binary().map_err(StartLoginError::Failed)?;
     let home = crate::install::home_dir().to_string_lossy().to_string();
     let path = std::env::var("PATH").unwrap_or_default();
 
-    let result = tokio::time::timeout(
+    let (stdout, stderr) = tokio::time::timeout(
         std::time::Duration::from_secs(30),
         tokio::task::spawn_blocking(move || {
-            let tmp = std::env::temp_dir().join("houston-composio-login.json");
+            let tmp_out = std::env::temp_dir().join("houston-composio-login.out");
+            let tmp_err = std::env::temp_dir().join("houston-composio-login.err");
 
-            let stdout_file = std::fs::File::create(&tmp)
+            let stdout_file = std::fs::File::create(&tmp_out)
+                .map_err(|e| format!("Failed to create temp file: {e}"))?;
+            // Capture stderr too so an unrecognized/empty stdout can surface the
+            // CLI's own diagnostics instead of a bare parse error.
+            let stderr_file = std::fs::File::create(&tmp_err)
                 .map_err(|e| format!("Failed to create temp file: {e}"))?;
 
             let mut cmd = std::process::Command::new(&bin);
@@ -117,58 +144,148 @@ pub async fn start_login() -> Result<StartLoginResponse, String> {
                 .env("PATH", &path)
                 .stdin(std::process::Stdio::null())
                 .stdout(stdout_file)
-                .stderr(std::process::Stdio::null());
+                .stderr(stderr_file);
             crate::install::set_home_env(&mut cmd, &home);
             let status = cmd
                 .status()
                 .map_err(|e| format!("Failed to spawn composio login: {e}"))?;
 
+            let stdout = std::fs::read_to_string(&tmp_out)
+                .map_err(|e| format!("Failed to read login output: {e}"))?;
+            let stderr = std::fs::read_to_string(&tmp_err)
+                .map_err(|e| format!("Failed to read login stderr: {e}"))?;
+            let _ = std::fs::remove_file(&tmp_out);
+            let _ = std::fs::remove_file(&tmp_err);
+
             if !status.success() {
+                let stderr = stderr.trim();
                 return Err(decorate_windows_exit(
                     "composio login --no-wait",
-                    &format!("{status}"),
+                    &format!(
+                        "{status}{}",
+                        if stderr.is_empty() {
+                            String::new()
+                        } else {
+                            format!(": {stderr}")
+                        }
+                    ),
                     status.code(),
                 ));
             }
 
-            let stdout = std::fs::read_to_string(&tmp)
-                .map_err(|e| format!("Failed to read login output: {e}"))?;
-            let _ = std::fs::remove_file(&tmp);
-
-            // Do NOT log the raw stdout: it is the `{login_url, cli_key}`
-            // JSON, and `cli_key` is the login-session credential that
-            // `complete_login` later passes as `--key` (HOU-431). Log only
-            // its size so "CLI returned something" is still distinguishable
-            // from "CLI returned nothing".
+            // Do NOT log the raw stdout: it embeds the login-session secret
+            // (`cli_key`, carried as `?cliKey=`) that `complete_login` later
+            // passes as `--key` (HOU-431). Log only its size so "CLI returned
+            // something" stays distinguishable from "CLI returned nothing".
             tracing::info!(
                 "[composio:cli] start_login returned {} bytes",
                 stdout.trim().len()
             );
-            Ok(stdout)
+            Ok((stdout, stderr))
         }),
     )
     .await
-    .map_err(|_| "composio login --no-wait timed out after 30s".to_string())?
-    .map_err(|e| format!("spawn_blocking failed: {e}"))??;
+    .map_err(|_| StartLoginError::Failed("composio login --no-wait timed out after 30s".into()))?
+    .map_err(|e| StartLoginError::Failed(format!("spawn_blocking failed: {e}")))?
+    .map_err(StartLoginError::Failed)?;
 
+    // Empty stdout: the CLI had nothing to print. That is the EOF case
+    // (HOUSTON-APP-51) AND what `--no-wait` does when the user is already
+    // signed in. Disambiguate by auth state so we never bug-toast a benign
+    // "already connected".
+    if stdout.trim().is_empty() {
+        return match whoami().await {
+            Ok(Some(_)) => Err(StartLoginError::AlreadySignedIn),
+            _ => {
+                let stderr = stderr.trim();
+                Err(StartLoginError::Failed(format!(
+                    "composio login --no-wait produced no output{}",
+                    if stderr.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" (stderr: {stderr})")
+                    }
+                )))
+            }
+        };
+    }
+
+    interpret_login_output(&stdout, &stderr).map_err(StartLoginError::Failed)
+}
+
+/// Interpret the stdout of a successful `composio login --no-wait`.
+///
+/// `--no-wait` stdout is NOT one stable shape: it varies by CLI version, and
+/// which version runs varies by user (the per-arch CLI bundled in the `.app`
+/// vs. a standalone `~/.composio` install). Both forms seen in the wild carry
+/// the same two fields, so accept either:
+///
+/// 1. **JSON** (e.g. composio 0.2.24, the version Houston currently bundles):
+///    `{"status":"pending","login_url":"…?cliKey=<uuid>","cli_key":"<uuid>",…}`.
+/// 2. **Prose** (e.g. composio 0.2.31): human/agent text with the dashboard
+///    URL, the session key carried as its `cliKey` query param:
+///    ```text
+///    Open this URL in your browser to log in:
+///      https://dashboard.composio.dev/?cliKey=<uuid>
+///    ```
+///
+/// Feeding prose to a JSON-only parser was the HOU-468 crash (`expected value
+/// at line 1 column 1`); a prose-only parser would symmetrically break the
+/// JSON-emitting bundled CLI on prod. The URL is what the frontend opens and
+/// its `cliKey` is the session key `complete_login` passes as `--key` (verified
+/// identical to the `key` the CLI caches in `pending-login-session.json`).
+///
+/// Empty stdout is handled by the caller (`start_login`), which checks auth
+/// state to tell "already signed in" from a real failure; here a blank or
+/// unrecognized input falls through to the unrecognized-output error.
+fn interpret_login_output(stdout: &str, stderr: &str) -> Result<StartLoginResponse, String> {
+    let stdout = stdout.trim();
+    let stderr = stderr.trim();
+
+    // Form 1: JSON object. Extra fields (status/message/expires_at) are ignored.
     #[derive(Deserialize)]
-    struct Payload {
+    struct JsonPayload {
         login_url: String,
         cli_key: String,
     }
+    if let Ok(p) = serde_json::from_str::<JsonPayload>(stdout) {
+        if !p.login_url.is_empty() && !p.cli_key.is_empty() {
+            return Ok(StartLoginResponse {
+                login_url: p.login_url,
+                cli_key: p.cli_key,
+            });
+        }
+    }
 
-    let payload: Payload = serde_json::from_str(result.trim()).map_err(|e| {
-        // Do NOT echo the raw stdout: it is the `{login_url, cli_key}` payload
-        // and both fields carry the login-session secret (`login_url` embeds
-        // it as `?cliKey=`). The serde message names the failing field/offset
-        // without dumping the blob (HOU-431).
-        format!("Unexpected composio login --no-wait output: {e}")
-    })?;
+    // Form 2: prose containing the login URL.
+    if let Some((login_url, cli_key)) = extract_login_url_and_key(stdout) {
+        return Ok(StartLoginResponse { login_url, cli_key });
+    }
 
-    Ok(StartLoginResponse {
-        login_url: payload.login_url,
-        cli_key: payload.cli_key,
-    })
+    // Neither. Surface the CLI's stderr (NOT stdout — it carries the session
+    // secret) so the bug report shows what actually happened.
+    Err(format!(
+        "composio login --no-wait produced unrecognized output (no login URL found){}",
+        if stderr.is_empty() {
+            String::new()
+        } else {
+            format!("; stderr: {stderr}")
+        }
+    ))
+}
+
+/// `Some((login_url, cli_key))` when `stdout` contains a single `http(s)://`
+/// login URL whose `cliKey` query parameter is the session key. Both come from
+/// the one URL so they can never disagree.
+fn extract_login_url_and_key(stdout: &str) -> Option<(String, String)> {
+    let url = stdout
+        .split_whitespace()
+        .find(|t| t.starts_with("https://") || t.starts_with("http://"))?;
+    let cli_key = url.split_once("cliKey=")?.1.split(['&', '#']).next()?;
+    if cli_key.is_empty() {
+        return None;
+    }
+    Some((url.to_string(), cli_key.to_string()))
 }
 
 /// How long `complete_login` waits for the user to approve the sign-in
@@ -1182,5 +1299,70 @@ mod tests {
         assert!(bare_url("see https://docs.composio.dev/errors for help").is_none());
         assert!(bare_url("https://dashboard.composio.dev/x?open=true").is_some());
         assert!(bare_url("not-a-url").is_none());
+    }
+
+    // Representative `composio login --no-wait` stdout (HOU-468 prose shape).
+    // The cliKey is a synthetic placeholder, never a real session key.
+    const LOGIN_NO_WAIT_STDOUT: &str = "Open this URL in your browser to log in:\n\n  https://dashboard.composio.dev/?cliKey=00000000-0000-0000-0000-000000000000\n\nThen run this command to complete login:\n\n  composio login --poll\n\nhint: For agents: Show the URL above to the user to click, then run the command above. The command uses the cached login key, polls for up to 10 minutes, and exits once credentials are saved. Do not ask the user whether to poll — they already requested login.\n";
+
+    #[test]
+    fn login_output_parses_prose() {
+        let r = interpret_login_output(LOGIN_NO_WAIT_STDOUT, "").unwrap();
+        assert_eq!(
+            r.login_url,
+            "https://dashboard.composio.dev/?cliKey=00000000-0000-0000-0000-000000000000"
+        );
+        assert_eq!(r.cli_key, "00000000-0000-0000-0000-000000000000");
+    }
+
+    #[test]
+    fn login_output_parses_bundled_json() {
+        // Shape emitted by composio 0.2.24 (the version Houston bundles); the
+        // key is a synthetic placeholder. Extra fields must be tolerated.
+        let json = r#"{
+            "status": "pending",
+            "message": "Complete login by opening the URL",
+            "login_url": "https://dashboard.composio.dev/?cliKey=00000000-0000-0000-0000-000000000000",
+            "cli_key": "00000000-0000-0000-0000-000000000000",
+            "expires_at": "2026-06-15T18:42:48.969Z"
+        }"#;
+        let r = interpret_login_output(json, "").unwrap();
+        assert_eq!(
+            r.login_url,
+            "https://dashboard.composio.dev/?cliKey=00000000-0000-0000-0000-000000000000"
+        );
+        assert_eq!(r.cli_key, "00000000-0000-0000-0000-000000000000");
+    }
+
+    #[test]
+    fn login_output_blank_or_urlless_is_error_not_panic() {
+        // `start_login` intercepts empty stdout (auth-state check); the pure
+        // parser just must not panic and must surface stderr, never serde.
+        for s in ["", "   ", "\n\t", "no url here"] {
+            let err = interpret_login_output(s, "session expired").unwrap_err();
+            assert!(err.contains("session expired"), "got: {err}");
+            assert!(!err.contains("expected value"), "got: {err}");
+        }
+    }
+
+    #[test]
+    fn login_output_unrecognized_surfaces_stderr() {
+        let err = interpret_login_output("totally not a url", "boom from cli").unwrap_err();
+        assert!(err.contains("boom from cli"), "got: {err}");
+        assert!(!err.contains("expected value"), "got: {err}");
+    }
+
+    #[test]
+    fn extract_login_url_and_key_handles_extra_params_and_misses() {
+        let (url, key) =
+            extract_login_url_and_key("  https://dashboard.composio.dev/?cliKey=abc-123&x=1#f")
+                .unwrap();
+        assert_eq!(url, "https://dashboard.composio.dev/?cliKey=abc-123&x=1#f");
+        assert_eq!(key, "abc-123");
+
+        // URL present but no session key, or no URL at all -> None.
+        assert!(extract_login_url_and_key("https://dashboard.composio.dev/?foo=1").is_none());
+        assert!(extract_login_url_and_key("https://dashboard.composio.dev/?cliKey=").is_none());
+        assert!(extract_login_url_and_key("no url here").is_none());
     }
 }

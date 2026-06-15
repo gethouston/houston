@@ -60,10 +60,6 @@ pub struct Routine {
     /// behavior (#381) until the user opts into a new chat per run (#423).
     #[serde(default)]
     pub chat_mode: RoutineChatMode,
-    /// IANA timezone override (e.g. `"America/Bogota"`). When `None`, the
-    /// scheduler falls back to the user's `timezone` preference, then UTC.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<String>,
     /// Composio toolkit slugs this routine uses (e.g. `["gmail", "slack"]`).
     /// Mirrors the same field on Skills. Surfaced by the share/import flow so
     /// the recipient can see which integrations a routine needs before they
@@ -102,8 +98,6 @@ pub struct NewRoutine {
     #[serde(default)]
     pub chat_mode: RoutineChatMode,
     #[serde(default)]
-    pub timezone: Option<String>,
-    #[serde(default)]
     pub integrations: Vec<String>,
     #[serde(default)]
     pub provider: Option<String>,
@@ -122,9 +116,6 @@ pub struct RoutineUpdate {
     pub enabled: Option<bool>,
     pub suppress_when_silent: Option<bool>,
     pub chat_mode: Option<RoutineChatMode>,
-    /// `Some(Some("..."))` sets a tz override, `Some(None)` clears it.
-    #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub timezone: Option<Option<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub integrations: Option<Vec<String>>,
     /// Provider id to pin for this routine (e.g. `"openai"`); `None` leaves it

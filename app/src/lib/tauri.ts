@@ -508,10 +508,18 @@ export const tauriConnections = {
       { toast: false, capture: false },
     ),
   startOAuth: () =>
-    call<StartLoginResponse>("start_composio_oauth", async () => {
-      const r = await getEngine().composioStartLogin();
-      return { login_url: r.login_url, cli_key: r.cli_key };
-    }),
+    call<StartLoginResponse>(
+      "start_composio_oauth",
+      async () => {
+        const r = await getEngine().composioStartLogin();
+        return { login_url: r.login_url, cli_key: r.cli_key };
+      },
+      undefined,
+      // "Already signed in" is a benign no-op (the CLI prints nothing when
+      // creds already exist); the dialog handles that kind as success, so no
+      // red bug toast and no Sentry report.
+      { silenceKinds: ["composio_already_signed_in"] },
+    ),
   completeLogin: (cliKey: string) =>
     call<void>(
       "complete_composio_login",

@@ -69,7 +69,6 @@ pub struct RoutinePreview {
     pub schedule: String,
     pub enabled: bool,
     pub integrations: Vec<String>,
-    pub timezone: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -205,7 +204,6 @@ pub fn build_preview(inv: &Inventory) -> InventoryPreview {
             schedule: r.schedule.clone(),
             enabled: r.enabled,
             integrations: r.integrations.clone(),
-            timezone: r.timezone.clone(),
         })
         .collect();
 

@@ -20,8 +20,6 @@ export interface Routine {
   suppress_when_silent: boolean
   /** Whether each run reuses one chat or starts a fresh one. */
   chat_mode: RoutineChatMode
-  /** IANA timezone override; absent means use the user's account timezone. */
-  timezone?: string | null
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[]
   /** Provider id override; absent means inherit the agent's provider. */

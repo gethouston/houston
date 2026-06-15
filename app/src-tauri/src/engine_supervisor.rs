@@ -158,6 +158,20 @@ impl EngineSubprocess {
             // preventing orphan engines holding ports after the app
             // force-quits.
             .stdin(Stdio::piped());
+        // The engine's Sentry config is decided ENTIRELY by the desktop app
+        // (gated on `sentry_active` in lib.rs) and injected via `env` below.
+        // Strip any inherited SENTRY_* from our own environment first, so a
+        // shell-exported DSN can never make the engine self-report when the app
+        // chose to suppress it — keeping the "app injects NO DSN → engine
+        // dormant" contract airtight regardless of the launching shell (HOU-469).
+        for key in [
+            "SENTRY_DSN",
+            "SENTRY_RELEASE",
+            "SENTRY_ENVIRONMENT",
+            "SENTRY_SEND_IN_DEV",
+        ] {
+            cmd.env_remove(key);
+        }
         for (k, v) in env {
             cmd.env(k, v);
         }
