@@ -5,7 +5,9 @@
     "emptyTitle": "Programa y olvídate",
     "emptyDescription": "Las rutinas se disparan en el horario que elijas y solo te avisan cuando algo de verdad necesita atención.",
     "newRoutine": "Nueva rutina",
-    "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención."
+    "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención.",
+    "timezoneLabel": "Zona horaria",
+    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria."
   },
   "editor": {
     "back": "Volver a rutinas",
@@ -29,8 +31,6 @@
     "sectionWhen": "Cuándo se ejecuta",
     "sectionBehavior": "Comportamiento",
     "sectionRecent": "Ejecuciones recientes",
-    "timezoneLabel": "Zona horaria",
-    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
     "nextRun": "Próxima ejecución {relative}",
     "schedulePreview": "Vista previa del horario",
     "schedulePreviewHint": "Elige un horario válido para ver cuándo se ejecutará esta rutina.",

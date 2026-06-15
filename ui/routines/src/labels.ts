@@ -130,9 +130,6 @@ export interface RoutineEditorLabels {
   sectionWhen: string
   sectionBehavior: string
   sectionRecent: string
-  timezoneLabel: string
-  /** Sub-label clarifying the timezone applies to every routine. */
-  timezoneHint: string
   nextRun: string
   schedulePreview: string
   schedulePreviewHint: string
@@ -151,6 +148,10 @@ export interface RoutinesGridLabels {
   emptyDescription: string
   descriptionShort: string
   newRoutine: string
+  /** Accessible name for the account-wide timezone picker. */
+  timezoneLabel: string
+  /** One-line hint that the timezone applies to every routine. */
+  timezoneHint: string
 }
 
 /** RoutineRow meta. `{relative}`/`{time}`/`{n}` tokens on the dynamic entries. */

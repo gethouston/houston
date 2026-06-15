@@ -107,8 +107,6 @@ export const DEFAULT_EDITOR_LABELS: RoutineEditorLabels = {
   sectionWhen: "When it runs",
   sectionBehavior: "Behavior",
   sectionRecent: "Recent runs",
-  timezoneLabel: "Timezone",
-  timezoneHint: "All your routines run in this timezone.",
   nextRun: "Next run {relative}",
   schedulePreview: "Schedule preview",
   schedulePreviewHint: "Pick a valid schedule to see when this routine will fire.",
@@ -131,6 +129,8 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   descriptionShort:
     "Recurring tasks that fire on schedule and only ping you when something needs attention.",
   newRoutine: "New routine",
+  timezoneLabel: "Timezone",
+  timezoneHint: "All your routines run in this timezone.",
 }
 
 export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
