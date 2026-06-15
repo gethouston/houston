@@ -6,7 +6,6 @@
     "workspaceContext": "Workspace context",
     "userContext": "User context",
     "provider": "AI provider",
-    "phone": "Connect phone",
     "shortcuts": "Keyboard shortcuts",
     "reportBug": "Report bug"
   },
@@ -40,28 +39,6 @@
   "provider": {
     "title": "AI provider",
     "description": "Houston uses <emph>your own</emph> subscription. We never see your credentials."
-  },
-  "connectPhone": {
-    "title": "Connect phone",
-    "description": "Scan this code to manage Houston from your phone. The same code keeps working as long as this computer is on and Houston is open.",
-    "loading": "Getting ready to connect your phone…",
-    "connectingStatus": "Connecting to the phone service. This usually takes a few seconds.",
-    "keepComputerAwake": "Keep this computer awake while you use Houston on your phone.",
-    "alwaysOnHint": "For 24/7 access, <emph>Always On</emph> runs Houston on our servers.",
-    "errors": {
-      "noInternet": "Houston needs an internet connection the first time you open the app. Please connect and reopen Houston to enable phone pairing.",
-      "generic": "Couldn't prepare a pairing code. Please try again."
-    },
-    "reset": {
-      "title": "Disconnect all phones",
-      "description": "Resets the QR and signs out every phone currently connected to this computer.",
-      "button": "Disconnect all phones",
-      "confirmTitle": "Disconnect all phones?",
-      "confirmDescription": "This resets the QR and signs out every phone currently connected to this computer. Scan the new QR to connect again.",
-      "confirmLabel": "Disconnect",
-      "toast": "Phone access reset",
-      "unavailable": "Available once your phone connection is ready."
-    }
   },
   "timezone": {
     "title": "Timezone",

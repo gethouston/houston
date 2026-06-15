@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@houston-ai/core";
-import { User, Smartphone, Folder, Bot, Bug, FileText, Keyboard, UserCircle } from "lucide-react";
+import { User, Folder, Bot, Bug, FileText, Keyboard, UserCircle } from "lucide-react";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -15,11 +15,9 @@ type SettingsSectionId =
   | "workspaceContext"
   | "userContext"
   | "provider"
-  | "phone"
   | "shortcuts"
   | "reportBug";
 import { AccountSection, useAccountAvailable } from "./sections/account";
-import { ConnectPhoneSection } from "./sections/connect-phone";
 import { WorkspaceSection } from "./sections/workspace";
 import {
   WorkspaceContextSection,
@@ -70,7 +68,6 @@ export function SettingsView() {
         icon: UserCircle,
       },
       { id: "provider", label: t("settings:nav.provider"), icon: Bot },
-      { id: "phone", label: t("settings:nav.phone"), icon: Smartphone, beta: true },
       { id: "shortcuts", label: t("settings:nav.shortcuts"), icon: Keyboard },
       { id: "reportBug", label: t("settings:nav.reportBug"), icon: Bug },
     );
@@ -127,7 +124,6 @@ export function SettingsView() {
               </div>
             )}
             {activeVisible === "provider" && <ProviderSection />}
-            {activeVisible === "phone" && <ConnectPhoneSection />}
             {activeVisible === "shortcuts" && <ShortcutsSection />}
             {activeVisible === "reportBug" && <ReportBugSection />}
           </div>
