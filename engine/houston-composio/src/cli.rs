@@ -215,38 +215,55 @@ pub async fn start_login() -> Result<StartLoginResponse, StartLoginError> {
 
 /// Interpret the stdout of a successful `composio login --no-wait`.
 ///
-/// The CLI no longer prints a JSON object. A successful `--no-wait` run prints
-/// human/agent-readable prose that contains the dashboard login URL, with the
-/// session key carried as the `cliKey` query parameter:
+/// `--no-wait` stdout is NOT one stable shape: it varies by CLI version, and
+/// which version runs varies by user (the per-arch CLI bundled in the `.app`
+/// vs. a standalone `~/.composio` install). Both forms seen in the wild carry
+/// the same two fields, so accept either:
 ///
-/// ```text
-/// Open this URL in your browser to log in:
+/// 1. **JSON** (e.g. composio 0.2.24, the version Houston currently bundles):
+///    `{"status":"pending","login_url":"…?cliKey=<uuid>","cli_key":"<uuid>",…}`.
+/// 2. **Prose** (e.g. composio 0.2.31): human/agent text with the dashboard
+///    URL, the session key carried as its `cliKey` query param:
+///    ```text
+///    Open this URL in your browser to log in:
+///      https://dashboard.composio.dev/?cliKey=<uuid>
+///    ```
 ///
-///   https://dashboard.composio.dev/?cliKey=<uuid>
-///
-/// Then run this command to complete login:
-///   composio login --poll
-/// ```
-///
-/// Feeding that prose to serde was the HOU-468 crash (`Unexpected composio
-/// login --no-wait output: expected value at line 1 column 1`). The URL is
-/// exactly what the frontend opens, and its `cliKey` is the session key
-/// `complete_login` passes as `--key` (verified identical to the `key` the CLI
-/// caches in `~/.composio/pending-login-session.json`).
+/// Feeding prose to a JSON-only parser was the HOU-468 crash (`expected value
+/// at line 1 column 1`); a prose-only parser would symmetrically break the
+/// JSON-emitting bundled CLI on prod. The URL is what the frontend opens and
+/// its `cliKey` is the session key `complete_login` passes as `--key` (verified
+/// identical to the `key` the CLI caches in `pending-login-session.json`).
 ///
 /// Empty stdout is handled by the caller (`start_login`), which checks auth
 /// state to tell "already signed in" from a real failure; here a blank or
-/// URL-less input simply falls through to the unrecognized-output error.
+/// unrecognized input falls through to the unrecognized-output error.
 fn interpret_login_output(stdout: &str, stderr: &str) -> Result<StartLoginResponse, String> {
     let stdout = stdout.trim();
     let stderr = stderr.trim();
 
+    // Form 1: JSON object. Extra fields (status/message/expires_at) are ignored.
+    #[derive(Deserialize)]
+    struct JsonPayload {
+        login_url: String,
+        cli_key: String,
+    }
+    if let Ok(p) = serde_json::from_str::<JsonPayload>(stdout) {
+        if !p.login_url.is_empty() && !p.cli_key.is_empty() {
+            return Ok(StartLoginResponse {
+                login_url: p.login_url,
+                cli_key: p.cli_key,
+            });
+        }
+    }
+
+    // Form 2: prose containing the login URL.
     if let Some((login_url, cli_key)) = extract_login_url_and_key(stdout) {
         return Ok(StartLoginResponse { login_url, cli_key });
     }
 
-    // No usable login URL. Surface the CLI's stderr (NOT stdout — it carries
-    // the session secret) so the bug report shows what actually happened.
+    // Neither. Surface the CLI's stderr (NOT stdout — it carries the session
+    // secret) so the bug report shows what actually happened.
     Err(format!(
         "composio login --no-wait produced unrecognized output (no login URL found){}",
         if stderr.is_empty() {
@@ -1258,6 +1275,25 @@ mod tests {
     }
 
     #[test]
+    fn login_output_parses_bundled_json() {
+        // Shape emitted by composio 0.2.24 (the version Houston bundles); the
+        // key is a synthetic placeholder. Extra fields must be tolerated.
+        let json = r#"{
+            "status": "pending",
+            "message": "Complete login by opening the URL",
+            "login_url": "https://dashboard.composio.dev/?cliKey=00000000-0000-0000-0000-000000000000",
+            "cli_key": "00000000-0000-0000-0000-000000000000",
+            "expires_at": "2026-06-15T18:42:48.969Z"
+        }"#;
+        let r = interpret_login_output(json, "").unwrap();
+        assert_eq!(
+            r.login_url,
+            "https://dashboard.composio.dev/?cliKey=00000000-0000-0000-0000-000000000000"
+        );
+        assert_eq!(r.cli_key, "00000000-0000-0000-0000-000000000000");
+    }
+
+    #[test]
     fn login_output_blank_or_urlless_is_error_not_panic() {
         // `start_login` intercepts empty stdout (auth-state check); the pure
         // parser just must not panic and must surface stderr, never serde.
@@ -1288,5 +1324,4 @@ mod tests {
         assert!(extract_login_url_and_key("https://dashboard.composio.dev/?cliKey=").is_none());
         assert!(extract_login_url_and_key("no url here").is_none());
     }
-
 }
