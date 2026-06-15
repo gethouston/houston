@@ -154,7 +154,7 @@ export function MissionControlArchived({
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
-          renderMessageAvatar={panel.renderMessageAvatar}
+          endOfTurnIndicator={panel.endOfTurnIndicator}
           renderTurnSummary={panel.renderTurnSummary}
           renderLink={panel.renderLink}
           transformContent={panel.transformContent}

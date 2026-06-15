@@ -185,7 +185,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
-          renderMessageAvatar={panel.renderMessageAvatar}
+          endOfTurnIndicator={panel.endOfTurnIndicator}
           renderTurnSummary={panel.renderTurnSummary}
           renderLink={panel.renderLink}
           transformContent={panel.transformContent}

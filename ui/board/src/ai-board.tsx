@@ -94,9 +94,9 @@ export interface AIBoardProps {
   renderTurnSummary?: import("@houston-ai/chat").ChatPanelProps["renderTurnSummary"]
   /** Custom renderer for system messages. Forwarded to ChatPanel. */
   renderSystemMessage?: import("@houston-ai/chat").ChatPanelProps["renderSystemMessage"]
-  /** Avatar shown at the end of each chat message (e.g. a static Houston
-   *  helmet on agent replies). Forwarded to ChatPanel. */
-  renderMessageAvatar?: import("@houston-ai/chat").ChatPanelProps["renderMessageAvatar"]
+  /** Static glyph shown after the agent's reply once the turn settles
+   *  (e.g. a non-blinking Houston helmet). Forwarded to ChatPanel. */
+  endOfTurnIndicator?: import("@houston-ai/chat").ChatPanelProps["endOfTurnIndicator"]
   /** Map active feed items before rendering. */
   mapFeedItems?: (ctx: { sessionKey: string; items: FeedItem[] }) => FeedItem[]
   /** Node rendered after the last chat message. */
@@ -265,7 +265,7 @@ export function AIBoard({
   toolLabels,
   renderTurnSummary,
   renderSystemMessage,
-  renderMessageAvatar,
+  endOfTurnIndicator,
   mapFeedItems,
   afterMessages,
   renderUserMessage,
@@ -615,7 +615,7 @@ export function AIBoard({
           toolLabels={toolLabels}
           renderTurnSummary={renderTurnSummary}
           renderSystemMessage={renderSystemMessage}
-          renderMessageAvatar={renderMessageAvatar}
+          endOfTurnIndicator={endOfTurnIndicator}
           renderUserMessage={renderUserMessage}
           afterMessages={renderedAfterMessages}
           onNotice={onNotice}

@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Shimmer } from "@houston-ai/chat";
-import type { ChatMessage, ChatPanelProps } from "@houston-ai/chat";
+import { ChatStatusLine, Shimmer } from "@houston-ai/chat";
+import type { ChatPanelProps } from "@houston-ai/chat";
 import { HoustonLogo } from "./shell/experience-card";
 
 export function useChatDisplayLabels(): Pick<
@@ -9,7 +9,7 @@ export function useChatDisplayLabels(): Pick<
   | "processLabels"
   | "getThinkingMessage"
   | "thinkingIndicator"
-  | "renderMessageAvatar"
+  | "endOfTurnIndicator"
 > {
   const { t } = useTranslation("chat");
   const processLabels = useMemo(
@@ -33,25 +33,27 @@ export function useChatDisplayLabels(): Pick<
     [t],
   );
 
-  // HOU-471: while a turn is in flight, show only the calm "Mission in
-  // progress..." line. The pulsing helmet that used to load here is gone; the
-  // helmet now appears static at the END of the agent's reply (below).
+  // HOU-471: while a turn is in flight, show the calm "Mission in progress..."
+  // line, keeping the small helmet to its left (same identity as the
+  // mission-log header). The pulsing helmet loader that used to sit here is gone.
   const thinkingIndicator = useMemo(
     () => (
-      <div className="py-1">
-        <Shimmer duration={2}>{t("process.active")}</Shimmer>
+      <div className="py-1 text-muted-foreground/65">
+        <ChatStatusLine label={t("process.active")} active />
       </div>
     ),
     [t],
   );
 
-  // HOU-471: a static (never-blinking) Houston helmet tucked at the end of each
-  // agent reply, so the helmet reads as a signature rather than a loader.
-  const renderMessageAvatar = useCallback(
-    (msg: ChatMessage) =>
-      msg.from === "assistant" ? (
-        <HoustonLogo size={16} className="text-muted-foreground/70" />
-      ) : undefined,
+  // HOU-471: once the turn settles, the agent's reply ends with a static
+  // (never-blinking) Houston helmet, in the same size and spot the old loader
+  // used; only the animation is gone.
+  const endOfTurnIndicator = useMemo(
+    () => (
+      <div className="py-2 flex items-center">
+        <HoustonLogo size={20} />
+      </div>
+    ),
     [],
   );
 
@@ -59,6 +61,6 @@ export function useChatDisplayLabels(): Pick<
     processLabels,
     getThinkingMessage,
     thinkingIndicator,
-    renderMessageAvatar,
+    endOfTurnIndicator,
   };
 }
