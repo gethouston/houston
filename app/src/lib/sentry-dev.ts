@@ -24,7 +24,7 @@ export function sentrySendInDevEnabled(raw: string | undefined): boolean {
 // dev build suppresses Sentry. Intentionally English-only and NOT routed
 // through i18n: it is a message for us (developers), never reachable by a
 // real es/pt end user, who only ever runs release builds.
-export const DEV_NO_SEND_TITLE = "You're in dev mode, no issue sent";
+export const DEV_NO_SEND_TITLE = "You're in dev mode, no issue sent.";
 export const DEV_NO_SEND_DESCRIPTION =
   "Set SENTRY_SEND_IN_DEV=1 to send issues to Sentry in dev mode.";
 
