@@ -335,23 +335,19 @@ fn parse_assistant_event(
                     }
                 }
             }
-            ContentBlock::Thinking { thinking } => {
-                if let Some(t) = thinking {
-                    if !t.is_empty() {
-                        if is_partial {
-                            items.push(FeedItem::ThinkingStreaming(t));
-                        } else {
-                            items.push(FeedItem::Thinking(t));
-                        }
-                    }
-                }
-            }
-            ContentBlock::ToolUse { name, input, .. } => {
-                items.push(FeedItem::ToolCall {
-                    name: name.unwrap_or_else(|| "unknown".into()),
-                    input: input.unwrap_or(serde_json::Value::Null),
-                });
-            }
+            // Thinking and tool_use are already delivered live by the streaming
+            // path (`StreamAccumulator::handle`): with `--include-partial-messages`
+            // always on (see `claude_command.rs`), every tool_use streams as a
+            // content_block_start (null input) + content_block_stop (full input)
+            // pair, and every thinking block is finalized at content_block_stop.
+            // This non-partial `assistant` event is a COMPLETE SNAPSHOT of the
+            // turn, so re-emitting those blocks here duplicated every tool call
+            // (and would duplicate every thinking block) in the feed — HOU-472.
+            // The committed final text (handled above) is the one thing the
+            // streaming path never emits, so it stays. tool_result keeps its own
+            // arm below: it is not a streamed content_block — Anthropic delivers
+            // tool results as separate user-role events (`parse_user_event`).
+            ContentBlock::Thinking { .. } | ContentBlock::ToolUse { .. } => {}
             ContentBlock::ToolResult {
                 content, is_error, ..
             } => {
@@ -509,14 +505,73 @@ mod tests {
     }
 
     #[test]
-    fn parse_tool_use() {
-        let line = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"path":"/foo"}}]}}"#;
+    fn assistant_snapshot_does_not_re_emit_tool_use() {
+        // A non-partial `assistant` message is a complete snapshot of a turn
+        // whose tool calls already streamed as content_block_start/stop pairs.
+        // It must NOT re-emit the tool_use, or every tool call doubles in the
+        // feed (HOU-472). Text in the same snapshot is still committed.
+        let line = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"reading"},{"type":"tool_use","id":"t1","name":"Read","input":{"path":"/foo"}}]}}"#;
         let items = parse_event(line, &mut acc());
-        assert_eq!(items.len(), 1);
-        match &items[0] {
-            FeedItem::ToolCall { name, .. } => assert_eq!(name, "Read"),
-            other => panic!("expected ToolCall, got {other:?}"),
+        assert_eq!(
+            items.len(),
+            1,
+            "snapshot should emit only its text, not the tool_use"
+        );
+        assert!(matches!(&items[0], FeedItem::AssistantText(t) if t == "reading"));
+    }
+
+    #[test]
+    fn streamed_tool_then_snapshot_yields_single_tool_call() {
+        // Regression for HOU-472: claude-code (`--include-partial-messages`)
+        // emits each tool use THREE times — content_block_start (null input),
+        // content_block_stop (full input), and again inside the final non-partial
+        // `assistant` snapshot. The snapshot copy must be dropped so the feed
+        // carries exactly the start(null) + stop(real) pair the frontend dedups
+        // into one row (instead of a third tool_call that renders a duplicate).
+        let mut a = acc();
+        let mut tool_calls = 0;
+        let lines = [
+            r#"{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"t1","name":"Read","input":{}}},"session_id":"s1","uuid":"u1"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"file_path\":\"/foo\"}"}},"session_id":"s1","uuid":"u2"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_stop","index":0},"session_id":"s1","uuid":"u3"}"#,
+            r#"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/foo"}}]}}"#,
+        ];
+        for line in lines {
+            for item in parse_event(line, &mut a) {
+                if matches!(item, FeedItem::ToolCall { .. }) {
+                    tool_calls += 1;
+                }
+            }
         }
+        // start(null) + stop(real) = 2; the snapshot must add nothing.
+        assert_eq!(tool_calls, 2, "snapshot re-emit must not add a third tool_call");
+    }
+
+    #[test]
+    fn streamed_thinking_then_snapshot_yields_single_thinking() {
+        // Same snapshot redundancy as tool calls: a thinking block streams via
+        // thinking_delta and is finalized at content_block_stop, then reappears
+        // in the non-partial `assistant` snapshot. The snapshot copy is dropped
+        // so reasoning is not duplicated in the mission log (HOU-472).
+        let mut a = acc();
+        let mut thinking = 0;
+        let lines = [
+            r#"{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}},"session_id":"s1","uuid":"u1"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"hmm"}},"session_id":"s1","uuid":"u2"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_stop","index":0},"session_id":"s1","uuid":"u3"}"#,
+            r#"{"type":"assistant","message":{"content":[{"type":"thinking","thinking":"hmm"}]}}"#,
+        ];
+        for line in lines {
+            for item in parse_event(line, &mut a) {
+                if matches!(item, FeedItem::Thinking(_)) {
+                    thinking += 1;
+                }
+            }
+        }
+        assert_eq!(
+            thinking, 1,
+            "snapshot re-emit must not add a second thinking block"
+        );
     }
 
     #[test]
