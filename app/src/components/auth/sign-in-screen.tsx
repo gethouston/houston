@@ -1,25 +1,24 @@
 import { useEffect, useState } from "react";
 import { Button, Separator } from "@houston-ai/core";
 import { HoustonLogo } from "../shell/experience-card";
-import {
-  onAuthError,
-  signInWithGoogle,
-  signInWithMicrosoft,
-} from "../../lib/auth";
+import { onAuthError, signInWithGoogle } from "../../lib/auth";
 import { reportBug } from "../../lib/bug-report";
 import { logger } from "../../lib/logger";
 import { prettifyAuthError } from "./auth-errors";
 import { EmailSignIn } from "./email-sign-in";
 
-type Provider = "google" | "azure";
+// Microsoft is intentionally not offered for now. The generic `azure`
+// provider plumbing stays in lib/auth.ts (signInWithMicrosoft) so re-enabling
+// is just re-adding the button below.
+type Provider = "google";
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
  * configured but no session is present. Keeps copy product-benefit-focused
  * — the audience is non-technical, so no mention of OAuth / tokens / APIs.
  *
- * Three ways in: Google, Microsoft (both OAuth via the loopback flow), and
- * passwordless email (6-digit code, fully in-app — see EmailSignIn).
+ * Two ways in: Google (OAuth via the loopback flow) and passwordless email
+ * (6-digit code, fully in-app — see EmailSignIn).
  *
  * Re-click semantics: the loading spinner is only on while the system
  * browser is being opened (a few ms). After that, the user is free to
@@ -52,7 +51,7 @@ export function SignInScreen() {
     setPending(provider);
     setError(null);
     try {
-      await (provider === "google" ? signInWithGoogle() : signInWithMicrosoft());
+      await signInWithGoogle();
     } catch (e) {
       logger.error(`[auth] ${provider} sign-in failed: ${e}`);
       setError(prettifyAuthError(String(e)));
@@ -105,15 +104,6 @@ export function SignInScreen() {
           >
             <GoogleIcon />
             {pending === "google" ? "Opening browser..." : "Continue with Google"}
-          </Button>
-          <Button
-            onClick={handleSignIn("azure")}
-            disabled={pending !== null}
-            variant="outline"
-            className="w-full rounded-full h-11 flex items-center justify-center gap-2"
-          >
-            <MicrosoftIcon />
-            {pending === "azure" ? "Opening browser..." : "Continue with Microsoft"}
           </Button>
         </div>
 
@@ -175,13 +165,3 @@ function GoogleIcon() {
   );
 }
 
-function MicrosoftIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 23 23" aria-hidden="true">
-      <path fill="#F25022" d="M1 1h10v10H1z" />
-      <path fill="#7FBA00" d="M12 1h10v10H12z" />
-      <path fill="#00A4EF" d="M1 12h10v10H1z" />
-      <path fill="#FFB900" d="M12 12h10v10H12z" />
-    </svg>
-  );
-}

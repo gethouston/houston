@@ -4,6 +4,8 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { queryKeys } from "../lib/query-keys";
 import { subscribeHoustonEvents } from "../lib/events";
 import { onEngineRestarted } from "../lib/engine";
+import { osFocusWindow } from "../lib/os-bridge";
+import { logger } from "../lib/logger";
 import { useSessionStatusStore } from "../stores/session-status";
 
 /**
@@ -68,9 +70,16 @@ export function useAgentInvalidation() {
           qc.invalidateQueries({ queryKey: queryKeys.connectedToolkits() });
           break;
         // Engine-side watcher saw a toolkit land in the consumer
-        // connections list — flip every visible Composio card.
+        // connections list — flip every visible Composio card AND pull the
+        // app back to the front. The user just authorized in their browser
+        // (Composio's redirect is hosted, so we can't loopback like sign-in
+        // does); surfacing the app on the detected event is the equivalent
+        // snap-back. No-op outside Tauri.
         case "ComposioConnectionAdded":
           qc.invalidateQueries({ queryKey: queryKeys.connectedToolkits() });
+          void osFocusWindow().catch((e) =>
+            logger.warn(`[composio] focus window failed: ${e}`),
+          );
           break;
         // A provider OAuth sign-in (or sign-out) finished — refresh the
         // cached provider statuses so the chat model picker reflects the new

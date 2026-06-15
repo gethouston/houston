@@ -24,7 +24,7 @@
 
 use std::time::Duration;
 
-use tauri::{AppHandle, Manager};
+use tauri::AppHandle;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
@@ -121,11 +121,7 @@ async fn serve_callback(listener: &TcpListener, app: &AppHandle) -> Result<(), S
 
         let _ = write_response(&mut stream, "200 OK", SUCCESS_PAGE).await;
 
-        if let Some(window) = app.get_webview_window("main") {
-            let _ = window.unminimize();
-            let _ = window.show();
-            let _ = window.set_focus();
-        }
+        crate::window_focus::bring_to_front(app);
 
         return Ok(());
     }

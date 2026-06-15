@@ -72,6 +72,15 @@ export function osStartOauthLoopback(): Promise<string> {
   return invoke<string>("start_oauth_loopback");
 }
 
+/** Pull the Houston window to the front. Used when a flow finishes in the
+ * user's browser (e.g. a Composio integration connection lands) and we want
+ * the app to surface itself — the same snap-back the sign-in loopback does.
+ * No-op outside Tauri. */
+export function osFocusWindow(): Promise<void> {
+  if (!isTauri()) return Promise.resolve();
+  return invoke<void>("focus_main_window");
+}
+
 /** Reveal an agent-relative file in Finder / Explorer. */
 export function osRevealFile(agentPath: string, relativePath: string): Promise<void> {
   return invoke<void>("reveal_file", { agent_path: agentPath, relative_path: relativePath });

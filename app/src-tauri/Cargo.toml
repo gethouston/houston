@@ -45,6 +45,12 @@ tracing-appender = { workspace = true }
 # can pop a dialog at the very top of `run()`.
 [target."cfg(target_os = \"macos\")".dependencies]
 rfd = "0.15"
+# Native app-activation. `window.set_focus()` (makeKeyAndOrderFront) does not
+# pull the app in front of the user's browser when we raise it programmatically
+# from a server-side event (OAuth/Composio finishing). `NSApplication.activate`
+# does — see `window_focus.rs`. Both already in the tree transitively via Tauri.
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSApplication", "NSResponder"] }
 
 # Windows + Linux only: the OS protocol handler launches a fresh
 # `houston-app.exe` for every `houston://` URL it receives (Start-menu
