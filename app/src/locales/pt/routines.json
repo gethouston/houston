@@ -5,9 +5,7 @@
     "emptyTitle": "Programe e esqueça",
     "emptyDescription": "As rotinas disparam no horário programado e só te chamam quando algo realmente precisa de atenção.",
     "newRoutine": "Nova rotina",
-    "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção.",
-    "timezoneLabel": "Fuso horário",
-    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário."
+    "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção."
   },
   "editor": {
     "back": "Voltar para rotinas",
@@ -31,6 +29,8 @@
     "sectionWhen": "Quando roda",
     "sectionBehavior": "Comportamento",
     "sectionRecent": "Execuções recentes",
+    "timezoneLabel": "Fuso horário",
+    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
     "nextRun": "Próxima execução {relative}",
     "schedulePreview": "Prévia do agendamento",
     "schedulePreviewHint": "Escolha um agendamento válido para ver quando esta rotina vai rodar.",

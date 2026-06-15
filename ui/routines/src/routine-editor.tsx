@@ -23,6 +23,7 @@ import {
   Pause,
   Square,
   Trash2,
+  Globe,
   CalendarClock,
   MoreHorizontal,
 } from "lucide-react"
@@ -86,10 +87,16 @@ export interface RoutineEditorProps {
   onViewActivity?: (activityId: string) => void
   /**
    * The single account-wide IANA timezone every routine fires in. Drives the
-   * "next run" preview. The zone itself is chosen on the routines list (see
-   * `RoutinesGrid`), not here — every routine shares it.
+   * "next run" preview and is the selected value in the timezone picker.
    */
   accountTimezone: string
+  /**
+   * Persist a new account-wide timezone. The picker edits this global
+   * preference directly (there is no per-routine override), so changing it
+   * moves the fire time of every routine. Omit it (standalone callers) and the
+   * picker renders read-only.
+   */
+  onTimezoneChange?: (tz: string) => void
   /** Disable Save when the form hasn't actually been touched. */
   hasChanges?: boolean
   /**
@@ -111,6 +118,39 @@ export interface RoutineEditorProps {
   runHistoryLabels?: RunHistoryLabels
   /** BCP-47 locale for day names + time formatting in schedules. */
   locale?: string
+}
+
+const COMMON_TIMEZONES = [
+  "UTC",
+  "America/Los_Angeles",
+  "America/Denver",
+  "America/Chicago",
+  "America/New_York",
+  "America/Bogota",
+  "America/Mexico_City",
+  "America/Sao_Paulo",
+  "Europe/London",
+  "Europe/Madrid",
+  "Europe/Berlin",
+  "Europe/Athens",
+  "Africa/Lagos",
+  "Asia/Dubai",
+  "Asia/Kolkata",
+  "Asia/Singapore",
+  "Asia/Tokyo",
+  "Australia/Sydney",
+]
+
+function listTimezones(): string[] {
+  try {
+    const supported = (
+      Intl as { supportedValuesOf?: (k: string) => string[] }
+    ).supportedValuesOf?.("timeZone")
+    if (supported && supported.length) return supported
+  } catch {
+    // fall through
+  }
+  return COMMON_TIMEZONES
 }
 
 // ----- Building blocks -----
@@ -143,6 +183,13 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
+const baseFieldClass = cn(
+  "w-full rounded-lg border border-border/20 bg-background px-3 py-2 text-sm",
+  "text-foreground placeholder:text-muted-foreground/60",
+  "transition-shadow duration-200",
+  "focus:outline-none focus:shadow-sm",
+)
+
 // ----- Main -----
 
 export function RoutineEditor({
@@ -159,6 +206,7 @@ export function RoutineEditor({
   onDelete,
   onViewActivity,
   accountTimezone,
+  onTimezoneChange,
   hasChanges,
   modelPicker,
   labels = DEFAULT_EDITOR_LABELS,
@@ -174,6 +222,15 @@ export function RoutineEditor({
     !!value.prompt.trim() &&
     !!value.schedule.trim() &&
     (!isEdit || hasChanges !== false)
+
+  // The picker lists every zone with the current account zone selected; ensure
+  // the account zone is present even if the platform's zone list omits it.
+  const timezones = useMemo(() => {
+    const all = listTimezones()
+    return all.includes(accountTimezone)
+      ? all
+      : [accountTimezone, ...all]
+  }, [accountTimezone])
 
   // Live "next run" preview, ticking every minute. Every routine fires in the
   // account-wide zone, so the preview is computed against `accountTimezone`.
@@ -334,6 +391,32 @@ export function RoutineEditor({
               labels={scheduleLabels}
               locale={locale}
             />
+
+            <div>
+              <FieldLabel>{labels.timezoneLabel}</FieldLabel>
+              <div className="relative">
+                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                <select
+                  value={accountTimezone}
+                  onChange={(e) => onTimezoneChange?.(e.target.value)}
+                  disabled={!onTimezoneChange}
+                  className={cn(
+                    baseFieldClass,
+                    "pl-9 appearance-none cursor-pointer",
+                    !onTimezoneChange && "opacity-60 cursor-not-allowed",
+                  )}
+                >
+                  {timezones.map((tz) => (
+                    <option key={tz} value={tz}>
+                      {tz}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <p className="text-xs text-muted-foreground/70 mt-1.5">
+                {labels.timezoneHint}
+              </p>
+            </div>
 
             {/* Live "Next run" callout — white well inside the gray card */}
             <div className="flex items-start gap-3 rounded-lg bg-background border border-black/[0.04] px-4 py-3">

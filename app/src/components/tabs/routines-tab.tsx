@@ -205,6 +205,7 @@ export default function RoutinesTab({ agent }: TabProps) {
         }
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         accountTimezone={tz.timezone}
+        onTimezoneChange={handleTimezoneChange}
         hasChanges={!formMatchesRoutine(form, baseline)}
         modelPicker={
           <RoutineModelControls
@@ -227,7 +228,6 @@ export default function RoutinesTab({ agent }: TabProps) {
       routines={routines ?? []}
       lastRuns={lastRuns}
       accountTimezone={tz.timezone}
-      onTimezoneChange={handleTimezoneChange}
       loading={isLoading}
       onSelect={openEditor}
       onCreate={handleCreate}
