@@ -63,13 +63,6 @@
       "unavailable": "Disponible cuando la conexión con tu celular esté lista."
     }
   },
-  "timezone": {
-    "title": "Zona horaria",
-    "description": "Se usa cuando tus rutinas se disparan, 9:00 significa las 9:00 en esta zona.",
-    "label": "Zona IANA",
-    "placeholder": "p. ej. America/Bogota",
-    "useDetected": "Usar la detectada ({{zone}})"
-  },
   "appearance": {
     "title": "Apariencia",
     "light": "Claro",
@@ -108,7 +101,6 @@
   "toasts": {
     "workspaceRenamed": "Espacio de trabajo renombrado",
     "providerSwitched": "Cambiaste a {{provider}} ({{model}})",
-    "timezoneSet": "Zona horaria establecida en {{zone}}",
     "versionCopied": "Versión copiada",
     "versionCopyFailed": "No se pudo copiar la versión"
   }

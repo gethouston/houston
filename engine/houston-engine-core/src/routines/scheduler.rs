@@ -2,8 +2,8 @@
 //!
 //! Transport-neutral: the session-dispatch step goes through
 //! [`RoutineDispatcher`]; activity creation through [`ActivitySurface`]
-//! (see `runner.rs`). Timezone resolution: per-routine override wins, then
-//! `default_tz` (user preference), then UTC.
+//! (see `runner.rs`). Timezone resolution: every routine fires in the user's
+//! `default_tz` preference (a single account-wide zone), falling back to UTC.
 
 use crate::routines::{
     self,
@@ -67,9 +67,9 @@ impl AgentScheduler {
     }
 
     pub fn set_default_tz(&mut self, tz: &str) {
-        // Just record it; the next `sync()` re-spawns every job whose resolved
-        // timezone actually changed (via the job signature). Routines pinned to
-        // their own timezone are left running untouched.
+        // Just record it; the next `sync()` re-spawns every job (the resolved
+        // timezone is account-wide, so a change moves every routine's fire
+        // time and the job signature shifts for all of them).
         self.default_tz = tz.to_string();
     }
 
@@ -118,7 +118,7 @@ impl AgentScheduler {
                         "[routines] Started cron for '{}' ({} @ {})",
                         routine.name,
                         routine.schedule,
-                        self.resolve_tz(routine).name(),
+                        self.resolve_tz().name(),
                     );
                     let signature = desired
                         .get(&routine.id)
@@ -139,21 +139,18 @@ impl AgentScheduler {
     /// plus the resolved timezone. Two routines with the same signature fire at
     /// the same instants, so `sync` only re-spawns when this string changes.
     fn job_signature(&self, routine: &Routine) -> String {
-        format!("{}|{}", routine.schedule, self.resolve_tz(routine).name())
+        format!("{}|{}", routine.schedule, self.resolve_tz().name())
     }
 
-    fn resolve_tz(&self, routine: &Routine) -> Tz {
-        let candidate = routine
-            .timezone
-            .as_deref()
-            .filter(|s| !s.trim().is_empty())
-            .unwrap_or(&self.default_tz);
+    /// The account-wide zone every routine fires in. Falls back to UTC when the
+    /// preference is empty or names an unknown zone.
+    fn resolve_tz(&self) -> Tz {
+        let candidate = self.default_tz.trim();
         match Tz::from_str(candidate) {
             Ok(tz) => tz,
             Err(_) => {
                 tracing::warn!(
-                    "[routines] Unknown timezone '{candidate}' for routine '{}', falling back to UTC",
-                    routine.name
+                    "[routines] Unknown account timezone '{candidate}', falling back to UTC",
                 );
                 Tz::UTC
             }
@@ -168,7 +165,7 @@ impl AgentScheduler {
         let schedule = Schedule::from_str(&cron_7)
             .map_err(|e| format!("invalid cron '{}': {e}", routine.schedule))?;
 
-        let tz = self.resolve_tz(routine);
+        let tz = self.resolve_tz();
         let agent_path = self.agent_path.clone();
         let routine_id = routine.id.clone();
         let events = self.events.clone();
@@ -356,7 +353,7 @@ mod tests {
         }
     }
 
-    fn mk(name: &str, enabled: bool, tz: Option<&str>) -> NewRoutine {
+    fn mk(name: &str, enabled: bool) -> NewRoutine {
         NewRoutine {
             name: name.into(),
             description: "".into(),
@@ -365,7 +362,6 @@ mod tests {
             enabled,
             suppress_when_silent: true,
             chat_mode: RoutineChatMode::Shared,
-            timezone: tz.map(str::to_string),
             integrations: vec![],
             provider: None,
             model: None,
@@ -382,7 +378,7 @@ mod tests {
         let d = TempDir::new().unwrap();
         let agent = d.path().to_string_lossy().to_string();
 
-        let mut sunday = mk("sunday", true, None);
+        let mut sunday = mk("sunday", true);
         sunday.schedule = "0 9 * * 0".into();
         create(d.path(), sunday).unwrap();
 
@@ -409,7 +405,7 @@ mod tests {
 
         let d = TempDir::new().unwrap();
         let agent = d.path().to_string_lossy().to_string();
-        let r = create(d.path(), mk("editable", true, None)).unwrap(); // "0 9 * * *"
+        let r = create(d.path(), mk("editable", true)).unwrap(); // "0 9 * * *"
 
         let mut sched = AgentScheduler::new(
             &agent,
@@ -445,15 +441,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn editing_timezone_respawns_the_cron_job() {
-        // Sibling of the schedule-edit case: pinning a routine to a different
-        // timezone changes *when* it fires, so the job must re-spawn even though
-        // the cron string is untouched.
-        use crate::routines::{types::RoutineUpdate, update};
-
+    async fn changing_account_tz_respawns_every_job() {
+        // Sibling of the schedule-edit case: the timezone is now account-wide,
+        // so changing `default_tz` shifts *when* every routine fires. The next
+        // sync must re-spawn the job even though the cron string is untouched.
         let d = TempDir::new().unwrap();
         let agent = d.path().to_string_lossy().to_string();
-        let r = create(d.path(), mk("tz-edit", true, None)).unwrap();
+        let r = create(d.path(), mk("tz-edit", true)).unwrap();
 
         let mut sched = AgentScheduler::new(
             &agent,
@@ -466,15 +460,7 @@ mod tests {
         let before = sched.jobs.get(&r.id).unwrap().signature.clone();
         assert_eq!(before, "0 9 * * *|UTC");
 
-        update(
-            d.path(),
-            &r.id,
-            RoutineUpdate {
-                timezone: Some(Some("America/Bogota".into())),
-                ..Default::default()
-            },
-        )
-        .unwrap();
+        sched.set_default_tz("America/Bogota");
         sched.sync();
 
         let after = sched.jobs.get(&r.id).unwrap().signature.clone();
@@ -490,7 +476,7 @@ mod tests {
         // down and re-create live cron tasks.
         let d = TempDir::new().unwrap();
         let agent = d.path().to_string_lossy().to_string();
-        let r = create(d.path(), mk("steady", true, None)).unwrap();
+        let r = create(d.path(), mk("steady", true)).unwrap();
 
         let mut sched = AgentScheduler::new(
             &agent,
@@ -518,9 +504,9 @@ mod tests {
         let d = TempDir::new().unwrap();
         let agent = d.path().to_string_lossy().to_string();
 
-        create(d.path(), mk("A", true, None)).unwrap();
-        create(d.path(), mk("B", true, None)).unwrap();
-        create(d.path(), mk("C", false, None)).unwrap();
+        create(d.path(), mk("A", true)).unwrap();
+        create(d.path(), mk("B", true)).unwrap();
+        create(d.path(), mk("C", false)).unwrap();
 
         let mut sched = AgentScheduler::new(
             &agent,
@@ -550,7 +536,6 @@ mod tests {
                 enabled: true,
                 suppress_when_silent: true,
                 chat_mode: RoutineChatMode::Shared,
-                timezone: None,
                 integrations: vec![],
                 provider: None,
                 model: None,
@@ -571,40 +556,50 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn per_routine_tz_override_parses() {
+    async fn account_tz_parses() {
         let d = TempDir::new().unwrap();
         let agent = d.path().to_string_lossy().to_string();
 
-        create(d.path(), mk("bogota", true, Some("America/Bogota"))).unwrap();
+        let r = create(d.path(), mk("bogota", true)).unwrap();
 
         let mut sched = AgentScheduler::new(
             &agent,
-            "UTC",
+            "America/Bogota",
             Arc::new(NoopEventSink),
             Arc::new(NoopDispatch),
             Arc::new(NoopSurface),
         );
         sched.sync();
         assert_eq!(sched.jobs.len(), 1);
+        assert_eq!(
+            sched.jobs.get(&r.id).unwrap().signature,
+            "0 9 * * *|America/Bogota",
+            "the routine fires in the account zone",
+        );
         sched.shutdown();
     }
 
     #[tokio::test]
-    async fn unknown_tz_falls_back_to_utc_without_panic() {
+    async fn unknown_account_tz_falls_back_to_utc_without_panic() {
         let d = TempDir::new().unwrap();
         let agent = d.path().to_string_lossy().to_string();
 
-        create(d.path(), mk("bogus", true, Some("Not/A_Tz"))).unwrap();
+        let r = create(d.path(), mk("bogus", true)).unwrap();
 
         let mut sched = AgentScheduler::new(
             &agent,
-            "UTC",
+            "Not/A_Tz",
             Arc::new(NoopEventSink),
             Arc::new(NoopDispatch),
             Arc::new(NoopSurface),
         );
         sched.sync();
         assert_eq!(sched.jobs.len(), 1);
+        assert_eq!(
+            sched.jobs.get(&r.id).unwrap().signature,
+            "0 9 * * *|UTC",
+            "an unknown account zone resolves to UTC, not a panic",
+        );
         sched.shutdown();
     }
 
@@ -612,9 +607,9 @@ mod tests {
     async fn multi_agent_state_keeps_schedulers_separate() {
         let d1 = TempDir::new().unwrap();
         let d2 = TempDir::new().unwrap();
-        create(d1.path(), mk("x", true, None)).unwrap();
-        create(d2.path(), mk("y", true, None)).unwrap();
-        create(d2.path(), mk("z", true, None)).unwrap();
+        create(d1.path(), mk("x", true)).unwrap();
+        create(d2.path(), mk("y", true)).unwrap();
+        create(d2.path(), mk("z", true)).unwrap();
 
         let state = RoutineSchedulerState::default();
         state

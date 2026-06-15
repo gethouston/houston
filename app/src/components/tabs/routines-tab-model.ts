@@ -65,7 +65,6 @@ export const EMPTY_FORM: RoutineFormData = {
   schedule: "0 9 * * *",
   suppress_when_silent: true,
   chat_mode: "shared",
-  timezone: null,
   integrations: [],
   // null = inherit the agent's provider/model/effort until the user picks.
   provider: null,
@@ -91,7 +90,6 @@ export function formMatchesRoutine(
     form.schedule === source.schedule &&
     form.suppress_when_silent === source.suppress_when_silent &&
     form.chat_mode === source.chat_mode &&
-    (form.timezone ?? null) === (source.timezone ?? null) &&
     (form.provider ?? null) === (source.provider ?? null) &&
     (form.model ?? null) === (source.model ?? null) &&
     (form.effort ?? null) === (source.effort ?? null) &&
@@ -108,7 +106,6 @@ export function routineToFormData(routine: Routine): RoutineFormData {
     schedule: routine.schedule,
     suppress_when_silent: routine.suppress_when_silent,
     chat_mode: routine.chat_mode ?? "shared",
-    timezone: routine.timezone ?? null,
     integrations: routine.integrations ?? [],
     provider: routine.provider ?? null,
     model: routine.model ?? null,

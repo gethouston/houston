@@ -30,7 +30,7 @@
     "sectionBehavior": "Comportamiento",
     "sectionRecent": "Ejecuciones recientes",
     "timezoneLabel": "Zona horaria",
-    "accountDefault": "Predeterminada de la cuenta · {tz}",
+    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
     "nextRun": "Próxima ejecución {relative}",
     "schedulePreview": "Vista previa del horario",
     "schedulePreviewHint": "Elige un horario válido para ver cuándo se ejecutará esta rutina.",
@@ -129,12 +129,8 @@
     "yesterday": "Ayer, {time}",
     "onDate": "{date}, {time}"
   },
-  "timezoneGate": {
-    "title": "¿Cuál es tu zona horaria?",
-    "description": "Las rutinas se ejecutan según un horario. Necesitamos saber tu zona antes de que se ejecuten, para que las 9am sean tus 9am.",
-    "timezoneLabel": "Zona horaria",
-    "detected": "Detectada desde tu computador.",
-    "saving": "Guardando…",
-    "confirm": "Confirmar zona horaria"
+  "toasts": {
+    "timezoneSet": "Zona horaria establecida en {{zone}}",
+    "timezoneError": "No se pudo actualizar la zona horaria"
   }
 }

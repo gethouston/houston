@@ -30,7 +30,7 @@
     "sectionBehavior": "Comportamento",
     "sectionRecent": "Execuções recentes",
     "timezoneLabel": "Fuso horário",
-    "accountDefault": "Padrão da conta · {tz}",
+    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
     "nextRun": "Próxima execução {relative}",
     "schedulePreview": "Prévia do agendamento",
     "schedulePreviewHint": "Escolha um agendamento válido para ver quando esta rotina vai rodar.",
@@ -129,12 +129,8 @@
     "yesterday": "Ontem, {time}",
     "onDate": "{date}, {time}"
   },
-  "timezoneGate": {
-    "title": "Qual é o seu fuso horário?",
-    "description": "As rotinas rodam em um horário. Precisamos saber o seu fuso antes que qualquer uma rode, para que 9h seja o seu 9h.",
-    "timezoneLabel": "Fuso horário",
-    "detected": "Detectado pelo seu computador.",
-    "saving": "Salvando…",
-    "confirm": "Confirmar fuso horário"
+  "toasts": {
+    "timezoneSet": "Fuso horário definido como {{zone}}",
+    "timezoneError": "Não foi possível atualizar o fuso horário"
   }
 }

@@ -42,7 +42,6 @@ fn seed_agent(dir: &TempDir) {
         "enabled": true,
         "suppress_when_silent": false,
         "integrations": ["gmail", "slack"],
-        "timezone": "America/Bogota",
         "created_at": "2026-05-15T09:00:00Z",
         "updated_at": "2026-05-15T09:00:00Z"
     }]);
@@ -103,7 +102,6 @@ fn gather_inventory_picks_up_all_four_surfaces() {
     assert!(inv.skills[0].skill_md.contains("Drafts emails"));
     assert_eq!(inv.routines.len(), 1);
     assert_eq!(inv.routines[0].integrations, vec!["gmail", "slack"]);
-    assert_eq!(inv.routines[0].timezone.as_deref(), Some("America/Bogota"));
     assert_eq!(inv.learnings.len(), 2);
 }
 

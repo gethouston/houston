@@ -248,7 +248,6 @@ mod lifecycle_tests {
             enabled: true,
             suppress_when_silent: true,
             chat_mode: RoutineChatMode::Shared,
-            timezone: None,
             integrations: vec![],
             provider: None,
             model: None,

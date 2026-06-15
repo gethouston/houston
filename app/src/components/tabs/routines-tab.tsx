@@ -21,6 +21,7 @@ import {
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
+import { useUIStore } from "../../stores/ui";
 import { RoutineModelControls } from "./routine-model-controls";
 import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
@@ -30,6 +31,7 @@ export default function RoutinesTab({ agent }: TabProps) {
   const labels = useRoutineLabels();
   const path = agent.folderPath;
   const tz = useTimezonePreference();
+  const addToast = useUIStore((s) => s.addToast);
 
   const { data: routines, isLoading } = useRoutines(path);
   const { data: allRuns } = useRoutineRuns(path);
@@ -144,6 +146,25 @@ export default function RoutinesTab({ agent }: TabProps) {
     [],
   );
 
+  // The timezone is a single account-wide preference (not per-routine), so the
+  // editor's picker writes straight to it. Changing it re-times every routine,
+  // which the engine scheduler picks up on the next sync.
+  const handleTimezoneChange = useCallback(
+    async (zone: string) => {
+      try {
+        await tz.confirm(zone);
+        addToast({ title: t("toasts.timezoneSet", { zone }) });
+      } catch (err) {
+        addToast({
+          title: t("toasts.timezoneError"),
+          description: err instanceof Error ? err.message : String(err),
+          variant: "error",
+        });
+      }
+    },
+    [tz, addToast, t],
+  );
+
   // `useTimezonePreference` auto-seeds on first call, so `tz.timezone` is
   // non-null from the first render. We still wait for the roundtrip to
   // finish so the cron schedule renders against the real zone instead of
@@ -184,6 +205,7 @@ export default function RoutinesTab({ agent }: TabProps) {
         }
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         accountTimezone={tz.timezone}
+        onTimezoneChange={handleTimezoneChange}
         hasChanges={!formMatchesRoutine(form, baseline)}
         modelPicker={
           <RoutineModelControls

@@ -52,8 +52,6 @@ export interface RoutineFormData {
   suppress_when_silent: boolean
   /** Whether each run reuses one chat (`"shared"`) or starts a fresh one. */
   chat_mode: RoutineChatMode
-  /** IANA timezone override. `null`/empty means use the account default. */
-  timezone?: string | null
   /** Composio toolkit slugs this routine uses. */
   integrations: string[]
   /** Provider id override. `null`/absent means inherit the agent's provider. */
@@ -87,8 +85,18 @@ export interface RoutineEditorProps {
   onToggle?: (enabled: boolean) => void
   onDelete?: () => void
   onViewActivity?: (activityId: string) => void
-  /** IANA tz of the user's account preference, used for the "next run" hint. */
+  /**
+   * The single account-wide IANA timezone every routine fires in. Drives the
+   * "next run" preview and is the selected value in the timezone picker.
+   */
   accountTimezone: string
+  /**
+   * Persist a new account-wide timezone. The picker edits this global
+   * preference directly (there is no per-routine override), so changing it
+   * moves the fire time of every routine. Omit it (standalone callers) and the
+   * picker renders read-only.
+   */
+  onTimezoneChange?: (tz: string) => void
   /** Disable Save when the form hasn't actually been touched. */
   hasChanges?: boolean
   /**
@@ -198,6 +206,7 @@ export function RoutineEditor({
   onDelete,
   onViewActivity,
   accountTimezone,
+  onTimezoneChange,
   hasChanges,
   modelPicker,
   labels = DEFAULT_EDITOR_LABELS,
@@ -214,18 +223,24 @@ export function RoutineEditor({
     !!value.schedule.trim() &&
     (!isEdit || hasChanges !== false)
 
-  const timezones = useMemo(listTimezones, [])
-  const tzValue = value.timezone ?? ""
-  const effectiveTz = value.timezone || accountTimezone
+  // The picker lists every zone with the current account zone selected; ensure
+  // the account zone is present even if the platform's zone list omits it.
+  const timezones = useMemo(() => {
+    const all = listTimezones()
+    return all.includes(accountTimezone)
+      ? all
+      : [accountTimezone, ...all]
+  }, [accountTimezone])
 
-  // Live "next run" preview, ticking every minute.
+  // Live "next run" preview, ticking every minute. Every routine fires in the
+  // account-wide zone, so the preview is computed against `accountTimezone`.
   const now = useNow(60_000)
   const next = useMemo(
-    () => (value.schedule ? nextFire(value.schedule, effectiveTz, now) : null),
-    [value.schedule, effectiveTz, now],
+    () => (value.schedule ? nextFire(value.schedule, accountTimezone, now) : null),
+    [value.schedule, accountTimezone, now],
   )
   const nextDescr = next
-    ? describeNextFire(next, effectiveTz, now, nextFireLabels, locale)
+    ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
     : null
 
   // Header title — live, mirrors what the user is typing.
@@ -382,20 +397,15 @@ export function RoutineEditor({
               <div className="relative">
                 <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <select
-                  value={tzValue}
-                  onChange={(e) =>
-                    onChange({
-                      timezone: e.target.value === "" ? null : e.target.value,
-                    })
-                  }
+                  value={accountTimezone}
+                  onChange={(e) => onTimezoneChange?.(e.target.value)}
+                  disabled={!onTimezoneChange}
                   className={cn(
                     baseFieldClass,
                     "pl-9 appearance-none cursor-pointer",
+                    !onTimezoneChange && "opacity-60 cursor-not-allowed",
                   )}
                 >
-                  <option value="">
-                    {interp(labels.accountDefault, { tz: accountTimezone })}
-                  </option>
                   {timezones.map((tz) => (
                     <option key={tz} value={tz}>
                       {tz}
@@ -403,6 +413,9 @@ export function RoutineEditor({
                   ))}
                 </select>
               </div>
+              <p className="text-xs text-muted-foreground/70 mt-1.5">
+                {labels.timezoneHint}
+              </p>
             </div>
 
             {/* Live "Next run" callout — white well inside the gray card */}
@@ -420,7 +433,7 @@ export function RoutineEditor({
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
                       {nextDescr.absolute}
                       <span className="text-muted-foreground/60">
-                        {" "}· {effectiveTz}
+                        {" "}· {accountTimezone}
                       </span>
                     </p>
                   </>
