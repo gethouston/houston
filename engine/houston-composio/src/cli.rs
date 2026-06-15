@@ -86,6 +86,28 @@ pub async fn status() -> ComposioStatus {
     }
 }
 
+/// Why `start_login` failed, so the engine server can tell a benign
+/// "you're already signed in" no-op apart from a genuine CLI fault.
+#[derive(Debug)]
+pub enum StartLoginError {
+    /// `login --no-wait` printed nothing because the user is already
+    /// authenticated (e.g. signed in elsewhere, or a stale status). Not a
+    /// bug: the UI treats it as success and refreshes.
+    AlreadySignedIn,
+    /// Spawn failure, non-zero exit, or unparseable output. Carries internal
+    /// detail for logs / the bug report; never shown verbatim to the user.
+    Failed(String),
+}
+
+impl std::fmt::Display for StartLoginError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AlreadySignedIn => write!(f, "already signed in to composio"),
+            Self::Failed(detail) => write!(f, "{detail}"),
+        }
+    }
+}
+
 /// Begin the login flow. Returns a URL for the user to open in their
 /// browser and a `cli_key` that `complete_login` will use to finalize.
 ///
@@ -96,8 +118,8 @@ pub async fn status() -> ComposioStatus {
 /// command returned in ~500 ms from a plain shell but hung indefinitely
 /// through tokio's async pipe handling. The sync+file approach has zero
 /// tokio pipe involvement.
-pub async fn start_login() -> Result<StartLoginResponse, String> {
-    let bin = cli_binary()?;
+pub async fn start_login() -> Result<StartLoginResponse, StartLoginError> {
+    let bin = cli_binary().map_err(StartLoginError::Failed)?;
     let home = crate::install::home_dir().to_string_lossy().to_string();
     let path = std::env::var("PATH").unwrap_or_default();
 
@@ -163,10 +185,32 @@ pub async fn start_login() -> Result<StartLoginResponse, String> {
         }),
     )
     .await
-    .map_err(|_| "composio login --no-wait timed out after 30s".to_string())?
-    .map_err(|e| format!("spawn_blocking failed: {e}"))??;
+    .map_err(|_| StartLoginError::Failed("composio login --no-wait timed out after 30s".into()))?
+    .map_err(|e| StartLoginError::Failed(format!("spawn_blocking failed: {e}")))?
+    .map_err(StartLoginError::Failed)?;
 
-    interpret_login_output(&stdout, &stderr)
+    // Empty stdout: the CLI had nothing to print. That is the EOF case
+    // (HOUSTON-APP-51) AND what `--no-wait` does when the user is already
+    // signed in. Disambiguate by auth state so we never bug-toast a benign
+    // "already connected".
+    if stdout.trim().is_empty() {
+        return match whoami().await {
+            Ok(Some(_)) => Err(StartLoginError::AlreadySignedIn),
+            _ => {
+                let stderr = stderr.trim();
+                Err(StartLoginError::Failed(format!(
+                    "composio login --no-wait produced no output{}",
+                    if stderr.is_empty() {
+                        String::new()
+                    } else {
+                        format!(" (stderr: {stderr})")
+                    }
+                )))
+            }
+        };
+    }
+
+    interpret_login_output(&stdout, &stderr).map_err(StartLoginError::Failed)
 }
 
 /// Interpret the stdout of a successful `composio login --no-wait`.
@@ -189,21 +233,13 @@ pub async fn start_login() -> Result<StartLoginResponse, String> {
 /// exactly what the frontend opens, and its `cliKey` is the session key
 /// `complete_login` passes as `--key` (verified identical to the `key` the CLI
 /// caches in `~/.composio/pending-login-session.json`).
+///
+/// Empty stdout is handled by the caller (`start_login`), which checks auth
+/// state to tell "already signed in" from a real failure; here a blank or
+/// URL-less input simply falls through to the unrecognized-output error.
 fn interpret_login_output(stdout: &str, stderr: &str) -> Result<StartLoginResponse, String> {
     let stdout = stdout.trim();
     let stderr = stderr.trim();
-
-    // Empty stdout: the CLI produced nothing (e.g. the EOF case in HOUSTON-APP-51).
-    if stdout.is_empty() {
-        return Err(format!(
-            "composio login --no-wait produced no output{}",
-            if stderr.is_empty() {
-                String::new()
-            } else {
-                format!(" (stderr: {stderr})")
-            }
-        ));
-    }
 
     if let Some((login_url, cli_key)) = extract_login_url_and_key(stdout) {
         return Ok(StartLoginResponse { login_url, cli_key });
@@ -1222,12 +1258,12 @@ mod tests {
     }
 
     #[test]
-    fn login_output_empty_is_error_not_panic() {
-        for s in ["", "   ", "\n\t"] {
+    fn login_output_blank_or_urlless_is_error_not_panic() {
+        // `start_login` intercepts empty stdout (auth-state check); the pure
+        // parser just must not panic and must surface stderr, never serde.
+        for s in ["", "   ", "\n\t", "no url here"] {
             let err = interpret_login_output(s, "session expired").unwrap_err();
-            assert!(err.contains("no output"), "got: {err}");
             assert!(err.contains("session expired"), "got: {err}");
-            // Must NOT leak a raw serde message.
             assert!(!err.contains("expected value"), "got: {err}");
         }
     }
@@ -1252,4 +1288,5 @@ mod tests {
         assert!(extract_login_url_and_key("https://dashboard.composio.dev/?cliKey=").is_none());
         assert!(extract_login_url_and_key("no url here").is_none());
     }
+
 }

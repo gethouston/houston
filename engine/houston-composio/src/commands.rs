@@ -7,7 +7,10 @@
 //! Tauri command decorators live in the adapter crate (`houston-tauri`),
 //! keeping this crate frontend-agnostic.
 
-use crate::cli::{self, ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginResponse};
+use crate::cli::{
+    self, ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginError,
+    StartLoginResponse,
+};
 use crate::install;
 use crate::toolkits::normalize_toolkit_slugs;
 
@@ -27,8 +30,10 @@ pub async fn install_composio_cli() -> Result<(), String> {
     install::install().await.map(|_| ())
 }
 
-/// Start the composio login flow. Returns `{login_url, cli_key}`.
-pub async fn start_composio_oauth() -> Result<StartLoginResponse, String> {
+/// Start the composio login flow. Returns `{login_url, cli_key}`, or a typed
+/// `StartLoginError` so the server can render "already signed in" as a benign
+/// success instead of a bug toast.
+pub async fn start_composio_oauth() -> Result<StartLoginResponse, StartLoginError> {
     cli::start_login().await
 }
 

@@ -13,7 +13,7 @@ use axum::{
 };
 use houston_composio::apps::ComposioAppEntry;
 use houston_composio::cli::{
-    ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginResponse,
+    ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginError, StartLoginResponse,
 };
 use houston_composio::commands as inner;
 use houston_composio::connection_watcher;
@@ -94,6 +94,23 @@ fn map_complete_login_err(e: CompleteLoginError) -> ApiError {
     }
 }
 
+/// Map a login-start failure to the wire error.
+///
+/// `AlreadySignedIn` is benign: `login --no-wait` prints nothing when creds
+/// already exist, so it surfaces as a typed `composio_already_signed_in` the
+/// frontend treats as success (close the dialog, refresh status) with no toast
+/// or crash report. Anything else is an internal fault worth a bug report.
+fn map_start_login_err(e: StartLoginError) -> ApiError {
+    match e {
+        StartLoginError::AlreadySignedIn => ApiError(CoreError::Labeled {
+            code: ErrorCode::Conflict,
+            kind: "composio_already_signed_in",
+            message: "You're already signed in to Composio.".to_string(),
+        }),
+        StartLoginError::Failed(detail) => ApiError(CoreError::Internal(detail)),
+    }
+}
+
 async fn status(State(_st): State<Arc<ServerState>>) -> Json<ComposioStatus> {
     Json(inner::list_composio_connections().await)
 }
@@ -111,7 +128,10 @@ async fn install_cli(State(_st): State<Arc<ServerState>>) -> Result<(), ApiError
 async fn start_login(
     State(_st): State<Arc<ServerState>>,
 ) -> Result<Json<StartLoginResponse>, ApiError> {
-    inner::start_composio_oauth().await.map(Json).map_err(lift)
+    inner::start_composio_oauth()
+        .await
+        .map(Json)
+        .map_err(map_start_login_err)
 }
 
 async fn complete_login(
