@@ -24,7 +24,31 @@ declare global {
   }
 }
 
+/**
+ * Cutover switch. When `VITE_NEW_ENGINE_URL` is set, the desktop frontend talks
+ * to the v3 Houston host (control-plane mode) instead of the Tauri-spawned Rust
+ * engine — mirroring packages/web's same flag. The host URL + token come from
+ * the env (the host runs as the sidecar, or by hand in dev). Unset → the Rust
+ * path below is completely untouched, so the default build stays releasable and
+ * a downgrade is just "don't set the flag".
+ */
+const HOST_URL: string | undefined =
+  (import.meta as any).env?.VITE_NEW_ENGINE_URL || undefined;
+const HOST_TOKEN: string =
+  (import.meta as any).env?.VITE_NEW_ENGINE_TOKEN ??
+  (import.meta as any).env?.VITE_HOUSTON_ENGINE_TOKEN ??
+  "";
+
+// In host mode the engine-client is aliased to the new-engine adapter (see
+// app/vite.config.ts); flip it into control-plane mode against the host.
+if (HOST_URL && typeof window !== "undefined") {
+  (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
+}
+
 function resolveConfig(): { baseUrl: string; token: string } | null {
+  // Host mode wins: point at the v3 host, overriding the Tauri-injected Rust
+  // engine handshake.
+  if (HOST_URL) return { baseUrl: HOST_URL, token: HOST_TOKEN };
   if (typeof window !== "undefined" && window.__HOUSTON_ENGINE__) {
     return window.__HOUSTON_ENGINE__;
   }
@@ -84,7 +108,8 @@ async function pullHandshakeWithRetry() {
   console.error("[engine] handshake pull timed out after 60s");
 }
 
-if (!_client) {
+// Host mode supplies the config from the env, so skip the Tauri/Rust handshake.
+if (!_client && !HOST_URL) {
   pullHandshakeWithRetry().catch(() => {
     /* non-Tauri env — listen() path covers other callers */
   });
@@ -155,31 +180,36 @@ function notifyEngineRestarted() {
 // `houston-engine-restarted` fires when the supervisor respawns the
 // engine after a crash — rebuild the client + WS so in-flight hooks pick
 // up the new transport.
-listen<{ baseUrl: string; token: string }>(
-  "houston-engine-ready",
-  (ev) => {
-    if (!_client) {
-      applyConfig(ev.payload);
-    }
-  },
-).catch(() => {
-  // Non-Tauri environment (tests, mobile web) — no-op.
-});
-
-listen<{ baseUrl: string; token: string }>(
-  "houston-engine-restarted",
-  (ev) => {
-    applyConfig(ev.payload);
-    if (_ws) {
-      try {
-        _ws.disconnect();
-      } catch {
-        /* ignore */
+// Rust-engine lifecycle events — skipped entirely in host mode (the host runs
+// as its own sidecar; a Rust `houston-engine-restarted` must never hijack the
+// frontend back onto the Rust transport).
+if (!HOST_URL) {
+  listen<{ baseUrl: string; token: string }>(
+    "houston-engine-ready",
+    (ev) => {
+      if (!_client) {
+        applyConfig(ev.payload);
       }
-      _ws = null;
-    }
-    notifyEngineRestarted();
-  },
-).catch(() => {
-  /* non-Tauri env */
-});
+    },
+  ).catch(() => {
+    // Non-Tauri environment (tests, mobile web) — no-op.
+  });
+
+  listen<{ baseUrl: string; token: string }>(
+    "houston-engine-restarted",
+    (ev) => {
+      applyConfig(ev.payload);
+      if (_ws) {
+        try {
+          _ws.disconnect();
+        } catch {
+          /* ignore */
+        }
+        _ws = null;
+      }
+      notifyEngineRestarted();
+    },
+  ).catch(() => {
+    /* non-Tauri env */
+  });
+}
