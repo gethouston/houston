@@ -9,6 +9,7 @@
     "build": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit",
+    "test": "bun test",
     "check-shims": "node ../../scripts/check-tauri-shims.mjs"
   },
   "dependencies": {

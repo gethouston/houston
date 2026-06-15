@@ -1,7 +1,6 @@
 import type { HoustonEngineClient, ChatMessage, WireEvent } from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
-import { setStatusBySessionKey } from "./activities";
 
 function feed(agentPath: string, sessionKey: string, item: unknown): void {
   emitEvent("FeedItem", { agent_path: agentPath, session_key: sessionKey, item });
@@ -26,13 +25,37 @@ export async function streamTurn(
   agentPath: string,
   sessionKey: string,
   prompt: string,
+  setActivityStatus: (status: string) => Promise<void>,
 ): Promise<void> {
+  // Persist a board-card status through the SAME (cloud-aware) seam the board
+  // READS from. In cloud mode the board reads activities off the host, so this
+  // write MUST reach the host too; a localStorage write would never show up and
+  // the card would hang in "running" forever. A failed persist surfaces in the
+  // feed, never swallowed.
+  const persistStatus = async (status: string): Promise<void> => {
+    try {
+      await setActivityStatus(status);
+    } catch (e) {
+      feed(agentPath, sessionKey, {
+        feed_type: "system_message",
+        data: `Couldn't update the board status: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    }
+  };
+
   sessionStatus(agentPath, sessionKey, "running");
-  setStatusBySessionKey(agentPath, sessionKey, "running");
+  // Flip the card to "running" for this turn (re-running a needs_you/done
+  // activity must reset it). Fire concurrently so it never delays turn start;
+  // persistStatus surfaces its own failure, so this can't become an unhandled
+  // rejection.
+  void persistStatus("running");
 
   let text = "";
   let thinking = "";
   let settled = false;
+  // Terminal board status, persisted once the turn settles (NOT mid-stream) so
+  // the write is awaited and a failure is surfaced.
+  let terminal: "needs_you" | "error" | null = null;
   const ac = new AbortController();
 
   const finishOk = (): void => {
@@ -45,14 +68,14 @@ export async function streamTurn(
       data: { result: text, cost_usd: null, duration_ms: null },
     });
     sessionStatus(agentPath, sessionKey, "completed");
-    setStatusBySessionKey(agentPath, sessionKey, "needs_you");
+    terminal = "needs_you";
   };
   const finishErr = (msg: string): void => {
     if (settled) return;
     settled = true;
     feed(agentPath, sessionKey, { feed_type: "system_message", data: msg });
     sessionStatus(agentPath, sessionKey, "error", msg);
-    setStatusBySessionKey(agentPath, sessionKey, "error");
+    terminal = "error";
   };
 
   const onEvent = (ev: WireEvent): void => {
@@ -121,6 +144,11 @@ export async function streamTurn(
   } finally {
     ac.abort();
   }
+
+  // Persist the terminal board status once the turn settled — awaited, through
+  // the cloud-aware seam, so the card actually leaves "running" on the surface
+  // the board reads.
+  if (terminal) await persistStatus(terminal);
 }
 
 /** Convert new-engine history (ChatMessage[]) into old FeedItem[] for replay. */

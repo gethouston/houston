@@ -264,6 +264,25 @@ export class HoustonClient {
     activities.deleteActivity(agentPath, id);
   }
 
+  /**
+   * Transition a chat activity's board status, honoring cloud vs standalone mode.
+   * The board READS activities from the host in cloud mode (listActivities →
+   * control plane), so a turn's status write MUST reach the host too — a
+   * localStorage write (the standalone store) would never show up on the board
+   * and the card would hang in "running". Matches by session_key, or the
+   * `activity-<id>` convention the board uses for missions with no explicit key.
+   */
+  private async setActivityStatus(agentPath: string, sessionKey: string, status: string): Promise<void> {
+    if (!this.cp) {
+      activities.setStatusBySessionKey(agentPath, sessionKey, status);
+      return;
+    }
+    const list = await controlPlane.listActivities(this.cp, agentPath);
+    const match = list.find((a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey);
+    if (!match) return; // transient session with no board card — nothing to update
+    await controlPlane.updateActivity(this.cp, agentPath, match.id, { status });
+  }
+
   // ---- agent data files (.houston/**) ----
   // Cloud: the host serves raw .houston docs off the agent's workspace vfs (this
   // is what the desktop UI's board/config/learnings actually read). Standalone
@@ -592,7 +611,10 @@ export class HoustonClient {
     // locally, the single runtime. Either way `streamTurn` is identical.
     const engine = this.cp ? controlPlane.runtimeClientFor(this.cp, path) : this.engine;
     // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
-    void streamTurn(engine, path, req.sessionKey, req.prompt);
+    // The board-status setter is cloud-aware (writes land where the board reads).
+    void streamTurn(engine, path, req.sessionKey, req.prompt, (status) =>
+      this.setActivityStatus(path, req.sessionKey, status),
+    );
     return { sessionKey: req.sessionKey };
   }
   async cancelSession(agentPath: string, sessionKey: string) {
