@@ -13,7 +13,8 @@ use axum::{
 };
 use houston_composio::apps::ComposioAppEntry;
 use houston_composio::cli::{
-    ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginError, StartLoginResponse,
+    ComposioStatus, CompleteLoginError, StartLinkError, StartLinkResponse, StartLoginError,
+    StartLoginResponse,
 };
 use houston_composio::commands as inner;
 use houston_composio::connection_watcher;
@@ -162,7 +163,26 @@ async fn connect_app(
     inner::connect_composio_app(req.toolkit)
         .await
         .map(Json)
-        .map_err(lift)
+        .map_err(map_start_link_err)
+}
+
+/// Map a connect failure to the wire error.
+///
+/// `AlreadyConnected` is an expected state — the toolkit is already linked,
+/// so the CLI issued no new auth URL. It surfaces as a typed
+/// `composio_already_connected` (HTTP 409) the frontend silences (no red bug
+/// toast, no Sentry report) while it refreshes its connected-toolkits list so
+/// the card flips to connected (HOU-463). Anything else is an internal fault
+/// worth a bug report.
+fn map_start_link_err(e: StartLinkError) -> ApiError {
+    match e {
+        StartLinkError::AlreadyConnected { .. } => ApiError(CoreError::Labeled {
+            code: ErrorCode::Conflict,
+            kind: "composio_already_connected",
+            message: e.to_string(),
+        }),
+        StartLinkError::Other(detail) => ApiError(CoreError::Internal(detail)),
+    }
 }
 
 /// Disconnect every connected account for a toolkit in the consumer

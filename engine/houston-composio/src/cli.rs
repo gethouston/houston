@@ -385,29 +385,62 @@ pub async fn logout() -> Result<(), String> {
     Ok(())
 }
 
+/// Why `start_link` couldn't begin an OAuth flow.
+///
+/// `composio link <toolkit> --no-wait` no-ops (prints nothing) when the
+/// toolkit is already connected in the consumer namespace. That's an
+/// expected state, not a fault, so it gets its own variant: the engine
+/// server maps it to a typed `composio_already_connected` kind the UI
+/// silences while it refreshes the connected-toolkits list so the card
+/// flips to connected (HOU-463). Everything else (spawn failure, non-zero
+/// exit, unrecognized output) collapses to `Other`, an internal fault
+/// worth a bug report.
+#[derive(Debug)]
+pub enum StartLinkError {
+    /// The toolkit already has a live connection; the CLI issued no auth URL.
+    AlreadyConnected { toolkit: String },
+    /// Spawn failure, non-zero exit, or unrecognized CLI output. Carries
+    /// internal detail for logs / the bug report.
+    Other(String),
+}
+
+impl std::fmt::Display for StartLinkError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::AlreadyConnected { toolkit } => write!(
+                f,
+                "{toolkit} is already connected. Disconnect it first in the Composio dashboard if you want to re-link."
+            ),
+            Self::Other(detail) => f.write_str(detail),
+        }
+    }
+}
+
 /// Start linking an external toolkit (e.g. "gmail") to the signed-in
 /// Composio account. Returns a browser URL for the user to approve the
 /// app-specific OAuth. Houston should open this URL with
 /// `tauriSystem.openUrl(...)` from the frontend.
-pub async fn start_link(toolkit: &str) -> Result<StartLinkResponse, String> {
+pub async fn start_link(toolkit: &str) -> Result<StartLinkResponse, StartLinkError> {
     if toolkit.is_empty() {
-        return Err("toolkit must not be empty".into());
+        return Err(StartLinkError::Other("toolkit must not be empty".into()));
     }
     // Top-level `composio link` (consumer / "Composio for You" namespace).
     // NOT `composio dev connected-accounts link` — that's the developer/
     // platform namespace, and accounts created there are invisible to
     // `composio execute` / `composio search` which agents use at runtime.
-    let output = run_cli(&["link", toolkit, "--no-wait"]).await?;
+    let output = run_cli(&["link", toolkit, "--no-wait"])
+        .await
+        .map_err(StartLinkError::Other)?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
         let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-        return Err(format!(
+        return Err(StartLinkError::Other(format!(
             "composio link --no-wait failed (exit {}): {}{}",
             output.status,
             stderr,
             if stdout.is_empty() { String::new() } else { format!("\nstdout: {stdout}") }
-        ));
+        )));
     }
 
     let stdout = String::from_utf8_lossy(&output.stdout);
@@ -435,15 +468,15 @@ fn interpret_link_output(
     toolkit: &str,
     stdout: &str,
     stderr: &str,
-) -> Result<StartLinkResponse, String> {
+) -> Result<StartLinkResponse, StartLinkError> {
     let stdout = stdout.trim();
     let stderr = stderr.trim();
 
     // Empty stdout: the CLI no-ops when the toolkit is already connected.
     if stdout.is_empty() {
-        return Err(format!(
-            "{toolkit} is already connected. Disconnect it first in the Composio dashboard if you want to re-link."
-        ));
+        return Err(StartLinkError::AlreadyConnected {
+            toolkit: toolkit.to_string(),
+        });
     }
 
     #[derive(Deserialize)]
@@ -474,14 +507,14 @@ fn interpret_link_output(
 
     // Neither JSON nor a URL: surface the CLI's own stdout/stderr so the bug
     // report shows what actually happened instead of a bare parse error.
-    Err(format!(
+    Err(StartLinkError::Other(format!(
         "composio link --no-wait produced unrecognized output for {toolkit}.\nstdout: {stdout}{}",
         if stderr.is_empty() {
             String::new()
         } else {
             format!("\nstderr: {stderr}")
         }
-    ))
+    )))
 }
 
 /// `Some(url)` when `s` is exactly one `http(s)://` URL token with no
@@ -1238,8 +1271,14 @@ mod tests {
     fn link_output_empty_is_already_connected() {
         for s in ["", "   ", "\n\t"] {
             let err = interpret_link_output("slack", s, "").unwrap_err();
-            assert!(err.contains("already connected"), "got: {err}");
-            assert!(err.contains("slack"), "got: {err}");
+            assert!(
+                matches!(&err, StartLinkError::AlreadyConnected { toolkit } if toolkit == "slack"),
+                "got: {err:?}"
+            );
+            // Display copy still names the toolkit + the actionable phrase.
+            let msg = err.to_string();
+            assert!(msg.contains("already connected"), "got: {msg}");
+            assert!(msg.contains("slack"), "got: {msg}");
         }
     }
 
@@ -1247,10 +1286,12 @@ mod tests {
     fn link_output_unrecognized_surfaces_stdout_and_stderr() {
         let err =
             interpret_link_output("github", "totally not json or a url", "boom from cli").unwrap_err();
-        assert!(err.contains("totally not json or a url"), "got: {err}");
-        assert!(err.contains("boom from cli"), "got: {err}");
+        assert!(matches!(err, StartLinkError::Other(_)), "got: {err:?}");
+        let msg = err.to_string();
+        assert!(msg.contains("totally not json or a url"), "got: {msg}");
+        assert!(msg.contains("boom from cli"), "got: {msg}");
         // Must NOT leak a raw serde message ("expected value...") as the error.
-        assert!(!err.contains("expected value"), "got: {err}");
+        assert!(!msg.contains("expected value"), "got: {msg}");
     }
 
     #[test]

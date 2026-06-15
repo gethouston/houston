@@ -8,7 +8,7 @@
 //! keeping this crate frontend-agnostic.
 
 use crate::cli::{
-    self, ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginError,
+    self, ComposioStatus, CompleteLoginError, StartLinkError, StartLinkResponse, StartLoginError,
     StartLoginResponse,
 };
 use crate::install;
@@ -52,8 +52,12 @@ pub async fn logout_composio() -> Result<(), String> {
     cli::logout().await
 }
 
-/// Start the flow to link an external app to the currently-signed-in account.
-pub async fn connect_composio_app(toolkit: String) -> Result<StartLinkResponse, String> {
+/// Start the flow to link an external app to the currently-signed-in
+/// account. The typed error lets the engine server distinguish an expected
+/// "already connected" no-op from a genuine CLI fault (see `cli::start_link`).
+pub async fn connect_composio_app(
+    toolkit: String,
+) -> Result<StartLinkResponse, StartLinkError> {
     cli::start_link(&toolkit).await
 }
 
