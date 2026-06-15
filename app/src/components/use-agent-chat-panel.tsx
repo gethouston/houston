@@ -913,6 +913,7 @@ export function useAgentChatPanel({
       />
       <ProviderSwitchDialog
         open={switchDialog !== null}
+        providerId={switchDialog?.toProvider ?? ""}
         providerName={
           switchDialog
             ? getProvider(switchDialog.toProvider)?.name ?? switchDialog.toProvider

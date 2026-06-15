@@ -23,14 +23,16 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { CheckCircle2Icon, KeyIcon } from "lucide-react";
-import { Button, Spinner } from "@houston-ai/core";
+import { CheckCircle2Icon } from "lucide-react";
 import type { HoustonEvent } from "@houston-ai/core";
 import type { ProviderError } from "@houston-ai/chat";
 import { tauriProvider } from "../../../lib/tauri";
 import { subscribeHoustonEvents } from "../../../lib/events";
 import { useUIStore } from "../../../stores/ui";
-import { ErrorCard, providerLabel, RetryButton } from "./shared";
+import { ProviderGlyph } from "../provider-logos";
+import { RowCard } from "../../cards/row-card";
+import { RowCardButton } from "../../cards/row-card-button";
+import { providerLabel } from "./shared";
 
 type LoginPhase = "idle" | "waiting" | "done" | "failed";
 
@@ -114,57 +116,63 @@ export function UnauthenticatedCard({
     }
   };
 
+  const [retrying, setRetrying] = useState(false);
+  const sendAgain = async () => {
+    if (!onRetry || retrying) return;
+    setRetrying(true);
+    try {
+      await onRetry();
+    } finally {
+      setRetrying(false);
+    }
+  };
+
   if (phase === "done") {
     return (
-      <ErrorCard
-        icon={<CheckCircle2Icon className="size-5 text-green-600" />}
-        title={t("providerError.unauthenticated.reconnectedTitle", { provider })}
-        body={t("providerError.unauthenticated.reconnectedBody", { provider })}
-      >
-        {onRetry && (
-          <RetryButton
-            onRetry={onRetry}
-            label={t("providerError.unauthenticated.sendAgain")}
-          />
-        )}
-      </ErrorCard>
+      <div className="w-full px-1 py-2">
+        <RowCard
+          media={<CheckCircle2Icon className="size-5 text-green-600" />}
+          title={t("providerError.unauthenticated.reconnectedTitle", { provider })}
+          description={t("providerError.unauthenticated.reconnectedBody", { provider })}
+          action={
+            onRetry && (
+              <RowCardButton
+                label={t("providerError.unauthenticated.sendAgain")}
+                onClick={() => void sendAgain()}
+                loading={retrying}
+              />
+            )
+          }
+        />
+      </div>
     );
   }
 
   const waiting = phase === "waiting";
   return (
-    <ErrorCard
-      icon={<KeyIcon className="size-5" />}
-      title={t("providerError.unauthenticated.title", { provider })}
-      body={
-        phase === "failed"
-          ? t("providerError.unauthenticated.failedBody", {
-              provider,
-              detail: failureDetail ?? "",
-            })
-          : t(bodyKey, { provider })
-      }
-    >
-      {waiting && (
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Spinner className="size-3.5" />
-          <span>{t("providerError.unauthenticated.waiting")}</span>
-        </div>
-      )}
-      <Button
-        size="sm"
-        variant={waiting ? "outline" : "default"}
-        className="h-8 gap-2 rounded-full px-3 text-xs"
-        disabled={launching}
-        onClick={() => void reconnect()}
-      >
-        {launching ? (
-          <Spinner className="size-3.5" />
-        ) : (
-          <KeyIcon className="size-3.5" />
-        )}
-        {t("providerError.unauthenticated.reconnect")}
-      </Button>
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<ProviderGlyph providerId={error.provider} />}
+        title={t("providerError.unauthenticated.title", { provider })}
+        description={
+          phase === "failed"
+            ? t("providerError.unauthenticated.failedBody", {
+                provider,
+                detail: failureDetail ?? "",
+              })
+            : waiting
+              ? t("providerError.unauthenticated.waiting")
+              : t(bodyKey, { provider })
+        }
+        action={
+          <RowCardButton
+            label={t("providerError.unauthenticated.reconnect")}
+            onClick={() => void reconnect()}
+            loading={launching}
+            variant={waiting ? "outline" : "default"}
+          />
+        }
+      />
+    </div>
   );
 }
