@@ -41,17 +41,26 @@ export class BunRuntimeSpawner implements RuntimeSpawner {
       },
       stdio: this.opts.onLog ? ["ignore", "pipe", "pipe"] : "inherit",
     });
+    const log = this.opts.onLog ?? (() => {});
     if (this.opts.onLog) {
-      const log = this.opts.onLog;
       child.stdout?.on("data", (b: Buffer) => log(b.toString()));
       child.stderr?.on("data", (b: Buffer) => log(b.toString()));
     }
+    // CRITICAL: an unhandled ChildProcess 'error' (spawn failure, EPIPE, …)
+    // throws and would take the whole host down. The launcher's health probe
+    // already surfaces a runtime that never comes up; here we just keep the
+    // supervisor alive.
+    child.on("error", (err) => log(`[runtime spawn error] ${err.message}\n`));
     return {
       port: spec.port,
       kill: () => {
         // SIGTERM lets the runtime drain; it exits on its own. A hung process is
         // reaped by the supervisor's process-tree teardown, not here.
-        child.kill("SIGTERM");
+        try {
+          child.kill("SIGTERM");
+        } catch {
+          /* already gone */
+        }
       },
     };
   }

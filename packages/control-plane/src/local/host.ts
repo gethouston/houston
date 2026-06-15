@@ -132,6 +132,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     stop() {
       scheduler.stop();
       watcher.stop();
+      launcher.shutdownAll(); // kill spawned runtimes — never orphan them
       server.close();
     },
   };

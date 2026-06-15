@@ -48,7 +48,7 @@ export interface ControlPlaneDeps {
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", deps.corsOrigin || "*");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PATCH, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
 }
 
 /** Resolve the caller to a verified user id, or null if unauthenticated. */

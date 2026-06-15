@@ -197,9 +197,64 @@ export async function listSkills(cfg: ControlPlaneConfig, agentId: string): Prom
   return items.map((s) => ({ ...s, inputs: [], promptTemplate: null }));
 }
 
+export async function createRoutine(cfg: ControlPlaneConfig, agentId: string, input: unknown): Promise<Routine> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/routines`, { method: "POST", body: JSON.stringify(input) });
+  return (await res.json()) as Routine;
+}
+export async function updateRoutine(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  id: string,
+  updates: unknown,
+): Promise<Routine> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/routines/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+  return (await res.json()) as Routine;
+}
+export async function deleteRoutine(cfg: ControlPlaneConfig, agentId: string, id: string): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/routines/${encodeURIComponent(id)}`, { method: "DELETE" });
+}
+
+export async function createSkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  body: { name: string; description: string; content: string },
+): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/skills`, { method: "POST", body: JSON.stringify(body) });
+}
+export async function saveSkill(cfg: ControlPlaneConfig, agentId: string, slug: string, content: string): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
+}
+export async function deleteSkill(cfg: ControlPlaneConfig, agentId: string, slug: string): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`, { method: "DELETE" });
+}
+
 export async function listWorkspaces(cfg: ControlPlaneConfig): Promise<Workspace[]> {
   const res = await cpFetch(cfg, "/v1/workspaces");
   return (await res.json()) as Workspace[];
+}
+
+// Raw .houston/** doc read/write — what the desktop UI's files-first data layer
+// (readAgentJson/writeAgentJson) uses for the board, config, and learnings.
+export async function readAgentFile(cfg: ControlPlaneConfig, agentId: string, relPath: string): Promise<string> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/agentfile/${relPath.split("/").map(encodeURIComponent).join("/")}`);
+  return ((await res.json()) as { content: string }).content;
+}
+export async function writeAgentFile(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  relPath: string,
+  content: string,
+): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/agentfile/${relPath.split("/").map(encodeURIComponent).join("/")}`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
 }
 
 export async function getPreference(cfg: ControlPlaneConfig, key: string): Promise<string | null> {

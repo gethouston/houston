@@ -187,6 +187,49 @@ test("another user is walled off from the data families (403)", async () => {
   expect(r.status).toBe(403);
 });
 
+test("raw agentfile read/write — what the desktop board actually uses", async () => {
+  // Use learnings (untouched by other tests). Missing → "" (app falls back to []).
+  const path = ".houston/learnings/learnings.json";
+  const empty = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, { headers: auth("alice") });
+  expect(empty.status).toBe(200);
+  expect(((await empty.json()) as { content: string }).content).toBe("");
+
+  // Write the whole doc, then read it back verbatim.
+  const doc = JSON.stringify([{ id: "l1", text: "remember this", created_at: "2026-06-15T00:00:00.000Z" }]);
+  const put = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, {
+    method: "PUT",
+    headers: auth("alice"),
+    body: JSON.stringify({ content: doc }),
+  });
+  expect(put.status).toBe(200);
+
+  const read = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, { headers: auth("alice") });
+  expect(((await read.json()) as { content: string }).content).toBe(doc);
+
+  // The typed route sees the SAME file (one store — the raw write and typed read agree).
+  const typed = await fetch(`${base}/agents/${agentId}/learnings`, { headers: auth("alice") });
+  expect(((await typed.json()) as { items: { id: string }[] }).items[0]!.id).toBe("l1");
+});
+
+// (No HTTP traversal test: the URL spec normalizes `..`/`%2e%2e` path segments
+// away before the request is sent, so the handler's `..` guard — defense in
+// depth — is unreachable over HTTP. Asserting it via fetch would be meaningless.)
+
+test("CORS preflight allows PUT (writeAgentFile/preferences/saveSkill all PUT)", async () => {
+  const r = await fetch(`${base}/agents/${agentId}/agentfile/.houston/config/config.json`, {
+    method: "OPTIONS",
+    headers: { Origin: "http://localhost:1430", "Access-Control-Request-Method": "PUT" },
+  });
+  expect(r.status).toBe(204);
+  expect(r.headers.get("access-control-allow-methods")).toContain("PUT");
+  await r.text();
+});
+
+test("agentfile is walled off across users (403)", async () => {
+  const r = await fetch(`${base}/agents/${agentId}/agentfile/.houston/config/config.json`, { headers: auth("bob") });
+  expect(r.status).toBe(403);
+});
+
 test("skills: create → list → read → edit → delete, full lifecycle over the host", async () => {
   const created = await fetch(`${base}/agents/${agentId}/skills`, {
     method: "POST",

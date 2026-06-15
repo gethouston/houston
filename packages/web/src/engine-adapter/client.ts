@@ -7,10 +7,15 @@ import type {
   ConversationEntry,
   CreateAgent,
   CreateAgentResult,
+  CreateSkillRequest,
   NewActivity,
+  NewRoutine,
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  Routine,
+  RoutineUpdate,
+  SaveSkillRequest,
   SessionStartRequest,
   SessionStartResponse,
   UpdateAgent,
@@ -107,11 +112,17 @@ export class HoustonClient {
 
   private async activeOld(): Promise<{ provider: string; model: string }> {
     try {
-      const providers = await this.engine.listProviders();
-      const active = providers.find((p) => p.isActive) ?? providers.find((p) => p.configured);
-      if (active) return { provider: toOldProvider(active.id), model: active.activeModel };
+      // Cloud: providers are PER-AGENT, reached through the control-plane proxy
+      // (the per-agent runtime client carries the live token). A top-level
+      // /providers on the base client has no route and a stale token → 401.
+      const engine = this.providerEngine();
+      if (engine) {
+        const providers = await engine.listProviders();
+        const active = providers.find((p) => p.isActive) ?? providers.find((p) => p.configured);
+        if (active) return { provider: toOldProvider(active.id), model: active.activeModel };
+      }
     } catch {
-      /* engine unreachable / not authed */
+      /* engine unreachable / no agent selected / not authed → defaults below */
     }
     return { provider: "anthropic", model: "claude-sonnet-4-6" };
   }
@@ -253,11 +264,16 @@ export class HoustonClient {
     activities.deleteActivity(agentPath, id);
   }
 
-  // ---- agent data files (.houston/**), backed by localStorage ----
+  // ---- agent data files (.houston/**) ----
+  // Cloud: the host serves raw .houston docs off the agent's workspace vfs (this
+  // is what the desktop UI's board/config/learnings actually read). Standalone
+  // web: localStorage.
   async readAgentFile(agentPath: string, relPath: string): Promise<string> {
+    if (this.cp) return controlPlane.readAgentFile(this.cp, agentPath, relPath);
     return readAgentFileStore(agentPath, relPath);
   }
   async writeAgentFile(agentPath: string, relPath: string, content: string): Promise<void> {
+    if (this.cp) return controlPlane.writeAgentFile(this.cp, agentPath, relPath, content);
     writeAgentFileStore(agentPath, relPath, content);
   }
   async seedAgentSchemas(): Promise<void> {}
@@ -328,7 +344,10 @@ export class HoustonClient {
   // ---- conversations / routines / skills (mostly empty) ----
   async listConversations(agentPath: string): Promise<ConversationEntry[]> {
     const agentName = agents.agentNameByPath(agentPath) ?? "Houston";
-    return activities.listActivities(agentPath).map((a) => ({
+    // The board/missions list is derived from activities; in cloud those live on
+    // the host (this.listActivities un-fakes it), not localStorage.
+    const acts = await this.listActivities(agentPath);
+    return acts.map((a) => ({
       id: a.id,
       title: a.title,
       description: a.description,
@@ -355,6 +374,34 @@ export class HoustonClient {
   async listSkills(agentPath: string) {
     if (this.cp) return controlPlane.listSkills(this.cp, agentPath);
     return [];
+  }
+
+  // Routine + skill mutations route to the host (cloud); standalone web has no
+  // routine/skill backend, so they no-op there (the UI still navigates).
+  async createRoutine(agentPath: string, input: NewRoutine): Promise<Routine> {
+    if (this.cp) return controlPlane.createRoutine(this.cp, agentPath, input);
+    return {} as Routine;
+  }
+  async updateRoutine(agentPath: string, id: string, updates: RoutineUpdate): Promise<Routine> {
+    if (this.cp) return controlPlane.updateRoutine(this.cp, agentPath, id, updates);
+    return {} as Routine;
+  }
+  async deleteRoutine(agentPath: string, id: string): Promise<void> {
+    if (this.cp) return controlPlane.deleteRoutine(this.cp, agentPath, id);
+  }
+  async createSkill(req: CreateSkillRequest): Promise<void> {
+    if (this.cp)
+      return controlPlane.createSkill(this.cp, req.workspacePath, {
+        name: req.name,
+        description: req.description,
+        content: req.content,
+      });
+  }
+  async saveSkill(name: string, req: SaveSkillRequest): Promise<void> {
+    if (this.cp) return controlPlane.saveSkill(this.cp, req.workspacePath, name, req.content);
+  }
+  async deleteSkill(workspacePath: string, name: string): Promise<void> {
+    if (this.cp) return controlPlane.deleteSkill(this.cp, workspacePath, name);
   }
 
   // ---- providers (auth) ----

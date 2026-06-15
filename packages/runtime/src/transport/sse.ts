@@ -8,6 +8,9 @@ export function openSSE(res: ServerResponse) {
     Connection: "keep-alive",
     "X-Accel-Buffering": "no",
   });
+  // Flush each frame immediately — a trailing terminal `done` must not sit in a
+  // Nagle buffer (the local-host proxy reads this socket frame-by-frame).
+  res.socket?.setNoDelay?.(true);
   res.write(": connected\n\n");
 
   const heartbeat = setInterval(() => {

@@ -8,6 +8,7 @@ import type { EventHub } from "../events/hub";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import { canUseAgent } from "../domain/access";
 import { handleAgentData } from "./agent-data";
+import { handleAgentFile } from "./agent-file";
 import { handleSkills } from "./skills";
 import { handlePortableExport } from "./portable";
 import { json, readJson } from "./http";
@@ -183,6 +184,7 @@ export async function handleAgents(
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.
     const paths = deps.paths ?? DEFAULT_PATHS;
     if (await handleAgentData(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
+    if (await handleAgentFile(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
     if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
     if (await handlePortableExport({ vfs: deps.vfs, paths }, ctx, method, rest, req, res)) return true;
 

@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { buildLocalHost } from "./host";
+import { houstonSystemPrompt } from "../houston-prompt";
 
 /**
  * The local host entry point — the desktop sidecar the Tauri shell spawns. Same
@@ -33,8 +34,20 @@ const host = buildLocalHost({
   port: Number(process.env.HOUSTON_HOST_PORT || 4318),
   token: process.env.HOUSTON_HOST_TOKEN || randomBytes(32).toString("hex"),
   runtimeCommand: runtimeCommand(),
-  systemPrompt: process.env.HOUSTON_APP_SYSTEM_PROMPT || undefined,
+  // The real Tauri app hands over its own product prompt; this is the built-in
+  // default so the agent knows how to create Skills/Routines/learnings.
+  systemPrompt: process.env.HOUSTON_APP_SYSTEM_PROMPT || houstonSystemPrompt(),
   onRuntimeLog: (line) => process.stderr.write(line),
+});
+
+// A desktop supervisor must not die on a stray error from a child runtime, a
+// dropped SSE socket, or a transient fetch. Log loudly and stay up — the user
+// would otherwise see "NetworkError" on the next request.
+process.on("uncaughtException", (err) => {
+  console.error("[local-host] uncaughtException (staying up):", err);
+});
+process.on("unhandledRejection", (reason) => {
+  console.error("[local-host] unhandledRejection (staying up):", reason);
 });
 
 await host.start();

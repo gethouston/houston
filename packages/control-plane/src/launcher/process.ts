@@ -152,4 +152,11 @@ export class ProcessLauncher implements RuntimeLauncher {
   async status(agentId: AgentId): Promise<RuntimeState> {
     return this.running.has(agentId) ? "running" : "asleep";
   }
+
+  /** Kill every running runtime — called on supervisor shutdown so a restart
+   *  doesn't orphan child processes (which would hold ports + the agent dir). */
+  shutdownAll(): void {
+    for (const r of this.running.values()) r.handle.kill();
+    this.running.clear();
+  }
 }

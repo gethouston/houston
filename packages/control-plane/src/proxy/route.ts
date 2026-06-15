@@ -1,4 +1,3 @@
-import { Readable } from "node:stream";
 import type { ServerResponse } from "node:http";
 import type { ForwardRequest, RuntimeEndpoint } from "../ports";
 
@@ -104,25 +103,26 @@ export async function forward(
         Connection: "keep-alive",
         "X-Accel-Buffering": "no",
       });
-      const source = Readable.fromWeb(
-        upstream.body as unknown as Parameters<typeof Readable.fromWeb>[0],
-      );
-      // Dumb pipe: bytes only. Resolve when the upstream ends or the client hangs
-      // up; surface a true stream error (an abort is a normal end).
-      await new Promise<void>((resolve, reject) => {
-        const onClientGone = () => {
-          source.destroy();
-          resolve();
-        };
-        res.on("close", onClientGone);
-        res.req.on("close", onClientGone);
-        source.pipe(res);
-        source.on("end", resolve);
-        source.on("error", (err) => {
-          if (controller.signal.aborted) resolve();
-          else reject(err);
-        });
-      });
+      // Manual flush-per-frame, NOT `source.pipe(res)`: under Bun the pipe
+      // buffers the stream wholesale, so a trailing small frame (the turn's
+      // terminal `done`) never reaches the client and the UI hangs in
+      // "running". setNoDelay + writing each chunk as it arrives pushes every
+      // frame out immediately. A client hangup aborts the upstream fetch, which
+      // surfaces here as a read error we treat as a normal end.
+      res.socket?.setNoDelay?.(true);
+      const reader = (upstream.body as ReadableStream<Uint8Array>).getReader();
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          if (value && !res.writableEnded) res.write(value);
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) throw err; // a real stream error, not a hangup
+      } finally {
+        reader.releaseLock();
+      }
+      if (!res.writableEnded) res.end();
       return;
     }
 
