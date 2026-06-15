@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ExternalLink, Loader2 } from "lucide-react";
-import { Button, cn } from "@houston-ai/core";
+import { AsyncButton, Button, cn } from "@houston-ai/core";
 import {
   useConnections,
   useResetConnections,
@@ -26,9 +26,7 @@ export function ToolsMission({ onContinue }: ToolsMissionProps) {
   const auth = useComposioAuth(() => reset());
   const isSignedIn = status?.status === "ok";
 
-  const handleSignIn = useCallback(() => {
-    void auth.startAuth();
-  }, [auth]);
+  const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
 
   return (
     <div className="flex flex-1 flex-col gap-6">
@@ -56,12 +54,12 @@ export function ToolsMission({ onContinue }: ToolsMissionProps) {
             {t("tutorial.missions.tools.signedInPill")}
           </span>
         ) : (
-          <Button
+          <AsyncButton
             type="button"
             size="sm"
             className="rounded-full"
+            spinner={false}
             onClick={handleSignIn}
-            disabled={auth.state.phase === "waiting"}
           >
             {auth.state.phase === "waiting" ? (
               <Loader2 className="size-3.5 animate-spin" />
@@ -69,7 +67,7 @@ export function ToolsMission({ onContinue }: ToolsMissionProps) {
               <ExternalLink className="size-3.5" />
             )}
             {t("tutorial.missions.tools.signIn")}
-          </Button>
+          </AsyncButton>
         )}
       </div>
       <div className="flex justify-end">
