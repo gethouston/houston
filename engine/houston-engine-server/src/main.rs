@@ -270,6 +270,16 @@ fn init_sentry() -> Option<sentry::ClientInitGuard> {
     if dsn.trim().is_empty() {
         return None;
     }
+    // Mirror the desktop app's dev gate (HOU-469): a debug engine build doesn't
+    // report unless `SENTRY_SEND_IN_DEV` is set. The app already withholds the
+    // DSN from a suppressed dev build, so this primarily guards a standalone
+    // `cargo run` engine with a DSN exported, and stays consistent when the app
+    // opts in (it injects SENTRY_SEND_IN_DEV alongside the DSN).
+    let send_in_dev =
+        sentry_send_in_dev_enabled(std::env::var("SENTRY_SEND_IN_DEV").ok().as_deref());
+    if sentry_suppressed_in_dev(cfg!(debug_assertions), send_in_dev) {
+        return None;
+    }
     let release = resolve_sentry_release(std::env::var("SENTRY_RELEASE").ok());
     let environment =
         resolve_sentry_environment(std::env::var("SENTRY_ENVIRONMENT").ok(), cfg!(debug_assertions));
@@ -315,6 +325,24 @@ fn resolve_sentry_environment(env_environment: Option<String>, debug: bool) -> C
         Some(e) if !e.trim().is_empty() => Cow::Owned(e),
         _ => Cow::Borrowed(if debug { "development" } else { "production" }),
     }
+}
+
+/// Truthy check for the `SENTRY_SEND_IN_DEV` opt-in. Accepts `1`, `true`,
+/// `yes`, `on` (any case, surrounding whitespace ignored); everything else
+/// (including unset) is off. Pure for testability.
+fn sentry_send_in_dev_enabled(raw: Option<&str>) -> bool {
+    matches!(
+        raw.map(|v| v.trim().to_ascii_lowercase()).as_deref(),
+        Some("1" | "true" | "yes" | "on")
+    )
+}
+
+/// Whether a debug engine build should withhold Sentry: suppressed in dev
+/// unless the `SENTRY_SEND_IN_DEV` opt-in is set, so dev errors never reach the
+/// prod project (HOU-469). Release builds are never suppressed. Pure for
+/// testability.
+fn sentry_suppressed_in_dev(debug: bool, send_in_dev: bool) -> bool {
+    debug && !send_in_dev
 }
 
 /// Exit the process when the parent that launched us closes our stdin.
@@ -409,7 +437,7 @@ fn write_manifest(cfg: &ServerConfig, port: u16) {
 mod tests {
     use super::{
         block_until_stdin_closed, resolve_sentry_environment, resolve_sentry_release,
-        watchdog_should_arm,
+        sentry_send_in_dev_enabled, sentry_suppressed_in_dev, watchdog_should_arm,
     };
     use houston_engine_protocol::ENGINE_VERSION;
     use std::io::Cursor;
@@ -449,6 +477,30 @@ mod tests {
         assert_eq!(resolve_sentry_environment(None, false), "production");
         // Blank is treated as unset.
         assert_eq!(resolve_sentry_environment(Some("".into()), false), "production");
+    }
+
+    #[test]
+    fn send_in_dev_flag_parsing() {
+        // Off by default / unrecognized.
+        assert!(!sentry_send_in_dev_enabled(None));
+        assert!(!sentry_send_in_dev_enabled(Some("")));
+        assert!(!sentry_send_in_dev_enabled(Some("   ")));
+        assert!(!sentry_send_in_dev_enabled(Some("0")));
+        assert!(!sentry_send_in_dev_enabled(Some("false")));
+        // Documented truthy values, case- and whitespace-insensitive.
+        for v in ["1", "true", "yes", "on", "TRUE", " On ", "Yes"] {
+            assert!(sentry_send_in_dev_enabled(Some(v)), "expected {v} → true");
+        }
+    }
+
+    #[test]
+    fn sentry_suppressed_only_in_dev_without_optin() {
+        // Debug build: suppressed by default, sends only with the opt-in.
+        assert!(sentry_suppressed_in_dev(true, false));
+        assert!(!sentry_suppressed_in_dev(true, true));
+        // Release build: never suppressed, opt-in irrelevant.
+        assert!(!sentry_suppressed_in_dev(false, false));
+        assert!(!sentry_suppressed_in_dev(false, true));
     }
 
     #[test]
