@@ -114,9 +114,15 @@ function TimezoneCard({
 }) {
   return (
     <section className={cn("rounded-xl bg-secondary px-5 py-4", className)}>
-      <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-        {label}
-      </label>
+      {/* Title + hint share one row so the card stays short. */}
+      <div className="flex items-center justify-between gap-3 mb-1.5">
+        <label className="text-xs font-medium text-muted-foreground shrink-0">
+          {label}
+        </label>
+        <span className="text-xs text-muted-foreground/70 truncate min-w-0">
+          {hint}
+        </span>
+      </div>
       <div className="relative">
         <Globe
           className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
@@ -140,7 +146,6 @@ function TimezoneCard({
           ))}
         </select>
       </div>
-      <p className="text-xs text-muted-foreground/70 mt-1.5">{hint}</p>
     </section>
   )
 }
