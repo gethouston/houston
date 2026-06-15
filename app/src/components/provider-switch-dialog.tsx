@@ -59,6 +59,7 @@ export function ProviderSwitchDialog({
         <DialogTitle className="sr-only">{title}</DialogTitle>
         <DialogDescription className="sr-only">{body}</DialogDescription>
         <RowCard
+          size="md"
           media={<ProviderGlyph providerId={providerId} />}
           title={title}
           description={body}
