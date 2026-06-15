@@ -6,7 +6,6 @@ import { useUIStore } from "../../stores/ui";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { openAgentHref } from "../../lib/open-href";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
@@ -134,7 +133,7 @@ export function MissionControlArchived({
           onOpenLink={(url) => activeAgent && openAgentHref(url, activeAgent.folderPath)}
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
-          thinkingIndicator={<HoustonThinkingIndicator />}
+          thinkingIndicator={panel.thinkingIndicator}
           panelAgentName={activeAgent?.name ?? selectedItem?.subtitle}
           panelAvatar={<AgentPanelAvatar color={activeAgent?.color} running={false} />}
           cardLabels={{
@@ -155,6 +154,7 @@ export function MissionControlArchived({
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
+          renderMessageAvatar={panel.renderMessageAvatar}
           renderTurnSummary={panel.renderTurnSummary}
           renderLink={panel.renderLink}
           transformContent={panel.transformContent}

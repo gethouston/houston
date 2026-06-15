@@ -22,7 +22,7 @@ import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import { ChatProcessBlock } from "./chat-process-block";
 import type { ChatProcessLabels } from "./chat-process-block";
-import { getChatDisplayItems } from "./chat-process-groups";
+import { getChatDisplayItems, shouldShowThinkingIndicator } from "./chat-process-groups";
 import { computeTurnEndSummary } from "./turn-tools";
 import type { TurnEndSummary } from "./turn-tools";
 import type { ChatMessage } from "./feed-to-messages";
@@ -91,6 +91,10 @@ export function ChatMessages({
     () => getChatDisplayItems(messages, status),
     [messages, status],
   );
+  // HOU-471: show the standalone "Mission in progress..." line only when no
+  // active process block is already surfacing it (see the helper) — otherwise
+  // the two would duplicate while the agent runs tools.
+  const showThinkingIndicator = shouldShowThinkingIndicator(displayItems, status);
   return (
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
@@ -190,7 +194,7 @@ export function ChatMessages({
             </Message>
           );
         })}
-        {status === "submitted" && (
+        {showThinkingIndicator && (
           <Message from="assistant">
             <MessageContent>
               {thinkingIndicator}

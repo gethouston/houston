@@ -6,7 +6,6 @@ import { useUIStore } from "../../stores/ui";
 import { openAgentHref } from "../../lib/open-href";
 import { buildMissionBoardColumns } from "../mission-board-columns";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useQueuedMessageLabels } from "../use-queued-message-labels";
 import { useAgentChatPanel } from "../use-agent-chat-panel";
@@ -160,7 +159,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           actions={cardActions}
           panelActions={panelActions}
           cardAvatar={source.cardAvatar}
-          thinkingIndicator={<HoustonThinkingIndicator />}
+          thinkingIndicator={panel.thinkingIndicator}
           panelAgentName={source.panelAgentName}
           panelAvatar={
             <AgentPanelAvatar
@@ -186,6 +185,7 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
+          renderMessageAvatar={panel.renderMessageAvatar}
           renderTurnSummary={panel.renderTurnSummary}
           renderLink={panel.renderLink}
           transformContent={panel.transformContent}

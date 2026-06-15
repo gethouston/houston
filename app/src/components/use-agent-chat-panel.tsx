@@ -145,6 +145,10 @@ interface AgentChatPanelProps {
   renderToolResult: ChatPanelProps["renderToolResult"];
   processLabels: ChatPanelProps["processLabels"];
   getThinkingMessage: ChatPanelProps["getThinkingMessage"];
+  /** Calm "Mission in progress..." line shown while a turn is in flight. */
+  thinkingIndicator: ChatPanelProps["thinkingIndicator"];
+  /** Static Houston helmet rendered at the end of each agent reply. */
+  renderMessageAvatar: ChatPanelProps["renderMessageAvatar"];
   renderTurnSummary: ChatPanelProps["renderTurnSummary"];
   renderSystemMessage: AIBoardProps["renderSystemMessage"];
   mapFeedItems: AIBoardProps["mapFeedItems"];
@@ -167,7 +171,8 @@ export function useAgentChatPanel({
   onSelectSession,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t } = useTranslation(["board", "chat"]);
-  const { processLabels, getThinkingMessage } = useChatDisplayLabels();
+  const { processLabels, getThinkingMessage, thinkingIndicator, renderMessageAvatar } =
+    useChatDisplayLabels();
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
@@ -937,6 +942,8 @@ export function useAgentChatPanel({
     renderToolResult,
     processLabels,
     getThinkingMessage,
+    thinkingIndicator,
+    renderMessageAvatar,
     renderTurnSummary,
     renderSystemMessage,
     mapFeedItems,
