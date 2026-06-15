@@ -6,6 +6,7 @@
     "workspaceContext": "Contexto do espaço",
     "userContext": "Contexto do usuário",
     "provider": "Provedor de IA",
+    "phone": "Conectar celular",
     "shortcuts": "Atalhos de teclado",
     "reportBug": "Reportar bug"
   },
@@ -39,6 +40,28 @@
   "provider": {
     "title": "Provedor de IA",
     "description": "O Houston usa <emph>sua própria</emph> assinatura. Nunca vemos suas credenciais."
+  },
+  "connectPhone": {
+    "title": "Conectar celular",
+    "description": "Escaneie este código para usar o Houston no seu celular. O mesmo código continua funcionando enquanto este computador estiver ligado e o Houston estiver aberto.",
+    "loading": "Preparando a conexão com seu celular…",
+    "connectingStatus": "Conectando ao serviço do celular. Costuma levar alguns segundos.",
+    "keepComputerAwake": "Mantenha este computador aberto enquanto você usa o Houston no celular.",
+    "alwaysOnHint": "Para acesso 24/7, <emph>Always On</emph> roda o Houston nos nossos servidores.",
+    "errors": {
+      "noInternet": "O Houston precisa de internet na primeira vez que você abre o app. Conecte-se e reabra o Houston para habilitar o pareamento do celular.",
+      "generic": "Não foi possível gerar um código de pareamento. Tente novamente."
+    },
+    "reset": {
+      "title": "Desconectar todos os celulares",
+      "description": "Redefine o QR e sai de todos os celulares conectados a este computador.",
+      "button": "Desconectar todos os celulares",
+      "confirmTitle": "Desconectar todos os celulares?",
+      "confirmDescription": "Isso redefine o QR e sai de todos os celulares conectados a este computador. Escaneie o novo QR para conectar de novo.",
+      "confirmLabel": "Desconectar",
+      "toast": "Acesso pelo celular redefinido",
+      "unavailable": "Disponível quando a conexão com seu celular estiver pronta."
+    }
   },
   "timezone": {
     "title": "Fuso horário",

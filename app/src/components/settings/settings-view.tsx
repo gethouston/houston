@@ -15,9 +15,11 @@ type SettingsSectionId =
   | "workspaceContext"
   | "userContext"
   | "provider"
+  | "phone"
   | "shortcuts"
   | "reportBug";
 import { AccountSection, useAccountAvailable } from "./sections/account";
+import { ConnectPhoneSection } from "./sections/connect-phone";
 import { WorkspaceSection } from "./sections/workspace";
 import {
   WorkspaceContextSection,
@@ -124,6 +126,10 @@ export function SettingsView() {
               </div>
             )}
             {activeVisible === "provider" && <ProviderSection />}
+            {/* Connect-phone section kept but intentionally not in the nav above:
+                the entry point was removed (HOU-473) so it's unreachable today.
+                Re-add the `phone` nav item to surface it again. */}
+            {activeVisible === "phone" && <ConnectPhoneSection />}
             {activeVisible === "shortcuts" && <ShortcutsSection />}
             {activeVisible === "reportBug" && <ReportBugSection />}
           </div>
