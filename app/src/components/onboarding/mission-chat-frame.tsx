@@ -7,7 +7,7 @@ interface MissionChatFrameProps {
   meta: MissionMeta;
   brandLabel: string;
   counterLabel: string;
-  /** Always-on escape hatch label, e.g. "Skip tutorial". */
+  /** Always-on escape hatch label, e.g. "Skip". */
   skipLabel: string;
   onSkip: () => void;
   /** Full-bleed ChatPanel goes here. */
@@ -15,15 +15,10 @@ interface MissionChatFrameProps {
 }
 
 /**
- * Full-screen chat frame for the back-half missions (Try, Skill, Routine).
- * Replaces the old `MissionWithChatFrame` split layout: the user's
- * attention sits on the chat, all instructional copy lives in an
- * accompanying `MissionIntroModal` rendered on first mount.
- *
- * Header is intentionally minimal — brand left, mission counter + progress
- * dots middle, skip link right. No mission title or up-next hint here;
- * those belong to the intro modal so the chat owns the rest of the
- * viewport.
+ * The final setup step (send an email) is a live chat, but it lives in the same
+ * world as the rest of setup: a centered white card on the gray setup backdrop,
+ * with a minimal header (brand · counter · skip). So the chat reads as part of
+ * the wizard, not a separate full-screen app.
  */
 export function MissionChatFrame({
   meta,
@@ -34,17 +29,15 @@ export function MissionChatFrame({
   children,
 }: MissionChatFrameProps) {
   return (
-    <div className="flex h-screen flex-col bg-background text-foreground">
-      <header className="shrink-0 border-b border-black/5 bg-background/95 px-5 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4">
+    <div className="flex h-screen flex-col items-center bg-secondary/60 px-6 py-6 text-foreground">
+      <div className="flex min-h-0 w-full max-w-3xl flex-1 flex-col overflow-hidden rounded-2xl border border-black/10 bg-background shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+        <header className="flex shrink-0 items-center justify-between gap-4 border-b border-black/5 px-5 py-3">
           <div className="flex items-center gap-2">
             <HoustonLogo size={20} />
             <span className="text-sm font-medium">{brandLabel}</span>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-muted-foreground">
-              {counterLabel}
-            </span>
+            <span className="text-xs text-muted-foreground">{counterLabel}</span>
             <ProgressDots index={meta.index} total={meta.total} />
           </div>
           <button
@@ -54,11 +47,9 @@ export function MissionChatFrame({
           >
             {skipLabel}
           </button>
-        </div>
-      </header>
-      <main className="mx-auto flex w-full max-w-3xl min-h-0 flex-1 flex-col px-6 py-4">
-        {children}
-      </main>
+        </header>
+        <main className="flex min-h-0 flex-1 flex-col px-6 py-4">{children}</main>
+      </div>
     </div>
   );
 }

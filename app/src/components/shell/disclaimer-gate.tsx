@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { SetupCard } from "../onboarding/setup-card";
-import { WelcomeScreen } from "../onboarding/welcome-screen";
 
 interface Section {
   heading: string;
@@ -19,90 +18,36 @@ interface Section {
 
 /**
  * First-run gate. Renders `children` once the user has accepted the current
- * disclaimer version; otherwise it owns the start of setup: on a genuine first
- * run it shows Welcome then the Agreement, and on a version-bump re-prompt
- * (the user accepted an older version) it shows the Agreement alone. Both
- * screens use the shared `SetupCard` so the whole flow — through onboarding —
- * reads as one coherent setup. Copy lives in `locales/<lang>/legal.json` and
- * `setup.json`.
+ * disclaimer version; otherwise it shows the Agreement on the shared
+ * `SetupCard` so it reads as part of the same setup flow (the macOS-style
+ * Welcome + language pick run before this, in the LanguageGate). Copy lives in
+ * `locales/<lang>/legal.json` and `setup.json`.
  */
 export function DisclaimerGate({ children }: { children: ReactNode }) {
-  const { isAccepted, hasPriorAcceptance, isLoading, accept, decline } =
-    useLegalAcceptance();
+  const { isAccepted, isLoading, accept, decline } = useLegalAcceptance();
 
   if (isLoading) {
     return (
       <div
         aria-hidden
-        className="flex h-screen w-screen items-center justify-center bg-background"
+        className="flex h-screen w-screen items-center justify-center bg-secondary/60"
       />
     );
   }
 
   if (isAccepted) return <>{children}</>;
 
-  return (
-    <FirstRunConsent
-      hasPriorAcceptance={hasPriorAcceptance}
-      onAccept={accept}
-      onDecline={decline}
-    />
-  );
-}
-
-function FirstRunConsent({
-  hasPriorAcceptance,
-  onAccept,
-  onDecline,
-}: {
-  hasPriorAcceptance: boolean;
-  onAccept: () => Promise<void>;
-  onDecline: () => Promise<void>;
-}) {
-  const { t } = useTranslation(["setup", "legal"]);
-  // Version-bump re-prompt (already accepted before) skips straight to the
-  // agreement — a returning user doesn't need the Welcome intro again.
-  const [stage, setStage] = useState<"welcome" | "agreement">(
-    hasPriorAcceptance ? "agreement" : "welcome",
-  );
-
-  if (stage === "welcome") {
-    return (
-      <WelcomeScreen
-        title={t("setup:tutorial.welcome.title")}
-        tagline={t("setup:tutorial.welcome.tagline")}
-        stepsTitle={t("setup:tutorial.welcome.stepsTitle")}
-        steps={[
-          t("setup:tutorial.welcome.steps.meet"),
-          t("setup:tutorial.welcome.steps.brain"),
-          t("setup:tutorial.welcome.steps.tools"),
-          t("setup:tutorial.welcome.steps.email"),
-        ]}
-        startLabel={t("setup:tutorial.welcome.start")}
-        onStart={() => setStage("agreement")}
-      />
-    );
-  }
-
-  return (
-    <AgreementScreen
-      onBack={hasPriorAcceptance ? undefined : () => setStage("welcome")}
-      onAccept={onAccept}
-      onDecline={onDecline}
-    />
-  );
+  return <AgreementScreen onAccept={accept} onDecline={decline} />;
 }
 
 function AgreementScreen({
-  onBack,
   onAccept,
   onDecline,
 }: {
-  onBack?: () => void;
   onAccept: () => Promise<void>;
   onDecline: () => Promise<void>;
 }) {
-  const { t } = useTranslation(["legal", "setup"]);
+  const { t } = useTranslation("legal");
   const scrollRef = useRef<HTMLDivElement>(null);
   const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
   const [busy, setBusy] = useState<"accept" | "decline" | null>(null);
@@ -152,8 +97,6 @@ function AgreementScreen({
       eyebrow={t("legal:kicker")}
       title={t("legal:title")}
       subtitle={t("legal:intro")}
-      onBack={onBack}
-      backLabel={t("setup:tutorial.nav.back")}
       onNext={() => void handleAccept()}
       nextLabel={
         busy === "accept" ? t("legal:buttons.accept_busy") : t("legal:buttons.accept")

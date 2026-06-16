@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatPanel, type FeedItem } from "@houston-ai/chat";
-import { HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
+import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import { tauriAgent, tauriChat, tauriSystem } from "../../../lib/tauri";
 import { logger } from "../../../lib/logger";
 import { createMission } from "../../../lib/create-mission";
@@ -373,18 +373,16 @@ export function EmailMission({
             // their own action rather than something the modal auto-fired.
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
               {introDismissed && (
-                <button
+                <Button
                   type="button"
                   onClick={() =>
                     void handlePick(t("setup:tutorial.missions.email.chip"))
                   }
                   disabled={pickedAny}
-                  className={cn(
-                    "h-10 rounded-full border border-black/15 bg-background px-5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50",
-                  )}
+                  className="h-11 rounded-full px-5"
                 >
                   {t("setup:tutorial.missions.email.chip")}
-                </button>
+                </Button>
               )}
             </div>
           )}
