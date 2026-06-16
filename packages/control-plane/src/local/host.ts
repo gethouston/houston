@@ -35,6 +35,14 @@ export interface LocalHostOptions {
   credentialsPath: string;
   /** Loopback port; the Tauri shell reads it from the startup banner. */
   port: number;
+  /**
+   * Interface to bind. Defaults to `127.0.0.1` — the desktop sidecar must stay
+   * loopback-only so nothing on the network can drive the user's agents. The
+   * self-host deployment (a single-user VPS behind a TLS reverse proxy) sets
+   * this to `0.0.0.0` via HOUSTON_HOST_BIND; the boot token still gates every
+   * request, so exposing the port is safe only WITH that token + TLS in front.
+   */
+  bind?: string;
   /** Random per-boot token the shell presents on every request (SingleUserVerifier). */
   token: string;
   /** argv to launch a pi-runtime: dev `["bun","run",".../runtime/src/main.ts"]`, prod the sidecar. */
@@ -154,7 +162,8 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
           console.error("[local-host] chat-history migration failed (continuing):", err);
         }
       }
-      await new Promise<void>((resolve) => server.listen(opts.port, "127.0.0.1", () => resolve()));
+      const bind = opts.bind ?? "127.0.0.1";
+      await new Promise<void>((resolve) => server.listen(opts.port, bind, () => resolve()));
       watcher.start();
       scheduler.start();
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).

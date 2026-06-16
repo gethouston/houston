@@ -14,7 +14,9 @@ import { houstonSystemPrompt } from "../houston-prompt";
  *   HOUSTON_CREDENTIALS_PATH  ~/.houston/credentials.json
  *   HOUSTON_CHAT_HISTORY_DB   ~/.houston/db/houston.db (Rust-era chat to migrate)
  *   HOUSTON_HOST_PORT         4318
- *   HOUSTON_HOST_TOKEN        random per boot
+ *   HOUSTON_HOST_BIND         127.0.0.1 (desktop). Self-host on a VPS sets
+ *                             0.0.0.0 to expose it behind a TLS reverse proxy.
+ *   HOUSTON_HOST_TOKEN        random per boot (set a fixed one for self-host)
  *   HOUSTON_RUNTIME_COMMAND   argv to launch a pi-runtime (space-separated);
  *                             explicit override (highest priority). Otherwise:
  *                             the compiled sidecar spawns ITSELF (in runtime
@@ -48,6 +50,8 @@ const host = buildLocalHost({
   chatHistoryDbPath:
     process.env.HOUSTON_CHAT_HISTORY_DB || join(houstonHome, "db", "houston.db"),
   port: Number(process.env.HOUSTON_HOST_PORT || 4318),
+  // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
+  bind: process.env.HOUSTON_HOST_BIND || undefined,
   token: process.env.HOUSTON_HOST_TOKEN || randomBytes(32).toString("hex"),
   runtimeCommand: runtimeCommand(),
   // The real Tauri app hands over its own product prompt; this is the built-in

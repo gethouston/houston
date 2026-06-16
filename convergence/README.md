@@ -59,6 +59,18 @@ Critical path: P0 → P1 → P3 → P5. P1∥P2, P3∥P4.
 | CLAUDE.md | none needed — pi discovers CLAUDE.md natively |
 | Preferences / tunnel / engine tokens | prefs → host store; tunnel/tokens regenerate, mobile re-pairs |
 
+## Self-host (single-user VPS)
+
+The local profile IS a server (`buildLocalHost` = `createControlPlaneServer` +
+local adapters), so self-hosting is a deployment of it, not new code: bind
+`0.0.0.0` (`HOUSTON_HOST_BIND`, default loopback so the desktop stays
+unexposed), persist `~/.houston` to a volume, put TLS in front. One container
+runs the host, which spawns pi runtimes in-container over loopback exactly like
+the desktop — "local = the cloud shrunk to one machine," literally the same
+code. Artifacts + guide: `selfhost/` (Dockerfile, Caddy TLS compose, README).
+Replaces the v1 `always-on/` Rust-engine image. The engine boot was verified on
+a clean-room per-package install; the image build itself wants a Docker host.
+
 ## Standing decisions
 
 - Gemini: **dropped at cutover** (pi has google provider but API-key-only; no Google OAuth; non-technical users don't paste keys). Revisit if pi grows Google OAuth.

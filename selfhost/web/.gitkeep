@@ -1,0 +1,12 @@
+# Optional web-app docroot for the self-host Caddy.
+#
+# Leave this empty to run engine-only (point the desktop app or a separately
+# hosted web build at https://<your-domain>/engine). To serve the web app from
+# the SAME domain, drop a production build here:
+#
+#   pnpm --filter houston-web build   # with VITE_NEW_ENGINE=1 (see ../README.md)
+#   cp -r packages/web/dist/* selfhost/web/
+#
+# Caddy serves whatever is in this directory at https://<your-domain>/ and
+# proxies the engine at https://<your-domain>/engine. This file just keeps the
+# directory present in git so the compose bind-mount has something to mount.

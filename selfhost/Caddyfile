@@ -1,0 +1,31 @@
+# Caddy in front of the Houston self-host engine: automatic HTTPS (Let's Encrypt)
+# + an SSE-safe reverse proxy. Caddy obtains and renews the cert for $HOUSTON_DOMAIN
+# on its own, so the engine only ever speaks plain HTTP inside the Docker network.
+#
+# Layout (one origin, no CORS, no mixed content):
+#   https://$HOUSTON_DOMAIN/engine/*  → the host API (prefix stripped)
+#   https://$HOUSTON_DOMAIN/*         → the web app, IF you've mounted a build
+#                                       into /srv (see README "Frontend"); else 404.
+
+{$HOUSTON_DOMAIN} {
+	# The engine. handle_path strips the /engine prefix, so the host sees its
+	# real routes (/v1/..., /agents/...). Point the web client's engine URL at
+	# https://$HOUSTON_DOMAIN/engine and everything lines up on one origin.
+	handle_path /engine/* {
+		reverse_proxy host:4318 {
+			# Stream Server-Sent Events immediately — chat turns and the global
+			# /v1/events firehose both rely on unbuffered flushing. Without this
+			# the UI hangs waiting for a response that's actually streaming.
+			flush_interval -1
+		}
+	}
+
+	# The web SPA, served from /srv when present (mount a `pnpm --filter
+	# houston-web build` dist there — see README). try_files makes client-side
+	# routing work; if /srv is empty the engine above still works on its own.
+	handle {
+		root * /srv
+		try_files {path} /index.html
+		file_server
+	}
+}
