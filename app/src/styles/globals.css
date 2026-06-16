@@ -90,33 +90,23 @@ body {
   }
 }
 
-/* Welcome hero: a dark stage with a subtle two-tone glow — blue from the
-   bottom-left, orange from the top-right — like the "Always On" card on the
-   landing page. Static + a barely-there breathing drift; the rotating greeting
-   blurs + scales in for a premium feel. */
-@keyframes welcome-glow-drift {
-  0%,
-  100% {
-    transform: translate(0, 0) scale(1);
-  }
-  50% {
-    transform: translate(1.5%, -1.5%) scale(1.04);
-  }
-}
+/* Welcome hero: the exact "Always On" pricing-card glow from the landing page
+   (website/src/index.html) — a white stage with a faint blue ellipse from the
+   bottom-left and a faint orange ellipse from the top-right. Static, no blur;
+   the refinement is in how subtle it is. The rotating greeting blurs + scales
+   in for a premium feel. */
 .welcome-aurora {
   background:
     radial-gradient(
-      48% 42% at 10% 94%,
-      rgba(37, 99, 235, 0.32),
-      transparent 72%
+      ellipse 80% 60% at 20% 100%,
+      rgba(59, 130, 246, 0.08),
+      transparent
     ),
     radial-gradient(
-      46% 42% at 90% 8%,
-      rgba(234, 88, 12, 0.24),
-      transparent 72%
+      ellipse 60% 50% at 80% 0%,
+      rgba(249, 115, 22, 0.06),
+      transparent
     );
-  filter: blur(36px);
-  animation: welcome-glow-drift 18s ease-in-out infinite;
 }
 @keyframes welcome-greeting-in {
   0% {
@@ -134,7 +124,6 @@ body {
   animation: welcome-greeting-in 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .welcome-aurora,
   .welcome-greeting-in {
     animation: none;
   }

@@ -1,5 +1,6 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
+import { Button } from "@houston-ai/core";
 
 import { HoustonLogo } from "./experience-card";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
@@ -129,34 +130,26 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
   const greeting = GREETINGS[i];
 
   return (
-    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#060606] px-6 text-white">
-      {/* Two-tone corner glow: blue bottom-left, orange top-right (the
-          "Always On" card look). */}
+    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
+      {/* The exact "Always On" card glow: blue bottom-left, orange top-right. */}
       <div className="welcome-aurora pointer-events-none absolute inset-0" />
 
       <div className="relative z-10 flex flex-col items-center gap-12 text-center">
-        <HoustonLogo
-          size={76}
-          className="text-white drop-shadow-[0_0_28px_rgba(255,255,255,0.18)]"
-        />
+        <HoustonLogo size={72} />
         {/* Fixed height so greetings of different lengths don't shift the logo
             or button; the word itself blurs + scales in each rotation. */}
         <div className="flex min-h-[150px] max-w-2xl items-center justify-center">
           <h1
             key={greeting.title}
-            className="welcome-greeting-in bg-gradient-to-b from-white to-white/70 bg-clip-text text-[44px] font-semibold leading-[1.1] tracking-tight text-transparent"
+            className="welcome-greeting-in bg-gradient-to-b from-foreground to-foreground/55 bg-clip-text text-[44px] font-semibold leading-[1.1] tracking-tight text-transparent"
           >
             {greeting.title}
           </h1>
         </div>
-        <button
-          type="button"
-          onClick={onContinue}
-          className="inline-flex h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 text-sm font-medium text-white backdrop-blur-md transition-colors hover:border-white/30 hover:bg-white/20"
-        >
+        <Button className="h-11 rounded-full px-6" onClick={onContinue}>
           {greeting.cta}
           <ArrowRight className="size-4" />
-        </button>
+        </Button>
       </div>
     </div>
   );
