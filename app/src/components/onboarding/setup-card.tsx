@@ -64,7 +64,7 @@ export function SetupCard({
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         )}
 
-        <div className="mt-6 flex-1">{children}</div>
+        <div className="mt-6 flex flex-1 flex-col">{children}</div>
 
         {(onBack || onNext || helper) && (
           <div className="mt-8 flex items-center justify-between gap-4">
@@ -154,11 +154,11 @@ export function OptionCard({
       disabled={disabled}
       aria-pressed={selected}
       className={cn(
-        "flex w-full flex-col gap-3 rounded-xl border bg-background p-4 text-left transition-all",
+        "flex w-full flex-col gap-3 rounded-xl p-4 text-left transition-colors",
         disabled
-          ? "cursor-not-allowed border-black/5 opacity-60"
-          : "border-black/10 hover:border-black/25",
-        selected && !disabled && "border-foreground",
+          ? "cursor-not-allowed bg-secondary/50 opacity-60"
+          : "bg-secondary hover:bg-black/[0.06]",
+        selected && !disabled && "ring-1 ring-foreground",
       )}
     >
       <div className="flex items-center gap-3">
@@ -168,7 +168,7 @@ export function OptionCard({
           </span>
         )}
         {leading && (
-          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-background">
             {leading}
           </span>
         )}

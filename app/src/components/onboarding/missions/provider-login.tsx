@@ -120,7 +120,7 @@ export function ProviderLoginMission({
       nextDisabled={!connected}
       nextLoading={submitting}
     >
-      <div className="flex flex-col items-center gap-5 py-6 text-center">
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
         <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
           <ProviderGlyph providerId={providerId} />
         </span>

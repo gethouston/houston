@@ -43,6 +43,7 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
       nextDisabled={!isSignedIn}
       helper={isSignedIn ? t("tutorial.missions.tools.continueHint") : undefined}
     >
+      <div className="flex flex-1 flex-col justify-center">
       <div
         className={cn(
           "flex items-center gap-4 rounded-xl border bg-background p-4 transition-colors",
@@ -82,6 +83,7 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
             {t("tutorial.missions.tools.signIn")}
           </AsyncButton>
         )}
+      </div>
       </div>
       <ComposioAuthDialog
         state={auth.state}
