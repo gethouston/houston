@@ -46,9 +46,9 @@ const DISPLAY_NAMES: Record<SupportedLocale, string> = {
 // "Welcome to Houston" across the supported languages. Gender-neutral phrasings
 // (LatAm-neutral Spanish, Brazilian Portuguese) to match the product voice.
 const GREETINGS = [
-  { title: "Welcome to Houston", cta: "Continue" },
-  { title: "Te damos la bienvenida a Houston", cta: "Continuar" },
-  { title: "Boas-vindas ao Houston", cta: "Continuar" },
+  { title: "Welcome to Houston!", cta: "Continue" },
+  { title: "¡Bienvenido a Houston!", cta: "Continuar" },
+  { title: "Boas-vindas ao Houston!", cta: "Continuar" },
 ];
 
 // Survives a remount within the session: if the user goes back to the picker
@@ -132,7 +132,7 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
   return (
     <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
       {/* The exact "Always On" card glow: blue bottom-left, orange top-right. */}
-      <div className="welcome-aurora pointer-events-none absolute inset-0" />
+      <div className="houston-glow pointer-events-none absolute inset-0" />
 
       <div className="relative z-10 flex flex-col items-center gap-12 text-center">
         <HoustonLogo size={72} />

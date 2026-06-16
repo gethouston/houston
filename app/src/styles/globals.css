@@ -90,12 +90,12 @@ body {
   }
 }
 
-/* Welcome hero: the exact "Always On" pricing-card glow from the landing page
-   (website/src/index.html) — a white stage with a faint blue ellipse from the
-   bottom-left and a faint orange ellipse from the top-right. Static, no blur;
-   the refinement is in how subtle it is. The rotating greeting blurs + scales
-   in for a premium feel. */
-.welcome-aurora {
+/* The exact "Always On" pricing-card glow from the landing page
+   (website/src/index.html) — a faint blue ellipse from the bottom-left and a
+   faint orange ellipse from the top-right over a light base. Static, no blur;
+   the refinement is in how subtle it is. Used behind the whole setup flow and
+   the main app. */
+.houston-glow {
   background:
     radial-gradient(
       ellipse 80% 60% at 20% 100%,

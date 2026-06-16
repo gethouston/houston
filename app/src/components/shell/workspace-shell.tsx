@@ -98,7 +98,7 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
     <DetailPanelProvider value={panelContainer}>
       <div
         className={cn(
-          "flex h-screen bg-background text-foreground",
+          "houston-glow flex h-screen text-foreground",
           uiTourActive && "pointer-events-none [&_*]:select-none",
         )}
       >
