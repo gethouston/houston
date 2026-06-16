@@ -103,7 +103,7 @@
     "binary_name": "skillspector",
     "license": "Apache-2.0",
     "ship_layout": "python-venv-per-arch",
-    "$ship_layout_comment": "NVIDIA SkillSpector is a Python 3.12/3.13 security scanner for agent skills. It is NOT published to PyPI and ships no prebuilt binary (verified: pypi.org/pypi/skillspector/json 404, zero GitHub releases), so we pin a commit SHA and install from git source. We bundle it as a relocatable python-build-standalone interpreter with the package + its deps installed into the interpreter's own site-packages, shipped per-arch at resources/bin/skillspector-<arch>/ (mirrors the per-arch composio/gemini layout). Shipping a real relocatable interpreter rather than a PyInstaller freeze is deliberate: SkillSpector resolves its bundled YARA rule files via Path(__file__), which a frozen _MEIPASS layout silently breaks so the scanner compiles zero rules and quietly passes everything; a real interpreter keeps __file__ correct so all four rule files load. The engine invokes `<dir>/bin/python3.x <dir>/bin/skillspector scan <path> --no-llm --format json` (passing the console-script path to python bypasses the venv shebang so the bundle survives relocation). Built for the release runner's NATIVE arch only: the native deps below (cryptography, yara-python, grpcio) do not cross-compile reliably on an arm host and the universal .app is produced on one runner, so the scanner ships for the build host's arch (arm64 on the current Apple Silicon runner). Apple Silicon Macs get the scanner; Intel Macs running the universal .app get clean degradation (install proceeds without the pre-scan, resolver returns None) until a native x86_64 build runner is added. The darwin-x64 build block below is the pinned config for that phase-2 work. Windows mirrors gemini's phase-2 fork-build plan.",
+    "$ship_layout_comment": "NVIDIA SkillSpector is a Python 3.12/3.13 security scanner for agent skills. It is NOT published to PyPI and ships no prebuilt binary (verified: pypi.org/pypi/skillspector/json 404, zero GitHub releases), so we pin a commit SHA and install from git source. We bundle it as a relocatable python-build-standalone interpreter with the package + its deps installed into the interpreter's own site-packages, shipped per-arch at resources/bin/skillspector-<arch>/ (mirrors the per-arch composio/gemini layout). Shipping a real relocatable interpreter rather than a PyInstaller freeze is deliberate: SkillSpector resolves its bundled YARA rule files via Path(__file__), which a frozen _MEIPASS layout silently breaks so the scanner compiles zero rules and quietly passes everything; a real interpreter keeps __file__ correct so all four rule files load. The engine invokes `python -c 'from skillspector.cli import app; app()' scan <path> --no-llm --format json` — importing the CLI app bypasses the installed console-script launcher (whose embedded build-time path is stale after the bundle is relocated) on every OS. Coverage: built per-arch for all 4 targets Houston ships (darwin-arm64, darwin-x64, windows-x64, windows-arm64). darwin-arm64 builds natively on the Apple Silicon runner; darwin-x64 builds under Rosetta on that same runner; windows-x64 and windows-arm64 build natively on their own runners (windows-latest, windows-11-arm). Every dep ships wheels for windows-x64 + darwin-arm64 (deterministic, zero compilation); darwin-x64 + windows-arm64 compile a few deps from sdist on the native/Rosetta runner. Staging is BEST-EFFORT: a build failure on any arch is non-fatal and ships without the scanner there, and the app degrades cleanly (resolver returns None, scan API returns 'unavailable', install proceeds without the pre-scan).",
     "$build_comment": "Reproducible git-source build, same pin philosophy as the composio Windows fork. Build host needs `uv` on PATH (it downloads the target-arch python-build-standalone CPython and resolves arch-specific wheels). Both macOS arches cross-build from a single arm64 runner: uv downloads the target-arch standalone interpreter and selects arch wheels via --python-platform; SkillSpector itself is pure Python (none-any wheel) so it builds host-side. --no-llm keeps the scan keyless and (for skills with no dependency manifest, i.e. plain SKILL.md) network-free.",
     "build": {
       "darwin-arm64": {
@@ -121,6 +121,22 @@
         "python_version": "3.13",
         "python_download": "cpython-3.13-macos-x86_64",
         "python_platform": "x86_64-apple-darwin"
+      },
+      "windows-x64": {
+        "source_repo": "https://github.com/NVIDIA/SkillSpector.git",
+        "source_ref": "main",
+        "source_sha": "e4cb70f5c93961371a33136c180d3b9aa8ccbf31",
+        "python_version": "3.13",
+        "python_download": "cpython-3.13-windows-x86_64",
+        "python_platform": "x86_64-pc-windows-msvc"
+      },
+      "windows-arm64": {
+        "source_repo": "https://github.com/NVIDIA/SkillSpector.git",
+        "source_ref": "main",
+        "source_sha": "e4cb70f5c93961371a33136c180d3b9aa8ccbf31",
+        "python_version": "3.13",
+        "python_download": "cpython-3.13-windows-aarch64",
+        "python_platform": "aarch64-pc-windows-msvc"
       }
     }
   },

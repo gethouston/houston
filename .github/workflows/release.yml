@@ -339,6 +339,11 @@ jobs:
             brew install uv
             echo "::endgroup::"
           fi
+          # The x86_64 SkillSpector slice builds under Rosetta on this Apple
+          # Silicon runner (uv drives the install through the x86_64
+          # interpreter). Idempotent — a no-op if already present.
+          softwareupdate --install-rosetta --agree-to-license || \
+            echo "::warning::Rosetta install failed; the x86_64 (Intel) skill scanner may not bundle"
           ./scripts/fetch-cli-deps.sh both
 
           echo "=== Staged bundle ==="
@@ -352,10 +357,13 @@ jobs:
           test -x app/src-tauri/resources/bin/composio-aarch64/composio
           test -x app/src-tauri/resources/bin/composio-x86_64/composio
           test -f app/src-tauri/resources/bin/cli-deps.json
-          # SkillSpector ships for the runner's native arch only (arm64 on
-          # Apple Silicon); see cli-deps.json ship_layout comment.
-          test -f app/src-tauri/resources/bin/skillspector-aarch64/bin/skillspector
-          test -x app/src-tauri/resources/bin/skillspector-aarch64/bin/python3
+          # SkillSpector is best-effort (see cli-deps.json ship_layout): arm64
+          # is fully wheel-covered and expected; x86_64 builds under Rosetta.
+          # Report coverage but never fail the release on it — the app
+          # degrades cleanly without the scanner.
+          test -d app/src-tauri/resources/bin/skillspector-aarch64 \
+            || echo "::warning::skillspector-aarch64 (Apple Silicon scanner) did not build"
+          echo "SkillSpector coverage:"; ls -d app/src-tauri/resources/bin/skillspector-* 2>/dev/null || echo "  (none)"
 
           LIPO_INFO=$(lipo -info app/src-tauri/resources/bin/codex)
           echo "$LIPO_INFO"
@@ -610,8 +618,13 @@ jobs:
           test -x "$BIN/gemini-aarch64/gemini"     || { echo "::error::gemini-aarch64/gemini missing"; exit 1; }
           test -x "$BIN/gemini-x86_64/gemini"      || { echo "::error::gemini-x86_64/gemini missing"; exit 1; }
           # SkillSpector ships for the native (arm64) arch only in v1.
-          test -f "$BIN/skillspector-aarch64/bin/skillspector" || { echo "::error::skillspector-aarch64 scanner missing"; exit 1; }
-          test -x "$BIN/skillspector-aarch64/bin/python3"      || { echo "::error::skillspector-aarch64 interpreter missing"; exit 1; }
+          # SkillSpector is best-effort (degrades cleanly when absent), so
+          # report coverage but don't fail the release on it. The Mach-O
+          # signing loop below still verifies whatever skillspector tree DID
+          # ship (notarization needs every Mach-O signed).
+          for ssa in skillspector-aarch64 skillspector-x86_64; do
+            test -d "$BIN/$ssa" && echo "  $ssa scanner bundled" || echo "::warning::$ssa scanner not bundled (install still works, no pre-scan)"
+          done
           test -f "$BIN/cli-deps.json" || { echo "::error::cli-deps.json manifest missing"; exit 1; }
           ls -lah "$BIN"
 
@@ -1142,11 +1155,21 @@ jobs:
       # its GitHub release instead (pinned), which is far more reliable. The
       # x64 binary runs natively on x64 and under emulation on the ARM64 runner;
       # it's only used to decompress the codex archive in fetch-cli-deps.sh.
-      - name: Install jq + zstd
+      - name: Install jq + zstd + uv
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
           jq --version
+
+          # uv builds the bundled SkillSpector — downloads the native
+          # standalone CPython for this runner's arch and resolves wheels
+          # (the windows-x64 + windows-arm64 runners are both native, so no
+          # cross-build). Idempotent.
+          if (-not (Get-Command uv -ErrorAction SilentlyContinue)) {
+            Write-Host "Installing uv"
+            powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+            echo "$env:USERPROFILE\.local\bin" | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          }
 
           $ZSTD = "1.5.6"
           $zip = "zstd-v$ZSTD-win64.zip"
@@ -1192,6 +1215,12 @@ jobs:
           test -f app/src-tauri/resources/bin/composio-${{ matrix.arch }}/acp-adapters/codex/win32-${{ matrix.bun_arch }}/codex-acp.exe
           test -f app/src-tauri/resources/bin/git-bash-${{ matrix.arch }}.7z.exe
           test -f app/src-tauri/resources/bin/cli-deps.json
+          # SkillSpector is best-effort (degrades cleanly when absent), so
+          # report coverage without failing the release. windows-x64 is fully
+          # wheel-covered; windows-arm64 may compile a few deps from sdist.
+          test -d "app/src-tauri/resources/bin/skillspector-${{ matrix.arch }}" \
+            && echo "skillspector-${{ matrix.arch }} scanner bundled" \
+            || echo "::warning::skillspector-${{ matrix.arch }} scanner not bundled (install still works, no pre-scan)"
 
       # Build the engine sidecar for the matrix target BEFORE
       # `tauri build`. build.rs::stage_engine_sidecar copies it to

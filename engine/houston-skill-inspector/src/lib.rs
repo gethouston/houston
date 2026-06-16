@@ -2,7 +2,7 @@
 //! assessment into typed Rust.
 //!
 //! SkillSpector ships bundled inside the Houston app as a relocatable
-//! Python interpreter (see `houston-cli-bundle::bundled_skillspector_invocation`
+//! Python interpreter (see `houston-cli-bundle::bundled_skillspector_python`
 //! and `knowledge-base/skill-inspector.md`). We always run it in static
 //! mode (`--no-llm`): keyless, and for plain `SKILL.md` skills (which carry
 //! no dependency manifest) network-free. SkillSpector reports a 0-100 risk
@@ -148,29 +148,32 @@ pub enum InspectorError {
     BadOutput(String),
 }
 
+/// Bootstrap that runs SkillSpector by importing its CLI app rather than via
+/// the installed console-script launcher, so the relocated bundle works on
+/// every OS. See `houston_cli_bundle::bundled_skillspector_python`.
+const SKILLSPECTOR_BOOTSTRAP: &str = "from skillspector.cli import app; app()";
+
 /// Whether SkillSpector is bundled + resolvable on this platform. The scan
-/// feature is opt-out-safe: when this is `false` (e.g. an Intel Mac in v1),
-/// callers proceed without a pre-install scan rather than erroring.
+/// feature is opt-out-safe: when this is `false` (e.g. a device the scanner
+/// isn't bundled for), callers proceed without a pre-install scan rather
+/// than erroring.
 pub fn is_available() -> bool {
-    houston_cli_bundle::bundled_skillspector_invocation().is_some()
+    houston_cli_bundle::bundled_skillspector_python().is_some()
 }
 
 /// Scan a directory that contains a `SKILL.md`. Returns the typed report
 /// when the scan ran (whether or not it found issues), or an
 /// `InspectorError` the caller MUST surface.
 pub async fn scan_skill_dir(skill_dir: &Path) -> Result<ScanReport, InspectorError> {
-    let (python, script) = houston_cli_bundle::bundled_skillspector_invocation()
+    let python = houston_cli_bundle::bundled_skillspector_python()
         .ok_or(InspectorError::Unavailable)?;
-    run_scan(&python, &script, skill_dir).await
+    run_scan(&python, skill_dir).await
 }
 
-async fn run_scan(
-    python: &Path,
-    script: &Path,
-    skill_dir: &Path,
-) -> Result<ScanReport, InspectorError> {
+async fn run_scan(python: &Path, skill_dir: &Path) -> Result<ScanReport, InspectorError> {
     let mut cmd = tokio::process::Command::new(python);
-    cmd.arg(script)
+    cmd.arg("-c")
+        .arg(SKILLSPECTOR_BOOTSTRAP)
         .arg("scan")
         .arg(skill_dir)
         .arg("--no-llm")

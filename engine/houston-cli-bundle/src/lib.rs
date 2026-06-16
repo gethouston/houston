@@ -181,25 +181,48 @@ pub fn bundled_skillspector_dir() -> Option<PathBuf> {
     p.is_dir().then_some(p)
 }
 
-/// Command to run a SkillSpector scan: `(python_exe, skillspector_script)`.
+/// The interpreter that runs a scan, or `None` when SkillSpector isn't
+/// bundled / fully installed on this device.
 ///
-/// We invoke `python <script>` rather than the `skillspector` console
-/// script directly: the script's shebang is the absolute *build-time* path
-/// (it points at the staging dir, not the installed `.app`), so executing
-/// it via its shebang after the bundle has been relocated would fail.
-/// Passing the script as an argument to the relocated interpreter bypasses
-/// the stale shebang entirely. Returns `None` when SkillSpector isn't
-/// bundled or the layout is incomplete.
-pub fn bundled_skillspector_invocation() -> Option<(PathBuf, PathBuf)> {
+/// The scan is launched as
+/// `python -c "from skillspector.cli import app; app()" scan …` — a bootstrap
+/// that bypasses the installed console-script launcher entirely. Both the
+/// unix script shebang and the Windows `.exe` launcher embed the absolute
+/// *build-time* path, which is stale once the bundle is relocated into the
+/// installed app; importing the module directly avoids that on every OS.
+pub fn bundled_skillspector_python() -> Option<PathBuf> {
     let dir = bundled_skillspector_dir()?;
-    let python = skillspector_python(&dir)?;
-    let script = skillspector_script(&dir);
-    script.is_file().then_some((python, script))
+    if !skillspector_pkg_present(&dir) {
+        return None;
+    }
+    skillspector_python(&dir)
 }
 
-/// Resolve the interpreter inside a staged SkillSpector tree. Prefers the
-/// stable `bin/python3` symlink; falls back to scanning for `python3.<n>`
-/// if a future python-build-standalone drops the alias.
+/// True when the `skillspector` package landed in the interpreter's
+/// site-packages — guards against a hollow tree from a half-finished
+/// (e.g. best-effort, cross-arch) build that shipped the interpreter but
+/// not the package.
+fn skillspector_pkg_present(dir: &Path) -> bool {
+    // Windows: Lib/site-packages/skillspector
+    if dir.join("Lib").join("site-packages").join("skillspector").is_dir() {
+        return true;
+    }
+    // Unix: lib/python3.<n>/site-packages/skillspector
+    let lib = dir.join("lib");
+    let Ok(entries) = std::fs::read_dir(&lib) else {
+        return false;
+    };
+    entries.flatten().any(|e| {
+        e.path()
+            .join("site-packages")
+            .join("skillspector")
+            .is_dir()
+    })
+}
+
+/// Resolve the interpreter inside a staged SkillSpector tree. On unix prefers
+/// the stable `bin/python3` symlink, falling back to `python3.<n>`; on
+/// Windows it's `python.exe` at the tree root.
 #[cfg(not(windows))]
 fn skillspector_python(dir: &Path) -> Option<PathBuf> {
     let bin = dir.join("bin");
@@ -219,16 +242,6 @@ fn skillspector_python(dir: &Path) -> Option<PathBuf> {
 fn skillspector_python(dir: &Path) -> Option<PathBuf> {
     let p = dir.join("python.exe");
     p.is_file().then_some(p)
-}
-
-#[cfg(not(windows))]
-fn skillspector_script(dir: &Path) -> PathBuf {
-    dir.join("bin").join("skillspector")
-}
-
-#[cfg(windows)]
-fn skillspector_script(dir: &Path) -> PathBuf {
-    dir.join("Scripts").join("skillspector.exe")
 }
 
 /// Per-arch PortableGit self-extracting 7z. The SFX itself never
@@ -888,19 +901,35 @@ mod tests {
         fs::write(&exe, b"").unwrap();
         fs::write(ss_bin.join("python3"), b"").unwrap();
         fs::write(ss_bin.join("python3.13"), b"").unwrap();
-        fs::write(ss_bin.join("skillspector"), b"").unwrap();
+        // The package installed into the interpreter's site-packages.
+        let pkg = ss
+            .join("lib")
+            .join("python3.13")
+            .join("site-packages")
+            .join("skillspector");
+        fs::create_dir_all(&pkg).unwrap();
+        fs::write(pkg.join("__init__.py"), b"").unwrap();
 
         let bin_resolved = bundled_bin_dir_for(&exe).unwrap();
         let ss_resolved = bin_resolved.join(format!("skillspector-{}", std::env::consts::ARCH));
         assert!(ss_resolved.is_dir());
-        assert!(ss_resolved.join("bin").join("skillspector").is_file());
 
         // The interpreter finder prefers the stable `bin/python3` symlink.
         let py = skillspector_python(&ss_resolved).expect("python resolved");
         assert_eq!(py.file_name().unwrap(), "python3");
-        // The script path resolves to bin/skillspector.
-        let script = skillspector_script(&ss_resolved);
-        assert!(script.is_file());
+        // The package-presence guard sees the installed package.
+        assert!(skillspector_pkg_present(&ss_resolved));
+    }
+
+    #[cfg(not(windows))]
+    #[test]
+    fn skillspector_pkg_absent_when_only_interpreter_staged() {
+        // A hollow tree (interpreter but no package) must not resolve.
+        let tmp = tempfile::tempdir().unwrap();
+        let bin = tmp.path().join("bin");
+        fs::create_dir_all(&bin).unwrap();
+        fs::write(bin.join("python3"), b"").unwrap();
+        assert!(!skillspector_pkg_present(tmp.path()));
     }
 
     #[cfg(not(windows))]

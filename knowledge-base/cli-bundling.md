@@ -15,7 +15,7 @@ opening a shell.
 | codex       | Apache-2.0    | Bundled (universal) | `Houston.app/Contents/Resources/bin/codex` — single Mach-O fat binary |
 | composio    | MIT           | Bundled (per-arch)  | `Resources/bin/composio-aarch64/`, `Resources/bin/composio-x86_64/`   |
 | gemini      | Apache-2.0    | Bundled (per-arch)  | `Resources/bin/gemini-aarch64/gemini`, `Resources/bin/gemini-x86_64/gemini` (Node SEA, single Mach-O each) |
-| skillspector| Apache-2.0    | Bundled (native arch only) | `Resources/bin/skillspector-aarch64/` — relocatable Python interpreter + NVIDIA SkillSpector installed in it; arm64-only in v1 (see `knowledge-base/skill-inspector.md`) |
+| skillspector| Apache-2.0    | Bundled (per-arch, best-effort) | `Resources/bin/skillspector-{aarch64,x86_64}/` — relocatable Python interpreter + NVIDIA SkillSpector; x86_64 built under Rosetta. Best-effort: degrades cleanly if an arch fails to build (see `knowledge-base/skill-inspector.md`) |
 | claude-code | PROPRIETARY   | Runtime download    | `~/.local/bin/claude`                                                  |
 
 ### Windows (x64 only in v1)
@@ -26,6 +26,7 @@ opening a shell.
 | composio    | MIT           | **Built from source (fork)**       | `<install>\resources\bin\composio-x86_64\composio.exe`                                   |
 | gemini      | Apache-2.0    | **NOT BUNDLED in v1**              | No upstream Windows binary published by google-gemini/gemini-cli (verified across last 100 releases). Phase 2 will mirror the composio fork-build pattern using upstream's `scripts/build_binary.js` (already has win32 branches via Node SEA + postject). Until then, Gemini-backed agents are macOS-only. |
 | claude-code | PROPRIETARY   | Runtime download                   | `%LOCALAPPDATA%\Programs\claude\claude.exe`                                              |
+| skillspector| Apache-2.0    | Bundled (per-arch, best-effort)    | `<install>\resources\bin\skillspector-{x86_64,aarch64}\` — built natively on `windows-latest` / `windows-11-arm`; degrades cleanly if an arch fails to build |
 | git-bash    | GPL-2.0       | Bundled (compressed, decoded in-process) | `%LOCALAPPDATA%\Programs\Houston\runtime\git-bash-<arch>\usr\bin\bash.exe` (extracted on first launch) |
 
 Four notes on Windows:
@@ -298,7 +299,8 @@ Bundled CLIs add ~940 MB to `Resources/`:
 - composio-x86_64:  ~190 MB
 - gemini-aarch64:   ~115 MB
 - gemini-x86_64:    ~118 MB
-- skillspector-aarch64: ~190 MB (Python interpreter + deps; arm64 only in v1)
+- skillspector-aarch64: ~190 MB (Python interpreter + deps)
+- skillspector-x86_64:  ~190 MB (built under Rosetta; best-effort)
 
 DMG compression brings the user-facing download to ~450-560 MB. This is
 a deliberate trade — the target user is non-technical and would not
