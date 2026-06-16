@@ -143,23 +143,59 @@ pub async fn start_login() -> Result<StartLoginResponse, String> {
     .map_err(|_| "composio login --no-wait timed out after 30s".to_string())?
     .map_err(|e| format!("spawn_blocking failed: {e}"))??;
 
+    parse_login_output(&result)
+}
+
+/// Parse `composio login --no-wait` output into a login URL + session key.
+///
+/// Two formats in the wild, so we handle both:
+///   - Older CLIs printed JSON: `{"login_url": "...", "cli_key": "..."}`.
+///   - 0.2.3x+ prints plain text, e.g.:
+///       Open this URL in your browser to log in: https://dashboard.composio.dev/?cliKey=<uuid>
+///       Then run this command to complete login: composio login --poll
+///     The `cliKey` query param is the session key that `complete_login`
+///     passes to `composio login --key <cli_key>` (still supported in 0.2.31).
+fn parse_login_output(stdout: &str) -> Result<StartLoginResponse, String> {
+    let trimmed = stdout.trim();
+
     #[derive(Deserialize)]
     struct Payload {
         login_url: String,
         cli_key: String,
     }
+    if let Ok(p) = serde_json::from_str::<Payload>(trimmed) {
+        return Ok(StartLoginResponse {
+            login_url: p.login_url,
+            cli_key: p.cli_key,
+        });
+    }
 
-    let payload: Payload = serde_json::from_str(result.trim()).map_err(|e| {
-        format!(
-            "Unexpected composio login --no-wait output: {e}\nstdout: {}",
-            result.trim()
-        )
-    })?;
+    // Text format: find the first whitespace-delimited http(s) token carrying
+    // a `cliKey=` query param, then pull the key out of it.
+    let login_url = trimmed
+        .split_whitespace()
+        .find(|tok| {
+            (tok.starts_with("http://") || tok.starts_with("https://"))
+                && tok.contains("cliKey=")
+        })
+        .ok_or_else(|| {
+            format!("Unexpected composio login --no-wait output (no login URL found)\nstdout: {trimmed}")
+        })?
+        .to_string();
 
-    Ok(StartLoginResponse {
-        login_url: payload.login_url,
-        cli_key: payload.cli_key,
-    })
+    let cli_key = login_url
+        .split("cliKey=")
+        .nth(1)
+        .map(|rest| {
+            rest.split(|c: char| c == '&' || c.is_whitespace())
+                .next()
+                .unwrap_or("")
+                .to_string()
+        })
+        .filter(|k| !k.is_empty())
+        .ok_or_else(|| format!("composio login URL had no cliKey value: {login_url}"))?;
+
+    Ok(StartLoginResponse { login_url, cli_key })
 }
 
 /// Complete the login flow started by `start_login`. Shells out to
@@ -244,23 +280,45 @@ pub async fn start_link(toolkit: &str) -> Result<StartLinkResponse, String> {
         ));
     }
 
+    parse_link_output(stdout_trimmed, toolkit)
+}
+
+/// Parse `composio link <toolkit> --no-wait` output into a connect response.
+///
+/// Same dual-format story as `parse_login_output`: older CLIs emit JSON
+/// (`{redirect_url, connected_account_id, toolkit}`), 0.2.3x+ emits plain text
+/// with an authorization URL. Only `redirect_url` is consumed downstream (the
+/// frontend opens it; the connection-watcher polls by toolkit slug), so the
+/// text path scrapes the first http(s) URL and defaults the rest.
+fn parse_link_output(stdout: &str, requested_toolkit: &str) -> Result<StartLinkResponse, String> {
+    let trimmed = stdout.trim();
+
     #[derive(Deserialize)]
     struct Payload {
         redirect_url: String,
         connected_account_id: String,
         toolkit: String,
     }
+    if let Ok(p) = serde_json::from_str::<Payload>(trimmed) {
+        return Ok(StartLinkResponse {
+            redirect_url: p.redirect_url,
+            connected_account_id: p.connected_account_id,
+            toolkit: p.toolkit,
+        });
+    }
 
-    let payload: Payload = serde_json::from_str(stdout_trimmed).map_err(|e| {
-        format!(
-            "Unexpected composio link --no-wait output: {e}\nstdout was: {stdout_trimmed}"
-        )
-    })?;
+    let redirect_url = trimmed
+        .split_whitespace()
+        .find(|tok| tok.starts_with("http://") || tok.starts_with("https://"))
+        .ok_or_else(|| {
+            format!("Unexpected composio link --no-wait output (no authorization URL found)\nstdout: {trimmed}")
+        })?
+        .to_string();
 
     Ok(StartLinkResponse {
-        redirect_url: payload.redirect_url,
-        connected_account_id: payload.connected_account_id,
-        toolkit: payload.toolkit,
+        redirect_url,
+        connected_account_id: String::new(),
+        toolkit: requested_toolkit.to_string(),
     })
 }
 
@@ -813,6 +871,61 @@ mod tests {
     fn passes_through_when_code_unavailable() {
         let msg = decorate_windows_exit("composio login", "signal: 9", None);
         assert_eq!(msg, "composio login exited with signal: 9");
+    }
+
+    #[test]
+    fn parses_login_text_output_0_2_31() {
+        // Verbatim shape of `composio login --no-wait` on CLI 0.2.31.
+        let stdout = "Open this URL in your browser to log in: https://dashboard.composio.dev/?cliKey=65eb1a3c-e861-4c94-a74c-38840a03fb4a\nThen run this command to complete login: composio login --poll\nhint: For agents: Show the URL above to the user to click, then run the command above.";
+        let r = parse_login_output(stdout).unwrap();
+        assert_eq!(
+            r.login_url,
+            "https://dashboard.composio.dev/?cliKey=65eb1a3c-e861-4c94-a74c-38840a03fb4a"
+        );
+        assert_eq!(r.cli_key, "65eb1a3c-e861-4c94-a74c-38840a03fb4a");
+    }
+
+    #[test]
+    fn parses_login_json_output_legacy() {
+        let stdout = r#"{"login_url":"https://example.com/login?x=1","cli_key":"abc123"}"#;
+        let r = parse_login_output(stdout).unwrap();
+        assert_eq!(r.login_url, "https://example.com/login?x=1");
+        assert_eq!(r.cli_key, "abc123");
+    }
+
+    #[test]
+    fn login_output_with_no_url_errors() {
+        assert!(parse_login_output("something went wrong, no url here").is_err());
+    }
+
+    #[test]
+    fn login_text_cli_key_stops_at_ampersand() {
+        let stdout = "go here: https://d.composio.dev/?cliKey=key-1&next=foo and done";
+        let r = parse_login_output(stdout).unwrap();
+        assert_eq!(r.cli_key, "key-1");
+    }
+
+    #[test]
+    fn parses_link_json_output_legacy() {
+        let stdout = r#"{"redirect_url":"https://c.dev/auth/abc","connected_account_id":"ca_1","toolkit":"gmail"}"#;
+        let r = parse_link_output(stdout, "gmail").unwrap();
+        assert_eq!(r.redirect_url, "https://c.dev/auth/abc");
+        assert_eq!(r.connected_account_id, "ca_1");
+        assert_eq!(r.toolkit, "gmail");
+    }
+
+    #[test]
+    fn parses_link_text_output_scrapes_url() {
+        let stdout =
+            "Open this URL to connect Gmail: https://backend.composio.dev/auth/redirect/xyz\nThen come back to Houston.";
+        let r = parse_link_output(stdout, "gmail").unwrap();
+        assert_eq!(r.redirect_url, "https://backend.composio.dev/auth/redirect/xyz");
+        assert_eq!(r.toolkit, "gmail");
+    }
+
+    #[test]
+    fn link_output_with_no_url_errors() {
+        assert!(parse_link_output("gmail is already connected", "gmail").is_err());
     }
 
     #[test]
