@@ -57,7 +57,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
       { id: "instructions", label: t("subTabs.instructions"), icon: FileText },
       { id: "skills", label: t("subTabs.skills"), icon: LibraryBig },
       { id: "learnings", label: t("subTabs.learnings"), icon: Brain },
-      { id: "settings", label: t("subTabs.settings"), icon: Settings },
+      { id: "general", label: t("subTabs.general"), icon: Settings },
     ],
     [t],
   );
@@ -120,7 +120,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
           />
         )}
 
-        {activeTab === "settings" && (
+        {activeTab === "general" && (
           <AgentSettingsContent
             name={agent.name}
             color={agent.color}

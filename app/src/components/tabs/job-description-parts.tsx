@@ -9,7 +9,7 @@ import {
 } from "@houston-ai/core";
 import { FileText } from "lucide-react";
 
-export type SubTab = "instructions" | "skills" | "learnings" | "settings";
+export type SubTab = "instructions" | "skills" | "learnings" | "general";
 
 type SaveState = "idle" | "saving" | "saved";
 

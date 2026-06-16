@@ -36,7 +36,7 @@
     "instructions": "Instrucciones",
     "skills": "Skills",
     "learnings": "Aprendizajes",
-    "settings": "Configuración"
+    "general": "General"
   },
   "agentSettings": {
     "nameTitle": "Nombre",
