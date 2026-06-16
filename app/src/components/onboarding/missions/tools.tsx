@@ -7,7 +7,6 @@ import {
   useResetConnections,
 } from "../../../hooks/queries";
 import { useComposioAuth } from "../../../hooks/use-composio-auth";
-import { ComposioAuthDialog } from "../../composio-auth-dialog";
 import { SetupCard } from "../setup-card";
 
 interface ToolsMissionProps {
@@ -17,10 +16,10 @@ interface ToolsMissionProps {
 }
 
 /**
- * Let the assistant use the user's real apps. Deliberately jargon-free: the
- * user never sees "Composio" or "integration provider" — just one clear
- * "Allow access" action, mirroring the AI-connect screen. Once granted, it's a
- * success state; Next is gated on the account being connected.
+ * Let the assistant use the user's real apps. Deliberately jargon-free (no
+ * "Composio" / "integration provider") and modeled exactly on the AI-connect
+ * screen: one "Sign in" button that flips to an INLINE "waiting / cancel"
+ * state (no modal), then a success state once the account is connected.
  */
 export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps) {
   const { t } = useTranslation("setup");
@@ -30,7 +29,7 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
   const connected = status?.status === "ok";
   const waiting = auth.state.phase === "waiting";
 
-  const handleAllow = useCallback(() => auth.startAuth(), [auth]);
+  const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
 
   return (
     <SetupCard
@@ -59,27 +58,34 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
             </p>
           </div>
         ) : waiting ? (
-          <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            {t("tutorial.missions.tools.waiting")}
-          </span>
+          <div className="flex flex-col items-center gap-2">
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t("tutorial.missions.tools.waiting")}
+            </span>
+            <button
+              type="button"
+              onClick={() => auth.close()}
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              {t("tutorial.missions.tools.cancel")}
+            </button>
+          </div>
         ) : (
-          <AsyncButton
-            className="h-11 rounded-full px-5"
-            spinner={false}
-            onClick={handleAllow}
-          >
-            {t("tutorial.missions.tools.allow")}
-          </AsyncButton>
+          <div className="flex flex-col items-center gap-2">
+            <AsyncButton
+              className="h-11 rounded-full px-5"
+              spinner={false}
+              onClick={handleSignIn}
+            >
+              {t("tutorial.missions.tools.allow")}
+            </AsyncButton>
+            {auth.state.phase === "error" && auth.state.error && (
+              <p className="text-sm text-destructive">{auth.state.error}</p>
+            )}
+          </div>
         )}
       </div>
-
-      <ComposioAuthDialog
-        state={auth.state}
-        onClose={auth.close}
-        onReopenBrowser={auth.reopenBrowser}
-        onRetry={auth.startAuth}
-      />
     </SetupCard>
   );
 }

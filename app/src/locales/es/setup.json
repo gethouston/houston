@@ -72,6 +72,7 @@
         "body": "Con un solo inicio de sesión, tu asistente podrá trabajar con tus apps. Después conecta cada app, como Gmail o tu calendario, solo cuando de verdad la necesites, así no tienes que configurar todo ahora.",
         "allow": "Iniciar sesión",
         "waiting": "Esperándote en tu navegador...",
+        "cancel": "Cancelar",
         "connected": {
           "title": "Todo listo",
           "body": "Tu asistente ya puede conectar tus apps cuando las necesites."

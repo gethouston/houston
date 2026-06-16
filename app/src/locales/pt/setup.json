@@ -72,6 +72,7 @@
         "body": "Com um único login, seu assistente pode trabalhar com seus apps. Depois ele conecta cada app, como Gmail ou seu calendário, só quando você realmente precisar, então não precisa configurar tudo agora.",
         "allow": "Entrar",
         "waiting": "Esperando você no navegador...",
+        "cancel": "Cancelar",
         "connected": {
           "title": "Tudo pronto",
           "body": "Seu assistente já pode conectar seus apps quando você precisar."
