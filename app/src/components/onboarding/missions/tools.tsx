@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ExternalLink, Loader2 } from "lucide-react";
-import { AsyncButton, cn } from "@houston-ai/core";
+import { Check, LayoutGrid, Loader2 } from "lucide-react";
+import { AsyncButton } from "@houston-ai/core";
 import {
   useConnections,
   useResetConnections,
@@ -17,74 +17,63 @@ interface ToolsMissionProps {
 }
 
 /**
- * Connect step — sign the user into Composio (the account-level token) so the
- * assistant can use their apps. Per-toolkit connections are still posted by the
- * agent in the email step as connect cards. Next is gated on
- * `useConnections().status === "ok"`, so the user can't skip past connecting.
+ * Let the assistant use the user's real apps. Deliberately jargon-free: the
+ * user never sees "Composio" or "integration provider" — just one clear
+ * "Allow access" action, mirroring the AI-connect screen. Once granted, it's a
+ * success state; Next is gated on the account being connected.
  */
 export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps) {
   const { t } = useTranslation("setup");
-  const { data: status, isLoading } = useConnections();
+  const { data: status } = useConnections();
   const reset = useResetConnections();
   const auth = useComposioAuth(() => reset());
-  const isSignedIn = status?.status === "ok";
+  const connected = status?.status === "ok";
+  const waiting = auth.state.phase === "waiting";
 
-  const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
+  const handleAllow = useCallback(() => auth.startAuth(), [auth]);
 
   return (
     <SetupCard
       eyebrow={eyebrow}
       title={t("tutorial.missions.tools.title")}
-      subtitle={t("tutorial.missions.tools.body")}
+      subtitle={connected ? undefined : t("tutorial.missions.tools.body")}
       onBack={onBack}
       backLabel={t("tutorial.nav.back")}
       onNext={onContinue}
-      nextLabel={t("tutorial.missions.tools.continue")}
-      nextDisabled={!isSignedIn}
-      helper={isSignedIn ? t("tutorial.missions.tools.continueHint") : undefined}
+      nextLabel={t("tutorial.nav.continue")}
+      nextDisabled={!connected}
     >
-      <div className="flex flex-1 flex-col justify-center">
-      <div
-        className={cn(
-          "flex items-center gap-4 rounded-xl border bg-background p-4 transition-colors",
-          isSignedIn ? "border-foreground" : "border-black/10",
-        )}
-      >
-        <div className="flex min-w-0 flex-1 flex-col">
-          <p className="text-sm font-medium text-foreground">
-            {t("tutorial.missions.tools.cardTitle")}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {isSignedIn
-              ? t("tutorial.missions.tools.cardSignedInBody")
-              : t("tutorial.missions.tools.cardBody")}
-          </p>
-        </div>
-        {isLoading ? (
-          <Loader2 className="size-4 animate-spin text-muted-foreground" />
-        ) : isSignedIn ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-secondary px-2.5 py-1 text-xs font-medium text-foreground">
-            <Check className="size-3" />
-            {t("tutorial.missions.tools.signedInPill")}
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
+        <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
+          <LayoutGrid className="size-7 text-foreground" />
+        </span>
+
+        {connected ? (
+          <div className="flex flex-col items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <Check className="size-4" />
+              {t("tutorial.missions.tools.connected.title")}
+            </span>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              {t("tutorial.missions.tools.connected.body")}
+            </p>
+          </div>
+        ) : waiting ? (
+          <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+            <Loader2 className="size-4 animate-spin" />
+            {t("tutorial.missions.tools.waiting")}
           </span>
         ) : (
           <AsyncButton
-            type="button"
-            size="sm"
-            className="rounded-full"
+            className="h-11 rounded-full px-5"
             spinner={false}
-            onClick={handleSignIn}
+            onClick={handleAllow}
           >
-            {auth.state.phase === "waiting" ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <ExternalLink className="size-3.5" />
-            )}
-            {t("tutorial.missions.tools.signIn")}
+            {t("tutorial.missions.tools.allow")}
           </AsyncButton>
         )}
       </div>
-      </div>
+
       <ComposioAuthDialog
         state={auth.state}
         onClose={auth.close}

@@ -68,15 +68,14 @@
         }
       },
       "tools": {
-        "title": "Conecte seus apps",
-        "body": "Seu assistente faz as coisas trabalhando com seus apps reais. Conecte o Houston às suas ferramentas uma vez e ele poderá agir por você.",
-        "cardTitle": "Conecte suas ferramentas",
-        "cardBody": "Entre para conectar seus apps ao Houston. Usamos o Composio para vinculá-los com segurança.",
-        "cardSignedInBody": "Conectado. Seu assistente já pode usar seus apps.",
-        "signIn": "Conectar",
-        "signedInPill": "Conectado",
-        "continue": "Continuar",
-        "continueHint": "Em seguida, seu assistente vai conectar seu e-mail e enviar uma mensagem real."
+        "title": "Deixe seu assistente usar seus apps",
+        "body": "Seu assistente faz as coisas nos apps que você já usa, como e-mail e calendário. Dê acesso uma vez e ele poderá trabalhar por você.",
+        "allow": "Dar acesso",
+        "waiting": "Esperando você no navegador...",
+        "connected": {
+          "title": "Tudo pronto",
+          "body": "Seu assistente já pode usar seus apps."
+        }
       },
       "email": {
         "title": "Envie seu primeiro e-mail",

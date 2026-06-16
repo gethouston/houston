@@ -68,15 +68,14 @@
         }
       },
       "tools": {
-        "title": "Connect your apps",
-        "body": "Your assistant gets things done by working with your real apps. Connect Houston to your tools once, then it can act for you.",
-        "cardTitle": "Connect your tools",
-        "cardBody": "Sign in to connect your apps to Houston. We use Composio to link them securely.",
-        "cardSignedInBody": "Connected. Your assistant can now use your apps.",
-        "signIn": "Connect",
-        "signedInPill": "Connected",
-        "continue": "Continue",
-        "continueHint": "Next, your assistant will connect your email and send a real message."
+        "title": "Let your assistant use your apps",
+        "body": "Your assistant gets things done in the apps you already use, like your email and calendar. Allow it once and it can work for you.",
+        "allow": "Allow access",
+        "waiting": "Waiting for you in your browser...",
+        "connected": {
+          "title": "You're all set",
+          "body": "Your assistant can now use your apps."
+        }
       },
       "email": {
         "title": "Send your first email",
