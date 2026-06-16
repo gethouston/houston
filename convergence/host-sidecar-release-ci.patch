@@ -1,0 +1,297 @@
+diff --git a/.github/workflows/release.yml b/.github/workflows/release.yml
+index 7189f30..6d3390d 100644
+--- a/.github/workflows/release.yml
++++ b/.github/workflows/release.yml
+@@ -37,6 +37,17 @@ on:
+   push:
+     tags:
+       - "v*"
++  # Manual trigger for the experimental host-sidecar build (Bun-compiled
++  # Houston host as the Tauri sidecar instead of the Rust engine). Off the
++  # critical path: a normal `v*` tag push NEVER runs the host-sidecar job
++  # (its `if:` requires this dispatch flag), so the releasable Rust-engine
++  # pipeline is untouched. Flip the input to true to exercise the new path.
++  workflow_dispatch:
++    inputs:
++      host_sidecar:
++        description: "Also build the experimental host-sidecar desktop (Bun host as the Tauri sidecar)"
++        type: boolean
++        default: false
+ 
+ permissions:
+   contents: write
+@@ -944,6 +955,274 @@ jobs:
+ 
+           echo "::notice::macOS artifacts uploaded to draft https://github.com/${{ github.repository }}/releases/tag/$GITHUB_REF_NAME"
+ 
++  # ============================================================================
++  # EXPERIMENTAL: host-sidecar macOS build — the Bun-compiled Houston host
++  # (packages/control-plane/src/local/main.ts) spawned BY the Tauri shell as
++  # its sidecar, instead of the Rust engine. Mirrors `build-macos`'s
++  # engine-build + lipo step, but compiles the host with
++  # `scripts/build-host-sidecar.sh` and builds the app with the
++  # `host-sidecar` cargo feature + the frontend's control-plane adapter
++  # (`VITE_NEW_ENGINE=1`).
++  #
++  # OFF THE CRITICAL PATH. This job runs ONLY on a manual `workflow_dispatch`
++  # with `host_sidecar=true`; a normal `v*` tag push skips it entirely, so the
++  # releasable Rust-engine pipeline above is untouched. It also does NOT sign /
++  # notarize / upload — it proves the host-sidecar bundle BUILDS. End-to-end
++  # packaging + run verification is owned by whoever flips it on.
++  # ============================================================================
++  build-macos-host-sidecar:
++    needs: prep
++    if: ${{ github.event_name == 'workflow_dispatch' && inputs.host_sidecar }}
++    runs-on: macos-latest
++    timeout-minutes: 60
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v6
++        with:
++          fetch-depth: 0
++          fetch-tags: true
++
++      - name: Setup pnpm
++        uses: pnpm/action-setup@v6
++
++      - name: Setup Node.js
++        uses: actions/setup-node@v6
++        with:
++          node-version: 20
++          cache: pnpm
++
++      - name: Install dependencies
++        run: pnpm install
++
++      - name: Setup Rust (universal macOS targets)
++        uses: dtolnay/rust-toolchain@stable
++        with:
++          targets: aarch64-apple-darwin,x86_64-apple-darwin
++
++      - name: Cache Rust artifacts
++        uses: actions/cache@v5
++        with:
++          path: |
++            ~/.cargo/registry
++            ~/.cargo/git
++            app/src-tauri/target
++          key: ${{ runner.os }}-cargo-host-sidecar-${{ hashFiles('**/Cargo.lock') }}
++          restore-keys: ${{ runner.os }}-cargo-host-sidecar-
++
++      # Bun compiles the single sidecar (sidecar-entry.ts = host + the pi runtime
++      # it self-spawns), so install BOTH the host's and the runtime's deps + their
++      # file: siblings, in dependency order, before compiling.
++      - name: Setup Bun
++        uses: oven-sh/setup-bun@v2
++
++      - name: Install host (control-plane) deps
++        run: |
++          set -euo pipefail
++          for pkg in protocol domain runtime-client runtime control-plane; do
++            echo "=== bun install packages/$pkg ==="
++            (cd "packages/$pkg" && bun install --frozen-lockfile)
++          done
++
++      # Compile the host for BOTH macOS arches and lipo them into the single
++      # universal externalBin name Tauri's universal bundler expects — exactly
++      # mirroring the Rust engine's `Build houston-engine sidecar … + lipo`
++      # step. build-host-sidecar.sh emits per-triple binaries under
++      # target/host-sidecar/houston-host-<triple>; we lipo those into
++      # binaries/houston-engine-universal-apple-darwin (the SAME externalBin
++      # name, so tauri.conf.json needs no change).
++      - name: Compile Houston host sidecar (aarch64 + x86_64) + lipo universal
++        run: |
++          set -euo pipefail
++          # ONE script, both arches: build-host-sidecar.sh <triple> compiles for
++          # an explicit target (Bun links its own libc, so same-OS cross-arch is
++          # fine on one runner). Per-triple outputs land at the SAME
++          # target/host-sidecar/houston-host-<triple> names build.rs::stage_host_sidecar
++          # reads during each per-arch cargo invocation the universal bundler makes.
++          scripts/build-host-sidecar.sh aarch64-apple-darwin
++          scripts/build-host-sidecar.sh x86_64-apple-darwin
++
++          echo "=== Lipo universal host sidecar ==="
++          mkdir -p app/src-tauri/binaries
++          lipo -create \
++            target/host-sidecar/houston-host-aarch64-apple-darwin \
++            target/host-sidecar/houston-host-x86_64-apple-darwin \
++            -output app/src-tauri/binaries/houston-engine-universal-apple-darwin
++          chmod +x app/src-tauri/binaries/houston-engine-universal-apple-darwin
++          lipo -info app/src-tauri/binaries/houston-engine-universal-apple-darwin
++
++      # Build the host-sidecar desktop. `VITE_NEW_ENGINE=1` swaps the frontend
++      # onto the control-plane adapter at build time (app/vite.config.ts) — the
++      # Rust supervisor injects the live host URL+token at runtime. The cargo
++      # `host-sidecar` feature makes build.rs stage the compiled host and lib.rs
++      # spawn it. Build-only: no signing / notarization / upload here.
++      - name: Build Tauri app (universal, host-sidecar)
++        uses: tauri-apps/tauri-action@v0
++        with:
++          projectPath: app
++          args: --target universal-apple-darwin --features host-sidecar
++        env:
++          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          VITE_NEW_ENGINE: "1"
++          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
++          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
++          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
++          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
++          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
++
++      - name: Confirm host-sidecar bundle built
++        run: |
++          set -euo pipefail
++          BUNDLE="target/universal-apple-darwin/release/bundle"
++          APP=$(ls -d "$BUNDLE/macos/"*.app 2>/dev/null | head -1 || true)
++          [ -e "$APP" ] || { echo "::error::host-sidecar .app not produced"; ls -laR "$BUNDLE" || true; exit 1; }
++          echo "::notice::host-sidecar bundle built at $APP"
++          # The staged sidecar should be the Bun host (fat Mach-O), not the engine.
++          lipo -info "$APP/Contents/MacOS/"houston-engine* || true
++
++  # ============================================================================
++  # EXPERIMENTAL: host-sidecar WINDOWS build — the macOS job's analogue, per arch
++  # (Windows has no universal binary; build.rs::stage_host_sidecar stages
++  # houston-host-<triple>.exe by the cargo TARGET). NONE of build-windows's CLI
++  # bundling (codex / composio / git-bash) is needed here: pi runs in-process, so
++  # the host sidecar carries no CLIs — which is exactly why retiring the Rust
++  # engine deletes all that machinery. workflow_dispatch + host_sidecar gated;
++  # build-only, no signing / upload.
++  # ============================================================================
++  build-windows-host-sidecar:
++    needs: prep
++    if: ${{ github.event_name == 'workflow_dispatch' && inputs.host_sidecar }}
++    runs-on: ${{ matrix.runner }}
++    timeout-minutes: 60
++    strategy:
++      fail-fast: false
++      matrix:
++        include:
++          - target: x86_64-pc-windows-msvc
++            runner: windows-latest
++          - target: aarch64-pc-windows-msvc
++            runner: windows-11-arm
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v6
++        with:
++          fetch-depth: 0
++          fetch-tags: true
++
++      - name: Setup pnpm
++        uses: pnpm/action-setup@v6
++
++      - name: Setup Node.js
++        uses: actions/setup-node@v6
++        with:
++          node-version: 20
++          cache: pnpm
++
++      - name: Install dependencies
++        run: pnpm install
++
++      - name: Setup Rust (windows-msvc target)
++        uses: dtolnay/rust-toolchain@stable
++        with:
++          targets: ${{ matrix.target }}
++
++      - name: Cache Rust artifacts
++        uses: actions/cache@v5
++        with:
++          path: |
++            ~/.cargo/registry
++            ~/.cargo/git
++            app/src-tauri/target
++          key: ${{ runner.os }}-cargo-host-sidecar-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
++          restore-keys: ${{ runner.os }}-cargo-host-sidecar-${{ matrix.target }}-
++
++      - name: Setup Bun
++        uses: oven-sh/setup-bun@v2
++
++      # The single sidecar bundles host + runtime, so install both + their file:
++      # siblings (the compile script only compiles, it does not install).
++      - name: Install host deps
++        shell: bash
++        run: |
++          set -euo pipefail
++          for pkg in protocol domain runtime-client runtime control-plane; do
++            (cd "packages/$pkg" && bun install --frozen-lockfile)
++          done
++
++      # Bun-compile the host for this arch. Git-bash provides `bash` on the Windows
++      # runner; the explicit triple makes the script emit houston-host-<triple>.exe
++      # exactly where build.rs::stage_host_sidecar reads it for this cargo TARGET.
++      - name: Compile Houston host sidecar (${{ matrix.target }})
++        shell: bash
++        run: scripts/build-host-sidecar.sh ${{ matrix.target }}
++
++      - name: Build Tauri app (Windows, host-sidecar)
++        uses: tauri-apps/tauri-action@v0
++        with:
++          projectPath: app
++          args: --target ${{ matrix.target }} --features host-sidecar
++        env:
++          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
++          VITE_NEW_ENGINE: "1"
++          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
++          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
++          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
++          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
++          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
++
++      - name: Confirm host-sidecar bundle built
++        shell: bash
++        run: |
++          set -euo pipefail
++          BUNDLE="target/${{ matrix.target }}/release/bundle"
++          MSI=$(ls "$BUNDLE"/msi/*.msi 2>/dev/null | head -1 || true)
++          [ -e "$MSI" ] || { echo "::error::host-sidecar MSI not produced"; ls -laR "$BUNDLE" || true; exit 1; }
++          echo "::notice::host-sidecar Windows bundle built at $MSI"
++
++  # ============================================================================
++  # EXPERIMENTAL: host-sidecar LINUX build — there is no Linux Tauri DESKTOP job
++  # in this pipeline, but the Linux host BINARY is what the self-host server
++  # (selfhost/) runs, so this validates THAT: compile the single sidecar for
++  # x86_64 Linux and boot it (`--verify` boots the binary + curls
++  # /v1/capabilities), self-checking in CI. workflow_dispatch + host_sidecar gated.
++  # ============================================================================
++  build-linux-host-sidecar:
++    needs: prep
++    if: ${{ github.event_name == 'workflow_dispatch' && inputs.host_sidecar }}
++    runs-on: ubuntu-latest
++    timeout-minutes: 30
++    steps:
++      - name: Checkout
++        uses: actions/checkout@v6
++        with:
++          fetch-depth: 0
++          fetch-tags: true
++
++      - name: Setup pnpm
++        uses: pnpm/action-setup@v6
++
++      - name: Setup Node.js
++        uses: actions/setup-node@v6
++        with:
++          node-version: 20
++          cache: pnpm
++
++      - name: Install dependencies
++        run: pnpm install
++
++      - name: Setup Bun
++        uses: oven-sh/setup-bun@v2
++
++      - name: Install host deps
++        run: |
++          set -euo pipefail
++          for pkg in protocol domain runtime-client runtime control-plane; do
++            (cd "packages/$pkg" && bun install --frozen-lockfile)
++          done
++
++      # Compile for x86_64 Linux AND boot it — the binary the self-host image runs.
++      - name: Compile + verify Houston host sidecar (x86_64-unknown-linux-gnu)
++        run: scripts/build-host-sidecar.sh x86_64-unknown-linux-gnu --verify
++
+   # ============================================================================
+   # Windows MSI build — runs IN PARALLEL with build-macos. Both jobs only
+   # need the empty draft release that `prep` creates so they can upload

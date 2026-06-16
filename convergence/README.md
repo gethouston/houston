@@ -71,6 +71,20 @@ code. Artifacts + guide: `selfhost/` (Dockerfile, Caddy TLS compose, README).
 Replaces the v1 `always-on/` Rust-engine image. The engine boot was verified on
 a clean-room per-package install; the image build itself wants a Docker host.
 
+## Host-sidecar release CI
+
+The release pipeline still builds the Rust engine by default; the host-sidecar
+desktop/binary builds are off the critical path behind a `workflow_dispatch`
+flag. The change to `.github/workflows/release.yml` is saved as a patch
+(`convergence/host-sidecar-release-ci.patch`) rather than committed, because the
+`gh` token here lacks the `workflow` scope to push `.github/workflows/*` — apply
+it with a workflow-scoped token: `git apply convergence/host-sidecar-release-ci.patch`.
+It adds three `host_sidecar`-gated jobs (macOS universal, Windows x64+arm64,
+Linux x86_64) that all bun-compile the host via the one parameterized
+`scripts/build-host-sidecar.sh <triple>` — no second compile path to drift. The
+Linux job is binary-only (`--verify` boots it) since there's no Linux desktop
+build; it validates the binary the `selfhost/` server runs.
+
 ## Standing decisions
 
 - Gemini: **dropped at cutover** (pi has google provider but API-key-only; no Google OAuth; non-technical users don't paste keys). Revisit if pi grows Google OAuth.

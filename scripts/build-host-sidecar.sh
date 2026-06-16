@@ -26,8 +26,17 @@
 # same name the Rust engine uses, which keeps tauri.conf.json untouched.
 #
 # Usage:
-#   scripts/build-host-sidecar.sh            # compile only
-#   scripts/build-host-sidecar.sh --verify   # compile, then boot + curl /v1/capabilities
+#   scripts/build-host-sidecar.sh                         # current host, compile only
+#   scripts/build-host-sidecar.sh --verify                # current host, then boot + curl
+#   scripts/build-host-sidecar.sh <rust-triple>           # an explicit target (CI)
+#   scripts/build-host-sidecar.sh <rust-triple> --verify  # explicit target, then boot + curl
+#
+# An explicit <rust-triple> (e.g. x86_64-unknown-linux-gnu, aarch64-apple-darwin,
+# x86_64-pc-windows-msvc) lets CI build each target with the SAME script the local
+# build uses — no second bun-compile invocation to drift. Bun links its own libc,
+# so same-OS cross-arch works (this is how the macOS universal build compiles BOTH
+# arches on one runner); each CI runner still builds its own OS. --verify only
+# makes sense for a host-native target (it boots the binary).
 # ============================================================================
 set -euo pipefail
 
@@ -38,6 +47,17 @@ OUT_DIR="$REPO_ROOT/target/host-sidecar"
 
 command -v bun >/dev/null 2>&1 || { echo "ERROR: bun not found on PATH" >&2; exit 1; }
 test -f "$ENTRY" || { echo "ERROR: sidecar entry missing: $ENTRY" >&2; exit 1; }
+
+# Args: an optional explicit <rust-triple> and/or --verify, in any order.
+EXPLICIT_TRIPLE=""
+VERIFY=""
+for arg in "$@"; do
+  case "$arg" in
+    --verify) VERIFY=1 ;;
+    -*) echo "ERROR: unknown flag $arg" >&2; exit 1 ;;
+    *) EXPLICIT_TRIPLE="$arg" ;;
+  esac
+done
 
 # Derive the Rust target triple for the current host. These match the suffixes
 # tauri-cli appends to `externalBin` names, so the staged binary lines up with
@@ -58,29 +78,31 @@ host_triple() {
   echo "${arch}-${os}"
 }
 
-# The matching Bun --target so the bundled runtime is the right OS/arch. Bun
-# only needs OS+arch (it links its own libc); cross-compiling is out of scope —
-# this script builds for the current host, mirroring fetch-cli-deps.sh.
-bun_target() {
-  local arch os
-  case "$(uname -m)" in
-    arm64 | aarch64) arch="arm64" ;;
-    x86_64 | amd64) arch="x64" ;;
+# The matching Bun --target for a Rust triple (Bun only needs OS+arch; it links
+# its own libc). One source — the resolved TRIPLE — drives both the output name
+# and the bun target, whether the triple was given or derived from the host.
+bun_target_for() {
+  local triple="$1" arch os
+  case "$triple" in
+    aarch64-*) arch="arm64" ;;
+    x86_64-*) arch="x64" ;;
+    *) echo "ERROR: unsupported triple arch in '$triple'" >&2; exit 1 ;;
   esac
-  case "$(uname -s)" in
-    Darwin) os="darwin" ;;
-    Linux) os="linux" ;;
-    MINGW* | MSYS* | CYGWIN*) os="windows" ;;
+  case "$triple" in
+    *-apple-darwin) os="darwin" ;;
+    *-unknown-linux-gnu) os="linux" ;;
+    *-pc-windows-msvc) os="windows" ;;
+    *) echo "ERROR: unsupported triple OS in '$triple'" >&2; exit 1 ;;
   esac
   echo "bun-${os}-${arch}"
 }
 
-TRIPLE="$(host_triple)"
-BUN_TARGET="$(bun_target)"
+TRIPLE="${EXPLICIT_TRIPLE:-$(host_triple)}"
+BUN_TARGET="$(bun_target_for "$TRIPLE")"
 
 EXT=""
-case "$(uname -s)" in
-  MINGW* | MSYS* | CYGWIN*) EXT=".exe" ;;
+case "$TRIPLE" in
+  *-pc-windows-msvc) EXT=".exe" ;;
 esac
 
 OUT="$OUT_DIR/houston-host-${TRIPLE}${EXT}"
@@ -93,7 +115,7 @@ chmod +x "$OUT"
 SIZE="$(du -h "$OUT" | cut -f1)"
 echo "Built host sidecar: $OUT ($SIZE)"
 
-if [ "${1:-}" != "--verify" ]; then
+if [ -z "$VERIFY" ]; then
   exit 0
 fi
 
