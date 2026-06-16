@@ -113,3 +113,66 @@ test("context_compacted tolerates a null pre_tokens", () => {
   assert.equal(divider.compaction.trigger, "native");
   assert.equal(divider.compaction.preTokens, undefined);
 });
+
+const rateLimited = {
+  feed_type: "provider_error",
+  data: { kind: "rate_limited", provider: "anthropic", model: null, retry_after_seconds: null, message: "429" },
+};
+
+test("suppresses the 'Session error' echo when a provider-error card covered the turn", () => {
+  // The engine emits a typed card AND a SessionStatus::Error that ui/core
+  // echoes as a raw "Session error: …" system_message. The card is the real
+  // surface; the redundant echo must be dropped.
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    rateLimited,
+    { feed_type: "system_message", data: "Session error: claude hit a runtime error" },
+  ]);
+  assert.equal(messages.filter((m) => m.providerError).length, 1, "card kept");
+  assert.ok(
+    !messages.some((m) => m.content.startsWith("Session error:")),
+    "redundant echo suppressed",
+  );
+});
+
+test("keeps the 'Session error' echo when no card surfaced (no silent failures)", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    { feed_type: "system_message", data: "Session error: something uncarded" },
+  ]);
+  assert.ok(
+    messages.some((m) => m.content === "Session error: something uncarded"),
+    "echo preserved as the only surface",
+  );
+});
+
+test("tool_runtime_error also suppresses the trailing 'Session error' echo", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    { feed_type: "tool_runtime_error", data: { kind: "provider_process", details: "boom" } },
+    { feed_type: "system_message", data: "Session error: claude hit a runtime error" },
+  ]);
+  assert.ok(!messages.some((m) => m.content.startsWith("Session error:")));
+});
+
+test("a non-session-error system message is never suppressed", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    rateLimited,
+    { feed_type: "system_message", data: "Heads up: informational" },
+  ]);
+  assert.ok(messages.some((m) => m.content === "Heads up: informational"));
+});
+
+test("echo suppression is per turn — a later un-carded turn still shows it", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "first" },
+    rateLimited,
+    { feed_type: "system_message", data: "Session error: carded turn" }, // suppressed
+    { feed_type: "user_message", data: "second" },
+    { feed_type: "system_message", data: "Session error: uncarded turn" }, // kept
+  ]);
+  const echoes = messages.filter((m) => m.content.startsWith("Session error:"));
+  assert.equal(echoes.length, 1);
+  assert.equal(echoes[0].content, "Session error: uncarded turn");
+});
