@@ -84,19 +84,6 @@ export function osOpenFile(agentPath: string, relativePath: string): Promise<voi
   return invoke<void>("open_file", { agent_path: agentPath, relative_path: relativePath });
 }
 
-/** Launch a terminal app scoped to the given path. */
-export function osOpenTerminal(
-  path: string,
-  command?: string,
-  terminalApp?: string,
-): Promise<void> {
-  return invoke<void>("open_terminal", {
-    path,
-    command: command ?? null,
-    terminal_app: terminalApp ?? null,
-  });
-}
-
 /** Is the Claude CLI installed on this machine? */
 export function osCheckClaudeCli(): Promise<boolean> {
   return invoke<boolean>("check_claude_cli");

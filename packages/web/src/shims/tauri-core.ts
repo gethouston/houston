@@ -176,7 +176,6 @@ export async function invoke<T = unknown>(
     case "reveal_agent":
     case "reveal_path":
     case "open_file":
-    case "open_terminal":
     case "current_app_bundle_path":
     case "relaunch_app_from_path":
     case "sentry_native_stack_smoke_test":

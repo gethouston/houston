@@ -45,7 +45,6 @@ export function useArchivedSendMessage({
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey, {
           mode: mode?.promptFile,
-          workingDirOverride: activity?.worktree_path ?? undefined,
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
         });

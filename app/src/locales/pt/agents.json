@@ -71,17 +71,6 @@
     "learnings": {
       "title": "Aprendizados",
       "description": "Os agentes salvam aprendizados enquanto trabalham. Você também pode adicionar os seus."
-    },
-    "settings": {
-      "title": "Configurações",
-      "description": "Configuração do agente e opções de execução.",
-      "savingHint": "Salvando...",
-      "worktreeMode": "Modo worktree",
-      "worktreeModeDescription": "Criar um worktree do git separado para cada missão",
-      "installCommand": "Comando de instalação",
-      "installCommandPlaceholder": "ex. pnpm install, npm install, cargo build",
-      "devCommand": "Comando de desenvolvimento",
-      "devCommandPlaceholder": "ex. pnpm dev, npm run dev, cargo run"
     }
   },
   "promptCards": {

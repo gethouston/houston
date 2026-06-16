@@ -45,13 +45,11 @@ export function useMissionControlArchivedSend({
       const mode = activeAgentDef?.config.agents?.find(
         (m) => m.id === (selectedItem.metadata?.agent as string | undefined),
       );
-      const worktreePath = selectedItem.metadata?.worktreePath as string | undefined;
       try {
         const paths = await tauriAttachments.save(`activity-${missionId}`, files);
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey, {
           mode: mode?.promptFile,
-          workingDirOverride: worktreePath ?? undefined,
           providerOverride,
           modelOverride,
         });

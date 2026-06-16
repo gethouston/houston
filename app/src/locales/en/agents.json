@@ -71,17 +71,6 @@
     "learnings": {
       "title": "Learnings",
       "description": "Agents save learnings as they work. You can add them manually too."
-    },
-    "settings": {
-      "title": "Settings",
-      "description": "Agent configuration and runtime settings.",
-      "savingHint": "Saving...",
-      "worktreeMode": "Worktree mode",
-      "worktreeModeDescription": "Create a separate git worktree for each mission",
-      "installCommand": "Install command",
-      "installCommandPlaceholder": "e.g. pnpm install, npm install, cargo build",
-      "devCommand": "Dev command",
-      "devCommandPlaceholder": "e.g. pnpm dev, npm run dev, cargo run"
     }
   },
   "promptCards": {

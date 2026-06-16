@@ -68,7 +68,6 @@ export function useAgentBoardData({
           ...(activity.session_key ? { sessionKey: activity.session_key } : {}),
           ...(activity.routine_id ? { routineId: activity.routine_id } : {}),
           ...(activity.agent ? { agent: activity.agent } : {}),
-          ...(activity.worktree_path ? { worktreePath: activity.worktree_path } : {}),
         },
       })),
     [agent.name, agentModes, activeRaw, t],

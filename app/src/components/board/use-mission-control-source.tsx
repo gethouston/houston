@@ -157,7 +157,6 @@ export function useMissionControlSource(
     sendMessageNow: actions.sendMessageNow,
     createConversation: actions.createConversation,
     stopSession: actions.stopSession,
-    onRunInTerminal: actions.runInTerminal,
     onItemMove: actions.handleItemMove,
     canDropItem: actions.canDropItem,
     selection,

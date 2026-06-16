@@ -16,7 +16,6 @@ import { useBoardSendQueue } from "./use-board-send-queue";
 import { useBoardKeyboard } from "./use-board-keyboard";
 import { useBoardDrafts } from "./use-board-drafts";
 import { useBoardLabels } from "./use-board-labels";
-import { useMissionCardActions } from "./mission-card-actions";
 import type { BoardSource } from "./board-source";
 
 /**
@@ -101,11 +100,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
     onAutoOpenEmpty: source.onAutoOpenEmpty,
   });
 
-  const { cardActions, panelActions } = useMissionCardActions(source.onRunInTerminal, {
-    openTerminal: t("board:cardActions.openTerminal"),
-    run: t("board:cardActions.run"),
-  });
-
   const handleCreateConversation = useCallback(
     (text: string, files: File[]) => source.createConversation({ text, files, ...overrides }),
     [source.createConversation, overrides],
@@ -157,8 +151,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           onOpenLink={handleOpenLink}
-          actions={cardActions}
-          panelActions={panelActions}
           cardAvatar={source.cardAvatar}
           thinkingIndicator={<HoustonThinkingIndicator />}
           panelAgentName={source.panelAgentName}

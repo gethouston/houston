@@ -19,7 +19,6 @@ import {
 } from "../lib/tauri";
 import { buildAttachmentPrompt } from "../lib/attachment-message";
 import { createMission } from "../lib/create-mission";
-import { createMissionWorktreeIfEnabled } from "../lib/mission-worktree";
 import { resolveActivityOverride } from "./mission-control-send";
 import { formatVisibleMessageText } from "../lib/queued-chat";
 import { queryKeys } from "../lib/query-keys";
@@ -115,7 +114,6 @@ export function useMissionControl(agents: Agent[]) {
             sessionKey: c.session_key,
             ...(c.agent ? { agent: c.agent } : {}),
             ...(c.routine_id ? { routineId: c.routine_id } : {}),
-            ...(c.worktree_path ? { worktreePath: c.worktree_path } : {}),
           },
         };
       });
@@ -239,7 +237,6 @@ export function useMissionControl(agents: Agent[]) {
       const agentPath = agent.folderPath;
 
       try {
-        const worktreePath = await createMissionWorktreeIfEnabled(agentPath);
         const visible = formatVisibleMessageText(
           text,
           files,
@@ -251,7 +248,6 @@ export function useMissionControl(agents: Agent[]) {
           text,
           {
             agentMode: opts?.agentMode,
-            worktreePath,
             promptFile: opts?.promptFile,
             providerOverride: opts?.providerOverride,
             modelOverride: opts?.modelOverride,

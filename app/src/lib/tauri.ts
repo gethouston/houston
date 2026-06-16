@@ -201,7 +201,6 @@ export const tauriChat = {
     opts?: {
       mode?: string;
       promptFile?: string;
-      workingDirOverride?: string;
       providerOverride?: string;
       modelOverride?: string;
       effortOverride?: string;
@@ -222,7 +221,6 @@ export const tauriChat = {
         sessionKey,
         prompt,
         source: "desktop",
-        workingDir: opts?.workingDirOverride,
         provider: opts?.providerOverride,
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
@@ -665,46 +663,6 @@ export const tauriActivity = {
   ) => activityData.bulkUpdate(agentPath, ids, update),
   bulkDelete: (agentPath: string, ids: string[]) =>
     activityData.bulkRemove(agentPath, ids),
-};
-
-// ─── Worktrees & shell ────────────────────────────────────────────────
-
-export const tauriWorktree = {
-  create: (repoPath: string, name: string, branch?: string) =>
-    call<{ path: string; branch: string; is_main: boolean }>(
-      "create_worktree",
-      async () => {
-        const w = await getEngine().createWorktree({ repoPath, name, branch });
-        return { path: w.path, branch: w.branch, is_main: w.isMain };
-      },
-    ),
-  remove: (repoPath: string, worktreePath: string) =>
-    call<void>("remove_worktree", () =>
-      getEngine().removeWorktree({ repoPath, worktreePath }),
-    ),
-  list: (repoPath: string) =>
-    call<Array<{ path: string; branch: string; is_main: boolean }>>(
-      "list_worktrees",
-      async () =>
-        (await getEngine().listWorktrees({ repoPath })).map((w) => ({
-          path: w.path,
-          branch: w.branch,
-          is_main: w.isMain,
-        })),
-    ),
-};
-
-export const tauriShell = {
-  run: (path: string, command: string) =>
-    call<string>("run_shell", () => getEngine().runShell({ path, command })),
-};
-
-// Terminal launching is OS-native — see `./os-bridge::osOpenTerminal`.
-// Keep the `tauriTerminal` export for callers that haven't migrated.
-import { osOpenTerminal } from "./os-bridge";
-export const tauriTerminal = {
-  open: (path: string, command?: string, terminalApp?: string) =>
-    osOpenTerminal(path, command, terminalApp),
 };
 
 // ─── Agent config (per-agent JSON on disk) ────────────────────────────

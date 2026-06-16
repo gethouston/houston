@@ -117,7 +117,6 @@ export interface BoardSource {
     args: { text: string; files: File[] } & SendOverrides,
   ) => Promise<string>;
   stopSession: (sessionKey: string) => void;
-  onRunInTerminal: (item: KanbanItem) => Promise<void>;
 
   // ── Drag & drop (per-agent board only) ────────────────────────────────────
   onItemMove?: (item: KanbanItem, toColumnId: string) => void;

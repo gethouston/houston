@@ -3,19 +3,13 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useFeedStore } from "../../stores/feeds";
-import { useUIStore } from "../../stores/ui";
 import {
   getSessionStatusKey,
   isActiveSessionStatus,
   useSessionStatusStore,
 } from "../../stores/session-status";
-import type { KanbanItem } from "@houston-ai/board";
 import { tauriChat, tauriAttachments } from "../../lib/tauri";
 import { createMission } from "../../lib/create-mission";
-import {
-  createMissionWorktreeIfEnabled,
-  openMissionWorktreeTerminal,
-} from "../../lib/mission-worktree";
 import { formatVisibleMessageText } from "../../lib/queued-chat";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { queryKeys } from "../../lib/query-keys";
@@ -51,7 +45,6 @@ export function useAgentBoardSend({
   const { t } = useTranslation(["board", "chat"]);
   const path = agent.folderPath;
   const agentModes = agentDef.config.agents;
-  const addToast = useUIStore((s) => s.addToast);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
   const queryClient = useQueryClient();
   const sessionStatuses = useSessionStatusStore((s) => s.statuses);
@@ -88,7 +81,6 @@ export function useAgentBoardSend({
     }: { text: string; files: File[] } & SendOverrides) => {
       const agentMode = pendingAgentMode ?? agentModes?.[0]?.id;
       const mode = agentModes?.find((m) => m.id === agentMode);
-      const worktreePath = await createMissionWorktreeIfEnabled(path);
       const visible = formatVisibleMessageText(text, files, (names) =>
         t("chat:queue.attached", { names }),
       );
@@ -98,7 +90,6 @@ export function useAgentBoardSend({
         text,
         {
           agentMode,
-          worktreePath,
           promptFile: mode?.promptFile,
           providerOverride,
           modelOverride,
@@ -137,7 +128,6 @@ export function useAgentBoardSend({
         const mode = agentModes?.find((m) => m.id === activity?.agent);
         await tauriChat.send(path, prompt, sessionKey, {
           mode: mode?.promptFile,
-          workingDirOverride: activity?.worktree_path ?? undefined,
           providerOverride: overrides.providerOverride,
           modelOverride: overrides.modelOverride,
         });
@@ -164,21 +154,5 @@ export function useAgentBoardSend({
     [path],
   );
 
-  const runInTerminal = useCallback(
-    async (item: KanbanItem) => {
-      const wtPath = item.metadata?.worktreePath as string | undefined;
-      if (!wtPath) return;
-      try {
-        await openMissionWorktreeTerminal(path, wtPath);
-      } catch (err) {
-        addToast({
-          title: t("board:cardActions.openTerminalFailed", { error: String(err) }),
-          variant: "error",
-        });
-      }
-    },
-    [path, addToast, t],
-  );
-
-  return { effectiveLoading, createConversation, sendMessageNow, stopSession, runInTerminal };
+  return { effectiveLoading, createConversation, sendMessageNow, stopSession };
 }

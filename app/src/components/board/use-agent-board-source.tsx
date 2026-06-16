@@ -155,7 +155,6 @@ export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): Bo
     sendMessageNow: send.sendMessageNow,
     createConversation: send.createConversation,
     stopSession: send.stopSession,
-    onRunInTerminal: send.runInTerminal,
     onItemMove: data.handleItemMove,
     canDropItem: data.canDropItem,
     selection,

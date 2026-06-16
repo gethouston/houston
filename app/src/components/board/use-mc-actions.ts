@@ -4,7 +4,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import type { KanbanItem } from "@houston-ai/board";
 import { useUIStore } from "../../stores/ui";
 import { tauriActivity, tauriChat } from "../../lib/tauri";
-import { openMissionWorktreeTerminal } from "../../lib/mission-worktree";
 import { queryKeys } from "../../lib/query-keys";
 import { canDropMission } from "../../lib/mission-selection";
 import { planNewMission } from "../mission-control-create";
@@ -22,7 +21,7 @@ import type { Agent, AgentDefinition } from "../../lib/types";
  * resolves the active agent's default mode via {@link planNewMission}; send
  * delegates to `mc.handleSendMessage` (which re-resolves provider/model from
  * the target activity, so composer overrides are intentionally ignored); stop
- * and run-in-terminal resolve their agent from the session / card metadata.
+ * resolves its agent from the session metadata.
  */
 export function useMcActions({
   mc,
@@ -81,23 +80,6 @@ export function useMcActions({
     [mc.items, addToast, t],
   );
 
-  const runInTerminal = useCallback(
-    async (item: KanbanItem) => {
-      const wtPath = item.metadata?.worktreePath as string | undefined;
-      const agentPath = item.metadata?.agentPath as string | undefined;
-      if (!wtPath || !agentPath) return;
-      try {
-        await openMissionWorktreeTerminal(agentPath, wtPath);
-      } catch (err) {
-        addToast({
-          title: t("board:cardActions.openTerminalFailed", { error: String(err) }),
-          variant: "error",
-        });
-      }
-    },
-    [addToast, t],
-  );
-
   const sessionKeyFor = useCallback(
     (activityId: string) => missionControlSessionKeyForId(mc.items, activityId),
     [mc.items],
@@ -135,7 +117,6 @@ export function useMcActions({
     createConversation,
     sendMessageNow,
     stopSession,
-    runInTerminal,
     sessionKeyFor,
     handleItemMove,
     canDropItem,

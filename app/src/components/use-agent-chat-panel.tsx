@@ -47,7 +47,6 @@ import {
   withAttachmentPaths,
 } from "../lib/tauri";
 import { createMission } from "../lib/create-mission";
-import { createMissionWorktreeIfEnabled } from "../lib/mission-worktree";
 import { queryKeys } from "../lib/query-keys";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
@@ -450,8 +449,6 @@ export function useAgentChatPanel({
         const mode = agentModes?.find((m) => m.id === agentMode);
         let encodedUserMessage = encoded;
 
-        const worktreePath = await createMissionWorktreeIfEnabled(path);
-
         const { conversationId, sessionKey } = await createMission(
           {
             id: agent.id,
@@ -462,7 +459,6 @@ export function useAgentChatPanel({
           encoded,
           {
             agentMode,
-            worktreePath,
             promptFile: mode?.promptFile,
             // See note above re: effectiveProvider over chatProvider.
             providerOverride: effectiveProvider,
