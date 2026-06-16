@@ -82,13 +82,13 @@ export function TimezonePicker({
   )
 
   // The button's visible text is the live value, so give it an accessible name
-  // that pairs the field label WITH that value, e.g. "Timezone: New York,
-  // GMT-4". A bare aria-label of just `label` would hide the chosen zone from
-  // screen readers (aria-label overrides the visible text).
+  // that pairs the field label WITH that value, e.g. "Timezone: America/New
+  // York, GMT-4". A bare aria-label of just `label` would hide the chosen zone
+  // from screen readers (aria-label overrides the visible text).
   const currentName = current
     ? current.offset
-      ? `${current.city}, ${current.offset}`
-      : current.city
+      ? `${current.display}, ${current.offset}`
+      : current.display
     : accountTimezone
 
   const handleSelect = (id: string) => {
@@ -125,7 +125,7 @@ export function TimezonePicker({
               aria-hidden
             />
             <span className="flex-1 min-w-0 truncate text-left">
-              {current?.city ?? accountTimezone}
+              {current?.display ?? accountTimezone}
             </span>
             {current?.offset && (
               <span className="text-xs text-muted-foreground shrink-0">
@@ -154,13 +154,7 @@ export function TimezonePicker({
                   onSelect={() => handleSelect(zone.id)}
                 >
                   <span className="flex-1 min-w-0 truncate">
-                    {zone.city}
-                    {zone.region && (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        · {zone.region}
-                      </span>
-                    )}
+                    {zone.display}
                   </span>
                   {zone.offset && (
                     <span className="text-xs text-muted-foreground shrink-0">

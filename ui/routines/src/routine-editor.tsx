@@ -350,7 +350,7 @@ export function RoutineEditor({
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
                       {nextDescr.absolute}
                       <span className="text-muted-foreground/60">
-                        {" "}· {accountTimezone}
+                        {" "}· {accountTimezone.replace(/_/g, " ")}
                       </span>
                     </p>
                   </>

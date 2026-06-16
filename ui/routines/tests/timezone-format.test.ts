@@ -28,6 +28,15 @@ describe("describeZone", () => {
     assert.equal(z.region, "America")
   })
 
+  it("keeps the full path for display, with underscores spaced", () => {
+    assert.equal(describeZone("America/New_York").display, "America/New York")
+    assert.equal(describeZone("UTC").display, "UTC")
+    assert.equal(
+      describeZone("America/Argentina/Buenos_Aires").display,
+      "America/Argentina/Buenos Aires",
+    )
+  })
+
   it("leaves region empty for a single-segment id", () => {
     const z = describeZone("UTC")
     assert.equal(z.city, "UTC")

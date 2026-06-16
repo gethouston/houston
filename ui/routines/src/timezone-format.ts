@@ -58,6 +58,8 @@ export function listTimezones(): string[] {
 export interface ZoneOption {
   /** IANA id, e.g. "America/New_York". The persisted value. */
   id: string
+  /** Canonical path shown to the user, underscores spaced ("America/New York"). */
+  display: string
   /** Last path segment, underscores spaced ("New York"). */
   city: string
   /** First path segment ("America"); empty for single-segment ids ("UTC"). */
@@ -77,11 +79,14 @@ export function describeZone(id: string): Omit<ZoneOption, "offset"> {
   const segments = id.split("/")
   const city = (segments[segments.length - 1] ?? id).replace(/_/g, " ")
   const region = segments.length > 1 ? segments[0].replace(/_/g, " ") : ""
+  // Keep the full region/city path for display ("America/New York"); only swap
+  // underscores for spaces so it reads cleanly without losing context.
+  const display = id.replace(/_/g, " ")
   // The flattened id lets "america new york" match "America/New_York", and
-  // keeps middle segments ("Argentina") searchable even though they're hidden.
+  // keeps middle segments ("Argentina") searchable.
   const flat = id.replace(/[/_]/g, " ")
   const keywords = Array.from(new Set([flat, city, region].filter(Boolean)))
-  return { id, city, region, keywords }
+  return { id, display, city, region, keywords }
 }
 
 /** Current `GMT±HH:MM` for a zone at `now`, or "" if it can't be formatted. */
