@@ -47,7 +47,12 @@ export function SetupCard({
 }: SetupCardProps) {
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-secondary/60 px-6 text-foreground">
-      <div className="flex w-full max-w-2xl flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+      {/* Keyed by title so React remounts (and the CSS entrance replays) on
+          each step change, but not on in-step state updates like typing. */}
+      <div
+        key={title}
+        className="setup-step-in flex w-full max-w-2xl flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
+      >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (
           <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>

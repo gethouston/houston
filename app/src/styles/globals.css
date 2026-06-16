@@ -67,3 +67,25 @@ body {
   -webkit-mask-repeat: no-repeat;
   flex-shrink: 0;
 }
+
+/* First-run setup: a gentle per-step entrance so stepping through the wizard
+   feels smooth (like joining a Discord server) instead of hard-cutting between
+   screens. Keyed by step in <SetupCard>, so it replays on each transition. */
+@keyframes setup-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.setup-step-in {
+  animation: setup-step-in 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-step-in {
+    animation: none;
+  }
+}
