@@ -39,6 +39,7 @@ export function BrainMission({
       nextLabel={t("setup:tutorial.nav.continue")}
       nextDisabled={!provider}
     >
+      <div className="min-h-0 flex-1 overflow-y-auto">
       <OptionGrid>
         {PROVIDERS.map((prov) => (
           <OptionCard
@@ -66,6 +67,7 @@ export function BrainMission({
           />
         ))}
       </OptionGrid>
+      </div>
     </SetupCard>
   );
 }
