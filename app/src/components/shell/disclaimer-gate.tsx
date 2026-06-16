@@ -1,6 +1,7 @@
 import { useCallback, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
+import { analytics } from "../../lib/analytics";
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { setupStepNumber } from "../../lib/setup-steps";
@@ -58,6 +59,8 @@ function AgreementScreen({
     setError(null);
     try {
       await onAccept();
+      // Funnel step 6: consent accepted (only after the write resolves).
+      analytics.track("onboarding_agreement_accepted");
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
       setBusy(false);

@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, LayoutGrid, Loader2 } from "lucide-react";
 import { AsyncButton } from "@houston-ai/core";
+import { analytics } from "../../../lib/analytics";
 import {
   useConnections,
   useResetConnections,
@@ -35,6 +36,16 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
   });
   const connected = justConnected || status?.status === "ok";
   const waiting = auth.state.phase === "waiting";
+
+  // Funnel step 9 (action): the user connected their apps account. `connected`
+  // is derived from a polled query, so guard with a ref to fire exactly once.
+  const toolsConnectedFired = useRef(false);
+  useEffect(() => {
+    if (connected && !toolsConnectedFired.current) {
+      toolsConnectedFired.current = true;
+      analytics.track("tools_provider_connected");
+    }
+  }, [connected]);
 
   const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
 

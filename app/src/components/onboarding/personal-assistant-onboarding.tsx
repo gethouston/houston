@@ -169,7 +169,11 @@ export function PersonalAssistantOnboarding({
           namePlaceholder={t("setup:tutorial.defaults.assistantName")}
           onNameChange={setAssistantName}
           onColorChange={setAssistantColor}
-          onBegin={() => setStep("brain")}
+          onBegin={() => {
+            // Funnel step 7: the user named their assistant and moved on.
+            analytics.track("onboarding_assistant_named");
+            setStep("brain");
+          }}
         />
       )}
       {step === "brain" && (

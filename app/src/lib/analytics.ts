@@ -34,6 +34,20 @@ export type AnalyticsEventName =
   // Onboarding
   | "onboarding_started"
   | "onboarding_completed"
+  // Onboarding funnel (acquisition→activation) — one event per step the user
+  // actually clears, so a single PostHog funnel can show where first-run drops
+  // off (broken down by `app_os` for Mac vs Windows). Action-first: where a
+  // real action exists (provider/apps connected, message/email sent) we fire on
+  // the action, not the Continue click. Each fires exactly ONCE per install
+  // (ref/flag-guarded at the call site).
+  | "onboarding_welcome_continued"
+  | "onboarding_language_selected"
+  | "onboarding_agreement_accepted"
+  | "onboarding_assistant_named"
+  | "ai_provider_connected"
+  | "tools_provider_connected"
+  | "first_message_sent"
+  | "first_email_sent"
   // Activation funnel
   | "workspace_created"
   | "provider_configured"
@@ -82,7 +96,9 @@ type AnalyticsProperty =
   | "tab_name"
   | "file_kind"
   | "from_version"
-  | "to_version";
+  | "to_version"
+  // Onboarding funnel
+  | "locale";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserProfile = {
@@ -111,6 +127,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "file_kind",
   "from_version",
   "to_version",
+  "locale",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

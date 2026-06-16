@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, ExternalLink, Loader2 } from "lucide-react";
 import { AsyncButton } from "@houston-ai/core";
+import { analytics } from "../../../lib/analytics";
 import { tauriProvider, type ProviderStatus } from "../../../lib/tauri";
 import { PROVIDERS } from "../../../lib/providers";
 import { useClaudeInstall } from "../../../hooks/use-claude-install";
@@ -49,6 +50,16 @@ export function ProviderLoginMission({
 
   const installed = status?.cli_installed ?? false;
   const connected = installed && (status?.authenticated ?? false);
+
+  // Funnel step 8 (action): the AI provider became connected. The status poll
+  // re-runs every 3s, so guard with a ref to fire exactly once per install.
+  const providerConnectedFired = useRef(false);
+  useEffect(() => {
+    if (connected && !providerConnectedFired.current) {
+      providerConnectedFired.current = true;
+      analytics.track("ai_provider_connected", { provider: providerId });
+    }
+  }, [connected, providerId]);
 
   // Houston-managed `claude` install (license forbids bundling) — show the real
   // download reason + Retry instead of a Log-in button that would only error.

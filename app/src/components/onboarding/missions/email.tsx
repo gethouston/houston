@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatPanel, type FeedItem } from "@houston-ai/chat";
 import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { analytics } from "../../../lib/analytics";
 import { tauriAgent, tauriChat, tauriSystem } from "../../../lib/tauri";
 import { logger } from "../../../lib/logger";
 import { createMission } from "../../../lib/create-mission";
@@ -126,6 +127,18 @@ export function EmailMission({
     return false;
   }, [feedItems]);
 
+  // Funnel step 12 = CONVERSION (action): the assistant sent the first real
+  // email (the agent emitted its completion token). `setupDone` is derived from
+  // the feed, so guard with a ref to fire exactly once per install — strictly
+  // before `onboarding_completed` (which fires when the user clicks Continue).
+  const emailSentFired = useRef(false);
+  useEffect(() => {
+    if (setupDone && !emailSentFired.current) {
+      emailSentFired.current = true;
+      analytics.track("first_email_sent", { provider });
+    }
+  }, [setupDone, provider]);
+
   const handleOpenLink = useCallback((url: string) => {
     tauriSystem.openUrl(url).catch(console.error);
   }, []);
@@ -217,6 +230,9 @@ export function EmailMission({
           feed_type: "user_message",
           data: chipLabel,
         });
+        // Funnel step 10 (action): the user sent their first message. Guarded
+        // by `pickedAny` above, so the success path runs once per install.
+        analytics.track("first_message_sent");
         setMissionSessionKey(result.sessionKey);
       } catch (e) {
         setPickedAny(false);

@@ -3,6 +3,7 @@ import { ArrowRight } from "lucide-react";
 import { Button } from "@houston-ai/core";
 
 import { HoustonLogo } from "./experience-card";
+import { analytics } from "../../lib/analytics";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "../../lib/i18n";
 import { setupStepNumber } from "../../lib/setup-steps";
@@ -71,6 +72,9 @@ function LanguageIntro({
     return (
       <RotatingWelcome
         onContinue={() => {
+          // Funnel step 4: the user cleared the welcome hero. Pure
+          // acknowledgement screen, so the click is the event.
+          analytics.track("onboarding_welcome_continued");
           welcomeSeen = true;
           setStage("pick");
         }}
@@ -83,6 +87,9 @@ function LanguageIntro({
     setPending(true);
     try {
       await onPick(selected);
+      // Funnel step 5: language chosen (fires only after the write succeeds,
+      // so a failed-then-retried pick isn't double counted).
+      analytics.track("onboarding_language_selected", { locale: selected });
     } catch {
       // Write failed — stay on the picker so the user can retry. No localized
       // error is possible yet (no locale).
