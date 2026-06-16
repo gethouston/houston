@@ -46,6 +46,8 @@ This is the user's very first time in Houston. They just clicked the localized "
 
 8. BEFORE sending, tell them plainly in ONE line that this is a real send: "Sending this now, for real — to **{recipient}**." Then ACTUALLY send the email with ONE \`composio execute\` MAIL_TOOLKIT send-email call. This is a REAL send, NOT a draft.
 
+   Pass ONLY the three fields you actually need: \`recipient_email\`, \`subject\`, and \`body\`. Do NOT include \`attachment\` or any other file/path field — there is no attachment. An empty string for \`attachment\` makes the tool try to open a file at path "" and the send dies with \`ENOENT: no such file or directory\`. Omit every optional field you are not using; never pass it as an empty string.
+
 9. After it sends, confirm in chat with exactly two short lines:
    - "✅ Sent to **{recipient}** — subject **{subject}**."
    - "That's your assistant doing real work. You're all set."
