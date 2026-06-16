@@ -2,7 +2,15 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { isHoustonEngineError } from "@houston-ai/engine-client";
 import { tauriConnections, tauriSystem } from "../lib/tauri";
+import { osFocusWindow } from "../lib/os-bridge";
 import { logger } from "../lib/logger";
+
+/** Pull Houston back to the front after the user finishes in the browser. */
+function focusApp() {
+  void osFocusWindow().catch((e) =>
+    logger.warn(`[composio-auth] focus window failed: ${e}`),
+  );
+}
 
 /**
  * State of the Composio sign-in dialog.
@@ -92,6 +100,7 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       }
 
       setState({ open: false, phase: "idle", loginUrl: null, error: null });
+      focusApp();
       await onSuccess();
     } catch (e) {
       if (!mountedRef.current || genRef.current !== myGen) return;
@@ -101,6 +110,7 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       if (isHoustonEngineError(e) && e.kind === "composio_already_signed_in") {
         logger.info("[composio-auth] already signed in, refreshing");
         setState({ open: false, phase: "idle", loginUrl: null, error: null });
+        focusApp();
         await onSuccess();
         return;
       }
