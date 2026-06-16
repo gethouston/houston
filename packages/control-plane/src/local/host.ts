@@ -17,6 +17,8 @@ import { FsWatcher } from "../watch/watcher";
 import { Scheduler } from "../schedule/scheduler";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { forward } from "../proxy/route";
+import { existsSync } from "node:fs";
+import { migrateChatHistory } from "../migrate/chat-history";
 
 /** The single local user every request resolves to. */
 export const LOCAL_USER = "local-owner";
@@ -49,6 +51,15 @@ export interface LocalHostOptions {
   onRuntimeLog?: (line: string) => void;
   /** Test seam: a fake spawner so the wiring is exercisable without real processes. */
   spawner?: RuntimeSpawner;
+  /**
+   * Path to the Rust-era chat-history db (`~/.houston/db/houston.db`). When set
+   * AND the file exists, the host runs the one-time chat-history migration on
+   * boot (idempotent, additive — see migrate/chat-history.ts). Omit (or point at
+   * a missing path) to skip migration entirely. This is the LIVE db; the
+   * migration opens it read-only and never writes it, but it must be a path that
+   * is safe to read while the app may hold a WAL lock on the original.
+   */
+  chatHistoryDbPath?: string;
 }
 
 export interface LocalHost {
@@ -124,6 +135,23 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
   return {
     server,
     async start() {
+      // One-time, additive, idempotent migration of the Rust-desktop era's chat
+      // history (SQLite chat_feed) into each agent's `.houston/runtime/`. Runs
+      // BEFORE the watcher so its writes are already on disk when reactivity
+      // turns on, and only when the db is actually present. Never modifies the
+      // db or the existing tree, and a `.migrated` marker makes re-boots no-ops.
+      if (opts.chatHistoryDbPath && existsSync(opts.chatHistoryDbPath)) {
+        try {
+          migrateChatHistory({
+            workspacesRoot: opts.workspacesRoot,
+            dbPath: opts.chatHistoryDbPath,
+          });
+        } catch (err) {
+          // No UI thread to toast on at boot; the supervisor must stay up. Log
+          // loudly so the failure shows in the app logs / bug report tail.
+          console.error("[local-host] chat-history migration failed (continuing):", err);
+        }
+      }
       await new Promise<void>((resolve) => server.listen(opts.port, "127.0.0.1", () => resolve()));
       watcher.start();
       scheduler.start();

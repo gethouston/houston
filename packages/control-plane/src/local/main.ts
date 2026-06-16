@@ -12,6 +12,7 @@ import { houstonSystemPrompt } from "../houston-prompt";
  * Config (env, all optional):
  *   HOUSTON_WORKSPACES_ROOT   ~/.houston/workspaces
  *   HOUSTON_CREDENTIALS_PATH  ~/.houston/credentials.json
+ *   HOUSTON_CHAT_HISTORY_DB   ~/.houston/db/houston.db (Rust-era chat to migrate)
  *   HOUSTON_HOST_PORT         4318
  *   HOUSTON_HOST_TOKEN        random per boot
  *   HOUSTON_RUNTIME_COMMAND   argv to launch a pi-runtime (space-separated);
@@ -31,6 +32,10 @@ const houstonHome = join(homedir(), ".houston");
 const host = buildLocalHost({
   workspacesRoot: process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
   credentialsPath: process.env.HOUSTON_CREDENTIALS_PATH || join(houstonHome, "credentials.json"),
+  // The Rust-era chat-history db. Default to the canonical path; the migration
+  // is a no-op when it is absent (a fresh install) or already done (marker).
+  chatHistoryDbPath:
+    process.env.HOUSTON_CHAT_HISTORY_DB || join(houstonHome, "db", "houston.db"),
   port: Number(process.env.HOUSTON_HOST_PORT || 4318),
   token: process.env.HOUSTON_HOST_TOKEN || randomBytes(32).toString("hex"),
   runtimeCommand: runtimeCommand(),
