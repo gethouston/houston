@@ -89,7 +89,15 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     opts.spawner ??
     new BunRuntimeSpawner({
       command: opts.runtimeCommand,
-      env: opts.systemPrompt ? { HOUSTON_SYSTEM_PROMPT: opts.systemPrompt } : {},
+      env: {
+        ...(opts.systemPrompt ? { HOUSTON_SYSTEM_PROMPT: opts.systemPrompt } : {}),
+        // Packaged: runtimeCommand() spawns this same compiled binary, so the
+        // child must dispatch into RUNTIME role (sidecar-entry.ts reads this).
+        // Additive to the per-runtime env the ProcessLauncher sets (workspace
+        // dir, data dir, port, token). Only set when we ARE the compiled sidecar;
+        // the dev `bun run <source>` command ignores it harmlessly anyway.
+        ...(process.env.HOUSTON_SIDECAR_BINARY ? { HOUSTON_SIDECAR_ROLE: "runtime" } : {}),
+      },
       onLog: opts.onRuntimeLog,
     });
 

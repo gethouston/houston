@@ -16,13 +16,24 @@ import { houstonSystemPrompt } from "../houston-prompt";
  *   HOUSTON_HOST_PORT         4318
  *   HOUSTON_HOST_TOKEN        random per boot
  *   HOUSTON_RUNTIME_COMMAND   argv to launch a pi-runtime (space-separated);
- *                             defaults to `bun run <repo>/packages/runtime/src/main.ts`
+ *                             explicit override (highest priority). Otherwise:
+ *                             the compiled sidecar spawns ITSELF (in runtime
+ *                             role via HOUSTON_SIDECAR_ROLE — see host.ts); the
+ *                             dev fallback is `bun run <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  */
 function runtimeCommand(): string[] {
+  // 1. Explicit override always wins.
   const explicit = process.env.HOUSTON_RUNTIME_COMMAND;
   if (explicit) return explicit.split(" ").filter(Boolean);
-  // Dev default: run the runtime from source, resolved relative to this file
+  // 2. Packaged: we ARE the compiled sidecar (sidecar-entry.ts set
+  // HOUSTON_SIDECAR_BINARY to our own execPath). Spawn that same binary; the
+  // host adds HOUSTON_SIDECAR_ROLE=runtime so it dispatches into runtime mode.
+  // The packaged .app has no `bun` and no repo source, so this is the ONLY path
+  // that can launch a runtime there.
+  const selfBinary = process.env.HOUSTON_SIDECAR_BINARY;
+  if (selfBinary) return [selfBinary];
+  // 3. Dev fallback: run the runtime from source, resolved relative to this file
   // (src/local/main.ts → ../../../runtime/src/main.ts).
   const runtimeMain = join(import.meta.dir, "..", "..", "..", "runtime", "src", "main.ts");
   return ["bun", "run", runtimeMain];

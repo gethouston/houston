@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # ============================================================================
-# Bun-compile the Houston local HOST into a single self-contained binary and
-# stage it where `build.rs` (under the `host-sidecar` cargo feature) picks it
-# up for Tauri's `externalBin` bundling.
+# Bun-compile the Houston single sidecar into a self-contained binary and stage
+# it where `build.rs` (under the `host-sidecar` cargo feature) picks it up for
+# Tauri's `externalBin` bundling.
+#
+# ONE binary, TWO roles: the compiled `sidecar-entry.ts` runs as the local HOST
+# by default, or as a pi RUNTIME when HOUSTON_SIDECAR_ROLE=runtime. The host
+# spawns ITSELF (same binary) in runtime mode, so the packaged .app needs no
+# `bun` and no repo source to launch a runtime — fixing the packaging gap where
+# the host's `bun run <repo>/packages/runtime/src/main.ts` default could never
+# resolve inside the .app.
 #
 # This is the host-sidecar analogue of the release workflow's
 # `cargo build -p houston-engine-server` step: the desktop's default build
@@ -25,11 +32,12 @@
 set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-ENTRY="$REPO_ROOT/packages/control-plane/src/local/main.ts"
+# The dual-role dispatch entry (host by default, runtime via HOUSTON_SIDECAR_ROLE).
+ENTRY="$REPO_ROOT/packages/control-plane/src/sidecar-entry.ts"
 OUT_DIR="$REPO_ROOT/target/host-sidecar"
 
 command -v bun >/dev/null 2>&1 || { echo "ERROR: bun not found on PATH" >&2; exit 1; }
-test -f "$ENTRY" || { echo "ERROR: host entry missing: $ENTRY" >&2; exit 1; }
+test -f "$ENTRY" || { echo "ERROR: sidecar entry missing: $ENTRY" >&2; exit 1; }
 
 # Derive the Rust target triple for the current host. These match the suffixes
 # tauri-cli appends to `externalBin` names, so the staged binary lines up with
