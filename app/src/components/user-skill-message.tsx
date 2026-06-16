@@ -3,7 +3,6 @@ import {
   type UserAttachmentMessageLabels,
 } from "@houston-ai/chat";
 import { SkillIcon } from "./skill-icon";
-import { IntegrationLogos } from "./integration-logos";
 import type { SkillInvocation } from "../lib/skill-message";
 
 interface Props {
@@ -25,7 +24,6 @@ export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
     displayName,
     image,
     description,
-    integrations,
     fields,
     message,
     attachments,
@@ -43,11 +41,6 @@ export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
               <p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
                 {description}
               </p>
-            )}
-            {integrations.length > 0 && (
-              <div className="mt-2">
-                <IntegrationLogos toolkits={integrations} />
-              </div>
             )}
           </div>
         </div>

@@ -84,11 +84,6 @@ export function osOpenFile(agentPath: string, relativePath: string): Promise<voi
   return invoke<void>("open_file", { agent_path: agentPath, relative_path: relativePath });
 }
 
-/** Is the Claude CLI installed on this machine? */
-export function osCheckClaudeCli(): Promise<boolean> {
-  return invoke<boolean>("check_claude_cli");
-}
-
 /** Resolve the app bundle/executable path before updater install moves it. */
 export function osCurrentAppBundlePath(): Promise<string> {
   return invoke<string>("current_app_bundle_path");

@@ -42,7 +42,7 @@ test("effort levels are per model", () => {
 });
 
 test("effort levels empty for unknown / effort-less models", () => {
-  assert.deepEqual(getEffortLevels("gemini", "gemini-2.5-pro"), []);
+  assert.deepEqual(getEffortLevels("unknown-provider", "unknown-model"), []);
   assert.deepEqual(getEffortLevels(null, null), []);
   assert.deepEqual(getEffortLevels("anthropic", "no-such-model"), []);
   // Legacy CLI aliases were retired in favor of explicit version IDs; the
@@ -71,7 +71,7 @@ test("validEffortOrDefault falls back to default when unset or garbage", () => {
 });
 
 test("validEffortOrDefault is undefined for models without effort control", () => {
-  assert.equal(validEffortOrDefault("gemini", "gemini-2.5-pro", "high"), undefined);
+  assert.equal(validEffortOrDefault("unknown-provider", "unknown-model", "high"), undefined);
 });
 
 test("validModelOrNull rejects retired aliases and accepts catalog IDs", () => {

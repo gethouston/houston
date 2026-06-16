@@ -18,7 +18,6 @@ import type board from "../locales/en/board.json";
 import type agents from "../locales/en/agents.json";
 import type skills from "../locales/en/skills.json";
 import type routines from "../locales/en/routines.json";
-import type integrations from "../locales/en/integrations.json";
 import type providers from "../locales/en/providers.json";
 import type errors from "../locales/en/errors.json";
 import type events from "../locales/en/events.json";
@@ -40,7 +39,6 @@ declare module "react-i18next" {
       agents: typeof agents;
       skills: typeof skills;
       routines: typeof routines;
-      integrations: typeof integrations;
       providers: typeof providers;
       errors: typeof errors;
       events: typeof events;

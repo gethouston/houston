@@ -1,7 +1,6 @@
 {
   "sidebar": {
     "missionControl": "Mission Control",
-    "integrations": "Integrations",
     "settings": "Settings",
     "yourAgents": "Your Agents",
     "selectWorkspace": "Select workspace",
@@ -42,13 +41,7 @@
     "description": "This will permanently delete the agent and all its data. This cannot be undone."
   },
   "workspaceDialog": {
-    "title": "New workspace",
-    "tabNew": "Create new",
-    "tabGithub": "Import from GitHub",
-    "githubDescription": "Import a workspace template from GitHub. This creates a workspace with all its agents ready to use.",
-    "githubPlaceholder": "owner/repo",
-    "githubImport": "Import",
-    "githubImporting": "Importing workspace and agents..."
+    "title": "New workspace"
   },
   "uiTour": {
     "counter": "Tour {{current}} of {{total}}",
@@ -88,10 +81,6 @@
       "missionControl": {
         "title": "Mission Control",
         "body": "When you add more agents, this becomes the single board across all of them. One place to see everything."
-      },
-      "integrations": {
-        "title": "Integrations",
-        "body": "Tools your agents can use, like Gmail and Calendar. Connections live here, shared across all your agents."
       },
       "appTour": {
         "title": "Replay the tour",
@@ -170,7 +159,7 @@
     "dismissAction": "Dismiss update for now"
   },
   "store": {
-    "searchPlaceholder": "Search the store...",
+    "searchPlaceholder": "Search agents...",
     "noResults": "No agents match your search"
   },
   "naming": {
@@ -246,16 +235,6 @@
     "stepTitle": "Review your agent",
     "instructionsLabel": "Agent instructions",
     "instructionsHelper": "Review and edit the instructions below"
-  },
-  "aiIntegrations": {
-    "stepTitle": "Connect your apps",
-    "stepDescription": "These apps work well with your agent. Connect them now or do it later from the Integrations tab.",
-    "notInstalledNote": "You can connect integrations from the Integrations tab after creating your agent.",
-    "needsAuthNote": "Sign in to Composio to connect apps now, or do it after creating your agent.",
-    "signIn": "Sign in",
-    "connected": "Connected",
-    "connect": "Connect",
-    "continueButton": "Continue"
   },
   "aiRoutine": {
     "stepTitle": "Set up automatic runs",
@@ -352,7 +331,6 @@
     "actions": {
       "newMission": "Start new mission",
       "missionControl": "Go to Mission Control",
-      "integrations": "Open Integrations",
       "settings": "Open Settings",
       "shortcuts": "Show keyboard shortcuts"
     }

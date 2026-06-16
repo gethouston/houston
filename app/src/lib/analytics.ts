@@ -39,15 +39,12 @@ export type AnalyticsEventName =
   | "provider_configured"
   | "provider_not_configured"
   | "agent_created"
-  | "agent_installed_from_store"
   | "agent_shared"
   | "agent_imported"
   | "chat_message_sent"
   | "chat_message_received"
   | "mission_created"
   // Feature adoption
-  | "integration_connected"
-  | "integration_disconnected"
   | "skill_used"
   | "routine_scheduled"
   | "routine_executed"
@@ -75,7 +72,6 @@ type AnalyticsProperty =
   | "workspace_count"
   | "agent_count"
   // New properties
-  | "integration_slug"
   | "skill_slug"
   | "routine_id"
   | "agent_slug"
@@ -103,7 +99,6 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "error_kind",
   "workspace_count",
   "agent_count",
-  "integration_slug",
   "skill_slug",
   "routine_id",
   "agent_slug",

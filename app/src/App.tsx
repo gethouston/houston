@@ -8,11 +8,9 @@ import { useHoustonInit } from "./hooks/use-houston-init";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
-import { useIntegrationTracker } from "./hooks/use-integration-tracker";
 import { useWorkspaceStore } from "./stores/workspaces";
 import { useAgentStore } from "./stores/agents";
 import { useUIStore } from "./stores/ui";
-import { useConnections, useComposioApps } from "./hooks/queries";
 import { analytics } from "./lib/analytics";
 import { setUser as setSentryUser, clearUser as clearSentryUser } from "./lib/sentry";
 import { loadTheme } from "./lib/theme";
@@ -29,10 +27,6 @@ export default function App() {
   useSessionEvents();
   useAgentInvalidation();
   useAnalyticsSubscriber();
-  useIntegrationTracker();
-  // Prefetch Composio data on launch so the integrations tab opens instantly.
-  useConnections();
-  useComposioApps();
 
   // Track active installs once per day. This is the canonical DAU/WAU/MAU
   // signal; launch counts are intentionally not captured.

@@ -1,6 +1,6 @@
 import { builtinConfigs } from "./builtin";
 import type { AgentDefinition, AgentConfig } from "../lib/types";
-import { tauriStore } from "../lib/tauri";
+import { tauriAgents } from "../lib/tauri";
 
 export async function loadAllConfigs(): Promise<AgentDefinition[]> {
   const byId = new Map<string, AgentDefinition>();
@@ -10,7 +10,7 @@ export async function loadAllConfigs(): Promise<AgentDefinition[]> {
   }
 
   try {
-    const installed = (await tauriStore.listInstalled()) as Array<{
+    const installed = (await tauriAgents.listInstalledConfigs()) as Array<{
       config: AgentConfig;
       path: string;
     }>;

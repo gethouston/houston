@@ -17,13 +17,6 @@ import {
   isActiveSessionStatus,
 } from "../../../stores/session-status";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
-import { ComposioLinkCard } from "../../composio-link-card";
-import { parseComposioToolkitFromHref } from "../../composio-card-state";
-import { withComposioWaitingFooter } from "../../composio-waiting-footer";
-import {
-  ComposioSigninCard,
-  isComposioSigninHref,
-} from "../../composio-signin-card";
 import type { Agent } from "../../../lib/types";
 import type { MissionMeta } from "../mission-frame";
 import { MissionChatFrame } from "../mission-chat-frame";
@@ -183,25 +176,9 @@ export function TryMission({
     tauriSystem.openUrl(url).catch(console.error);
   }, []);
 
-  const renderLink = useCallback(
-    ({ href, onOpen }: { href: string; onOpen: () => void }) => {
-      if (isComposioSigninHref(href)) {
-        return <ComposioSigninCard />;
-      }
-      const toolkit = parseComposioToolkitFromHref(href);
-      if (!toolkit) return undefined;
-      return (
-        <ComposioLinkCard toolkit={toolkit} onOpen={onOpen} />
-      );
-    },
-    [],
-  );
-
   const transformContent = useCallback((content: string) => {
-    const stripped = TUTORIAL_END_RE.test(content)
-      ? content.replace(TUTORIAL_END_STRIP_RE, "").trim()
-      : content;
-    return withComposioWaitingFooter({ content: stripped });
+    if (!TUTORIAL_END_RE.test(content)) return { content };
+    return { content: content.replace(TUTORIAL_END_STRIP_RE, "").trim() };
   }, []);
 
   // Free-typing path. Wrapped by `useSessionMessageQueue` so messages typed
@@ -388,7 +365,6 @@ export function TryMission({
                 placeholder={t("setup:tutorial.missions.try.placeholder")}
                 processLabels={processLabels}
                 getThinkingMessage={getThinkingMessage}
-                renderLink={renderLink}
                 onOpenLink={handleOpenLink}
                 transformContent={transformContent}
                 value={composerText}

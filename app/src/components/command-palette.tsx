@@ -13,7 +13,6 @@ import {
   resolveAgentColor,
 } from "@houston-ai/core";
 import {
-  Blend,
   Keyboard,
   LayoutDashboard,
   Plus,
@@ -155,16 +154,6 @@ export function CommandPalette() {
             <LayoutDashboard />
             <span>{t("shell:palette.actions.missionControl")}</span>
             <CommandShortcut>{shortcutLabel("missionControl")}</CommandShortcut>
-          </CommandItem>
-          <CommandItem
-            onSelect={() => {
-              setViewMode("connections");
-              close();
-            }}
-            value="action integrations"
-          >
-            <Blend />
-            <span>{t("shell:palette.actions.integrations")}</span>
           </CommandItem>
           <CommandItem
             onSelect={() => {

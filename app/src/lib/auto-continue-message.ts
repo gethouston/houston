@@ -1,7 +1,7 @@
 /**
  * A "continue the task" message Houston sends to the agent on the user's
- * behalf — e.g. when a Composio integration the user started from a chat
- * card finishes connecting.
+ * behalf when something completes out-of-band and the agent should resume
+ * without the user retyping.
  *
  * The provider has no "resume without a prompt" concept, so the agent needs
  * a user turn to continue. But the user never typed it, and showing a fake

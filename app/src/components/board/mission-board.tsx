@@ -179,8 +179,6 @@ export function MissionBoard({ source }: { source: BoardSource }) {
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
           renderTurnSummary={panel.renderTurnSummary}
-          renderLink={panel.renderLink}
-          transformContent={panel.transformContent}
         />
       </div>
       {panel.pickerDialog}

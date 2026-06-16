@@ -1,7 +1,6 @@
 import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
 import { SkillIcon } from "./skill-icon";
-import { IntegrationLogos } from "./integration-logos";
 import type { SkillSummary } from "../lib/types";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 
@@ -40,11 +39,6 @@ export function SelectedSkillChip({ skill, onCancel }: Props) {
             <X className="size-3.5" />
           </button>
         </div>
-        {skill.integrations.length > 0 && (
-          <div className="mt-1.5">
-            <IntegrationLogos toolkits={skill.integrations} />
-          </div>
-        )}
       </div>
     </div>
   );

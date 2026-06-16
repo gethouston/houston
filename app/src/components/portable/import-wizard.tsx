@@ -38,12 +38,7 @@ import { getEngine } from "../../lib/engine";
 import { tauriConfig, tauriProvider } from "../../lib/tauri";
 import { analytics } from "../../lib/analytics";
 import { getDefaultModel } from "../../lib/providers";
-import { IntegrationLogos } from "../integration-logos";
 import { InlineModelSelector } from "../shell/naming-step";
-import {
-  useConnectedToolkits,
-  useComposioApps,
-} from "../../hooks/queries";
 import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
@@ -54,8 +49,7 @@ type StepId =
   | "name"
   | "skills"
   | "routines"
-  | "learnings"
-  | "integrations";
+  | "learnings";
 
 interface Selection {
   skillSlugs: Set<string>;
@@ -112,10 +106,6 @@ export function ImportAgentWizard() {
     if (uploaded.preview.skills.length > 0) out.push("skills");
     if (uploaded.preview.routines.length > 0) out.push("routines");
     if (uploaded.preview.learnings.length > 0) out.push("learnings");
-    const hasIntegrations =
-      uploaded.preview.skills.some((s) => s.integrations.length > 0) ||
-      uploaded.preview.routines.some((r) => r.integrations.length > 0);
-    if (hasIntegrations) out.push("integrations");
     return out;
   }, [uploaded]);
 
@@ -305,10 +295,6 @@ export function ImportAgentWizard() {
                 renderRow={(s) => ({
                   title: s.description || humanize(s.slug),
                   subtitle: humanize(s.slug),
-                  trailing:
-                    s.integrations.length > 0 ? (
-                      <IntegrationLogos toolkits={s.integrations} />
-                    ) : null,
                   flagged: findingsForId("skill", s.slug).length > 0,
                 })}
               />
@@ -328,10 +314,6 @@ export function ImportAgentWizard() {
                 renderRow={(r) => ({
                   title: r.name,
                   subtitle: r.description || r.promptExcerpt,
-                  trailing:
-                    r.integrations.length > 0 ? (
-                      <IntegrationLogos toolkits={r.integrations} />
-                    ) : null,
                   flagged: findingsForId("routine", r.id).length > 0,
                 })}
               />
@@ -352,14 +334,6 @@ export function ImportAgentWizard() {
                   title: l.text,
                   flagged: findingsForId("learning", l.id).length > 0,
                 })}
-              />
-            </Frame>
-          )}
-          {currentStep === "integrations" && uploaded && (
-            <Frame>
-              <IntegrationsStep
-                uploaded={uploaded}
-                selection={selection}
               />
             </Frame>
           )}
@@ -654,82 +628,6 @@ function PickListStep<T>({
           })}
         </div>
       </div>
-    </div>
-  );
-}
-
-function IntegrationsStep({
-  uploaded,
-  selection,
-}: {
-  uploaded: PortableUploadPreviewResponse;
-  selection: Selection;
-}) {
-  const { t } = useTranslation("portable");
-  const { data: connected = [] } = useConnectedToolkits(true);
-  const { data: apps = [] } = useComposioApps();
-
-  const required = useMemo(() => {
-    const set = new Set<string>();
-    for (const s of uploaded.preview.skills) {
-      if (!selection.skillSlugs.has(s.slug)) continue;
-      for (const i of s.integrations) set.add(i.toLowerCase());
-    }
-    for (const r of uploaded.preview.routines) {
-      if (!selection.routineIds.has(r.id)) continue;
-      for (const i of r.integrations) set.add(i.toLowerCase());
-    }
-    return Array.from(set).sort();
-  }, [uploaded, selection]);
-
-  return (
-    <div className="space-y-10">
-      <header>
-        <h1 className="text-[28px] font-normal leading-tight">
-          {t("import.step6.title")}
-        </h1>
-        <p className="mt-3 text-base text-muted-foreground">
-          {required.length === 0
-            ? t("import.step6.none")
-            : t("import.step6.body")}
-        </p>
-      </header>
-
-      {required.length > 0 && (
-        <div className="space-y-1">
-          {required.map((slug) => {
-            const isConnected = connected.includes(slug);
-            const entry = apps.find((a) => a.toolkit === slug);
-            return (
-              <div
-                key={slug}
-                className="flex items-center gap-3 px-1 py-2.5"
-              >
-                <IntegrationLogos toolkits={[slug]} small={false} />
-                <p className="flex-1 text-sm text-foreground">
-                  {entry?.name ?? slug}
-                </p>
-                <p
-                  className={cn(
-                    "text-xs",
-                    isConnected ? "text-[#00a240]" : "text-muted-foreground",
-                  )}
-                >
-                  {isConnected
-                    ? t("import.step6.connected")
-                    : t("import.step6.needsConnection")}
-                </p>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {required.length > 0 && (
-        <p className="text-xs text-muted-foreground">
-          {t("import.step6.connectLater")}
-        </p>
-      )}
     </div>
   );
 }

@@ -45,7 +45,6 @@ export function SkillList({
           image={s.image}
           title={humanizeSkillName(s.name)}
           description={s.description}
-          integrations={s.integrations}
           onClick={() => onSkill(s.name)}
         />
       ))}

@@ -2,11 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatPanel, type FeedItem } from "@houston-ai/chat";
 import { HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
-import {
-  useConnectedToolkits,
-  useConnections,
-  useSkills,
-} from "../../../hooks/queries";
+import { useSkills } from "../../../hooks/queries";
 import { tauriAgent } from "../../../lib/tauri";
 import { logger } from "../../../lib/logger";
 import { useFeedStore } from "../../../stores/feeds";
@@ -18,7 +14,6 @@ import { useChatDisplayLabels } from "../../use-chat-display-labels";
 import {
   buildOnboardingSkillFile,
   ONBOARDING_SKILL_SLUG,
-  pickOnboardingIntegrations,
 } from "../onboarding-skill";
 import { SkillCard } from "../../skill-card";
 import type { Agent } from "../../../lib/types";
@@ -82,13 +77,6 @@ export function SkillMission({
   const { processLabels, getThinkingMessage } = useChatDisplayLabels();
 
   const { data: skills } = useSkills(agentPath);
-  const { data: composioStatus } = useConnections();
-  const isSignedIn = composioStatus?.status === "ok";
-  const { data: connectedList } = useConnectedToolkits(isSignedIn);
-  const connectedSet = useMemo(
-    () => new Set(connectedList ?? []),
-    [connectedList],
-  );
 
   /**
    * `introDismissed` flips when the user clicks the modal CTA. Until
@@ -147,11 +135,9 @@ export function SkillMission({
         data: chipLabel,
       });
 
-      const integrations = pickOnboardingIntegrations(connectedSet);
       const today = new Date().toISOString().slice(0, 10);
       const file = buildOnboardingSkillFile({
         description: t("setup:tutorial.missions.skill.savedDescription"),
-        integrations,
         today,
       });
 
@@ -173,7 +159,7 @@ export function SkillMission({
         logger.warn(`[skill] write failed: ${e}`);
       }
     },
-    [agentPath, sessionKey, pickedAny, pushFeedItem, connectedSet, t],
+    [agentPath, sessionKey, pickedAny, pushFeedItem, t],
   );
 
   const handleSkip = useCallback(() => {
@@ -203,7 +189,6 @@ export function SkillMission({
             image={newSkill.image ?? "spiral-calendar"}
             title={newSkill.name}
             description={newSkill.description}
-            integrations={newSkill.integrations}
             onClick={() => {}}
           />
         </div>

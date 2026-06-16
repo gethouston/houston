@@ -35,7 +35,6 @@ import boardEn from "../locales/en/board.json";
 import agentsEn from "../locales/en/agents.json";
 import skillsEn from "../locales/en/skills.json";
 import routinesEn from "../locales/en/routines.json";
-import integrationsEn from "../locales/en/integrations.json";
 import providersEn from "../locales/en/providers.json";
 import errorsEn from "../locales/en/errors.json";
 import eventsEn from "../locales/en/events.json";
@@ -52,7 +51,6 @@ import boardEs from "../locales/es/board.json";
 import agentsEs from "../locales/es/agents.json";
 import skillsEs from "../locales/es/skills.json";
 import routinesEs from "../locales/es/routines.json";
-import integrationsEs from "../locales/es/integrations.json";
 import providersEs from "../locales/es/providers.json";
 import errorsEs from "../locales/es/errors.json";
 import eventsEs from "../locales/es/events.json";
@@ -69,7 +67,6 @@ import boardPt from "../locales/pt/board.json";
 import agentsPt from "../locales/pt/agents.json";
 import skillsPt from "../locales/pt/skills.json";
 import routinesPt from "../locales/pt/routines.json";
-import integrationsPt from "../locales/pt/integrations.json";
 import providersPt from "../locales/pt/providers.json";
 import errorsPt from "../locales/pt/errors.json";
 import eventsPt from "../locales/pt/events.json";
@@ -126,7 +123,6 @@ const resources = {
     agents: agentsEn,
     skills: skillsEn,
     routines: routinesEn,
-    integrations: integrationsEn,
     providers: providersEn,
     errors: errorsEn,
     events: eventsEn,
@@ -145,7 +141,6 @@ const resources = {
     agents: agentsEs,
     skills: skillsEs,
     routines: routinesEs,
-    integrations: integrationsEs,
     providers: providersEs,
     errors: errorsEs,
     events: eventsEs,
@@ -164,7 +159,6 @@ const resources = {
     agents: agentsPt,
     skills: skillsPt,
     routines: routinesPt,
-    integrations: integrationsPt,
     providers: providersPt,
     errors: errorsPt,
     events: eventsPt,
@@ -203,7 +197,6 @@ void i18n
       "agents",
       "skills",
       "routines",
-      "integrations",
       "providers",
       "errors",
       "events",

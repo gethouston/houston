@@ -10,7 +10,6 @@ export type OnboardingStep = "welcome" | TutorialStep;
 export type TutorialStep =
   | "meet"
   | "brain"
-  | "tools"
   | "try"
   | "skill"
   | "routine"
@@ -21,7 +20,6 @@ type Translate = (key: string, options?: Record<string, unknown>) => string;
 export const TUTORIAL_STEPS: TutorialStep[] = [
   "meet",
   "brain",
-  "tools",
   "try",
   "skill",
   "routine",

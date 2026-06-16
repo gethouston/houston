@@ -18,7 +18,7 @@ export interface ModelOption {
   /**
    * Reasoning-effort levels this model accepts, ordered low→high. Omitted
    * or empty means the model has no effort control and the picker hides the
-   * effort row (e.g. Gemini, Haiku).
+   * effort row (e.g. Haiku).
    */
   effortLevels?: readonly EffortLevel[];
   /**
@@ -47,18 +47,6 @@ export interface ModelOption {
   contextWindowMax?: number;
 }
 
-/**
- * How a provider authenticates.
- *
- * - `"cli"`: the provider exposes a CLI login command (e.g. `claude login`,
- *   `codex login`). Houston runs it via `tauriProvider.launchLogin` and the
- *   provider's own browser flow takes over.
- * - `"apiKey"`: the provider has NO CLI login flow. The user must paste an
- *   API key from the provider's console and Houston surfaces a dedicated
- *   dialog with the instructions instead of calling `launchLogin`.
- */
-export type ProviderLoginKind = "cli" | "apiKey";
-
 export interface ProviderInfo {
   id: string;
   name: string;
@@ -69,18 +57,6 @@ export interface ProviderInfo {
   cost: string;
   models: readonly ModelOption[];
   defaultModel: string;
-  /** Auth flow this provider uses. Defaults to "cli" when omitted. */
-  loginKind?: ProviderLoginKind;
-  /**
-   * Optional URL the connect dialog points API-key users at to mint a key.
-   * Only meaningful when `loginKind === "apiKey"`.
-   */
-  apiKeyConsoleUrl?: string;
-  /**
-   * Shell `export` command (env var name) for API-key providers. Shown in
-   * the connect dialog so the user can paste it into their shell rc.
-   */
-  apiKeyEnvVar?: string;
 }
 
 export const PROVIDERS: readonly ProviderInfo[] = [
@@ -208,10 +184,10 @@ export function getContextWindowConfig(
  * Return `providerId` only when it names a currently-active provider in
  * `PROVIDERS`. Used by the chat model selector and the per-chat
  * effective-provider fallback chain to skip stored values that point at
- * providers Houston has moved to `COMING_SOON_PROVIDERS` (e.g. an
- * activity record from a previous Houston version that selected Gemini
- * before it was paused). Callers chain it with `??` to fall through to
- * the next tier of preference.
+ * providers Houston has moved to `COMING_SOON_PROVIDERS` or dropped
+ * entirely (e.g. an activity record from a previous Houston version that
+ * selected a provider that is no longer available). Callers chain it
+ * with `??` to fall through to the next tier of preference.
  */
 export function validProviderOrNull(providerId: string | null | undefined): string | null {
   return providerId && getProvider(providerId) ? providerId : null;
@@ -296,11 +272,6 @@ export interface ComingSoonProviderInfo {
 }
 
 export const COMING_SOON_PROVIDERS: readonly ComingSoonProviderInfo[] = [
-  // Gemini: engine support + bundled CLI machinery are intact in this
-  // codebase. The UI keeps it under "coming soon" until the broader
-  // rollout (account-tier gating, Windows fork-build) is ready. Listed
-  // first so the alphabetised "next up" slot stays prominent.
-  { id: "gemini", name: "Google", subtitle: "Gemini CLI", mark: "GM" },
   { id: "subq", name: "SubQ", subtitle: "SubQ Code", mark: "SQ" },
   { id: "deepseek", name: "DeepSeek", subtitle: "DeepSeek Coder", mark: "DS" },
   { id: "minimax", name: "MiniMax", subtitle: "M2", mark: "MM" },

@@ -568,9 +568,6 @@ export class HoustonClient {
     const engine = this.cp ? controlPlane.runtimeClientFor(this.cp, this.requireAgentId()) : this.engine;
     await engine.logout(pid);
   }
-  async setGeminiApiKey(): Promise<void> {
-    throw new Error("Gemini is not supported by this engine");
-  }
 
   /**
    * Poll the agent's sandbox until the device-code login lands (the runtime
@@ -687,12 +684,6 @@ export class HoustonClient {
   async startRoutineScheduler(): Promise<void> {}
   async stopRoutineScheduler(): Promise<void> {}
   async syncRoutineScheduler(): Promise<void> {}
-  async claudeStatus() {
-    return { installed: true, install_path: null, pinned_version: null, installed_version: null };
-  }
-  async composioStatus() {
-    return { cliInstalled: false, authenticated: false, connections: [] };
-  }
 
   wsUrl(): string {
     return "";

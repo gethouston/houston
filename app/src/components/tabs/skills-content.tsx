@@ -1,6 +1,5 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { CommunitySkill, RepoSkill } from "@houston-ai/skills";
 import { AddSkillDialog } from "@houston-ai/skills";
 import {
   Button,
@@ -19,25 +18,12 @@ export function SkillsContent({
   skills,
   loading,
   onSkillClick,
-  onSearch,
-  onPopular,
-  onInstallCommunity,
-  onListFromRepo,
-  onInstallFromRepo,
   onCreateFromScratch,
   installedSkillNames,
 }: {
   skills: SkillSummary[];
   loading: boolean;
   onSkillClick: (name: string) => void;
-  onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
-  onInstallCommunity?: (
-    skill: CommunitySkill,
-    signal?: AbortSignal,
-  ) => Promise<string>;
-  onListFromRepo?: (source: string) => Promise<RepoSkill[]>;
-  onInstallFromRepo?: (source: string, skills: RepoSkill[]) => Promise<string[]>;
   onCreateFromScratch?: (input: {
     name: string;
     description: string;
@@ -52,18 +38,12 @@ export function SkillsContent({
     () => [...skills].sort((a, b) => a.name.localeCompare(b.name)),
     [skills],
   );
-  const addDialogProps =
-    onSearch && onInstallCommunity
-      ? {
-          onSearch,
-          onPopular,
-          onInstallCommunity,
-          onListFromRepo,
-          onInstallFromRepo,
-          onCreateFromScratch,
-          installedSkillNames,
-        }
-      : null;
+  const addDialogProps = onCreateFromScratch
+    ? {
+        onCreateFromScratch,
+        installedSkillNames,
+      }
+    : null;
 
   if (loading && sorted.length === 0) {
     return (
@@ -121,7 +101,6 @@ export function SkillsContent({
             image={skill.image}
             title={humanizeSkillName(skill.name)}
             description={skill.description}
-            integrations={skill.integrations}
             onClick={() => onSkillClick(skill.name)}
           />
         ))}

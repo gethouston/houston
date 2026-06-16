@@ -22,24 +22,6 @@
     "cancelWaiting": "Cancel and try again",
     "installedCheckAgain": "Already installed? Check again"
   },
-  "claudeInstall": {
-    "installing": "Downloading Claude Code...",
-    "installingWithProgress": "Downloading Claude Code... {{progress}}%",
-    "failedTitle": "Houston couldn't download Claude Code",
-    "preparing": "Houston is downloading Claude Code in the background. If it doesn't start, try again below.",
-    "retry": "Retry download",
-    "errors": {
-      "timeout": "The download took too long. Check your internet connection and try again.",
-      "networkUnreachable": "Couldn't reach Anthropic. Check your internet connection and try again.",
-      "downloadInterrupted": "The download was interrupted. Check your internet connection and try again.",
-      "httpError": "Anthropic's servers had a problem (error {{status}}). Try again in a few minutes.",
-      "checksumMismatch": "The download didn't arrive intact. Check your connection and try again.",
-      "platformUnsupported": "Claude Code isn't available for this device yet.",
-      "writeFailed": "Houston couldn't save Claude Code to your computer. Make sure there's enough space and try again.",
-      "unavailable": "Houston couldn't start the download. Try again in a moment.",
-      "unknown": "Something went wrong while downloading Claude Code. Try again."
-    }
-  },
   "signOutConfirm": {
     "title": "Sign out of {{provider}}?",
     "description": "Houston will stop using {{provider}} until you sign in again. Existing missions can still finish their current turn.",
@@ -74,25 +56,6 @@
     "copyCode": "Copy code",
     "codeCopied": "Code copied!",
     "codeCopyFailed": "Couldn't copy the code",
-    "cancel": "Cancel"
-  },
-  "geminiConnect": {
-    "title": "Connect {{name}}",
-    "description": "Sign in with your Google account to use the free Gemini tier, the same one the gemini CLI uses outside Houston.",
-    "signInWithGoogle": "Sign in with Google",
-    "signingIn": "Opening browser...",
-    "signInFailed": "Couldn't start {{name}} sign-in",
-    "signInRecommended": "Recommended. Uses the free personal tier, no payment required.",
-    "or": "or",
-    "useApiKeyAdvanced": "Use an API key (advanced)",
-    "openConsole": "Open the {{name}} console",
-    "openConsoleFailed": "Couldn't open the {{name}} console",
-    "placeholder": "Paste your key here",
-    "show": "Show key",
-    "hide": "Hide key",
-    "saveKey": "Save and connect",
-    "saving": "Saving...",
-    "saveFailed": "Couldn't save your {{name}} key",
     "cancel": "Cancel"
   }
 }

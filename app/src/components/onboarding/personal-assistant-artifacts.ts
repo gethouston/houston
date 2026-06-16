@@ -37,9 +37,8 @@ ${setup.approvalRule.trim()}
 ## How to work
 - Prefer Skills for repeatable work.
 - Prefer Routines for scheduled work.
-- Use connected apps through Composio when a task needs inbox, calendar, documents, or other accounts.
 - Ask one clear question when required information is missing.
 - Keep updates short and practical.
-- Never send messages, create calendar events, or change connected apps unless I approve first.
+- Never send messages or make changes on my behalf unless I approve first.
 `;
 }

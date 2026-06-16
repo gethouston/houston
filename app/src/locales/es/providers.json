@@ -22,24 +22,6 @@
     "cancelWaiting": "Cancelar e intentar de nuevo",
     "installedCheckAgain": "¿Ya la instalaste? Reintentar"
   },
-  "claudeInstall": {
-    "installing": "Descargando Claude Code...",
-    "installingWithProgress": "Descargando Claude Code... {{progress}}%",
-    "failedTitle": "Houston no pudo descargar Claude Code",
-    "preparing": "Houston está descargando Claude Code en segundo plano. Si no inicia, reintenta abajo.",
-    "retry": "Reintentar descarga",
-    "errors": {
-      "timeout": "La descarga tardó demasiado. Revisa tu conexión a internet e inténtalo de nuevo.",
-      "networkUnreachable": "No se pudo conectar con Anthropic. Revisa tu conexión a internet e inténtalo de nuevo.",
-      "downloadInterrupted": "La descarga se interrumpió. Revisa tu conexión a internet e inténtalo de nuevo.",
-      "httpError": "Los servidores de Anthropic tuvieron un problema (error {{status}}). Inténtalo de nuevo en unos minutos.",
-      "checksumMismatch": "La descarga no llegó completa. Revisa tu conexión e inténtalo de nuevo.",
-      "platformUnsupported": "Claude Code todavía no está disponible para este dispositivo.",
-      "writeFailed": "Houston no pudo guardar Claude Code en tu computador. Asegúrate de tener espacio suficiente e inténtalo de nuevo.",
-      "unavailable": "Houston no pudo iniciar la descarga. Inténtalo de nuevo en un momento.",
-      "unknown": "Algo salió mal al descargar Claude Code. Inténtalo de nuevo."
-    }
-  },
   "signOutConfirm": {
     "title": "¿Cerrar sesión de {{provider}}?",
     "description": "Houston dejará de usar {{provider}} hasta que vuelvas a iniciar sesión. Las misiones existentes pueden terminar su turno actual.",
@@ -74,25 +56,6 @@
     "copyCode": "Copiar código",
     "codeCopied": "¡Código copiado!",
     "codeCopyFailed": "No se pudo copiar el código",
-    "cancel": "Cancelar"
-  },
-  "geminiConnect": {
-    "title": "Conectar {{name}}",
-    "description": "Inicia sesión con tu cuenta de Google para usar el plan gratuito de Gemini, el mismo que usa la CLI gemini por fuera de Houston.",
-    "signInWithGoogle": "Iniciar sesión con Google",
-    "signingIn": "Abriendo navegador...",
-    "signInFailed": "No se pudo iniciar la sesión de {{name}}",
-    "signInRecommended": "Recomendado. Usa el plan personal gratuito, sin pago requerido.",
-    "or": "o",
-    "useApiKeyAdvanced": "Usar una llave de API (avanzado)",
-    "openConsole": "Abrir la consola de {{name}}",
-    "openConsoleFailed": "No se pudo abrir la consola de {{name}}",
-    "placeholder": "Pega tu llave aquí",
-    "show": "Mostrar la llave",
-    "hide": "Ocultar la llave",
-    "saveKey": "Guardar y conectar",
-    "saving": "Guardando...",
-    "saveFailed": "No se pudo guardar tu llave de {{name}}",
     "cancel": "Cancelar"
   }
 }

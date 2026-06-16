@@ -28,7 +28,6 @@
       "steps": {
         "meet": "Meet your assistant",
         "brain": "Connect an AI provider so it can think",
-        "tools": "Give it your own tools",
         "try": "Try a real mission with your assistant",
         "skill": "Save it as a reusable Skill",
         "routine": "Schedule it as a recurring Routine",
@@ -62,17 +61,6 @@
         "continue": "Create my assistant",
         "creating": "Creating",
         "continueHint": "Houston will create your assistant and open the next mission."
-      },
-      "tools": {
-        "title": "Give it your own tools",
-        "body": "Houston connects to your mail, calendar and 1000+ apps through your integrations provider. We use Composio by default. Sign in once so your assistant can actually do work with your real apps.",
-        "cardTitle": "Integrations provider",
-        "cardBody": "Sign in to let your assistant use your apps. Default provider: Composio.",
-        "cardSignedInBody": "Your assistant can now use your apps",
-        "signIn": "Sign in",
-        "signedInPill": "Signed in",
-        "continue": "Continue",
-        "continueHint": "Your assistant will ask for each app the first time it needs it."
       },
       "try": {
         "title": "Try a real mission",

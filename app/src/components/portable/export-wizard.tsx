@@ -26,7 +26,6 @@ import { useAgentStore } from "../../stores/agents";
 import { getEngine } from "../../lib/engine";
 import { osRevealPath } from "../../lib/os-bridge";
 import { analytics } from "../../lib/analytics";
-import { IntegrationLogos } from "../integration-logos";
 import type {
   PortableAnonymizeResponse,
   PortableInventoryPreview,
@@ -395,11 +394,6 @@ function PickStep({
               onChange={() => toggleSkill(s.slug)}
               title={humanize(s.slug)}
               subtitle={s.description}
-              trailing={
-                s.integrations.length > 0 ? (
-                  <IntegrationLogos toolkits={s.integrations} />
-                ) : null
-              }
             />
           ))}
         </Section>
@@ -414,11 +408,6 @@ function PickStep({
               onChange={() => toggleRoutine(r.id)}
               title={r.name}
               subtitle={r.description || r.promptExcerpt}
-              trailing={
-                r.integrations.length > 0 ? (
-                  <IntegrationLogos toolkits={r.integrations} />
-                ) : null
-              }
             />
           ))}
         </Section>

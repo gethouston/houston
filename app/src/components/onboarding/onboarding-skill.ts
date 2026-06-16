@@ -57,12 +57,6 @@ interface BuildOnboardingSkillFileOptions {
    * cards in the picker and chat empty state.
    */
   description: string;
-  /**
-   * Mail + calendar toolkit slugs in `[mail, calendar]` order. Drives
-   * the frontmatter `integrations` list AND the small logo row on every
-   * card that renders this skill.
-   */
-  integrations: [string, string];
   /** ISO `YYYY-MM-DD` for `created` and `last_used`. */
   today: string;
 }
@@ -75,7 +69,6 @@ interface BuildOnboardingSkillFileOptions {
 export function buildOnboardingSkillFile(
   opts: BuildOnboardingSkillFileOptions,
 ): string {
-  const [mail, calendar] = opts.integrations;
   const lines = [
     "---",
     `name: ${ONBOARDING_SKILL_SLUG}`,
@@ -86,7 +79,6 @@ export function buildOnboardingSkillFile(
     `last_used: ${opts.today}`,
     "category: planning",
     "featured: yes",
-    `integrations: [${mail}, ${calendar}]`,
     "image: spiral-calendar",
     "---",
     "",
@@ -95,24 +87,4 @@ export function buildOnboardingSkillFile(
   // Trailing newline keeps `git diff` happy and matches the engine
   // serializer's output.
   return `${lines.join("\n")}\n`;
-}
-
-/**
- * Pick the right [mail, calendar] toolkit pair from the user's connected
- * Composio toolkits. We prefer Google when both stacks are connected
- * (the day-plan tutorial defaults to Google when the user is ambiguous).
- * Falls back to Google if neither pair is fully connected — better to
- * declare integrations the agent already authed than to silently drop
- * the field.
- */
-export function pickOnboardingIntegrations(
-  connected: ReadonlySet<string>,
-): [string, string] {
-  if (connected.has("gmail") && connected.has("googlecalendar")) {
-    return ["gmail", "googlecalendar"];
-  }
-  if (connected.has("outlook") && connected.has("outlook_calendar")) {
-    return ["outlook", "outlook_calendar"];
-  }
-  return ["gmail", "googlecalendar"];
 }

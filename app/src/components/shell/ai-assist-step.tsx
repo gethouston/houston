@@ -1,7 +1,7 @@
 import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { DialogTitle } from "@houston-ai/core";
-import type { SuggestedIntegration, SuggestedRoutine } from "@houston-ai/engine-client";
+import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import { tauriAgents, tauriProvider } from "../../lib/tauri";
 import { AgentSetupForm, type AgentSetupFormValues } from "./agent-setup-form";
 import { AiStepFooter } from "./ai-step-footer";
@@ -15,11 +15,10 @@ interface AiAssistStepProps {
    * the assist call AND the saved provider/model on the created agent. */
   onProviderChange: (provider: string, model: string) => void;
   onBack: () => void;
-  /** Called with the final CLAUDE.md content, suggested name, integrations, and an optional routine. */
+  /** Called with the final CLAUDE.md content, suggested name, and an optional routine. */
   onContinue: (
     instructions: string,
     suggestedName: string,
-    integrations: SuggestedIntegration[],
     routine: SuggestedRoutine | null,
   ) => void;
 }
@@ -85,7 +84,6 @@ export function AiAssistStep({
       onContinue(
         instructions,
         name,
-        result.suggestedIntegrations,
         result.suggestedRoutine ?? null,
       );
     } catch (err) {

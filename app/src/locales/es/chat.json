@@ -38,25 +38,6 @@
       "tooLarge": "Este archivo supera {{maxSize}}."
     }
   },
-  "composio": {
-    "integration": "Integración de app",
-    "alreadyConnected": "Ya está conectado",
-    "connected": "Conectado",
-    "connecting": "Conectando...",
-    "connect": "Conectar",
-    "waitingToConnect": "Esperando a que te conectes",
-    "reconnect": "Reconectar",
-    "verifiedToast": "{{name}} está conectado",
-    "connectedFollowup": "Ya conecté {{name}}. Por favor continúa.",
-    "followupFailed": "No pudimos avisar al asistente que {{name}} está conectado"
-  },
-  "composioSignin": {
-    "appName": "Proveedor de integraciones",
-    "description": "Inicia sesión para que tu asistente use tus apps. Proveedor por defecto: Composio.",
-    "alreadySignedIn": "Ya iniciaste sesión en tu proveedor de integraciones",
-    "signedIn": "Conectado",
-    "signIn": "Iniciar sesión"
-  },
   "modelSelector": {
     "selectModel": "Elige un modelo",
     "model": "Modelo",

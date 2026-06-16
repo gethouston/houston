@@ -12,19 +12,17 @@ import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import { tauriConfig, tauriProvider, tauriRoutines } from "../../lib/tauri";
 import { logger } from "../../lib/logger";
-import type { SuggestedIntegration, SuggestedRoutine } from "@houston-ai/engine-client";
+import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import type { RoutineFormData } from "@houston-ai/routines";
-import type { StoreListing } from "../../lib/types";
 import { getDefaultModel } from "../../lib/providers";
-import { StoreStep } from "./store-step";
+import { AgentPickerStep } from "./agent-picker-step";
 import { NamingStep } from "./naming-step";
 import { AiAssistStep } from "./ai-assist-step";
 import { AiReviewStep } from "./ai-review-step";
 import { AiRoutineStep } from "./ai-routine-step";
-import { AiIntegrationsStep } from "./ai-integrations-step";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 
-type Step = 1 | "ai-assist" | "ai-integrations" | "ai-routine" | "ai-review" | 2;
+type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | 2;
 
 export function CreateAgentDialog() {
   const { t } = useTranslation("shell");
@@ -32,15 +30,12 @@ export function CreateAgentDialog() {
   const setOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
   const uiTourActive = useUIStore((s) => s.uiTourActive);
   const agentDefs = useAgentCatalogStore((s) => s.agents);
-  const storeCatalog = useAgentCatalogStore((s) => s.storeCatalog);
-  const installAgent = useAgentCatalogStore((s) => s.installAgent);
   const createAgent = useAgentStore((s) => s.create);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
 
   const [step, setStep] = useState<Step>(1);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
   const [generatedClaudeMd, setGeneratedClaudeMd] = useState<string | undefined>(undefined);
-  const [suggestedIntegrations, setSuggestedIntegrations] = useState<SuggestedIntegration[]>([]);
   const [routineForm, setRoutineForm] = useState<RoutineFormData | null>(null);
   const [routineAccepted, setRoutineAccepted] = useState(false);
   // The AI suggestion the current routineForm was seeded from. Used to
@@ -65,7 +60,6 @@ export function CreateAgentDialog() {
       setStep(1);
       setSelectedConfigId(null);
       setGeneratedClaudeMd(undefined);
-      setSuggestedIntegrations([]);
       setRoutineForm(null);
       setRoutineAccepted(false);
       seededRoutineRef.current = null;
@@ -163,18 +157,9 @@ export function CreateAgentDialog() {
     await handleCreateAgent();
   };
 
-  const handleInstall = async (listing: StoreListing) => {
-    await installAgent(listing);
-  };
-
   const selectedDef = agentDefs.find((d) => d.config.id === selectedConfigId);
 
-  const aiReviewBackStep = (): Step =>
-    routineForm
-      ? "ai-routine"
-      : suggestedIntegrations.length > 0
-        ? "ai-integrations"
-        : "ai-assist";
+  const aiReviewBackStep = (): Step => (routineForm ? "ai-routine" : "ai-assist");
 
   return (
     <Dialog
@@ -201,17 +186,15 @@ export function CreateAgentDialog() {
               <DialogTitle>{t("newAgent.dialogTitle")}</DialogTitle>
             </DialogHeader>
 
-            <StoreStep
+            <AgentPickerStep
               search={search}
               onSearchChange={setSearch}
               agents={agentDefs}
-              storeCatalog={storeCatalog}
               onSelect={(id) => {
                 setSelectedConfigId(id);
                 setGeneratedClaudeMd(undefined);
                 setStep(2);
               }}
-              onInstall={handleInstall}
               onCreateWithAi={() => {
                 setSelectedConfigId("blank");
                 setGeneratedClaudeMd(undefined);
@@ -228,9 +211,8 @@ export function CreateAgentDialog() {
               setModel(m);
             }}
             onBack={() => setStep(1)}
-            onContinue={(instructions, suggestedName, integrations, routine) => {
+            onContinue={(instructions, suggestedName, routine) => {
               setGeneratedClaudeMd(instructions);
-              setSuggestedIntegrations(integrations);
               // Only (re)seed the editable routine when the AI produced a
               // new suggestion. If the user just navigated back here and
               // continued, keep their edits and accept choice intact.
@@ -253,20 +235,8 @@ export function CreateAgentDialog() {
                 setRoutineAccepted(false);
               }
               if (!name.trim()) setName(suggestedName);
-              setStep(
-                integrations.length > 0
-                  ? "ai-integrations"
-                  : routine
-                    ? "ai-routine"
-                    : "ai-review",
-              );
+              setStep(routine ? "ai-routine" : "ai-review");
             }}
-          />
-        ) : step === "ai-integrations" ? (
-          <AiIntegrationsStep
-            suggestedIntegrations={suggestedIntegrations}
-            onBack={() => setStep("ai-assist")}
-            onContinue={() => setStep(routineForm ? "ai-routine" : "ai-review")}
           />
         ) : step === "ai-routine" && routineForm ? (
           <AiRoutineStep
@@ -274,9 +244,7 @@ export function CreateAgentDialog() {
             onRoutineChange={setRoutineForm}
             accepted={routineAccepted}
             onAcceptedChange={setRoutineAccepted}
-            onBack={() =>
-              setStep(suggestedIntegrations.length > 0 ? "ai-integrations" : "ai-assist")
-            }
+            onBack={() => setStep("ai-assist")}
             onContinue={() => setStep("ai-review")}
           />
         ) : step === "ai-review" ? (

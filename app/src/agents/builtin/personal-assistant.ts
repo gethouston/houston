@@ -8,6 +8,5 @@ export const personalAssistantAgent: AgentConfig = {
   category: "productivity",
   author: "Houston",
   tags: ["personal", "assistant", "starter", "inbox", "calendar"],
-  integrations: ["gmail", "googlecalendar"],
-  claudeMd: "# Personal assistant\n\nHelp me stay organized. Ask before sending messages, creating calendar events, or changing connected apps.",
+  claudeMd: "# Personal assistant\n\nHelp me stay organized. Ask before sending messages or making changes on my behalf.",
 };

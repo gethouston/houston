@@ -28,7 +28,6 @@
       "steps": {
         "meet": "Conheça seu assistente",
         "brain": "Conecte um provedor de IA para ele pensar",
-        "tools": "Dê as suas próprias ferramentas",
         "try": "Teste uma missão real com seu assistente",
         "skill": "Salve como uma Habilidade reutilizável",
         "routine": "Agende como uma Rotina recorrente",
@@ -62,17 +61,6 @@
         "continue": "Criar meu assistente",
         "creating": "Criando",
         "continueHint": "O Houston vai criar seu assistente e abrir a próxima missão."
-      },
-      "tools": {
-        "title": "Dê as suas próprias ferramentas",
-        "body": "O Houston se conecta ao seu e-mail, calendário e mais de 1000 apps através do seu provedor de integrações. Por padrão usamos o Composio. Entre uma vez para seu assistente poder trabalhar com seus apps reais.",
-        "cardTitle": "Provedor de integrações",
-        "cardBody": "Entre para seu assistente usar seus apps. Provedor padrão: Composio.",
-        "cardSignedInBody": "Seu assistente já pode usar seus apps",
-        "signIn": "Entrar",
-        "signedInPill": "Conectado",
-        "continue": "Continuar",
-        "continueHint": "Seu assistente vai pedir cada app na primeira vez que precisar."
       },
       "try": {
         "title": "Teste uma missão real",

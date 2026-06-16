@@ -172,8 +172,6 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
           renderTurnSummary={panel.renderTurnSummary}
-          renderLink={panel.renderLink}
-          transformContent={panel.transformContent}
         />
       </div>
       {panel.pickerDialog}

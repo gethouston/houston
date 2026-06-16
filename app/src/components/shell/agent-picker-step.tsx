@@ -2,38 +2,30 @@ import { useMemo } from "react";
 import { Input } from "@houston-ai/core";
 import { Gift, Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { AgentDefinition, StoreListing } from "../../lib/types";
+import type { AgentDefinition } from "../../lib/types";
 import { SkillCard } from "../skill-card";
-import { AgentCard, StoreAgentCard } from "./experience-card";
+import { AgentCard } from "./experience-card";
 import { useUIStore } from "../../stores/ui";
 
-interface StoreStepProps {
+interface AgentPickerStepProps {
   search: string;
   onSearchChange: (value: string) => void;
   agents: AgentDefinition[];
-  storeCatalog: StoreListing[];
   onSelect: (id: string) => void;
-  onInstall: (listing: StoreListing) => Promise<void>;
   onCreateWithAi: () => void;
 }
 
-export function StoreStep({
+export function AgentPickerStep({
   search,
   onSearchChange,
   agents,
-  storeCatalog,
   onSelect,
-  onInstall,
   onCreateWithAi,
-}: StoreStepProps) {
+}: AgentPickerStepProps) {
   const { t } = useTranslation(["shell", "portable"]);
   const setImportOpen = useUIStore((s) => s.setImportFromFriendOpen);
   const setCreateOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
 
-  const storeIds = useMemo(
-    () => new Set(storeCatalog.map((listing) => listing.id)),
-    [storeCatalog],
-  );
   const query = search.trim().toLowerCase();
 
   const filteredAgents = useMemo(
@@ -42,20 +34,10 @@ export function StoreStep({
         if (d.source === "installed" && d.config.author === "Houston") {
           return false;
         }
-        if (storeIds.has(d.config.id)) return false;
         if (!query) return true;
         return matchesAgent(d, query);
       }),
-    [agents, query, storeIds],
-  );
-
-  const filteredStore = useMemo(
-    () =>
-      storeCatalog.filter((listing) => {
-        if (!query) return true;
-        return matchesListing(listing, query);
-      }),
-    [query, storeCatalog],
+    [agents, query],
   );
 
   const reorderedAgents = useMemo(() => {
@@ -72,8 +54,6 @@ export function StoreStep({
     }
     return filteredAgents;
   }, [filteredAgents, query]);
-
-  const totalResults = filteredAgents.length + filteredStore.length;
 
   return (
     <>
@@ -111,7 +91,7 @@ export function StoreStep({
             </p>
           </div>
         </button>
-        {totalResults > 0 ? (
+        {filteredAgents.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {!query && (
               <SkillCard
@@ -126,14 +106,6 @@ export function StoreStep({
               <AgentCard
                 key={def.config.id}
                 config={def.config}
-                onSelect={onSelect}
-              />
-            ))}
-            {filteredStore.map((listing) => (
-              <StoreAgentCard
-                key={listing.id}
-                listing={listing}
-                onInstall={onInstall}
                 onSelect={onSelect}
               />
             ))}
@@ -157,18 +129,6 @@ function matchesAgent(def: AgentDefinition, query: string): boolean {
     config.description.toLowerCase().includes(query) ||
     config.tags?.some((tag) => tag.toLowerCase().includes(query)) ||
     config.integrations?.some((toolkit) =>
-      toolkit.toLowerCase().includes(query),
-    ) ||
-    false
-  );
-}
-
-function matchesListing(listing: StoreListing, query: string): boolean {
-  return (
-    listing.name.toLowerCase().includes(query) ||
-    listing.description.toLowerCase().includes(query) ||
-    listing.tags.some((tag) => tag.toLowerCase().includes(query)) ||
-    listing.integrations?.some((toolkit) =>
       toolkit.toLowerCase().includes(query),
     ) ||
     false

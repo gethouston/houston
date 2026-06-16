@@ -61,17 +61,6 @@ export function useAgentInvalidation() {
             qc.invalidateQueries({ queryKey: ["all-conversations"] });
           }
           break;
-        // Composio CLI became available — refresh integrations state.
-        case "ComposioCliReady":
-          qc.invalidateQueries({ queryKey: queryKeys.connections() });
-          qc.invalidateQueries({ queryKey: queryKeys.composioApps() });
-          qc.invalidateQueries({ queryKey: queryKeys.connectedToolkits() });
-          break;
-        // Engine-side watcher saw a toolkit land in the consumer
-        // connections list — flip every visible Composio card.
-        case "ComposioConnectionAdded":
-          qc.invalidateQueries({ queryKey: queryKeys.connectedToolkits() });
-          break;
         // A provider OAuth sign-in (or sign-out) finished — refresh the
         // cached provider statuses so the chat model picker reflects the new
         // connection without waiting for the next mount (issue #342).

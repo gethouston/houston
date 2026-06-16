@@ -89,7 +89,6 @@ export function SummaryScreen({
               image={onboardingSkill.image ?? "spiral-calendar"}
               title={onboardingSkill.name}
               description={onboardingSkill.description}
-              integrations={onboardingSkill.integrations}
               onClick={() => {}}
             />
           ) : (

@@ -29,9 +29,6 @@ export const queryKeys = {
     ["chat-history", agentPath, sessionKey] as const,
 
   // App-scoped (less reactive, loaded on init)
-  connections: () => ["connections"] as const,
-  composioApps: () => ["composio-apps"] as const,
-  connectedToolkits: () => ["connected-toolkits"] as const,
   /**
    * Provider connection statuses for the chat model picker. Invalidated on
    * `ProviderLoginComplete` so a fresh sign-in flips the picker live instead

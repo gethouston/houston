@@ -11,7 +11,6 @@ import type { Agent } from "../../lib/types";
 import { MissionFrame } from "./mission-frame";
 import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
-import { ToolsMission } from "./missions/tools";
 import { TryMission } from "./missions/try";
 import { SkillMission } from "./missions/skill";
 import { RoutineMission } from "./missions/routine";
@@ -170,7 +169,6 @@ export function PersonalAssistantOnboarding({
           steps={[
             t("setup:tutorial.welcome.steps.meet"),
             t("setup:tutorial.welcome.steps.brain"),
-            t("setup:tutorial.welcome.steps.tools"),
             t("setup:tutorial.welcome.steps.try"),
             t("setup:tutorial.welcome.steps.routine"),
           ]}
@@ -204,14 +202,9 @@ export function PersonalAssistantOnboarding({
             onContinue={async () => {
               if (!provider || !model) return;
               await createWorkspaceAndAssistant(provider, model);
-              setStep("tools");
+              setStep("try");
             }}
           />
-        </MissionFrame>
-      )}
-      {meta && frame && step === "tools" && (
-        <MissionFrame meta={meta} {...frame}>
-          <ToolsMission onContinue={() => setStep("try")} />
         </MissionFrame>
       )}
       {meta && frame && step === "try" && agent && (

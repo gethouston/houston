@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Blend, Settings } from "lucide-react";
+import { LayoutDashboard, Settings } from "lucide-react";
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -50,7 +50,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
     shareLabel: t("portable:shareMenu"),
   });
-  const isTopLevel = viewMode === "dashboard" || viewMode === "connections" || viewMode === "settings";
+  const isTopLevel = viewMode === "dashboard" || viewMode === "settings";
 
   const handleWorkspaceSwitch = async (wsId: string) => {
     if (wsId === currentWorkspace?.id) return;
@@ -121,13 +121,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
             icon: <LayoutDashboard className="h-4 w-4" />,
             onClick: () => setViewMode("dashboard"),
             dataAttrs: { "data-tour-target": "nav-dashboard" },
-          },
-          {
-            id: "connections",
-            label: t("shell:sidebar.integrations"),
-            icon: <Blend className="h-4 w-4" />,
-            onClick: () => setViewMode("connections"),
-            dataAttrs: { "data-tour-target": "nav-connections" },
           },
           {
             id: "settings",

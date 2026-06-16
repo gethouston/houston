@@ -25,10 +25,14 @@ import type { ScratchViewLabels } from "./add-skill-dialog-scratch-view"
 export interface AddSkillDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSearch: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>
+  /** Community marketplace search. Omit to hide the marketplace tab
+   *  entirely — the dialog then offers only the create-from-scratch
+   *  (and, when wired, the GitHub repo) views. */
+  onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>
   /** Optional dedicated "popular skills" fetcher for the dialog empty state. */
   onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>
-  onInstallCommunity: (
+  /** Install a marketplace skill. Required to surface the marketplace tab. */
+  onInstallCommunity?: (
     skill: CommunitySkill,
     signal?: AbortSignal,
   ) => Promise<string>
@@ -83,22 +87,26 @@ export function AddSkillDialog({
   labels,
 }: AddSkillDialogProps) {
   const l = { ...DEFAULT_LABELS, ...labels }
-  const [view, setView] = useState<View>("store")
+
+  const canBrowseStore = !!onSearch && !!onInstallCommunity
+  const canInstallFromRepo = !!onListFromRepo && !!onInstallFromRepo
+  const canCreateFromScratch = !!onCreateFromScratch
+  const tabs: View[] = []
+  if (canBrowseStore) tabs.push("store")
+  if (canInstallFromRepo) tabs.push("repo")
+  if (canCreateFromScratch) tabs.push("scratch")
+  const showTabs = tabs.length > 1
+  const initialView: View = tabs[0] ?? "scratch"
+
+  const [view, setView] = useState<View>(initialView)
   // Bump on open so the scratch form resets its title / description / body
   // every time the dialog re-opens.
   const [openSeq, setOpenSeq] = useState(0)
 
   useEffect(() => {
     if (open) setOpenSeq((n) => n + 1)
-    if (!open) setView("store")
-  }, [open])
-
-  const canInstallFromRepo = !!onListFromRepo && !!onInstallFromRepo
-  const canCreateFromScratch = !!onCreateFromScratch
-  const tabs: View[] = ["store"]
-  if (canInstallFromRepo) tabs.push("repo")
-  if (canCreateFromScratch) tabs.push("scratch")
-  const showTabs = tabs.length > 1
+    if (!open) setView(initialView)
+  }, [open, initialView])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -133,12 +141,12 @@ export function AddSkillDialog({
           </div>
         )}
 
-        {view === "store" && (
+        {view === "store" && canBrowseStore && (
           <StoreView
             open={open}
-            onSearch={onSearch}
+            onSearch={onSearch!}
             onPopular={onPopular}
-            onInstall={onInstallCommunity}
+            onInstall={onInstallCommunity!}
             installedSkillNames={installedSkillNames}
             labels={labels?.store}
           />

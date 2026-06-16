@@ -1,7 +1,6 @@
 {
   "sidebar": {
     "missionControl": "Centro de misiones",
-    "integrations": "Integraciones",
     "settings": "Configuración",
     "yourAgents": "Tus agentes",
     "selectWorkspace": "Elige un espacio de trabajo",
@@ -42,13 +41,7 @@
     "description": "Se eliminará el agente y todos sus datos de forma permanente. Esta acción no se puede deshacer."
   },
   "workspaceDialog": {
-    "title": "Nuevo espacio de trabajo",
-    "tabNew": "Crear nuevo",
-    "tabGithub": "Importar desde GitHub",
-    "githubDescription": "Importa una plantilla de espacio de trabajo desde GitHub. Crea un espacio con todos sus agentes listos para usar.",
-    "githubPlaceholder": "usuario/repo",
-    "githubImport": "Importar",
-    "githubImporting": "Importando espacio de trabajo y agentes..."
+    "title": "Nuevo espacio de trabajo"
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",
@@ -88,10 +81,6 @@
       "missionControl": {
         "title": "Centro de Misión",
         "body": "Cuando agregues más agentes, esto se vuelve el tablero único de todos. Un solo lugar para verlo todo."
-      },
-      "integrations": {
-        "title": "Integraciones",
-        "body": "Herramientas que tus agentes pueden usar, como Gmail y Calendar. Las conexiones viven aquí, compartidas entre todos tus agentes."
       },
       "appTour": {
         "title": "Repite el tour",
@@ -170,7 +159,7 @@
     "dismissAction": "Descartar actualización por ahora"
   },
   "store": {
-    "searchPlaceholder": "Buscar en la tienda...",
+    "searchPlaceholder": "Buscar agentes...",
     "noResults": "Ningún agente coincide con tu búsqueda"
   },
   "naming": {
@@ -246,16 +235,6 @@
     "stepTitle": "Revisa tu agente",
     "instructionsLabel": "Instrucciones del agente",
     "instructionsHelper": "Revisa y edita las instrucciones abajo"
-  },
-  "aiIntegrations": {
-    "stepTitle": "Conecta tus aplicaciones",
-    "stepDescription": "Estas aplicaciones funcionan bien con tu agente. Conéctalas ahora o desde la pestaña Integraciones después.",
-    "notInstalledNote": "Puedes conectar integraciones desde la pestaña Integraciones después de crear tu agente.",
-    "needsAuthNote": "Inicia sesión en Composio para conectar aplicaciones ahora, o hazlo después de crear tu agente.",
-    "signIn": "Iniciar sesión",
-    "connected": "Conectado",
-    "connect": "Conectar",
-    "continueButton": "Continuar"
   },
   "aiRoutine": {
     "stepTitle": "Configura ejecuciones automáticas",
@@ -352,7 +331,6 @@
     "actions": {
       "newMission": "Iniciar misión nueva",
       "missionControl": "Ir a Centro de Misiones",
-      "integrations": "Abrir Integraciones",
       "settings": "Abrir Ajustes",
       "shortcuts": "Ver atajos de teclado"
     }

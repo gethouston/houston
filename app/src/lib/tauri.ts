@@ -16,15 +16,9 @@ import type {
   Agent,
   SkillSummary,
   SkillDetail,
-  CommunitySkillResult,
-  RepoSkill,
   FileEntry,
-  StoreListing,
-  ImportedWorkspace,
 } from "./types";
 import type {
-  ComposioAppEntry as EngineComposioAppEntry,
-  ComposioStatus as EngineComposioStatus,
   ProviderAuthState,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
@@ -189,6 +183,12 @@ export const tauriAgents = {
       undefined,
       { toast: false },
     ),
+  /** Agent configs installed on disk (bundled + user-authored), merged with the
+   *  built-in templates by the agent loader to populate the create-agent gallery. */
+  listInstalledConfigs: () =>
+    call<Array<{ config: unknown; path: string }>>("list_installed_configs", () =>
+      getEngine().listInstalledConfigs(),
+    ),
 };
 
 // ─── Chat sessions ────────────────────────────────────────────────────
@@ -314,157 +314,6 @@ export const tauriSkills = {
     call<void>("save_skill", () =>
       getEngine().saveSkill(name, { workspacePath: agentPath, content }),
     ),
-  listFromRepo: (source: string) =>
-    call<RepoSkill[]>("list_skills_from_repo", () => getEngine().listSkillsFromRepo(source)),
-  installFromRepo: (agentPath: string, source: string, skills: RepoSkill[]) =>
-    call<string[]>("install_skills_from_repo", () =>
-      getEngine().installSkillsFromRepo({
-        workspacePath: agentPath,
-        source,
-        skills,
-      }),
-    ),
-  searchCommunity: (query: string, signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "search_community_skills",
-      async () =>
-        (await getEngine().searchCommunitySkills(query, signal)).map((s) => ({
-          id: s.id,
-          skillId: s.skillId,
-          name: s.name,
-          installs: s.installs,
-          source: s.source,
-        })),
-      undefined,
-      { toast: false },
-    ),
-  popularCommunity: (signal?: AbortSignal) =>
-    call<CommunitySkillResult[]>(
-      "popular_community_skills",
-      async () =>
-        (await getEngine().popularCommunitySkills(signal)).map((s) => ({
-          id: s.id,
-          skillId: s.skillId,
-          name: s.name,
-          installs: s.installs,
-          source: s.source,
-        })),
-      undefined,
-      { toast: false },
-    ),
-  installCommunity: (
-    agentPath: string,
-    source: string,
-    skillId: string,
-    signal?: AbortSignal,
-  ) =>
-    call<string>(
-      "install_community_skill",
-      () =>
-        getEngine().installCommunitySkill(
-          {
-            workspacePath: agentPath,
-            source,
-            skillId,
-          },
-          signal,
-        ),
-      undefined,
-      { toast: false },
-    ),
-};
-
-// ─── Composio ─────────────────────────────────────────────────────────
-
-export interface ComposioAppEntry {
-  toolkit: string;
-  name: string;
-  description: string;
-  logo_url: string;
-  categories: string[];
-}
-
-export type ComposioStatus = EngineComposioStatus;
-
-export interface StartLoginResponse {
-  login_url: string;
-  cli_key: string;
-}
-
-export interface StartLinkResponse {
-  redirect_url: string;
-  connected_account_id: string;
-  toolkit: string;
-}
-
-export interface ReconnectResult {
-  /** URL to open for OAuth re-consent, or null when refreshed silently. */
-  redirectUrl: string | null;
-}
-
-export const tauriConnections = {
-  list: () =>
-    call<ComposioStatus>("list_composio_connections", () => getEngine().composioStatus()),
-  listApps: () =>
-    call<ComposioAppEntry[]>("list_composio_apps", async () =>
-      (await getEngine().composioListApps()).map((a: EngineComposioAppEntry) => ({
-        toolkit: a.toolkit,
-        name: a.name,
-        description: a.description,
-        logo_url: a.logo_url,
-        categories: a.categories,
-      })),
-    ),
-  listConnectedToolkits: () =>
-    call<string[]>("list_composio_connected_toolkits", () =>
-      getEngine().composioListConnections(),
-    ),
-  connectApp: (toolkit: string) =>
-    call<StartLinkResponse>("connect_composio_app", async () => {
-      const r = await getEngine().composioConnectApp(toolkit);
-      return {
-        redirect_url: r.redirect_url,
-        connected_account_id: r.connected_account_id,
-        toolkit: r.toolkit,
-      };
-    }),
-  disconnectApp: (toolkit: string) =>
-    call<void>(
-      "disconnect_composio_app",
-      () => getEngine().composioDisconnect(toolkit),
-      { toolkit },
-    ),
-  reconnectApp: (toolkit: string) =>
-    call<ReconnectResult>(
-      "reconnect_composio_app",
-      async () => {
-        const r = await getEngine().composioReconnect(toolkit);
-        return { redirectUrl: r.redirectUrl };
-      },
-      { toolkit },
-    ),
-  watchConnection: (toolkit: string) =>
-    call<void>(
-      "watch_composio_connection",
-      () => getEngine().composioWatchConnection(toolkit),
-      { toolkit },
-      // Fire-and-forget — caller awaits only to know the request was
-      // accepted; the result is delivered as a `ComposioConnectionAdded`
-      // WS event. Don't toast OR report; failure here just means we fall
-      // back to the client-side watcher.
-      { toast: false, capture: false },
-    ),
-  startOAuth: () =>
-    call<StartLoginResponse>("start_composio_oauth", async () => {
-      const r = await getEngine().composioStartLogin();
-      return { login_url: r.login_url, cli_key: r.cli_key };
-    }),
-  completeLogin: (cliKey: string) =>
-    call<void>("complete_composio_login", () => getEngine().composioCompleteLogin(cliKey)),
-  logout: () => call<void>("logout_composio", () => getEngine().composioLogout()),
-  isCliInstalled: () =>
-    call<boolean>("is_composio_cli_installed", () => getEngine().composioCliInstalled()),
-  installCli: () => call<void>("install_composio_cli", () => getEngine().composioInstallCli()),
 };
 
 // ─── Project files (browser) ──────────────────────────────────────────
@@ -507,36 +356,6 @@ export const tauriFiles = {
       await getEngine().createFolder(agentPath, name);
     }),
   revealAgent: (agentPath: string) => osRevealAgent(agentPath),
-};
-
-// ─── Store ────────────────────────────────────────────────────────────
-
-export const tauriStore = {
-  listInstalled: () =>
-    call<Array<{ config: unknown; path: string }>>("list_installed_configs", () =>
-      getEngine().listInstalledConfigs(),
-    ),
-  fetchCatalog: () =>
-    call<StoreListing[]>("fetch_store_catalog", () => getEngine().storeCatalog()),
-  search: (query: string) =>
-    call<StoreListing[]>("search_store", () => getEngine().storeSearch(query)),
-  install: (repo: string, agentId: string) =>
-    call<void>("install_store_agent", () =>
-      getEngine().installStoreAgent({ repo, agentId }),
-    ),
-  uninstall: (agentId: string) =>
-    call<void>("uninstall_store_agent", () => getEngine().uninstallStoreAgent(agentId)),
-  installFromGithub: (githubUrl: string) =>
-    call<string>(
-      "install_agent_from_github",
-      async () => (await getEngine().installAgentFromGithub({ githubUrl })).agentId,
-    ),
-  checkUpdates: () =>
-    call<string[]>("check_agent_updates", () => getEngine().checkAgentUpdates()),
-  installWorkspaceFromGithub: (githubUrl: string) =>
-    call<ImportedWorkspace>("install_workspace_from_github", () =>
-      getEngine().installWorkspaceFromGithub({ githubUrl }),
-    ),
 };
 
 // ─── Conversations ────────────────────────────────────────────────────
@@ -778,60 +597,13 @@ export const tauriProvider = {
    */
   cancelLogin: (provider: string) =>
     call<void>("cancel_provider_login", () => getEngine().cancelProviderLogin(provider)),
-  /**
-   * Save a Gemini API key to `~/.gemini/.env` via the engine. Errors
-   * surface through `call`'s standard rejection path; the caller is
-   * expected to render them with `errorMessage(err)` + `addToast`.
-   *
-   * Gemini-only by design (other providers use OAuth via launchLogin).
-   * Never log `apiKey` — it's a SECRET.
-   */
-  setGeminiApiKey: (apiKey: string) =>
-    call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────
 
-import { osCheckClaudeCli, osOpenUrl } from "./os-bridge";
+import { osOpenUrl } from "./os-bridge";
 export const tauriSystem = {
-  checkClaudeCli: () => osCheckClaudeCli(),
   openUrl: (url: string) => osOpenUrl(url),
-};
-
-// ─── Claude Code runtime installer ────────────────────────────────────
-
-import type { ClaudeStatus as EngineClaudeStatus } from "@houston-ai/engine-client";
-
-/** Mirror of the engine `ClaudeStatus` — re-exported so callers can
- *  import from `lib/tauri.ts` like the other engine DTOs. */
-export type ClaudeStatus = EngineClaudeStatus;
-
-/** Runtime install bridge for the proprietary Claude Code CLI.
- *
- *  Distinct from `tauriProvider`: provider-level concerns (auth, CLI
- *  spawn) sit on `tauriProvider`; the *install* of Anthropic's CLI is
- *  Houston-managed (we download it because the license forbids
- *  bundling) and exposed here so the onboarding card can show a
- *  specific "couldn't reach Anthropic — Retry" affordance — issue #231.
- */
-export const tauriClaude = {
-  status: () =>
-    call<ClaudeStatus>("claude_status", () => getEngine().claudeStatus()),
-  /**
-   * Triggers the background install. Errors are deliberately not
-   * auto-toasted by `call` — both callers (the onboarding card hook and
-   * the `ClaudeCliFailed` toast retry action) surface failures
-   * themselves, and double-toasting on a retry click is noisy.
-   */
-  install: () =>
-    call<void>(
-      "claude_install",
-      () => getEngine().claudeInstall(),
-      undefined,
-      // Both callers (onboarding card + ClaudeCliFailed retry) surface and
-      // report failures themselves; capture here would double-report.
-      { toast: false, capture: false },
-    ),
 };
 
 // ─── Agent file watcher ───────────────────────────────────────────────

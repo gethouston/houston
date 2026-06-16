@@ -12,7 +12,6 @@ import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { GeminiConnectDialog } from "./gemini-connect-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderCard, ComingSoonCard } from "./provider-cards";
 
@@ -30,7 +29,6 @@ export function ProviderPicker({ onSelect }: Props) {
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
-  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
   // OAuth URL surfaced by the engine when the CLI couldn't open the
   // user's browser (remote/headless deployments). `userCode` is set for
   // codex's device-grant flow (the one-time code to enter on OpenAI's
@@ -147,13 +145,6 @@ export function ProviderPicker({ onSelect }: Props) {
   }, [addToast, loadStatuses, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
-    // API-key providers (e.g. Gemini) have no CLI login flow. The engine
-    // would return a BadRequest if we called `launchLogin`; instead we open
-    // a dedicated dialog that walks the user through pasting an API key.
-    if (provider.loginKind === "apiKey") {
-      setApiKeyDialogFor(provider);
-      return;
-    }
     setPendingId(provider.id);
     try {
       // Remote clients (this app running as a webapp/PWA against a hosted
@@ -258,28 +249,6 @@ export function ProviderPicker({ onSelect }: Props) {
           const target = confirmSignOutFor;
           setConfirmSignOutFor(null);
           if (target) handleSignOut(target);
-        }}
-      />
-
-      <GeminiConnectDialog
-        provider={apiKeyDialogFor}
-        onOpenChange={(open) => {
-          if (!open) setApiKeyDialogFor(null);
-        }}
-        onSaved={(providerId) => {
-          // Flipping pendingId arms the 2s status poll defined in this
-          // component, so the card transitions to "Connected" without a
-          // Houston restart. The poll is also responsible for clearing
-          // pendingId once the auth state reads `authenticated`.
-          setPendingId(providerId);
-          loadStatuses();
-        }}
-        onLoginStarted={(providerId) => {
-          // OAuth path: gemini-cli is now driving the browser flow.
-          // Arm the picker's status poll so the card flips to
-          // Connected the moment gemini-cli writes its credential
-          // files, same as the API-key save path above.
-          setPendingId(providerId);
         }}
       />
 

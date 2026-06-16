@@ -10,7 +10,7 @@
  *   - composerHeader      — selected Skill chip above the prompt input
  *   - footer              — model selector + "Skills" button
  *   - renderUserMessage   — decode + render skill-invocation card
- *   - tool / link helpers — file tool renderer, Composio link card
+ *   - tool helpers        — file tool renderer
  *
  * The hook also owns the Skill submission pipeline (createMission
  * for new conversations, tauriChat.send for follow-ups) so we don't
@@ -50,13 +50,6 @@ import { createMission } from "../lib/create-mission";
 import { queryKeys } from "../lib/query-keys";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
-import { ComposioLinkCard } from "./composio-link-card";
-import { parseComposioToolkitFromHref } from "./composio-card-state";
-import { withComposioWaitingFooter } from "./composio-waiting-footer";
-import {
-  ComposioSigninCard,
-  isComposioSigninHref,
-} from "./composio-signin-card";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
@@ -81,10 +74,7 @@ import {
   encodeSkillMessage,
 } from "../lib/skill-message";
 import { attachmentReferences } from "../lib/attachment-message";
-import {
-  encodeAutoContinueMessage,
-  filterAutoContinueFeedItems,
-} from "../lib/auto-continue-message";
+import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
 import { SkillCard } from "./skill-card";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { UserSkillMessage } from "./user-skill-message";
@@ -138,10 +128,6 @@ interface AgentChatPanelProps {
   renderSystemMessage: AIBoardProps["renderSystemMessage"];
   mapFeedItems: AIBoardProps["mapFeedItems"];
   afterMessages: AIBoardProps["afterMessages"];
-  /** Custom Composio inline-link rendering. */
-  renderLink: AIBoardProps["renderLink"];
-  /** Appends the Composio "waiting to connect" footer at the message end. */
-  transformContent: AIBoardProps["transformContent"];
   /** Hidden picker dialog mounted in the consumer. */
   pickerDialog: ReactNode;
   /** Effective provider/model for sending. */
@@ -293,76 +279,6 @@ export function useAgentChatPanel({
       }
     },
     [path, addToast, t],
-  );
-
-  // ── Composio link card support ────────────────────────────────────────
-  // The card owns its own connection status (it subscribes to the
-  // connectedToolkits query directly so it stays reactive inside Streamdown's
-  // memoized markdown blocks). The panel only supplies the agent nudge.
-  //
-  // When a connection the user started from a chat card actually lands,
-  // proactively nudge the agent so it resumes the task without the user
-  // having to retype. Mirrors the retry send-path: send first, then push the
-  // optimistic feed item; surface a toast if the send fails (no silent drop).
-  const handleIntegrationConnected = useCallback(
-    (_toolkit: string, appName: string) => {
-      if (!path || !selectedSessionKey) return;
-      // The agent needs a user turn to resume, but the user didn't type one.
-      // Tag it with the auto-continue marker so the agent still receives the
-      // instruction while the transcript hides the bubble (see
-      // `mapFeedItems`). No optimistic push: we never want it shown, and the
-      // engine-persisted copy is filtered the same way on reload.
-      const message = encodeAutoContinueMessage(
-        t("chat:composio.connectedFollowup", { name: appName }),
-      );
-      tauriChat
-        .send(path, message, selectedSessionKey, {
-          providerOverride: effectiveProvider,
-          modelOverride: effectiveModel,
-          effortOverride: effectiveEffort,
-        })
-        .catch((err) => {
-          addToast({
-            title: t("chat:composio.followupFailed", { name: appName }),
-            description: String(err),
-            variant: "error",
-          });
-        });
-    },
-    [
-      path,
-      selectedSessionKey,
-      effectiveProvider,
-      effectiveModel,
-      effectiveEffort,
-      addToast,
-      t,
-    ],
-  );
-  const renderLink = useCallback(
-    ({ href, onOpen }: { href: string; onOpen: () => void }) => {
-      if (isComposioSigninHref(href)) {
-        return <ComposioSigninCard />;
-      }
-      const toolkit = parseComposioToolkitFromHref(href);
-      if (!toolkit) return undefined;
-      return (
-        <ComposioLinkCard
-          toolkit={toolkit}
-          onOpen={onOpen}
-          onConnected={handleIntegrationConnected}
-        />
-      );
-    },
-    [handleIntegrationConnected],
-  );
-
-  // Render the "Waiting for you to connect" hand-off line at the end of any
-  // assistant message that links an integration (issue #412), rather than
-  // inline beside the card wherever the link happened to land.
-  const transformContent = useCallback(
-    (content: string) => withComposioWaitingFooter({ content }),
-    [],
   );
 
   // ── File-tool rendering (per-agent path) ──────────────────────────────
@@ -622,7 +538,6 @@ export function useAgentChatPanel({
               image={s.image}
               title={humanizeSkillName(s.name)}
               description={s.description}
-              integrations={s.integrations}
               onClick={() => applySkill(s)}
             />
           ))}
@@ -751,8 +666,6 @@ export function useAgentChatPanel({
     renderSystemMessage,
     mapFeedItems,
     afterMessages,
-    renderLink,
-    transformContent,
     pickerDialog,
     effectiveProvider,
     effectiveModel,

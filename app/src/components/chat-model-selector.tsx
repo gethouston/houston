@@ -48,10 +48,10 @@ export function ChatModelSelector({
   // provider that the engine reports as installed. Two cases drop the
   // lock so the user can switch instead of being stuck:
   //
-  //   * The locked provider is in `COMING_SOON_PROVIDERS` (or unknown),
-  //     so `getProvider` returns undefined. This happens when Gemini is
-  //     paused in the catalog but a stored activity still references
-  //     it.
+  //   * The locked provider is in `COMING_SOON_PROVIDERS` or no longer
+  //     in the catalog at all, so `getProvider` returns undefined. This
+  //     happens when a stored activity still references a provider
+  //     Houston has since paused or dropped.
   //   * The locked provider is in `PROVIDERS` but the engine reports
   //     `cli_installed=false` (binary missing on this platform).
   //

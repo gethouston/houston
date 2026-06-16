@@ -28,7 +28,6 @@
       "steps": {
         "meet": "Conoce a tu asistente",
         "brain": "Conecta un proveedor de IA para que piense",
-        "tools": "Dale tus propias herramientas",
         "try": "Prueba una misión real con tu asistente",
         "skill": "Guárdalo como una Habilidad reutilizable",
         "routine": "Prográmalo como una Rutina recurrente",
@@ -62,17 +61,6 @@
         "continue": "Crear mi asistente",
         "creating": "Creando",
         "continueHint": "Houston creará tu asistente y abrirá la siguiente misión."
-      },
-      "tools": {
-        "title": "Dale tus propias herramientas",
-        "body": "Houston se conecta con tu correo, calendario y más de 1000 apps a través de tu proveedor de integraciones. Por defecto usamos Composio. Inicia sesión una vez para que tu asistente pueda trabajar con tus apps reales.",
-        "cardTitle": "Proveedor de integraciones",
-        "cardBody": "Inicia sesión para que tu asistente use tus apps. Proveedor por defecto: Composio.",
-        "cardSignedInBody": "Tu asistente ya puede usar tus apps",
-        "signIn": "Iniciar sesión",
-        "signedInPill": "Conectado",
-        "continue": "Continuar",
-        "continueHint": "Tu asistente pedirá cada app la primera vez que la necesite."
       },
       "try": {
         "title": "Prueba una misión real",

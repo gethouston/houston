@@ -4,12 +4,10 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
 import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
 import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
-import { useClaudeInstall } from "../../hooks/use-claude-install";
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { GeminiConnectDialog } from "./gemini-connect-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderAccountRow } from "./provider-account-row";
 import { providerAppearsConnected } from "./provider-reconnect-state";
@@ -33,7 +31,6 @@ export function ProviderSettings() {
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
-  const [apiKeyDialogFor, setApiKeyDialogFor] = useState<ProviderInfo | null>(null);
   // OAuth URL surfaced by the engine when the CLI couldn't open the
   // user's browser itself (remote/headless deployments). `userCode` is
   // set for codex's device-grant flow (the one-time code to enter on
@@ -106,17 +103,6 @@ export function ProviderSettings() {
   useEffect(() => {
     loadStatuses();
   }, [loadStatuses]);
-
-  // Anthropic's `claude` is a Houston-managed runtime install (the
-  // license forbids bundling it). Track that install here so the
-  // Anthropic row can show the real download reason + Retry instead of a
-  // Connect button that just errors with "claude CLI is not installed"
-  // when Houston couldn't fetch it — the same #231 fix the onboarding
-  // card carries. `onReady` re-scans so the row flips to Connect the
-  // moment the download lands.
-  const claudeInstall = useClaudeInstall({
-    onReady: () => void loadStatuses(),
-  });
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   useEffect(() => {
@@ -197,10 +183,6 @@ export function ProviderSettings() {
   }, [addToast, loadStatuses, patchAuthState, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
-    if (provider.loginKind === "apiKey") {
-      setApiKeyDialogFor(provider);
-      return;
-    }
     setPendingId(provider.id);
     try {
       // Remote clients (this app running as a webapp/PWA against a hosted
@@ -298,11 +280,9 @@ export function ProviderSettings() {
               key={prov.id}
               provider={prov}
               connected={connected}
-              installed={status?.cli_installed ?? false}
               pending={pendingId === prov.id}
               onConnect={() => handleConnect(prov)}
               onSignOut={() => setConfirmSignOutFor(prov)}
-              claudeInstall={prov.id === "anthropic" ? claudeInstall : null}
               onCancel={() => handleCancel(prov)}
             />
           );
@@ -323,20 +303,6 @@ export function ProviderSettings() {
           const target = confirmSignOutFor;
           setConfirmSignOutFor(null);
           if (target) handleSignOut(target);
-        }}
-      />
-
-      <GeminiConnectDialog
-        provider={apiKeyDialogFor}
-        onOpenChange={(open) => {
-          if (!open) setApiKeyDialogFor(null);
-        }}
-        onSaved={(providerId) => {
-          setPendingId(providerId);
-          loadStatuses();
-        }}
-        onLoginStarted={(providerId) => {
-          setPendingId(providerId);
         }}
       />
 
