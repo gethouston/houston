@@ -131,7 +131,7 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
 
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-secondary/60 px-6 text-foreground">
-      <div className="flex h-[680px] max-h-[88vh] w-full max-w-md flex-col items-center justify-center gap-10 rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+      <div className="flex h-[680px] max-h-[88vh] w-full max-w-lg flex-col items-center justify-center gap-10 rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
         <HoustonLogo size={64} />
         {/* Fixed height so greetings of different lengths don't shift the logo
             and button; only the word itself cross-fades. */}

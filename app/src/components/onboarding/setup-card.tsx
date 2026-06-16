@@ -53,7 +53,7 @@ export function SetupCard({
           each step change, but not on in-step state updates like typing. */}
       <div
         key={title}
-        className="setup-step-in flex h-[680px] max-h-[88vh] w-full max-w-md flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
+        className="setup-step-in flex h-[680px] max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (
