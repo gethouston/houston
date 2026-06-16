@@ -337,6 +337,27 @@ visionPath: "vision/index.html"
     font-size: 16px;
   }
 
+  /* The non-detected platform, demoted beside the OS-aware primary Download
+     button (see the OS-detect script). A quiet escape hatch for people grabbing
+     the app for another machine. */
+  .dl-alt {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: none;
+    border: none;
+    padding: 4px 2px;
+    cursor: pointer;
+    font-size: 13px;
+    color: var(--gray-500);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  .dl-alt svg { width: 13px; height: 13px; }
+
+  .dl-alt:hover { color: var(--gray-900); }
+
   /* ═══════════════════════════════════════════
      SECTIONS
      ═══════════════════════════════════════════ */
@@ -2545,6 +2566,40 @@ visionPath: "vision/index.html"
     try { window.posthog.capture(name, props || {}); } catch (e) {}
   }
 
+  // OS-aware Download button: visitors on Windows kept clicking "Download for
+  // Mac" because Mac was always the primary. Detect the platform once and
+  // promote the matching button; demote the other to a small underlined escape
+  // link (kept in the DOM so its existing modal handler still fires, and so
+  // people downloading for another machine still have a path). When the OS
+  // can't be told (Linux / unknown) we leave both buttons as authored.
+  (function () {
+    function detectOs() {
+      var uaData = navigator.userAgentData;
+      var hay = ((uaData && uaData.platform ? uaData.platform : '') + ' ' +
+        (navigator.userAgent || '')).toLowerCase();
+      if (hay.indexOf('win') !== -1) return 'windows';
+      if (hay.indexOf('mac') !== -1) return 'mac';
+      return 'other';
+    }
+    var os = detectOs();
+    if (os === 'other') return;
+    function asPrimary(btn) {
+      btn.className = 'btn btn-primary btn-lg';
+      btn.style.order = '0';
+    }
+    function asAlt(btn) {
+      btn.className = 'dl-alt';
+      btn.style.order = '1';
+    }
+    document.querySelectorAll('[data-dl-trigger]').forEach(function (mac) {
+      var group = mac.parentElement;
+      var win = group ? group.querySelector('[data-dl-windows-trigger]') : null;
+      if (!win) return;
+      if (os === 'windows') { asPrimary(win); asAlt(mac); }
+      else { asPrimary(mac); asAlt(win); }
+    });
+  })();
+
   // Download gate modal
   (function() {
     var CODE = '{{ env.downloadCode }}';
@@ -2579,6 +2634,9 @@ visionPath: "vision/index.html"
       el.addEventListener('click', function(e) {
         e.preventDefault();
         lastSource = el.getAttribute('data-dl-source') || 'unknown';
+        // Unified funnel step 2 (alongside the granular Mac event below) so a
+        // single acquisition funnel can break "clicked download" down by os.
+        track('app_download_clicked', { os: 'mac' });
         track('download_clicked', { source: lastSource });
         overlay.classList.add('open');
         setTimeout(function() { input.focus(); }, 200);
@@ -2653,6 +2711,8 @@ visionPath: "vision/index.html"
         el.addEventListener('click', function(e) {
           e.preventDefault();
           winLastSource = el.getAttribute('data-dl-source') || 'unknown';
+          // Unified funnel step 2 (alongside the granular Windows event below).
+          track('app_download_clicked', { os: 'windows' });
           track('windows_modal_opened', { source: winLastSource });
           winOverlay.classList.add('open');
           setTimeout(function() { if (winInput) winInput.focus(); }, 200);
