@@ -131,6 +131,8 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   newRoutine: "New routine",
   timezoneLabel: "Timezone",
   timezoneHint: "All your routines run in this timezone.",
+  timezoneSearchPlaceholder: "Search timezones…",
+  timezoneNoResults: "No timezones found",
 }
 
 export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
