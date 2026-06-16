@@ -1,16 +1,14 @@
 /**
- * Quota / model-availability variants — these are the "pay or switch"
- * outcomes. QuotaExhausted mounts an Upgrade CTA (via `tauriSystem.openUrl`)
- * that drops the user into the right provider console; ModelUnavailable is
- * informational. Both render on the unified `RowCard` (HOU-467).
+ * Quota / model-availability variants — the "pay or switch" outcomes. Both are
+ * informational: the body tells the user to upgrade or switch provider, and
+ * QuotaExhausted names the reset time when the provider gives one. Rendered on
+ * the unified `RowCard` (HOU-467).
  */
 
 import { useTranslation } from "react-i18next";
 import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
 import type { ProviderError } from "@houston-ai/chat";
-import { tauriSystem } from "../../../lib/tauri";
 import { RowCard } from "../../cards/row-card";
-import { RowCardButton } from "../../cards/row-card-button";
 import { providerLabel } from "./shared";
 
 export function QuotaExhaustedCard({
@@ -32,14 +30,6 @@ export function QuotaExhaustedCard({
                 time: error.resets_at,
               })
             : t("providerError.quotaExhausted.body", { provider })
-        }
-        action={
-          error.upgrade_url && (
-            <RowCardButton
-              label={t("providerError.quotaExhausted.upgrade")}
-              onClick={() => tauriSystem.openUrl(error.upgrade_url!)}
-            />
-          )
         }
       />
     </div>

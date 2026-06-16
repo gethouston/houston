@@ -13,7 +13,6 @@ import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { reportBug } from "../../../lib/bug-report";
 import { getCurrentUserEmail } from "../../../lib/current-user";
-import { tauriSystem } from "../../../lib/tauri";
 import { getProvider } from "../../../lib/providers";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
@@ -41,24 +40,6 @@ export function RetryButton({
     }
   };
   return <RowCardButton label={label} onClick={handle} loading={running} />;
-}
-
-export function StatusPageButton({
-  provider,
-  label,
-}: {
-  provider: string;
-  label: string;
-}) {
-  const url = statusPageUrl(provider);
-  if (!url) return null;
-  return (
-    <RowCardButton
-      label={label}
-      variant="outline"
-      onClick={() => tauriSystem.openUrl(url)}
-    />
-  );
 }
 
 export function ReportBugButton({
@@ -109,17 +90,4 @@ export function ReportBugButton({
       loading={sending}
     />
   );
-}
-
-export function statusPageUrl(provider: string): string | null {
-  switch (provider) {
-    case "anthropic":
-      return "https://status.anthropic.com/";
-    case "openai":
-      return "https://status.openai.com/";
-    case "gemini":
-      return "https://status.cloud.google.com/";
-    default:
-      return null;
-  }
 }

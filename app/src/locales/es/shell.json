@@ -291,7 +291,6 @@
       "title": "Sin capacidad disponible",
       "body": "Tu plan de {{provider}} llegó al límite. Mejora tu plan o cambia de proveedor para continuar.",
       "bodyWithReset": "Tu plan de {{provider}} llegó al límite. Se restablece {{time}}, o mejora tu plan para continuar.",
-      "upgrade": "Mejorar plan",
       "useApiKey": "Usar clave de API en su lugar"
     },
     "modelUnavailable": {
@@ -315,14 +314,12 @@
     "networkUnreachable": {
       "title": "No se puede conectar con {{provider}}",
       "body": "Houston no pudo conectarse a la API de {{provider}}. Verifica tu conexión y vuelve a intentar.",
-      "retry": "Reintentar",
-      "checkStatus": "Ver página de estado"
+      "retry": "Reintentar"
     },
     "providerInternal": {
       "title": "{{provider}} está teniendo un problema",
       "body": "La API de {{provider}} devolvió un error desde su lado. Inténtalo de nuevo en unos minutos.",
-      "retry": "Reintentar",
-      "checkStatus": "Ver página de estado"
+      "retry": "Reintentar"
     },
     "sessionResumeMissing": {
       "title": "Sesión reiniciada",

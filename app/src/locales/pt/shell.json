@@ -291,7 +291,6 @@
       "title": "Sem capacidade disponível",
       "body": "Seu plano do {{provider}} chegou ao limite. Faça upgrade ou troque de provedor para continuar.",
       "bodyWithReset": "Seu plano do {{provider}} chegou ao limite. Ele reinicia {{time}}, ou faça upgrade para continuar.",
-      "upgrade": "Fazer upgrade",
       "useApiKey": "Usar chave de API no lugar"
     },
     "modelUnavailable": {
@@ -315,14 +314,12 @@
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",
       "body": "O Houston não conseguiu acessar a API do {{provider}}. Verifique sua internet e tente de novo.",
-      "retry": "Tentar de novo",
-      "checkStatus": "Ver página de status"
+      "retry": "Tentar de novo"
     },
     "providerInternal": {
       "title": "{{provider}} está com um problema",
       "body": "A API do {{provider}} retornou um erro do lado deles. Tente de novo em alguns minutos.",
-      "retry": "Tentar de novo",
-      "checkStatus": "Ver página de status"
+      "retry": "Tentar de novo"
     },
     "sessionResumeMissing": {
       "title": "Sessão reiniciada",

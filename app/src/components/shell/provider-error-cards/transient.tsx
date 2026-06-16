@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import type { ProviderError } from "@houston-ai/chat";
 import { RowCard } from "../../cards/row-card";
-import { RetryButton, StatusPageButton, providerLabel } from "./shared";
+import { RetryButton, providerLabel } from "./shared";
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;
@@ -97,18 +97,12 @@ export function NetworkUnreachableCard({
         title={t("providerError.networkUnreachable.title", { provider })}
         description={t("providerError.networkUnreachable.body", { provider })}
         action={
-          <>
-            {onRetry && (
-              <RetryButton
-                onRetry={onRetry}
-                label={t("providerError.networkUnreachable.retry")}
-              />
-            )}
-            <StatusPageButton
-              provider={error.provider}
-              label={t("providerError.networkUnreachable.checkStatus")}
+          onRetry && (
+            <RetryButton
+              onRetry={onRetry}
+              label={t("providerError.networkUnreachable.retry")}
             />
-          </>
+          )
         }
       />
     </div>
@@ -130,18 +124,12 @@ export function ProviderInternalCard({
         title={t("providerError.providerInternal.title", { provider })}
         description={t("providerError.providerInternal.body", { provider })}
         action={
-          <>
-            {onRetry && (
-              <RetryButton
-                onRetry={onRetry}
-                label={t("providerError.providerInternal.retry")}
-              />
-            )}
-            <StatusPageButton
-              provider={error.provider}
-              label={t("providerError.providerInternal.checkStatus")}
+          onRetry && (
+            <RetryButton
+              onRetry={onRetry}
+              label={t("providerError.providerInternal.retry")}
             />
-          </>
+          )
         }
       />
     </div>
