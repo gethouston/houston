@@ -29,10 +29,18 @@ Four prod systems. All **dormant by default** — activate only when env vars se
 ### Event surface
 - **Growth:** `app_active` (once per install per UTC day), `install_created`
 - **Activation:** `workspace_created`, `provider_configured`, `agent_created`, `chat_message_sent`, `chat_message_received`
+- **Onboarding funnel (acquisition→activation):** one action-first event per first-run step, all carrying `app_os` so a single funnel splits Mac vs Windows. In wizard order: `onboarding_welcome_continued`, `onboarding_language_selected {locale}`, `onboarding_agreement_accepted`, `onboarding_assistant_named`, `ai_provider_connected {provider}`, `tools_provider_connected`, `first_message_sent`, `first_email_sent {provider}` (= the conversion — agent sent the first real email, fires strictly before `onboarding_completed`). The connection/email events fire on the actual action (status poll / completion token), ref-guarded to fire exactly once per install. `integration_connected {integration_slug}` (filtered to `gmail`/`outlook`) is the Gmail/Outlook-connected step.
 - **Engagement:** `mission_created`
 - **Reliability:** `session_failed`, `app_error_shown`, PostHog `$exception` from JS global handlers + React error boundary
 
 **Activation milestone:** `chat_message_received` — user sent a message and got a reply. Configure as the activation event in PostHog; all retention/funnel insights key off it.
+
+### Web ↔ app journey (one PostHog project)
+The marketing site (`website/`, Eleventy) shares the **same** `POSTHOG_KEY`, so the whole acquisition→activation journey is one project.
+- **Web funnel:** `$pageview` (landing, `capture_pageview: true` in `base.njk`) → `app_download_clicked { os }` (fired from the OS-aware Download button in `website/src/index.html`, alongside the granular `download_clicked` / `windows_modal_opened` / `*_download_started` events). Break down by `os`.
+- **App funnel:** `install_created → … → first_email_sent` (break down by `app_os`).
+- **download→install hop:** there is no per-binary token, so the aggregate ratio of `app_download_clicked` (web) vs `install_created` (app) over the same window, split by os, IS the "did the download become an install" metric.
+- **Identity bridge (per-person stitch):** on first launch `App.tsx` opens `gethouston.ai/welcome?install_id=<id>` in the browser; `website/src/welcome/index.html` calls `posthog.alias(installId)` + `identify(installId)`, merging the anonymous web person (with `$initial_utm_*`, kept alive by `person_profiles: 'always'`) INTO the install identity. This is the canonical bridge — it covers every install regardless of how the app is launched. (A `houston://welcome?ref=` deep-link bridge was considered and rejected: lower coverage and a competing merge path.)
 
 ### Adding event
 ```typescript
