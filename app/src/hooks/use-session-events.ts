@@ -113,10 +113,10 @@ export function useSessionEvents() {
             // Activity status flip (→ "needs_you") is owned by the
             // engine now — `sessions::start` spawns a task that writes
             // the terminal status after the runner finishes and emits
-            // `ActivityChanged`. That way phone-only users (and
-            // anything else that skips this webview) see the same
-            // transition. Here we only need the notification title + the
-            // click-to-navigate target.
+            // `ActivityChanged`. That way anything that skips this webview
+            // (the web app, a scheduled run) sees the same transition. Here
+            // we only need the notification title + the click-to-navigate
+            // target.
             //
             // Target the agent that *finished* (matched by folder path),
             // not the currently-open one, so clicking the notification

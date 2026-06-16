@@ -26,7 +26,8 @@ export const LOCAL_CAPABILITIES: Capabilities = {
   profile: "local",
   revealInOs: true,
   terminal: true,
-  tunnel: true,
+  // Mobile pairing is gone — phones use the web app now (no tunnel/relay).
+  tunnel: false,
   codeExecution: "local-bash",
   providers: ["anthropic", "openai-codex"],
 };

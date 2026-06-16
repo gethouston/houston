@@ -883,19 +883,3 @@ export const tauriWatcher = {
     call<void>("start_agent_watcher", () => getEngine().startAgentWatcher(agentPath)),
   stop: () => call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
 };
-
-// ─── Tunnel (mobile pairing) ──────────────────────────────────────────
-
-import type {
-  TunnelStatus as EngineTunnelStatus,
-  PairingCode as EnginePairingCode,
-} from "@houston-ai/engine-client";
-
-export const tauriTunnel = {
-  status: () =>
-    call<EngineTunnelStatus>("tunnel_status", () => getEngine().tunnelStatus()),
-  mintPairingCode: () =>
-    call<EnginePairingCode>("tunnel_mint_pairing", () => getEngine().mintPairingCode()),
-  resetAccess: () =>
-    call<EnginePairingCode>("tunnel_reset_access", () => getEngine().resetPhoneAccess()),
-};
