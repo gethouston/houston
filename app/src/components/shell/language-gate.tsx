@@ -1,6 +1,5 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ArrowRight } from "lucide-react";
-import { Button } from "@houston-ai/core";
 
 import { HoustonLogo } from "./experience-card";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
@@ -123,30 +122,42 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
   useEffect(() => {
     const id = window.setInterval(
       () => setI((prev) => (prev + 1) % GREETINGS.length),
-      2400,
+      2600,
     );
     return () => window.clearInterval(id);
   }, []);
   const greeting = GREETINGS[i];
 
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-secondary/60 px-6 text-foreground">
-      <div className="flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col items-center justify-center gap-10 rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-        <HoustonLogo size={64} />
+    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#0a0a0a] px-6 text-white">
+      {/* Drifting aurora glow behind everything. */}
+      <div className="welcome-aurora pointer-events-none absolute left-1/2 top-1/2 h-[120vmax] w-[120vmax]" />
+      {/* Vignette so the edges fall to black and the center reads clean. */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(10,10,10,0.85)_100%)]" />
+
+      <div className="relative z-10 flex flex-col items-center gap-12 text-center">
+        <HoustonLogo
+          size={76}
+          className="text-white drop-shadow-[0_0_32px_rgba(255,255,255,0.28)]"
+        />
         {/* Fixed height so greetings of different lengths don't shift the logo
-            and button; only the word itself cross-fades. */}
-        <div className="flex min-h-[140px] items-center justify-center">
+            or button; the word itself blurs + scales in each rotation. */}
+        <div className="flex min-h-[150px] max-w-2xl items-center justify-center">
           <h1
             key={greeting.title}
-            className="setup-welcome-in text-center text-[30px] font-semibold leading-tight tracking-tight"
+            className="welcome-greeting-in bg-gradient-to-b from-white to-white/70 bg-clip-text text-[44px] font-semibold leading-[1.1] tracking-tight text-transparent"
           >
             {greeting.title}
           </h1>
         </div>
-        <Button className="h-11 rounded-full px-6" onClick={onContinue}>
+        <button
+          type="button"
+          onClick={onContinue}
+          className="inline-flex h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-6 text-sm font-medium text-white backdrop-blur-md transition-colors hover:border-white/30 hover:bg-white/20"
+        >
           {greeting.cta}
           <ArrowRight className="size-4" />
-        </Button>
+        </button>
       </div>
     </div>
   );

@@ -158,7 +158,9 @@ export function OptionCard({
         disabled
           ? "cursor-not-allowed bg-secondary/50 opacity-60"
           : "bg-secondary hover:bg-black/[0.06]",
-        selected && !disabled && "ring-1 ring-foreground",
+        // Inset so the selection ring is drawn INSIDE the card box — an
+        // outset ring on an edge card gets clipped by the scroll container.
+        selected && !disabled && "ring-1 ring-inset ring-foreground",
       )}
     >
       <div className="flex items-center gap-3">

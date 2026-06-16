@@ -86,6 +86,12 @@ export function useAgentInvalidation() {
         // connection without waiting for the next mount (issue #342).
         case "ProviderLoginComplete":
           qc.invalidateQueries({ queryKey: queryKeys.providerStatuses() });
+          // Pull the app back to the front the moment the browser sign-in
+          // finishes — same snap-back as a Composio connection. No-op outside
+          // Tauri.
+          void osFocusWindow().catch((e) =>
+            logger.warn(`[provider] focus window failed: ${e}`),
+          );
           break;
       }
     });

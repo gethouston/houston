@@ -90,24 +90,49 @@ body {
   }
 }
 
-/* Welcome hero: a gentle opacity+scale fade for the rotating greeting (no slide,
-   so it doesn't feel glitchy). Paired with a fixed-height container in the
-   component so greetings of different lengths don't shift the logo/button. */
-@keyframes setup-welcome-in {
+/* Welcome hero (Raycast-style): a slow-drifting aurora built from Houston's
+   own glow palette (blue -> indigo -> orange -> yellow), heavily blurred behind
+   a dark stage. The rotating greeting blurs + scales in for a premium feel. */
+@keyframes welcome-aurora-drift {
   from {
-    opacity: 0;
-    transform: scale(0.98);
+    transform: translate(-50%, -50%) rotate(0deg);
   }
   to {
-    opacity: 1;
-    transform: scale(1);
+    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
-.setup-welcome-in {
-  animation: setup-welcome-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+.welcome-aurora {
+  background: conic-gradient(
+    from 90deg,
+    #2563eb,
+    #4f46e5,
+    #db2777,
+    #ea580c,
+    #eab308,
+    #2563eb
+  );
+  filter: blur(100px);
+  opacity: 0.4;
+  animation: welcome-aurora-drift 22s linear infinite;
+}
+@keyframes welcome-greeting-in {
+  0% {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(14px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+.welcome-greeting-in {
+  animation: welcome-greeting-in 0.7s cubic-bezier(0.16, 1, 0.3, 1);
 }
 @media (prefers-reduced-motion: reduce) {
-  .setup-welcome-in {
+  .welcome-aurora,
+  .welcome-greeting-in {
     animation: none;
   }
 }
