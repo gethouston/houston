@@ -25,67 +25,48 @@ import {
   isComposioSigninHref,
 } from "../../composio-signin-card";
 import type { Agent } from "../../../lib/types";
-import type { MissionMeta } from "../mission-frame";
-import { MissionChatFrame } from "../mission-chat-frame";
-import { MissionIntroModal } from "../mission-intro-modal";
-import { TryDoneScreen } from "../try-done-screen";
+import { SetupCard } from "../setup-card";
 
 /**
- * Magic word the agent emits to signal "setup done, frontend may finish".
- * Stripped from display via `transformContent`, detected via a feed scan.
- * The regex is intentionally lenient because codex's gpt-5.5 sometimes wraps
- * the token in markdown (`**[TUTORIAL_COMPLETE]**`), escapes the underscore,
- * or pluralizes. (Kept as the internal agent↔UI protocol marker; it is not
- * user-facing copy.)
+ * Magic word the agent emits to signal "setup done". (Internal agent↔UI marker,
+ * not user-facing copy; the regex is lenient because codex sometimes wraps or
+ * escapes it.) When seen, the Continue footer unlocks.
  */
 const SETUP_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
 const SETUP_END_STRIP_RE =
   /\*{0,2}\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]\*{0,2}/gi;
 
-interface FrameLabels {
-  brandLabel: string;
-  counterLabel: string;
-  upNextLabel: string;
-}
-
 interface EmailMissionProps {
-  meta: MissionMeta;
-  frame: FrameLabels;
+  eyebrow: string;
   agent: Agent;
   assistantColor: string;
   provider: string;
   model: string;
-  /** Advance out of setup into the workspace shell (arms the guided tour). */
+  onBack: () => void;
+  /** Finish setup and enter the app (arms the guided tour). */
   onContinue: () => void;
-  /**
-   * Escape gate wired to the orchestrator. Framed as "set up later" rather
-   * than a tutorial skip: lands the user in the workspace shell without
-   * sending an email. Separate from `onContinue` only so the labels differ.
-   */
+  /** Escape gate if the agent stalls — lands the user in the app anyway. */
   onSkip: () => void;
 }
 
 /**
- * First-run email setup. A single-sentence intro modal frames it ("send a real
- * email"), the CTA both dismisses the modal and kicks off the chat-driven
- * mission via `createMission`. From there the full screen is the chat: the
- * agent asks which provider, posts a Composio connect card inline, asks who to
- * email and what to say, sends it for real, and emits `[TUTORIAL_COMPLETE]`.
- * We finish setup when that token lands.
+ * Final setup step: the assistant sends one real email. Lives in the same
+ * SetupCard as every other step (eyebrow "Step N of N" + footer), with the
+ * chat as the card content. Continue unlocks once the agent emits its
+ * completion token (the email sent).
  */
 export function EmailMission({
-  meta,
-  frame,
+  eyebrow,
   agent,
   assistantColor,
   provider,
   model,
+  onBack,
   onContinue,
   onSkip,
 }: EmailMissionProps) {
   const { t } = useTranslation(["setup", "chat"]);
   const agentPath = agent.folderPath;
-  const missionTitle = t("setup:tutorial.missions.email.chip");
 
   const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
     null,
@@ -101,22 +82,10 @@ export function EmailMission({
 
   const [composerText, setComposerText] = useState("");
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
-  /**
-   * `introDismissed` flips when the user clicks the modal CTA. The chip in the
-   * chat area is gated on this so we never show two competing CTAs (modal +
-   * chip) at once. `pickedAny` then flips when the chip itself is clicked,
-   * which fires `createMission`.
-   */
-  const [introDismissed, setIntroDismissed] = useState(false);
   const [pickedAny, setPickedAny] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Append the setup directive to CLAUDE.md while this mission is mounted;
-  // strip on unmount. Agent reads the augmented file at session start so the
-  // directive lives in the system context, not in any visible chat bubble.
-  // The write is async but the chip that spawns the session is synchronous
-  // from the user's POV, so expose the prep promise via a ref and await it in
-  // `handlePick` before firing `createMission`.
+  // Append the setup directive to CLAUDE.md while mounted; strip on unmount.
   const setupPrepRef = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
     let cancelled = false;
@@ -146,19 +115,16 @@ export function EmailMission({
     };
   }, [agentPath]);
 
-  // Magic-word completion signal. Restricted to `assistant_text` so reasoning
-  // / tool plumbing that incidentally mentions the marker doesn't false-fire.
-  const finalReportMarkdown = useMemo(() => {
+  const setupDone = useMemo(() => {
     for (let i = (feedItems ?? []).length - 1; i >= 0; i--) {
       const item = (feedItems ?? [])[i];
       if (item.feed_type !== "assistant_text") continue;
-      const data = item.data;
-      if (typeof data !== "string" || !SETUP_END_RE.test(data)) continue;
-      return data.replace(SETUP_END_STRIP_RE, "").trim();
+      if (typeof item.data === "string" && SETUP_END_RE.test(item.data)) {
+        return true;
+      }
     }
-    return null;
+    return false;
   }, [feedItems]);
-  const setupDone = finalReportMarkdown !== null;
 
   const handleOpenLink = useCallback((url: string) => {
     tauriSystem.openUrl(url).catch(console.error);
@@ -166,9 +132,7 @@ export function EmailMission({
 
   const renderLink = useCallback(
     ({ href, onOpen }: { href: string; onOpen: () => void }) => {
-      if (isComposioSigninHref(href)) {
-        return <ComposioSigninCard />;
-      }
+      if (isComposioSigninHref(href)) return <ComposioSigninCard />;
       const toolkit = parseComposioToolkitFromHref(href);
       if (!toolkit) return undefined;
       return <ComposioLinkCard toolkit={toolkit} onOpen={onOpen} />;
@@ -183,11 +147,6 @@ export function EmailMission({
     return withComposioWaitingFooter({ content: stripped });
   }, []);
 
-  // Free-typing path. Wrapped by `useSessionMessageQueue` so messages typed
-  // while the agent is mid-stream get queued instead of dropped. Force
-  // `effort: "medium"` for both providers — without it Codex inherits whatever
-  // sits in `~/.codex/config.toml`, and newer builds write an effort the
-  // bundled CLI rejects, killing setup with "A local tool failed to start".
   const sendNow = useCallback(
     async (text: string, _files: File[]) => {
       const trimmed = text.trim();
@@ -233,29 +192,10 @@ export function EmailMission({
     tauriChat.stop(agentPath, missionSessionKey).catch(console.error);
   }, [agentPath, missionSessionKey]);
 
-  /**
-   * Escape gate when the agent stalls and never emits the completion token.
-   * Stops the in-flight session, then calls `onSkip` so the parent lands the
-   * user in the workspace shell. The `useEffect` cleanup still strips the
-   * setup section from CLAUDE.md on unmount.
-   */
-  const handleSkip = useCallback(() => {
-    if (missionSessionKey) {
-      tauriChat.stop(agentPath, missionSessionKey).catch(console.error);
-    }
-    onSkip();
-  }, [agentPath, missionSessionKey, onSkip]);
-
-  // Modal CTA + initial-message handler. Mint an activity, send the chip text
-  // as the first user prompt, and let the engine stream the response. From
-  // then on the chat lives on `activity-${id}` so it shows up as a mission
-  // card on the Activity Board after setup.
   const handlePick = useCallback(
     async (chipLabel: string) => {
       if (pickedAny) return;
       setPickedAny(true);
-      // Wait for the setup-section append to land on disk so the engine reads
-      // the augmented CLAUDE.md when it spawns the chat session.
       await setupPrepRef.current;
       try {
         const result = await createMission(
@@ -297,106 +237,82 @@ export function EmailMission({
 
   const visibleFeed = (feedItems ?? []) as FeedItem[];
 
-  if (setupDone && finalReportMarkdown) {
-    return (
-      <TryDoneScreen
-        brandLabel={frame.brandLabel}
-        assistantName={agent.name}
-        assistantColor={assistantColor}
-        title={t("setup:tutorial.missions.email.doneTitle")}
-        reportMarkdown={finalReportMarkdown}
-        continueLabel={t("setup:tutorial.missions.email.continueChip")}
-        onContinue={onContinue}
-        skipLabel={t("setup:tutorial.missions.email.skip")}
-        onSkip={handleSkip}
-      />
-    );
-  }
-
   return (
-    <>
-      <MissionChatFrame
-        meta={meta}
-        brandLabel={frame.brandLabel}
-        counterLabel={frame.counterLabel}
-        skipLabel={t("setup:tutorial.missions.email.skip")}
-        onSkip={handleSkip}
-      >
-        <div className="flex h-full min-h-0 flex-col">
-          <header className="flex shrink-0 items-center gap-3 border-b border-black/5 pb-4">
+    <SetupCard
+      eyebrow={eyebrow}
+      title={t("setup:tutorial.missions.email.title")}
+      subtitle={
+        missionSessionKey ? undefined : t("setup:tutorial.missions.email.body")
+      }
+      onBack={onBack}
+      backLabel={t("setup:tutorial.nav.back")}
+      onNext={onContinue}
+      nextLabel={t("setup:tutorial.nav.continue")}
+      nextDisabled={!setupDone}
+      helper={
+        <button
+          type="button"
+          onClick={onSkip}
+          className="underline-offset-2 hover:text-foreground hover:underline"
+        >
+          {t("setup:tutorial.missions.email.skip")}
+        </button>
+      }
+    >
+      {error && (
+        <p className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
+          {error}
+        </p>
+      )}
+      {missionSessionKey ? (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <div className="flex shrink-0 items-center gap-2 pb-3">
             <HoustonAvatar
               color={resolveAgentColor(assistantColor)}
-              diameter={32}
+              diameter={24}
               running={isActive}
             />
-            <div className="flex min-w-0 flex-1 flex-col">
-              <p className="truncate text-sm font-medium">{agent.name}</p>
-              {pickedAny && (
-                <p className="truncate text-xs text-muted-foreground">
-                  {missionTitle}
-                </p>
-              )}
-            </div>
-          </header>
-          {error && (
-            <p className="mt-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
-              {error}
-            </p>
-          )}
-          {missionSessionKey ? (
-            <div className="flex min-h-0 flex-1 flex-col pt-4">
-              <ChatPanel
-                sessionKey={missionSessionKey}
-                feedItems={visibleFeed}
-                onSend={handleSend}
-                onStop={isActive ? handleStop : undefined}
-                isLoading={isActive}
-                placeholder={t("setup:tutorial.missions.email.placeholder")}
-                processLabels={processLabels}
-                getThinkingMessage={getThinkingMessage}
-                renderLink={renderLink}
-                onOpenLink={handleOpenLink}
-                transformContent={transformContent}
-                value={composerText}
-                onValueChange={setComposerText}
-                attachments={composerFiles}
-                onAttachmentsChange={setComposerFiles}
-                queuedMessages={messageQueue.queuedMessages}
-                onRemoveQueuedMessage={messageQueue.removeQueuedMessage}
-                queuedLabels={queuedLabels}
-              />
-            </div>
-          ) : (
-            // Pre-pick state. After the modal dismisses, the user lands on a
-            // centered chip showing the actual prompt that's about to fly —
-            // they click it themselves, so the next chat bubble feels like
-            // their own action rather than something the modal auto-fired.
-            <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
-              {introDismissed && (
-                <Button
-                  type="button"
-                  onClick={() =>
-                    void handlePick(t("setup:tutorial.missions.email.chip"))
-                  }
-                  disabled={pickedAny}
-                  className="h-11 rounded-full px-5"
-                >
-                  {t("setup:tutorial.missions.email.chip")}
-                </Button>
-              )}
-            </div>
-          )}
+            <span className="truncate text-xs font-medium text-muted-foreground">
+              {agent.name}
+            </span>
+          </div>
+          <div className="flex min-h-0 flex-1 flex-col">
+            <ChatPanel
+              sessionKey={missionSessionKey}
+              feedItems={visibleFeed}
+              onSend={handleSend}
+              onStop={isActive ? handleStop : undefined}
+              isLoading={isActive}
+              placeholder={t("setup:tutorial.missions.email.placeholder")}
+              processLabels={processLabels}
+              getThinkingMessage={getThinkingMessage}
+              renderLink={renderLink}
+              onOpenLink={handleOpenLink}
+              transformContent={transformContent}
+              value={composerText}
+              onValueChange={setComposerText}
+              attachments={composerFiles}
+              onAttachmentsChange={setComposerFiles}
+              queuedMessages={messageQueue.queuedMessages}
+              onRemoveQueuedMessage={messageQueue.removeQueuedMessage}
+              queuedLabels={queuedLabels}
+            />
+          </div>
         </div>
-      </MissionChatFrame>
-      <MissionIntroModal
-        open={!introDismissed}
-        header={t("setup:tutorial.missionLabel", {
-          title: t("setup:tutorial.missions.email.intro.title"),
-        })}
-        body={t("setup:tutorial.missions.email.intro.body")}
-        ctaLabel={t("setup:tutorial.missions.email.intro.cta")}
-        onCta={() => setIntroDismissed(true)}
-      />
-    </>
+      ) : (
+        <div className="flex flex-1 flex-col items-center justify-center">
+          <Button
+            type="button"
+            onClick={() =>
+              void handlePick(t("setup:tutorial.missions.email.chip"))
+            }
+            disabled={pickedAny}
+            className="h-11 rounded-full px-5"
+          >
+            {t("setup:tutorial.missions.email.chip")}
+          </Button>
+        </div>
+      )}
+    </SetupCard>
   );
 }

@@ -1,14 +1,9 @@
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-  type UIEvent,
-} from "react";
+import { useCallback, useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
+import { useLocalePreference } from "../../hooks/use-locale-preference";
+import { setupStepNumber } from "../../lib/setup-steps";
 import { SetupCard } from "../onboarding/setup-card";
 
 interface Section {
@@ -17,14 +12,14 @@ interface Section {
 }
 
 /**
- * First-run gate. Renders `children` once the user has accepted the current
- * disclaimer version; otherwise it shows the Agreement on the shared
- * `SetupCard` so it reads as part of the same setup flow (the macOS-style
- * Welcome + language pick run before this, in the LanguageGate). Copy lives in
- * `locales/<lang>/legal.json` and `setup.json`.
+ * Agreement step. Renders `children` once the user has accepted the current
+ * disclaimer version; otherwise it shows the agreement on the shared
+ * `SetupCard` as step 2 of the setup flow (the rotating Welcome + language pick
+ * run before, in the LanguageGate). Copy lives in `locales/<lang>/legal.json`.
  */
 export function DisclaimerGate({ children }: { children: ReactNode }) {
-  const { isAccepted, isLoading, accept, decline } = useLegalAcceptance();
+  const { isAccepted, isLoading, accept } = useLegalAcceptance();
+  const { clearLocale } = useLocalePreference();
 
   if (isLoading) {
     return (
@@ -37,82 +32,50 @@ export function DisclaimerGate({ children }: { children: ReactNode }) {
 
   if (isAccepted) return <>{children}</>;
 
-  return <AgreementScreen onAccept={accept} onDecline={decline} />;
+  return (
+    <AgreementScreen onAccept={accept} onBack={() => void clearLocale()} />
+  );
 }
 
 function AgreementScreen({
   onAccept,
-  onDecline,
+  onBack,
 }: {
   onAccept: () => Promise<void>;
-  onDecline: () => Promise<void>;
+  /** Back to the language picker (clears the locale so the picker re-shows). */
+  onBack: () => void;
 }) {
-  const { t } = useTranslation("legal");
-  const scrollRef = useRef<HTMLDivElement>(null);
-  const [hasScrolledToEnd, setHasScrolledToEnd] = useState(false);
-  const [busy, setBusy] = useState<"accept" | "decline" | null>(null);
+  const { t } = useTranslation(["legal", "setup"]);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const sections = (t("sections", { returnObjects: true }) as Section[]) ?? [];
-
-  useEffect(() => {
-    const node = scrollRef.current;
-    if (!node) return;
-    if (node.scrollHeight <= node.clientHeight + 1) setHasScrolledToEnd(true);
-  }, []);
-
-  const handleScroll = useCallback((event: UIEvent<HTMLDivElement>) => {
-    const node = event.currentTarget;
-    if (node.scrollTop + node.clientHeight >= node.scrollHeight - 8) {
-      setHasScrolledToEnd(true);
-    }
-  }, []);
+  const sections = (t("legal:sections", { returnObjects: true }) as Section[]) ?? [];
+  const { current, total } = setupStepNumber("agreement");
 
   const handleAccept = useCallback(async () => {
-    if (!hasScrolledToEnd || busy) return;
-    setBusy("accept");
+    if (busy) return;
+    setBusy(true);
     setError(null);
     try {
       await onAccept();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
-      setBusy(null);
+      setBusy(false);
     }
-  }, [busy, hasScrolledToEnd, onAccept]);
-
-  const handleDecline = useCallback(async () => {
-    if (busy) return;
-    setBusy("decline");
-    setError(null);
-    try {
-      await onDecline();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : String(err));
-      setBusy(null);
-    }
-  }, [busy, onDecline]);
+  }, [busy, onAccept]);
 
   return (
     <SetupCard
-      eyebrow={t("legal:kicker")}
+      eyebrow={t("setup:tutorial.counter", { current, total })}
       title={t("legal:title")}
       subtitle={t("legal:intro")}
+      onBack={onBack}
+      backLabel={t("setup:tutorial.nav.back")}
       onNext={() => void handleAccept()}
-      nextLabel={
-        busy === "accept" ? t("legal:buttons.accept_busy") : t("legal:buttons.accept")
-      }
-      nextDisabled={!hasScrolledToEnd}
-      nextLoading={busy === "accept"}
-      helper={
-        hasScrolledToEnd ? t("legal:scroll_hint.done") : t("legal:scroll_hint.pending")
-      }
+      nextLabel={busy ? t("legal:buttons.accept_busy") : t("legal:buttons.accept")}
+      nextLoading={busy}
     >
-      <div
-        ref={scrollRef}
-        onScroll={handleScroll}
-        data-testid="disclaimer-scroll"
-        className="max-h-[44vh] overflow-y-auto pr-1"
-      >
+      <div className="min-h-0 flex-1 overflow-y-auto pr-1">
         <ol className="space-y-4">
           {sections.map((section, i) => (
             <li key={i} className="flex items-start gap-3">
@@ -131,16 +94,6 @@ function AgreementScreen({
           ))}
         </ol>
         <p className="mt-5 text-xs text-muted-foreground">{t("legal:closing")}</p>
-        <button
-          type="button"
-          onClick={() => void handleDecline()}
-          disabled={busy !== null}
-          className="mt-4 text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline disabled:opacity-50"
-        >
-          {busy === "decline"
-            ? t("legal:buttons.decline_busy")
-            : t("legal:buttons.decline")}
-        </button>
         {error && (
           <p className="mt-2 text-xs text-destructive" role="alert">
             {error}

@@ -1,12 +1,9 @@
-import type { MissionMeta } from "./mission-frame";
-
 /**
- * Onboarding state machine. `welcome` sits OUTSIDE the mission counter — it's
- * the decision point ("do the tutorial or skip"). Once the user starts, the
- * mission stages drive the HUD `Mission N of N` counter.
+ * Onboarding step types. The unified "Step N of N" numbering (including the
+ * language + agreement gates and the email step) lives in `lib/setup-steps.ts`;
+ * the orchestrator only owns these mission steps. Welcome is a hero in the
+ * first-run gate and isn't a TutorialStep.
  */
-// Welcome now lives in the first-run gate (before the agreement), so the
-// onboarding orchestrator only owns the mission steps.
 export type OnboardingStep = TutorialStep;
 
 export type TutorialStep =
@@ -15,40 +12,3 @@ export type TutorialStep =
   | "providerLogin"
   | "tools"
   | "email";
-
-type Translate = (key: string, options?: Record<string, unknown>) => string;
-
-export const TUTORIAL_STEPS: TutorialStep[] = [
-  "meet",
-  "brain",
-  "providerLogin",
-  "tools",
-  "email",
-];
-
-export function buildMissionMeta(t: Translate, step: TutorialStep): MissionMeta {
-  const index = TUTORIAL_STEPS.indexOf(step);
-  const total = TUTORIAL_STEPS.length;
-  const next = TUTORIAL_STEPS[index + 1];
-  const nextTitle = next ? t(`setup:tutorial.missions.${next}.title`) : null;
-  return {
-    index,
-    total,
-    eyebrow: t("setup:tutorial.eyebrow", { number: index + 1 }),
-    title: t(`setup:tutorial.missions.${step}.title`),
-    body: t(`setup:tutorial.missions.${step}.body`),
-    nextTitle,
-  };
-}
-
-export function buildFrameLabels(t: Translate, step: TutorialStep) {
-  const index = TUTORIAL_STEPS.indexOf(step);
-  return {
-    brandLabel: t("setup:tutorial.brand"),
-    counterLabel: t("setup:tutorial.counter", {
-      current: index + 1,
-      total: TUTORIAL_STEPS.length,
-    }),
-    upNextLabel: t("setup:tutorial.upNext"),
-  };
-}

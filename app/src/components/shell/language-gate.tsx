@@ -5,14 +5,14 @@ import { Button } from "@houston-ai/core";
 import { HoustonLogo } from "./experience-card";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "../../lib/i18n";
+import { setupStepNumber } from "../../lib/setup-steps";
 import { SetupCard, OptionCard } from "../onboarding/setup-card";
 
 /**
- * First-run language flow, styled like the rest of setup (centered card on the
- * gray backdrop). Two beats:
- *   1. A macOS-style "Welcome to Houston" that rotates through en/es/pt — a
- *      warm, language-agnostic hello before we ask anything.
- *   2. The language picker itself.
+ * First-run language flow, styled like the rest of setup. Two beats:
+ *   1. A macOS-style "Welcome to Houston" hero that rotates through en/es/pt —
+ *      a warm, language-agnostic hello before we ask anything.
+ *   2. The language picker (pick, then Continue, so a misclick is recoverable).
  *
  * Shown before the disclaimer so a Spanish/Portuguese speaker reads the
  * agreement in their own language. Skipped once the `locale` engine preference
@@ -51,45 +51,66 @@ const GREETINGS = [
   { title: "Boas-vindas ao Houston", cta: "Continuar" },
 ];
 
+// Survives a remount within the session: if the user goes back to the picker
+// from the agreement (which clears the locale), don't replay the hello — drop
+// them straight on the picker.
+let welcomeSeen = false;
+
 function LanguageIntro({
   onPick,
 }: {
   onPick: (locale: SupportedLocale) => Promise<void>;
 }) {
-  const [stage, setStage] = useState<"welcome" | "pick">("welcome");
-  const [pending, setPending] = useState<SupportedLocale | null>(null);
+  const [stage, setStage] = useState<"welcome" | "pick">(
+    welcomeSeen ? "pick" : "welcome",
+  );
+  const [selected, setSelected] = useState<SupportedLocale | null>(null);
+  const [pending, setPending] = useState(false);
 
   if (stage === "welcome") {
-    return <RotatingWelcome onContinue={() => setStage("pick")} />;
+    return (
+      <RotatingWelcome
+        onContinue={() => {
+          welcomeSeen = true;
+          setStage("pick");
+        }}
+      />
+    );
   }
 
-  const handlePick = async (locale: SupportedLocale) => {
-    if (pending) return;
-    setPending(locale);
+  const handleContinue = async () => {
+    if (!selected || pending) return;
+    setPending(true);
     try {
-      await onPick(locale);
+      await onPick(selected);
     } catch {
       // Write failed — stay on the picker so the user can retry. No localized
       // error is possible yet (no locale).
-      setPending(null);
+      setPending(false);
     }
   };
 
+  const { current, total } = setupStepNumber("language");
+
   return (
     <SetupCard
+      eyebrow={`Step ${current} of ${total}`}
       title="Choose your language"
       subtitle="English · Español · Português"
       onBack={() => setStage("welcome")}
       backLabel="Back"
+      onNext={() => void handleContinue()}
+      nextLabel="Continue"
+      nextDisabled={!selected}
+      nextLoading={pending}
     >
       <div className="flex flex-col gap-2">
         {SUPPORTED_LOCALES.map((loc) => (
           <OptionCard
             key={loc}
             label={DISPLAY_NAMES[loc]}
-            selected={pending === loc}
-            onSelect={() => void handlePick(loc)}
-            disabled={pending !== null && pending !== loc}
+            selected={selected === loc}
+            onSelect={() => setSelected(loc)}
           />
         ))}
       </div>
@@ -102,7 +123,7 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
   useEffect(() => {
     const id = window.setInterval(
       () => setI((prev) => (prev + 1) % GREETINGS.length),
-      2200,
+      2400,
     );
     return () => window.clearInterval(id);
   }, []);
@@ -110,17 +131,19 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
 
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-secondary/60 px-6 text-foreground">
-      <div className="flex min-h-[560px] w-full max-w-2xl flex-col items-center justify-center gap-8 rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
-        <HoustonLogo size={52} />
-        {/* Keyed by the greeting so only the word cross-fades each rotation,
-            while the logo + button stay put — the macOS "hello" feel. */}
-        <h1
-          key={greeting.title}
-          className="setup-step-in text-center text-[28px] font-semibold leading-tight"
-        >
-          {greeting.title}
-        </h1>
-        <Button className="rounded-full" onClick={onContinue}>
+      <div className="flex min-h-[560px] w-full max-w-2xl flex-col items-center justify-center gap-10 rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]">
+        <HoustonLogo size={64} />
+        {/* Fixed height so greetings of different lengths don't shift the logo
+            and button; only the word itself cross-fades. */}
+        <div className="flex min-h-[96px] items-center justify-center">
+          <h1
+            key={greeting.title}
+            className="setup-welcome-in max-w-xl text-center text-[34px] font-semibold leading-tight tracking-tight"
+          >
+            {greeting.title}
+          </h1>
+        </div>
+        <Button className="h-11 rounded-full px-6" onClick={onContinue}>
           {greeting.cta}
           <ArrowRight className="size-4" />
         </Button>

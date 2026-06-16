@@ -20,12 +20,8 @@ import {
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
-import {
-  buildFrameLabels,
-  buildMissionMeta,
-  type OnboardingStep,
-  type TutorialStep,
-} from "./tutorial-copy";
+import { type OnboardingStep, type TutorialStep } from "./tutorial-copy";
+import { setupStepNumber, type SetupStep } from "../../lib/setup-steps";
 
 interface PersonalAssistantOnboardingProps {
   toasts: Toast[];
@@ -56,11 +52,6 @@ export function PersonalAssistantOnboarding({
   // Title stamped on the agent's first-run instructions — the one task setup
   // walks the user through.
   const missionTitle = t("setup:tutorial.missions.email.chip");
-
-  // Used only by the email step (its MissionChatFrame); the card steps render
-  // their own SetupCard from i18n.
-  const meta = buildMissionMeta(t, step);
-  const frame = buildFrameLabels(t, step);
 
   // `tutorialActive` pins the orchestrator in front of the workspace shell so
   // the workspace-create event in the Brain step doesn't unmount us. Welcome +
@@ -163,14 +154,10 @@ export function PersonalAssistantOnboarding({
   const missionProvider = provider ?? "anthropic";
   const missionModel = model ?? getDefaultModel(missionProvider);
 
-  // The card steps that show a "Step N of N" eyebrow. The email step is the
-  // culminating chat (its own frame), so it sits outside the counter.
-  const CARD_STEPS: TutorialStep[] = ["meet", "brain", "providerLogin", "tools"];
+  // One shared step counter across the whole setup (language + agreement +
+  // these), so every screen's "Step N of N" agrees.
   const stepEyebrow = (s: TutorialStep) =>
-    t("setup:tutorial.counter", {
-      current: CARD_STEPS.indexOf(s) + 1,
-      total: CARD_STEPS.length,
-    });
+    t("setup:tutorial.counter", setupStepNumber(s as SetupStep));
 
   return (
     <>
@@ -226,14 +213,14 @@ export function PersonalAssistantOnboarding({
           onContinue={() => setStep("email")}
         />
       )}
-      {meta && frame && step === "email" && agent && (
+      {step === "email" && agent && (
         <EmailMission
-          meta={meta}
-          frame={frame}
+          eyebrow={stepEyebrow("email")}
           agent={agent}
           assistantColor={assistantColor}
           provider={missionProvider}
           model={missionModel}
+          onBack={() => setStep("tools")}
           onContinue={finishOnboarding}
           onSkip={finishOnboarding}
         />
