@@ -217,6 +217,11 @@ export async function deleteRoutine(cfg: ControlPlaneConfig, agentId: string, id
   await cpFetch(cfg, `${agentPath(agentId)}/routines/${encodeURIComponent(id)}`, { method: "DELETE" });
 }
 
+/** Fire a routine immediately — the host records a routine_run and starts the turn now. */
+export async function runRoutineNow(cfg: ControlPlaneConfig, agentId: string, id: string): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/routines/${encodeURIComponent(id)}/run`, { method: "POST" });
+}
+
 export async function createSkill(
   cfg: ControlPlaneConfig,
   agentId: string,
@@ -255,6 +260,49 @@ export async function writeAgentFile(
     method: "PUT",
     body: JSON.stringify({ content }),
   });
+}
+
+/**
+ * Composer attachments. Upload the dropped files INTO the agent's workspace so
+ * the runtime's clamped file tools can Read them during the turn, and return the
+ * RELATIVE workspace paths the host stored them at — which the sender encodes
+ * verbatim into the message ("Read these attached files: …"). Binary rides as
+ * base64 JSON (the host writes the bytes through its Vfs); the agent resolves
+ * each path against its workspace root.
+ */
+export async function saveAttachments(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  scopeId: string,
+  files: readonly File[],
+): Promise<string[]> {
+  const payload = {
+    scopeId,
+    files: await Promise.all(
+      files.map(async (f) => ({ name: f.name, contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())) })),
+    ),
+  };
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/attachments`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+  return ((await res.json()) as { paths: string[] }).paths;
+}
+
+export async function deleteAttachments(cfg: ControlPlaneConfig, agentId: string, scopeId: string): Promise<void> {
+  await cpFetch(cfg, `${agentPath(agentId)}/attachments?scopeId=${encodeURIComponent(scopeId)}`, {
+    method: "DELETE",
+  });
+}
+
+/** Base64-encode bytes without blowing the call stack on large files (chunked btoa). */
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const CHUNK = 0x8000;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK));
+  }
+  return btoa(binary);
 }
 
 export async function getPreference(cfg: ControlPlaneConfig, key: string): Promise<string | null> {

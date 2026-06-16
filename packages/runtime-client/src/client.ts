@@ -158,6 +158,18 @@ export class HoustonEngineClient {
       { method: "POST" },
     );
   }
+  /**
+   * Title an arbitrary excerpt (the composer's first message), with no stored
+   * conversation. Returns "" when the model emits nothing — the caller falls
+   * back to truncation.
+   */
+  summarizeText(text: string) {
+    return this.json<{ title: string }>("/title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text }),
+    });
+  }
 
   /**
    * Send a message, triggering a turn. Resolves once the turn is accepted (202);

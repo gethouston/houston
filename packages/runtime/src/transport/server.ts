@@ -4,7 +4,7 @@ import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login"
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
 import { runTurn, cancelTurn, disposeConversation } from "../session/chat";
-import { summarizeTitle } from "../session/summarize";
+import { summarizeTitle, titleFromText } from "../session/summarize";
 import { snapshot, subscribe } from "../session/bus";
 import {
   deleteConversation,
@@ -104,6 +104,22 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // --- Conversations ---
   if (method === "GET" && path === "/conversations") {
     return json(res, 200, listConversations());
+  }
+
+  // Stateless title generation from a posted excerpt — the composer's first
+  // message in, a short LLM title out. Distinct from the id-scoped
+  // /conversations/:id/title (which titles a stored transcript): the web
+  // adapter's summarizeActivity has the message text but no conversation id.
+  if (method === "POST" && path === "/title") {
+    const { text } = await readJson(req);
+    if (typeof text !== "string") {
+      return json(res, 400, { error: "missing 'text'" });
+    }
+    try {
+      return json(res, 200, { title: await titleFromText(text) });
+    } catch (e) {
+      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+    }
   }
 
   // Rename / delete a conversation. Delete also drops the live pi session and

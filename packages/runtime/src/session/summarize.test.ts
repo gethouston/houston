@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { registerFauxProvider, fauxAssistantMessage } from "@earendil-works/pi-ai";
-import { buildExcerpt, generateTitle } from "./summarize";
+import { buildExcerpt, generateTitle, titleFromText } from "./summarize";
 
 /**
  * Title generation runs a real pi turn (faux provider: scripted, no network),
@@ -23,6 +23,12 @@ test("buildExcerpt trims to the first turns and caps lengths", () => {
   expect(excerpt.length).toBeLessThanOrEqual(2400);
   expect(excerpt).toContain("user: 0:");
   expect(excerpt).not.toContain("6:"); // only the first 6 messages
+});
+
+test("titleFromText short-circuits empty input to '' without touching the model", async () => {
+  // No provider registered: if it tried to run a turn it would throw, not return "".
+  expect(await titleFromText("")).toBe("");
+  expect(await titleFromText("   \n\t  ")).toBe("");
 });
 
 test("generateTitle runs a faux turn and returns a single trimmed line", async () => {

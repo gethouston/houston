@@ -1,17 +1,12 @@
 import type { Routine } from "@houston/protocol";
-import {
-  createRoutineRun,
-  dueAt,
-  loadRoutineRuns,
-  loadRoutines,
-  saveRoutineRuns,
-} from "@houston/domain";
+import { dueAt, loadRoutines } from "@houston/domain";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import type { WorkspacePaths } from "../paths";
 import type { EventHub } from "../events/hub";
 import { reconcileAgentRuns } from "./reconcile";
+import { fireRoutineRun } from "./run";
 
 /** A due routine to run, with its resolved conversation + run id. */
 export interface FiringJob {
@@ -117,7 +112,7 @@ export class Scheduler {
             "1",
             this.dedupTtlSec,
           );
-          if (won) await this.fireRoutine(ws, agent, routine, root, now);
+          if (won) await this.fireRoutine(ws, agent, routine);
         }
         // Complete runs whose turn has finished (silent/surfaced/timeout).
         await reconcileAgentRuns(
@@ -136,37 +131,23 @@ export class Scheduler {
     }
   }
 
-  private async fireRoutine(
-    ws: Workspace,
-    agent: Agent,
-    routine: Routine,
-    root: string,
-    now: Date,
-  ): Promise<void> {
-    const runId = this.newId();
-    const run = createRoutineRun(routine, runId, now.toISOString());
-    const { items } = await loadRoutineRuns(this.deps.vfs, root);
-    await saveRoutineRuns(this.deps.vfs, root, [run, ...items]); // newest first
-    this.deps.events?.emit(ws.ownerUserId, { type: "RoutineRunsChanged", agentPath: agent.id });
-
+  /**
+   * Record + fire one due routine. Shares `fireRoutineRun` with the on-demand
+   * "run now" route, so a scheduled run and a hand-pressed one are identical
+   * (same record, same firer, same errored-on-fail bookkeeping). The helper
+   * rethrows a fire failure; here — the background scan, with no UI thread to
+   * toast on — we log it (the one sanctioned `console.error` boundary).
+   */
+  private async fireRoutine(ws: Workspace, agent: Agent, routine: Routine): Promise<void> {
     try {
-      await this.deps.firer.fire({ workspace: ws, agent, routine, conversationId: run.session_key, runId });
-    } catch (err) {
-      // The turn couldn't even be started. Mark the run errored so it never hangs
-      // in "running"; a background loop has no UI to toast, so we also log.
-      const message = err instanceof Error ? err.message : String(err);
-      const { items: current } = await loadRoutineRuns(this.deps.vfs, root);
-      await saveRoutineRuns(
-        this.deps.vfs,
-        root,
-        current.map((r) =>
-          r.id === runId
-            ? { ...r, status: "error" as const, summary: message, completed_at: this.now().toISOString() }
-            : r,
-        ),
+      await fireRoutineRun(
+        { vfs: this.deps.vfs, paths: this.deps.paths, firer: this.deps.firer, events: this.deps.events, now: this.now, newId: this.newId },
+        ws,
+        agent,
+        routine,
       );
-      this.deps.events?.emit(ws.ownerUserId, { type: "RoutineRunsChanged", agentPath: agent.id });
-      console.error(`[scheduler] routine ${routine.id} fire failed:`, message);
+    } catch (err) {
+      console.error(`[scheduler] routine ${routine.id} fire failed:`, err instanceof Error ? err.message : err);
     }
   }
 }

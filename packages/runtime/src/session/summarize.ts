@@ -79,6 +79,19 @@ export async function generateTitle(opts: {
 }
 
 /**
+ * Title an arbitrary excerpt (the composer's first message), independent of any
+ * stored conversation. Powers the adapter's `summarizeActivity(message)` —
+ * which has the message text but no conversation id — so a board mission gets a
+ * real LLM title instead of a client-side truncation. Returns "" for empty
+ * input or when the model emits nothing (the caller falls back to truncation).
+ */
+export async function titleFromText(text: string, model = resolveModel()): Promise<string> {
+  const excerpt = text.trim().slice(0, 2400);
+  if (!excerpt) return "";
+  return generateTitle({ cwd: config.workspaceDir, model, authStorage, modelRegistry, excerpt });
+}
+
+/**
  * Summarize a conversation into a short title and persist it. Returns the new
  * title, or null when the conversation does not exist or is empty.
  */

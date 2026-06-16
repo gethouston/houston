@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { seedSchemas } from "@houston/domain";
+import { loadRoutines, seedSchemas } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, UserId, Workspace, WorkspaceRuntime } from "../domain/types";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
@@ -11,7 +11,10 @@ import { handleAgentData } from "./agent-data";
 import { handleAgentFile } from "./agent-file";
 import { handleSkills } from "./skills";
 import { handleFiles } from "../turn/files";
+import { handleAttachments } from "../turn/attachments";
 import { handlePortableExport } from "./portable";
+import { ChannelRoutineFirer } from "../schedule/firer";
+import { fireRoutineRun } from "../schedule/run";
 import { json, readJson } from "./http";
 
 export interface AgentRouteDeps {
@@ -157,6 +160,59 @@ export async function handleAgents(
     return true;
   }
 
+  // Run a routine ON DEMAND: fire it now through the SAME firer + record path the
+  // scheduler uses, so a hand-pressed run is indistinguishable from a cron one
+  // (records a routine_run, reconcile completes it). Must precede the generic
+  // dispatch (the runtime has no run route). A fire failure surfaces as a real
+  // status — never a silent miss.
+  const runNow = path.match(/^\/agents\/([^/]+)\/routines\/([^/]+)\/run$/);
+  if (runNow && method === "POST") {
+    const agentId = runNow[1] ? decodeURIComponent(runNow[1]) : undefined;
+    const routineId = runNow[2] ? decodeURIComponent(runNow[2]) : undefined;
+    if (!agentId || !routineId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    if (!deps.vfs) {
+      json(res, 503, { error: "agent data not configured" });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    const paths = deps.paths ?? DEFAULT_PATHS;
+    const root = paths.agentRoot(authz.workspace, authz.agent);
+    const { items: routines } = await loadRoutines(deps.vfs, root);
+    const routine = routines.find((r) => r.id === routineId);
+    if (!routine) {
+      json(res, 404, { error: "routine not found" });
+      return true;
+    }
+    // The firer wraps the workspace's channel — the exact path ChannelRoutineFirer
+    // takes for the scheduler. fireRoutineRun records the run, then fires; a fire
+    // failure marks the run errored AND rethrows, so we answer 502 (never 200).
+    const firer = new ChannelRoutineFirer(deps.channels);
+    try {
+      const { runId } = await fireRoutineRun(
+        { vfs: deps.vfs, paths, firer, events: deps.events, now: () => new Date(), newId: () => crypto.randomUUID() },
+        authz.workspace,
+        authz.agent,
+        routine,
+      );
+      json(res, 200, { ok: true, runId });
+    } catch (err) {
+      json(res, 502, { error: err instanceof Error ? err.message : String(err) });
+    }
+    return true;
+  }
+
   // The per-agent runtime surface: /agents/:agentId/<anything> → the agent's
   // runtime, via the workspace's channel. The frontend points its runtime
   // client at `${controlPlaneUrl}/agents/${agentId}`, so chat turns, the SSE
@@ -190,6 +246,9 @@ export async function handleAgents(
     // The Files tab: served by the HOST off the workspace vfs for every profile
     // (the runtime has no /files route). Same handler cloud + local — zero drift.
     if (await handleFiles(deps.vfs, paths, ctx, method, rest, req, res, url.searchParams)) return true;
+    // Composer attachments: uploaded into the workspace so the runtime's clamped
+    // file tools can Read them during the turn (the runtime has no /attachments).
+    if (await handleAttachments(deps.vfs, paths, ctx, method, rest, req, res, url.searchParams)) return true;
     if (await handlePortableExport({ vfs: deps.vfs, paths }, ctx, method, rest, req, res)) return true;
 
     const channel = channelFor(deps, authz.workspace);

@@ -298,6 +298,21 @@ export class HoustonClient {
   async seedAgentSchemas(): Promise<void> {}
   async migrateAgentFiles(): Promise<void> {}
 
+  // ---- composer attachments ----
+  // Cloud: upload the dropped files into the selected agent's workspace via the
+  // host's /agents/:id/attachments route; the runtime's clamped file tools then
+  // Read them at the relative paths returned here (the sender encodes those paths
+  // into the message). Standalone web has no workspace to write into — fail loud.
+  async saveAttachments(scopeId: string, files: File[]): Promise<string[]> {
+    if (files.length === 0) return [];
+    if (!this.cp) throw new Error("Attachments need a cloud workspace.");
+    return controlPlane.saveAttachments(this.cp, this.requireAgentId(), scopeId, files);
+  }
+  async deleteAttachments(scopeId: string): Promise<void> {
+    if (!this.cp) throw new Error("Attachments need a cloud workspace.");
+    return controlPlane.deleteAttachments(this.cp, this.requireAgentId(), scopeId);
+  }
+
   // ---- project files (the agent's REAL workspace) ----
   // In cloud mode the workspace is a GCS prefix served by the control plane at
   // /agents/:id/files*. agentPath IS the agentId here (folderPath = agent.id).
@@ -407,6 +422,11 @@ export class HoustonClient {
   }
   async deleteRoutine(agentPath: string, id: string): Promise<void> {
     if (this.cp) return controlPlane.deleteRoutine(this.cp, agentPath, id);
+  }
+  /** Fire a routine on demand: the host records a routine_run and starts the turn now. */
+  async runRoutineNow(agentPath: string, routineId: string): Promise<void> {
+    if (this.cp) return controlPlane.runRoutineNow(this.cp, agentPath, routineId);
+    throw new Error("Running a routine needs a cloud workspace.");
   }
   async createSkill(req: CreateSkillRequest): Promise<void> {
     if (this.cp)
@@ -638,9 +658,27 @@ export class HoustonClient {
       return [];
     }
   }
-  async summarizeActivity(message: string) {
-    const title = message.replace(/\s+/g, " ").trim().slice(0, 60) || "New chat";
-    return { title, description: "" };
+  /**
+   * Ask the engine to summarize the user's first message into a short mission
+   * title. Cloud: the per-agent runtime client (the same path other conversation
+   * calls take) runs an LLM title turn in the agent's sandbox. Local: the single
+   * runtime. A clean truncation fallback covers an empty model reply, a missing
+   * agent, or any transport failure — the title is cosmetic, never block the send.
+   */
+  async summarizeActivity(message: string, opts: { agentPath?: string } = {}) {
+    const truncated = message.replace(/\s+/g, " ").trim().slice(0, 60) || "New chat";
+    try {
+      const agentId = opts.agentPath || this.currentAgentId() || undefined;
+      const engine = this.cp ? (agentId ? controlPlane.runtimeClientFor(this.cp, agentId) : null) : this.engine;
+      if (engine) {
+        const { title } = await engine.summarizeText(message);
+        const clean = title.trim();
+        if (clean) return { title: clean, description: "" };
+      }
+    } catch {
+      /* engine unreachable / not authed / no agent → fall back to truncation */
+    }
+    return { title: truncated, description: "" };
   }
 
   // ---- lifecycle no-ops the shell calls ----
