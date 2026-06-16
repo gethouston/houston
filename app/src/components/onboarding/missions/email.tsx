@@ -8,8 +8,8 @@ import { createMission } from "../../../lib/create-mission";
 import { useSessionMessageQueue } from "../../../hooks/use-session-message-queue";
 import { useQueuedMessageLabels } from "../../use-queued-message-labels";
 import {
-  appendTutorialSection,
-  stripTutorialSection,
+  appendSetupSection,
+  stripSetupSection,
 } from "../tutorial-system-prompt";
 import { useFeedStore } from "../../../stores/feeds";
 import {
@@ -31,14 +31,15 @@ import { MissionIntroModal } from "../mission-intro-modal";
 import { TryDoneScreen } from "../try-done-screen";
 
 /**
- * Magic word the agent emits to signal "tutorial step done, frontend may
- * advance". Stripped from display via `transformContent`. Detected via a
- * feed scan in `tutorialDone`. The regex is intentionally lenient because
- * codex's gpt-5.5 sometimes wraps the token in markdown
- * (`**[TUTORIAL_COMPLETE]**`), escapes the underscore, or pluralizes.
+ * Magic word the agent emits to signal "setup done, frontend may finish".
+ * Stripped from display via `transformContent`, detected via a feed scan.
+ * The regex is intentionally lenient because codex's gpt-5.5 sometimes wraps
+ * the token in markdown (`**[TUTORIAL_COMPLETE]**`), escapes the underscore,
+ * or pluralizes. (Kept as the internal agent↔UI protocol marker; it is not
+ * user-facing copy.)
  */
-const TUTORIAL_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
-const TUTORIAL_END_STRIP_RE =
+const SETUP_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
+const SETUP_END_STRIP_RE =
   /\*{0,2}\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]\*{0,2}/gi;
 
 interface FrameLabels {
@@ -47,57 +48,44 @@ interface FrameLabels {
   upNextLabel: string;
 }
 
-interface TryMissionProps {
+interface EmailMissionProps {
   meta: MissionMeta;
   frame: FrameLabels;
   agent: Agent;
   assistantColor: string;
   provider: string;
   model: string;
-  /**
-   * Reports the activity session key up to the orchestrator the moment
-   * `createMission` mints it. The follow-up Skill and Routine missions
-   * mount fresh `ChatPanel`s against the SAME session so the chat history
-   * (the day-plan report) carries over without a re-fetch.
-   */
-  onSessionKey: (sessionKey: string) => void;
+  /** Advance out of setup into the workspace shell (arms the guided tour). */
   onContinue: () => void;
   /**
-   * Always-on escape hatch wired to the orchestrator. Bypasses the rest
-   * of the tutorial and lands the user in the workspace shell. Separate
-   * from `onContinue` because the latter advances to the next mission,
-   * not the workspace.
+   * Escape gate wired to the orchestrator. Framed as "set up later" rather
+   * than a tutorial skip: lands the user in the workspace shell without
+   * sending an email. Separate from `onContinue` only so the labels differ.
    */
   onSkip: () => void;
 }
 
 /**
- * Onboarding mission 4. A single-sentence intro modal explains that
- * Houston agents connect to real tools, the CTA both dismisses the modal
- * and kicks off the day-plan mission via `createMission`. From there the
- * full screen is the chat: the user replies naturally, the agent runs
- * the structured day-plan flow, and we advance when the agent emits the
- * `[TUTORIAL_COMPLETE]` token.
- *
- * Why a modal instead of an inline tip card: the previous split-screen
- * put instructions to the LEFT of the chat. Users read the chat and
- * missed the left rail entirely. The modal forces the explanation in
- * front of the chat for one beat, then gets out of the way.
+ * First-run email setup. A single-sentence intro modal frames it ("send a real
+ * email"), the CTA both dismisses the modal and kicks off the chat-driven
+ * mission via `createMission`. From there the full screen is the chat: the
+ * agent asks which provider, posts a Composio connect card inline, asks who to
+ * email and what to say, sends it for real, and emits `[TUTORIAL_COMPLETE]`.
+ * We finish setup when that token lands.
  */
-export function TryMission({
+export function EmailMission({
   meta,
   frame,
   agent,
   assistantColor,
   provider,
   model,
-  onSessionKey,
   onContinue,
   onSkip,
-}: TryMissionProps) {
+}: EmailMissionProps) {
   const { t } = useTranslation(["setup", "chat"]);
   const agentPath = agent.folderPath;
-  const missionTitle = t("setup:tutorial.missions.try.skill.title");
+  const missionTitle = t("setup:tutorial.missions.email.chip");
 
   const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
     null,
@@ -114,70 +102,63 @@ export function TryMission({
   const [composerText, setComposerText] = useState("");
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
   /**
-   * `introDismissed` flips to true the moment the user clicks the modal's
-   * "Got it" / "Let's try that out" CTA. The chip in the chat area is
-   * gated on this so we never show two competing CTAs (modal + chip) at
-   * the same time. `pickedAny` then flips when the chip itself is clicked,
-   * which is what actually fires `createMission`.
+   * `introDismissed` flips when the user clicks the modal CTA. The chip in the
+   * chat area is gated on this so we never show two competing CTAs (modal +
+   * chip) at once. `pickedAny` then flips when the chip itself is clicked,
+   * which fires `createMission`.
    */
   const [introDismissed, setIntroDismissed] = useState(false);
   const [pickedAny, setPickedAny] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Append the tutorial directive to CLAUDE.md while this mission is
-  // mounted; strip on unmount. Agent reads the augmented file at session
-  // start so the directive lives in the system context, not in any
-  // visible chat bubble.
-  //
-  // The write is async, but the modal CTA that spawns the chat session is
-  // synchronous from the user's POV. If the user clicks before this write
-  // lands on disk the engine reads the un-augmented CLAUDE.md and the
-  // tutorial directive never reaches the agent. We expose the prep
-  // promise via a ref so `handlePick` can await it before firing
-  // `createMission`.
-  const tutorialPrepRef = useRef<Promise<void>>(Promise.resolve());
+  // Append the setup directive to CLAUDE.md while this mission is mounted;
+  // strip on unmount. Agent reads the augmented file at session start so the
+  // directive lives in the system context, not in any visible chat bubble.
+  // The write is async but the chip that spawns the session is synchronous
+  // from the user's POV, so expose the prep promise via a ref and await it in
+  // `handlePick` before firing `createMission`.
+  const setupPrepRef = useRef<Promise<void>>(Promise.resolve());
   useEffect(() => {
     let cancelled = false;
     const prep = (async () => {
       try {
         const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
-        const updated = appendTutorialSection(current);
+        const updated = appendSetupSection(current);
         if (cancelled || updated === current) return;
         await tauriAgent.writeFile(agentPath, "CLAUDE.md", updated);
       } catch (e) {
-        logger.warn(`[try] could not append tutorial section: ${e}`);
+        logger.warn(`[email-setup] could not append setup section: ${e}`);
       }
     })();
-    tutorialPrepRef.current = prep;
+    setupPrepRef.current = prep;
     return () => {
       cancelled = true;
       void (async () => {
         try {
           const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
-          const stripped = stripTutorialSection(current);
+          const stripped = stripSetupSection(current);
           if (stripped === current) return;
           await tauriAgent.writeFile(agentPath, "CLAUDE.md", stripped);
         } catch (e) {
-          logger.warn(`[try] could not strip tutorial section: ${e}`);
+          logger.warn(`[email-setup] could not strip setup section: ${e}`);
         }
       })();
     };
   }, [agentPath]);
 
-  // Magic-word completion signal. Restricted to `assistant_text` so
-  // reasoning / tool plumbing that incidentally mentions the marker
-  // doesn't false-positive.
+  // Magic-word completion signal. Restricted to `assistant_text` so reasoning
+  // / tool plumbing that incidentally mentions the marker doesn't false-fire.
   const finalReportMarkdown = useMemo(() => {
     for (let i = (feedItems ?? []).length - 1; i >= 0; i--) {
       const item = (feedItems ?? [])[i];
       if (item.feed_type !== "assistant_text") continue;
       const data = item.data;
-      if (typeof data !== "string" || !TUTORIAL_END_RE.test(data)) continue;
-      return data.replace(TUTORIAL_END_STRIP_RE, "").trim();
+      if (typeof data !== "string" || !SETUP_END_RE.test(data)) continue;
+      return data.replace(SETUP_END_STRIP_RE, "").trim();
     }
     return null;
   }, [feedItems]);
-  const tutorialDone = finalReportMarkdown !== null;
+  const setupDone = finalReportMarkdown !== null;
 
   const handleOpenLink = useCallback((url: string) => {
     tauriSystem.openUrl(url).catch(console.error);
@@ -190,27 +171,23 @@ export function TryMission({
       }
       const toolkit = parseComposioToolkitFromHref(href);
       if (!toolkit) return undefined;
-      return (
-        <ComposioLinkCard toolkit={toolkit} onOpen={onOpen} />
-      );
+      return <ComposioLinkCard toolkit={toolkit} onOpen={onOpen} />;
     },
     [],
   );
 
   const transformContent = useCallback((content: string) => {
-    const stripped = TUTORIAL_END_RE.test(content)
-      ? content.replace(TUTORIAL_END_STRIP_RE, "").trim()
+    const stripped = SETUP_END_RE.test(content)
+      ? content.replace(SETUP_END_STRIP_RE, "").trim()
       : content;
     return withComposioWaitingFooter({ content: stripped });
   }, []);
 
   // Free-typing path. Wrapped by `useSessionMessageQueue` so messages typed
-  // while the agent is mid-stream get queued instead of dropped.
-  //
-  // Force `effort: "medium"` for both providers. Without it, Codex inherits
-  // whatever sits in `~/.codex/config.toml`, and newer Codex builds happily
-  // write `model_reasoning_effort = "xhigh"` which the bundled Codex CLI
-  // rejects, killing the tutorial with "A local tool failed to start".
+  // while the agent is mid-stream get queued instead of dropped. Force
+  // `effort: "medium"` for both providers — without it Codex inherits whatever
+  // sits in `~/.codex/config.toml`, and newer builds write an effort the
+  // bundled CLI rejects, killing setup with "A local tool failed to start".
   const sendNow = useCallback(
     async (text: string, _files: File[]) => {
       const trimmed = text.trim();
@@ -257,33 +234,29 @@ export function TryMission({
   }, [agentPath, missionSessionKey]);
 
   /**
-   * Escape hatch when the agent stalls and never emits the completion
-   * token — observed real users sitting for minutes when codex + gpt-5.5
-   * wraps the marker in markdown or just decides not to emit it. Stops
-   * the in-flight session, then calls `onSkip` so the parent lands the
-   * user in the workspace shell (bypassing Skill and Routine entirely).
-   * The `useEffect` cleanup still strips the tutorial section from
-   * CLAUDE.md on unmount.
+   * Escape gate when the agent stalls and never emits the completion token.
+   * Stops the in-flight session, then calls `onSkip` so the parent lands the
+   * user in the workspace shell. The `useEffect` cleanup still strips the
+   * setup section from CLAUDE.md on unmount.
    */
-  const handleSkipTutorial = useCallback(() => {
+  const handleSkip = useCallback(() => {
     if (missionSessionKey) {
       tauriChat.stop(agentPath, missionSessionKey).catch(console.error);
     }
     onSkip();
   }, [agentPath, missionSessionKey, onSkip]);
 
-  // Modal CTA + initial-message handler. Same flow as before: mint an
-  // activity, send the chip text as the first user prompt, and let the
-  // engine stream the response into the chat. From then on the chat
-  // lives on `activity-${id}` so it shows up as a mission card on the
-  // Activity Board after graduation.
+  // Modal CTA + initial-message handler. Mint an activity, send the chip text
+  // as the first user prompt, and let the engine stream the response. From
+  // then on the chat lives on `activity-${id}` so it shows up as a mission
+  // card on the Activity Board after setup.
   const handlePick = useCallback(
     async (chipLabel: string) => {
       if (pickedAny) return;
       setPickedAny(true);
-      // Wait for the tutorial-section append to land on disk so the engine
-      // reads the augmented CLAUDE.md when it spawns the chat session.
-      await tutorialPrepRef.current;
+      // Wait for the setup-section append to land on disk so the engine reads
+      // the augmented CLAUDE.md when it spawns the chat session.
+      await setupPrepRef.current;
       try {
         const result = await createMission(
           {
@@ -300,17 +273,11 @@ export function TryMission({
             effortOverride: "medium",
           },
         );
-        // Mirror the regular composer-send path: push the chip text as
-        // the user_message into the feed the instant we have a session
-        // key. Without this push the ChatPanel mounts with an empty feed
-        // and the thinking indicator never gets a chance to render
-        // before codex starts streaming items 1-2s later.
         pushFeedItem(agent.folderPath, result.sessionKey, {
           feed_type: "user_message",
           data: chipLabel,
         });
         setMissionSessionKey(result.sessionKey);
-        onSessionKey(result.sessionKey);
       } catch (e) {
         setPickedAny(false);
         setError(e instanceof Error ? e.message : String(e));
@@ -325,24 +292,23 @@ export function TryMission({
       model,
       pickedAny,
       pushFeedItem,
-      onSessionKey,
     ],
   );
 
   const visibleFeed = (feedItems ?? []) as FeedItem[];
 
-  if (tutorialDone && finalReportMarkdown) {
+  if (setupDone && finalReportMarkdown) {
     return (
       <TryDoneScreen
         brandLabel={frame.brandLabel}
         assistantName={agent.name}
         assistantColor={assistantColor}
-        title={t("setup:tutorial.missions.try.doneTitle")}
+        title={t("setup:tutorial.missions.email.doneTitle")}
         reportMarkdown={finalReportMarkdown}
-        continueLabel={t("setup:tutorial.missions.try.continueChip")}
+        continueLabel={t("setup:tutorial.missions.email.continueChip")}
         onContinue={onContinue}
-        skipLabel={t("setup:tutorial.missions.try.skip")}
-        onSkip={handleSkipTutorial}
+        skipLabel={t("setup:tutorial.missions.email.skip")}
+        onSkip={handleSkip}
       />
     );
   }
@@ -353,8 +319,8 @@ export function TryMission({
         meta={meta}
         brandLabel={frame.brandLabel}
         counterLabel={frame.counterLabel}
-        skipLabel={t("setup:tutorial.missions.try.skip")}
-        onSkip={handleSkipTutorial}
+        skipLabel={t("setup:tutorial.missions.email.skip")}
+        onSkip={handleSkip}
       >
         <div className="flex h-full min-h-0 flex-col">
           <header className="flex shrink-0 items-center gap-3 border-b border-black/5 pb-4">
@@ -385,7 +351,7 @@ export function TryMission({
                 onSend={handleSend}
                 onStop={isActive ? handleStop : undefined}
                 isLoading={isActive}
-                placeholder={t("setup:tutorial.missions.try.placeholder")}
+                placeholder={t("setup:tutorial.missions.email.placeholder")}
                 processLabels={processLabels}
                 getThinkingMessage={getThinkingMessage}
                 renderLink={renderLink}
@@ -401,23 +367,23 @@ export function TryMission({
               />
             </div>
           ) : (
-            // Pre-pick state. After the modal dismisses, the user lands on
-            // a centered chip showing the actual prompt that's about to fly
-            // — they click it themselves, so the next chat bubble feels like
+            // Pre-pick state. After the modal dismisses, the user lands on a
+            // centered chip showing the actual prompt that's about to fly —
+            // they click it themselves, so the next chat bubble feels like
             // their own action rather than something the modal auto-fired.
             <div className="flex flex-1 flex-col items-center justify-center gap-3 px-4 text-center">
               {introDismissed && (
                 <button
                   type="button"
                   onClick={() =>
-                    void handlePick(t("setup:tutorial.missions.try.chip"))
+                    void handlePick(t("setup:tutorial.missions.email.chip"))
                   }
                   disabled={pickedAny}
                   className={cn(
                     "h-10 rounded-full border border-black/15 bg-background px-5 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-secondary disabled:cursor-not-allowed disabled:opacity-50",
                   )}
                 >
-                  {t("setup:tutorial.missions.try.chip")}
+                  {t("setup:tutorial.missions.email.chip")}
                 </button>
               )}
             </div>
@@ -427,10 +393,10 @@ export function TryMission({
       <MissionIntroModal
         open={!introDismissed}
         header={t("setup:tutorial.missionLabel", {
-          title: t("setup:tutorial.missions.try.intro.title"),
+          title: t("setup:tutorial.missions.email.intro.title"),
         })}
-        body={t("setup:tutorial.missions.try.intro.body")}
-        ctaLabel={t("setup:tutorial.missions.try.intro.cta")}
+        body={t("setup:tutorial.missions.email.intro.body")}
+        ctaLabel={t("setup:tutorial.missions.email.intro.cta")}
         onCta={() => setIntroDismissed(true)}
       />
     </>

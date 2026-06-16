@@ -11,11 +11,7 @@ import type { Agent } from "../../lib/types";
 import { MissionFrame } from "./mission-frame";
 import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
-import { ToolsMission } from "./missions/tools";
-import { TryMission } from "./missions/try";
-import { SkillMission } from "./missions/skill";
-import { RoutineMission } from "./missions/routine";
-import { SummaryScreen } from "./summary-screen";
+import { EmailMission } from "./missions/email";
 import { WelcomeScreen } from "./welcome-screen";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import {
@@ -46,21 +42,14 @@ export function PersonalAssistantOnboarding({
   const [agent, setAgent] = useState<Agent | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
-  /**
-   * Activity session key minted by the Try mission's `createMission` call.
-   * The Routine mission re-uses the same session so the chat history (the
-   * agent's full day-plan reply with the bold sections) carries over and
-   * the agent can reference it while writing the routine prompt.
-   */
-  const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
-    null,
-  );
   const [assistantName, setAssistantName] = useState(() =>
     t("setup:tutorial.defaults.assistantName"),
   );
   const [assistantColor, setAssistantColor] = useState("navy");
 
-  const missionTitle = t("setup:tutorial.missions.try.skill.title");
+  // Title stamped on the agent's first-run instructions — the one task setup
+  // walks the user through.
+  const missionTitle = t("setup:tutorial.missions.email.chip");
 
   const missionStep = step === "welcome" ? null : (step as TutorialStep);
   const meta = missionStep ? buildMissionMeta(t, missionStep) : null;
@@ -129,21 +118,11 @@ export function PersonalAssistantOnboarding({
     }
   };
 
-  // Step transitions for the back-half of the tutorial (Try → Skill →
-  // Routine → Summary → app tour). None of them clear `tutorialActive`
-  // — each next step still owns the screen, and clearing here would
-  // let the workspace shell race in behind. `onboarding_completed`
-  // fires at the very end (after the Summary "Enter Houston" CTA or
-  // an explicit Skip).
-  const handleTryComplete = () => setStep("skill");
-  const handleSkillComplete = () => setStep("routine");
-  const handleRoutineComplete = () => setStep("summary");
-
   // Terminal hand-off. Arm the UI tour BEFORE clearing `tutorialActive`
   // so the workspace shell mounts with the tour overlay already up —
-  // no flicker of bare workspace. Called by the Summary CTA AND by
-  // every always-on Skip link in M4-M6 so a user who bails midway
-  // still lands in the workspace shell cleanly.
+  // no flicker of bare workspace. Called when the email sends (the email
+  // mission's "Enter Houston" CTA) AND by the always-on escape gate so a
+  // user who bails midway still lands in the workspace shell cleanly.
   const finishOnboarding = () => {
     analytics.track("onboarding_completed", {
       mission: TUTORIAL_MISSION.id,
@@ -170,9 +149,7 @@ export function PersonalAssistantOnboarding({
           steps={[
             t("setup:tutorial.welcome.steps.meet"),
             t("setup:tutorial.welcome.steps.brain"),
-            t("setup:tutorial.welcome.steps.tools"),
-            t("setup:tutorial.welcome.steps.try"),
-            t("setup:tutorial.welcome.steps.routine"),
+            t("setup:tutorial.welcome.steps.email"),
           ]}
           startLabel={t("setup:tutorial.welcome.start")}
           skipLabel={t("setup:tutorial.welcome.skip")}
@@ -204,59 +181,21 @@ export function PersonalAssistantOnboarding({
             onContinue={async () => {
               if (!provider || !model) return;
               await createWorkspaceAndAssistant(provider, model);
-              setStep("tools");
+              setStep("email");
             }}
           />
         </MissionFrame>
       )}
-      {meta && frame && step === "tools" && (
-        <MissionFrame meta={meta} {...frame}>
-          <ToolsMission onContinue={() => setStep("try")} />
-        </MissionFrame>
-      )}
-      {meta && frame && step === "try" && agent && (
-        <TryMission
+      {meta && frame && step === "email" && agent && (
+        <EmailMission
           meta={meta}
           frame={frame}
           agent={agent}
           assistantColor={assistantColor}
           provider={missionProvider}
           model={missionModel}
-          onSessionKey={setMissionSessionKey}
-          onContinue={handleTryComplete}
-          onSkip={finishOnboarding}
-        />
-      )}
-      {meta && frame && step === "skill" && agent && missionSessionKey && (
-        <SkillMission
-          meta={meta}
-          frame={frame}
-          agent={agent}
-          assistantColor={assistantColor}
-          sessionKey={missionSessionKey}
-          onContinue={handleSkillComplete}
-          onSkip={finishOnboarding}
-        />
-      )}
-      {meta && frame && step === "routine" && agent && missionSessionKey && (
-        <RoutineMission
-          meta={meta}
-          frame={frame}
-          agent={agent}
-          assistantColor={assistantColor}
-          provider={missionProvider}
-          model={missionModel}
-          sessionKey={missionSessionKey}
-          onContinue={handleRoutineComplete}
-          onSkip={finishOnboarding}
-        />
-      )}
-      {frame && step === "summary" && agent && (
-        <SummaryScreen
-          frame={frame}
-          agent={agent}
-          assistantColor={assistantColor}
           onContinue={finishOnboarding}
+          onSkip={finishOnboarding}
         />
       )}
       <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
