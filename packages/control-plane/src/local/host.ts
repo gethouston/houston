@@ -1,7 +1,7 @@
 import { join } from "node:path";
 import type { Server } from "node:http";
-import type { Capabilities } from "@houston/protocol";
 import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
+import { LOCAL_CAPABILITIES } from "../capabilities";
 import { LocalWorkspaceStore } from "../store/local";
 import { FsVfs } from "../vfs";
 import { LocalPaths } from "../paths";
@@ -23,16 +23,10 @@ import { migrateChatHistory } from "../migrate/chat-history";
 /** The single local user every request resolves to. */
 export const LOCAL_USER = "local-owner";
 
-/** What a desktop deployment can do — the Tauri shell handles OS-native bits. */
-export const LOCAL_CAPABILITIES: Capabilities = {
-  profile: "local",
-  revealInOs: true,
-  terminal: true,
-  // Mobile pairing is gone — phones use the web app now (no tunnel/relay).
-  tunnel: false,
-  codeExecution: "local-bash",
-  providers: ["anthropic", "openai-codex"],
-};
+// Re-exported so existing importers (`./host`) and the Tauri sidecar keep one
+// import site; the constant itself now lives in ../capabilities (shared with
+// the cloud profile + the dual-profile parity gate).
+export { LOCAL_CAPABILITIES };
 
 export interface LocalHostOptions {
   /** `~/.houston/workspaces` — the desktop tree (FsVfs root + store root). */

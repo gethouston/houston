@@ -1,7 +1,6 @@
 import { KubeConfig } from "@kubernetes/client-node";
 import { Pool } from "pg";
 import { config } from "./config";
-import type { Capabilities } from "@houston/protocol";
 import {
   createControlPlaneServer,
   type AdminDeps,
@@ -30,6 +29,7 @@ import { RedisTurnBus } from "./turn/bus-redis";
 import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
 import { BusEventHub } from "./events/hub";
 import { CloudPaths } from "./paths";
+import { CLOUD_CAPABILITIES } from "./capabilities";
 import { Scheduler } from "./schedule/scheduler";
 import { ChannelRoutineFirer } from "./schedule/firer";
 import { makeIdTokenProvider } from "./turn/id-token";
@@ -170,16 +170,6 @@ function buildFeedback(): FeedbackSender | undefined {
     labelName: config.linearBugLabelName,
   });
 }
-
-/** What the cloud deployment can do (served at /v1/capabilities). */
-const CLOUD_CAPABILITIES: Capabilities = {
-  profile: "cloud",
-  revealInOs: false,
-  terminal: false,
-  tunnel: false,
-  codeExecution: "remote-sandbox",
-  providers: ["openai-codex"],
-};
 
 function main(): void {
   const { store, credentials } = buildStores();
