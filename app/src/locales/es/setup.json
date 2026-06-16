@@ -17,6 +17,7 @@
   },
   "tutorial": {
     "brand": "Houston",
+    "nav": { "back": "Atrás" },
     "counter": "Paso {{current}} de {{total}}",
     "eyebrow": "Paso {{number}}",
     "missionLabel": "Configuración: {{title}}",

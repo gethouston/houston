@@ -14,54 +14,34 @@ const t = (key, options) => {
   );
 };
 
-test("tutorial covers seven mission stages in order", () => {
-  assert.deepEqual(TUTORIAL_STEPS, [
-    "meet",
-    "brain",
-    "tools",
-    "try",
-    "skill",
-    "routine",
-    "summary",
-  ]);
+test("setup covers the four steps in order", () => {
+  assert.deepEqual(TUTORIAL_STEPS, ["meet", "brain", "tools", "email"]);
 });
 
-test("mission meta exposes counter, title, body and the single next mission", () => {
+test("step meta exposes counter, title, body and the single next step", () => {
   const meta = buildMissionMeta(t, "brain");
   assert.equal(meta.index, 1);
-  assert.equal(meta.total, 7);
+  assert.equal(meta.total, 4);
   assert.equal(meta.eyebrow, "setup:tutorial.eyebrow");
   assert.equal(meta.title, "setup:tutorial.missions.brain.title");
   assert.equal(meta.body, "setup:tutorial.missions.brain.body");
   assert.equal(meta.nextTitle, "setup:tutorial.missions.tools.title");
 });
 
-test("try mission points to skill as next", () => {
-  const meta = buildMissionMeta(t, "try");
+test("tools step points to email as next", () => {
+  const meta = buildMissionMeta(t, "tools");
+  assert.equal(meta.index, 2);
+  assert.equal(meta.nextTitle, "setup:tutorial.missions.email.title");
+});
+
+test("the email step is last and has no next", () => {
+  const meta = buildMissionMeta(t, "email");
   assert.equal(meta.index, 3);
-  assert.equal(meta.nextTitle, "setup:tutorial.missions.skill.title");
-});
-
-test("skill mission points to routine as next", () => {
-  const meta = buildMissionMeta(t, "skill");
-  assert.equal(meta.index, 4);
-  assert.equal(meta.nextTitle, "setup:tutorial.missions.routine.title");
-});
-
-test("routine mission points to summary as next", () => {
-  const meta = buildMissionMeta(t, "routine");
-  assert.equal(meta.index, 5);
-  assert.equal(meta.nextTitle, "setup:tutorial.missions.summary.title");
-});
-
-test("final summary mission has no next mission", () => {
-  const meta = buildMissionMeta(t, "summary");
-  assert.equal(meta.index, 6);
   assert.equal(meta.nextTitle, null);
 });
 
 test("frame labels expose brand, counter and up-next strings", () => {
-  const labels = buildFrameLabels(t, "try");
+  const labels = buildFrameLabels(t, "email");
   assert.equal(labels.brandLabel, "setup:tutorial.brand");
   assert.equal(labels.counterLabel, "setup:tutorial.counter");
   assert.equal(labels.upNextLabel, "setup:tutorial.upNext");

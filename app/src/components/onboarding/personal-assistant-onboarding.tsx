@@ -8,7 +8,6 @@ import { useAgentStore } from "../../stores/agents";
 import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import { getDefaultModel } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
-import { MissionFrame } from "./mission-frame";
 import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
 import { ToolsMission } from "./missions/tools";
@@ -163,6 +162,15 @@ export function PersonalAssistantOnboarding({
   const missionProvider = provider ?? "anthropic";
   const missionModel = model ?? getDefaultModel(missionProvider);
 
+  // The card steps that show a "Step N of N" eyebrow. The email step is the
+  // culminating chat (its own frame), so it sits outside the counter.
+  const CARD_STEPS: TutorialStep[] = ["meet", "brain", "tools"];
+  const stepEyebrow = (s: TutorialStep) =>
+    t("setup:tutorial.counter", {
+      current: CARD_STEPS.indexOf(s) + 1,
+      total: CARD_STEPS.length,
+    });
+
   return (
     <>
       {step === "welcome" && (
@@ -180,49 +188,50 @@ export function PersonalAssistantOnboarding({
           onStart={startTutorial}
         />
       )}
-      {meta && frame && step === "meet" && (
-        <MissionFrame meta={meta} {...frame}>
-          <MeetMission
-            name={assistantName}
-            color={assistantColor}
-            namePlaceholder={t("setup:tutorial.defaults.assistantName")}
-            beginLabel={t("setup:tutorial.missions.meet.begin")}
-            onNameChange={setAssistantName}
-            onColorChange={setAssistantColor}
-            onBegin={() => setStep("brain")}
-          />
-        </MissionFrame>
+      {step === "meet" && (
+        <MeetMission
+          eyebrow={stepEyebrow("meet")}
+          name={assistantName}
+          color={assistantColor}
+          namePlaceholder={t("setup:tutorial.defaults.assistantName")}
+          onNameChange={setAssistantName}
+          onColorChange={setAssistantColor}
+          onBack={() => setStep("welcome")}
+          onBegin={() => setStep("brain")}
+        />
       )}
-      {meta && frame && step === "brain" && (
-        <MissionFrame meta={meta} {...frame}>
-          <BrainMission
-            provider={provider}
-            onSelect={(p, m) => {
-              setProvider(p);
-              setModel(m);
-            }}
-            onContinue={async () => {
-              if (!provider || !model) return;
-              try {
-                await createWorkspaceAndAssistant(provider, model);
-                setStep("tools");
-              } catch (err) {
-                // Surface the failure as a toast and stay on this step so the
-                // user can retry — never an unhandled rejection (HOU-444).
-                addToast({
-                  title: t("setup:tutorial.errors.setupFailed"),
-                  description: String(err),
-                  variant: "error",
-                });
-              }
-            }}
-          />
-        </MissionFrame>
+      {step === "brain" && (
+        <BrainMission
+          eyebrow={stepEyebrow("brain")}
+          provider={provider}
+          onBack={() => setStep("meet")}
+          onSelect={(p, m) => {
+            setProvider(p);
+            setModel(m);
+          }}
+          onContinue={async () => {
+            if (!provider || !model) return;
+            try {
+              await createWorkspaceAndAssistant(provider, model);
+              setStep("tools");
+            } catch (err) {
+              // Surface the failure as a toast and stay on this step so the
+              // user can retry — never an unhandled rejection (HOU-444).
+              addToast({
+                title: t("setup:tutorial.errors.setupFailed"),
+                description: String(err),
+                variant: "error",
+              });
+            }
+          }}
+        />
       )}
-      {meta && frame && step === "tools" && (
-        <MissionFrame meta={meta} {...frame}>
-          <ToolsMission onContinue={() => setStep("email")} />
-        </MissionFrame>
+      {step === "tools" && (
+        <ToolsMission
+          eyebrow={stepEyebrow("tools")}
+          onBack={() => setStep("brain")}
+          onContinue={() => setStep("email")}
+        />
       )}
       {meta && frame && step === "email" && agent && (
         <EmailMission

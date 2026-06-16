@@ -1,14 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  Check,
-  CircleDashed,
-  ExternalLink,
-  Loader2,
-  RefreshCw,
-  Terminal,
-} from "lucide-react";
-import { AsyncButton, Button, cn } from "@houston-ai/core";
+import { ExternalLink, Loader2, RefreshCw, Terminal } from "lucide-react";
+import { AsyncButton } from "@houston-ai/core";
 import { tauriProvider, tauriSystem, type ProviderStatus } from "../../../lib/tauri";
 import {
   PROVIDERS,
@@ -18,21 +11,25 @@ import {
 } from "../../../lib/providers";
 import { useClaudeInstall, type ClaudeInstallState } from "../../../hooks/use-claude-install";
 import { ClaudeInstallHint } from "../../shell/claude-install-hint";
+import { SetupCard, OptionGrid, OptionCard } from "../setup-card";
 
 interface BrainMissionProps {
+  eyebrow: string;
   provider: string | null;
+  onBack: () => void;
   onSelect: (provider: string, model: string) => void;
   onContinue: () => Promise<void> | void;
 }
 
 export function BrainMission({
+  eyebrow,
   provider,
+  onBack,
   onSelect,
   onContinue,
 }: BrainMissionProps) {
   const { t } = useTranslation(["setup", "providers", "common"]);
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
-  const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
   const refresh = useCallback(async () => {
@@ -40,7 +37,6 @@ export function BrainMission({
       PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
     );
     setStatuses(Object.fromEntries(entries));
-    setLoading(false);
   }, []);
 
   useEffect(() => {
@@ -48,9 +44,9 @@ export function BrainMission({
   }, [refresh]);
 
   // Anthropic uses a Houston-managed runtime install for `claude` (the
-  // license forbids bundling). Track the install state separately so
-  // the SetupHint can render a real reason + Retry instead of the
-  // generic "install it yourself" message — issue #231.
+  // license forbids bundling). Track the install state separately so the
+  // SetupHint can render a real reason + Retry instead of the generic
+  // "install it yourself" message — issue #231.
   const claudeInstall = useClaudeInstall({
     onReady: () => void refresh(),
   });
@@ -80,14 +76,33 @@ export function BrainMission({
   };
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {PROVIDERS.map((prov) => (
+    <SetupCard
+      eyebrow={eyebrow}
+      title={t("setup:tutorial.missions.brain.title")}
+      subtitle={t("setup:tutorial.missions.brain.body")}
+      onBack={onBack}
+      backLabel={t("setup:tutorial.nav.back")}
+      onNext={() => void handleContinue()}
+      nextLabel={
+        submitting
+          ? t("setup:tutorial.missions.brain.creating")
+          : t("setup:tutorial.missions.brain.continue")
+      }
+      nextDisabled={!selectedConnected}
+      nextLoading={submitting}
+      helper={
+        selectedConnected
+          ? t("setup:tutorial.missions.brain.continueHint")
+          : undefined
+      }
+    >
+      <OptionGrid>
+        {PROVIDERS.map((prov, i) => (
           <ProviderCard
             key={prov.id}
+            number={i + 1}
             provider={prov}
             status={statuses[prov.id]}
-            loading={loading}
             selected={provider === prov.id}
             onSelect={(modelId) => onSelect(prov.id, modelId)}
             onRefresh={refresh}
@@ -95,53 +110,38 @@ export function BrainMission({
             claudeInstall={prov.id === "anthropic" ? claudeInstall : null}
           />
         ))}
-        {COMING_SOON_PROVIDERS.map((prov) => (
-          <ComingSoonCard key={prov.id} provider={prov} />
+        {COMING_SOON_PROVIDERS.map((prov, i) => (
+          <ComingSoonCard
+            key={prov.id}
+            number={PROVIDERS.length + i + 1}
+            provider={prov}
+          />
         ))}
-      </div>
-      <div className="flex justify-end">
-        <Button
-          className="rounded-full"
-          disabled={!selectedConnected || submitting}
-          onClick={() => void handleContinue()}
-        >
-          {submitting ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : null}
-          {submitting
-            ? t("setup:tutorial.missions.brain.creating")
-            : t("setup:tutorial.missions.brain.continue")}
-        </Button>
-      </div>
-      {selectedConnected && !submitting && (
-        <p className="text-xs text-muted-foreground">
-          {t("setup:tutorial.missions.brain.continueHint")}
-        </p>
-      )}
-    </div>
+      </OptionGrid>
+    </SetupCard>
   );
 }
 
 function ProviderCard({
+  number,
   provider,
   status,
-  loading,
   selected,
   onSelect,
   onRefresh,
   costLabel,
   claudeInstall,
 }: {
+  number: number;
   provider: ProviderInfo;
   status: ProviderStatus | undefined;
-  loading: boolean;
   selected: boolean;
   onSelect: (modelId: string) => void;
   onRefresh: () => Promise<void>;
   costLabel: string;
   /** Live install state for Houston-managed CLIs. Pass `null` for any
-   *  provider that ships a bundled CLI — the generic install hint
-   *  fires for those. */
+   *  provider that ships a bundled CLI — the generic install hint fires for
+   *  those. */
   claudeInstall: ClaudeInstallState | null;
 }) {
   const { t } = useTranslation(["setup", "providers"]);
@@ -164,11 +164,10 @@ function ProviderCard({
     }
   };
 
-  // "Cancel and try again": tear down the engine-side login subprocess,
-  // THEN re-arm the local UI. Resetting `loginLaunched` alone (as this
-  // used to do) left the CLI running, so re-clicking Sign in was
-  // rejected as "already pending" and the user had to restart Houston
-  // (#237). cancelLogin frees the slot so the retry actually works.
+  // "Cancel and try again": tear down the engine-side login subprocess, THEN
+  // re-arm the local UI. Resetting `loginLaunched` alone left the CLI running,
+  // so re-clicking Sign in was rejected as "already pending" and the user had
+  // to restart Houston (#237). cancelLogin frees the slot so the retry works.
   const handleCancelWaiting = async () => {
     setLoginError(null);
     try {
@@ -181,91 +180,53 @@ function ProviderCard({
   };
 
   return (
-    <button
-      type="button"
-      onClick={handlePick}
-      className={cn(
-        "group flex w-full flex-col gap-3 rounded-xl border bg-background p-4 text-left transition-all",
-        "border-black/5 hover:border-black/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-        selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-      )}
+    <OptionCard
+      number={number}
+      label={provider.name}
+      description={connected ? t("providers:card.connected") : provider.subtitle}
+      selected={selected}
+      onSelect={handlePick}
     >
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium text-foreground">{provider.name}</p>
-          <p className="text-xs text-muted-foreground">{provider.subtitle}</p>
-        </div>
-        <ProviderStatusPill loading={loading} connected={connected} />
-      </div>
-      <p className="text-xs text-muted-foreground">{costLabel}</p>
+      <p className="ml-7 text-xs text-muted-foreground">{costLabel}</p>
       {selected && !connected && (
-        <SetupHint
-          provider={provider}
-          installed={installed}
-          loginLaunched={loginLaunched}
-          loginError={loginError}
-          onSignIn={handleSignIn}
-          onRefresh={() => void onRefresh()}
-          onCancelWaiting={() => void handleCancelWaiting()}
-          claudeInstall={claudeInstall}
-        />
+        <div className="ml-7">
+          <SetupHint
+            provider={provider}
+            installed={installed}
+            loginLaunched={loginLaunched}
+            loginError={loginError}
+            onSignIn={handleSignIn}
+            onRefresh={() => void onRefresh()}
+            onCancelWaiting={() => void handleCancelWaiting()}
+            claudeInstall={claudeInstall}
+          />
+        </div>
       )}
-      {selected && connected && (
-        <p className="text-xs text-[#00a240]">
-          {t("providers:card.connected")}
-        </p>
-      )}
-    </button>
+    </OptionCard>
   );
 }
 
-function ComingSoonCard({ provider }: { provider: ComingSoonProviderInfo }) {
+function ComingSoonCard({
+  number,
+  provider,
+}: {
+  number: number;
+  provider: ComingSoonProviderInfo;
+}) {
   const { t } = useTranslation("providers");
   return (
-    <div
-      aria-disabled="true"
-      className={cn(
-        "flex w-full cursor-not-allowed flex-col gap-3 rounded-xl border bg-background/60 p-4 text-left",
-        "border-black/5 opacity-60 select-none",
-      )}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium text-foreground">{provider.name}</p>
-          <p className="text-xs text-muted-foreground">{provider.subtitle}</p>
-        </div>
+    <OptionCard
+      number={number}
+      label={provider.name}
+      description={provider.subtitle}
+      selected={false}
+      disabled
+      trailing={
         <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
           {t("card.comingSoon")}
         </span>
-      </div>
-    </div>
-  );
-}
-
-function ProviderStatusPill({
-  loading,
-  connected,
-}: {
-  loading: boolean;
-  connected: boolean;
-}) {
-  const { t } = useTranslation("providers");
-  if (loading) {
-    return <Loader2 className="size-4 animate-spin text-muted-foreground" />;
-  }
-  if (connected) {
-    return (
-      <span className="inline-flex items-center gap-1 text-xs text-[#00a240]">
-        <Check className="size-3" />
-        {t("card.connected")}
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-      <CircleDashed className="size-3" />
-      {t("card.notConnected")}
-    </span>
+      }
+    />
   );
 }
 
@@ -287,14 +248,13 @@ function SetupHint({
   onRefresh: () => void;
   onCancelWaiting: () => void;
   /** Houston-managed install state for the Anthropic CLI. `null` for
-   *  bundled-CLI providers — they fall through to the generic install
-   *  hint. */
+   *  bundled-CLI providers — they fall through to the generic install hint. */
   claudeInstall: ClaudeInstallState | null;
 }) {
   const { t } = useTranslation(["setup", "providers"]);
   return (
     <div
-      className="rounded-lg bg-secondary/60 p-3"
+      className="mt-2 rounded-lg bg-secondary/60 p-3"
       onClick={(e) => e.stopPropagation()}
     >
       {!installed && claudeInstall && <ClaudeInstallHint state={claudeInstall} />}
@@ -329,11 +289,6 @@ function SetupHint({
             <Loader2 className="size-3.5 animate-spin" />
             <span>{t("providers:setup.waiting")}</span>
           </div>
-          {/* Escape hatch — if the user closed the browser or the sign-in
-           * stalled, the only signal the UI had until now was a forever
-           * spinner. Real users hit this and reported being "stuck."
-           * `onCancelWaiting` flips loginLaunched back to false so the
-           * Sign-in button reappears and they can re-launch the flow. */}
           <button
             type="button"
             onClick={onCancelWaiting}
@@ -343,10 +298,6 @@ function SetupHint({
           </button>
         </div>
       )}
-      {/* For Houston-managed installs the ClaudeInstallHint above
-       *  already shows a retry — surfacing a second "Already installed?
-       *  Check again" link below would just confuse the user, so we
-       *  only render it for bundled-CLI providers (codex et al.). */}
       {!installed && !claudeInstall && (
         <button
           type="button"
@@ -357,9 +308,7 @@ function SetupHint({
           {t("providers:setup.installedCheckAgain")}
         </button>
       )}
-      {loginError && (
-        <p className="mt-2 text-xs text-destructive">{loginError}</p>
-      )}
+      {loginError && <p className="mt-2 text-xs text-destructive">{loginError}</p>}
     </div>
   );
 }
