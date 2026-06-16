@@ -95,6 +95,8 @@ export type ProviderError =
       provider: string;
       model: string | null;
       scope: QuotaScope;
+      /** Human-readable reset hint (e.g. "Jul 1st, 2026 1:16 PM"); null when open-ended. */
+      resets_at: string | null;
       message: string;
       upgrade_url: string | null;
     }

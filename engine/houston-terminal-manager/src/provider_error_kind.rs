@@ -98,6 +98,10 @@ pub enum ProviderError {
         provider: String,
         model: Option<String>,
         scope: QuotaScope,
+        /// Human-readable reset hint when the provider names one (e.g. codex's
+        /// "try again at Jul 1st, 2026 1:16 PM" → `"Jul 1st, 2026 1:16 PM"`).
+        /// `None` for open-ended limits where upgrading is the only path.
+        resets_at: Option<String>,
         message: String,
         upgrade_url: Option<String>,
     },
@@ -238,12 +242,14 @@ mod tests {
             provider: "gemini".into(),
             model: None,
             scope: QuotaScope::FreeTier,
+            resets_at: Some("Jul 1st, 2026 1:16 PM".into()),
             message: "Max attempts reached".into(),
             upgrade_url: Some("https://ai.google.dev/pricing".into()),
         };
         let json = serde_json::to_string(&e).unwrap();
         assert!(json.contains(r#""kind":"quota_exhausted""#));
         assert!(json.contains(r#""scope":"free_tier""#));
+        assert!(json.contains(r#""resets_at":"Jul 1st, 2026 1:16 PM""#));
         let back: ProviderError = serde_json::from_str(&json).unwrap();
         assert_eq!(e, back);
     }

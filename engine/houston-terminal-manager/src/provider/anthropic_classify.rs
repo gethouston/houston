@@ -107,6 +107,9 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
             provider: PROVIDER.into(),
             model: None,
             scope: QuotaScope::Unknown,
+            // The "usage limit ... reset at" banner routes to UsageLimitPaused
+            // above; this terminal-quota path names no reset.
+            resets_at: None,
             message: truncate_excerpt(line.trim()),
             upgrade_url: Some("https://www.anthropic.com/pricing".into()),
         });

@@ -290,6 +290,7 @@
     "quotaExhausted": {
       "title": "Sin capacidad disponible",
       "body": "Tu plan de {{provider}} llegó al límite. Mejora tu plan o cambia de proveedor para continuar.",
+      "bodyWithReset": "Tu plan de {{provider}} llegó al límite. Se restablece {{time}}, o mejora tu plan para continuar.",
       "upgrade": "Mejorar plan",
       "useApiKey": "Usar clave de API en su lugar"
     },

@@ -290,6 +290,7 @@
     "quotaExhausted": {
       "title": "Out of capacity",
       "body": "Your {{provider}} plan reached its quota. Upgrade or switch to a different provider to keep going.",
+      "bodyWithReset": "Your {{provider}} plan reached its quota. It resets {{time}}, or upgrade to keep going.",
       "upgrade": "Upgrade plan",
       "useApiKey": "Use API key instead"
     },

@@ -109,6 +109,9 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
             provider: PROVIDER.into(),
             model: None,
             scope,
+            // codex names the absolute time the allowance frees up; surface it
+            // so the card reads "resets <when>" instead of a bare upgrade nag.
+            resets_at: extract_reset_hint(line),
             message: truncate_excerpt(line.trim()),
             // Prefer the exact upgrade link codex embeds in the banner; fall
             // back to the ChatGPT plan page if a future banner drops it.
@@ -123,6 +126,7 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
             provider: PROVIDER.into(),
             model: None,
             scope: QuotaScope::Unknown,
+            resets_at: None,
             message: truncate_excerpt(line.trim()),
             upgrade_url: Some("https://platform.openai.com/account/billing".into()),
         });
@@ -213,6 +217,22 @@ fn extract_first_url(line: &str) -> Option<String> {
         Some(url.to_string())
     } else {
         None
+    }
+}
+
+/// Lift the reset hint out of codex's "…, or try again at <when>." tail.
+/// The banner names an absolute time the Codex allowance frees up
+/// (e.g. `Jul 1st, 2026 1:16 PM`); we surface it verbatim on the quota card.
+/// Returns `None` when the banner names no reset (open-ended limit). The
+/// marker is ASCII, so the lowercase byte offset is valid in the original.
+fn extract_reset_hint(line: &str) -> Option<String> {
+    const MARKER: &str = "try again at ";
+    let idx = line.to_lowercase().find(MARKER)?;
+    let hint = line[idx + MARKER.len()..].trim().trim_end_matches('.').trim();
+    if hint.is_empty() {
+        None
+    } else {
+        Some(hint.to_string())
     }
 }
 
@@ -319,11 +339,13 @@ mod tests {
             ProviderError::QuotaExhausted {
                 provider,
                 scope,
+                resets_at,
                 upgrade_url,
                 ..
             } => {
                 assert_eq!(provider, "openai");
                 assert_eq!(scope, QuotaScope::FreeTier);
+                assert_eq!(resets_at.as_deref(), Some("Jul 1st, 2026 1:16 PM"));
                 assert_eq!(
                     upgrade_url.as_deref(),
                     Some("https://chatgpt.com/explore/plus")
@@ -331,6 +353,17 @@ mod tests {
             }
             other => panic!("expected QuotaExhausted, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn extract_reset_hint_pulls_date_without_trailing_period() {
+        let line = "You've hit your usage limit. ..., or try again at Jul 1st, 2026 1:16 PM.";
+        assert_eq!(
+            extract_reset_hint(line).as_deref(),
+            Some("Jul 1st, 2026 1:16 PM")
+        );
+        // No reset named → None (open-ended limit).
+        assert!(extract_reset_hint("Quota exceeded for this account").is_none());
     }
 
     #[test]

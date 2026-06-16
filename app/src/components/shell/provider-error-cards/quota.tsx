@@ -25,7 +25,14 @@ export function QuotaExhaustedCard({
       <RowCard
         media={<XCircleIcon className="size-5" />}
         title={t("providerError.quotaExhausted.title")}
-        description={t("providerError.quotaExhausted.body", { provider })}
+        description={
+          error.resets_at
+            ? t("providerError.quotaExhausted.bodyWithReset", {
+                provider,
+                time: error.resets_at,
+              })
+            : t("providerError.quotaExhausted.body", { provider })
+        }
         action={
           error.upgrade_url && (
             <RowCardButton

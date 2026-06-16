@@ -38,6 +38,7 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
                 provider: PROVIDER.into(),
                 model: None,
                 scope: QuotaScope::Unknown,
+                resets_at: None,
                 message: truncate_excerpt(trimmed),
                 upgrade_url: Some(UPGRADE_URL.into()),
             });
@@ -95,6 +96,7 @@ pub(crate) fn classify_result_error(
             provider: PROVIDER.into(),
             model: None,
             scope: QuotaScope::Unknown,
+            resets_at: None,
             message: truncate_excerpt(error_message),
             upgrade_url: Some(UPGRADE_URL.into()),
         }),
