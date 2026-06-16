@@ -65,6 +65,19 @@ test.if(haveDataset)("real-data migration on a /tmp COPY; real ~/.houston untouc
       if (existsSync(REAL_DB + ext)) cpSync(REAL_DB + ext, join(scratch, "houston.db" + ext));
     }
 
+    // The source tree may ITSELF already be migrated (the user ran the packaged
+    // app, which migrates `~/.houston` on first boot). That would make this an
+    // idempotent no-op. Strip the migration output (`.houston/runtime`) from the
+    // COPY so we always exercise a FRESH migration. Only the /tmp copy is touched.
+    execFileSync(
+      "bash",
+      [
+        "-c",
+        `find ${JSON.stringify(join(scratch, "workspaces"))} -type d -path '*/.houston/runtime' -prune -exec rm -rf {} +`,
+      ],
+      { encoding: "utf8" },
+    );
+
     const logs: string[] = [];
     const res = migrateChatHistory({
       workspacesRoot: join(scratch, "workspaces"),
