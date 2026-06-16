@@ -46,14 +46,16 @@ export function SetupCard({
   nextLoading,
 }: SetupCardProps) {
   return (
-    <div className="flex h-screen flex-col items-center justify-center bg-secondary/60 px-6 text-foreground">
+    <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
+      {/* Same "Always On" glow as the welcome, behind every setup screen. */}
+      <div className="welcome-aurora pointer-events-none absolute inset-0" />
       {/* Fixed min height + flex-1 content so the card stays the SAME size
           across every step and the footer never jumps as content changes.
           Keyed by title so React remounts (and the CSS entrance replays) on
           each step change, but not on in-step state updates like typing. */}
       <div
         key={title}
-        className="setup-step-in flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
+        className="setup-step-in relative z-10 flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_4px_24px_rgba(0,0,0,0.06)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (
