@@ -11,6 +11,7 @@ import type { Agent } from "../../lib/types";
 import { MissionFrame } from "./mission-frame";
 import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
+import { ToolsMission } from "./missions/tools";
 import { EmailMission } from "./missions/email";
 import { WelcomeScreen } from "./welcome-screen";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
@@ -99,25 +100,6 @@ export function PersonalAssistantOnboarding({
     return refreshed;
   };
 
-  const handleSkip = async () => {
-    // Skip path: create the workspace + assistant, but no UI tour and no
-    // tutorial artifacts. User lands directly in the workspace shell.
-    analytics.track("onboarding_started", { source: "skip" });
-    setTutorialActive(true);
-    try {
-      const fallbackProvider = provider ?? "anthropic";
-      const fallbackModel = model ?? getDefaultModel(fallbackProvider);
-      await createWorkspaceAndAssistant(fallbackProvider, fallbackModel);
-      analytics.track("onboarding_completed", {
-        mission: TUTORIAL_MISSION.id,
-        integrations_skipped: true,
-        tutorial_run: false,
-      });
-    } finally {
-      setTutorialActive(false);
-    }
-  };
-
   // Terminal hand-off. Arm the UI tour BEFORE clearing `tutorialActive`
   // so the workspace shell mounts with the tour overlay already up —
   // no flicker of bare workspace. Called when the email sends (the email
@@ -149,12 +131,11 @@ export function PersonalAssistantOnboarding({
           steps={[
             t("setup:tutorial.welcome.steps.meet"),
             t("setup:tutorial.welcome.steps.brain"),
+            t("setup:tutorial.welcome.steps.tools"),
             t("setup:tutorial.welcome.steps.email"),
           ]}
           startLabel={t("setup:tutorial.welcome.start")}
-          skipLabel={t("setup:tutorial.welcome.skip")}
           onStart={startTutorial}
-          onSkip={() => void handleSkip()}
         />
       )}
       {meta && frame && step === "meet" && (
@@ -181,9 +162,14 @@ export function PersonalAssistantOnboarding({
             onContinue={async () => {
               if (!provider || !model) return;
               await createWorkspaceAndAssistant(provider, model);
-              setStep("email");
+              setStep("tools");
             }}
           />
+        </MissionFrame>
+      )}
+      {meta && frame && step === "tools" && (
+        <MissionFrame meta={meta} {...frame}>
+          <ToolsMission onContinue={() => setStep("email")} />
         </MissionFrame>
       )}
       {meta && frame && step === "email" && agent && (

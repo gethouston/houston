@@ -7,9 +7,14 @@ interface WelcomeScreenProps {
   stepsTitle: string;
   steps: string[];
   startLabel: string;
-  skipLabel: string;
   onStart: () => void;
-  onSkip: () => void;
+  /**
+   * Optional escape gate. Setup is mandatory at the entry point, so the
+   * orchestrator no longer passes this and the skip affordance is not
+   * rendered. Kept optional so the component stays reusable.
+   */
+  skipLabel?: string;
+  onSkip?: () => void;
 }
 
 export function WelcomeScreen({
@@ -18,8 +23,8 @@ export function WelcomeScreen({
   stepsTitle,
   steps,
   startLabel,
-  skipLabel,
   onStart,
+  skipLabel,
   onSkip,
 }: WelcomeScreenProps) {
   return (
@@ -45,13 +50,15 @@ export function WelcomeScreen({
           <Button className="rounded-full px-6" onClick={onStart}>
             {startLabel}
           </Button>
-          <button
-            type="button"
-            onClick={onSkip}
-            className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
-          >
-            {skipLabel}
-          </button>
+          {onSkip && skipLabel && (
+            <button
+              type="button"
+              onClick={onSkip}
+              className="rounded-full px-3 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+            >
+              {skipLabel}
+            </button>
+          )}
         </div>
       </div>
     </div>

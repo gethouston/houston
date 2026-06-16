@@ -28,6 +28,7 @@
       "steps": {
         "meet": "Conheça seu assistente",
         "brain": "Conecte um provedor de IA para ele pensar",
+        "tools": "Conecte seus apps",
         "email": "Envie seu primeiro e-mail real com ele"
       },
       "start": "Começar",
@@ -52,6 +53,17 @@
         "continue": "Criar meu assistente",
         "creating": "Criando",
         "continueHint": "O Houston vai criar seu assistente e iniciar a configuração."
+      },
+      "tools": {
+        "title": "Conecte seus apps",
+        "body": "Seu assistente faz as coisas trabalhando com seus apps reais. Conecte o Houston às suas ferramentas uma vez e ele poderá agir por você.",
+        "cardTitle": "Conecte suas ferramentas",
+        "cardBody": "Entre para conectar seus apps ao Houston. Usamos o Composio para vinculá-los com segurança.",
+        "cardSignedInBody": "Conectado. Seu assistente já pode usar seus apps.",
+        "signIn": "Conectar",
+        "signedInPill": "Conectado",
+        "continue": "Continuar",
+        "continueHint": "Em seguida, seu assistente vai conectar seu e-mail e enviar uma mensagem real."
       },
       "email": {
         "title": "Envie seu primeiro e-mail",
