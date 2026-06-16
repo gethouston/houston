@@ -428,4 +428,44 @@ mod tests {
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, r.id);
     }
+
+    #[test]
+    fn unescaped_newline_in_prompt_recovers_routines_instead_of_wiping_them() {
+        // HOU-494 end to end: a routine's `prompt` held a LITERAL newline (an
+        // external editor / sync client / the agent wrote it raw instead of
+        // `\n`), making routines.json unparseable. v0.4.23's recovery then
+        // reset the file to `[]` and every routine vanished. The fix escapes
+        // the stray control char and recovers all routines, prompt intact.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // `@@` marks where a RAW newline byte sits inside the prompt string —
+        // the exact shape of the `.corrupt-*.bak` files attached to the issue.
+        let template = r#"[
+          {"id":"a","name":"Keep me","description":"","prompt":"single line",
+           "schedule":"0 9 * * 1-5","enabled":true,"suppress_when_silent":true,
+           "integrations":[],"created_at":"2026-05-01T00:00:00Z","updated_at":"2026-05-01T00:00:00Z"},
+          {"id":"b","name":"Multi line","description":"","prompt":"first line@@second line",
+           "schedule":"0 * * * *","enabled":true,"suppress_when_silent":true,
+           "integrations":[],"created_at":"2026-05-01T00:00:00Z","updated_at":"2026-05-01T00:00:00Z"}
+        ]"#;
+        std::fs::write(dir.join("routines.json"), template.replace("@@", "\n")).unwrap();
+
+        let loaded = list(d.path()).unwrap();
+        assert_eq!(loaded.len(), 2, "both routines recovered, none wiped");
+        assert_eq!(loaded[0].id, "a");
+        assert_eq!(loaded[1].id, "b");
+        assert_eq!(loaded[1].prompt, "first line\nsecond line", "newline preserved");
+
+        // Original corrupt bytes are preserved as a sibling `.corrupt-*.bak`.
+        let has_bak = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|e| e.file_name().to_string_lossy().contains(".corrupt-"));
+        assert!(has_bak, "original bytes preserved in a .corrupt-*.bak");
+
+        // The live file is valid JSON again: a re-read is clean and stable.
+        assert_eq!(list(d.path()).unwrap().len(), 2);
+    }
 }
