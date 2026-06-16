@@ -47,11 +47,13 @@ export function SetupCard({
 }: SetupCardProps) {
   return (
     <div className="flex h-screen flex-col items-center justify-center bg-secondary/60 px-6 text-foreground">
-      {/* Keyed by title so React remounts (and the CSS entrance replays) on
+      {/* Fixed min height + flex-1 content so the card stays the SAME size
+          across every step and the footer never jumps as content changes.
+          Keyed by title so React remounts (and the CSS entrance replays) on
           each step change, but not on in-step state updates like typing. */}
       <div
         key={title}
-        className="setup-step-in flex w-full max-w-2xl flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
+        className="setup-step-in flex min-h-[560px] w-full max-w-2xl flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (
@@ -62,7 +64,7 @@ export function SetupCard({
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         )}
 
-        <div className="mt-6">{children}</div>
+        <div className="mt-6 flex-1">{children}</div>
 
         {(onBack || onNext || helper) && (
           <div className="mt-8 flex items-center justify-between gap-4">
@@ -115,6 +117,9 @@ export function OptionGrid({ children }: { children: ReactNode }) {
 interface OptionCardProps {
   /** 1-based position shown at the left, like the reference. Omit to hide. */
   number?: number;
+  /** Leading media (e.g. a provider logo) shown before the label, matching the
+   *  settings provider rows. */
+  leading?: ReactNode;
   label: string;
   description?: string;
   selected: boolean;
@@ -133,6 +138,7 @@ interface OptionCardProps {
  */
 export function OptionCard({
   number,
+  leading,
   label,
   description,
   selected,
@@ -155,10 +161,15 @@ export function OptionCard({
         selected && !disabled && "border-foreground",
       )}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-3">
         {number != null && (
-          <span className="mt-0.5 w-4 shrink-0 text-sm font-medium tabular-nums text-muted-foreground">
+          <span className="w-4 shrink-0 text-sm font-medium tabular-nums text-muted-foreground">
             {number}
+          </span>
+        )}
+        {leading && (
+          <span className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-secondary">
+            {leading}
           </span>
         )}
         <div className="min-w-0 flex-1">

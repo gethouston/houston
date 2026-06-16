@@ -10,6 +10,7 @@ import { getDefaultModel } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
 import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
+import { ProviderLoginMission } from "./missions/provider-login";
 import { ToolsMission } from "./missions/tools";
 import { EmailMission } from "./missions/email";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
@@ -164,7 +165,7 @@ export function PersonalAssistantOnboarding({
 
   // The card steps that show a "Step N of N" eyebrow. The email step is the
   // culminating chat (its own frame), so it sits outside the counter.
-  const CARD_STEPS: TutorialStep[] = ["meet", "brain", "tools"];
+  const CARD_STEPS: TutorialStep[] = ["meet", "brain", "providerLogin", "tools"];
   const stepEyebrow = (s: TutorialStep) =>
     t("setup:tutorial.counter", {
       current: CARD_STEPS.indexOf(s) + 1,
@@ -193,6 +194,14 @@ export function PersonalAssistantOnboarding({
             setProvider(p);
             setModel(m);
           }}
+          onContinue={() => setStep("providerLogin")}
+        />
+      )}
+      {step === "providerLogin" && provider && (
+        <ProviderLoginMission
+          eyebrow={stepEyebrow("providerLogin")}
+          providerId={provider}
+          onBack={() => setStep("brain")}
           onContinue={async () => {
             if (!provider || !model) return;
             try {

@@ -17,7 +17,7 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "nav": { "back": "Back" },
+    "nav": { "back": "Back", "continue": "Continue" },
     "counter": "Step {{current}} of {{total}}",
     "eyebrow": "Step {{number}}",
     "missionLabel": "Set up: {{title}}",
@@ -52,11 +52,20 @@
         "begin": "Continue"
       },
       "brain": {
-        "title": "Give it a brain",
-        "body": "Your assistant needs an AI provider to think and write. Houston uses your own subscription.",
-        "continue": "Create my assistant",
-        "creating": "Creating",
-        "continueHint": "Houston will create your assistant and start setup."
+        "title": "Pick your AI",
+        "body": "Choose the AI that powers your assistant. You bring your own subscription, Houston never sees your credentials."
+      },
+      "providerLogin": {
+        "title": "Connect {{provider}}",
+        "body": "Sign in once so your assistant can use {{provider}} on your behalf.",
+        "loginButton": "Log in to {{provider}}",
+        "waiting": "Waiting for {{provider}}...",
+        "cancel": "Cancel",
+        "creating": "Creating your assistant...",
+        "connected": {
+          "title": "You're all set",
+          "body": "We found {{provider}} on this computer. You're signed in with your own subscription, so there's nothing to set up here."
+        }
       },
       "tools": {
         "title": "Connect your apps",

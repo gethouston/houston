@@ -9,13 +9,19 @@ import type { MissionMeta } from "./mission-frame";
 // onboarding orchestrator only owns the mission steps.
 export type OnboardingStep = TutorialStep;
 
-export type TutorialStep = "meet" | "brain" | "tools" | "email";
+export type TutorialStep =
+  | "meet"
+  | "brain"
+  | "providerLogin"
+  | "tools"
+  | "email";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
   "meet",
   "brain",
+  "providerLogin",
   "tools",
   "email",
 ];

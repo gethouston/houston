@@ -17,7 +17,7 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "nav": { "back": "Atrás" },
+    "nav": { "back": "Atrás", "continue": "Continuar" },
     "counter": "Paso {{current}} de {{total}}",
     "eyebrow": "Paso {{number}}",
     "missionLabel": "Configuración: {{title}}",
@@ -52,11 +52,20 @@
         "begin": "Continuar"
       },
       "brain": {
-        "title": "Dale un cerebro",
-        "body": "Tu asistente necesita un proveedor de IA para pensar y escribir. Houston usa tu propia suscripción.",
-        "continue": "Crear mi asistente",
-        "creating": "Creando",
-        "continueHint": "Houston creará tu asistente y empezará la configuración."
+        "title": "Elige tu IA",
+        "body": "Elige la IA que impulsa a tu asistente. Tú usas tu propia suscripción, Houston nunca ve tus credenciales."
+      },
+      "providerLogin": {
+        "title": "Conecta {{provider}}",
+        "body": "Inicia sesión una vez para que tu asistente pueda usar {{provider}} por ti.",
+        "loginButton": "Iniciar sesión en {{provider}}",
+        "waiting": "Esperando a {{provider}}...",
+        "cancel": "Cancelar",
+        "creating": "Creando tu asistente...",
+        "connected": {
+          "title": "Todo listo",
+          "body": "Encontramos {{provider}} en este computador. Ya tienes la sesión iniciada con tu propia suscripción, así que no hay nada que configurar aquí."
+        }
       },
       "tools": {
         "title": "Conecta tus apps",
