@@ -68,13 +68,13 @@
         }
       },
       "tools": {
-        "title": "Deja que tu asistente use tus apps",
-        "body": "Tu asistente hace las cosas en las apps que ya usas, como tu correo y tu calendario. Dale acceso una vez y podrá trabajar por ti.",
-        "allow": "Dar acceso",
+        "title": "Inicia sesión una vez para usar tus apps",
+        "body": "Con un solo inicio de sesión, tu asistente podrá trabajar con tus apps. Después conecta cada app, como Gmail o tu calendario, solo cuando de verdad la necesites, así no tienes que configurar todo ahora.",
+        "allow": "Iniciar sesión",
         "waiting": "Esperándote en tu navegador...",
         "connected": {
           "title": "Todo listo",
-          "body": "Tu asistente ya puede usar tus apps."
+          "body": "Tu asistente ya puede conectar tus apps cuando las necesites."
         }
       },
       "email": {

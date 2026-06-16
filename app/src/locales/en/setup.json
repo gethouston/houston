@@ -68,13 +68,13 @@
         }
       },
       "tools": {
-        "title": "Let your assistant use your apps",
-        "body": "Your assistant gets things done in the apps you already use, like your email and calendar. Allow it once and it can work for you.",
-        "allow": "Allow access",
+        "title": "Sign in once to use your apps",
+        "body": "One sign-in lets your assistant work with your apps. After that it connects each app, like Gmail or your calendar, only when you actually need it, so there's no big setup now.",
+        "allow": "Sign in",
         "waiting": "Waiting for you in your browser...",
         "connected": {
           "title": "You're all set",
-          "body": "Your assistant can now use your apps."
+          "body": "Your assistant can now connect to your apps whenever you need them."
         }
       },
       "email": {
