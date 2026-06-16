@@ -152,6 +152,10 @@ export interface RoutinesGridLabels {
   timezoneLabel: string
   /** One-line hint that the timezone applies to every routine. */
   timezoneHint: string
+  /** Placeholder for the timezone picker's keyword search field. */
+  timezoneSearchPlaceholder: string
+  /** Empty state when no timezone matches the search. */
+  timezoneNoResults: string
 }
 
 /** RoutineRow meta. `{relative}`/`{time}`/`{n}` tokens on the dynamic entries. */
