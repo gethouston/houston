@@ -53,7 +53,7 @@ export function SetupCard({
           each step change, but not on in-step state updates like typing. */}
       <div
         key={title}
-        className="setup-step-in flex h-[680px] max-h-[88vh] w-full max-w-lg flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
+        className="setup-step-in flex h-[680px] max-h-[88vh] w-full max-w-2xl flex-col rounded-2xl border border-black/10 bg-background p-8 shadow-[0_1px_0_rgba(0,0,0,0.05)]"
       >
         {icon && <div className="mb-4">{icon}</div>}
         {eyebrow && (
@@ -107,9 +107,11 @@ export function SetupCard({
   );
 }
 
-/** Single-column stack of `OptionCard`s (the card is portrait/narrow now). */
+/** Responsive grid of `OptionCard`s — two columns on a roomy card. */
 export function OptionGrid({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-2">{children}</div>;
+  return (
+    <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{children}</div>
+  );
 }
 
 interface OptionCardProps {
