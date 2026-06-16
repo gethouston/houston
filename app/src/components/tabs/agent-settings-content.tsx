@@ -13,9 +13,10 @@ import { AGENT_COLOR_LABEL_KEYS } from "../shell/agent-sidebar-color-menu";
 import { canSaveName } from "./agent-settings-model";
 
 /**
- * The "Settings" sub-tab of an agent's Job Description. Surfaces the same
- * actions as the sidebar card's three-dots menu (rename, color, share, delete)
- * as a full settings panel instead of a dropdown.
+ * The "Settings" sub-tab of an agent's Agent Settings tab (tab id
+ * `job-description`). Surfaces the same actions as the sidebar card's
+ * three-dots menu (rename, color, share, delete) as a full settings panel
+ * instead of a dropdown.
  */
 export function AgentSettingsContent({
   name,

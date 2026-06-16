@@ -83,8 +83,8 @@
         "body": "Documentos que seu assistente pode ler ou compartilhar com você. Solte qualquer coisa aqui para dar contexto."
       },
       "tabJobDescription": {
-        "title": "Descrição do Cargo",
-        "body": "As instruções permanentes do seu assistente. Edite quando quiser para mudar como ele se comporta."
+        "title": "Configurações do agente",
+        "body": "Defina como o seu assistente trabalha: suas instruções, skills e configurações. Atualize quando quiser."
       },
       "missionControl": {
         "title": "Central de Missão",

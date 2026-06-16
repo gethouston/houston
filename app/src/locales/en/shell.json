@@ -83,8 +83,8 @@
         "body": "Docs your assistant can read or share with you. Drop anything here for context."
       },
       "tabJobDescription": {
-        "title": "Job Description",
-        "body": "Your assistant's standing instructions. Edit any time to change how it behaves."
+        "title": "Agent Settings",
+        "body": "Shape how your assistant works: its instructions, skills, and settings. Update them any time."
       },
       "missionControl": {
         "title": "Mission Control",

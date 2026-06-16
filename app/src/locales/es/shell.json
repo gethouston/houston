@@ -83,8 +83,8 @@
         "body": "Documentos que tu asistente puede leer o compartir contigo. Arrastra lo que quieras para dar contexto."
       },
       "tabJobDescription": {
-        "title": "Descripción del Puesto",
-        "body": "Las instrucciones permanentes de tu asistente. Edítalas cuando quieras para cambiar cómo se comporta."
+        "title": "Configuración del agente",
+        "body": "Define cómo trabaja tu asistente: sus instrucciones, skills y configuración. Actualízalo cuando quieras."
       },
       "missionControl": {
         "title": "Centro de Misión",
