@@ -252,6 +252,11 @@ pub fn emit_deep_link(handle: &AppHandle, url: &str) {
 /// `HOUSTON_APP_USER_ID` on its own operations. Failures (no entry, corrupt
 /// JSON, keychain locked, DPAPI ciphertext from a different Windows user)
 /// all resolve to `None` silently — the engine runs fine without an identity.
+///
+/// (Default Rust-engine build only — the single-tenant local host resolves
+/// every request to `LOCAL_USER`, so it takes no `HOUSTON_APP_USER_ID`. Still
+/// referenced by the `#[cfg(test)]` suite, so only `allow` under the feature.)
+#[cfg_attr(feature = "host-sidecar", allow(dead_code))]
 pub fn persisted_user_id() -> Option<String> {
     if option_env!("HOUSTON_AUTH_STORAGE_MODE") != Some("keychain") {
         return None;
