@@ -87,6 +87,36 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
         });
     }
 
+    // ChatGPT-account Codex usage limit. When a ChatGPT plan's Codex
+    // allowance for the billing window is spent, codex fails EVERY turn with
+    // "You've hit your usage limit. Upgrade to Plus to continue using Codex
+    // (<url>), or try again at <date>." It is NOT a per-minute 429 throttle
+    // (waiting a minute won't help) and NOT the API-key "quota exceeded"
+    // billing error below — it's the plan allowance. Without this branch it
+    // matched nothing and surfaced as a generic "codex hit a runtime error"
+    // (HOU-495). Map it to a QuotaExhausted card whose Upgrade CTA points at
+    // the plan page codex itself names (free → Plus, Plus → Pro), so the user
+    // gets an actionable next step. Must precede the `quota`-keyword branch.
+    if lower.contains("usage limit") {
+        let scope = if lower.contains("upgrade to plus") {
+            QuotaScope::FreeTier
+        } else if lower.contains("upgrade to pro") {
+            QuotaScope::PaidPlan
+        } else {
+            QuotaScope::Unknown
+        };
+        return Some(ProviderError::QuotaExhausted {
+            provider: PROVIDER.into(),
+            model: None,
+            scope,
+            message: truncate_excerpt(line.trim()),
+            // Prefer the exact upgrade link codex embeds in the banner; fall
+            // back to the ChatGPT plan page if a future banner drops it.
+            upgrade_url: extract_first_url(line)
+                .or_else(|| Some("https://chatgpt.com/explore/plus".into())),
+        });
+    }
+
     // Quota exhausted — paid plan / org quota.
     if lower.contains("quota") && (lower.contains("exceed") || lower.contains("exhaust")) {
         return Some(ProviderError::QuotaExhausted {
@@ -163,6 +193,26 @@ fn extract_quoted_model(line: &str) -> Option<String> {
         None
     } else {
         Some(model.to_string())
+    }
+}
+
+/// Pull the first `http(s)://…` token out of a CLI message. Codex's
+/// usage-limit banner embeds the exact upgrade URL (e.g.
+/// `…(https://chatgpt.com/explore/plus)…`); reusing it keeps the Upgrade CTA
+/// correct across plan tiers instead of hard-coding a single target. Stops at
+/// the first whitespace or closing bracket/quote so trailing punctuation
+/// (the `)` after the URL) is not captured.
+fn extract_first_url(line: &str) -> Option<String> {
+    let start = line.find("http")?;
+    let rest = &line[start..];
+    let end = rest
+        .find(|c: char| c.is_whitespace() || matches!(c, ')' | ']' | '"' | '>' | '<'))
+        .unwrap_or(rest.len());
+    let url = &rest[..end];
+    if url.starts_with("http://") || url.starts_with("https://") {
+        Some(url.to_string())
+    } else {
+        None
     }
 }
 
@@ -256,6 +306,52 @@ mod tests {
             }
             other => panic!("expected QuotaExhausted, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn codex_usage_limit_classified_as_quota_exhausted_free_tier() {
+        // The exact codex banner a ChatGPT free-tier user hits once their
+        // Codex allowance is spent (HOU-495). Previously matched nothing and
+        // showed a generic "codex hit a runtime error"; now a QuotaExhausted
+        // card with a Plus upgrade CTA pulled straight from the banner.
+        let line = "You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus), or try again at Jul 1st, 2026 1:16 PM.";
+        match classify_stderr(line).unwrap() {
+            ProviderError::QuotaExhausted {
+                provider,
+                scope,
+                upgrade_url,
+                ..
+            } => {
+                assert_eq!(provider, "openai");
+                assert_eq!(scope, QuotaScope::FreeTier);
+                assert_eq!(
+                    upgrade_url.as_deref(),
+                    Some("https://chatgpt.com/explore/plus")
+                );
+            }
+            other => panic!("expected QuotaExhausted, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn codex_usage_limit_is_not_misfiled_as_rate_limited() {
+        // "usage limit" is a billing-window cap, not a 429 throttle — a wait
+        // won't clear it. Must NOT fall into the RateLimited branch.
+        let line = "You've hit your usage limit. Upgrade to Plus to continue using Codex.";
+        assert!(matches!(
+            classify_stderr(line),
+            Some(ProviderError::QuotaExhausted { .. })
+        ));
+    }
+
+    #[test]
+    fn extract_first_url_pulls_banner_link_without_trailing_paren() {
+        let line = "limit (https://chatgpt.com/explore/plus), or try again";
+        assert_eq!(
+            extract_first_url(line).as_deref(),
+            Some("https://chatgpt.com/explore/plus")
+        );
+        assert!(extract_first_url("no link here").is_none());
     }
 
     #[test]

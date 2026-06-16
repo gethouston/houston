@@ -126,6 +126,23 @@ plain — now funnels to a single `auth_card_emitted`-deduped
 `Unauthenticated` card; before, the plain refresh-failure fell through to a
 raw `Error: …` SystemMessage shown twice.
 
+**Codex usage limit → `QuotaExhausted` (HOU-495).** A spent ChatGPT-account
+Codex allowance fails every turn with `You've hit your usage limit. Upgrade to
+Plus to continue using Codex (<url>), or try again at <date>.`, emitted on
+stdout as BOTH an `error` and a `turn.failed` event. It is not a 429 throttle
+and not the API-key `quota exceeded` billing error, so it matched no
+`openai_classify::classify_stderr` branch and fell through to a raw `Error: …`
+SystemMessage (shown twice) + a generic `codex hit a runtime error` status +
+a `SpawnFailed` fallback card — the user saw no actionable next step, just
+noise (the symptom behind "unable to use codex"). `classify_stderr` now maps
+any `usage limit` line to `QuotaExhausted` (scope inferred from
+`upgrade to plus` → `FreeTier` / `upgrade to pro` → `PaidPlan`; `upgrade_url`
+lifted from the banner via `extract_first_url`, falling back to the ChatGPT
+plan page). `CodexAccumulator::terminal_error_emitted` dedupes the
+`error`+`turn.failed` pair to one card (the auth path keeps its separate
+`auth_card_emitted` guard). The card is `QuotaExhaustedCard` — same "Upgrade
+plan" CTA Anthropic/Gemini quota errors get.
+
 **Auth cards: prefer the persisted inline card over the store card.** The
 store-driven `ProviderReconnectCard` (anchored to the `authRequired` flag,
 rendered in `ChatPanel.afterMessages`) AUTO-DISMISSES for codex: its 3s
