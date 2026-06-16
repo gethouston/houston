@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, LayoutGrid, Loader2 } from "lucide-react";
 import { AsyncButton } from "@houston-ai/core";
@@ -25,8 +25,15 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
   const { t } = useTranslation("setup");
   const { data: status } = useConnections();
   const reset = useResetConnections();
-  const auth = useComposioAuth(() => reset());
-  const connected = status?.status === "ok";
+  // Optimistic: the moment sign-in resolves, show connected — don't flash the
+  // "Sign in" button while the connections query refetches (~2s). The refetch
+  // then reconciles the real status.
+  const [justConnected, setJustConnected] = useState(false);
+  const auth = useComposioAuth(() => {
+    setJustConnected(true);
+    void reset();
+  });
+  const connected = justConnected || status?.status === "ok";
   const waiting = auth.state.phase === "waiting";
 
   const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
