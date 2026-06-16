@@ -267,20 +267,56 @@ export async function setPreference(cfg: ControlPlaneConfig, key: string, value:
 
 /**
  * Subscribe to the host's global reactivity stream (`GET /v1/events`, SSE).
- * EventSource can't send an Authorization header, so the token rides in the
- * query (the host's bearer() reads `?token=`). Host events are `{ type, agentPath }`;
+ *
+ * Uses a fetch + ReadableStream reader, NOT `EventSource`: in the Tauri desktop
+ * webview a cross-origin `EventSource` to the host silently never connects, so
+ * the desktop would get zero reactivity (the board/routines/etc. only refresh on
+ * navigation). fetch streaming works in both the webview and the browser — it's
+ * the same transport the chat stream already relies on. The token rides in the
+ * query (the host's bearer reads `?token=`). Host events are `{ type, agentPath }`;
  * the UI's invalidation map reads `{ type, data: { agent_path } }`, so translate.
+ * Reconnects with a short backoff on any drop, mirroring EventSource's auto-retry.
  */
 export function subscribeEvents(cfg: ControlPlaneConfig, onEvent: (event: unknown) => void): () => void {
-  const url = `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`;
-  const es = new EventSource(url);
-  es.onmessage = (e) => {
-    try {
-      const ev = JSON.parse(e.data) as { type: string; agentPath?: string; workspaceId?: string };
-      onEvent({ type: ev.type, data: { agent_path: ev.agentPath, workspace_id: ev.workspaceId } });
-    } catch {
-      /* a malformed frame is dropped, never thrown into the UI */
+  const ac = new AbortController();
+  void (async () => {
+    while (!ac.signal.aborted) {
+      try {
+        const url = `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`;
+        const res = await fetch(url, { headers: { Accept: "text/event-stream" }, signal: ac.signal });
+        if (!res.ok || !res.body) throw new Error(`/v1/events ${res.status}`);
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buf = "";
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let idx: number;
+          while ((idx = buf.indexOf("\n\n")) >= 0) {
+            const frame = buf.slice(0, idx);
+            buf = buf.slice(idx + 2);
+            const line = frame.split("\n").find((l) => l.startsWith("data:"));
+            if (!line) continue; // skip ": connected" / ": hb" comment frames
+            try {
+              const ev = JSON.parse(line.slice(5).trim()) as {
+                type: string;
+                agentPath?: string;
+                workspaceId?: string;
+              };
+              onEvent({ type: ev.type, data: { agent_path: ev.agentPath, workspace_id: ev.workspaceId } });
+            } catch {
+              /* a malformed frame is dropped, never thrown into the UI */
+            }
+          }
+        }
+      } catch {
+        if (ac.signal.aborted) return; // our own teardown — expected
+      }
+      // Stream ended or dropped (not aborted) — reconnect after a short backoff.
+      if (ac.signal.aborted) return;
+      await new Promise((r) => setTimeout(r, 1500));
     }
-  };
-  return () => es.close();
+  })();
+  return () => ac.abort();
 }
