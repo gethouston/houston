@@ -6,10 +6,11 @@ import {
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
+  agentColorId,
   colorHex,
 } from "@houston-ai/core";
 
-const AGENT_COLOR_LABEL_KEYS: Record<string, AgentColorLabelKey> = {
+export const AGENT_COLOR_LABEL_KEYS: Record<string, AgentColorLabelKey> = {
   charcoal: "shell:sidebar.colorLabels.charcoal",
   forest: "shell:sidebar.colorLabels.forest",
   navy: "shell:sidebar.colorLabels.navy",
@@ -19,7 +20,7 @@ const AGENT_COLOR_LABEL_KEYS: Record<string, AgentColorLabelKey> = {
   golden: "shell:sidebar.colorLabels.golden",
 };
 
-type AgentColorLabelKey =
+export type AgentColorLabelKey =
   | "shell:sidebar.colorLabels.charcoal"
   | "shell:sidebar.colorLabels.forest"
   | "shell:sidebar.colorLabels.navy"
@@ -44,7 +45,7 @@ export function AgentSidebarColorMenu({
       <DropdownMenuSubTrigger>{t("sidebar.changeColor")}</DropdownMenuSubTrigger>
       <DropdownMenuSubContent>
         <DropdownMenuRadioGroup
-          value={agentColorValue(color)}
+          value={agentColorId(color)}
           onValueChange={onChange}
         >
           {AGENT_COLORS.map((entry) => (
@@ -64,12 +65,4 @@ export function AgentSidebarColorMenu({
       </DropdownMenuSubContent>
     </DropdownMenuSub>
   );
-}
-
-function agentColorValue(color: string | undefined): string {
-  const match = AGENT_COLORS.find(
-    (entry) =>
-      entry.id === color || entry.light === color || entry.dark === color,
-  );
-  return match?.id ?? AGENT_COLORS[0].id;
 }

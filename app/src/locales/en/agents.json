@@ -35,7 +35,19 @@
   "subTabs": {
     "instructions": "Instructions",
     "skills": "Skills",
-    "learnings": "Learnings"
+    "learnings": "Learnings",
+    "settings": "Settings"
+  },
+  "agentSettings": {
+    "nameTitle": "Name",
+    "nameLabel": "What your agent is called",
+    "namePlaceholder": "Name your agent",
+    "colorTitle": "Color",
+    "colorHelper": "Pick a color for your agent's avatar.",
+    "shareTitle": "Share",
+    "shareHelper": "Send a copy of this agent to a friend.",
+    "dangerTitle": "Delete agent",
+    "dangerHelper": "Permanently remove this agent and everything it has done. This cannot be undone."
   },
   "tabLabels": {
     "activity": "Activity",
