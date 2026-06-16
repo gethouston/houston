@@ -148,15 +148,10 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         // it can't self-correct downward, so the dialog flags it as estimated.
         contextWindow: 1_000_000,
       },
-      {
-        id: "claude-fable-5",
-        label: "Fable 5",
-        description: "Most capable model. Costs 2x more credits than Opus 4.8.",
-        // Fable 5: full range like Opus 4.8. ultracode is a harness mode, not
-        // an effort level — it is intentionally excluded for this model.
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        contextWindow: 1_000_000,
-      },
+      // Fable 5 (`claude-fable-5`) is intentionally absent from the picker for
+      // now — pulled per HOU-476. Engine support and its `modelDescriptions`
+      // copy in the chat locales are retained so re-adding a ModelOption here
+      // (full effort range, 1M window, 2x Opus 4.8 credits) re-enables it.
       {
         id: "claude-opus-4-7",
         label: "Opus 4.7",
