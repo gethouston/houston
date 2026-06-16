@@ -11,7 +11,7 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import type { ProviderInfo } from "../../lib/providers";
-import { tauriProvider } from "../../lib/tauri";
+import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { providerLoginUrlHost } from "./provider-login-url";
 import { ProviderDeviceCode } from "./provider-device-code";
@@ -141,7 +141,7 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => window.open(url, "_blank", "noopener,noreferrer")}
+              onClick={() => void tauriSystem.openUrl(url)}
             >
               <ExternalLink className="size-3.5" />
               {t("providerLogin.openUrl")}
