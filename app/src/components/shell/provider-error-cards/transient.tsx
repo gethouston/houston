@@ -3,10 +3,10 @@
  * network, provider-internal, malformed-response. They share the "wait"
  * recovery shape; rate-limited/network/internal offer a retry (and the
  * network/internal ones a status-page link), while usage-limit-paused is
- * informational — the user waits for the plan window to reset.
+ * informational — the user waits for the plan window to reset. All render on
+ * the unified `RowCard` (HOU-467).
  */
 
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangleIcon,
@@ -17,13 +17,7 @@ import {
 } from "lucide-react";
 import type { ProviderError } from "@houston-ai/chat";
 import { RowCard } from "../../cards/row-card";
-import { RowCardButton } from "../../cards/row-card-button";
-import {
-  ErrorCard,
-  RetryButton,
-  StatusPageButton,
-  providerLabel,
-} from "./shared";
+import { RetryButton, StatusPageButton, providerLabel } from "./shared";
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;
@@ -37,22 +31,12 @@ export function RateLimitedCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
-  const [retrying, setRetrying] = useState(false);
   const body = error.retry_after_seconds
     ? t("providerError.rateLimited.bodyWithRetry", {
         provider,
         seconds: error.retry_after_seconds,
       })
     : t("providerError.rateLimited.body", { provider });
-  const retry = async () => {
-    if (!onRetry || retrying) return;
-    setRetrying(true);
-    try {
-      await onRetry();
-    } finally {
-      setRetrying(false);
-    }
-  };
   return (
     <div className="w-full px-1 py-2">
       <RowCard
@@ -61,10 +45,9 @@ export function RateLimitedCard({
         description={body}
         action={
           onRetry && (
-            <RowCardButton
+            <RetryButton
+              onRetry={onRetry}
               label={t("providerError.rateLimited.retry")}
-              onClick={retry}
-              loading={retrying}
             />
           )
         }
@@ -108,22 +91,27 @@ export function NetworkUnreachableCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<WifiOffIcon className="size-5" />}
-      title={t("providerError.networkUnreachable.title", { provider })}
-      body={t("providerError.networkUnreachable.body", { provider })}
-    >
-      {onRetry && (
-        <RetryButton
-          onRetry={onRetry}
-          label={t("providerError.networkUnreachable.retry")}
-        />
-      )}
-      <StatusPageButton
-        provider={error.provider}
-        label={t("providerError.networkUnreachable.checkStatus")}
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<WifiOffIcon className="size-5" />}
+        title={t("providerError.networkUnreachable.title", { provider })}
+        description={t("providerError.networkUnreachable.body", { provider })}
+        action={
+          <>
+            {onRetry && (
+              <RetryButton
+                onRetry={onRetry}
+                label={t("providerError.networkUnreachable.retry")}
+              />
+            )}
+            <StatusPageButton
+              provider={error.provider}
+              label={t("providerError.networkUnreachable.checkStatus")}
+            />
+          </>
+        }
       />
-    </ErrorCard>
+    </div>
   );
 }
 
@@ -136,22 +124,27 @@ export function ProviderInternalCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<ServerCrashIcon className="size-5" />}
-      title={t("providerError.providerInternal.title", { provider })}
-      body={t("providerError.providerInternal.body", { provider })}
-    >
-      {onRetry && (
-        <RetryButton
-          onRetry={onRetry}
-          label={t("providerError.providerInternal.retry")}
-        />
-      )}
-      <StatusPageButton
-        provider={error.provider}
-        label={t("providerError.providerInternal.checkStatus")}
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<ServerCrashIcon className="size-5" />}
+        title={t("providerError.providerInternal.title", { provider })}
+        description={t("providerError.providerInternal.body", { provider })}
+        action={
+          <>
+            {onRetry && (
+              <RetryButton
+                onRetry={onRetry}
+                label={t("providerError.providerInternal.retry")}
+              />
+            )}
+            <StatusPageButton
+              provider={error.provider}
+              label={t("providerError.providerInternal.checkStatus")}
+            />
+          </>
+        }
       />
-    </ErrorCard>
+    </div>
   );
 }
 
@@ -164,17 +157,20 @@ export function MalformedResponseCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<AlertTriangleIcon className="size-5" />}
-      title={t("providerError.malformedResponse.title")}
-      body={t("providerError.malformedResponse.body", { provider })}
-    >
-      {onRetry && (
-        <RetryButton
-          onRetry={onRetry}
-          label={t("providerError.malformedResponse.retry")}
-        />
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<AlertTriangleIcon className="size-5" />}
+        title={t("providerError.malformedResponse.title")}
+        description={t("providerError.malformedResponse.body", { provider })}
+        action={
+          onRetry && (
+            <RetryButton
+              onRetry={onRetry}
+              label={t("providerError.malformedResponse.retry")}
+            />
+          )
+        }
+      />
+    </div>
   );
 }

@@ -1,15 +1,17 @@
 /**
  * Quota / model-availability variants — these are the "pay or switch"
- * outcomes. CTAs lean on `tauriSystem.openUrl` to drop the user into
- * the right provider console.
+ * outcomes. QuotaExhausted mounts an Upgrade CTA (via `tauriSystem.openUrl`)
+ * that drops the user into the right provider console; ModelUnavailable is
+ * informational. Both render on the unified `RowCard` (HOU-467).
  */
 
 import { useTranslation } from "react-i18next";
 import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
-import { Button } from "@houston-ai/core";
 import type { ProviderError } from "@houston-ai/chat";
 import { tauriSystem } from "../../../lib/tauri";
-import { ErrorCard, providerLabel } from "./shared";
+import { RowCard } from "../../cards/row-card";
+import { RowCardButton } from "../../cards/row-card-button";
+import { providerLabel } from "./shared";
 
 export function QuotaExhaustedCard({
   error,
@@ -19,21 +21,21 @@ export function QuotaExhaustedCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<XCircleIcon className="size-5" />}
-      title={t("providerError.quotaExhausted.title")}
-      body={t("providerError.quotaExhausted.body", { provider })}
-    >
-      {error.upgrade_url && (
-        <Button
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={() => void tauriSystem.openUrl(error.upgrade_url!)}
-        >
-          {t("providerError.quotaExhausted.upgrade")}
-        </Button>
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<XCircleIcon className="size-5" />}
+        title={t("providerError.quotaExhausted.title")}
+        description={t("providerError.quotaExhausted.body", { provider })}
+        action={
+          error.upgrade_url && (
+            <RowCardButton
+              label={t("providerError.quotaExhausted.upgrade")}
+              onClick={() => tauriSystem.openUrl(error.upgrade_url!)}
+            />
+          )
+        }
+      />
+    </div>
   );
 }
 
@@ -45,10 +47,15 @@ export function ModelUnavailableCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<AlertTriangleIcon className="size-5" />}
-      title={t("providerError.modelUnavailable.title")}
-      body={t("providerError.modelUnavailable.body", { provider, model: error.model })}
-    />
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<AlertTriangleIcon className="size-5" />}
+        title={t("providerError.modelUnavailable.title")}
+        description={t("providerError.modelUnavailable.body", {
+          provider,
+          model: error.model,
+        })}
+      />
+    </div>
   );
 }

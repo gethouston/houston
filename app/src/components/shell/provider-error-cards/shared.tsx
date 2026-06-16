@@ -1,51 +1,23 @@
 /**
- * Shared layout + CTA primitives for typed-provider-error cards.
+ * Shared CTA primitives + helpers for typed-provider-error cards.
  *
- * All variants share the same secondary-tinted slab (icon + title +
- * body + button row), the same retry button shape, and the same
- * report-bug + status-page helpers. Centralising them keeps the
- * per-variant files small (each renderer = copy + which CTAs to mount).
+ * Every variant renders on the unified `RowCard` (HOU-467); these are the
+ * stateful pills that sit in its `action` slot — retry (with spinner),
+ * status-page link, and report-bug (the `reportBug` call + toast). All three
+ * are thin wrappers over `RowCardButton` so the error cards match the
+ * reconnect / integration cards exactly. The per-variant files own only the
+ * copy + which CTAs to mount.
  */
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BugIcon, RotateCcwIcon } from "lucide-react";
-import { Button, Spinner } from "@houston-ai/core";
 import { reportBug } from "../../../lib/bug-report";
 import { getCurrentUserEmail } from "../../../lib/current-user";
 import { tauriSystem } from "../../../lib/tauri";
 import { getProvider } from "../../../lib/providers";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
-
-export function ErrorCard({
-  icon,
-  title,
-  body,
-  children,
-}: {
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-  children?: React.ReactNode;
-}) {
-  return (
-    <div className="w-full px-1 py-2">
-      <div className="flex items-start gap-4 rounded-2xl bg-secondary p-4 text-left">
-        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-border bg-background text-muted-foreground">
-          {icon}
-        </div>
-        <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <p className="text-sm font-semibold text-foreground">{title}</p>
-          <p className="text-xs leading-relaxed text-muted-foreground">{body}</p>
-          {children && (
-            <div className="mt-2 flex flex-wrap items-center gap-2">{children}</div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { RowCardButton } from "../../cards/row-card-button";
 
 export function providerLabel(id: string): string {
   return getProvider(id)?.name ?? id;
@@ -68,17 +40,7 @@ export function RetryButton({
       setRunning(false);
     }
   };
-  return (
-    <Button
-      size="sm"
-      className="h-8 gap-2 rounded-full px-3 text-xs"
-      disabled={running}
-      onClick={() => void handle()}
-    >
-      {running ? <Spinner className="size-3.5" /> : <RotateCcwIcon className="size-3.5" />}
-      {label}
-    </Button>
-  );
+  return <RowCardButton label={label} onClick={handle} loading={running} />;
 }
 
 export function StatusPageButton({
@@ -91,14 +53,11 @@ export function StatusPageButton({
   const url = statusPageUrl(provider);
   if (!url) return null;
   return (
-    <Button
+    <RowCardButton
+      label={label}
       variant="outline"
-      size="sm"
-      className="h-8 gap-2 rounded-full px-3 text-xs"
-      onClick={() => void tauriSystem.openUrl(url)}
-    >
-      {label}
-    </Button>
+      onClick={() => tauriSystem.openUrl(url)}
+    />
   );
 }
 
@@ -143,16 +102,12 @@ export function ReportBugButton({
     }
   };
   return (
-    <Button
+    <RowCardButton
+      label={label}
       variant="outline"
-      size="sm"
-      className="h-8 gap-2 rounded-full px-3 text-xs"
-      disabled={sending}
-      onClick={() => void send()}
-    >
-      {sending ? <Spinner className="size-3.5" /> : <BugIcon className="size-3.5" />}
-      {label}
-    </Button>
+      onClick={send}
+      loading={sending}
+    />
   );
 }
 
