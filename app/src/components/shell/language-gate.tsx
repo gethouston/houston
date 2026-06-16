@@ -129,16 +129,15 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
   const greeting = GREETINGS[i];
 
   return (
-    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#0a0a0a] px-6 text-white">
-      {/* Drifting aurora glow behind everything. */}
-      <div className="welcome-aurora pointer-events-none absolute left-1/2 top-1/2 h-[120vmax] w-[120vmax]" />
-      {/* Vignette so the edges fall to black and the center reads clean. */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_35%,rgba(10,10,10,0.85)_100%)]" />
+    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-[#060606] px-6 text-white">
+      {/* Two-tone corner glow: blue bottom-left, orange top-right (the
+          "Always On" card look). */}
+      <div className="welcome-aurora pointer-events-none absolute inset-0" />
 
       <div className="relative z-10 flex flex-col items-center gap-12 text-center">
         <HoustonLogo
           size={76}
-          className="text-white drop-shadow-[0_0_32px_rgba(255,255,255,0.28)]"
+          className="text-white drop-shadow-[0_0_28px_rgba(255,255,255,0.18)]"
         />
         {/* Fixed height so greetings of different lengths don't shift the logo
             or button; the word itself blurs + scales in each rotation. */}
