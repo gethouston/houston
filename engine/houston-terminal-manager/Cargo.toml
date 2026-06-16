@@ -1,6 +1,6 @@
 [package]
 name = "houston-terminal-manager"
-version = "0.4.19"
+version = "0.4.24"
 edition = "2021"
 description = "Terminal/CLI subprocess manager for Claude, Codex, and other CLI-based AI agents"
 license = "MIT"
@@ -11,6 +11,10 @@ serde = { workspace = true }
 serde_json = { workspace = true }
 tokio = { workspace = true }
 tracing = { workspace = true }
+# TOML encoding for the per-session codex profile file that carries
+# `developer_instructions` off the command line (Windows 32,767-char
+# `CreateProcessW` limit — see `prompt_scratch`).
+toml = "0.8"
 # Cross-platform home-directory resolution (HOME on Unix, USERPROFILE on
 # Windows). Used by `claude_path` to expand `~/...` entries in the common
 # install-dir list.
@@ -20,6 +24,10 @@ dirs = "5"
 # so subprocess spawns of `claude`/`codex`/`composio` find them without
 # any user-side shell config.
 houston-cli-bundle = { workspace = true }
+# Format claude-code's structured `resetsAt` unix timestamp (the plan-window
+# reset moment on `rate_limit_event`) into a short local-time hint for the
+# usage-limit-paused card.
+chrono = { workspace = true }
 
 [dev-dependencies]
 # Used by the Gemini adapter tests to build throwaway

@@ -6,6 +6,7 @@
 pub mod auth_error;
 pub mod claude_install_path;
 pub mod claude_path;
+mod claude_command;
 mod claude_runner;
 mod cli_process;
 mod codex_command;
@@ -18,6 +19,7 @@ pub mod gemini_parser;
 mod gemini_parser_state;
 mod gemini_runner;
 pub mod manager;
+mod prompt_scratch;
 pub mod parser;
 pub mod provider;
 pub mod provider_auth;
@@ -35,7 +37,7 @@ pub use codex_parser::{extract_thread_id, parse_codex_event, CodexAccumulator};
 pub use gemini_parser::{parse_gemini_event, GeminiAccumulator};
 pub use manager::{SessionHandle, SessionManager};
 pub use parser::{extract_session_id, parse_event, StreamAccumulator};
-pub use provider::{InstallSource, Provider, ProviderAdapter};
+pub use provider::{InstallSource, LoginFailureHint, Provider, ProviderAdapter};
 pub use provider_auth::ProviderAuthState;
 pub use provider_error_kind::{
     AuthFailureCause, ModelUnavailableReason, ProviderError, QuotaScope,

@@ -20,6 +20,7 @@ export type SkillErrorKind =
   | "repo_private"
   | "repo_not_found"
   | "repo_no_skills"
+  | "invalid_repo_source"
   | "github_rate_limited"
 
 /**

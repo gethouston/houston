@@ -38,6 +38,7 @@ import {
 import { useFeedStore } from "../stores/feeds";
 import { useUIStore } from "../stores/ui";
 import { useActivity, useSkills } from "../hooks/queries";
+import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import {
   tauriActivity,
   tauriAttachments,
@@ -60,16 +61,24 @@ import {
 } from "./composio-signin-card";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ChatEffortSelector } from "./chat-effort-selector";
+import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import {
   getContextWindowConfig,
   getDefaultModel,
-  getModel,
+  getProvider,
   validModelOrNull,
   validEffortOrDefault,
   normalizeLegacyModel,
   type EffortLevel,
 } from "../lib/providers";
+import {
+  decideHandoffMode,
+  estimateConversationTokens,
+  type ProviderHandoffMode,
+} from "../lib/provider-switch";
+import { useProviderSwitchStore } from "../stores/provider-switch";
+import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import {
   sessionContextUsage,
   effectiveContextWindow,
@@ -91,6 +100,7 @@ import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
 import { UserSkillMessage } from "./user-skill-message";
 import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
+import { ProviderErrorCard } from "./shell/provider-error-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
 import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
 import { useChatDisplayLabels } from "./use-chat-display-labels";
@@ -135,6 +145,10 @@ interface AgentChatPanelProps {
   renderToolResult: ChatPanelProps["renderToolResult"];
   processLabels: ChatPanelProps["processLabels"];
   getThinkingMessage: ChatPanelProps["getThinkingMessage"];
+  /** Calm "Mission in progress..." line shown while a turn is in flight. */
+  thinkingIndicator: ChatPanelProps["thinkingIndicator"];
+  /** Static Houston helmet shown after the agent's reply when it settles. */
+  endOfTurnIndicator: ChatPanelProps["endOfTurnIndicator"];
   renderTurnSummary: ChatPanelProps["renderTurnSummary"];
   renderSystemMessage: AIBoardProps["renderSystemMessage"];
   mapFeedItems: AIBoardProps["mapFeedItems"];
@@ -157,7 +171,8 @@ export function useAgentChatPanel({
   onSelectSession,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t } = useTranslation(["board", "chat"]);
-  const { processLabels, getThinkingMessage } = useChatDisplayLabels();
+  const { processLabels, getThinkingMessage, thinkingIndicator, endOfTurnIndicator } =
+    useChatDisplayLabels();
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
@@ -176,6 +191,13 @@ export function useAgentChatPanel({
   const [agentProvider, setAgentProvider] = useState<string | null>(null);
   const [agentModel, setAgentModel] = useState<string | null>(null);
   const [agentEffort, setAgentEffort] = useState<string | null>(null);
+  // A provider switch awaiting the user's consent (both modes spend tokens).
+  const [switchDialog, setSwitchDialog] = useState<{
+    toProvider: string;
+    toModel: string;
+    fromProvider: string;
+    mode: ProviderHandoffMode;
+  } | null>(null);
   useEffect(() => {
     if (!path) {
       setAgentProvider(null);
@@ -193,6 +215,21 @@ export function useAgentChatPanel({
       .catch(() => {});
   }, [path]);
 
+  // Last-used provider preference (`default_provider`, written by setLastUsed
+  // on every provider pick). The fallback when neither the activity nor the
+  // agent config names a provider, so an OpenAI-only user opening a no-provider
+  // agent sees their own provider in the dropdown and forwards it on send,
+  // instead of silently defaulting to Claude and failing auth (#483). One-shot
+  // load mirrors the agent-config read above; the literal "anthropic" below
+  // stays only as the last resort, matching the engine's factory default.
+  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
+  useEffect(() => {
+    tauriProvider
+      .getDefault()
+      .then((p) => setLastUsedProvider(p || null))
+      .catch(() => {});
+  }, []);
+
   const { data: activities } = useActivity(path ?? undefined);
   const selectedActivity = useMemo(() => {
     if (!selectedSessionKey || !activities) return null;
@@ -204,7 +241,24 @@ export function useAgentChatPanel({
   const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
   const selectedActivityId = selectedActivity?.id ?? null;
 
-  const effectiveProvider = activityProvider ?? agentProvider ?? "anthropic";
+  // Which providers the user is actually logged into (reactive + cached). The
+  // fallback below picks an authenticated one rather than a stale preference,
+  // so a no-provider agent never lands on a logged-out CLI (#483).
+  const { statuses: providerStatuses } = useProviderStatuses();
+  const authedProviders = useMemo(
+    () =>
+      Object.values(providerStatuses)
+        .filter((s) => s.authenticated)
+        .map((s) => s.provider),
+    [providerStatuses],
+  );
+
+  const effectiveProvider = resolveEffectiveProvider(
+    activityProvider,
+    agentProvider,
+    lastUsedProvider,
+    authedProviders,
+  );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??
     validModelOrNull(effectiveProvider, agentModel) ??
@@ -231,10 +285,13 @@ export function useAgentChatPanel({
   const { contextUsage, contextWindow } = useMemo(() => {
     const { latest, peakContextTokens } = sessionContextUsage(sessionFeedItems);
     // `peakContextTokens` is session-wide while `cfg` is the currently-selected
-    // model's. Safe today because all same-provider models share a snap ceiling
-    // (every Anthropic model maxes at 1M; provider is locked after turn one so
-    // openai/anthropic never mix in one session). Revisit if a provider ever
-    // adds a model whose ceiling is below a sibling's realistic peak.
+    // model's. Providers CAN now differ across one conversation (a mid-session
+    // switch reseeds onto a new provider), so a peak observed under the old
+    // provider may snap the new model's window up. That only ever OVER-states
+    // the window (it can never read above 100% — `effectiveContextWindow`
+    // floors at the peak), and the figure is already labeled an estimate, so
+    // it's acceptable for the post-switch turns until the new provider reports
+    // its own usage and the indicator re-settles.
     const cfg = getContextWindowConfig(effectiveProvider, effectiveModel);
     return {
       contextUsage: latest,
@@ -242,11 +299,25 @@ export function useAgentChatPanel({
         effectiveContextWindow(cfg, peakContextTokens) ?? undefined,
     };
   }, [sessionFeedItems, effectiveProvider, effectiveModel]);
-  const modelLabel = getModel(effectiveProvider, effectiveModel)?.label;
 
-  const handleModelSelect = useCallback(
+  // Whether the current conversation has produced provider output already, so a
+  // provider session exists to hand off FROM. A switch only matters once it has.
+  const conversationStarted = useMemo(
+    () =>
+      (sessionFeedItems ?? []).some(
+        (i) =>
+          i.feed_type === "final_result" ||
+          i.feed_type === "assistant_text" ||
+          i.feed_type === "assistant_text_streaming",
+      ),
+    [sessionFeedItems],
+  );
+
+  // Persist a provider/model choice: agent config (the per-agent default), the
+  // per-mission activity override, and the last-used preference, with an
+  // optimistic picker flip. Shared by the plain pick and the switch-confirm path.
+  const applyProviderModel = useCallback(
     async (prov: string, mod: string) => {
-      // Optimistic UI: the picker flips instantly while the writes fan out.
       setAgentProvider(prov);
       setAgentModel(mod);
       try {
@@ -275,6 +346,71 @@ export function useAgentChatPanel({
     },
     [path, selectedActivityId, addToast, t],
   );
+
+  // Picking a provider/model from the dropdown. Switching to a DIFFERENT
+  // provider mid-conversation can't resume the old CLI session (provider
+  // sessions aren't portable), so the engine reseeds a fresh session with prior
+  // context. We size the conversation against the new model's window: if it
+  // fits, carry the full transcript verbatim (`replay`); if not, summarizing is
+  // lossy and spends tokens, so we ask first via the dialog. A model change
+  // within the same provider, or any pick before the first turn, just persists.
+  const handleModelSelect = useCallback(
+    async (prov: string, mod: string) => {
+      const isProviderSwitch =
+        conversationStarted &&
+        !!selectedSessionKey &&
+        !!path &&
+        prov !== effectiveProvider;
+      if (!isProviderSwitch) {
+        await applyProviderModel(prov, mod);
+        return;
+      }
+      // The provider the LIVE engine session actually runs on. On the first
+      // pick that's `effectiveProvider`; on a re-pick before any send,
+      // `effectiveProvider` has already optimistically flipped, so reuse the
+      // `fromProvider` the first staged handoff captured (the engine session
+      // hasn't moved until a send lands).
+      const fromProvider =
+        useProviderSwitchStore.getState().peekPending(path, selectedSessionKey)
+          ?.fromProvider ?? effectiveProvider;
+      // Both handoff modes spend tokens — `replay` reloads the whole
+      // conversation into the new provider; `summarize` (when it won't fit) is
+      // also lossy — so ALWAYS ask first. The size only decides which mode the
+      // dialog explains and which handoff we stage on confirm. The
+      // provider/model change is applied only in `confirmProviderSwitch`.
+      const mode = decideHandoffMode({
+        currentContextTokens: contextUsage?.context_tokens ?? null,
+        estimatedTokens: estimateConversationTokens(sessionFeedItems),
+        // The new provider hasn't been observed yet, so use its catalogued
+        // DEFAULT window, not a snapped-up estimate.
+        targetWindowTokens: getContextWindowConfig(prov, mod)?.default ?? null,
+      });
+      setSwitchDialog({ toProvider: prov, toModel: mod, fromProvider, mode });
+    },
+    [
+      conversationStarted,
+      selectedSessionKey,
+      path,
+      effectiveProvider,
+      contextUsage,
+      sessionFeedItems,
+      applyProviderModel,
+    ],
+  );
+
+  // The user confirmed the switch dialog: stage the handoff (replay or
+  // summarize, as decided when the dialog opened) for the next send, then
+  // persist the new provider/model.
+  const confirmProviderSwitch = useCallback(async () => {
+    const pending = switchDialog;
+    setSwitchDialog(null);
+    if (!pending || !path || !selectedSessionKey) return;
+    useProviderSwitchStore.getState().setPending(path, selectedSessionKey, {
+      mode: pending.mode,
+      fromProvider: pending.fromProvider,
+    });
+    await applyProviderModel(pending.toProvider, pending.toModel);
+  }, [switchDialog, path, selectedSessionKey, applyProviderModel]);
   const handleEffortSelect = useCallback(
     async (effort: EffortLevel) => {
       // Effort is per-agent (not per-activity): persist to the agent config
@@ -542,7 +678,7 @@ export function useAgentChatPanel({
   );
   const renderSystemMessage = useCallback(
     (msg: ChatMessage) => {
-      if (msg.compaction) return <ContextCompactedDivider />;
+      if (msg.compaction) return <ContextCompactedDivider info={msg.compaction} />;
       if (isToolRuntimeErrorMessage(msg)) {
         const isModelUnsupported =
           msg.runtimeError.kind === "provider_model_unsupported";
@@ -572,6 +708,33 @@ export function useAgentChatPanel({
           />
         );
       }
+      // Typed provider-error card (rate-limit, quota, model-unavailable,
+      // UNAUTHENTICATED reconnect button, internal 5xx, …). The engine emits
+      // these as `provider_error` FeedItems; feed-to-messages stashes the
+      // payload on `msg.providerError` with empty `content`. Without this
+      // branch the message fell through to the default renderer below, which
+      // shows `msg.content` ("") — i.e. NOTHING. That's why a 429 card and the
+      // OpenAI reconnect card never appeared in chat.
+      if (msg.providerError) {
+        return (
+          <ProviderErrorCard
+            error={msg.providerError}
+            onRetry={async () => {
+              if (!path || !selectedSessionKey) return;
+              const text = t("chat:toolRuntimeError.retryPrompt");
+              await tauriChat.send(path, text, selectedSessionKey, {
+                providerOverride: effectiveProvider,
+                modelOverride: effectiveModel,
+                effortOverride: effectiveEffort,
+              });
+              pushFeedItem(path, selectedSessionKey, {
+                feed_type: "user_message",
+                data: text,
+              });
+            }}
+          />
+        );
+      }
       if (isProviderAuthMessage(msg.content)) return null;
       return undefined;
     },
@@ -584,10 +747,27 @@ export function useAgentChatPanel({
   );
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
+      // The persisted inline `UnauthenticatedCard` (a provider_error feed item)
+      // is the stable reconnect surface. When it's already present for THIS
+      // chat's provider, don't also render the store-driven card — it flickers
+      // (auto-dismisses) when the provider's auth probe is unreliable, e.g.
+      // codex reporting "authenticated" off a stale ~/.codex/auth.json after a
+      // server-side session kill. One card, and it stays put.
+      const hasInlineAuthCard = feedItems.some(
+        (it) =>
+          it.feed_type === "provider_error" &&
+          it.data.kind === "unauthenticated" &&
+          it.data.provider === effectiveProvider,
+      );
+      if (hasInlineAuthCard) return null;
       const signalKey = providerAuthSignalKey(feedItems);
+      // Always hand the card THIS chat's provider so it can match the global
+      // `authRequired` flag against the provider this chat actually uses — a
+      // Claude logout must never surface a reconnect button in an OpenAI chat
+      // (HOU-410). The card stays hidden unless that provider truly needs auth.
       return (
         <ProviderReconnectCard
-          providerId={signalKey ? effectiveProvider : undefined}
+          providerId={effectiveProvider}
           signalKey={signalKey ?? undefined}
         />
       );
@@ -647,7 +827,7 @@ export function useAgentChatPanel({
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;
-    return ({ hasMessages }) => (
+    return () => (
       <div className="flex items-center gap-2 w-full">
         <button
           type="button"
@@ -662,7 +842,6 @@ export function useAgentChatPanel({
           provider={effectiveProvider}
           model={effectiveModel}
           onSelect={handleModelSelect}
-          lockedProvider={hasMessages ? effectiveProvider : null}
         />
         <ChatEffortSelector
           provider={effectiveProvider}
@@ -674,16 +853,15 @@ export function useAgentChatPanel({
           <ContextIndicator
             usage={contextUsage}
             contextWindow={contextWindow}
-            modelLabel={modelLabel}
           />
         </div>
       </div>
     );
-  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect, contextUsage, contextWindow, modelLabel]);
+  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect, contextUsage, contextWindow]);
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
-    return ({ hasMessages, openFilePicker, close }) => (
+    return ({ openFilePicker, close }) => (
       <div className="flex flex-col gap-0.5">
         <button
           type="button"
@@ -711,7 +889,6 @@ export function useAgentChatPanel({
             provider={effectiveProvider}
             model={effectiveModel}
             onSelect={handleModelSelect}
-            lockedProvider={hasMessages ? effectiveProvider : null}
           />
         </div>
         <div className="px-2 py-1">
@@ -727,16 +904,30 @@ export function useAgentChatPanel({
   }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect]);
 
   const pickerDialog = agent ? (
-    <NewMissionPickerDialog
-      open={pickerOpen}
-      onOpenChange={setPickerOpen}
-      lockedAgent={agent}
-      hideBlank
-      onSkill={(_agentPath, skillName) => {
-        const skill = (allSkills ?? []).find((s) => s.name === skillName);
-        if (skill) applySkill(skill);
-      }}
-    />
+    <>
+      <NewMissionPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        lockedAgent={agent}
+        hideBlank
+        onSkill={(_agentPath, skillName) => {
+          const skill = (allSkills ?? []).find((s) => s.name === skillName);
+          if (skill) applySkill(skill);
+        }}
+      />
+      <ProviderSwitchDialog
+        open={switchDialog !== null}
+        providerId={switchDialog?.toProvider ?? ""}
+        providerName={
+          switchDialog
+            ? getProvider(switchDialog.toProvider)?.name ?? switchDialog.toProvider
+            : ""
+        }
+        mode={switchDialog?.mode ?? "replay"}
+        onConfirm={confirmProviderSwitch}
+        onCancel={() => setSwitchDialog(null)}
+      />
+    </>
   ) : null;
 
   return {
@@ -751,6 +942,8 @@ export function useAgentChatPanel({
     renderToolResult,
     processLabels,
     getThinkingMessage,
+    thinkingIndicator,
+    endOfTurnIndicator,
     renderTurnSummary,
     renderSystemMessage,
     mapFeedItems,

@@ -4,12 +4,19 @@ use std::path::Path;
 /// Build `codex exec` args with exec-level flags before the optional
 /// `resume` subcommand. Older Codex CLIs reject global flags placed after
 /// `resume <id>`.
+///
+/// The system prompt is deliberately NOT an argv token. It used to ride as
+/// `-c developer_instructions=<json>`, which put the whole prompt on the
+/// command line and blew past Windows' 32,767-char `CreateProcessW` limit
+/// (os error 206) for agents with large accumulated context. It now lives
+/// in a profile file (`prompt_scratch::codex_profile`) selected here by
+/// name via `-p`.
 pub(crate) fn build_args(
     resume_session_id: Option<&str>,
     working_dir: Option<&Path>,
     model: Option<&str>,
     effort: Option<&str>,
-    system_prompt: Option<&str>,
+    profile: Option<&str>,
 ) -> Vec<OsString> {
     let mut args = vec![
         OsString::from("exec"),
@@ -18,17 +25,18 @@ pub(crate) fn build_args(
         OsString::from("--skip-git-repo-check"),
     ];
 
-    if let Some(sp) = system_prompt {
-        let json_val = serde_json::to_string(sp).unwrap_or_else(|_| format!("\"{sp}\""));
-        args.push(OsString::from("-c"));
-        args.push(OsString::from(format!("developer_instructions={json_val}")));
+    if let Some(name) = profile {
+        args.push(OsString::from("-p"));
+        args.push(OsString::from(name));
     }
 
     // Always emit `model_reasoning_effort` so a stale global
     // `~/.codex/config.toml` value can't silently change the effort the
     // engine resolved (or, if it's a variant this codex build can't parse,
     // break the session). The value itself is chosen upstream by
-    // `sessions::resolve_effort`.
+    // `sessions::resolve_effort`. It stays a `-c` override (not part of the
+    // profile file) because `-c` has the highest config precedence — it
+    // wins even over the profile layer.
     if let Some(e) = effort {
         args.push(OsString::from("-c"));
         args.push(OsString::from(format!("model_reasoning_effort=\"{e}\"")));
@@ -79,17 +87,43 @@ mod tests {
             Some(&dir),
             Some("gpt-5.5"),
             Some("medium"),
-            Some("system"),
+            Some("houston-tmp-1-1"),
         ));
 
         let resume_pos = args.iter().position(|arg| arg == "resume").unwrap();
         let json_pos = args.iter().position(|arg| arg == "--json").unwrap();
         let cd_pos = args.iter().position(|arg| arg == "--cd").unwrap();
+        let profile_pos = args.iter().position(|arg| arg == "-p").unwrap();
 
         assert!(json_pos < resume_pos);
         assert!(cd_pos < resume_pos);
+        assert!(profile_pos < resume_pos);
+        assert_eq!(args[profile_pos + 1], "houston-tmp-1-1");
         assert_eq!(args[resume_pos + 1], "019dd59b-5e8c-7f63-a8c6-18fb825874ad");
         assert_eq!(args[resume_pos + 2], "-");
+    }
+
+    /// The whole point of the profile indirection: argv stays small and
+    /// constant no matter how large the agent's system prompt grows, so the
+    /// Windows 32,767-char command-line limit can never kill the spawn again.
+    #[test]
+    fn argv_length_is_independent_of_prompt_size() {
+        let args = strings(build_args(
+            None,
+            None,
+            Some("gpt-5.5"),
+            Some("high"),
+            Some("houston-tmp-9999-9999"),
+        ));
+        let total: usize = args.iter().map(|a| a.len() + 1).sum();
+        assert!(
+            total < 1_000,
+            "codex argv must stay tiny, got {total} chars: {args:?}"
+        );
+        assert!(
+            !args.iter().any(|a| a.contains("developer_instructions")),
+            "system prompt must never ride on argv"
+        );
     }
 
     #[test]

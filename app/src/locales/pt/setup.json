@@ -21,6 +21,9 @@
     "eyebrow": "Passo {{number}}",
     "missionLabel": "Configuração: {{title}}",
     "upNext": "A seguir",
+    "errors": {
+      "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente."
+    },
     "welcome": {
       "title": "Bem-vindo ao Houston",
       "tagline": "O Houston é onde você cria assistentes que funcionam com os mesmos apps que você já usa.",

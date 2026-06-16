@@ -59,15 +59,9 @@
       "confirmTitle": "¿Desconectar todos los celulares?",
       "confirmDescription": "Esto restablece el QR y cierra la sesión de todos los celulares conectados a esta computadora. Escanea el nuevo QR para conectarte otra vez.",
       "confirmLabel": "Desconectar",
-      "toast": "Acceso desde el celular restablecido"
+      "toast": "Acceso desde el celular restablecido",
+      "unavailable": "Disponible cuando la conexión con tu celular esté lista."
     }
-  },
-  "timezone": {
-    "title": "Zona horaria",
-    "description": "Se usa cuando tus rutinas se disparan, 9:00 significa las 9:00 en esta zona.",
-    "label": "Zona IANA",
-    "placeholder": "p. ej. America/Bogota",
-    "useDetected": "Usar la detectada ({{zone}})"
   },
   "appearance": {
     "title": "Apariencia",
@@ -107,7 +101,6 @@
   "toasts": {
     "workspaceRenamed": "Espacio de trabajo renombrado",
     "providerSwitched": "Cambiaste a {{provider}} ({{model}})",
-    "timezoneSet": "Zona horaria establecida en {{zone}}",
     "versionCopied": "Versión copiada",
     "versionCopyFailed": "No se pudo copiar la versión"
   }

@@ -14,6 +14,7 @@ import { tauriProvider, tauriStore } from "../../lib/tauri";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
+import { useUIStore } from "../../stores/ui";
 import { WorkspaceSetupFlow } from "./workspace-setup-flow";
 import { createPersonalAssistantForWorkspace } from "../onboarding/create-personal-assistant";
 import {
@@ -34,6 +35,7 @@ export function CreateWorkspaceDialog({
   const loadWorkspaces = useWorkspaceStore((s) => s.loadWorkspaces);
   const loadAgents = useAgentStore((s) => s.loadAgents);
   const loadConfigs = useAgentCatalogStore((s) => s.loadConfigs);
+  const addToast = useUIStore((s) => s.addToast);
   const [tab, setTab] = useState<"new" | "github">("new");
   const [importing, setImporting] = useState(false);
   const [importError, setImportError] = useState("");
@@ -99,26 +101,37 @@ export function CreateWorkspaceDialog({
           <WorkspaceSetupFlow
             mode="dialog"
             onComplete={async (name, provider, model) => {
-              const ws = await createWorkspace(name);
-              const setup = defaultAssistantSetup({
-                workspaceName: name,
-                assistantName: t("setup:tutorial.defaults.assistantName"),
-                focus: t("setup:tutorial.defaults.focus"),
-                approvalRule: t("setup:tutorial.defaults.approvalRule"),
-              });
-              await createPersonalAssistantForWorkspace(ws.id, {
-                name: setup.assistantName,
-                instructions: buildAssistantInstructions(
-                  setup,
-                  t("setup:tutorial.defaults.firstWorkflow"),
-                ),
-                provider,
-                model,
-              });
-              await tauriProvider.setLastUsed(provider, model);
-              setCurrentWorkspace(ws);
-              await loadAgents(ws.id);
-              handleClose();
+              try {
+                const ws = await createWorkspace(name);
+                const setup = defaultAssistantSetup({
+                  workspaceName: name,
+                  assistantName: t("setup:tutorial.defaults.assistantName"),
+                  focus: t("setup:tutorial.defaults.focus"),
+                  approvalRule: t("setup:tutorial.defaults.approvalRule"),
+                });
+                await createPersonalAssistantForWorkspace(ws.id, {
+                  name: setup.assistantName,
+                  instructions: buildAssistantInstructions(
+                    setup,
+                    t("setup:tutorial.defaults.firstWorkflow"),
+                  ),
+                  provider,
+                  model,
+                });
+                await tauriProvider.setLastUsed(provider, model);
+                setCurrentWorkspace(ws);
+                await loadAgents(ws.id);
+                handleClose();
+              } catch (err) {
+                // Don't let a create failure (e.g. a name that's already
+                // taken) escape as an unhandled rejection — surface it and
+                // keep the dialog open so the user can pick another name.
+                addToast({
+                  title: t("shell:workspaceDialog.createFailed"),
+                  description: String(err),
+                  variant: "error",
+                });
+              }
             }}
           />
         ) : (

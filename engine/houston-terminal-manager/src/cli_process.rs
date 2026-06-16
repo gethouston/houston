@@ -49,7 +49,8 @@ pub(crate) async fn run_cli_process(
         Ok(c) => c,
         Err(e) => {
             let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
-                "Failed to spawn {cli_name}: {e}"
+                "Failed to spawn {cli_name}: {e}{}",
+                spawn_error_hint(e.raw_os_error())
             ))));
             return CliRunOutcome::Failed;
         }
@@ -109,7 +110,7 @@ pub(crate) async fn run_cli_process(
     match child.wait().await {
         Ok(status) => {
             tracing::info!("[houston:session] process exited with {status}");
-            let is_sigterm = status.code() == Some(143);
+            let is_stop_signal = exited_by_stop_signal(&status);
             // On Windows, `sessions::cancel` calls `taskkill /F /T /PID` to
             // tear down the codex / claude process tree when the user
             // clicks Stop. TerminateProcess sets the killed process's exit
@@ -145,22 +146,22 @@ pub(crate) async fn run_cli_process(
             } else if malformed_provider_json {
                 tracing::warn!("[houston:session] claude failed with malformed provider JSON");
                 CliRunOutcome::ProviderRequestMalformedJson
-            } else if status.success() || is_sigterm || likely_user_stop_windows {
+            } else if status.success() || is_stop_signal || likely_user_stop_windows {
                 if likely_user_stop_windows {
                     tracing::info!(
                         "[houston:session] {cli_name} exited with code 1 + empty stderr — treating as user-initiated stop"
                     );
                 }
-                // SIGTERM (143) and the Windows-stop heuristic both
-                // indicate user-initiated cancellation. Emit a typed
-                // `Cancelled` feed item BEFORE Completed so the chat
-                // history carries the structured marker (the dispatcher
-                // intentionally renders nothing for `Cancelled`, but
-                // analytics / debug surfaces / future "show stopped
-                // sessions" filters all key off the typed variant).
-                // A clean exit (`status.success()`) is NOT cancellation,
-                // so we only emit when one of the stop signals fired.
-                if is_sigterm || likely_user_stop_windows {
+                // Stop signals (SIGTERM/SIGKILL) and the Windows-stop
+                // heuristic both indicate user-initiated cancellation.
+                // Emit a typed `Cancelled` feed item BEFORE Completed so
+                // the chat history carries the structured marker (the
+                // dispatcher intentionally renders nothing for
+                // `Cancelled`, but analytics / debug surfaces / future
+                // "show stopped sessions" filters all key off the typed
+                // variant). A clean exit (`status.success()`) is NOT
+                // cancellation, so we only emit when a stop signal fired.
+                if is_stop_signal || likely_user_stop_windows {
                     let _ = tx.send(SessionUpdate::Feed(FeedItem::ProviderError(
                         ProviderError::Cancelled {
                             provider: provider.id().to_string(),
@@ -235,16 +236,19 @@ fn handle_failed_exit(
     // Generic fallback. Skip emitting the typed card if the stderr
     // classifier already produced one (`read_stderr_lines` walks the
     // same lines, so re-classifying here tells us whether a typed
-    // variant was sent), or if the line matched the local-tool runtime
-    // filter (codex_core router exec_command failures keep their
-    // dedicated card path).
+    // variant was sent), if the stdout parser already emitted a typed
+    // ProviderError (e.g. claude reports a 429 as a `result` event on
+    // stdout with empty stderr — without this guard we'd stack a
+    // `SpawnFailed` card on top of the real `RateLimited` one), or if the
+    // line matched the local-tool runtime filter (codex_core router
+    // exec_command failures keep their dedicated card path).
     let already_emitted_typed = stderr_lines
         .iter()
         .any(|line| provider.classify_stderr(line).is_some());
     let is_tool_runtime = stderr_lines
         .iter()
         .any(|line| crate::stderr_filter::is_tool_runtime_stderr(line));
-    if !already_emitted_typed && !is_tool_runtime {
+    if !already_emitted_typed && !is_tool_runtime && !stdout_report.saw_provider_error {
         let stderr_summary = if stderr_lines.is_empty() {
             "no stderr output captured".to_string()
         } else {
@@ -263,6 +267,29 @@ fn handle_failed_exit(
         "{cli_name} hit a runtime error"
     ))));
     CliRunOutcome::Failed
+}
+
+/// Did the process die from a user-initiated stop? `sessions::cancel`
+/// SIGTERMs the provider process group and escalates to SIGKILL when the
+/// CLI (or a child) traps/ignores TERM. On Unix a signal death reports
+/// `code() == None` with `signal()` set — checking `code() == Some(143)`
+/// alone misses every direct signal kill and misfiles it as a runtime
+/// error next to the "Stopped by user" message. The 143/137 codes cover
+/// CLIs that catch the signal and re-exit with the shell convention.
+/// (An OOM-killer SIGKILL is indistinguishable and also lands here —
+/// acceptable: rare, and the session status still resolves.)
+#[cfg(unix)]
+fn exited_by_stop_signal(status: &std::process::ExitStatus) -> bool {
+    use std::os::unix::process::ExitStatusExt;
+    const SIGKILL: i32 = 9;
+    const SIGTERM: i32 = 15;
+    matches!(status.signal(), Some(SIGTERM) | Some(SIGKILL))
+        || matches!(status.code(), Some(143) | Some(137))
+}
+
+#[cfg(not(unix))]
+fn exited_by_stop_signal(status: &std::process::ExitStatus) -> bool {
+    matches!(status.code(), Some(143) | Some(137))
 }
 
 #[cfg(unix)]
@@ -288,6 +315,24 @@ extern "C" {
     fn setpgid(pid: i32, pgid: i32) -> i32;
 }
 
+/// Decorate a raw spawn errno with an actionable hint. 206 is Windows'
+/// `ERROR_FILENAME_EXCED_RANGE`: `CreateProcessW` rejected the command line
+/// for exceeding 32,767 chars before the CLI ever started. The localized OS
+/// string ("El nombre del archivo o la extensión es demasiado largo") gives
+/// the user no path forward, so spell out what actually happened. 206 is not
+/// a spawn errno on Unix, so the match needs no platform gate.
+fn spawn_error_hint(raw_os_error: Option<i32>) -> &'static str {
+    match raw_os_error {
+        Some(206) => {
+            " — the command line passed to the provider exceeded Windows' \
+             32,767-character limit. This is a Houston bug (the agent's \
+             instructions should never ride on the command line); please \
+             report it from the menu."
+        }
+        _ => "",
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -301,6 +346,21 @@ mod tests {
         out
     }
 
+    #[cfg(unix)]
+    #[test]
+    fn stop_signal_classification_covers_signal_and_code_forms() {
+        use std::os::unix::process::ExitStatusExt;
+        use std::process::ExitStatus;
+        // Raw wait status: low byte = signal, exit code = code << 8.
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(15))); // SIGTERM
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(9))); // SIGKILL
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(143 << 8))); // shell convention
+        assert!(exited_by_stop_signal(&ExitStatus::from_raw(137 << 8)));
+        assert!(!exited_by_stop_signal(&ExitStatus::from_raw(0))); // clean exit
+        assert!(!exited_by_stop_signal(&ExitStatus::from_raw(1 << 8))); // real failure
+        assert!(!exited_by_stop_signal(&ExitStatus::from_raw(2))); // SIGINT — not ours
+    }
+
     #[test]
     fn claude_stdout_auth_error_skips_tool_runtime_error() {
         // Claude 401: empty stderr, stdout reported an auth SystemMessage.
@@ -310,6 +370,7 @@ mod tests {
             saw_auth_error: true,
             saw_model_unsupported_error: false,
             saw_resume_corrupted: false,
+            saw_provider_error: false,
         };
 
         let outcome =
@@ -355,5 +416,43 @@ mod tests {
             SessionUpdate::Feed(FeedItem::ProviderError(ProviderError::SpawnFailed { message, .. }))
                 if message == "no stderr output captured"
         )));
+    }
+
+    #[test]
+    fn stdout_provider_error_skips_generic_spawn_failure_card() {
+        // The double-card regression: claude reports a 429 as a stdout
+        // `result` event (the parser already emitted ProviderError::RateLimited
+        // and set saw_provider_error), with empty stderr. handle_failed_exit
+        // must NOT pile a second SpawnFailed card on top.
+        let (tx, mut rx) = mpsc::unbounded_channel();
+        let stdout_report = session_io::StdoutReadReport {
+            saw_provider_error: true,
+            ..session_io::StdoutReadReport::default()
+        };
+
+        let outcome =
+            handle_failed_exit(&tx, "claude", Provider::default(), &[], &stdout_report);
+        assert_eq!(outcome, CliRunOutcome::Failed);
+
+        let updates = drain(&mut rx);
+        assert!(
+            !updates.iter().any(|u| matches!(
+                u,
+                SessionUpdate::Feed(FeedItem::ProviderError(_))
+            )),
+            "must not emit a second ProviderError card when the parser already did: {updates:?}"
+        );
+        // Status error still flips so the session resolves.
+        assert!(updates.iter().any(|u| matches!(
+            u,
+            SessionUpdate::Status(SessionStatus::Error(_))
+        )));
+    }
+
+    #[test]
+    fn spawn_error_hint_explains_windows_cmdline_overflow() {
+        assert!(spawn_error_hint(Some(206)).contains("32,767"));
+        assert_eq!(spawn_error_hint(Some(2)), "");
+        assert_eq!(spawn_error_hint(None), "");
     }
 }

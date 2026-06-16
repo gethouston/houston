@@ -60,8 +60,10 @@ pub fn create(root: &Path, input: NewRoutine) -> CoreResult<Routine> {
         enabled: input.enabled,
         suppress_when_silent: input.suppress_when_silent,
         chat_mode: input.chat_mode,
-        timezone: input.timezone,
         integrations: input.integrations,
+        provider: input.provider,
+        model: input.model,
+        effort: input.effort,
         created_at: now.clone(),
         updated_at: now,
     };
@@ -98,11 +100,17 @@ pub fn update(root: &Path, id: &str, updates: RoutineUpdate) -> CoreResult<Routi
     if let Some(chat_mode) = updates.chat_mode {
         routine.chat_mode = chat_mode;
     }
-    if let Some(tz) = updates.timezone {
-        routine.timezone = tz;
-    }
     if let Some(integrations) = updates.integrations {
         routine.integrations = integrations;
+    }
+    if let Some(provider) = updates.provider {
+        routine.provider = Some(provider);
+    }
+    if let Some(model) = updates.model {
+        routine.model = Some(model);
+    }
+    if let Some(effort) = updates.effort {
+        routine.effort = Some(effort);
     }
     routine.updated_at = Utc::now().to_rfc3339();
 
@@ -135,8 +143,10 @@ mod tests {
             enabled: true,
             suppress_when_silent: true,
             chat_mode: RoutineChatMode::Shared,
-            timezone: None,
             integrations: vec![],
+            provider: None,
+            model: None,
+            effort: None,
         }
     }
 
@@ -234,6 +244,140 @@ mod tests {
     }
 
     #[test]
+    fn provider_model_round_trip_and_rebind() {
+        // A routine pins a provider/model override that survives read-back, and
+        // a later update can re-point it to a different provider/model.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), sample()).unwrap();
+        assert!(r.provider.is_none() && r.model.is_none(), "new routines inherit by default");
+
+        let set = update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                provider: Some("openai".into()),
+                model: Some("gpt-5.5".into()),
+                effort: Some("high".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(set.provider.as_deref(), Some("openai"));
+        assert_eq!(set.model.as_deref(), Some("gpt-5.5"));
+        assert_eq!(set.effort.as_deref(), Some("high"));
+        let reloaded = list(d.path()).unwrap();
+        assert_eq!(reloaded[0].provider.as_deref(), Some("openai"), "serialized to disk");
+        assert_eq!(reloaded[0].model.as_deref(), Some("gpt-5.5"));
+        assert_eq!(reloaded[0].effort.as_deref(), Some("high"));
+
+        let rebound = update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                provider: Some("anthropic".into()),
+                model: Some("claude-opus-4-8".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(rebound.provider.as_deref(), Some("anthropic"));
+        assert_eq!(rebound.model.as_deref(), Some("claude-opus-4-8"));
+    }
+
+    #[test]
+    fn provider_model_unchanged_when_update_omits_them() {
+        // `None` (omitted) must leave an existing override untouched.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), sample()).unwrap();
+        update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                provider: Some("anthropic".into()),
+                model: Some("claude-opus-4-8".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let after = update(
+            d.path(),
+            &r.id,
+            RoutineUpdate {
+                name: Some("renamed".into()),
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        assert_eq!(after.name, "renamed");
+        assert_eq!(after.provider.as_deref(), Some("anthropic"), "override preserved");
+        assert_eq!(after.model.as_deref(), Some("claude-opus-4-8"));
+    }
+
+    #[test]
+    fn provider_model_absent_on_disk_reads_as_none() {
+        // A routine written before this option (no provider/model keys) must
+        // read back with no override so it inherits the agent's provider/model
+        // at run time — no migration required.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("routines.json"),
+            r#"[{
+              "id": "legacy",
+              "name": "Old",
+              "description": "",
+              "prompt": "p",
+              "schedule": "0 9 * * *",
+              "enabled": true,
+              "suppress_when_silent": true,
+              "integrations": [],
+              "created_at": "2026-05-01T00:00:00Z",
+              "updated_at": "2026-05-01T00:00:00Z"
+            }]"#,
+        )
+        .unwrap();
+        let loaded = list(d.path()).unwrap();
+        assert!(loaded[0].provider.is_none());
+        assert!(loaded[0].model.is_none());
+    }
+
+    #[test]
+    fn legacy_timezone_key_on_disk_is_ignored() {
+        // HOU-470 removed the per-routine `timezone` override. A routine written
+        // by an older build still carries a `"timezone"` key on disk; the reader
+        // must drop it silently (no `deny_unknown_fields`) so existing users'
+        // routines keep loading. The field is gone, so on the next write it
+        // disappears — an idempotent, no-migration cleanup.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("routines.json"),
+            r#"[{
+              "id": "legacy-tz",
+              "name": "Old",
+              "description": "",
+              "prompt": "p",
+              "schedule": "0 9 * * *",
+              "enabled": true,
+              "suppress_when_silent": true,
+              "timezone": "America/Bogota",
+              "integrations": [],
+              "created_at": "2026-05-01T00:00:00Z",
+              "updated_at": "2026-05-01T00:00:00Z"
+            }]"#,
+        )
+        .unwrap();
+        let loaded = list(d.path()).unwrap();
+        assert_eq!(loaded.len(), 1, "the stray timezone key must not break the read");
+        assert_eq!(loaded[0].id, "legacy-tz");
+        // Re-serialize: the dropped field stays dropped (no `timezone` round-trips).
+        let json = serde_json::to_string(&loaded).unwrap();
+        assert!(!json.contains("timezone"), "the field is gone after a rewrite");
+    }
+
+    #[test]
     fn delete_missing_errors() {
         let d = TempDir::new().unwrap();
         let err = delete(d.path(), "nope").unwrap_err();
@@ -246,5 +390,42 @@ mod tests {
         let r = create(d.path(), sample()).unwrap();
         delete(d.path(), &r.id).unwrap();
         assert!(list(d.path()).unwrap().is_empty());
+    }
+
+    #[test]
+    fn bom_prefixed_routines_file_still_lists() {
+        // HOU-436: a tool (editor, cloud-sync, Windows writer) rewrote
+        // routines.json with a leading UTF-8 BOM. serde rejects it with
+        // `expected value at line 1 column 1`; the BOM must be stripped so
+        // the user's routines load losslessly instead of 500-ing list.
+        let d = TempDir::new().unwrap();
+        let r = create(d.path(), sample()).unwrap();
+        let path = d.path().join(".houston/routines/routines.json");
+        let body = std::fs::read_to_string(&path).unwrap();
+        std::fs::write(&path, format!("\u{feff}{body}")).unwrap();
+
+        let all = list(d.path()).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, r.id);
+    }
+
+    #[test]
+    fn corrupt_routines_file_recovers_instead_of_erroring() {
+        // HOU-436: before this fix, an unparseable routines.json made every
+        // list_routines call return `json error: expected value at line 1
+        // column 1`, bricking the routines screen (and create, which lists
+        // first). It must degrade to an empty list and stay usable.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(dir.join("routines.json"), "\0\0not json\0").unwrap();
+
+        assert!(list(d.path()).unwrap().is_empty(), "recovers, does not error");
+
+        // Surface is not bricked: creating a routine works and persists.
+        let r = create(d.path(), sample()).unwrap();
+        let all = list(d.path()).unwrap();
+        assert_eq!(all.len(), 1);
+        assert_eq!(all[0].id, r.id);
     }
 }

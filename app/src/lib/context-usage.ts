@@ -16,6 +16,16 @@ export interface SessionContextUsage {
  * Fold a session's feed into the current fill + observed peak. `final_result`
  * items are persisted and replayed into the feed store, so this is stable
  * across a history reload. Scans forward so `latest` ends as the last turn.
+ *
+ * A `provider_switched` divider RESETS both the fill and the peak: a mid-session
+ * provider switch starts a fresh context window on a DIFFERENT provider, and
+ * usage observed under the previous provider says nothing about the new one's
+ * window. Without the reset, a large peak under one provider (e.g. an Opus 1M
+ * conversation) bleeds into the next provider's window estimate and wrongly
+ * snaps it up (e.g. GPT-5.5's 258k default jumping to its opt-in-1M 950k
+ * ceiling), so the indicator reads a wrong window and a tiny percentage.
+ * `context_compacted` is NOT a reset: it's the same provider, so the
+ * pre-compaction peak still proves that provider's window.
  */
 export function sessionContextUsage(
   items: FeedItem[] | undefined,
@@ -24,6 +34,11 @@ export function sessionContextUsage(
   let peakContextTokens = 0;
   if (!items) return { latest, peakContextTokens };
   for (const item of items) {
+    if (item.feed_type === "provider_switched") {
+      latest = null;
+      peakContextTokens = 0;
+      continue;
+    }
     if (item.feed_type === "final_result" && item.data.usage) {
       latest = item.data.usage;
       peakContextTokens = Math.max(

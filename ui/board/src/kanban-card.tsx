@@ -185,8 +185,11 @@ export function KanbanCard({
                 : "border border-border/20 shadow-sm hover:shadow-md",
           // Multi-select ring sits on top of (not replacing) the card's
           // own border treatment so a selected running card keeps its glow.
+          // Half-strength primary (not solid) so selecting a whole column
+          // reads as a calm grey outline, not a wall of hard black/white
+          // edges — the filled checkbox is the primary "selected" signal.
           selectedForBulk &&
-            "ring-2 ring-primary ring-offset-1 ring-offset-background",
+            "ring-2 ring-primary/50 ring-offset-1 ring-offset-background",
           // Dim the card while it's being dragged.
           dragging && "opacity-40",
         )}

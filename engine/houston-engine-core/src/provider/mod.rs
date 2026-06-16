@@ -20,6 +20,7 @@ pub use gemini_disconnect::disconnect_gemini;
 pub use login_relay::{cancel_login, submit_login_code};
 
 use crate::error::{CoreError, CoreResult};
+use houston_engine_protocol::ErrorCode;
 use houston_terminal_manager::provider_auth::ProviderAuthState;
 use houston_terminal_manager::{claude_path, InstallSource, Provider};
 use houston_ui_events::DynEventSink;
@@ -203,14 +204,14 @@ pub async fn launch_login(
             tracing::warn!(
                 "[houston:provider] {cli_name} login exited early: {status} stdout={stdout:?} stderr={stderr:?}"
             );
-            let detail = if !stderr.is_empty() {
-                stderr.to_string()
-            } else if !stdout.is_empty() {
-                stdout.to_string()
-            } else {
-                decorate_windows_exit(cli_name, &format!("{status}"), status.code())
-            };
-            Err(CoreError::Internal(format!("{cli_name} login: {detail}")))
+            Err(login_early_exit_error(
+                provider,
+                cli_name,
+                stdout,
+                stderr,
+                status.code(),
+                &format!("{status}"),
+            ))
         }
         Ok(Ok(status)) => {
             // Exited cleanly within 3s — unusual but possible if the CLI
@@ -523,6 +524,42 @@ fn decorate_windows_exit(command: &str, status_display: &str, exit_code: Option<
     }
 }
 
+/// Build the error for a login subprocess that exited non-zero inside the
+/// probe window. A provider-specific recoverable diagnosis wins (e.g. codex's
+/// loopback login server failing to bind port 1455, HOU-446): it surfaces as a
+/// clean [`CoreError::Labeled`] — no `internal:` prefix, with a machine-
+/// readable `kind` — so the user sees an actionable message instead of codex's
+/// benign "Starting local login server" banner. With no diagnosis we fall back
+/// to the raw stderr (then stdout, then the decorated exit status), which for a
+/// genuine login error is already the actionable detail.
+///
+/// Pure (no process handles) so the stream-handling branches stay unit-testable
+/// without spawning a CLI.
+fn login_early_exit_error(
+    provider: Provider,
+    cli_name: &str,
+    stdout: &str,
+    stderr: &str,
+    status_code: Option<i32>,
+    status_display: &str,
+) -> CoreError {
+    if let Some(hint) = provider.diagnose_login_failure(stdout, stderr) {
+        return CoreError::Labeled {
+            code: ErrorCode::Unavailable,
+            kind: hint.kind,
+            message: hint.message,
+        };
+    }
+    let detail = if !stderr.is_empty() {
+        stderr.to_string()
+    } else if !stdout.is_empty() {
+        stdout.to_string()
+    } else {
+        decorate_windows_exit(cli_name, status_display, status_code)
+    };
+    CoreError::Internal(format!("{cli_name} login: {detail}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -532,6 +569,90 @@ mod tests {
         assert!(parse("nonexistent-provider").is_err());
         assert!(parse("anthropic").is_ok());
         assert!(parse("openai").is_ok());
+    }
+
+    #[test]
+    fn login_early_exit_diagnoses_codex_login_server_banner() {
+        // HOU-446: codex printed only its benign "Starting local login server"
+        // banner before exiting non-zero. The probe must turn that into a
+        // clean, recoverable Labeled error — NOT echo the banner, and NOT wrap
+        // it with the `internal:` prefix.
+        let codex = parse("openai").unwrap();
+        let err = login_early_exit_error(
+            codex,
+            "codex",
+            "",
+            "Starting local login server on http://localhost:1455.",
+            Some(1),
+            "exit status: 1",
+        );
+        match &err {
+            CoreError::Labeled { code, kind, message } => {
+                assert_eq!(*code, ErrorCode::Unavailable);
+                assert_eq!(*kind, "codex_login_server_unavailable");
+                assert!(message.contains("1455"), "got: {message}");
+            }
+            other => panic!("expected Labeled, got {other:?}"),
+        }
+        // Display (the on-the-wire `error.message` / toast description) is the
+        // clean sentence: no `internal:` prefix, no raw banner.
+        let shown = err.to_string();
+        assert!(!shown.contains("internal:"), "no internal prefix: {shown}");
+        assert!(
+            !shown.contains("Starting local login server"),
+            "benign banner must not leak: {shown}"
+        );
+        assert!(shown.starts_with("Codex could not start"), "got: {shown}");
+    }
+
+    #[test]
+    fn login_early_exit_passes_through_a_real_codex_error() {
+        // A genuine, already-actionable codex error has no login-server
+        // signature, so it falls through to the raw stderr (still actionable)
+        // rather than being mislabeled as a port problem.
+        let codex = parse("openai").unwrap();
+        let err = login_early_exit_error(
+            codex,
+            "codex",
+            "",
+            "Error loading configuration: unknown variant `max`",
+            Some(1),
+            "exit status: 1",
+        );
+        match err {
+            CoreError::Internal(msg) => {
+                assert_eq!(msg, "codex login: Error loading configuration: unknown variant `max`");
+            }
+            other => panic!("expected Internal pass-through, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn login_early_exit_does_not_diagnose_for_other_providers() {
+        // Only codex runs the loopback login server. The same banner from
+        // another provider stays a raw Internal error (default diagnosis).
+        let claude = parse("anthropic").unwrap();
+        let err = login_early_exit_error(
+            claude,
+            "claude",
+            "",
+            "Starting local login server on http://localhost:1455.",
+            Some(1),
+            "exit status: 1",
+        );
+        assert!(matches!(err, CoreError::Internal(_)), "got: {err:?}");
+    }
+
+    #[test]
+    fn login_early_exit_with_no_output_decorates_status() {
+        // Nothing on either stream — surface the (possibly decorated) exit
+        // status so the user still gets *something* actionable.
+        let codex = parse("openai").unwrap();
+        let err = login_early_exit_error(codex, "codex", "", "", Some(1), "exit status: 1");
+        match err {
+            CoreError::Internal(msg) => assert!(msg.contains("exit status: 1"), "got: {msg}"),
+            other => panic!("expected Internal, got {other:?}"),
+        }
     }
 
     #[test]

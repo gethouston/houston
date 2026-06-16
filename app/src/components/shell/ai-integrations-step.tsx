@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Check, Loader2 } from "lucide-react";
 import { DialogTitle } from "@houston-ai/core";
@@ -11,9 +11,8 @@ import {
   useComposioApps,
 } from "../../hooks/queries";
 import { useComposioAuth } from "../../hooks/use-composio-auth";
-import { useComposioRefetchOnReturn } from "../../hooks/use-composio-refetch-on-return";
+import { useComposioConnect } from "../../hooks/use-composio-connect";
 import { ComposioAuthDialog } from "../composio-auth-dialog";
-import { tauriConnections, tauriSystem } from "../../lib/tauri";
 import { normalizeToolkitSlug } from "../../lib/composio-toolkits";
 
 interface AiIntegrationsStepProps {
@@ -42,8 +41,7 @@ export function AiIntegrationsStep({
   const { data: connectedList } = useConnectedToolkits(isSignedIn);
   const connectedSet = useMemo(() => new Set(connectedList ?? []), [connectedList]);
   const { data: apiApps } = useComposioApps();
-  const markWaitingForAuth = useComposioRefetchOnReturn();
-  const [connecting, setConnecting] = useState<string | null>(null);
+  const { connecting, connect } = useComposioConnect();
 
   const integrations = useMemo<EnrichedIntegration[]>(
     () =>
@@ -57,22 +55,6 @@ export function AiIntegrationsStep({
         };
       }),
     [suggestedIntegrations, apiApps],
-  );
-
-  const handleConnect = useCallback(
-    async (toolkit: string) => {
-      setConnecting(toolkit);
-      try {
-        const { redirect_url } = await tauriConnections.connectApp(toolkit);
-        tauriSystem.openUrl(redirect_url);
-        markWaitingForAuth(toolkit);
-      } catch {
-        // surfaced via toast by the engine
-      } finally {
-        setConnecting(null);
-      }
-    },
-    [markWaitingForAuth],
   );
 
   return (
@@ -115,7 +97,7 @@ export function AiIntegrationsStep({
                     app={app}
                     isConnected={isConnected}
                     connecting={connecting === app.toolkit}
-                    onConnect={handleConnect}
+                    onConnect={connect}
                   />
                 );
               })}
@@ -135,6 +117,7 @@ export function AiIntegrationsStep({
         state={auth.state}
         onClose={auth.close}
         onReopenBrowser={auth.reopenBrowser}
+        onRetry={auth.startAuth}
       />
     </div>
   );

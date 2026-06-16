@@ -68,7 +68,10 @@
     "title": "Conectando seu provedor de integrações",
     "description": "Conclua o login no navegador e volte para cá.",
     "waiting": "Aguardando sua aprovação no navegador…",
-    "openInBrowser": "Abrir link no navegador"
+    "openInBrowser": "Abrir link no navegador",
+    "errorTimeout": "O tempo de login se esgotou. Conclua a aprovação no navegador e tente novamente.",
+    "errorGeneric": "Algo deu errado ao conectar. Tente novamente.",
+    "tryAgain": "Tentar novamente"
   },
   "linkCard": {
     "integration": "Integração de app",

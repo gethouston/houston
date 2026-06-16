@@ -61,6 +61,9 @@ export interface ChatPanelProps {
   canSendEmpty?: boolean;
   status?: ChatStatus;
   thinkingIndicator?: ReactNode;
+  /** Static glyph shown after the agent's reply once the turn settles
+   *  (e.g. a non-blinking Houston helmet). Opt-in per surface. */
+  endOfTurnIndicator?: ReactNode;
   transformContent?: (content: string) => { content: string; extra?: ReactNode };
   toolLabels?: ToolsAndCardsProps["toolLabels"];
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"];

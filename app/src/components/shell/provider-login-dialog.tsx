@@ -31,8 +31,10 @@ import { ProviderDeviceCode } from "./provider-device-code";
  *    dialog waits for `ProviderLoginComplete` (handled by the parent) to
  *    auto-close.
  *
- * On desktop the dialog still pops (claude prints the URL unconditionally)
- * but auto-dismisses once the CLI's own localhost callback completes.
+ * Desktop never reaches here: the picker / settings drop `ProviderLoginUrl`
+ * when `osIsTauri()` (issue #453). The co-located CLI opens the user's own
+ * browser and completes via its localhost OAuth callback, so the URL relay
+ * is purely for clients that can't see that browser (webapp / mobile PWA).
  */
 interface Props {
   provider: ProviderInfo | null;

@@ -17,14 +17,15 @@ import {
   cronToInterval,
   type IntervalUnit,
 } from "./schedule-interval-utils"
+import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels"
 
 const DEFAULT_OPTIONS: ScheduleOptions = {
   time: "09:00",
-  dayOfWeek: 1,
+  daysOfWeek: [1],
   dayOfMonth: 1,
 }
 
-const NEEDS_TIME: SchedulePreset[] = ["daily", "weekdays", "weekly", "monthly"]
+const NEEDS_TIME: SchedulePreset[] = ["daily", "weekly", "monthly"]
 
 export interface ScheduleBuilderState {
   activePreset: SchedulePreset
@@ -44,6 +45,8 @@ export interface ScheduleBuilderState {
 export function useScheduleBuilder(
   value: string,
   onChange: (cronExpression: string) => void,
+  labels: ScheduleLabels = DEFAULT_SCHEDULE_LABELS,
+  locale = "en-US",
 ): ScheduleBuilderState {
   // Detect initial preset/interval from the incoming cron.
   const detectedPreset = cronToPreset(value)
@@ -75,10 +78,13 @@ export function useScheduleBuilder(
   )
 
   const everyNumber = Number(intervalEvery)
+  // The custom interval count must be a positive whole number.
   const everyValid =
     intervalEvery.trim() !== "" &&
     Number.isInteger(everyNumber) &&
     everyNumber >= 1
+  // The Weekly preset needs at least one weekday selected.
+  const weeklyValid = activePreset !== "weekly" || options.daysOfWeek.length > 0
 
   // Stable ref for onChange to avoid infinite effect loops.
   const onChangeRef = useRef(onChange)
@@ -91,12 +97,15 @@ export function useScheduleBuilder(
     if (activePreset === "custom") {
       onChangeRef.current(
         everyValid
-          ? intervalToCron({ every: everyNumber, unit: intervalUnit }, options.time)
+          ? intervalToCron(
+              { every: everyNumber, unit: intervalUnit, dayOfMonth: options.dayOfMonth },
+              options.time,
+            )
           : "",
       )
       return
     }
-    onChangeRef.current(presetToCron(activePreset, options))
+    onChangeRef.current(weeklyValid ? presetToCron(activePreset, options) : "")
   }, [activePreset, options, intervalEvery, intervalUnit, touched])
 
   const selectPreset = (preset: SchedulePreset) => {
@@ -118,18 +127,25 @@ export function useScheduleBuilder(
 
   const isCustom = activePreset === "custom"
   const customCron = everyValid
-    ? intervalToCron({ every: everyNumber, unit: intervalUnit }, options.time)
+    ? intervalToCron(
+        { every: everyNumber, unit: intervalUnit, dayOfMonth: options.dayOfMonth },
+        options.time,
+      )
     : ""
 
   // While an unrepresentable legacy cron is still untouched, describe the actual
   // saved schedule rather than the placeholder picker state.
   let summary: string
   if (unrepresentable && !touched) {
-    summary = cronSummary(value)
+    summary = cronSummary(value, labels.summary, locale)
   } else if (!isCustom) {
-    summary = presetSummary(activePreset, options)
+    summary = weeklyValid
+      ? presetSummary(activePreset, options, labels.summary, locale)
+      : labels.pickDay
+  } else if (everyValid) {
+    summary = cronSummary(customCron, labels.summary, locale)
   } else {
-    summary = everyValid ? cronSummary(customCron) : "Enter a number"
+    summary = labels.enterNumber
   }
 
   return {

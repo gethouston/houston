@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { Search, Loader2, Plus, ChevronDown, Check } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
@@ -12,8 +12,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@houston-ai/core";
-import { tauriConnections, tauriSystem } from "../../lib/tauri";
-import { useComposioRefetchOnReturn } from "../../hooks/use-composio-refetch-on-return";
+import { tauriConnections } from "../../lib/tauri";
+import { useComposioConnect } from "../../hooks/use-composio-connect";
 
 interface BrowseAppsSectionProps {
   connectedToolkits: Set<string>;
@@ -27,8 +27,7 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
   const [category, setCategory] = useState("all");
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [visible, setVisible] = useState(PAGE_SIZE);
-  const [connecting, setConnecting] = useState<string | null>(null);
-  const markWaitingForAuth = useComposioRefetchOnReturn();
+  const { connecting, connect } = useComposioConnect();
 
   const { data: apiApps } = useQuery({
     queryKey: ["composio-apps"],
@@ -82,22 +81,6 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
   const isSearching = search.trim().length > 0;
   const visibleApps = isSearching ? available : available.slice(0, visible);
   const hasMore = !isSearching && visible < available.length;
-
-  const handleConnect = useCallback(
-    async (toolkit: string) => {
-      setConnecting(toolkit);
-      try {
-        const { redirect_url } = await tauriConnections.connectApp(toolkit);
-        tauriSystem.openUrl(redirect_url);
-        markWaitingForAuth(toolkit);
-      } catch {
-        // Error already shown via invoke toast
-      } finally {
-        setConnecting(null);
-      }
-    },
-    [markWaitingForAuth],
-  );
 
   return (
     <section className="mt-8">
@@ -195,7 +178,7 @@ export function BrowseAppsSection({ connectedToolkits }: BrowseAppsSectionProps)
                 key={app.toolkit}
                 app={app}
                 connecting={connecting === app.toolkit}
-                onConnect={handleConnect}
+                onConnect={connect}
               />
             ))}
           </div>

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AIBoard } from "@houston-ai/board";
 import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
 
 import { useFeedStore } from "../../stores/feeds";
@@ -13,7 +13,6 @@ import { openAgentHref } from "../../lib/open-href";
 import { selectArchived } from "../../lib/mission-selection";
 import type { TabProps } from "../../lib/types";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
@@ -49,7 +48,9 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
       archived.map((a) => ({
         id: a.id,
         title: a.title,
-        description: a.description,
+        // Decode a Skill / attachment first-message marker to the user's words;
+        // never echo the raw `<!--houston:...-->` on the card (HOU-425).
+        description: messagePreviewText(a.description),
         status: a.status,
         updatedAt: a.updated_at ?? new Date().toISOString(),
         group: agent.name,
@@ -150,7 +151,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           cardAvatar={<AgentCardAvatar color={agent.color} />}
-          thinkingIndicator={<HoustonThinkingIndicator />}
+          thinkingIndicator={panel.thinkingIndicator}
           panelAgentName={agent.name}
           panelAvatar={<AgentPanelAvatar color={agent.color} running={false} />}
           cardLabels={{
@@ -171,6 +172,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           renderToolResult={panel.renderToolResult}
           processLabels={panel.processLabels}
           getThinkingMessage={panel.getThinkingMessage}
+          endOfTurnIndicator={panel.endOfTurnIndicator}
           renderTurnSummary={panel.renderTurnSummary}
           renderLink={panel.renderLink}
           transformContent={panel.transformContent}

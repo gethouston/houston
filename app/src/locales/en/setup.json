@@ -21,6 +21,9 @@
     "eyebrow": "Step {{number}}",
     "missionLabel": "Set up: {{title}}",
     "upNext": "Up next",
+    "errors": {
+      "setupFailed": "We couldn't finish setting up your workspace. Please try again."
+    },
     "welcome": {
       "title": "Welcome to Houston",
       "tagline": "Houston is where you build assistants that work with the same apps you already use.",

@@ -1,4 +1,6 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useTranslation } from "react-i18next";
 import type { CommunitySkill, RepoSkill, Skill } from "@houston-ai/skills";
 import {
   useCreateSkill,
@@ -10,10 +12,17 @@ import {
   useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
+import { queryKeys } from "../../lib/query-keys";
 import { tauriSkills } from "../../lib/tauri";
+import { isMissingSkillError } from "../../lib/missing-skill";
+import { useUIStore } from "../../stores/ui";
 import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
+import { resolveLoadingSkillName } from "./skill-loading-model";
 
 export function useSkillSurface(agentPath: string) {
+  const { t } = useTranslation("skills");
+  const queryClient = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
   const { skillDetailLabels } = useSkillSurfaceLabels();
   const { data: summaries, isLoading: skillsLoading } = useSkills(agentPath);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(null);
@@ -24,10 +33,36 @@ export function useSkillSurface(agentPath: string) {
     setPrevAgentPath(agentPath);
     setSelectedSkillName(null);
   }
-  const { data: skillDetail } = useSkillDetail(
-    agentPath,
-    selectedSkillName ?? undefined,
+  const {
+    data: skillDetail,
+    error: skillDetailError,
+    isFetching: skillDetailFetching,
+  } = useSkillDetail(agentPath, selectedSkillName ?? undefined);
+
+  // The skill whose `load_skill` fetch is in flight, so the grid can disable
+  // and spin just that card instead of letting a slow/failed load get
+  // rage-clicked into duplicate fetches (HOU-464).
+  const loadingSkillName = resolveLoadingSkillName(
+    selectedSkillName,
+    skillDetailFetching,
+    !!skillDetail,
   );
+
+  // A selected skill that no longer resolves (renamed, deleted, or never
+  // installed) returns `skill_not_found`. `tauriSkills.load` keeps that off the
+  // red bug-toast / Sentry path, so surface it plainly here: a friendly note,
+  // drop the stale selection, and refetch the list so the dead card vanishes.
+  // (HOU-441)
+  useEffect(() => {
+    if (!selectedSkillName || !isMissingSkillError(skillDetailError)) return;
+    addToast({
+      title: t("detail.unavailableToast.title"),
+      description: t("detail.unavailableToast.description"),
+      variant: "info",
+    });
+    setSelectedSkillName(null);
+    queryClient.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
+  }, [skillDetailError, selectedSkillName, agentPath, addToast, queryClient, t]);
   const saveSkill = useSaveSkill(agentPath);
   const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);
@@ -120,6 +155,7 @@ export function useSkillSurface(agentPath: string) {
     skills: summaries ?? [],
     skillsLoading,
     selectedSkill,
+    loadingSkillName,
     selectSkill: setSelectedSkillName,
     clearSelectedSkill,
     handleSkillSave,

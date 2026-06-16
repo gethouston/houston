@@ -4,6 +4,7 @@ fn main() {
     let dotenv_pairs = load_dotenv_pairs();
     configure_bug_report_env(&dotenv_pairs);
     configure_auth_storage(&dotenv_pairs);
+    configure_sentry_env(&dotenv_pairs);
 
     // Stage the houston-engine binary into `binaries/houston-engine-<triple>`
     // so tauri's `externalBin` picks it up for bundling. The user is expected
@@ -68,6 +69,25 @@ fn parse_dotenv_line(line: &str) -> Option<(String, String)> {
 
 fn configure_bug_report_env(dotenv_pairs: &[(String, String)]) {
     for key in ["LINEAR_API_KEY", "LINEAR_TEAM_ID", "LINEAR_BUG_LABEL_NAME"] {
+        println!("cargo:rerun-if-env-changed={key}");
+        if let Some(value) = env_value(key, dotenv_pairs) {
+            println!("cargo:rustc-env={key}={value}");
+        }
+    }
+}
+
+fn configure_sentry_env(dotenv_pairs: &[(String, String)]) {
+    // Bake SENTRY_DSN + the SENTRY_SEND_IN_DEV dev opt-in into the binary the
+    // same way the frontend's Vite define reads them (shell env preferred over
+    // a dotenv file). The explicit `rerun-if-env-changed` is the point: it
+    // forces a recompile + re-bake when either var changes in the SHELL, so the
+    // native `option_env!` gate (lib.rs) can never go stale relative to the
+    // renderer's `__SENTRY_SEND_IN_DEV__` define (HOU-469). Without it a
+    // shell-only toggle could leave the renderer sending while the native
+    // client stayed suppressed for the same `pnpm tauri dev` session. We don't
+    // rely on rustc's implicit env tracking for `option_env!` — this is explicit
+    // and matches the LINEAR_* / auth-storage pattern above.
+    for key in ["SENTRY_DSN", "SENTRY_SEND_IN_DEV"] {
         println!("cargo:rerun-if-env-changed={key}");
         if let Some(value) = env_value(key, dotenv_pairs) {
             println!("cargo:rustc-env={key}={value}");

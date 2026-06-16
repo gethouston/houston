@@ -1,6 +1,10 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { applyBulkPatch, applyBulkRemove } from "../src/data/activity-bulk.ts";
+import {
+  applyBulkPatch,
+  applyBulkRemove,
+  applyRemove,
+} from "../src/data/activity-bulk.ts";
 import type { Activity } from "../src/data/activity.ts";
 
 const item = (id: string, status: string): Activity => ({
@@ -46,5 +50,26 @@ describe("activity bulk helpers", () => {
   it("removing an unknown id leaves the list unchanged", () => {
     const items = [item("a", "done")];
     deepStrictEqual(applyBulkRemove(items, new Set(["zzz"])), items);
+  });
+
+  it("removes a single matching id and preserves order", () => {
+    const items = [item("a", "done"), item("b", "done"), item("c", "running")];
+    const next = applyRemove(items, "b");
+    deepStrictEqual(
+      next.map((i) => i.id),
+      ["a", "c"],
+    );
+  });
+
+  it("removing a single unknown id is an idempotent no-op", () => {
+    // Same length back signals "already gone" so `remove()` skips the write
+    // and resolves instead of throwing — the HOU-462 unhandled-rejection fix.
+    const items = [item("a", "done")];
+    const next = applyRemove(items, "zzz");
+    strictEqual(next.length, items.length);
+    deepStrictEqual(
+      next.map((i) => i.id),
+      ["a"],
+    );
   });
 });

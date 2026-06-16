@@ -3,6 +3,7 @@
 
 use crate::cli_process::{run_cli_process, CliRunOutcome};
 use crate::codex_command;
+use crate::prompt_scratch;
 use crate::session_update::SessionUpdate;
 use crate::types::SessionStatus;
 use crate::Provider;
@@ -44,12 +45,29 @@ pub(crate) async fn spawn_codex(
         }
     }
 
+    // The system prompt travels as a codex profile file, never as argv (the
+    // old `-c developer_instructions=…` token broke `CreateProcessW` on
+    // Windows once the prompt outgrew the 32,767-char command-line limit).
+    // The profile value owns the file; it is deleted when this fn returns.
+    let profile = match system_prompt.as_deref() {
+        None => None,
+        Some(sp) => match prompt_scratch::codex_profile(sp) {
+            Ok(p) => Some(p),
+            Err(e) => {
+                let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
+                    "Failed to prepare codex instructions: {e}"
+                ))));
+                return;
+            }
+        },
+    };
+
     let mut cmd = build_codex_command(
         resume_session_id.as_deref(),
         working_dir.as_deref(),
         model.as_deref(),
         effort.as_deref(),
-        system_prompt.as_deref(),
+        profile.as_ref().map(|p| p.name()),
     );
 
     let outcome = run_cli_process(tx, &mut cmd, &prompt, provider).await;
@@ -61,7 +79,7 @@ pub(crate) async fn spawn_codex(
             working_dir.as_deref(),
             model.as_deref(),
             effort.as_deref(),
-            system_prompt.as_deref(),
+            profile.as_ref().map(|p| p.name()),
         );
         run_cli_process(
             tx,
@@ -82,7 +100,7 @@ fn build_codex_command(
     working_dir: Option<&std::path::Path>,
     model: Option<&str>,
     effort: Option<&str>,
-    system_prompt: Option<&str>,
+    profile: Option<&str>,
 ) -> Command {
     // Always prefer the bundled codex over whatever happens to be on the
     // user's PATH. The user's PATH might point at a stale `nvm` codex that
@@ -101,7 +119,7 @@ fn build_codex_command(
         working_dir,
         model,
         effort,
-        system_prompt,
+        profile,
     ));
     if let Some(dir) = working_dir {
         cmd.current_dir(dir);

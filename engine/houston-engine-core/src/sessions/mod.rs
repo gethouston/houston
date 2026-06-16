@@ -8,15 +8,17 @@
 //! - [`start`] — spawn + monitor a session via
 //!   `houston-agents-conversations`, streaming updates to the engine's event
 //!   sink (which WS clients subscribe to via `session:{key}` topics).
-//! - [`cancel`] — SIGTERM the running CLI for a given session_key and emit
-//!   a "Stopped by user" feed item + `completed` status.
-//! - [`resolve_provider`] — agent-config → Anthropic default fallback.
+//! - [`cancel`] — kill the running CLI process tree for a given session_key
+//!   (verified, with SIGKILL escalation) and emit a "Stopped by user" feed
+//!   item + `completed` status. See [`cancel`] (module `cancel.rs`).
+//! - [`resolve_provider`] — agent config → authenticated fallback (#483).
 //!
 //! Callers (REST handlers, Tauri adapter) supply the already-resolved
 //! `working_dir` and an optional pre-built `system_prompt`. Prompt assembly
 //! lives in the adapter today; it will move into `engine-core` in a later
 //! phase once `agent_store` is ported.
 
+mod cancel;
 mod compaction;
 mod control;
 pub mod file_changes;
@@ -35,7 +37,9 @@ use crate::CoreResult;
 use control::{
     SessionControl, SessionIdentity, SessionTurnGuard, SessionTurnLocks, WorkdirActivity,
 };
-use houston_agents_conversations::session_id_tracker::SessionIdTracker;
+use houston_agents_conversations::session_id_tracker::{
+    session_ids_for_history, SessionIdTracker,
+};
 use houston_agents_conversations::session_pids::SessionPidMap;
 use houston_agents_conversations::session_runner::{self, PersistOptions};
 use houston_db::Database;
@@ -44,7 +48,12 @@ use houston_ui_events::{DynEventSink, HoustonEvent};
 use std::path::{Path, PathBuf};
 use workdir_locks::{WorkdirLocks, WorkdirSessionGuard};
 
-pub use provider::{resolve_effort, resolve_provider, ResolvedProvider};
+pub use cancel::cancel;
+pub use houston_agents_conversations::session_pids::PidInsert;
+pub use provider::{
+    fallback_provider, resolve_effort, resolve_effort_with_override, resolve_provider,
+    resolve_provider_with_overrides, ResolvedProvider,
+};
 
 /// Engine-owned session state. Cheap to clone.
 #[derive(Default, Clone)]
@@ -104,6 +113,60 @@ pub struct StartParams {
     /// Honored only when there's an existing session to compact; ignored on
     /// the first turn. See [`compaction`].
     pub compact: bool,
+    /// Set when the user moved this conversation to a DIFFERENT provider
+    /// mid-stream. The new provider has no resume session, so the turn reseeds
+    /// fresh with prior context — verbatim or summarized, see [`SeedMode`] —
+    /// and any stale resume id for the resolved provider is cleared so a
+    /// switch-back never resumes a session missing the other provider's turns.
+    /// Takes precedence over `compact`. See [`compaction`].
+    pub handoff: Option<ProviderHandoff>,
+}
+
+/// How prior context is carried over when a conversation is handed to a
+/// different provider. Provider CLI sessions aren't portable, so the new
+/// provider always starts fresh; this picks the seed strategy.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SeedMode {
+    /// Re-send the full visible transcript verbatim. Lossless; chosen by the
+    /// client when the conversation fits the new provider's context window.
+    Replay,
+    /// Summarize the conversation with the TARGET provider, then seed the fresh
+    /// session with the summary. Lossy; chosen when a verbatim replay would not
+    /// fit. Costs one summarizer call on the target provider (never the one
+    /// being left, so it works even when the old provider is out of credits).
+    Summarize,
+}
+
+impl std::fmt::Display for SeedMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            SeedMode::Replay => "replay",
+            SeedMode::Summarize => "summarize",
+        })
+    }
+}
+
+impl std::str::FromStr for SeedMode {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "replay" => Ok(SeedMode::Replay),
+            "summarize" => Ok(SeedMode::Summarize),
+            other => Err(format!(
+                "unknown seed mode {other:?} (expected \"replay\" or \"summarize\")"
+            )),
+        }
+    }
+}
+
+/// A mid-session provider switch requested by the client. The provider being
+/// switched TO is the session's resolved provider; `from_provider` is the one
+/// being left — used only to anchor the boundary divider at the right place in
+/// the persisted history.
+#[derive(Debug, Clone, Copy)]
+pub struct ProviderHandoff {
+    pub mode: SeedMode,
+    pub from_provider: Provider,
 }
 
 /// Start a session turn. The request is accepted immediately. Turns with the
@@ -199,6 +262,7 @@ async fn run_start(
         model,
         effort,
         compact,
+        handoff,
     } = params;
 
     if !agent_dir.exists() {
@@ -207,33 +271,7 @@ async fn run_start(
 
     let _turn_guard = rt.acquire_turn(&identity).await;
     if rt.control.is_stale(&identity, generation).await {
-        tracing::info!("[sessions] skipping cancelled queued turn session_key={session_key}");
-        // The desktop UI optimistically wrote `running` to the activity
-        // row when the user pressed send (see the comment at the
-        // `set_status_by_session_key("running")` call below). If we exit
-        // here without resetting, the row stays stuck on `running`
-        // forever — the kanban "running" column shows a permanently
-        // spinning mission for work that never actually started, because
-        // `cancel()` only kills the process / dequeues the turn and
-        // doesn't touch the activity file. Flip to `needs_you` so the
-        // user can retry, edit, or move to done.
-        let agent_path = agent_dir.to_string_lossy().to_string();
-        match crate::agents::activity::set_status_by_session_key(
-            &agent_dir,
-            &session_key,
-            "needs_you",
-        ) {
-            Ok(Some(_)) => {
-                events.emit(HoustonEvent::ActivityChanged { agent_path });
-            }
-            Ok(None) => { /* ad-hoc session, no board row to flip */ }
-            Err(e) => {
-                tracing::warn!(
-                    "[sessions] failed to flip cancelled queued activity: {e} (session_key={session_key})"
-                );
-            }
-        }
-        rt.control.finish(&identity).await;
+        bail_cancelled_turn(rt, &events, &agent_dir, &session_key, &identity).await;
         return Ok(());
     }
 
@@ -285,12 +323,146 @@ async fn run_start(
     // persisted/displayed user message stays the original (see `persist`).
     let mut cli_prompt = prompt.clone();
 
-    // Forced autocompact (mechanism B): the frontend flagged this turn because
-    // the context window is nearly full. Summarize the visible history,
-    // abandon the current resume id (kept in `.history` so the chat stays
-    // visible), and run this turn on a FRESH provider session seeded with the
-    // summary. The user's chat_feed is never mutated.
-    if compact {
+    // Provider switch (takes precedence over autocompact): the user moved this
+    // conversation to a different provider. The new provider has no portable
+    // resume session, so reseed a FRESH session with prior context — the full
+    // transcript verbatim (`Replay`, when it fits the new window) or an
+    // AI-generated summary (`Summarize`, when it doesn't). Both read our
+    // `chat_feed`, never the leaving provider's CLI, so a switch away from an
+    // out-of-credits provider still works. The summarizer (when used) runs on
+    // the TARGET provider. Always clears any current resume id for the resolved
+    // provider so a switch-BACK never resumes a session missing the other
+    // provider's turns.
+    if let Some(handoff) = handoff {
+        let seed = match handoff.mode {
+            SeedMode::Replay => compaction::build_replay_seed(
+                &db,
+                &working_dir,
+                &agent_dir,
+                &session_key,
+                &prompt,
+            )
+            .await
+            .map(|opt| opt.map(|s| (s.prompt, s.pre_tokens))),
+            SeedMode::Summarize => compaction::build_compaction_seed(
+                &db,
+                &working_dir,
+                &agent_dir,
+                &session_key,
+                &prompt,
+                provider,
+                model.as_deref(),
+            )
+            .await
+            .map(|opt| opt.map(|s| (s.prompt, s.pre_tokens))),
+        };
+        match seed {
+            Ok(maybe_seed) => {
+                // The switch SUCCEEDED whether or not there was prior context to
+                // carry. `Some` carries a seed; `None` means the engine saw no
+                // visible history (e.g. the frontend's streaming-feed
+                // `conversationStarted` ran ahead of the persisted `chat_feed`),
+                // so the new provider just starts fresh. EITHER WAY we emit +
+                // persist the divider: it's the success signal the frontend uses
+                // to clear the staged handoff, so a switch that emitted nothing
+                // would re-fire on every later send. Only a true seed FAILURE
+                // (Err) keeps the handoff staged for retry.
+                let pre_tokens = maybe_seed.as_ref().and_then(|(_, pt)| *pt);
+                let seeded = maybe_seed.is_some();
+                if let Some((seed_prompt, _)) = maybe_seed {
+                    cli_prompt = seed_prompt;
+                }
+                let summarized = matches!(handoff.mode, SeedMode::Summarize);
+                // Live divider so the boundary shows immediately.
+                events.emit(HoustonEvent::FeedItem {
+                    agent_path: agent_path.clone(),
+                    session_key: session_key.clone(),
+                    item: FeedItem::ProviderSwitched {
+                        provider: provider.id().to_string(),
+                        summarized,
+                        pre_tokens,
+                    },
+                });
+                // Persist the divider under an id in THIS conversation's id set
+                // so a history reload loads it. `chat_feed` sorts by timestamp,
+                // so any anchor places the marker at the boundary (after the old
+                // turns, before the new). Prefer the leaving provider's current
+                // id, then the resolved provider's (a switch-back's stale id),
+                // then any id from the full history set — the last guarantees
+                // persistence even when neither provider holds a current sid
+                // (e.g. the leaving provider only ever errored), as long as the
+                // seed read non-empty history.
+                let leaving_agent_key = format!(
+                    "{}:{}:{}",
+                    working_dir.to_string_lossy(),
+                    handoff.from_provider,
+                    session_key
+                );
+                let leaving_id = rt
+                    .session_ids
+                    .get_for_session(
+                        &leaving_agent_key,
+                        &working_dir,
+                        &session_key,
+                        handoff.from_provider,
+                    )
+                    .await
+                    .get()
+                    .await
+                    .or_else(|| resume_id.clone())
+                    .or_else(|| {
+                        session_ids_for_history(&working_dir, &session_key)
+                            .into_iter()
+                            .next_back()
+                    });
+                if let Some(leaving_id) = leaving_id {
+                    let data = serde_json::json!({
+                        "provider": provider.id(),
+                        "summarized": summarized,
+                        "pre_tokens": pre_tokens,
+                    })
+                    .to_string();
+                    if let Err(e) = db
+                        .add_chat_feed_item_by_session(
+                            &leaving_id,
+                            "provider_switched",
+                            &data,
+                            &source,
+                        )
+                        .await
+                    {
+                        tracing::warn!(
+                            "[sessions] failed to persist provider-switch marker: {e} (session_key={session_key})"
+                        );
+                    }
+                }
+                sid_handle.clear_current_preserving_history().await;
+                resume_id = None;
+                tracing::info!(
+                    "[sessions] provider switch to {provider} (mode={}, summarized={summarized}, seeded={seeded}) for session_key={session_key}",
+                    handoff.mode
+                );
+            }
+            Err(e) => {
+                // The user explicitly switched (and for Summarize consented to
+                // the token cost). There is NO safe fallback here — a normal
+                // resume would be blank (new provider) or a stale cross-provider
+                // session, and an unusable/empty summary is a failure too. Surface
+                // it rather than silently degrade (beta no-silent-failure policy);
+                // the start wrapper flips the activity to `error` and emits a
+                // SessionStatus error. The frontend keeps the handoff staged, so
+                // the next send retries the switch.
+                return Err(crate::CoreError::Internal(format!(
+                    "couldn't switch to {provider}: {e}"
+                )));
+            }
+        }
+    } else if compact {
+        // Forced autocompact (mechanism B): the frontend flagged this turn
+        // because the context window is nearly full. Summarize the visible
+        // history, abandon the current resume id (kept in `.history` so the
+        // chat stays visible), and run this turn on a FRESH provider session
+        // seeded with the summary. The user's chat_feed is never mutated.
         if let Some(old_id) = resume_id.clone() {
             match compaction::build_compaction_seed(
                 &db,
@@ -391,6 +563,18 @@ async fn run_start(
         resume_id,
         provider,
     );
+
+    // Re-check staleness right before spawning: the prep work above
+    // (compaction summarize, resume-recovery prompt) can take seconds,
+    // and a Stop pressed in that window already bumped the generation.
+    // Without this check the CLI would spawn AFTER the user cancelled
+    // and run to completion behind a "Stopped by user" message
+    // (issue #469). The pid-map tombstone covers the remaining
+    // instants between this check and PID registration.
+    if rt.control.is_stale(&identity, generation).await {
+        bail_cancelled_turn(rt, &events, &agent_dir, &session_key, &identity).await;
+        return Ok(());
+    }
 
     // Flip the matching board activity to "running" synchronously, before
     // the CLI subprocess spawns. Desktop UI pre-wrote this from the send
@@ -548,6 +732,39 @@ async fn run_start(
     Ok(())
 }
 
+/// A queued or prepped turn discovered it was cancelled before its CLI
+/// spawned. The desktop UI optimistically wrote `running` to the activity
+/// row when the user pressed send; without resetting, the row stays stuck
+/// on `running` forever — the kanban "running" column shows a permanently
+/// spinning mission for work that never actually started, because
+/// `cancel()` only kills the process / dequeues the turn and doesn't touch
+/// the activity file. Flip to `needs_you` so the user can retry, edit, or
+/// move to done. Also clears the pid-map cancel tombstone (no process will
+/// ever register for this turn) and releases the control slot.
+async fn bail_cancelled_turn(
+    rt: &SessionRuntime,
+    events: &DynEventSink,
+    agent_dir: &Path,
+    session_key: &str,
+    identity: &SessionIdentity,
+) {
+    tracing::info!("[sessions] skipping cancelled turn session_key={session_key}");
+    let agent_path = agent_dir.to_string_lossy().to_string();
+    match crate::agents::activity::set_status_by_session_key(agent_dir, session_key, "needs_you") {
+        Ok(Some(_)) => {
+            events.emit(HoustonEvent::ActivityChanged { agent_path });
+        }
+        Ok(None) => { /* ad-hoc session, no board row to flip */ }
+        Err(e) => {
+            tracing::warn!(
+                "[sessions] failed to flip cancelled queued activity: {e} (session_key={session_key})"
+            );
+        }
+    }
+    let _stale_pid = rt.pid_map.remove(session_key).await;
+    rt.control.finish(identity).await;
+}
+
 fn activity_hint_for_session_key(
     agent_dir: &Path,
     session_key: &str,
@@ -578,114 +795,6 @@ fn activity_hint_for_session_key(
     Ok(hint)
 }
 
-/// Cancel a running or queued session. On Unix sends `SIGTERM` to the
-/// provider process group; on Windows issues `taskkill /PID <pid> /T /F`
-/// (terminates the process tree). Emits a `Stopped by user` feed item +
-/// `completed` session status so the UI can reconcile.
-///
-/// Returns `true` if a process or queued turn was found, `false` otherwise.
-pub async fn cancel(
-    rt: &SessionRuntime,
-    events: &DynEventSink,
-    agent_path: &str,
-    session_key: &str,
-) -> bool {
-    let identity = SessionIdentity::new(agent_path.to_string(), session_key.to_string());
-    let had_queued = rt.control.cancel(&identity).await;
-    let pid = rt.pid_map.remove(session_key).await;
-
-    if let Some(pid) = pid {
-        tracing::info!("[sessions] cancel session_key={session_key} pid={pid}");
-        use tokio::time::{timeout, Duration};
-        match timeout(Duration::from_millis(750), terminate_process_tree(pid)).await {
-            Ok(Ok(status)) if status.success() => {}
-            Ok(Ok(status)) => {
-                tracing::warn!(
-                    "[sessions] terminate command exited with {status} for session_key={session_key} pid={pid}"
-                );
-            }
-            Ok(Err(e)) => {
-                tracing::warn!(
-                    "[sessions] failed to run terminate command for session_key={session_key} pid={pid}: {e}"
-                );
-            }
-            Err(_) => {
-                tracing::warn!(
-                    "[sessions] terminate command timed out for session_key={session_key} pid={pid}"
-                );
-            }
-        }
-    } else if !had_queued {
-        match crate::agents::activity::clear_stale_running_by_session_key(
-            Path::new(agent_path),
-            session_key,
-        ) {
-            Ok(Some(_)) => {
-                tracing::info!(
-                    "[sessions] cleared stale running activity on cancel session_key={session_key}"
-                );
-                events.emit(HoustonEvent::ActivityChanged {
-                    agent_path: agent_path.to_string(),
-                });
-            }
-            Ok(None) => return false,
-            Err(e) => {
-                tracing::warn!(
-                    "[sessions] failed to clear stale running activity on cancel: {e} (session_key={session_key})"
-                );
-                return false;
-            }
-        }
-    }
-
-    events.emit(HoustonEvent::FeedItem {
-        agent_path: agent_path.to_string(),
-        session_key: session_key.to_string(),
-        item: FeedItem::SystemMessage("Stopped by user".into()),
-    });
-    events.emit(HoustonEvent::SessionStatus {
-        agent_path: agent_path.to_string(),
-        session_key: session_key.to_string(),
-        status: "completed".into(),
-        error: None,
-    });
-    true
-}
-
-#[cfg(unix)]
-async fn terminate_process_tree(pid: u32) -> std::io::Result<std::process::ExitStatus> {
-    let group_status = tokio::process::Command::new("kill")
-        .arg("-TERM")
-        .arg(format!("-{pid}"))
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .status()
-        .await?;
-    if group_status.success() {
-        return Ok(group_status);
-    }
-    tokio::process::Command::new("kill")
-        .arg("-TERM")
-        .arg(pid.to_string())
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .status()
-        .await
-}
-
-#[cfg(windows)]
-async fn terminate_process_tree(pid: u32) -> std::io::Result<std::process::ExitStatus> {
-    tokio::process::Command::new("taskkill")
-        .arg("/PID")
-        .arg(pid.to_string())
-        .arg("/T")
-        .arg("/F")
-        .stderr(std::process::Stdio::null())
-        .kill_on_drop(true)
-        .status()
-        .await
-}
-
 /// Start an onboarding session: seeds the agent and runs the first turn with
 /// onboarding guidance baked into the system prompt.
 ///
@@ -707,7 +816,7 @@ pub async fn start_onboarding(
     // appends its own agent context in `start()` below.
     let product_prompt = format!("{app_system_prompt}{app_onboarding_prompt}");
 
-    let resolved = resolve_provider(&agent_dir);
+    let resolved = resolve_provider(&db, &agent_dir).await;
     let effort = resolve_effort(&agent_dir, resolved.provider);
 
     start(
@@ -726,6 +835,7 @@ pub async fn start_onboarding(
             model: resolved.model,
             effort,
             compact: false,
+            handoff: None,
         },
     )
     .await
@@ -794,6 +904,7 @@ mod tests {
                     model: None,
                     effort: None,
                     compact: false,
+                    handoff: None,
                 },
             ),
         )
@@ -843,6 +954,30 @@ mod tests {
                 .await
                 .is_ok()
         );
+    }
+
+    #[tokio::test]
+    async fn cancel_before_pid_leaves_tombstone_for_late_spawn() {
+        // Issue #469: Stop pressed while the turn is still in prep — no
+        // PID exists yet. The cancel must poison the pid map so the CLI
+        // that spawns moments later is flagged and killed on arrival.
+        use houston_agents_conversations::session_pids::PidInsert;
+        let rt = SessionRuntime::default();
+        let dir = TempDir::new().unwrap();
+        let identity = SessionIdentity::new(
+            dir.path().to_string_lossy().to_string(),
+            "chat-race".into(),
+        );
+        let _generation = rt.control.register(&identity).await;
+        let events: DynEventSink = Arc::new(NoopEventSink);
+
+        assert!(cancel(&rt, &events, &dir.path().to_string_lossy(), "chat-race").await);
+
+        assert_eq!(
+            rt.pid_map.insert("chat-race".into(), 12_345).await,
+            PidInsert::AlreadyCancelled
+        );
+        rt.control.finish(&identity).await;
     }
 
     #[tokio::test]

@@ -182,10 +182,14 @@ export interface Routine {
   suppress_when_silent: boolean;
   /** Whether each run reuses one chat or starts a fresh one. */
   chat_mode: RoutineChatMode;
-  /** IANA timezone override; absent means use the user's preference. */
-  timezone?: string | null;
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[];
+  /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
+  provider?: string | null;
+  /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
+  effort?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -199,10 +203,14 @@ export interface NewRoutine {
   suppress_when_silent?: boolean;
   /** Defaults to `"shared"` (one chat per routine) when omitted. */
   chat_mode?: RoutineChatMode;
-  /** IANA timezone override (e.g. "America/Bogota"). Falls back to user pref. */
-  timezone?: string | null;
   /** Composio toolkit slugs this routine uses. */
   integrations?: string[];
+  /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
+  provider?: string | null;
+  /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
+  effort?: string | null;
 }
 
 export interface RoutineUpdate {
@@ -213,9 +221,13 @@ export interface RoutineUpdate {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
-  /** Set to a string to override, `null` to clear, omit to leave unchanged. */
-  timezone?: string | null;
   integrations?: string[];
+  /** Provider id to pin (e.g. "openai"); omit or null to leave unchanged. */
+  provider?: string | null;
+  /** Model to pin (e.g. "gpt-5.5"); omit or null to leave unchanged. */
+  model?: string | null;
+  /** Reasoning effort to pin (e.g. "high"); omit or null to leave unchanged. */
+  effort?: string | null;
 }
 
 export type RoutineRunStatus =
@@ -539,6 +551,19 @@ export interface SessionStartRequest {
    * when there's an existing session to compact; ignored on the first turn.
    */
   compact?: boolean;
+  /**
+   * Set when the user switches this conversation to a DIFFERENT provider
+   * mid-stream. Provider CLI sessions are not portable, so the engine reseeds
+   * a fresh session on the new provider with prior context: the full
+   * transcript verbatim (`mode: "replay"`) when it fits the new model's
+   * window, or an AI summary (`mode: "summarize"`) when it does not.
+   * `fromProvider` is the provider being left. Takes precedence over
+   * `compact`; absent for normal turns.
+   */
+  providerSwitch?: {
+    mode: "replay" | "summarize";
+    fromProvider: string;
+  };
 }
 
 export interface SessionStartResponse {
@@ -739,7 +764,6 @@ export interface PortableRoutinePreview {
   schedule: string;
   enabled: boolean;
   integrations: string[];
-  timezone: string | null;
 }
 
 export interface PortableLearningPreview {

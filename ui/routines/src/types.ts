@@ -20,10 +20,14 @@ export interface Routine {
   suppress_when_silent: boolean
   /** Whether each run reuses one chat or starts a fresh one. */
   chat_mode: RoutineChatMode
-  /** IANA timezone override; absent means use the user's account timezone. */
-  timezone?: string | null
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[]
+  /** Provider id override; absent means inherit the agent's provider. */
+  provider?: string | null
+  /** Model override; absent means inherit the agent's model. */
+  model?: string | null
+  /** Reasoning-effort override; absent means inherit the agent's effort. */
+  effort?: string | null
   created_at: string
   updated_at: string
 }
@@ -52,7 +56,6 @@ export type SchedulePreset =
   | "every_30min"
   | "hourly"
   | "daily"
-  | "weekdays"
   | "weekly"
   | "monthly"
   | "custom"
@@ -61,7 +64,6 @@ export const SCHEDULE_PRESET_LABELS: Record<SchedulePreset, string> = {
   every_30min: "Every 30 minutes",
   hourly: "Every hour",
   daily: "Daily",
-  weekdays: "Weekdays only",
   weekly: "Weekly",
   monthly: "Monthly",
   custom: "Custom",

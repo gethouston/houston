@@ -32,8 +32,12 @@ import type {
 import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
+import { engineCallSurface } from "./engine-call-policy";
+import { MISSING_SKILL_KIND } from "./missing-skill";
+import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
+import { useProviderSwitchStore } from "../stores/provider-switch";
 export { withAttachmentPaths } from "./attachment-message";
 
 interface EngineCallOptions {
@@ -44,6 +48,12 @@ interface EngineCallOptions {
    *  user-initiated failures always reach crash reporting; set false only for
    *  genuinely fire-and-forget calls or ones with their own report path. */
   capture?: boolean;
+  /** Engine error `kind`s that are expected + explainable (not Houston bugs).
+   *  Matching errors are logged but get NO red bug toast and NO Sentry report;
+   *  the caller surfaces them inline. Use sparingly, only for kinds a user can
+   *  understand and act on (e.g. `skill_not_found` — the skill was renamed or
+   *  removed). */
+  silenceKinds?: string[];
 }
 
 /** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
@@ -71,12 +81,22 @@ async function surfaceError(
     err instanceof Error ? err.message : typeof err === "string" ? err : String(err);
   logger.error(`[engine:${label}] ${message}`, context ? JSON.stringify(context) : undefined);
 
-  // Aborted requests (user typed again, navigated away, cancelled a sign-in)
-  // are expected, not failures — never toast or report them.
-  if (err instanceof Error && err.name === "AbortError") return;
+  // Expected, explainable engine errors the caller surfaces inline. Logged
+  // above for the local log tail, but no red bug toast and no Sentry report.
+  // e.g. `composio_login_timeout` (the user closed the sign-in tab) and
+  // `skill_not_found` (the skill was renamed/removed).
+  const kind =
+    err && typeof err === "object" && "kind" in err
+      ? (err as { kind?: unknown }).kind
+      : undefined;
+  if (typeof kind === "string" && options?.silenceKinds?.includes(kind)) return;
 
-  const shouldToast = options?.toast !== false;
-  const shouldCapture = options?.capture !== false;
+  // Aborted requests are expected; `toast: false` callers render their own
+  // failure UI but the error is still captured. See `engineCallSurface`.
+  const { toast: shouldToast, capture: shouldCapture } = engineCallSurface(
+    err instanceof Error ? err.name : undefined,
+    options,
+  );
   if (!shouldToast && !shouldCapture) return;
 
   const { showErrorToast, reportError } = await import("./error-toast");
@@ -208,16 +228,27 @@ export const tauriChat = {
     },
   ) =>
     call<string>("send_message", async () => {
+      // A staged provider switch (the user changed providers mid-conversation)
+      // takes precedence over autocompact: the engine reseeds a fresh session
+      // on the new provider, so same-provider context-full compaction doesn't
+      // apply. PEEK, don't clear — the handoff is cleared only when the engine
+      // confirms the switch with a `provider_switched` event, so a failed seed
+      // is retried on the next send instead of silently continuing blank.
+      const handoff = useProviderSwitchStore
+        .getState()
+        .peekPending(agentPath, sessionKey);
       // Centralized autocompact decision: when this session's context is
       // nearly full, ask the engine to summarize + reseed before this turn.
       // Computed here so every send path gets it; new conversations have no
       // usage yet and resolve to `false`.
-      const compact = shouldAutocompactForSession(
-        agentPath,
-        sessionKey,
-        opts?.providerOverride,
-        opts?.modelOverride,
-      );
+      const compact = handoff
+        ? false
+        : shouldAutocompactForSession(
+            agentPath,
+            sessionKey,
+            opts?.providerOverride,
+            opts?.modelOverride,
+          );
       const res = await getEngine().startSession(agentPath, {
         sessionKey,
         prompt,
@@ -227,6 +258,9 @@ export const tauriChat = {
         model: opts?.modelOverride,
         effort: opts?.effortOverride,
         compact,
+        providerSwitch: handoff
+          ? { mode: handoff.mode, fromProvider: handoff.fromProvider }
+          : undefined,
       });
       return res.sessionKey;
     }),
@@ -305,7 +339,15 @@ export const tauriSkills = {
       })),
     ),
   load: (agentPath: string, name: string) =>
-    call<SkillDetail>("load_skill", () => getEngine().loadSkill(agentPath, name)),
+    call<SkillDetail>(
+      "load_skill",
+      () => getEngine().loadSkill(agentPath, name),
+      undefined,
+      // The skill the user opened may have been renamed, deleted, or never
+      // installed. That's expected — the Skills view surfaces it inline and
+      // refreshes the list — so don't fire the red bug toast or report it.
+      { silenceKinds: [MISSING_SKILL_KIND] },
+    ),
   create: (agentPath: string, name: string, description: string, content: string) =>
     call<void>("create_skill", () =>
       getEngine().createSkill({ workspacePath: agentPath, name, description, content }),
@@ -422,14 +464,23 @@ export const tauriConnections = {
       getEngine().composioListConnections(),
     ),
   connectApp: (toolkit: string) =>
-    call<StartLinkResponse>("connect_composio_app", async () => {
-      const r = await getEngine().composioConnectApp(toolkit);
-      return {
-        redirect_url: r.redirect_url,
-        connected_account_id: r.connected_account_id,
-        toolkit: r.toolkit,
-      };
-    }),
+    call<StartLinkResponse>(
+      "connect_composio_app",
+      async () => {
+        const r = await getEngine().composioConnectApp(toolkit);
+        return {
+          redirect_url: r.redirect_url,
+          connected_account_id: r.connected_account_id,
+          toolkit: r.toolkit,
+        };
+      },
+      { toolkit },
+      // "Already connected" is an expected state, not a Houston bug: the
+      // caller refreshes the connected-toolkits list so the card flips to
+      // connected (HOU-463). Silence it so it gets no red bug toast and no
+      // Sentry report — the prior over-reporting was the source of this issue.
+      { silenceKinds: [COMPOSIO_ALREADY_CONNECTED_KIND] },
+    ),
   disconnectApp: (toolkit: string) =>
     call<void>(
       "disconnect_composio_app",
@@ -457,12 +508,28 @@ export const tauriConnections = {
       { toast: false, capture: false },
     ),
   startOAuth: () =>
-    call<StartLoginResponse>("start_composio_oauth", async () => {
-      const r = await getEngine().composioStartLogin();
-      return { login_url: r.login_url, cli_key: r.cli_key };
-    }),
+    call<StartLoginResponse>(
+      "start_composio_oauth",
+      async () => {
+        const r = await getEngine().composioStartLogin();
+        return { login_url: r.login_url, cli_key: r.cli_key };
+      },
+      undefined,
+      // "Already signed in" is a benign no-op (the CLI prints nothing when
+      // creds already exist); the dialog handles that kind as success, so no
+      // red bug toast and no Sentry report.
+      { silenceKinds: ["composio_already_signed_in"] },
+    ),
   completeLogin: (cliKey: string) =>
-    call<void>("complete_composio_login", () => getEngine().composioCompleteLogin(cliKey)),
+    call<void>(
+      "complete_composio_login",
+      () => getEngine().composioCompleteLogin(cliKey),
+      undefined,
+      // The sign-in dialog renders failures inline, so don't double-surface
+      // as a toast. The expected `composio_login_timeout` (user closed the
+      // tab) is fully silenced; genuine faults still capture to Sentry.
+      { toast: false, silenceKinds: ["composio_login_timeout"] },
+    ),
   logout: () => call<void>("logout_composio", () => getEngine().composioLogout()),
   isCliInstalled: () =>
     call<boolean>("is_composio_cli_installed", () => getEngine().composioCliInstalled()),
@@ -784,8 +851,18 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  launchLogin: (provider: string, opts?: { deviceAuth?: boolean }) =>
-    call<void>("launch_provider_login", () => getEngine().providerLogin(provider, opts)),
+  launchLogin: (provider: string, opts?: { deviceAuth?: boolean; toast?: boolean }) =>
+    call<void>(
+      "launch_provider_login",
+      () => getEngine().providerLogin(provider, opts),
+      undefined,
+      // Callers that render their OWN failure toast (the picker, settings, and
+      // the Gemini dialog) pass `toast: false` so `call`'s generic toast does
+      // not fire on top of theirs — the engine error message showed twice
+      // otherwise. Sentry capture still happens. Callers that surface the
+      // failure inline (reconnect cards / banner) omit it and keep this toast.
+      opts?.toast === false ? { toast: false } : undefined,
+    ),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
   /**

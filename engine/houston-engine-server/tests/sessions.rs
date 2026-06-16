@@ -317,12 +317,13 @@ async fn rest_cancel_existing_session_emits_events() {
     // side-effect is tolerated (no real process) — we just verify the
     // emitted events land on the `session:{key}` WS topic.
     let (addr, token, state) = spawn_engine().await;
-    state
+    let tracked = state
         .engine
         .sessions
         .pid_map
         .insert("k1".into(), 999_999)
         .await;
+    assert_eq!(tracked, houston_engine_core::sessions::PidInsert::Tracked);
 
     let mut ws = ws_connect(addr, &token).await;
     ws.send(Message::Text(sub_frame(&["session:k1"]))).await.unwrap();
@@ -364,6 +365,30 @@ async fn rest_cancel_requires_colon_cancel_suffix() {
     let res = reqwest::Client::new()
         .post(&url)
         .bearer_auth(&token)
+        .send()
+        .await
+        .unwrap();
+    assert_eq!(res.status(), 400);
+}
+
+#[tokio::test]
+async fn rest_start_session_rejects_invalid_provider_switch_mode() {
+    // A bad `providerSwitch.mode` is a client error surfaced as 400 (not
+    // swallowed, not a 500). This fails BEFORE any session task spawns, so it
+    // has no filesystem side effects. Mirrors HOU-424's wire contract:
+    // `providerSwitch: { mode: "replay" | "summarize", fromProvider }`.
+    let (addr, token, _state) = spawn_engine().await;
+    let encoded_path = urlencoding::encode("/tmp/houston-switch-agent");
+    let url = format!("http://{addr}/v1/agents/{encoded_path}/sessions");
+    let res = reqwest::Client::new()
+        .post(&url)
+        .bearer_auth(&token)
+        .json(&serde_json::json!({
+            "sessionKey": "switch-bad-mode",
+            "prompt": "hi",
+            "provider": "openai",
+            "providerSwitch": { "mode": "bogus", "fromProvider": "anthropic" }
+        }))
         .send()
         .await
         .unwrap();

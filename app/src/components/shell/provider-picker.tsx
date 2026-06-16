@@ -96,7 +96,8 @@ export function ProviderPicker({ onSelect }: Props) {
 
   // Sign-in lifecycle events. `ProviderLoginUrl` surfaces the OAuth URL
   // for remote/headless engines (the CLI can't open the local browser),
-  // shown via <ProviderLoginDialog>. `ProviderLoginComplete` is the
+  // shown via <ProviderLoginDialog> — remote clients only (see the
+  // osIsTauri guard below). `ProviderLoginComplete` is the
   // authoritative end of an attempt: the status poll only ever flips a
   // card to Connected on SUCCESS, so without reacting to a failed or
   // cancelled completion the card would spin forever (the #237 bug this
@@ -106,6 +107,14 @@ export function ProviderPicker({ onSelect }: Props) {
   useEffect(() => {
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
+        // The sign-in URL / paste-back dialog is a REMOTE-only affordance.
+        // On desktop the engine is the co-located sidecar: the provider CLI
+        // opens the user's own browser and finishes via its localhost OAuth
+        // callback, so surfacing the URL would only flash a dialog that
+        // immediately auto-dismisses on ProviderLoginComplete (issue #453).
+        // Skip it — same osIsTauri signal that sets `deviceAuth: !osIsTauri()`
+        // on connect.
+        if (osIsTauri()) return;
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
         if (prov) {
           // The relay can emit twice for codex's device flow: URL-only,
@@ -160,7 +169,9 @@ export function ProviderPicker({ onSelect }: Props) {
       // engine) can't receive the CLI's localhost OAuth callback, so ask
       // for the headless device-code flow. The engine ignores the flag for
       // providers without a device variant (Claude keeps its paste-back).
-      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri() });
+      // `toast: false`: the catch below renders the provider-specific failure
+      // toast, so `call` must not also toast the same message (it showed twice).
+      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri(), toast: false });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);

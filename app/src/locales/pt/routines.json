@@ -1,9 +1,136 @@
 {
   "loading": "Carregando…",
   "grid": {
+    "loading": "Carregando…",
     "emptyTitle": "Programe e esqueça",
     "emptyDescription": "As rotinas disparam no horário programado e só te chamam quando algo realmente precisa de atenção.",
     "newRoutine": "Nova rotina",
-    "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção."
+    "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção.",
+    "timezoneLabel": "Fuso horário",
+    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário."
+  },
+  "editor": {
+    "back": "Voltar para rotinas",
+    "newRoutine": "Nova rotina",
+    "untitled": "Rotina sem título",
+    "stop": "Parar",
+    "starting": "Iniciando…",
+    "runNow": "Executar agora",
+    "saveChanges": "Salvar alterações",
+    "createRoutine": "Criar rotina",
+    "moreActions": "Mais ações",
+    "pauseRoutine": "Pausar rotina",
+    "resumeRoutine": "Retomar rotina",
+    "deleteRoutine": "Excluir rotina",
+    "nameLabel": "Nome",
+    "namePlaceholder": "ex.: Reunião matinal",
+    "descriptionLabel": "Descrição",
+    "descriptionPlaceholder": "Opcional, para que serve esta rotina",
+    "promptLabel": "Instrução",
+    "promptPlaceholder": "O que o agente deve fazer quando isso rodar?",
+    "sectionWhen": "Quando roda",
+    "sectionBehavior": "Comportamento",
+    "sectionRecent": "Execuções recentes",
+    "nextRun": "Próxima execução {relative}",
+    "schedulePreview": "Prévia do agendamento",
+    "schedulePreviewHint": "Escolha um agendamento válido para ver quando esta rotina vai rodar.",
+    "notifyTitle": "Avisar só quando for relevante",
+    "notifyDescription": "Se o agente não tiver nada a relatar, a execução não vai aparecer no quadro.",
+    "chatTitle": "Manter os resultados em um só chat",
+    "chatDescription": "Cada execução é adicionada ao mesmo chat. Desative para abrir um novo chat cada vez que esta rotina rodar.",
+    "modelTitle": "Modelo",
+    "modelDescription": "Escolha o modelo e o nível de esforço de raciocínio que executa esta rotina. Usa as configurações do agente por padrão."
+  },
+  "row": {
+    "untitled": "Sem título",
+    "next": "Próxima {relative}",
+    "noNextRun": "Sem próxima execução",
+    "paused": "Pausada",
+    "waiting": "Aguardando · retoma às {time}",
+    "justRan": "executada agora",
+    "ranMinutes": "há {n}m",
+    "ranHours": "há {n}h",
+    "ranDays": "há {n}d",
+    "pauseRoutine": "Pausar rotina",
+    "resumeRoutine": "Retomar rotina"
+  },
+  "schedule": {
+    "presets": {
+      "every_30min": "A cada 30 minutos",
+      "hourly": "A cada hora",
+      "daily": "Diário",
+      "weekly": "Semanal",
+      "monthly": "Mensal",
+      "custom": "Personalizado"
+    },
+    "units": {
+      "minutes": { "one": "minuto", "other": "minutos" },
+      "hours": { "one": "hora", "other": "horas" },
+      "days": { "one": "dia", "other": "dias" },
+      "months": { "one": "mês", "other": "meses" }
+    },
+    "timeLabel": "Hora",
+    "dayOfMonthLabel": "Dia do mês",
+    "repeatEvery": "Repetir a cada",
+    "enterNumber": "Digite um número",
+    "pickDay": "Escolha pelo menos um dia",
+    "onTheseDays": "Nestes dias",
+    "shortcuts": { "everyDay": "Todos os dias", "weekdays": "Dias úteis", "weekends": "Fins de semana" },
+    "decrease": "Diminuir",
+    "increase": "Aumentar",
+    "timePicker": {
+      "hour": "Hora",
+      "minute": "Minuto",
+      "period": "AM/PM"
+    },
+    "summary": {
+      "noSchedule": "Nenhum agendamento definido",
+      "custom": "Agendamento personalizado",
+      "customCron": "Agendamento cron personalizado",
+      "every30": "Roda a cada 30 minutos",
+      "everyHourStart": "Roda no início de cada hora",
+      "everyMinute": "Roda a cada minuto",
+      "everyNMinutes": "Roda a cada {n} minutos",
+      "everyHour": "Roda a cada hora",
+      "everyNHours": "Roda a cada {n} horas",
+      "everyDay": "Roda todos os dias às {time}",
+      "everyNDays": "Roda a cada {n} dias às {time}",
+      "weekly": "Roda a cada {day} às {time}",
+      "everyWeekOnDays": "Roda toda semana em {days} às {time}",
+      "monthly": "Roda no dia {n} de cada mês às {time}",
+      "everyNMonths": "Roda no dia {n} de cada {months} meses às {time}"
+    }
+  },
+  "nextFire": {
+    "lessThanMinute": "em menos de um minuto",
+    "inMinutes": "em {m}m",
+    "inHoursMinutes": "em {h}h {m}m",
+    "inDaysHours": "em {d}d {h}h",
+    "inDays": "em {d}d",
+    "today": "hoje",
+    "tomorrow": "amanhã",
+    "soon": "em breve",
+    "at": "{day} às {time}"
+  },
+  "runHistory": {
+    "empty": "Nenhuma execução ainda, esta rotina não rodou.",
+    "view": "Ver",
+    "stopRun": "Parar execução",
+    "waiting": "Aguardando o limite de uso, retoma às {time}",
+    "status": {
+      "silent": "Silenciosa",
+      "surfaced": "Exibida",
+      "running": "Em execução",
+      "error": "Erro",
+      "cancelled": "Cancelada",
+      "paused": "Pausada"
+    },
+    "today": "Hoje, {time}",
+    "yesterday": "Ontem, {time}",
+    "onDate": "{date}, {time}"
+  },
+  "toasts": {
+    "timezoneSet": "Fuso horário definido como {{zone}}",
+    "timezoneError": "Não foi possível atualizar o fuso horário"
   }
 }

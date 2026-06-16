@@ -26,6 +26,58 @@ test("attaches file changes to the previous assistant message after final result
   ]);
 });
 
+test("collapses duplicate provider-error cards to one per kind+provider", () => {
+  // codex surfaces a terminal auth failure on two channels: the transient
+  // stderr classifier and the persisted stdout parser. The chat must show a
+  // single reconnect card, not a stack.
+  const auth = {
+    feed_type: "provider_error",
+    data: { kind: "unauthenticated", provider: "openai", cause: "unknown", message: "Your session has ended." },
+  };
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    auth,
+    { feed_type: "thinking", data: "" },
+    auth,
+  ]);
+  const cards = messages.filter((m) => m.providerError);
+  assert.equal(cards.length, 1, "exactly one reconnect card");
+  assert.equal(cards[0].providerError.kind, "unauthenticated");
+  assert.equal(cards[0].providerError.provider, "openai");
+});
+
+test("provider-error dedup resets at each user message (per turn)", () => {
+  // Re-failure in a LATER turn must show a fresh card: after a successful
+  // reconnect, the session can die again, and the new turn's error must not
+  // be swallowed by the previous turn's dedup entry.
+  const auth = {
+    feed_type: "provider_error",
+    data: { kind: "unauthenticated", provider: "openai", cause: "unknown", message: "ended" },
+  };
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "first" },
+    auth,
+    auth, // same turn → deduped
+    { feed_type: "user_message", data: "second" },
+    auth, // new turn → fresh card
+  ]);
+  assert.equal(messages.filter((m) => m.providerError).length, 2);
+});
+
+test("keeps provider-error cards of different kinds", () => {
+  const messages = feedItemsToMessages([
+    {
+      feed_type: "provider_error",
+      data: { kind: "rate_limited", provider: "anthropic", model: null, retry_after_seconds: null, message: "429" },
+    },
+    {
+      feed_type: "provider_error",
+      data: { kind: "unauthenticated", provider: "anthropic", cause: "unknown", message: "401" },
+    },
+  ]);
+  assert.equal(messages.filter((m) => m.providerError).length, 2);
+});
+
 test("context_compacted becomes a system divider carrying compaction info", () => {
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "keep going" },
@@ -60,4 +112,67 @@ test("context_compacted tolerates a null pre_tokens", () => {
   assert.ok(divider);
   assert.equal(divider.compaction.trigger, "native");
   assert.equal(divider.compaction.preTokens, undefined);
+});
+
+const rateLimited = {
+  feed_type: "provider_error",
+  data: { kind: "rate_limited", provider: "anthropic", model: null, retry_after_seconds: null, message: "429" },
+};
+
+test("suppresses the 'Session error' echo when a provider-error card covered the turn", () => {
+  // The engine emits a typed card AND a SessionStatus::Error that ui/core
+  // echoes as a raw "Session error: …" system_message. The card is the real
+  // surface; the redundant echo must be dropped.
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    rateLimited,
+    { feed_type: "system_message", data: "Session error: claude hit a runtime error" },
+  ]);
+  assert.equal(messages.filter((m) => m.providerError).length, 1, "card kept");
+  assert.ok(
+    !messages.some((m) => m.content.startsWith("Session error:")),
+    "redundant echo suppressed",
+  );
+});
+
+test("keeps the 'Session error' echo when no card surfaced (no silent failures)", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    { feed_type: "system_message", data: "Session error: something uncarded" },
+  ]);
+  assert.ok(
+    messages.some((m) => m.content === "Session error: something uncarded"),
+    "echo preserved as the only surface",
+  );
+});
+
+test("tool_runtime_error also suppresses the trailing 'Session error' echo", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    { feed_type: "tool_runtime_error", data: { kind: "provider_process", details: "boom" } },
+    { feed_type: "system_message", data: "Session error: claude hit a runtime error" },
+  ]);
+  assert.ok(!messages.some((m) => m.content.startsWith("Session error:")));
+});
+
+test("a non-session-error system message is never suppressed", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    rateLimited,
+    { feed_type: "system_message", data: "Heads up: informational" },
+  ]);
+  assert.ok(messages.some((m) => m.content === "Heads up: informational"));
+});
+
+test("echo suppression is per turn — a later un-carded turn still shows it", () => {
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "first" },
+    rateLimited,
+    { feed_type: "system_message", data: "Session error: carded turn" }, // suppressed
+    { feed_type: "user_message", data: "second" },
+    { feed_type: "system_message", data: "Session error: uncarded turn" }, // kept
+  ]);
+  const echoes = messages.filter((m) => m.content.startsWith("Session error:"));
+  assert.equal(echoes.length, 1);
+  assert.equal(echoes[0].content, "Session error: uncarded turn");
 });

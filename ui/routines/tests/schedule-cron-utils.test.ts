@@ -14,7 +14,7 @@ import {
   type ScheduleInterval,
 } from "../src/schedule-interval-utils.ts"
 
-const OPTS: ScheduleOptions = { time: "09:00", dayOfWeek: 3, dayOfMonth: 15 }
+const OPTS: ScheduleOptions = { time: "09:00", daysOfWeek: [3], dayOfMonth: 15 }
 
 describe("cronToPreset", () => {
   it("detects the built-in presets", () => {
@@ -22,8 +22,10 @@ describe("cronToPreset", () => {
     assert.equal(cronToPreset("0 * * * *"), "hourly")
     assert.equal(cronToPreset("0 9 * * *"), "daily")
     assert.equal(cronToPreset("30 8 * * *"), "daily")
-    assert.equal(cronToPreset("0 9 * * 1-5"), "weekdays")
     assert.equal(cronToPreset("0 9 * * 3"), "weekly")
+    assert.equal(cronToPreset("0 9 * * 1,3,5"), "weekly")
+    // Legacy "Weekdays only" range still classifies as Weekly (Mon-Fri).
+    assert.equal(cronToPreset("0 9 * * 1-5"), "weekly")
     assert.equal(cronToPreset("0 9 15 * *"), "monthly")
   })
 
@@ -35,7 +37,7 @@ describe("cronToPreset", () => {
     assert.equal(cronToPreset("*/1 * * * *"), "custom")
     assert.equal(cronToPreset("* * * * *"), "custom")
     assert.equal(cronToPreset("0 */2 * * *"), "custom")
-    assert.equal(cronToPreset("0 9 * * 1-3"), "custom")
+    assert.equal(cronToPreset("0 9 1-3 * *"), "custom") // day-of-month range
     assert.equal(cronToPreset("not a cron"), "custom")
   })
 
@@ -51,7 +53,6 @@ describe("presetToCron / cronToPreset round-trip", () => {
       "every_30min",
       "hourly",
       "daily",
-      "weekdays",
       "weekly",
       "monthly",
     ] as const
@@ -60,14 +61,26 @@ describe("presetToCron / cronToPreset round-trip", () => {
       assert.equal(cronToPreset(cron), preset, `${preset} -> ${cron}`)
     }
   })
+
+  it("emits a sorted day list for a multi-day Weekly preset", () => {
+    const cron = presetToCron("weekly", { ...OPTS, daysOfWeek: [5, 1, 3] })
+    assert.equal(cron, "0 9 * * 1,3,5")
+    assert.equal(cronToPreset(cron), "weekly")
+  })
 })
 
 describe("cronToOptions", () => {
   it("extracts the time from a daily cron", () => {
     assert.equal(cronToOptions("30 8 * * *").time, "08:30")
   })
-  it("extracts the day of week", () => {
-    assert.equal(cronToOptions("0 9 * * 4").dayOfWeek, 4)
+  it("extracts a single day of week as a list", () => {
+    assert.deepEqual(cronToOptions("0 9 * * 4").daysOfWeek, [4])
+  })
+  it("extracts a multi-day list, sorted", () => {
+    assert.deepEqual(cronToOptions("0 9 * * 5,1,3").daysOfWeek, [1, 3, 5])
+  })
+  it("expands a legacy weekday range", () => {
+    assert.deepEqual(cronToOptions("0 9 * * 1-5").daysOfWeek, [1, 2, 3, 4, 5])
   })
   it("extracts the day of month", () => {
     assert.equal(cronToOptions("0 9 15 * *").dayOfMonth, 15)
@@ -91,14 +104,27 @@ describe("cronSummary", () => {
   it("describes the presets", () => {
     assert.equal(cronSummary("*/30 * * * *"), "Runs every 30 minutes")
     assert.equal(cronSummary("0 9 * * *"), "Runs every day at 9:00 AM")
+    // A legacy Mon-Fri range now reads as a Weekly day list.
     assert.equal(
       cronSummary("0 9 * * 1-5"),
-      "Runs Monday through Friday at 9:00 AM",
+      "Runs every week on Mon, Tue, Wed, Thu, and Fri at 9:00 AM",
     )
   })
   it("describes every-N-day schedules with a time", () => {
     assert.equal(cronSummary("30 8 */2 * *"), "Runs every 2 days at 8:30 AM")
     assert.equal(cronSummary("0 14 */3 * *"), "Runs every 3 days at 2:00 PM")
+  })
+  it("describes weekly and every-N-month schedules", () => {
+    assert.equal(cronSummary("0 9 * * 3"), "Runs every Wednesday at 9:00 AM")
+    assert.equal(
+      cronSummary("0 9 * * 1,3,5"),
+      "Runs every week on Mon, Wed, and Fri at 9:00 AM",
+    )
+    assert.equal(cronSummary("0 9 * * 6,0"), "Runs every week on Sun and Sat at 9:00 AM")
+    assert.equal(
+      cronSummary("30 8 1 */2 *"),
+      "Runs on the 1st of every 2 months at 8:30 AM",
+    )
   })
   it("falls back gracefully for irregular crons and empty input", () => {
     assert.equal(cronSummary("0 9 1-3 * *"), "Custom schedule")
@@ -119,6 +145,10 @@ describe("intervalToCron", () => {
     assert.equal(intervalToCron({ every: 1, unit: "days" }, "08:30"), "30 8 * * *")
     assert.equal(intervalToCron({ every: 3, unit: "days" }, "08:30"), "30 8 */3 * *")
   })
+  it("builds every-N-month crons on a day of month", () => {
+    assert.equal(intervalToCron({ every: 1, unit: "months", dayOfMonth: 15 }, "09:00"), "0 9 15 * *")
+    assert.equal(intervalToCron({ every: 2, unit: "months", dayOfMonth: 1 }, "07:00"), "0 7 1 */2 *")
+  })
   it("clamps the count to at least 1", () => {
     assert.equal(intervalToCron({ every: 0, unit: "minutes" }, "09:00"), "* * * * *")
   })
@@ -133,10 +163,15 @@ describe("cronToInterval", () => {
     assert.deepEqual(cronToInterval("30 8 * * *"), { every: 1, unit: "days" })
     assert.deepEqual(cronToInterval("30 8 */3 * *"), { every: 3, unit: "days" })
   })
+  it("parses monthly crons", () => {
+    assert.deepEqual(cronToInterval("0 9 15 * *"), { every: 1, unit: "months", dayOfMonth: 15 })
+    assert.deepEqual(cronToInterval("0 7 1 */2 *"), { every: 2, unit: "months", dayOfMonth: 1 })
+  })
   it("returns null for crons the picker can't represent", () => {
-    assert.equal(cronToInterval("0 9 * * 1-5"), null) // weekdays
-    assert.equal(cronToInterval("0 9 * * 3"), null)   // specific weekday
-    assert.equal(cronToInterval("0 9 15 * *"), null)  // specific day of month
+    // Weekly day lists/ranges belong to the Weekly preset, not the custom picker.
+    assert.equal(cronToInterval("0 9 * * 1,3,5"), null)
+    assert.equal(cronToInterval("0 9 * * 1-5"), null)
+    assert.equal(cronToInterval("0 9 1-3 * *"), null) // day-of-month range
     assert.equal(cronToInterval("not a cron"), null)
   })
   it("round-trips through intervalToCron", () => {
@@ -145,6 +180,8 @@ describe("cronToInterval", () => {
       { every: 15, unit: "minutes" },
       { every: 2, unit: "hours" },
       { every: 4, unit: "days" },
+      { every: 1, unit: "months", dayOfMonth: 15 },
+      { every: 3, unit: "months", dayOfMonth: 1 },
     ]
     for (const interval of cases) {
       const cron = intervalToCron(interval, "07:45")

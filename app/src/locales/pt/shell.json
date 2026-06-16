@@ -48,7 +48,8 @@
     "githubDescription": "Importe um modelo de espaço de trabalho do GitHub. Isso cria um espaço com todos os agentes prontos para usar.",
     "githubPlaceholder": "usuario/repo",
     "githubImport": "Importar",
-    "githubImporting": "Importando espaço de trabalho e agentes..."
+    "githubImporting": "Importando espaço de trabalho e agentes...",
+    "createFailed": "Não conseguimos criar o espaço de trabalho. Tente novamente."
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",
@@ -279,21 +280,22 @@
       "title": "Atingiu um limite de uso",
       "body": "A API do {{provider}} está limitando as requisições. Aguarde um momento e tente novamente.",
       "bodyWithRetry": "A API do {{provider}} está limitando as requisições. Tente novamente em {{seconds}}s.",
-      "retry": "Tentar de novo",
-      "switchModel": "Trocar de modelo"
+      "retry": "Tentar de novo"
+    },
+    "usageLimitPaused": {
+      "title": "Você atingiu o limite do seu plano",
+      "body": "Por enquanto você esgotou seu plano. Aguarde ele ser restabelecido e continue.",
+      "bodyWithReset": "Por enquanto você esgotou seu plano. Ele é restabelecido às {{time}} e você poderá continuar."
     },
     "quotaExhausted": {
       "title": "Sem capacidade disponível",
       "body": "Seu plano do {{provider}} chegou ao limite. Faça upgrade ou troque de provedor para continuar.",
       "upgrade": "Fazer upgrade",
-      "switchProvider": "Trocar de provedor",
       "useApiKey": "Usar chave de API no lugar"
     },
     "modelUnavailable": {
       "title": "Modelo não disponível",
-      "body": "O modelo {{model}} não está disponível na sua conta {{provider}}.",
-      "switchToFallback": "Trocar para {{model}}",
-      "pickAnother": "Escolher outro modelo"
+      "body": "O modelo {{model}} não está disponível na sua conta {{provider}}."
     },
     "unauthenticated": {
       "title": "Conecte-se ao {{provider}} novamente",
@@ -302,7 +304,12 @@
       "bodyInvalidApiKey": "A chave de API do {{provider}} que o Houston tem não é mais válida. Atualize e tente de novo.",
       "bodyTokenRevoked": "Seu acesso ao {{provider}} foi revogado. Entre novamente para continuar.",
       "bodyUnknown": "O Houston não conseguiu se autenticar no {{provider}}. Reconecte e tente novamente.",
-      "reconnect": "Reconectar"
+      "reconnect": "Reconectar",
+      "waiting": "Conclua o login no seu navegador",
+      "reconnectedTitle": "Reconectado a {{provider}}",
+      "reconnectedBody": "Você entrou de novo. Continue de onde parou.",
+      "sendAgain": "Tentar novamente",
+      "failedBody": "O login de {{provider}} não foi concluído. Tente novamente. {{detail}}"
     },
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",

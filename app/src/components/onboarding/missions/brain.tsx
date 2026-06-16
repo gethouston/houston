@@ -8,7 +8,7 @@ import {
   RefreshCw,
   Terminal,
 } from "lucide-react";
-import { Button, cn } from "@houston-ai/core";
+import { AsyncButton, Button, cn } from "@houston-ai/core";
 import { tauriProvider, tauriSystem, type ProviderStatus } from "../../../lib/tauri";
 import {
   PROVIDERS,
@@ -204,7 +204,7 @@ function ProviderCard({
           installed={installed}
           loginLaunched={loginLaunched}
           loginError={loginError}
-          onSignIn={() => void handleSignIn()}
+          onSignIn={handleSignIn}
           onRefresh={() => void onRefresh()}
           onCancelWaiting={() => void handleCancelWaiting()}
           claudeInstall={claudeInstall}
@@ -283,7 +283,7 @@ function SetupHint({
   installed: boolean;
   loginLaunched: boolean;
   loginError: string | null;
-  onSignIn: () => void;
+  onSignIn: () => void | Promise<void>;
   onRefresh: () => void;
   onCancelWaiting: () => void;
   /** Houston-managed install state for the Anthropic CLI. `null` for
@@ -318,10 +318,10 @@ function SetupHint({
         </div>
       )}
       {installed && !loginLaunched && (
-        <Button size="sm" className="rounded-full" onClick={onSignIn}>
+        <AsyncButton size="sm" className="rounded-full" onClick={onSignIn}>
           <ExternalLink className="size-3.5" />
           {t("providers:setup.signInWith", { provider: provider.name })}
-        </Button>
+        </AsyncButton>
       )}
       {installed && loginLaunched && (
         <div className="flex flex-col gap-1.5">

@@ -7,6 +7,11 @@
  * Returns `null` when the schedule never fires within 366 days (typically a
  * malformed cron).
  */
+import {
+  interp,
+  DEFAULT_NEXT_FIRE_LABELS,
+  type NextFireLabels,
+} from "./labels.ts"
 
 interface CronFields {
   minute: Set<number>
@@ -166,12 +171,15 @@ export function nextFire(
 
 /**
  * Format a future `Date` as a relative ("in 2h 14m") + absolute ("today at
- * 9:00 AM") pair, both interpreted in the routine's `timeZone`.
+ * 9:00 AM") pair, both interpreted in the routine's `timeZone`. The connector
+ * words come from `labels`; weekday/month/time formatting comes from `locale`.
  */
 export function describeNextFire(
   next: Date,
   timeZone: string,
   now: Date = new Date(),
+  labels: NextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
+  locale = "en-US",
 ): { relative: string; absolute: string } {
   const diffMs = next.getTime() - now.getTime()
   const totalSeconds = Math.max(0, Math.round(diffMs / 1000))
@@ -180,17 +188,17 @@ export function describeNextFire(
   const minutes = Math.floor((totalSeconds % 3600) / 60)
 
   let relative: string
-  if (totalSeconds < 60) relative = "in less than a minute"
-  else if (days === 0 && hours === 0) relative = `in ${minutes}m`
-  else if (days === 0) relative = `in ${hours}h ${minutes}m`
-  else if (days < 7) relative = `in ${days}d ${hours}h`
-  else relative = `in ${days}d`
+  if (totalSeconds < 60) relative = labels.lessThanMinute
+  else if (days === 0 && hours === 0) relative = interp(labels.inMinutes, { m: minutes })
+  else if (days === 0) relative = interp(labels.inHoursMinutes, { h: hours, m: minutes })
+  else if (days < 7) relative = interp(labels.inDaysHours, { d: days, h: hours })
+  else relative = interp(labels.inDays, { d: days })
 
   // Absolute: today / tomorrow / weekday — computed in the routine's tz.
-  let dayLabel = "soon"
+  let dayLabel = labels.soon
   let timeLabel = ""
   try {
-    const dayFmt = new Intl.DateTimeFormat("en-US", {
+    const dayFmt = new Intl.DateTimeFormat(locale, {
       timeZone,
       weekday: "short",
       month: "short",
@@ -203,7 +211,7 @@ export function describeNextFire(
       nextParts.find((p) => p.type === t)?.value
 
     if (samePart("month") && samePart("day")) {
-      dayLabel = "today"
+      dayLabel = labels.today
     } else {
       const tomorrow = new Date(now.getTime() + 86_400_000)
       const tomorrowParts = dayFmt.formatToParts(tomorrow)
@@ -211,29 +219,28 @@ export function describeNextFire(
         tomorrowParts.find((p) => p.type === t)?.value ===
         nextParts.find((p) => p.type === t)?.value
       if (sameAs("month") && sameAs("day")) {
-        dayLabel = "tomorrow"
+        dayLabel = labels.tomorrow
       } else if (days < 7) {
         dayLabel =
           nextParts.find((p) => p.type === "weekday")?.value?.toLowerCase() ??
-          "soon"
+          labels.soon
       } else {
         const monthDay = nextParts.filter(
           (p) => p.type === "month" || p.type === "day" || p.type === "literal",
         )
-        dayLabel = monthDay.map((p) => p.value).join("") || "soon"
+        dayLabel = monthDay.map((p) => p.value).join("") || labels.soon
       }
     }
 
-    timeLabel = new Intl.DateTimeFormat("en-US", {
+    timeLabel = new Intl.DateTimeFormat(locale, {
       timeZone,
       hour: "numeric",
       minute: "2-digit",
-      hour12: true,
     }).format(next)
   } catch {
     // fall through with defaults
   }
 
-  const absolute = timeLabel ? `${dayLabel} at ${timeLabel}` : dayLabel
+  const absolute = timeLabel ? interp(labels.at, { day: dayLabel, time: timeLabel }) : dayLabel
   return { relative, absolute }
 }

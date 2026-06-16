@@ -44,7 +44,16 @@ const _ready: Promise<void> = new Promise((resolve) => {
 
 function applyConfig(config: { baseUrl: string; token: string }) {
   window.__HOUSTON_ENGINE__ = config;
-  _client = new HoustonClient(config);
+  if (_client) {
+    // Engine restarted on a fresh random port: repoint the EXISTING client in
+    // place so requests already mid-flight (and every hook holding this
+    // instance) recover on their next retry instead of hammering the dead
+    // port. Building a new client would strand those stale references. The
+    // client's own retry/backoff bridges the restart gap (HOU-432).
+    _client.setEndpoint(config);
+  } else {
+    _client = new HoustonClient(config);
+  }
   if (_resolveReady) {
     _resolveReady();
     _resolveReady = null;

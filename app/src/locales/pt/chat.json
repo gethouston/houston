@@ -63,6 +63,7 @@
     "notConnected": "Sem conexão",
     "checking": "Verificando...",
     "effort": "Esforço de raciocínio",
+    "effortValue": "Esforço de raciocínio: {{level}}",
     "effortLevels": {
       "low": "Baixo",
       "medium": "Médio",
@@ -76,6 +77,13 @@
       "high": "Análise mais profunda para tarefas difíceis.",
       "xhigh": "Ideal para tarefas complexas.",
       "max": "Análise máxima, sem limite de tokens."
+    },
+    "modelDescriptions": {
+      "gpt-5_5": "O modelo mais avançado da OpenAI.",
+      "claude-sonnet-4-6": "Melhor equilibrio entre velocidade e qualidade.",
+      "claude-opus-4-8": "Opus mais recente. Melhor alinhamento e codigo agente que 4.7.",
+      "claude-fable-5": "O modelo mais capaz. Consome o dobro de creditos que Opus 4.8.",
+      "claude-opus-4-7": "Modelo anterior. Autonomia de codigo e raciocinio complexo."
     }
   },
   "reasoning": {
@@ -85,6 +93,7 @@
   },
   "process": {
     "active": "Missão em andamento...",
+    "activeAction": "Missão em andamento: {{action}}",
     "complete": "Registro da missão"
   },
   "summary": {
@@ -97,5 +106,15 @@
   },
   "filesUpdated_one": "1 arquivo atualizado",
   "filesUpdated_other": "{{count}} arquivos atualizados",
-  "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar"
+  "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar",
+  "providerSwitch": {
+    "title": "Mudar para {{provider}}?",
+    "replayBody": "Mudar leva toda esta conversa para o {{provider}} continuar com todo o contexto. Recarregar a conversa usa uma quantidade considerável de tokens, e mais quanto maior a conversa estiver agora. Continuar?",
+    "replayConfirm": "Recarregar e mudar",
+    "summaryBody": "O {{provider}} tem uma janela de contexto menor, então a conversa inteira não cabe. Vamos resumi-la para o {{provider}} continuar. Resumir usa tokens e pode perder algum detalhe. Continuar?",
+    "summaryConfirm": "Resumir e mudar",
+    "cancel": "Cancelar",
+    "dividerFull": "Continuou com {{provider}}",
+    "dividerSummary": "Continuou com {{provider}}, resumido para caber"
+  }
 }

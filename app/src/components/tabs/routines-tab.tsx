@@ -20,13 +20,18 @@ import {
   useCancelRoutineRun,
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
+import { useRoutineLabels } from "../../hooks/use-routine-labels";
+import { useUIStore } from "../../stores/ui";
+import { RoutineModelControls } from "./routine-model-controls";
 import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
 
 export default function RoutinesTab({ agent }: TabProps) {
   const { t } = useTranslation("routines");
+  const labels = useRoutineLabels();
   const path = agent.folderPath;
   const tz = useTimezonePreference();
+  const addToast = useUIStore((s) => s.addToast);
 
   const { data: routines, isLoading } = useRoutines(path);
   const { data: allRuns } = useRoutineRuns(path);
@@ -132,6 +137,34 @@ export default function RoutinesTab({ agent }: TabProps) {
     [cancelRun],
   );
 
+  // Single patch-merge for editor field edits, shared by RoutineEditor and the
+  // model/effort controls. A picked provider/model/effort pins it on the form;
+  // untouched fields stay null so the run inherits the agent's config.
+  const handleFormChange = useCallback(
+    (patch: Partial<RoutineFormData>) =>
+      setForm((prev) => ({ ...prev, ...patch })),
+    [],
+  );
+
+  // The timezone is a single account-wide preference (not per-routine), so the
+  // editor's picker writes straight to it. Changing it re-times every routine,
+  // which the engine scheduler picks up on the next sync.
+  const handleTimezoneChange = useCallback(
+    async (zone: string) => {
+      try {
+        await tz.confirm(zone);
+        addToast({ title: t("toasts.timezoneSet", { zone }) });
+      } catch (err) {
+        addToast({
+          title: t("toasts.timezoneError"),
+          description: err instanceof Error ? err.message : String(err),
+          variant: "error",
+        });
+      }
+    },
+    [tz, addToast, t],
+  );
+
   // `useTimezonePreference` auto-seeds on first call, so `tz.timezone` is
   // non-null from the first render. We still wait for the roundtrip to
   // finish so the cron schedule renders against the real zone instead of
@@ -155,7 +188,7 @@ export default function RoutinesTab({ agent }: TabProps) {
     return (
       <RoutineEditor
         value={form}
-        onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+        onChange={handleFormChange}
         onBack={() => setView({ type: "grid" })}
         onSubmit={handleSubmit}
         routine={editing}
@@ -173,6 +206,18 @@ export default function RoutinesTab({ agent }: TabProps) {
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         accountTimezone={tz.timezone}
         hasChanges={!formMatchesRoutine(form, baseline)}
+        modelPicker={
+          <RoutineModelControls
+            agentPath={path}
+            form={form}
+            onChange={handleFormChange}
+          />
+        }
+        labels={labels.editor}
+        scheduleLabels={labels.schedule}
+        nextFireLabels={labels.nextFire}
+        runHistoryLabels={labels.runHistory}
+        locale={labels.locale}
       />
     );
   }
@@ -182,17 +227,16 @@ export default function RoutinesTab({ agent }: TabProps) {
       routines={routines ?? []}
       lastRuns={lastRuns}
       accountTimezone={tz.timezone}
+      onTimezoneChange={handleTimezoneChange}
       loading={isLoading}
       onSelect={openEditor}
       onCreate={handleCreate}
       onToggle={handleToggle}
-      labels={{
-        loading: t("loading"),
-        emptyTitle: t("grid.emptyTitle"),
-        emptyDescription: t("grid.emptyDescription"),
-        descriptionShort: t("grid.descriptionShort"),
-        newRoutine: t("grid.newRoutine"),
-      }}
+      labels={labels.grid}
+      rowLabels={labels.rowLabels}
+      scheduleSummaryLabels={labels.schedule.summary}
+      nextFireLabels={labels.nextFire}
+      locale={labels.locale}
     />
   );
 }

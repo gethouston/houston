@@ -290,8 +290,10 @@ mod tests {
                 enabled: true,
                 suppress_when_silent: true,
                 chat_mode: RoutineChatMode::Shared,
-                timezone: None,
                 integrations: vec![],
+                provider: None,
+                model: None,
+                effort: None,
             },
         )
         .unwrap();
@@ -311,8 +313,10 @@ mod tests {
                 enabled: true,
                 suppress_when_silent: true,
                 chat_mode: RoutineChatMode::PerRun,
-                timezone: None,
                 integrations: vec![],
+                provider: None,
+                model: None,
+                effort: None,
             },
         )
         .unwrap();

@@ -48,7 +48,8 @@
     "githubDescription": "Importa una plantilla de espacio de trabajo desde GitHub. Crea un espacio con todos sus agentes listos para usar.",
     "githubPlaceholder": "usuario/repo",
     "githubImport": "Importar",
-    "githubImporting": "Importando espacio de trabajo y agentes..."
+    "githubImporting": "Importando espacio de trabajo y agentes...",
+    "createFailed": "No pudimos crear el espacio de trabajo. Inténtalo de nuevo."
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",
@@ -279,21 +280,22 @@
       "title": "Alcanzaste un límite de velocidad",
       "body": "La API de {{provider}} está limitando las solicitudes. Espera un momento e inténtalo de nuevo.",
       "bodyWithRetry": "La API de {{provider}} está limitando las solicitudes. Vuelve a intentar en {{seconds}}s.",
-      "retry": "Reintentar",
-      "switchModel": "Cambiar de modelo"
+      "retry": "Reintentar"
+    },
+    "usageLimitPaused": {
+      "title": "Llegaste al límite de tu plan",
+      "body": "Por ahora agotaste tu plan. Espera a que se restablezca y continúa.",
+      "bodyWithReset": "Por ahora agotaste tu plan. Se restablece a las {{time}} y podrás continuar."
     },
     "quotaExhausted": {
       "title": "Sin capacidad disponible",
       "body": "Tu plan de {{provider}} llegó al límite. Mejora tu plan o cambia de proveedor para continuar.",
       "upgrade": "Mejorar plan",
-      "switchProvider": "Cambiar de proveedor",
       "useApiKey": "Usar clave de API en su lugar"
     },
     "modelUnavailable": {
       "title": "Modelo no disponible",
-      "body": "{{model}} no está disponible en tu cuenta de {{provider}}.",
-      "switchToFallback": "Cambiar a {{model}}",
-      "pickAnother": "Elegir otro modelo"
+      "body": "{{model}} no está disponible en tu cuenta de {{provider}}."
     },
     "unauthenticated": {
       "title": "Conéctate a {{provider}} de nuevo",
@@ -302,7 +304,12 @@
       "bodyInvalidApiKey": "La clave de API de {{provider}} que tiene Houston ya no es válida. Actualízala y vuelve a intentar.",
       "bodyTokenRevoked": "Se revocó tu acceso a {{provider}}. Inicia sesión de nuevo para continuar.",
       "bodyUnknown": "Houston no pudo autenticarse con {{provider}}. Vuelve a conectarte e inténtalo de nuevo.",
-      "reconnect": "Reconectar"
+      "reconnect": "Reconectar",
+      "waiting": "Termina de iniciar sesión en tu navegador",
+      "reconnectedTitle": "Reconectado a {{provider}}",
+      "reconnectedBody": "Ya iniciaste sesión de nuevo. Continúa donde quedaste.",
+      "sendAgain": "Intentar de nuevo",
+      "failedBody": "El inicio de sesión de {{provider}} no se completó. Inténtalo de nuevo. {{detail}}"
     },
     "networkUnreachable": {
       "title": "No se puede conectar con {{provider}}",

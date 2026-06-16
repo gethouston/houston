@@ -11,14 +11,9 @@ import type { ProviderError } from "@houston-ai/chat";
 import { tauriSystem } from "../../../lib/tauri";
 import { ErrorCard, providerLabel } from "./shared";
 
-interface BaseProps {
-  onSwitchModel?: () => void;
-}
-
 export function QuotaExhaustedCard({
   error,
-  onSwitchModel,
-}: BaseProps & {
+}: {
   error: Extract<ProviderError, { kind: "quota_exhausted" }>;
 }) {
   const { t } = useTranslation("shell");
@@ -38,24 +33,13 @@ export function QuotaExhaustedCard({
           {t("providerError.quotaExhausted.upgrade")}
         </Button>
       )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.quotaExhausted.switchProvider")}
-        </Button>
-      )}
     </ErrorCard>
   );
 }
 
 export function ModelUnavailableCard({
   error,
-  onSwitchModel,
-}: BaseProps & {
+}: {
   error: Extract<ProviderError, { kind: "model_unavailable" }>;
 }) {
   const { t } = useTranslation("shell");
@@ -65,28 +49,6 @@ export function ModelUnavailableCard({
       icon={<AlertTriangleIcon className="size-5" />}
       title={t("providerError.modelUnavailable.title")}
       body={t("providerError.modelUnavailable.body", { provider, model: error.model })}
-    >
-      {error.suggested_fallback && onSwitchModel && (
-        <Button
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.modelUnavailable.switchToFallback", {
-            model: error.suggested_fallback,
-          })}
-        </Button>
-      )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.modelUnavailable.pickAnother")}
-        </Button>
-      )}
-    </ErrorCard>
+    />
   );
 }

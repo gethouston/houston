@@ -59,15 +59,9 @@
       "confirmTitle": "Desconectar todos os celulares?",
       "confirmDescription": "Isso redefine o QR e sai de todos os celulares conectados a este computador. Escaneie o novo QR para conectar de novo.",
       "confirmLabel": "Desconectar",
-      "toast": "Acesso pelo celular redefinido"
+      "toast": "Acesso pelo celular redefinido",
+      "unavailable": "Disponível quando a conexão com seu celular estiver pronta."
     }
-  },
-  "timezone": {
-    "title": "Fuso horário",
-    "description": "Usado quando suas rotinas disparam, 9h significa 9h neste fuso.",
-    "label": "Fuso IANA",
-    "placeholder": "ex. America/Sao_Paulo",
-    "useDetected": "Usar o detectado ({{zone}})"
   },
   "appearance": {
     "title": "Aparência",
@@ -107,7 +101,6 @@
   "toasts": {
     "workspaceRenamed": "Espaço de trabalho renomeado",
     "providerSwitched": "Mudou para {{provider}} ({{model}})",
-    "timezoneSet": "Fuso horário definido como {{zone}}",
     "versionCopied": "Versão copiada",
     "versionCopyFailed": "Não foi possível copiar a versão"
   }

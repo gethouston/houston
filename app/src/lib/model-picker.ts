@@ -49,24 +49,22 @@ export function providerPickerState(
 /**
  * Whether a provider group should render in the picker.
  *
- * Rules, in order:
- *  1. A lock hides every provider except the locked one (the conversation has
- *     already started on that provider).
- *  2. The active provider is always shown, so the user can see and re-pick the
+ * The user may switch providers any time — including mid-conversation (the
+ * engine carries context across, see `lib/provider-switch.ts`) — so the picker
+ * never locks to one provider. Rules, in order:
+ *  1. The active provider is always shown, so the user can see and re-pick the
  *     current selection even when it is disconnected.
- *  3. While `checking`, every provider stays visible — this is the #342 fix:
+ *  2. While `checking`, every provider stays visible — this is the #342 fix:
  *     the list must not collapse to just the active provider before statuses
  *     load.
- *  4. Otherwise show only providers known to be connected; hide the rest.
+ *  3. Otherwise show only providers known to be connected; hide the rest.
  */
 export function shouldShowProviderInPicker(opts: {
   providerId: string;
   state: ProviderPickerState;
   isActiveProvider: boolean;
-  effectiveLock: string | null;
 }): boolean {
-  const { providerId, state, isActiveProvider, effectiveLock } = opts;
-  if (effectiveLock) return providerId === effectiveLock;
+  const { state, isActiveProvider } = opts;
   if (isActiveProvider) return true;
   if (state === "checking") return true;
   return state === "connected";

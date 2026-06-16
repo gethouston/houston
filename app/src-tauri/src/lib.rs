@@ -68,6 +68,53 @@ impl SupervisorCallbacks for TauriSupervisorCallbacks {
     }
 }
 
+/// Truthy check for the `SENTRY_SEND_IN_DEV` opt-in. Accepts `1`, `true`,
+/// `yes`, `on` (any case, surrounding whitespace ignored); everything else
+/// (including unset) is off. Pure for testability.
+fn sentry_send_in_dev_enabled(raw: Option<&str>) -> bool {
+    matches!(
+        raw.map(|v| v.trim().to_ascii_lowercase()).as_deref(),
+        Some("1" | "true" | "yes" | "on")
+    )
+}
+
+/// Whether to activate Sentry. Needs a DSN, and in a debug build only when the
+/// `SENTRY_SEND_IN_DEV` opt-in is set — a HARD gate (no client at all), not the
+/// soft `environment: development` tag, so dev errors never reach the prod
+/// `houston-app` project. Pure for testability.
+fn sentry_should_activate(dsn_empty: bool, debug: bool, send_in_dev: bool) -> bool {
+    !dsn_empty && (!debug || send_in_dev)
+}
+
+/// Build the Sentry env vars to inject into the engine subprocess. EMPTY when
+/// Sentry is inactive, so the engine stays a silent no-op — the "app injects NO
+/// DSN → engine dormant" contract (the supervisor additionally strips any
+/// inherited SENTRY_* so this is the engine's only source). When active, always
+/// forwards DSN/RELEASE/ENVIRONMENT so engine events share the app's project +
+/// release; additionally forwards `SENTRY_SEND_IN_DEV=1` when the app opted into
+/// dev sending, so a debug engine sidecar's own dev gate (`main::init_sentry`)
+/// agrees instead of self-suppressing. Pure for testability.
+fn engine_sentry_env(
+    active: bool,
+    send_in_dev: bool,
+    dsn: &str,
+    release: &str,
+    environment: &str,
+) -> Vec<(String, String)> {
+    if !active {
+        return Vec::new();
+    }
+    let mut env = vec![
+        ("SENTRY_DSN".to_string(), dsn.to_string()),
+        ("SENTRY_RELEASE".to_string(), release.to_string()),
+        ("SENTRY_ENVIRONMENT".to_string(), environment.to_string()),
+    ];
+    if send_in_dev {
+        env.push(("SENTRY_SEND_IN_DEV".to_string(), "1".to_string()));
+    }
+    env
+}
+
 pub fn run() {
     // First-launch DMG guard (macOS only). If we were double-clicked from
     // inside the installer DMG (path under /Volumes/…), show a native
@@ -112,7 +159,17 @@ pub fn run() {
     } else {
         "production"
     };
-    let _sentry_client = if sentry_dsn.is_empty() {
+    // Dev builds suppress Sentry unless SENTRY_SEND_IN_DEV is set, so a dev
+    // running with the prod DSN exported doesn't pollute the prod project
+    // (HOU-469). `option_env!` reads it at compile time, matching SENTRY_DSN.
+    let sentry_send_in_dev =
+        sentry_send_in_dev_enabled(option_env!("SENTRY_SEND_IN_DEV"));
+    let sentry_active = sentry_should_activate(
+        sentry_dsn.is_empty(),
+        cfg!(debug_assertions),
+        sentry_send_in_dev,
+    );
+    let _sentry_client = if !sentry_active {
         None
     } else {
         Some(sentry::init((
@@ -294,17 +351,18 @@ pub fn run() {
             // Hand our Sentry config to the engine subprocess so engine-side
             // panics + `tracing::error!` land in the SAME Sentry project, under
             // the SAME release, tagged `runtime=engine` (the engine reads these
-            // in `main::init_sentry`). Gated on the app actually having a DSN so
-            // forks / dev builds inject nothing and the engine stays a silent
-            // no-op. The engine debug files CI uploads then become useful.
-            if !sentry_dsn.is_empty() {
-                engine_env.push(("SENTRY_DSN".into(), sentry_dsn.to_string()));
-                engine_env.push(("SENTRY_RELEASE".into(), sentry_release.clone()));
-                engine_env.push((
-                    "SENTRY_ENVIRONMENT".into(),
-                    sentry_environment.to_string(),
-                ));
-            }
+            // in `main::init_sentry`). Gated on the same `sentry_active`
+            // decision as the app's own client, so forks / dev builds (without
+            // the SENTRY_SEND_IN_DEV opt-in) inject nothing and the engine
+            // stays a silent no-op. The engine debug files CI uploads then
+            // become useful.
+            engine_env.extend(engine_sentry_env(
+                sentry_active,
+                sentry_send_in_dev,
+                sentry_dsn,
+                &sentry_release,
+                sentry_environment,
+            ));
             // 30s banner timeout: first-run Gatekeeper scan on a notarized
             // sidecar can take 15–20s on slow machines.
             let slot = spawn_supervisor(binary, Duration::from_secs(30), engine_env, cb)
@@ -579,5 +637,82 @@ fn migrate_legacy_docs_dir(houston: &std::path::Path) {
             legacy.display(),
             new_root.display()
         );
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{engine_sentry_env, sentry_send_in_dev_enabled, sentry_should_activate};
+
+    #[test]
+    fn send_in_dev_flag_off_by_default() {
+        // Unset / blank / unrecognized → never opt in.
+        assert!(!sentry_send_in_dev_enabled(None));
+        assert!(!sentry_send_in_dev_enabled(Some("")));
+        assert!(!sentry_send_in_dev_enabled(Some("   ")));
+        assert!(!sentry_send_in_dev_enabled(Some("0")));
+        assert!(!sentry_send_in_dev_enabled(Some("false")));
+    }
+
+    #[test]
+    fn send_in_dev_flag_accepts_truthy_values() {
+        for v in ["1", "true", "yes", "on", "TRUE", " On ", "Yes"] {
+            assert!(sentry_send_in_dev_enabled(Some(v)), "expected {v} → true");
+        }
+    }
+
+    #[test]
+    fn sentry_inactive_without_dsn() {
+        // No DSN → never active, regardless of build profile or opt-in.
+        assert!(!sentry_should_activate(true, false, false));
+        assert!(!sentry_should_activate(true, true, true));
+    }
+
+    #[test]
+    fn sentry_active_in_release_with_dsn() {
+        // Release build (debug = false) with a DSN → active; opt-in irrelevant.
+        assert!(sentry_should_activate(false, false, false));
+        assert!(sentry_should_activate(false, false, true));
+    }
+
+    #[test]
+    fn sentry_suppressed_in_dev_unless_opted_in() {
+        // Debug build with a DSN: suppressed by default, active only with opt-in.
+        assert!(!sentry_should_activate(false, true, false));
+        assert!(sentry_should_activate(false, true, true));
+    }
+
+    #[test]
+    fn engine_sentry_env_empty_when_inactive() {
+        // Inactive → inject NOTHING, so the engine stays dormant. The opt-in
+        // flag must NOT leak through when Sentry is off.
+        assert!(engine_sentry_env(false, false, "dsn", "rel", "production").is_empty());
+        assert!(engine_sentry_env(false, true, "dsn", "rel", "development").is_empty());
+    }
+
+    #[test]
+    fn engine_sentry_env_forwards_core_three_when_active() {
+        let env = engine_sentry_env(true, false, "https://dsn", "houston-app@1.2.3", "production");
+        assert_eq!(
+            env,
+            vec![
+                ("SENTRY_DSN".to_string(), "https://dsn".to_string()),
+                ("SENTRY_RELEASE".to_string(), "houston-app@1.2.3".to_string()),
+                ("SENTRY_ENVIRONMENT".to_string(), "production".to_string()),
+            ]
+        );
+        // No opt-in flag unless the app itself opted in.
+        assert!(!env.iter().any(|(k, _)| k == "SENTRY_SEND_IN_DEV"));
+    }
+
+    #[test]
+    fn engine_sentry_env_forwards_send_in_dev_when_opted_in() {
+        // The symmetric invariant: opting in injects the DSN AND the flag, so
+        // the debug engine sidecar's own dev gate agrees instead of suppressing.
+        let env =
+            engine_sentry_env(true, true, "https://dsn", "houston-app@1.2.3-dev", "development");
+        assert!(env.contains(&("SENTRY_SEND_IN_DEV".to_string(), "1".to_string())));
+        assert!(env.iter().any(|(k, _)| k == "SENTRY_DSN"));
+        assert!(env.iter().any(|(k, _)| k == "SENTRY_ENVIRONMENT"));
     }
 }

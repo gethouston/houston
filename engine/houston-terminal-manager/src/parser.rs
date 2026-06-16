@@ -29,6 +29,13 @@ pub struct StreamAccumulator {
     /// turn, so this never carries a stale reading into a later turn — the
     /// success path also `.take()`s it for hygiene.
     last_usage: Option<TokenUsage>,
+    /// Set once a `rate_limit_event` with `status:"rejected"` arrives — the
+    /// plan-window (5-hour session) limit was hit mid-stream. The terminal
+    /// `result {is_error, api_error_status:429}` that follows is the SAME
+    /// limit, so we force it to `UsageLimitPaused` too (instead of letting an
+    /// ambiguous body classify it as `RateLimited`), keeping both to one
+    /// deduped card.
+    saw_plan_window_rejection: bool,
 }
 
 #[derive(Debug)]
@@ -182,6 +189,7 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
             subtype,
             result,
             is_error,
+            api_error_status,
             cost_usd,
             duration_ms,
             usage: result_usage,
@@ -197,7 +205,31 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
                 // than a dead-end string.
                 let message = result.unwrap_or_else(|| "Unknown error".to_string());
                 let subtype_str = subtype.as_deref().unwrap_or("error");
-                let typed = anthropic_classify::classify_result_error(subtype_str, &message)
+                // A plan-window rejection already surfaced mid-stream this turn:
+                // the terminal 429 is that SAME 5-hour session limit. Force
+                // UsageLimitPaused so it dedupes against the card already
+                // emitted, instead of an ambiguous body stacking a second
+                // RateLimited card on top.
+                if acc.saw_plan_window_rejection && api_error_status == Some(429) {
+                    return vec![FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+                        provider: ANTHROPIC.into(),
+                        resets_at: anthropic_classify::parse_resets_at_hint(&message),
+                        message: truncate_excerpt(&message),
+                    })];
+                }
+                // Prefer the authoritative `api_error_status` HTTP code
+                // (e.g. 429) over the human `result` text. claude-code sets
+                // `is_error:true` with `api_error_status:429` but `subtype`
+                // can still be `"success"` and the `result` string often
+                // omits the word "rate limit" — so text matching alone
+                // misfiles a throttle as `Unknown`. Fall back to text
+                // classification when the code is absent/unrecognised, then
+                // to `Unknown` (always a Report-bug CTA, never a dead end).
+                let typed = api_error_status
+                    .and_then(|status| {
+                        anthropic_classify::classify_api_error_status(status, &message)
+                    })
+                    .or_else(|| anthropic_classify::classify_result_error(subtype_str, &message))
                     .unwrap_or_else(|| ProviderError::Unknown {
                         provider: ANTHROPIC.into(),
                         raw_excerpt: truncate_excerpt(&message),
@@ -220,42 +252,72 @@ pub fn parse_event(line: &str, acc: &mut StreamAccumulator) -> Vec<FeedItem> {
             }]
         }
         ClaudeEvent::StreamEvent { event: inner, .. } => acc.handle(inner),
-        ClaudeEvent::RateLimitEvent { extra } => parse_rate_limit_event(extra),
+        ClaudeEvent::RateLimitEvent { extra } => parse_rate_limit_event(extra, acc),
     }
 }
 
 /// Parse Claude's `rate_limit_event` into a typed [`ProviderError`].
 ///
-/// Replaces the historical silent drop. The CLI emits these events when
-/// the Anthropic API throttles the request — `rate_limit_info.status` is
-/// `"allowed"` for routine heartbeat events (no UI needed) and one of
-/// `"rate_limited"` / `"throttled"` / `"queued"` when the user should be
-/// told to wait. We only emit a feed item for the throttled cases so a
-/// healthy stream stays quiet.
-fn parse_rate_limit_event(extra: serde_json::Value) -> Vec<FeedItem> {
+/// `rate_limit_info.status` reports the unified rate-limit state:
+/// - `"allowed"` / `"allowed_warning"` — the request went through (the latter
+///   is just a "you're approaching the limit" heads-up). Both stay SILENT so a
+///   healthy stream shows no card.
+/// - `"rejected"` — the plan-window limit (e.g. the 5-hour subscription
+///   session) was hit and the request was blocked. The event carries the reset
+///   moment as a unix `resetsAt` timestamp. Surface the non-terminal
+///   [`ProviderError::UsageLimitPaused`] (wait for the reset; retrying now
+///   fails) rather than a misleading per-minute throttle card.
+/// - anything else (`"rate_limited"` / `"throttled"` / `"queued"`) — a genuine
+///   short-window throttle with a `reset_in_seconds` countdown, surfaced as
+///   [`ProviderError::RateLimited`].
+fn parse_rate_limit_event(
+    extra: serde_json::Value,
+    acc: &mut StreamAccumulator,
+) -> Vec<FeedItem> {
     let info = extra.get("rate_limit_info").unwrap_or(&extra);
     let status = info.get("status").and_then(|v| v.as_str()).unwrap_or("");
-    if status.is_empty() || status == "allowed" {
+
+    // Healthy heartbeat + the "approaching limit" warning are not errors.
+    if matches!(status, "" | "allowed" | "allowed_warning") {
         return vec![];
     }
+
+    let message = info.get("message").and_then(|v| v.as_str());
+
+    if status == "rejected" {
+        // Remember it so the terminal 429 result this turn dedupes to the same
+        // UsageLimitPaused card instead of stacking a second RateLimited one.
+        acc.saw_plan_window_rejection = true;
+        // Prefer the structured `resetsAt` epoch (reliable) over any text the
+        // event carries; fall back to a text hint, then to no hint at all.
+        let resets_at = info
+            .get("resetsAt")
+            .and_then(|v| v.as_i64())
+            .and_then(anthropic_classify::format_reset_time)
+            .or_else(|| message.and_then(anthropic_classify::parse_resets_at_hint));
+        return vec![FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+            provider: ANTHROPIC.into(),
+            resets_at,
+            message: message
+                .map(truncate_excerpt)
+                .unwrap_or_else(|| "Claude session limit reached.".to_string()),
+        })];
+    }
+
+    // Genuine short-window throttle: keep the per-minute RateLimited card.
     let retry_after_seconds = info
         .get("reset_in_seconds")
         .or_else(|| info.get("retry_after_seconds"))
         .or_else(|| info.get("retry_after"))
         .and_then(|v| v.as_u64())
         .and_then(|n| u32::try_from(n).ok());
-    let message = info
-        .get("message")
-        .and_then(|v| v.as_str())
-        .map(truncate_excerpt)
-        .unwrap_or_else(|| {
-            format!("Anthropic rate-limit signal: {status}")
-        });
     vec![FeedItem::ProviderError(ProviderError::RateLimited {
         provider: ANTHROPIC.into(),
         model: None,
         retry_after_seconds,
-        message,
+        message: message
+            .map(truncate_excerpt)
+            .unwrap_or_else(|| format!("Anthropic rate-limit signal: {status}")),
     })]
 }
 
@@ -322,23 +384,19 @@ fn parse_assistant_event(
                     }
                 }
             }
-            ContentBlock::Thinking { thinking } => {
-                if let Some(t) = thinking {
-                    if !t.is_empty() {
-                        if is_partial {
-                            items.push(FeedItem::ThinkingStreaming(t));
-                        } else {
-                            items.push(FeedItem::Thinking(t));
-                        }
-                    }
-                }
-            }
-            ContentBlock::ToolUse { name, input, .. } => {
-                items.push(FeedItem::ToolCall {
-                    name: name.unwrap_or_else(|| "unknown".into()),
-                    input: input.unwrap_or(serde_json::Value::Null),
-                });
-            }
+            // Thinking and tool_use are already delivered live by the streaming
+            // path (`StreamAccumulator::handle`): with `--include-partial-messages`
+            // always on (see `claude_command.rs`), every tool_use streams as a
+            // content_block_start (null input) + content_block_stop (full input)
+            // pair, and every thinking block is finalized at content_block_stop.
+            // This non-partial `assistant` event is a COMPLETE SNAPSHOT of the
+            // turn, so re-emitting those blocks here duplicated every tool call
+            // (and would duplicate every thinking block) in the feed — HOU-472.
+            // The committed final text (handled above) is the one thing the
+            // streaming path never emits, so it stays. tool_result keeps its own
+            // arm below: it is not a streamed content_block — Anthropic delivers
+            // tool results as separate user-role events (`parse_user_event`).
+            ContentBlock::Thinking { .. } | ContentBlock::ToolUse { .. } => {}
             ContentBlock::ToolResult {
                 content, is_error, ..
             } => {
@@ -496,14 +554,73 @@ mod tests {
     }
 
     #[test]
-    fn parse_tool_use() {
-        let line = r#"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"path":"/foo"}}]}}"#;
+    fn assistant_snapshot_does_not_re_emit_tool_use() {
+        // A non-partial `assistant` message is a complete snapshot of a turn
+        // whose tool calls already streamed as content_block_start/stop pairs.
+        // It must NOT re-emit the tool_use, or every tool call doubles in the
+        // feed (HOU-472). Text in the same snapshot is still committed.
+        let line = r#"{"type":"assistant","message":{"content":[{"type":"text","text":"reading"},{"type":"tool_use","id":"t1","name":"Read","input":{"path":"/foo"}}]}}"#;
         let items = parse_event(line, &mut acc());
-        assert_eq!(items.len(), 1);
-        match &items[0] {
-            FeedItem::ToolCall { name, .. } => assert_eq!(name, "Read"),
-            other => panic!("expected ToolCall, got {other:?}"),
+        assert_eq!(
+            items.len(),
+            1,
+            "snapshot should emit only its text, not the tool_use"
+        );
+        assert!(matches!(&items[0], FeedItem::AssistantText(t) if t == "reading"));
+    }
+
+    #[test]
+    fn streamed_tool_then_snapshot_yields_single_tool_call() {
+        // Regression for HOU-472: claude-code (`--include-partial-messages`)
+        // emits each tool use THREE times — content_block_start (null input),
+        // content_block_stop (full input), and again inside the final non-partial
+        // `assistant` snapshot. The snapshot copy must be dropped so the feed
+        // carries exactly the start(null) + stop(real) pair the frontend dedups
+        // into one row (instead of a third tool_call that renders a duplicate).
+        let mut a = acc();
+        let mut tool_calls = 0;
+        let lines = [
+            r#"{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"t1","name":"Read","input":{}}},"session_id":"s1","uuid":"u1"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"input_json_delta","partial_json":"{\"file_path\":\"/foo\"}"}},"session_id":"s1","uuid":"u2"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_stop","index":0},"session_id":"s1","uuid":"u3"}"#,
+            r#"{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"Read","input":{"file_path":"/foo"}}]}}"#,
+        ];
+        for line in lines {
+            for item in parse_event(line, &mut a) {
+                if matches!(item, FeedItem::ToolCall { .. }) {
+                    tool_calls += 1;
+                }
+            }
         }
+        // start(null) + stop(real) = 2; the snapshot must add nothing.
+        assert_eq!(tool_calls, 2, "snapshot re-emit must not add a third tool_call");
+    }
+
+    #[test]
+    fn streamed_thinking_then_snapshot_yields_single_thinking() {
+        // Same snapshot redundancy as tool calls: a thinking block streams via
+        // thinking_delta and is finalized at content_block_stop, then reappears
+        // in the non-partial `assistant` snapshot. The snapshot copy is dropped
+        // so reasoning is not duplicated in the mission log (HOU-472).
+        let mut a = acc();
+        let mut thinking = 0;
+        let lines = [
+            r#"{"type":"stream_event","event":{"type":"content_block_start","index":0,"content_block":{"type":"thinking","thinking":""}},"session_id":"s1","uuid":"u1"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_delta","index":0,"delta":{"type":"thinking_delta","thinking":"hmm"}},"session_id":"s1","uuid":"u2"}"#,
+            r#"{"type":"stream_event","event":{"type":"content_block_stop","index":0},"session_id":"s1","uuid":"u3"}"#,
+            r#"{"type":"assistant","message":{"content":[{"type":"thinking","thinking":"hmm"}]}}"#,
+        ];
+        for line in lines {
+            for item in parse_event(line, &mut a) {
+                if matches!(item, FeedItem::Thinking(_)) {
+                    thinking += 1;
+                }
+            }
+        }
+        assert_eq!(
+            thinking, 1,
+            "snapshot re-emit must not add a second thinking block"
+        );
     }
 
     #[test]
@@ -672,6 +789,62 @@ mod tests {
     }
 
     #[test]
+    fn rate_limit_event_with_allowed_warning_is_silent() {
+        // "approaching your limit" heads-up — the request still went through,
+        // so it must NOT raise a card. Pre-fix this fell through and emitted a
+        // spurious RateLimited card on every warning event.
+        let line = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"allowed_warning","resetsAt":1781209800},"uuid":"u1","session_id":"s1"}"#;
+        assert!(parse_event(line, &mut acc()).is_empty());
+    }
+
+    #[test]
+    fn rate_limit_event_rejected_is_usage_limit_paused_with_reset_time() {
+        // The 5-hour subscription session limit: claude-code blocks the request
+        // (`status:"rejected"`) and carries the reset moment as a unix
+        // `resetsAt`. Must surface the non-terminal UsageLimitPaused (wait for
+        // the reset) WITH a reset-time hint, NOT a per-minute RateLimited card.
+        // Verbatim shape from a real claude 2.1.x run.
+        let line = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","resetsAt":1781209800},"uuid":"u1","session_id":"s1"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::UsageLimitPaused {
+                provider, resets_at, ..
+            }) => {
+                assert_eq!(provider, "anthropic");
+                // Formatted from the structured epoch — exact string is
+                // local-tz dependent, so just assert it resolved to a hint.
+                assert!(resets_at.is_some(), "expected a reset-time hint");
+            }
+            other => panic!("expected UsageLimitPaused, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn rejected_then_terminal_429_both_usage_limit_paused() {
+        // A mid-stream plan-window rejection followed by the terminal 429 result
+        // is ONE limit. Even when the result body lacks "session limit" phrasing,
+        // the terminal card must stay UsageLimitPaused (same kind) so the two
+        // dedupe to a single card downstream — never UsageLimitPaused + a stray
+        // RateLimited.
+        let mut a = acc();
+        let rejected = r#"{"type":"rate_limit_event","rate_limit_info":{"status":"rejected","resetsAt":1781209800},"uuid":"u1","session_id":"s1"}"#;
+        assert!(matches!(
+            parse_event(rejected, &mut a).as_slice(),
+            [FeedItem::ProviderError(ProviderError::UsageLimitPaused { .. })]
+        ));
+        let result = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"Request failed"}"#;
+        let second = parse_event(result, &mut a);
+        assert!(
+            matches!(
+                second.as_slice(),
+                [FeedItem::ProviderError(ProviderError::UsageLimitPaused { .. })]
+            ),
+            "terminal 429 after a rejection must stay UsageLimitPaused, got {second:?}"
+        );
+    }
+
+    #[test]
     fn result_with_is_error_emits_typed_provider_error() {
         // Pre-fix: emitted FeedItem::SystemMessage("Error: ..."); the
         // user got a generic, untyped string. Post-fix: typed card with
@@ -683,6 +856,63 @@ mod tests {
             FeedItem::ProviderError(_) => {}
             other => panic!("expected ProviderError, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn result_api_error_status_429_classifies_as_rate_limited() {
+        // Production case (Luis, 2026-06-09): `subtype:"success"` yet
+        // `is_error:true` with `api_error_status:429`, and a `result` string
+        // that never says "rate limit". The numeric status must drive the
+        // card to RateLimited instead of the misleading Unknown/Report-bug.
+        let line = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":429,"result":"Claude's response was interrupted"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        match &items[0] {
+            FeedItem::ProviderError(ProviderError::RateLimited { provider, .. }) => {
+                assert_eq!(provider, "anthropic");
+            }
+            other => panic!("expected RateLimited, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn result_api_error_status_5xx_classifies_as_provider_internal() {
+        let line = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":529,"result":"overloaded"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::ProviderInternal {
+                http_status: Some(529),
+                ..
+            })
+        ));
+    }
+
+    #[test]
+    fn result_without_api_error_status_falls_back_to_text_classification() {
+        // No numeric code → the existing text classifier still promotes the
+        // auth phrasing to a typed Unauthenticated card.
+        let line = r#"{"type":"result","subtype":"error","is_error":true,"result":"Claude Code is not authenticated. Run claude auth login"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
+        ));
+    }
+
+    #[test]
+    fn result_with_unremarkable_api_error_status_falls_back_to_unknown() {
+        // A 400 has no dedicated card and the message carries no known
+        // phrasing → Unknown (still a Report-bug CTA, never a dead end).
+        let line = r#"{"type":"result","subtype":"success","is_error":true,"api_error_status":400,"result":"weird unmatched failure"}"#;
+        let items = parse_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(matches!(
+            &items[0],
+            FeedItem::ProviderError(ProviderError::Unknown { .. })
+        ));
     }
 
     fn final_result_usage(items: &[FeedItem]) -> Option<TokenUsage> {

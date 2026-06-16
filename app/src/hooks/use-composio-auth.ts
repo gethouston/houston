@@ -1,4 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { isHoustonEngineError } from "@houston-ai/engine-client";
 import { tauriConnections, tauriSystem } from "../lib/tauri";
 import { logger } from "../lib/logger";
 
@@ -28,6 +30,7 @@ export interface ComposioAuthState {
 }
 
 export function useComposioAuth(onSuccess: () => void | Promise<void>) {
+  const { t } = useTranslation("integrations");
   const [state, setState] = useState<ComposioAuthState>({
     open: false,
     phase: "idle",
@@ -55,7 +58,13 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       // 1. Get the login URL from the backend.
       logger.info("[composio-auth] calling startOAuth...");
       const { login_url, cli_key } = await tauriConnections.startOAuth();
-      logger.info(`[composio-auth] startOAuth returned: url=${login_url} key=${cli_key}`);
+      // Never log `cli_key` OR the raw `login_url`: the URL embeds the same
+      // secret as a `?cliKey=<cli_key>` query param. Strip the query string so
+      // only host + path is logged; frontend.log is bundled into bug reports
+      // (HOU-431).
+      logger.info(
+        `[composio-auth] startOAuth returned: url=${login_url.replace(/[?#].*$/, "")}`,
+      );
 
       // 2. ALWAYS surface the URL and open the browser — no stale-gen
       //    check here. Even if the component re-rendered during the
@@ -85,15 +94,29 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
       setState({ open: false, phase: "idle", loginUrl: null, error: null });
       await onSuccess();
     } catch (e) {
-      logger.error("[composio-auth] flow error:", String(e));
       if (!mountedRef.current || genRef.current !== myGen) return;
-      setState((s) => ({
-        ...s,
-        phase: "error",
-        error: String(e),
-      }));
+      // Already signed in (the CLI no-ops when creds exist, e.g. signed in
+      // elsewhere or a stale status). Not an error: close and refresh so the
+      // UI snaps to the connected state.
+      if (isHoustonEngineError(e) && e.kind === "composio_already_signed_in") {
+        logger.info("[composio-auth] already signed in, refreshing");
+        setState({ open: false, phase: "idle", loginUrl: null, error: null });
+        await onSuccess();
+        return;
+      }
+      logger.error("[composio-auth] flow error:", String(e));
+      // Localize for the user. A `composio_login_timeout` is the expected
+      // "you didn't finish approving in the browser" case; everything
+      // else collapses to a generic retry prompt so we never surface a
+      // raw engine string. The real detail is logged above and (for
+      // genuine faults) captured to Sentry by the engine-call wrapper.
+      const message =
+        isHoustonEngineError(e) && e.kind === "composio_login_timeout"
+          ? t("authDialog.errorTimeout")
+          : t("authDialog.errorGeneric");
+      setState((s) => ({ ...s, phase: "error", error: message }));
     }
-  }, [onSuccess]);
+  }, [onSuccess, t]);
 
   const reopenBrowser = useCallback(() => {
     if (state.loginUrl) {
@@ -105,7 +128,7 @@ export function useComposioAuth(onSuccess: () => void | Promise<void>) {
     // Cancel the in-flight flow by bumping the generation: any
     // pending completeLogin resolution from this generation will be
     // discarded when it finally returns. The Rust subprocess will
-    // still run to completion (its own 5 min timeout), but the UI
+    // still run to completion (the engine's 3 min cap), but the UI
     // won't react to it. A proper backend cancel is a follow-up.
     genRef.current += 1;
     setState({ open: false, phase: "idle", loginUrl: null, error: null });

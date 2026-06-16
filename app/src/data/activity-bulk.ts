@@ -27,3 +27,12 @@ export function applyBulkRemove(
 ): Activity[] {
   return items.filter((item) => !ids.has(item.id));
 }
+
+/**
+ * Drop the single item with `id`. Returns the same-length list (an idempotent
+ * no-op) when `id` isn't present, so `data/activity.ts` `remove()` can skip the
+ * write and treat "already gone" as success rather than throwing.
+ */
+export function applyRemove(items: Activity[], id: string): Activity[] {
+  return items.filter((item) => item.id !== id);
+}

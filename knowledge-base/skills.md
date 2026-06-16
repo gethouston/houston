@@ -6,9 +6,18 @@ A Skill is a reusable procedure stored as a markdown file with YAML frontmatter.
 
 ```
 .agents/skills/<slug>/SKILL.md       # source of truth, YAML frontmatter + body
-.claude/skills/<slug>                # symlink → ../../.agents/skills/<slug>
+.claude/skills/<slug>                # live link → ../../.agents/skills/<slug>
                                      # auto-created by engine on `list_skills`
 ```
+
+The `.claude/skills/<slug>` discovery node is what makes a skill visible to
+Claude Code natively. On Unix it is a relative symlink. On Windows a real
+symlink needs Developer Mode or admin (os error 1314), so the engine falls back
+to a **directory junction** — privilege-free and, crucially, *live*: it always
+reflects the source `SKILL.md`, so a skill the agent later rewrites never goes
+stale behind the mirror. A plain copy is the last resort for the rare non-NTFS
+volume that rejects junctions. See `ensure_claude_mirror` in
+`engine/houston-engine-core/src/skills.rs`.
 
 Houston Store agent packages may also include `.agents/skills/*`.
 Install copies the package to `~/.houston/agents/<id>/`; creating a
@@ -85,6 +94,39 @@ temporary 429/network failure. App search callers handle remaining failures
 inline in the Add Skills UI; they should not show global "Houston problem" bug
 toasts for marketplace search misses.
 
+## Installing a community / repo skill
+
+`install_skill` (skills.sh) and `install_from_repo` (GitHub) both route the
+fetched `SKILL.md` through `houston_skills::install_skill_md`, which **preserves
+the author's frontmatter** (description, category, integrations, image, inputs)
+instead of rebuilding a bare one. Two invariants matter:
+
+- The install slug owns the on-disk directory **and** the frontmatter `name`
+  (derived from the source `name:` when valid, else a slugified id), so the two
+  never drift and `list_skills` always finds the installed skill.
+- Installed skills are marked `featured: true`. A user who explicitly installs
+  a skill must be able to find it: the chat empty state shows only featured
+  skills when any exist, so a non-featured install would silently never appear
+  on the cards. Bookkeeping (version/created/last_used) is reset to a fresh
+  install.
+
+### Repo input parsing (the "Install from another repo" field)
+
+`normalize_source` in `engine/houston-skills/src/remote.rs` is the single
+front door for whatever the user types into the repo field. It anchors on the
+`github.com` host wherever it appears, so it recovers `owner/repo` from the
+short form, a full URL (`.git`, `/tree/main`, `?query`, `#frag` all tolerated),
+the SSH form (`git@github.com:owner/repo`), and even a whole pasted shell
+command (`npx skills add https://github.com/owner/repo --skill x`). The
+extracted pair is then validated against GitHub's owner/repo charset before any
+network call. Unparseable input (a bare word like `reconciliation`, free text,
+a command with no GitHub link) returns the typed `SkillError::InvalidRepoSource`
+→ `kind: "invalid_repo_source"` → a "type owner/repo" hint, instead of firing a
+doomed GitHub lookup that 404s and echoes the garbage back. This was HOU-440:
+users pasted commands and got `Couldn't find a repo named 'npx skills add ...'`.
+When you add a `SkillError` variant, mirror its `kind` in
+`ui/skills/src/skill-error-kinds.ts` (that union is the TS source of truth).
+
 ## Skill invocation marker (chat persistence)
 
 When the user runs a Skill, the persisted user_message body is:
@@ -102,6 +144,7 @@ Focus on pricing.
 - If files were uploaded with the Skill, `attachments` carries `{name,path}` entries. The renderer shows only the count badge; the Claude-facing body still contains the `[User attached these files...]` path block.
 - Decoder lives in `@houston-ai/chat`'s `skill-message.ts` so desktop AND mobile render the same card from the same payload. The decoder also accepts a legacy `<!--houston:action ...-->` prefix so chat history persisted before the rename keeps rendering as a card.
 - Encoder (`encodeSkillMessage`) + Claude-prompt assembler (`buildSkillClaudePrompt`) live in `app/src/lib/skill-message.ts` — only the desktop sends Skills today.
+- The persisted body is also the activity's `description`, which surfaces as the **mission-card / archived-list subtitle**. Those mapping sites run it through `@houston-ai/chat`'s `messagePreviewText` so the card shows the user's words (or the Skill's one-line description when sent on its own), never the raw `<!--houston:skill ...-->` marker. This was HOU-425: a Skill sent as the first message rendered the marker JSON as the card subtitle.
 
 ## Attachment message marker (chat persistence)
 
@@ -173,6 +216,33 @@ Format:
 
 The engine applies the rename per workspace on the next sync. If only the old slug exists, it's renamed in place — body content preserved, `name:` field fixed, rest of the frontmatter refreshed from the new package. If both old and new slugs already exist (because a prior sync without migrations copied the new one alongside the old), the **old one is deleted**: the bundled package no longer ships it, every cross-reference points to the new slug, so keeping it would just leave a duplicate in the picker. See `store/README.md` for the full mechanism, including the recipe for shipping a follow-up migration step when the rename was published before the migration mechanism existed.
 
+## Skill identity = directory slug (drift-resilient)
+
+The **directory slug is the one canonical identity** for a skill. `load_skill`,
+`save`, `delete`, and the `.claude/skills/<slug>` mirror all resolve by
+`skills_dir.join(<name>)` — the directory, never the frontmatter. So the name a
+caller hands `load_skill` MUST be a directory slug.
+
+Therefore `list_skills` (and the system-prompt `index::build`) report each
+skill's **directory name** as `name`, overriding whatever the frontmatter `name:`
+says. Agent-authored SKILL.md files sometimes carry a display phrase in `name:`
+(e.g. dir `redactar-outreach-esg`, frontmatter `name: Redactar Outreach ESG`).
+Before HOU-441 the list handed the UI the phrase, the user clicked it, and
+`load_skill("Redactar Outreach ESG")` found no such directory → a hard
+`skill_not_found` (red bug toast + Sentry). Reporting the directory slug makes
+the list → click → load round-trip consistent and gives the `.claude` mirror a
+real target. `load_skill` also **heals** the frontmatter `name:` to the slug on
+open (it already rewrites the file for `last_used`), so Claude Code's native
+tool name stops drifting too. No bulk migration — identity is fixed at read
+time and self-heals on access.
+
+Genuinely missing skills still happen (deleted, never installed, a stale
+selection). `skill_not_found` is an expected, explainable state, **not** a
+Houston bug: `tauriSkills.load` tags it via `silenceKinds: ["skill_not_found"]`
+(see `app/src/lib/missing-skill.ts`) so it skips the red bug toast + Sentry
+report, and `useSkillSurface` surfaces it inline (a friendly info toast, clears
+the selection, refetches the list so the dead card vanishes).
+
 ## Files of interest
 
 | What | Where |
@@ -185,4 +255,5 @@ The engine applies the rename per workspace on the next sync. If only the old sl
 | Selected Skill chip | [`app/src/components/selected-skill-chip.tsx`](../app/src/components/selected-skill-chip.tsx) |
 | Card on user message | [`app/src/components/user-skill-message.tsx`](../app/src/components/user-skill-message.tsx) (desktop) and [`mobile/src/components/user-skill-message.tsx`](../mobile/src/components/user-skill-message.tsx) |
 | Marker codec | [`ui/chat/src/skill-message.ts`](../ui/chat/src/skill-message.ts) (decode) and [`app/src/lib/skill-message.ts`](../app/src/lib/skill-message.ts) (encode) |
+| Card/list preview text | [`ui/chat/src/message-preview.ts`](../ui/chat/src/message-preview.ts) — `messagePreviewText` decodes a marker → mission-card subtitle (HOU-425) |
 | System prompt template | [`app/src-tauri/src/houston_prompt/skills_memory.rs`](../app/src-tauri/src/houston_prompt/skills_memory.rs) (`SELF_IMPROVEMENT_GUIDANCE`) |

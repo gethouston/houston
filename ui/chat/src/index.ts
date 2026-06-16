@@ -12,6 +12,7 @@ export type {
 export type {
   ToolEntry,
   ChatMessage,
+  ChatCompactionInfo,
   FileChangeEntry,
 } from "./feed-to-messages";
 export type { TurnEndSummary } from "./turn-tools";
@@ -209,6 +210,9 @@ export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
 export type { SkillInvocation, SkillInvocationField } from "./skill-message";
 export { decodeAttachmentMessage, normalizeAttachmentReferences } from "./attachment-message";
 export type { AttachmentInvocation, AttachmentReference } from "./attachment-message";
+// Clean, human-readable preview of a persisted user-message body: decodes the
+// Skill / attachment markers so cards and lists never show the raw marker.
+export { messagePreviewText } from "./message-preview";
 export {
   UserAttachmentBadge,
   UserAttachmentMessage,

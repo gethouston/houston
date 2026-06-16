@@ -17,6 +17,7 @@ import i18n from "./lib/i18n";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { showErrorToast } from "./lib/error-toast";
+import { isBenignLockRejection } from "./lib/benign-rejections";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
 import { initSentry } from "./lib/sentry";
 import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
@@ -53,6 +54,16 @@ window.onerror = (_event, _source, _line, _col, error) => {
 
 window.onunhandledrejection = (event: PromiseRejectionEvent) => {
   const message = event.reason?.message ?? String(event.reason);
+  // Supabase's cross-context auth-refresh lock gets stolen as a normal part of
+  // its own recovery; the displaced promise rejects from a timer we can't
+  // catch. Not a real error — swallow it instead of toasting + reporting
+  // (HOU-435). console.debug only (not the patched console.error) so it never
+  // reaches the log file as an error or the user as a toast.
+  if (isBenignLockRejection(event.reason)) {
+    event.preventDefault();
+    console.debug("[global:unhandledrejection] ignored benign Web Locks contention:", message);
+    return;
+  }
   console.error("[global:unhandledrejection]", message, event.reason);
   analytics.captureException(event.reason, {
     source: "unhandled_rejection",

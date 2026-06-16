@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { DialogTitle, Input, Switch, cn } from "@houston-ai/core";
 import { ScheduleBuilder } from "@houston-ai/routines";
 import type { SchedulePreset, RoutineFormData } from "@houston-ai/routines";
+import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import { AiStepFooter } from "./ai-step-footer";
 
 interface AiRoutineStepProps {
@@ -16,7 +17,7 @@ interface AiRoutineStepProps {
 
 // No every_30min/hourly/custom: keep schedules cheap and understandable for
 // the users
-const PRESETS: SchedulePreset[] = ["daily", "weekdays", "weekly", "monthly"];
+const PRESETS: SchedulePreset[] = ["daily", "weekly", "monthly"];
 
 export function AiRoutineStep({
   routine,
@@ -27,6 +28,7 @@ export function AiRoutineStep({
   onContinue,
 }: AiRoutineStepProps) {
   const { t } = useTranslation("shell");
+  const routineLabels = useRoutineLabels();
 
   return (
     <div className="flex flex-col flex-1 min-h-0">
@@ -70,6 +72,8 @@ export function AiRoutineStep({
                 value={routine.schedule}
                 onChange={(schedule) => onRoutineChange({ ...routine, schedule })}
                 presets={PRESETS}
+                labels={routineLabels.schedule}
+                locale={routineLabels.locale}
               />
             </div>
           </div>

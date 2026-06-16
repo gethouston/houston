@@ -18,6 +18,7 @@ import { useSkillDialogLabels } from "./use-skill-surface-labels";
 export function SkillsContent({
   skills,
   loading,
+  loadingSkillName,
   onSkillClick,
   onSearch,
   onPopular,
@@ -29,6 +30,8 @@ export function SkillsContent({
 }: {
   skills: SkillSummary[];
   loading: boolean;
+  /** Name of the skill whose detail is loading; its card spins + disables. */
+  loadingSkillName?: string | null;
   onSkillClick: (name: string) => void;
   onSearch?: (query: string, signal?: AbortSignal) => Promise<CommunitySkill[]>;
   onPopular?: (signal?: AbortSignal) => Promise<CommunitySkill[]>;
@@ -123,6 +126,8 @@ export function SkillsContent({
             description={skill.description}
             integrations={skill.integrations}
             onClick={() => onSkillClick(skill.name)}
+            busy={loadingSkillName === skill.name}
+            disabled={loadingSkillName === skill.name}
           />
         ))}
       </div>
