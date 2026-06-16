@@ -5,7 +5,9 @@ import type { MissionMeta } from "./mission-frame";
  * the decision point ("do the tutorial or skip"). Once the user starts, the
  * mission stages drive the HUD `Mission N of N` counter.
  */
-export type OnboardingStep = "welcome" | TutorialStep;
+// Welcome now lives in the first-run gate (before the agreement), so the
+// onboarding orchestrator only owns the mission steps.
+export type OnboardingStep = TutorialStep;
 
 export type TutorialStep = "meet" | "brain" | "tools" | "email";
 

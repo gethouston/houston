@@ -33,6 +33,10 @@ function parseAcceptance(raw: string | null): LegalAcceptance | null {
 export interface LegalAcceptanceState {
   /** True once the user has accepted at least the current disclaimer version. */
   isAccepted: boolean;
+  /** True if ANY acceptance record exists (even an older version). Lets the
+   *  first-run flow show the Welcome screen only on a genuine first run and
+   *  skip straight to the agreement on a version-bump re-prompt. */
+  hasPriorAcceptance: boolean;
   /** True while the initial preference fetch is in flight. Render nothing during this. */
   isLoading: boolean;
   /** Write acceptance to engine prefs and invalidate the cached query. */
@@ -98,6 +102,7 @@ export function useLegalAcceptance(): LegalAcceptanceState {
 
   return {
     isAccepted,
+    hasPriorAcceptance: accepted !== null && accepted !== undefined,
     isLoading: query.isLoading,
     accept,
     decline,

@@ -17,7 +17,9 @@ interface MeetMissionProps {
   namePlaceholder: string;
   onNameChange: (name: string) => void;
   onColorChange: (color: string) => void;
-  onBack: () => void;
+  /** Optional: meet is the first onboarding step, so there's usually nothing
+   *  to go back to (Welcome + Agreement live in the first-run gate). */
+  onBack?: () => void;
   onBegin: () => void;
 }
 

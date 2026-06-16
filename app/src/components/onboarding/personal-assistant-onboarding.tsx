@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ToastContainer, type Toast } from "@houston-ai/core";
 import { analytics } from "../../lib/analytics";
@@ -12,7 +12,6 @@ import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
 import { ToolsMission } from "./missions/tools";
 import { EmailMission } from "./missions/email";
-import { WelcomeScreen } from "./welcome-screen";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
 import {
@@ -40,7 +39,7 @@ export function PersonalAssistantOnboarding({
   const setTutorialActive = useUIStore((s) => s.setTutorialActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
   const addToast = useUIStore((s) => s.addToast);
-  const [step, setStep] = useState<OnboardingStep>("welcome");
+  const [step, setStep] = useState<OnboardingStep>("meet");
   const [agent, setAgent] = useState<Agent | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
@@ -57,20 +56,21 @@ export function PersonalAssistantOnboarding({
   // walks the user through.
   const missionTitle = t("setup:tutorial.missions.email.chip");
 
-  const missionStep = step === "welcome" ? null : (step as TutorialStep);
-  const meta = missionStep ? buildMissionMeta(t, missionStep) : null;
-  const frame = missionStep ? buildFrameLabels(t, missionStep) : null;
+  // Used only by the email step (its MissionChatFrame); the card steps render
+  // their own SetupCard from i18n.
+  const meta = buildMissionMeta(t, step);
+  const frame = buildFrameLabels(t, step);
 
   // `tutorialActive` pins the orchestrator in front of the workspace shell so
-  // the workspace-create event in M2 (Brain) doesn't unmount us. Set on the
-  // user's explicit Start / Skip click — NOT on mount — so a returning user
-  // whose first paint briefly falls through `workspaces.length === 0` is not
-  // trapped here once their real workspaces arrive.
-  const startTutorial = () => {
-    analytics.track("onboarding_started", { source: "tutorial" });
+  // the workspace-create event in the Brain step doesn't unmount us. Welcome +
+  // the agreement now run in the first-run gate BEFORE the app renders this, so
+  // by the time onboarding mounts (post-load, `workspaces.length === 0`) the
+  // user is genuinely starting setup — safe to pin on mount.
+  useEffect(() => {
+    analytics.track("onboarding_started", { source: "setup" });
     setTutorialActive(true);
-    setStep("meet");
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const createWorkspaceAndAssistant = (
     pickedProvider: string,
@@ -173,21 +173,6 @@ export function PersonalAssistantOnboarding({
 
   return (
     <>
-      {step === "welcome" && (
-        <WelcomeScreen
-          title={t("setup:tutorial.welcome.title")}
-          tagline={t("setup:tutorial.welcome.tagline")}
-          stepsTitle={t("setup:tutorial.welcome.stepsTitle")}
-          steps={[
-            t("setup:tutorial.welcome.steps.meet"),
-            t("setup:tutorial.welcome.steps.brain"),
-            t("setup:tutorial.welcome.steps.tools"),
-            t("setup:tutorial.welcome.steps.email"),
-          ]}
-          startLabel={t("setup:tutorial.welcome.start")}
-          onStart={startTutorial}
-        />
-      )}
       {step === "meet" && (
         <MeetMission
           eyebrow={stepEyebrow("meet")}
@@ -196,7 +181,6 @@ export function PersonalAssistantOnboarding({
           namePlaceholder={t("setup:tutorial.defaults.assistantName")}
           onNameChange={setAssistantName}
           onColorChange={setAssistantColor}
-          onBack={() => setStep("welcome")}
           onBegin={() => setStep("brain")}
         />
       )}
