@@ -110,3 +110,42 @@ body {
     animation: none;
   }
 }
+
+/* Celebration beat for the success screens (setup ready, all set): the check
+   pops in with a slight overshoot while a ring expands and fades behind it.
+   Monochrome — the "reward" is in the motion + scale, not a decorative color. */
+@keyframes success-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  55% {
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.success-pop {
+  animation: success-pop 0.5s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@keyframes success-ring {
+  0% {
+    opacity: 0.4;
+    transform: scale(0.85);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+.success-ring {
+  animation: success-ring 1s ease-out 0.1s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .success-pop,
+  .success-ring {
+    animation: none;
+  }
+}

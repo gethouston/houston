@@ -17,7 +17,8 @@ interface SetupCardProps {
   icon?: ReactNode;
   /** Small muted line above the title, e.g. "Step 2 of 3" or "Welcome". */
   eyebrow?: string;
-  title: string;
+  /** Omit on screens that render their own centered hero (e.g. success). */
+  title?: string;
   subtitle?: string;
   children?: ReactNode;
   /** Muted helper text shown between Back and Next (the "you'll be added to…"
@@ -59,7 +60,11 @@ export function SetupCard({
         {eyebrow && (
           <p className="text-xs font-medium text-muted-foreground">{eyebrow}</p>
         )}
-        <h1 className="mt-1 text-[22px] font-semibold leading-tight">{title}</h1>
+        {title && (
+          <h1 className="mt-1 text-[22px] font-semibold leading-tight">
+            {title}
+          </h1>
+        )}
         {subtitle && (
           <p className="mt-2 text-sm text-muted-foreground">{subtitle}</p>
         )}

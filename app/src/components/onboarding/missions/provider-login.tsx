@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { AsyncButton } from "@houston-ai/core";
 import { analytics } from "../../../lib/analytics";
 import { tauriProvider, type ProviderStatus } from "../../../lib/tauri";
@@ -9,6 +9,7 @@ import { useClaudeInstall } from "../../../hooks/use-claude-install";
 import { ClaudeInstallHint } from "../../shell/claude-install-hint";
 import { ProviderGlyph } from "../../shell/provider-logos";
 import { SetupCard } from "../setup-card";
+import { SuccessCheck } from "../success-check";
 
 interface ProviderLoginMissionProps {
   eyebrow: string;
@@ -121,21 +122,25 @@ export function ProviderLoginMission({
       nextDisabled={!connected}
     >
       <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
-        <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
-          <ProviderGlyph providerId={providerId} />
-        </span>
+        {!connected && (
+          <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
+            <ProviderGlyph providerId={providerId} />
+          </span>
+        )}
 
         {connected ? (
-          <div className="flex flex-col items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <Check className="size-4" />
-              {t("setup:tutorial.missions.providerLogin.connected.title")}
-            </span>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {t("setup:tutorial.missions.providerLogin.connected.body", {
-                provider: name,
-              })}
-            </p>
+          <div className="flex flex-col items-center gap-3">
+            <SuccessCheck />
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-sm font-medium text-foreground">
+                {t("setup:tutorial.missions.providerLogin.connected.title")}
+              </span>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                {t("setup:tutorial.missions.providerLogin.connected.body", {
+                  provider: name,
+                })}
+              </p>
+            </div>
           </div>
         ) : showInstallHint && claudeInstall ? (
           <div className="w-full max-w-sm">
