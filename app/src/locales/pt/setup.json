@@ -30,10 +30,10 @@
     },
     "welcome": {
       "title": "Bem-vindo ao Houston",
-      "tagline": "O Houston é onde você cria assistentes que funcionam com os mesmos apps que você já usa.",
-      "stepsTitle": "Uma configuração rápida para deixar seu assistente trabalhando:",
+      "tagline": "O Houston é onde você cria agentes que funcionam com os mesmos apps que você já usa.",
+      "stepsTitle": "Uma configuração rápida para deixar seu agente trabalhando:",
       "steps": {
-        "meet": "Conheça seu assistente",
+        "meet": "Conheça seu agente",
         "brain": "Conecte um provedor de IA para ele pensar",
         "tools": "Conecte seus apps",
         "email": "Envie seu primeiro e-mail real com ele"
@@ -43,7 +43,7 @@
     },
     "defaults": {
       "workspaceName": "Pessoal",
-      "assistantName": "Assistente pessoal",
+      "assistantName": "Agente pessoal",
       "focus": "Me ajude a ficar organizado, preparar meu dia, redigir mensagens, proteger tempo de foco e acompanhar pendências.",
       "approvalRule": "Pergunte antes de enviar mensagens, criar eventos de calendário ou mudar algo nos apps conectados.",
       "firstWorkflow": "Configure meu primeiro fluxo útil do dia"
@@ -51,7 +51,7 @@
     "missions": {
       "intro": {
         "title": "Vamos configurar sua conta",
-        "body": "São só alguns passos rápidos para deixar seu assistente funcionando. Entre na IA que você já usa e depois conecte seus apps.",
+        "body": "São só alguns passos rápidos para deixar seu agente funcionando. Entre na IA que você já usa e depois conecte seus apps.",
         "cta": "Começar configuração"
       },
       "brain": {
@@ -60,7 +60,7 @@
       },
       "providerLogin": {
         "title": "Entre no {{provider}}",
-        "body": "Entre uma vez para que seu assistente possa usar o {{provider}} por você.",
+        "body": "Entre uma vez para que seu agente possa usar o {{provider}} por você.",
         "loginButton": "Entrar no {{provider}}",
         "waiting": "Aguardando o {{provider}}...",
         "cancel": "Cancelar",
@@ -71,13 +71,13 @@
       },
       "tools": {
         "title": "Conecte seus apps",
-        "body": "Com um único login seu assistente pode trabalhar com apps como Gmail e sua agenda. Cada app é conectado só quando você realmente precisa, então não há nada para configurar agora.",
+        "body": "Com um único login seu agente pode trabalhar com apps como Gmail e sua agenda. Cada app é conectado só quando você realmente precisa, então não há nada para configurar agora.",
         "allow": "Entrar",
         "waiting": "Esperando você no navegador...",
         "cancel": "Cancelar",
         "connected": {
           "title": "Tudo pronto",
-          "body": "Seu assistente já pode conectar seus apps quando você precisar."
+          "body": "Seu agente já pode conectar seus apps quando você precisar."
         }
       },
       "setupReady": {
@@ -93,17 +93,17 @@
       },
       "email": {
         "title": "Envie seu primeiro e-mail",
-        "body": "Conecte seu e-mail e seu assistente vai enviar uma mensagem real por você. Com isso a configuração termina.",
+        "body": "Conecte seu e-mail e seu agente vai enviar uma mensagem real por você. Com isso a configuração termina.",
         "intro": {
           "title": "Envie um e-mail real",
-          "body": "Seu assistente se conecta aos seus apps reais para fazer trabalho de verdade. Vamos conectar seu e-mail e enviar um, de verdade.",
+          "body": "Seu agente se conecta aos seus apps reais para fazer trabalho de verdade. Vamos conectar seu e-mail e enviar um, de verdade.",
           "cta": "Vamos lá"
         },
         "chip": "Envie um e-mail por mim",
         "continueChip": "Entrar no Houston",
         "skip": "Configuro isso mais tarde",
         "doneTitle": "Enviado. Tudo pronto.",
-        "placeholder": "Responda ao seu assistente..."
+        "placeholder": "Responda ao seu agente..."
       },
       "done": {
         "title": "Tudo pronto!",

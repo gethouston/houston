@@ -30,10 +30,10 @@
     },
     "welcome": {
       "title": "Welcome to Houston",
-      "tagline": "Houston is where you build assistants that work with the same apps you already use.",
-      "stepsTitle": "A quick setup to get your assistant working:",
+      "tagline": "Houston is where you build agents that work with the same apps you already use.",
+      "stepsTitle": "A quick setup to get your agent working:",
       "steps": {
-        "meet": "Meet your assistant",
+        "meet": "Meet your agent",
         "brain": "Connect an AI provider so it can think",
         "tools": "Connect your apps",
         "email": "Send your first real email with it"
@@ -43,7 +43,7 @@
     },
     "defaults": {
       "workspaceName": "Personal",
-      "assistantName": "Personal assistant",
+      "assistantName": "Personal agent",
       "focus": "Help me stay organized, prepare my day, draft messages, protect focus time, and keep track of follow-ups.",
       "approvalRule": "Ask before sending messages, creating calendar events, or changing anything in connected apps.",
       "firstWorkflow": "Set up my first useful daily workflow"
@@ -51,7 +51,7 @@
     "missions": {
       "intro": {
         "title": "Let's set up your account",
-        "body": "Just a couple of quick steps to get your assistant working. Log in to the AI you already use, then connect your apps.",
+        "body": "Just a couple of quick steps to get your agent working. Log in to the AI you already use, then connect your apps.",
         "cta": "Start setup"
       },
       "brain": {
@@ -60,7 +60,7 @@
       },
       "providerLogin": {
         "title": "Log in to {{provider}}",
-        "body": "Sign in once so your assistant can use {{provider}} on your behalf.",
+        "body": "Sign in once so your agent can use {{provider}} on your behalf.",
         "loginButton": "Log in to {{provider}}",
         "waiting": "Waiting for {{provider}}...",
         "cancel": "Cancel",
@@ -71,13 +71,13 @@
       },
       "tools": {
         "title": "Connect your apps",
-        "body": "One sign-in lets your assistant work with apps like Gmail and your calendar. It connects each app only when you actually need it, so there's nothing to set up now.",
+        "body": "One sign-in lets your agent work with apps like Gmail and your calendar. It connects each app only when you actually need it, so there's nothing to set up now.",
         "allow": "Sign in",
         "waiting": "Waiting for you in your browser...",
         "cancel": "Cancel",
         "connected": {
           "title": "You're all set",
-          "body": "Your assistant can now connect to your apps whenever you need them."
+          "body": "Your agent can now connect to your apps whenever you need them."
         }
       },
       "setupReady": {
@@ -93,17 +93,17 @@
       },
       "email": {
         "title": "Send your first email",
-        "body": "Connect your email and your assistant will send one real message for you. That is setup done.",
+        "body": "Connect your email and your agent will send one real message for you. That is setup done.",
         "intro": {
           "title": "Send a real email",
-          "body": "Your assistant connects to your real apps to do actual work. Let's connect your email and send one, for real.",
+          "body": "Your agent connects to your real apps to do actual work. Let's connect your email and send one, for real.",
           "cta": "Let's do it"
         },
         "chip": "Send an email for me",
         "continueChip": "Enter Houston",
         "skip": "I'll set this up later",
         "doneTitle": "Sent. You're all set.",
-        "placeholder": "Reply to your assistant..."
+        "placeholder": "Reply to your agent..."
       },
       "done": {
         "title": "You're all set!",
