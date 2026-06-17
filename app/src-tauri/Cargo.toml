@@ -84,7 +84,7 @@ notify-rust = "4.11"
 # DPAPI binds the ciphertext to the Windows user account so a copied
 # file is useless to another user. See `src/auth.rs` storage module.
 [target."cfg(target_os = \"windows\")".dependencies]
-windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_JobObjects", "Win32_System_Threading"] }
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security_Cryptography", "Win32_System_JobObjects", "Win32_System_Threading", "Win32_UI_Shell"] }
 # Same reason as notify-rust on Linux, but notify-rust's action handling is
 # XDG/D-Bus-only — on Windows we use the WinRT toast's `on_activated` callback
 # to catch the click. This is the crate notify-rust uses under the hood.

@@ -115,15 +115,52 @@ fn spawn_default_open(target: &str) -> Result<(), String> {
     }
     #[cfg(target_os = "windows")]
     {
-        // `cmd /C start "" "<target>"` is the canonical way to invoke the
-        // Windows shell handler. The empty `""` is the *window title* arg
-        // — without it `start` treats a quoted target as the title and
-        // opens nothing.
-        std::process::Command::new("cmd")
-            .args(["/C", "start", "", target])
-            .spawn()
-            .map(|_| ())
-            .map_err(|e| format!("Failed to open: {e}"))
+        // Hand the target straight to the Win32 shell API instead of
+        // `cmd /C start`. `cmd` parses its command line for metacharacters
+        // BEFORE `start` ever runs, and an OAuth/PKCE authorize URL trips two
+        // of them: every `&` is read as a command separator (so
+        // `…&code_challenge=…` becomes a bogus `'code_challenge' is not
+        // recognized…` command), and `%xx` percent-escapes can pair up into
+        // `%VAR%` expansions that silently corrupt the URL. ShellExecuteW
+        // takes the target as a single wide-string parameter — the default
+        // handler receives it verbatim, with no shell in the path. Same
+        // "open with the default handler" semantics `start` gave us, so it
+        // covers URLs, files, and folders alike.
+        use std::os::windows::ffi::OsStrExt;
+        use windows_sys::Win32::UI::Shell::ShellExecuteW;
+
+        // SW_SHOWNORMAL — lives in Win32_UI_WindowsAndMessaging; inlined so we
+        // don't pull that whole feature in for one constant.
+        const SW_SHOWNORMAL: i32 = 1;
+
+        let wide = |s: &str| -> Vec<u16> {
+            std::ffi::OsStr::new(s)
+                .encode_wide()
+                .chain(std::iter::once(0))
+                .collect()
+        };
+        let verb = wide("open");
+        let file = wide(target);
+
+        // SAFETY: `verb` and `file` are null-terminated UTF-16 buffers that
+        // outlive the call; the remaining pointers are null (no parent window,
+        // no parameters, default working directory).
+        let result = unsafe {
+            ShellExecuteW(
+                std::ptr::null_mut(),
+                verb.as_ptr(),
+                file.as_ptr(),
+                std::ptr::null(),
+                std::ptr::null(),
+                SW_SHOWNORMAL,
+            )
+        };
+        // ShellExecuteW returns a value > 32 on success; <= 32 is a Win32
+        // error code. Surface the failure rather than swallowing it.
+        if (result as isize) <= 32 {
+            return Err(format!("ShellExecuteW failed (code {})", result as isize));
+        }
+        Ok(())
     }
     #[cfg(all(not(target_os = "macos"), not(target_os = "windows")))]
     {
