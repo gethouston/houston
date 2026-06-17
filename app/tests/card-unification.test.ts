@@ -43,11 +43,25 @@ describe("HOU-467 card unification", () => {
     const src = read("../src/components/shell/provider-error-cards/transient.tsx");
     ok(src.includes("RateLimitedCard"), "card still exists");
     ok(src.includes("RowCard"), "rate-limit migrated to RowCard");
-    ok(src.includes("RowCardButton"), "buttons are the shared text-only pill");
+    // Per-variant files only mount CTAs; the rate-limit retry is the shared
+    // `RetryButton`, which is itself a text-only `RowCardButton` pill (locked
+    // against shared.tsx below). transient.tsx no longer references
+    // RowCardButton directly.
+    ok(src.includes("RetryButton"), "retry CTA is the shared RetryButton pill");
     ok(src.includes("Clock"), "rate-limit shows a clock, not the provider logo");
     ok(!src.includes("ProviderGlyph"), "rate-limit dropped the provider glyph");
-    // Sibling cards in this file stay on the old ErrorCard layout untouched.
-    ok(src.includes("ErrorCard"), "siblings still use ErrorCard");
+    // Every transient variant now renders on the unified RowCard — none remain
+    // on the old ErrorCard layout.
+    ok(!src.includes("ErrorCard"), "all transient variants migrated off ErrorCard");
+
+    // The shared retry pill IS a RowCardButton, so "buttons are the shared
+    // text-only pill" still holds transitively through the wrapper.
+    const shared = read("../src/components/shell/provider-error-cards/shared.tsx");
+    ok(
+      shared.includes("export function RetryButton") &&
+        shared.includes("RowCardButton"),
+      "RetryButton is a thin RowCardButton wrapper",
+    );
   });
 
   it("ComposioLinkCard (connect Google Drive etc.) uses RowCard", () => {
