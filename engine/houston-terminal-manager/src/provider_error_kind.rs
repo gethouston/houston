@@ -103,7 +103,6 @@ pub enum ProviderError {
         /// `None` for open-ended limits where upgrading is the only path.
         resets_at: Option<String>,
         message: String,
-        upgrade_url: Option<String>,
     },
     /// Plan-window usage limit the CLI auto-recovers from by sleeping
     /// internally until the reset window. The CLI subprocess is still
@@ -237,14 +236,13 @@ mod tests {
     }
 
     #[test]
-    fn round_trip_quota_exhausted_with_url() {
+    fn round_trip_quota_exhausted() {
         let e = ProviderError::QuotaExhausted {
             provider: "gemini".into(),
             model: None,
             scope: QuotaScope::FreeTier,
             resets_at: Some("Jul 1st, 2026 1:16 PM".into()),
             message: "Max attempts reached".into(),
-            upgrade_url: Some("https://ai.google.dev/pricing".into()),
         };
         let json = serde_json::to_string(&e).unwrap();
         assert!(json.contains(r#""kind":"quota_exhausted""#));

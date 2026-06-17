@@ -113,10 +113,6 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
             // so the card reads "resets <when>" instead of a bare upgrade nag.
             resets_at: extract_reset_hint(line),
             message: truncate_excerpt(line.trim()),
-            // Prefer the exact upgrade link codex embeds in the banner; fall
-            // back to the ChatGPT plan page if a future banner drops it.
-            upgrade_url: extract_first_url(line)
-                .or_else(|| Some("https://chatgpt.com/explore/plus".into())),
         });
     }
 
@@ -128,7 +124,6 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
             scope: QuotaScope::Unknown,
             resets_at: None,
             message: truncate_excerpt(line.trim()),
-            upgrade_url: Some("https://platform.openai.com/account/billing".into()),
         });
     }
 
@@ -197,26 +192,6 @@ fn extract_quoted_model(line: &str) -> Option<String> {
         None
     } else {
         Some(model.to_string())
-    }
-}
-
-/// Pull the first `http(s)://…` token out of a CLI message. Codex's
-/// usage-limit banner embeds the exact upgrade URL (e.g.
-/// `…(https://chatgpt.com/explore/plus)…`); reusing it keeps the Upgrade CTA
-/// correct across plan tiers instead of hard-coding a single target. Stops at
-/// the first whitespace or closing bracket/quote so trailing punctuation
-/// (the `)` after the URL) is not captured.
-fn extract_first_url(line: &str) -> Option<String> {
-    let start = line.find("http")?;
-    let rest = &line[start..];
-    let end = rest
-        .find(|c: char| c.is_whitespace() || matches!(c, ')' | ']' | '"' | '>' | '<'))
-        .unwrap_or(rest.len());
-    let url = &rest[..end];
-    if url.starts_with("http://") || url.starts_with("https://") {
-        Some(url.to_string())
-    } else {
-        None
     }
 }
 
@@ -318,14 +293,12 @@ mod tests {
     }
 
     #[test]
-    fn quota_exhausted_includes_billing_url() {
+    fn quota_exceeded_classified_as_quota_exhausted() {
         let line = "Quota exceeded for this account";
-        match classify_stderr(line).unwrap() {
-            ProviderError::QuotaExhausted { upgrade_url, .. } => {
-                assert!(upgrade_url.unwrap().contains("openai.com"));
-            }
-            other => panic!("expected QuotaExhausted, got {other:?}"),
-        }
+        assert!(matches!(
+            classify_stderr(line),
+            Some(ProviderError::QuotaExhausted { .. })
+        ));
     }
 
     #[test]
@@ -333,23 +306,18 @@ mod tests {
         // The exact codex banner a ChatGPT free-tier user hits once their
         // Codex allowance is spent (HOU-495). Previously matched nothing and
         // showed a generic "codex hit a runtime error"; now a QuotaExhausted
-        // card with a Plus upgrade CTA pulled straight from the banner.
+        // card carrying the reset hint parsed from the banner.
         let line = "You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus), or try again at Jul 1st, 2026 1:16 PM.";
         match classify_stderr(line).unwrap() {
             ProviderError::QuotaExhausted {
                 provider,
                 scope,
                 resets_at,
-                upgrade_url,
                 ..
             } => {
                 assert_eq!(provider, "openai");
                 assert_eq!(scope, QuotaScope::FreeTier);
                 assert_eq!(resets_at.as_deref(), Some("Jul 1st, 2026 1:16 PM"));
-                assert_eq!(
-                    upgrade_url.as_deref(),
-                    Some("https://chatgpt.com/explore/plus")
-                );
             }
             other => panic!("expected QuotaExhausted, got {other:?}"),
         }
@@ -375,16 +343,6 @@ mod tests {
             classify_stderr(line),
             Some(ProviderError::QuotaExhausted { .. })
         ));
-    }
-
-    #[test]
-    fn extract_first_url_pulls_banner_link_without_trailing_paren() {
-        let line = "limit (https://chatgpt.com/explore/plus), or try again";
-        assert_eq!(
-            extract_first_url(line).as_deref(),
-            Some("https://chatgpt.com/explore/plus")
-        );
-        assert!(extract_first_url("no link here").is_none());
     }
 
     #[test]

@@ -111,7 +111,6 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
             // above; this terminal-quota path names no reset.
             resets_at: None,
             message: truncate_excerpt(line.trim()),
-            upgrade_url: Some("https://www.anthropic.com/pricing".into()),
         });
     }
 
@@ -443,14 +442,12 @@ mod tests {
     }
 
     #[test]
-    fn quota_exhausted_includes_upgrade_url() {
+    fn monthly_limit_classified_as_quota_exhausted() {
         let line = "Monthly limit exhausted for plan";
-        match classify_stderr(line).unwrap() {
-            ProviderError::QuotaExhausted { upgrade_url, .. } => {
-                assert!(upgrade_url.unwrap().contains("anthropic.com"));
-            }
-            other => panic!("expected QuotaExhausted, got {other:?}"),
-        }
+        assert!(matches!(
+            classify_stderr(line),
+            Some(ProviderError::QuotaExhausted { .. })
+        ));
     }
 
     #[test]
