@@ -71,14 +71,17 @@ test("listToolkits maps the catalog", async () => {
   expect(calls[0]!.path).toContain("limit=1000");
 });
 
-test("listConnections hits the consumer namespace with user_id", async () => {
+test("listConnections hits the consumer namespace with user_id (slug strings, verified live)", async () => {
   const { provider, calls } = harness((url) =>
     url.pathname === "/api/v3/org/consumer/connected_toolkits"
-      ? { body: { toolkits: [{ toolkit: "gmail", connected_account_id: "ca1", status: "ACTIVE" }] } }
+      ? { body: { toolkits: ["gmail", "github"] } } // real shape: array of slug strings
       : { status: 404 },
   );
   const conns = await provider.listConnections(cred);
-  expect(conns).toEqual([{ toolkit: "gmail", connectionId: "ca1", status: "active" }]);
+  expect(conns).toEqual([
+    { toolkit: "gmail", connectionId: "", status: "active" },
+    { toolkit: "github", connectionId: "", status: "active" },
+  ]);
   expect(calls[0]!.path).toContain("user_id=consumer-1");
 });
 

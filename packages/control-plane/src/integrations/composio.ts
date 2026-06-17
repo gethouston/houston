@@ -133,8 +133,10 @@ export class ComposioProvider implements IntegrationProvider {
     const c = this.toCred(cred);
     if (!c.userId) throw new Error("composio credential missing 'userId' (resolved at login)");
     // GET /api/v3/org/consumer/connected_toolkits?user_id=… (the "Composio for
-    // you" consumer namespace — the same one `composio execute` reads).
-    const body = await this.call<{ toolkits?: RawConnection[] }>(
+    // you" consumer namespace — the same one `composio execute` reads). Verified
+    // live: the `toolkits` array is plain slug STRINGS, e.g. ["gmail","github"]
+    // (connection ids/status come from /connected_accounts when needed).
+    const body = await this.call<{ toolkits?: (RawConnection | string)[] }>(
       "/api/v3/org/consumer/connected_toolkits",
       { apiKey: c.apiKey, orgId: c.orgId, query: { user_id: c.userId } },
     );
@@ -175,10 +177,8 @@ export class ComposioProvider implements IntegrationProvider {
 
   async search(cred: ProviderCredential, query: string): Promise<ToolMatch[]> {
     const c = this.toCred(cred);
-    // TODO(live): confirm the discovery endpoint/params against a real account.
-    // GET /api/v3/tools?search=… is the plausible path; the response mapping is
-    // what matters and is locked by the unit test, so wiring the confirmed path
-    // later is a one-line change here.
+    // GET /api/v3/tools?search=… → { items: [{ slug, name, description, … }] }.
+    // Verified live against a real account.
     const body = await this.call<{ items?: RawTool[] }>("/api/v3/tools", {
       apiKey: c.apiKey,
       orgId: c.orgId,
@@ -243,7 +243,10 @@ function mapToolkit(t: RawToolkit): Toolkit {
   };
 }
 
-function mapConnection(c: RawConnection): Connection {
+function mapConnection(c: RawConnection | string): Connection {
+  // The consumer connected_toolkits endpoint returns plain slug strings; the
+  // object form is kept defensively for the per-account endpoints.
+  if (typeof c === "string") return { toolkit: c, connectionId: "", status: "active" };
   const status = c.status?.toLowerCase();
   return {
     toolkit: c.toolkit ?? c.slug ?? "",
