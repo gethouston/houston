@@ -1,6 +1,7 @@
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
-import { captureException as sentryCapture } from "./sentry";
+import { captureException as sentryCapture, sentrySuppressedInDev } from "./sentry";
+import { devNoSendToastSpec } from "./sentry-dev";
 import { createSentryReportError } from "./sentry-report-error";
 import i18n from "./i18n";
 
@@ -65,6 +66,16 @@ export function showErrorToast(
     description: message,
     variant: "error",
   });
+
+  // Dev build with Sentry suppressed: don't capture (initSentry already bailed),
+  // and replace the green "report sent" toast with a dev-only notice so the
+  // developer knows the error stayed local and how to opt into sending.
+  if (sentrySuppressedInDev) {
+    setTimeout(() => {
+      addToast(devNoSendToastSpec());
+    }, GREEN_TOAST_DELAY_MS);
+    return;
+  }
 
   const error = createSentryReportError(command, message, originalError);
   void sentryCapture(error, {

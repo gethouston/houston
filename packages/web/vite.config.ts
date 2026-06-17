@@ -71,6 +71,11 @@ export default defineConfig(({ mode }) => {
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify("browser"),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify("web"),
       __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),
+      // Mirror app/vite.config.ts: opt-in (truthy) to send Sentry events from a
+      // dev build; unset → the dev server suppresses Sentry (see
+      // app/src/lib/sentry-dev.ts). A dev running the web server with the prod
+      // DSN baked would otherwise pollute the prod project.
+      __SENTRY_SEND_IN_DEV__: JSON.stringify(env.SENTRY_SEND_IN_DEV ?? ""),
     },
     // Don't pre-bundle the workspace UI packages so live edits flow through
     // (mirrors app/vite.config.ts).
