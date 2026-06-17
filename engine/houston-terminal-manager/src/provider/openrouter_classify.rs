@@ -20,6 +20,25 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
     if trimmed.is_empty() {
         return None;
     }
+
+    // Codex emits internal diagnostics on stderr that are NOT model-API turn
+    // failures and must never become a session card:
+    //   - `codex_models_manager` logs a failed model-catalog refresh (OpenRouter
+    //     returns `{"data":[...]}`, codex wants `{"models":[...]}`) and dumps the
+    //     whole multi-hundred-KB catalog body — which almost always contains a
+    //     bare "401" / 5xx digit somewhere, tripping the substring checks below
+    //     into a false Unauthenticated / ProviderInternal card.
+    //   - `rmcp::` logs auth/transport failures for MCP servers the user has in
+    //     their own `~/.codex/config.toml`; those are the user's MCP, not the
+    //     OpenRouter turn.
+    // The turn itself still completes; these lines are pure noise here.
+    if trimmed.contains("codex_models_manager")
+        || trimmed.contains("rmcp::")
+        || trimmed.contains("failed to refresh available models")
+    {
+        return None;
+    }
+
     let lower = trimmed.to_lowercase();
 
     if codex_command::is_missing_rollout_error(trimmed) {
@@ -334,5 +353,18 @@ mod tests {
     #[test]
     fn unrelated_log_returns_none() {
         assert!(classify_stderr("Reading prompt from stdin").is_none());
+    }
+
+    #[test]
+    fn codex_internal_noise_never_classified() {
+        // The catalog-refresh error dumps a huge JSON body that contains a
+        // bare "401" — without the guard this would be a false Unauthenticated
+        // card even though the turn succeeds.
+        let catalog = r#"ERROR codex_models_manager::manager: failed to refresh available models: failed to decode models response: missing field `models`; body: {"data":[{"id":"x","pricing":{"prompt":"0.00000401"}}]} unexpected status 401"#;
+        assert!(classify_stderr(catalog).is_none());
+        // MCP transport auth failures are the user's own configured MCP, not
+        // the OpenRouter turn.
+        let rmcp = r#"ERROR rmcp::transport::worker: worker quit with fatal: AuthRequired(www_authenticate_header: "Bearer error=\"invalid_token\"")"#;
+        assert!(classify_stderr(rmcp).is_none());
     }
 }
