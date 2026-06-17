@@ -46,9 +46,7 @@ export function SetupCard({
   nextLoading,
 }: SetupCardProps) {
   return (
-    <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
-      {/* Same "Always On" glow as the welcome, behind every setup screen. */}
-      <div className="houston-glow pointer-events-none absolute inset-0" />
+    <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden bg-secondary/60 px-6 text-foreground">
       {/* Fixed min height + flex-1 content so the card stays the SAME size
           across every step and the footer never jumps as content changes.
           Keyed by title so React remounts (and the CSS entrance replays) on

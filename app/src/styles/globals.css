@@ -90,24 +90,6 @@ body {
   }
 }
 
-/* The exact "Always On" pricing-card glow from the landing page
-   (website/src/index.html) — a faint blue ellipse from the bottom-left and a
-   faint orange ellipse from the top-right over a light base. Static, no blur;
-   the refinement is in how subtle it is. Used behind the whole setup flow and
-   the main app. */
-.houston-glow {
-  background:
-    radial-gradient(
-      ellipse 80% 60% at 20% 100%,
-      rgba(59, 130, 246, 0.08),
-      transparent
-    ),
-    radial-gradient(
-      ellipse 60% 50% at 80% 0%,
-      rgba(249, 115, 22, 0.06),
-      transparent
-    );
-}
 @keyframes welcome-greeting-in {
   0% {
     opacity: 0;
