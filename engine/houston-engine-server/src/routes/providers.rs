@@ -56,6 +56,14 @@ pub fn router() -> Router<Arc<ServerState>> {
             "/providers/gemini/credentials",
             post(gemini_set_credentials),
         )
+        // OpenRouter-only: persist the API key the user pasted in the connect
+        // dialog to `<houston-home>/providers/openrouter/.env`. Houston injects
+        // it as `OPENROUTER_API_KEY` into the codex subprocess at spawn time
+        // (OpenRouter rides the Codex CLI against its OpenAI-compatible API).
+        .route(
+            "/providers/openrouter/credentials",
+            post(openrouter_set_credentials),
+        )
 }
 
 async fn status(
@@ -137,6 +145,22 @@ async fn gemini_set_credentials(
     Json(body): Json<GeminiCredentials>,
 ) -> Result<(), ApiError> {
     provider::set_gemini_api_key(&body.api_key).await?;
+    Ok(())
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct OpenRouterCredentials {
+    /// Raw API key the user pasted. Validated + persisted by
+    /// `houston_engine_core::provider::set_openrouter_api_key`. NEVER logged.
+    api_key: String,
+}
+
+async fn openrouter_set_credentials(
+    State(_st): State<Arc<ServerState>>,
+    Json(body): Json<OpenRouterCredentials>,
+) -> Result<(), ApiError> {
+    provider::set_openrouter_api_key(&body.api_key).await?;
     Ok(())
 }
 

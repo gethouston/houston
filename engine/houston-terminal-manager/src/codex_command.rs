@@ -1,6 +1,9 @@
 use std::ffi::OsString;
 use std::path::Path;
 
+use crate::provider::CodexBackend;
+use crate::Provider;
+
 /// Build `codex exec` args with exec-level flags before the optional
 /// `resume` subcommand. Older Codex CLIs reject global flags placed after
 /// `resume <id>`.
@@ -11,7 +14,14 @@ use std::path::Path;
 /// (os error 206) for agents with large accumulated context. It now lives
 /// in a profile file (`prompt_scratch::codex_profile`) selected here by
 /// name via `-p`.
+///
+/// `provider` lets a [`CodexBackend`] provider (OpenRouter, …) ride this
+/// same builder: when `provider.codex_backend()` is `Some`, the
+/// model-provider `-c` overrides are emitted and its `default_model` fills in
+/// when the agent hasn't picked one. Native codex (OpenAI) returns `None`, so
+/// not a single argv byte changes for it.
 pub(crate) fn build_args(
+    provider: Provider,
     resume_session_id: Option<&str>,
     working_dir: Option<&Path>,
     model: Option<&str>,
@@ -42,6 +52,17 @@ pub(crate) fn build_args(
         args.push(OsString::from(format!("model_reasoning_effort=\"{e}\"")));
     }
 
+    // Custom OpenAI-compatible backend (OpenRouter, …): point codex at the
+    // provider's endpoint via `-c` overrides (highest precedence). Empty for
+    // native codex.
+    let backend = provider.codex_backend();
+    if let Some(ref b) = backend {
+        args.extend(codex_backend_overrides(b));
+    }
+
+    // The agent's pick wins; otherwise fall back to the backend's default so
+    // a freshly connected OpenRouter agent can chat without choosing a model.
+    let model = model.or(backend.and_then(|b| b.default_model));
     if let Some(m) = model {
         args.push(OsString::from("--model"));
         args.push(OsString::from(m));
@@ -61,6 +82,17 @@ pub(crate) fn build_args(
     args
 }
 
+/// `-c model_provider` / `model_providers.<slug>.*` overrides describing a
+/// custom OpenAI-compatible endpoint. The API key is NOT here — it rides as
+/// the `env_key` environment variable, injected by the runner via
+/// [`crate::provider::codex_backend_env`].
+fn codex_backend_overrides(b: &CodexBackend) -> Vec<OsString> {
+    b.config_overrides()
+        .into_iter()
+        .flat_map(|value| [OsString::from("-c"), OsString::from(value)])
+        .collect()
+}
+
 pub(crate) fn is_missing_rollout_error(line: &str) -> bool {
     let lower = line.to_lowercase();
     lower.contains("thread/resume")
@@ -72,6 +104,15 @@ pub(crate) fn is_missing_rollout_error(line: &str) -> bool {
 mod tests {
     use super::*;
     use std::path::PathBuf;
+    use std::str::FromStr;
+
+    fn openai() -> Provider {
+        Provider::from_str("openai").unwrap()
+    }
+
+    fn openrouter() -> Provider {
+        Provider::from_str("openrouter").unwrap()
+    }
 
     fn strings(args: Vec<OsString>) -> Vec<String> {
         args.into_iter()
@@ -83,6 +124,7 @@ mod tests {
     fn resume_args_keep_exec_flags_before_subcommand() {
         let dir = PathBuf::from("/tmp/work");
         let args = strings(build_args(
+            openai(),
             Some("019dd59b-5e8c-7f63-a8c6-18fb825874ad"),
             Some(&dir),
             Some("gpt-5.5"),
@@ -109,6 +151,7 @@ mod tests {
     #[test]
     fn argv_length_is_independent_of_prompt_size() {
         let args = strings(build_args(
+            openai(),
             None,
             None,
             Some("gpt-5.5"),
@@ -128,7 +171,7 @@ mod tests {
 
     #[test]
     fn fresh_args_read_prompt_from_stdin() {
-        let args = strings(build_args(None, None, None, None, None));
+        let args = strings(build_args(openai(), None, None, None, None, None));
 
         assert_eq!(args.last().map(String::as_str), Some("-"));
         assert!(!args.iter().any(|arg| arg == "resume"));
@@ -136,13 +179,48 @@ mod tests {
 
     #[test]
     fn effort_emits_model_reasoning_effort_override() {
-        let args = strings(build_args(None, None, None, Some("medium"), None));
+        let args = strings(build_args(openai(), None, None, None, Some("medium"), None));
         let pos = args
             .iter()
             .position(|arg| arg == "model_reasoning_effort=\"medium\"")
             .expect("effort override should be present");
         // Override must arrive as a `-c key=value` pair.
         assert_eq!(args[pos - 1], "-c");
+    }
+
+    #[test]
+    fn native_codex_emits_no_model_provider_override() {
+        let args = strings(build_args(openai(), None, None, Some("gpt-5.5"), None, None));
+        assert!(
+            !args.iter().any(|a| a.starts_with("model_provider")),
+            "native codex must not carry a model_provider override: {args:?}"
+        );
+    }
+
+    #[test]
+    fn openrouter_emits_process_local_provider_overrides() {
+        let args = strings(build_args(openrouter(), None, None, Some("x-ai/grok-2"), None, None));
+        for expected in [
+            r#"model_provider="openrouter""#,
+            r#"model_providers.openrouter.base_url="https://openrouter.ai/api/v1""#,
+            r#"model_providers.openrouter.env_key="OPENROUTER_API_KEY""#,
+            r#"model_providers.openrouter.wire_api="responses""#,
+        ] {
+            assert!(
+                args.iter().any(|a| a == expected),
+                "missing override {expected:?} in {args:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn openrouter_without_model_uses_backend_default() {
+        let args = strings(build_args(openrouter(), None, None, None, None, None));
+        let pos = args
+            .iter()
+            .position(|arg| arg == "--model")
+            .expect("--model should be present");
+        assert_eq!(args[pos + 1], "deepseek/deepseek-chat");
     }
 
     #[test]

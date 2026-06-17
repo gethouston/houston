@@ -42,6 +42,7 @@ fn fallback_summary_model(provider: Provider) -> Option<&'static str> {
     match provider.id() {
         "anthropic" => Some("haiku"),
         "openai" => Some("gpt-5.5-mini"),
+        "openrouter" => Some("deepseek/deepseek-chat"),
         "gemini" => Some("gemini-3.1-flash-lite"),
         _ => None,
     }

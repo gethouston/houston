@@ -119,7 +119,8 @@ pub async fn read_stdout_events(
     // than on the adapter trait. Adding a provider = one new arm.
     match provider.id() {
         "anthropic" => read_claude_stdout(stdout, tx).await,
-        "openai" => read_codex_stdout(stdout, tx).await,
+        // OpenRouter rides the Codex CLI, so it emits the same NDJSON stream.
+        "openai" | "openrouter" => read_codex_stdout(stdout, tx).await,
         "gemini" => {
             read_gemini_stdout(stdout, tx).await;
             StdoutReadReport::default()

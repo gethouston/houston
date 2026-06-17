@@ -94,5 +94,18 @@
     "saving": "Saving...",
     "saveFailed": "Couldn't save your {{name}} key",
     "cancel": "Cancel"
+  },
+  "apiKeyConnect": {
+    "title": "Connect {{name}}",
+    "description": "Paste your {{name}} API key. It's saved on this device and used to run your agents.",
+    "openConsole": "Get an API key",
+    "openConsoleFailed": "Couldn't open {{name}}",
+    "placeholder": "Paste your API key here",
+    "show": "Show key",
+    "hide": "Hide key",
+    "envHint": "Saved as {{envVar}} on this device.",
+    "saveKey": "Save and connect",
+    "saving": "Saving...",
+    "saveFailed": "Couldn't save your {{name}} key"
   }
 }

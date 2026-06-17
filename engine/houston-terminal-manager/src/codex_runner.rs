@@ -63,6 +63,7 @@ pub(crate) async fn spawn_codex(
     };
 
     let mut cmd = build_codex_command(
+        provider,
         resume_session_id.as_deref(),
         working_dir.as_deref(),
         model.as_deref(),
@@ -75,6 +76,7 @@ pub(crate) async fn spawn_codex(
         tracing::warn!("[houston:session] codex resume rollout missing; retrying with fresh thread");
         let _ = tx.send(SessionUpdate::ResumeInvalid);
         let mut fresh_cmd = build_codex_command(
+            provider,
             None,
             working_dir.as_deref(),
             model.as_deref(),
@@ -96,6 +98,7 @@ fn fresh_retry_prompt<'a>(prompt: &'a str, resume_fallback_prompt: Option<&'a st
 }
 
 fn build_codex_command(
+    provider: Provider,
     resume_session_id: Option<&str>,
     working_dir: Option<&std::path::Path>,
     model: Option<&str>,
@@ -114,7 +117,14 @@ fn build_codex_command(
         .unwrap_or_else(|| std::path::PathBuf::from("codex"));
     let mut cmd = Command::new(&bin);
     cmd.env("PATH", super::claude_path::shell_path());
+    // Custom OpenAI-compatible backends (OpenRouter, …) authenticate via an
+    // env var named by `model_providers.<slug>.env_key`; inject it here.
+    // Native codex (OpenAI) returns `None` and is untouched.
+    if let Some((key, value)) = crate::provider::codex_backend_env(provider) {
+        cmd.env(key, value);
+    }
     cmd.args(codex_command::build_args(
+        provider,
         resume_session_id,
         working_dir,
         model,

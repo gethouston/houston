@@ -27,6 +27,9 @@ mod gemini;
 mod openai;
 mod openai_classify;
 pub(crate) mod openai_login;
+mod openrouter;
+mod openrouter_classify;
+pub(crate) mod openrouter_credentials;
 mod resolve;
 
 pub(crate) use anthropic_classify::detect_malformed_provider_json;
@@ -67,6 +70,53 @@ pub struct LoginFailureHint {
     pub message: String,
 }
 
+/// Describes a provider that rides the Codex CLI against a custom
+/// OpenAI-compatible endpoint (OpenRouter today; any OpenAI-compatible
+/// endpoint tomorrow). [`ProviderAdapter::codex_backend`] returns `None`
+/// for native Codex (OpenAI/ChatGPT) and `Some` for these.
+///
+/// The codex command builder turns it into `-c model_provider` /
+/// `model_providers.<slug>.*` overrides; the runner injects `env_key` (from
+/// `<houston-home>/providers/<slug>/.env`, or a shell override) into the
+/// spawned process. Because every codex dispatch site reads this off the
+/// adapter, adding the next OpenAI-compatible provider is one more adapter
+/// file — no dispatch-site edits.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CodexBackend {
+    /// Provider id; also the `model_providers.<slug>` table name and the
+    /// `<houston-home>/providers/<slug>/.env` directory.
+    pub slug: &'static str,
+    /// Human label codex shows for the provider (`model_providers.<slug>.name`).
+    pub display_name: &'static str,
+    /// OpenAI-compatible base URL (`model_providers.<slug>.base_url`).
+    pub base_url: &'static str,
+    /// Env var codex reads the API key from (`model_providers.<slug>.env_key`).
+    pub env_key: &'static str,
+    /// Codex wire protocol: `"chat"` (Chat Completions) or `"responses"`.
+    pub wire_api: &'static str,
+    /// Model used when the agent hasn't picked one. `None` = let codex decide.
+    pub default_model: Option<&'static str>,
+}
+
+impl CodexBackend {
+    /// The `key=value` strings codex needs to route to this endpoint, ready
+    /// to pass each as the value of a `-c` flag (highest config precedence,
+    /// so they win over any stale `~/.codex/config.toml`). The API key is NOT
+    /// here — it rides the `env_key` environment variable (see
+    /// [`codex_backend_env`]). Shared by `codex_command::build_args` (chat
+    /// sessions) and `sessions::provider_oneshot` (titles / compaction) so
+    /// both spawn codex with identical provider config.
+    pub fn config_overrides(&self) -> Vec<String> {
+        vec![
+            format!(r#"model_provider="{}""#, self.slug),
+            format!(r#"model_providers.{}.name="{}""#, self.slug, self.display_name),
+            format!(r#"model_providers.{}.base_url="{}""#, self.slug, self.base_url),
+            format!(r#"model_providers.{}.env_key="{}""#, self.slug, self.env_key),
+            format!(r#"model_providers.{}.wire_api="{}""#, self.slug, self.wire_api),
+        ]
+    }
+}
+
 /// One AI provider's CLI integration. Every method is intended to be
 /// cheap to call repeatedly — the registry hands out shared `&'static`
 /// references and there is no per-call setup.
@@ -91,6 +141,14 @@ pub trait ProviderAdapter: Send + Sync + 'static {
     /// from (bundled with Houston, runtime-installed by Houston, found
     /// on PATH, or missing) and the absolute path to spawn.
     fn resolve(&self) -> (InstallSource, Option<PathBuf>);
+
+    /// Codex backend description for providers that ride `codex exec`
+    /// against a custom OpenAI-compatible endpoint (OpenRouter, …). `None`
+    /// (the default) means native Codex or a non-codex provider. See
+    /// [`CodexBackend`].
+    fn codex_backend(&self) -> Option<CodexBackend> {
+        None
+    }
 
     /// Probe whether the user is currently authenticated with this
     /// provider's CLI. Receives the resolved CLI path.
@@ -228,6 +286,7 @@ pub trait ProviderAdapter: Send + Sync + 'static {
 const REGISTRY: &[&dyn ProviderAdapter] = &[
     &anthropic::ANTHROPIC,
     &openai::OPENAI,
+    &openrouter::OPENROUTER,
     &gemini::GEMINI,
 ];
 
@@ -261,6 +320,26 @@ pub fn default_provider() -> Provider {
     Provider(DEFAULT_PROVIDER)
 }
 
+/// The `(env_key, value)` to inject into a codex subprocess for a
+/// [`CodexBackend`] provider, or `None` for native codex / no key available.
+///
+/// A shell value for the backend's `env_key` wins (lets power users override
+/// without re-saving); otherwise the Houston-stored key at
+/// `<houston-home>/providers/<slug>/.env` is used. Generic over every
+/// codex-backend provider — both `codex_runner` (sessions) and
+/// `provider_oneshot` (titles/compaction) inject through this one function.
+pub fn codex_backend_env(provider: Provider) -> Option<(&'static str, String)> {
+    let backend = provider.codex_backend()?;
+    if let Ok(value) = std::env::var(backend.env_key) {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() {
+            return Some((backend.env_key, trimmed.to_string()));
+        }
+    }
+    crate::provider_env::read_stored_api_key(backend.slug, backend.env_key)
+        .map(|value| (backend.env_key, value))
+}
+
 // -----------------------------------------------------------------------
 // Provider — Copy newtype over &'static dyn ProviderAdapter
 // -----------------------------------------------------------------------
@@ -286,6 +365,13 @@ impl Provider {
     /// Resolve the on-disk CLI binary for this provider.
     pub fn resolve(self) -> (InstallSource, Option<PathBuf>) {
         self.0.resolve()
+    }
+
+    /// Codex backend description, if this provider rides `codex exec`
+    /// against a custom OpenAI-compatible endpoint. See
+    /// [`ProviderAdapter::codex_backend`].
+    pub fn codex_backend(self) -> Option<CodexBackend> {
+        self.0.codex_backend()
     }
 
     /// Probe authentication state for this provider's CLI.
@@ -448,6 +534,42 @@ mod tests {
     #[test]
     fn parse_rejects_unknown_provider() {
         assert!(Provider::from_str("nonexistent-provider").is_err());
+    }
+
+    #[test]
+    fn parse_registers_openrouter() {
+        assert_eq!(Provider::from_str("openrouter").unwrap().id(), "openrouter");
+    }
+
+    #[test]
+    fn codex_backend_present_for_openrouter_absent_for_openai() {
+        let or = Provider::from_str("openrouter").unwrap();
+        let backend = or.codex_backend().expect("openrouter has a codex backend");
+        assert_eq!(backend.slug, "openrouter");
+        assert_eq!(backend.base_url, "https://openrouter.ai/api/v1");
+        assert_eq!(backend.env_key, "OPENROUTER_API_KEY");
+        assert_eq!(backend.wire_api, "responses");
+
+        let openai = Provider::from_str("openai").unwrap();
+        assert!(openai.codex_backend().is_none());
+        assert!(codex_backend_env(openai).is_none());
+    }
+
+    #[test]
+    fn codex_backend_env_prefers_shell_override() {
+        let _guard = crate::test_env_lock::lock_env_test();
+        let or = Provider::from_str("openrouter").unwrap();
+        let prior = std::env::var_os("OPENROUTER_API_KEY");
+        std::env::set_var("OPENROUTER_API_KEY", "sk-or-v1-shell");
+
+        let (key, value) = codex_backend_env(or).expect("shell key resolves");
+        assert_eq!(key, "OPENROUTER_API_KEY");
+        assert_eq!(value, "sk-or-v1-shell");
+
+        match prior {
+            Some(v) => std::env::set_var("OPENROUTER_API_KEY", v),
+            None => std::env::remove_var("OPENROUTER_API_KEY"),
+        }
     }
 
     #[test]

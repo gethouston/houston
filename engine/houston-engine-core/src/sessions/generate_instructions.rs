@@ -26,6 +26,10 @@ const CODEX_GEN_MODEL: &str = "gpt-5.5";
 /// retries → "exhausted capacity" → ~4-minute hang). Flash-Lite produces
 /// a usable CLAUDE.md in well under the 60s GENERATE_TIMEOUT.
 const GEMINI_GEN_MODEL: &str = "gemini-3.1-flash-lite";
+/// OpenRouter generation model. Uses the same cheap open-source default the
+/// OpenRouter adapter falls back to (`deepseek/deepseek-chat`) so
+/// Create-with-AI produces a solid CLAUDE.md within the timeout.
+const OPENROUTER_GEN_MODEL: &str = "deepseek/deepseek-chat";
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -91,6 +95,7 @@ fn default_gen_model<'a>(provider: Provider, model_override: Option<&'a str>) ->
     let default = match provider.id() {
         "anthropic" => CLAUDE_GEN_MODEL,
         "openai" => CODEX_GEN_MODEL,
+        "openrouter" => OPENROUTER_GEN_MODEL,
         "gemini" => GEMINI_GEN_MODEL,
         _ => return None,
     };

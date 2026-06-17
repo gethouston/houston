@@ -12,7 +12,7 @@ import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { GeminiConnectDialog } from "./gemini-connect-dialog";
+import { ApiKeyConnectDialog } from "./api-key-connect-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderCard, ComingSoonCard } from "./provider-cards";
 
@@ -272,7 +272,7 @@ export function ProviderPicker({ onSelect }: Props) {
         }}
       />
 
-      <GeminiConnectDialog
+      <ApiKeyConnectDialog
         provider={apiKeyDialogFor}
         onOpenChange={(open) => {
           if (!open) setApiKeyDialogFor(null);
@@ -284,13 +284,6 @@ export function ProviderPicker({ onSelect }: Props) {
           // pendingId once the auth state reads `authenticated`.
           setPendingId(providerId);
           loadStatuses();
-        }}
-        onLoginStarted={(providerId) => {
-          // OAuth path: gemini-cli is now driving the browser flow.
-          // Arm the picker's status poll so the card flips to
-          // Connected the moment gemini-cli writes its credential
-          // files, same as the API-key save path above.
-          setPendingId(providerId);
         }}
       />
 

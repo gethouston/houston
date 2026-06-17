@@ -725,6 +725,17 @@ export class HoustonClient {
   setGeminiApiKey(apiKey: string): Promise<void> {
     return this.request("POST", "/providers/gemini/credentials", { apiKey });
   }
+
+  /**
+   * Persist an API key for an API-key provider (OpenRouter, …). The engine
+   * validates + writes it to that provider's credential store; the next
+   * `providerStatus(id)` poll flips the card to Connected. Generic over the
+   * provider id — each maps to `POST /providers/<id>/credentials`. (Gemini
+   * keeps its own dedicated method above because it also offers OAuth.)
+   */
+  setProviderApiKey(providerId: string, apiKey: string): Promise<void> {
+    return this.request("POST", `/providers/${providerId}/credentials`, { apiKey });
+  }
   // "Sign in with Google" for Gemini goes through the standard
   // `providerLogin("gemini")` call — the engine detects the gemini id
   // and delegates to gemini-cli's own OAuth via the ACP `authenticate`

@@ -94,5 +94,18 @@
     "saving": "Salvando...",
     "saveFailed": "Não foi possível salvar sua chave do {{name}}",
     "cancel": "Cancelar"
+  },
+  "apiKeyConnect": {
+    "title": "Conectar {{name}}",
+    "description": "Cole sua chave de API da {{name}}. Ela fica salva neste dispositivo e é usada para executar seus agentes.",
+    "openConsole": "Obter uma chave de API",
+    "openConsoleFailed": "Não foi possível abrir {{name}}",
+    "placeholder": "Cole aqui sua chave de API",
+    "show": "Mostrar a chave",
+    "hide": "Ocultar a chave",
+    "envHint": "Salva como {{envVar}} neste dispositivo.",
+    "saveKey": "Salvar e conectar",
+    "saving": "Salvando...",
+    "saveFailed": "Não foi possível salvar sua chave da {{name}}"
   }
 }

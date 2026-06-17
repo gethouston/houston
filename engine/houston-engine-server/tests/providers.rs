@@ -95,6 +95,47 @@ async fn status_returns_shape_for_gemini() {
 }
 
 #[tokio::test]
+async fn status_returns_shape_for_openrouter() {
+    // OpenRouter rides the bundled codex binary; assert wire shape only.
+    let (addr, tok) = spawn().await;
+    let body: serde_json::Value = reqwest::Client::new()
+        .get(format!("http://{addr}/v1/providers/openrouter/status"))
+        .bearer_auth(&tok)
+        .send()
+        .await
+        .unwrap()
+        .json()
+        .await
+        .unwrap();
+    assert_eq!(body["provider"], "openrouter");
+    assert_eq!(body["cliName"], "codex");
+    assert!(body["cliInstalled"].is_boolean());
+    assert!(matches!(
+        body["authState"].as_str(),
+        Some("authenticated" | "unauthenticated" | "unknown")
+    ));
+    assert!(matches!(
+        body["installSource"].as_str(),
+        Some("bundled" | "managed" | "path" | "missing")
+    ));
+}
+
+#[tokio::test]
+async fn openrouter_credentials_rejects_empty_and_malformed_key() {
+    let (addr, tok) = spawn().await;
+    for bad in ["", "abc", "sk or v1 with spaces in it here"] {
+        let res = reqwest::Client::new()
+            .post(format!("http://{addr}/v1/providers/openrouter/credentials"))
+            .bearer_auth(&tok)
+            .json(&serde_json::json!({ "apiKey": bad }))
+            .send()
+            .await
+            .unwrap();
+        assert_eq!(res.status(), 400, "key {bad:?} should be rejected");
+    }
+}
+
+#[tokio::test]
 async fn gemini_credentials_rejects_empty_key() {
     let (addr, tok) = spawn().await;
     let res = reqwest::Client::new()

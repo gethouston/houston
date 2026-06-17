@@ -898,6 +898,17 @@ export const tauriProvider = {
    */
   setGeminiApiKey: (apiKey: string) =>
     call<void>("set_gemini_api_key", () => getEngine().setGeminiApiKey(apiKey)),
+
+  /**
+   * Persist an API key for an API-key provider (OpenRouter, …) to its engine
+   * credential store. Generic over the provider id. Never log `apiKey` — it's
+   * a SECRET. Errors surface via `call`'s rejection path for the caller to
+   * toast with `errorMessage(err)`.
+   */
+  setProviderApiKey: (providerId: string, apiKey: string) =>
+    call<void>("set_provider_api_key", () =>
+      getEngine().setProviderApiKey(providerId, apiKey),
+    ),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────

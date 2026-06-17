@@ -35,7 +35,8 @@ pub async fn run_provider_oneshot(
 ) -> Result<String, String> {
     match provider.id() {
         "anthropic" => run_claude(prompt, model, time_limit).await,
-        "openai" => run_codex(prompt, model, time_limit).await,
+        // OpenRouter rides codex with a custom model-provider config.
+        "openai" | "openrouter" => run_codex(provider, prompt, model, time_limit).await,
         "gemini" => run_gemini(prompt, model, time_limit).await,
         unknown => Err(format!(
             "no one-shot invocation wired up for provider {unknown:?}"
@@ -58,7 +59,12 @@ async fn run_claude(prompt: &str, model: &str, time_limit: Duration) -> Result<S
     run_command(cmd, prompt, time_limit).await
 }
 
-async fn run_codex(prompt: &str, model: &str, time_limit: Duration) -> Result<String, String> {
+async fn run_codex(
+    provider: Provider,
+    prompt: &str,
+    model: &str,
+    time_limit: Duration,
+) -> Result<String, String> {
     // Prefer the bundled codex (pinned in `cli-deps.json`) so one-shot
     // generation can't get sabotaged by a stale `nvm`/`brew` codex on the
     // user's PATH that doesn't recognize the model we picked.
@@ -66,6 +72,13 @@ async fn run_codex(prompt: &str, model: &str, time_limit: Duration) -> Result<St
         .unwrap_or_else(|| std::path::PathBuf::from("codex"));
     let mut cmd = tokio::process::Command::new(&bin);
     cmd.env("PATH", claude_path::shell_path());
+    // Custom OpenAI-compatible backend (OpenRouter, …): inject the API key
+    // env var the codex `model_providers.<slug>.env_key` config references.
+    if let Some((key, value)) =
+        houston_terminal_manager::provider::codex_backend_env(provider)
+    {
+        cmd.env(key, value);
+    }
     cmd.arg("exec")
         .arg("--json")
         .arg("--dangerously-bypass-approvals-and-sandbox")
@@ -75,10 +88,15 @@ async fn run_codex(prompt: &str, model: &str, time_limit: Duration) -> Result<St
         // ones reject it) can't kill one-shot generation. Callers needing
         // depth pick the model accordingly; we don't bake an effort here.
         .arg("-c")
-        .arg("model_reasoning_effort=\"low\"")
-        .arg("--model")
-        .arg(model)
-        .arg("-");
+        .arg("model_reasoning_effort=\"low\"");
+    // Route to the provider's endpoint when it's a custom codex backend.
+    // Native codex (OpenAI) yields no overrides and is unchanged.
+    if let Some(backend) = provider.codex_backend() {
+        for override_kv in backend.config_overrides() {
+            cmd.arg("-c").arg(override_kv);
+        }
+    }
+    cmd.arg("--model").arg(model).arg("-");
     let stdout = run_command(cmd, prompt, time_limit).await?;
     extract_codex_text(&stdout)
 }

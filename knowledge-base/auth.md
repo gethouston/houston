@@ -246,6 +246,38 @@ user does not have to fiddle with shell rc files. The engine route is
 parent dir ensure). When the in-flight upgrade lands, the dialog gains
 a paste input + Save button and the restart-Houston step disappears.
 
+## OpenRouter (API key, rides the Codex CLI)
+
+OpenRouter has no CLI of its own — it reuses the bundled `codex` binary
+pointed at OpenRouter's OpenAI-compatible endpoint. Auth is a pasted API key,
+not OAuth.
+
+- **Storage**: `set_openrouter_api_key`
+  (`engine/houston-engine-core/src/provider/openrouter_credentials.rs`) writes
+  `OPENROUTER_API_KEY` to `<houston-home>/providers/openrouter/.env` (atomic,
+  mode 0600). Path resolution + the `.env` line-merge live in
+  `houston_terminal_manager::provider_env` so the runner reads the same file.
+- **Injection**: at spawn, `codex_backend_env`
+  (`terminal-manager/src/provider/mod.rs`) reads the key (a shell
+  `OPENROUTER_API_KEY` wins, else the stored file) and the runner sets it as
+  the codex process env var named by `model_providers.openrouter.env_key`.
+- **probe_auth** returns `authenticated` only when a Houston-stored key exists
+  (a shell-only key can run a session but isn't Houston-managed, so the picker
+  still shows Connect). Synchronous file read, no spawn — same path as
+  `GET /v1/providers/openrouter/status`.
+- **login/logout**: `login_args` is `None`, so `launch_login("openrouter")`
+  returns `BadRequest` (API-key providers use the credentials route).
+  `launch_logout("openrouter")` deletes the stored key
+  (`strip_openrouter_api_key_storage`).
+- **Connect flow**: same Connect-API-Key dialog as Gemini
+  (`app/src/components/shell/api-key-connect-dialog.tsx`), driven by
+  `providers.ts` (`apiKeyConsoleUrl: https://openrouter.ai/keys`,
+  `apiKeyEnvVar: OPENROUTER_API_KEY`). TS client: generic
+  `setProviderApiKey("openrouter", key)`.
+
+See `knowledge-base/agent-manifest.md` for the `CodexBackend` mechanism and the
+codex `-c model_provider` overrides.
+
 ### HOME isolation for spawned gemini sessions
 
 Gemini-cli loads `<HOME>/.gemini/GEMINI.md` as global memory on every

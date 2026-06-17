@@ -250,6 +250,7 @@ login URL is always drained before its exit is observed — see `login_relay.rs`
 | Trait        | `engine/houston-terminal-manager/src/provider/mod.rs`                             |
 | Anthropic    | `engine/houston-terminal-manager/src/provider/anthropic_classify.rs`              |
 | OpenAI       | `engine/houston-terminal-manager/src/provider/openai_classify.rs`                 |
+| OpenRouter   | `engine/houston-terminal-manager/src/provider/openrouter_classify.rs` (HTTP status → taxonomy; rides codex_parser for result events) |
 | Codex login  | `engine/houston-terminal-manager/src/provider/openai_login.rs` (login-flow diag)  |
 | Gemini       | `engine/houston-terminal-manager/src/provider/gemini/classify.rs`                 |
 | Stderr wire  | `engine/houston-terminal-manager/src/session_io.rs::read_stderr_lines`            |

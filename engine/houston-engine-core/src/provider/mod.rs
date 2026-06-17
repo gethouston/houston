@@ -14,10 +14,12 @@ mod gemini_credentials;
 mod gemini_disconnect;
 mod gemini_login;
 mod login_relay;
+mod openrouter_credentials;
 
 pub use gemini_credentials::set_gemini_api_key;
 pub use gemini_disconnect::disconnect_gemini;
 pub use login_relay::{cancel_login, submit_login_code};
+pub use openrouter_credentials::set_openrouter_api_key;
 
 use crate::error::{CoreError, CoreResult};
 use houston_engine_protocol::ErrorCode;
@@ -119,6 +121,18 @@ pub async fn launch_login(
             )
         })?;
         return gemini_login::launch_login(path).await;
+    }
+
+    // OpenRouter (and any future API-key provider) has no CLI login flow —
+    // the user pastes a key through `/providers/openrouter/credentials`. The
+    // picker routes API-key providers to the connect dialog and never calls
+    // this, but a direct caller gets a clear error instead of a confusing
+    // "no login args" failure deeper down.
+    if provider.codex_backend().is_some() {
+        return Err(CoreError::BadRequest(format!(
+            "{} uses an API key, not a sign-in flow. Save your API key in settings.",
+            provider.id()
+        )));
     }
 
     let ProviderCliCommand {
@@ -289,6 +303,12 @@ pub async fn launch_logout(provider: Provider) -> CoreResult<()> {
     // not touched).
     if provider.id() == "gemini" {
         return disconnect_gemini().await;
+    }
+
+    // OpenRouter has no CLI logout — "disconnect" means deleting the stored
+    // key so the next status read shows "Unauthenticated".
+    if provider.id() == "openrouter" {
+        return openrouter_credentials::strip_openrouter_api_key_storage().await;
     }
 
     let ProviderCliCommand {

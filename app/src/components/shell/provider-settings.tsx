@@ -9,7 +9,7 @@ import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { GeminiConnectDialog } from "./gemini-connect-dialog";
+import { ApiKeyConnectDialog } from "./api-key-connect-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { ProviderAccountRow } from "./provider-account-row";
 import { providerAppearsConnected } from "./provider-reconnect-state";
@@ -337,7 +337,7 @@ export function ProviderSettings() {
         }}
       />
 
-      <GeminiConnectDialog
+      <ApiKeyConnectDialog
         provider={apiKeyDialogFor}
         onOpenChange={(open) => {
           if (!open) setApiKeyDialogFor(null);
@@ -345,9 +345,6 @@ export function ProviderSettings() {
         onSaved={(providerId) => {
           setPendingId(providerId);
           loadStatuses();
-        }}
-        onLoginStarted={(providerId) => {
-          setPendingId(providerId);
         }}
       />
 
