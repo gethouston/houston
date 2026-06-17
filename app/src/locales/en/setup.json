@@ -92,17 +92,30 @@
         "creating": "Creating..."
       },
       "email": {
-        "title": "Send your first email",
-        "body": "Connect your email and your agent will send one real message for you. That is setup done.",
-        "intro": {
-          "title": "Send a real email",
-          "body": "Your agent connects to your real apps to do actual work. Let's connect your email and send one, for real.",
-          "cta": "Let's do it"
+        "title": "Make your agent send an email for you",
+        "offer": {
+          "prompt": "Your agent is set up. Let's watch it send a real email.",
+          "cta": "Send an email",
+          "userSaid": "Send an email for me"
+        },
+        "recipient": {
+          "prompt": "Love it. Who should this first email go to?",
+          "self": "Send it to me (just to test)",
+          "other": "Send it to someone else",
+          "emailPlaceholder": "Their email address",
+          "messagePlaceholder": "What should it say? (optional)",
+          "confirm": "Continue",
+          "selfSaid": "Send it to me, just to test.",
+          "otherSaid": "Send it to {{email}}."
+        },
+        "provider": {
+          "prompt": "Got it. Which email do you use?",
+          "other": "Another email",
+          "otherPlaceholder": "Which email provider?",
+          "confirm": "Connect and send"
         },
         "chip": "Send an email for me",
-        "continueChip": "Enter Houston",
         "skip": "I'll set this up later",
-        "doneTitle": "Sent. You're all set.",
         "placeholder": "Reply to your agent..."
       },
       "done": {

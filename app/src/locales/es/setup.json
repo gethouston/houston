@@ -92,17 +92,30 @@
         "creating": "Creando..."
       },
       "email": {
-        "title": "Envía tu primer correo",
-        "body": "Conecta tu correo y tu agente enviará un mensaje real por ti. Con eso termina la configuración.",
-        "intro": {
-          "title": "Envía un correo real",
-          "body": "Tu agente se conecta a tus apps reales para hacer trabajo de verdad. Conectemos tu correo y enviemos uno, en serio.",
-          "cta": "Hagámoslo"
+        "title": "Haz que tu agente envíe un correo por ti",
+        "offer": {
+          "prompt": "Tu agente está listo. Vamos a verlo enviar un correo real.",
+          "cta": "Enviar un correo",
+          "userSaid": "Envía un correo por mí"
+        },
+        "recipient": {
+          "prompt": "Genial. ¿A quién le enviamos este primer correo?",
+          "self": "Envíamelo a mí (solo para probar)",
+          "other": "Envíalo a otra persona",
+          "emailPlaceholder": "Su correo electrónico",
+          "messagePlaceholder": "¿Qué debería decir? (opcional)",
+          "confirm": "Continuar",
+          "selfSaid": "Envíamelo a mí, solo para probar.",
+          "otherSaid": "Envíalo a {{email}}."
+        },
+        "provider": {
+          "prompt": "Listo. ¿Qué correo usas?",
+          "other": "Otro correo",
+          "otherPlaceholder": "¿Qué proveedor de correo?",
+          "confirm": "Conectar y enviar"
         },
         "chip": "Envía un correo por mí",
-        "continueChip": "Entra a Houston",
         "skip": "Lo configuro más tarde",
-        "doneTitle": "Enviado. Todo listo.",
         "placeholder": "Responde a tu agente..."
       },
       "done": {
