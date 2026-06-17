@@ -17,7 +17,10 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "nav": { "back": "Voltar", "continue": "Continuar" },
+    "nav": {
+      "back": "Voltar",
+      "continue": "Continuar"
+    },
     "counter": "Passo {{current}} de {{total}}",
     "eyebrow": "Passo {{number}}",
     "missionLabel": "Configuração: {{title}}",
@@ -46,30 +49,29 @@
       "firstWorkflow": "Configure meu primeiro fluxo útil do dia"
     },
     "missions": {
-      "meet": {
-        "title": "Conheça seu assistente",
-        "body": "Dê um nome e uma cor ao seu assistente. Você pode mudar depois.",
-        "begin": "Continuar"
+      "intro": {
+        "title": "Vamos configurar sua conta",
+        "body": "São só alguns passos rápidos para deixar seu assistente funcionando. Entre na IA que você já usa e depois conecte seus apps.",
+        "cta": "Começar configuração"
       },
       "brain": {
-        "title": "Escolha sua IA",
-        "body": "Escolha a IA que move seu assistente. Você usa sua própria assinatura, o Houston nunca vê suas credenciais."
+        "title": "Entre na sua assinatura de IA",
+        "body": "Escolha a IA que você já paga. Você usa sua própria assinatura, então o Houston nunca vê sua senha nem sua fatura."
       },
       "providerLogin": {
-        "title": "Conecte o {{provider}}",
+        "title": "Entre no {{provider}}",
         "body": "Entre uma vez para que seu assistente possa usar o {{provider}} por você.",
         "loginButton": "Entrar no {{provider}}",
         "waiting": "Aguardando o {{provider}}...",
         "cancel": "Cancelar",
-        "creating": "Criando seu assistente...",
         "connected": {
           "title": "Tudo pronto",
           "body": "Encontramos o {{provider}} neste computador. Você já está conectado com sua própria assinatura, então não há nada para configurar aqui."
         }
       },
       "tools": {
-        "title": "Entre uma vez para usar seus apps",
-        "body": "Com um único login, seu assistente pode trabalhar com seus apps. Depois ele conecta cada app, como Gmail ou seu calendário, só quando você realmente precisar, então não precisa configurar tudo agora.",
+        "title": "Conecte seus apps",
+        "body": "Com um único login seu assistente pode trabalhar com apps como Gmail e sua agenda. Cada app é conectado só quando você realmente precisa, então não há nada para configurar agora.",
         "allow": "Entrar",
         "waiting": "Esperando você no navegador...",
         "cancel": "Cancelar",
@@ -77,6 +79,17 @@
           "title": "Tudo pronto",
           "body": "Seu assistente já pode conectar seus apps quando você precisar."
         }
+      },
+      "setupReady": {
+        "title": "Tudo pronto",
+        "body": "Sua IA e seus apps estão conectados. Agora vamos criar seu primeiro agente e colocá-lo para trabalhar.",
+        "cta": "Criar meu agente"
+      },
+      "meet": {
+        "title": "Crie seu primeiro agente",
+        "body": "Dê um nome e uma cor ao seu agente. Você pode mudar quando quiser.",
+        "begin": "Criar agente",
+        "creating": "Criando..."
       },
       "email": {
         "title": "Envie seu primeiro e-mail",
@@ -91,6 +104,11 @@
         "skip": "Configuro isso mais tarde",
         "doneTitle": "Enviado. Tudo pronto.",
         "placeholder": "Responda ao seu assistente..."
+      },
+      "done": {
+        "title": "Tudo pronto!",
+        "body": "Seu agente está pronto e seu primeiro e-mail está a caminho. Boas-vindas ao Houston.",
+        "cta": "Entrar no Houston"
       }
     }
   }

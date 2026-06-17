@@ -17,7 +17,10 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "nav": { "back": "Back", "continue": "Continue" },
+    "nav": {
+      "back": "Back",
+      "continue": "Continue"
+    },
     "counter": "Step {{current}} of {{total}}",
     "eyebrow": "Step {{number}}",
     "missionLabel": "Set up: {{title}}",
@@ -46,30 +49,29 @@
       "firstWorkflow": "Set up my first useful daily workflow"
     },
     "missions": {
-      "meet": {
-        "title": "Meet your assistant",
-        "body": "Give your assistant a name and a color. You can change them later.",
-        "begin": "Continue"
+      "intro": {
+        "title": "Let's set up your account",
+        "body": "Just a couple of quick steps to get your assistant working. Log in to the AI you already use, then connect your apps.",
+        "cta": "Start setup"
       },
       "brain": {
-        "title": "Pick your AI",
-        "body": "Choose the AI that powers your assistant. You bring your own subscription, Houston never sees your credentials."
+        "title": "Log in to your AI subscription",
+        "body": "Choose the AI you already pay for. You bring your own subscription, so Houston never sees your password or your bill."
       },
       "providerLogin": {
-        "title": "Connect {{provider}}",
+        "title": "Log in to {{provider}}",
         "body": "Sign in once so your assistant can use {{provider}} on your behalf.",
         "loginButton": "Log in to {{provider}}",
         "waiting": "Waiting for {{provider}}...",
         "cancel": "Cancel",
-        "creating": "Creating your assistant...",
         "connected": {
           "title": "You're all set",
           "body": "We found {{provider}} on this computer. You're signed in with your own subscription, so there's nothing to set up here."
         }
       },
       "tools": {
-        "title": "Sign in once to use your apps",
-        "body": "One sign-in lets your assistant work with your apps. After that it connects each app, like Gmail or your calendar, only when you actually need it, so there's no big setup now.",
+        "title": "Connect your apps",
+        "body": "One sign-in lets your assistant work with apps like Gmail and your calendar. It connects each app only when you actually need it, so there's nothing to set up now.",
         "allow": "Sign in",
         "waiting": "Waiting for you in your browser...",
         "cancel": "Cancel",
@@ -77,6 +79,17 @@
           "title": "You're all set",
           "body": "Your assistant can now connect to your apps whenever you need them."
         }
+      },
+      "setupReady": {
+        "title": "You're all set up",
+        "body": "Your AI and your apps are connected. Now let's create your first agent and put it to work.",
+        "cta": "Create my agent"
+      },
+      "meet": {
+        "title": "Create your first agent",
+        "body": "Give your agent a name and a color. You can change these anytime.",
+        "begin": "Create agent",
+        "creating": "Creating..."
       },
       "email": {
         "title": "Send your first email",
@@ -91,6 +104,11 @@
         "skip": "I'll set this up later",
         "doneTitle": "Sent. You're all set.",
         "placeholder": "Reply to your assistant..."
+      },
+      "done": {
+        "title": "You're all set!",
+        "body": "Your agent is ready and your first email is on its way. Welcome to Houston.",
+        "cta": "Enter Houston"
       }
     }
   }

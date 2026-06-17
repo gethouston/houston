@@ -8,11 +8,13 @@ import { useAgentStore } from "../../stores/agents";
 import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import { getDefaultModel } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
+import { IntroMission } from "./missions/intro";
 import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
 import { ProviderLoginMission } from "./missions/provider-login";
 import { ToolsMission } from "./missions/tools";
 import { EmailMission } from "./missions/email";
+import { SuccessMission } from "./success-mission";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
 import {
@@ -36,10 +38,13 @@ export function PersonalAssistantOnboarding({
   const setTutorialActive = useUIStore((s) => s.setTutorialActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
   const addToast = useUIStore((s) => s.addToast);
-  const [step, setStep] = useState<OnboardingStep>("meet");
+  const [step, setStep] = useState<OnboardingStep>("intro");
   const [agent, setAgent] = useState<Agent | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
+  // Set while the "create your first agent" step is provisioning the
+  // workspace + assistant, to drive the button's loading state.
+  const [creatingAgent, setCreatingAgent] = useState(false);
   const [assistantName, setAssistantName] = useState(() =>
     t("setup:tutorial.defaults.assistantName"),
   );
@@ -148,6 +153,31 @@ export function PersonalAssistantOnboarding({
     setTutorialActive(false);
   };
 
+  // The "create your first agent" step now owns provisioning the workspace +
+  // assistant (it used to live on the provider-login Continue, but creation now
+  // happens AFTER the AI + apps setup phase). By here provider/model are picked
+  // and the user has just chosen the name/color on this step. Reused creation
+  // is deduped inside createWorkspaceAndAssistant (HOU-444); on failure we toast
+  // and stay so the user can retry.
+  const handleCreateAgent = async () => {
+    if (!provider || !model) return;
+    setCreatingAgent(true);
+    try {
+      // Funnel: the user named + created their first agent.
+      analytics.track("onboarding_assistant_named");
+      await createWorkspaceAndAssistant(provider, model);
+      setCreatingAgent(false);
+      setStep("email");
+    } catch (err) {
+      addToast({
+        title: t("setup:tutorial.errors.setupFailed"),
+        description: String(err),
+        variant: "error",
+      });
+      setCreatingAgent(false);
+    }
+  };
+
   // Provider/model the back-half missions (Try, Routine) run against. The
   // user picks these in the Brain mission; fall back to the platform default
   // model for the chosen provider if a mission renders before a pick.
@@ -161,26 +191,14 @@ export function PersonalAssistantOnboarding({
 
   return (
     <>
-      {step === "meet" && (
-        <MeetMission
-          eyebrow={stepEyebrow("meet")}
-          name={assistantName}
-          color={assistantColor}
-          namePlaceholder={t("setup:tutorial.defaults.assistantName")}
-          onNameChange={setAssistantName}
-          onColorChange={setAssistantColor}
-          onBegin={() => {
-            // Funnel step 7: the user named their assistant and moved on.
-            analytics.track("onboarding_assistant_named");
-            setStep("brain");
-          }}
-        />
+      {step === "intro" && (
+        <IntroMission onContinue={() => setStep("brain")} />
       )}
       {step === "brain" && (
         <BrainMission
           eyebrow={stepEyebrow("brain")}
           provider={provider}
-          onBack={() => setStep("meet")}
+          onBack={() => setStep("intro")}
           onSelect={(p, m) => {
             setProvider(p);
             setModel(m);
@@ -193,28 +211,34 @@ export function PersonalAssistantOnboarding({
           eyebrow={stepEyebrow("providerLogin")}
           providerId={provider}
           onBack={() => setStep("brain")}
-          onContinue={async () => {
-            if (!provider || !model) return;
-            try {
-              await createWorkspaceAndAssistant(provider, model);
-              setStep("tools");
-            } catch (err) {
-              // Surface the failure as a toast and stay on this step so the
-              // user can retry — never an unhandled rejection (HOU-444).
-              addToast({
-                title: t("setup:tutorial.errors.setupFailed"),
-                description: String(err),
-                variant: "error",
-              });
-            }
-          }}
+          onContinue={() => setStep("tools")}
         />
       )}
       {step === "tools" && (
         <ToolsMission
           eyebrow={stepEyebrow("tools")}
-          onBack={() => setStep("brain")}
-          onContinue={() => setStep("email")}
+          onBack={() => setStep("providerLogin")}
+          onContinue={() => setStep("setupReady")}
+        />
+      )}
+      {step === "setupReady" && (
+        <SuccessMission
+          title={t("setup:tutorial.missions.setupReady.title")}
+          body={t("setup:tutorial.missions.setupReady.body")}
+          ctaLabel={t("setup:tutorial.missions.setupReady.cta")}
+          onContinue={() => setStep("meet")}
+        />
+      )}
+      {step === "meet" && (
+        <MeetMission
+          eyebrow={stepEyebrow("meet")}
+          name={assistantName}
+          color={assistantColor}
+          namePlaceholder={t("setup:tutorial.defaults.assistantName")}
+          onNameChange={setAssistantName}
+          onColorChange={setAssistantColor}
+          creating={creatingAgent}
+          onBegin={() => void handleCreateAgent()}
         />
       )}
       {step === "email" && agent && (
@@ -224,9 +248,17 @@ export function PersonalAssistantOnboarding({
           assistantColor={assistantColor}
           provider={missionProvider}
           model={missionModel}
-          onBack={() => setStep("tools")}
-          onContinue={finishOnboarding}
+          onBack={() => setStep("meet")}
+          onContinue={() => setStep("done")}
           onSkip={finishOnboarding}
+        />
+      )}
+      {step === "done" && (
+        <SuccessMission
+          title={t("setup:tutorial.missions.done.title")}
+          body={t("setup:tutorial.missions.done.body")}
+          ctaLabel={t("setup:tutorial.missions.done.cta")}
+          onContinue={finishOnboarding}
         />
       )}
       <ToastContainer toasts={toasts} onDismiss={onDismissToast} />

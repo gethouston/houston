@@ -15,8 +15,8 @@ interface ProviderLoginMissionProps {
   /** The provider id picked on the previous screen. */
   providerId: string;
   onBack: () => void;
-  /** Create the workspace + assistant and advance. Owns the error toast. */
-  onContinue: () => Promise<void> | void;
+  /** Advance to the next setup step once the provider is connected. */
+  onContinue: () => void;
 }
 
 /**
@@ -37,7 +37,6 @@ export function ProviderLoginMission({
   const [status, setStatus] = useState<ProviderStatus | null>(null);
   const [loginLaunched, setLoginLaunched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!provider) return;
@@ -98,14 +97,9 @@ export function ProviderLoginMission({
     }
   }, [provider]);
 
-  const handleContinue = useCallback(async () => {
+  const handleContinue = useCallback(() => {
     if (!connected) return;
-    setSubmitting(true);
-    try {
-      await onContinue();
-    } finally {
-      setSubmitting(false);
-    }
+    onContinue();
   }, [connected, onContinue]);
 
   const showInstallHint =
@@ -122,14 +116,9 @@ export function ProviderLoginMission({
       }
       onBack={onBack}
       backLabel={t("setup:tutorial.nav.back")}
-      onNext={() => void handleContinue()}
-      nextLabel={
-        submitting
-          ? t("setup:tutorial.missions.providerLogin.creating")
-          : t("setup:tutorial.nav.continue")
-      }
+      onNext={handleContinue}
+      nextLabel={t("setup:tutorial.nav.continue")}
       nextDisabled={!connected}
-      nextLoading={submitting}
     >
       <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
         <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">

@@ -17,9 +17,10 @@ interface MeetMissionProps {
   namePlaceholder: string;
   onNameChange: (name: string) => void;
   onColorChange: (color: string) => void;
-  /** Optional: meet is the first onboarding step, so there's usually nothing
-   *  to go back to (Welcome + Agreement live in the first-run gate). */
+  /** Optional back link (omitted when there's nothing useful to go back to). */
   onBack?: () => void;
+  /** Provisioning in flight — disables + spins the create button. */
+  creating?: boolean;
   onBegin: () => void;
 }
 
@@ -31,6 +32,7 @@ export function MeetMission({
   onNameChange,
   onColorChange,
   onBack,
+  creating,
   onBegin,
 }: MeetMissionProps) {
   const { t } = useTranslation("setup");
@@ -43,8 +45,13 @@ export function MeetMission({
       onBack={onBack}
       backLabel={t("tutorial.nav.back")}
       onNext={() => trimmed && onBegin()}
-      nextLabel={t("tutorial.missions.meet.begin")}
-      nextDisabled={!trimmed}
+      nextLabel={
+        creating
+          ? t("tutorial.missions.meet.creating")
+          : t("tutorial.missions.meet.begin")
+      }
+      nextDisabled={!trimmed || creating}
+      nextLoading={creating}
     >
       <div className="flex flex-1 flex-col items-center justify-center gap-6">
         <HoustonAvatar color={resolveAgentColor(color)} diameter={88} />

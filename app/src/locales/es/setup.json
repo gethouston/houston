@@ -17,7 +17,10 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "nav": { "back": "Atrás", "continue": "Continuar" },
+    "nav": {
+      "back": "Atrás",
+      "continue": "Continuar"
+    },
     "counter": "Paso {{current}} de {{total}}",
     "eyebrow": "Paso {{number}}",
     "missionLabel": "Configuración: {{title}}",
@@ -46,30 +49,29 @@
       "firstWorkflow": "Configura mi primer flujo útil del día"
     },
     "missions": {
-      "meet": {
-        "title": "Conoce a tu asistente",
-        "body": "Dale un nombre y un color a tu asistente. Puedes cambiarlos después.",
-        "begin": "Continuar"
+      "intro": {
+        "title": "Vamos a configurar tu cuenta",
+        "body": "Solo un par de pasos rápidos para que tu asistente funcione. Inicia sesión en la IA que ya usas y luego conecta tus apps.",
+        "cta": "Comenzar configuración"
       },
       "brain": {
-        "title": "Elige tu IA",
-        "body": "Elige la IA que impulsa a tu asistente. Tú usas tu propia suscripción, Houston nunca ve tus credenciales."
+        "title": "Inicia sesión en tu suscripción de IA",
+        "body": "Elige la IA que ya pagas. Tú traes tu propia suscripción, así que Houston nunca ve tu contraseña ni tu factura."
       },
       "providerLogin": {
-        "title": "Conecta {{provider}}",
+        "title": "Inicia sesión en {{provider}}",
         "body": "Inicia sesión una vez para que tu asistente pueda usar {{provider}} por ti.",
         "loginButton": "Iniciar sesión en {{provider}}",
         "waiting": "Esperando a {{provider}}...",
         "cancel": "Cancelar",
-        "creating": "Creando tu asistente...",
         "connected": {
           "title": "Todo listo",
           "body": "Encontramos {{provider}} en este computador. Ya tienes la sesión iniciada con tu propia suscripción, así que no hay nada que configurar aquí."
         }
       },
       "tools": {
-        "title": "Inicia sesión una vez para usar tus apps",
-        "body": "Con un solo inicio de sesión, tu asistente podrá trabajar con tus apps. Después conecta cada app, como Gmail o tu calendario, solo cuando de verdad la necesites, así no tienes que configurar todo ahora.",
+        "title": "Conecta tus apps",
+        "body": "Con un solo inicio de sesión tu asistente puede trabajar con apps como Gmail y tu calendario. Conecta cada app solo cuando la necesites, así no hay nada que configurar ahora.",
         "allow": "Iniciar sesión",
         "waiting": "Esperándote en tu navegador...",
         "cancel": "Cancelar",
@@ -77,6 +79,17 @@
           "title": "Todo listo",
           "body": "Tu asistente ya puede conectar tus apps cuando las necesites."
         }
+      },
+      "setupReady": {
+        "title": "Todo listo",
+        "body": "Tu IA y tus apps están conectadas. Ahora vamos a crear tu primer agente y ponerlo a trabajar.",
+        "cta": "Crear mi agente"
+      },
+      "meet": {
+        "title": "Crea tu primer agente",
+        "body": "Dale a tu agente un nombre y un color. Puedes cambiarlos cuando quieras.",
+        "begin": "Crear agente",
+        "creating": "Creando..."
       },
       "email": {
         "title": "Envía tu primer correo",
@@ -91,6 +104,11 @@
         "skip": "Lo configuro más tarde",
         "doneTitle": "Enviado. Todo listo.",
         "placeholder": "Responde a tu asistente..."
+      },
+      "done": {
+        "title": "¡Todo listo!",
+        "body": "Tu agente está listo y tu primer correo va en camino. Te damos la bienvenida a Houston.",
+        "cta": "Entrar a Houston"
       }
     }
   }
