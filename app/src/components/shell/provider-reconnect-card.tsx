@@ -7,6 +7,7 @@ import { useUIStore } from "../../stores/ui";
 import {
   providerIsAuthenticated,
   providerReconnectSignalState,
+  reconnectProviderForChat,
 } from "./provider-reconnect-state";
 
 interface ProviderReconnectCardProps {
@@ -26,13 +27,22 @@ export function ProviderReconnectCard({
   const [resolvedSignal, setResolvedSignal] = useState<string | null>(null);
   const [signalNeedsAuth, setSignalNeedsAuth] = useState(false);
 
+  // `authRequired` is a single global flag (set by whichever session last hit
+  // an auth error). Only let it drive THIS card when it names this chat's
+  // provider; otherwise fall back to this chat's own feed signal. This is what
+  // keeps a Claude logout from leaking a "Connect Claude" button into an
+  // OpenAI chat (HOU-410).
+  const authMatchesChat = !!authRequired && authRequired === providerId;
   const shouldCheckSignal =
-    !authRequired &&
+    !authMatchesChat &&
     !!providerId &&
     !!signalKey &&
     signalKey !== resolvedSignal;
-  const activeProviderId =
-    authRequired ?? (signalNeedsAuth ? providerId : null);
+  const activeProviderId = reconnectProviderForChat({
+    authRequired,
+    chatProvider: providerId ?? null,
+    signalNeedsAuth,
+  });
   const provider = activeProviderId ? getProvider(activeProviderId) : null;
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: activeProviderId is a render-derived variable; the effect only calls stable setState setters but must re-run whenever the resolved provider changes — an empty dep array would run only once, which is wrong
@@ -71,7 +81,10 @@ export function ProviderReconnectCard({
         const status = await tauriProvider.checkStatus(activeProviderId);
         if (cancelled) return;
         if (providerIsAuthenticated(status)) {
-          setAuthRequired(null);
+          // Only clear the global flag if it belongs to the provider we just
+          // confirmed — otherwise an OpenAI chat re-auth would wipe a pending
+          // Claude reconnect (or vice-versa).
+          if (authRequired === activeProviderId) setAuthRequired(null);
           if (signalKey) setResolvedSignal(signalKey);
           setLoginLaunched(false);
         }
@@ -85,7 +98,7 @@ export function ProviderReconnectCard({
       cancelled = true;
       clearInterval(interval);
     };
-  }, [activeProviderId, signalKey, setAuthRequired]);
+  }, [activeProviderId, authRequired, signalKey, setAuthRequired]);
 
   const handleSignIn = useCallback(async () => {
     if (!activeProviderId) return;
