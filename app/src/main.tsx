@@ -128,8 +128,26 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
  */
 function StartupEffects({ children }: { children: ReactNode }) {
   useEffect(() => {
-    void runStartupAnalytics(analytics, (url) => tauriSystem.openUrl(url));
-    void loadTheme();
+    // Wait for the engine handshake before touching engine-backed preferences.
+    // `install_id`, the first-install vintage, the daily-active date, and the
+    // theme all read through `tauriPreferences -> getEngine()`, which THROWS
+    // until the handshake lands. Running before then would have getInstallId
+    // swallow the failure, mint a fresh id, and re-fire `install_created` (and
+    // re-open the /welcome bridge) on every launch — churning identity. The
+    // race is widest on Windows, where the sidecar spawns slowest. Gating here
+    // restores the original "engine-ready" precondition (these used to run in
+    // App's mount effect, below <EngineGate>) while still emitting
+    // `install_created` BEFORE the language/disclaimer gates — they render
+    // inside <EngineGate>, i.e. only once this same handshake resolves.
+    let cancelled = false;
+    void whenEngineReady().then(() => {
+      if (cancelled) return;
+      void runStartupAnalytics(analytics, (url) => tauriSystem.openUrl(url));
+      void loadTheme();
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
   return <>{children}</>;
 }
