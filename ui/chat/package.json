@@ -29,6 +29,7 @@
     "nanoid": "^5.1.7"
   },
   "scripts": {
+    "test": "node --experimental-strip-types --test tests/*.test.ts",
     "typecheck": "tsc --noEmit"
   }
 }

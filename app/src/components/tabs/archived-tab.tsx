@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { AIBoard } from "@houston-ai/board";
 import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
 
 import { useFeedStore } from "../../stores/feeds";
@@ -49,7 +49,7 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
       archived.map((a) => ({
         id: a.id,
         title: a.title,
-        description: a.description,
+        description: messagePreviewText(a.description),
         status: a.status,
         updatedAt: a.updated_at ?? new Date().toISOString(),
         group: agent.name,
