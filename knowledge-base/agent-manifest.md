@@ -235,6 +235,13 @@ Notes:
   `cli_process`) treats `"openai" | "openrouter"` identically — no
   OpenRouter-specific runner/parser. The next OpenAI-compatible provider is one
   more adapter file returning a `CodexBackend`.
+- **OpenRouter runs codex in an isolated `CODEX_HOME`**
+  (`prompt_scratch::backend_codex_home` → `<houston-home>/codex-home`) so codex
+  never loads the user's personal `~/.codex/config.toml` (their own MCP servers
+  + settings) into a Houston session. Native codex (OpenAI) keeps `~/.codex`
+  (it needs the OAuth `auth.json` there). `codex_rollout` searches both homes
+  for token-usage. Effort is omitted for OpenRouter (its curated models are
+  non-reasoning chat models, so `model_reasoning_effort` is dead overhead).
 - Gemini + OpenRouter have no CLI login. The picker short-circuits on
   `loginKind === "apiKey"` and opens the Connect-API-Key dialog
   (`app/src/components/shell/api-key-connect-dialog.tsx`). Calling

@@ -21,7 +21,7 @@ use std::path::{Path, PathBuf};
 /// `~/.dev-houston` and release builds `~/.houston`. Kept in sync with
 /// `houston_db::houston_dir` (terminal-manager does not depend on the db
 /// crate, so the resolution is replicated rather than imported).
-fn houston_data_root() -> PathBuf {
+pub(crate) fn houston_data_root() -> PathBuf {
     if let Ok(override_path) = std::env::var("HOUSTON_HOME") {
         return PathBuf::from(override_path);
     }

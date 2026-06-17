@@ -86,12 +86,14 @@ impl ProviderAdapter for OpenRouterAdapter {
     }
 
     fn effort_levels(&self) -> &'static [&'static str] {
-        // Codex `model_reasoning_effort` range, minus the Claude-only `max`.
-        &["low", "medium", "high", "xhigh"]
+        // The curated OpenRouter models are non-reasoning chat models, so a
+        // `model_reasoning_effort` flag is pure overhead (and meaningless to
+        // them). Empty = the runner omits the flag entirely, which is faster.
+        &[]
     }
 
     fn default_effort(&self) -> Option<&'static str> {
-        Some("medium")
+        None
     }
 
     fn classify_stderr(&self, line: &str) -> Option<ProviderError> {

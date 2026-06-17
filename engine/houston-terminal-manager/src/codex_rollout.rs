@@ -36,8 +36,12 @@ pub async fn latest_usage(thread_id: &str) -> Option<TokenUsage> {
 }
 
 fn latest_usage_blocking(thread_id: &str) -> Option<TokenUsage> {
-    let sessions = codex_sessions_dir()?;
-    let path = newest_rollout_for_thread(&sessions, thread_id)?;
+    // Search every codex sessions tree Houston may have written to and take the
+    // newest rollout for this thread. Thread ids are unique, so scanning both
+    // the default home (native codex / OpenAI) and the isolated backend home
+    // (OpenRouter — see `prompt_scratch::backend_codex_home`) finds the right
+    // rollout without the caller having to know which provider ran the turn.
+    let path = newest_rollout_for_thread(&codex_sessions_dirs(), thread_id)?;
     let tail = read_rollout_tail(&path)?;
     parse_last_token_count(&tail)
 }
@@ -62,11 +66,18 @@ fn read_rollout_tail(path: &Path) -> Option<String> {
     Some(String::from_utf8_lossy(&buf).into_owned())
 }
 
-/// `$CODEX_HOME/sessions`, falling back to `~/.codex/sessions`. Houston spawns
-/// codex without overriding `CODEX_HOME`, so codex uses whatever the engine
-/// inherited (the user's env) or its default — mirror that here.
-fn codex_sessions_dir() -> Option<PathBuf> {
-    Some(crate::prompt_scratch::codex_home()?.join("sessions"))
+/// Every codex `sessions/` tree Houston may have written rollouts to:
+/// - the default home (`$CODEX_HOME` / `~/.codex`) — native codex (OpenAI),
+///   which Houston spawns without overriding `CODEX_HOME`;
+/// - the isolated backend home (`prompt_scratch::backend_codex_home`) —
+///   OpenRouter, which Houston points at its own `CODEX_HOME`.
+fn codex_sessions_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::with_capacity(2);
+    if let Some(home) = crate::prompt_scratch::codex_home() {
+        dirs.push(home.join("sessions"));
+    }
+    dirs.push(crate::prompt_scratch::backend_codex_home().join("sessions"));
+    dirs
 }
 
 /// Walk the sessions tree for the newest rollout belonging to `thread_id`. A
@@ -80,10 +91,10 @@ fn codex_sessions_dir() -> Option<PathBuf> {
 /// concurrent session's rollout. Equal mtimes (coarse-granularity filesystems)
 /// break deterministically by filename: the leading ISO8601 timestamp sorts
 /// lexically by recency, so the genuinely-newest turn always wins.
-fn newest_rollout_for_thread(sessions_dir: &Path, thread_id: &str) -> Option<PathBuf> {
+fn newest_rollout_for_thread(sessions_dirs: &[PathBuf], thread_id: &str) -> Option<PathBuf> {
     let suffix = format!("-{thread_id}.jsonl");
     let mut best: Option<(SystemTime, String, PathBuf)> = None;
-    let mut stack = vec![sessions_dir.to_path_buf()];
+    let mut stack: Vec<PathBuf> = sessions_dirs.to_vec();
     while let Some(dir) = stack.pop() {
         let Ok(entries) = std::fs::read_dir(&dir) else {
             continue;

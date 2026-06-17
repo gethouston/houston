@@ -84,6 +84,25 @@ pub(crate) fn codex_profile(system_prompt: &str) -> Result<CodexProfile, String>
     codex_profile_in(&home, system_prompt)
 }
 
+/// Isolated codex home for API-key backend providers (OpenRouter): a Houston
+/// directory that does NOT contain the user's `~/.codex/config.toml`, so codex
+/// never loads the user's personal MCP servers or settings into a Houston
+/// session. Stable (not per-spawn) so resume + rollout token counts persist
+/// across turns. Spawning here also cut a real session's input from ~23k to
+/// ~13k tokens (the user's MCP tool-defs were no longer injected into context)
+/// and removed the stray MCP auth noise.
+pub(crate) fn backend_codex_home() -> PathBuf {
+    crate::provider_env::houston_data_root().join("codex-home")
+}
+
+/// Like [`codex_profile`] but writes the profile under an explicit codex home
+/// (used with [`backend_codex_home`] so the file lands where the spawned codex,
+/// pointed at that `CODEX_HOME`, looks for it).
+pub(crate) fn codex_profile_at(home: &Path, system_prompt: &str) -> Result<CodexProfile, String> {
+    sweep_once();
+    codex_profile_in(home, system_prompt)
+}
+
 fn codex_profile_in(home: &Path, system_prompt: &str) -> Result<CodexProfile, String> {
     #[derive(Serialize)]
     struct ProfileBody<'a> {
@@ -189,6 +208,20 @@ mod tests {
 
     const NASTY: &str =
         "Line \"one\"\nLine two with 'quotes', a backslash \\, emoji 🚀, tab\there\nand [toml] = trip-ups";
+
+    #[test]
+    fn codex_profile_at_writes_under_given_home_and_drop_removes_it() {
+        // The backend (OpenRouter) path writes the profile under an isolated
+        // home so the spawned codex (CODEX_HOME pointed there) finds it.
+        let home = TempDir::new().unwrap();
+        let profile = codex_profile_at(home.path(), "hi").unwrap();
+        let path = home
+            .path()
+            .join(format!("{}{CODEX_PROFILE_SUFFIX}", profile.name()));
+        assert!(path.exists(), "profile must be written under the given home");
+        drop(profile);
+        assert!(!path.exists(), "Drop must delete the profile");
+    }
 
     #[test]
     fn codex_profile_roundtrips_arbitrary_prompt_content() {
