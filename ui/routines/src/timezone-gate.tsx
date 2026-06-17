@@ -8,12 +8,15 @@
 import { useMemo, useState } from "react"
 import { cn, Button } from "@houston-ai/core"
 import { Globe } from "lucide-react"
+import { DEFAULT_TIMEZONE_GATE_LABELS, type TimezoneGateLabels } from "./labels"
 
 export interface TimezoneGateProps {
   /** Browser-detected IANA zone, used as the default selection. */
   detected: string
   /** Persist the chosen zone. Resolves once the engine has acknowledged. */
   onConfirm: (tz: string) => Promise<void> | void
+  /** Localized labels. English defaults so standalone callers still work. */
+  labels?: TimezoneGateLabels
 }
 
 const COMMON_TIMEZONES = [
@@ -70,7 +73,11 @@ function formatOffset(tz: string): string {
   }
 }
 
-export function TimezoneGate({ detected, onConfirm }: TimezoneGateProps) {
+export function TimezoneGate({
+  detected,
+  onConfirm,
+  labels = DEFAULT_TIMEZONE_GATE_LABELS,
+}: TimezoneGateProps) {
   const [selected, setSelected] = useState(detected)
   const [saving, setSaving] = useState(false)
   const timezones = useMemo(listTimezones, [])
@@ -102,17 +109,16 @@ export function TimezoneGate({ detected, onConfirm }: TimezoneGateProps) {
         </div>
 
         <h2 className="text-lg font-medium text-foreground text-center tracking-tight">
-          What's your timezone?
+          {labels.title}
         </h2>
         <p className="text-sm text-muted-foreground text-center mt-1.5 leading-relaxed">
-          Routines run on a schedule. We need to know your zone before any of
-          them fire — so 9am means <em className="not-italic">your</em> 9am.
+          {labels.description}
         </p>
 
         {/* Picker */}
         <div className="mt-7">
           <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
-            Timezone
+            {labels.timezoneLabel}
           </label>
           <div className="relative">
             <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
@@ -130,7 +136,7 @@ export function TimezoneGate({ detected, onConfirm }: TimezoneGateProps) {
           </div>
           <div className="flex items-center justify-between mt-2 px-1">
             <p className="text-[11px] text-muted-foreground">
-              Detected from your computer.
+              {labels.detected}
             </p>
             {offset && (
               <p className="text-[11px] text-muted-foreground tabular-nums">
@@ -147,7 +153,7 @@ export function TimezoneGate({ detected, onConfirm }: TimezoneGateProps) {
             disabled={!selected || saving}
             className="w-full"
           >
-            {saving ? "Saving…" : "Confirm timezone"}
+            {saving ? labels.saving : labels.confirm}
           </Button>
         </div>
       </div>

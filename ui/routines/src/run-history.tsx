@@ -7,12 +7,21 @@
 import { cn, Button } from "@houston-ai/core"
 import { ArrowUpRight, PauseCircle, Square } from "lucide-react"
 import type { RoutineRun } from "./types"
+import {
+  interp,
+  DEFAULT_RUN_HISTORY_LABELS,
+  type RunHistoryLabels,
+} from "./labels"
 
 export interface RunHistoryProps {
   runs: RoutineRun[]
   onViewActivity?: (activityId: string) => void
   /** Stop an in-flight `running` run. When omitted, the stop button is not rendered. */
   onCancelRun?: (runId: string) => void
+  /** Localized labels. Defaults to English so standalone callers still work. */
+  labels?: RunHistoryLabels
+  /** BCP-47 locale for the run timestamps. */
+  locale?: string
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -23,29 +32,21 @@ const STATUS_DOT: Record<string, string> = {
   cancelled: "bg-gray-400",
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  silent: "Silent",
-  surfaced: "Surfaced",
-  running: "Running",
-  error: "Error",
-  cancelled: "Cancelled",
-}
-
-function formatRunTime(iso: string): string {
+function formatRunTime(iso: string, labels: RunHistoryLabels, locale: string): string {
   const date = new Date(iso)
   const now = new Date()
   const diffMs = now.getTime() - date.getTime()
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24))
 
-  const time = date.toLocaleTimeString("en-US", {
+  const time = date.toLocaleTimeString(locale, {
     hour: "numeric",
     minute: "2-digit",
-    hour12: true,
   })
 
-  if (diffDays === 0) return `Today, ${time}`
-  if (diffDays === 1) return `Yesterday, ${time}`
-  return `${date.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${time}`
+  if (diffDays === 0) return interp(labels.today, { time })
+  if (diffDays === 1) return interp(labels.yesterday, { time })
+  const dateStr = date.toLocaleDateString(locale, { month: "short", day: "numeric" })
+  return interp(labels.onDate, { date: dateStr, time })
 }
 
 function formatDuration(startedAt: string, completedAt?: string): string | null {
@@ -56,7 +57,13 @@ function formatDuration(startedAt: string, completedAt?: string): string | null 
   return `${Math.round(ms / 60_000)}m`
 }
 
-export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProps) {
+export function RunHistory({
+  runs,
+  onViewActivity,
+  onCancelRun,
+  labels = DEFAULT_RUN_HISTORY_LABELS,
+  locale = "en-US",
+}: RunHistoryProps) {
   const sorted = [...runs].sort(
     (a, b) => new Date(b.started_at).getTime() - new Date(a.started_at).getTime(),
   )
@@ -64,9 +71,7 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
   if (sorted.length === 0) {
     return (
       <div className="px-4 py-8 text-center">
-        <p className="text-sm text-muted-foreground">
-          No runs yet — this routine hasn't fired.
-        </p>
+        <p className="text-sm text-muted-foreground">{labels.empty}</p>
       </div>
     )
   }
@@ -84,8 +89,8 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
           ? "bg-amber-500"
           : (STATUS_DOT[run.status] ?? "bg-gray-300")
         const statusLabel = isPaused
-          ? "Paused"
-          : (STATUS_LABEL[run.status] ?? run.status)
+          ? labels.status.paused
+          : (labels.status[run.status] ?? run.status)
         return (
           <li
             key={run.id}
@@ -101,7 +106,7 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
               aria-hidden
             />
             <span className="text-xs text-muted-foreground tabular-nums w-36 shrink-0">
-              {formatRunTime(run.started_at)}
+              {formatRunTime(run.started_at, labels, locale)}
             </span>
             <span
               className={cn(
@@ -131,7 +136,7 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
                 />
               )}
               {isPaused
-                ? `Waiting for usage limit — resumes at ${run.paused_until}`
+                ? interp(labels.waiting, { time: run.paused_until ?? "" })
                 : (run.summary ?? "")}
             </span>
             {isSurfaced && (
@@ -142,7 +147,7 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
                   "hover:text-foreground/70 transition-colors",
                 )}
               >
-                View
+                {labels.view}
                 <ArrowUpRight className="size-3" />
               </button>
             )}
@@ -151,7 +156,7 @@ export function RunHistory({ runs, onViewActivity, onCancelRun }: RunHistoryProp
                 variant="ghost"
                 size="icon-sm"
                 onClick={() => onCancelRun(run.id)}
-                aria-label="Stop run"
+                aria-label={labels.stopRun}
                 className="shrink-0"
               >
                 <Square className="size-3" />
