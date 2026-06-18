@@ -63,8 +63,9 @@ interface EmailMissionProps {
   provider: string;
   model: string;
   onBack: () => void;
-  /** Finish setup and enter the app (arms the guided tour). */
-  onContinue: () => void;
+  /** Advance to the success screen once the email is sent. `sentTo` is the
+   *  recipient label to show there (the address, or "you" for a self-test). */
+  onContinue: (sentTo?: string) => void;
   /** Escape gate if the agent stalls — lands the user in the app anyway. */
   onSkip: () => void;
 }
@@ -173,13 +174,26 @@ export function EmailMission({
     return false;
   }, [realFeed]);
 
+  // Hand off to the success screen with the recipient label to show there.
+  const finish = useCallback(() => {
+    const sentTo =
+      recipient && !recipient.toMyself
+        ? recipient.email
+        : t("setup:tutorial.missions.email.recipient.youLabel");
+    onContinue(sentTo);
+  }, [recipient, onContinue, t]);
+
+  // The agent emitted its completion token: the email is sent. Fire the
+  // conversion and AUTO-advance to the success screen so the user lands on a
+  // clear "sent" confirmation instead of continuing the conversation.
   const emailSentFired = useRef(false);
   useEffect(() => {
     if (setupDone && !emailSentFired.current) {
       emailSentFired.current = true;
       analytics.track("first_email_sent", { provider });
+      finish();
     }
-  }, [setupDone, provider]);
+  }, [setupDone, provider, finish]);
 
   // ── Scripted beats ───────────────────────────────────────────────────────
 
@@ -421,9 +435,6 @@ export function EmailMission({
       title={t("setup:tutorial.missions.email.title")}
       onBack={onBack}
       backLabel={t("setup:tutorial.nav.back")}
-      onNext={onContinue}
-      nextLabel={t("setup:tutorial.nav.continue")}
-      nextDisabled={!setupDone}
       helper={
         <button
           type="button"

@@ -94,9 +94,8 @@
       "email": {
         "title": "Faça seu agente enviar um e-mail por você",
         "offer": {
-          "prompt": "Seu agente está pronto. Vamos vê-lo enviar um e-mail de verdade.",
-          "cta": "Enviar um e-mail",
-          "userSaid": "Envie um e-mail por mim"
+          "option": "Enviar um e-mail em meu nome",
+          "userSaid": "Enviar um e-mail em meu nome"
         },
         "recipient": {
           "prompt": "Ótimo. Para quem vai esse primeiro e-mail?",
@@ -106,7 +105,8 @@
           "messagePlaceholder": "O que ele deve dizer? (opcional)",
           "confirm": "Continuar",
           "selfSaid": "Envie para mim, só para testar.",
-          "otherSaid": "Envie para {{email}}."
+          "otherSaid": "Envie para {{email}}.",
+          "youLabel": "você"
         },
         "provider": {
           "prompt": "Entendi. Qual e-mail você usa?",
@@ -125,7 +125,7 @@
       },
       "done": {
         "title": "Tudo pronto!",
-        "body": "Seu agente está pronto e seu primeiro e-mail está a caminho. Boas-vindas ao Houston.",
+        "body": "Seu primeiro e-mail foi enviado para {{recipient}}. Boas-vindas ao Houston!",
         "cta": "Entrar no Houston"
       }
     }

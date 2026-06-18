@@ -68,14 +68,16 @@ function WizardCard({
   );
 }
 
-/** Step 0: the single "Send an email" call to action. */
+/** Step 0: one preselected option ("Send an email on my behalf"), so the user
+ *  just presses send. Same shape as the later steps. */
 export function OfferCard({ onSend }: { onSend: () => void }) {
   const { t } = useTranslation("setup");
   return (
     <WizardCard onSend={onSend}>
-      <p className="px-1 text-sm text-muted-foreground">
-        {t("tutorial.missions.email.offer.prompt")}
-      </p>
+      <OptionCard
+        label={t("tutorial.missions.email.offer.option")}
+        selected
+      />
     </WizardCard>
   );
 }

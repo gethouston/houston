@@ -94,9 +94,8 @@
       "email": {
         "title": "Make your agent send an email for you",
         "offer": {
-          "prompt": "Your agent is set up. Let's watch it send a real email.",
-          "cta": "Send an email",
-          "userSaid": "Send an email for me"
+          "option": "Send an email on my behalf",
+          "userSaid": "Send an email on my behalf"
         },
         "recipient": {
           "prompt": "Love it. Who should this first email go to?",
@@ -106,7 +105,8 @@
           "messagePlaceholder": "What should it say? (optional)",
           "confirm": "Continue",
           "selfSaid": "Send it to me, just to test.",
-          "otherSaid": "Send it to {{email}}."
+          "otherSaid": "Send it to {{email}}.",
+          "youLabel": "you"
         },
         "provider": {
           "prompt": "Got it. Which email do you use?",
@@ -125,7 +125,7 @@
       },
       "done": {
         "title": "You're all set!",
-        "body": "Your agent is ready and your first email is on its way. Welcome to Houston.",
+        "body": "Your first email is sent to {{recipient}}. Welcome to Houston!",
         "cta": "Enter Houston"
       }
     }

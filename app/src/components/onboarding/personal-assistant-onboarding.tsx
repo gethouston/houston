@@ -45,6 +45,8 @@ export function PersonalAssistantOnboarding({
   // Set while the "create your first agent" step is provisioning the
   // workspace + assistant, to drive the button's loading state.
   const [creatingAgent, setCreatingAgent] = useState(false);
+  // Recipient label of the first email, shown on the final success screen.
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [assistantName, setAssistantName] = useState(() =>
     t("setup:tutorial.defaults.assistantName"),
   );
@@ -249,14 +251,20 @@ export function PersonalAssistantOnboarding({
           provider={missionProvider}
           model={missionModel}
           onBack={() => setStep("meet")}
-          onContinue={() => setStep("done")}
+          onContinue={(to) => {
+            setSentTo(to ?? null);
+            setStep("done");
+          }}
           onSkip={finishOnboarding}
         />
       )}
       {step === "done" && (
         <SuccessMission
           title={t("setup:tutorial.missions.done.title")}
-          body={t("setup:tutorial.missions.done.body")}
+          body={t("setup:tutorial.missions.done.body", {
+            recipient:
+              sentTo ?? t("setup:tutorial.missions.email.recipient.youLabel"),
+          })}
           ctaLabel={t("setup:tutorial.missions.done.cta")}
           onContinue={finishOnboarding}
         />
