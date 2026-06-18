@@ -66,6 +66,7 @@
   },
   "process": {
     "active": "Missão em andamento...",
+    "activeAction": "Missão em andamento: {{action}}",
     "complete": "Registro da missão"
   },
   "summary": {

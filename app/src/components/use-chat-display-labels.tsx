@@ -11,6 +11,7 @@ export function useChatDisplayLabels(): Pick<
   const processLabels = useMemo(
     () => ({
       active: t("process.active"),
+      activeAction: (action: string) => t("process.activeAction", { action }),
       complete: t("process.complete"),
     }),
     [t],
