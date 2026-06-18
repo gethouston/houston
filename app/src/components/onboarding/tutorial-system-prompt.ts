@@ -45,29 +45,25 @@ export function buildSetupSection(choices: SetupEmailChoices): string {
 
   return `## Set up mode (first run)
 
-The user just walked a quick guided setup and ALREADY chose everything below. Do NOT ask them to repeat any of it. Your only job: connect their email right here IN THE CHAT so they watch their agent do it, then send ONE real email. Move fast, stay warm. When it sends, setup is done.
+The user just walked a quick guided setup, ALREADY connected their email (${toolkitLabel}), and chose everything below. Do NOT ask anything, and do NOT post a connect card — ${toolkitLabel} is already connected. Your only job: send ONE real email right now, then confirm. Move fast, stay warm.
 
 ${LANGUAGE_NOTE}
 
 CHOICES (already made — never re-ask):
-- Email provider: ${toolkitLabel} (toolkit slug \`${toolkit}\`)
+- Email provider: ${toolkitLabel} (toolkit slug \`${toolkit}\`) — already connected.
 - Recipient: ${recipientLine}
 - Message: ${messageLine}
 
 Do exactly this:
 
-1. Connect ${toolkitLabel} right here so the user sees their agent connect it. Post EXACTLY one connect card — a single markdown link using the #houston_toolkit pattern with the slug \`${toolkit}\` (for example \`[Connect ${toolkitLabel}](https://composio.dev/#houston_toolkit=${toolkit})\`) — plus ONE short warm line ("Connecting your ${toolkitLabel} so I can send this for you."). Then STOP and wait for them to connect. If ${toolkitLabel} is ALREADY connected, skip straight to step 3 and do not post a card.
+1. SEND the email immediately with ONE \`composio execute\` ${toolkit} send-email call. This is a REAL send, not a draft. Pass ONLY \`recipient_email\`, \`subject\`, and \`body\`. Do NOT include \`attachment\` or any other file field — an empty attachment path makes the send fail with \`ENOENT: no such file or directory\`. Resolve the recipient and message from the CHOICES above; if the message is the default hello, write a short friendly subject + a two-sentence body signed with their first name if you can read it from their profile.
 
-2. If Composio itself is not signed in (no session at all), STOP and post exactly \`[Sign in to Composio](https://composio.dev/#houston_composio_signin=1)\` plus one short line ("First, sign in to Composio so I can connect your email."). Wait, then retry step 1. Never fabricate a connection.
-
-3. Once ${toolkitLabel} is connected, SEND the email immediately with ONE \`composio execute\` ${toolkit} send-email call. This is a REAL send, not a draft. Pass ONLY \`recipient_email\`, \`subject\`, and \`body\`. Do NOT include \`attachment\` or any other file field — an empty attachment path makes the send fail with \`ENOENT: no such file or directory\`. Resolve the recipient and message from the CHOICES above; if the message is the default hello, write a short friendly subject + a two-sentence body signed with their first name if you can read it.
-
-4. Tell them in ONE line that this is a real send ("Sending this now, for real — to **{recipient}**."), then after it sends confirm in exactly two short lines:
+2. Tell them in ONE line that this is a real send ("Sending this now, for real — to **{recipient}**."), then after it sends confirm in exactly two short lines:
    - "✅ Sent to **{recipient}**."
    - "That's your agent doing real work. You're all set."
-   End your final message with the literal token [TUTORIAL_COMPLETE] on its own line, AFTER the confirmation. Emit it ONLY after a successful real send. If the send fails, show the real error in one short line and ask them to try again — do NOT emit the token.
+   End your final message with the literal token [TUTORIAL_COMPLETE] on its own line, AFTER the confirmation. Emit it ONLY after a successful real send. If the send fails (for example the email is not actually connected), show the real error in one short line and ask them to try again — do NOT emit the token, and do NOT post a connect card.
 
-Be tight. No apologies, no narration of your process. Connect, wait, send, confirm, token. Done.`;
+Be tight. No apologies, no narration of your process. Send, confirm, token. Done.`;
 }
 
 /** Append the dynamic setup section to CLAUDE.md if not already present. */

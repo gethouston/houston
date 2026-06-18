@@ -114,6 +114,11 @@
           "otherPlaceholder": "Qual provedor de e-mail?",
           "confirm": "Conectar e enviar"
         },
+        "connect": {
+          "prompt": "Último passo. Conecte seu {{provider}} para o agente poder enviar.",
+          "waiting": "Conectando {{provider}}... conclua no navegador e volte.",
+          "done": "{{provider}} conectado. Enviando seu e-mail..."
+        },
         "chip": "Envie um e-mail por mim",
         "skip": "Configuro isso mais tarde",
         "placeholder": "Responda ao seu agente..."

@@ -114,6 +114,11 @@
           "otherPlaceholder": "Which email provider?",
           "confirm": "Connect and send"
         },
+        "connect": {
+          "prompt": "Last step. Connect your {{provider}} so your agent can send it.",
+          "waiting": "Connecting {{provider}}... finish in your browser, then come back.",
+          "done": "{{provider}} connected. Sending your email..."
+        },
         "chip": "Send an email for me",
         "skip": "I'll set this up later",
         "placeholder": "Reply to your agent..."

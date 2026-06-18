@@ -1,31 +1,82 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, Input } from "@houston-ai/core";
+import { ArrowUp, Loader2 } from "lucide-react";
+import { Input } from "@houston-ai/core";
 
 import { OptionCard } from "../setup-card";
 
 /**
  * The guided cards that replace the chat composer during the faked first-email
- * flow. Each collects one choice and hands it back; the orchestrator fakes the
- * "message + thinking" beats between them and only spins up the real agent once
- * the provider is picked. App-layer components, so they use `t()` directly.
+ * flow. Each is shaped like the chat input itself — the same rounded card and
+ * the same round send button — so the wizard reads as part of the conversation.
+ * App-layer components, so they use `t()` directly.
  */
 
 const textareaCls =
-  "min-h-[64px] w-full resize-none rounded-xl border border-black/10 bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-foreground";
+  "min-h-[60px] w-full resize-none rounded-xl border border-black/10 bg-background px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:ring-1 focus:ring-foreground";
+
+/** The chat composer's send button, replicated exactly (see chat-input). */
+function SendButton({
+  disabled,
+  loading,
+  onClick,
+}: {
+  disabled?: boolean;
+  loading?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled || loading}
+      onClick={onClick}
+      className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30"
+    >
+      {loading ? (
+        <Loader2 className="size-4 animate-spin" />
+      ) : (
+        <ArrowUp className="size-4" />
+      )}
+    </button>
+  );
+}
+
+/** The chat-input shell: a rounded card with the options/content and a trailing
+ *  send button — identical surface to the real composer. */
+function WizardCard({
+  children,
+  onSend,
+  sendDisabled,
+  sendLoading,
+}: {
+  children: ReactNode;
+  onSend: () => void;
+  sendDisabled?: boolean;
+  sendLoading?: boolean;
+}) {
+  return (
+    <div className="rounded-[28px] border border-border/50 bg-card p-2.5 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
+      <div className="flex flex-col gap-1.5 px-1 pb-1.5 pt-0.5">{children}</div>
+      <div className="flex justify-end">
+        <SendButton
+          disabled={sendDisabled}
+          loading={sendLoading}
+          onClick={onSend}
+        />
+      </div>
+    </div>
+  );
+}
 
 /** Step 0: the single "Send an email" call to action. */
 export function OfferCard({ onSend }: { onSend: () => void }) {
   const { t } = useTranslation("setup");
   return (
-    <div className="flex flex-col gap-3 rounded-xl border border-black/10 bg-secondary p-4">
-      <p className="text-sm text-muted-foreground">
+    <WizardCard onSend={onSend}>
+      <p className="px-1 text-sm text-muted-foreground">
         {t("tutorial.missions.email.offer.prompt")}
       </p>
-      <Button className="h-10 w-full rounded-full" onClick={onSend}>
-        {t("tutorial.missions.email.offer.cta")}
-      </Button>
-    </div>
+    </WizardCard>
   );
 }
 
@@ -50,7 +101,16 @@ export function RecipientCard({
     mode === "self" || (mode === "other" && email.trim().includes("@"));
 
   return (
-    <div className="flex flex-col gap-2">
+    <WizardCard
+      sendDisabled={!valid}
+      onSend={() =>
+        onConfirm({
+          toMyself: mode === "self",
+          email: email.trim(),
+          message: message.trim(),
+        })
+      }
+    >
       <OptionCard
         label={t("tutorial.missions.email.recipient.self")}
         selected={mode === "self"}
@@ -62,7 +122,7 @@ export function RecipientCard({
         onSelect={() => setMode("other")}
       />
       {mode === "other" && (
-        <div className="flex flex-col gap-2">
+        <>
           <Input
             type="email"
             autoFocus
@@ -79,22 +139,9 @@ export function RecipientCard({
             className={textareaCls}
             onChange={(e) => setMessage(e.target.value)}
           />
-        </div>
+        </>
       )}
-      <Button
-        className="h-10 w-full rounded-full"
-        disabled={!valid}
-        onClick={() =>
-          onConfirm({
-            toMyself: mode === "self",
-            email: email.trim(),
-            message: message.trim(),
-          })
-        }
-      >
-        {t("tutorial.missions.email.recipient.confirm")}
-      </Button>
-    </div>
+    </WizardCard>
   );
 }
 
@@ -103,55 +150,77 @@ export interface ProviderChoice {
   label: string;
 }
 
-/** Step 2: pick the email provider; Gmail/Outlook send straight away. */
+/** Step 2: pick the email provider (select, then send to confirm). */
 export function ProviderCard({
   onConfirm,
 }: {
   onConfirm: (choice: ProviderChoice) => void;
 }) {
   const { t } = useTranslation("setup");
-  const [other, setOther] = useState<string | null>(null);
+  const [sel, setSel] = useState<"gmail" | "outlook" | "other" | null>(null);
+  const [other, setOther] = useState("");
+
+  const choice: ProviderChoice | null =
+    sel === "gmail"
+      ? { toolkit: "gmail", label: "Gmail" }
+      : sel === "outlook"
+        ? { toolkit: "outlook", label: "Outlook" }
+        : sel === "other" && other.trim()
+          ? { toolkit: other.trim().toLowerCase(), label: other.trim() }
+          : null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <WizardCard
+      sendDisabled={!choice}
+      onSend={() => choice && onConfirm(choice)}
+    >
       <OptionCard
         label="Gmail"
-        selected={false}
-        onSelect={() => onConfirm({ toolkit: "gmail", label: "Gmail" })}
+        selected={sel === "gmail"}
+        onSelect={() => setSel("gmail")}
       />
       <OptionCard
         label="Outlook"
-        selected={false}
-        onSelect={() => onConfirm({ toolkit: "outlook", label: "Outlook" })}
+        selected={sel === "outlook"}
+        onSelect={() => setSel("outlook")}
       />
       <OptionCard
         label={t("tutorial.missions.email.provider.other")}
-        selected={other !== null}
-        onSelect={() => setOther((v) => v ?? "")}
+        selected={sel === "other"}
+        onSelect={() => setSel("other")}
       />
-      {other !== null && (
-        <div className="flex flex-col gap-2">
-          <Input
-            autoFocus
-            value={other}
-            placeholder={t("tutorial.missions.email.provider.otherPlaceholder")}
-            className="rounded-xl"
-            onChange={(e) => setOther(e.target.value)}
-          />
-          <Button
-            className="h-10 w-full rounded-full"
-            disabled={!other.trim()}
-            onClick={() =>
-              onConfirm({
-                toolkit: other.trim().toLowerCase(),
-                label: other.trim(),
-              })
-            }
-          >
-            {t("tutorial.missions.email.provider.confirm")}
-          </Button>
-        </div>
+      {sel === "other" && (
+        <Input
+          autoFocus
+          value={other}
+          placeholder={t("tutorial.missions.email.provider.otherPlaceholder")}
+          className="rounded-xl"
+          onChange={(e) => setOther(e.target.value)}
+        />
       )}
-    </div>
+    </WizardCard>
+  );
+}
+
+/** Step 3: connect the chosen email (real OAuth, but presented as a card in the
+ *  scripted flow — the agent never has to connect it live). */
+export function ConnectCard({
+  label,
+  connecting,
+  onConnect,
+}: {
+  label: string;
+  connecting: boolean;
+  onConnect: () => void;
+}) {
+  const { t } = useTranslation("setup");
+  return (
+    <WizardCard sendLoading={connecting} onSend={onConnect}>
+      <p className="px-1 text-sm text-muted-foreground">
+        {connecting
+          ? t("tutorial.missions.email.connect.waiting", { provider: label })
+          : t("tutorial.missions.email.connect.prompt", { provider: label })}
+      </p>
+    </WizardCard>
   );
 }
