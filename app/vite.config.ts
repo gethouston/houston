@@ -68,6 +68,10 @@ export default defineConfig(({ mode }) => {
       __HOUSTON_AUTH_STORAGE_MODE__: JSON.stringify(authStorageMode),
       __HOUSTON_AUTH_STORAGE_SCOPE__: JSON.stringify(authStorageScope),
       __SENTRY_DSN__: JSON.stringify(env.SENTRY_DSN ?? ""),
+      // Opt-in to send Sentry events from a dev build. Unset (default) → dev
+      // builds suppress Sentry entirely (see lib/sentry-dev.ts). Release builds
+      // ignore it. Picked up from the shell or app/.env.local like the rest.
+      __SENTRY_SEND_IN_DEV__: JSON.stringify(env.SENTRY_SEND_IN_DEV ?? ""),
     },
     build: {
       // "hidden" emits .map files next to bundled JS but skips the
