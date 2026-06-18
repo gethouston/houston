@@ -6,7 +6,9 @@ import {
   cn,
 } from "@houston-ai/core";
 import { ChevronDownIcon } from "lucide-react";
+import { useStickToBottom } from "use-stick-to-bottom";
 import { ChatStatusLine } from "./chat-status-line";
+import { processScrollPaneClass } from "./chat-process-classes";
 import {
   Reasoning,
   ReasoningContent,
@@ -59,6 +61,16 @@ export function ChatProcessBlock({
     wasActiveRef.current = isActive;
   }, [isActive]);
 
+  // While the agent works, tool calls stream into this one open accordion.
+  // Pin the latest one into view inside the height-capped pane so the user
+  // sees live progress without the list swallowing the conversation. The hook
+  // releases the lock the moment the user scrolls up to read an earlier step,
+  // and on a settled (re-opened) log it starts at the top instead of jumping.
+  const { scrollRef, contentRef } = useStickToBottom({
+    initial: isActive ? "instant" : false,
+    resize: "smooth",
+  });
+
   return (
     <Collapsible
       className="not-prose"
@@ -78,38 +90,42 @@ export function ChatProcessBlock({
       </CollapsibleTrigger>
       <CollapsibleContent
         className={cn(
-          "mt-3 space-y-3 text-sm text-muted-foreground outline-none",
+          "mt-3 text-sm text-muted-foreground outline-none",
           "data-[state=closed]:fade-out-0 data-[state=closed]:slide-out-to-top-2",
           "data-[state=open]:slide-in-from-top-2",
           "data-[state=closed]:animate-out data-[state=open]:animate-in",
         )}
       >
-        {segments.map((segment, index) => {
-          const isLastSegment = index === segments.length - 1;
-          const segmentActive = isActive && isLastSegment;
-          return (
-            <div key={segment.key} className="space-y-3">
-              {segment.reasoning && (
-                <Reasoning
-                  isStreaming={segmentActive && segment.reasoning.isStreaming}
-                  defaultOpen={segmentActive && segment.reasoning.isStreaming}
-                >
-                  <ReasoningTrigger getThinkingMessage={getThinkingMessage} />
-                  <ReasoningContent>{segment.reasoning.content}</ReasoningContent>
-                </Reasoning>
-              )}
-              {segment.tools.length > 0 && (
-                <ToolsAndCards
-                  tools={segment.tools}
-                  isStreaming={segmentActive}
-                  toolLabels={toolLabels}
-                  isSpecialTool={isSpecialTool}
-                  renderToolResult={renderToolResult}
-                />
-              )}
-            </div>
-          );
-        })}
+        <div ref={scrollRef} className={processScrollPaneClass}>
+          <div ref={contentRef} className="space-y-3">
+            {segments.map((segment, index) => {
+              const isLastSegment = index === segments.length - 1;
+              const segmentActive = isActive && isLastSegment;
+              return (
+                <div key={segment.key} className="space-y-3">
+                  {segment.reasoning && (
+                    <Reasoning
+                      isStreaming={segmentActive && segment.reasoning.isStreaming}
+                      defaultOpen={segmentActive && segment.reasoning.isStreaming}
+                    >
+                      <ReasoningTrigger getThinkingMessage={getThinkingMessage} />
+                      <ReasoningContent>{segment.reasoning.content}</ReasoningContent>
+                    </Reasoning>
+                  )}
+                  {segment.tools.length > 0 && (
+                    <ToolsAndCards
+                      tools={segment.tools}
+                      isStreaming={segmentActive}
+                      toolLabels={toolLabels}
+                      isSpecialTool={isSpecialTool}
+                      renderToolResult={renderToolResult}
+                    />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
       </CollapsibleContent>
     </Collapsible>
   );
