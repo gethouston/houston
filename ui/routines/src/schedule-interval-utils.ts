@@ -3,7 +3,7 @@
  * of ScheduleBuilder. Keeps the non-technical interval model and its mapping to
  * and from cron expressions in one place, separate from the preset cron logic.
  */
-import { parseTime } from "./schedule-cron-utils"
+import { parseTime } from "./schedule-format.ts"
 
 /** Unit for the friendly "every N …" custom-interval picker. */
 export type IntervalUnit = "minutes" | "hours" | "days"
@@ -11,12 +11,6 @@ export type IntervalUnit = "minutes" | "hours" | "days"
 export interface ScheduleInterval {
   every: number      // 1, 2, 3, …
   unit: IntervalUnit
-}
-
-export const INTERVAL_UNIT_LABELS: Record<IntervalUnit, string> = {
-  minutes: "minutes",
-  hours: "hours",
-  days: "days",
 }
 
 /**

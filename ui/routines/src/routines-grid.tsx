@@ -14,29 +14,16 @@ import {
 import { Plus } from "lucide-react"
 import type { Routine, RoutineRun } from "./types"
 import { RoutineRow } from "./routine-row"
-
-/**
- * Optional translated labels. English defaults so existing callers still
- * work. Consumers pass `t()` results for localization — `ui/` stays
- * i18n-agnostic per the library-boundary rule.
- */
-export interface RoutinesGridLabels {
-  loading?: string
-  emptyTitle?: string
-  emptyDescription?: string
-  descriptionShort?: string
-  newRoutine?: string
-}
-
-const DEFAULT_LABELS: Required<RoutinesGridLabels> = {
-  loading: "Loading…",
-  emptyTitle: "Set it and forget it",
-  emptyDescription:
-    "Routines fire on a schedule and only ping you when something actually needs attention.",
-  descriptionShort:
-    "Recurring tasks that fire on schedule and only ping you when something needs attention.",
-  newRoutine: "New routine",
-}
+import {
+  DEFAULT_GRID_LABELS,
+  DEFAULT_ROW_LABELS,
+  DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  DEFAULT_NEXT_FIRE_LABELS,
+  type RoutinesGridLabels,
+  type RoutineRowLabels,
+  type ScheduleSummaryLabels,
+  type NextFireLabels,
+} from "./labels"
 
 export interface RoutinesGridProps {
   routines: Routine[]
@@ -48,7 +35,18 @@ export interface RoutinesGridProps {
   onSelect: (routineId: string) => void
   onCreate?: () => void
   onToggle?: (routineId: string, enabled: boolean) => void
+  /**
+   * Localized labels. English defaults so existing callers still work.
+   * Consumers pass `t()` results for localization — `ui/` stays i18n-agnostic
+   * per the library-boundary rule.
+   */
   labels?: RoutinesGridLabels
+  /** Row-level labels + schedule/next-run formatter labels, threaded to rows. */
+  rowLabels?: RoutineRowLabels
+  scheduleSummaryLabels?: ScheduleSummaryLabels
+  nextFireLabels?: NextFireLabels
+  /** BCP-47 locale for day names + time formatting in row summaries. */
+  locale?: string
 }
 
 export function RoutinesGrid({
@@ -59,9 +57,13 @@ export function RoutinesGrid({
   onSelect,
   onCreate,
   onToggle,
-  labels,
+  labels = DEFAULT_GRID_LABELS,
+  rowLabels = DEFAULT_ROW_LABELS,
+  scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
+  locale = "en-US",
 }: RoutinesGridProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
+  const l = labels
   // Sort: enabled first, then alphabetical
   const sorted = [...routines].sort((a, b) => {
     if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
@@ -132,6 +134,10 @@ export function RoutinesGrid({
               onToggle={
                 onToggle ? (enabled) => onToggle(routine.id, enabled) : undefined
               }
+              labels={rowLabels}
+              scheduleSummaryLabels={scheduleSummaryLabels}
+              nextFireLabels={nextFireLabels}
+              locale={locale}
             />
           ))}
         </div>

@@ -1,10 +1,13 @@
 /**
  * Picker fields used by ScheduleBuilder — time, day-of-week, day-of-month,
  * and the friendly "every N minutes/hours/days" interval picker.
+ *
+ * All visible text arrives via props so the package stays i18n-agnostic;
+ * weekday names come from `Intl` in the given `locale`.
  */
 import { cn } from "@houston-ai/core"
 import type { IntervalUnit } from "./schedule-interval-utils"
-import { INTERVAL_UNIT_LABELS } from "./schedule-interval-utils"
+import { shortWeekdayNames } from "./schedule-format"
 
 const INTERVAL_UNITS: IntervalUnit[] = ["minutes", "hours", "days"]
 
@@ -16,26 +19,18 @@ const inputClass = cn(
 
 const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
 
-const DAYS_OF_WEEK = [
-  { value: 0, label: "Sun" },
-  { value: 1, label: "Mon" },
-  { value: 2, label: "Tue" },
-  { value: 3, label: "Wed" },
-  { value: 4, label: "Thu" },
-  { value: 5, label: "Fri" },
-  { value: 6, label: "Sat" },
-]
-
 export function TimePicker({
+  label,
   value,
   onChange,
 }: {
+  label: string
   value: string
   onChange: (time: string) => void
 }) {
   return (
     <div>
-      <label className={labelClass}>Time</label>
+      <label className={labelClass}>{label}</label>
       <input
         type="time"
         value={value}
@@ -47,28 +42,33 @@ export function TimePicker({
 }
 
 export function DayOfWeekPicker({
+  label,
+  locale = "en-US",
   value,
   onChange,
 }: {
+  label: string
+  locale?: string
   value: number
   onChange: (day: number) => void
 }) {
+  const names = shortWeekdayNames(locale)
   return (
     <div>
-      <label className={labelClass}>Day</label>
+      <label className={labelClass}>{label}</label>
       <div className="flex gap-1">
-        {DAYS_OF_WEEK.map((day) => (
+        {names.map((name, day) => (
           <button
-            key={day.value}
-            onClick={() => onChange(day.value)}
+            key={day}
+            onClick={() => onChange(day)}
             className={cn(
               "size-8 rounded-lg text-xs font-medium transition-colors",
-              value === day.value
+              value === day
                 ? "bg-primary text-primary-foreground"
                 : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
             )}
           >
-            {day.label}
+            {name}
           </button>
         ))}
       </div>
@@ -77,15 +77,17 @@ export function DayOfWeekPicker({
 }
 
 export function DayOfMonthPicker({
+  label,
   value,
   onChange,
 }: {
+  label: string
   value: number
   onChange: (day: number) => void
 }) {
   return (
     <div>
-      <label className={labelClass}>Day of month</label>
+      <label className={labelClass}>{label}</label>
       <input
         type="number"
         min={1}
@@ -102,15 +104,19 @@ export function DayOfMonthPicker({
  * Friendly "Every [N] [minutes/hours/days]" picker — the non-technical
  * replacement for typing a raw cron expression. The count is a free-text string
  * so it can be cleared completely while typing; the builder validates it and
- * turns the interval into cron.
+ * turns the interval into cron. Heading + unit names arrive via props.
  */
 export function IntervalPicker({
+  label,
+  units,
   every,
   unit,
   invalid,
   onEveryChange,
   onUnitChange,
 }: {
+  label: string
+  units: Record<IntervalUnit, string>
   every: string
   unit: IntervalUnit
   invalid?: boolean
@@ -119,7 +125,7 @@ export function IntervalPicker({
 }) {
   return (
     <div>
-      <label className={labelClass}>Run every</label>
+      <label className={labelClass}>{label}</label>
       <div className="flex items-center gap-2">
         <input
           type="text"
@@ -147,7 +153,7 @@ export function IntervalPicker({
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {INTERVAL_UNIT_LABELS[u]}
+              {units[u]}
             </button>
           ))}
         </div>

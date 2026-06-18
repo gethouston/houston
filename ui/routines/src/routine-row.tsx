@@ -10,6 +10,15 @@ import type { Routine, RoutineRun } from "./types"
 import { cronSummary } from "./schedule-cron-utils"
 import { nextFire, describeNextFire } from "./next-fire"
 import { useNow } from "./use-now"
+import {
+  interp,
+  DEFAULT_ROW_LABELS,
+  DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  DEFAULT_NEXT_FIRE_LABELS,
+  type RoutineRowLabels,
+  type ScheduleSummaryLabels,
+  type NextFireLabels,
+} from "./labels"
 
 export interface RoutineRowProps {
   routine: Routine
@@ -18,6 +27,13 @@ export interface RoutineRowProps {
   accountTimezone: string
   onClick?: () => void
   onToggle?: (enabled: boolean) => void
+  /** Localized row labels. English defaults so standalone callers still work. */
+  labels?: RoutineRowLabels
+  /** Schedule-summary + next-run labels, threaded to the cron/time formatters. */
+  scheduleSummaryLabels?: ScheduleSummaryLabels
+  nextFireLabels?: NextFireLabels
+  /** BCP-47 locale for day names + time formatting. */
+  locale?: string
 }
 
 const STATUS_DOT: Record<string, string> = {
@@ -28,17 +44,21 @@ const STATUS_DOT: Record<string, string> = {
   cancelled: "bg-gray-400",
 }
 
-function lastRunLabel(lastRun: RoutineRun | undefined, now: Date): string | null {
+function lastRunLabel(
+  lastRun: RoutineRun | undefined,
+  now: Date,
+  labels: RoutineRowLabels,
+): string | null {
   if (!lastRun) return null
   const date = new Date(lastRun.started_at)
   const diff = now.getTime() - date.getTime()
   const mins = Math.floor(diff / 60_000)
-  if (mins < 1) return "just ran"
-  if (mins < 60) return `ran ${mins}m ago`
+  if (mins < 1) return labels.justRan
+  if (mins < 60) return interp(labels.ranMinutes, { n: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `ran ${hours}h ago`
+  if (hours < 24) return interp(labels.ranHours, { n: hours })
   const days = Math.floor(hours / 24)
-  return `ran ${days}d ago`
+  return interp(labels.ranDays, { n: days })
 }
 
 export function RoutineRow({
@@ -47,12 +67,16 @@ export function RoutineRow({
   accountTimezone,
   onClick,
   onToggle,
+  labels = DEFAULT_ROW_LABELS,
+  scheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
+  locale = "en-US",
 }: RoutineRowProps) {
   const now = useNow(60_000)
   const tz = routine.timezone ?? accountTimezone
   const next = routine.enabled ? nextFire(routine.schedule, tz, now) : null
-  const nextDescr = next ? describeNextFire(next, tz, now) : null
-  const lastLabel = lastRunLabel(lastRun, now)
+  const nextDescr = next ? describeNextFire(next, tz, now, nextFireLabels, locale) : null
+  const lastLabel = lastRunLabel(lastRun, now, labels)
   const isPaused = lastRun?.status === "running" && !!lastRun.paused_until
 
   return (
@@ -93,10 +117,10 @@ export function RoutineRow({
       {/* Title + meta column */}
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium text-foreground truncate leading-tight">
-          {routine.name || "Untitled"}
+          {routine.name || labels.untitled}
         </p>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
-          {cronSummary(routine.schedule)}
+          {cronSummary(routine.schedule, scheduleSummaryLabels, locale)}
           {routine.timezone && (
             <span className="text-muted-foreground/60"> · {routine.timezone}</span>
           )}
@@ -108,20 +132,20 @@ export function RoutineRow({
         {nextDescr ? (
           <>
             <p className="text-xs text-foreground tabular-nums">
-              Next {nextDescr.relative}
+              {interp(labels.next, { relative: nextDescr.relative })}
             </p>
             <p className="text-[11px] text-muted-foreground tabular-nums mt-0.5">
               {nextDescr.absolute}
             </p>
           </>
         ) : routine.enabled ? (
-          <p className="text-xs text-muted-foreground">No next run</p>
+          <p className="text-xs text-muted-foreground">{labels.noNextRun}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">Paused</p>
+          <p className="text-xs text-muted-foreground">{labels.paused}</p>
         )}
         {isPaused ? (
           <p className="text-[11px] text-amber-700 mt-0.5 tabular-nums">
-            Waiting · resumes at {lastRun?.paused_until}
+            {interp(labels.waiting, { time: lastRun?.paused_until ?? "" })}
           </p>
         ) : (
           lastLabel && (
@@ -138,7 +162,7 @@ export function RoutineRow({
           <Switch
             checked={routine.enabled}
             onCheckedChange={(checked) => onToggle(checked)}
-            aria-label={routine.enabled ? "Pause routine" : "Resume routine"}
+            aria-label={routine.enabled ? labels.pauseRoutine : labels.resumeRoutine}
           />
         </div>
       )}

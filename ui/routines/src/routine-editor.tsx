@@ -32,6 +32,17 @@ import { ScheduleBuilder } from "./schedule-builder"
 import { RunHistory } from "./run-history"
 import { nextFire, describeNextFire } from "./next-fire"
 import { useNow } from "./use-now"
+import {
+  interp,
+  DEFAULT_EDITOR_LABELS,
+  DEFAULT_SCHEDULE_LABELS,
+  DEFAULT_NEXT_FIRE_LABELS,
+  DEFAULT_RUN_HISTORY_LABELS,
+  type RoutineEditorLabels,
+  type ScheduleLabels,
+  type NextFireLabels,
+  type RunHistoryLabels,
+} from "./labels"
 
 export interface RoutineFormData {
   name: string
@@ -74,6 +85,16 @@ export interface RoutineEditorProps {
   accountTimezone: string
   /** Disable Save when the form hasn't actually been touched. */
   hasChanges?: boolean
+  /**
+   * Localized labels. English defaults so standalone callers still work; the
+   * app passes `t()` results in per the library-boundary rule.
+   */
+  labels?: RoutineEditorLabels
+  scheduleLabels?: ScheduleLabels
+  nextFireLabels?: NextFireLabels
+  runHistoryLabels?: RunHistoryLabels
+  /** BCP-47 locale for day names + time formatting in schedules. */
+  locale?: string
 }
 
 const COMMON_TIMEZONES = [
@@ -163,6 +184,11 @@ export function RoutineEditor({
   onViewActivity,
   accountTimezone,
   hasChanges,
+  labels = DEFAULT_EDITOR_LABELS,
+  scheduleLabels = DEFAULT_SCHEDULE_LABELS,
+  nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
+  runHistoryLabels = DEFAULT_RUN_HISTORY_LABELS,
+  locale = "en-US",
 }: RoutineEditorProps) {
   const runningRun = runs.find((r) => r.status === "running")
   const isEdit = !!routine
@@ -182,12 +208,14 @@ export function RoutineEditor({
     () => (value.schedule ? nextFire(value.schedule, effectiveTz, now) : null),
     [value.schedule, effectiveTz, now],
   )
-  const nextDescr = next ? describeNextFire(next, effectiveTz, now) : null
+  const nextDescr = next
+    ? describeNextFire(next, effectiveTz, now, nextFireLabels, locale)
+    : null
 
   // Header title — live, mirrors what the user is typing.
   const headerTitle = isEdit
-    ? value.name.trim() || routine?.name || "Untitled routine"
-    : "New routine"
+    ? value.name.trim() || routine?.name || labels.untitled
+    : labels.newRoutine
   const hasOverflow = isEdit && (onToggle || onDelete)
 
   return (
@@ -199,7 +227,7 @@ export function RoutineEditor({
             variant="ghost"
             size="icon-sm"
             onClick={onBack}
-            aria-label="Back to routines"
+            aria-label={labels.back}
           >
             <ArrowLeft className="size-4" />
           </Button>
@@ -216,7 +244,7 @@ export function RoutineEditor({
                 onClick={() => onCancelRun(runningRun.id)}
               >
                 <Square className="size-3.5" />
-                Stop
+                {labels.stop}
               </Button>
             ) : (
               isEdit &&
@@ -228,12 +256,12 @@ export function RoutineEditor({
                   disabled={runNowPending}
                 >
                   <Play className="size-3.5" />
-                  {runNowPending ? "Starting…" : "Run now"}
+                  {runNowPending ? labels.starting : labels.runNow}
                 </Button>
               )
             )}
             <Button onClick={onSubmit} size="sm" disabled={!canSubmit}>
-              {isEdit ? "Save changes" : "Create routine"}
+              {isEdit ? labels.saveChanges : labels.createRoutine}
             </Button>
             {hasOverflow && (
               <DropdownMenu>
@@ -241,7 +269,7 @@ export function RoutineEditor({
                   <Button
                     variant="ghost"
                     size="icon-sm"
-                    aria-label="More actions"
+                    aria-label={labels.moreActions}
                   >
                     <MoreHorizontal className="size-4" />
                   </Button>
@@ -250,7 +278,7 @@ export function RoutineEditor({
                   {onToggle && routine && (
                     <DropdownMenuItem onClick={() => onToggle(!routine.enabled)}>
                       <Pause className="size-3.5" />
-                      {routine.enabled ? "Pause routine" : "Resume routine"}
+                      {routine.enabled ? labels.pauseRoutine : labels.resumeRoutine}
                     </DropdownMenuItem>
                   )}
                   {onDelete && (
@@ -258,7 +286,7 @@ export function RoutineEditor({
                       <DropdownMenuSeparator />
                       <DropdownMenuItem variant="destructive" onClick={onDelete}>
                         <Trash2 className="size-3.5" />
-                        Delete routine
+                        {labels.deleteRoutine}
                       </DropdownMenuItem>
                     </>
                   )}
@@ -275,12 +303,12 @@ export function RoutineEditor({
           {/* Hero composer — gray card holding three labeled white-well fields */}
           <section className="rounded-xl bg-secondary p-5 space-y-4">
             <div>
-              <FieldLabel>Name</FieldLabel>
+              <FieldLabel>{labels.nameLabel}</FieldLabel>
               <input
                 type="text"
                 value={value.name}
                 onChange={(e) => onChange({ name: e.target.value })}
-                placeholder="e.g. Morning standup"
+                placeholder={labels.namePlaceholder}
                 className={cn(
                   "w-full px-3 py-2 text-sm text-foreground",
                   "placeholder:text-muted-foreground/60",
@@ -292,12 +320,12 @@ export function RoutineEditor({
               />
             </div>
             <div>
-              <FieldLabel>Description</FieldLabel>
+              <FieldLabel>{labels.descriptionLabel}</FieldLabel>
               <input
                 type="text"
                 value={value.description}
                 onChange={(e) => onChange({ description: e.target.value })}
-                placeholder="Optional — what this routine is for"
+                placeholder={labels.descriptionPlaceholder}
                 className={cn(
                   "w-full px-3 py-2 text-sm text-foreground",
                   "placeholder:text-muted-foreground/60",
@@ -308,11 +336,11 @@ export function RoutineEditor({
               />
             </div>
             <div>
-              <FieldLabel>Prompt</FieldLabel>
+              <FieldLabel>{labels.promptLabel}</FieldLabel>
               <textarea
                 value={value.prompt}
                 onChange={(e) => onChange({ prompt: e.target.value })}
-                placeholder="What should the agent do when this runs?"
+                placeholder={labels.promptPlaceholder}
                 rows={5}
                 className={cn(
                   "w-full px-3 py-2 text-sm text-foreground leading-relaxed",
@@ -325,14 +353,16 @@ export function RoutineEditor({
             </div>
           </section>
 
-          <SectionCard title="When it runs">
+          <SectionCard title={labels.sectionWhen}>
             <ScheduleBuilder
               value={value.schedule}
               onChange={(schedule) => onChange({ schedule })}
+              labels={scheduleLabels}
+              locale={locale}
             />
 
             <div>
-              <FieldLabel>Timezone</FieldLabel>
+              <FieldLabel>{labels.timezoneLabel}</FieldLabel>
               <div className="relative">
                 <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
                 <select
@@ -348,7 +378,7 @@ export function RoutineEditor({
                   )}
                 >
                   <option value="">
-                    Account default · {accountTimezone}
+                    {interp(labels.accountDefault, { tz: accountTimezone })}
                   </option>
                   {timezones.map((tz) => (
                     <option key={tz} value={tz}>
@@ -369,7 +399,7 @@ export function RoutineEditor({
                 {nextDescr ? (
                   <>
                     <p className="text-sm text-foreground tabular-nums">
-                      Next run {nextDescr.relative}
+                      {interp(labels.nextRun, { relative: nextDescr.relative })}
                     </p>
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
                       {nextDescr.absolute}
@@ -381,10 +411,10 @@ export function RoutineEditor({
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground">
-                      Schedule preview
+                      {labels.schedulePreview}
                     </p>
                     <p className="text-xs text-muted-foreground/70 mt-0.5">
-                      Pick a valid schedule to see when this routine will fire.
+                      {labels.schedulePreviewHint}
                     </p>
                   </>
                 )}
@@ -392,15 +422,12 @@ export function RoutineEditor({
             </div>
           </SectionCard>
 
-          <SectionCard title="Behavior">
+          <SectionCard title={labels.sectionBehavior}>
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm text-foreground">
-                  Only notify when relevant
-                </p>
+                <p className="text-sm text-foreground">{labels.notifyTitle}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  If the agent has nothing to report, the run won't surface on
-                  the board.
+                  {labels.notifyDescription}
                 </p>
               </div>
               <Switch
@@ -408,18 +435,15 @@ export function RoutineEditor({
                 onCheckedChange={(checked) =>
                   onChange({ suppress_when_silent: checked })
                 }
-                aria-label="Only notify when relevant"
+                aria-label={labels.notifyTitle}
               />
             </div>
 
             <div className="flex items-center justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-sm text-foreground">
-                  Keep results in one chat
-                </p>
+                <p className="text-sm text-foreground">{labels.chatTitle}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Every run adds to the same chat. Turn this off to start a new
-                  chat each time this routine runs.
+                  {labels.chatDescription}
                 </p>
               </div>
               <Switch
@@ -427,17 +451,19 @@ export function RoutineEditor({
                 onCheckedChange={(checked) =>
                   onChange({ chat_mode: checked ? "shared" : "per_run" })
                 }
-                aria-label="Keep results in one chat"
+                aria-label={labels.chatTitle}
               />
             </div>
           </SectionCard>
 
           {isEdit && (
-            <SectionCard title="Recent runs">
+            <SectionCard title={labels.sectionRecent}>
               <RunHistory
                 runs={runs}
                 onViewActivity={onViewActivity}
                 onCancelRun={onCancelRun}
+                labels={runHistoryLabels}
+                locale={locale}
               />
             </SectionCard>
           )}

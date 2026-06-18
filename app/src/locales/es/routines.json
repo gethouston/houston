@@ -1,9 +1,128 @@
 {
   "loading": "Cargando…",
   "grid": {
+    "loading": "Cargando…",
     "emptyTitle": "Programa y olvídate",
     "emptyDescription": "Las rutinas se disparan en el horario que elijas y solo te avisan cuando algo de verdad necesita atención.",
     "newRoutine": "Nueva rutina",
     "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención."
+  },
+  "editor": {
+    "back": "Volver a rutinas",
+    "newRoutine": "Nueva rutina",
+    "untitled": "Rutina sin título",
+    "stop": "Detener",
+    "starting": "Iniciando…",
+    "runNow": "Ejecutar ahora",
+    "saveChanges": "Guardar cambios",
+    "createRoutine": "Crear rutina",
+    "moreActions": "Más acciones",
+    "pauseRoutine": "Pausar rutina",
+    "resumeRoutine": "Reanudar rutina",
+    "deleteRoutine": "Eliminar rutina",
+    "nameLabel": "Nombre",
+    "namePlaceholder": "p. ej. Reunión matutina",
+    "descriptionLabel": "Descripción",
+    "descriptionPlaceholder": "Opcional, para qué sirve esta rutina",
+    "promptLabel": "Instrucción",
+    "promptPlaceholder": "¿Qué debe hacer el agente cuando se ejecute?",
+    "sectionWhen": "Cuándo se ejecuta",
+    "sectionBehavior": "Comportamiento",
+    "sectionRecent": "Ejecuciones recientes",
+    "timezoneLabel": "Zona horaria",
+    "accountDefault": "Predeterminada de la cuenta · {tz}",
+    "nextRun": "Próxima ejecución {relative}",
+    "schedulePreview": "Vista previa del horario",
+    "schedulePreviewHint": "Elige un horario válido para ver cuándo se ejecutará esta rutina.",
+    "notifyTitle": "Avisar solo cuando sea relevante",
+    "notifyDescription": "Si el agente no tiene nada que reportar, la ejecución no aparecerá en el tablero.",
+    "chatTitle": "Mantener los resultados en un solo chat",
+    "chatDescription": "Cada ejecución se suma al mismo chat. Desactívalo para abrir un chat nuevo cada vez que se ejecute esta rutina."
+  },
+  "row": {
+    "untitled": "Sin título",
+    "next": "Próxima {relative}",
+    "noNextRun": "Sin próxima ejecución",
+    "paused": "En pausa",
+    "waiting": "En espera · se reanuda a las {time}",
+    "justRan": "recién ejecutada",
+    "ranMinutes": "hace {n}m",
+    "ranHours": "hace {n}h",
+    "ranDays": "hace {n}d",
+    "pauseRoutine": "Pausar rutina",
+    "resumeRoutine": "Reanudar rutina"
+  },
+  "schedule": {
+    "presets": {
+      "every_30min": "Cada 30 minutos",
+      "hourly": "Cada hora",
+      "daily": "Diario",
+      "weekdays": "Solo días laborables",
+      "weekly": "Semanal",
+      "monthly": "Mensual",
+      "custom": "Personalizado"
+    },
+    "units": {
+      "minutes": "minutos",
+      "hours": "horas",
+      "days": "días"
+    },
+    "timeLabel": "Hora",
+    "dayLabel": "Día",
+    "dayOfMonthLabel": "Día del mes",
+    "runEvery": "Ejecutar cada",
+    "enterNumber": "Ingresa un número",
+    "summary": {
+      "noSchedule": "Sin horario definido",
+      "custom": "Horario personalizado",
+      "customCron": "Horario cron personalizado",
+      "every30": "Se ejecuta cada 30 minutos",
+      "everyHourStart": "Se ejecuta al inicio de cada hora",
+      "everyMinute": "Se ejecuta cada minuto",
+      "everyNMinutes": "Se ejecuta cada {n} minutos",
+      "everyHour": "Se ejecuta cada hora",
+      "everyNHours": "Se ejecuta cada {n} horas",
+      "everyDay": "Se ejecuta todos los días a las {time}",
+      "everyNDays": "Se ejecuta cada {n} días a las {time}",
+      "weekdays": "Se ejecuta de lunes a viernes a las {time}",
+      "weekly": "Se ejecuta cada {day} a las {time}",
+      "monthly": "Se ejecuta el día {n} de cada mes a las {time}"
+    }
+  },
+  "nextFire": {
+    "lessThanMinute": "en menos de un minuto",
+    "inMinutes": "en {m}m",
+    "inHoursMinutes": "en {h}h {m}m",
+    "inDaysHours": "en {d}d {h}h",
+    "inDays": "en {d}d",
+    "today": "hoy",
+    "tomorrow": "mañana",
+    "soon": "pronto",
+    "at": "{day} a las {time}"
+  },
+  "runHistory": {
+    "empty": "Aún no hay ejecuciones, esta rutina no se ha ejecutado.",
+    "view": "Ver",
+    "stopRun": "Detener ejecución",
+    "waiting": "Esperando el límite de uso, se reanuda a las {time}",
+    "status": {
+      "silent": "Silenciosa",
+      "surfaced": "Mostrada",
+      "running": "En curso",
+      "error": "Error",
+      "cancelled": "Cancelada",
+      "paused": "En pausa"
+    },
+    "today": "Hoy, {time}",
+    "yesterday": "Ayer, {time}",
+    "onDate": "{date}, {time}"
+  },
+  "timezoneGate": {
+    "title": "¿Cuál es tu zona horaria?",
+    "description": "Las rutinas se ejecutan según un horario. Necesitamos saber tu zona antes de que se ejecuten, para que las 9am sean tus 9am.",
+    "timezoneLabel": "Zona horaria",
+    "detected": "Detectada desde tu computador.",
+    "saving": "Guardando…",
+    "confirm": "Confirmar zona horaria"
   }
 }

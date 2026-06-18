@@ -6,10 +6,12 @@
  * schedule, and the generated cron is shown read-only for reference.
  *
  * State and cron derivation live in useScheduleBuilder; this file is just JSX.
+ * All visible text arrives via `labels` (English defaults) so the package stays
+ * i18n-agnostic; `locale` drives day names + time formatting in the summary.
  */
 import { cn } from "@houston-ai/core"
 import type { SchedulePreset } from "./types"
-import { SCHEDULE_PRESET_LABELS } from "./types"
+import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels"
 import {
   TimePicker,
   DayOfWeekPicker,
@@ -22,6 +24,10 @@ export interface ScheduleBuilderProps {
   value: string
   onChange: (cronExpression: string) => void
   presets?: SchedulePreset[]
+  /** Localized labels. Defaults to English so standalone callers still work. */
+  labels?: ScheduleLabels
+  /** BCP-47 locale for day names + time formatting in the live summary. */
+  locale?: string
 }
 
 const DEFAULT_PRESETS: SchedulePreset[] = [
@@ -32,6 +38,8 @@ export function ScheduleBuilder({
   value,
   onChange,
   presets = DEFAULT_PRESETS,
+  labels = DEFAULT_SCHEDULE_LABELS,
+  locale = "en-US",
 }: ScheduleBuilderProps) {
   const {
     activePreset,
@@ -46,7 +54,7 @@ export function ScheduleBuilder({
     isCustom,
     showTime,
     summary,
-  } = useScheduleBuilder(value, onChange)
+  } = useScheduleBuilder(value, onChange, labels, locale)
 
   return (
     <div className="space-y-4">
@@ -63,7 +71,7 @@ export function ScheduleBuilder({
                 : "bg-background border border-black/[0.04] text-muted-foreground hover:text-foreground",
             )}
           >
-            {SCHEDULE_PRESET_LABELS[preset]}
+            {labels.presets[preset]}
           </button>
         ))}
       </div>
@@ -75,6 +83,7 @@ export function ScheduleBuilder({
       <div className="space-y-3">
         {showTime && (
           <TimePicker
+            label={labels.timeLabel}
             value={options.time}
             onChange={(time) => updateOption({ time })}
           />
@@ -82,6 +91,8 @@ export function ScheduleBuilder({
 
         {activePreset === "weekly" && (
           <DayOfWeekPicker
+            label={labels.dayLabel}
+            locale={locale}
             value={options.dayOfWeek}
             onChange={(dayOfWeek) => updateOption({ dayOfWeek })}
           />
@@ -89,6 +100,7 @@ export function ScheduleBuilder({
 
         {activePreset === "monthly" && (
           <DayOfMonthPicker
+            label={labels.dayOfMonthLabel}
             value={options.dayOfMonth}
             onChange={(dayOfMonth) => updateOption({ dayOfMonth })}
           />
@@ -97,6 +109,8 @@ export function ScheduleBuilder({
         {isCustom && (
           <>
             <IntervalPicker
+              label={labels.runEvery}
+              units={labels.units}
               every={intervalEvery}
               unit={intervalUnit}
               invalid={!everyValid}
@@ -105,6 +119,7 @@ export function ScheduleBuilder({
             />
             {intervalUnit === "days" && (
               <TimePicker
+                label={labels.timeLabel}
                 value={options.time}
                 onChange={(time) => updateOption({ time })}
               />
