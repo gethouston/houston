@@ -26,48 +26,8 @@ import { ChevronDownIcon } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { ToolEntry } from "../feed-to-messages";
 import { getToolIcon, getToolDetail, ToolContent } from "../tool-formatters";
+import { getToolActionLabel, toolShortName } from "../tool-labels";
 import { Shimmer } from "./shimmer";
-
-// ---------------------------------------------------------------------------
-// Labels
-// ---------------------------------------------------------------------------
-
-const ACTIVE_LABELS: Record<string, string> = {
-  Read: "Reading file",
-  Write: "Writing file",
-  Edit: "Editing file",
-  Bash: "Running command",
-  Glob: "Searching files",
-  Grep: "Searching code",
-  WebSearch: "Searching the web",
-  WebFetch: "Fetching page",
-  ToolSearch: "Looking up tools",
-  Agent: "Delegating task",
-};
-
-const DONE_LABELS: Record<string, string> = {
-  Read: "Read file",
-  Write: "Wrote file",
-  Edit: "Edited file",
-  Bash: "Ran command",
-  Glob: "Searched files",
-  Grep: "Searched code",
-  WebSearch: "Searched the web",
-  WebFetch: "Fetched page",
-  ToolSearch: "Looked up tools",
-  Agent: "Delegated task",
-};
-
-function getLabel(
-  name: string,
-  done: boolean,
-  custom?: Record<string, string>,
-): string {
-  const short = name.includes("__") ? name.split("__").pop()! : name;
-  if (custom?.[short]) return custom[short];
-  const map = done ? DONE_LABELS : ACTIVE_LABELS;
-  return map[short] || short.replace(/_/g, " ");
-}
 
 // ---------------------------------------------------------------------------
 // ToolBlock
@@ -86,10 +46,7 @@ export const ToolBlock = memo(
   ({ tool, isActive, toolLabels }: ToolBlockProps) => {
     // Bash output is shell stdout — opt out of the auto-open-while-active
     // behavior so the chat stays clean. The user can still click to expand.
-    const shortName = tool.name.includes("__")
-      ? tool.name.split("__").pop()!
-      : tool.name;
-    const autoOpenWhileActive = shortName !== "Bash";
+    const autoOpenWhileActive = toolShortName(tool.name) !== "Bash";
 
     const [isOpen, setIsOpen] = useState(autoOpenWhileActive && isActive);
     const wasActiveRef = useRef(isActive);
@@ -137,11 +94,11 @@ export const ToolBlock = memo(
           <Icon className="size-4 mt-0.5 shrink-0" />
           {isActive ? (
             <Shimmer duration={1}>
-              {`${getLabel(tool.name, false, toolLabels)}...`}
+              {`${getToolActionLabel(tool.name, false, toolLabels)}...`}
             </Shimmer>
           ) : (
             <p className="min-w-0 truncate">
-              {getLabel(tool.name, isDone, toolLabels)}
+              {getToolActionLabel(tool.name, isDone, toolLabels)}
               {detail && (
                 <span className="text-muted-foreground/50"> — {detail}</span>
               )}

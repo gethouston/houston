@@ -66,6 +66,7 @@
   },
   "process": {
     "active": "Mission in progress...",
+    "activeAction": "Mission in progress: {{action}}",
     "complete": "Mission log"
   },
   "summary": {
