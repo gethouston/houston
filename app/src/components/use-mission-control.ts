@@ -1,7 +1,7 @@
 import { useState, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
 import { useFeedStore } from "../stores/feeds";
 import {
@@ -98,7 +98,7 @@ export function useMissionControl(agents: Agent[]) {
         return {
           id: c.id,
           title: c.title,
-          description: c.description,
+          description: messagePreviewText(c.description),
           group: c.agent_name,
           icon: createElement(AgentCardAvatar, { color: agentColorMap[c.agent_path] }),
           status: c.status!,
