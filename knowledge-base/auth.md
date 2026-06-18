@@ -131,6 +131,8 @@ create trigger on_auth_user_created after insert on auth.users
 
 ## Provider CLI re-auth (Claude Code / Codex)
 
+_Provider CLI re-auth (Claude/Codex) is the legacy Rust-engine path; the TS engine uses in-process OAuth — see `convergence/README.md`._
+
 Separate from Houston account auth. Claude Code and Codex keep their own CLI
 sessions. When those sessions expire mid-chat, `houston-terminal-manager`
 classifies auth-shaped stderr/stdout (`401`, `unauthorized`, `not authenticated`,
@@ -206,90 +208,3 @@ Never mutate `~/.codex/config.toml` to make Codex read Houston agent
 instructions. Agent directories already expose `CLAUDE.md` through an
 `AGENTS.md` symlink, and global Codex config writes can land under the active
 TOML table and break Codex startup.
-
-## Gemini (API key, no CLI login)
-
-Gemini does not have an OAuth-style `gemini auth login`. The CLI reads
-credentials from one of three places, in order:
-
-1. `GEMINI_API_KEY` (or `GOOGLE_API_KEY`) environment variable in the
-   spawning shell.
-2. `~/.gemini/.env` file with the same env-var format.
-3. `~/.gemini/settings.json` with a `selectedAuthType` and matching
-   credential block.
-
-`GeminiAdapter::probe_auth` (in `engine/houston-terminal-manager/src/provider/gemini.rs`)
-checks all three. Any positive signal returns `authenticated`; missing
-file or missing key returns `unauthenticated`; parse / I/O errors map to
-`unknown` (NOT `authenticated`, per the no-silent-failures rule).
-
-`probe_auth` runs synchronously off the file system, no spawn. It is
-the same path used by `GET /v1/providers/gemini/status` and by the
-session runner's pre-spawn auth gate.
-
-### `launch_login("gemini")` returns BadRequest
-
-Because there is no CLI login, the `ProviderAdapter::login_args` impl
-returns `None`. `engine-core::provider::launch_login` surfaces this as
-`BadRequest("gemini has no CLI login flow, connect via settings instead")`.
-Same for logout. The desktop frontend short-circuits before this path
-is reached: the provider picker checks `loginKind === "apiKey"` and
-opens the Connect-API-Key dialog instead of calling
-`/v1/providers/gemini/login`.
-
-### Connect flow (Option A-lite, current)
-
-The picker's Gemini card opens a modal with three steps:
-
-1. Open `https://aistudio.google.com/app/apikey` in the user's browser
-   (`tauriSystem.openUrl`).
-2. Show a Copy-able `export GEMINI_API_KEY=...` snippet.
-3. Restart Houston so the env var is in scope for the engine
-   subprocess.
-
-Strings live under the `providers.apiKeyConnect.*` namespace
-(`app/src/locales/{en,es,pt}/providers.json`). Component:
-`app/src/components/shell/api-key-connect-dialog.tsx`. Provider config:
-`app/src/lib/providers.ts` (`loginKind`, `apiKeyConsoleUrl`,
-`apiKeyEnvVar` fields).
-
-### Connect flow (Option A, in-flight)
-
-The follow-up flow writes the key directly to `~/.gemini/.env` so the
-user does not have to fiddle with shell rc files. The engine route is
-`POST /v1/providers/gemini/credentials` (atomic write, mode 0600,
-parent dir ensure). When the in-flight upgrade lands, the dialog gains
-a paste input + Save button and the restart-Houston step disappears.
-
-### HOME isolation for spawned gemini sessions
-
-Gemini-cli loads `<HOME>/.gemini/GEMINI.md` as global memory on every
-invocation, and its built-in memory tool auto-appends the user's
-cross-project preferences to that file. Without isolation, every
-Houston-spawned gemini inherits notes from the user's other projects
-("Initializing Workspace... Ombra library", Alpine.js styling rules,
-etc.) and answers Houston tasks with the wrong context.
-
-`houston-terminal-manager::gemini_home::ensure_gemini_runtime_home`
-builds a Houston-managed HOME at `~/.houston/runtime/gemini-home/`
-containing only `.gemini/oauth_creds.json` + `google_accounts.json`
-+ `.env` symlinked from the real home (so OAuth and API-key auth
-both keep working without re-auth) plus a minimal
-`.gemini/settings.json` that mirrors the user's `selectedType`. No
-`GEMINI.md` is present, so global memory discovery finds nothing.
-Per-agent context still flows because gemini-cli walks UP from
-`cwd` and the agent dir contains `GEMINI.md → CLAUDE.md` seeded by
-`seed_agent`. Both `gemini_runner::spawn_gemini` and
-`sessions::summarize::run_gemini_summary` set `cmd.env("HOME", ...)`
-to this runtime path before spawning.
-
-**Windows symlink fallback.** Stock Windows installs reject
-`symlink_file` (os error 1314, "A required privilege is not held by
-the client") unless Developer Mode or admin is on. `ensure_symlink`
-falls back to `fs::copy`. If the real-home source file does not
-exist yet — common for first-time gemini users who have not
-completed OAuth or pasted an API key — the Windows path treats the
-missing source as "skip this entry" instead of erroring. Without
-that, the user-visible toast was: _"Failed to prepare gemini
-runtime home: The system cannot find the file specified. (os
-error 2). Houston cannot spawn gemini safely without it."_

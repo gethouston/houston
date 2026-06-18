@@ -1,10 +1,16 @@
-# Bundled CLIs — codex, composio, claude-code
+# Bundled CLIs — codex, claude-code (LEGACY)
 
-Houston ships two upstream CLIs inside the signed/notarized desktop
-bundle (`.app` on macOS, `.msi` on Windows) and runtime-downloads a
-third. The goal is zero terminal exposure for non-technical users —
+> **⚠️ LEGACY — Rust engine, being retired at P6.** This whole CLI-bundling scheme exists because the Rust `engine/` drives agents by spawning provider **CLI subprocesses**. The target TS engine (**pi runtime**) talks to providers **in-process** — there are NO bundled provider CLIs. This doc is accurate for the current default Rust build only. See `convergence/README.md` + `selfhost/`.
+>
+> **Two corrections that matter even today:**
+> - **Composio is NO LONGER a bundled CLI.** The earlier "cut" was reversed and Composio was **re-wired as an in-process REST tool** (each user's own free "Composio for you" account, no binary) behind the `IntegrationProvider` port — `packages/control-plane/src/integrations/`. Ignore every "bundle the composio CLI" instruction below; that path is gone. `houston-composio` (Rust) + the per-arch composio binary fetch are deleted with `engine/`.
+> - **Gemini is dropped** (no Google OAuth in pi; non-technical users don't paste keys). Ignore the gemini rows/sections.
+
+Houston (legacy Rust build) ships upstream CLIs inside the signed/notarized desktop
+bundle (`.app` on macOS, `.msi` on Windows) and runtime-downloads
+claude-code. The goal was zero terminal exposure for non-technical users —
 they install Houston, click in, and the chat agent works without ever
-opening a shell.
+opening a shell. (In the TS engine this is moot: no CLIs.)
 
 ## What ships where
 

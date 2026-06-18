@@ -221,15 +221,8 @@ adapter, see `knowledge-base/architecture.md`).
 |---|---|---|---|---|
 | `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-6` | `claude-opus-4-8` | OAuth via `claude auth login --claudeai` |
 | `openai` (alias `codex`) | `codex` (bundled) | `gpt-5` | `gpt-5-codex` | OAuth via `codex login` |
-| `gemini` (alias `google`) | `gemini` (bundled, macOS only) | `gemini-2.5-flash` | `gemini-2.5-pro` | API key, no CLI login (see `knowledge-base/auth.md`) |
 
 Notes:
-- Gemini has no `gemini login`. The picker short-circuits on
-  `loginKind === "apiKey"` and opens the Connect-API-Key dialog
-  (`app/src/components/shell/api-key-connect-dialog.tsx`). Calling
-  `/v1/providers/gemini/login` directly returns `BadRequest`.
-- Gemini is macOS-only in v1; Windows users see it as unavailable until
-  the phase-2 fork-build lands (see `knowledge-base/cli-bundling.md`).
 - Adding a fourth provider = one new adapter file + one registry entry +
   three dispatch arms (runner, parser, summarizer). See "Engine boundary"
   in `CLAUDE.md`.
@@ -257,7 +250,6 @@ shows only the levels the active model accepts.
 | `anthropic` | `claude-opus-4-7` (Opus 4.7) | low, medium, high, xhigh, max | `--effort <v>` |
 | `anthropic` | `claude-sonnet-4-6` (Sonnet 4.6) | low, medium, high, max (no `xhigh`) | `--effort <v>` |
 | `openai` | `gpt-5.5` | low, medium, high, xhigh (no `max`) | `-c model_reasoning_effort="<v>"` |
-| `gemini` | any | none | (no flag) |
 
 Claude self-clamps an unsupported `--effort` down to its highest supported
 level; codex has no such fallback, so `max` (an unknown variant to codex) is

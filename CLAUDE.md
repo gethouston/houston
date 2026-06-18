@@ -42,17 +42,25 @@ Off only if user says "stop caveman" or "normal mode".
 
 ## System at a glance (read once at session start)
 
-Houston = desktop app + standalone engine + open library of agents.
+> **⚠️ Houston is mid-convergence to ONE engine. Read this before trusting the older `knowledge-base/` docs — many still describe the legacy Rust engine.** Source of truth for the new architecture: **`convergence/README.md`**.
 
-- **`app/`** — Tauri 2 desktop. React frontend, small Rust binary that spawns the engine as a sidecar subprocess and talks to it over HTTP/WS. OS-native glue only (file pickers, reveal-in-file-manager, logs). No domain logic.
-- **`engine/`** — Rust crates. `houston-engine-core` = runtime/domain. `houston-engine-protocol` = wire types. `houston-engine-server` = axum HTTP+WS binary (`houston-engine`). `houston-agent-files`, `houston-skills`, `houston-sessions`, `houston-file-watcher`, etc. are leaf crates. Frontend-agnostic: no Tauri, no React.
-- **`ui/`** — `@houston-ai/*` React packages (chat, board, layout, engine-client, …). Props-only, no store imports. `@houston-ai/engine-client` is the TS front door to the engine.
-- **User data** — `~/.houston/`: DB, logs, `engine.json`, and `workspaces/<Workspace>/<Agent>/`. Each agent has `.houston/` data files + `CLAUDE.md` + `.agents/skills/`.
-- **Wire contract** — every domain call is a `fetch` or WS frame in `@houston-ai/engine-client`. There are NO `invoke("list_workspaces", …)` style Tauri commands for domain; those were all deleted.
-- **Reactivity** — engine emits `HoustonEvent`s; desktop subscribes to the WS `*` firehose; TanStack Query invalidation in `app/src/hooks/use-agent-invalidation.ts` maps events → query keys. File watcher catches direct agent writes.
-- **Voice** — agents' target user is NON-technical. The product system prompt forbids mentioning files/JSON/configs/CLIs when talking to the user. Lives in `app/src-tauri/src/houston_prompt.rs` (Houston app), NOT in the engine. Engine is prompt-agnostic; app hands it over at spawn via `HOUSTON_APP_SYSTEM_PROMPT`.
+**Two engines coexist right now.** The Rust `engine/` is the *current default* desktop build (releasable, instant rollback). The TARGET — flag-gated (`VITE_NEW_ENGINE` / `VITE_NEW_ENGINE_URL`) and being proven — is ONE deployment-agnostic TypeScript engine for **both desktop and cloud**: the **pi runtime** (`packages/runtime`, the only agent loop) behind a **host** (`packages/control-plane`, evolving into `packages/host`) with **local vs cloud adapter profiles** wired in `main()`. Domain logic lives once in `packages/domain`; wire types in `packages/protocol` (**protocol v3**). `engine/` (Rust, ~51k LOC, 17 crates) is the rollback + parity oracle, **deleted at P6** once the new path is proven in prod — never before.
 
-Before touching anything: run PHASE 1 (load `knowledge-base/architecture.md` + any KBs relevant to scope).
+**No provider CLIs in the target.** pi talks to providers in-process (Anthropic + OpenAI/Codex OAuth). The bundled CLIs (claude-code, codex, gemini) and the per-arch Composio CLI go away with `engine/`. **Gemini is dropped.** **Composio is KEPT but RE-WIRED** — an in-process REST tool behind an `IntegrationProvider` port (`packages/control-plane/src/integrations/`), each user's own free "Composio for you" account, **no CLI**. **Cut:** mobile/tunnel/relay, worktrees, store/marketplace, claude-CLI install. Single personal workspace (teams later).
+
+The pieces:
+- **`app/`** — Tauri 2 desktop. `app/src` is the shared React frontend (also runs verbatim as `packages/web`). `app/src-tauri` is the Rust shell that spawns the engine sidecar (the Rust `houston-engine` today; the Bun-compiled TS host under `--features host-sidecar`) and talks HTTP/WS+SSE. OS-native glue only.
+- **`packages/runtime`** — the **pi engine** (TS/Bun). Single-workspace, single-credential, tenancy-free. The ONLY agent loop in the target.
+- **`packages/control-plane`** — the **host** (cloud control plane AND local desktop supervisor: the SAME server, different adapter profiles). Serves protocol v3.
+- **`packages/domain` / `packages/protocol`** — shared domain logic (`.houston` layout, schemas, cron, portable) + v3 wire types/zod.
+- **`engine/`** — **legacy Rust engine** (current default build; retired at P6). The `knowledge-base/engine-*.md` + `cli-bundling.md` docs describe THIS.
+- **`ui/`** — `@houston-ai/*` React packages. Props-only, no store imports. `@houston-ai/engine-client` is the TS front door (rewritten to v3 transport).
+- **User data** — `~/.houston/`: `workspaces/<Workspace>/<Agent>/`, each agent with `.houston/` data files + `CLAUDE.md` + `.agents/skills/`. The layout carries over to the TS engine unchanged (chat history is the only real migration).
+- **Wire contract** — every domain call is a `fetch`/SSE in `@houston-ai/engine-client` (v3 against the host). No `invoke(...)` Tauri commands for domain.
+- **Reactivity** — the engine emits `HoustonEvent`s on a global channel (`/v1/events` SSE in v3); TanStack Query invalidation in `app/src/hooks/use-agent-invalidation.ts` maps events → query keys. FS watcher catches direct agent writes.
+- **Voice** — agents' target user is NON-technical; the product prompt forbids mentioning files/JSON/configs/CLIs. Desktop: `app/src-tauri/src/houston_prompt.rs`; TS host: `packages/control-plane/src/houston-prompt.ts`. The engine is prompt-agnostic; the app hands it over at spawn (`HOUSTON_APP_SYSTEM_PROMPT`).
+
+Before touching anything: run PHASE 1 (load `convergence/README.md` + `knowledge-base/architecture.md` + any KBs relevant to scope). Treat `knowledge-base/` engine/CLI docs as LEGACY (Rust engine) unless they say otherwise.
 
 ## Dispatch table (progressive discovery)
 
@@ -61,18 +69,20 @@ Manual macOS build, notarize, staple? → `/build-app-local`
 Bug? Don't guess → `/debug`
 
 Need specific knowledge? Load on demand:
-- Repo shape, products, engine story → `knowledge-base/architecture.md`
+- **Single-engine convergence (the NEW, current-direction architecture — host + pi runtime + adapter profiles, protocol v3, Composio-as-REST) → `convergence/README.md`** ← read this before the legacy engine docs below
+- Repo shape, products, engine story (convergence-aware) → `knowledge-base/architecture.md`
 - Colors, typography, components, animation → `knowledge-base/design-system.md`
 - `.houston/` layout, schemas, reactivity → `knowledge-base/files-first.md`
 - Skills on disk + UI, picker, invocation marker → `knowledge-base/skills.md`
 - Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
-- Engine wire protocol (REST + WS) → `knowledge-base/engine-protocol.md`
-- Provider error taxonomy + classifier contract → `knowledge-base/provider-errors.md`
-- `houston-engine` binary ops → `knowledge-base/engine-server.md`
-- Bundled CLIs (codex universal, composio per-arch) + runtime claude-code installer → `knowledge-base/cli-bundling.md`
+- _[LEGACY, Rust engine]_ Engine wire protocol (REST + WS) → `knowledge-base/engine-protocol.md` · the v3 contract is `packages/protocol/`
+- _[LEGACY, Rust engine]_ Provider error taxonomy + classifier contract → `knowledge-base/provider-errors.md`
+- _[LEGACY, Rust engine]_ `houston-engine` binary ops → `knowledge-base/engine-server.md` · the TS host is `packages/control-plane` (run: `bun run src/local/main.ts`)
+- _[LEGACY, being retired]_ Bundled provider CLIs (codex, claude installer) → `knowledge-base/cli-bundling.md`. **Composio is NO LONGER a bundled CLI** — it's an in-process REST tool (`packages/control-plane/src/integrations/`); pi has no provider CLIs.
+- Self-host the TS engine on a VPS (Docker + Caddy TLS) → `selfhost/README.md`
 - Windows testing loop from a Mac (UTM VM, SSH bridge, cross-compile, log fetch) → `knowledge-base/windows-testing.md`
-- Custom frontend on `houston-engine` (integration reference) → `examples/smartbooks/README.md`
-- Mobile PWA (tunnel, pairing, reactivity) → `docs/mobile-architecture.md` + `docs/relay-operations.md`
+- Custom frontend on the engine (integration reference) → `examples/smartbooks/README.md`
+- _[REMOVED feature]_ Mobile PWA (tunnel, pairing, relay) was cut — `docs/mobile-architecture.md` + `docs/relay-operations.md` are historical only
 - Houston Cloud (control plane, per-turn runtime, code sandbox, credential model) → `cloud/README.md` + `cloud/code-execution.md`
 - Updater, analytics, Sentry, env vars, CI → `knowledge-base/production-infra.md`
 - Daily/weekly/monthly data rituals + dashboard reading guide → `knowledge-base/data-rituals.md`
@@ -172,7 +182,10 @@ Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, co
 - Tauri-specific code → `app/houston-tauri/` (the adapter).
 
 ### Adding a provider
-New AI provider = one new adapter file in `engine/houston-terminal-manager/src/provider/<name>.rs` implementing `ProviderAdapter`, one entry in `REGISTRY`, three dispatch arms (runner spawn in `session_dispatch.rs`, NDJSON parser in `session_io.rs`, title summarizer in `sessions/summarize.rs`). All other call sites pick the new provider up automatically through `Provider::from_str` and the registry. `Provider` is a `Copy` newtype around `&'static dyn ProviderAdapter`, NOT an enum, so no variant additions are needed.
+
+> _[LEGACY, Rust engine]_ The procedure below is for the Rust `engine/` (CLI-subprocess model), being retired at P6. In the **TS engine (pi runtime)** providers are in-process — Anthropic + OpenAI/Codex OAuth — and there are no provider CLIs; a new provider is a pi-runtime + config-mapping concern, not a Rust adapter. **Gemini is dropped.** Third-party tool integrations (Gmail/Calendar/etc.) are NOT providers — they go through the `IntegrationProvider` port (`packages/control-plane/src/integrations/`, Composio first).
+
+New AI provider (legacy Rust path) = one new adapter file in `engine/houston-terminal-manager/src/provider/<name>.rs` implementing `ProviderAdapter`, one entry in `REGISTRY`, three dispatch arms (runner spawn in `session_dispatch.rs`, NDJSON parser in `session_io.rs`, title summarizer in `sessions/summarize.rs`). All other call sites pick the new provider up automatically through `Provider::from_str` and the registry. `Provider` is a `Copy` newtype around `&'static dyn ProviderAdapter`, NOT an enum, so no variant additions are needed.
 
 **Error classification** is part of the adapter — implement `classify_stderr` and `classify_result_error` to map this provider's failure patterns to the shared `ProviderError` taxonomy (`RateLimited`, `QuotaExhausted`, `Unauthenticated`, ...). Real CLI fixtures > guessed regex; unit-test each classifier with verbatim stderr / NDJSON snippets. The frontend already renders every variant (`app/src/components/shell/provider-error-card.tsx`) — no UI work unless you need a custom status-page URL or a provider-specific reconnect flow.
 
