@@ -1,5 +1,7 @@
 # SmartBooks — custom frontend on houston-engine
 
+> _Note: runs against the legacy Rust `houston-engine` today. Post-P6 the engine command becomes the TS host (`packages/control-plane`); the HTTP+WS/SSE contract is compatible. See `convergence/README.md`._
+
 A reference consumer of the Houston Engine that looks nothing like the
 Houston App. Same backend, different brand. Drop a bank-statement PDF,
 get a categorized transaction table back plus a downloadable multi-sheet

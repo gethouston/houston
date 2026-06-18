@@ -1,5 +1,7 @@
 # Provider Errors — typed taxonomy + classifier contract
 
+> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/control-plane`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**.
+
 Caveman style. Skim the table of contents and load the section that
 touches what you are doing.
 
@@ -108,7 +110,7 @@ Resist if `Unknown` covers it. If you must:
 | Trait        | `engine/houston-terminal-manager/src/provider/mod.rs`                             |
 | Anthropic    | `engine/houston-terminal-manager/src/provider/anthropic_classify.rs`              |
 | OpenAI       | `engine/houston-terminal-manager/src/provider/openai_classify.rs`                 |
-| Gemini       | `engine/houston-terminal-manager/src/provider/gemini/classify.rs`                 |
+| Gemini       | `engine/houston-terminal-manager/src/provider/gemini/classify.rs` (gemini dropped — classifier unreachable) |
 | Stderr wire  | `engine/houston-terminal-manager/src/session_io.rs::read_stderr_lines`            |
 | Result wire  | `engine/houston-terminal-manager/src/gemini_parser_state.rs::handle_result`       |
 | Result wire  | `engine/houston-terminal-manager/src/codex_parser.rs::classify_codex_error_message` |

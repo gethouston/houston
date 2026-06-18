@@ -1,5 +1,7 @@
 # Mobile architecture
 
+> **⚠️ REMOVED FEATURE.** Mobile (PWA + tunnel/relay + phone pairing) was **cut** in the single-engine convergence — phones use the **web app** now. Historical reference only. See **`convergence/README.md`**.
+
 Houston's mobile companion is a **web app** served from `tunnel.gethouston.ai`. No native iOS or Android build — the same Cloudflare Worker that brokers mobile ↔ desktop traffic also hosts the PWA bundle. One origin, one deployment, first-party cookies + WebSockets.
 
 ```

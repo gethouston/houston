@@ -25,6 +25,8 @@
 
 ---
 
+Houston is converging onto a single TypeScript engine — see `convergence/README.md`.
+
 ## What Houston is
 
 **For everyone** — a free desktop app with AI agents that do real work. Bookkeeping, outreach, research, scheduling. Install agents from the store and start working. No terminal. No prompt engineering.
@@ -136,26 +138,34 @@ Every agent shows the same five tabs. The list lives in `app/src/agents/standard
 
 ## Monorepo layout
 
-Organized as **6 end-user products + 3 code libraries**.
+Organized as **5 end-user products + the code libraries**.
 
 ```
 houston/
 ├── app/                     Houston App — desktop (Tauri 2)
-│   ├── src/                 React frontend
-│   ├── src-tauri/           Tauri binary
-│   └── houston-tauri/       Tauri adapter (applies Engine to desktop)
-├── mobile/                  Houston Mobile companion
-├── desktop-mobile-bridge/   Cloudflare Worker — pairs Desktop ↔ Mobile
-├── store/                   Houston Store — agent registry
+│   ├── src/                 React frontend (also runs as packages/web)
+│   ├── src-tauri/           Tauri binary (spawns the engine sidecar)
+│   └── houston-tauri/       Tauri adapter (applies the legacy Rust engine to desktop)
+├── store/                   Houston Store — agent registry (UI cut in the convergence)
 ├── website/                 Houston Website — gethouston.ai
-├── always-on/               Houston Always On — VPS deploy (Dockerfile + compose + systemd)
+├── always-on/               Houston Always On — legacy Rust-engine VPS container (the TS-engine self-host is selfhost/)
 ├── teams/                   Houston Teams (TBD — hosted multi-tenant)
 │
-├── ui/                      Houston UI — @houston-ai/* React packages
-├── engine/                  Houston Engine — Rust crates (frontend-agnostic)
-├── cloud/                   Houston Cloud (TBD — managed Engine hosting)
+├── packages/               THE CONVERGENCE — the single TypeScript engine (see convergence/README.md)
+│   ├── runtime/             pi runtime — the only agent loop
+│   ├── control-plane/       the host (cloud + local desktop, adapter profiles); becomes packages/host
+│   ├── domain/              shared domain logic (.houston layout, schemas, cron, portable)
+│   ├── protocol/            v3 wire types + zod
+│   ├── web/                 the full desktop UI in a browser tab
+│   └── code-sandbox/        egress-locked code-execution sandbox (cloud)
+├── selfhost/               Self-host the TS engine on a VPS (Docker + Caddy TLS)
+├── convergence/            The single-engine convergence plan + status (SOURCE OF TRUTH)
 │
-└── examples/                Reference consumers of houston-engine
+├── ui/                      Houston UI — @houston-ai/* React packages
+├── engine/                  LEGACY Rust engine — current default build, deleted at P6
+├── cloud/                   Houston Cloud — deploy + admin for the hosted multi-tenant host
+│
+└── examples/                Reference consumers of the engine
     └── smartbooks/            Bookkeeping app built on a custom React frontend
 ```
 

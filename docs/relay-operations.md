@@ -1,5 +1,7 @@
 # Relay operations
 
+> **⚠️ REMOVED FEATURE.** Mobile (PWA + tunnel/relay + phone pairing) was **cut** in the single-engine convergence — phones use the **web app** now. Historical reference only. See **`convergence/README.md`**.
+
 The Houston relay (`houston-relay/`) is a single Cloudflare Worker + Durable Object that brokers mobile ↔ desktop traffic and serves the mobile PWA bundle from the same origin. This doc covers deployment, secret management, and health checks.
 
 ## Deploying

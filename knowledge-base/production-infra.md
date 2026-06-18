@@ -94,6 +94,8 @@ PostHog → BigQuery plugin → target GCP project (burns credits). SQL-queryabl
 
 ## Houston Cloud (GCP project `gethouston`, us-east1)
 
+_The cloud control-plane is now the v3 TypeScript host (`packages/control-plane`), not the Rust engine; per-turn Cloud Run. See `convergence/README.md` + `cloud/code-execution.md`._
+
 Live beta. Four deployables; agent compute scales to zero (see
 `cloud/unit-economics.md` for the cost model, `cloud/code-execution.md` for the
 security architecture):
