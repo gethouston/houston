@@ -45,6 +45,8 @@ interface WorkspaceShellProps {
 export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) {
   const { t } = useTranslation(["agents", "shell", "board"]);
   const currentAgent = useAgentStore((s) => s.current);
+  const agents = useAgentStore((s) => s.agents);
+  const setCurrentAgent = useAgentStore((s) => s.setCurrent);
   const getById = useAgentCatalogStore((s) => s.getById);
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
@@ -74,6 +76,12 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
       setViewMode(DEFAULT_TAB_ID);
     }
   }, [isAgentView, setViewMode, viewMode]);
+
+  useEffect(() => {
+    if (!currentAgent && agents.length > 0) {
+      setCurrentAgent(agents[0]);
+    }
+  }, [agents, currentAgent, setCurrentAgent]);
 
   // Single tab_opened analytics point — watches viewMode regardless of which
   // path triggered the change (TabBar click, sidebar nav, keyboard shortcut,
@@ -216,7 +224,7 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
                     />
                   </main>
                 </>
-              ) : (
+              ) : agents.length === 0 ? (
                 <div className="flex flex-1 flex-col items-center justify-center">
                   <Empty className="border-0">
                     <EmptyHeader>
@@ -231,6 +239,10 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
                       {t("shell:newAgent.dialogTitle")}
                     </Button>
                   </Empty>
+                </div>
+              ) : (
+                <div className="flex flex-1 flex-col items-center justify-center">
+                  <p className="text-muted-foreground text-sm">{t("shell:engineGate.starting")}</p>
                 </div>
               )}
             </main>
