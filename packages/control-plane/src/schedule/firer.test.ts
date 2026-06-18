@@ -60,6 +60,7 @@ function recordingChannel(): RuntimeChannel & { calls: { cid: string; text: stri
     async captureCredential() {
       return { ok: true, provider: "openai-codex" };
     },
+    async forgetCredential() {},
   };
 }
 
