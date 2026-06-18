@@ -3,10 +3,23 @@ import { tauriAgents, tauriAttachments, tauriPreferences, tauriRoutines, tauriWa
 import { useFeedStore } from "./feeds";
 import { useDraftStore } from "./drafts";
 import { analytics } from "../lib/analytics";
+import { selectCurrentAgent } from "../lib/agent-selection";
 import type { Agent } from "../lib/types";
 
 export interface CreatedAgent {
   agent: Agent;
+}
+
+function startAgentSideEffects(agent: Agent) {
+  tauriPreferences.set("last_agent_id", agent.id);
+  // Start file watcher for AI-native reactivity
+  tauriWatcher.start(agent.folderPath).catch((e) =>
+    console.error("[watcher] Failed to start:", e),
+  );
+  // Start routine scheduler for this agent
+  tauriRoutines.startScheduler(agent.folderPath).catch((e) =>
+    console.error("[routines] Failed to start scheduler:", e),
+  );
 }
 
 interface AgentState {
@@ -32,9 +45,11 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     try {
       const agents = await tauriAgents.list(workspaceId);
       const current = get().current;
-      const selected =
-        agents.find((a) => a.id === current?.id) ?? current;
+      const selected = selectCurrentAgent(agents, current);
       set({ agents, current: selected, loading: false });
+      if (selected && selected.id !== current?.id) {
+        startAgentSideEffects(selected);
+      }
     } catch (e) {
       console.error("[agents] Failed to load:", e);
       set({ loading: false });
@@ -43,15 +58,7 @@ export const useAgentStore = create<AgentState>((set, get) => ({
 
   setCurrent: (agent) => {
     set({ current: agent });
-    tauriPreferences.set("last_agent_id", agent.id);
-    // Start file watcher for AI-native reactivity
-    tauriWatcher.start(agent.folderPath).catch((e) =>
-      console.error("[watcher] Failed to start:", e),
-    );
-    // Start routine scheduler for this agent
-    tauriRoutines.startScheduler(agent.folderPath).catch((e) =>
-      console.error("[routines] Failed to start scheduler:", e),
-    );
+    startAgentSideEffects(agent);
   },
 
   create: async (workspaceId: string, name: string, configId: string, color?: string, claudeMd?: string, installedPath?: string, seeds?: Record<string, string>, existingPath?: string) => {
@@ -62,17 +69,14 @@ export const useAgentStore = create<AgentState>((set, get) => ({
       agents: [...s.agents, agent],
       current: agent,
     }));
-    tauriPreferences.set("last_agent_id", agent.id);
-    // Start file watcher so agent writes (CLAUDE.md, skills) trigger query invalidation
-    tauriWatcher.start(agent.folderPath).catch((e) =>
-      console.error("[watcher] Failed to start:", e),
-    );
+    startAgentSideEffects(agent);
     return { agent };
   },
 
   delete: async (workspaceId, id) => {
     // Resolve the agent path before deleting so we can clear its feed bucket.
     const agentPath = get().agents.find((a) => a.id === id)?.folderPath;
+    const wasCurrent = get().current?.id === id;
     await tauriAgents.delete(workspaceId, id);
     // Wipe any chat composer attachments scoped to this agent's chat.
     // Per-activity attachments are wiped via useDeleteActivity / handleDelete.
@@ -84,12 +88,16 @@ export const useAgentStore = create<AgentState>((set, get) => ({
     }
     // Clear the free-form chat draft for this agent.
     useDraftStore.getState().clearDraft(`chat-${id}`);
+    let nextCurrent: Agent | null = null;
     set((s) => {
       const agents = s.agents.filter((a) => a.id !== id);
-      const current =
-        s.current?.id === id ? agents[0] ?? null : s.current;
+      const current = wasCurrent ? agents[0] ?? null : s.current;
+      nextCurrent = current;
       return { agents, current };
     });
+    if (wasCurrent && nextCurrent) {
+      startAgentSideEffects(nextCurrent);
+    }
   },
 
   rename: async (workspaceId, id, newName) => {
