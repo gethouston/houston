@@ -5,7 +5,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
-import type { ToolCallRecord } from "@houston/runtime-client";
+import type { TokenUsage, ToolCallRecord } from "@houston/runtime-client";
 import { toWire } from "./wire";
 import { config } from "../config";
 import { authStorage, modelRegistry } from "../auth/storage";
@@ -100,12 +100,14 @@ async function execTurn(conv: Conversation, id: string, text: string, nonce?: st
   publish(id, { type: "user", data: { content: text, ts: Date.now(), nonce } });
 
   let assistantText = "";
+  let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
 
   const unsub = conv.session.subscribe((e: any) => {
     const wire = toWire(e);
     if (!wire) return;
     if (wire.type === "text") assistantText += wire.data;
+    else if (wire.type === "usage") usage = wire.data;
     else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
     else if (wire.type === "tool_end") {
       const t = tools[tools.length - 1];
@@ -116,10 +118,10 @@ async function execTurn(conv: Conversation, id: string, text: string, nonce?: st
 
   try {
     await conv.session.prompt(text);
-    appendAssistantMessage(id, assistantText, tools);
+    appendAssistantMessage(id, assistantText, tools, usage);
     publish(id, { type: "done", data: null });
   } catch (err) {
-    if (assistantText) appendAssistantMessage(id, assistantText, tools);
+    if (assistantText) appendAssistantMessage(id, assistantText, tools, usage);
     publish(id, { type: "error", data: { message: errMessage(err) } });
   } finally {
     unsub();

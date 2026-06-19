@@ -16,6 +16,7 @@ export type {
   Settings,
   ChatRole,
   ToolCallRecord,
+  TokenUsage,
   ChatMessage,
   ConversationSummary,
   ConversationHistory,

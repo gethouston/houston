@@ -4,6 +4,7 @@ import { config } from "../config";
 import type {
   ConversationHistory,
   ConversationSummary,
+  TokenUsage,
   ToolCallRecord,
 } from "@houston/runtime-client";
 import {
@@ -31,8 +32,13 @@ export function appendUserMessage(id: string, content: string) {
   appendUserMessageAt(dir, id, content);
 }
 
-export function appendAssistantMessage(id: string, content: string, tools?: ToolCallRecord[]) {
-  appendAssistantMessageAt(dir, id, content, tools);
+export function appendAssistantMessage(
+  id: string,
+  content: string,
+  tools?: ToolCallRecord[],
+  usage?: TokenUsage | null,
+) {
+  appendAssistantMessageAt(dir, id, content, tools, usage);
 }
 
 export function getHistory(id: string): ConversationHistory | null {

@@ -1,21 +1,13 @@
 {
   "button": {
-    "aria": "Abrir uso del contexto",
-    "label": "Contexto"
+    "aria": "Uso del contexto"
   },
-  "dialog": {
-    "title": "Uso del contexto",
-    "subtitle": "Qué tan llena está la memoria de {{model}} para esta conversación.",
-    "subtitleNoModel": "Qué tan llena está la memoria para esta conversación.",
-    "percentFull": "{{percent}}% lleno",
+  "card": {
+    "title": "Contexto",
+    "percent": "{{percent}}%",
     "usedOfTotal": "{{used}} de {{total}} tokens",
     "tokensUsed": "{{used}} tokens usados",
-    "free": "{{free}} libres",
-    "estimated": "Estimado. La ventana de contexto real de tu plan puede variar.",
-    "cached": "Reutilizado de la caché",
-    "lastReply": "Última respuesta",
     "empty": "Envía un mensaje y el uso del contexto aparecerá aquí.",
-    "unknownWindow": "Todavía no se conoce el tamaño del contexto de este modelo, así que la cantidad usada se muestra sin porcentaje.",
-    "close": "Cerrar"
+    "unknownWindow": "Todavía no se conoce el tamaño del contexto de este modelo, así que la cantidad usada se muestra sin porcentaje."
   }
 }
