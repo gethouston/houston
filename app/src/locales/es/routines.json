@@ -72,6 +72,11 @@
     "dayOfMonthLabel": "Día del mes",
     "runEvery": "Ejecutar cada",
     "enterNumber": "Ingresa un número",
+    "timePicker": {
+      "hour": "Hora",
+      "minute": "Minuto",
+      "period": "a. m./p. m."
+    },
     "summary": {
       "noSchedule": "Sin horario definido",
       "custom": "Horario personalizado",

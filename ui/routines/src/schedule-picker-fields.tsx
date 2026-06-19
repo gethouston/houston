@@ -1,6 +1,7 @@
 /**
- * Picker fields used by ScheduleBuilder — time, day-of-week, day-of-month,
- * and the friendly "every N minutes/hours/days" interval picker.
+ * Picker fields used by ScheduleBuilder — day-of-week, day-of-month, and the
+ * friendly "every N minutes/hours/days" interval picker. The clock-button time
+ * picker lives in time-picker.tsx.
  *
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
@@ -17,29 +18,7 @@ const inputClass = cn(
   "focus:outline-none focus:shadow-sm transition-shadow",
 )
 
-const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
-
-export function TimePicker({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (time: string) => void
-}) {
-  return (
-    <div>
-      <label className={labelClass}>{label}</label>
-      <input
-        type="time"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(inputClass, "w-full")}
-      />
-    </div>
-  )
-}
+export const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
 
 export function DayOfWeekPicker({
   label,

@@ -72,6 +72,11 @@
     "dayOfMonthLabel": "Day of month",
     "runEvery": "Run every",
     "enterNumber": "Enter a number",
+    "timePicker": {
+      "hour": "Hour",
+      "minute": "Minute",
+      "period": "AM/PM"
+    },
     "summary": {
       "noSchedule": "No schedule set",
       "custom": "Custom schedule",

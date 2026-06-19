@@ -76,6 +76,7 @@ export const DEFAULT_SCHEDULE_LABELS: ScheduleLabels = {
   dayOfMonthLabel: "Day of month",
   runEvery: "Run every",
   enterNumber: "Enter a number",
+  timePicker: { hour: "Hour", minute: "Minute", period: "AM/PM" },
   summary: DEFAULT_SCHEDULE_SUMMARY_LABELS,
 }
 

@@ -96,6 +96,8 @@ export interface ScheduleLabels {
   runEvery: string
   /** Validation summary shown when the custom interval count is empty/invalid. */
   enterNumber: string
+  /** Accessible names for the time picker's hour / minute / AM-PM columns. */
+  timePicker: { hour: string; minute: string; period: string }
   summary: ScheduleSummaryLabels
 }
 
