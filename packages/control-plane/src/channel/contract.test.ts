@@ -26,6 +26,8 @@ import type { WorkspaceCredential } from "../ports";
  *
  *   - captureCredential: ok:false ("not connected yet") before a connection,
  *     ok:true with the provider once connected.
+ *   - forgetCredential: removes the workspace credential from the store, so a
+ *     subsequent turn cannot re-serve it (connect-once logout).
  *   - dispatch serves the same /providers wire surface, and its `configured`
  *     flag reflects whether the workspace is connected.
  *   - fireTurn resolves on the happy path (a turn was accepted).
@@ -64,6 +66,9 @@ interface ChannelFixture {
   channel: RuntimeChannel;
   /** Bring the agent to the connected state via this channel's own mechanism. */
   connect: () => Promise<void>;
+  /** The central store both fixtures back the channel with — so the contract can
+   *  assert forgetCredential actually emptied it, channel-agnostically. */
+  credentials: MemoryCredentialStore;
 }
 
 /** Drive a RuntimeChannel.dispatch through a real HTTP server (it needs req/res). */
@@ -98,6 +103,16 @@ function runRuntimeChannelContract(name: string, make: () => ChannelFixture): vo
       const after = await channel.captureCredential(ctx);
       expect(after.ok).toBe(true);
       if (after.ok) expect(after.provider).toBe("openai-codex");
+    });
+
+    test("forgetCredential removes the workspace credential (logout)", async () => {
+      const { channel, connect, credentials } = make();
+      await connect();
+      expect(await credentials.get(ws.id, "openai-codex")).not.toBeNull();
+
+      // Logout: the central credential is gone, so the next turn can't re-serve it.
+      await channel.forgetCredential(ctx, "openai-codex");
+      expect(await credentials.get(ws.id, "openai-codex")).toBeNull();
     });
 
     test("dispatch serves /providers; `configured` reflects the connection", async () => {
@@ -179,6 +194,7 @@ function makeProxyFixture(): ChannelFixture {
   const channel = new ProxyChannel({ launcher, proxy, credentials });
   return {
     channel,
+    credentials,
     connect: async () => {
       // The agent runtime now holds a credential; capture pulls it into the
       // store + scrubs (the connect-once dance for a standing runtime).
@@ -238,6 +254,7 @@ function makeTurnFixture(): ChannelFixture {
   const channel = new TurnChannel(deps);
   return {
     channel,
+    credentials,
     connect: async () => {
       await credentials.put({
         workspaceId: ws.id,
