@@ -65,13 +65,31 @@
     "units": {
       "minutes": "minutos",
       "hours": "horas",
-      "days": "dias"
+      "days": "dias",
+      "weeks": "semanas",
+      "months": "meses"
+    },
+    "unitsSingular": {
+      "minutes": "minuto",
+      "hours": "hora",
+      "days": "dia",
+      "weeks": "semana",
+      "months": "mês"
     },
     "timeLabel": "Hora",
     "dayLabel": "Dia",
     "dayOfMonthLabel": "Dia do mês",
-    "runEvery": "Executar a cada",
+    "repeatEvery": "Repetir a cada",
+    "weekdaysLabel": "Nestes dias",
+    "weekdayShortcuts": {
+      "everyDay": "Todos os dias",
+      "weekdays": "Dias úteis",
+      "weekends": "Fins de semana"
+    },
+    "decrease": "Diminuir",
+    "increase": "Aumentar",
     "enterNumber": "Digite um número",
+    "pickDay": "Escolha pelo menos um dia",
     "summary": {
       "noSchedule": "Nenhum agendamento definido",
       "custom": "Agendamento personalizado",
@@ -86,7 +104,9 @@
       "everyNDays": "Roda a cada {n} dias às {time}",
       "weekdays": "Roda de segunda a sexta às {time}",
       "weekly": "Roda a cada {day} às {time}",
-      "monthly": "Roda no dia {n} de cada mês às {time}"
+      "weeklyOnDays": "Roda toda semana em {days} às {time}",
+      "monthly": "Roda no dia {n} de cada mês às {time}",
+      "everyNMonths": "Roda no dia {n} a cada {months} meses às {time}"
     }
   },
   "nextFire": {

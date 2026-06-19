@@ -35,7 +35,7 @@ export function ordinal(n: number): string {
 }
 
 /** Localized weekday names indexed 0 (Sun) – 6 (Sat), in the requested width. */
-function weekdayNames(locale: string, weekday: "short" | "long"): string[] {
+function weekdayNames(locale: string, weekday: "narrow" | "short" | "long"): string[] {
   const fmt = new Intl.DateTimeFormat(locale, { weekday, timeZone: "UTC" })
   // Jan 7 2024 (UTC) is a Sunday; +i walks the week.
   return Array.from({ length: 7 }, (_, i) =>
@@ -48,7 +48,21 @@ export function shortWeekdayNames(locale = "en-US"): string[] {
   return weekdayNames(locale, "short")
 }
 
+/** Narrow (single-letter) weekday names (S M T W T F S) for `locale`, 0–6. */
+export function narrowWeekdayNames(locale = "en-US"): string[] {
+  return weekdayNames(locale, "narrow")
+}
+
 /** Localized full weekday name for a 0 (Sun) – 6 (Sat) index. */
 export function weekdayName(dayOfWeek: number, locale = "en-US"): string {
   return weekdayNames(locale, "long")[dayOfWeek % 7]
+}
+
+/**
+ * Join names with the locale's conjunction list format:
+ * ["Mon","Wed","Fri"] → "Mon, Wed, and Fri" (en), "Lun, Mié y Vie" (es). Uses
+ * `Intl.ListFormat` so the connector localizes without per-language strings.
+ */
+export function joinList(items: string[], locale = "en-US"): string {
+  return new Intl.ListFormat(locale, { style: "long", type: "conjunction" }).format(items)
 }
