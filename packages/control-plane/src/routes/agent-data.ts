@@ -1,17 +1,13 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import {
-  applyActivityUpdate,
   applyRoutineUpdate,
-  createActivity,
   createRoutine,
   getPreference,
-  loadActivities,
   loadConfig,
   loadLearnings,
   loadRoutineRuns,
   loadRoutines,
   removeById,
-  saveActivities,
   saveConfig,
   saveLearnings,
   saveRoutines,
@@ -22,6 +18,7 @@ import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
 import type { WorkspacePaths } from "../paths";
+import { handleActivitiesData } from "./agent-data-activities";
 import { json, readJson } from "./http";
 
 // The cloud-layout root, kept as a convenience for cloud tests + callers that
@@ -74,42 +71,8 @@ export async function handleAgentData(
   const fireChange = () => emit?.(FAMILY_EVENT[family]!(ctx.agent.id));
 
   if (family === "activities") {
-    if (method === "GET" && !itemId) {
-      json(res, 200, await loadActivities(vfs, root));
-      return true;
-    }
-    if (method === "POST" && !itemId) {
-      const body = await readJson(req);
-      if (!body.title || typeof body.title !== "string") {
-        json(res, 400, { error: "missing 'title'" });
-        return true;
-      }
-      const { items } = await loadActivities(vfs, root);
-      const activity = createActivity(body, crypto.randomUUID(), nowIso);
-      await saveActivities(vfs, root, upsertById(items, activity));
-      fireChange();
-      json(res, 201, activity);
-      return true;
-    }
-    if ((method === "PATCH" || method === "DELETE") && itemId) {
-      const { items } = await loadActivities(vfs, root);
-      const current = items.find((a) => a.id === itemId);
-      if (!current) {
-        json(res, 404, { error: "activity not found" });
-        return true;
-      }
-      if (method === "PATCH") {
-        const next = applyActivityUpdate(current, await readJson(req), nowIso);
-        await saveActivities(vfs, root, upsertById(items, next));
-        fireChange();
-        json(res, 200, next);
-      } else {
-        await saveActivities(vfs, root, removeById(items, itemId).items);
-        fireChange();
-        json(res, 200, { ok: true });
-      }
-      return true;
-    }
+    await handleActivitiesData(vfs, root, ctx.agent.id, method, itemId, req, res, emit);
+    return true;
   }
 
   if (family === "routines") {
