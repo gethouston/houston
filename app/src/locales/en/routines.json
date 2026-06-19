@@ -5,7 +5,9 @@
     "emptyTitle": "Set it and forget it",
     "emptyDescription": "Routines fire on a schedule and only ping you when something actually needs attention.",
     "newRoutine": "New routine",
-    "descriptionShort": "Recurring tasks that fire on schedule and only ping you when something needs attention."
+    "descriptionShort": "Recurring tasks that fire on schedule and only ping you when something needs attention.",
+    "timezoneLabel": "Timezone",
+    "timezoneHint": "All your routines run in this timezone."
   },
   "editor": {
     "back": "Back to routines",
@@ -29,8 +31,6 @@
     "sectionWhen": "When it runs",
     "sectionBehavior": "Behavior",
     "sectionRecent": "Recent runs",
-    "timezoneLabel": "Timezone",
-    "accountDefault": "Account default · {tz}",
     "nextRun": "Next run {relative}",
     "schedulePreview": "Schedule preview",
     "schedulePreviewHint": "Pick a valid schedule to see when this routine will fire.",
@@ -117,12 +117,8 @@
     "yesterday": "Yesterday, {time}",
     "onDate": "{date}, {time}"
   },
-  "timezoneGate": {
-    "title": "What's your timezone?",
-    "description": "Routines run on a schedule. We need to know your zone before any of them fire, so 9am means your 9am.",
-    "timezoneLabel": "Timezone",
-    "detected": "Detected from your computer.",
-    "saving": "Saving…",
-    "confirm": "Confirm timezone"
+  "toasts": {
+    "timezoneSet": "Timezone set to {{zone}}",
+    "timezoneError": "Couldn't update the timezone"
   }
 }

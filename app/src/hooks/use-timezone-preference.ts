@@ -38,7 +38,7 @@ async function fetchOnce(): Promise<string | null> {
       // browser-detected one silently. Previously we showed a full-page
       // "What's your timezone?" gate that blocked the Routines tab. The
       // detected zone is almost always correct; users who need to change
-      // it later do so in Settings → Timezone.
+      // it later do so from the timezone picker in the Routines editor.
       if (!value) {
         const detected = detectTimezone();
         try {
@@ -81,7 +81,8 @@ export interface TimezoneState {
 /**
  * Returns the user's IANA timezone. On first call we auto-save the
  * browser-detected zone, so `timezone` is non-null from the first render
- * onwards (no "timezone gate" UX). Users can change it later in Settings.
+ * onwards (no "timezone gate" UX). Users can change it later from the
+ * timezone picker in the Routines editor.
  */
 export function useTimezonePreference(): TimezoneState {
   const [, force] = useState(0);

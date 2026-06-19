@@ -12,8 +12,6 @@ export interface Routine {
   enabled: boolean;
   suppress_when_silent: boolean;
   chat_mode: RoutineChatMode;
-  /** IANA timezone override; absent means the user's preference. */
-  timezone?: string | null;
   /** Integration slugs this routine uses (data carried for store agents). */
   integrations: string[];
   created_at: string;
@@ -28,7 +26,6 @@ export interface NewRoutine {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
-  timezone?: string | null;
   integrations?: string[];
 }
 
@@ -40,8 +37,6 @@ export interface RoutineUpdate {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
-  /** Set a string to override, `null` to clear, omit to leave unchanged. */
-  timezone?: string | null;
   integrations?: string[];
 }
 

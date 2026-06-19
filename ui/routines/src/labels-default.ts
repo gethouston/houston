@@ -14,7 +14,6 @@ import type {
   RoutineEditorLabels,
   RoutinesGridLabels,
   RoutineRowLabels,
-  TimezoneGateLabels,
 } from "./labels"
 
 export const DEFAULT_SCHEDULE_SUMMARY_LABELS: ScheduleSummaryLabels = {
@@ -101,8 +100,6 @@ export const DEFAULT_EDITOR_LABELS: RoutineEditorLabels = {
   sectionWhen: "When it runs",
   sectionBehavior: "Behavior",
   sectionRecent: "Recent runs",
-  timezoneLabel: "Timezone",
-  accountDefault: "Account default · {tz}",
   nextRun: "Next run {relative}",
   schedulePreview: "Schedule preview",
   schedulePreviewHint: "Pick a valid schedule to see when this routine will fire.",
@@ -122,6 +119,8 @@ export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {
   descriptionShort:
     "Recurring tasks that fire on schedule and only ping you when something needs attention.",
   newRoutine: "New routine",
+  timezoneLabel: "Timezone",
+  timezoneHint: "All your routines run in this timezone.",
 }
 
 export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
@@ -136,14 +135,4 @@ export const DEFAULT_ROW_LABELS: RoutineRowLabels = {
   ranDays: "ran {n}d ago",
   pauseRoutine: "Pause routine",
   resumeRoutine: "Resume routine",
-}
-
-export const DEFAULT_TIMEZONE_GATE_LABELS: TimezoneGateLabels = {
-  title: "What's your timezone?",
-  description:
-    "Routines run on a schedule. We need to know your zone before any of them fire, so 9am means your 9am.",
-  timezoneLabel: "Timezone",
-  detected: "Detected from your computer.",
-  saving: "Saving…",
-  confirm: "Confirm timezone",
 }

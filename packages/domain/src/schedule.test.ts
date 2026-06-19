@@ -40,32 +40,43 @@ test("nextRun without tz uses cron semantics in the host's local zone", () => {
 });
 
 test("dueAt fires when a scheduled instant falls in (since, now]", () => {
-  const r = routine({ schedule: "0 14 * * *", timezone: null }); // 14:00 UTC daily
+  const r = routine({ schedule: "0 14 * * *" }); // 14:00 daily
   const since = new Date("2026-06-12T13:59:00.000Z");
   const now = new Date("2026-06-12T14:00:30.000Z");
-  const at = dueAt(r, since, now);
+  const at = dueAt(r, since, now, "UTC");
   expect(at?.toISOString()).toBe("2026-06-12T14:00:00.000Z");
 });
 
+test("dueAt evaluates the schedule in the account-wide timezone, not UTC", () => {
+  // The routine has no zone of its own; the driver passes the single
+  // account-wide zone. 9am Bogota (UTC-5) is 14:00 UTC, so the 14:00 instant is
+  // due — while the same routine/window is NOT due when read as 9am UTC.
+  const r = routine({ schedule: "0 9 * * *" });
+  const since = new Date("2026-06-12T13:59:00.000Z");
+  const now = new Date("2026-06-12T14:00:30.000Z");
+  expect(dueAt(r, since, now, "America/Bogota")?.toISOString()).toBe("2026-06-12T14:00:00.000Z");
+  expect(dueAt(r, since, now, "UTC")).toBeNull();
+});
+
 test("dueAt returns null when the next fire-time is still in the future", () => {
-  const r = routine({ schedule: "0 14 * * *", timezone: null });
+  const r = routine({ schedule: "0 14 * * *" });
   const since = new Date("2026-06-12T10:00:00.000Z");
   const now = new Date("2026-06-12T10:05:00.000Z");
-  expect(dueAt(r, since, now)).toBeNull();
+  expect(dueAt(r, since, now, "UTC")).toBeNull();
 });
 
 test("dueAt never fires a disabled routine", () => {
   const r = routine({ schedule: "* * * * *", enabled: false });
-  expect(dueAt(r, new Date(NOW), new Date("2026-06-12T12:05:00.000Z"))).toBeNull();
+  expect(dueAt(r, new Date(NOW), new Date("2026-06-12T12:05:00.000Z"), "UTC")).toBeNull();
 });
 
 test("dueAt returns the FIRST missed instant (one catch-up, deterministic across replicas)", () => {
   // Hourly routine; scheduler was down 12:00→15:30. The first missed instant is
   // 13:00 (since 12:30), the same value any replica computes → safe dedup key.
-  const r = routine({ schedule: "0 * * * *", timezone: null });
+  const r = routine({ schedule: "0 * * * *" });
   const since = new Date("2026-06-12T12:30:00.000Z");
   const now = new Date("2026-06-12T15:30:00.000Z");
-  expect(dueAt(r, since, now)?.toISOString()).toBe("2026-06-12T13:00:00.000Z");
+  expect(dueAt(r, since, now, "UTC")?.toISOString()).toBe("2026-06-12T13:00:00.000Z");
 });
 
 test("routineConversationId: shared reuses one chat, per_run is unique per run", () => {

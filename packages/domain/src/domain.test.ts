@@ -1,4 +1,5 @@
 import { test, expect } from "bun:test";
+import type { RoutineUpdate } from "@houston/protocol";
 import type { TextStore } from "./store";
 import { loadJson } from "./store";
 import { docKey, schemaKey, seedSchemas } from "./layout";
@@ -97,7 +98,6 @@ test("routines: schema defaults applied on create and on read of sparse entries"
   expect(r.enabled).toBe(true);
   expect(r.chat_mode).toBe("shared");
   expect(r.integrations).toEqual([]);
-  expect(r.timezone).toBeNull();
   await saveRoutines(store, ROOT, [r]);
 
   // A sparse, hand-written entry gains defaults on read.
@@ -111,12 +111,54 @@ test("routines: schema defaults applied on create and on read of sparse entries"
   expect(items[0]!.chat_mode).toBe("shared");
 });
 
-test("routine update: timezone null clears, undefined leaves", () => {
-  const r = createRoutine({ name: "N", prompt: "p", schedule: "0 9 * * *", timezone: "America/Bogota" }, "r", NOW);
-  const cleared = applyRoutineUpdate(r, { timezone: null }, NOW);
-  expect(cleared.timezone).toBeNull();
-  const untouched = applyRoutineUpdate(r, { name: "M" }, NOW);
-  expect(untouched.timezone).toBe("America/Bogota");
+test("routine update: defined fields overwrite, undefined leaves untouched", () => {
+  const r = createRoutine({ name: "N", prompt: "p", schedule: "0 9 * * *" }, "r", NOW);
+  const renamed = applyRoutineUpdate(r, { name: "M" }, "2026-06-12T13:00:00.000Z");
+  expect(renamed.name).toBe("M");
+  expect(renamed.prompt).toBe("p"); // untouched
+  expect(renamed.updated_at).toBe("2026-06-12T13:00:00.000Z");
+  expect(applyRoutineUpdate(r, { name: undefined }, NOW).name).toBe("N"); // undefined leaves it
+});
+
+test("routine update ignores a stray legacy timezone key (HOU-470)", () => {
+  // The per-routine override was removed (one account-wide zone). A client still
+  // sending it must not get it written back onto the routine.
+  const r = createRoutine({ name: "N", prompt: "p", schedule: "0 9 * * *" }, "r", NOW);
+  const next = applyRoutineUpdate(r, { timezone: "America/Bogota" } as unknown as RoutineUpdate, NOW);
+  expect("timezone" in next).toBe(false);
+});
+
+test("a stray on-disk per-routine timezone is dropped on read and not re-saved (HOU-470)", async () => {
+  const store = memStore();
+  // A routine written by an older build still carries a `timezone` key. The
+  // reader must drop it (no migration) and never write it back out — the
+  // idempotent cleanup that mirrors the Rust engine's serde drop.
+  await store.writeText(
+    docKey(ROOT, "routines"),
+    JSON.stringify([
+      {
+        id: "legacy-tz",
+        name: "Old",
+        description: "",
+        prompt: "p",
+        schedule: "0 9 * * *",
+        enabled: true,
+        suppress_when_silent: true,
+        chat_mode: "shared",
+        timezone: "America/Bogota",
+        integrations: [],
+        created_at: "2026-05-01T00:00:00.000Z",
+        updated_at: "2026-05-01T00:00:00.000Z",
+      },
+    ]),
+  );
+  const { items } = await loadRoutines(store, ROOT);
+  expect(items).toHaveLength(1);
+  expect(items[0]!.id).toBe("legacy-tz");
+  expect("timezone" in items[0]!).toBe(false);
+
+  await saveRoutines(store, ROOT, items);
+  expect(store.dump().get(docKey(ROOT, "routines"))!).not.toContain("timezone");
 });
 
 test("config: object round-trip; junk reported as empty + diagnostic", async () => {

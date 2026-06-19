@@ -40,13 +40,6 @@
     "title": "Provedor de IA",
     "description": "O Houston usa <emph>sua própria</emph> assinatura. Nunca vemos suas credenciais."
   },
-  "timezone": {
-    "title": "Fuso horário",
-    "description": "Usado quando suas rotinas disparam, 9h significa 9h neste fuso.",
-    "label": "Fuso IANA",
-    "placeholder": "ex. America/Sao_Paulo",
-    "useDetected": "Usar o detectado ({{zone}})"
-  },
   "appearance": {
     "title": "Aparência",
     "light": "Claro",
@@ -85,7 +78,6 @@
   "toasts": {
     "workspaceRenamed": "Espaço de trabalho renomeado",
     "providerSwitched": "Mudou para {{provider}} ({{model}})",
-    "timezoneSet": "Fuso horário definido como {{zone}}",
     "versionCopied": "Versão copiada",
     "versionCopyFailed": "Não foi possível copiar a versão"
   }
