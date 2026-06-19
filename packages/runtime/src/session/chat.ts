@@ -9,7 +9,7 @@ import type { ToolCallRecord } from "@houston/runtime-client";
 import { toWire } from "./wire";
 import { config } from "../config";
 import { authStorage, modelRegistry } from "../auth/storage";
-import { resolveModel } from "../ai/providers";
+import { resolveModel, activeProvider } from "../ai/providers";
 import { makeAgentLoader } from "./resource-loader";
 import { appendAssistantMessage, appendUserMessage } from "../store/conversations";
 import { publish } from "./bus";
@@ -141,6 +141,21 @@ export async function runTurn(id: string, text: string, nonce?: string): Promise
     await syncServedCredential();
   } catch (err) {
     console.error("[serve] credential sync failed:", errMessage(err));
+  }
+
+  // Gate the turn on a connected provider. A conversation's pi session is cached
+  // (getConversation), so resolveModel()'s "No provider connected" guard fires
+  // ONLY the first time a conversation is opened. A conversation created while
+  // connected and then logged out would otherwise return the cached session and
+  // reach session.prompt() with a dead credential, which never produces a
+  // terminal event — the chat spins forever. Surface the error up-front instead,
+  // every turn, so logout actually stops the agent (no silent hang).
+  if (!activeProvider()) {
+    publish(id, {
+      type: "error",
+      data: { message: "No provider connected. Log in with Claude or Codex first." },
+    });
+    return;
   }
 
   let conv: Conversation;
