@@ -13,7 +13,6 @@ import { openAgentHref } from "../../lib/open-href";
 import { selectArchived } from "../../lib/mission-selection";
 import type { TabProps } from "../../lib/types";
 import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { HoustonThinkingIndicator } from "../shell/experience-card";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
 import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
@@ -150,7 +149,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           cardAvatar={<AgentCardAvatar color={agent.color} />}
-          thinkingIndicator={<HoustonThinkingIndicator />}
+          thinkingIndicator={panel.thinkingIndicator}
+          endOfTurnIndicator={panel.endOfTurnIndicator}
           panelAgentName={agent.name}
           panelAvatar={<AgentPanelAvatar color={agent.color} running={false} />}
           cardLabels={{

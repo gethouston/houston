@@ -1,11 +1,15 @@
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Shimmer } from "@houston-ai/chat";
+import { ChatStatusLine, Shimmer } from "@houston-ai/chat";
 import type { ChatPanelProps } from "@houston-ai/chat";
+import { HoustonLogo } from "./shell/experience-card";
 
 export function useChatDisplayLabels(): Pick<
   ChatPanelProps,
-  "processLabels" | "getThinkingMessage"
+  | "processLabels"
+  | "getThinkingMessage"
+  | "thinkingIndicator"
+  | "endOfTurnIndicator"
 > {
   const { t } = useTranslation("chat");
   const processLabels = useMemo(
@@ -29,5 +33,28 @@ export function useChatDisplayLabels(): Pick<
     [t],
   );
 
-  return { processLabels, getThinkingMessage };
+  const thinkingIndicator = useMemo(
+    () => (
+      <div className="py-1 text-muted-foreground/65">
+        <ChatStatusLine label={t("process.active")} active />
+      </div>
+    ),
+    [t],
+  );
+
+  const endOfTurnIndicator = useMemo(
+    () => (
+      <div className="py-2 flex items-center">
+        <HoustonLogo size={20} />
+      </div>
+    ),
+    [],
+  );
+
+  return {
+    processLabels,
+    getThinkingMessage,
+    thinkingIndicator,
+    endOfTurnIndicator,
+  };
 }

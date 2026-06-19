@@ -1,7 +1,7 @@
 import type { AgentConfig } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { AgentAvatar } from "./agent-avatar";
-export { AgentAvatar, HoustonLogo, HoustonThinkingIndicator, getAgentIcon, getAgentIconColor, getHoustonLogo, isLightColor } from "./agent-avatar";
+export { AgentAvatar, HoustonLogo, getAgentIcon, getAgentIconColor, getHoustonLogo, isLightColor } from "./agent-avatar";
 
 interface AgentCardProps {
   config: AgentConfig;

@@ -94,6 +94,8 @@ export interface AIBoardProps {
   renderTurnSummary?: import("@houston-ai/chat").ChatPanelProps["renderTurnSummary"]
   /** Custom renderer for system messages. Forwarded to ChatPanel. */
   renderSystemMessage?: import("@houston-ai/chat").ChatPanelProps["renderSystemMessage"]
+  /** Static glyph shown after the agent's reply once the turn settles. */
+  endOfTurnIndicator?: import("@houston-ai/chat").ChatPanelProps["endOfTurnIndicator"]
   /** Map active feed items before rendering. */
   mapFeedItems?: (ctx: { sessionKey: string; items: FeedItem[] }) => FeedItem[]
   /** Node rendered after the last chat message. */
@@ -262,6 +264,7 @@ export function AIBoard({
   toolLabels,
   renderTurnSummary,
   renderSystemMessage,
+  endOfTurnIndicator,
   mapFeedItems,
   afterMessages,
   renderUserMessage,
@@ -611,6 +614,7 @@ export function AIBoard({
           toolLabels={toolLabels}
           renderTurnSummary={renderTurnSummary}
           renderSystemMessage={renderSystemMessage}
+          endOfTurnIndicator={endOfTurnIndicator}
           renderUserMessage={renderUserMessage}
           afterMessages={renderedAfterMessages}
           onNotice={onNotice}
