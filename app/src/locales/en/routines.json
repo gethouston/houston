@@ -37,7 +37,9 @@
     "notifyTitle": "Only notify when relevant",
     "notifyDescription": "If the agent has nothing to report, the run won't surface on the board.",
     "chatTitle": "Keep results in one chat",
-    "chatDescription": "Every run adds to the same chat. Turn this off to start a new chat each time this routine runs."
+    "chatDescription": "Every run adds to the same chat. Turn this off to start a new chat each time this routine runs.",
+    "modelTitle": "Model",
+    "modelDescription": "Pick the model and reasoning effort this routine runs on."
   },
   "row": {
     "untitled": "Untitled",

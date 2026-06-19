@@ -192,7 +192,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     // Start a turn. Fire-and-forget: the turn's events arrive on the events
     // stream above (runTurn never rejects — failures surface as `error` events).
     if (method === "POST" && action === "messages") {
-      const { text, nonce } = await readJson(req);
+      const { text, nonce, model, effort } = await readJson(req);
       if (!text || typeof text !== "string") {
         return json(res, 400, { error: "missing 'text'" });
       }
@@ -204,7 +204,13 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       if (!(await ensureProviderForTurn())) {
         return json(res, 409, { error: "No provider connected. Log in with Claude or Codex first." });
       }
-      void runTurn(id, text, typeof nonce === "string" ? nonce : undefined);
+      // model/effort ride on a routine-fired message (a routine's pin); a normal
+      // user message omits them, leaving the session's current model/effort.
+      const pin = {
+        model: typeof model === "string" ? model : undefined,
+        effort: typeof effort === "string" ? effort : undefined,
+      };
+      void runTurn(id, text, typeof nonce === "string" ? nonce : undefined, pin);
       return json(res, 202, { ok: true, id });
     }
   }

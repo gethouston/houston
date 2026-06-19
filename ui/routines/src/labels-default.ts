@@ -126,6 +126,9 @@ export const DEFAULT_EDITOR_LABELS: RoutineEditorLabels = {
   chatTitle: "Keep results in one chat",
   chatDescription:
     "Every run adds to the same chat. Turn this off to start a new chat each time this routine runs.",
+  modelTitle: "Model",
+  modelDescription:
+    "Pick the model and reasoning effort this routine runs on.",
 }
 
 export const DEFAULT_GRID_LABELS: RoutinesGridLabels = {

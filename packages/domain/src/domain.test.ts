@@ -98,6 +98,10 @@ test("routines: schema defaults applied on create and on read of sparse entries"
   expect(r.enabled).toBe(true);
   expect(r.chat_mode).toBe("shared");
   expect(r.integrations).toEqual([]);
+  // No pin given → provider/model/effort are null (inherit the agent default).
+  expect(r.provider).toBeNull();
+  expect(r.model).toBeNull();
+  expect(r.effort).toBeNull();
   await saveRoutines(store, ROOT, [r]);
 
   // A sparse, hand-written entry gains defaults on read.
@@ -159,6 +163,32 @@ test("a stray on-disk per-routine timezone is dropped on read and not re-saved (
 
   await saveRoutines(store, ROOT, items);
   expect(store.dump().get(docKey(ROOT, "routines"))!).not.toContain("timezone");
+});
+
+test("routine provider/model/effort: pinned on create, cleared by null, left by undefined", () => {
+  const pinned = createRoutine(
+    { name: "Nightly", prompt: "p", schedule: "0 2 * * *", provider: "anthropic", model: "claude-opus-4-8", effort: "high" },
+    "r",
+    NOW,
+  );
+  expect(pinned.provider).toBe("anthropic");
+  expect(pinned.model).toBe("claude-opus-4-8");
+  expect(pinned.effort).toBe("high");
+
+  // A picked model/effort updates the pin; another field's update leaves them.
+  const repinned = applyRoutineUpdate(pinned, { model: "gpt-5.5", effort: "xhigh" }, NOW);
+  expect(repinned.model).toBe("gpt-5.5");
+  expect(repinned.effort).toBe("xhigh");
+  expect(repinned.provider).toBe("anthropic");
+
+  // Explicit null clears back to inherit; undefined leaves unchanged.
+  const cleared = applyRoutineUpdate(pinned, { provider: null, model: null, effort: null }, NOW);
+  expect(cleared.provider).toBeNull();
+  expect(cleared.model).toBeNull();
+  expect(cleared.effort).toBeNull();
+  const untouched = applyRoutineUpdate(pinned, { name: "Renamed" }, NOW);
+  expect(untouched.model).toBe("claude-opus-4-8");
+  expect(untouched.effort).toBe("high");
 });
 
 test("config: object round-trip; junk reported as empty + diagnostic", async () => {

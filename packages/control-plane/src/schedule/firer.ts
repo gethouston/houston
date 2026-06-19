@@ -17,10 +17,12 @@ export class ChannelRoutineFirer implements RoutineFirer {
     if (!channel) throw new Error(`${job.workspace.runtime} runtime not configured`);
     // The suppression instruction (when opted in) rides on the prompt so the
     // agent knows to emit ROUTINE_OK for a silent run — reconcile reads it back.
+    // The routine's model/effort pins ride alongside (absent = inherit).
     await channel.fireTurn(
       { workspace: job.workspace, agent: job.agent },
       job.conversationId,
       routinePrompt(job.routine),
+      { model: job.routine.model, effort: job.routine.effort },
     );
   }
 }

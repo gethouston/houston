@@ -1,7 +1,46 @@
 import type { Routine, RoutineFormData, RoutineRun } from "@houston-ai/routines";
+import {
+  validProviderOrNull,
+  validModelOrNull,
+  validEffortOrDefault,
+  getDefaultModel,
+  normalizeLegacyModel,
+} from "../../lib/providers";
 
 /** Editor view state for the Routines tab. */
 export type View = { type: "grid" } | { type: "editor"; editId?: string };
+
+/**
+ * Provider + model the editor's model picker should display: the routine's own
+ * pin if set, else the agent's configured default, else the platform default.
+ * Pure so the resolution stays out of the tab component (it always returns
+ * concrete ids the picker can render).
+ */
+export function routineModelPickerDefaults(
+  form: RoutineFormData,
+  agentConfig:
+    | { provider?: string | null; model?: string | null; effort?: string | null }
+    | undefined,
+): { provider: string; model: string; effort: string | undefined } {
+  const agentModel = normalizeLegacyModel(agentConfig?.model ?? null);
+  const provider =
+    validProviderOrNull(form.provider ?? null) ??
+    validProviderOrNull(agentConfig?.provider ?? null) ??
+    "anthropic";
+  const model =
+    validModelOrNull(provider, form.model ?? null) ??
+    validModelOrNull(provider, agentModel) ??
+    getDefaultModel(provider);
+  // Effort is validated against the resolved model: the routine's pin if the
+  // model accepts it, else the agent's effort, else the model's default —
+  // `undefined` for models with no effort control, so the picker hides.
+  const effort = validEffortOrDefault(
+    provider,
+    model,
+    form.effort ?? agentConfig?.effort ?? null,
+  );
+  return { provider, model, effort };
+}
 
 /** Most recent run per routine id, keyed by `routine_id`. */
 export function latestRunByRoutine(
@@ -27,6 +66,10 @@ export const EMPTY_FORM: RoutineFormData = {
   suppress_when_silent: true,
   chat_mode: "shared",
   integrations: [],
+  // null = inherit the agent's provider/model/effort until the user picks.
+  provider: null,
+  model: null,
+  effort: null,
 };
 
 function sameStringList(a: string[], b: string[]): boolean {
@@ -47,6 +90,9 @@ export function formMatchesRoutine(
     form.schedule === source.schedule &&
     form.suppress_when_silent === source.suppress_when_silent &&
     form.chat_mode === source.chat_mode &&
+    (form.provider ?? null) === (source.provider ?? null) &&
+    (form.model ?? null) === (source.model ?? null) &&
+    (form.effort ?? null) === (source.effort ?? null) &&
     sameStringList(form.integrations, source.integrations)
   );
 }
@@ -61,6 +107,9 @@ export function routineToFormData(routine: Routine): RoutineFormData {
     suppress_when_silent: routine.suppress_when_silent,
     chat_mode: routine.chat_mode ?? "shared",
     integrations: routine.integrations ?? [],
+    provider: routine.provider ?? null,
+    model: routine.model ?? null,
+    effort: routine.effort ?? null,
   };
 }
 

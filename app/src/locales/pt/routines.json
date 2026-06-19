@@ -37,7 +37,9 @@
     "notifyTitle": "Avisar só quando for relevante",
     "notifyDescription": "Se o agente não tiver nada a relatar, a execução não vai aparecer no quadro.",
     "chatTitle": "Manter os resultados em um só chat",
-    "chatDescription": "Cada execução é adicionada ao mesmo chat. Desative para abrir um novo chat cada vez que esta rotina rodar."
+    "chatDescription": "Cada execução é adicionada ao mesmo chat. Desative para abrir um novo chat cada vez que esta rotina rodar.",
+    "modelTitle": "Modelo",
+    "modelDescription": "Escolha o modelo e o nível de esforço de raciocínio que executa esta rotina."
   },
   "row": {
     "untitled": "Sem título",

@@ -21,6 +21,7 @@ import {
 } from "../../hooks/queries";
 import { useTimezonePreference } from "../../hooks/use-timezone-preference";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
+import { RoutineModelControls } from "./routine-model-controls";
 import { useUIStore } from "../../stores/ui";
 import { analytics } from "../../lib/analytics";
 import type { TabProps } from "../../lib/types";
@@ -136,6 +137,15 @@ export default function RoutinesTab({ agent }: TabProps) {
     [cancelRun],
   );
 
+  // Single patch-merge for editor field edits, shared by RoutineEditor and the
+  // model/effort controls. A picked provider/model/effort pins it on the form;
+  // untouched fields stay null so the run inherits the agent's config.
+  const handleFormChange = useCallback(
+    (patch: Partial<RoutineFormData>) =>
+      setForm((prev) => ({ ...prev, ...patch })),
+    [],
+  );
+
   // The timezone is a single account-wide preference (not per-routine), so the
   // routines list's picker writes straight to it. Changing it re-times every
   // routine, which the engine scheduler picks up on the next sync.
@@ -178,7 +188,7 @@ export default function RoutinesTab({ agent }: TabProps) {
     return (
       <RoutineEditor
         value={form}
-        onChange={(patch) => setForm((prev) => ({ ...prev, ...patch }))}
+        onChange={handleFormChange}
         onBack={() => setView({ type: "grid" })}
         onSubmit={handleSubmit}
         routine={editing}
@@ -196,6 +206,13 @@ export default function RoutinesTab({ agent }: TabProps) {
         onDelete={editing ? () => handleDelete(editing.id) : undefined}
         accountTimezone={tz.timezone}
         hasChanges={!formMatchesRoutine(form, baseline)}
+        modelPicker={
+          <RoutineModelControls
+            agentPath={path}
+            form={form}
+            onChange={handleFormChange}
+          />
+        }
         labels={labels.editor}
         scheduleLabels={labels.schedule}
         nextFireLabels={labels.nextFire}

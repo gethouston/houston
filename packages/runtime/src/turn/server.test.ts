@@ -139,6 +139,30 @@ test("a sync failure surfaces as the turn's error — never a quiet done", async
   }
 });
 
+test("a routine's model/effort pin reaches the pi turn", async () => {
+  // Capture the pin the server forwards to runPiTurn (8th arg).
+  let seen: { model?: string | null; effort?: string | null } | undefined;
+  const capture: typeof runPiTurn = async (_root, _cid, text, _provider, emit, _signal, _nonce, pin) => {
+    seen = pin;
+    emit({ type: "user", data: { content: text, ts: 1 } });
+    return {};
+  };
+  const s = createTurnServer({ store, token: "", runTurn: capture });
+  await new Promise<void>((r) => s.listen(0, "127.0.0.1", () => r()));
+  const addr = s.address();
+  const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
+  try {
+    await fetch(`${b}/turn`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(turnBody({ model: "claude-opus-4-8", effort: "high" })),
+    });
+    expect(seen).toEqual({ model: "claude-opus-4-8", effort: "high" });
+  } finally {
+    s.close();
+  }
+});
+
 test("health endpoint reports turn mode", async () => {
   const r = await fetch(`${base}/health`);
   expect(((await r.json()) as { mode: string }).mode).toBe("turn");

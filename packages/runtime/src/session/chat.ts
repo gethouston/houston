@@ -10,6 +10,7 @@ import { toWire } from "./wire";
 import { config } from "../config";
 import { authStorage, modelRegistry } from "../auth/storage";
 import { resolveModel, activeProvider } from "../ai/providers";
+import { toThinkingLevel } from "../ai/effort";
 import { makeAgentLoader } from "./resource-loader";
 import { appendAssistantMessage, appendUserMessage } from "../store/conversations";
 import { publish } from "./bus";
@@ -90,12 +91,18 @@ async function getConversation(id: string): Promise<Conversation> {
 }
 
 
+/** A routine's pinned model/effort for this turn. Absent = keep the session's current. */
+export interface TurnPin {
+  model?: string | null;
+  effort?: string | null;
+}
+
 /**
  * Execute one turn: record the user + assistant messages durably and publish
  * every event to the conversation's bus. Self-contained: any failure is published
  * as an `error` event and never rethrown, so the per-conversation queue survives.
  */
-async function execTurn(conv: Conversation, id: string, text: string, nonce?: string) {
+async function execTurn(conv: Conversation, id: string, text: string, nonce?: string, pin?: TurnPin) {
   appendUserMessage(id, text);
   publish(id, { type: "user", data: { content: text, ts: Date.now(), nonce } });
 
@@ -117,6 +124,14 @@ async function execTurn(conv: Conversation, id: string, text: string, nonce?: st
   });
 
   try {
+    // A routine can pin a model/effort for its run. Re-point the (possibly
+    // shared) session before prompting; pi clamps the thinking level to the
+    // model. A bad model id throws here → surfaces as the turn's error event.
+    if (pin?.model) await conv.session.setModel(resolveModel(pin.model));
+    if (pin?.effort) {
+      const level = toThinkingLevel(pin.effort);
+      if (level) conv.session.setThinkingLevel(level);
+    }
     await conv.session.prompt(text);
     appendAssistantMessage(id, assistantText, tools, usage);
     publish(id, { type: "done", data: null });
@@ -154,7 +169,7 @@ export async function ensureProviderForTurn(): Promise<string | null> {
   return activeProvider();
 }
 
-export async function runTurn(id: string, text: string, nonce?: string): Promise<void> {
+export async function runTurn(id: string, text: string, nonce?: string, pin?: TurnPin): Promise<void> {
   // The message route already synced the credential and confirmed a provider via
   // ensureProviderForTurn. Re-check here as a cheap guard for the narrow window
   // where the provider is logged out mid-turn: getConversation returns a CACHED
@@ -178,7 +193,7 @@ export async function runTurn(id: string, text: string, nonce?: string): Promise
     return;
   }
 
-  const run = conv.queue.then(() => execTurn(conv, id, text, nonce));
+  const run = conv.queue.then(() => execTurn(conv, id, text, nonce, pin));
   // Keep the queue chain alive past a turn. execTurn already surfaces its own
   // failure as an `error` event, so this guard never swallows a user-visible one.
   conv.queue = run.catch(() => {});

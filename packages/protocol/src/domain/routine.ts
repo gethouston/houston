@@ -12,6 +12,12 @@ export interface Routine {
   enabled: boolean;
   suppress_when_silent: boolean;
   chat_mode: RoutineChatMode;
+  /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
+  provider?: string | null;
+  /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
+  effort?: string | null;
   /** Integration slugs this routine uses (data carried for store agents). */
   integrations: string[];
   created_at: string;
@@ -26,6 +32,12 @@ export interface NewRoutine {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
+  /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
+  provider?: string | null;
+  /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
+  effort?: string | null;
   integrations?: string[];
 }
 
@@ -37,6 +49,12 @@ export interface RoutineUpdate {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
+  /** Provider id to pin; `null` clears (back to inherit), omit to leave unchanged. */
+  provider?: string | null;
+  /** Model to pin; `null` clears (back to inherit), omit to leave unchanged. */
+  model?: string | null;
+  /** Reasoning effort to pin; `null` clears (back to inherit), omit to leave unchanged. */
+  effort?: string | null;
   integrations?: string[];
 }
 

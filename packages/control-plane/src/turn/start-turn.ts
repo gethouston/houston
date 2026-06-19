@@ -1,6 +1,6 @@
 import type { ServerResponse } from "node:http";
 import type { Agent, Workspace } from "../domain/types";
-import type { WorkspaceCredential } from "../ports";
+import type { TurnPin, WorkspaceCredential } from "../ports";
 import { isExpiring } from "../credentials/refresh";
 import { json, prefixFor, PROVIDER, type TurnDeps } from "./deps";
 import { TurnQuotaError } from "./quota";
@@ -46,6 +46,7 @@ export async function dispatchTurn(
   cid: string,
   text: string,
   nonce: string | undefined,
+  pin?: TurnPin,
 ): Promise<TurnStart> {
   let release: () => Promise<void>;
   try {
@@ -72,6 +73,9 @@ export async function dispatchTurn(
           conversationId: cid,
           text,
           nonce,
+          // Routine model/effort pins (omitted when absent → runtime inherits).
+          ...(pin?.model ? { model: pin.model } : {}),
+          ...(pin?.effort ? { effort: pin.effort } : {}),
           gcsPrefix: prefix,
           credential: cred
             ? {

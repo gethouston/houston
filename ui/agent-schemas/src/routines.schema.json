@@ -26,6 +26,9 @@
         "default": [],
         "description": "Composio toolkit slugs this routine uses (e.g. ['gmail', 'slack'])."
       },
+      "provider": { "type": ["string", "null"], "description": "Provider id override; null/absent means inherit the agent's provider." },
+      "model": { "type": ["string", "null"], "description": "Model override; null/absent means inherit the agent's model." },
+      "effort": { "type": ["string", "null"], "description": "Reasoning-effort override; null/absent means inherit the agent's effort." },
       "created_at": { "type": "string", "format": "date-time" },
       "updated_at": { "type": "string", "format": "date-time" }
     },

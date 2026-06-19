@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TokenUsage, ToolCallRecord, WireEvent } from "@houston/runtime-client";
 import { config } from "../config";
+import { toThinkingLevel } from "../ai/effort";
 import { makeAgentLoader } from "../session/resource-loader";
 import { toWire } from "../session/wire";
 import { CLAMPED_FILE_TOOL_NAMES, makeClampedFileTools } from "../session/tools/clamped-fs";
@@ -29,8 +30,13 @@ import { appendAssistantMessageAt, appendUserMessageAt } from "../store/conversa
 
 type Settings = { activeProvider?: string; models?: Record<string, string> };
 
-/** Model for this turn: per-agent settings.json beats the env default. */
-function resolveTurnModel(dataDir: string, provider: string) {
+/**
+ * Model for this turn. Precedence: an explicit per-turn override (a routine's
+ * pinned model) beats the agent's settings.json, which beats the env default.
+ * `getModel` throws for a model id the provider doesn't offer — we let it
+ * propagate so a bad pin surfaces as the turn's error, never a silent fallback.
+ */
+function resolveTurnModel(dataDir: string, provider: string, override?: string | null) {
   let settings: Settings = {};
   const f = join(dataDir, "settings.json");
   if (existsSync(f)) {
@@ -41,11 +47,18 @@ function resolveTurnModel(dataDir: string, provider: string) {
     }
   }
   const fallback = provider === "anthropic" ? config.model : config.codexModel;
-  return getModel(provider as never, (settings.models?.[provider] ?? fallback) as never);
+  const modelId = override || settings.models?.[provider] || fallback;
+  return getModel(provider as never, modelId as never);
 }
 
 export interface TurnOutcome {
   error?: string;
+}
+
+/** Per-turn model/effort pin (a routine's, when it pinned them). Absent = inherit. */
+export interface TurnModelPin {
+  model?: string | null;
+  effort?: string | null;
 }
 
 export async function runPiTurn(
@@ -56,6 +69,7 @@ export async function runPiTurn(
   emit: (e: WireEvent) => void,
   signal: AbortSignal | undefined,
   nonce?: string,
+  pin?: TurnModelPin,
 ): Promise<TurnOutcome> {
   const workspaceDir = join(root, "workspace");
   const dataDir = join(root, "data");
@@ -83,10 +97,15 @@ export async function runPiTurn(
         })
       : null;
 
+    // A routine can pin a reasoning effort; map it to pi's thinking level
+    // (absent → omitted, so pi keeps its own default). pi clamps the level to
+    // what the resolved model actually supports.
+    const thinkingLevel = toThinkingLevel(pin?.effort);
     const { session } = await createAgentSession({
       cwd: workspaceDir,
       agentDir: dataDir,
-      model: resolveTurnModel(dataDir, provider),
+      model: resolveTurnModel(dataDir, provider, pin?.model),
+      ...(thinkingLevel ? { thinkingLevel } : {}),
       authStorage,
       modelRegistry,
       sessionManager: SessionManager.continueRecent(
