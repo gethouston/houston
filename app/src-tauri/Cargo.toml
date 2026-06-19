@@ -34,6 +34,7 @@ sentry-tracing = "0.42"
 keyring = { version = "3", features = ["apple-native", "windows-native"] }
 houston-ui-events = { path = "../../engine/houston-ui-events" }
 reqwest = { version = "0.12", features = ["json", "rustls-tls", "blocking"], default-features = false }
+url = "2"
 tracing = { workspace = true }
 tracing-subscriber = { workspace = true }
 tracing-appender = { workspace = true }

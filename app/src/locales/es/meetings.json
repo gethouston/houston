@@ -1,0 +1,60 @@
+{
+  "title": "Reuniones",
+  "sidebar": "Reuniones",
+  "loading": "Cargando...",
+  "empty": {
+    "title": "Sin reuniones todavia",
+    "description": "Programa una reunion y Houston se unira, tomara notas y mostrara lo que importa."
+  },
+  "status": {
+    "upcoming": "Proxima",
+    "live": "En vivo",
+    "processing": "Procesando",
+    "completed": "Completada",
+    "error": "Error"
+  },
+  "actions": {
+    "new": "Nueva reunion",
+    "start": "Iniciar",
+    "end": "Terminar reunion",
+    "delete": "Eliminar",
+    "join": "Unirse"
+  },
+  "form": {
+    "title": "Titulo de la reunion",
+    "titlePlaceholder": "Sincronizacion semanal",
+    "url": "Enlace de Google Meet",
+    "urlPlaceholder": "https://meet.google.com/abc-def-ghi",
+    "botName": "Nombre del bot",
+    "botNamePlaceholder": "Houston",
+    "context": "Contexto",
+    "contextPlaceholder": "En que debe enfocarse Houston?",
+    "scheduledAt": "Hora programada",
+    "create": "Crear reunion",
+    "cancel": "Cancelar"
+  },
+  "detail": {
+    "transcript": "Transcripcion",
+    "transcriptEmpty": "Aun no se capturaron subtitulos.",
+    "summary": "Resumen",
+    "summaryEmpty": "El resumen aparecera cuando termine la reunion.",
+    "participants": "Participantes",
+    "noParticipants": "No se detectaron participantes todavia.",
+    "captions": "{{count}} subtitulo",
+    "captions_one": "{{count}} subtitulo",
+    "captions_other": "{{count}} subtitulos",
+    "processing": "Procesando reunion, esto puede tomar un minuto...",
+    "actionItems": "{{count}} tarea",
+    "actionItems_one": "{{count}} tarea",
+    "actionItems_other": "{{count}} tareas"
+  },
+  "delete": {
+    "title": "Eliminar reunion",
+    "description": "Esto eliminara permanentemente la reunion y su transcripcion.",
+    "confirm": "Eliminar"
+  },
+  "errors": {
+    "createFailed": "No se pudo crear la reunion.",
+    "deleteFailed": "No se pudo eliminar la reunion."
+  }
+}

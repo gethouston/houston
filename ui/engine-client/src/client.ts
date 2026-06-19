@@ -41,6 +41,10 @@ import type {
   InstalledConfig,
   ListWorktreesRequest,
   NewActivity,
+  Meeting,
+  NewMeeting,
+  MeetingUpdate,
+  CaptionLine,
   NewRoutine,
   PreferenceValue,
   ProjectConfig,
@@ -578,6 +582,30 @@ export class HoustonClient {
     updates: RoutineRunUpdate,
   ): Promise<RoutineRun> {
     return this.request("PATCH", `/routine-runs/${this.seg(id)}`, updates, { agentPath });
+  }
+
+  // ---------- agents: meetings ----------
+
+  listMeetings(agentPath: string): Promise<Meeting[]> {
+    return this.request("GET", "/meetings", undefined, { agentPath });
+  }
+  createMeeting(agentPath: string, input: NewMeeting): Promise<Meeting> {
+    return this.request("POST", "/meetings", { agentPath, ...input });
+  }
+  updateMeeting(agentPath: string, id: string, updates: MeetingUpdate): Promise<Meeting> {
+    return this.request("PATCH", `/meetings/${this.seg(id)}`, { agentPath, ...updates });
+  }
+  deleteMeeting(agentPath: string, id: string): Promise<void> {
+    return this.request("DELETE", `/meetings/${this.seg(id)}`, undefined, { agentPath });
+  }
+  pushCaptions(agentPath: string, meetingId: string, captions: CaptionLine[]): Promise<Meeting> {
+    return this.request("POST", `/meetings/${this.seg(meetingId)}/captions`, { agentPath, captions });
+  }
+  startMeeting(agentPath: string, meetingId: string): Promise<Meeting> {
+    return this.request("POST", `/meetings/${this.seg(meetingId)}/start`, { agentPath });
+  }
+  endMeeting(agentPath: string, meetingId: string): Promise<Meeting> {
+    return this.request("POST", `/meetings/${this.seg(meetingId)}/end`, { agentPath });
   }
 
   // ---------- agents: config ----------

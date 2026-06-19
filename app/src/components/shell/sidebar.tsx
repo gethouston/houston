@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from "react";
 import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Blend, Settings } from "lucide-react";
+import { LayoutDashboard, Blend, Settings, Video } from "lucide-react";
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -15,7 +15,7 @@ import { orderAgents } from "../../lib/agent-order";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 
 export function Sidebar({ children }: { children: ReactNode }) {
-  const { t } = useTranslation(["shell", "common", "portable"]);
+  const { t } = useTranslation(["shell", "common", "portable", "meetings"]);
   const workspaces = useWorkspaceStore((s) => s.workspaces);
   const currentWorkspace = useWorkspaceStore((s) => s.current);
   const setCurrentWorkspace = useWorkspaceStore((s) => s.setCurrent);
@@ -50,7 +50,7 @@ export function Sidebar({ children }: { children: ReactNode }) {
     onShareAgent: (agentId) => useUIStore.getState().setShareAgentId(agentId),
     shareLabel: t("portable:shareMenu"),
   });
-  const isTopLevel = viewMode === "dashboard" || viewMode === "connections" || viewMode === "settings";
+  const isTopLevel = viewMode === "dashboard" || viewMode === "connections" || viewMode === "settings" || viewMode === "meetings";
 
   const handleWorkspaceSwitch = async (wsId: string) => {
     if (wsId === currentWorkspace?.id) return;
@@ -121,6 +121,12 @@ export function Sidebar({ children }: { children: ReactNode }) {
             icon: <LayoutDashboard className="h-4 w-4" />,
             onClick: () => setViewMode("dashboard"),
             dataAttrs: { "data-tour-target": "nav-dashboard" },
+          },
+          {
+            id: "meetings",
+            label: t("meetings:sidebar"),
+            icon: <Video className="h-4 w-4" />,
+            onClick: () => setViewMode("meetings"),
           },
           {
             id: "connections",

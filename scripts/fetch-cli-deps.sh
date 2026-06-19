@@ -631,10 +631,13 @@ build_composio_windows() {
   ( cd "$fork_dir" && pnpm install --frozen-lockfile --prefer-offline ) 2>&1 | tail -5
 
   echo "  pnpm build for workspace deps of @composio/cli..."
-  ( cd "$fork_dir" && pnpm -r --filter '@composio/cli^...' run build ) 2>&1 | tail -3
+  # --config-loader unrun is required on Windows: tsdown's default loader
+  # cannot resolve .ts-extension imports (e.g. workspace-root
+  # tsdown.config.base.ts) via native dynamic import().
+  ( cd "$fork_dir" && pnpm -r --filter '@composio/cli^...' exec tsdown --config-loader unrun ) 2>&1 | tail -3
 
   echo "  tsdown bundle for @composio/cli..."
-  ( cd "$fork_dir/$package_path" && pnpm exec tsdown ) 2>&1 | tail -3
+  ( cd "$fork_dir/$package_path" && pnpm exec tsdown --config-loader unrun ) 2>&1 | tail -3
 
   echo "  bun build:binary:cross --target $bun_target ..."
   ( cd "$fork_dir/$package_path" && pnpm run build:binary:cross -- --target "$bun_target" ) 2>&1 | tail -3

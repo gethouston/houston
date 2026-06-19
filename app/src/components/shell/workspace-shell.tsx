@@ -25,6 +25,7 @@ import { AgentRenderer } from "./experience-renderer";
 import { Dashboard } from "../dashboard";
 import { IntegrationsView } from "../tabs/integrations-view";
 import { SettingsView } from "../settings/settings-view";
+import { MeetingsView } from "../meetings/meetings-view";
 import { Sidebar } from "./sidebar";
 import { HoustonLogo } from "./experience-card";
 import { CreateAgentDialog } from "./create-workspace-dialog";
@@ -70,7 +71,7 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
   const { data: activities } = useActivity(currentAgent?.folderPath);
   const needsYouCount = (activities ?? []).filter((a) => a.status === "needs_you").length;
   const isAgentView =
-    viewMode !== "dashboard" && viewMode !== "connections" && viewMode !== "settings";
+    viewMode !== "dashboard" && viewMode !== "connections" && viewMode !== "settings" && viewMode !== "meetings";
   const tabOr = (id: string) => (STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID);
 
   useEffect(() => {
@@ -118,6 +119,8 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
             >
               {viewMode === "dashboard" ? (
                 <Dashboard />
+              ) : viewMode === "meetings" ? (
+                <MeetingsView />
               ) : viewMode === "connections" ? (
                 <IntegrationsView title={t("shell:sidebar.integrations")} />
               ) : viewMode === "settings" ? (

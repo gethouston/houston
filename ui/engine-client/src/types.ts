@@ -284,6 +284,63 @@ export interface InstalledConfig {
   path: string;
 }
 
+// ---------- Meetings ----------
+
+export type MeetingStatus =
+  | "upcoming"
+  | "live"
+  | "processing"
+  | "completed"
+  | "error";
+
+export interface Meeting {
+  id: string;
+  title: string;
+  meet_url: string;
+  bot_name?: string;
+  status: MeetingStatus;
+  context?: string;
+  participants: string[];
+  caption_count: number;
+  action_items_count: number;
+  summary_ready: boolean;
+  summary?: string;
+  error_message?: string | null;
+  scheduled_at?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface NewMeeting {
+  title: string;
+  meet_url: string;
+  bot_name?: string;
+  status?: MeetingStatus;
+  context?: string;
+  scheduled_at?: string | null;
+}
+
+export interface MeetingUpdate {
+  status?: MeetingStatus;
+  title?: string;
+  bot_name?: string;
+  participants?: string[];
+  caption_count?: number;
+  action_items_count?: number;
+  summary_ready?: boolean;
+  error_message?: string | null;
+  started_at?: string | null;
+  ended_at?: string | null;
+}
+
+export interface CaptionLine {
+  speaker: string;
+  text: string;
+  timestamp?: string;
+}
+
 // ---------- Conversations ----------
 
 export interface ConversationEntry {

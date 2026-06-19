@@ -2493,6 +2493,7 @@ dependencies = [
  "tracing",
  "tracing-appender",
  "tracing-subscriber",
+ "url",
  "windows-sys 0.59.0",
 ]
 

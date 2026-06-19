@@ -210,6 +210,20 @@ pub enum HoustonEvent {
         agent_path: String,
     },
 
+    // ----- Meetings -----
+
+    /// A meeting was created, updated, or deleted (.houston/meetings/meetings.json).
+    MeetingChanged {
+        agent_path: String,
+        meeting_id: String,
+    },
+    /// A meeting's status transitioned (live, processing, completed, error).
+    MeetingStatusChanged {
+        agent_path: String,
+        meeting_id: String,
+        status: String,
+    },
+
     // ----- Composio CLI lifecycle -----
 
     /// Composio CLI is installed and ready. Frontend should invalidate

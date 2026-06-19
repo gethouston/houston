@@ -698,6 +698,29 @@ export const tauriRoutines = {
     ),
 };
 
+import type {
+  NewMeeting as EngineNewMeeting,
+  MeetingUpdate as EngineMeetingUpdate,
+  CaptionLine as EngineCaptionLine,
+} from "@houston-ai/engine-client";
+
+export const tauriMeetings = {
+  list: (agentPath: string) =>
+    call("list_meetings", () => getEngine().listMeetings(agentPath)),
+  create: (agentPath: string, input: EngineNewMeeting) =>
+    call("create_meeting", () => getEngine().createMeeting(agentPath, input)),
+  update: (agentPath: string, id: string, updates: EngineMeetingUpdate) =>
+    call("update_meeting", () => getEngine().updateMeeting(agentPath, id, updates)),
+  delete: (agentPath: string, id: string) =>
+    call<void>("delete_meeting", () => getEngine().deleteMeeting(agentPath, id)),
+  pushCaptions: (agentPath: string, meetingId: string, captions: EngineCaptionLine[]) =>
+    call("push_captions", () => getEngine().pushCaptions(agentPath, meetingId, captions)),
+  start: (agentPath: string, meetingId: string) =>
+    call("start_meeting", () => getEngine().startMeeting(agentPath, meetingId)),
+  end: (agentPath: string, meetingId: string) =>
+    call("end_meeting", () => getEngine().endMeeting(agentPath, meetingId)),
+};
+
 export const tauriActivity = {
   list: (agentPath: string) => activityData.list(agentPath),
   create: (

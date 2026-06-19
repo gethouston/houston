@@ -1,0 +1,60 @@
+{
+  "title": "Meetings",
+  "sidebar": "Meetings",
+  "loading": "Loading...",
+  "empty": {
+    "title": "No meetings yet",
+    "description": "Schedule a meeting and Houston will join, take notes, and surface what matters."
+  },
+  "status": {
+    "upcoming": "Upcoming",
+    "live": "Live",
+    "processing": "Processing",
+    "completed": "Completed",
+    "error": "Error"
+  },
+  "actions": {
+    "new": "New meeting",
+    "start": "Start",
+    "end": "End meeting",
+    "delete": "Delete",
+    "join": "Join"
+  },
+  "form": {
+    "title": "Meeting title",
+    "titlePlaceholder": "Weekly sync",
+    "url": "Google Meet link",
+    "urlPlaceholder": "https://meet.google.com/abc-def-ghi",
+    "botName": "Bot name",
+    "botNamePlaceholder": "Houston",
+    "context": "Context",
+    "contextPlaceholder": "What should Houston focus on?",
+    "scheduledAt": "Scheduled time",
+    "create": "Create meeting",
+    "cancel": "Cancel"
+  },
+  "detail": {
+    "transcript": "Transcript",
+    "transcriptEmpty": "No captions captured yet.",
+    "summary": "Summary",
+    "summaryEmpty": "Summary will appear after the meeting ends.",
+    "participants": "Participants",
+    "noParticipants": "No participants detected yet.",
+    "captions": "{{count}} caption",
+    "captions_one": "{{count}} caption",
+    "captions_other": "{{count}} captions",
+    "processing": "Processing meeting, this may take a minute...",
+    "actionItems": "{{count}} action item",
+    "actionItems_one": "{{count}} action item",
+    "actionItems_other": "{{count}} action items"
+  },
+  "delete": {
+    "title": "Delete meeting",
+    "description": "This will permanently delete the meeting and its transcript.",
+    "confirm": "Delete"
+  },
+  "errors": {
+    "createFailed": "Could not create meeting.",
+    "deleteFailed": "Could not delete meeting."
+  }
+}

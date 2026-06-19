@@ -269,6 +269,12 @@ pub fn migrate_agent_data(agent_root: &Path) -> Result<()> {
         }
     }
 
+    // Seed empty meetings.json for agents that predate the Meetings feature.
+    let meetings_path = agent_root.join(".houston/meetings/meetings.json");
+    if !meetings_path.exists() {
+        write_file_atomic(agent_root, ".houston/meetings/meetings.json", "[]")?;
+    }
+
     // Seed schemas at the end so every migrated agent has them available.
     seed_schemas(agent_root)?;
     Ok(())

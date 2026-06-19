@@ -441,6 +441,8 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             // OS-native glue — everything domain-related flows through the
             // engine over HTTP/WS, not Tauri IPC.
+            commands::meetings::meeting_open_window,
+            commands::meetings::meeting_close_window,
             commands::os::pick_directory,
             commands::os::open_url,
             commands::os::open_file,

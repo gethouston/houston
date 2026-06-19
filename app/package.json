@@ -10,7 +10,9 @@
     "tauri": "tauri",
     "typecheck": "tsc --noEmit",
     "test": "node --experimental-strip-types --test tests/*.test.ts",
-    "check-locales": "node scripts/check-locales.mjs"
+    "check-locales": "node scripts/check-locales.mjs",
+    "check-dev": "bash ../scripts/check-dev.sh",
+    "check-dev:fix": "bash ../scripts/check-dev.sh --fix"
   },
   "dependencies": {
     "@houston-ai/agent": "workspace:*",

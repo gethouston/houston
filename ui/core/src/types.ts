@@ -143,6 +143,14 @@ export type HoustonEvent =
       data: { agent_path: string };
     }
   | {
+      type: "MeetingChanged";
+      data: { agent_path: string; meeting_id: string };
+    }
+  | {
+      type: "MeetingStatusChanged";
+      data: { agent_path: string; meeting_id: string; status: string };
+    }
+  | {
       type: "ComposioCliReady";
       data: Record<string, never>;
     }

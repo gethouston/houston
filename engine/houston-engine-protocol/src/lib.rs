@@ -163,6 +163,10 @@ pub fn event_topic(event: &HoustonEvent) -> String {
         HoustonEvent::ProviderLoginUrl { .. } | HoustonEvent::ProviderLoginComplete { .. } => {
             "providers".into()
         }
+        HoustonEvent::MeetingChanged { agent_path, .. }
+        | HoustonEvent::MeetingStatusChanged { agent_path, .. } => {
+            format!("meetings:{agent_path}")
+        }
     }
 }
 

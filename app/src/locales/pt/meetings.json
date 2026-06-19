@@ -1,0 +1,60 @@
+{
+  "title": "Reunioes",
+  "sidebar": "Reunioes",
+  "loading": "Carregando...",
+  "empty": {
+    "title": "Nenhuma reuniao ainda",
+    "description": "Agende uma reuniao e o Houston entrara, tomara notas e destacara o que importa."
+  },
+  "status": {
+    "upcoming": "Proxima",
+    "live": "Ao vivo",
+    "processing": "Processando",
+    "completed": "Concluida",
+    "error": "Erro"
+  },
+  "actions": {
+    "new": "Nova reuniao",
+    "start": "Iniciar",
+    "end": "Encerrar reuniao",
+    "delete": "Excluir",
+    "join": "Entrar"
+  },
+  "form": {
+    "title": "Titulo da reuniao",
+    "titlePlaceholder": "Sincronizacao semanal",
+    "url": "Link do Google Meet",
+    "urlPlaceholder": "https://meet.google.com/abc-def-ghi",
+    "botName": "Nome do bot",
+    "botNamePlaceholder": "Houston",
+    "context": "Contexto",
+    "contextPlaceholder": "Em que o Houston deve focar?",
+    "scheduledAt": "Horario agendado",
+    "create": "Criar reuniao",
+    "cancel": "Cancelar"
+  },
+  "detail": {
+    "transcript": "Transcricao",
+    "transcriptEmpty": "Nenhuma legenda capturada ainda.",
+    "summary": "Resumo",
+    "summaryEmpty": "O resumo aparecera apos o fim da reuniao.",
+    "participants": "Participantes",
+    "noParticipants": "Nenhum participante detectado ainda.",
+    "captions": "{{count}} legenda",
+    "captions_one": "{{count}} legenda",
+    "captions_other": "{{count}} legendas",
+    "processing": "Processando reuniao, isso pode levar um minuto...",
+    "actionItems": "{{count}} tarefa",
+    "actionItems_one": "{{count}} tarefa",
+    "actionItems_other": "{{count}} tarefas"
+  },
+  "delete": {
+    "title": "Excluir reuniao",
+    "description": "Isso excluira permanentemente a reuniao e sua transcricao.",
+    "confirm": "Excluir"
+  },
+  "errors": {
+    "createFailed": "Nao foi possivel criar a reuniao.",
+    "deleteFailed": "Nao foi possivel excluir a reuniao."
+  }
+}
