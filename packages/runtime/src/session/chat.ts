@@ -9,7 +9,7 @@ import type { ToolCallRecord } from "@houston/runtime-client";
 import { toWire } from "./wire";
 import { config } from "../config";
 import { authStorage, modelRegistry } from "../auth/storage";
-import { resolveModel } from "../ai/providers";
+import { resolveModel, activeProvider } from "../ai/providers";
 import { makeAgentLoader } from "./resource-loader";
 import { appendAssistantMessage, appendUserMessage } from "../store/conversations";
 import { publish } from "./bus";
@@ -132,15 +132,39 @@ async function execTurn(conv: Conversation, id: string, text: string, nonce?: st
  * NOT on the request that triggered the turn. Turns on the same conversation are
  * serialized (ordered resume). Never rejects — failures surface as `error` events.
  */
-export async function runTurn(id: string, text: string, nonce?: string): Promise<void> {
-  // Connect-once: write the workspace's current central credential to auth.json
-  // before the turn so pi uses the user's own token. Best-effort — a transient
-  // failure leaves the existing (still-valid) credential, and a missing connection
-  // surfaces below as the runtime's normal "No provider connected" error.
+/**
+ * Sync the workspace's central credential, then report the connected provider (or
+ * null). The message route AWAITS this before accepting a turn, so a logged-out /
+ * never-connected turn fails the REQUEST — the client surfaces the error at once —
+ * instead of starting a fire-and-forget turn whose only failure signal is an
+ * `error` event that can race the client's SSE subscribe and get lost, leaving the
+ * chat spinning forever after logout.
+ */
+export async function ensureProviderForTurn(): Promise<string | null> {
+  // Connect-once: pull the workspace's current central credential into auth.json
+  // so pi uses the user's own token. Best-effort — a transient failure leaves the
+  // existing (still-valid) credential; a forgotten connection => activeProvider null.
   try {
     await syncServedCredential();
   } catch (err) {
     console.error("[serve] credential sync failed:", errMessage(err));
+  }
+  return activeProvider();
+}
+
+export async function runTurn(id: string, text: string, nonce?: string): Promise<void> {
+  // The message route already synced the credential and confirmed a provider via
+  // ensureProviderForTurn. Re-check here as a cheap guard for the narrow window
+  // where the provider is logged out mid-turn: getConversation returns a CACHED
+  // session without re-running resolveModel()'s connect guard, so without this a
+  // now-credential-less turn could still reach session.prompt() and hang with no
+  // terminal event.
+  if (!activeProvider()) {
+    publish(id, {
+      type: "error",
+      data: { message: "No provider connected. Log in with Claude or Codex first." },
+    });
+    return;
   }
 
   let conv: Conversation;

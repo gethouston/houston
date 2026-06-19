@@ -565,8 +565,19 @@ export class HoustonClient {
   async providerLogout(name: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) return;
-    const engine = this.cp ? controlPlane.runtimeClientFor(this.cp, this.requireAgentId()) : this.engine;
-    await engine.logout(pid);
+    if (this.cp) {
+      // Connect-once logout. Clearing only the runtime's local auth.json (what
+      // engine.logout does) is NOT enough: the credential also lives in the
+      // workspace's CENTRAL store, and the runtime re-pulls it from the host
+      // before every turn — so the next message re-hydrated the agent and the
+      // provider showed connected again. Forget the central credential FIRST so
+      // no in-flight turn can re-serve it, then clear the runtime's local copy.
+      const agentId = this.requireAgentId();
+      await controlPlane.forgetCredential(this.cp, agentId, pid);
+      await controlPlane.runtimeClientFor(this.cp, agentId).logout(pid);
+      return;
+    }
+    await this.engine.logout(pid);
   }
 
   /**
