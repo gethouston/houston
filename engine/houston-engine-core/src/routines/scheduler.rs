@@ -10,7 +10,7 @@ use crate::routines::{
     runner::{run_routine, ActivitySurface, RoutineDispatcher},
     types::Routine,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use chrono_tz::Tz;
 use cron::Schedule;
 use houston_ui_events::{DynEventSink, HoustonEvent};
@@ -18,7 +18,45 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::{watch, Mutex};
+
+/// Upper bound on a single sleep in the cron wait loop.
+///
+/// A scheduled fire can be a whole day out, but we must never wait for it in one
+/// long sleep. `tokio::time::sleep` runs on the monotonic clock, and on macOS
+/// that clock *stops while the machine is asleep* (App Nap, a closed lid, idle
+/// suspend). One multi-hour sleep therefore undercounts wall-clock time by the
+/// suspend duration: the routine fires late by however long the Mac napped, and
+/// across an overnight suspend it can miss the day entirely with no run ever
+/// recorded (HOU-541). Capping each sleep forces the loop to re-read the wall
+/// clock at least this often, so after a wake an overdue fire is noticed within
+/// `MAX_TICK` and caught up.
+const MAX_TICK: Duration = Duration::from_secs(30);
+
+/// One decision of the cron wait loop, split out so the suspend-safe timing can
+/// be unit-tested without real clocks or real time passing.
+#[derive(Debug, PartialEq, Eq)]
+enum Tick {
+    /// `now` has reached or passed the scheduled instant — fire the routine.
+    Fire,
+    /// Not due yet — sleep this long (never more than `MAX_TICK`) and re-check.
+    Sleep(Duration),
+}
+
+/// Decide what the wait loop should do given the current wall-clock `now` and
+/// the `next` scheduled instant. Fires when due *or overdue* (the overdue branch
+/// is the catch-up after a suspend that slept past the instant); otherwise naps
+/// until `next`, capped at `max` so a single wait can never outlast a system
+/// suspend.
+fn tick(now: DateTime<Utc>, next: DateTime<Utc>, max: Duration) -> Tick {
+    match next.signed_duration_since(now).to_std() {
+        // Strictly in the future: nap until it, but no longer than `max`.
+        Ok(remaining) if !remaining.is_zero() => Tick::Sleep(remaining.min(max)),
+        // Zero (`to_std` -> Ok(0)) or negative (`to_std` -> Err): due / overdue.
+        _ => Tick::Fire,
+    }
+}
 
 /// A spawned cron task plus the signature it was spawned for. The signature
 /// captures everything that determines *when* the job fires — the schedule and
@@ -174,26 +212,34 @@ impl AgentScheduler {
         let mut shutdown_rx = self.shutdown_tx.subscribe();
 
         Ok(tokio::spawn(async move {
+            // The instant we're currently waiting to fire. Re-armed from the
+            // schedule after every fire. `upcoming` is "strictly after now", so
+            // once a fire has happened (now has passed the old instant) it
+            // yields the next *future* instant — which collapses every instant
+            // skipped during a long suspend into a single catch-up rather than
+            // replaying the whole backlog on wake. It is computed once and held:
+            // recomputing it mid-wait would step past the very instant we are
+            // waiting for the moment `now` reaches it.
+            let mut next = match schedule.upcoming(tz).next() {
+                Some(t) => t,
+                None => return,
+            };
+
             loop {
-                let next = match schedule.upcoming(tz).next() {
-                    Some(t) => t,
-                    None => return,
-                };
-
-                let delay = next.with_timezone(&Utc).signed_duration_since(Utc::now());
-                let sleep_dur = if delay.num_milliseconds() > 0 {
-                    std::time::Duration::from_millis(delay.num_milliseconds() as u64)
-                } else {
-                    std::time::Duration::from_millis(0)
-                };
-
-                tokio::select! {
-                    _ = tokio::time::sleep(sleep_dur) => {}
-                    _ = shutdown_rx.changed() => {
-                        if *shutdown_rx.borrow() {
-                            return;
+                // Sleep toward `next` in capped chunks (see `MAX_TICK`) so the
+                // wait re-reads the wall clock often enough to survive a system
+                // suspend; fall through to fire as soon as the clock has reached
+                // or passed the instant.
+                if let Tick::Sleep(nap) = tick(Utc::now(), next.with_timezone(&Utc), MAX_TICK) {
+                    tokio::select! {
+                        _ = tokio::time::sleep(nap) => {}
+                        _ = shutdown_rx.changed() => {
+                            if *shutdown_rx.borrow() {
+                                return;
+                            }
                         }
                     }
+                    continue;
                 }
 
                 tracing::info!(
@@ -224,6 +270,13 @@ impl AgentScheduler {
                         );
                     }
                 }
+
+                // Re-arm for the next future instant. Done after the run so an
+                // overrunning routine can't immediately re-fire its own slot.
+                next = match schedule.upcoming(tz).next() {
+                    Some(t) => t,
+                    None => return,
+                };
             }
         }))
     }
@@ -323,6 +376,7 @@ impl RoutineSchedulerState {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::TimeZone;
     use crate::routines::create;
     use crate::routines::runner::{DispatchContext, DispatchOutcome};
     use crate::routines::types::{NewRoutine, RoutineChatMode};
@@ -638,5 +692,46 @@ mod tests {
         }
         state.stop_all().await;
         assert!(state.0.lock().await.is_empty());
+    }
+
+    // ---- suspend-safe wait loop (HOU-541) ----------------------------------
+    // These drive `tick` with synthetic clocks: no real time passes, so the
+    // timing policy is asserted deterministically. The bug was a single
+    // multi-hour `tokio::time::sleep` whose monotonic timer macOS freezes
+    // during system sleep, so the routine fired late or — across an overnight
+    // suspend — never that day, with no run recorded.
+
+    #[test]
+    fn tick_far_future_fire_is_capped_to_max_tick() {
+        // A fire ~23h out must become a short capped nap, never one 23h sleep:
+        // that single monotonic sleep is exactly what a suspend freezes.
+        let now = Utc.with_ymd_and_hms(2026, 6, 19, 1, 0, 0).unwrap();
+        let next = now + chrono::Duration::hours(23);
+        assert_eq!(tick(now, next, MAX_TICK), Tick::Sleep(MAX_TICK));
+    }
+
+    #[test]
+    fn tick_within_cap_sleeps_the_exact_remainder() {
+        // Closer than the cap: wait precisely the remainder, don't fire early.
+        let now = Utc.with_ymd_and_hms(2026, 6, 19, 12, 59, 55).unwrap();
+        let next = Utc.with_ymd_and_hms(2026, 6, 19, 13, 0, 0).unwrap();
+        assert_eq!(tick(now, next, MAX_TICK), Tick::Sleep(Duration::from_secs(5)));
+    }
+
+    #[test]
+    fn tick_due_now_fires() {
+        let now = Utc.with_ymd_and_hms(2026, 6, 19, 13, 0, 0).unwrap();
+        assert_eq!(tick(now, now, MAX_TICK), Tick::Fire);
+    }
+
+    #[test]
+    fn tick_overdue_after_suspend_fires_immediately() {
+        // The HOU-541 case: the Mac slept past 08:00 Bogota (13:00 UTC) and the
+        // loop only re-reads the clock on wake, hours later. The overdue instant
+        // must fire (catch up), not be skipped — skipping is why no run was ever
+        // recorded that morning.
+        let next = Utc.with_ymd_and_hms(2026, 6, 19, 13, 0, 0).unwrap();
+        let woke = next + chrono::Duration::hours(9);
+        assert_eq!(tick(woke, next, MAX_TICK), Tick::Fire);
     }
 }
