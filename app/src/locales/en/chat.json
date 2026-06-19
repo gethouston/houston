@@ -44,6 +44,7 @@
     "notConnected": "Not connected",
     "checking": "Checking...",
     "effort": "Reasoning effort",
+    "effortValue": "Reasoning effort: {{level}}",
     "effortLevels": {
       "low": "Low",
       "medium": "Medium",
