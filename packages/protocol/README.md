@@ -38,6 +38,10 @@ and `config`) return an envelope — `{ items, diagnostics }` / `{ config,
 diagnostics }` — because agents write these files with file tools: malformed
 entries are dropped AND reported, never silently lost (beta policy).
 
+Activity delete is idempotent. `DELETE /v1/agents/:id/activities/:activityId`
+returns `200 { ok: true, deleted: boolean }`; a repeated delete of the same
+activity is `deleted: false`, not a 404.
+
 Families not yet typed here (added with their P3 slice): attachments, portable
 agents, store listings. Rust-CLI-era DTOs (Composio, Claude-installer,
 CLI install sources, worktree/shell) die with the Rust engine and are

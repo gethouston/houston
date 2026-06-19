@@ -1,6 +1,6 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { applyBulkPatch, applyBulkRemove } from "../src/data/activity-bulk.ts";
+import { applyBulkPatch, applyBulkRemove, applyRemove } from "../src/data/activity-bulk.ts";
 import type { Activity } from "../src/data/activity.ts";
 
 const item = (id: string, status: string): Activity => ({
@@ -43,8 +43,22 @@ describe("activity bulk helpers", () => {
     );
   });
 
+  it("single remove reports whether a row was removed", () => {
+    const items = [item("a", "done"), item("b", "running")];
+    const result = applyRemove(items, "a");
+    deepStrictEqual(result, {
+      items: [items[1]],
+      removed: true,
+    });
+  });
+
   it("removing an unknown id leaves the list unchanged", () => {
     const items = [item("a", "done")];
     deepStrictEqual(applyBulkRemove(items, new Set(["zzz"])), items);
+  });
+
+  it("single remove treats unknown ids as an idempotent no-op", () => {
+    const items = [item("a", "done")];
+    deepStrictEqual(applyRemove(items, "zzz"), { items, removed: false });
   });
 });

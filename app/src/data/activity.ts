@@ -7,7 +7,7 @@
 
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
 import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
-import { applyBulkPatch, applyBulkRemove } from "./activity-bulk";
+import { applyBulkPatch, applyBulkRemove, applyRemove } from "./activity-bulk";
 
 /** Every status a mission can have. Mirrors the `status` enum in
  *  `activity.schema.json` (the on-disk source of truth). */
@@ -104,8 +104,8 @@ export async function update(
 
 export async function remove(agentPath: string, id: string): Promise<void> {
   const items = await list(agentPath);
-  const next = items.filter((a) => a.id !== id);
-  if (next.length === items.length) throw new Error(`Activity not found: ${id}`);
+  const { items: next, removed } = applyRemove(items, id);
+  if (!removed) return;
   await writeAgentJson(agentPath, NAME, s, next);
 }
 

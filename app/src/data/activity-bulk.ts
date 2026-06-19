@@ -1,5 +1,5 @@
 /**
- * Pure helpers for bulk mutations over the activity list.
+ * Pure helpers for mutations over the activity list.
  *
  * Kept free of any engine / Tauri imports (only erased `import type`s) so
  * the read-mutate-write logic stays unit-testable in isolation. `data/activity.ts`
@@ -18,6 +18,19 @@ export function applyBulkPatch(
   return items.map((item) =>
     ids.has(item.id) ? { ...item, ...patch, updated_at: timestamp } : item,
   );
+}
+
+/** Drop one item by id. Missing ids are an idempotent no-op. */
+export function applyRemove(
+  items: Activity[],
+  id: string,
+): { items: Activity[]; removed: boolean } {
+  const idx = items.findIndex((item) => item.id === id);
+  if (idx === -1) return { items, removed: false };
+  return {
+    items: [...items.slice(0, idx), ...items.slice(idx + 1)],
+    removed: true,
+  };
 }
 
 /** Drop every item whose id is in `ids`. */

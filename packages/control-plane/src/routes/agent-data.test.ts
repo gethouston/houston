@@ -113,6 +113,14 @@ test("activities: full CRUD lifecycle over the host", async () => {
     headers: auth("alice"),
   });
   expect(deleted.status).toBe(200);
+  expect(await deleted.json()).toEqual({ ok: true, deleted: true });
+
+  const deletedAgain = await fetch(`${base}/agents/${agentId}/activities/${activity.id}`, {
+    method: "DELETE",
+    headers: auth("alice"),
+  });
+  expect(deletedAgain.status).toBe(200);
+  expect(await deletedAgain.json()).toEqual({ ok: true, deleted: false });
   expect(
     (await fetch(`${base}/agents/${agentId}/activities/${activity.id}`, { method: "PATCH", headers: auth("alice"), body: "{}" })).status,
   ).toBe(404);
