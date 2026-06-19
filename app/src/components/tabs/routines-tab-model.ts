@@ -26,7 +26,6 @@ export const EMPTY_FORM: RoutineFormData = {
   schedule: "0 9 * * *",
   suppress_when_silent: true,
   chat_mode: "shared",
-  timezone: null,
   integrations: [],
 };
 
@@ -48,7 +47,6 @@ export function formMatchesRoutine(
     form.schedule === source.schedule &&
     form.suppress_when_silent === source.suppress_when_silent &&
     form.chat_mode === source.chat_mode &&
-    (form.timezone ?? null) === (source.timezone ?? null) &&
     sameStringList(form.integrations, source.integrations)
   );
 }
@@ -62,7 +60,6 @@ export function routineToFormData(routine: Routine): RoutineFormData {
     schedule: routine.schedule,
     suppress_when_silent: routine.suppress_when_silent,
     chat_mode: routine.chat_mode ?? "shared",
-    timezone: routine.timezone ?? null,
     integrations: routine.integrations ?? [],
   };
 }

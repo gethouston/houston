@@ -23,7 +23,7 @@ import {
 export interface RoutineRowProps {
   routine: Routine
   lastRun?: RoutineRun
-  /** IANA tz of the user's account preference, used when routine has no override. */
+  /** The account-wide IANA timezone every routine fires in. */
   accountTimezone: string
   onClick?: () => void
   onToggle?: (enabled: boolean) => void
@@ -73,9 +73,12 @@ export function RoutineRow({
   locale = "en-US",
 }: RoutineRowProps) {
   const now = useNow(60_000)
-  const tz = routine.timezone ?? accountTimezone
-  const next = routine.enabled ? nextFire(routine.schedule, tz, now) : null
-  const nextDescr = next ? describeNextFire(next, tz, now, nextFireLabels, locale) : null
+  const next = routine.enabled
+    ? nextFire(routine.schedule, accountTimezone, now)
+    : null
+  const nextDescr = next
+    ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
+    : null
   const lastLabel = lastRunLabel(lastRun, now, labels)
   const isPaused = lastRun?.status === "running" && !!lastRun.paused_until
 
@@ -121,9 +124,6 @@ export function RoutineRow({
         </p>
         <p className="text-xs text-muted-foreground truncate mt-0.5">
           {cronSummary(routine.schedule, scheduleSummaryLabels, locale)}
-          {routine.timezone && (
-            <span className="text-muted-foreground/60"> · {routine.timezone}</span>
-          )}
         </p>
       </div>
 

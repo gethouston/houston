@@ -4,6 +4,7 @@ import {
   applyRoutineUpdate,
   createActivity,
   createRoutine,
+  getPreference,
   loadActivities,
   loadConfig,
   loadLearnings,
@@ -126,7 +127,10 @@ export async function handleAgentData(
       }
       // Reject a bad cron NOW — otherwise the routine saves and silently never
       // fires (the scheduler would skip it forever, with no signal to the user).
-      const scheduleErr = validateSchedule(body.schedule, body.timezone);
+      // Validate against the single account-wide zone (HOU-470): there is no
+      // per-routine timezone, so a stray body.timezone is not honored.
+      const accountTz = await getPreference(vfs, ctx.workspace.id, "timezone");
+      const scheduleErr = validateSchedule(body.schedule, accountTz);
       if (scheduleErr) {
         json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
         return true;
@@ -148,8 +152,10 @@ export async function handleAgentData(
       if (method === "PATCH") {
         const update = await readJson(req);
         const next = applyRoutineUpdate(current, update, nowIso);
-        // A PATCH may change schedule and/or timezone — validate the result.
-        const scheduleErr = validateSchedule(next.schedule, next.timezone);
+        // A PATCH may change the schedule; validate it against the account-wide
+        // zone (HOU-470: no per-routine timezone).
+        const accountTz = await getPreference(vfs, ctx.workspace.id, "timezone");
+        const scheduleErr = validateSchedule(next.schedule, accountTz);
         if (scheduleErr) {
           json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
           return true;

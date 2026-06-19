@@ -1,6 +1,6 @@
 import { test, expect } from "bun:test";
 import type { Routine, RoutineRun } from "@houston/protocol";
-import { createRoutine, loadRoutineRuns, saveRoutines } from "@houston/domain";
+import { createRoutine, loadRoutineRuns, saveRoutines, setPreference } from "@houston/domain";
 import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryVfs } from "../vfs";
 import { MemoryTurnBus } from "../turn/bus";
@@ -132,4 +132,18 @@ test("a fire failure marks the run errored — never stuck running, never silent
   expect(run.status).toBe("error");
   expect(run.summary).toContain("runtime unreachable");
   expect(run.completed_at).toBeTruthy();
+});
+
+test("the workspace timezone preference re-times routines (account-wide zone)", async () => {
+  // "0 9 * * *" is 9am; in America/Bogota (UTC-5) that is 14:00 UTC, which falls
+  // in the (SINCE, DUE] window. Read as UTC, 9am already passed — so the account
+  // preference is what makes it fire (the cloud analog of respawn-on-tz-change).
+  const env = await setup([routine({ schedule: "0 9 * * *" })]);
+  await setPreference(env.vfs, env.ws.id, "timezone", "America/Bogota");
+  const firer = new CaptureFirer();
+  const s = makeScheduler(env, firer);
+  s.start();
+  await s.tick(DUE);
+  expect(firer.jobs).toHaveLength(1);
+  expect(firer.jobs[0]!.routine.schedule).toBe("0 9 * * *");
 });

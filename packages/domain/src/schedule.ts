@@ -20,9 +20,9 @@ export function validateSchedule(schedule: string, timezone?: string | null): st
 }
 
 /**
- * The next time `schedule` fires strictly after `after`, evaluated in the
- * routine's timezone (or the host's local tz when absent). Null when the
- * pattern never fires again or is invalid.
+ * The next time `schedule` fires strictly after `after`, evaluated in the given
+ * IANA `timezone` (the account-wide zone; or the host's local tz when absent).
+ * Null when the pattern never fires again or is invalid.
  */
 export function nextRun(schedule: string, timezone: string | null | undefined, after: Date): Date | null {
   try {
@@ -35,15 +35,23 @@ export function nextRun(schedule: string, timezone: string | null | undefined, a
 
 /**
  * The scheduled instant at which `routine` becomes due within the window
- * `(since, now]`, or null when it is not due. Enabled routines only. We return
- * the FIRST fire-time after `since`; the driver fires at most once per window,
- * so a scheduler that was down through several fire-times does ONE catch-up
- * run, never a burst. The returned instant is deterministic across replicas
- * (same schedule + same `since`) — the driver keys its dedup lock on it.
+ * `(since, now]`, or null when it is not due. Enabled routines only. Every
+ * routine fires in the single account-wide `timezone` (the workspace
+ * preference); there is no per-routine override, so the driver passes the same
+ * zone for every routine in a workspace. We return the FIRST fire-time after
+ * `since`; the driver fires at most once per window, so a scheduler that was
+ * down through several fire-times does ONE catch-up run, never a burst. The
+ * returned instant is deterministic across replicas (same schedule + same
+ * `since` + same zone) — the driver keys its dedup lock on it.
  */
-export function dueAt(routine: Routine, since: Date, now: Date): Date | null {
+export function dueAt(
+  routine: Routine,
+  since: Date,
+  now: Date,
+  timezone: string | null | undefined,
+): Date | null {
   if (!routine.enabled) return null;
-  const next = nextRun(routine.schedule, routine.timezone, since);
+  const next = nextRun(routine.schedule, timezone, since);
   if (next && next.getTime() <= now.getTime()) return next;
   return null;
 }
