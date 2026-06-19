@@ -27,5 +27,8 @@
       "@houston/app": ["../../app/src"]
     }
   },
-  "include": ["src"]
+  "include": ["src"],
+  // Test files run under `bun test` (which supplies bun:test + bun globals). The
+  // app typecheck/build is DOM-typed and would clash with bun-types, so skip them.
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }
