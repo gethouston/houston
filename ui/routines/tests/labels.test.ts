@@ -5,7 +5,7 @@ import {
   DEFAULT_NEXT_FIRE_LABELS,
   type ScheduleSummaryLabels,
 } from "../src/labels.ts"
-import { cronSummary, presetSummary } from "../src/schedule-cron-utils.ts"
+import { cronSummary, presetSummary } from "../src/schedule-summary.ts"
 import { describeNextFire } from "../src/next-fire.ts"
 
 describe("interp", () => {

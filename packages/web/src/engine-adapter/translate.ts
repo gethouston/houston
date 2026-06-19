@@ -1,6 +1,26 @@
+import { EngineError } from "@houston/runtime-client";
 import type { HoustonEngineClient, ChatMessage, TokenUsage, WireEvent } from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
+
+/**
+ * A turn that fails on the SEND (e.g. no provider connected → the runtime answers
+ * 409) rejects with an EngineError wrapping the runtime's JSON body. Unwrap it to
+ * the plain message the engine sent, so the chat shows "No provider connected. Log
+ * in with Claude or Codex first." rather than a raw `engine request failed (409):
+ * {…}` string (the product voice never shows status codes or JSON to the user).
+ */
+export function turnErrorMessage(e: unknown): string {
+  if (e instanceof EngineError) {
+    try {
+      const body = JSON.parse(e.body) as { error?: string };
+      if (body?.error) return body.error;
+    } catch {
+      /* body wasn't JSON — fall through to the generic message */
+    }
+  }
+  return e instanceof Error ? e.message : String(e);
+}
 
 function feed(agentPath: string, sessionKey: string, item: unknown): void {
   emitEvent("FeedItem", { agent_path: agentPath, session_key: sessionKey, item });
@@ -146,8 +166,10 @@ export async function streamTurn(
   } catch (e) {
     // Our own abort after a terminal event is the expected teardown, not a
     // failure; anything else (send rejected, stream dropped) is a real error.
+    // A rejected send (e.g. the runtime refusing a not-connected turn with 409)
+    // lands here, stops the spinner, and shows the engine's plain message.
     if (!(ac.signal.aborted && settled)) {
-      finishErr(e instanceof Error ? e.message : String(e));
+      finishErr(turnErrorMessage(e));
     }
   } finally {
     ac.abort();

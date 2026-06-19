@@ -141,6 +141,19 @@ export async function captureCredential(cfg: ControlPlaneConfig, agentId: string
 }
 
 /**
+ * Connect-once logout: forget the workspace's central credential for a provider,
+ * the mirror of captureCredential. Without it, logout cleared only the agent
+ * runtime's local auth.json and the next turn re-served the credential from the
+ * central store — so the provider reconnected itself. Idempotent.
+ */
+export async function forgetCredential(cfg: ControlPlaneConfig, agentId: string, provider: string): Promise<void> {
+  await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}/credential/forget`, {
+    method: "POST",
+    body: JSON.stringify({ provider }),
+  });
+}
+
+/**
  * A runtime client scoped to ONE agent, via the control plane's transparent proxy.
  * Its `/conversations/:id/*` calls land on `${baseUrl}/agents/${agentId}/conversations/:id/*`.
  */

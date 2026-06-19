@@ -40,4 +40,8 @@ export class TurnChannel implements RuntimeChannel {
       ? { ok: true, provider: cred.provider }
       : { ok: false, status: 400, error: "agent is not connected yet" };
   }
+
+  async forgetCredential(ctx: ChannelCtx, provider: string): Promise<void> {
+    await this.deps.credentials.remove(ctx.workspace.id, provider);
+  }
 }
