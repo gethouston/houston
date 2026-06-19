@@ -17,6 +17,10 @@ export interface TurnRequest {
   gcsPrefix: string;
   /** null = workspace not connected yet (the turn fails with a clear error). */
   credential: ServedCredential | null;
+  /** Per-turn model override (a routine's pinned model). Absent = inherit. */
+  model?: string;
+  /** Per-turn reasoning-effort override (a routine's pinned effort). Absent = inherit. */
+  effort?: string;
 }
 
 const ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
@@ -61,5 +65,7 @@ export function parseTurnRequest(body: unknown): TurnRequest {
     nonce: typeof b.nonce === "string" ? b.nonce : undefined,
     gcsPrefix: prefix,
     credential,
+    model: typeof b.model === "string" ? b.model : undefined,
+    effort: typeof b.effort === "string" ? b.effort : undefined,
   };
 }

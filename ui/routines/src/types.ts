@@ -22,6 +22,12 @@ export interface Routine {
   chat_mode: RoutineChatMode
   /** IANA timezone override; absent means use the user's account timezone. */
   timezone?: string | null
+  /** Provider id override; absent means inherit the agent's provider. */
+  provider?: string | null
+  /** Model override; absent means inherit the agent's model. */
+  model?: string | null
+  /** Reasoning-effort override; absent means inherit the agent's effort. */
+  effort?: string | null
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[]
   created_at: string

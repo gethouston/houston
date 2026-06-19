@@ -184,6 +184,12 @@ export interface Routine {
   chat_mode: RoutineChatMode;
   /** IANA timezone override; absent means use the user's preference. */
   timezone?: string | null;
+  /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
+  provider?: string | null;
+  /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning-effort override (e.g. "high", "max"); absent means inherit the agent's effort. */
+  effort?: string | null;
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[];
   created_at: string;
@@ -201,6 +207,12 @@ export interface NewRoutine {
   chat_mode?: RoutineChatMode;
   /** IANA timezone override (e.g. "America/Bogota"). Falls back to user pref. */
   timezone?: string | null;
+  /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
+  provider?: string | null;
+  /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
+  model?: string | null;
+  /** Reasoning effort to pin (e.g. "high"); omit to inherit the agent's effort. */
+  effort?: string | null;
   /** Composio toolkit slugs this routine uses. */
   integrations?: string[];
 }
@@ -215,6 +227,12 @@ export interface RoutineUpdate {
   chat_mode?: RoutineChatMode;
   /** Set to a string to override, `null` to clear, omit to leave unchanged. */
   timezone?: string | null;
+  /** Provider id to pin (e.g. "openai"); omit or null to leave unchanged. */
+  provider?: string | null;
+  /** Model to pin (e.g. "gpt-5.5"); omit or null to leave unchanged. */
+  model?: string | null;
+  /** Reasoning effort to pin (e.g. "high"); omit or null to leave unchanged. */
+  effort?: string | null;
   integrations?: string[];
 }
 

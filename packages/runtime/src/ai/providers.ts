@@ -76,12 +76,17 @@ export function setSettings(input: { activeProvider?: string; model?: string }):
   return s;
 }
 
-/** Resolve the pi-ai model for the active provider (used when starting a turn). */
-export function resolveModel() {
+/**
+ * Resolve the pi-ai model for the active provider (used when starting a turn).
+ * An optional `override` (a routine's pinned model) wins over the saved model;
+ * `getModel` throws for an id the provider doesn't offer, so a bad pin surfaces
+ * as the turn's error rather than silently falling back.
+ */
+export function resolveModel(override?: string | null) {
   const provider = activeProvider();
   if (!provider)
     throw new Error("No provider connected. Log in with Claude or Codex first.");
-  return getModel(provider as any, modelFor(provider) as any);
+  return getModel(provider as any, (override || modelFor(provider)) as any);
 }
 
 function safeModelIds(provider: ProviderId): string[] {

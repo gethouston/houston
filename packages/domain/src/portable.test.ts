@@ -38,6 +38,22 @@ test("pack → unpack round-trips every part", () => {
   expect(pkg.learnings.map((l) => l.id)).toEqual(["l1"]);
 });
 
+test("a shared routine carries its provider/model/effort pins", () => {
+  const pinned: PortableContent = {
+    skills: [],
+    learnings: [],
+    routines: [
+      createRoutine(
+        { name: "Nightly", prompt: "check", schedule: "0 2 * * *", provider: "openai", model: "gpt-5.5", effort: "high" },
+        "r1",
+        NOW,
+      ),
+    ],
+  };
+  const pkg = unpackAgent(packAgent(pinned, meta, NOW));
+  expect(pkg.routines[0]).toMatchObject({ provider: "openai", model: "gpt-5.5", effort: "high" });
+});
+
 test("the inventory preview reflects what's inside (skill descriptions from frontmatter)", () => {
   const pkg = unpackAgent(packAgent(content(), meta, NOW));
   const inv = portableInventory(pkg);

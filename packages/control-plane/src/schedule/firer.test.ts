@@ -1,5 +1,5 @@
 import { test, expect } from "bun:test";
-import type { ChannelCtx, RuntimeChannel } from "../ports";
+import type { ChannelCtx, RuntimeChannel, TurnPin } from "../ports";
 import type { Agent, Workspace } from "../domain/types";
 import { ProxyChannel } from "../channel/proxy";
 import { MemoryCredentialStore } from "../credentials/store";
@@ -48,13 +48,15 @@ function job(over: Partial<FiringJob> = {}): FiringJob {
 }
 
 /** A channel that records fireTurn calls; the other verbs are unused here. */
-function recordingChannel(): RuntimeChannel & { calls: { cid: string; text: string }[] } {
-  const calls: { cid: string; text: string }[] = [];
+function recordingChannel(): RuntimeChannel & {
+  calls: { cid: string; text: string; pin?: TurnPin }[];
+} {
+  const calls: { cid: string; text: string; pin?: TurnPin }[] = [];
   return {
     calls,
     async dispatch() {},
-    async fireTurn(_ctx: ChannelCtx, cid: string, text: string) {
-      calls.push({ cid, text });
+    async fireTurn(_ctx: ChannelCtx, cid: string, text: string, pin?: TurnPin) {
+      calls.push({ cid, text, pin });
     },
     async teardown() {},
     async captureCredential() {
@@ -67,7 +69,17 @@ test("ChannelRoutineFirer routes the prompt to the workspace's channel", async (
   const cloudrun = recordingChannel();
   const firer = new ChannelRoutineFirer({ cloudrun });
   await firer.fire(job());
-  expect(cloudrun.calls).toEqual([{ cid: "routine-r1", text: "Write the daily report" }]);
+  expect(cloudrun.calls).toEqual([
+    // No pins on this routine → both inherit (undefined).
+    { cid: "routine-r1", text: "Write the daily report", pin: { model: undefined, effort: undefined } },
+  ]);
+});
+
+test("ChannelRoutineFirer carries the routine's model/effort pins", async () => {
+  const cloudrun = recordingChannel();
+  const firer = new ChannelRoutineFirer({ cloudrun });
+  await firer.fire(job({ routine: { ...job().routine, model: "claude-opus-4-8", effort: "max" } }));
+  expect(cloudrun.calls[0]!.pin).toEqual({ model: "claude-opus-4-8", effort: "max" });
 });
 
 test("a missing channel for the workspace's runtime throws (→ errored run)", async () => {
@@ -101,6 +113,37 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
     expect(seen!.path).toBe("/conversations/routine-r1/messages");
     expect(seen!.body).toEqual({ text: "Write the daily report" });
     expect(seen!.auth).toBe("Bearer sbx-token");
+  } finally {
+    runtime.stop(true);
+  }
+});
+
+test("ProxyChannel.fireTurn includes the routine's model/effort pins in the message body", async () => {
+  let body: unknown = null;
+  const runtime = Bun.serve({
+    port: 0,
+    fetch: async (req) => {
+      body = await req.json();
+      return Response.json({ ok: true, id: "routine-r1" }, { status: 202 });
+    },
+  });
+  const launcher = {
+    async ensureAwake() {
+      return { baseUrl: `http://127.0.0.1:${runtime.port}`, token: "t" };
+    },
+    async sleep() {},
+    async destroy() {},
+    async status() {
+      return "running" as const;
+    },
+  };
+  const channel = new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials: new MemoryCredentialStore() });
+  try {
+    await channel.fireTurn({ workspace: ws("gke"), agent }, "routine-r1", "go", {
+      model: "gpt-5.5",
+      effort: "high",
+    });
+    expect(body).toEqual({ text: "go", model: "gpt-5.5", effort: "high" });
   } finally {
     runtime.stop(true);
   }

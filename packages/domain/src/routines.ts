@@ -65,6 +65,11 @@ export function createRoutine(input: NewRoutine, id: string, nowIso: string): Ro
     suppress_when_silent: input.suppress_when_silent ?? false,
     chat_mode: input.chat_mode ?? "shared",
     timezone: input.timezone ?? null,
+    // Per-routine provider/model/effort pins. Absent (null) means inherit the
+    // agent's config at dispatch — see resolveTurnModel in the runtime.
+    provider: input.provider ?? null,
+    model: input.model ?? null,
+    effort: input.effort ?? null,
     integrations: input.integrations ?? [],
     created_at: nowIso,
     updated_at: nowIso,

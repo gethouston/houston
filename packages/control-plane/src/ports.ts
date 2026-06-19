@@ -86,6 +86,15 @@ export interface ChannelCtx {
   agent: Agent;
 }
 
+/**
+ * A routine's pinned model/effort, carried into the turn it fires. Absent
+ * fields mean "inherit the agent default", resolved by the runtime.
+ */
+export interface TurnPin {
+  model?: string | null;
+  effort?: string | null;
+}
+
 export type CaptureResult =
   | { ok: true; provider: string }
   | { ok: false; status: number; error: string; detail?: string };
@@ -111,8 +120,10 @@ export interface RuntimeChannel {
    * path for firing a routine's prompt into a conversation. Resolves once the
    * turn is ACCEPTED; throws when it can't be started (busy / quota / transport)
    * so the caller records an errored run instead of a silent miss.
+   *
+   * `pin` carries the routine's model/effort overrides (absent = inherit).
    */
-  fireTurn(ctx: ChannelCtx, conversationId: string, text: string): Promise<void>;
+  fireTurn(ctx: ChannelCtx, conversationId: string, text: string, pin?: TurnPin): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /** Connect-once: pull/confirm the workspace credential after the user connects. */

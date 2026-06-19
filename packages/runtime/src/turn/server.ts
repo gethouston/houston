@@ -87,6 +87,7 @@ async function executeTurn(deps: TurnServerDeps, turn: TurnRequest, req: Incomin
         emit,
         abort.signal,
         turn.nonce,
+        { model: turn.model, effort: turn.effort },
       );
     }
 
