@@ -160,6 +160,37 @@ export async function handleAgents(
     return true;
   }
 
+  // Forget (connect-once logout): drop the workspace credential for a provider so
+  // no future turn can re-serve it. Clearing only the agent runtime's local
+  // auth.json left the central store intact, and the next turn re-hydrated the
+  // agent from it — the provider showed connected again. Must precede dispatch.
+  const forget = path.match(/^\/agents\/([^/]+)\/credential\/forget$/);
+  if (forget && method === "POST") {
+    const agentId = forget[1] ? decodeURIComponent(forget[1]) : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    const { provider } = await readJson(req);
+    if (!provider || typeof provider !== "string") {
+      json(res, 400, { error: "missing 'provider'" });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    await channel.forgetCredential({ workspace: authz.workspace, agent: authz.agent }, provider);
+    json(res, 200, { ok: true });
+    return true;
+  }
+
   // Run a routine ON DEMAND: fire it now through the SAME firer + record path the
   // scheduler uses, so a hand-pressed run is indistinguishable from a cron one
   // (records a routine_run, reconcile completes it). Must precede the generic

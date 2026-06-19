@@ -1,7 +1,8 @@
 /**
- * Picker fields used by ScheduleBuilder — time, day-of-month, and the "On these
- * days" weekday multi-select. The "Repeat every N [unit]" control lives in
- * schedule-interval-picker.tsx and reuses labelClass exported here.
+ * Picker fields used by ScheduleBuilder — day-of-month and the "On these days"
+ * weekday multi-select. The clock-button time picker lives in time-picker.tsx
+ * and the "Repeat every N [unit]" control in schedule-interval-picker.tsx; both
+ * reuse `labelClass` exported here.
  *
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
@@ -16,28 +17,6 @@ const inputClass = cn(
 )
 
 export const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
-
-export function TimePicker({
-  label,
-  value,
-  onChange,
-}: {
-  label: string
-  value: string
-  onChange: (time: string) => void
-}) {
-  return (
-    <div>
-      <label className={labelClass}>{label}</label>
-      <input
-        type="time"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className={cn(inputClass, "w-full")}
-      />
-    </div>
-  )
-}
 
 export function DayOfMonthPicker({
   label,

@@ -12,6 +12,7 @@ import type {
   ChatMessage,
   ConversationHistory,
   ConversationSummary,
+  TokenUsage,
   ToolCallRecord,
 } from "@houston/runtime-client";
 
@@ -69,6 +70,7 @@ export function appendAssistantMessageAt(
   id: string,
   content: string,
   tools?: ToolCallRecord[],
+  usage?: TokenUsage | null,
 ) {
   const conv = loadConversation(dir, id);
   if (!conv) return;
@@ -77,6 +79,7 @@ export function appendAssistantMessageAt(
     content,
     ts: Date.now(),
     tools: tools && tools.length ? tools : undefined,
+    usage: usage ?? undefined,
   });
   conv.updatedAt = Date.now();
   save(dir, conv);

@@ -86,6 +86,11 @@
     "increase": "Increase",
     "enterNumber": "Enter a number",
     "pickDay": "Pick at least one day",
+    "timePicker": {
+      "hour": "Hour",
+      "minute": "Minute",
+      "period": "AM/PM"
+    },
     "summary": {
       "noSchedule": "No schedule set",
       "custom": "Custom schedule",

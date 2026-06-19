@@ -1,21 +1,13 @@
 {
   "button": {
-    "aria": "Open context usage",
-    "label": "Context"
+    "aria": "Context usage"
   },
-  "dialog": {
-    "title": "Context usage",
-    "subtitle": "How full {{model}}'s memory is for this conversation.",
-    "subtitleNoModel": "How full the memory is for this conversation.",
-    "percentFull": "{{percent}}% full",
+  "card": {
+    "title": "Context",
+    "percent": "{{percent}}%",
     "usedOfTotal": "{{used}} of {{total}} tokens",
     "tokensUsed": "{{used}} tokens used",
-    "free": "{{free}} free",
-    "estimated": "Estimated. Your plan's actual context window may differ.",
-    "cached": "Reused from cache",
-    "lastReply": "Last reply",
     "empty": "Send a message and the context usage will show up here.",
-    "unknownWindow": "The context size for this model is not known yet, so the amount used is shown without a percentage.",
-    "close": "Close"
+    "unknownWindow": "The context size for this model is not known yet, so the amount used is shown without a percentage."
   }
 }

@@ -113,6 +113,8 @@ export interface ScheduleLabels {
   enterNumber: string
   /** Validation summary shown when the Weekly preset has no day selected. */
   pickDay: string
+  /** Accessible names for the time picker's hour / minute / AM-PM columns. */
+  timePicker: { hour: string; minute: string; period: string }
   summary: ScheduleSummaryLabels
 }
 
