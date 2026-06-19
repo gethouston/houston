@@ -61,6 +61,7 @@ export interface ChatPanelProps {
   canSendEmpty?: boolean;
   status?: ChatStatus;
   thinkingIndicator?: ReactNode;
+  endOfTurnIndicator?: ReactNode;
   transformContent?: (content: string) => { content: string; extra?: ReactNode };
   toolLabels?: ToolsAndCardsProps["toolLabels"];
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"];

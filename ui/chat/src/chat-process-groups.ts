@@ -99,3 +99,12 @@ export function getChatDisplayItems(
   flushProcess(status !== "ready", true);
   return items;
 }
+
+export function shouldShowThinkingIndicator(
+  items: ChatDisplayItem[],
+  status: ChatStatus,
+): boolean {
+  if (status !== "submitted") return false;
+  const last = items[items.length - 1];
+  return !(last?.kind === "process" && last.isActive);
+}

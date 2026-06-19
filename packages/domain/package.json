@@ -29,6 +29,7 @@
   },
   "devDependencies": {
     "@types/bun": "^1.3.14",
+    "@types/node": "^22",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
     "typescript": "^6.0.2"
   }

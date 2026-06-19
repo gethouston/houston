@@ -20,9 +20,10 @@ import {
 import type { RenderLinkProps } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ToolsAndCardsProps } from "./chat-helpers";
-import { ChatProcessBlock } from "./chat-process-block";
 import type { ChatProcessLabels } from "./chat-process-block";
-import { getChatDisplayItems } from "./chat-process-groups";
+import { getChatDisplayItems, shouldShowThinkingIndicator } from "./chat-process-groups";
+import { ChatProcessMessage } from "./chat-process-message";
+import { ChatSystemMessage } from "./chat-system-message";
 import { computeTurnEndSummary } from "./turn-tools";
 import type { TurnEndSummary } from "./turn-tools";
 import type { ChatMessage } from "./feed-to-messages";
@@ -31,6 +32,7 @@ export interface ChatMessagesProps {
   messages: ChatMessage[];
   status: "ready" | "streaming" | "submitted";
   thinkingIndicator: ReactNode;
+  endOfTurnIndicator?: ReactNode;
   transformContent?: (content: string) => {
     content: string;
     extra?: ReactNode;
@@ -68,6 +70,7 @@ export function ChatMessages({
   messages,
   status,
   thinkingIndicator,
+  endOfTurnIndicator,
   transformContent,
   toolLabels,
   isSpecialTool,
@@ -91,6 +94,12 @@ export function ChatMessages({
     () => getChatDisplayItems(messages, status),
     [messages, status],
   );
+  const showThinkingIndicator = shouldShowThinkingIndicator(displayItems, status);
+  const lastMessage = messages[messages.length - 1];
+  const showEndOfTurnIndicator =
+    status === "ready" &&
+    lastMessage?.from === "assistant" &&
+    Boolean(endOfTurnIndicator);
   return (
     <Conversation className="flex-1 min-h-0">
       <ConversationAutoScroll status={status} />
@@ -98,59 +107,31 @@ export function ChatMessages({
         {displayItems.map((item) => {
           if (item.kind === "process") {
             return (
-              <Message
-                from="assistant"
+              <ChatProcessMessage
                 key={item.key}
-                className="-my-6"
-                avatar={renderMessageAvatar?.(item.segments[0].message)}
-              >
-                <div>
-                  <ChatProcessBlock
-                    segments={item.segments}
-                    isActive={item.isActive}
-                    labels={processLabels}
-                    toolLabels={toolLabels}
-                    isSpecialTool={isSpecialTool}
-                    renderToolResult={renderToolResult}
-                    getThinkingMessage={getThinkingMessage}
-                  />
-                  {(() => {
-                    if (!item.isTrailing || item.isActive || !renderTurnSummary) return null;
-                    const summary = turnEndSummaries.get(item.sourceIndex);
-                    if (!summary) return null;
-                    return renderTurnSummary(summary);
-                  })()}
-                </div>
-              </Message>
+                item={item}
+                turnEndSummaries={turnEndSummaries}
+                renderMessageAvatar={renderMessageAvatar}
+                renderTurnSummary={renderTurnSummary}
+                processLabels={processLabels}
+                toolLabels={toolLabels}
+                isSpecialTool={isSpecialTool}
+                renderToolResult={renderToolResult}
+                getThinkingMessage={getThinkingMessage}
+              />
             );
           }
 
           const msg = item.message;
           const idx = item.sourceIndex;
           if (msg.from === "system") {
-            const custom = renderSystemMessage?.(msg);
-            if (custom !== undefined) return <div key={msg.key}>{custom}</div>;
-            if (msg.compaction) {
-              return (
-                <div
-                  key={msg.key}
-                  className="flex items-center gap-3 max-w-3xl mx-auto px-4 py-3 text-muted-foreground/70"
-                >
-                  <div className="h-px flex-1 bg-border/60" />
-                  <span className="text-xs italic whitespace-nowrap">
-                    {contextCompactedLabel ??
-                      "Earlier conversation summarized to free up space"}
-                  </span>
-                  <div className="h-px flex-1 bg-border/60" />
-                </div>
-              );
-            }
             return (
-              <div key={msg.key} className="flex justify-center py-2">
-                <span className="text-xs text-muted-foreground/60 italic">
-                  {msg.content}
-                </span>
-              </div>
+              <ChatSystemMessage
+                key={msg.key}
+                message={msg}
+                renderSystemMessage={renderSystemMessage}
+                contextCompactedLabel={contextCompactedLabel}
+              />
             );
           }
           const isLastMsg = idx === messages.length - 1;
@@ -190,13 +171,20 @@ export function ChatMessages({
             </Message>
           );
         })}
-        {status === "submitted" && (
+        {showThinkingIndicator ? (
           <Message from="assistant">
             <MessageContent>
               {thinkingIndicator}
             </MessageContent>
           </Message>
-        )}
+        ) : null}
+        {showEndOfTurnIndicator ? (
+          <Message from="assistant">
+            <MessageContent>
+              {endOfTurnIndicator}
+            </MessageContent>
+          </Message>
+        ) : null}
         {afterMessages}
       </ConversationContent>
       <ConversationScrollButton />
