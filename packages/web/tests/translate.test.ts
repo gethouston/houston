@@ -1,7 +1,9 @@
 import { test, expect } from "bun:test";
-import type { HoustonEngineClient, WireEvent } from "@houston/runtime-client";
-import { streamTurn } from "../src/engine-adapter/translate";
+import type { ChatMessage, HoustonEngineClient, WireEvent } from "@houston/runtime-client";
+import { streamTurn, historyToFeed } from "../src/engine-adapter/translate";
 import { bus } from "../src/engine-adapter/bus";
+
+type FinalResult = { feed_type?: string; data?: { usage?: { context_tokens: number } | null } };
 
 /**
  * A fake runtime client whose `streamEvents` replays a fixed list of wire events
@@ -70,6 +72,76 @@ test("an errored turn drives the activity setter running -> error", async () => 
   );
 
   expect(statuses).toEqual(["running", "error"]);
+});
+
+// The context-usage indicator's data path: a `usage` frame (emitted before
+// `done`) must ride along on the turn's `final_result`. Before this, the new
+// engine dropped usage entirely and the indicator was permanently empty.
+test("a turn's usage frame is attached to the final_result", async () => {
+  const feed = collectFeed();
+
+  await streamTurn(
+    fakeEngine([
+      { type: "text", data: "hello" },
+      { type: "usage", data: { context_tokens: 1234, output_tokens: 56, cached_tokens: 78 } },
+      { type: "done", data: null },
+    ]),
+    "Houston/Bo",
+    "activity-usage",
+    "hi",
+    async () => {},
+  );
+  feed.stop();
+
+  const final = feed.items.find(
+    (i) => (i as FinalResult)?.feed_type === "final_result",
+  ) as FinalResult | undefined;
+  expect(final?.data?.usage?.context_tokens).toBe(1234);
+});
+
+test("a turn with no usage frame yields a null final_result usage", async () => {
+  const feed = collectFeed();
+
+  await streamTurn(
+    fakeEngine([
+      { type: "text", data: "x" },
+      { type: "done", data: null },
+    ]),
+    "Houston/Bo",
+    "activity-nousage",
+    "hi",
+    async () => {},
+  );
+  feed.stop();
+
+  const final = feed.items.find(
+    (i) => (i as FinalResult)?.feed_type === "final_result",
+  ) as FinalResult | undefined;
+  expect(final?.data?.usage ?? null).toBeNull();
+});
+
+test("historyToFeed replays persisted usage as a final_result, once, with no extra bubble", () => {
+  const messages: ChatMessage[] = [
+    { role: "user", content: "hi", ts: 1 },
+    {
+      role: "assistant",
+      content: "yo",
+      ts: 2,
+      usage: { context_tokens: 999, output_tokens: 10, cached_tokens: 5 },
+    },
+  ];
+
+  const out = historyToFeed(messages);
+
+  const final = out.find((i) => i.feed_type === "final_result") as FinalResult | undefined;
+  expect(final?.data?.usage?.context_tokens).toBe(999);
+  // The assistant text still renders exactly once; final_result only flushes.
+  expect(out.filter((i) => i.feed_type === "assistant_text")).toHaveLength(1);
+});
+
+test("historyToFeed emits no final_result when the message has no usage", () => {
+  const out = historyToFeed([{ role: "assistant", content: "yo", ts: 2 }]);
+  expect(out.some((i) => i.feed_type === "final_result")).toBe(false);
 });
 
 // A failing persist must surface (a feed system_message), never be swallowed —

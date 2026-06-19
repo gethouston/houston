@@ -62,12 +62,31 @@ export interface ToolCallRecord {
   isError?: boolean;
 }
 
+/**
+ * Normalized per-turn token usage, provider-agnostic. Mirrors the frontend
+ * `TokenUsage` in `@houston-ai/chat` so the context-usage indicator can read it
+ * straight off a `final_result` feed item.
+ *
+ * `context_tokens` is the headline number: the prompt size of the most recent
+ * model request, i.e. how much of the context window is in use (cache-inclusive
+ * — cached tokens still occupy the window). `cached_tokens` (a subset) and
+ * `output_tokens` are informational detail.
+ */
+export interface TokenUsage {
+  context_tokens: number;
+  output_tokens: number;
+  cached_tokens: number;
+}
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
   /** epoch ms */
   ts: number;
   tools?: ToolCallRecord[];
+  /** Normalized usage for the turn this assistant message completed, when the
+   *  provider reported it. Persisted so the context indicator survives a reload. */
+  usage?: TokenUsage | null;
 }
 
 export interface ConversationSummary {
@@ -92,6 +111,8 @@ export interface ConversationHistory {
  * - `user`  — a user message was added (by any client); `nonce` echoes the sender's.
  * - `text` / `thinking` — assistant output deltas.
  * - `tool_start` / `tool_end` — tool activity within the turn.
+ * - `usage` — normalized token usage for the turn (when the provider reports it),
+ *   emitted before `done`. Drives the context-usage indicator.
  * - `done` / `error` — the turn ended.
  */
 export type WireEvent =
@@ -101,6 +122,7 @@ export type WireEvent =
   | { type: "thinking"; data: string }
   | { type: "tool_start"; data: { name: string; args: unknown } }
   | { type: "tool_end"; data: { name: string; isError: boolean } }
+  | { type: "usage"; data: TokenUsage }
   | { type: "done"; data: null }
   | { type: "error"; data: { message: string } };
 

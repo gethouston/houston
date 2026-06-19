@@ -1,4 +1,4 @@
-import type { HoustonEngineClient, ChatMessage, WireEvent } from "@houston/runtime-client";
+import type { HoustonEngineClient, ChatMessage, TokenUsage, WireEvent } from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
 
@@ -52,6 +52,10 @@ export async function streamTurn(
 
   let text = "";
   let thinking = "";
+  // Normalized token usage for the turn, carried on the `usage` frame the engine
+  // emits before `done`. Attached to the `final_result` so the context-usage
+  // indicator can read it.
+  let usage: TokenUsage | null = null;
   let settled = false;
   // Terminal board status, persisted once the turn settles (NOT mid-stream) so
   // the write is awaited and a failure is surfaced.
@@ -65,7 +69,7 @@ export async function streamTurn(
     if (text) feed(agentPath, sessionKey, { feed_type: "assistant_text", data: text });
     feed(agentPath, sessionKey, {
       feed_type: "final_result",
-      data: { result: text, cost_usd: null, duration_ms: null },
+      data: { result: text, cost_usd: null, duration_ms: null, usage },
     });
     sessionStatus(agentPath, sessionKey, "completed");
     terminal = "needs_you";
@@ -112,6 +116,10 @@ export async function streamTurn(
           feed_type: "tool_result",
           data: { content: "", is_error: ev.data.isError },
         });
+        break;
+      case "usage":
+        // Stash the turn's usage; finishOk attaches it to the final_result.
+        usage = ev.data;
         break;
       case "error":
         finishErr(ev.data.message);
@@ -163,6 +171,14 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
         out.push({ feed_type: "tool_result", data: { content: "", is_error: !!t.isError } });
       }
       if (m.content) out.push({ feed_type: "assistant_text", data: m.content });
+      // Replay the turn's usage as a final_result (which only flushes, never
+      // renders a bubble) so the context-usage indicator survives a reload.
+      if (m.usage) {
+        out.push({
+          feed_type: "final_result",
+          data: { result: m.content, cost_usd: null, duration_ms: null, usage: m.usage },
+        });
+      }
     }
   }
   return out;
