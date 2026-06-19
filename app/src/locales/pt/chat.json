@@ -44,6 +44,7 @@
     "notConnected": "Sem conexão",
     "checking": "Verificando...",
     "effort": "Esforço de raciocínio",
+    "effortValue": "Esforço de raciocínio: {{level}}",
     "effortLevels": {
       "low": "Baixo",
       "medium": "Médio",
