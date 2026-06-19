@@ -90,6 +90,11 @@
     "increase": "Aumentar",
     "enterNumber": "Digite um número",
     "pickDay": "Escolha pelo menos um dia",
+    "timePicker": {
+      "hour": "Hora",
+      "minute": "Minuto",
+      "period": "AM/PM"
+    },
     "summary": {
       "noSchedule": "Nenhum agendamento definido",
       "custom": "Agendamento personalizado",

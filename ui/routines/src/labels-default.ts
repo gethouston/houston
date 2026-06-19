@@ -96,6 +96,7 @@ export const DEFAULT_SCHEDULE_LABELS: ScheduleLabels = {
   increase: "Increase",
   enterNumber: "Enter a number",
   pickDay: "Pick at least one day",
+  timePicker: { hour: "Hour", minute: "Minute", period: "AM/PM" },
   summary: DEFAULT_SCHEDULE_SUMMARY_LABELS,
 }
 
