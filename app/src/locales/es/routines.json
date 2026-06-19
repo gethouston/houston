@@ -39,7 +39,7 @@
     "chatTitle": "Mantener los resultados en un solo chat",
     "chatDescription": "Cada ejecución se suma al mismo chat. Desactívalo para abrir un chat nuevo cada vez que se ejecute esta rutina.",
     "modelTitle": "Modelo",
-    "modelDescription": "Elige el modelo y el nivel de esfuerzo de razonamiento con que se ejecuta esta rutina. Usa la configuración del agente de forma predeterminada."
+    "modelDescription": "Elige el modelo y el nivel de esfuerzo de razonamiento con que se ejecuta esta rutina."
   },
   "row": {
     "untitled": "Sin título",
