@@ -7,7 +7,7 @@ import {
 import { getModel } from "@earendil-works/pi-ai";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { ToolCallRecord, WireEvent } from "@houston/runtime-client";
+import type { TokenUsage, ToolCallRecord, WireEvent } from "@houston/runtime-client";
 import { config } from "../config";
 import { toThinkingLevel } from "../ai/effort";
 import { makeAgentLoader } from "../session/resource-loader";
@@ -79,6 +79,7 @@ export async function runPiTurn(
   emit({ type: "user", data: { content: text, ts: Date.now(), nonce } });
 
   let assistantText = "";
+  let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
   try {
     const authStorage = AuthStorage.create(join(dataDir, "auth.json"));
@@ -121,6 +122,7 @@ export async function runPiTurn(
       const wire = toWire(e);
       if (!wire) return;
       if (wire.type === "text") assistantText += wire.data;
+      else if (wire.type === "usage") usage = wire.data;
       else if (wire.type === "tool_start") tools.push({ name: wire.data.name });
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
@@ -136,10 +138,10 @@ export async function runPiTurn(
       signal?.removeEventListener("abort", onAbort);
       unsub();
     }
-    appendAssistantMessageAt(conversationsDir, conversationId, assistantText, tools);
+    appendAssistantMessageAt(conversationsDir, conversationId, assistantText, tools, usage);
     return {};
   } catch (err) {
-    if (assistantText) appendAssistantMessageAt(conversationsDir, conversationId, assistantText, tools);
+    if (assistantText) appendAssistantMessageAt(conversationsDir, conversationId, assistantText, tools, usage);
     return { error: err instanceof Error ? err.message : String(err) };
   }
 }

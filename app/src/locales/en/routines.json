@@ -5,7 +5,9 @@
     "emptyTitle": "Set it and forget it",
     "emptyDescription": "Routines fire on a schedule and only ping you when something actually needs attention.",
     "newRoutine": "New routine",
-    "descriptionShort": "Recurring tasks that fire on schedule and only ping you when something needs attention."
+    "descriptionShort": "Recurring tasks that fire on schedule and only ping you when something needs attention.",
+    "timezoneLabel": "Timezone",
+    "timezoneHint": "All your routines run in this timezone."
   },
   "editor": {
     "back": "Back to routines",
@@ -29,8 +31,6 @@
     "sectionWhen": "When it runs",
     "sectionBehavior": "Behavior",
     "sectionRecent": "Recent runs",
-    "timezoneLabel": "Timezone",
-    "accountDefault": "Account default · {tz}",
     "nextRun": "Next run {relative}",
     "schedulePreview": "Schedule preview",
     "schedulePreviewHint": "Pick a valid schedule to see when this routine will fire.",
@@ -67,13 +67,36 @@
     "units": {
       "minutes": "minutes",
       "hours": "hours",
-      "days": "days"
+      "days": "days",
+      "weeks": "weeks",
+      "months": "months"
+    },
+    "unitsSingular": {
+      "minutes": "minute",
+      "hours": "hour",
+      "days": "day",
+      "weeks": "week",
+      "months": "month"
     },
     "timeLabel": "Time",
     "dayLabel": "Day",
     "dayOfMonthLabel": "Day of month",
-    "runEvery": "Run every",
+    "repeatEvery": "Repeat every",
+    "weekdaysLabel": "On these days",
+    "weekdayShortcuts": {
+      "everyDay": "Every day",
+      "weekdays": "Weekdays",
+      "weekends": "Weekends"
+    },
+    "decrease": "Decrease",
+    "increase": "Increase",
     "enterNumber": "Enter a number",
+    "pickDay": "Pick at least one day",
+    "timePicker": {
+      "hour": "Hour",
+      "minute": "Minute",
+      "period": "AM/PM"
+    },
     "summary": {
       "noSchedule": "No schedule set",
       "custom": "Custom schedule",
@@ -88,7 +111,9 @@
       "everyNDays": "Runs every {n} days at {time}",
       "weekdays": "Runs Monday through Friday at {time}",
       "weekly": "Runs every {day} at {time}",
-      "monthly": "Runs on the {ordinal} of every month at {time}"
+      "weeklyOnDays": "Runs every week on {days} at {time}",
+      "monthly": "Runs on the {ordinal} of every month at {time}",
+      "everyNMonths": "Runs on the {ordinal} of every {months} months at {time}"
     }
   },
   "nextFire": {
@@ -119,12 +144,8 @@
     "yesterday": "Yesterday, {time}",
     "onDate": "{date}, {time}"
   },
-  "timezoneGate": {
-    "title": "What's your timezone?",
-    "description": "Routines run on a schedule. We need to know your zone before any of them fire, so 9am means your 9am.",
-    "timezoneLabel": "Timezone",
-    "detected": "Detected from your computer.",
-    "saving": "Saving…",
-    "confirm": "Confirm timezone"
+  "toasts": {
+    "timezoneSet": "Timezone set to {{zone}}",
+    "timezoneError": "Couldn't update the timezone"
   }
 }

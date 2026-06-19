@@ -24,7 +24,6 @@ import {
   UserContextSection,
 } from "./sections/workspace-context";
 import { ProviderSection } from "./sections/provider";
-import { TimezoneSection } from "./sections/timezone";
 import { LanguageSection } from "./sections/language";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
@@ -118,7 +117,6 @@ export function SettingsView() {
               <div className="space-y-10">
                 <WorkspaceSection />
                 <LanguageSection />
-                <TimezoneSection />
                 <AppearanceSection />
                 <DangerSection />
               </div>

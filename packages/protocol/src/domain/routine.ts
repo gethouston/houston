@@ -12,8 +12,6 @@ export interface Routine {
   enabled: boolean;
   suppress_when_silent: boolean;
   chat_mode: RoutineChatMode;
-  /** IANA timezone override; absent means the user's preference. */
-  timezone?: string | null;
   /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
   provider?: string | null;
   /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
@@ -34,7 +32,6 @@ export interface NewRoutine {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
-  timezone?: string | null;
   /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
   provider?: string | null;
   /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
@@ -52,8 +49,6 @@ export interface RoutineUpdate {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
-  /** Set a string to override, `null` to clear, omit to leave unchanged. */
-  timezone?: string | null;
   /** Provider id to pin; `null` clears (back to inherit), omit to leave unchanged. */
   provider?: string | null;
   /** Model to pin; `null` clears (back to inherit), omit to leave unchanged. */

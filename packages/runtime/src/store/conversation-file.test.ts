@@ -62,3 +62,25 @@ test("delete then re-append starts a fresh conversation, not a resurrected one",
   expect(conv.messages).toHaveLength(1);
   expect(conv.messages[0]!.content).toBe("second life");
 });
+
+test("assistant message persists token usage so the indicator survives a reload", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hi");
+  appendAssistantMessageAt(dir, "c1", "hello!", undefined, {
+    context_tokens: 12345,
+    output_tokens: 67,
+    cached_tokens: 89,
+  });
+
+  const msg = getHistoryAt(dir, "c1")!.messages.find((m) => m.role === "assistant")!;
+  expect(msg.usage).toEqual({ context_tokens: 12345, output_tokens: 67, cached_tokens: 89 });
+});
+
+test("assistant message without usage stores no usage field (degrades cleanly)", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hi");
+  appendAssistantMessageAt(dir, "c1", "hello!");
+
+  const msg = getHistoryAt(dir, "c1")!.messages.find((m) => m.role === "assistant")!;
+  expect(msg.usage ?? null).toBeNull();
+});

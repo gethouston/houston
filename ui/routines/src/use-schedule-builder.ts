@@ -6,12 +6,11 @@ import { useState, useEffect, useRef } from "react"
 import type { SchedulePreset } from "./types"
 import {
   presetToCron,
-  presetSummary,
   cronToPreset,
   cronToOptions,
-  cronSummary,
   type ScheduleOptions,
 } from "./schedule-cron-utils"
+import { presetSummary, cronSummary } from "./schedule-summary"
 import {
   intervalToCron,
   cronToInterval,
@@ -36,6 +35,8 @@ export interface ScheduleBuilderState {
   setIntervalEvery: (every: string) => void
   intervalUnit: IntervalUnit
   setIntervalUnit: (unit: IntervalUnit) => void
+  intervalWeekdays: number[]
+  setIntervalWeekdays: (days: number[]) => void
   everyValid: boolean
   isCustom: boolean
   showTime: boolean
@@ -76,12 +77,19 @@ export function useScheduleBuilder(
   const [intervalUnit, setUnit] = useState<IntervalUnit>(
     detectedInterval ? detectedInterval.unit : "minutes",
   )
+  // Selected weekdays for the custom "weeks" unit (defaults to Monday).
+  const [intervalWeekdays, setWeekdaysState] = useState<number[]>(
+    detectedInterval?.weekdays ?? [1],
+  )
 
   const everyNumber = Number(intervalEvery)
-  const everyValid =
+  const countValid =
     intervalEvery.trim() !== "" &&
     Number.isInteger(everyNumber) &&
     everyNumber >= 1
+  // The "weeks" unit has no count — it's valid once a day is picked. Every
+  // other unit needs a positive whole number.
+  const everyValid = intervalUnit === "weeks" ? intervalWeekdays.length > 0 : countValid
 
   // Stable ref for onChange to avoid infinite effect loops.
   const onChangeRef = useRef(onChange)
@@ -94,13 +102,21 @@ export function useScheduleBuilder(
     if (activePreset === "custom") {
       onChangeRef.current(
         everyValid
-          ? intervalToCron({ every: everyNumber, unit: intervalUnit }, options.time)
+          ? intervalToCron(
+              {
+                every: everyNumber,
+                unit: intervalUnit,
+                weekdays: intervalWeekdays,
+                dayOfMonth: options.dayOfMonth,
+              },
+              options.time,
+            )
           : "",
       )
       return
     }
     onChangeRef.current(presetToCron(activePreset, options))
-  }, [activePreset, options, intervalEvery, intervalUnit, touched])
+  }, [activePreset, options, intervalEvery, intervalUnit, intervalWeekdays, touched])
 
   const selectPreset = (preset: SchedulePreset) => {
     setActivePreset(preset)
@@ -118,10 +134,22 @@ export function useScheduleBuilder(
     setUnit(unit)
     setTouched(true)
   }
+  const setIntervalWeekdays = (days: number[]) => {
+    setWeekdaysState(days)
+    setTouched(true)
+  }
 
   const isCustom = activePreset === "custom"
   const customCron = everyValid
-    ? intervalToCron({ every: everyNumber, unit: intervalUnit }, options.time)
+    ? intervalToCron(
+        {
+          every: everyNumber,
+          unit: intervalUnit,
+          weekdays: intervalWeekdays,
+          dayOfMonth: options.dayOfMonth,
+        },
+        options.time,
+      )
     : ""
 
   // While an unrepresentable legacy cron is still untouched, describe the actual
@@ -131,10 +159,10 @@ export function useScheduleBuilder(
     summary = cronSummary(value, labels.summary, locale)
   } else if (!isCustom) {
     summary = presetSummary(activePreset, options, labels.summary, locale)
+  } else if (everyValid) {
+    summary = cronSummary(customCron, labels.summary, locale)
   } else {
-    summary = everyValid
-      ? cronSummary(customCron, labels.summary, locale)
-      : labels.enterNumber
+    summary = intervalUnit === "weeks" ? labels.pickDay : labels.enterNumber
   }
 
   return {
@@ -146,6 +174,8 @@ export function useScheduleBuilder(
     setIntervalEvery,
     intervalUnit,
     setIntervalUnit,
+    intervalWeekdays,
+    setIntervalWeekdays,
     everyValid,
     isCustom,
     showTime: NEEDS_TIME.includes(activePreset),

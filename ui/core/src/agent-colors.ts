@@ -24,6 +24,19 @@ export function resolveAgentColor(stored: string | undefined): string {
   return stored;
 }
 
+/**
+ * Resolve a stored color value (id, light hex, or dark hex) to its canonical
+ * palette id, defaulting to the first color when nothing matches. Used to mark
+ * the active swatch in color pickers.
+ */
+export function agentColorId(stored: string | undefined): string {
+  const match = AGENT_COLORS.find(
+    (entry) =>
+      entry.id === stored || entry.light === stored || entry.dark === stored,
+  );
+  return match?.id ?? AGENT_COLORS[0].id;
+}
+
 export function colorHex(color: AgentColor): string {
   return isDark() ? color.dark : color.light;
 }

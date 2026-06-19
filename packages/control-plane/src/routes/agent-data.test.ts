@@ -118,23 +118,19 @@ test("activities: full CRUD lifecycle over the host", async () => {
   ).toBe(404);
 });
 
-test("routines: created with schema defaults; timezone clears with null", async () => {
+test("routines: created with schema defaults; a stray per-routine timezone is ignored (HOU-470)", async () => {
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
+    // `timezone` is no longer a routine field (one account-wide zone); a client
+    // still sending it must be ignored, not written onto the routine.
     body: JSON.stringify({ name: "Daily report", prompt: "Write it", schedule: "0 9 * * 1-5", timezone: "America/Bogota" }),
   });
   expect(created.status).toBe(201);
   const routine = (await created.json()) as Routine;
   expect(routine.enabled).toBe(true);
   expect(routine.chat_mode).toBe("shared");
-
-  const cleared = await fetch(`${base}/agents/${agentId}/routines/${routine.id}`, {
-    method: "PATCH",
-    headers: auth("alice"),
-    body: JSON.stringify({ timezone: null }),
-  });
-  expect(((await cleared.json()) as Routine).timezone).toBeNull();
+  expect("timezone" in routine).toBe(false);
 
   const runs = await fetch(`${base}/agents/${agentId}/routine_runs`, { headers: auth("alice") });
   expect(((await runs.json()) as { items: unknown[] }).items).toEqual([]);
@@ -149,12 +145,28 @@ test("routines: an invalid cron is rejected at create (400), never saved to fail
   expect(bad.status).toBe(400);
   expect(((await bad.json()) as { error: string }).error).toContain("invalid schedule");
 
-  const badTz = await fetch(`${base}/agents/${agentId}/routines`, {
-    method: "POST",
+  // The schedule is validated against the single account-wide zone (HOU-470),
+  // not a per-routine one: an invalid account timezone rejects the create.
+  await fetch(`${base}/v1/preferences/timezone`, {
+    method: "PUT",
     headers: auth("alice"),
-    body: JSON.stringify({ name: "BadTz", prompt: "p", schedule: "0 9 * * *", timezone: "Mars/Phobos" }),
+    body: JSON.stringify({ value: "Mars/Phobos" }),
   });
-  expect(badTz.status).toBe(400);
+  try {
+    const badTz = await fetch(`${base}/agents/${agentId}/routines`, {
+      method: "POST",
+      headers: auth("alice"),
+      body: JSON.stringify({ name: "BadTz", prompt: "p", schedule: "0 9 * * *" }),
+    });
+    expect(badTz.status).toBe(400);
+  } finally {
+    // Restore so later tests see a clean (unset) account zone.
+    await fetch(`${base}/v1/preferences/timezone`, {
+      method: "PUT",
+      headers: auth("alice"),
+      body: JSON.stringify({ value: null }),
+    });
+  }
 });
 
 test("config: PUT replaces, GET reads back", async () => {

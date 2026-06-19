@@ -3,7 +3,7 @@ import { config } from "../config";
 import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
-import { runTurn, cancelTurn, disposeConversation } from "../session/chat";
+import { runTurn, ensureProviderForTurn, cancelTurn, disposeConversation } from "../session/chat";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { snapshot, subscribe } from "../session/bus";
 import {
@@ -195,6 +195,14 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       const { text, nonce, model, effort } = await readJson(req);
       if (!text || typeof text !== "string") {
         return json(res, 400, { error: "missing 'text'" });
+      }
+      // Sync the workspace credential + confirm a provider BEFORE accepting the
+      // turn. A not-connected turn fails THIS request (the client surfaces the
+      // error) instead of starting a fire-and-forget turn whose only failure
+      // signal is an `error` event that can race the client's SSE subscribe and
+      // be lost — which left the chat spinning forever after logout.
+      if (!(await ensureProviderForTurn())) {
+        return json(res, 409, { error: "No provider connected. Log in with Claude or Codex first." });
       }
       // model/effort ride on a routine-fired message (a routine's pin); a normal
       // user message omits them, leaving the session's current model/effort.

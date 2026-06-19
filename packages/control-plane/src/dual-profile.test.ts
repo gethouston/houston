@@ -207,18 +207,14 @@ async function battery(base: string): Promise<Step[]> {
     body: "{}",
   });
 
-  // Routines: create, the two validation gates, list, runs.
+  // Routines: create, the cron validation gate, list, runs.
   await hit("POST routine (good cron)", `/agents/${a}/routines`, {
     method: "POST",
-    body: JSON.stringify({ name: "Daily report", prompt: "Write it", schedule: "0 9 * * 1-5", timezone: "America/Bogota" }),
+    body: JSON.stringify({ name: "Daily report", prompt: "Write it", schedule: "0 9 * * 1-5" }),
   });
   await hit("POST routine (bad cron → 400)", `/agents/${a}/routines`, {
     method: "POST",
     body: JSON.stringify({ name: "Broken", prompt: "p", schedule: "not a cron" }),
-  });
-  await hit("POST routine (bad tz → 400)", `/agents/${a}/routines`, {
-    method: "POST",
-    body: JSON.stringify({ name: "BadTz", prompt: "p", schedule: "0 9 * * *", timezone: "Mars/Phobos" }),
   });
   await hit("GET routines", `/agents/${a}/routines`);
   await hit("GET routine_runs (empty)", `/agents/${a}/routine_runs`);

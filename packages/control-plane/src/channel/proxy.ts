@@ -150,4 +150,14 @@ export class ProxyChannel implements RuntimeChannel {
     }
     return { ok: true, provider: c.provider };
   }
+
+  /**
+   * Connect-once logout: drop the workspace's central credential for a provider.
+   * Every agent runtime re-pulls this credential from the host before each turn,
+   * so removing it here is what actually logs the workspace out — clearing a
+   * single runtime's local auth.json alone would be undone by the next re-serve.
+   */
+  async forgetCredential(ctx: ChannelCtx, provider: string): Promise<void> {
+    await this.opts.credentials.remove(ctx.agent.workspaceId, provider);
+  }
 }

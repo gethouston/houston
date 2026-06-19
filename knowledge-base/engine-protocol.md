@@ -419,7 +419,9 @@ request, i.e. how much of the context window is in use.
 
 The desktop composer's context-usage indicator (`app/src/components/context-
 indicator.tsx`) divides the latest turn's `context_tokens` by a window
-estimate for a "% full" gauge; it reads usage via `sessionContextUsage`
+estimate to drive a ring gauge (a donut whose arc fills with the occupied
+fraction and turns red near the limit; the percentage, a progress bar, and
+rounded token counts surface on hover); it reads usage via `sessionContextUsage`
 (`app/src/lib/context-usage.ts`) so it works both live and after a history
 reload (the field is persisted in `chat_feed.data_json`). `/context` (the
 interactive Claude Code slash command) is unavailable here because the

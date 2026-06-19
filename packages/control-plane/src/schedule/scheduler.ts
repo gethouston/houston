@@ -1,5 +1,5 @@
 import type { Routine } from "@houston/protocol";
-import { dueAt, loadRoutines } from "@houston/domain";
+import { dueAt, getPreference, loadRoutines } from "@houston/domain";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
@@ -100,11 +100,16 @@ export class Scheduler {
     this.lastTick = now;
 
     for (const ws of await this.deps.store.listWorkspaces()) {
+      // One account-wide zone governs every routine in the workspace (HOU-470:
+      // no per-routine override). Re-read it each tick, so when the preference
+      // changes the next scan re-times every routine — the cloud analog of the
+      // Rust scheduler's respawn-on-tz-change.
+      const timezone = await getPreference(this.deps.vfs, ws.id, "timezone");
       for (const agent of await this.deps.store.listAgents(ws.id)) {
         const root = this.deps.paths.agentRoot(ws, agent);
         const { items: routines } = await loadRoutines(this.deps.vfs, root);
         for (const routine of routines) {
-          const at = dueAt(routine, since, now);
+          const at = dueAt(routine, since, now, timezone);
           if (!at) continue;
           // The instant is replica-independent → all replicas race for one key.
           const won = await this.deps.lock.setNx(

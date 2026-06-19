@@ -182,8 +182,6 @@ export interface Routine {
   suppress_when_silent: boolean;
   /** Whether each run reuses one chat or starts a fresh one. */
   chat_mode: RoutineChatMode;
-  /** IANA timezone override; absent means use the user's preference. */
-  timezone?: string | null;
   /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
   provider?: string | null;
   /** Model override (e.g. "claude-opus-4-8", "gpt-5.5"); absent means inherit the agent's model. */
@@ -205,8 +203,6 @@ export interface NewRoutine {
   suppress_when_silent?: boolean;
   /** Defaults to `"shared"` (one chat per routine) when omitted. */
   chat_mode?: RoutineChatMode;
-  /** IANA timezone override (e.g. "America/Bogota"). Falls back to user pref. */
-  timezone?: string | null;
   /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
   provider?: string | null;
   /** Model to pin (e.g. "gpt-5.5"); omit to inherit the agent's model. */
@@ -225,8 +221,6 @@ export interface RoutineUpdate {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
-  /** Set to a string to override, `null` to clear, omit to leave unchanged. */
-  timezone?: string | null;
   /** Provider id to pin (e.g. "openai"); omit or null to leave unchanged. */
   provider?: string | null;
   /** Model to pin (e.g. "gpt-5.5"); omit or null to leave unchanged. */
@@ -757,7 +751,6 @@ export interface PortableRoutinePreview {
   schedule: string;
   enabled: boolean;
   integrations: string[];
-  timezone: string | null;
 }
 
 export interface PortableLearningPreview {

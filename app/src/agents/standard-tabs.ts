@@ -22,7 +22,7 @@ export const STANDARD_TABS: AgentTab[] = [
   { id: "activity", label: "Activity", builtIn: "board", badge: "activity" },
   { id: "routines", label: "Routines", builtIn: "routines" },
   { id: "files", label: "Files", builtIn: "files" },
-  { id: "job-description", label: "Job Description", builtIn: "job-description" },
+  { id: "job-description", label: "Agent Settings", builtIn: "job-description" },
   { id: "archived", label: "Archived", builtIn: "archived" },
 ];
 
