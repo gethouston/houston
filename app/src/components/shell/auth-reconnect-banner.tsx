@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { AlertTriangle } from "lucide-react";
-import { Button, Spinner } from "@houston-ai/core";
+import { AsyncButton, Spinner } from "@houston-ai/core";
 import { useUIStore } from "../../stores/ui";
 import { tauriProvider } from "../../lib/tauri";
 import { getProvider } from "../../lib/providers";
@@ -67,13 +67,13 @@ export function AuthReconnectBanner() {
             </p>
 
             {!loginLaunched ? (
-              <Button
+              <AsyncButton
                 onClick={handleSignIn}
                 className="rounded-full"
                 size="sm"
               >
                 {t("shell:authReconnect.signInWith", { provider: provider.name })}
-              </Button>
+              </AsyncButton>
             ) : (
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
