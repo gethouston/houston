@@ -35,8 +35,9 @@ Houston = open platform. Organized as **6 products + 3 code libraries**.
 |-----|------|
 | `houston-relay/` | Cloudflare Worker + Durable Object at `tunnel.gethouston.ai`. Reverse-tunnel proxy (desktop engine dials outbound; mobile traffic multiplexes over that link) AND static host for the mobile PWA. One origin for both so Safari sees first-party traffic. Deploys separately. |
 | `examples/` | Reference consumers of `houston-engine` for third-party devs. First entry: `examples/smartbooks/` — a custom React frontend, own brand, zero `@houston-ai/*` UI deps. Lives in the monorepo (not a separate repo) so it stays in sync with protocol changes. |
+| `flatpak/` | Linux Flatpak packaging files. Real Flatpak flow, separate from Tauri `bundle.targets`. |
 | `knowledge-base/` | These caveman docs. Loaded on demand. |
-| `scripts/` | Version bump, release, CLI binary fetch. |
+| `scripts/` | Version bump, release, CLI binary fetch, local Flatpak build entrypoint. |
 
 ## Engine crates (`engine/`)
 

@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "build": "pnpm -r build",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "build:flatpak": "./scripts/build-flatpak-local.sh"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",

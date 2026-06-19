@@ -72,6 +72,6 @@ the starting point, not the final word.
    so the in-app update card shows the notes in the user's language.
 4. Commit + push `main`.
 5. `git tag v<version> && git push origin v<version>` — CI builds,
-   signs, notarizes, creates a draft release with your notes.
-6. Smoke-test the draft DMG.
+   signs, notarizes, and packages the release artifacts, then creates a draft release with your notes.
+6. Smoke-test the draft DMG, MSI, and Flatpak as needed.
 7. Edit the draft notes if needed, then click Publish.

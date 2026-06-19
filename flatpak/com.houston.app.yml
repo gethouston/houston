@@ -1,0 +1,22 @@
+app-id: com.houston.app
+runtime: org.gnome.Platform
+runtime-version: '50'
+sdk: org.gnome.Sdk
+command: houston
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=session-bus
+  - --device=dri
+  - --filesystem=home
+  - --talk-name=org.freedesktop.Notifications
+modules:
+  - name: houston
+    buildsystem: simple
+    build-commands:
+      - cp -a . /app/
+    sources:
+      - type: dir
+        path: ../.flatpak/stage/app

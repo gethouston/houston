@@ -1,0 +1,6 @@
+#!/usr/bin/env sh
+set -eu
+
+export HOUSTON_STORE_DIR="/app/share/houston/store"
+export HOUSTON_ENGINE_BIN="/app/bin/houston-engine"
+exec /app/bin/houston-app "$@"

@@ -204,18 +204,19 @@ CI also needs as Secrets:
 
 - **Workflow:** `.github/workflows/release.yml`
 - **Trigger:** Push tag matching `v*`
-- **Output:** Draft GitHub Release w/ signed+notarized DMG + signed MSI + `latest.json`
-- **Duration:** ~25-30 min wall-clock (mac + win run in parallel; mac is the long pole at ~25 min including Apple notarization).
+- **Output:** Draft GitHub Release w/ signed+notarized DMG + signed MSI + Linux Flatpak assets (x86_64 + aarch64) + `latest.json`
+- **Duration:** ~25-35 min wall-clock (mac + win + linux run in parallel; mac is usually still the long pole because of Apple notarization).
 - **Draft = QA gate.** Users don't see until published on GitHub.
 
 ### Job graph
 ```
-prep (ubuntu, ~30s)               creates empty draft + release-notes.md artifact
-  ├── build-macos (mac, ~25m)     builds, signs, notarizes, uploads DMG/tar/sig/latest.json
-  └── build-windows (win, ~20m)   builds, uploads MSI + .sig
-        └── finalize (ubuntu, ~30s) extends latest.json with windows-x86_64 entry, posts Slack
+prep (ubuntu, ~30s)                    creates empty draft + release-notes.md artifact
+  ├── build-macos (mac, ~25m)          builds, signs, notarizes, uploads DMG/tar/sig/latest.json
+  ├── build-windows (win, ~20m)        builds, uploads MSI + .sig
+  ├── build-linux-flatpak (ubuntu matrix, ~15-20m/arch) builds x86_64 + aarch64 Flatpaks, uploads .flatpak + .sha256
+  └── finalize (ubuntu, ~30s)          extends latest.json with windows entries, posts Slack
 ```
-Mac and Windows run in parallel because they only need the empty draft `prep` creates, not each other's output. `finalize` stitches `latest.json` together (the macOS-only base from build-macos plus the Windows entry assembled from the MSI .sig in the draft) and posts the team Slack notification. Slack lives in `finalize` (not Windows) because it needs `release-notes.md` and the file is published as a workflow artifact by `prep`.
+Mac, Windows, and Linux run in parallel because they only need the empty draft `prep` creates, not each other's output. The Flatpak lane is a two-run matrix on native GitHub-hosted Linux runners, so tagged releases now publish both `Houston_<version>_linux_x86_64.flatpak` and `Houston_<version>_linux_aarch64.flatpak` plus matching `.sha256` files. `finalize` stitches `latest.json` together (the macOS-only base from build-macos plus the Windows entries assembled from the MSI `.sig` files in the draft) and posts the team Slack notification. Flatpak is a release asset only for now — it does not participate in `latest.json` because Houston's in-app updater is still macOS/Windows-only. Slack lives in `finalize` (not Windows/Linux) because it needs `release-notes.md` and the file is published as a workflow artifact by `prep`.
 
 ## macOS Universal (arm64 + Intel)
 
@@ -231,6 +232,32 @@ Houston ships ONE DMG that runs natively on Apple Silicon AND Intel. Same app, s
 
 ### Engine-only release
 `.github/workflows/engine-release.yml` (tag `engine-v*`) builds `houston-engine` standalone for Linux (arm64 + x86_64 musl) and macOS (arm64 + Intel). Four artifacts total.
+
+## Linux Flatpak
+
+Houston's Linux app packaging still lives outside Tauri `bundle.targets`, but the release workflow now builds and uploads two Flatpak assets on tagged releases: `Houston_<version>_linux_x86_64.flatpak` and `Houston_<version>_linux_aarch64.flatpak` (plus `.sha256` files for each). The manifest targets `org.gnome.Platform//50` + `org.gnome.Sdk//50` because the Tauri shell links `libwebkit2gtk-4.1.so.0` / `libjavascriptcoregtk-4.1.so.0`, which are not present in the freedesktop runtime. For local testing, use the staging flow:
+
+```bash
+pnpm install
+pnpm build:flatpak
+ARCH="$(uname -m)"
+[ "$ARCH" = "arm64" ] && ARCH="aarch64"
+flatpak install --user --bundle ".flatpak/Houston-linux-$ARCH.flatpak"
+flatpak run com.houston.app
+```
+
+What it does:
+- builds the web assets
+- builds `houston-engine`
+- builds `houston-app` with `tauri/custom-protocol` so the Flatpak embeds `app/dist` instead of trying `tauri.conf.json::devUrl` (`http://localhost:1420`)
+- stages the bundled Store under `/app/share/houston/store`
+- wraps launch with `HOUSTON_STORE_DIR=/app/share/houston/store` and `HOUSTON_ENGINE_BIN=/app/bin/houston-engine`
+- copies any pre-staged `app/src-tauri/resources/bin/` payload into the Flatpak image
+
+Current gaps:
+- Linux release now uploads x86_64 + aarch64 Flatpak assets, but it is still a manual-install channel only
+- no bundled Linux CLI fetch path in `scripts/fetch-cli-deps.sh` yet, so Flatpak relies on whatever is already staged under `app/src-tauri/resources/bin/` or on runtime fallbacks
+- no auto-update channel wired for Flatpak
 
 ### Local universal build
 ```bash

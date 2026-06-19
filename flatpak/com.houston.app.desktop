@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Houston
+Comment=AI-native desktop workspace for Houston agents
+Exec=houston %U
+Icon=com.houston.app
+Terminal=false
+Categories=Office;
+Keywords=AI;Agents;Workspace;Automation;
+MimeType=x-scheme-handler/houston;
+StartupNotify=true
