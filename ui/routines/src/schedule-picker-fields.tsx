@@ -1,16 +1,14 @@
 /**
  * Picker fields used by ScheduleBuilder — day-of-week, day-of-month, and the
- * friendly "every N minutes/hours/days" interval picker. The clock-button time
- * picker lives in time-picker.tsx.
+ * "On these days" weekday multi-select. The clock-button time picker lives in
+ * time-picker.tsx and the "Repeat every N [unit]" control in
+ * schedule-interval-picker.tsx; both reuse `labelClass` exported here.
  *
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
  */
 import { cn } from "@houston-ai/core"
-import type { IntervalUnit } from "./schedule-interval-utils"
-import { shortWeekdayNames } from "./schedule-format"
-
-const INTERVAL_UNITS: IntervalUnit[] = ["minutes", "hours", "days"]
+import { shortWeekdayNames, narrowWeekdayNames } from "./schedule-format"
 
 const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",
@@ -79,63 +77,78 @@ export function DayOfMonthPicker({
   )
 }
 
+const WEEKDAY_SHORTCUTS: {
+  key: "everyDay" | "weekdays" | "weekends"
+  days: number[]
+}[] = [
+  { key: "everyDay", days: [0, 1, 2, 3, 4, 5, 6] },
+  { key: "weekdays", days: [1, 2, 3, 4, 5] },
+  { key: "weekends", days: [0, 6] },
+]
+
 /**
- * Friendly "Every [N] [minutes/hours/days]" picker — the non-technical
- * replacement for typing a raw cron expression. The count is a free-text string
- * so it can be cleared completely while typing; the builder validates it and
- * turns the interval into cron. Heading + unit names arrive via props.
+ * "On these days" — multi-select weekday toggle (S M T W T F S) plus quick
+ * shortcuts, for the custom weekly schedule. Multi-select, so distinct from
+ * DayOfWeekPicker (single-day, used by the Weekly preset). Weekday glyphs and
+ * aria-labels come from `Intl` in the given `locale`.
  */
-export function IntervalPicker({
+export function WeekdaysPicker({
   label,
-  units,
-  every,
-  unit,
-  invalid,
-  onEveryChange,
-  onUnitChange,
+  locale = "en-US",
+  shortcuts,
+  value,
+  onChange,
 }: {
   label: string
-  units: Record<IntervalUnit, string>
-  every: string
-  unit: IntervalUnit
-  invalid?: boolean
-  onEveryChange: (every: string) => void
-  onUnitChange: (unit: IntervalUnit) => void
+  locale?: string
+  shortcuts: { everyDay: string; weekdays: string; weekends: string }
+  value: number[]
+  onChange: (days: number[]) => void
 }) {
+  const narrow = narrowWeekdayNames(locale)
+  const short = shortWeekdayNames(locale)
+  const toggle = (d: number) =>
+    onChange(
+      value.includes(d)
+        ? value.filter((x) => x !== d)
+        : [...value, d].sort((a, b) => a - b),
+    )
   return (
     <div>
       <label className={labelClass}>{label}</label>
-      <div className="flex items-center gap-2">
-        <input
-          type="text"
-          inputMode="numeric"
-          value={every}
-          // Keep digits only so the field stays a plain whole number; an empty
-          // string is allowed (and flagged invalid) so it can be fully cleared.
-          onChange={(e) => onEveryChange(e.target.value.replace(/[^\d]/g, ""))}
-          placeholder="1"
-          className={cn(
-            inputClass,
-            "w-20",
-            invalid && "border-red-500/50",
-          )}
-        />
-        <div className="flex gap-1">
-          {INTERVAL_UNITS.map((u) => (
+      <div className="flex gap-1.5">
+        {narrow.map((glyph, d) => {
+          const on = value.includes(d)
+          return (
             <button
-              key={u}
-              onClick={() => onUnitChange(u)}
+              key={d}
+              type="button"
+              aria-label={short[d]}
+              aria-pressed={on}
+              onClick={() => toggle(d)}
               className={cn(
-                "h-8 px-3 rounded-lg text-xs font-medium transition-colors capitalize",
-                unit === u
+                "size-9 rounded-full text-xs font-medium transition-colors",
+                on
                   ? "bg-primary text-primary-foreground"
                   : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
               )}
             >
-              {units[u]}
+              {glyph}
             </button>
-          ))}
-        </div>
+          )
+        })}
+      </div>
+      <div className="mt-2 flex gap-1.5">
+        {WEEKDAY_SHORTCUTS.map((s) => (
+          <button
+            key={s.key}
+            type="button"
+            onClick={() => onChange(s.days)}
+            className="h-7 rounded-full border border-border/20 bg-background px-3 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          >
+            {shortcuts[s.key]}
+          </button>
+        ))}
       </div>
     </div>
   )

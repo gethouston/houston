@@ -48,8 +48,12 @@ export interface ScheduleSummaryLabels {
   weekdays: string
   /** Weekly on a single day. `{day}` is a localized weekday name. */
   weekly: string
+  /** Weekly on chosen days. `{days}` is a localized, joined weekday list. */
+  weeklyOnDays: string
   /** Monthly on a day-of-month. `{ordinal}` (en) or `{n}` (es/pt) day. */
   monthly: string
+  /** Every N months on a day-of-month. `{ordinal}`/`{n}` day, `{months}` count. */
+  everyNMonths: string
 }
 
 /** Relative + absolute "next run" phrasing. `{m}`/`{h}`/`{d}`/`{day}`/`{time}`. */
@@ -87,15 +91,30 @@ export interface RunHistoryLabels {
 /** Schedule builder + picker-field labels. */
 export interface ScheduleLabels {
   presets: Record<SchedulePreset, string>
-  /** Unit names for the custom-interval pills (shown capitalized, always plural). */
+  /** Plural unit names for the custom-interval pills (when the count is > 1). */
   units: Record<IntervalUnit, string>
+  /** Singular unit names for the custom-interval pills (when the count is 1). */
+  unitsSingular: Record<IntervalUnit, string>
   timeLabel: string
   dayLabel: string
   dayOfMonthLabel: string
-  /** "Run every" — label above the custom-interval count + unit pills. */
-  runEvery: string
+  /** "Repeat every" — label above the custom-interval count + unit pills. */
+  repeatEvery: string
+  /** "On these days" — label above the weekly day multi-select. */
+  weekdaysLabel: string
+  /** Quick weekday-selection chips under the day multi-select. */
+  weekdayShortcuts: {
+    everyDay: string
+    weekdays: string
+    weekends: string
+  }
+  /** aria-labels for the count stepper's minus/plus buttons. */
+  decrease: string
+  increase: string
   /** Validation summary shown when the custom interval count is empty/invalid. */
   enterNumber: string
+  /** Validation summary shown when the weekly unit has no day selected. */
+  pickDay: string
   /** Accessible names for the time picker's hour / minute / AM-PM columns. */
   timePicker: { hour: string; minute: string; period: string }
   summary: ScheduleSummaryLabels
