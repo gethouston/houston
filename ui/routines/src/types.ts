@@ -52,7 +52,6 @@ export type SchedulePreset =
   | "every_30min"
   | "hourly"
   | "daily"
-  | "weekdays"
   | "weekly"
   | "monthly"
   | "custom"
@@ -61,7 +60,6 @@ export const SCHEDULE_PRESET_LABELS: Record<SchedulePreset, string> = {
   every_30min: "Every 30 minutes",
   hourly: "Every hour",
   daily: "Daily",
-  weekdays: "Weekdays only",
   weekly: "Weekly",
   monthly: "Monthly",
   custom: "Custom",

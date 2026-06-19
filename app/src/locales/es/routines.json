@@ -57,7 +57,6 @@
       "every_30min": "Cada 30 minutos",
       "hourly": "Cada hora",
       "daily": "Diario",
-      "weekdays": "Solo días laborables",
       "weekly": "Semanal",
       "monthly": "Mensual",
       "custom": "Personalizado"
@@ -66,18 +65,15 @@
       "minutes": "minutos",
       "hours": "horas",
       "days": "días",
-      "weeks": "semanas",
       "months": "meses"
     },
     "unitsSingular": {
       "minutes": "minuto",
       "hours": "hora",
       "days": "día",
-      "weeks": "semana",
       "months": "mes"
     },
     "timeLabel": "Hora",
-    "dayLabel": "Día",
     "dayOfMonthLabel": "Día del mes",
     "repeatEvery": "Repetir cada",
     "weekdaysLabel": "En estos días",
@@ -102,7 +98,6 @@
       "everyNHours": "Se ejecuta cada {n} horas",
       "everyDay": "Se ejecuta todos los días a las {time}",
       "everyNDays": "Se ejecuta cada {n} días a las {time}",
-      "weekdays": "Se ejecuta de lunes a viernes a las {time}",
       "weekly": "Se ejecuta cada {day} a las {time}",
       "weeklyOnDays": "Se ejecuta cada semana los {days} a las {time}",
       "monthly": "Se ejecuta el día {n} de cada mes a las {time}",

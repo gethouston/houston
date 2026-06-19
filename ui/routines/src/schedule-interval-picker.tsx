@@ -1,9 +1,7 @@
 /**
  * "Repeat every [N] [unit]" — the non-technical custom-interval picker, styled
  * after the chosen prototype (Variant A): a number stepper plus a row of unit
- * pills (minute / hour / day / week / month). The "weeks" unit has no count
- * (cron can't express "every N weeks"), so the stepper is disabled and the
- * WeekdaysPicker carries the schedule instead.
+ * pills (minute / hour / day / month). Every unit takes a count.
  *
  * All visible text arrives via props so the package stays i18n-agnostic; the
  * pills show the singular or plural unit name depending on the count.
@@ -13,22 +11,18 @@ import { Minus, Plus } from "lucide-react"
 import type { IntervalUnit } from "./schedule-interval-utils"
 import { labelClass } from "./schedule-picker-fields"
 
-const UNIT_ORDER: IntervalUnit[] = ["minutes", "hours", "days", "weeks", "months"]
+const UNIT_ORDER: IntervalUnit[] = ["minutes", "hours", "days", "months"]
 
 function NumberStepper({
   value,
   onChange,
   invalid,
-  disabled,
   decreaseLabel,
   increaseLabel,
 }: {
   value: string
   onChange: (value: string) => void
   invalid?: boolean
-  // "weeks" has no count, so the stepper is disabled (but kept mounted) to hold
-  // its place and stop the unit pills jumping left when that unit is picked.
-  disabled?: boolean
   decreaseLabel: string
   increaseLabel: string
 }) {
@@ -38,14 +32,13 @@ function NumberStepper({
       className={cn(
         "inline-flex items-center rounded-lg border bg-background transition-opacity",
         invalid ? "border-red-500/50" : "border-border/20",
-        disabled && "opacity-40",
       )}
     >
       <button
         type="button"
         aria-label={decreaseLabel}
         onClick={() => onChange(String(Math.max(1, n - 1)))}
-        disabled={disabled || n <= 1}
+        disabled={n <= 1}
         className="grid size-9 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-30"
       >
         <Minus className="size-4" />
@@ -54,7 +47,6 @@ function NumberStepper({
         type="text"
         inputMode="numeric"
         value={value}
-        disabled={disabled}
         // Keep digits only; an empty string is allowed (and flagged invalid) so
         // it can be cleared while typing.
         onChange={(e) => onChange(e.target.value.replace(/[^\d]/g, ""))}
@@ -64,7 +56,6 @@ function NumberStepper({
         type="button"
         aria-label={increaseLabel}
         onClick={() => onChange(String(n + 1))}
-        disabled={disabled}
         className="grid size-9 place-items-center text-muted-foreground hover:text-foreground disabled:opacity-30"
       >
         <Plus className="size-4" />
@@ -96,9 +87,6 @@ export function IntervalPicker({
   onEveryChange: (every: string) => void
   onUnitChange: (unit: IntervalUnit) => void
 }) {
-  // "weeks" has no count; keep the stepper mounted-but-disabled so the unit
-  // pills don't shift left when it's hidden.
-  const countDisabled = unit === "weeks"
   const plural = Number(every) > 1
   return (
     <div>
@@ -107,8 +95,7 @@ export function IntervalPicker({
         <NumberStepper
           value={every}
           onChange={onEveryChange}
-          invalid={invalid && !countDisabled}
-          disabled={countDisabled}
+          invalid={invalid}
           decreaseLabel={decreaseLabel}
           increaseLabel={increaseLabel}
         />

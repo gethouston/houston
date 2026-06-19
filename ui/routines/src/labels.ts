@@ -45,7 +45,6 @@ export interface ScheduleSummaryLabels {
   everyNHours: string
   everyDay: string
   everyNDays: string
-  weekdays: string
   /** Weekly on a single day. `{day}` is a localized weekday name. */
   weekly: string
   /** Weekly on chosen days. `{days}` is a localized, joined weekday list. */
@@ -96,7 +95,6 @@ export interface ScheduleLabels {
   /** Singular unit names for the custom-interval pills (when the count is 1). */
   unitsSingular: Record<IntervalUnit, string>
   timeLabel: string
-  dayLabel: string
   dayOfMonthLabel: string
   /** "Repeat every" — label above the custom-interval count + unit pills. */
   repeatEvery: string
@@ -113,7 +111,7 @@ export interface ScheduleLabels {
   increase: string
   /** Validation summary shown when the custom interval count is empty/invalid. */
   enterNumber: string
-  /** Validation summary shown when the weekly unit has no day selected. */
+  /** Validation summary shown when the Weekly preset has no day selected. */
   pickDay: string
   summary: ScheduleSummaryLabels
 }
