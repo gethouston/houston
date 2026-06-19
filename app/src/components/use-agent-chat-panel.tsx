@@ -56,7 +56,6 @@ import { ContextCompactedDivider } from "./context-compacted-divider";
 import {
   getContextWindowConfig,
   getDefaultModel,
-  getModel,
   validModelOrNull,
   validEffortOrDefault,
   normalizeLegacyModel,
@@ -234,7 +233,6 @@ export function useAgentChatPanel({
         effectiveContextWindow(cfg, peakContextTokens) ?? undefined,
     };
   }, [sessionFeedItems, effectiveProvider, effectiveModel]);
-  const modelLabel = getModel(effectiveProvider, effectiveModel)?.label;
 
   const handleModelSelect = useCallback(
     async (prov: string, mod: string) => {
@@ -592,12 +590,11 @@ export function useAgentChatPanel({
           <ContextIndicator
             usage={contextUsage}
             contextWindow={contextWindow}
-            modelLabel={modelLabel}
           />
         </div>
       </div>
     );
-  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect, contextUsage, contextWindow, modelLabel]);
+  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect, contextUsage, contextWindow]);
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
