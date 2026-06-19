@@ -57,7 +57,6 @@
       "every_30min": "Every 30 minutes",
       "hourly": "Every hour",
       "daily": "Daily",
-      "weekdays": "Weekdays only",
       "weekly": "Weekly",
       "monthly": "Monthly",
       "custom": "Custom"
@@ -66,18 +65,15 @@
       "minutes": "minutes",
       "hours": "hours",
       "days": "days",
-      "weeks": "weeks",
       "months": "months"
     },
     "unitsSingular": {
       "minutes": "minute",
       "hours": "hour",
       "days": "day",
-      "weeks": "week",
       "months": "month"
     },
     "timeLabel": "Time",
-    "dayLabel": "Day",
     "dayOfMonthLabel": "Day of month",
     "repeatEvery": "Repeat every",
     "weekdaysLabel": "On these days",
@@ -107,7 +103,6 @@
       "everyNHours": "Runs every {n} hours",
       "everyDay": "Runs every day at {time}",
       "everyNDays": "Runs every {n} days at {time}",
-      "weekdays": "Runs Monday through Friday at {time}",
       "weekly": "Runs every {day} at {time}",
       "weeklyOnDays": "Runs every week on {days} at {time}",
       "monthly": "Runs on the {ordinal} of every month at {time}",

@@ -42,13 +42,20 @@ export function presetSummary(
       return labels.everyHourStart
     case "daily":
       return interp(labels.everyDay, { time: t })
-    case "weekdays":
-      return interp(labels.weekdays, { time: t })
-    case "weekly":
-      return interp(labels.weekly, {
-        day: weekdayName(options.dayOfWeek, locale),
+    case "weekly": {
+      const days = [...options.daysOfWeek].sort((a, b) => a - b)
+      if (days.length <= 1) {
+        return interp(labels.weekly, {
+          day: weekdayName(days[0] ?? 1, locale),
+          time: t,
+        })
+      }
+      const shorts = shortWeekdayNames(locale)
+      return interp(labels.weeklyOnDays, {
+        days: joinList(days.map((d) => shorts[d]), locale),
         time: t,
       })
+    }
     case "monthly":
       return interp(labels.monthly, {
         n: options.dayOfMonth,
@@ -82,7 +89,7 @@ export function cronSummary(
       preset,
       {
         time: o.time ?? "09:00",
-        dayOfWeek: o.dayOfWeek ?? 1,
+        daysOfWeek: o.daysOfWeek ?? [1],
         dayOfMonth: o.dayOfMonth ?? 1,
       },
       labels,
@@ -116,22 +123,6 @@ export function cronSummary(
       return n === 1
         ? interp(labels.everyDay, { time: t })
         : interp(labels.everyNDays, { n, time: t })
-    }
-
-    // Weekly on specific days: "M H * * d,d,d" (a multi-day list; a single day
-    // is the Weekly preset, handled above).
-    if (
-      dom === "*" && month === "*" &&
-      /^\d+$/.test(min) && /^\d+$/.test(hour) && /^[0-6](,[0-6])*$/.test(dow)
-    ) {
-      const t = formatTime(`${hour}:${min}`, locale)
-      const names = shortWeekdayNames(locale)
-      const days = dow
-        .split(",")
-        .map(Number)
-        .sort((a, b) => a - b)
-        .map((d) => names[d])
-      return interp(labels.weeklyOnDays, { days: joinList(days, locale), time: t })
     }
 
     // On a day-of-month, every N months: "M H D */N *" (every 1 month is the

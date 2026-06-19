@@ -1,8 +1,8 @@
 /**
- * Picker fields used by ScheduleBuilder — day-of-week, day-of-month, and the
- * "On these days" weekday multi-select. The clock-button time picker lives in
- * time-picker.tsx and the "Repeat every N [unit]" control in
- * schedule-interval-picker.tsx; both reuse `labelClass` exported here.
+ * Picker fields used by ScheduleBuilder — day-of-month and the "On these days"
+ * weekday multi-select. The clock-button time picker lives in time-picker.tsx
+ * and the "Repeat every N [unit]" control in schedule-interval-picker.tsx; both
+ * reuse `labelClass` exported here.
  *
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
@@ -17,41 +17,6 @@ const inputClass = cn(
 )
 
 export const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
-
-export function DayOfWeekPicker({
-  label,
-  locale = "en-US",
-  value,
-  onChange,
-}: {
-  label: string
-  locale?: string
-  value: number
-  onChange: (day: number) => void
-}) {
-  const names = shortWeekdayNames(locale)
-  return (
-    <div>
-      <label className={labelClass}>{label}</label>
-      <div className="flex gap-1">
-        {names.map((name, day) => (
-          <button
-            key={day}
-            onClick={() => onChange(day)}
-            className={cn(
-              "size-8 rounded-lg text-xs font-medium transition-colors",
-              value === day
-                ? "bg-primary text-primary-foreground"
-                : "bg-background border border-border/20 text-muted-foreground hover:text-foreground",
-            )}
-          >
-            {name}
-          </button>
-        ))}
-      </div>
-    </div>
-  )
-}
 
 export function DayOfMonthPicker({
   label,
@@ -88,9 +53,9 @@ const WEEKDAY_SHORTCUTS: {
 
 /**
  * "On these days" — multi-select weekday toggle (S M T W T F S) plus quick
- * shortcuts, for the custom weekly schedule. Multi-select, so distinct from
- * DayOfWeekPicker (single-day, used by the Weekly preset). Weekday glyphs and
- * aria-labels come from `Intl` in the given `locale`.
+ * shortcuts (Every day / Weekdays / Weekends), used by the Weekly preset to
+ * pick one or more days. Weekday glyphs and aria-labels come from `Intl` in the
+ * given `locale`.
  */
 export function WeekdaysPicker({
   label,
