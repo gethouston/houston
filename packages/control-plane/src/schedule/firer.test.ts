@@ -36,7 +36,6 @@ function job(over: Partial<FiringJob> = {}): FiringJob {
       enabled: true,
       suppress_when_silent: false,
       chat_mode: "shared",
-      timezone: null,
       integrations: [],
       created_at: "",
       updated_at: "",
@@ -60,6 +59,7 @@ function recordingChannel(): RuntimeChannel & { calls: { cid: string; text: stri
     async captureCredential() {
       return { ok: true, provider: "openai-codex" };
     },
+    async forgetCredential() {},
   };
 }
 

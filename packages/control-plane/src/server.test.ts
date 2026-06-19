@@ -325,6 +325,46 @@ test("a failed scrub surfaces as an error (credential still stored)", async () =
   }
 });
 
+test("logout forgets the workspace credential so no turn can re-serve it", async () => {
+  const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+  await credentials.put({
+    workspaceId: aliceWs.id,
+    provider: "openai-codex",
+    accessToken: "AT-forget",
+    refreshToken: "RT-forget",
+    expiresAt: 1750000000000,
+  });
+  expect(await credentials.get(aliceWs.id, "openai-codex")).not.toBeNull();
+
+  const r = await fetch(`${base}/agents/${aliceSalesId}/credential/forget`, {
+    method: "POST",
+    headers: { ...auth("alice"), "Content-Type": "application/json" },
+    body: JSON.stringify({ provider: "openai-codex" }),
+  });
+  expect(r.status).toBe(200);
+  // The connect-once store is now empty for that provider, so /sandbox/credential
+  // 404s and the runtime can't re-hydrate — logout actually sticks.
+  expect(await credentials.get(aliceWs.id, "openai-codex")).toBeNull();
+});
+
+test("a different user CANNOT forget someone else's credential → 403", async () => {
+  const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
+  await credentials.put({
+    workspaceId: aliceWs.id,
+    provider: "openai-codex",
+    accessToken: "AT",
+    refreshToken: "RT",
+    expiresAt: 1750000000000,
+  });
+  const r = await fetch(`${base}/agents/${aliceSalesId}/credential/forget`, {
+    method: "POST",
+    headers: { ...auth("bob"), "Content-Type": "application/json" },
+    body: JSON.stringify({ provider: "openai-codex" }),
+  });
+  expect(r.status).toBe(403);
+  expect(await credentials.get(aliceWs.id, "openai-codex")).not.toBeNull(); // untouched
+});
+
 // --- Operator dashboard (/admin/*) ------------------------------------------
 
 const RATES: AutopilotRates = {

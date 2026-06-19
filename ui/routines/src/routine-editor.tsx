@@ -23,7 +23,6 @@ import {
   Pause,
   Square,
   Trash2,
-  Globe,
   CalendarClock,
   MoreHorizontal,
 } from "lucide-react"
@@ -52,8 +51,6 @@ export interface RoutineFormData {
   suppress_when_silent: boolean
   /** Whether each run reuses one chat (`"shared"`) or starts a fresh one. */
   chat_mode: RoutineChatMode
-  /** IANA timezone override. `null`/empty means use the account default. */
-  timezone?: string | null
   /** Composio toolkit slugs this routine uses. */
   integrations: string[]
 }
@@ -81,7 +78,11 @@ export interface RoutineEditorProps {
   onToggle?: (enabled: boolean) => void
   onDelete?: () => void
   onViewActivity?: (activityId: string) => void
-  /** IANA tz of the user's account preference, used for the "next run" hint. */
+  /**
+   * The single account-wide IANA timezone every routine fires in. Drives the
+   * "next run" preview. The zone itself is chosen on the routines list (see
+   * `RoutinesGrid`), not here — every routine shares it.
+   */
   accountTimezone: string
   /** Disable Save when the form hasn't actually been touched. */
   hasChanges?: boolean
@@ -95,39 +96,6 @@ export interface RoutineEditorProps {
   runHistoryLabels?: RunHistoryLabels
   /** BCP-47 locale for day names + time formatting in schedules. */
   locale?: string
-}
-
-const COMMON_TIMEZONES = [
-  "UTC",
-  "America/Los_Angeles",
-  "America/Denver",
-  "America/Chicago",
-  "America/New_York",
-  "America/Bogota",
-  "America/Mexico_City",
-  "America/Sao_Paulo",
-  "Europe/London",
-  "Europe/Madrid",
-  "Europe/Berlin",
-  "Europe/Athens",
-  "Africa/Lagos",
-  "Asia/Dubai",
-  "Asia/Kolkata",
-  "Asia/Singapore",
-  "Asia/Tokyo",
-  "Australia/Sydney",
-]
-
-function listTimezones(): string[] {
-  try {
-    const supported = (
-      Intl as { supportedValuesOf?: (k: string) => string[] }
-    ).supportedValuesOf?.("timeZone")
-    if (supported && supported.length) return supported
-  } catch {
-    // fall through
-  }
-  return COMMON_TIMEZONES
 }
 
 // ----- Building blocks -----
@@ -160,13 +128,6 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
   )
 }
 
-const baseFieldClass = cn(
-  "w-full rounded-lg border border-border/20 bg-background px-3 py-2 text-sm",
-  "text-foreground placeholder:text-muted-foreground/60",
-  "transition-shadow duration-200",
-  "focus:outline-none focus:shadow-sm",
-)
-
 // ----- Main -----
 
 export function RoutineEditor({
@@ -198,18 +159,15 @@ export function RoutineEditor({
     !!value.schedule.trim() &&
     (!isEdit || hasChanges !== false)
 
-  const timezones = useMemo(listTimezones, [])
-  const tzValue = value.timezone ?? ""
-  const effectiveTz = value.timezone || accountTimezone
-
-  // Live "next run" preview, ticking every minute.
+  // Live "next run" preview, ticking every minute. Every routine fires in the
+  // account-wide zone, so the preview is computed against `accountTimezone`.
   const now = useNow(60_000)
   const next = useMemo(
-    () => (value.schedule ? nextFire(value.schedule, effectiveTz, now) : null),
-    [value.schedule, effectiveTz, now],
+    () => (value.schedule ? nextFire(value.schedule, accountTimezone, now) : null),
+    [value.schedule, accountTimezone, now],
   )
   const nextDescr = next
-    ? describeNextFire(next, effectiveTz, now, nextFireLabels, locale)
+    ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
     : null
 
   // Header title — live, mirrors what the user is typing.
@@ -361,34 +319,6 @@ export function RoutineEditor({
               locale={locale}
             />
 
-            <div>
-              <FieldLabel>{labels.timezoneLabel}</FieldLabel>
-              <div className="relative">
-                <Globe className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-                <select
-                  value={tzValue}
-                  onChange={(e) =>
-                    onChange({
-                      timezone: e.target.value === "" ? null : e.target.value,
-                    })
-                  }
-                  className={cn(
-                    baseFieldClass,
-                    "pl-9 appearance-none cursor-pointer",
-                  )}
-                >
-                  <option value="">
-                    {interp(labels.accountDefault, { tz: accountTimezone })}
-                  </option>
-                  {timezones.map((tz) => (
-                    <option key={tz} value={tz}>
-                      {tz}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
             {/* Live "Next run" callout — white well inside the gray card */}
             <div className="flex items-start gap-3 rounded-lg bg-background border border-black/[0.04] px-4 py-3">
               <CalendarClock
@@ -404,7 +334,7 @@ export function RoutineEditor({
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
                       {nextDescr.absolute}
                       <span className="text-muted-foreground/60">
-                        {" "}· {effectiveTz}
+                        {" "}· {accountTimezone}
                       </span>
                     </p>
                   </>

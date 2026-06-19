@@ -26,7 +26,6 @@
         "default": [],
         "description": "Composio toolkit slugs this routine uses (e.g. ['gmail', 'slack'])."
       },
-      "timezone": { "type": ["string", "null"], "description": "IANA tz override; null means use account default." },
       "created_at": { "type": "string", "format": "date-time" },
       "updated_at": { "type": "string", "format": "date-time" }
     },

@@ -1,6 +1,26 @@
-import type { HoustonEngineClient, ChatMessage, WireEvent } from "@houston/runtime-client";
+import { EngineError } from "@houston/runtime-client";
+import type { HoustonEngineClient, ChatMessage, TokenUsage, WireEvent } from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
+
+/**
+ * A turn that fails on the SEND (e.g. no provider connected → the runtime answers
+ * 409) rejects with an EngineError wrapping the runtime's JSON body. Unwrap it to
+ * the plain message the engine sent, so the chat shows "No provider connected. Log
+ * in with Claude or Codex first." rather than a raw `engine request failed (409):
+ * {…}` string (the product voice never shows status codes or JSON to the user).
+ */
+export function turnErrorMessage(e: unknown): string {
+  if (e instanceof EngineError) {
+    try {
+      const body = JSON.parse(e.body) as { error?: string };
+      if (body?.error) return body.error;
+    } catch {
+      /* body wasn't JSON — fall through to the generic message */
+    }
+  }
+  return e instanceof Error ? e.message : String(e);
+}
 
 function feed(agentPath: string, sessionKey: string, item: unknown): void {
   emitEvent("FeedItem", { agent_path: agentPath, session_key: sessionKey, item });
@@ -52,6 +72,10 @@ export async function streamTurn(
 
   let text = "";
   let thinking = "";
+  // Normalized token usage for the turn, carried on the `usage` frame the engine
+  // emits before `done`. Attached to the `final_result` so the context-usage
+  // indicator can read it.
+  let usage: TokenUsage | null = null;
   let settled = false;
   // Terminal board status, persisted once the turn settles (NOT mid-stream) so
   // the write is awaited and a failure is surfaced.
@@ -65,7 +89,7 @@ export async function streamTurn(
     if (text) feed(agentPath, sessionKey, { feed_type: "assistant_text", data: text });
     feed(agentPath, sessionKey, {
       feed_type: "final_result",
-      data: { result: text, cost_usd: null, duration_ms: null },
+      data: { result: text, cost_usd: null, duration_ms: null, usage },
     });
     sessionStatus(agentPath, sessionKey, "completed");
     terminal = "needs_you";
@@ -113,6 +137,10 @@ export async function streamTurn(
           data: { content: "", is_error: ev.data.isError },
         });
         break;
+      case "usage":
+        // Stash the turn's usage; finishOk attaches it to the final_result.
+        usage = ev.data;
+        break;
       case "error":
         finishErr(ev.data.message);
         ac.abort();
@@ -138,8 +166,10 @@ export async function streamTurn(
   } catch (e) {
     // Our own abort after a terminal event is the expected teardown, not a
     // failure; anything else (send rejected, stream dropped) is a real error.
+    // A rejected send (e.g. the runtime refusing a not-connected turn with 409)
+    // lands here, stops the spinner, and shows the engine's plain message.
     if (!(ac.signal.aborted && settled)) {
-      finishErr(e instanceof Error ? e.message : String(e));
+      finishErr(turnErrorMessage(e));
     }
   } finally {
     ac.abort();
@@ -163,6 +193,14 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
         out.push({ feed_type: "tool_result", data: { content: "", is_error: !!t.isError } });
       }
       if (m.content) out.push({ feed_type: "assistant_text", data: m.content });
+      // Replay the turn's usage as a final_result (which only flushes, never
+      // renders a bubble) so the context-usage indicator survives a reload.
+      if (m.usage) {
+        out.push({
+          feed_type: "final_result",
+          data: { result: m.content, cost_usd: null, duration_ms: null, usage: m.usage },
+        });
+      }
     }
   }
   return out;

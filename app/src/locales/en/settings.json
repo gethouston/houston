@@ -40,13 +40,6 @@
     "title": "AI provider",
     "description": "Houston uses <emph>your own</emph> subscription. We never see your credentials."
   },
-  "timezone": {
-    "title": "Timezone",
-    "description": "Used when your routines fire, 9am means 9am in this zone.",
-    "label": "IANA zone",
-    "placeholder": "e.g. America/Bogota",
-    "useDetected": "Use detected ({{zone}})"
-  },
   "appearance": {
     "title": "Appearance",
     "light": "Light",
@@ -85,7 +78,6 @@
   "toasts": {
     "workspaceRenamed": "Workspace renamed",
     "providerSwitched": "Switched to {{provider}} ({{model}})",
-    "timezoneSet": "Timezone set to {{zone}}",
     "versionCopied": "Version copied",
     "versionCopyFailed": "Couldn't copy version"
   }

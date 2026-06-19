@@ -36,6 +36,7 @@ class SpyChannel implements RuntimeChannel {
   async captureCredential() {
     return { ok: true as const, provider: "openai-codex" };
   }
+  async forgetCredential() {}
 }
 
 const CAPS: Capabilities = {

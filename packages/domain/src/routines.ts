@@ -24,7 +24,11 @@ export function normalizeRoutines(
       typeof entry.prompt === "string" &&
       typeof entry.schedule === "string"
     ) {
-      items.push({
+      // HOU-470 removed the per-routine `timezone` override (one account-wide
+      // zone now). A routine written by an older build still carries a stray
+      // `timezone` key on disk; drop it on read so it does not round-trip back
+      // out, an idempotent no-migration cleanup (it disappears on next write).
+      const item = {
         description: "",
         enabled: true,
         suppress_when_silent: false,
@@ -33,7 +37,9 @@ export function normalizeRoutines(
         created_at: "",
         updated_at: "",
         ...entry,
-      } as Routine);
+      } as Routine & { timezone?: unknown };
+      delete item.timezone;
+      items.push(item);
     } else {
       diagnostics.push({ key, message: `dropped malformed routine entry: ${JSON.stringify(entry)?.slice(0, 120)}` });
     }
@@ -64,16 +70,21 @@ export function createRoutine(input: NewRoutine, id: string, nowIso: string): Ro
     enabled: input.enabled ?? true,
     suppress_when_silent: input.suppress_when_silent ?? false,
     chat_mode: input.chat_mode ?? "shared",
-    timezone: input.timezone ?? null,
     integrations: input.integrations ?? [],
     created_at: nowIso,
     updated_at: nowIso,
   };
 }
 
-/** Apply a partial update. Undefined leaves a field alone; explicit null (timezone) clears it. */
+/**
+ * Apply a partial update. Undefined leaves a field alone. A stray legacy
+ * `timezone` key is ignored: the per-routine override was removed in HOU-470
+ * (one account-wide zone), so a client still sending it must not write it back.
+ */
 export function applyRoutineUpdate(current: Routine, update: RoutineUpdate, nowIso: string): Routine {
-  const defined = Object.fromEntries(Object.entries(update).filter(([, v]) => v !== undefined));
+  const defined = Object.fromEntries(
+    Object.entries(update).filter(([k, v]) => v !== undefined && k !== "timezone"),
+  );
   return { ...current, ...defined, updated_at: nowIso } as Routine;
 }
 

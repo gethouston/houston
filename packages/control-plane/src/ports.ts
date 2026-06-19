@@ -117,6 +117,12 @@ export interface RuntimeChannel {
   teardown(ctx: ChannelCtx): Promise<void>;
   /** Connect-once: pull/confirm the workspace credential after the user connects. */
   captureCredential(ctx: ChannelCtx): Promise<CaptureResult>;
+  /**
+   * Connect-once logout: forget the workspace's central credential for a provider
+   * so no future turn can re-serve it. The inverse of captureCredential — clearing
+   * only a runtime's local auth.json is undone by the next turn's re-serve.
+   */
+  forgetCredential(ctx: ChannelCtx, provider: string): Promise<void>;
 }
 
 /**
