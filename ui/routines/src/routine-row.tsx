@@ -7,7 +7,7 @@
  */
 import { cn, Switch } from "@houston-ai/core"
 import type { Routine, RoutineRun } from "./types"
-import { cronSummary } from "./schedule-cron-utils"
+import { cronSummary } from "./schedule-summary"
 import { nextFire, describeNextFire } from "./next-fire"
 import { useNow } from "./use-now"
 import {
