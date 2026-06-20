@@ -1272,10 +1272,17 @@ export const PromptInputSubmit = ({
 
   let Icon = <ArrowUpIcon className="size-4" />;
 
-  if (status === "submitted") {
-    Icon = <Spinner />;
-  } else if (status === "streaming") {
-    Icon = <SquareIcon className="size-3.5 fill-current" />;
+  if (isGenerating) {
+    // Stop square + activity ring: the spinner keeps signalling that the
+    // agent is working while the square makes the stop affordance explicit
+    // the whole time. A bare spinner didn't read as stoppable, and a bare
+    // square didn't read as "working" (HOU-503, ported from HOU-413).
+    Icon = (
+      <span className="relative flex items-center justify-center">
+        <Spinner className="size-[26px]" />
+        <SquareIcon className="absolute size-2.5 fill-current" />
+      </span>
+    );
   } else if (status === "error") {
     Icon = <XIcon className="size-4" />;
   }
