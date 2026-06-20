@@ -29,7 +29,7 @@ export function useCrossAgentSelection({
   /** Resolve a mission id to its owning agent path. */
   agentPathForId: (id: string) => string | undefined;
 }): BoardSelectionModel {
-  const { selectedIds, toggle, toggleAll, clear } = useSelectionSet(resetKey);
+  const { selectedIds, toggle, selectAll, clear } = useSelectionSet(resetKey);
   const qc = useQueryClient();
 
   const invalidate = useCallback(
@@ -93,12 +93,5 @@ export function useCrossAgentSelection({
     clear();
   }, [dispatchDelete, selectedIds, clear]);
 
-  const archiveIds = useCallback(
-    async (ids: string[]) => {
-      await dispatchUpdate(ids, { status: ARCHIVED_STATUS });
-    },
-    [dispatchUpdate],
-  );
-
-  return { selectedIds, toggle, toggleAll, clear, move, archive, remove, archiveIds };
+  return { selectedIds, toggle, selectAll, clear, move, archive, remove };
 }
