@@ -80,5 +80,9 @@
   },
   "filesUpdated_one": "1 file updated",
   "filesUpdated_other": "{{count}} files updated",
-  "contextCompacted": "Earlier conversation summarized so the chat can keep going"
+  "contextCompacted": "Earlier conversation summarized so the chat can keep going",
+  "providerSwitch": {
+    "dividerFull": "Continued with {{provider}}",
+    "dividerSummary": "Continued with {{provider}}, summarized to fit"
+  }
 }

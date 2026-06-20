@@ -256,10 +256,14 @@ export function useAgentChatPanel({
   const { contextUsage, contextWindow } = useMemo(() => {
     const { latest, peakContextTokens } = sessionContextUsage(sessionFeedItems);
     // `peakContextTokens` is session-wide while `cfg` is the currently-selected
-    // model's. Safe today because all same-provider models share a snap ceiling
-    // (every Anthropic model maxes at 1M; provider is locked after turn one so
-    // openai/anthropic never mix in one session). Revisit if a provider ever
-    // adds a model whose ceiling is below a sibling's realistic peak.
+    // model's. Providers CAN now differ across one conversation (the picker is
+    // unlocked, so a conversation can move to a new provider mid-session), so a
+    // peak observed under the old provider may snap the new model's window up
+    // until a `provider_switched` divider resets it. That only ever OVER-states
+    // the window (it can never read above 100% — `effectiveContextWindow`
+    // floors at the peak), and the figure is already labeled an estimate, so
+    // it's acceptable for the post-switch turns until the new provider reports
+    // its own usage and the indicator re-settles.
     const cfg = getContextWindowConfig(effectiveProvider, effectiveModel);
     return {
       contextUsage: latest,
@@ -498,7 +502,8 @@ export function useAgentChatPanel({
   );
   const renderSystemMessage = useCallback(
     (msg: ChatMessage) => {
-      if (msg.compaction) return <ContextCompactedDivider />;
+      if (msg.compaction)
+        return <ContextCompactedDivider info={msg.compaction} />;
       if (isToolRuntimeErrorMessage(msg)) {
         const isModelUnsupported =
           msg.runtimeError.kind === "provider_model_unsupported";
@@ -611,7 +616,7 @@ export function useAgentChatPanel({
 
   const footer = useMemo<AIBoardProps["footer"]>(() => {
     if (!agent) return undefined;
-    return ({ hasMessages }) => (
+    return () => (
       <div className="flex items-center gap-2 w-full">
         <button
           type="button"
@@ -626,7 +631,6 @@ export function useAgentChatPanel({
           provider={effectiveProvider}
           model={effectiveModel}
           onSelect={handleModelSelect}
-          lockedProvider={hasMessages ? effectiveProvider : null}
         />
         <ChatEffortSelector
           provider={effectiveProvider}
@@ -656,7 +660,7 @@ export function useAgentChatPanel({
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
-    return ({ hasMessages, openFilePicker, close }) => (
+    return ({ openFilePicker, close }) => (
       <div className="flex flex-col gap-0.5">
         <button
           type="button"
@@ -684,7 +688,6 @@ export function useAgentChatPanel({
             provider={effectiveProvider}
             model={effectiveModel}
             onSelect={handleModelSelect}
-            lockedProvider={hasMessages ? effectiveProvider : null}
           />
         </div>
         <div className="px-2 py-1">

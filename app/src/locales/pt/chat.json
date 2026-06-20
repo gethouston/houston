@@ -80,5 +80,9 @@
   },
   "filesUpdated_one": "1 arquivo atualizado",
   "filesUpdated_other": "{{count}} arquivos atualizados",
-  "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar"
+  "contextCompacted": "Resumimos a conversa anterior para o chat poder continuar",
+  "providerSwitch": {
+    "dividerFull": "Continuou com {{provider}}",
+    "dividerSummary": "Continuou com {{provider}}, resumido para caber"
+  }
 }

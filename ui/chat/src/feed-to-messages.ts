@@ -19,9 +19,18 @@ export interface FileChangeEntry {
   status: "created" | "modified";
 }
 
-/** Marks a `from: "system"` message as a context-compaction divider. */
+/** Marks a `from: "system"` message as a boundary divider — either a
+ *  context compaction or a mid-session provider switch. */
 export interface ChatCompactionInfo {
-  trigger: "native" | "proactive";
+  /** What produced this divider. */
+  kind: "compacted" | "provider_switch";
+  /** Compaction trigger. Set only when `kind === "compacted"`. */
+  trigger?: "native" | "proactive";
+  /** Provider switched TO. Set only when `kind === "provider_switch"`. */
+  provider?: string;
+  /** Whether a switch summarized prior context (`true`) or carried the full
+   *  conversation verbatim (`false`). Set only when `kind === "provider_switch"`. */
+  summarized?: boolean;
   preTokens?: number;
 }
 
@@ -260,7 +269,29 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           tools: [],
           fileChanges: [],
           compaction: {
+            kind: "compacted",
             trigger: item.data.trigger,
+            preTokens: item.data.pre_tokens ?? undefined,
+          },
+        });
+        break;
+      }
+
+      case "provider_switched": {
+        flush();
+        messages.push({
+          key: `provider-switched-${messages.length}`,
+          from: "system",
+          // Empty content — the renderer shows a localized divider keyed off
+          // `compaction`, not this string.
+          content: "",
+          isStreaming: false,
+          tools: [],
+          fileChanges: [],
+          compaction: {
+            kind: "provider_switch",
+            provider: item.data.provider,
+            summarized: item.data.summarized,
             preTokens: item.data.pre_tokens ?? undefined,
           },
         });

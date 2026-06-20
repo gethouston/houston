@@ -34,7 +34,6 @@ test("shouldShowProviderInPicker: 'checking' keeps every provider visible (#342)
       providerId: "openai",
       state: "checking",
       isActiveProvider: false,
-      effectiveLock: null,
     }),
     true,
   );
@@ -46,7 +45,6 @@ test("shouldShowProviderInPicker: known-disconnected non-active providers are hi
       providerId: "openai",
       state: "disconnected",
       isActiveProvider: false,
-      effectiveLock: null,
     }),
     false,
   );
@@ -58,7 +56,6 @@ test("shouldShowProviderInPicker: connected non-active providers are shown", () 
       providerId: "openai",
       state: "connected",
       isActiveProvider: false,
-      effectiveLock: null,
     }),
     true,
   );
@@ -71,7 +68,6 @@ test("shouldShowProviderInPicker: the active provider is always shown", () => {
         providerId: "anthropic",
         state,
         isActiveProvider: true,
-        effectiveLock: null,
       }),
       true,
       `active provider should show while ${state}`,
@@ -79,35 +75,18 @@ test("shouldShowProviderInPicker: the active provider is always shown", () => {
   }
 });
 
-test("shouldShowProviderInPicker: a lock hides every other provider", () => {
-  // Non-locked provider hidden even when connected.
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "openai",
-      state: "connected",
-      isActiveProvider: false,
-      effectiveLock: "anthropic",
-    }),
-    false,
-  );
-  // The locked provider shows.
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "anthropic",
-      state: "connected",
-      isActiveProvider: true,
-      effectiveLock: "anthropic",
-    }),
-    true,
-  );
-  // A still-checking locked provider shows too (only it).
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "anthropic",
-      state: "checking",
-      isActiveProvider: true,
-      effectiveLock: "anthropic",
-    }),
-    true,
-  );
+test("shouldShowProviderInPicker: every connected provider stays selectable (no mid-conversation lock)", () => {
+  // The provider is never locked once a conversation starts: switching
+  // providers mid-stream is supported (the runtime continues the same
+  // conversation across providers).
+  for (const providerId of ["openai", "anthropic"]) {
+    assert.equal(
+      shouldShowProviderInPicker({
+        providerId,
+        state: "connected",
+        isActiveProvider: false,
+      }),
+      true,
+    );
+  }
 });
