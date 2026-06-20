@@ -26,6 +26,7 @@ import type {
 import { getEngine } from "./engine";
 import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
+import { isMissingSkillError } from "./missing-skill";
 import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
 export { withAttachmentPaths } from "./attachment-message";
@@ -38,6 +39,13 @@ interface EngineCallOptions {
    *  user-initiated failures always reach crash reporting; set false only for
    *  genuinely fire-and-forget calls or ones with their own report path. */
   capture?: boolean;
+  /** Classifier for errors that are expected + explainable (not Houston bugs).
+   *  A matching error is logged but gets NO red bug toast and NO Sentry report;
+   *  the caller surfaces it inline. Use sparingly, only for failures a user can
+   *  understand and act on (e.g. a skill that was renamed or removed). The TS
+   *  host emits bare-string errors with no typed `kind`, so silencing keys on a
+   *  predicate over the thrown error rather than a kind string. */
+  silence?: (err: unknown) => boolean;
 }
 
 /** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
@@ -68,6 +76,10 @@ async function surfaceError(
   // Aborted requests (user typed again, navigated away, cancelled a sign-in)
   // are expected, not failures — never toast or report them.
   if (err instanceof Error && err.name === "AbortError") return;
+
+  // Expected, explainable errors the caller surfaces inline. Logged above for
+  // the local log tail, but no red bug toast and no Sentry report.
+  if (options?.silence?.(err)) return;
 
   const shouldToast = options?.toast !== false;
   const shouldCapture = options?.capture !== false;
@@ -303,7 +315,16 @@ export const tauriSkills = {
       })),
     ),
   load: (agentPath: string, name: string) =>
-    call<SkillDetail>("load_skill", () => getEngine().loadSkill(agentPath, name)),
+    call<SkillDetail>(
+      "load_skill",
+      () => getEngine().loadSkill(agentPath, name),
+      undefined,
+      // The skill the user opened may have been renamed, deleted, or never
+      // installed (the host answers 404). That's expected — the Skills view
+      // surfaces it inline and refreshes the list — so don't fire the red bug
+      // toast or report it.
+      { silence: isMissingSkillError },
+    ),
   create: (agentPath: string, name: string, description: string, content: string) =>
     call<void>("create_skill", () =>
       getEngine().createSkill({ workspacePath: agentPath, name, description, content }),

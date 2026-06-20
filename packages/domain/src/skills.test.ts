@@ -59,6 +59,41 @@ test("loadSkills lists slugs, sorted; broken frontmatter surfaces as a diagnosti
   expect(diagnostics[0]!.message).toContain("broken");
 });
 
+test("list + load use the directory slug when frontmatter name: drifts (HOU-515)", async () => {
+  // An agent-authored SKILL.md can carry a display phrase in `name:` while
+  // living in a kebab-slug directory. loadSkills must report the DIRECTORY slug
+  // — the id loadSkillDetail / the host's GET-by-slug route resolve by — or the
+  // UI round-trip (list -> click -> load) hard-errors "skill not found".
+  const store = memStore();
+  const slug = "redactar-outreach-esg";
+  await store.writeText(
+    skillKey(ROOT, slug),
+    "---\nname: Redactar Outreach ESG\ndescription: Draft ESG outreach\n---\n\n## Procedure\nDraft it.\n",
+  );
+
+  // list reports the directory slug, not the drifted frontmatter phrase.
+  const { items } = await loadSkills(store, ROOT);
+  expect(items.map((s) => s.name)).toEqual([slug]);
+
+  // The id list handed back round-trips cleanly through loadSkillDetail.
+  const detail = await loadSkillDetail(store, ROOT, slug);
+  expect(detail!.name).toBe(slug);
+  expect(detail!.content).toContain("Draft it.");
+
+  // The drifted phrase never named a real directory — still null (-> host 404).
+  expect(await loadSkillDetail(store, ROOT, "Redactar Outreach ESG")).toBeNull();
+});
+
+test("parseSkillMd pins name to the directory slug, ignoring a drifted frontmatter name: (HOU-515)", () => {
+  const parsed = parseSkillMd(
+    "redactar-outreach-esg",
+    "---\nname: Redactar Outreach ESG\ndescription: x\n---\n\nbody\n",
+  );
+  if ("error" in parsed) throw new Error(parsed.error);
+  expect(parsed.summary.name).toBe("redactar-outreach-esg");
+  expect(parsed.summary.description).toBe("x");
+});
+
 test("compose → parse round-trip (create flow)", () => {
   const md = composeSkillMd({
     name: "summarize-inbox",
