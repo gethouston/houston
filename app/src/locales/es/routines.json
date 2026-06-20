@@ -7,7 +7,9 @@
     "newRoutine": "Nueva rutina",
     "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención.",
     "timezoneLabel": "Zona horaria",
-    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria."
+    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
+    "timezoneSearchPlaceholder": "Buscar zonas horarias…",
+    "timezoneNoResults": "No se encontraron zonas horarias"
   },
   "editor": {
     "back": "Volver a rutinas",

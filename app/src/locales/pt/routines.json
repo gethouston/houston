@@ -7,7 +7,9 @@
     "newRoutine": "Nova rotina",
     "descriptionShort": "Tarefas recorrentes que rodam no horário e só te avisam quando algo precisa da sua atenção.",
     "timezoneLabel": "Fuso horário",
-    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário."
+    "timezoneHint": "Todas as suas rotinas rodam neste fuso horário.",
+    "timezoneSearchPlaceholder": "Buscar fusos horários…",
+    "timezoneNoResults": "Nenhum fuso horário encontrado"
   },
   "editor": {
     "back": "Voltar para rotinas",

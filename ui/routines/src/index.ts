@@ -15,6 +15,9 @@ export type { RoutinesGridProps } from "./routines-grid"
 export { RoutineRow } from "./routine-row"
 export type { RoutineRowProps } from "./routine-row"
 
+export { TimezonePicker } from "./timezone-picker"
+export type { TimezonePickerProps } from "./timezone-picker"
+
 export { RoutineEditor } from "./routine-editor"
 export type { RoutineEditorProps, RoutineFormData } from "./routine-editor"
 

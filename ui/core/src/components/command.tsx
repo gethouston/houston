@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Command as CommandPrimitive } from "cmdk"
+import { Command as CommandPrimitive, defaultFilter } from "cmdk"
 import { SearchIcon } from "lucide-react"
 
 import { cn } from "../utils"
@@ -181,4 +181,7 @@ export {
   CommandItem,
   CommandShortcut,
   CommandSeparator,
+  // cmdk's built-in fuzzy scorer, re-exported so consumers can wrap it (e.g. to
+  // fold diacritics before scoring) without taking a direct `cmdk` dependency.
+  defaultFilter,
 }
