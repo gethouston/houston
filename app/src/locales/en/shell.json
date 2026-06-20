@@ -41,7 +41,8 @@
     "description": "This will permanently delete the agent and all its data. This cannot be undone."
   },
   "workspaceDialog": {
-    "title": "New workspace"
+    "title": "New workspace",
+    "createFailed": "We couldn't create the workspace. Please try again."
   },
   "uiTour": {
     "counter": "Tour {{current}} of {{total}}",

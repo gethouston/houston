@@ -21,6 +21,9 @@
     "eyebrow": "Mission {{number}}",
     "missionLabel": "Mission: {{title}}",
     "upNext": "Up next",
+    "errors": {
+      "setupFailed": "We couldn't finish setting up your workspace. Please try again."
+    },
     "welcome": {
       "title": "Welcome to Houston",
       "tagline": "Houston is where you build Agents that work with the same tools you use to work.",

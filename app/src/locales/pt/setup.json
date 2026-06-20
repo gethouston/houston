@@ -21,6 +21,9 @@
     "eyebrow": "Missão {{number}}",
     "missionLabel": "Missão: {{title}}",
     "upNext": "A seguir",
+    "errors": {
+      "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente."
+    },
     "welcome": {
       "title": "Bem-vindo ao Houston",
       "tagline": "O Houston é onde você constrói Agentes que funcionam com as mesmas ferramentas que você usa para trabalhar.",
