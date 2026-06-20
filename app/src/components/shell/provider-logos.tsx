@@ -168,3 +168,40 @@ export function MiniMaxLogo() {
     </svg>
   );
 }
+
+/**
+ * Monochrome provider logo by provider id — the single source the cards use
+ * for the "which AI provider" mark (reconnect, sign-in, rate-limit). Maps each
+ * provider Houston has a logo for (active + coming-soon) to its own mark and
+ * falls back to the provider's first initial for anything unknown, so a new
+ * provider can never silently borrow the wrong brand's logo (the old
+ * `anthropic ? Claude : OpenAI` ternary did exactly that for every
+ * non-Anthropic provider).
+ */
+export function ProviderGlyph({ providerId }: { providerId: string }) {
+  switch (providerId) {
+    case "anthropic":
+      return <ClaudeLogo />;
+    case "openai":
+      return <OpenAILogo />;
+    case "google":
+      return <GeminiLogo />;
+    case "github-copilot":
+      return <GitHubCopilotLogo />;
+    case "openrouter":
+      return <OpenRouterLogo />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo />;
+    case "deepseek":
+      return <DeepSeekLogo />;
+    case "minimax":
+      return <MiniMaxLogo />;
+    default:
+      return (
+        <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
+          {providerId.slice(0, 1).toUpperCase()}
+        </span>
+      );
+  }
+}
