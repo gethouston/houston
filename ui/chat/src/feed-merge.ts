@@ -125,17 +125,27 @@ export function mergeFeedItem(items: FeedItem[], item: FeedItem): FeedItem[] {
  * in the live feed bucket (`current`) for the same session: optimistic pushes
  * plus WS events that landed before or during the history fetch.
  *
- * Server history is authoritative for everything persisted up to load time, so
- * it is returned verbatim and only the `current` items it does NOT already
- * account for are appended after it. The match is by TURN IDENTITY, not by
- * byte-exact JSON: a live `assistant_text_streaming` (or `thinking_streaming`)
- * is the same turn as the persisted `assistant_text` (`thinking`) final and
- * must not re-append. That byte-exact mismatch was the bug behind issue #363,
- * where a routine-surfaced conversation rendered its first user prompt and AI
- * reply twice. Matching is count-based (a turn persisted once cancels exactly
- * one live copy) so a user who legitimately repeated a message keeps every
- * copy, and runs in O(history + current) via a Map rather than re-stringifying
- * on every compare.
+ * Server history is authoritative for everything it persisted, so persisted
+ * turns are taken from `history` in `history` order (a live
+ * `assistant_text_streaming` / `thinking_streaming` collapses to the persisted
+ * `assistant_text` / `thinking` final — issue #363 — and a count-based match
+ * keeps deliberate repeats, issue #381). The job is to weave back in the
+ * `current` items history does NOT account for, at the position they hold in
+ * `current` rather than dumping them at the end:
+ *
+ *   - A CLIENT-ONLY item sandwiched between two persisted turns keeps its slot.
+ *     This matters for synthetic, never-persisted feed items — chiefly the
+ *     `"Session error: …"` system message the desktop pushes on a failed turn
+ *     (and any pre-session-id `provider_error`): the engine has no row for them,
+ *     so the old tail-append re-pinned them to the bottom of the chat on every
+ *     reload, dragging a stale error below turns that came after it (HOU-457).
+ *   - A client-only item with NO persisted successor is genuine live tail (an
+ *     optimistic send still awaiting its echo, a stream mid-flight) and appends
+ *     after history, where it belongs.
+ *
+ * Persisted turns share the same chronological order in `current` and
+ * `history`, so a single forward walk of each is enough — O(history + current),
+ * Map-based, no per-compare re-stringify.
  */
 export function mergeFeedHistory(
   history: FeedItem[],
@@ -143,25 +153,48 @@ export function mergeFeedHistory(
 ): FeedItem[] {
   if (current.length === 0) return history;
 
-  const persisted = new Map<string, number>();
+  // Remaining match budget per key, drawn down as we consume `history`. Lets us
+  // tell a persisted `current` item (take it from history) from a client-only
+  // one (keep it inline), count-based so duplicates stay distinct.
+  const remaining = new Map<string, number>();
   for (const item of history) {
     const key = feedTurnKey(item);
-    persisted.set(key, (persisted.get(key) ?? 0) + 1);
+    remaining.set(key, (remaining.get(key) ?? 0) + 1);
   }
 
-  const tail: FeedItem[] = [];
+  const merged: FeedItem[] = [];
+  let hi = 0; // forward cursor into `history`
+  // Client-only items seen since the last persisted anchor, held until we know
+  // whether a persisted successor follows (→ splice in here) or not (→ tail).
+  let pendingClientOnly: FeedItem[] = [];
+
   for (const item of current) {
     const key = feedTurnKey(item);
-    const remaining = persisted.get(key) ?? 0;
-    if (remaining > 0) {
-      // Already represented by a persisted item: consume one and skip.
-      persisted.set(key, remaining - 1);
+    if ((remaining.get(key) ?? 0) > 0) {
+      // Persisted: the held client-only items had a persisted successor (this
+      // one), so they belong right before it. Then advance `history` to and
+      // including this item's match, emitting any history-only turns in between
+      // (e.g. a background routine run the live bucket never saw).
+      merged.push(...pendingClientOnly);
+      pendingClientOnly = [];
+      while (hi < history.length) {
+        const h = history[hi++];
+        merged.push(h);
+        const hk = feedTurnKey(h);
+        remaining.set(hk, (remaining.get(hk) ?? 0) - 1);
+        if (hk === key) break;
+      }
     } else {
-      tail.push(item);
+      // Client-only (or a repeat beyond history's count): hold its position.
+      pendingClientOnly.push(item);
     }
   }
 
-  return tail.length === 0 ? history : [...history, ...tail];
+  // Trailing history-only turns, then trailing client-only items (live tail).
+  while (hi < history.length) merged.push(history[hi++]);
+  merged.push(...pendingClientOnly);
+
+  return merged;
 }
 
 /**
