@@ -35,7 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
-import { Spinner } from "@houston-ai/core";
 import {
   Tooltip,
   TooltipContent,
@@ -1272,9 +1271,7 @@ export const PromptInputSubmit = ({
 
   let Icon = <ArrowUpIcon className="size-4" />;
 
-  if (status === "submitted") {
-    Icon = <Spinner />;
-  } else if (status === "streaming") {
+  if (isGenerating) {
     Icon = <SquareIcon className="size-3.5 fill-current" />;
   } else if (status === "error") {
     Icon = <XIcon className="size-4" />;
