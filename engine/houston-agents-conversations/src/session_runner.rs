@@ -109,6 +109,11 @@ pub fn spawn_and_monitor(
     let provider_kind = provider;
     let provider_str = provider.to_string();
 
+    // Keep a copy of the resolved model name for DB persistence. The value
+    // moves into spawn_session below and is not accessible inside the async
+    // block otherwise.
+    let model_for_persist = model.clone();
+
     let (mut rx, _handle) = SessionManager::spawn_session(
         provider,
         prompt,
@@ -274,7 +279,7 @@ pub fn spawn_and_monitor(
                     // Persist non-streaming items once the provider session id is known.
                     if let Some(ref opts) = persist {
                         if let (Some(sid), Some((ft, dj))) =
-                            (opts.claude_session_id.as_ref(), serialize_for_persist(item))
+                            (opts.claude_session_id.as_ref(), serialize_for_persist(item, model_for_persist.as_deref()))
                         {
                             let db = opts.db.clone();
                             let src = opts.source.clone();
@@ -415,7 +420,11 @@ pub fn spawn_and_monitor(
 
 /// Serialize a FeedItem for DB persistence. Returns None for streaming items
 /// (they get replaced by their final versions).
-fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
+///
+/// `model` is injected into `final_result` rows so the analytics layer can
+/// compute cost for providers (e.g. Codex) that don't report `cost_usd`
+/// themselves. Absent on rows persisted before this field was added.
+fn serialize_for_persist(item: &FeedItem, model: Option<&str>) -> Option<(String, String)> {
     match item {
         FeedItem::AssistantText(t) => Some(("assistant_text".into(), json_str(t))),
         FeedItem::UserMessage(t) => Some(("user_message".into(), json_str(t))),
@@ -440,9 +449,15 @@ fn serialize_for_persist(item: &FeedItem) -> Option<(String, String)> {
         } => {
             // `usage` serializes to its TokenUsage object (or null) so the
             // context-usage indicator survives a history reload, same as the
-            // live FeedItem event.
+            // live FeedItem event. `model` is persisted so the analytics layer
+            // can compute cost for providers (e.g. Codex) that don't report
+            // `cost_usd` themselves.
             let data = serde_json::json!({
-                "result": result, "cost_usd": cost_usd, "duration_ms": duration_ms, "usage": usage
+                "result": result,
+                "cost_usd": cost_usd,
+                "duration_ms": duration_ms,
+                "usage": usage,
+                "model": model,
             });
             Some(("final_result".into(), data.to_string()))
         }
@@ -710,7 +725,7 @@ mod tests {
             details: "exec failed".to_string(),
         };
 
-        let (feed_type, data) = serialize_for_persist(&item).expect("serializes");
+        let (feed_type, data) = serialize_for_persist(&item, None).expect("serializes");
 
         assert_eq!(feed_type, "tool_runtime_error");
         assert_eq!(data, r#"{"details":"exec failed","kind":"local_tool"}"#);
@@ -731,13 +746,52 @@ mod tests {
             }),
         };
 
-        let (feed_type, data) = serialize_for_persist(&item).expect("serializes");
+        let (feed_type, data) = serialize_for_persist(&item, Some("claude-sonnet-4-6")).expect("serializes");
 
         assert_eq!(feed_type, "final_result");
         let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
         assert_eq!(parsed["usage"]["context_tokens"], 151_500);
         assert_eq!(parsed["usage"]["cached_tokens"], 150_000);
         assert_eq!(parsed["usage"]["output_tokens"], 420);
+        assert_eq!(parsed["model"], "claude-sonnet-4-6");
+    }
+
+    #[test]
+    fn final_result_persists_model_for_cost_analytics() {
+        // The analytics layer needs the model to compute cost for providers
+        // (e.g. Codex) that don't report cost_usd. `gpt-5.5` is the OpenAI id
+        // Houston's picker produces.
+        let item = FeedItem::FinalResult {
+            result: "Done".to_string(),
+            cost_usd: None,
+            duration_ms: Some(3000),
+            usage: Some(houston_terminal_manager::TokenUsage {
+                context_tokens: 10_000,
+                output_tokens: 500,
+                cached_tokens: 8_000,
+            }),
+        };
+
+        let (_, data) = serialize_for_persist(&item, Some("gpt-5.5")).expect("serializes");
+        let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
+        assert_eq!(parsed["model"], "gpt-5.5");
+        assert!(parsed["cost_usd"].is_null());
+    }
+
+    #[test]
+    fn final_result_model_null_when_not_provided() {
+        // Rows persisted before the model field was added (or sessions where
+        // the model is unknown) must not fail deserialization.
+        let item = FeedItem::FinalResult {
+            result: "Done".to_string(),
+            cost_usd: Some(0.05),
+            duration_ms: None,
+            usage: None,
+        };
+
+        let (_, data) = serialize_for_persist(&item, None).expect("serializes");
+        let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
+        assert!(parsed["model"].is_null());
     }
 
     #[test]
@@ -749,7 +803,7 @@ mod tests {
             pre_tokens: Some(185_000),
         };
 
-        let (feed_type, data) = serialize_for_persist(&item).expect("serializes");
+        let (feed_type, data) = serialize_for_persist(&item, None).expect("serializes");
 
         assert_eq!(feed_type, "context_compacted");
         let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
@@ -764,7 +818,7 @@ mod tests {
             pre_tokens: None,
         };
 
-        let (feed_type, data) = serialize_for_persist(&item).expect("serializes");
+        let (feed_type, data) = serialize_for_persist(&item, None).expect("serializes");
 
         assert_eq!(feed_type, "context_compacted");
         let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
@@ -781,7 +835,7 @@ mod tests {
             usage: None,
         };
 
-        let (_, data) = serialize_for_persist(&item).expect("serializes");
+        let (_, data) = serialize_for_persist(&item, None).expect("serializes");
         let parsed: serde_json::Value = serde_json::from_str(&data).unwrap();
         assert!(parsed["usage"].is_null());
     }

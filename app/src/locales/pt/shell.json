@@ -21,7 +21,8 @@
     "needsYouCount_one": "{{count}} assunto precisa de você",
     "needsYouCount_other": "{{count}} assuntos precisam de você",
     "runningCount_one": "{{count}} assunto em execução",
-    "runningCount_other": "{{count}} assuntos em execução"
+    "runningCount_other": "{{count}} assuntos em execução",
+    "usage": "Uso"
   },
   "tabActions": {
     "newMission": "Nova missão",
@@ -396,5 +397,34 @@
     "successWithId": "O centro de controle está cuidando disso. Referência: {{id}}",
     "successNoId": "O centro de controle está cuidando disso.",
     "errorTitle": "Não foi possível enviar o relatório"
+  },
+  "usage": {
+    "title": "Uso",
+    "subtitle": "Custo e consumo de tokens em todos os seus agentes",
+    "loading": "Carregando dados de uso...",
+    "emptyTitle": "Sem sessões ainda",
+    "emptySubtitle": "Inicie uma conversa com qualquer agente para ver o uso aqui.",
+    "totalSpend": "Gasto total",
+    "totalSessions": "Sessões",
+    "totalTokens": "Tokens",
+    "cachedTokens": "Em cache",
+    "cacheEfficiency": "Acertos de cache",
+    "avgCostPerSession": "Média / sessão",
+    "filterAll": "Todos os agentes",
+    "filterAgent": "Agente",
+    "filterModel": "Modelo",
+    "byAgent": "Por agente",
+    "byModel": "Por modelo",
+    "byHour": "Atividade por hora",
+    "dailyTrend": "Tendência diária",
+    "tokens": "tokens",
+    "cacheHit": "{{pct}}% em cache",
+    "captionByDay": "Tokens por dia (últimos 14 dias)",
+    "captionByDayCost": "Custo por dia (últimos 14 dias)",
+    "captionByHour": "Tokens por hora local",
+    "dataNote": "O custo é exato quando o Claude o informa; caso contrário, é estimado com preços oficiais publicados. O Gemini mostra apenas tokens.",
+    "loadError": "Erro ao carregar dados de uso",
+    "sessions_one": "sessão",
+    "sessions_other": "sessões"
   }
 }
