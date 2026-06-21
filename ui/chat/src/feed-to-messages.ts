@@ -61,6 +61,14 @@ export interface ChatMessage {
 export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let cur: ChatMessage | null = null;
+  // One provider-error card per (kind, provider) PER TURN. The engine can
+  // surface the same failure on two channels — e.g. codex auth lands on both
+  // the stdout parser (persisted) and the transient stderr classifier — and a
+  // backoff loop should never stack identical reconnect cards. Keep the
+  // first. The set resets at every user_message: a NEW turn that fails the
+  // same way (e.g. the session dies again after a successful reconnect) must
+  // show a fresh card, not be swallowed by the previous turn's.
+  let seenProviderErrors = new Set<string>();
 
   function getCur(): ChatMessage | null {
     return cur;
@@ -107,6 +115,8 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
     switch (item.feed_type) {
       case "user_message": {
         flush();
+        // New turn — provider-error dedup is per turn (see declaration).
+        seenProviderErrors = new Set<string>();
         const { source, text } = extractSource(item.data);
         messages.push({
           key: `user-${messages.length}`,
@@ -228,6 +238,10 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         // SessionStatus::Cancelled via a separate channel, and a card
         // here would feel like a real error. Drop it.
         if (item.data.kind === "cancelled") break;
+        // Collapse duplicates (same kind + provider) to a single card.
+        const providerErrorKey = `${item.data.kind}:${item.data.provider}`;
+        if (seenProviderErrors.has(providerErrorKey)) break;
+        seenProviderErrors.add(providerErrorKey);
         flush();
         messages.push({
           key: `provider-error-${messages.length}-${item.data.kind}`,

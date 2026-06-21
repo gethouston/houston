@@ -285,7 +285,12 @@
       "bodyInvalidApiKey": "The {{provider}} API key Houston has is no longer valid. Update it and try again.",
       "bodyTokenRevoked": "Your {{provider}} access was revoked. Sign in again to continue.",
       "bodyUnknown": "Houston could not authenticate with {{provider}}. Reconnect and try again.",
-      "reconnect": "Reconnect"
+      "reconnect": "Reconnect",
+      "waiting": "Finish signing in using your browser",
+      "reconnectedTitle": "Reconnected to {{provider}}",
+      "reconnectedBody": "You are signed in again. Pick up where you left off.",
+      "sendAgain": "Try again",
+      "failedBody": "The {{provider}} sign-in did not finish. Try again. {{detail}}"
     },
     "networkUnreachable": {
       "title": "Cannot reach {{provider}}",

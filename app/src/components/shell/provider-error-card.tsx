@@ -69,7 +69,7 @@ export function ProviderErrorCard({
         <ModelUnavailableCard error={error} onSwitchModel={onSwitchModel} />
       );
     case "unauthenticated":
-      return <UnauthenticatedCard error={error} />;
+      return <UnauthenticatedCard error={error} onRetry={onRetry} />;
     case "network_unreachable":
       return <NetworkUnreachableCard error={error} onRetry={onRetry} />;
     case "provider_internal":
