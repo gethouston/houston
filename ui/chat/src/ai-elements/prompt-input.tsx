@@ -1272,8 +1272,6 @@ export const PromptInputSubmit = ({
   let Icon = <ArrowUpIcon className="size-4" />;
 
   if (isGenerating) {
-    // Stop square for the whole submitted + streaming window: makes the
-    // stop affordance explicit (HOU-503, ported from HOU-413).
     Icon = <SquareIcon className="size-3.5 fill-current" />;
   } else if (status === "error") {
     Icon = <XIcon className="size-4" />;
