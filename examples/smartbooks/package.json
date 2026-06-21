@@ -6,9 +6,9 @@
   "description": "Reference custom-frontend on houston-engine. Bookkeeping app: drop a bank-statement PDF, get an Excel workbook back.",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "tsgo --noEmit && vite build",
     "preview": "vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   },
   "dependencies": {
     "@houston-ai/engine-client": "workspace:*",
