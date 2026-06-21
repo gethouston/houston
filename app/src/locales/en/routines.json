@@ -7,7 +7,9 @@
     "newRoutine": "New routine",
     "descriptionShort": "Recurring tasks that fire on schedule and only ping you when something needs attention.",
     "timezoneLabel": "Timezone",
-    "timezoneHint": "All your routines run in this timezone."
+    "timezoneHint": "All your routines run in this timezone.",
+    "timezoneSearchPlaceholder": "Search timezones…",
+    "timezoneNoResults": "No timezones found"
   },
   "editor": {
     "back": "Back to routines",

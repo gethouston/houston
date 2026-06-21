@@ -57,6 +57,11 @@ describe("routines tab model — routineToFormData", () => {
       suppress_when_silent: false,
       chat_mode: "shared",
       integrations: ["gmail", "slack"],
+      // Per-routine provider/model/effort pins (HOU-506); unset on the fixture,
+      // so they project to null (inherit the agent's model).
+      provider: null,
+      model: null,
+      effort: null,
     });
   });
 });
