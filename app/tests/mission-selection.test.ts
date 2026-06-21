@@ -3,13 +3,12 @@ import { describe, it } from "node:test";
 import {
   ARCHIVED_STATUS,
   BULK_MOVE_TARGETS,
-  areAllSelected,
   canDropMission,
   isArchived,
   moveTargetsForSection,
   selectActive,
   selectArchived,
-  toggleAllIds,
+  selectAllIds,
 } from "../src/lib/mission-selection.ts";
 import { buildMissionBoardColumns } from "../src/components/mission-board-columns.ts";
 
@@ -66,27 +65,20 @@ describe("mission selection", () => {
     strictEqual(canDropMission(null, "archived"), false);
   });
 
-  it("computes select-all checkbox state", () => {
-    const ids = ["a", "b", "c"];
-    strictEqual(areAllSelected(ids, new Set(["a", "b", "c"])), true);
-    strictEqual(areAllSelected(ids, new Set(["a", "b"])), false);
-    // Empty id list is never "all selected" (nothing to select).
-    strictEqual(areAllSelected([], new Set(["a"])), false);
-  });
-
-  it("toggles a section as one and never mutates the input", () => {
+  it("selects a whole section additively and never mutates the input", () => {
     const ids = ["a", "b"];
-    // None/some selected -> add them all.
-    const fromNone = toggleAllIds(new Set<string>(), ids);
+    // None selected -> add them all.
+    const fromNone = selectAllIds(new Set<string>(), ids);
     deepStrictEqual([...fromNone].sort(), ["a", "b"]);
-    const fromSome = toggleAllIds(new Set(["a"]), ids);
-    deepStrictEqual([...fromSome].sort(), ["a", "b"]);
-    // All selected -> clear them, leaving other selections intact.
-    const fromAll = toggleAllIds(new Set(["a", "b", "x"]), ids);
-    deepStrictEqual([...fromAll], ["x"]);
+    // Some selected -> fill in the rest, keeping unrelated selections.
+    const fromSome = selectAllIds(new Set(["a", "x"]), ids);
+    deepStrictEqual([...fromSome].sort(), ["a", "b", "x"]);
+    // Idempotent: all already selected -> unchanged (never toggles back off).
+    const fromAll = selectAllIds(new Set(["a", "b", "x"]), ids);
+    deepStrictEqual([...fromAll].sort(), ["a", "b", "x"]);
     // Input set is not mutated.
     const input = new Set(["a"]);
-    toggleAllIds(input, ids);
+    selectAllIds(input, ids);
     deepStrictEqual([...input], ["a"]);
   });
 
