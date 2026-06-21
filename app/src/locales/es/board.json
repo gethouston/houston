@@ -57,7 +57,6 @@
     "selected_one": "{{count}} seleccionada",
     "selected_other": "{{count}} seleccionadas",
     "moveTo": "Mover a",
-    "selectAll": "Seleccionar todo",
     "archive": "Archivar",
     "delete": "Eliminar",
     "clear": "Quitar selección",
@@ -82,12 +81,9 @@
       "action": "Eliminar"
     }
   },
-  "doneArchive": {
-    "tooltip": "Archivar todo lo Listo",
-    "confirmTitle": "¿Archivar las misiones Listas?",
-    "confirmDescription_one": "¿Archivar {{count}} misión en Listo? Puedes reabrirla desde la pestaña Archivadas.",
-    "confirmDescription_other": "¿Archivar {{count}} misiones en Listo? Puedes reabrirlas desde la pestaña Archivadas.",
-    "confirmAction": "Archivar todo"
+  "column": {
+    "menu": "Acciones de columna",
+    "selectAll": "Seleccionar toda la columna"
   },
   "archived": {
     "emptyTitle": "No hay misiones archivadas",
