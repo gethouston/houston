@@ -2560,10 +2560,21 @@ visionPath: "vision/index.html"
     });
   });
 
-  // Analytics helper — no-op when PostHog snippet not loaded
+  // Analytics helper — forwards each conversion event to both PostHog and
+  // Google Analytics 4. Each sink is independent: if one snippet is absent
+  // (no key, blocked, or Do Not Track) the other still fires. Event names are
+  // snake_case and props carry no personal information, so they map cleanly to
+  // GA4 events. Pageviews are NOT sent here — PostHog and gtag config each
+  // capture their own, so there are no duplicate pageviews.
   function track(name, props) {
-    if (typeof window === 'undefined' || !window.posthog || !window.posthog.capture) return;
-    try { window.posthog.capture(name, props || {}); } catch (e) {}
+    if (typeof window === 'undefined') return;
+    var payload = props || {};
+    if (window.posthog && window.posthog.capture) {
+      try { window.posthog.capture(name, payload); } catch (e) {}
+    }
+    if (typeof window.gtag === 'function') {
+      try { window.gtag('event', name, payload); } catch (e) {}
+    }
   }
 
   // OS-aware Download button: visitors on Windows kept clicking "Download for
