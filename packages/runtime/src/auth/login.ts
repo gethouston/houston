@@ -1,6 +1,11 @@
-import { getOAuthProvider } from "@earendil-works/pi-ai/oauth";
+import {
+  getOAuthProvider,
+  OPENAI_CODEX_BROWSER_LOGIN_METHOD,
+  OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
+} from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
 import { authStorage } from "./storage";
+import { config } from "../config";
 import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
 
 /**
@@ -9,8 +14,12 @@ import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
  * - anthropic (Claude): PKCE. Locally the loopback (127.0.0.1:53692) catches the
  *   redirect (`url`). Headless, the user pastes the code Claude shows (`auth_code`
  *   + completeLogin) — see auth/anthropic-headless.ts.
- * - openai-codex (ChatGPT/Codex): device code — user enters a code on their own
- *   device while the runtime polls. Fully headless.
+ * - openai-codex (ChatGPT/Codex): the CLIENT picks. A co-located desktop client
+ *   sends `deviceAuth: false` and gets the browser/loopback login — the user
+ *   approves in their own browser and the localhost callback finishes it, no
+ *   code. A remote webapp (cloud or self-host) sends `deviceAuth: true` and gets
+ *   the device-code grant — the user types a one-time code while the runtime
+ *   polls. See `codexLoginMethod`.
  */
 
 type LoginState = {
@@ -20,8 +29,25 @@ type LoginState = {
   resolvePaste?: (code: string) => void;
 };
 
-const OPENAI_DEVICE_CODE = "device_code";
 const active = new Map<ProviderId, LoginState>();
+
+/**
+ * Which Codex OAuth flow to run. The browser/loopback login (the user approves
+ * in their own browser, the localhost callback finishes it, no code to type) is
+ * used ONLY when the client is co-located: it asked for it (`deviceAuth: false`,
+ * which only the desktop app sends — `!osIsTauri()`) AND this runtime can host a
+ * loopback callback the browser actually reaches (`!headless`). Otherwise the
+ * device-code grant, where the user enters a one-time code while the runtime
+ * polls. `deviceAuth` is the load-bearing signal — a remote webapp (cloud OR
+ * self-host) sends `deviceAuth: true` and gets the device code regardless of how
+ * the runtime binds; `headless` only guards the exotic "desktop pointed at a
+ * remote headless runtime" case where the loopback can't be reached.
+ */
+export function codexLoginMethod(opts: { deviceAuth: boolean; headless: boolean }): string {
+  return !opts.deviceAuth && !opts.headless
+    ? OPENAI_CODEX_BROWSER_LOGIN_METHOD
+    : OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
+}
 
 const known = (id: string): id is ProviderId => PROVIDERS.some((p) => p.id === id);
 
@@ -40,7 +66,11 @@ export function getAuthStatus() {
   };
 }
 
-export async function startLogin(providerId: string): Promise<LoginInfo> {
+// `deviceAuth` is the client's declaration that it CANNOT receive a loopback
+// OAuth callback (a remote webapp). Defaults to true (the safe device-code path)
+// so any caller that omits it never strands a remote user on an unreachable
+// loopback; the co-located desktop app passes false to get the browser login.
+export async function startLogin(providerId: string, deviceAuth = true): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   const provider = providerId;
 
@@ -81,7 +111,10 @@ export async function startLogin(providerId: string): Promise<LoginInfo> {
         state.status = "awaiting_user";
         resolveInfo(state.info);
       },
-      onSelect: async () => OPENAI_DEVICE_CODE, // codex: force the headless device-code path
+      // Codex offers browser (loopback) or device-code login; let the client
+      // pick so the co-located desktop redirects to the browser to approve and
+      // remote webapp clients type a code (see codexLoginMethod).
+      onSelect: async () => codexLoginMethod({ deviceAuth, headless: config.headless }),
       onPrompt: () => pastePromise,
       onManualCodeInput: () => pastePromise,
       onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),

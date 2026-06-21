@@ -104,12 +104,16 @@ export class HoustonEngineClient {
     return this.json<AuthStatus>("/auth/status");
   }
   /**
-   * Start login for a provider. Returns a `LoginInfo`: `url` (local Claude,
-   * loopback), `auth_code` (headless Claude — open the url, then `completeLogin`
-   * with the code Claude shows), or `device_code` (Codex).
+   * Start login for a provider. Returns a `LoginInfo`: `url` (local Claude or
+   * co-located Codex, loopback), `auth_code` (headless Claude — open the url,
+   * then `completeLogin` with the code Claude shows), or `device_code` (remote
+   * Codex). `deviceAuth: false` (sent only by the co-located desktop client)
+   * asks Codex for the browser/loopback login instead of the device code;
+   * default true keeps the device-code path for remote webapp clients.
    */
-  startLogin(provider: ProviderId) {
-    return this.json<LoginInfo>(`/auth/${provider}/login`, { method: "POST" });
+  startLogin(provider: ProviderId, deviceAuth = true) {
+    const suffix = deviceAuth ? "" : "?deviceAuth=false";
+    return this.json<LoginInfo>(`/auth/${provider}/login${suffix}`, { method: "POST" });
   }
   /** Submit a pasted code (the `auth_code` headless Claude path). */
   completeLogin(provider: ProviderId, code: string) {
