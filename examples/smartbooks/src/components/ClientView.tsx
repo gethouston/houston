@@ -288,6 +288,6 @@ function displayName(name: string): string {
   return name.replace(/^\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}-/, "");
 }
 
-// Re-export so tsc is happy about the unused import when the file
+// Re-export so tsgo is happy about the unused import when the file
 // hasn't been touched. Stays a no-op at runtime.
 export { statementsFolder };

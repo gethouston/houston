@@ -13,7 +13,7 @@ import { MessageResponse } from "@houston-ai/chat";
 // (specificity 0,1,1) reliably win over Streamdown's own element utilities
 // (0,1,0).
 //
-// Verification: this render path is covered by `pnpm tsc --noEmit` (types) and
+// Verification: this render path is covered by `pnpm tsgo --noEmit` (types) and
 // manual visual check. The app's `node --test` harness strips TS types but does
 // NOT transform JSX, so a React component cannot be rendered there; only pure
 // `.ts` logic is unit-testable. The input contract (what reaches this component)

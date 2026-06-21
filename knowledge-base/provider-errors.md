@@ -99,7 +99,7 @@ Resist if `Unknown` covers it. If you must:
 4. Add a `case` in `provider-error-card.tsx`'s dispatcher.
 5. Update this doc's table.
 6. Add the classifier(s) that produce the new variant.
-7. `cargo test --workspace`, `pnpm tsc --noEmit`, `pnpm check-locales`,
+7. `cargo test --workspace`, `pnpm tsgo --noEmit`, `pnpm check-locales`,
    `pnpm vite build` — every gate green before committing.
 
 ## File map

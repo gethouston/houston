@@ -151,10 +151,10 @@ Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, co
 | ui/ | `pnpm typecheck` | — | — |
 | engine/ | — | `cargo test --workspace` | `cargo build --workspace` |
 | engine/ Win check | — | `cargo check --target x86_64-pc-windows-gnu -p houston-engine-server` (needs mingw-w64) | — |
-| app/ | `cd app && pnpm tsc --noEmit` | `cd app/src-tauri && cargo check` | `cd app && pnpm tauri build` |
+| app/ | `cd app && pnpm tsgo --noEmit` | `cd app/src-tauri && cargo check` | `cd app && pnpm tauri build` |
 | app/ Win MSI | — | — | `cd app && pnpm tauri build --target x86_64-pc-windows-msvc` (needs Windows host or `xwin` SDK) |
 | app/ i18n | `cd app && pnpm check-locales` | — | — |
-| packages/web | `pnpm --filter houston-web typecheck` (runs Tauri shim-parity guard + tsc) | — | `pnpm --filter houston-web build` |
+| packages/web | `pnpm --filter houston-web typecheck` (runs Tauri shim-parity guard + tsgo) | — | `pnpm --filter houston-web build` |
 | CLI bundle (mac) | — | — | `./scripts/fetch-cli-deps.sh both` |
 | CLI bundle (win) | — | — | `./scripts/fetch-cli-deps.sh windows-x64` (Bun + jq + zstd required) |
 
@@ -205,7 +205,7 @@ See `knowledge-base/architecture.md` (engine crates), `knowledge-base/agent-mani
 - **No em dashes (`—`)** in user-facing copy. Commas or sentence breaks. Validator enforces this.
 - Spanish = Latin-American neutral (computador, tú). Portuguese = Brazilian (você).
 - Keys are type-checked via `app/src/types/react-i18next.d.ts` augmentation — typos fail at compile time.
-- Pre-commit: `pnpm tsc --noEmit` AND `pnpm check-locales` (catches missing keys, shape drift, placeholder parity, em dashes).
+- Pre-commit: `pnpm tsgo --noEmit` AND `pnpm check-locales` (catches missing keys, shape drift, placeholder parity, em dashes).
 - See `knowledge-base/i18n.md` for patterns, glossary, and the wiring checklist.
 
 ### Internal code = no backwards compat
