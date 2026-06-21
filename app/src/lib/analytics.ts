@@ -101,11 +101,10 @@ type AnalyticsProperty =
   | "locale";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
-type UserProfile = {
+type UserIdentity = {
   email?: string | null;
-};
-type PersonProps = {
-  email?: string;
+  /** ISO date (YYYY-MM-DD) from auth.users.created_at — acquisition cohort. */
+  signupDate?: string | null;
 };
 
 const ALLOWED_PROPS = new Set<AnalyticsProperty>([
@@ -190,11 +189,6 @@ function cleanEmail(email?: string | null): string | undefined {
   const value = email?.trim().toLowerCase();
   const at = value?.lastIndexOf("@") ?? -1;
   return value && at > 0 && at < value.length - 1 ? value : undefined;
-}
-
-function personProps(profile?: UserProfile): PersonProps | undefined {
-  const email = cleanEmail(profile?.email);
-  return email ? { email } : undefined;
 }
 
 function daysBetween(fromISO: string, toISO: string): number {
@@ -304,10 +298,11 @@ export const analytics = {
     if (!KEY) return;
     try {
       posthog.capture(event, cleanProps(props));
-      // Maintain the `is_activated` person property — flips to true on
-      // first `chat_message_received` and stays true forever. Lets cohort
-      // filters say "activated users" without a complex insight.
-      if (event === "chat_message_received") {
+      // Maintain the `is_activated` person property — flips to true on the
+      // user's first `chat_message_sent` (activation = the user sends a
+      // message) and stays true forever. Lets cohort filters say "activated
+      // users" without a complex insight.
+      if (event === "chat_message_sent") {
         posthog.people.set({ is_activated: true });
       }
     } catch {
@@ -316,16 +311,34 @@ export const analytics = {
   },
 
   /**
-   * Merge anonymous install_id history into an identified user. Call on sign-in.
-   * Email is a person property for lookup/filtering, never an event prop.
-   * Flips the auth_status super property so every event going forward is
-   * tagged as authenticated.
+   * Stamp the signed-in user's Supabase identity onto the current person.
+   * Call on sign-in.
+   *
+   * We deliberately KEEP the install_id as PostHog's distinct_id — it is the
+   * spine the website `/welcome` UTM bridge and the sequential onboarding
+   * funnel both depend on. (PostHog ignores a second `identify()` with a new
+   * distinct_id once a person is identified, so re-pointing it is a silent
+   * no-op anyway.) Instead we attach `supabase_user_id` — plus email and signup
+   * date — as PERSON PROPERTIES, so every authenticated person carries a
+   * reliable, queryable join key to Supabase with pre-login attribution
+   * untouched. Email is a person property for lookup/filtering, never an event
+   * prop. Flips `auth_status` so every event going forward is authenticated.
+   *
+   * NOTE: join user-level metrics on `supabase_user_id` (not distinct_id) so a
+   * user signing in on two devices — two install_ids, one supabase_user_id —
+   * dedupes correctly.
    */
-  alias: (userId: string, profile?: UserProfile) => {
+  identifyUser: (userId: string, identity?: UserIdentity) => {
     if (!KEY) return;
     try {
-      posthog.alias(userId);
-      posthog.identify(userId, personProps(profile));
+      const email = cleanEmail(identity?.email);
+      posthog.setPersonProperties(
+        {
+          supabase_user_id: userId,
+          ...(email ? { email } : {}),
+        },
+        identity?.signupDate ? { signup_date: identity.signupDate } : undefined,
+      );
       posthog.register({ ...baseSuperProps(), auth_status: "authenticated" });
     } catch {
       // Analytics unavailable
