@@ -31,8 +31,10 @@ import { ProviderDeviceCode } from "./provider-device-code";
  *    dialog waits for `ProviderLoginComplete` (handled by the parent) to
  *    auto-close.
  *
- * On desktop the dialog still pops (claude prints the URL unconditionally)
- * but auto-dismisses once the CLI's own localhost callback completes.
+ * Desktop no longer shows this dialog: there the picker/settings handler opens
+ * the user's browser directly for the co-located loopback flow (see
+ * `shouldOpenLoginUrlDirectly`), so the dialog is now a remote / headless-only
+ * affordance.
  */
 interface Props {
   provider: ProviderInfo | null;
@@ -57,12 +59,11 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
   // Reset per-open state every time a new provider opens the dialog so a
   // stale code from a prior failed attempt — or a revealed URL — doesn't
   // leak across.
-  // Deliberately do NOT `window.open` here: claude/codex print the
-  // fallback URL unconditionally, including on desktop where the CLI
-  // already opened the user's browser via xdg-open/open. Auto-opening
-  // a duplicate tab would be a regression for personal-use Houston.
-  // The "Open URL" button below is the explicit action for remote
-  // deployments where the browser hasn't been opened.
+  // Deliberately do NOT `window.open` here. This dialog only renders for
+  // remote / headless clients now (desktop opens the browser directly
+  // upstream), and there the user can't be sure a co-located browser/callback
+  // exists — so the "Open URL" button below is the explicit, user-driven action
+  // rather than an auto-popped tab.
   useEffect(() => {
     if (provider && url) {
       setCode("");

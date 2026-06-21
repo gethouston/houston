@@ -1,6 +1,9 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { providerLoginUrlHost } from "../src/components/shell/provider-login-url.ts";
+import {
+  providerLoginUrlHost,
+  shouldOpenLoginUrlDirectly,
+} from "../src/components/shell/provider-login-url.ts";
 
 describe("providerLoginUrlHost", () => {
   it("returns the bare hostname for a normal https URL", () => {
@@ -42,5 +45,25 @@ describe("providerLoginUrlHost", () => {
 
   it("tolerates surrounding whitespace around a valid URL", () => {
     strictEqual(providerLoginUrlHost("  https://claude.ai/oauth  "), "claude.ai");
+  });
+});
+
+describe("shouldOpenLoginUrlDirectly", () => {
+  it("opens the browser directly on desktop for a loopback flow (no device code)", () => {
+    strictEqual(shouldOpenLoginUrlDirectly({ isDesktop: true, userCode: null }), true);
+    strictEqual(shouldOpenLoginUrlDirectly({ isDesktop: true, userCode: undefined }), true);
+  });
+
+  it("keeps the dialog on desktop when a device code must be shown", () => {
+    strictEqual(shouldOpenLoginUrlDirectly({ isDesktop: true, userCode: "WXYZ-1234" }), false);
+  });
+
+  it("keeps the dialog for remote / headless web clients", () => {
+    strictEqual(shouldOpenLoginUrlDirectly({ isDesktop: false, userCode: null }), false);
+    strictEqual(shouldOpenLoginUrlDirectly({ isDesktop: false, userCode: "WXYZ-1234" }), false);
+  });
+
+  it("treats an empty user code as no code", () => {
+    strictEqual(shouldOpenLoginUrlDirectly({ isDesktop: true, userCode: "" }), true);
   });
 });

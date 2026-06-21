@@ -29,3 +29,22 @@ export function providerLoginUrlHost(url: string): string | null {
   }
   return parsed.hostname.replace(/^www\./, "");
 }
+
+/**
+ * Decide whether a `ProviderLoginUrl` event should open the user's browser
+ * directly (skipping the dialog) instead of surfacing the paste/code dialog.
+ *
+ * On desktop the runtime is co-located, so a loopback OAuth flow (no device
+ * code) completes when the user approves in their OWN browser — the localhost
+ * callback finishes it and `ProviderLoginComplete` flips the card, with no code
+ * to enter. A device code (`userCode` present) still needs the dialog so the
+ * user can read it, and remote / headless web clients always use the dialog
+ * because their runtime can't reach a local browser. Mirrors the runtime's own
+ * loopback-vs-headless split (see the runtime's `codexLoginMethod`).
+ */
+export function shouldOpenLoginUrlDirectly(opts: {
+  isDesktop: boolean;
+  userCode: string | null | undefined;
+}): boolean {
+  return opts.isDesktop && !opts.userCode;
+}

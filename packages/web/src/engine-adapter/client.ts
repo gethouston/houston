@@ -471,18 +471,22 @@ export class HoustonClient {
       cliPath: null,
     } as ProviderStatus;
   }
-  // deviceAuth is ignored: the runtime picks the flow itself (Codex → device
-  // code, Claude → loopback or copy-paste per the runtime's headless mode).
-  async providerLogin(name: string, _opts?: { deviceAuth?: boolean }): Promise<void> {
+  // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
+  // co-located desktop sends false (it CAN), remote webapps send true. It steers
+  // Codex's flow (false → browser/loopback, true → device code); Claude keys off
+  // the runtime's own headless mode regardless. Default true so a caller that
+  // omits it never asks a remote runtime for an unreachable loopback.
+  async providerLogin(name: string, opts?: { deviceAuth?: boolean }): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
+    const deviceAuth = opts?.deviceAuth ?? true;
 
     if (!this.cp) {
       // Local single runtime. Drive the legacy login dialog: `device_code`
       // carries the code to display; `url` (loopback) and `auth_code`
       // (headless Claude) leave `user_code` null so the dialog shows a paste
       // field. The runtime emits no completion event, so poll and synthesize.
-      const info = await this.engine.startLogin(pid);
+      const info = await this.engine.startLogin(pid, deviceAuth);
       const url = info.kind === "device_code" ? info.verificationUri : info.url;
       const userCode = info.kind === "device_code" ? info.userCode : null;
       emitEvent("ProviderLoginUrl", { provider: name, url, user_code: userCode });
@@ -491,14 +495,16 @@ export class HoustonClient {
       return;
     }
 
-    // Cloud: start the device-code login in THIS agent's sandbox, then surface it
-    // through the bus events the desktop dialog already listens for. `provider`
-    // MUST be the old id and the code field MUST be `user_code` (the dialog's
-    // contract); a truthy user_code is what opens the device-code panel.
+    // Control-plane path (cloud sandbox OR the desktop host sidecar). Start the
+    // login in THIS agent's runtime and surface it on the bus the picker/settings
+    // handler consumes. A remote runtime returns a device_code (we pass its
+    // `user_code`, which opens the code panel); a co-located desktop client gets
+    // a loopback `url` (user_code null) that the handler opens straight in the
+    // browser. `provider` MUST be the old id (the dialog's contract).
     const agentId = this.requireAgentId();
     const old = toOldProvider(pid);
     const engine = controlPlane.runtimeClientFor(this.cp, agentId);
-    const info = await engine.startLogin(pid);
+    const info = await engine.startLogin(pid, deviceAuth);
     if (info.kind === "device_code") {
       emitEvent("ProviderLoginUrl", { provider: old, url: info.verificationUri, user_code: info.userCode });
     } else {

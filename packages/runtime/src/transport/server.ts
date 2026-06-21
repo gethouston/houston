@@ -88,7 +88,13 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     const provider = authMatch[1];
     const action = authMatch[2];
     try {
-      if (action === "login") return json(res, 200, await startLogin(provider));
+      if (action === "login") {
+        // `deviceAuth=false` (sent only by the co-located desktop client)
+        // selects Codex's browser/loopback login; default true keeps the
+        // device-code path for remote webapp clients.
+        const deviceAuth = url.searchParams.get("deviceAuth") !== "false";
+        return json(res, 200, await startLogin(provider, deviceAuth));
+      }
       if (action === "login/complete") {
         const { code } = await readJson(req);
         completeLogin(provider, String(code || ""));

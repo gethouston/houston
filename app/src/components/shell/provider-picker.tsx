@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
+import { tauriProvider, tauriSystem, type ProviderStatus } from "../../lib/tauri";
 import {
   PROVIDERS,
   COMING_SOON_PROVIDERS,
@@ -13,6 +13,7 @@ import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import { ProviderLoginDialog } from "./provider-login-dialog";
+import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { ProviderCard, ComingSoonCard } from "./provider-cards";
 
 interface Props {
@@ -105,6 +106,21 @@ export function ProviderPicker({ onSelect }: Props) {
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        if (shouldOpenLoginUrlDirectly({ isDesktop: osIsTauri(), userCode: ev.data.user_code })) {
+          // Desktop: the runtime is co-located, so a loopback OAuth flow
+          // finishes when the user approves in their OWN browser (the localhost
+          // callback flips the card on ProviderLoginComplete). Open the URL and
+          // skip the dialog — there is no code to enter. Surface a failed open
+          // so the user isn't left on a silent spinner.
+          tauriSystem.openUrl(ev.data.url).catch((err) => {
+            addToast({
+              title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+              description: err instanceof Error ? err.message : String(err),
+              variant: "error",
+            });
+          });
+          return;
+        }
         if (prov) {
           // The relay can emit twice for codex's device flow: URL-only,
           // then again carrying the one-time code. Keep a code we've
@@ -147,11 +163,11 @@ export function ProviderPicker({ onSelect }: Props) {
   const handleConnect = async (provider: ProviderInfo) => {
     setPendingId(provider.id);
     try {
-      // Remote clients (this app running as a webapp/PWA against a hosted
-      // engine) can't receive the CLI's localhost OAuth callback, so ask
-      // for the headless device-code flow. The engine ignores the flag for
-      // providers without a device variant (Claude keeps its paste-back).
-      await tauriProvider.launchLogin(provider.id, { deviceAuth: !osIsTauri() });
+      // launchLogin defaults deviceAuth from the platform — desktop catches the
+      // loopback callback (Codex browser login), a remote webapp can't (device
+      // code) — so no flag is needed here. Claude keys off the runtime's
+      // headless mode regardless.
+      await tauriProvider.launchLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);

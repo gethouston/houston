@@ -24,7 +24,7 @@ import type {
   GenerateInstructionsResult,
 } from "@houston-ai/engine-client";
 import { getEngine } from "./engine";
-import { osPickDirectory } from "./os-bridge";
+import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
 import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
@@ -571,7 +571,14 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
   launchLogin: (provider: string, opts?: { deviceAuth?: boolean }) =>
-    call<void>("launch_provider_login", () => getEngine().providerLogin(provider, opts)),
+    // `deviceAuth` declares whether the client can catch a loopback OAuth
+    // callback. Default it from the platform: the co-located desktop CAN
+    // (false → Codex browser/loopback login), a remote webapp can't (true →
+    // device code). Callers may still override. Centralized here so every
+    // entry point (picker, settings, reconnect card, banner) agrees.
+    call<void>("launch_provider_login", () =>
+      getEngine().providerLogin(provider, { deviceAuth: opts?.deviceAuth ?? !osIsTauri() }),
+    ),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
   /**
