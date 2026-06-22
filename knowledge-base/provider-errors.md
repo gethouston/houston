@@ -112,6 +112,15 @@ plain — now funnels to a single `auth_card_emitted`-deduped
 `Unauthenticated` card; before, the plain refresh-failure fell through to a
 raw `Error: …` SystemMessage shown twice.
 
+Codex also emits non-auth retry progress as `type:"error"` while it is still
+recovering, e.g. `Reconnecting... 2/5 (stream disconnected before completion:
+websocket closed by server before response.completed)`. Those lines are NOT
+terminal: production runs returned an assistant answer and exited `0` after
+printing them. `codex_parser` suppresses these reconnect-progress lines so
+they do not persist as mission-log errors. If the retry loop actually fails,
+Codex emits a final non-`Reconnecting...` `turn.failed` / `error` event, and
+that still surfaces to the user.
+
 **Auth cards: prefer the persisted inline card over the store card.** The
 store-driven `ProviderReconnectCard` (anchored to the `authRequired` flag,
 rendered in `ChatPanel.afterMessages`) AUTO-DISMISSES for codex: its 3s
