@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { ComposioProvider } from "./composio";
+import { type ComposioLoginClient, ComposioProvider } from "./composio";
 import type { ProviderCredential } from "./types";
 
 /**
@@ -17,7 +17,10 @@ interface Recorded {
   body: unknown;
 }
 
-function harness(handler: (url: URL, method: string) => Reply) {
+function harness(
+  handler: (url: URL, method: string) => Reply,
+  loginClient?: ComposioLoginClient,
+) {
   const calls: Recorded[] = [];
   const fetchImpl = (async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(String(input));
@@ -33,7 +36,9 @@ function harness(handler: (url: URL, method: string) => Reply) {
   }) as typeof fetch;
   const provider = new ComposioProvider({
     baseURL: "https://cmp.test",
+    webURL: "https://web.test",
     fetch: fetchImpl,
+    loginClient,
   });
   return { provider, calls };
 }
@@ -192,9 +197,71 @@ test("a credential for another provider, or missing apiKey, is rejected", async 
   ).rejects.toThrow(/missing 'apiKey'/);
 });
 
-test("login + connect fail loudly (slice b), never pretend to work", async () => {
+test("startLogin mints a session and builds the no-key login URL", async () => {
+  const loginClient: ComposioLoginClient = {
+    createSession: async () => ({ id: "sess-1" }),
+    getSession: async () => ({ status: "pending" }),
+  };
+  const { provider } = harness(() => ({ status: 200 }), loginClient);
+  expect(await provider.startLogin()).toEqual({
+    loginUrl: "https://web.test/?cliKey=sess-1",
+    pollKey: "sess-1",
+  });
+});
+
+test("pollLogin is pending until linked, then returns the credential (key never shown)", async () => {
+  let linked = false;
+  const loginClient: ComposioLoginClient = {
+    createSession: async () => ({ id: "s" }),
+    getSession: async () =>
+      linked
+        ? {
+            status: "linked",
+            api_key: "uak_new",
+            account: { email: "x@y.com" },
+          }
+        : { status: "pending" },
+  };
+  const { provider, calls } = harness((url, method) => {
+    if (url.pathname === "/api/v3/auth/session/info")
+      return {
+        body: {
+          org_member: { email: "x@y.com" },
+          project: { org: { id: "ok_1" } },
+        },
+      };
+    if (
+      method === "POST" &&
+      url.pathname === "/api/v3/org/consumer/project/resolve"
+    )
+      return { body: { consumer_user_id: "consumer-1-ok_1" } };
+    return { status: 404 };
+  }, loginClient);
+
+  expect(await provider.pollLogin("s")).toEqual({ status: "pending" });
+
+  linked = true;
+  expect(await provider.pollLogin("s")).toEqual({
+    status: "linked",
+    credential: {
+      provider: "composio",
+      data: {
+        apiKey: "uak_new",
+        orgId: "ok_1",
+        userId: "consumer-1-ok_1",
+        email: "x@y.com",
+      },
+    },
+  });
+  // The consumer user id is resolved with the freshly-linked key + its org.
+  const resolve = calls.find((c) =>
+    c.path.startsWith("/api/v3/org/consumer/project/resolve"),
+  );
+  expect(resolve?.headers["x-user-api-key"]).toBe("uak_new");
+  expect(resolve?.headers["x-org-id"]).toBe("ok_1");
+});
+
+test("connect still fails loudly (next slice), never pretends to work", async () => {
   const { provider } = harness(() => ({ status: 200 }));
-  await expect(provider.startLogin()).rejects.toThrow(/slice \(b\)/);
-  await expect(provider.pollLogin("x")).rejects.toThrow(/slice \(b\)/);
-  await expect(provider.connect(cred, "gmail")).rejects.toThrow(/slice \(b\)/);
+  await expect(provider.connect(cred, "gmail")).rejects.toThrow(/next slice/);
 });

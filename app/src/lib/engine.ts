@@ -49,7 +49,14 @@ const HOST_TOKEN: string =
 // built against the v3 host -> every turn fails with "Session error" until the
 // next launch (the warm sidecar lets the injection land first). Setting the
 // flag from the build constant closes that race for all delivery paths. HOU-546.
-const NEW_ENGINE = controlPlaneBuild(import.meta.env ?? {});
+// import.meta typing differs between the app and packages/web tsconfigs that
+// both compile this file, so cast env to controlPlaneBuild's expected shape.
+const NEW_ENGINE = controlPlaneBuild(
+  (import.meta.env ?? {}) as unknown as {
+    VITE_NEW_ENGINE_URL?: string;
+    VITE_NEW_ENGINE?: string;
+  },
+);
 if (NEW_ENGINE && typeof window !== "undefined") {
   (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
 }

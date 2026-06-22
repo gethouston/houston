@@ -30,12 +30,29 @@ import type {
  */
 
 const DEFAULT_BASE_URL = "https://backend.composio.dev";
+const DEFAULT_WEB_URL = "https://dashboard.composio.dev";
 
 interface ComposioCred {
   apiKey: string;
   /** The consumer user id this key acts as (resolved at login). */
   userId?: string;
   orgId?: string;
+}
+
+/**
+ * The slice of `@composio/client`'s `cli` resource the login flow needs. Behind
+ * a seam so the adapter's other methods (raw fetch) stay testable without the
+ * SDK, and login tests can inject a fake instead of hitting the network.
+ */
+export interface ComposioLoginClient {
+  createSession(params: {
+    scope: "user" | "project";
+  }): Promise<{ id: string; status?: string; expiresAt?: string }>;
+  getSession(params: { id: string }): Promise<{
+    status: string;
+    api_key?: string;
+    account?: { email?: string } | null;
+  }>;
 }
 
 interface CallOpts {
@@ -51,18 +68,64 @@ interface CallOpts {
 export interface ComposioOptions {
   /** Override for tests / self-host pointing at a different Composio backend. */
   baseURL?: string;
+  /** The Composio web app the user signs into (the `?cliKey=` login page). */
+  webURL?: string;
   /** Injected for tests; defaults to global fetch. */
   fetch?: typeof fetch;
+  /** Injected for tests; defaults to lazily constructing `@composio/client`. */
+  loginClient?: ComposioLoginClient;
 }
 
 export class ComposioProvider implements IntegrationProvider {
   readonly id = "composio";
   private readonly baseURL: string;
+  private readonly webURL: string;
   private readonly fetchImpl: typeof fetch;
+  private readonly injectedLoginClient?: ComposioLoginClient;
+  private cachedLoginClient?: ComposioLoginClient;
 
   constructor(opts: ComposioOptions = {}) {
     this.baseURL = (opts.baseURL ?? DEFAULT_BASE_URL).replace(/\/+$/, "");
+    this.webURL = (opts.webURL ?? DEFAULT_WEB_URL).replace(/\/+$/, "");
     this.fetchImpl = opts.fetch ?? fetch;
+    this.injectedLoginClient = opts.loginClient;
+  }
+
+  /** The Composio CLI-session client (real SDK unless a fake was injected). */
+  private async loginClientFor(): Promise<ComposioLoginClient> {
+    if (this.injectedLoginClient) return this.injectedLoginClient;
+    if (!this.cachedLoginClient) {
+      const { Composio } = await import("@composio/client");
+      // No apiKey: the login bootstrap is for a brand-new user who has none yet.
+      this.cachedLoginClient = new Composio({})
+        .cli as unknown as ComposioLoginClient;
+    }
+    return this.cachedLoginClient;
+  }
+
+  /** session/info (org + email) + consumer project/resolve (the consumer user id). */
+  private async resolveAccount(
+    apiKey: string,
+  ): Promise<{ orgId?: string; userId?: string; email?: string }> {
+    const info = await this.call<{
+      org_member?: { email?: string };
+      project?: { org?: { id?: string } };
+    }>("/api/v3/auth/session/info", { apiKey });
+    const orgId = info?.project?.org?.id;
+    const resolved = await this.call<{
+      consumer_user_id?: string;
+      user_id?: string;
+    }>("/api/v3/org/consumer/project/resolve", {
+      method: "POST",
+      apiKey,
+      orgId,
+      body: {},
+    });
+    return {
+      orgId,
+      userId: resolved?.consumer_user_id ?? resolved?.user_id,
+      email: info?.org_member?.email,
+    };
   }
 
   private toCred(cred: ProviderCredential): ComposioCred {
@@ -210,25 +273,54 @@ export class ComposioProvider implements IntegrationProvider {
     return (body?.items ?? []).map(mapTool);
   }
 
-  // ── Per-user login + connect: slice (b) (login uses @composio/client's
-  // createSession — no documented raw path — and the consumer connect body
-  // needs live confirmation; wired with the connect UX). Declared so the port
-  // is complete; they fail loudly rather than pretend to work. ───────────────
+  /**
+   * Begin the no-API-key sign-in: `@composio/client.cli.createSession` mints a
+   * pending session; the user opens `${webURL}?cliKey=${id}` and signs into
+   * THEIR own Composio account. The non-technical user never sees a key — they
+   * just authorize in the browser. (Verified live against a real account.)
+   */
   async startLogin(): Promise<LoginStart> {
-    throw new Error(
-      "composio startLogin is wired in slice (b) via @composio/client.createSession",
-    );
+    const cli = await this.loginClientFor();
+    const session = await cli.createSession({ scope: "user" });
+    return {
+      loginUrl: `${this.webURL}/?cliKey=${session.id}`,
+      pollKey: session.id,
+    };
   }
-  async pollLogin(_pollKey: string): Promise<LoginResult> {
-    throw new Error("composio pollLogin is wired in slice (b)");
+
+  /**
+   * Poll a started login. Until the user finishes, the session is non-"linked"
+   * (→ pending). Once linked it carries the user's api_key; we resolve their
+   * org + consumer user id and return the stored credential — the key is handed
+   * to the host, never shown to the user or placed in the agent runtime.
+   */
+  async pollLogin(pollKey: string): Promise<LoginResult> {
+    const cli = await this.loginClientFor();
+    const session = await cli.getSession({ id: pollKey });
+    if (session.status !== "linked" || !session.api_key)
+      return { status: "pending" };
+    const account = await this.resolveAccount(session.api_key);
+    return {
+      status: "linked",
+      credential: {
+        provider: this.id,
+        data: {
+          apiKey: session.api_key,
+          orgId: account.orgId,
+          userId: account.userId,
+          email: account.email ?? session.account?.email ?? undefined,
+        },
+      },
+    };
   }
+
+  // connect (OAuth a specific toolkit, e.g. Gmail) is the next slice — it pairs
+  // with the connect UI. Declared so the port is complete; fails loudly today.
   async connect(
     _cred: ProviderCredential,
     _toolkit: string,
   ): Promise<ConnectStart> {
-    throw new Error(
-      "composio connect is wired in slice (b) with the connect UX",
-    );
+    throw new Error("composio connect lands with the connect UX (next slice)");
   }
 }
 
