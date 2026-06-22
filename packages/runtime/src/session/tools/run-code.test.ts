@@ -101,6 +101,7 @@ describe("run_code tool", () => {
       undefined,
       {} as unknown as ExtensionContext,
     );
+    if (!lastBody) throw new Error("request body not captured");
     expect(lastBody.language).toBe("python");
     expect(lastBody.code).toBe("print(2+2)");
     expect(r.content[0]).toEqual({ type: "text", text: "4" });
@@ -153,9 +154,12 @@ describe("run_code tool", () => {
       undefined,
       {} as unknown as ExtensionContext,
     );
-    expect(lastBody.files).toHaveLength(1);
-    expect(lastBody.files[0].path).toBe("data.csv");
-    expect(fromB64(lastBody.files[0].contentBase64)).toBe("a,b\n1,2\n");
+    if (!lastBody) throw new Error("request body not captured");
+    const files = lastBody.files;
+    if (!files) throw new Error("expected uploaded files");
+    expect(files).toHaveLength(1);
+    expect(files[0].path).toBe("data.csv");
+    expect(fromB64(files[0].contentBase64)).toBe("a,b\n1,2\n");
   });
 
   test("throws on a non-2xx sandbox response (no silent failure)", async () => {

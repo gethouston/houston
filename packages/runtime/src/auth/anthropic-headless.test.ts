@@ -73,12 +73,12 @@ test("registerHeadlessAnthropicProvider overrides the built-in anthropic provide
 });
 
 test("login exchanges the pasted code for tokens via the headless flow", async () => {
-  let exchangeBody: Record<string, unknown> | null = null;
+  const captured: { body: Record<string, unknown> | null } = { body: null };
   globalThis.fetch = (async (
     _url: string | URL | Request,
     init?: RequestInit,
   ) => {
-    exchangeBody = JSON.parse(init?.body as string) as Record<string, unknown>;
+    captured.body = JSON.parse(init?.body as string) as Record<string, unknown>;
     return new Response(
       JSON.stringify({
         access_token: "access-tok",
@@ -107,12 +107,14 @@ test("login exchanges the pasted code for tokens via the headless flow", async (
   expect(creds.refresh).toBe("refresh-tok");
   expect(creds.expires).toBeGreaterThan(Date.now());
   // Exchange must use the same headless redirect + the pasted code.
-  expect(exchangeBody.grant_type).toBe("authorization_code");
-  expect(exchangeBody.code).toBe("the-code");
-  expect(exchangeBody.redirect_uri).toBe(
+  const body = captured.body;
+  if (!body) throw new Error("token exchange was not called");
+  expect(body.grant_type).toBe("authorization_code");
+  expect(body.code).toBe("the-code");
+  expect(body.redirect_uri).toBe(
     "https://console.anthropic.com/oauth/code/callback",
   );
-  expect(typeof exchangeBody.code_verifier).toBe("string");
+  expect(typeof body.code_verifier).toBe("string");
 });
 
 test("login rejects a state mismatch (CSRF guard)", async () => {
