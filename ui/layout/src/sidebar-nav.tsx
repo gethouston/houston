@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@houston-ai/core";
+import { cn, Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
 
 export interface SidebarNavItemProps {
   icon: ReactNode;
@@ -10,6 +10,8 @@ export interface SidebarNavItemProps {
   trailing?: ReactNode;
   /** Extra DOM attributes (e.g. `data-tour-target`) spread onto the button. */
   dataAttrs?: Record<string, string>;
+  /** Icon-only rail mode: hide the label, surface it via a tooltip instead. */
+  collapsed?: boolean;
 }
 
 export function SidebarNavItem({
@@ -19,7 +21,34 @@ export function SidebarNavItem({
   onClick,
   trailing,
   dataAttrs,
+  collapsed,
 }: SidebarNavItemProps) {
+  if (collapsed) {
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            onClick={onClick}
+            aria-label={label}
+            {...dataAttrs}
+            className={cn(
+              "relative flex size-9 items-center justify-center rounded-lg transition-colors",
+              active
+                ? "bg-accent text-foreground"
+                : "text-foreground hover:bg-accent",
+            )}
+          >
+            {icon}
+            {trailing}
+          </button>
+        </TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          {label}
+        </TooltipContent>
+      </Tooltip>
+    );
+  }
+
   return (
     <button
       onClick={onClick}

@@ -83,7 +83,7 @@ export function RoutinesGrid({
 
   if (loading && routines.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-background">
+      <div className="flex-1 flex items-center justify-center bg-transparent">
         <p className="text-sm text-muted-foreground animate-pulse">
           {l.loading}
         </p>
@@ -93,7 +93,7 @@ export function RoutinesGrid({
 
   if (sorted.length === 0) {
     return (
-      <div className="flex-1 min-h-0 overflow-y-auto bg-background">
+      <div className="flex-1 min-h-0 overflow-y-auto bg-transparent">
         <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
           <EmptyHeader>
             <EmptyTitle>{l.emptyTitle}</EmptyTitle>
@@ -111,7 +111,7 @@ export function RoutinesGrid({
   }
 
   return (
-    <div className="flex-1 min-h-0 overflow-y-auto bg-background">
+    <div className="flex-1 min-h-0 overflow-y-auto bg-transparent">
       <div className="max-w-3xl mx-auto px-6 py-7">
         {/* Description + CTA. No page title — tab handles it. */}
         <div className="flex items-center justify-between gap-4 mb-4">
