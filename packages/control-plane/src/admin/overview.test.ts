@@ -1,7 +1,7 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import type { Agent, Workspace } from "../domain/types";
-import type { ClusterSnapshot, PodInfo, VolumeInfo } from "./cluster";
 import type { AutopilotRates } from "./billing";
+import type { ClusterSnapshot, PodInfo, VolumeInfo } from "./cluster";
 import { buildBillingReport, buildOverview } from "./overview";
 
 const RATES: AutopilotRates = {

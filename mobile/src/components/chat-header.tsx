@@ -1,6 +1,6 @@
-import { ArrowLeft } from "lucide-react";
 import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import type { Agent, ConversationEntry } from "@houston-ai/engine-client";
+import { ArrowLeft } from "lucide-react";
 
 interface ChatHeaderProps {
   convo: ConversationEntry | undefined;

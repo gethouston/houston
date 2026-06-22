@@ -1,14 +1,14 @@
-import type { KeyboardEvent } from "react";
 import {
   cn,
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
 } from "@houston-ai/core";
+import type { KeyboardEvent } from "react";
 import type { SidebarItem } from "./sidebar";
-import { SidebarItemRow } from "./sidebar-item-row";
-import type { SidebarItemRowLabels } from "./sidebar-item-row";
 import { sidebarItemRowClasses } from "./sidebar-classes";
+import type { SidebarItemRowLabels } from "./sidebar-item-row";
+import { SidebarItemRow } from "./sidebar-item-row";
 
 export interface SidebarCollapsedItemProps {
   item: SidebarItem;

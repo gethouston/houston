@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
 import { Input } from "@houston-ai/core";
 import { Loader2, Search, X } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 interface MissionSearchInputLabels {
   placeholder: string;

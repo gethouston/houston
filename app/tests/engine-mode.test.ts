@@ -17,12 +17,18 @@ describe("controlPlaneBuild (HOU-546)", () => {
   });
 
   it("is on when only VITE_NEW_ENGINE_URL is set (self-host / external host)", () => {
-    strictEqual(controlPlaneBuild({ VITE_NEW_ENGINE_URL: "https://host.example" }), true);
+    strictEqual(
+      controlPlaneBuild({ VITE_NEW_ENGINE_URL: "https://host.example" }),
+      true,
+    );
   });
 
   it("is on when both the flag and the url are set", () => {
     strictEqual(
-      controlPlaneBuild({ VITE_NEW_ENGINE: "1", VITE_NEW_ENGINE_URL: "https://host.example" }),
+      controlPlaneBuild({
+        VITE_NEW_ENGINE: "1",
+        VITE_NEW_ENGINE_URL: "https://host.example",
+      }),
       true,
     );
   });

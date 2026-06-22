@@ -8,9 +8,9 @@ import {
   FileSpreadsheetIcon,
   FileTextIcon,
   ImageIcon,
+  FileIcon as LucideFileIcon,
   MicIcon,
   XIcon,
-  FileIcon as LucideFileIcon,
 } from "lucide-react";
 import { PromptInputSubmit } from "./ai-elements/prompt-input";
 

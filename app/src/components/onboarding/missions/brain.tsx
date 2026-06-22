@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { AsyncButton, Button, cn } from "@houston-ai/core";
 import {
   Check,
   CircleDashed,
@@ -8,18 +7,19 @@ import {
   RefreshCw,
   Terminal,
 } from "lucide-react";
-import { AsyncButton, Button, cn } from "@houston-ai/core";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
+  COMING_SOON_PROVIDERS,
+  type ComingSoonProviderInfo,
+  PROVIDERS,
+  type ProviderInfo,
+} from "../../../lib/providers";
+import {
+  type ProviderStatus,
   tauriProvider,
   tauriSystem,
-  type ProviderStatus,
 } from "../../../lib/tauri";
-import {
-  PROVIDERS,
-  COMING_SOON_PROVIDERS,
-  type ProviderInfo,
-  type ComingSoonProviderInfo,
-} from "../../../lib/providers";
 
 interface BrainMissionProps {
   provider: string | null;

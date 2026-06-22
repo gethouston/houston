@@ -6,42 +6,43 @@
  * The composer hero is the only "boxed" element — it's the substance of the
  * routine — everything else is plain settings rows.
  */
-import { useMemo } from "react";
+
 import {
-  cn,
   Button,
-  Switch,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Switch,
 } from "@houston-ai/core";
 import {
   ArrowLeft,
-  Play,
-  Pause,
-  Square,
-  Trash2,
   CalendarClock,
   MoreHorizontal,
+  Pause,
+  Play,
+  Square,
+  Trash2,
 } from "lucide-react";
-import type { Routine, RoutineChatMode, RoutineRun } from "./types";
-import { ScheduleBuilder } from "./schedule-builder";
-import { RunHistory } from "./run-history";
-import { nextFire, describeNextFire } from "./next-fire";
-import { useNow } from "./use-now";
+import { useMemo } from "react";
 import {
-  interp,
   DEFAULT_EDITOR_LABELS,
-  DEFAULT_SCHEDULE_LABELS,
   DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_RUN_HISTORY_LABELS,
-  type RoutineEditorLabels,
-  type ScheduleLabels,
+  DEFAULT_SCHEDULE_LABELS,
+  interp,
   type NextFireLabels,
+  type RoutineEditorLabels,
   type RunHistoryLabels,
+  type ScheduleLabels,
 } from "./labels";
+import { describeNextFire, nextFire } from "./next-fire";
+import { RunHistory } from "./run-history";
+import { ScheduleBuilder } from "./schedule-builder";
+import type { Routine, RoutineChatMode, RoutineRun } from "./types";
+import { useNow } from "./use-now";
 
 export interface RoutineFormData {
   name: string;

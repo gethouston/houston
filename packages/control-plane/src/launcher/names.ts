@@ -1,5 +1,5 @@
-import type { Agent, AgentId } from "../domain/types";
 import { config } from "../config";
+import type { Agent, AgentId } from "../domain/types";
 
 /**
  * Deterministic K8s object names derived from tenancy ids. One agent maps to

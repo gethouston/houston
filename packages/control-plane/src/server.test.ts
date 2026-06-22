@@ -1,25 +1,25 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities } from "@houston/protocol";
-import {
-  createControlPlaneServer,
-  type AdminDeps,
-  type ControlPlaneDeps,
-} from "./server";
-import type { Overview, BillingReport } from "./admin/overview";
-import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
+import type { AutopilotRates } from "./admin/billing";
+import { FakeClusterReader } from "./admin/cluster";
+import type { BillingReport, Overview } from "./admin/overview";
 import { SingleUserVerifier } from "./auth/verify";
-import { MemoryWorkspaceStore } from "./store/memory";
+import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { MemoryCredentialStore } from "./credentials/store";
+import type { Agent } from "./domain/types";
 import type {
   CredentialVault,
   RuntimeEndpoint,
   RuntimeLauncher,
   TokenVerifier,
 } from "./ports";
-import type { Agent } from "./domain/types";
-import { FakeClusterReader } from "./admin/cluster";
-import type { AutopilotRates } from "./admin/billing";
+import {
+  type AdminDeps,
+  type ControlPlaneDeps,
+  createControlPlaneServer,
+} from "./server";
+import { MemoryWorkspaceStore } from "./store/memory";
 
 /**
  * Personal-tier access boundary at the HTTP layer:

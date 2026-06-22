@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { deriveStatus } from "../src/chat-status.ts";
 
 test("active session stays streaming after non-streaming feed item", () => {

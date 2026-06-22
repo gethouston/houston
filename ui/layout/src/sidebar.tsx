@@ -1,5 +1,3 @@
-import { useState, type KeyboardEvent, type ReactNode } from "react";
-import { Plus, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import {
   cn,
   ScrollArea,
@@ -7,11 +5,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { SidebarNavItem } from "./sidebar-nav";
-import { SidebarItemRow } from "./sidebar-item-row";
+import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { type KeyboardEvent, type ReactNode, useState } from "react";
+import { sidebarClasses } from "./sidebar-classes";
 import { SidebarCollapsedItem } from "./sidebar-collapsed-item";
 import type { SidebarItemRowLabels } from "./sidebar-item-row";
-import { sidebarClasses } from "./sidebar-classes";
+import { SidebarItemRow } from "./sidebar-item-row";
+import { SidebarNavItem } from "./sidebar-nav";
 
 export interface SidebarItem {
   id: string;

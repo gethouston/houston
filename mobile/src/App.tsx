@@ -3,22 +3,22 @@
 //   2. If paired, initialise the HoustonClient + WS.
 //   3. Route gate: unpaired → /pair; paired → / (missions).
 
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import {
   BrowserRouter,
-  Routes,
-  Route,
   Navigate,
+  Route,
+  Routes,
   useLocation,
 } from "react-router-dom";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MissionControl } from "./components/mission-control";
 import { ChatView } from "./components/chat-view";
-import { PairScreen } from "./components/pair-screen";
+import { MissionControl } from "./components/mission-control";
 import { OfflineBanner } from "./components/offline-banner";
+import { PairScreen } from "./components/pair-screen";
+import { useEngineInvalidation } from "./hooks/use-engine-invalidation";
 import { initEngine, stopEngine, useEngineReady } from "./lib/engine";
 import { clearPaired, loadPaired } from "./lib/storage";
-import { useEngineInvalidation } from "./hooks/use-engine-invalidation";
 
 const qc = new QueryClient({
   defaultOptions: {

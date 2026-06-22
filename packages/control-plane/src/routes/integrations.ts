@@ -1,10 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { UserId } from "../domain/types";
-import type { CredentialVault, WorkspaceStore } from "../ports";
 import type { IntegrationCredentialStore } from "../integrations/credential-store";
-import type { IntegrationRegistry } from "../integrations/registry";
 import type { IntegrationProvider } from "../integrations/provider";
+import type { IntegrationRegistry } from "../integrations/registry";
 import type { ProviderCredential } from "../integrations/types";
+import type { CredentialVault, WorkspaceStore } from "../ports";
 import { bearer, json, readJson } from "./http";
 
 /**

@@ -1,5 +1,5 @@
-import { test, expect } from "bun:test";
-import { RunCodeLimiter, RunCodeLimitError } from "./run-code-limiter";
+import { expect, test } from "bun:test";
+import { RunCodeLimitError, RunCodeLimiter } from "./run-code-limiter";
 
 test("concurrency cap: the (N+1)th simultaneous run is rejected, release frees the slot", () => {
   const limiter = new RunCodeLimiter({ maxConcurrent: 2, maxPerMinute: 100 });

@@ -1,7 +1,7 @@
+import { Button, DialogFooter, Spinner } from "@houston-ai/core";
+import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy } from "lucide-react";
-import { Button, DialogFooter, Spinner } from "@houston-ai/core";
 import { useUIStore } from "../../stores/ui";
 
 /**

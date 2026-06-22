@@ -1,8 +1,7 @@
-import { useState, type ReactNode } from "react";
-
-import { HoustonLogo } from "./experience-card";
+import { type ReactNode, useState } from "react";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "../../lib/i18n";
+import { HoustonLogo } from "./experience-card";
 
 /**
  * First-run language picker. Shown before the disclaimer gate so a

@@ -1,13 +1,13 @@
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 import type { Agent } from "../lib/types";
 
 interface Props {

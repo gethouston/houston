@@ -1,6 +1,6 @@
 import type { TabProps } from "../../lib/types";
-import { useAgentBoardSource } from "../board/use-agent-board-source";
 import { MissionBoard } from "../board/mission-board";
+import { useAgentBoardSource } from "../board/use-agent-board-source";
 
 /**
  * A single agent's mission board. All the wiring lives in the shared

@@ -1,6 +1,6 @@
 import type { Pool } from "pg";
-import type { CredentialStore, WorkspaceCredential } from "../ports";
 import type { WorkspaceId } from "../domain/types";
+import type { CredentialStore, WorkspaceCredential } from "../ports";
 
 /**
  * Connect-once credential storage. The control plane is the SINGLE owner +

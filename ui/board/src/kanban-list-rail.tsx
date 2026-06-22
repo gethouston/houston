@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { cn } from "@houston-ai/core";
+import type { ReactNode } from "react";
 import {
   KANBAN_LIST_RAIL_CLASS_NAME,
   KANBAN_LIST_RAIL_LEFT_CLASS_NAME,

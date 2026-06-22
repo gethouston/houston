@@ -5,7 +5,7 @@
  * - DialogContent is a fixed-size flex column. Switching tabs never resizes.
  * - Header + pill row are fixed. Body is the only scrollable region.
  */
-import { useEffect, useState } from "react";
+
 import {
   cn,
   Dialog,
@@ -14,13 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import type { CommunitySkill, RepoSkill } from "./types";
-import { StoreView } from "./add-skill-dialog-store-view";
-import type { StoreViewLabels } from "./add-skill-dialog-store-labels";
-import { RepoView } from "./add-skill-dialog-repo-view";
+import { useEffect, useState } from "react";
 import type { RepoViewLabels } from "./add-skill-dialog-repo-labels";
-import { ScratchView } from "./add-skill-dialog-scratch-view";
+import { RepoView } from "./add-skill-dialog-repo-view";
 import type { ScratchViewLabels } from "./add-skill-dialog-scratch-view";
+import { ScratchView } from "./add-skill-dialog-scratch-view";
+import type { StoreViewLabels } from "./add-skill-dialog-store-labels";
+import { StoreView } from "./add-skill-dialog-store-view";
+import type { CommunitySkill, RepoSkill } from "./types";
 
 export interface AddSkillDialogProps {
   open: boolean;

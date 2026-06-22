@@ -4,14 +4,14 @@
  * and retry"; they need a fresh start, a reinstall, or to file a bug.
  */
 
-import { useTranslation } from "react-i18next";
-import { CloudOffIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
 import type { ProviderError } from "@houston-ai/chat";
+import { CloudOffIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import {
   ErrorCard,
+  providerLabel,
   ReportBugButton,
   RetryButton,
-  providerLabel,
 } from "./shared";
 
 interface BaseProps {

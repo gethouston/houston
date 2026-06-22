@@ -1,7 +1,7 @@
-import { useState } from "react";
-import type { ChangeEvent, ReactNode, RefObject } from "react";
-import { Plus } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
+import { Plus } from "lucide-react";
+import type { ChangeEvent, ReactNode, RefObject } from "react";
+import { useState } from "react";
 import { AttachmentChip } from "./attachment-chip";
 
 interface ChatInputAttachmentsProps {

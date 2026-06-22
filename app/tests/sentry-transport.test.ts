@@ -1,10 +1,10 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
-  isAcceptedStatus,
-  eventIdFromEnvelope,
-  resolveCapturedEventId,
   type EnvelopeLike,
+  eventIdFromEnvelope,
+  isAcceptedStatus,
+  resolveCapturedEventId,
 } from "../src/lib/sentry-transport.ts";
 
 // These pure helpers back Houston's "report sent" guarantee: the green toast +

@@ -1,12 +1,13 @@
 "use client";
 
-import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  cn,
+  ErrorBoundary,
 } from "@houston-ai/core";
-import { cn, ErrorBoundary } from "@houston-ai/core";
+import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";

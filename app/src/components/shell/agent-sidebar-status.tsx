@@ -1,5 +1,5 @@
+import { Badge, cn, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import type { CSSProperties } from "react";
-import { Badge, HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
 
 interface AgentSidebarIconProps {
   color?: string;

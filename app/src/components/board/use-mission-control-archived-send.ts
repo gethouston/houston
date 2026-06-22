@@ -1,14 +1,14 @@
+import type { KanbanItem } from "@houston-ai/board";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { KanbanItem } from "@houston-ai/board";
-import { useUIStore } from "../../stores/ui";
+import { analytics } from "../../lib/analytics";
+import { buildAttachmentPrompt } from "../../lib/attachment-message";
+import { classifyFileKind } from "../../lib/file-kind";
+import { tauriAttachments, tauriChat } from "../../lib/tauri";
+import type { Agent, AgentDefinition } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useFeedStore } from "../../stores/feeds";
-import { tauriAttachments, tauriChat } from "../../lib/tauri";
-import { buildAttachmentPrompt } from "../../lib/attachment-message";
-import { analytics } from "../../lib/analytics";
-import { classifyFileKind } from "../../lib/file-kind";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * Send-to-reactivate for the cross-agent Archived view — the analogue of the

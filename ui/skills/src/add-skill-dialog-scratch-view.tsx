@@ -8,6 +8,9 @@
  * We render the derived slug below the title field so the user sees
  * exactly what their skill will be called inside Houston — no surprises.
  */
+
+import { Button, cn } from "@houston-ai/core";
+import { Loader2 } from "lucide-react";
 import {
   cloneElement,
   useEffect,
@@ -16,8 +19,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { Button, cn } from "@houston-ai/core";
-import { Loader2 } from "lucide-react";
 
 export interface ScratchViewLabels {
   titleLabel?: string;

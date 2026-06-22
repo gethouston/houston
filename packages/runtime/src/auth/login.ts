@@ -1,13 +1,13 @@
 import {
   getOAuthProvider,
+  type OAuthDeviceCodeInfo,
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
-  type OAuthDeviceCodeInfo,
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
-import { authStorage } from "./storage";
+import { activeProvider, PROVIDERS, type ProviderId } from "../ai/providers";
 import { config } from "../config";
-import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
+import { authStorage } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.

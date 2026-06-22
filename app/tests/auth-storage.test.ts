@@ -1,9 +1,9 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
-  RELEASE_AUTH_STORAGE_KEY,
   createLocalAuthStorageKey,
   normalizeAuthStorageMode,
+  RELEASE_AUTH_STORAGE_KEY,
   resolveAuthStorageConfig,
 } from "../src/lib/auth-storage.ts";
 

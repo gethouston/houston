@@ -1,18 +1,18 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Settings } from "lucide-react";
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { useWorkspaceStore } from "../../stores/workspaces";
+import { LayoutDashboard, Settings } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { orderAgents } from "../../lib/agent-order";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { buildAgentSidebarItems } from "./agent-sidebar-items";
 import { UpdateChecker } from "./update-checker";
+import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
-import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
-import { buildAgentSidebarItems } from "./agent-sidebar-items";
-import { orderAgents } from "../../lib/agent-order";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 
 export function Sidebar({ children }: { children: ReactNode }) {
   const { t } = useTranslation(["shell", "common", "portable"]);

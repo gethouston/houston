@@ -1,17 +1,17 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  is12HourLocale,
-  periodLabels,
-  to12Hour,
-  from12Hour,
   buildTime,
-  pad2,
-  hourOptions,
-  minuteOptions,
   centerPadding,
   centerScrollTop,
+  from12Hour,
+  hourOptions,
+  is12HourLocale,
+  minuteOptions,
   type Period,
+  pad2,
+  periodLabels,
+  to12Hour,
 } from "../src/time-picker-utils.ts";
 
 describe("is12HourLocale", () => {

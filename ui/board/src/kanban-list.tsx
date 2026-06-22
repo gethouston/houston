@@ -1,8 +1,8 @@
-import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@houston-ai/core";
-import { KanbanListRail } from "./kanban-list-rail";
-import { KanbanListItem } from "./kanban-list-item";
+import { AnimatePresence, motion } from "framer-motion";
 import type { KanbanCardLabels } from "./kanban-card";
+import { KanbanListItem } from "./kanban-list-item";
+import { KanbanListRail } from "./kanban-list-rail";
 import type { BoardSearchSnippet, KanbanItem } from "./types";
 
 export interface KanbanListProps {

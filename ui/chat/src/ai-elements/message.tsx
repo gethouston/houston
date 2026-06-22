@@ -1,14 +1,16 @@
 "use client";
 
-import { Button } from "@houston-ai/core";
-import { ButtonGroup, ButtonGroupText } from "@houston-ai/core";
 import {
+  Button,
+  ButtonGroup,
+  ButtonGroupText,
+  cn,
+  ErrorBoundary,
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { cn, ErrorBoundary } from "@houston-ai/core";
 import { cjk } from "@streamdown/cjk";
 import { code } from "@streamdown/code";
 import { math } from "@streamdown/math";

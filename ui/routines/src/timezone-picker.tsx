@@ -10,20 +10,21 @@
  * The card framing (gray panel, title + hint row) is kept so the control still
  * reads as "this one zone governs every routine below".
  */
-import { useMemo, useState } from "react";
+
 import {
-  cn,
   Command,
   CommandEmpty,
   CommandInput,
   CommandItem,
   CommandList,
+  cn,
   defaultFilter,
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@houston-ai/core";
 import { Check, ChevronDown, Globe } from "lucide-react";
+import { useMemo, useState } from "react";
 import { buildZoneOptions, foldDiacritics } from "./timezone-format.ts";
 
 /**

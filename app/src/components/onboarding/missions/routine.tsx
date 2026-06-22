@@ -1,29 +1,29 @@
+import { ChatPanel, type FeedItem } from "@houston-ai/chat";
+import { cn, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatPanel, type FeedItem } from "@houston-ai/chat";
-import { HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
 import { useRoutines, useSkills } from "../../../hooks/queries";
-import { tauriAgent, tauriChat } from "../../../lib/tauri";
-import { logger } from "../../../lib/logger";
 import { useSessionMessageQueue } from "../../../hooks/use-session-message-queue";
-import { useQueuedMessageLabels } from "../../use-queued-message-labels";
+import { logger } from "../../../lib/logger";
+import { tauriAgent, tauriChat } from "../../../lib/tauri";
+import type { Agent } from "../../../lib/types";
 import { useFeedStore } from "../../../stores/feeds";
 import {
-  useSessionStatus,
   isActiveSessionStatus,
+  useSessionStatus,
 } from "../../../stores/session-status";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
+import { useQueuedMessageLabels } from "../../use-queued-message-labels";
+import { MissionChatFrame } from "../mission-chat-frame";
+import { MissionDoneScreen } from "../mission-done-screen";
+import type { MissionMeta } from "../mission-frame";
+import { MissionIntroModal } from "../mission-intro-modal";
+import { ONBOARDING_SKILL_SLUG } from "../onboarding-skill";
 import {
   appendRoutineSection,
   stripRoutineSection,
 } from "../routine-system-prompt";
 import { stripTutorialSection } from "../tutorial-system-prompt";
-import { ONBOARDING_SKILL_SLUG } from "../onboarding-skill";
-import type { Agent } from "../../../lib/types";
-import type { MissionMeta } from "../mission-frame";
-import { MissionChatFrame } from "../mission-chat-frame";
-import { MissionIntroModal } from "../mission-intro-modal";
-import { MissionDoneScreen } from "../mission-done-screen";
 
 /**
  * Parse the cron schedule the onboarding agent writes (`M H * * 1-5`) into

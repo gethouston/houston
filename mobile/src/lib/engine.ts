@@ -13,8 +13,8 @@
 // pairing redemption finishes) silently never subscribe — the user
 // then sees a half-working app until they refresh.
 
+import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import { useSyncExternalStore } from "react";
-import { HoustonClient, EngineWebSocket } from "@houston-ai/engine-client";
 import type { PairedEngine } from "./storage";
 
 let client: HoustonClient | null = null;

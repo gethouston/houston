@@ -1,7 +1,7 @@
 import type {
   Activity,
-  NewActivity,
   ActivityUpdate,
+  NewActivity,
 } from "../../../../ui/engine-client/src/types";
 import { readAgentFile, writeAgentFile } from "./agent-files";
 

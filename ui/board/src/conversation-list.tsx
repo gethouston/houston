@@ -1,4 +1,4 @@
-import { Card, Badge } from "@houston-ai/core";
+import { Badge, Card } from "@houston-ai/core";
 import { MessageSquare } from "lucide-react";
 import type { ConversationEntry } from "./types";
 

@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import { check } from "@tauri-apps/plugin-updater";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "../lib/analytics";
 import {
   osCurrentAppBundlePath,

@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { shouldAllowNativeContextMenu } from "./context-menu.ts";
 
 test("allows native context menu for code and form targets", () => {

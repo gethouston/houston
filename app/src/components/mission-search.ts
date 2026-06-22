@@ -3,8 +3,8 @@ import type { FeedItem } from "@houston-ai/chat";
 import {
   extractSnippet,
   foldForSearch,
-  matchesPhrase,
   type MissionSnippet,
+  matchesPhrase,
 } from "./mission-highlight.ts";
 
 export interface MissionSearchResult<T> {

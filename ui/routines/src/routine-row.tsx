@@ -6,19 +6,19 @@
  * switch stops propagation so toggling doesn't open the editor.
  */
 import { cn, Switch } from "@houston-ai/core";
-import type { Routine, RoutineRun } from "./types";
-import { cronSummary } from "./schedule-summary";
-import { nextFire, describeNextFire } from "./next-fire";
-import { useNow } from "./use-now";
 import {
-  interp,
+  DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  DEFAULT_NEXT_FIRE_LABELS,
+  interp,
+  type NextFireLabels,
   type RoutineRowLabels,
   type ScheduleSummaryLabels,
-  type NextFireLabels,
 } from "./labels";
+import { describeNextFire, nextFire } from "./next-fire";
+import { cronSummary } from "./schedule-summary";
+import type { Routine, RoutineRun } from "./types";
+import { useNow } from "./use-now";
 
 export interface RoutineRowProps {
   routine: Routine;

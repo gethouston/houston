@@ -1,5 +1,5 @@
 import { useUIStore } from "../stores/ui";
-import { showErrorToast, raiseJavascriptSentrySmokeTest } from "./error-toast";
+import { raiseJavascriptSentrySmokeTest, showErrorToast } from "./error-toast";
 import i18n from "./i18n";
 import { osTriggerNativeSentrySmokeTest } from "./os-bridge";
 import { sentrySuppressedInDev } from "./sentry";

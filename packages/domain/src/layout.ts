@@ -1,8 +1,8 @@
 import activitySchema from "@houston-ai/agent-schemas/activity.schema.json";
-import routinesSchema from "@houston-ai/agent-schemas/routines.schema.json";
-import routineRunsSchema from "@houston-ai/agent-schemas/routine_runs.schema.json";
 import configSchema from "@houston-ai/agent-schemas/config.schema.json";
 import learningsSchema from "@houston-ai/agent-schemas/learnings.schema.json";
+import routineRunsSchema from "@houston-ai/agent-schemas/routine_runs.schema.json";
+import routinesSchema from "@houston-ai/agent-schemas/routines.schema.json";
 import { saveJson, type TextStore } from "./store";
 
 /**

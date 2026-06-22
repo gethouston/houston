@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
 import type { KanbanItem, NewPanelOpener } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
+import type { ReactNode } from "react";
 import type { Agent, AgentDefinition } from "../../lib/types";
 
 /**

@@ -9,8 +9,8 @@
  * Exit 0 = clean, 1 = problems (with a human-readable report).
  */
 
-import { readFileSync, readdirSync } from "node:fs";
-import { join, dirname } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(

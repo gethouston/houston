@@ -4,8 +4,8 @@ import type {
   V1PersistentVolumeClaim,
   V1Service,
 } from "@kubernetes/client-node";
-import type { Agent } from "../domain/types";
 import { config } from "../config";
+import type { Agent } from "../domain/types";
 import {
   agentLabels,
   deploymentName,

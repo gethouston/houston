@@ -1,5 +1,5 @@
-import { test, expect } from "bun:test";
-import { ComposioProvider, type ComposioLoginClient } from "./composio";
+import { expect, test } from "bun:test";
+import { type ComposioLoginClient, ComposioProvider } from "./composio";
 import type { ProviderCredential } from "./types";
 
 /**

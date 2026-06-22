@@ -1,14 +1,13 @@
+import { Button, cn } from "@houston-ai/core";
 import {
+  type ReactNode,
+  type UIEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
-  type ReactNode,
-  type UIEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-
-import { Button, cn } from "@houston-ai/core";
 
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 

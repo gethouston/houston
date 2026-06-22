@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
-import { ArrowLeft } from "lucide-react";
 import { Button, Spinner } from "@houston-ai/core";
+import { ArrowLeft } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface AiStepFooterProps {
   onBack: () => void;

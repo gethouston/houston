@@ -4,11 +4,11 @@ import type {
   RoutineRun,
 } from "@houston-ai/routines";
 import {
-  validProviderOrNull,
-  validModelOrNull,
-  validEffortOrDefault,
   getDefaultModel,
   normalizeLegacyModel,
+  validEffortOrDefault,
+  validModelOrNull,
+  validProviderOrNull,
 } from "../../lib/providers.ts";
 
 /** Editor view state for the Routines tab. */

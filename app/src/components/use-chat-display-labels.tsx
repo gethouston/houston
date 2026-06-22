@@ -1,7 +1,7 @@
+import type { ChatPanelProps } from "@houston-ai/chat";
+import { ChatStatusLine, Shimmer } from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatStatusLine, Shimmer } from "@houston-ai/chat";
-import type { ChatPanelProps } from "@houston-ai/chat";
 import { HoustonLogo } from "./shell/experience-card";
 
 export function useChatDisplayLabels(): Pick<

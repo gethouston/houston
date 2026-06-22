@@ -2,8 +2,8 @@ import type {
   Agent,
   CreateAgent,
 } from "../../../../ui/engine-client/src/types";
-import { DEFAULT_AGENT_COLOR, syntheticAgent } from "./synthetic";
 import { writeAgentFile } from "./agent-files";
+import { DEFAULT_AGENT_COLOR, syntheticAgent } from "./synthetic";
 
 /**
  * localStorage-backed agent registry.

@@ -1,15 +1,15 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities } from "@houston/protocol";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
-import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
-import { IntegrationRegistry } from "../integrations/registry";
-import { FakeIntegrationProvider } from "../integrations/fake";
 import { MemoryIntegrationCredentialStore } from "../integrations/credential-store";
-import type { TokenVerifier } from "../ports";
+import { FakeIntegrationProvider } from "../integrations/fake";
+import { IntegrationRegistry } from "../integrations/registry";
 import type { ProviderCredential } from "../integrations/types";
+import type { TokenVerifier } from "../ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
 
 /**
  * The host integration surface end-to-end over real HTTP: the user routes

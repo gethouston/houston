@@ -1,9 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { PortableSelection } from "@houston/protocol";
 import {
   loadLearnings,
   loadRoutines,
   loadSkillDetail,
+  type PortableContent,
+  type PortablePackage,
   packAgent,
   portableInventory,
   saveLearnings,
@@ -11,14 +12,13 @@ import {
   seedSchemas,
   skillKey,
   unpackAgent,
-  type PortableContent,
-  type PortablePackage,
 } from "@houston/domain";
+import type { PortableSelection } from "@houston/protocol";
 import type { Agent, UserId, Workspace } from "../domain/types";
-import type { WorkspaceStore } from "../ports";
-import type { Vfs } from "../vfs";
 import type { WorkspacePaths } from "../paths";
 import { CloudPaths } from "../paths";
+import type { WorkspaceStore } from "../ports";
+import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
 
 /** Bumped independently of the wire protocol; rides in the manifest. */

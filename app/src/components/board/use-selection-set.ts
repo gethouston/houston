@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
 import type { KanbanItem } from "@houston-ai/board";
+import { useCallback, useEffect, useState } from "react";
 import { selectAllIds } from "../../lib/mission-selection";
 
 /**

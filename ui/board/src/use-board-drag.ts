@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { columnDragRole } from "./dnd";
 import {
   cardIdOf,
   columnIdAt,
@@ -11,6 +10,7 @@ import {
   setDragForbidden,
   startDragCursor,
 } from "./board-drag-dom";
+import { columnDragRole } from "./dnd";
 import type { KanbanColumn, KanbanItem } from "./types";
 
 /** Pointer travel (px) before a press becomes a drag rather than a click. */

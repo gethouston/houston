@@ -1,5 +1,5 @@
 import { defineTool } from "@earendil-works/pi-coding-agent";
-import { Type, type Static } from "typebox";
+import { type Static, Type } from "typebox";
 
 /**
  * The agent's window into the user's connected third-party apps (Gmail, Google

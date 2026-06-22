@@ -1,13 +1,13 @@
-import { useCallback, useRef } from "react";
 import type { ChangeEvent, ClipboardEvent, RefObject } from "react";
-import { resolveClipboardPaste } from "./clipboard-files";
-import { useControllable } from "./use-file-drop-zone";
-import { useAttachmentIntake } from "./use-attachment-intake";
+import { useCallback, useRef } from "react";
 import type {
   AttachmentRejection,
   ChatComposerLabels,
   PrepareAttachments,
 } from "./chat-panel-types";
+import { resolveClipboardPaste } from "./clipboard-files";
+import { useAttachmentIntake } from "./use-attachment-intake";
+import { useControllable } from "./use-file-drop-zone";
 
 /**
  * The composer's full attachment surface: controlled-or-internal file

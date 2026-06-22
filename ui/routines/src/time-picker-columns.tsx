@@ -3,13 +3,14 @@
  * time-picker.tsx so each file stays small; these are presentational and own no
  * time logic — the parent computes values and hands selection callbacks down.
  */
-import { useEffect, useRef } from "react";
+
 import { cn } from "@houston-ai/core";
+import { useEffect, useRef } from "react";
 import {
-  pad2,
   centerPadding,
   centerScrollTop,
   type Period,
+  pad2,
 } from "./time-picker-utils.ts";
 
 /**

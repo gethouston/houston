@@ -1,20 +1,20 @@
+import type { KanbanItem } from "@houston-ai/board";
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
-import type { KanbanItem } from "@houston-ai/board";
-import { useUIStore } from "../../stores/ui";
-import { tauriActivity, tauriChat } from "../../lib/tauri";
-import { queryKeys } from "../../lib/query-keys";
 import { canDropMission } from "../../lib/mission-selection";
-import { planNewMission } from "../mission-control-create";
+import { queryKeys } from "../../lib/query-keys";
+import { tauriActivity, tauriChat } from "../../lib/tauri";
+import type { Agent, AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 import { missionColumnIdForStatus } from "../mission-board-columns";
+import { planNewMission } from "../mission-control-create";
 import {
   missionControlAgentPathForSession,
   missionControlSessionKeyForId,
 } from "../mission-control-session";
 import type { useMissionControl } from "../use-mission-control";
 import type { SendOverrides } from "./board-source";
-import type { Agent, AgentDefinition } from "../../lib/types";
 
 /**
  * Mission Control's card/composer actions, routed to the right agent. Create

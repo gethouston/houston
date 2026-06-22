@@ -1,8 +1,8 @@
 import {
   createRemoteJWKSet,
+  type JWTVerifyGetKey,
   errors as joseErrors,
   jwtVerify,
-  type JWTVerifyGetKey,
 } from "jose";
 import { config } from "../config";
 import type { UserId } from "../domain/types";

@@ -1,8 +1,8 @@
 import {
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  EmptyDescription,
 } from "@houston-ai/core";
 
 export interface EventEmptyProps {
