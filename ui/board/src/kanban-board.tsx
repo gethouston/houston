@@ -116,7 +116,7 @@ export function KanbanBoard({
     // itself is driven by `body` classes (see use-board-drag), not here.
     <div
       {...dragHandlers}
-      className="flex-1 flex gap-3 p-3 min-h-0 overflow-hidden"
+      className="flex-1 flex gap-3 p-3 min-h-0 overflow-x-auto overflow-y-hidden"
     >
       {columnData.map((col) => {
         // `idle | origin | drop-target | forbidden` — see `columnDragRole`. A

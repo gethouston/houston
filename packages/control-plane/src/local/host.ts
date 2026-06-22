@@ -1,12 +1,15 @@
 import { existsSync } from "node:fs";
 import type { Server } from "node:http";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { SingleUserVerifier } from "../auth/verify";
 import { LOCAL_CAPABILITIES } from "../capabilities";
 import { ProxyChannel } from "../channel/proxy";
 import { FileCredentialStore } from "../credentials/file-store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { BusEventHub } from "../events/hub";
+import { ComposioProvider } from "../integrations/composio";
+import { FileIntegrationCredentialStore } from "../integrations/credential-store";
+import { IntegrationRegistry } from "../integrations/registry";
 import { BunRuntimeSpawner } from "../launcher/bun-spawner";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
 import { migrateChatHistory } from "../migrate/chat-history";
@@ -128,6 +131,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     credentials,
   });
 
+  // Integrations: Composio "for you" (the user's own free account). The user's
+  // key persists beside the connect-once credential file; the registry holds the
+  // adapter(s) the routes + sandbox proxy dispatch through.
+  const integrations = {
+    registry: new IntegrationRegistry([new ComposioProvider()]),
+    credentials: new FileIntegrationCredentialStore(
+      join(dirname(opts.credentialsPath), "integrations.json"),
+    ),
+  };
+
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -138,6 +151,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     events,
     channels: { local: channel },
     capabilities: LOCAL_CAPABILITIES,
+    integrations,
     corsOrigin: "*",
   };
 

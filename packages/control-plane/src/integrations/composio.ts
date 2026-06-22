@@ -18,15 +18,17 @@ import type {
  *
  * Credential model = each user's OWN free Composio account (the "Composio for
  * you" consumer product), NOT a Houston platform key. cred.data carries that
- * user's personal `apiKey` (sent as `x-user-api-key`) + their consumer `userId`.
+ * user's personal `apiKey` (sent as `x-user-api-key`), their consumer `userId`,
+ * and their consumer PROJECT id (`projectId` → `x-project-id`) — all resolved at
+ * login. The project header is mandatory for connections/execute: without it the
+ * general endpoints can't see the consumer's connections (verified live).
  *
- * Endpoint provenance: the consumer/session/toolkit paths below are taken from
- * Composio's own open-source CLI client + the Rust `houston-composio` crate +
- * the public API reference (all cross-checked). Three flows are NOT wired here
- * and are explicitly slice (b)/(c): startLogin/pollLogin (the CLI does this via
- * `@composio/client`.createSession — no documented raw path, so we wire the SDK
- * when we add the login UX), and search/connect bodies are marked TODO(live) to
- * confirm against a real account before they go user-facing.
+ * The whole surface is verified LIVE against a real account: login (the
+ * click-through `cli.createSession`), listToolkits, listConnections, search, and
+ * execute. `connect` deep-links to Composio's hosted dashboard (the consumer
+ * namespace has no programmatic connect — Composio owns the OAuth/managed-auth).
+ * Endpoints cross-checked against Composio's open-source CLI client + the public
+ * API reference; login goes through `@composio/client`, the rest is raw fetch.
  */
 
 const DEFAULT_BASE_URL = "https://backend.composio.dev";
@@ -37,6 +39,14 @@ interface ComposioCred {
   /** The consumer user id this key acts as (resolved at login). */
   userId?: string;
   orgId?: string;
+  /**
+   * The consumer PROJECT nano id (`pr_…`), resolved at login. Required as the
+   * `x-project-id` header on every connection/execute call — the user's
+   * "Composio for you" connections live in this project, and the general
+   * endpoints return NOTHING without it (verified live: execute 400s, the
+   * connected-accounts list is empty). The catalog (toolkits/search) is global.
+   */
+  projectId?: string;
 }
 
 /**
@@ -59,6 +69,8 @@ interface CallOpts {
   method?: "GET" | "POST" | "DELETE";
   apiKey: string;
   orgId?: string;
+  /** Consumer project nano id → `x-project-id` (connection/execute calls). */
+  projectId?: string;
   query?: Record<string, string | undefined>;
   body?: unknown;
   /** Treat these statuses as "no" rather than an error (e.g. 401 → invalid key). */
@@ -103,10 +115,17 @@ export class ComposioProvider implements IntegrationProvider {
     return this.cachedLoginClient;
   }
 
-  /** session/info (org + email) + consumer project/resolve (the consumer user id). */
-  private async resolveAccount(
-    apiKey: string,
-  ): Promise<{ orgId?: string; userId?: string; email?: string }> {
+  /**
+   * session/info (org + email) + consumer project/resolve (the consumer user id
+   * AND the consumer project nano id, which every connection/execute call needs
+   * as `x-project-id`).
+   */
+  private async resolveAccount(apiKey: string): Promise<{
+    orgId?: string;
+    userId?: string;
+    email?: string;
+    projectId?: string;
+  }> {
     const info = await this.call<{
       org_member?: { email?: string };
       project?: { org?: { id?: string } };
@@ -115,6 +134,7 @@ export class ComposioProvider implements IntegrationProvider {
     const resolved = await this.call<{
       consumer_user_id?: string;
       user_id?: string;
+      project_nano_id?: string;
     }>("/api/v3/org/consumer/project/resolve", {
       method: "POST",
       apiKey,
@@ -124,6 +144,7 @@ export class ComposioProvider implements IntegrationProvider {
     return {
       orgId,
       userId: resolved?.consumer_user_id ?? resolved?.user_id,
+      projectId: resolved?.project_nano_id,
       email: info?.org_member?.email,
     };
   }
@@ -136,7 +157,12 @@ export class ComposioProvider implements IntegrationProvider {
     if (!d.apiKey || typeof d.apiKey !== "string") {
       throw new Error("composio credential missing 'apiKey'");
     }
-    return { apiKey: d.apiKey, userId: d.userId, orgId: d.orgId };
+    return {
+      apiKey: d.apiKey,
+      userId: d.userId,
+      orgId: d.orgId,
+      projectId: d.projectId,
+    };
   }
 
   /**
@@ -151,6 +177,7 @@ export class ComposioProvider implements IntegrationProvider {
     }
     const headers: Record<string, string> = { "x-user-api-key": opts.apiKey };
     if (opts.orgId) headers["x-org-id"] = opts.orgId;
+    if (opts.projectId) headers["x-project-id"] = opts.projectId;
     if (opts.body !== undefined) headers["content-type"] = "application/json";
 
     const res = await this.fetchImpl(url.toString(), {
@@ -201,41 +228,45 @@ export class ComposioProvider implements IntegrationProvider {
 
   async listConnections(cred: ProviderCredential): Promise<Connection[]> {
     const c = this.toCred(cred);
-    if (!c.userId)
-      throw new Error(
-        "composio credential missing 'userId' (resolved at login)",
-      );
-    // GET /api/v3/org/consumer/connected_toolkits?user_id=… (the "Composio for
-    // you" consumer namespace — the same one `composio execute` reads). Verified
-    // live: the `toolkits` array is plain slug STRINGS, e.g. ["gmail","github"]
-    // (connection ids/status come from /connected_accounts when needed).
-    const body = await this.call<{ toolkits?: (RawConnection | string)[] }>(
-      "/api/v3/org/consumer/connected_toolkits",
-      { apiKey: c.apiKey, orgId: c.orgId, query: { user_id: c.userId } },
+    if (!c.userId) throw new Error("composio credential missing 'userId'");
+    // GET /api/v3/connected_accounts?user_ids=… scoped to the consumer project
+    // (x-project-id) → full objects with id + status. Verified live: WITHOUT the
+    // project header this returns nothing even when apps are connected.
+    const body = await this.call<{ items?: RawConnection[] }>(
+      "/api/v3/connected_accounts",
+      {
+        apiKey: c.apiKey,
+        orgId: c.orgId,
+        projectId: c.projectId,
+        query: { user_ids: c.userId, limit: "100" },
+      },
     );
-    return (body?.toolkits ?? []).map(mapConnection);
+    return (body?.items ?? []).map(mapConnection);
   }
 
   async disconnect(cred: ProviderCredential, toolkit: string): Promise<void> {
     const c = this.toCred(cred);
     if (!c.userId) throw new Error("composio credential missing 'userId'");
     // Remove every connected account for the toolkit (a toolkit can have more
-    // than one, e.g. two Gmail logins). List then DELETE each — both confirmed.
-    const accounts = await this.call<{ items?: { id: string }[] }>(
+    // than one, e.g. two Gmail logins). List then DELETE each, project-scoped.
+    const accounts = await this.call<{ items?: RawConnection[] }>(
       "/api/v3/connected_accounts",
       {
         apiKey: c.apiKey,
         orgId: c.orgId,
-        query: { user_ids: c.userId, toolkit_slugs: toolkit },
+        projectId: c.projectId,
+        query: { user_ids: c.userId, toolkit_slugs: toolkit, limit: "100" },
       },
     );
     for (const acct of accounts?.items ?? []) {
+      if (!acct.id) continue;
       await this.call(
         `/api/v3/connected_accounts/${encodeURIComponent(acct.id)}`,
         {
           method: "DELETE",
           apiKey: c.apiKey,
           orgId: c.orgId,
+          projectId: c.projectId,
         },
       );
     }
@@ -248,13 +279,16 @@ export class ComposioProvider implements IntegrationProvider {
   ): Promise<ActionResult> {
     const c = this.toCred(cred);
     if (!c.userId) throw new Error("composio credential missing 'userId'");
-    // POST /api/v3/tools/execute/{action} with the user's id + arguments.
+    // POST /api/v3/tools/execute/{action} with the user's id + arguments, scoped
+    // to the consumer project (x-project-id) — REQUIRED, else "no connected
+    // account found" even when the toolkit is connected (verified live).
     const body = await this.call<RawExecute>(
       `/api/v3/tools/execute/${encodeURIComponent(action)}`,
       {
         method: "POST",
         apiKey: c.apiKey,
         orgId: c.orgId,
+        projectId: c.projectId,
         body: { user_id: c.userId, arguments: params },
       },
     );
@@ -264,10 +298,11 @@ export class ComposioProvider implements IntegrationProvider {
   async search(cred: ProviderCredential, query: string): Promise<ToolMatch[]> {
     const c = this.toCred(cred);
     // GET /api/v3/tools?search=… → { items: [{ slug, name, description, … }] }.
-    // Verified live against a real account.
+    // Project-scoped so the agent discovers tools for the user's own project.
     const body = await this.call<{ items?: RawTool[] }>("/api/v3/tools", {
       apiKey: c.apiKey,
       orgId: c.orgId,
+      projectId: c.projectId,
       query: { search: query, limit: "10" },
     });
     return (body?.items ?? []).map(mapTool);
@@ -308,19 +343,31 @@ export class ComposioProvider implements IntegrationProvider {
           apiKey: session.api_key,
           orgId: account.orgId,
           userId: account.userId,
+          projectId: account.projectId,
           email: account.email ?? session.account?.email ?? undefined,
         },
       },
     };
   }
 
-  // connect (OAuth a specific toolkit, e.g. Gmail) is the next slice — it pairs
-  // with the connect UI. Declared so the port is complete; fails loudly today.
+  /**
+   * Start connecting a toolkit. "Composio for you" HOSTS the connect flow in its
+   * dashboard — the consumer namespace has no programmatic connect (only
+   * list/remove), because Composio owns the OAuth app + managed auth config for
+   * each toolkit. So we deep-link the user to their Composio dashboard to
+   * authorize the app; `listConnections` then reflects it. The user stays inside
+   * their own free account the whole time — no key, no auth-config wrangling on
+   * our side. (No `connectionId` yet: it exists only after they finish there.)
+   */
   async connect(
-    _cred: ProviderCredential,
-    _toolkit: string,
+    cred: ProviderCredential,
+    toolkit: string,
   ): Promise<ConnectStart> {
-    throw new Error("composio connect lands with the connect UX (next slice)");
+    this.toCred(cred); // validate ownership/shape; the dashboard authenticates the user
+    return {
+      redirectUrl: `${this.webURL}/connections?add=${encodeURIComponent(toolkit)}`,
+      connectionId: "",
+    };
   }
 }
 
@@ -335,7 +382,7 @@ interface RawToolkit {
   categories?: (string | { name?: string })[];
 }
 interface RawConnection {
-  toolkit?: string;
+  toolkit?: { slug?: string } | string;
   slug?: string;
   connected_account_id?: string;
   id?: string;
@@ -368,18 +415,19 @@ function mapToolkit(t: RawToolkit): Toolkit {
 }
 
 function mapConnection(c: RawConnection | string): Connection {
-  // The consumer connected_toolkits endpoint returns plain slug strings; the
-  // object form is kept defensively for the per-account endpoints.
+  // A bare slug string (consumer connected_toolkits) or a connected_accounts
+  // object ({ toolkit: { slug }, id, status }).
   if (typeof c === "string")
     return { toolkit: c, connectionId: "", status: "active" };
+  const toolkit =
+    typeof c.toolkit === "string"
+      ? c.toolkit
+      : (c.toolkit?.slug ?? c.slug ?? "");
   const status = c.status?.toLowerCase();
   return {
-    toolkit: c.toolkit ?? c.slug ?? "",
+    toolkit,
     connectionId: c.connected_account_id ?? c.id ?? "",
-    status:
-      status === "active" || status === "pending" || status === "error"
-        ? status
-        : "active",
+    status: status === "pending" || status === "error" ? status : "active",
   };
 }
 

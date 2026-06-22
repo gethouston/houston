@@ -195,7 +195,7 @@ export function RoutineEditor({
   const hasOverflow = isEdit && (onToggle || onDelete);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-background">
+    <div className="flex-1 flex flex-col min-h-0 bg-transparent">
       {/* Single action bar: back · context · primary on right */}
       <header className="px-4 py-2.5 shrink-0">
         <div className="max-w-3xl mx-auto flex items-center gap-3">

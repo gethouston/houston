@@ -45,7 +45,12 @@ function harness(
 
 const cred: ProviderCredential = {
   provider: "composio",
-  data: { apiKey: "uak_test", userId: "consumer-1", orgId: "ok_test" },
+  data: {
+    apiKey: "uak_test",
+    userId: "consumer-1",
+    orgId: "ok_test",
+    projectId: "pr_test",
+  },
 };
 
 test("verifyCredential maps session/info and sends the user key", async () => {
@@ -102,18 +107,27 @@ test("listToolkits maps the catalog", async () => {
   expect(calls[0]?.path).toContain("limit=1000");
 });
 
-test("listConnections hits the consumer namespace with user_id (slug strings, verified live)", async () => {
+test("listConnections reads connected_accounts, project-scoped (verified live)", async () => {
   const { provider, calls } = harness((url) =>
-    url.pathname === "/api/v3/org/consumer/connected_toolkits"
-      ? { body: { toolkits: ["gmail", "github"] } } // real shape: array of slug strings
+    url.pathname === "/api/v3/connected_accounts"
+      ? {
+          body: {
+            items: [
+              { toolkit: { slug: "gmail" }, id: "ca1", status: "ACTIVE" },
+              { toolkit: { slug: "github" }, id: "ca2", status: "ACTIVE" },
+            ],
+          },
+        }
       : { status: 404 },
   );
   const conns = await provider.listConnections(cred);
   expect(conns).toEqual([
-    { toolkit: "gmail", connectionId: "", status: "active" },
-    { toolkit: "github", connectionId: "", status: "active" },
+    { toolkit: "gmail", connectionId: "ca1", status: "active" },
+    { toolkit: "github", connectionId: "ca2", status: "active" },
   ]);
-  expect(calls[0]?.path).toContain("user_id=consumer-1");
+  expect(calls[0]?.path).toContain("user_ids=consumer-1");
+  // The consumer-project header is what makes the connections visible at all.
+  expect(calls[0]?.headers["x-project-id"]).toBe("pr_test");
 });
 
 test("execute posts user_id + arguments to the action path and maps the result", async () => {
@@ -136,6 +150,8 @@ test("execute posts user_id + arguments to the action path and maps the result",
     user_id: "consumer-1",
     arguments: { to: "a@b.com", subject: "Hi" },
   });
+  // The consumer-project header is REQUIRED for execute to find the connection.
+  expect(calls[0]?.headers["x-project-id"]).toBe("pr_test");
 });
 
 test("disconnect deletes every connected account for the toolkit", async () => {
@@ -234,7 +250,12 @@ test("pollLogin is pending until linked, then returns the credential (key never 
       method === "POST" &&
       url.pathname === "/api/v3/org/consumer/project/resolve"
     )
-      return { body: { consumer_user_id: "consumer-1-ok_1" } };
+      return {
+        body: {
+          consumer_user_id: "consumer-1-ok_1",
+          project_nano_id: "pr_abc",
+        },
+      };
     return { status: 404 };
   }, loginClient);
 
@@ -249,6 +270,7 @@ test("pollLogin is pending until linked, then returns the credential (key never 
         apiKey: "uak_new",
         orgId: "ok_1",
         userId: "consumer-1-ok_1",
+        projectId: "pr_abc",
         email: "x@y.com",
       },
     },
@@ -261,7 +283,10 @@ test("pollLogin is pending until linked, then returns the credential (key never 
   expect(resolve?.headers["x-org-id"]).toBe("ok_1");
 });
 
-test("connect still fails loudly (next slice), never pretends to work", async () => {
+test("connect deep-links to the provider's hosted connect (no key, no orchestration)", async () => {
   const { provider } = harness(() => ({ status: 200 }));
-  await expect(provider.connect(cred, "gmail")).rejects.toThrow(/next slice/);
+  const r = await provider.connect(cred, "gmail");
+  // "Composio for you" hosts the connect UX in its dashboard; we just send the user.
+  expect(r.redirectUrl).toBe("https://web.test/connections?add=gmail");
+  expect(r.connectionId).toBe("");
 });

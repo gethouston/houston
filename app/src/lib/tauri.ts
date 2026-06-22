@@ -18,6 +18,7 @@ import type {
 } from "@houston-ai/engine-client";
 import { shouldAutocompactForSession } from "./autocompact";
 import { getEngine } from "./engine";
+import { engineCallSurface } from "./engine-call-policy";
 import { logger } from "./logger";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
@@ -73,12 +74,12 @@ async function surfaceError(
     context ? JSON.stringify(context) : undefined,
   );
 
-  // Aborted requests (user typed again, navigated away, cancelled a sign-in)
-  // are expected, not failures — never toast or report them.
-  if (err instanceof Error && err.name === "AbortError") return;
-
-  const shouldToast = options?.toast !== false;
-  const shouldCapture = options?.capture !== false;
+  // Aborted requests are expected; `toast: false` callers render their own
+  // failure UI but the error is still captured. See `engineCallSurface`.
+  const { toast: shouldToast, capture: shouldCapture } = engineCallSurface(
+    err instanceof Error ? err.name : undefined,
+    options,
+  );
   if (!shouldToast && !shouldCapture) return;
 
   const { showErrorToast, reportError } = await import("./error-toast");
@@ -625,16 +626,28 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  launchLogin: (provider: string, opts?: { deviceAuth?: boolean }) =>
+  launchLogin: (
+    provider: string,
+    opts?: { deviceAuth?: boolean; toast?: boolean },
+  ) =>
     // `deviceAuth` declares whether the client can catch a loopback OAuth
     // callback. Default it from the platform: the co-located desktop CAN
     // (false → Codex browser/loopback login), a remote webapp can't (true →
     // device code). Callers may still override. Centralized here so every
     // entry point (picker, settings, reconnect card, banner) agrees.
-    call<void>("launch_provider_login", () =>
-      getEngine().providerLogin(provider, {
-        deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
-      }),
+    call<void>(
+      "launch_provider_login",
+      () =>
+        getEngine().providerLogin(provider, {
+          deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
+        }),
+      undefined,
+      // Callers that render their OWN failure toast (the picker, settings) pass
+      // `toast: false` so `call`'s generic toast does not fire on top of theirs
+      // — the engine error message showed twice otherwise. Sentry capture still
+      // happens. Callers that surface the failure inline (reconnect cards /
+      // banner) omit it and keep this toast.
+      opts?.toast === false ? { toast: false } : undefined,
     ),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () =>

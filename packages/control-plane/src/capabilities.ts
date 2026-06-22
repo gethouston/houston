@@ -23,6 +23,9 @@ export const LOCAL_CAPABILITIES: Capabilities = {
   tunnel: false,
   codeExecution: "local-bash",
   providers: ["anthropic", "openai-codex"],
+  // Composio ("for you" — each user's own free account) works in every
+  // deployment; the same host code, gated on this flag, not a fork.
+  integrations: ["composio"],
 };
 
 /** What the cloud deployment can do (served at /v1/capabilities). */
@@ -33,4 +36,5 @@ export const CLOUD_CAPABILITIES: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: ["composio"],
 };

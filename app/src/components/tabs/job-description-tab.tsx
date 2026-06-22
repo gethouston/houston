@@ -76,7 +76,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
   }
 
   return (
-    <div className="flex-1 flex min-h-0 bg-background">
+    <div className="flex-1 flex min-h-0 bg-transparent">
       <SidebarSectionNav
         ariaLabel={agent.name}
         items={items}

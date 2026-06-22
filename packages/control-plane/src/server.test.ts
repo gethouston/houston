@@ -101,6 +101,7 @@ const TEST_CAPABILITIES: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 
 beforeAll(async () => {

@@ -13,6 +13,9 @@ import { EnvCredentialVault } from "./credentials/vault";
 import type { Agent } from "./domain/types";
 import { BusEventHub } from "./events/hub";
 import { type FeedbackSender, LinearFeedbackSender } from "./feedback";
+import { ComposioProvider } from "./integrations/composio";
+import { MemoryIntegrationCredentialStore } from "./integrations/credential-store";
+import { IntegrationRegistry } from "./integrations/registry";
 import { FakeLauncher } from "./launcher/fake";
 import { type AgentResolver, GkeLauncher } from "./launcher/gke";
 import { CloudPaths } from "./paths";
@@ -23,6 +26,7 @@ import type {
   WorkspaceStore,
 } from "./ports";
 import { forward } from "./proxy/route";
+import type { IntegrationDeps } from "./routes/integrations";
 import { ChannelRoutineFirer } from "./schedule/firer";
 import { Scheduler } from "./schedule/scheduler";
 import {
@@ -235,6 +239,17 @@ function main(): void {
     ...(turn ? { cloudrun: new TurnChannel(turn) } : {}),
   };
 
+  // Integrations: Composio "for you" (each user's own free account). The adapter
+  // is the same in every deployment; only the credential store differs.
+  // TODO(cloud-prod): swap MemoryIntegrationCredentialStore for a Pg-backed one
+  // (mirror PgCredentialStore) so a user's connected account survives a replica
+  // restart — needs a live DB to test, like the other Pg stores. The LOCAL
+  // profile already persists to a file.
+  const integrations: IntegrationDeps = {
+    registry: new IntegrationRegistry([new ComposioProvider()]),
+    credentials: new MemoryIntegrationCredentialStore(),
+  };
+
   const deps: ControlPlaneDeps = {
     verifier,
     store,
@@ -247,6 +262,7 @@ function main(): void {
     capabilities: CLOUD_CAPABILITIES,
     admin: buildAdmin(kubeConfig),
     feedback: buildFeedback(),
+    integrations,
     corsOrigin: config.corsOrigin,
   };
 

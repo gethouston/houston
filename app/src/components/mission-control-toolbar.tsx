@@ -95,7 +95,7 @@ export function MissionControlToolbar({
               <DropdownMenuTrigger asChild>
                 {collapsed ? (
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="icon"
                     className="rounded-full"
                     aria-label={selectedAgent?.name ?? t("filter.allAgents")}
@@ -107,7 +107,7 @@ export function MissionControlToolbar({
                     )}
                   </Button>
                 ) : (
-                  <Button variant="outline" className="rounded-full gap-1.5">
+                  <Button variant="ghost" className="rounded-full gap-1.5">
                     {selectedAgent?.name ?? t("filter.allAgents")}
                     <ChevronDown className="size-3.5 text-muted-foreground" />
                   </Button>
@@ -132,7 +132,7 @@ export function MissionControlToolbar({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant={archivedActive ? "secondary" : "outline"}
+                  variant={archivedActive ? "secondary" : "ghost"}
                   size={collapsed ? "icon" : "default"}
                   className={cn("rounded-full", !collapsed && "gap-1.5")}
                   onClick={onToggleArchived}

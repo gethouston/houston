@@ -54,4 +54,10 @@ export interface Capabilities {
   codeExecution: "local-bash" | "remote-sandbox";
   /** Providers this deployment offers for connect-once login. */
   providers: string[];
+  /**
+   * Third-party integration providers available (e.g. "composio"). Each lets a
+   * user connect their OWN account and gives agents tools over those apps.
+   * Empty = integrations off for this deployment.
+   */
+  integrations: string[];
 }
