@@ -172,10 +172,7 @@ Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, co
 **Never guess.** Read logs first. See `/debug`.
 
 ### Formatting + linting (Biome) — run after EVERY change
-After any TS/JS/JSON modification or addition, run **`pnpm check:fix`** before the work is "done" (`biome check --write`: format + safe lint fixes + import organization, repo-wide). End state must be Biome-clean — `pnpm check` exits 0.
-- Covers `.ts` / `.tsx` / `.js` / `.mjs` / `.json`. Safe no-op on CSS, `*.svg`/`*.html`, `**/gen/**`, `.houston/**`, and Rust (all excluded in `biome.json`).
-- It mutates beyond formatting (safe lint autofixes + import reorder) — re-read the diff before committing.
-- Scripts (root `package.json`): `format`, `lint`, `check`, `check:fix`. Config: `biome.json`.
+After any TS/JS/JSON modification or addition, run **`pnpm check:fix`** before the work is "done". End state must be Biome-clean — `pnpm check` exits 0.
 
 ### Library boundary (ui/)
 - Generic reusable → ui/. App-specific → app/. Unsure → start in app/, extract later.

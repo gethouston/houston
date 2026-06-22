@@ -11,14 +11,20 @@
     "lint": "biome lint",
     "lint:fix": "biome lint --write",
     "check": "biome check",
-    "check:fix": "biome check --write"
+    "check:fix": "biome check --write",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
+    "husky": "^9.1.7",
+    "lint-staged": "^17.0.8",
     "typescript": "^6.0.2"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc}": "biome check --write --no-errors-on-unmatched"
   },
   "packageManager": "pnpm@10.32.1+sha512.a706938f0e89ac1456b6563eab4edf1d1faf3368d1191fc5c59790e96dc918e4456ab2e67d613de1043d2e8c81f87303e6b40d4ffeca9df15ef1ad567348f2be"
 }
