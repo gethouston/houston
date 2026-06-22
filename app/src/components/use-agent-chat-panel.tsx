@@ -38,6 +38,7 @@ import {
 import { useTranslation } from "react-i18next";
 import { useActivity, useSkills } from "../hooks/queries";
 import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
+import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import { analytics } from "../lib/analytics";
 import { attachmentReferences } from "../lib/attachment-message";
 import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
@@ -72,6 +73,7 @@ import {
 import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
 import { useFeedStore } from "../stores/feeds";
 import { useUIStore } from "../stores/ui";
+import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
 import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
@@ -182,6 +184,21 @@ export function useAgentChatPanel({
       .catch(() => {});
   }, [path]);
 
+  // Last-used provider preference (`default_provider`, written by setLastUsed
+  // on every provider pick). The fallback when neither the activity nor the
+  // agent config names a provider, so an OpenAI-only user opening a no-provider
+  // agent sees their own provider in the dropdown and forwards it on send,
+  // instead of silently defaulting to Claude and failing auth (#483). One-shot
+  // load mirrors the agent-config read above; the literal "anthropic" below
+  // stays only as the last resort, matching the engine's factory default.
+  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
+  useEffect(() => {
+    tauriProvider
+      .getDefault()
+      .then((p) => setLastUsedProvider(p || null))
+      .catch(() => {});
+  }, []);
+
   const { data: activities } = useActivity(path ?? undefined);
   const selectedActivity = useMemo(() => {
     if (!selectedSessionKey || !activities) return null;
@@ -195,7 +212,24 @@ export function useAgentChatPanel({
   const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
   const selectedActivityId = selectedActivity?.id ?? null;
 
-  const effectiveProvider = activityProvider ?? agentProvider ?? "anthropic";
+  // Which providers the user is actually logged into (reactive + cached). The
+  // fallback below picks an authenticated one rather than a stale preference,
+  // so a no-provider agent never lands on a logged-out CLI (#483).
+  const { statuses: providerStatuses } = useProviderStatuses();
+  const authedProviders = useMemo(
+    () =>
+      Object.values(providerStatuses)
+        .filter((s) => s.authenticated)
+        .map((s) => s.provider),
+    [providerStatuses],
+  );
+
+  const effectiveProvider = resolveEffectiveProvider(
+    activityProvider,
+    agentProvider,
+    lastUsedProvider,
+    authedProviders,
+  );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??
     validModelOrNull(effectiveProvider, agentModel) ??
