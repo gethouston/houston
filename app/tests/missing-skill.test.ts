@@ -1,13 +1,19 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { MISSING_SKILL_KIND, isMissingSkillError } from "../src/lib/missing-skill.ts";
+import {
+  MISSING_SKILL_KIND,
+  isMissingSkillError,
+} from "../src/lib/missing-skill.ts";
 
 describe("missing-skill classifier (HOU-515 / HOU-441)", () => {
   it("matches a 404 HoustonEngineError — the host's 'skill not found'", () => {
     // The TS host answers GET /v1/skills/<slug> with 404 when the directory is
     // gone; @houston-ai/engine-client surfaces it as a HoustonEngineError whose
     // `.status` is 404. The body is a bare string, so there is no typed `.kind`.
-    strictEqual(isMissingSkillError({ status: 404, name: "HoustonEngineError" }), true);
+    strictEqual(
+      isMissingSkillError({ status: 404, name: "HoustonEngineError" }),
+      true,
+    );
   });
 
   it("tolerates a typed kind, should the host ever emit one", () => {

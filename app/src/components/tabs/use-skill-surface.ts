@@ -49,7 +49,14 @@ export function useSkillSurface(agentPath: string) {
     });
     setSelectedSkillName(null);
     queryClient.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
-  }, [skillDetailError, selectedSkillName, agentPath, addToast, queryClient, t]);
+  }, [
+    skillDetailError,
+    selectedSkillName,
+    agentPath,
+    addToast,
+    queryClient,
+    t,
+  ]);
   const saveSkill = useSaveSkill(agentPath);
   const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);

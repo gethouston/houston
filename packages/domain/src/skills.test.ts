@@ -97,7 +97,9 @@ test("list + load use the directory slug when frontmatter name: drifts (HOU-515)
   expect(detail!.content).toContain("Draft it.");
 
   // The drifted phrase never named a real directory — still null (-> host 404).
-  expect(await loadSkillDetail(store, ROOT, "Redactar Outreach ESG")).toBeNull();
+  expect(
+    await loadSkillDetail(store, ROOT, "Redactar Outreach ESG"),
+  ).toBeNull();
 });
 
 test("parseSkillMd pins name to the directory slug, ignoring a drifted frontmatter name: (HOU-515)", () => {
