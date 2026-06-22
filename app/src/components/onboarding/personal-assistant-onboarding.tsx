@@ -228,6 +228,16 @@ export function PersonalAssistantOnboarding({
           eyebrow={stepEyebrow("providerLogin")}
           providerId={provider}
           onBack={() => setStep("brain")}
+          onContinue={() => setStep("aiConnected")}
+        />
+      )}
+      {step === "aiConnected" && (
+        <SetupProgress
+          title={t("setup:tutorial.missions.aiConnected.title")}
+          message={t("setup:tutorial.missions.aiConnected.body")}
+          done={["ai"]}
+          justCompleted="ai"
+          ctaLabel={t("setup:tutorial.missions.aiConnected.cta")}
           onContinue={() => setStep("tools")}
         />
       )}
@@ -235,16 +245,16 @@ export function PersonalAssistantOnboarding({
         <ToolsMission
           eyebrow={stepEyebrow("tools")}
           onBack={() => setStep("providerLogin")}
-          onContinue={() => setStep("setupReady")}
+          onContinue={() => setStep("appsConnected")}
         />
       )}
-      {step === "setupReady" && (
+      {step === "appsConnected" && (
         <SetupProgress
-          title={t("setup:tutorial.missions.setupReady.title")}
-          message={t("setup:tutorial.missions.setupReady.body")}
+          title={t("setup:tutorial.missions.appsConnected.title")}
+          message={t("setup:tutorial.missions.appsConnected.body")}
           done={["ai", "apps"]}
           justCompleted="apps"
-          ctaLabel={t("setup:tutorial.missions.setupReady.cta")}
+          ctaLabel={t("setup:tutorial.missions.appsConnected.cta")}
           onContinue={() => setStep("meet")}
         />
       )}

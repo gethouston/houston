@@ -89,11 +89,6 @@
           "body": "Tu agente ya puede conectar tus apps cuando las necesites."
         }
       },
-      "setupReady": {
-        "title": "¡Configuración lista!",
-        "body": "Bien hecho, estás un paso más cerca. Ahora vamos a crear tu primer agente.",
-        "cta": "Crear mi agente"
-      },
       "meet": {
         "title": "Crea tu primer agente",
         "body": "Dale a tu agente un nombre y un color. Puedes cambiarlos cuando quieras.",
@@ -135,6 +130,16 @@
         "title": "¡Todo listo!",
         "body": "Tu primer correo fue enviado a {{recipient}}. ¡Te damos la bienvenida a Houston!",
         "cta": "Entrar a Houston"
+      },
+      "aiConnected": {
+        "title": "¡Tu IA está conectada!",
+        "body": "Tu agente ya puede pensar. Estás un paso más cerca.",
+        "cta": "Continuar"
+      },
+      "appsConnected": {
+        "title": "¡Apps conectadas!",
+        "body": "Configuración lista, bien hecho. Ahora vamos a crear tu primer agente.",
+        "cta": "Crear mi agente"
       }
     },
     "sectionCounter": "{{section}} · {{current}} de {{total}}",

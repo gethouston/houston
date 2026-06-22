@@ -13,7 +13,8 @@
 export type OnboardingStep =
   | "intro"
   | TutorialStep
-  | "setupReady"
+  | "aiConnected"
+  | "appsConnected"
   | "done";
 
 export type TutorialStep =

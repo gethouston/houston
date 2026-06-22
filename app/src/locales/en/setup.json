@@ -89,11 +89,6 @@
           "body": "Your agent can now connect to your apps whenever you need them."
         }
       },
-      "setupReady": {
-        "title": "Setup complete!",
-        "body": "Nice work, you're one step closer. Now let's create your first agent.",
-        "cta": "Create my agent"
-      },
       "meet": {
         "title": "Create your first agent",
         "body": "Give your agent a name and a color. You can change these anytime.",
@@ -135,6 +130,16 @@
         "title": "You're all set!",
         "body": "Your first email is sent to {{recipient}}. Welcome to Houston!",
         "cta": "Enter Houston"
+      },
+      "aiConnected": {
+        "title": "Your AI is connected!",
+        "body": "Your agent can think now. You're one step closer.",
+        "cta": "Continue"
+      },
+      "appsConnected": {
+        "title": "Apps connected!",
+        "body": "Setup done, nice work. Now let's create your first agent.",
+        "cta": "Create my agent"
       }
     },
     "sectionCounter": "{{section}} · {{current}} of {{total}}",
