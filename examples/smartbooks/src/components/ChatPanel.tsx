@@ -150,7 +150,7 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
 
   async function sendFromInput() {
     if (!input.trim() || status === "running") return;
-    const ctx = client ? clientContextLine(client) + "\n" : "";
+    const ctx = client ? `${clientContextLine(client)}\n` : "";
     const prompt = `${ctx}${input.trim()}`;
     setInput("");
     await runPrompt(prompt);

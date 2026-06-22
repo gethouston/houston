@@ -5,8 +5,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@houston-ai/core";
-import { type ProviderInfo } from "../lib/providers";
-import { type ProviderPickerState } from "../lib/model-picker";
+import type { ProviderInfo } from "../lib/providers";
+import type { ProviderPickerState } from "../lib/model-picker";
 import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
 
 /**

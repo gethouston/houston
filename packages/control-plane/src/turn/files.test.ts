@@ -43,7 +43,7 @@ test("lists workspace files with synthesized folders, newest metadata", async ()
   const files = await listWorkspace(objects, ROOT);
   const byPath = Object.fromEntries(files.map((f) => [f.path, f]));
   // The folder is synthesized and sorts first.
-  expect(byPath["data"]?.is_directory).toBe(true);
+  expect(byPath.data?.is_directory).toBe(true);
   expect(files[0]!.is_directory).toBe(true);
   // Files carry name/extension/size.
   expect(byPath["deck.pptx"]).toMatchObject({

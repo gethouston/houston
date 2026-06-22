@@ -65,7 +65,7 @@ test.if(haveDataset)(
       cpSync(REAL_DB, join(scratch, "houston.db"));
       for (const ext of ["-wal", "-shm"]) {
         if (existsSync(REAL_DB + ext))
-          cpSync(REAL_DB + ext, join(scratch, "houston.db" + ext));
+          cpSync(REAL_DB + ext, join(scratch, `houston.db${ext}`));
       }
 
       // The source tree may ITSELF already be migrated (the user ran the packaged

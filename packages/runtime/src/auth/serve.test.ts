@@ -92,7 +92,7 @@ test("scrub rewrites every refresh-bearing entry and reports the providers", () 
   ]);
   const auth = readAuth(path);
   expect(auth["openai-codex"]!.refresh).toBe("");
-  expect(auth["anthropic"]!.refresh).toBe("");
+  expect(auth.anthropic!.refresh).toBe("");
   // Access tokens survive the scrub — the agent keeps working this turn.
   expect(auth["openai-codex"]!.access).toBe("A1");
 });

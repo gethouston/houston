@@ -109,7 +109,7 @@ export class TunnelRoom implements DurableObject {
     // 3) Any other path under /e/:tunnelId/v1/* is an HTTP proxy call.
     // Preserve the query string (e.g. some routes use `?token=` for auth).
     if (action === "v1") {
-      const pathWithQuery = "/" + segments.slice(2).join("/") + url.search;
+      const pathWithQuery = `/${segments.slice(2).join("/")}${url.search}`;
       return this.handleProxyHttp(request, pathWithQuery);
     }
 

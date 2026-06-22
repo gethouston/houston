@@ -120,7 +120,7 @@ export function reconstruct(rows: ChatFeedRow[]): {
         );
         const content =
           obj && typeof obj.content === "string" ? obj.content : "";
-        const isError = !!(obj && obj.is_error);
+        const isError = !!obj?.is_error;
         transcript.push({
           role: "assistant",
           content: `[tool result]\n${content}`,

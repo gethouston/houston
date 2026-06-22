@@ -238,7 +238,7 @@ describe("run_code tool", () => {
       {} as any,
     );
     expect(lastHeaders["x-sandbox-token"]).toBe("app-secret");
-    expect(lastHeaders["authorization"]).toBe("Bearer google-id-token");
+    expect(lastHeaders.authorization).toBe("Bearer google-id-token");
   });
 
   test("an artifact colliding with an UNDECLARED workspace file is renamed, never overwritten", async () => {

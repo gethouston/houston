@@ -57,7 +57,7 @@ function fluentEmojiUrl(slug: string): string {
   const folder =
     parts[0].charAt(0).toUpperCase() +
     parts[0].slice(1) +
-    (parts.length > 1 ? " " + parts.slice(1).join(" ") : "");
-  const file = parts.join("_") + "_3d.png";
+    (parts.length > 1 ? ` ${parts.slice(1).join(" ")}` : "");
+  const file = `${parts.join("_")}_3d.png`;
   return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/3D/${file}`;
 }

@@ -7,7 +7,6 @@ import {
   applyActivityUpdate,
   createActivity,
   loadActivities,
-  normalizeActivities,
   removeById,
   saveActivities,
   upsertById,
@@ -16,7 +15,6 @@ import {
   applyRoutineUpdate,
   createRoutine,
   loadRoutines,
-  normalizeRoutines,
   saveRoutines,
 } from "./routines";
 import { loadConfig, loadLearnings, saveConfig } from "./config";

@@ -91,7 +91,7 @@ for (const cmd of commands) {
 
 if (errors.length) {
   console.error("✗ Tauri web-shim parity check failed:\n");
-  for (const e of errors) console.error("  - " + e);
+  for (const e of errors) console.error(`  - ${e}`);
   console.error(
     `\napp/src @tauri-apps specifiers: ${[...specifiers].join(", ")}` +
       `\napp/src invoke commands: ${[...commands].sort().join(", ")}` +

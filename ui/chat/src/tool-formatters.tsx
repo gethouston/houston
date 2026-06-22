@@ -55,7 +55,7 @@ export function getToolDetail(name: string, input: unknown): string | null {
     case "Bash": {
       const cmd = inp.command as string | undefined;
       if (!cmd) return null;
-      return cmd.length > 80 ? cmd.slice(0, 77) + "..." : cmd;
+      return cmd.length > 80 ? `${cmd.slice(0, 77)}...` : cmd;
     }
     case "Read":
     case "Write":
@@ -84,6 +84,6 @@ function shortUrl(url: string | undefined): string | null {
   try {
     return new URL(url).hostname;
   } catch {
-    return url.length > 60 ? url.slice(0, 57) + "..." : url;
+    return url.length > 60 ? `${url.slice(0, 57)}...` : url;
   }
 }

@@ -31,9 +31,7 @@
 //
 // Written in conservative ES2015 (no optional chaining / nullish coalescing)
 // because this file is shipped as-authored, never run through esbuild.
-(function () {
-  "use strict";
-
+(() => {
   // How long to wait for React to mount into #root before declaring a silent
   // crash. Cold start with HMR off is typically well under 2s; 8s leaves slack
   // for slow disks without making the user stare at white for a minute.
@@ -127,11 +125,11 @@
   // email. Stays robust when `error` is null (silent stall) or partial.
   function captureDiagnostics(error, info) {
     var lines = [];
-    lines.push("Time: " + new Date().toISOString());
-    if (info && info.userAgent) lines.push("User agent: " + info.userAgent);
-    if (info && info.url) lines.push("URL: " + info.url);
+    lines.push(`Time: ${new Date().toISOString()}`);
+    if (info?.userAgent) lines.push(`User agent: ${info.userAgent}`);
+    if (info?.url) lines.push(`URL: ${info.url}`);
     if (error) {
-      if (error.message) lines.push("Error: " + error.message);
+      if (error.message) lines.push(`Error: ${error.message}`);
       if (error.filename) {
         lines.push(
           "Where: " +
@@ -142,9 +140,9 @@
             (error.colno || "?"),
         );
       }
-      if (error.stack) lines.push("Stack:\n" + error.stack);
+      if (error.stack) lines.push(`Stack:\n${error.stack}`);
     } else {
-      lines.push("Error: app did not mount within " + MOUNT_TIMEOUT_MS + "ms");
+      lines.push(`Error: app did not mount within ${MOUNT_TIMEOUT_MS}ms`);
     }
     return lines.join("\n");
   }
@@ -183,7 +181,7 @@
     var reloadBtn = root.querySelector("#houston-gate-reload");
     var copyBtn = root.querySelector("#houston-gate-copy");
     if (reloadBtn) {
-      reloadBtn.addEventListener("click", function () {
+      reloadBtn.addEventListener("click", () => {
         try {
           window.location.reload();
         } catch (e) {
@@ -192,12 +190,12 @@
       });
     }
     if (copyBtn) {
-      copyBtn.addEventListener("click", function () {
-        var done = function () {
+      copyBtn.addEventListener("click", () => {
+        var done = () => {
           copyBtn.textContent = message.copied;
         };
         try {
-          if (navigator.clipboard && navigator.clipboard.writeText) {
+          if (navigator.clipboard?.writeText) {
             navigator.clipboard.writeText(diagnostics).then(done, done);
             return;
           }
@@ -306,16 +304,16 @@
   }
   window.addEventListener(
     "error",
-    function (event) {
+    (event) => {
       rememberError(errorFromErrorEvent(event));
     },
     true, // capture, so we see errors from inline scripts even if they stopPropagation
   );
-  window.addEventListener("unhandledrejection", function (event) {
+  window.addEventListener("unhandledrejection", (event) => {
     rememberError(errorFromRejectionEvent(event));
   });
 
-  setTimeout(function () {
+  setTimeout(() => {
     if (rootHasMounted(document)) return;
     var crashRoot = document.getElementById("root");
     if (!crashRoot) return;

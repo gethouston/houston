@@ -126,7 +126,6 @@ function friendlyError(e: unknown): string {
       return "Your Mac took too long to respond. Tap Try again.";
     case "network":
       return "No internet connection. Check your signal and tap Try again.";
-    case "internal":
     default:
       return "Something went wrong on Houston\u2019s end. Tap Try again in a moment.";
   }

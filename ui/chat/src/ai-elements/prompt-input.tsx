@@ -21,12 +21,9 @@ import {
   HoverCardTrigger,
 } from "@houston-ai/core";
 import {
-  // @ts-expect-error -- kept for type references in sub-components
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  InputGroup,
-  InputGroupAddon,
+  type InputGroupAddon,
   InputGroupButton,
-  InputGroupTextarea,
+  type InputGroupTextarea,
 } from "@houston-ai/core";
 import {
   Select,
@@ -1083,7 +1080,7 @@ export const PromptInputTextarea = ({
       el.style.overflow = "hidden";
       const scrollH = el.scrollHeight;
       const newHeight = Math.min(scrollH, 208);
-      el.style.height = newHeight + "px";
+      el.style.height = `${newHeight}px`;
       el.style.overflow = newHeight >= 208 ? "auto" : "hidden";
 
       if (scrollH > 36) {

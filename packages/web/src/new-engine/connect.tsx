@@ -47,7 +47,7 @@ export function ConnectView({
         } else if (pr?.login?.status === "error") {
           clearInterval(poll);
           setPendingCode(null);
-          setNote("Login failed: " + pr.login.error);
+          setNote(`Login failed: ${pr.login.error}`);
         }
       } catch {
         /* transient; keep polling */
