@@ -55,8 +55,7 @@ export function PersonalAssistantOnboarding({
   const [assistantName, setAssistantName] = useState(() =>
     t("setup:tutorial.defaults.assistantName"),
   );
-  // A sensible default — the agent's color is no longer chosen during setup.
-  const [assistantColor] = useState("navy");
+  const [assistantColor, setAssistantColor] = useState("navy");
   // Collapses concurrent / repeated default-workspace creation onto a single
   // in-flight operation so first-run can never fire `createWorkspace` twice
   // (a double-clicked Continue, a remount) — HOU-444.
@@ -262,6 +261,7 @@ export function PersonalAssistantOnboarding({
           color={assistantColor}
           namePlaceholder={t("setup:tutorial.defaults.assistantName")}
           onNameChange={setAssistantName}
+          onColorChange={setAssistantColor}
           creating={creatingAgent}
           onBegin={() => void handleCreateAgent()}
         />

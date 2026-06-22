@@ -92,7 +92,7 @@
       },
       "meet": {
         "title": "Create your first agent",
-        "body": "Give your agent a name. You can change it anytime.",
+        "body": "Give your agent a name and a color. You can change them anytime.",
         "begin": "Create agent",
         "creating": "Creating..."
       },
