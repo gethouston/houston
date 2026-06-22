@@ -42,6 +42,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 
 const deps = (): ControlPlaneDeps => ({

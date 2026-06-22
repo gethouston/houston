@@ -191,6 +191,7 @@ function routeDeps(feedback?: ControlPlaneDeps["feedback"]): ControlPlaneDeps {
     tunnel: false,
     codeExecution: "remote-sandbox",
     providers: ["openai-codex"],
+    integrations: [],
   };
   return {
     verifier,
