@@ -14,6 +14,7 @@
 import { HoustonClient, EngineWebSocket } from "@houston-ai/engine-client";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { controlPlaneBuild } from "./engine-mode";
 
 declare global {
   interface Window {
@@ -39,9 +40,19 @@ const HOST_TOKEN: string =
   (import.meta as any).env?.VITE_HOUSTON_ENGINE_TOKEN ??
   "";
 
-// In host mode the engine-client is aliased to the new-engine adapter (see
-// app/vite.config.ts); flip it into control-plane mode against the host.
-if (HOST_URL && typeof window !== "undefined") {
+// When the new-engine adapter is aliased in (VITE_NEW_ENGINE or
+// VITE_NEW_ENGINE_URL — see app/vite.config.ts `useHost`), the desktop ALWAYS
+// talks to a v3 host, so flip the adapter into control-plane mode. This must be
+// set HERE, at module load, before any HoustonClient is constructed: the
+// adapter reads window.__HOUSTON_CP__ in its constructor, and the handshake can
+// arrive via the get_engine_handshake poll or the houston-engine-ready event —
+// neither of which sets this flag. On a cold first launch that poll wins the
+// race against the Tauri window.eval injection and a Rust-wire client gets
+// built against the v3 host -> every turn fails with "Session error" until the
+// next launch (the warm sidecar lets the injection land first). Setting the
+// flag from the build constant closes that race for all delivery paths. HOU-546.
+const NEW_ENGINE = controlPlaneBuild((import.meta as any).env ?? {});
+if (NEW_ENGINE && typeof window !== "undefined") {
   (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
 }
 
