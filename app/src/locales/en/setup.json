@@ -51,8 +51,14 @@
     "missions": {
       "intro": {
         "title": "Let's set up your account",
-        "body": "Just a couple of quick steps to get your agent working. Log in to the AI you already use, then connect your apps.",
-        "cta": "Start setup"
+        "body": "A few quick steps and your agent is ready to work for you.",
+        "cta": "Start setup",
+        "steps": {
+          "ai": "Log in to your AI",
+          "apps": "Connect your apps",
+          "agent": "Create your first agent",
+          "email": "Send your first email"
+        }
       },
       "brain": {
         "title": "Log in to your AI subscription",

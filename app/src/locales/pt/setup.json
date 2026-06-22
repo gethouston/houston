@@ -51,8 +51,14 @@
     "missions": {
       "intro": {
         "title": "Vamos configurar sua conta",
-        "body": "São só alguns passos rápidos para deixar seu agente funcionando. Entre na IA que você já usa e depois conecte seus apps.",
-        "cta": "Começar configuração"
+        "body": "Alguns passos rápidos e seu agente estará pronto para trabalhar.",
+        "cta": "Começar configuração",
+        "steps": {
+          "ai": "Entre na sua IA",
+          "apps": "Conecte seus apps",
+          "agent": "Crie seu primeiro agente",
+          "email": "Envie seu primeiro e-mail"
+        }
       },
       "brain": {
         "title": "Entre na sua assinatura de IA",
