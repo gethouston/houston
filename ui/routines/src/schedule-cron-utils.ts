@@ -5,8 +5,9 @@
  * `./schedule-summary`; the friendly custom-interval model in
  * `./schedule-interval-utils`.
  */
-import type { SchedulePreset } from "./types";
+
 import { parseTime } from "./schedule-format.ts";
+import type { SchedulePreset } from "./types";
 
 export interface ScheduleOptions {
   time: string; // "09:00"

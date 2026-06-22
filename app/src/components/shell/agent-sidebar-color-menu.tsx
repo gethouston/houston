@@ -1,14 +1,14 @@
-import { useTranslation } from "react-i18next";
 import {
   AGENT_COLORS,
+  agentColorId,
+  colorHex,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuSub,
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
-  agentColorId,
-  colorHex,
 } from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 
 export const AGENT_COLOR_LABEL_KEYS: Record<string, AgentColorLabelKey> = {
   charcoal: "shell:sidebar.colorLabels.charcoal",

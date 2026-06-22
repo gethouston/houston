@@ -1,10 +1,17 @@
-import { useState, type KeyboardEvent, type ReactNode } from "react";
-import { Plus } from "lucide-react";
-import { ScrollArea } from "@houston-ai/core";
-import { SidebarNavItem } from "./sidebar-nav";
-import { SidebarItemRow } from "./sidebar-item-row";
-import type { SidebarItemRowLabels } from "./sidebar-item-row";
+import {
+  cn,
+  ScrollArea,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@houston-ai/core";
+import { PanelLeftClose, PanelLeftOpen, Plus } from "lucide-react";
+import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { sidebarClasses } from "./sidebar-classes";
+import { SidebarCollapsedItem } from "./sidebar-collapsed-item";
+import type { SidebarItemRowLabels } from "./sidebar-item-row";
+import { SidebarItemRow } from "./sidebar-item-row";
+import { SidebarNavItem } from "./sidebar-nav";
 
 export interface SidebarItem {
   id: string;
@@ -48,11 +55,17 @@ export interface SidebarProps {
   /** Footer area rendered at the very bottom of the sidebar */
   footer?: ReactNode;
   labels?: SidebarLabels;
+  /** Icon-only rail: hide all text labels, reveal them via hover/focus flyouts. */
+  collapsed?: boolean;
+  /** Toggle between expanded and collapsed. The toggle button is always visible. */
+  onToggleCollapsed?: () => void;
   children?: ReactNode;
 }
 
 export interface SidebarLabels extends SidebarItemRowLabels {
   addItem?: string;
+  collapseSidebar?: string;
+  expandSidebar?: string;
 }
 
 const DEFAULT_LABELS: Required<SidebarLabels> = {
@@ -60,6 +73,8 @@ const DEFAULT_LABELS: Required<SidebarLabels> = {
   moreOptions: "More options",
   renameItem: "Rename",
   deleteItem: "Delete",
+  collapseSidebar: "Collapse sidebar",
+  expandSidebar: "Expand sidebar",
 };
 
 export function AppSidebar({
@@ -77,6 +92,8 @@ export function AppSidebar({
   sectionLabel,
   footer,
   labels,
+  collapsed = false,
+  onToggleCollapsed,
   children,
 }: SidebarProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -107,17 +124,58 @@ export function AppSidebar({
 
   const showLogo = logo && !header;
 
+  const toggleLabel = collapsed ? l.expandSidebar : l.collapseSidebar;
+
+  const toggleButton = onToggleCollapsed ? (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <button
+          type="button"
+          aria-label={toggleLabel}
+          aria-pressed={collapsed}
+          onClick={onToggleCollapsed}
+          className="flex size-7 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+        >
+          {collapsed ? (
+            <PanelLeftOpen className="size-4" />
+          ) : (
+            <PanelLeftClose className="size-4" />
+          )}
+        </button>
+      </TooltipTrigger>
+      <TooltipContent side="right" sideOffset={8}>
+        {toggleLabel}
+      </TooltipContent>
+    </Tooltip>
+  ) : null;
+
   return (
     <>
       <aside
         data-tour-target="sidebar"
-        className="w-[220px] bg-sidebar text-sidebar-foreground flex flex-col h-full shrink-0"
+        className={cn(
+          "bg-sidebar text-sidebar-foreground flex flex-col h-full shrink-0 overflow-hidden",
+          "transition-[width] duration-200 ease-out",
+          collapsed ? "w-[56px]" : "w-[220px]",
+        )}
       >
-        {/* Header slot (e.g., WorkspaceSwitcher) */}
-        {header}
+        {/* Header + collapse toggle. Expanded: the toggle shares the workspace
+            switcher's row (top-right). Collapsed: just the monogram here — the
+            toggle moves to the BOTTOM of the rail (see footer area). Always
+            visible, never hover-gated. */}
+        {collapsed ? (
+          header
+        ) : (
+          <div className="flex items-center">
+            <div className="min-w-0 flex-1">{header}</div>
+            {toggleButton && (
+              <div className="shrink-0 pr-2">{toggleButton}</div>
+            )}
+          </div>
+        )}
 
         {/* Legacy logo area (only when no header) */}
-        {showLogo && (
+        {showLogo && !collapsed && (
           <div className="flex items-center justify-between px-4 pt-4 pb-2">
             <div className="flex items-center gap-2">{logo}</div>
           </div>
@@ -125,7 +183,14 @@ export function AppSidebar({
 
         {/* Nav items */}
         {navItems && navItems.length > 0 && (
-          <nav className="px-2 py-1 space-y-0.5">
+          <nav
+            className={cn(
+              "py-1",
+              collapsed
+                ? "flex flex-col items-center gap-0.5 px-2"
+                : "px-2 space-y-0.5",
+            )}
+          >
             {navItems.map((item) => (
               <SidebarNavItem
                 key={item.id}
@@ -139,6 +204,7 @@ export function AppSidebar({
                 }
                 onClick={item.onClick}
                 dataAttrs={item.dataAttrs}
+                collapsed={collapsed}
               />
             ))}
           </nav>
@@ -148,8 +214,8 @@ export function AppSidebar({
             can spotlight just this region. `flex-1 min-h-0` preserves the
             existing scroll behavior for the items list. */}
         <div data-tour-target="agents" className="flex min-h-0 flex-1 flex-col">
-          {/* Section label */}
-          {sectionLabel && (
+          {/* Section label (expanded only) */}
+          {sectionLabel && !collapsed && (
             <div className="px-3 pt-3 pb-1">
               <div className="text-xs font-medium text-muted-foreground">
                 {sectionLabel}
@@ -158,47 +224,97 @@ export function AppSidebar({
           )}
 
           {/* Items list */}
-          <ScrollArea className="flex-1 px-2">
-            <div className={sidebarClasses.itemsList}>
-              {items.map((item) => (
-                <SidebarItemRow
-                  key={item.id}
-                  item={item}
-                  isActive={item.id === selectedId}
-                  isEditing={editingId === item.id}
-                  editValue={editValue}
-                  hasMenu={hasDefaultMenu || !!item.menuContent}
-                  onSelect={onSelect}
-                  onKeyDown={handleKeyDown}
-                  onEditChange={setEditValue}
-                  onCommitRename={commitRename}
-                  onCancelEdit={() => setEditingId(null)}
-                  onStartRename={onRename ? startRename : undefined}
-                  onDelete={onDelete}
-                  labels={l}
-                />
-              ))}
-              {onAdd && (
-                <button
-                  aria-label={l.addItem}
-                  onClick={onAdd}
-                  className={sidebarClasses.addButton}
-                  {...(addItemDataAttrs ?? {})}
-                >
-                  <span className={sidebarClasses.addButtonInner}>
-                    <Plus className={sidebarClasses.addButtonIcon} />
-                    <span className={sidebarClasses.addButtonLabel}>
-                      {l.addItem}
-                    </span>
-                  </span>
-                </button>
+          <ScrollArea
+            className={cn("flex-1", collapsed ? "px-2 pt-2" : "px-2")}
+          >
+            <div
+              className={cn(
+                collapsed
+                  ? "flex flex-col items-center gap-1 pb-2"
+                  : sidebarClasses.itemsList,
               )}
+            >
+              {items.map((item) =>
+                collapsed ? (
+                  <SidebarCollapsedItem
+                    key={item.id}
+                    item={item}
+                    isActive={item.id === selectedId}
+                    isEditing={editingId === item.id}
+                    editValue={editValue}
+                    hasMenu={hasDefaultMenu || !!item.menuContent}
+                    onSelect={onSelect}
+                    onKeyDown={handleKeyDown}
+                    onEditChange={setEditValue}
+                    onCommitRename={commitRename}
+                    onCancelEdit={() => setEditingId(null)}
+                    onStartRename={onRename ? startRename : undefined}
+                    onDelete={onDelete}
+                    labels={l}
+                  />
+                ) : (
+                  <SidebarItemRow
+                    key={item.id}
+                    item={item}
+                    isActive={item.id === selectedId}
+                    isEditing={editingId === item.id}
+                    editValue={editValue}
+                    hasMenu={hasDefaultMenu || !!item.menuContent}
+                    onSelect={onSelect}
+                    onKeyDown={handleKeyDown}
+                    onEditChange={setEditValue}
+                    onCommitRename={commitRename}
+                    onCancelEdit={() => setEditingId(null)}
+                    onStartRename={onRename ? startRename : undefined}
+                    onDelete={onDelete}
+                    labels={l}
+                  />
+                ),
+              )}
+              {onAdd &&
+                (collapsed ? (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={l.addItem}
+                        onClick={onAdd}
+                        className="flex size-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                        {...(addItemDataAttrs ?? {})}
+                      >
+                        <Plus className="size-4" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right" sideOffset={8}>
+                      {l.addItem}
+                    </TooltipContent>
+                  </Tooltip>
+                ) : (
+                  <button
+                    aria-label={l.addItem}
+                    onClick={onAdd}
+                    className={sidebarClasses.addButton}
+                    {...(addItemDataAttrs ?? {})}
+                  >
+                    <span className={sidebarClasses.addButtonInner}>
+                      <Plus className={sidebarClasses.addButtonIcon} />
+                      <span className={sidebarClasses.addButtonLabel}>
+                        {l.addItem}
+                      </span>
+                    </span>
+                  </button>
+                ))}
             </div>
           </ScrollArea>
         </div>
 
         {/* Footer slot (e.g., update notification) */}
         {footer}
+
+        {/* Collapsed: the toggle lives at the bottom of the rail. */}
+        {collapsed && toggleButton && (
+          <div className="flex justify-center pb-4 pt-1">{toggleButton}</div>
+        )}
       </aside>
 
       {children}

@@ -1,7 +1,7 @@
-import { test, expect, describe } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
-import { turnErrorMessage } from "./translate";
 import { configWriteToSettings } from "./synthetic";
+import { turnErrorMessage } from "./translate";
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must
@@ -32,26 +32,39 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
 
   test("maps a config write with provider+model to a settings update", () => {
     expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode-go", model: "deepseek-v4-pro" })),
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "opencode-go", model: "deepseek-v4-pro" }),
+      ),
     ).toEqual({ activeProvider: "opencode-go", model: "deepseek-v4-pro" });
     // The old desktop "openai" id is remapped to the engine's "openai-codex".
     expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "openai", model: "gpt-5.5" })),
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "openai", model: "gpt-5.5" }),
+      ),
     ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
   });
 
   test("sets activeProvider even when no model is given (provider switch)", () => {
-    expect(configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" }))).toEqual({
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
+    ).toEqual({
       activeProvider: "opencode",
     });
   });
 
   test("skips non-config files, unknown providers, and bad JSON", () => {
-    expect(configWriteToSettings(".houston/learnings/learnings.json", "{}"))
-      .toBeNull();
+    expect(
+      configWriteToSettings(".houston/learnings/learnings.json", "{}"),
+    ).toBeNull();
     expect(configWriteToSettings("CLAUDE.md", "# hi")).toBeNull();
-    expect(configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" }))).toBeNull();
-    expect(configWriteToSettings(CONFIG, JSON.stringify({ model: "x" }))).toBeNull(); // no provider
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
+    ).toBeNull();
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ model: "x" })),
+    ).toBeNull(); // no provider
     expect(configWriteToSettings(CONFIG, "not json")).toBeNull();
   });
 });

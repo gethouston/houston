@@ -12,25 +12,25 @@
  *   - ANTHROPIC_API_KEY / OPENAI_API_KEY present -> runs a real one-shot turn.
  */
 
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
-  createAgentSession,
-  AuthStorage,
-  ModelRegistry,
-  SessionManager,
-  DefaultResourceLoader,
-  type AgentSessionEvent,
-} from "@earendil-works/pi-coding-agent";
-import {
-  registerFauxProvider,
+  type FauxResponseStep,
   fauxAssistantMessage,
   fauxToolCall,
   getModel,
   type OAuthDeviceCodeInfo,
-  type FauxResponseStep,
+  registerFauxProvider,
 } from "@earendil-works/pi-ai";
-import { tmpdir } from "node:os";
-import { mkdtempSync } from "node:fs";
-import { join } from "node:path";
+import {
+  type AgentSessionEvent,
+  AuthStorage,
+  createAgentSession,
+  DefaultResourceLoader,
+  ModelRegistry,
+  SessionManager,
+} from "@earendil-works/pi-coding-agent";
 
 const log = (...a: unknown[]) => console.log(...a);
 const section = (t: string) => log(`\n=== ${t} ===`);

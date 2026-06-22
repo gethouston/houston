@@ -1,10 +1,10 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { Vfs } from "./vfs";
-import { MemoryVfs } from "./memory";
 import { FsVfs } from "./fs";
+import { MemoryVfs } from "./memory";
+import type { Vfs } from "./vfs";
 
 /**
  * The Vfs CONTRACT, run verbatim against every adapter — the anti-drift

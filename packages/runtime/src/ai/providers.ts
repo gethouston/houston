@@ -1,14 +1,14 @@
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 import {
+  type Api,
   getModel,
   getModels,
   type KnownProvider,
   type Model,
-  type Api,
 } from "@earendil-works/pi-ai";
-import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
-import { config } from "../config";
 import { authStorage } from "../auth/storage";
+import { config } from "../config";
 
 /**
  * Supported providers. The provider id is the SAME string pi-ai uses for its
@@ -17,7 +17,11 @@ import { authStorage } from "../auth/storage";
  * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go, which
  * pi exposes as built-in OpenAI-compatible gateways).
  */
-export type ProviderId = "anthropic" | "openai-codex" | "opencode" | "opencode-go";
+export type ProviderId =
+  | "anthropic"
+  | "openai-codex"
+  | "opencode"
+  | "opencode-go";
 
 /** How a provider authenticates: a subscription OAuth flow, or a pasted API key. */
 export type ProviderAuthMethod = "oauth" | "apiKey";
@@ -28,15 +32,30 @@ export const PROVIDERS: {
   defaultModel: string;
   auth: ProviderAuthMethod;
 }[] = [
-  { id: "anthropic", name: "Claude (Pro / Max)", defaultModel: config.model, auth: "oauth" },
+  {
+    id: "anthropic",
+    name: "Claude (Pro / Max)",
+    defaultModel: config.model,
+    auth: "oauth",
+  },
   {
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     defaultModel: config.codexModel,
     auth: "oauth",
   },
-  { id: "opencode", name: "OpenCode Zen", defaultModel: config.opencodeModel, auth: "apiKey" },
-  { id: "opencode-go", name: "OpenCode Go", defaultModel: config.opencodeGoModel, auth: "apiKey" },
+  {
+    id: "opencode",
+    name: "OpenCode Zen",
+    defaultModel: config.opencodeModel,
+    auth: "apiKey",
+  },
+  {
+    id: "opencode-go",
+    name: "OpenCode Go",
+    defaultModel: config.opencodeGoModel,
+    auth: "apiKey",
+  },
 ];
 
 /** A provider's auth method (defaults to OAuth for an unknown id). */
@@ -49,7 +68,8 @@ export function providerDefaultModel(id: string): string {
   return PROVIDERS.find((p) => p.id === id)?.defaultModel ?? config.codexModel;
 }
 
-const isProvider = (s: string): s is ProviderId => PROVIDERS.some((p) => p.id === s);
+const isProvider = (s: string): s is ProviderId =>
+  PROVIDERS.some((p) => p.id === s);
 
 type Settings = {
   activeProvider?: ProviderId;
@@ -118,7 +138,8 @@ export function setSettings(input: {
  */
 export function resolveModel(override?: string | null) {
   const provider = activeProvider();
-  if (!provider) throw new Error("No provider connected. Connect an AI provider first.");
+  if (!provider)
+    throw new Error("No provider connected. Connect an AI provider first.");
   // ProviderId is a subset of KnownProvider; modelId is a runtime string the
   // caller controls. Cast to getModel's declared model-id param type. getModel
   // throws at runtime if the id is not offered by the provider.

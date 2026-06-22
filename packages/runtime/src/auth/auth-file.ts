@@ -1,4 +1,4 @@
-import { writeFileSync, renameSync, readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 /**
  * Pure auth.json file logic (no config import — tests drive it with explicit
@@ -13,7 +13,13 @@ import { writeFileSync, renameSync, readFileSync, existsSync } from "node:fs";
  * plain API key (OpenCode Zen / Go — pasted, never expires, no refresh).
  */
 export type PiCred =
-  | { type: "oauth"; access: string; refresh: string; expires: number; accountId?: string }
+  | {
+      type: "oauth";
+      access: string;
+      refresh: string;
+      expires: number;
+      accountId?: string;
+    }
   | { type: "api_key"; key: string };
 
 /**
@@ -55,7 +61,13 @@ export function applyServedCredential(path: string, c: ServedCredential): void {
   const entry: PiCred =
     c.kind === "api_key"
       ? { type: "api_key", key: c.access }
-      : { type: "oauth", access: c.access, refresh: "", expires: c.expires, ...(c.accountId ? { accountId: c.accountId } : {}) };
+      : {
+          type: "oauth",
+          access: c.access,
+          refresh: "",
+          expires: c.expires,
+          ...(c.accountId ? { accountId: c.accountId } : {}),
+        };
   const merged = readAuthFile(path);
   merged[c.provider] = entry;
   writeAuthFile(path, merged);

@@ -3,18 +3,19 @@
  * Files: click to select, double-click to open, right-click context menu, draggable.
  * Folders: click to expand/collapse, drop target for moves.
  */
-import { useEffect, useRef, useState } from "react";
+
 import { cn } from "@houston-ai/core";
-import type { FileEntry } from "./types";
-import type { FolderNode } from "./tree";
+import { useEffect, useRef, useState } from "react";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
 import {
-  FolderIcon,
   DisclosureChevron,
+  FolderIcon,
   getFileIcon,
 } from "./file-manager-icons";
-import { formatSize, formatFileManagerDate, getKind } from "./utils";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
+import type { FolderNode } from "./tree";
+import type { FileEntry } from "./types";
+import { formatFileManagerDate, formatSize, getKind } from "./utils";
 
 const DEPTH_INDENT = 20;
 const BASE_INDENT = 12;

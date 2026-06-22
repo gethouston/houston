@@ -1,8 +1,8 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { buildLocalHost } from "./host";
 import { houstonSystemPrompt } from "../houston-prompt";
+import { buildLocalHost } from "./host";
 
 /**
  * The local host entry point — the desktop sidecar the Tauri shell spawns. Same

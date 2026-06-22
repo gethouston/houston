@@ -2,8 +2,9 @@
  * macOS Finder-style file icons and disclosure triangle.
  * SVGs designed to match Finder's 16x16 list-view icons.
  */
-import type { ReactNode } from "react";
+
 import { cn } from "@houston-ai/core";
+import type { ReactNode } from "react";
 
 const IC = "size-4 shrink-0";
 

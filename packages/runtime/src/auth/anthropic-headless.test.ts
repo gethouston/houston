@@ -1,8 +1,8 @@
-import { test, expect, afterEach } from "bun:test";
+import { afterEach, expect, test } from "bun:test";
 import {
   getOAuthProvider,
-  resetOAuthProviders,
   type OAuthLoginCallbacks,
+  resetOAuthProviders,
 } from "@earendil-works/pi-ai/oauth";
 import {
   anthropicHeadlessOAuthProvider,

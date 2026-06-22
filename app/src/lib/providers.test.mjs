@@ -1,13 +1,13 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
   getEffortLevels,
-  validEffortOrDefault,
-  validModelOrNull,
-  normalizeLegacyModel,
   getProvider,
   getVisibleProviders,
+  normalizeLegacyModel,
   PROVIDERS,
+  validEffortOrDefault,
+  validModelOrNull,
 } from "./providers.ts";
 
 test("effort levels are per model", () => {
@@ -161,7 +161,10 @@ test("getVisibleProviders hides api-key providers off the new engine, shows them
   assert.ok(!onRustEngine.some((p) => p.auth === "apiKey"));
   assert.ok(onRustEngine.some((p) => p.id === "anthropic"));
   assert.ok(onRustEngine.some((p) => p.id === "openai"));
-  assert.equal(onRustEngine.length, PROVIDERS.filter((p) => p.auth !== "apiKey").length);
+  assert.equal(
+    onRustEngine.length,
+    PROVIDERS.filter((p) => p.auth !== "apiKey").length,
+  );
 });
 
 test("normalized legacy model resolves through validModelOrNull (no Opus->Sonnet downgrade)", () => {

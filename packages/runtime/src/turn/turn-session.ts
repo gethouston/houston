@@ -1,29 +1,29 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { getModel } from "@earendil-works/pi-ai";
 import {
   type AgentSessionEvent,
   AuthStorage,
+  createAgentSession,
   ModelRegistry,
   SessionManager,
-  createAgentSession,
 } from "@earendil-works/pi-coding-agent";
-import { getModel } from "@earendil-works/pi-ai";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import type {
   TokenUsage,
   ToolCallRecord,
   WireEvent,
 } from "@houston/runtime-client";
-import { config } from "../config";
-import { providerDefaultModel } from "../ai/providers";
 import { toThinkingLevel } from "../ai/effort";
+import { providerDefaultModel } from "../ai/providers";
+import { config } from "../config";
 import { makeAgentLoader } from "../session/resource-loader";
-import { toWire } from "../session/wire";
 import {
   CLAMPED_FILE_TOOL_NAMES,
   makeClampedFileTools,
 } from "../session/tools/clamped-fs";
-import { makeRunCodeTool } from "../session/tools/run-code";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
+import { makeRunCodeTool } from "../session/tools/run-code";
+import { toWire } from "../session/wire";
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,
@@ -62,7 +62,8 @@ function resolveTurnModel(
       settings = {};
     }
   }
-  const modelId = override || settings.models?.[provider] || providerDefaultModel(provider);
+  const modelId =
+    override || settings.models?.[provider] || providerDefaultModel(provider);
   return getModel(provider as never, modelId as never);
 }
 
@@ -127,7 +128,9 @@ export async function runPiTurn(
     // (opencode.ai/zen/go/v1 = OpenCode Go, openai/chatgpt = Codex). Unambiguous,
     // unlike asking the model itself.
     const m = model as unknown as { id?: string; baseUrl?: string };
-    console.log(`[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`);
+    console.log(
+      `[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`,
+    );
     const { session } = await createAgentSession({
       cwd: workspaceDir,
       agentDir: dataDir,

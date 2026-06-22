@@ -1,5 +1,4 @@
-import { test, expect } from "bun:test";
-import type { Activity, Routine, RoutineRun } from "@houston/protocol";
+import { expect, test } from "bun:test";
 import {
   createRoutine,
   createRoutineRun,
@@ -8,12 +7,13 @@ import {
   saveRoutineRuns,
   saveRoutines,
 } from "@houston/domain";
+import type { Activity, Routine, RoutineRun } from "@houston/protocol";
+import { CloudPaths } from "../paths";
+import { workspaceRoot } from "../routes/agent-data";
 import { MemoryWorkspaceStore } from "../store/memory";
-import { MemoryVfs } from "../vfs";
 import { MemoryTurnBus } from "../turn/bus";
 import { conversationKey, prefixFor } from "../turn/deps";
-import { workspaceRoot } from "../routes/agent-data";
-import { CloudPaths } from "../paths";
+import { MemoryVfs } from "../vfs";
 import { reconcileAgentRuns } from "./reconcile";
 
 /**

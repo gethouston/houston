@@ -1,12 +1,12 @@
-import { useCallback } from "react";
 import {
+  ExternalLinkIcon,
+  FileCodeIcon,
   FileIcon,
   FileTextIcon,
-  FileCodeIcon,
   ImageIcon,
-  ExternalLinkIcon,
 } from "lucide-react";
 import type { ComponentType } from "react";
+import { useCallback } from "react";
 import { tauriFiles } from "../lib/tauri";
 
 type LucideIcon = ComponentType<{ className?: string }>;

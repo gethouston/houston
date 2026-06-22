@@ -1,4 +1,4 @@
-import type { Workspace, Agent } from "../../../../ui/engine-client/src/types";
+import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
 
 /**
  * The new engine is single-workspace / single-user with no agent concept, but
@@ -52,7 +52,8 @@ export function toNewProvider(
   name: string,
 ): "anthropic" | "openai-codex" | "opencode" | "opencode-go" | null {
   if (name === "anthropic") return "anthropic";
-  if (name === "openai" || name === "openai-codex" || name === "codex") return "openai-codex";
+  if (name === "openai" || name === "openai-codex" || name === "codex")
+    return "openai-codex";
   if (name === "opencode") return "opencode";
   if (name === "opencode-go") return "opencode-go";
   return null;

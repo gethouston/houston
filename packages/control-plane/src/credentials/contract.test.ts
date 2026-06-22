@@ -1,10 +1,10 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
-import { MemoryCredentialStore } from "./store";
 import { FileCredentialStore } from "./file-store";
+import { MemoryCredentialStore } from "./store";
 
 /**
  * The CredentialStore CONTRACT, run verbatim against every locally-testable

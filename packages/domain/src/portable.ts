@@ -1,11 +1,11 @@
-import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
 import {
-  PORTABLE_FORMAT_VERSION,
   type Learning,
+  PORTABLE_FORMAT_VERSION,
   type PortableInventory,
   type PortableManifest,
   type Routine,
 } from "@houston/protocol";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
 /**
  * Pack / unpack a `.houstonagent` — a zip of an agent's shareable content. Pure

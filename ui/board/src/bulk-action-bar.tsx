@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Button,
   ConfirmDialog,
@@ -8,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "@houston-ai/core";
 import { Archive, ChevronDown, Trash2, X } from "lucide-react";
+import { useState } from "react";
 
 /** A status a selection can be moved to (e.g. Done / Needs me). */
 export interface BulkMoveTarget {

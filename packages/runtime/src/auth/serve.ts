@@ -1,13 +1,13 @@
 import { join } from "node:path";
-import { config } from "../config";
-import { authStorage } from "./storage";
 import { PROVIDERS } from "../ai/providers";
+import { config } from "../config";
 import {
   applyServedCredential,
   readAuthFile,
-  scrubRefreshTokensAt,
   type ServedCredential,
+  scrubRefreshTokensAt,
 } from "./auth-file";
+import { authStorage } from "./storage";
 
 /**
  * Connect-once serve mode (security Gate #2: access-token-only).
@@ -55,9 +55,12 @@ export async function syncServedCredential(): Promise<string[]> {
   if (!serveModeOn()) return [];
   const applied: string[] = [];
   for (const p of PROVIDERS) {
-    const res = await fetch(`${config.controlPlaneUrl}/sandbox/credential?provider=${p.id}`, {
-      headers: { Authorization: `Bearer ${config.sandboxToken}` },
-    });
+    const res = await fetch(
+      `${config.controlPlaneUrl}/sandbox/credential?provider=${p.id}`,
+      {
+        headers: { Authorization: `Bearer ${config.sandboxToken}` },
+      },
+    );
     if (res.status === 404) continue; // this provider isn't connected
     if (!res.ok) {
       // Internal serve hiccup for ONE provider must not strand the others; the
@@ -67,7 +70,10 @@ export async function syncServedCredential(): Promise<string[]> {
       );
       continue;
     }
-    applyServedCredential(authPathFor(), (await res.json()) as ServedCredential);
+    applyServedCredential(
+      authPathFor(),
+      (await res.json()) as ServedCredential,
+    );
     applied.push(p.id);
   }
   // pi's AuthStorage caches auth.json in memory at startup; a direct write is
@@ -94,7 +100,13 @@ export function exportCredential(): {
     // Only OAuth credentials are captured centrally via export; an API key is
     // submitted straight to the host, never round-tripped through the runtime.
     if (c?.type === "oauth" && c.access && c.refresh) {
-      return { provider, access: c.access, refresh: c.refresh, expires: c.expires, accountId: c.accountId };
+      return {
+        provider,
+        access: c.access,
+        refresh: c.refresh,
+        expires: c.expires,
+        accountId: c.accountId,
+      };
     }
   }
   return null;

@@ -1,18 +1,26 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
-import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import { tauriProvider, tauriSystem, type ProviderStatus } from "../../lib/tauri";
-import { PROVIDERS, getVisibleProviders, type ProviderInfo } from "../../lib/providers";
-import { newEngineActive } from "../../lib/engine";
-import { useUIStore } from "../../stores/ui";
+import { ConfirmDialog, Spinner } from "@houston-ai/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
+import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { ProviderLoginDialog } from "./provider-login-dialog";
-import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
-import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
+import {
+  getVisibleProviders,
+  PROVIDERS,
+  type ProviderInfo,
+} from "../../lib/providers";
+import {
+  type ProviderStatus,
+  tauriProvider,
+  tauriSystem,
+} from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
 import { ProviderAccountRow } from "./provider-account-row";
+import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
+import { ProviderLoginDialog } from "./provider-login-dialog";
+import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { providerAppearsConnected } from "./provider-reconnect-state";
 
 /**
@@ -52,7 +60,10 @@ export function ProviderSettings() {
   // API-key providers run only on the new TS engine; hide them on the Rust
   // engine where they can't connect. Computed once — the engine doesn't change
   // mid-session.
-  const visibleProviders = useMemo(() => getVisibleProviders({ newEngine: newEngineActive() }), []);
+  const visibleProviders = useMemo(
+    () => getVisibleProviders({ newEngine: newEngineActive() }),
+    [],
+  );
 
   // First scan is treated as the baseline so opening Settings while a
   // provider is already connected doesn't fire a fake "X connected" toast.
@@ -237,7 +248,9 @@ export function ProviderSettings() {
       // loopback callback (Codex browser login), a remote webapp can't (device
       // code) — so no flag is needed here. Claude keys off the runtime's
       // headless mode regardless.
-      await tauriProvider.launchLogin(provider.id);
+      // `toast: false`: the catch below renders the provider-specific failure
+      // toast, so `call` must not also toast the same message (it showed twice).
+      await tauriProvider.launchLogin(provider.id, { toast: false });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
@@ -376,7 +389,10 @@ export function ProviderSettings() {
         onClose={() => setLoginDialog(null)}
       />
 
-      <ProviderApiKeyDialog provider={apiKeyDialog} onClose={() => setApiKeyDialog(null)} />
+      <ProviderApiKeyDialog
+        provider={apiKeyDialog}
+        onClose={() => setApiKeyDialog(null)}
+      />
     </>
   );
 }

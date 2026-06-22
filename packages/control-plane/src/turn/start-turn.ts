@@ -1,9 +1,13 @@
 import type { ServerResponse } from "node:http";
-import type { Agent, Workspace } from "../domain/types";
-import { isApiKeyCredential, type TurnPin, type WorkspaceCredential } from "../ports";
 import { isExpiring } from "../credentials/refresh";
-import { json, prefixFor, PROVIDER, readSettings, type TurnDeps } from "./deps";
+import type { Agent, Workspace } from "../domain/types";
+import {
+  isApiKeyCredential,
+  type TurnPin,
+  type WorkspaceCredential,
+} from "../ports";
 import { isCloudProvider } from "../providers";
+import { json, PROVIDER, prefixFor, readSettings, type TurnDeps } from "./deps";
 import { TurnQuotaError } from "./quota";
 import { pumpSse } from "./sse";
 
@@ -38,7 +42,10 @@ export async function freshCredential(
  * it's one the cloud runtime offers, else Codex (the cloud default). Anthropic
  * is never served in cloud (ToS), so a stale anthropic setting falls back too.
  */
-async function activeCloudProvider(deps: TurnDeps, prefix: string): Promise<string> {
+async function activeCloudProvider(
+  deps: TurnDeps,
+  prefix: string,
+): Promise<string> {
   const settings = await readSettings(deps, prefix);
   const saved = settings.activeProvider;
   return saved && isCloudProvider(saved) ? saved : PROVIDER;
@@ -75,45 +82,51 @@ export async function dispatchTurn(
   }
   const prefix = prefixFor(ws, agent);
   const provider = await activeCloudProvider(deps, prefix);
-  const started = await deps.relay.start(agent.id, `${agent.id}/${cid}`, async (publish, signal) => {
-    try {
-      const cred = await freshCredential(deps, ws.id, provider);
-      const idToken = await deps.idToken();
-      const upstream = await fetch(`${deps.runtimeUrl.replace(/\/$/, "")}/turn`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(deps.turnToken ? { "x-internal-token": deps.turnToken } : {}),
-          ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
-        },
-        body: JSON.stringify({
-          workspaceId: ws.id,
-          agentId: agent.id,
-          conversationId: cid,
-          text,
-          nonce,
-          // Routine model/effort pins (omitted when absent → runtime inherits).
-          ...(pin?.model ? { model: pin.model } : {}),
-          ...(pin?.effort ? { effort: pin.effort } : {}),
-          gcsPrefix: prefix,
-          credential: cred
-            ? {
-                provider: cred.provider,
-                access: cred.accessToken,
-                expires: cred.expiresAt,
-                accountId: cred.accountId ?? null,
-                kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
-              }
-            : null,
-        }),
-        signal,
-      });
-      if (!upstream.ok || !upstream.body) {
-        throw new Error(
-          `turn runtime ${upstream.status}: ${await upstream.text().catch(() => "")}`,
+  const started = await deps.relay.start(
+    agent.id,
+    `${agent.id}/${cid}`,
+    async (publish, signal) => {
+      try {
+        const cred = await freshCredential(deps, ws.id, provider);
+        const idToken = await deps.idToken();
+        const upstream = await fetch(
+          `${deps.runtimeUrl.replace(/\/$/, "")}/turn`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              ...(deps.turnToken ? { "x-internal-token": deps.turnToken } : {}),
+              ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
+            },
+            body: JSON.stringify({
+              workspaceId: ws.id,
+              agentId: agent.id,
+              conversationId: cid,
+              text,
+              nonce,
+              // Routine model/effort pins (omitted when absent → runtime inherits).
+              ...(pin?.model ? { model: pin.model } : {}),
+              ...(pin?.effort ? { effort: pin.effort } : {}),
+              gcsPrefix: prefix,
+              credential: cred
+                ? {
+                    provider: cred.provider,
+                    access: cred.accessToken,
+                    expires: cred.expiresAt,
+                    accountId: cred.accountId ?? null,
+                    kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
+                  }
+                : null,
+            }),
+            signal,
+          },
         );
-      }
-      await pumpSse(upstream.body, publish);
+        if (!upstream.ok || !upstream.body) {
+          throw new Error(
+            `turn runtime ${upstream.status}: ${await upstream.text().catch(() => "")}`,
+          );
+        }
+        await pumpSse(upstream.body, publish);
       } finally {
         await release();
       }

@@ -1,5 +1,6 @@
 import { deepStrictEqual, ok, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import { buildMissionBoardColumns } from "../src/components/mission-board-columns.ts";
 import {
   ARCHIVED_STATUS,
   BULK_MOVE_TARGETS,
@@ -7,10 +8,9 @@ import {
   isArchived,
   moveTargetsForSection,
   selectActive,
-  selectArchived,
   selectAllIds,
+  selectArchived,
 } from "../src/lib/mission-selection.ts";
-import { buildMissionBoardColumns } from "../src/components/mission-board-columns.ts";
 
 describe("mission selection", () => {
   const items = [

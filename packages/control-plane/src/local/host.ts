@@ -1,24 +1,27 @@
-import { join } from "node:path";
-import type { Server } from "node:http";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
-import { LOCAL_CAPABILITIES } from "../capabilities";
-import { LocalWorkspaceStore } from "../store/local";
-import { FsVfs } from "../vfs";
-import { LocalPaths } from "../paths";
-import { MemoryTurnBus } from "../turn/bus";
-import { BusEventHub } from "../events/hub";
-import { EnvCredentialVault } from "../credentials/vault";
-import { FileCredentialStore } from "../credentials/file-store";
-import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
-import { BunRuntimeSpawner } from "../launcher/bun-spawner";
-import { ProxyChannel } from "../channel/proxy";
-import { SingleUserVerifier } from "../auth/verify";
-import { FsWatcher } from "../watch/watcher";
-import { Scheduler } from "../schedule/scheduler";
-import { ChannelRoutineFirer } from "../schedule/firer";
-import { forward } from "../proxy/route";
 import { existsSync } from "node:fs";
+import type { Server } from "node:http";
+import { dirname, join } from "node:path";
+import { SingleUserVerifier } from "../auth/verify";
+import { LOCAL_CAPABILITIES } from "../capabilities";
+import { ProxyChannel } from "../channel/proxy";
+import { FileCredentialStore } from "../credentials/file-store";
+import { EnvCredentialVault } from "../credentials/vault";
+import { BusEventHub } from "../events/hub";
+import { ComposioProvider } from "../integrations/composio";
+import { FileIntegrationCredentialStore } from "../integrations/credential-store";
+import { IntegrationRegistry } from "../integrations/registry";
+import { BunRuntimeSpawner } from "../launcher/bun-spawner";
+import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
 import { migrateChatHistory } from "../migrate/chat-history";
+import { LocalPaths } from "../paths";
+import { forward } from "../proxy/route";
+import { ChannelRoutineFirer } from "../schedule/firer";
+import { Scheduler } from "../schedule/scheduler";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { LocalWorkspaceStore } from "../store/local";
+import { MemoryTurnBus } from "../turn/bus";
+import { FsVfs } from "../vfs";
+import { FsWatcher } from "../watch/watcher";
 
 /** The single local user every request resolves to. */
 export const LOCAL_USER = "local-owner";
@@ -128,6 +131,16 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     credentials,
   });
 
+  // Integrations: Composio "for you" (the user's own free account). The user's
+  // key persists beside the connect-once credential file; the registry holds the
+  // adapter(s) the routes + sandbox proxy dispatch through.
+  const integrations = {
+    registry: new IntegrationRegistry([new ComposioProvider()]),
+    credentials: new FileIntegrationCredentialStore(
+      join(dirname(opts.credentialsPath), "integrations.json"),
+    ),
+  };
+
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -138,6 +151,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     events,
     channels: { local: channel },
     capabilities: LOCAL_CAPABILITIES,
+    integrations,
     corsOrigin: "*",
   };
 

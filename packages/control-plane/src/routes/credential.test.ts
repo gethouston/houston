@@ -1,8 +1,8 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { handleSandboxCredential } from "./credential";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { CredentialVault } from "../ports";
+import { handleSandboxCredential } from "./credential";
 
 /**
  * The sandbox credential endpoint must keep serving a turn even when the stored
@@ -15,15 +15,30 @@ import type { CredentialVault } from "../ports";
 
 const vault: CredentialVault = {
   sandboxToken: () => "sbx",
-  validateSandboxToken: (t) => (t === "sbx" ? { workspaceId: "w1", agentId: "a1" } : null),
+  validateSandboxToken: (t) =>
+    t === "sbx" ? { workspaceId: "w1", agentId: "a1" } : null,
 };
 
 function mockReq(token = "sbx"): IncomingMessage {
-  return { headers: { authorization: `Bearer ${token}` } } as unknown as IncomingMessage;
+  return {
+    headers: { authorization: `Bearer ${token}` },
+  } as unknown as IncomingMessage;
 }
 
-function mockRes(): { res: ServerResponse; out: { status?: number; body?: any } } {
-  const out: { status?: number; body?: any } = {};
+type ServedBody = {
+  provider?: string;
+  access?: string;
+  expires?: number;
+  accountId?: string | null;
+  kind?: string;
+  error?: string;
+};
+
+function mockRes(): {
+  res: ServerResponse;
+  out: { status?: number; body: ServedBody };
+} {
+  const out: { status?: number; body: ServedBody } = { body: {} };
   const res = {
     writeHead(status: number) {
       out.status = status;
@@ -35,7 +50,11 @@ function mockRes(): { res: ServerResponse; out: { status?: number; body?: any } 
   return { res, out };
 }
 
-const call = (credentials: MemoryCredentialStore, provider: string, out: ReturnType<typeof mockRes>) =>
+const call = (
+  credentials: MemoryCredentialStore,
+  provider: string,
+  out: ReturnType<typeof mockRes>,
+) =>
   handleSandboxCredential(
     { vault, credentials },
     "GET",
@@ -77,7 +96,11 @@ test("serves an api-key credential as kind=api_key without refreshing", async ()
   const r = mockRes();
   expect(await call(credentials, "opencode-go", r)).toBe(true);
   expect(r.out.status).toBe(200);
-  expect(r.out.body).toMatchObject({ provider: "opencode-go", access: "sk-go", kind: "api_key" });
+  expect(r.out.body).toMatchObject({
+    provider: "opencode-go",
+    access: "sk-go",
+    kind: "api_key",
+  });
 });
 
 test("404 when the workspace has not connected the provider", async () => {

@@ -1,11 +1,11 @@
+import { timingSafeEqual } from "node:crypto";
 import {
   createServer,
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { timingSafeEqual } from "node:crypto";
 import { config } from "./config";
-import { runInSandbox, DEFAULT_LIMITS, type RunRequest } from "./run";
+import { DEFAULT_LIMITS, type RunRequest, runInSandbox } from "./run";
 
 function json(res: ServerResponse, status: number, body: unknown) {
   const buf = Buffer.from(JSON.stringify(body));

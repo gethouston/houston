@@ -1,6 +1,6 @@
+import { Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Sun, Moon } from "lucide-react";
 import { tauriPreferences } from "../../../lib/tauri";
 import { setTheme, type Theme } from "../../../lib/theme";
 

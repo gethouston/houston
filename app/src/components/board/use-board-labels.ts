@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 import type { AIBoardProps } from "@houston-ai/board";
+import { useTranslation } from "react-i18next";
 
 /**
  * Translated label bundles AIBoard needs that are identical for both board

@@ -1,16 +1,16 @@
+import { type FileEntry, FilesBrowser } from "@houston-ai/agent";
+import { isTauri } from "@tauri-apps/api/core";
+import { FolderOpen } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { isTauri } from "@tauri-apps/api/core";
-import { FilesBrowser, type FileEntry } from "@houston-ai/agent";
-import { FolderOpen } from "lucide-react";
 import {
-  useFiles,
-  useDeleteFile,
-  useRenameFile,
   useCreateFolder,
+  useDeleteFile,
+  useFiles,
+  useRenameFile,
 } from "../../hooks/queries";
-import { tauriFiles } from "../../lib/tauri";
 import { saveBlob } from "../../lib/save-blob";
+import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
 import { FilePreviewDialog } from "./file-preview-dialog";
 

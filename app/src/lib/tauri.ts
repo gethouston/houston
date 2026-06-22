@@ -12,22 +12,24 @@
  */
 
 import type {
-  Workspace,
-  Agent,
-  SkillSummary,
-  SkillDetail,
-  FileEntry,
-} from "./types";
-import type {
-  ProviderAuthState,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
+  ProviderAuthState,
 } from "@houston-ai/engine-client";
-import { getEngine } from "./engine";
-import { osIsTauri, osPickDirectory } from "./os-bridge";
-import { logger } from "./logger";
-import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
+import { getEngine } from "./engine";
+import { engineCallSurface } from "./engine-call-policy";
+import { logger } from "./logger";
+import { osIsTauri, osPickDirectory } from "./os-bridge";
+import { normalizeLegacyModel } from "./providers";
+import type {
+  Agent,
+  FileEntry,
+  SkillDetail,
+  SkillSummary,
+  Workspace,
+} from "./types";
+
 export { withAttachmentPaths } from "./attachment-message";
 
 interface EngineCallOptions {
@@ -72,12 +74,12 @@ async function surfaceError(
     context ? JSON.stringify(context) : undefined,
   );
 
-  // Aborted requests (user typed again, navigated away, cancelled a sign-in)
-  // are expected, not failures — never toast or report them.
-  if (err instanceof Error && err.name === "AbortError") return;
-
-  const shouldToast = options?.toast !== false;
-  const shouldCapture = options?.capture !== false;
+  // Aborted requests are expected; `toast: false` callers render their own
+  // failure UI but the error is still captured. See `engineCallSurface`.
+  const { toast: shouldToast, capture: shouldCapture } = engineCallSurface(
+    err instanceof Error ? err.name : undefined,
+    options,
+  );
   if (!shouldToast && !shouldCapture) return;
 
   const { showErrorToast, reportError } = await import("./error-toast");
@@ -447,12 +449,12 @@ function conversationToRaw(
 
 // ─── Routines (engine-backed: CRUD + scheduler) ───────────────────────
 
-import * as activityData from "../data/activity";
-import * as configData from "../data/config";
 import type {
   NewRoutine as EngineNewRoutine,
   RoutineUpdate as EngineRoutineUpdate,
 } from "@houston-ai/engine-client";
+import * as activityData from "../data/activity";
+import * as configData from "../data/config";
 
 export const tauriRoutines = {
   list: (agentPath: string) =>
@@ -624,16 +626,28 @@ export const tauriProvider = {
       await eng.setPreference(DEFAULT_PROVIDER_PREF_KEY, provider);
       await eng.setPreference(DEFAULT_MODEL_PREF_KEY, model);
     }),
-  launchLogin: (provider: string, opts?: { deviceAuth?: boolean }) =>
+  launchLogin: (
+    provider: string,
+    opts?: { deviceAuth?: boolean; toast?: boolean },
+  ) =>
     // `deviceAuth` declares whether the client can catch a loopback OAuth
     // callback. Default it from the platform: the co-located desktop CAN
     // (false → Codex browser/loopback login), a remote webapp can't (true →
     // device code). Callers may still override. Centralized here so every
     // entry point (picker, settings, reconnect card, banner) agrees.
-    call<void>("launch_provider_login", () =>
-      getEngine().providerLogin(provider, {
-        deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
-      }),
+    call<void>(
+      "launch_provider_login",
+      () =>
+        getEngine().providerLogin(provider, {
+          deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
+        }),
+      undefined,
+      // Callers that render their OWN failure toast (the picker, settings) pass
+      // `toast: false` so `call`'s generic toast does not fire on top of theirs
+      // — the engine error message showed twice otherwise. Sentry capture still
+      // happens. Callers that surface the failure inline (reconnect cards /
+      // banner) omit it and keep this toast.
+      opts?.toast === false ? { toast: false } : undefined,
     ),
   launchLogout: (provider: string) =>
     call<void>("launch_provider_logout", () =>
@@ -661,7 +675,9 @@ export const tauriProvider = {
    * pending spinners clear without an error toast.
    */
   cancelLogin: (provider: string) =>
-    call<void>("cancel_provider_login", () => getEngine().cancelProviderLogin(provider)),
+    call<void>("cancel_provider_login", () =>
+      getEngine().cancelProviderLogin(provider),
+    ),
   /**
    * Connect an API-key provider (OpenCode Zen / Go): submit the pasted key. The
    * new engine stores it for the workspace and the provider reads as connected
@@ -669,7 +685,9 @@ export const tauriProvider = {
    * shows these providers only when `newEngineActive()`.
    */
   setApiKey: (provider: string, apiKey: string) =>
-    call<void>("set_provider_api_key", () => getEngine().setProviderApiKey(provider, apiKey)),
+    call<void>("set_provider_api_key", () =>
+      getEngine().setProviderApiKey(provider, apiKey),
+    ),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────

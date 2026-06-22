@@ -1,30 +1,34 @@
-import {
-  createAgentSession,
-  SessionManager,
-  type AgentSession,
-  type AgentSessionEvent,
-} from "@earendil-works/pi-coding-agent";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
+import {
+  type AgentSession,
+  type AgentSessionEvent,
+  createAgentSession,
+  SessionManager,
+} from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, ToolCallRecord } from "@houston/runtime-client";
-import { toWire } from "./wire";
-import { config } from "../config";
-import { authStorage, modelRegistry } from "../auth/storage";
-import { resolveModel, activeProvider } from "../ai/providers";
 import { toThinkingLevel } from "../ai/effort";
-import { makeAgentLoader } from "./resource-loader";
+import { activeProvider, resolveModel } from "../ai/providers";
+import { syncServedCredential } from "../auth/serve";
+import { authStorage, modelRegistry } from "../auth/storage";
+import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
 } from "../store/conversations";
 import { publish } from "./bus";
-import { syncServedCredential } from "../auth/serve";
-import { makeRunCodeTool } from "./tools/run-code";
-import { makeIdTokenProvider } from "./tools/gcp-id-token";
+import { makeAgentLoader } from "./resource-loader";
 import {
   CLAMPED_FILE_TOOL_NAMES,
   makeClampedFileTools,
 } from "./tools/clamped-fs";
+import { makeIdTokenProvider } from "./tools/gcp-id-token";
+import {
+  INTEGRATION_TOOL_NAMES,
+  makeIntegrationTools,
+} from "./tools/integrations";
+import { makeRunCodeTool } from "./tools/run-code";
+import { toWire } from "./wire";
 
 // Workspace-clamped file tools (security Gate #1). These shadow pi's builtins
 // by name: pi's defaults resolve absolute paths as-is, so without the clamp a
@@ -51,13 +55,26 @@ const runCodeTool = useRemoteSandbox
     })
   : null;
 
+// Integration tools (Composio "for you"): available whenever this runtime can
+// reach its host with a sandbox token (server mode — local desktop + standing
+// pods). They hold no credential; they proxy to /sandbox/integrations and the
+// host uses the user's own connected account.
+const integrationTools =
+  config.controlPlaneUrl && config.sandboxToken
+    ? makeIntegrationTools({
+        baseUrl: config.controlPlaneUrl,
+        sandboxToken: config.sandboxToken,
+      })
+    : [];
+
 // pi filters ALL tools (built-in and custom) against this name allowlist. A
 // built-in like `bash` needs only its name here; a custom tool like `run_code`
 // needs BOTH its name here AND its object in `customTools` (below) — omit either
 // and pi filters it out. This is the pi SDK's design, not accidental duplication.
-const TOOLS = useRemoteSandbox
-  ? [...FILE_TOOLS, "run_code"]
-  : [...FILE_TOOLS, "bash"];
+const TOOLS = [
+  ...(useRemoteSandbox ? [...FILE_TOOLS, "run_code"] : [...FILE_TOOLS, "bash"]),
+  ...(integrationTools.length ? INTEGRATION_TOOL_NAMES : []),
+];
 
 type Conversation = { session: AgentSession; queue: Promise<unknown> };
 const conversations = new Map<string, Conversation>();
@@ -92,7 +109,11 @@ async function getConversation(id: string): Promise<Conversation> {
     sessionManager,
     resourceLoader: loader,
     tools: TOOLS,
-    customTools: [...fileTools, ...(runCodeTool ? [runCodeTool] : [])],
+    customTools: [
+      ...fileTools,
+      ...(runCodeTool ? [runCodeTool] : []),
+      ...integrationTools,
+    ],
   });
 
   const conv: Conversation = { session, queue: Promise.resolve() };
@@ -189,7 +210,9 @@ export async function ensureProviderForTurn(): Promise<string | null> {
   if (provider) {
     try {
       const m = resolveModel() as { id?: string; baseUrl?: string };
-      console.log(`[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`);
+      console.log(
+        `[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`,
+      );
     } catch {
       /* resolveModel can throw on a bad pin; the turn surfaces it as an error */
     }

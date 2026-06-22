@@ -4,10 +4,10 @@
  * and the mobile sync responder so the flow stays identical.
  */
 
-import { tauriActivity, tauriChat } from "./tauri";
-import { logger } from "./logger";
 import { analytics } from "./analytics";
+import { logger } from "./logger";
 import { fallbackMissionTitle, refreshMissionTitle } from "./mission-title";
+import { tauriActivity, tauriChat } from "./tauri";
 
 /** Build a session key for a given activity id. */
 function sessionKeyForActivity(activityId: string): string {

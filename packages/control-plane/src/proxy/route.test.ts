@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   createServer,
   type IncomingMessage,
@@ -6,8 +6,8 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { AddressInfo } from "node:net";
-import { forward } from "./route";
 import type { RuntimeEndpoint } from "../ports";
+import { forward } from "./route";
 
 /** Spin up a node:http server on an ephemeral port and resolve its base URL. */
 function listen(

@@ -1,6 +1,6 @@
-import { CATEGORY_LABELS } from "./types";
-import type { LearningCategory } from "./types";
 import { Trash2 } from "lucide-react";
+import type { LearningCategory } from "./types";
+import { CATEGORY_LABELS } from "./types";
 
 export interface LearningRowProps {
   content: string;

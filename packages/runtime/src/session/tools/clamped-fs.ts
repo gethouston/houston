@@ -1,3 +1,12 @@
+import { constants } from "node:fs";
+import {
+  access as fsAccess,
+  mkdir as fsMkdir,
+  readdir as fsReaddir,
+  readFile as fsReadFile,
+  stat as fsStat,
+  writeFile as fsWriteFile,
+} from "node:fs/promises";
 import {
   createEditToolDefinition,
   createFindToolDefinition,
@@ -8,15 +17,6 @@ import {
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
 import type { TSchema } from "typebox";
-import { constants } from "node:fs";
-import {
-  access as fsAccess,
-  mkdir as fsMkdir,
-  readdir as fsReaddir,
-  readFile as fsReadFile,
-  stat as fsStat,
-  writeFile as fsWriteFile,
-} from "node:fs/promises";
 import { WorkspaceGuard } from "./fs-guard";
 
 /**

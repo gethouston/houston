@@ -1,8 +1,8 @@
 "use client";
 
 import { memo } from "react";
-import type { ToolEntry } from "./feed-to-messages";
 import { CodeBlockActions } from "./code-block-actions";
+import type { ToolEntry } from "./feed-to-messages";
 import { TruncatedCode, truncateStr } from "./tool-code";
 
 export const ToolContent = memo(({ tool }: { tool: ToolEntry }) => {

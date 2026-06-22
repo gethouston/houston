@@ -1,7 +1,7 @@
-import { test, expect } from "bun:test";
-import { MemoryCredentialStore } from "./store";
-import { isExpiring } from "./refresh";
+import { expect, test } from "bun:test";
 import type { WorkspaceCredential } from "../ports";
+import { isExpiring } from "./refresh";
+import { MemoryCredentialStore } from "./store";
 
 const cred = (
   over: Partial<WorkspaceCredential> = {},

@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -15,7 +15,14 @@ import { applyServedCredential, scrubRefreshTokensAt } from "./auth-file";
 
 type AuthFile = Record<
   string,
-  { type: string; access?: string; refresh?: string; expires?: number; accountId?: string; key?: string }
+  {
+    type: string;
+    access?: string;
+    refresh?: string;
+    expires?: number;
+    accountId?: string;
+    key?: string;
+  }
 >;
 
 const freshAuthPath = () =>
@@ -107,7 +114,10 @@ test("an API-key served credential is written as pi's api_key variant (no refres
     kind: "api_key",
   });
   const auth = readAuth(path);
-  expect(auth["opencode"]).toEqual({ type: "api_key", key: "sk-opencode-zen-key" });
+  expect(auth.opencode).toEqual({
+    type: "api_key",
+    key: "sk-opencode-zen-key",
+  });
   // No oauth fields leak in for an API key.
   expect(JSON.stringify(auth)).not.toContain("refresh");
 });
@@ -117,13 +127,18 @@ test("scrub leaves api_key entries untouched (nothing to scrub)", () => {
   writeFileSync(
     path,
     JSON.stringify({
-      "openai-codex": { type: "oauth", access: "A1", refresh: "RT-1", expires: 1 },
+      "openai-codex": {
+        type: "oauth",
+        access: "A1",
+        refresh: "RT-1",
+        expires: 1,
+      },
       opencode: { type: "api_key", key: "sk-opencode" },
     }),
   );
   expect(scrubRefreshTokensAt(path)).toEqual(["openai-codex"]);
   const auth = readAuth(path);
-  expect(auth["opencode"]).toEqual({ type: "api_key", key: "sk-opencode" });
+  expect(auth.opencode).toEqual({ type: "api_key", key: "sk-opencode" });
 });
 
 test("scrub is idempotent and a missing auth.json is a no-op", () => {

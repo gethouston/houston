@@ -1,6 +1,6 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import type { Agent, Workspace } from "./domain/types";
-import { CloudPaths, LocalPaths, conversationKey, settingsKey } from "./paths";
+import { CloudPaths, conversationKey, LocalPaths, settingsKey } from "./paths";
 import {
   conversationKey as turnConversationKey,
   prefixFor as turnPrefixFor,

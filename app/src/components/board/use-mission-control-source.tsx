@@ -1,17 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { useUIStore } from "../../stores/ui";
+import type { Agent } from "../../lib/types";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
+import { useUIStore } from "../../stores/ui";
+import { MissionBoardEmptyState } from "../mission-board-empty-state";
+import { MissionControlToolbar } from "../mission-control-toolbar";
 import { useMissionControl } from "../use-mission-control";
 import { useMissionSearch } from "../use-mission-search";
-import { MissionControlToolbar } from "../mission-control-toolbar";
-import { MissionBoardEmptyState } from "../mission-board-empty-state";
-import { useMcNewMission } from "./use-mc-new-mission";
-import { useMcActions } from "./use-mc-actions";
-import { useCrossAgentSelection } from "./use-cross-agent-selection";
 import type { BoardSource } from "./board-source";
-import type { Agent } from "../../lib/types";
+import { useCrossAgentSelection } from "./use-cross-agent-selection";
+import { useMcActions } from "./use-mc-actions";
+import { useMcNewMission } from "./use-mc-new-mission";
 
 /**
  * Builds the {@link BoardSource} for cross-agent Mission Control: every

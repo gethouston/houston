@@ -1,17 +1,17 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { ConversationSummary } from "@houston/runtime-client";
 import type { Agent, Workspace } from "../domain/types";
+import type { WorkspaceCredential } from "../ports";
+import { CLOUD_PROVIDERS, isApiKeyProvider, providerName } from "../providers";
 import {
   conversationKey,
   json,
-  prefixFor,
   PROVIDER,
+  prefixFor,
   readJson,
   readSettings,
   type TurnDeps,
 } from "./deps";
-import { CLOUD_PROVIDERS, isApiKeyProvider, providerName } from "../providers";
-import type { WorkspaceCredential } from "../ports";
 import { startTurn } from "./start-turn";
 
 /**
@@ -164,7 +164,8 @@ export async function dispatchCloudrun(
   }> => {
     const settings = await readSettings(deps, prefix);
     const creds = new Map<string, WorkspaceCredential | null>();
-    for (const p of CLOUD_PROVIDERS) creds.set(p.id, await deps.credentials.get(ws.id, p.id));
+    for (const p of CLOUD_PROVIDERS)
+      creds.set(p.id, await deps.credentials.get(ws.id, p.id));
     const active =
       settings.activeProvider && creds.get(settings.activeProvider)
         ? settings.activeProvider
@@ -178,13 +179,15 @@ export async function dispatchCloudrun(
       res,
       200,
       CLOUD_PROVIDERS.map((p) => {
-        const models = p.id === PROVIDER ? deps.codexModels : [...(p.models ?? [])];
+        const models =
+          p.id === PROVIDER ? deps.codexModels : [...(p.models ?? [])];
         return {
           id: p.id,
           name: p.name,
           configured: !!creds.get(p.id),
           isActive: p.id === active,
-          activeModel: settings.models?.[p.id] ?? p.defaultModel ?? models[0] ?? "",
+          activeModel:
+            settings.models?.[p.id] ?? p.defaultModel ?? models[0] ?? "",
           models,
         };
       }),
@@ -198,8 +201,9 @@ export async function dispatchCloudrun(
       settings.activeProvider = body.activeProvider;
     if (typeof body.model === "string") {
       const prov =
-        (typeof body.activeProvider === "string" ? body.activeProvider : settings.activeProvider) ??
-        PROVIDER;
+        (typeof body.activeProvider === "string"
+          ? body.activeProvider
+          : settings.activeProvider) ?? PROVIDER;
       settings.models = { ...settings.models, [prov]: body.model };
     }
     await deps.vfs.writeText(
@@ -227,7 +231,7 @@ export async function dispatchCloudrun(
 
   const auth = rest.match(/^auth\/([^/]+)\/(login|logout)$/);
   if (auth && method === "POST") {
-    const pid = auth[1]!;
+    const pid = auth[1] ?? "";
     if (auth[2] === "logout") {
       await deps.credentials.remove(ws.id, pid);
       return json(res, 200, { ok: true });

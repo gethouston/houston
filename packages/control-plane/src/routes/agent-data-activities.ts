@@ -5,8 +5,8 @@ import {
   loadActivities,
   removeById,
   saveActivities,
-  upsertById,
   type TextStore,
+  upsertById,
 } from "@houston/domain";
 import type { HoustonEvent, NewActivity } from "@houston/protocol";
 import { json, readJson } from "./http";

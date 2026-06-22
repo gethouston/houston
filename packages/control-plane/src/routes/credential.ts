@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { isApiKeyCredential, type CredentialStore, type CredentialVault } from "../ports";
 import { isExpiring, refreshCredential } from "../credentials/refresh";
+import {
+  type CredentialStore,
+  type CredentialVault,
+  isApiKeyCredential,
+} from "../ports";
 import { bearer, json } from "./http";
 
 /**

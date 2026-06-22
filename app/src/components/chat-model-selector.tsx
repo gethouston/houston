@@ -1,17 +1,17 @@
-import { useTranslation } from "react-i18next";
-import { ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
+  DropdownMenuTrigger,
 } from "@houston-ai/core";
-import { PROVIDERS, getProvider, getModel } from "../lib/providers";
+import { ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import { useProviderStatuses } from "../hooks/use-provider-statuses";
 import {
   providerPickerState,
   shouldShowProviderInPicker,
 } from "../lib/model-picker";
-import { useProviderStatuses } from "../hooks/use-provider-statuses";
-import { ProviderModelGroup, ProviderIcon } from "./chat-model-selector-parts";
+import { getModel, getProvider, PROVIDERS } from "../lib/providers";
+import { ProviderIcon, ProviderModelGroup } from "./chat-model-selector-parts";
 
 interface ChatModelSelectorProps {
   /** Current provider id (from workspace/agent config). */

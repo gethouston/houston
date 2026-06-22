@@ -1,13 +1,18 @@
 import {
   getOAuthProvider,
+  type OAuthDeviceCodeInfo,
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
-  type OAuthDeviceCodeInfo,
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
-import { authStorage } from "./storage";
+import {
+  activeProvider,
+  PROVIDERS,
+  type ProviderId,
+  providerAuthMethod,
+} from "../ai/providers";
 import { config } from "../config";
-import { PROVIDERS, activeProvider, providerAuthMethod, type ProviderId } from "../ai/providers";
+import { authStorage } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
@@ -83,7 +88,9 @@ export async function startLogin(
 ): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   if (providerAuthMethod(providerId) === "apiKey")
-    throw new Error(`${providerId} connects with an API key, not OAuth sign-in`);
+    throw new Error(
+      `${providerId} connects with an API key, not OAuth sign-in`,
+    );
   const provider = providerId;
 
   // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).

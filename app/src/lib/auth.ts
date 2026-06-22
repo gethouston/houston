@@ -1,11 +1,11 @@
-import { listen } from "@tauri-apps/api/event";
-import { isTauri } from "@tauri-apps/api/core";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, isAuthConfigured } from "./supabase";
-import { queryClient } from "./query-client";
-import { tauriSystem } from "./tauri";
+import { isTauri } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { analytics } from "./analytics";
 import { logger } from "./logger";
+import { queryClient } from "./query-client";
+import { isAuthConfigured, supabase } from "./supabase";
+import { tauriSystem } from "./tauri";
 
 // Must match `SESSION_KEY` in `hooks/use-session.ts`. Hardcoded here
 // to avoid a hook-importing-from-hook dependency cycle. If you change

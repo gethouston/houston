@@ -1,9 +1,9 @@
 import { useTranslation } from "react-i18next";
-import { useWorkspaceStore } from "../../../stores/workspaces";
 import {
   useSaveWorkspaceContext,
   useWorkspaceContext,
 } from "../../../hooks/queries/use-workspace-context";
+import { useWorkspaceStore } from "../../../stores/workspaces";
 import {
   InstructionsContent,
   type InstructionsContentLabels,

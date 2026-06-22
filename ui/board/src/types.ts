@@ -1,5 +1,5 @@
-import type React from "react";
 import type { HighlightRange } from "@houston-ai/core";
+import type React from "react";
 
 export interface KanbanItem {
   id: string;

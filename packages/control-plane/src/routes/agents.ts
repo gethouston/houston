@@ -1,27 +1,27 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadRoutines, seedSchemas } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
+import { canUseAgent } from "../domain/access";
 import type {
   Agent,
   UserId,
   Workspace,
   WorkspaceRuntime,
 } from "../domain/types";
-import type { RuntimeChannel, WorkspaceStore } from "../ports";
-import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
 import { CloudPaths, type WorkspacePaths } from "../paths";
-import { canUseAgent } from "../domain/access";
-import { handleAgentData } from "./agent-data";
-import { handleAgentFile } from "./agent-file";
-import { handleSkills } from "./skills";
-import { handleFiles } from "../turn/files";
-import { handleAttachments } from "../turn/attachments";
-import { handlePortableExport } from "./portable";
+import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import { isApiKeyProvider } from "../providers";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { fireRoutineRun } from "../schedule/run";
-import { isApiKeyProvider } from "../providers";
+import { handleAttachments } from "../turn/attachments";
+import { handleFiles } from "../turn/files";
+import type { Vfs } from "../vfs";
+import { handleAgentData } from "./agent-data";
+import { handleAgentFile } from "./agent-file";
 import { json, readJson } from "./http";
+import { handlePortableExport } from "./portable";
+import { handleSkills } from "./skills";
 
 export interface AgentRouteDeps {
   store: WorkspaceStore;
@@ -250,7 +250,11 @@ export async function handleAgents(
       return true;
     }
     const { provider, apiKey: key } = await readJson(req);
-    if (!provider || typeof provider !== "string" || !isApiKeyProvider(provider)) {
+    if (
+      !provider ||
+      typeof provider !== "string" ||
+      !isApiKeyProvider(provider)
+    ) {
       json(res, 400, { error: "unknown API-key provider" });
       return true;
     }
@@ -271,7 +275,9 @@ export async function handleAgents(
       );
       json(res, 200, { ok: true, provider });
     } catch (err) {
-      json(res, 502, { error: err instanceof Error ? err.message : String(err) });
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
     return true;
   }

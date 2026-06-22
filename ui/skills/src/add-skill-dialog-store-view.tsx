@@ -16,20 +16,21 @@
  *   maps to plain-English copy (rate limited, offline, malformed,
  *   already installed, etc). No raw error messages reach the user.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+
 import { Spinner } from "@houston-ai/core";
 import { AlertCircle, Search } from "lucide-react";
-import type { CommunitySkill } from "./types";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   DEFAULT_STORE_VIEW_LABELS,
   type StoreViewLabels,
 } from "./add-skill-dialog-store-labels";
 import {
-  StoreRow,
   type InstallFailureReason,
   type RowInstallState,
+  StoreRow,
 } from "./add-skill-dialog-store-row";
 import { classifySkillError } from "./skill-error-kinds";
+import type { CommunitySkill } from "./types";
 
 const SEARCH_DEBOUNCE_MS = 350;
 

@@ -3,9 +3,9 @@
  * Not exported from the package index — used only by chat-input.tsx.
  */
 
+import { FileIcon, XIcon } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { FileIcon, XIcon } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // FileChip — shows an attached file with a remove button

@@ -1,28 +1,28 @@
+import { resolveAgentColor } from "@houston-ai/core";
 import {
-  Sparkles,
-  Plus,
-  LayoutGrid,
-  Search,
-  Code,
-  Wand2,
-  FileText,
-  Users,
+  BarChart3,
+  BookOpen,
   Bot,
+  Brain,
   Briefcase,
+  Code,
+  FileText,
+  Globe,
+  LayoutGrid,
+  type LucideIcon,
   MessageSquare,
   PenTool,
-  BarChart3,
+  Plus,
+  Search,
   Shield,
-  Globe,
-  Zap,
-  BookOpen,
+  Sparkles,
+  Users,
+  Wand2,
   Wrench,
-  Brain,
-  type LucideIcon,
+  Zap,
 } from "lucide-react";
 import houstonIcon from "../../assets/houston-icon.svg";
 import houstonIconWhite from "../../assets/houston-icon-white.svg";
-import { resolveAgentColor } from "@houston-ai/core";
 import type { AgentConfig } from "../../lib/types";
 
 const iconMap: Record<string, LucideIcon> = {

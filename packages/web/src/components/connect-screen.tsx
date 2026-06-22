@@ -10,8 +10,9 @@
  * in the entry chunk, BEFORE the lazy app chunk (and its i18n stack + theme CSS)
  * loads, so it can't use `t()` or Tailwind classes.
  */
-import { useState, type CSSProperties, type FormEvent } from "react";
+
 import { HoustonClient } from "@houston-ai/engine-client";
+import { type CSSProperties, type FormEvent, useState } from "react";
 import type { EngineConfig } from "../engine-config";
 
 interface Strings {

@@ -8,7 +8,7 @@
  * weekday names come from `Intl` in the given `locale`.
  */
 import { cn } from "@houston-ai/core";
-import { shortWeekdayNames, narrowWeekdayNames } from "./schedule-format";
+import { narrowWeekdayNames, shortWeekdayNames } from "./schedule-format";
 
 const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",

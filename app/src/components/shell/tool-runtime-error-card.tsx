@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
+import type { ToolRuntimeErrorEntry } from "@houston-ai/chat";
+import { Button, Spinner } from "@houston-ai/core";
 import {
+  ArrowRightLeftIcon,
   BugIcon,
   RotateCcwIcon,
   WrenchIcon,
-  ArrowRightLeftIcon,
 } from "lucide-react";
-import { Button, Spinner } from "@houston-ai/core";
-import type { ToolRuntimeErrorEntry } from "@houston-ai/chat";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { reportBug } from "../../lib/bug-report";
 import { getCurrentUserEmail } from "../../lib/current-user";
 import { useUIStore } from "../../stores/ui";

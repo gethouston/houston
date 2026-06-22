@@ -1,5 +1,4 @@
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
+import type { AttachmentRejection, PrepareAttachments } from "@houston-ai/chat";
 import {
   Button,
   Dialog,
@@ -10,11 +9,12 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { AlertTriangle } from "lucide-react";
-import type { AttachmentRejection, PrepareAttachments } from "@houston-ai/chat";
+import { type ReactNode, useCallback, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
+  type ComposerAttachmentRejectReason,
   formatBytes,
   splitComposerAttachments,
-  type ComposerAttachmentRejectReason,
 } from "../lib/attachment-validation";
 
 interface AttachmentValidationDialogApi {

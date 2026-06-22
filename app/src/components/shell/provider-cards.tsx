@@ -1,12 +1,12 @@
-import { useTranslation } from "react-i18next";
 import { Loader2, LogIn, LogOut } from "lucide-react";
-import type { ProviderInfo, ComingSoonProviderInfo } from "../../lib/providers";
+import { useTranslation } from "react-i18next";
+import type { ComingSoonProviderInfo, ProviderInfo } from "../../lib/providers";
 import {
   ClaudeLogo,
-  OpenAILogo,
-  OpenCodeLogo,
   DeepSeekLogo,
   MiniMaxLogo,
+  OpenAILogo,
+  OpenCodeLogo,
 } from "./provider-logos";
 
 /**

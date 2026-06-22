@@ -10,6 +10,7 @@
  * One method per REST route. DTOs mirror `engine/houston-engine-core`.
  */
 
+import { planAttachmentUploadBatches } from "./attachments";
 import type {
   Activity,
   ActivityUpdate,
@@ -32,20 +33,31 @@ import type {
   CreateWorkspace,
   CreateWorktreeRequest,
   ErrorBody,
+  GenerateInstructionsResult,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
   InstallCommunityRequest,
+  InstalledConfig,
   InstallFromGithub,
   InstallFromRepoRequest,
-  InstalledConfig,
   ListWorktreesRequest,
   NewActivity,
   NewRoutine,
+  PairingCode,
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
+  PortableExportRequest,
+  PortableInstalledAgent,
+  PortableInstallRequest,
+  PortableInventoryPreview,
+  PortableScanResponse,
+  PortableUploadPreviewResponse,
   PreferenceValue,
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  PushRegisterRequest,
   RemoveWorktreeRequest,
   RenameWorkspace,
   RepoSkill,
@@ -61,28 +73,16 @@ import type {
   SkillDetail,
   SkillSummary,
   StoreListing,
-  GenerateInstructionsResult,
   SummarizeOptions,
   SummarizeResult,
   TunnelStatus,
-  PairingCode,
-  PushRegisterRequest,
   UpdateAgent,
   UpdateProvider,
   VersionResponse,
   Workspace,
   WorkspaceContext,
   WorktreeInfo,
-  PortableInventoryPreview,
-  PortableExportRequest,
-  PortableAnonymizeRequest,
-  PortableAnonymizeResponse,
-  PortableUploadPreviewResponse,
-  PortableScanResponse,
-  PortableInstallRequest,
-  PortableInstalledAgent,
 } from "./types";
-import { planAttachmentUploadBatches } from "./attachments";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -666,7 +666,9 @@ export class HoustonClient {
    * `newEngineActive()`, so on the legacy Rust engine this route is never hit.
    */
   setProviderApiKey(name: string, apiKey: string): Promise<void> {
-    return this.request("POST", `/providers/${this.seg(name)}/api-key`, { apiKey });
+    return this.request("POST", `/providers/${this.seg(name)}/api-key`, {
+      apiKey,
+    });
   }
   // "Sign in with Google" for Gemini goes through the standard
   // `providerLogin("gemini")` call — the engine detects the gemini id

@@ -1,8 +1,8 @@
-import { useEffect } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Session } from "@supabase/supabase-js";
-import { supabase, isAuthConfigured } from "../lib/supabase";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { logger } from "../lib/logger";
+import { isAuthConfigured, supabase } from "../lib/supabase";
 
 const SESSION_KEY = ["session"] as const;
 

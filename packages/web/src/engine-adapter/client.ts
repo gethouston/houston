@@ -21,25 +21,25 @@ import type {
   UpdateAgent,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
-import {
-  DEFAULT_AGENT_ID,
-  DEFAULT_AGENT_PATH,
-  DEFAULT_WORKSPACE_ID,
-  configWriteToSettings,
-  syntheticWorkspace,
-  toNewProvider,
-  toOldProvider,
-} from "./synthetic";
-import * as agents from "./agents";
 import * as activities from "./activities";
 import {
   readAgentFile as readAgentFileStore,
   writeAgentFile as writeAgentFileStore,
 } from "./agent-files";
-import { streamTurn, historyToFeed } from "./translate";
-import * as controlPlane from "./control-plane";
-import type { ControlPlaneConfig } from "./control-plane";
+import * as agents from "./agents";
 import { bus, emitEvent } from "./bus";
+import type { ControlPlaneConfig } from "./control-plane";
+import * as controlPlane from "./control-plane";
+import {
+  configWriteToSettings,
+  DEFAULT_AGENT_ID,
+  DEFAULT_AGENT_PATH,
+  DEFAULT_WORKSPACE_ID,
+  syntheticWorkspace,
+  toNewProvider,
+  toOldProvider,
+} from "./synthetic";
+import { historyToFeed, streamTurn } from "./translate";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -99,7 +99,9 @@ export class HoustonClient {
     // Rust engine uses the real `@houston-ai/engine-client`, never this adapter,
     // so the flag stays unset there.
     if (typeof window !== "undefined") {
-      (window as unknown as { __HOUSTON_NEW_ENGINE__?: boolean }).__HOUSTON_NEW_ENGINE__ = true;
+      (
+        window as unknown as { __HOUSTON_NEW_ENGINE__?: boolean }
+      ).__HOUSTON_NEW_ENGINE__ = true;
     }
     // biome-ignore lint/correctness/noConstructorReturn: Proxy provides transparent fallback stubs for unsupported HoustonClient methods; callers use `new HoustonClient()` directly so a static factory would require changes across many files outside this module.
     return new Proxy(this, {
@@ -291,7 +293,10 @@ export class HoustonClient {
         // READS from) — writing via the root client silently 404s, so a model
         // pick never persists and every turn falls back to the active provider.
         const engine = this.cp
-          ? controlPlane.runtimeClientFor(this.cp, agentPath || this.requireAgentId())
+          ? controlPlane.runtimeClientFor(
+              this.cp,
+              agentPath || this.requireAgentId(),
+            )
           : this.engine;
         await engine.setSettings({ activeProvider: pid, model: config.model });
       }
@@ -797,12 +802,18 @@ export class HoustonClient {
       // this the engine keeps whatever was active (e.g. a still-connected Codex),
       // and every turn silently runs that model instead of OpenCode. Settings are
       // PER-AGENT on the host, so this MUST go through the agent's runtime client.
-      await controlPlane.runtimeClientFor(this.cp, agentId).setSettings({ activeProvider: pid });
+      await controlPlane
+        .runtimeClientFor(this.cp, agentId)
+        .setSettings({ activeProvider: pid });
     } else {
       await this.engine.setApiKey(pid, apiKey);
       await this.engine.setSettings({ activeProvider: pid });
     }
-    emitEvent("ProviderLoginComplete", { provider: name, success: true, error: null });
+    emitEvent("ProviderLoginComplete", {
+      provider: name,
+      success: true,
+      error: null,
+    });
   }
 
   /**

@@ -1,12 +1,12 @@
-import { test, expect } from "bun:test";
-import { MemoryVfs } from "../vfs";
-import type { WorkspacePaths } from "../paths";
+import { expect, test } from "bun:test";
 import type { Agent, Workspace } from "../domain/types";
+import type { WorkspacePaths } from "../paths";
+import { MemoryVfs } from "../vfs";
 import {
-  FilePathError,
   contentDisposition,
   createWorkspaceFolder,
   deleteWorkspaceFile,
+  FilePathError,
   handleFiles,
   listWorkspace,
   mimeFor,

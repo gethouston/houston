@@ -1,6 +1,6 @@
 import { useTranslation } from "react-i18next";
-import { getEffortLevels, type EffortLevel } from "../lib/providers";
 import { nextEffort } from "../lib/effort-cycle";
+import { type EffortLevel, getEffortLevels } from "../lib/providers";
 import { EffortIcon } from "./effort-icon";
 
 interface ChatEffortSelectorProps {

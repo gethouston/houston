@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import type { NewPanelOpener } from "@houston-ai/board";
-import { useUIStore } from "../../stores/ui";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * The per-agent "New mission" flow: a default-mode opener (registered as the

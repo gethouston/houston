@@ -1,14 +1,12 @@
-import { useCallback } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { getCurrentWindow } from "@tauri-apps/api/window";
-
 import {
   LEGAL_ACCEPTANCE_KEY,
   type LegalAcceptance,
 } from "@houston-ai/engine-client";
-
-import { tauriPreferences } from "../lib/tauri";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { useCallback } from "react";
 import { CURRENT_DISCLAIMER_VERSION } from "../lib/legal";
+import { tauriPreferences } from "../lib/tauri";
 
 const queryKey = ["legal-acceptance"] as const;
 

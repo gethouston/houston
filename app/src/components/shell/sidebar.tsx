@@ -1,18 +1,18 @@
-import { useState, type ReactNode } from "react";
-import { useTranslation } from "react-i18next";
-import { LayoutDashboard, Settings } from "lucide-react";
 import { ConfirmDialog } from "@houston-ai/core";
 import { AppSidebar, WorkspaceSwitcher } from "@houston-ai/layout";
-import { useWorkspaceStore } from "../../stores/workspaces";
+import { LayoutDashboard, Settings } from "lucide-react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { orderAgents } from "../../lib/agent-order";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { buildAgentSidebarItems } from "./agent-sidebar-items";
 import { UpdateChecker } from "./update-checker";
+import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
 import { UserMenu } from "./user-menu";
 import { CreateWorkspaceDialog } from "./workspace-dialog";
-import { useAgentActivitySummaries } from "./use-agent-activity-summaries";
-import { buildAgentSidebarItems } from "./agent-sidebar-items";
-import { orderAgents } from "../../lib/agent-order";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 
 export function Sidebar({ children }: { children: ReactNode }) {
   const { t } = useTranslation(["shell", "common", "portable"]);
@@ -33,6 +33,37 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const viewMode = useUIStore((s) => s.viewMode);
   const setViewMode = useUIStore((s) => s.setViewMode);
   const setDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
+  const collapsed = useUIStore((s) => s.sidebarCollapsed);
+  const toggleCollapsed = useUIStore((s) => s.toggleSidebarCollapsed);
+  const setSidebarCollapsed = useUIStore((s) => s.setSidebarCollapsed);
+
+  // Auto-collapse the rail when the window gets narrow (e.g. Houston docked to
+  // half the screen). Acts only when crossing the threshold, so a manual toggle
+  // is otherwise respected; auto-expands again when it widens back across it.
+  const prevWidth = useRef<number | null>(null);
+  useEffect(() => {
+    const AUTO_COLLAPSE_WIDTH = 1000;
+    const apply = () => {
+      const w = window.innerWidth;
+      const prev = prevWidth.current;
+      if (
+        (prev === null || prev >= AUTO_COLLAPSE_WIDTH) &&
+        w < AUTO_COLLAPSE_WIDTH
+      ) {
+        setSidebarCollapsed(true);
+      } else if (
+        prev !== null &&
+        prev < AUTO_COLLAPSE_WIDTH &&
+        w >= AUTO_COLLAPSE_WIDTH
+      ) {
+        setSidebarCollapsed(false);
+      }
+      prevWidth.current = w;
+    };
+    apply();
+    window.addEventListener("resize", apply);
+    return () => window.removeEventListener("resize", apply);
+  }, [setSidebarCollapsed]);
 
   const sorted = orderAgents(agents);
   const activitySummaries = useAgentActivitySummaries(agents);
@@ -107,6 +138,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
       />
       <div className="flex h-full flex-1 min-w-0">
         <AppSidebar
+          collapsed={collapsed}
+          onToggleCollapsed={toggleCollapsed}
           header={
             <WorkspaceSwitcher
               workspaces={workspaces}
@@ -116,6 +149,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
               }
               onSwitch={handleWorkspaceSwitch}
               onCreate={handleCreateWorkspace}
+              collapsed={collapsed}
+              createLabel={t("shell:sidebar.createWorkspace")}
             />
           }
           navItems={[
@@ -147,15 +182,21 @@ export function Sidebar({ children }: { children: ReactNode }) {
             moreOptions: t("shell:sidebar.agentMenu"),
             renameItem: t("common:actions.rename"),
             deleteItem: t("common:actions.delete"),
+            collapseSidebar: t("shell:sidebar.collapse"),
+            expandSidebar: t("shell:sidebar.expand"),
           }}
           footer={
             <div className="flex flex-col">
-              <UserMenu />
+              <UserMenu collapsed={collapsed} />
               <UpdateChecker />
             </div>
           }
         >
-          <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
+          {/* Gutter around the floating "screen" (Arc canvas). The small
+            padding lets the window background show as a frame on all
+            four sides; the screen itself is workspace-shell.tsx's
+            rounded bg-background panel. */}
+          <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col p-2">
             {children}
           </div>
         </AppSidebar>

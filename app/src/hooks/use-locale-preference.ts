@@ -1,19 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
-import { logger } from "../lib/logger";
-import { useWorkspaceStore } from "../stores/workspaces";
+import { useCallback, useEffect, useState } from "react";
 import {
-  LOCALE_PREF_KEY,
   activeWorkspaceLocale,
   applyEngineLocale,
   changeLocale,
   isSupported,
+  LOCALE_PREF_KEY,
   localeGateIsLoading,
   resolveEffectiveLocale,
   type SupportedLocale,
 } from "../lib/i18n";
+import { logger } from "../lib/logger";
+import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
+import { useWorkspaceStore } from "../stores/workspaces";
 
 const globalKey = ["locale-preference"] as const;
 const bootWorkspaceKey = ["boot-workspace-locale"] as const;

@@ -1,17 +1,17 @@
-import { test, expect } from "bun:test";
-import type { Routine, RoutineRun } from "@houston/protocol";
+import { expect, test } from "bun:test";
 import {
   createRoutine,
   loadRoutineRuns,
   saveRoutines,
   setPreference,
 } from "@houston/domain";
-import { MemoryWorkspaceStore } from "../store/memory";
-import { MemoryVfs } from "../vfs";
-import { MemoryTurnBus } from "../turn/bus";
-import { workspaceRoot } from "../routes/agent-data";
+import type { Routine, RoutineRun } from "@houston/protocol";
 import { CloudPaths } from "../paths";
-import { Scheduler, type FiringJob, type RoutineFirer } from "./scheduler";
+import { workspaceRoot } from "../routes/agent-data";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryTurnBus } from "../turn/bus";
+import { MemoryVfs } from "../vfs";
+import { type FiringJob, type RoutineFirer, Scheduler } from "./scheduler";
 
 /**
  * The scheduler driver: scans agents, fires routines that come due in the

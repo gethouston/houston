@@ -1,4 +1,3 @@
-import { useMemo, useState } from "react";
 import {
   Collapsible,
   CollapsibleContent,
@@ -6,20 +5,21 @@ import {
   cn,
 } from "@houston-ai/core";
 import { ChevronDownIcon } from "lucide-react";
+import { useMemo, useState } from "react";
 import { useStickToBottom } from "use-stick-to-bottom";
-import { ChatStatusLine } from "./chat-status-line";
-import { processScrollPaneClass } from "./chat-process-classes";
+import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import {
   Reasoning,
   ReasoningContent,
   ReasoningTrigger,
 } from "./ai-elements/reasoning";
-import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
-import { ToolsAndCards } from "./chat-helpers";
 import type { ToolsAndCardsProps } from "./chat-helpers";
+import { ToolsAndCards } from "./chat-helpers";
+import { processScrollPaneClass } from "./chat-process-classes";
 import type { ChatProcessSegment } from "./chat-process-groups";
-import { buildProcessHeaderLabel } from "./chat-process-header";
 import type { ChatProcessLabels } from "./chat-process-header";
+import { buildProcessHeaderLabel } from "./chat-process-header";
+import { ChatStatusLine } from "./chat-status-line";
 
 export type { ChatProcessLabels } from "./chat-process-header";
 

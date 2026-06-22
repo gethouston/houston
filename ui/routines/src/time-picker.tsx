@@ -15,20 +15,21 @@
  * via props; AM/PM markers and the 12h-vs-24h choice come from `Intl` in the
  * given `locale`. The scroll columns live in time-picker-columns.tsx.
  */
-import { Clock } from "lucide-react";
+
 import { cn, Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
-import { parseTime, formatTime } from "./schedule-format.ts";
+import { Clock } from "lucide-react";
+import { formatTime, parseTime } from "./schedule-format.ts";
 import { labelClass } from "./schedule-picker-fields.tsx";
-import { TimeColumn, PeriodColumn } from "./time-picker-columns.tsx";
+import { PeriodColumn, TimeColumn } from "./time-picker-columns.tsx";
 import {
-  is12HourLocale,
-  periodLabels,
-  to12Hour,
-  from12Hour,
   buildTime,
+  from12Hour,
   hourOptions,
+  is12HourLocale,
   minuteOptions,
   type Period,
+  periodLabels,
+  to12Hour,
 } from "./time-picker-utils.ts";
 
 /** Accessible names for the picker's columns. */
