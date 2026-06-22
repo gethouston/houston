@@ -7,6 +7,9 @@ name: Website Deploy
 # Required repo secrets:
 #   CLOUDFLARE_API_TOKEN  - token with "Cloudflare Pages: Edit" permission
 #   CLOUDFLARE_ACCOUNT_ID - account id from the Cloudflare dashboard
+#   SUPABASE_ANON_KEY     - public (RLS-protected) Supabase anon key for the /waitlist form
+# Optional (committed defaults exist):
+#   SUPABASE_URL, WAITLIST_SHEET_ENDPOINT
 
 on:
   push:
@@ -42,6 +45,10 @@ jobs:
       - name: Build site
         working-directory: website
         run: npx @11ty/eleventy
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          WAITLIST_SHEET_ENDPOINT: ${{ secrets.WAITLIST_SHEET_ENDPOINT }}
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3
