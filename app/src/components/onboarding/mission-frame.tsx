@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { cn } from "@houston-ai/core";
+import type { ReactNode } from "react";
 import { HoustonLogo } from "../shell/experience-card";
 
 export interface MissionMeta {

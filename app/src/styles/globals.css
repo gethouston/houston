@@ -2,6 +2,9 @@
 @import "@houston-ai/core/src/globals.css";
 @import "@houston-ai/core/src/styles.css";
 @import "@houston-ai/chat/src/styles.css";
+/* Futuristic aurora + glass layer — imported LAST so its token
+   overrides win at use-time. Delete this line to fully revert. */
+@import "./futuristic.css";
 
 /* Scan local source + @houston-ai packages for Tailwind classes */
 @source "../";

@@ -1,12 +1,12 @@
-import { strictEqual, ok } from "node:assert/strict";
+import { ok, strictEqual } from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
+  activeWorkspaceLocale,
   isSupported,
+  localeGateIsLoading,
+  localeToApply,
   normalizeLocale,
   resolveEffectiveLocale,
-  localeToApply,
-  activeWorkspaceLocale,
-  localeGateIsLoading,
 } from "../src/lib/locale.ts";
 
 describe("isSupported", () => {

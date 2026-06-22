@@ -15,14 +15,14 @@
  * i18n; it uses `t()` directly per the library-boundary rule.
  */
 
-import { useTranslation } from "react-i18next";
+import type { TokenUsage } from "@houston-ai/chat";
 import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
   Progress,
 } from "@houston-ai/core";
-import type { TokenUsage } from "@houston-ai/chat";
+import { useTranslation } from "react-i18next";
 import { contextFillPercent } from "../lib/context-usage";
 
 interface ContextIndicatorProps {

@@ -6,8 +6,8 @@
  * - mergeUniqueFiles: append-and-dedupe helper for File[] state.
  */
 
-import { useCallback, useRef, useState } from "react";
 import type { DragEvent, DragEventHandler } from "react";
+import { useCallback, useRef, useState } from "react";
 import { fileIdentityKey } from "./clipboard-files";
 
 /**

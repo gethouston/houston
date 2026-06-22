@@ -5,9 +5,9 @@ import type {
   RuntimeChannel,
   TurnPin,
 } from "../ports";
+import { PROVIDER, prefixFor, type TurnDeps } from "../turn/deps";
 import { dispatchCloudrun } from "../turn/dispatch";
 import { dispatchTurn } from "../turn/start-turn";
-import { PROVIDER, prefixFor, type TurnDeps } from "../turn/deps";
 
 /**
  * The per-turn channel: no standing runtime — every request is served against

@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import { KanbanListRail } from "@houston-ai/board";
 import {
   Empty,
@@ -7,6 +6,7 @@ import {
   EmptyTitle,
 } from "@houston-ai/core";
 import { Archive } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 import { MissionSearchInput } from "../mission-search-input";
 

@@ -25,7 +25,7 @@ import {
 import { ChevronDownIcon } from "lucide-react";
 import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { ToolEntry } from "../feed-to-messages";
-import { getToolIcon, getToolDetail, ToolContent } from "../tool-formatters";
+import { getToolDetail, getToolIcon, ToolContent } from "../tool-formatters";
 import { getToolActionLabel, toolShortName } from "../tool-labels";
 import { Shimmer } from "./shimmer";
 

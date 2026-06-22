@@ -21,6 +21,15 @@ import type {
   UpdateAgent,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
+import * as activities from "./activities";
+import {
+  readAgentFile as readAgentFileStore,
+  writeAgentFile as writeAgentFileStore,
+} from "./agent-files";
+import * as agents from "./agents";
+import { bus, emitEvent } from "./bus";
+import type { ControlPlaneConfig } from "./control-plane";
+import * as controlPlane from "./control-plane";
 import {
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
@@ -29,16 +38,7 @@ import {
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
-import * as agents from "./agents";
-import * as activities from "./activities";
-import {
-  readAgentFile as readAgentFileStore,
-  writeAgentFile as writeAgentFileStore,
-} from "./agent-files";
-import { streamTurn, historyToFeed } from "./translate";
-import * as controlPlane from "./control-plane";
-import type { ControlPlaneConfig } from "./control-plane";
-import { bus, emitEvent } from "./bus";
+import { historyToFeed, streamTurn } from "./translate";
 
 export interface HoustonClientOptions {
   baseUrl: string;

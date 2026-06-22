@@ -1,6 +1,6 @@
-import { test, expect } from "bun:test";
-import { createServer } from "node:net";
+import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Capabilities, Workspace } from "@houston/protocol";

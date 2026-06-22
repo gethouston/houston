@@ -1,8 +1,8 @@
-import { test, expect } from "bun:test";
-import type { ChannelCtx, RuntimeChannel, TurnPin } from "../ports";
-import type { Agent, Workspace } from "../domain/types";
+import { expect, test } from "bun:test";
 import { ProxyChannel } from "../channel/proxy";
 import { MemoryCredentialStore } from "../credentials/store";
+import type { Agent, Workspace } from "../domain/types";
+import type { ChannelCtx, RuntimeChannel, TurnPin } from "../ports";
 import { ChannelRoutineFirer } from "./firer";
 import type { FiringJob } from "./scheduler";
 

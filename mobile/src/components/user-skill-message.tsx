@@ -7,12 +7,12 @@
  * Query, just the decoded payload + plain `<img>` tags.
  */
 
-import { useState } from "react";
 import {
-  UserAttachmentBadge,
-  type SkillInvocation,
   resolveSkillImage,
+  type SkillInvocation,
+  UserAttachmentBadge,
 } from "@houston-ai/chat";
+import { useState } from "react";
 
 interface Props {
   invocation: SkillInvocation;

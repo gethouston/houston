@@ -1,11 +1,11 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import type {
   ChatMessage,
   HoustonEngineClient,
   WireEvent,
 } from "@houston/runtime-client";
-import { streamTurn, historyToFeed } from "../src/engine-adapter/translate";
 import { bus } from "../src/engine-adapter/bus";
+import { historyToFeed, streamTurn } from "../src/engine-adapter/translate";
 
 type FinalResult = {
   feed_type?: string;

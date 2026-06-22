@@ -1,13 +1,16 @@
 /**
  * Web shim for `@tauri-apps/api/window` (`getCurrentWindow`).
  *
- * app/src uses three window methods:
+ * app/src uses these window methods:
  *  - `close()`        — DisclaimerGate "Decline" (use-legal-acceptance.ts)
  *  - `isFocused()`    — notification nav arming (session-notifications.ts)
  *  - `onFocusChanged` — notification click-to-navigate (macOS focus proxy)
+ *  - `setTheme()`     — sync the native title bar to the app theme (theme.ts)
  *
  * Browser equivalents: window.close() (only effective for script-opened tabs,
  * a benign no-op otherwise), document.hasFocus(), and window focus/blur events.
+ * A browser tab has no window chrome to theme, so setTheme is a no-op (the CSS
+ * data-theme on <html> already drives the UI).
  */
 
 type UnlistenFn = () => void;
@@ -20,6 +23,7 @@ interface WebWindow {
   close(): Promise<void>;
   isFocused(): Promise<boolean>;
   onFocusChanged(handler: (event: FocusEvent) => void): Promise<UnlistenFn>;
+  setTheme(theme?: "light" | "dark" | null): Promise<void>;
 }
 
 export function getCurrentWindow(): WebWindow {
@@ -41,6 +45,9 @@ export function getCurrentWindow(): WebWindow {
         window.removeEventListener("focus", onFocus);
         window.removeEventListener("blur", onBlur);
       });
+    },
+    async setTheme(): Promise<void> {
+      // No window chrome to theme in a browser tab.
     },
   };
 }

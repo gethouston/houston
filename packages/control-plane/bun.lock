@@ -5,6 +5,7 @@
     "": {
       "name": "@houston/control-plane",
       "dependencies": {
+        "@composio/client": "^0.1.0-alpha.73",
         "@earendil-works/pi-coding-agent": "0.78.1",
         "@google-cloud/storage": "^7.14.0",
         "@houston/domain": "file:../domain",
@@ -77,6 +78,8 @@
     "@aws/lambda-invoke-store": ["@aws/lambda-invoke-store@0.2.4", "", {}, "sha512-iY8yvjE0y651BixKNPgmv1WrQc+GZ142sb0z4gYnChDDY2YqI4P/jsSopBWrKfAt7LOJAkOXt7rC/hms+WclQQ=="],
 
     "@babel/runtime": ["@babel/runtime@7.29.7", "", {}, "sha512-Nq8OhGWiZIZGV6hLHoyAKLLcJihP/xFeBMGJoUrxTX2psI8dCifzLhZISFb+VWS3wFMRDmCGw5R+dOySCqPLhw=="],
+
+    "@composio/client": ["@composio/client@0.1.0-alpha.73", "", {}, "sha512-tG7qJOqymqPC2PwHcB8iqZUdAVj2R3RtUXO6o+wS4PCMt8yk9ysPH54luEsnLIObeMSnp9kA87BzTBGoRHelOA=="],
 
     "@earendil-works/pi-agent-core": ["@earendil-works/pi-agent-core@0.78.1", "", { "dependencies": { "@earendil-works/pi-ai": "^0.78.1", "ignore": "7.0.5", "typebox": "1.1.38", "yaml": "2.9.0" } }, "sha512-oPwVRkkAvyKPWyM7E4k+EaTNmynbYn7ZLG/LBh9BUnMNb2gvpMp+VQ420R6JCJ20uogSqrHnWTyosSa/rU8lVw=="],
 
@@ -608,7 +611,7 @@
 
     "@houston/domain/@houston-ai/agent-schemas": ["@houston-ai/agent-schemas@file:../../ui/agent-schemas", {}],
 
-    "@houston/domain/@houston/protocol": ["@houston/protocol@file:../protocol", {}],
+    "@houston/domain/@houston/protocol": ["@houston/protocol@file:../protocol", { "devDependencies": { "@typescript/native-preview": "7.0.0-dev.20260607.1", "typescript": "^6.0.2" } }],
 
     "@types/request/form-data": ["form-data@2.5.5", "", { "dependencies": { "asynckit": "^0.4.0", "combined-stream": "^1.0.8", "es-set-tostringtag": "^2.1.0", "hasown": "^2.0.2", "mime-types": "^2.1.35", "safe-buffer": "^5.2.1" } }, "sha512-jqdObeR2rxZZbPSGL+3VckHMYtu+f9//KXBsVny6JSX/pa38Fy+bGjuG8eW/H6USNQWhLi8Num++cU2yOCNz4A=="],
 

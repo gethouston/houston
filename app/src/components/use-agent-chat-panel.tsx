@@ -17,27 +17,51 @@
  * duplicate the encoding + feed-push logic in two places.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@houston-ai/core";
-import { Paperclip, Play } from "lucide-react";
+import type { AIBoardProps } from "@houston-ai/board";
+import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
   decodeAttachmentMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
 } from "@houston-ai/chat";
-
-import { useFeedStore } from "../stores/feeds";
-import { useUIStore } from "../stores/ui";
+import { Button } from "@houston-ai/core";
+import { useQueryClient } from "@tanstack/react-query";
+import { Paperclip, Play } from "lucide-react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 import { useActivity, useSkills } from "../hooks/queries";
+import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
+import { useProviderStatuses } from "../hooks/use-provider-statuses";
+import { analytics } from "../lib/analytics";
+import { attachmentReferences } from "../lib/attachment-message";
+import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
+import {
+  effectiveContextWindow,
+  sessionContextUsage,
+} from "../lib/context-usage";
+import { createMission } from "../lib/create-mission";
+import { humanizeSkillName } from "../lib/humanize-skill-name";
+import {
+  type EffortLevel,
+  getContextWindowConfig,
+  getDefaultModel,
+  normalizeLegacyModel,
+  validEffortOrDefault,
+  validModelOrNull,
+} from "../lib/providers";
+import { queryKeys } from "../lib/query-keys";
+import {
+  buildSkillClaudePrompt,
+  decodeSkillMessage,
+  encodeSkillMessage,
+} from "../lib/skill-message";
 import {
   tauriActivity,
   tauriAttachments,
@@ -46,51 +70,27 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
-import { createMission } from "../lib/create-mission";
-import { queryKeys } from "../lib/query-keys";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
-import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
-import { ChatModelSelector } from "./chat-model-selector";
+import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
+import { useFeedStore } from "../stores/feeds";
+import { useUIStore } from "../stores/ui";
+import { resolveEffectiveProvider } from "./chat-effective-provider";
 import { ChatEffortSelector } from "./chat-effort-selector";
+import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
-import {
-  getContextWindowConfig,
-  getDefaultModel,
-  validModelOrNull,
-  validEffortOrDefault,
-  normalizeLegacyModel,
-  type EffortLevel,
-} from "../lib/providers";
-import {
-  sessionContextUsage,
-  effectiveContextWindow,
-} from "../lib/context-usage";
 import { ContextIndicator } from "./context-indicator";
-import { analytics } from "../lib/analytics";
-import {
-  buildSkillClaudePrompt,
-  decodeSkillMessage,
-  encodeSkillMessage,
-} from "../lib/skill-message";
-import { attachmentReferences } from "../lib/attachment-message";
-import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
-import { SkillCard } from "./skill-card";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
-import { UserSkillMessage } from "./user-skill-message";
 import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
-import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
-import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { SkillCard } from "./skill-card";
 import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,
   providerAuthSignalKey,
 } from "./tabs/provider-auth-feed";
-
-import type { AIBoardProps } from "@houston-ai/board";
-import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
-import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
+import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
+import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { UserSkillMessage } from "./user-skill-message";
 
 interface UseAgentChatPanelArgs {
   /** The agent the panel is currently scoped to. Null disables features. */
@@ -184,6 +184,21 @@ export function useAgentChatPanel({
       .catch(() => {});
   }, [path]);
 
+  // Last-used provider preference (`default_provider`, written by setLastUsed
+  // on every provider pick). The fallback when neither the activity nor the
+  // agent config names a provider, so an OpenAI-only user opening a no-provider
+  // agent sees their own provider in the dropdown and forwards it on send,
+  // instead of silently defaulting to Claude and failing auth (#483). One-shot
+  // load mirrors the agent-config read above; the literal "anthropic" below
+  // stays only as the last resort, matching the engine's factory default.
+  const [lastUsedProvider, setLastUsedProvider] = useState<string | null>(null);
+  useEffect(() => {
+    tauriProvider
+      .getDefault()
+      .then((p) => setLastUsedProvider(p || null))
+      .catch(() => {});
+  }, []);
+
   const { data: activities } = useActivity(path ?? undefined);
   const selectedActivity = useMemo(() => {
     if (!selectedSessionKey || !activities) return null;
@@ -197,7 +212,24 @@ export function useAgentChatPanel({
   const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
   const selectedActivityId = selectedActivity?.id ?? null;
 
-  const effectiveProvider = activityProvider ?? agentProvider ?? "anthropic";
+  // Which providers the user is actually logged into (reactive + cached). The
+  // fallback below picks an authenticated one rather than a stale preference,
+  // so a no-provider agent never lands on a logged-out CLI (#483).
+  const { statuses: providerStatuses } = useProviderStatuses();
+  const authedProviders = useMemo(
+    () =>
+      Object.values(providerStatuses)
+        .filter((s) => s.authenticated)
+        .map((s) => s.provider),
+    [providerStatuses],
+  );
+
+  const effectiveProvider = resolveEffectiveProvider(
+    activityProvider,
+    agentProvider,
+    lastUsedProvider,
+    authedProviders,
+  );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??
     validModelOrNull(effectiveProvider, agentModel) ??

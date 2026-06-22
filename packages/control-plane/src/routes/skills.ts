@@ -9,8 +9,8 @@ import {
 } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
-import type { Vfs } from "../vfs";
 import type { WorkspacePaths } from "../paths";
+import type { Vfs } from "../vfs";
 import { json, readJson } from "./http";
 
 /**

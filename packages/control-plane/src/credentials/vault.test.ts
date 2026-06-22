@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { EnvCredentialVault } from "./vault";
 
 const SECRET = "test-secret-abc";

@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react";
 import {
-  cn,
   ConfirmDialog,
+  cn,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { Trash2, Check, Pencil } from "lucide-react";
+import { Check, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
@@ -174,13 +174,13 @@ export function KanbanCard({
           // colliding with the conic-gradient keyframe animation.
           // Restrict transitions to the safe properties we actually
           // care about.
-          "group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
+          "kanban-card group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
           // The whole card reads as clickable: a plain pointer, never the grab
           // "hand". During a drag the global `body.kanban-dragging` cursor (set
           // by the board) overrides this everywhere, so the same grab/not-
           // allowed cursor shows on every OS.
           "cursor-pointer",
-          selected || highlighted ? "bg-accent shadow-md" : "bg-background",
+          selected || highlighted ? "bg-accent" : "bg-background",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
           // `border-style: solid` from card-running-glow's shorthand
@@ -190,10 +190,10 @@ export function KanbanCard({
           isRunning
             ? "card-running-glow shadow-[0_2px_12px_rgba(59,130,246,0.12)]"
             : isError
-              ? "border border-destructive/60 shadow-sm hover:shadow-md"
+              ? "border border-destructive/60"
               : selected || highlighted
                 ? "border border-transparent"
-                : "border border-border/20 shadow-sm hover:shadow-md",
+                : "border border-border/20",
           // Multi-select ring sits on top of (not replacing) the card's
           // own border treatment so a selected running card keeps its glow.
           // Half-strength primary (not solid) so selecting a whole column

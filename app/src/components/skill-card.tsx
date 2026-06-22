@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { cn } from "@houston-ai/core";
+import type { ReactNode } from "react";
 import { SkillIcon } from "./skill-icon";
 
 interface Props {

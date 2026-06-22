@@ -1,27 +1,27 @@
+import { ChatPanel, type FeedItem } from "@houston-ai/chat";
+import { cn, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatPanel, type FeedItem } from "@houston-ai/chat";
-import { HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
-import { tauriAgent, tauriChat, tauriSystem } from "../../../lib/tauri";
-import { logger } from "../../../lib/logger";
-import { createMission } from "../../../lib/create-mission";
 import { useSessionMessageQueue } from "../../../hooks/use-session-message-queue";
+import { createMission } from "../../../lib/create-mission";
+import { logger } from "../../../lib/logger";
+import { tauriAgent, tauriChat, tauriSystem } from "../../../lib/tauri";
+import type { Agent } from "../../../lib/types";
+import { useFeedStore } from "../../../stores/feeds";
+import {
+  isActiveSessionStatus,
+  useSessionStatus,
+} from "../../../stores/session-status";
+import { useChatDisplayLabels } from "../../use-chat-display-labels";
 import { useQueuedMessageLabels } from "../../use-queued-message-labels";
+import { MissionChatFrame } from "../mission-chat-frame";
+import type { MissionMeta } from "../mission-frame";
+import { MissionIntroModal } from "../mission-intro-modal";
+import { TryDoneScreen } from "../try-done-screen";
 import {
   appendTutorialSection,
   stripTutorialSection,
 } from "../tutorial-system-prompt";
-import { useFeedStore } from "../../../stores/feeds";
-import {
-  useSessionStatus,
-  isActiveSessionStatus,
-} from "../../../stores/session-status";
-import { useChatDisplayLabels } from "../../use-chat-display-labels";
-import type { Agent } from "../../../lib/types";
-import type { MissionMeta } from "../mission-frame";
-import { MissionChatFrame } from "../mission-chat-frame";
-import { MissionIntroModal } from "../mission-intro-modal";
-import { TryDoneScreen } from "../try-done-screen";
 
 /**
  * Magic word the agent emits to signal "tutorial step done, frontend may

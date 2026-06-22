@@ -1,8 +1,8 @@
+import { Button, ConfirmDialog } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, ConfirmDialog } from "@houston-ai/core";
-import { useWorkspaceStore } from "../../../stores/workspaces";
 import { useAgentStore } from "../../../stores/agents";
+import { useWorkspaceStore } from "../../../stores/workspaces";
 
 export function DangerSection() {
   const { t } = useTranslation("settings");

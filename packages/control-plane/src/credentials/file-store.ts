@@ -6,8 +6,8 @@ import {
   writeFileSync,
 } from "node:fs";
 import { dirname } from "node:path";
-import type { CredentialStore, WorkspaceCredential } from "../ports";
 import type { WorkspaceId } from "../domain/types";
+import type { CredentialStore, WorkspaceCredential } from "../ports";
 
 /**
  * File-backed connect-once credential store for the LOCAL profile: the host —

@@ -1,10 +1,10 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { SignJWT } from "jose";
 import {
   DevTokenVerifier,
+  parseServiceTokens,
   ServiceTokenVerifier,
   SupabaseTokenVerifier,
-  parseServiceTokens,
 } from "./verify";
 
 const SECRET = "test-shared-secret-which-is-suitably-long-for-hs256";

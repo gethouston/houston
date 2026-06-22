@@ -1,10 +1,10 @@
 // List conversations (missions) across every agent in the current workspace.
 // Mobile shows a unified feed grouped by status, not per-agent.
 
-import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useMemo } from "react";
 import { getEngine, isEngineReady } from "../lib/engine";
-import { useWorkspaces, useAgents } from "./use-agents";
+import { useAgents, useWorkspaces } from "./use-agents";
 
 export function useCurrentWorkspace() {
   const { data: workspaces } = useWorkspaces();

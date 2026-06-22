@@ -1,20 +1,20 @@
+import type { FeedItem } from "@houston-ai/chat";
+import type { HoustonEvent } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { HoustonEvent } from "@houston-ai/core";
-import type { FeedItem } from "@houston-ai/chat";
-import { useFeedStore } from "../stores/feeds";
-import { useUIStore } from "../stores/ui";
-import { useWorkspaceStore } from "../stores/workspaces";
-import { useAgentStore } from "../stores/agents";
-import { useSessionStatusStore } from "../stores/session-status";
-import { subscribeHoustonEvents, listenOsEvent } from "../lib/events";
+import { hasToolRuntimeError } from "../components/tool-runtime-feed";
+import { listenOsEvent, subscribeHoustonEvents } from "../lib/events";
 import { logger } from "../lib/logger";
-import { isMac } from "../lib/platform";
 import {
   resolveNotificationTarget,
   shouldNavigateOnAppActivation,
 } from "../lib/notification-nav";
-import { hasToolRuntimeError } from "../components/tool-runtime-feed";
+import { isMac } from "../lib/platform";
+import { useAgentStore } from "../stores/agents";
+import { useFeedStore } from "../stores/feeds";
+import { useSessionStatusStore } from "../stores/session-status";
+import { useUIStore } from "../stores/ui";
+import { useWorkspaceStore } from "../stores/workspaces";
 import {
   consumePendingNav,
   describePendingNotificationNav,

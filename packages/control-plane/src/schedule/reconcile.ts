@@ -1,4 +1,3 @@
-import type { ChatMessage } from "@houston/protocol";
 import {
   completeRoutineRun,
   loadActivities,
@@ -9,10 +8,11 @@ import {
   saveRoutineRuns,
   upsertById,
 } from "@houston/domain";
+import type { ChatMessage } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
-import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
 import { conversationKey, type WorkspacePaths } from "../paths";
+import type { Vfs } from "../vfs";
 
 /** A run still 'running' after this long with no agent reply is declared timed-out. */
 const RUN_TIMEOUT_MS = 15 * 60 * 1000;

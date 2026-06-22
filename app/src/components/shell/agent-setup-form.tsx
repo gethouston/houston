@@ -1,5 +1,5 @@
+import { cn, Switch } from "@houston-ai/core";
 import { useTranslation } from "react-i18next";
-import { Switch, cn } from "@houston-ai/core";
 import { FOCUS_LABELS, TRAIT_LABELS } from "./agent-setup-utils";
 
 export interface AgentSetupFormValues {

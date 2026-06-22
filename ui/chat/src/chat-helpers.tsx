@@ -7,15 +7,15 @@
  */
 
 import type { ReactNode } from "react";
-import type { ToolEntry } from "./feed-to-messages";
-import { ToolBlock } from "./ai-elements/tool-block";
 import { Shimmer } from "./ai-elements/shimmer";
+import { ToolBlock } from "./ai-elements/tool-block";
+import type { ToolEntry } from "./feed-to-messages";
 
-// Re-export types and conversion for convenient imports
-export type { ToolEntry, ChatMessage } from "./feed-to-messages";
-export { feedItemsToMessages } from "./feed-to-messages";
-export { ToolBlock } from "./ai-elements/tool-block";
 export type { ToolBlockProps } from "./ai-elements/tool-block";
+export { ToolBlock } from "./ai-elements/tool-block";
+// Re-export types and conversion for convenient imports
+export type { ChatMessage, ToolEntry } from "./feed-to-messages";
+export { feedItemsToMessages } from "./feed-to-messages";
 
 // ---------------------------------------------------------------------------
 // ToolsAndCards -- renders individual ToolBlocks with special-tool support

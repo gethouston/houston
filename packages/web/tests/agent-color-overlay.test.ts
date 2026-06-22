@@ -1,7 +1,7 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
-  renameColorOverlay,
   removeColorOverlay,
+  renameColorOverlay,
 } from "../src/engine-adapter/control-plane";
 
 /**

@@ -1,15 +1,15 @@
-import { useState } from "react";
 import {
   Collapsible,
-  CollapsibleTrigger,
   CollapsibleContent,
-  ScrollArea,
+  CollapsibleTrigger,
   cn,
+  ScrollArea,
 } from "@houston-ai/core";
-import { useProgressSteps } from "./use-progress-steps";
+import { Check, ChevronDown, Circle, Loader2 } from "lucide-react";
+import { useState } from "react";
 import { feedItemsToMessages } from "./feed-to-messages";
 import type { FeedItem } from "./types";
-import { ChevronDown, Check, Circle, Loader2 } from "lucide-react";
+import { useProgressSteps } from "./use-progress-steps";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */

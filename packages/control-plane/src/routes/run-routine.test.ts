@@ -1,12 +1,12 @@
-import { test, expect, beforeEach } from "bun:test";
+import { beforeEach, expect, test } from "bun:test";
 import type { Server } from "node:http";
-import type { Capabilities, Routine, RoutineRun } from "@houston/protocol";
 import { loadRoutineRuns } from "@houston/domain";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
-import { MemoryWorkspaceStore } from "../store/memory";
+import type { Capabilities, Routine, RoutineRun } from "@houston/protocol";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
 import type { ChannelCtx, RuntimeChannel, TokenVerifier } from "../ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
 /**
@@ -50,6 +50,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 
 let server: Server;

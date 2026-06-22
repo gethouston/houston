@@ -1,21 +1,20 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
-import type { ReactNode } from "react";
-
-import { ChatPanel } from "@houston-ai/chat";
 import type {
   ChatPanelProps,
   FeedItem,
   ToolsAndCardsProps,
 } from "@houston-ai/chat";
+import { ChatPanel } from "@houston-ai/chat";
 import { SplitView } from "@houston-ai/layout";
-import { KanbanBoard } from "./kanban-board";
-import { KanbanList } from "./kanban-list";
-import { KanbanDetailPanel } from "./kanban-detail-panel";
-import { BulkActionBar } from "./bulk-action-bar";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { BulkActionBarLabels, BulkMoveTarget } from "./bulk-action-bar";
+import { BulkActionBar } from "./bulk-action-bar";
+import { KanbanBoard } from "./kanban-board";
 import type { KanbanCardLabels } from "./kanban-card";
-import type { BoardSearchSnippet, KanbanItem, KanbanColumn } from "./types";
+import { KanbanDetailPanel } from "./kanban-detail-panel";
+import { KanbanList } from "./kanban-list";
+import type { BoardSearchSnippet, KanbanColumn, KanbanItem } from "./types";
 
 export interface NewPanelOptions {
   focusComposer?: boolean;

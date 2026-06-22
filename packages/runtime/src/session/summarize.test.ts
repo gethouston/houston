@@ -1,12 +1,12 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import {
-  registerFauxProvider,
   fauxAssistantMessage,
+  registerFauxProvider,
 } from "@earendil-works/pi-ai";
+import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { buildExcerpt, generateTitle, titleFromText } from "./summarize";
 
 /**

@@ -1,26 +1,26 @@
+import { ChatPanel, type FeedItem } from "@houston-ai/chat";
+import { cn, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ChatPanel, type FeedItem } from "@houston-ai/chat";
-import { HoustonAvatar, cn, resolveAgentColor } from "@houston-ai/core";
 import { useSkills } from "../../../hooks/queries";
-import { tauriAgent } from "../../../lib/tauri";
 import { logger } from "../../../lib/logger";
+import { tauriAgent } from "../../../lib/tauri";
+import type { Agent } from "../../../lib/types";
 import { useFeedStore } from "../../../stores/feeds";
 import {
-  useSessionStatus,
   isActiveSessionStatus,
+  useSessionStatus,
 } from "../../../stores/session-status";
+import { SkillCard } from "../../skill-card";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
+import { MissionChatFrame } from "../mission-chat-frame";
+import { MissionDoneScreen } from "../mission-done-screen";
+import type { MissionMeta } from "../mission-frame";
+import { MissionIntroModal } from "../mission-intro-modal";
 import {
   buildOnboardingSkillFile,
   ONBOARDING_SKILL_SLUG,
 } from "../onboarding-skill";
-import { SkillCard } from "../../skill-card";
-import type { Agent } from "../../../lib/types";
-import type { MissionMeta } from "../mission-frame";
-import { MissionChatFrame } from "../mission-chat-frame";
-import { MissionIntroModal } from "../mission-intro-modal";
-import { MissionDoneScreen } from "../mission-done-screen";
 
 interface FrameLabels {
   brandLabel: string;

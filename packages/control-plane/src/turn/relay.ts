@@ -1,7 +1,7 @@
 import {
+  type ConversationSnapshot,
   EMPTY_SNAPSHOT,
   reduceSnapshot,
-  type ConversationSnapshot,
   type WireEvent,
 } from "@houston/runtime-client";
 import { MemoryTurnBus, type TurnBus } from "./bus";

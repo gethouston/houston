@@ -6,6 +6,9 @@
     "selectWorkspace": "Elige un espacio de trabajo",
     "addAgent": "Nuevo agente",
     "agentMenu": "Menú del agente",
+    "collapse": "Contraer barra lateral",
+    "expand": "Expandir barra lateral",
+    "createWorkspace": "Crear espacio de trabajo",
     "color": "Color",
     "changeColor": "Cambiar color",
     "colorLabels": {

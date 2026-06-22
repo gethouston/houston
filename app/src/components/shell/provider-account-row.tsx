@@ -1,5 +1,5 @@
-import { useTranslation } from "react-i18next";
 import { Loader2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
 import { ClaudeLogo, OpenAILogo } from "./provider-logos";
 

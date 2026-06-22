@@ -1,26 +1,26 @@
-import { useState, useEffect, useRef, type FormEvent } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
-import { useAgentStore } from "../../stores/agents";
-import { useWorkspaceStore } from "../../stores/workspaces";
-import { useUIStore } from "../../stores/ui";
-import { tauriConfig, tauriProvider, tauriRoutines } from "../../lib/tauri";
-import { logger } from "../../lib/logger";
 import type { SuggestedRoutine } from "@houston-ai/engine-client";
 import type { RoutineFormData } from "@houston-ai/routines";
+import { type FormEvent, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { logger } from "../../lib/logger";
 import { getDefaultModel } from "../../lib/providers";
+import { tauriConfig, tauriProvider, tauriRoutines } from "../../lib/tauri";
+import { useAgentCatalogStore } from "../../stores/agent-catalog";
+import { useAgentStore } from "../../stores/agents";
+import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import { AgentPickerStep } from "./agent-picker-step";
-import { NamingStep } from "./naming-step";
 import { AiAssistStep } from "./ai-assist-step";
 import { AiReviewStep } from "./ai-review-step";
 import { AiRoutineStep } from "./ai-routine-step";
-import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
+import { NamingStep } from "./naming-step";
 
 type Step = 1 | "ai-assist" | "ai-routine" | "ai-review" | 2;
 

@@ -21,8 +21,8 @@
  */
 
 import {
-  normalizeAttachmentReferences,
   type AttachmentReference,
+  normalizeAttachmentReferences,
 } from "./attachment-message.ts";
 
 const MARKER_RE = /^<!--houston:skill (\{[\s\S]*?\})-->\s*\n?\n?/;

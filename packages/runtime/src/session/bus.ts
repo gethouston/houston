@@ -1,7 +1,7 @@
 import {
+  type ConversationSnapshot,
   EMPTY_SNAPSHOT as EMPTY,
   reduceSnapshot,
-  type ConversationSnapshot,
   type WireEvent,
 } from "@houston/runtime-client";
 
@@ -18,7 +18,7 @@ import {
  * control plane's turn relay, which must mirror these semantics exactly).
  */
 
-export { reduceSnapshot, type ConversationSnapshot };
+export { type ConversationSnapshot, reduceSnapshot };
 
 type Subscriber = (event: WireEvent) => void;
 

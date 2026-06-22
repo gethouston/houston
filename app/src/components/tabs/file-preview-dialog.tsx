@@ -1,5 +1,3 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Button,
   Dialog,
@@ -9,8 +7,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { tauriFiles } from "../../lib/tauri";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { saveBlob } from "../../lib/save-blob";
+import { tauriFiles } from "../../lib/tauri";
 
 /**
  * In-browser preview for a workspace file (web build). Images, PDFs and

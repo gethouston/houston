@@ -6,10 +6,11 @@
  * instead of failing deep in the app. Self-contained inline styles: this renders
  * in the entry chunk, before the app's Tailwind/i18n stack loads.
  */
-import { useState, type FormEvent } from "react";
+
 import { HoustonEngineClient } from "@houston/runtime-client";
-import { ui } from "./styles";
+import { type FormEvent, useState } from "react";
 import type { EngineConfig } from "../engine-config";
+import { ui } from "./styles";
 
 export function EngineConnectScreen({
   onConnect,

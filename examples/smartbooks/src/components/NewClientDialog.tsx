@@ -1,6 +1,6 @@
 import { useState } from "react";
-import { createClient } from "../lib/clients";
 import type { Client } from "../lib/clients";
+import { createClient } from "../lib/clients";
 
 interface Props {
   agentPath: string;

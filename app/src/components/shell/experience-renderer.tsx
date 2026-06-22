@@ -1,8 +1,8 @@
-import { Suspense } from "react";
 import { Spinner } from "@houston-ai/core";
-import { resolveTabComponent } from "../../agents/tab-resolver";
+import { Suspense } from "react";
 import { STANDARD_TABS } from "../../agents/standard-tabs";
-import type { AgentDefinition, Agent } from "../../lib/types";
+import { resolveTabComponent } from "../../agents/tab-resolver";
+import type { Agent, AgentDefinition } from "../../lib/types";
 
 interface AgentRendererProps {
   agentDef: AgentDefinition;

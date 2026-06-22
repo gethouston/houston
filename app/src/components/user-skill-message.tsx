@@ -2,8 +2,8 @@ import {
   UserAttachmentBadge,
   type UserAttachmentMessageLabels,
 } from "@houston-ai/chat";
-import { SkillIcon } from "./skill-icon";
 import type { SkillInvocation } from "../lib/skill-message";
+import { SkillIcon } from "./skill-icon";
 
 interface Props {
   invocation: SkillInvocation;

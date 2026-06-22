@@ -7,10 +7,10 @@
  * and EngineWebSocket implementations change.
  */
 export * from "../../../../ui/engine-client/src/types";
+export type { HoustonClientOptions } from "./client";
 export {
   HoustonClient,
   HoustonEngineError,
   isHoustonEngineError,
 } from "./client";
-export type { HoustonClientOptions } from "./client";
 export { EngineWebSocket, topics } from "./ws";

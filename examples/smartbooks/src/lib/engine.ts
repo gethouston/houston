@@ -7,7 +7,7 @@
  * mobile PWA, internal admin tool, whatever).
  */
 
-import { HoustonClient, EngineWebSocket } from "@houston-ai/engine-client";
+import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import type { EngineConfig } from "./config";
 
 let _client: HoustonClient | null = null;

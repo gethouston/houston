@@ -1,11 +1,11 @@
-import { useState, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { DialogTitle } from "@houston-ai/core";
 import type { SuggestedRoutine } from "@houston-ai/engine-client";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { tauriAgents, tauriProvider } from "../../lib/tauri";
 import { AgentSetupForm, type AgentSetupFormValues } from "./agent-setup-form";
-import { AiStepFooter } from "./ai-step-footer";
 import { serializeFormValues } from "./agent-setup-utils";
+import { AiStepFooter } from "./ai-step-footer";
 import { InlineModelSelector } from "./naming-step";
 
 interface AiAssistStepProps {

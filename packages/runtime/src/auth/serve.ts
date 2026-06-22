@@ -1,12 +1,12 @@
 import { join } from "node:path";
 import { config } from "../config";
-import { authStorage } from "./storage";
 import {
   applyServedCredential,
   readAuthFile,
-  scrubRefreshTokensAt,
   type ServedCredential,
+  scrubRefreshTokensAt,
 } from "./auth-file";
+import { authStorage } from "./storage";
 
 /**
  * Connect-once serve mode (security Gate #2: access-token-only).

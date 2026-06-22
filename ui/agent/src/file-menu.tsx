@@ -2,8 +2,7 @@
  * Lightweight right-click context menu for file rows.
  * Portal-based — renders at cursor position, closes on outside click or Escape.
  */
-import type { ReactNode } from "react";
-import { createPortal } from "react-dom";
+
 import {
   Download,
   ExternalLink,
@@ -11,6 +10,8 @@ import {
   Pencil,
   Trash2,
 } from "lucide-react";
+import type { ReactNode } from "react";
+import { createPortal } from "react-dom";
 import type { FileEntry } from "./types";
 
 export interface FileMenuLabels {

@@ -1,14 +1,14 @@
 import type { Agent, Workspace } from "../domain/types";
 import { namespaceFor } from "../launcher/names";
-import { bytesToGiB, bytesToMiB } from "./quantity";
-import type { ClusterSnapshot, PodInfo, VolumeInfo } from "./cluster";
 import {
-  estimate,
   type AutopilotRates,
   type BillingActuals,
   type CostRate,
+  estimate,
   HOURS_PER_MONTH,
 } from "./billing";
+import type { ClusterSnapshot, PodInfo, VolumeInfo } from "./cluster";
+import { bytesToGiB, bytesToMiB } from "./quantity";
 
 /**
  * Joins the control plane's tenancy records (workspaces + agents, from the store)

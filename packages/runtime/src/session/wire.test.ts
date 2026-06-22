@@ -1,10 +1,10 @@
-import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
+import { expect, test } from "bun:test";
 import type {
   AssistantMessage,
   Usage,
   UserMessage,
 } from "@earendil-works/pi-ai";
-import { expect, test } from "bun:test";
+import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { normalizeUsage, toWire } from "./wire";
 
 /** A valid pi `Usage` for fixtures; `cost` is required by the type. */

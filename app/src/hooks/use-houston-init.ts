@@ -1,11 +1,11 @@
 import { useEffect, useRef } from "react";
+import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
+import { analytics } from "../lib/analytics";
 import { tauriPreferences, tauriProvider, tauriRoutines } from "../lib/tauri";
 import { useAgentCatalogStore } from "../stores/agent-catalog";
-import { useWorkspaceStore } from "../stores/workspaces";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
-import { analytics } from "../lib/analytics";
-import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
+import { useWorkspaceStore } from "../stores/workspaces";
 
 /**
  * App initialization hook. Called once in App.tsx.
