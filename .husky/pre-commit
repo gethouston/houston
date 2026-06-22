@@ -1,1 +1,5 @@
+# Format + lint staged files (auto-fix, blocks on unfixable findings),
+# then typecheck the whole repo. Either failing blocks the commit.
+set -e
 pnpm exec lint-staged
+pnpm typecheck
