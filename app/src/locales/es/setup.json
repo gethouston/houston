@@ -149,6 +149,11 @@
         "tourBody": "Un repaso rápido de lo básico.",
         "connectMore": "Conectar más apps",
         "connectMoreBody": "Dale a tu agente acceso a más de tus herramientas."
+      },
+      "onboardingIntro": {
+        "title": "Ahora pongámoslo a trabajar",
+        "body": "Tres pasos rápidos para ver a tu agente hacer algo real.",
+        "cta": "Vamos"
       }
     },
     "sectionCounter": "{{section}} · {{current}} de {{total}}",

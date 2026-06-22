@@ -51,15 +51,17 @@ export function ProviderLoginMission({
   const installed = status?.cli_installed ?? false;
   const connected = installed && (status?.authenticated ?? false);
 
-  // Funnel step 8 (action): the AI provider became connected. The status poll
-  // re-runs every 3s, so guard with a ref to fire exactly once per install.
+  // The AI provider became connected. Fire the funnel event once, then advance
+  // straight to the success screen — the user shouldn't sit on an inline
+  // "connected" state. (Also fires on mount when the CLI is already signed in.)
   const providerConnectedFired = useRef(false);
   useEffect(() => {
     if (connected && !providerConnectedFired.current) {
       providerConnectedFired.current = true;
       analytics.track("ai_provider_connected", { provider: providerId });
+      onContinue();
     }
-  }, [connected, providerId]);
+  }, [connected, providerId, onContinue]);
 
   // Houston-managed `claude` install (license forbids bundling) — show the real
   // download reason + Retry instead of a Log-in button that would only error.

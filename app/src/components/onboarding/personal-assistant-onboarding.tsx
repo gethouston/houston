@@ -185,6 +185,7 @@ export function PersonalAssistantOnboarding({
     <>
       {step === "intro" && (
         <SetupProgress
+          section="setup"
           title={t("setup:tutorial.missions.intro.title")}
           message={t("setup:tutorial.missions.intro.body")}
           done={[]}
@@ -215,6 +216,7 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "aiConnected" && (
         <SetupProgress
+          section="setup"
           title={t("setup:tutorial.missions.aiConnected.title")}
           message={t("setup:tutorial.missions.aiConnected.body")}
           done={["ai"]}
@@ -233,11 +235,22 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "appsConnected" && (
         <SetupProgress
+          section="setup"
           title={t("setup:tutorial.missions.appsConnected.title")}
           message={t("setup:tutorial.missions.appsConnected.body")}
           done={["ai", "apps"]}
           justCompleted="apps"
           ctaLabel={t("setup:tutorial.missions.appsConnected.cta")}
+          onContinue={() => setStep("onboardingIntro")}
+        />
+      )}
+      {step === "onboardingIntro" && (
+        <SetupProgress
+          section="onboarding"
+          title={t("setup:tutorial.missions.onboardingIntro.title")}
+          message={t("setup:tutorial.missions.onboardingIntro.body")}
+          done={[]}
+          ctaLabel={t("setup:tutorial.missions.onboardingIntro.cta")}
           onContinue={() => setStep("meet")}
         />
       )}
@@ -255,9 +268,10 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "agentCreated" && (
         <SetupProgress
+          section="onboarding"
           title={t("setup:tutorial.missions.agentCreated.title")}
           message={t("setup:tutorial.missions.agentCreated.body")}
-          done={["ai", "apps", "agent"]}
+          done={["agent"]}
           justCompleted="agent"
           ctaLabel={t("setup:tutorial.missions.agentCreated.cta")}
           onContinue={() => setStep("connectEmail")}
@@ -276,9 +290,10 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "emailConnected" && (
         <SetupProgress
+          section="onboarding"
           title={t("setup:tutorial.missions.emailConnected.title")}
           message={t("setup:tutorial.missions.emailConnected.body")}
-          done={["ai", "apps", "agent", "email"]}
+          done={["agent", "email"]}
           justCompleted="email"
           ctaLabel={t("setup:tutorial.missions.emailConnected.cta")}
           onContinue={() => setStep("emailIntro")}
@@ -316,9 +331,10 @@ export function PersonalAssistantOnboarding({
       )}
       {step === "emailSent" && (
         <SetupProgress
+          section="onboarding"
           title={t("setup:tutorial.missions.emailSent.title")}
           message={t("setup:tutorial.missions.emailSent.body")}
-          done={["ai", "apps", "agent", "email", "send"]}
+          done={["agent", "email", "send"]}
           justCompleted="send"
           ctaLabel={t("setup:tutorial.missions.emailSent.cta")}
           onContinue={() => setStep("finished")}

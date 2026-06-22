@@ -38,15 +38,16 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
   const connected = justConnected || status?.status === "ok";
   const waiting = auth.state.phase === "waiting";
 
-  // Funnel step 9 (action): the user connected their apps account. `connected`
-  // is derived from a polled query, so guard with a ref to fire exactly once.
+  // The apps account connected. Fire the funnel event once, then advance
+  // straight to the success screen instead of lingering on the inline state.
   const toolsConnectedFired = useRef(false);
   useEffect(() => {
     if (connected && !toolsConnectedFired.current) {
       toolsConnectedFired.current = true;
       analytics.track("tools_provider_connected");
+      onContinue();
     }
-  }, [connected]);
+  }, [connected, onContinue]);
 
   const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
 

@@ -23,6 +23,7 @@ export type OnboardingStep =
   | "aiConnected"
   | "tools"
   | "appsConnected"
+  | "onboardingIntro"
   | "meet"
   | "agentCreated"
   | "connectEmail"
