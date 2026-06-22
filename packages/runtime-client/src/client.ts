@@ -73,7 +73,8 @@ export class HoustonEngineClient {
       ...init,
       headers: this.headers(init?.headers as Record<string, string>),
     });
-    if (!res.ok) throw new EngineError(res.status, await res.text().catch(() => ""));
+    if (!res.ok)
+      throw new EngineError(res.status, await res.text().catch(() => ""));
     return res;
   }
 
@@ -113,7 +114,9 @@ export class HoustonEngineClient {
    */
   startLogin(provider: ProviderId, deviceAuth = true) {
     const suffix = deviceAuth ? "" : "?deviceAuth=false";
-    return this.json<LoginInfo>(`/auth/${provider}/login${suffix}`, { method: "POST" });
+    return this.json<LoginInfo>(`/auth/${provider}/login${suffix}`, {
+      method: "POST",
+    });
   }
   /** Submit a pasted code (the `auth_code` headless Claude path). */
   completeLogin(provider: ProviderId, code: string) {
@@ -124,7 +127,9 @@ export class HoustonEngineClient {
     });
   }
   logout(provider: ProviderId) {
-    return this.json<{ ok: boolean }>(`/auth/${provider}/logout`, { method: "POST" });
+    return this.json<{ ok: boolean }>(`/auth/${provider}/logout`, {
+      method: "POST",
+    });
   }
 
   // --- conversations ---
@@ -143,17 +148,23 @@ export class HoustonEngineClient {
     );
   }
   renameConversation(id: string, title: string) {
-    return this.json<{ ok: boolean }>(`/conversations/${encodeURIComponent(id)}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ title }),
-    });
+    return this.json<{ ok: boolean }>(
+      `/conversations/${encodeURIComponent(id)}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title }),
+      },
+    );
   }
   /** Delete the conversation: transcript, live session, and pi session history. */
   deleteConversation(id: string) {
-    return this.json<{ ok: boolean }>(`/conversations/${encodeURIComponent(id)}`, {
-      method: "DELETE",
-    });
+    return this.json<{ ok: boolean }>(
+      `/conversations/${encodeURIComponent(id)}`,
+      {
+        method: "DELETE",
+      },
+    );
   }
   /** Generate + persist a short LLM title; returns it. */
   summarizeTitle(id: string) {
@@ -179,7 +190,11 @@ export class HoustonEngineClient {
    * Send a message, triggering a turn. Resolves once the turn is accepted (202);
    * the turn's events stream over `streamEvents(id)`, not this call.
    */
-  async sendMessage(id: string, text: string, opts: SendOptions = {}): Promise<void> {
+  async sendMessage(
+    id: string,
+    text: string,
+    opts: SendOptions = {},
+  ): Promise<void> {
     await this.request(`/conversations/${encodeURIComponent(id)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -196,9 +211,14 @@ export class HoustonEngineClient {
   async streamEvents(id: string, opts: EventStreamOptions): Promise<void> {
     const res = await this.request(
       `/conversations/${encodeURIComponent(id)}/events`,
-      { method: "GET", headers: { Accept: "text/event-stream" }, signal: opts.signal },
+      {
+        method: "GET",
+        headers: { Accept: "text/event-stream" },
+        signal: opts.signal,
+      },
     );
-    if (!res.body) throw new EngineError(0, "no response body for event stream");
+    if (!res.body)
+      throw new EngineError(0, "no response body for event stream");
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();

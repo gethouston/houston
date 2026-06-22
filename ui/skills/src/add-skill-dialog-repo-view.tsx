@@ -1,72 +1,81 @@
-import { useCallback, useState } from "react"
-import { cn, Button, Spinner } from "@houston-ai/core"
-import { AlertCircle, Search } from "lucide-react"
-import type { RepoSkill } from "./types"
-import type { RepoStage } from "./add-skill-dialog-repo-stage"
+import { useCallback, useState } from "react";
+import { cn, Button, Spinner } from "@houston-ai/core";
+import { AlertCircle, Search } from "lucide-react";
+import type { RepoSkill } from "./types";
+import type { RepoStage } from "./add-skill-dialog-repo-stage";
 import {
   DEFAULT_REPO_VIEW_LABELS,
   type RepoViewLabels,
-} from "./add-skill-dialog-repo-labels"
-import { RepoDoneState } from "./add-skill-dialog-repo-done"
-import { RepoSkillRow } from "./add-skill-dialog-repo-row"
-import { RepoSelectionSummary } from "./add-skill-dialog-repo-selection"
+} from "./add-skill-dialog-repo-labels";
+import { RepoDoneState } from "./add-skill-dialog-repo-done";
+import { RepoSkillRow } from "./add-skill-dialog-repo-row";
+import { RepoSelectionSummary } from "./add-skill-dialog-repo-selection";
 
 export interface RepoViewProps {
-  onList: (source: string) => Promise<RepoSkill[]>
-  onInstall: (source: string, skills: RepoSkill[]) => Promise<string[]>
-  labels?: RepoViewLabels
+  onList: (source: string) => Promise<RepoSkill[]>;
+  onInstall: (source: string, skills: RepoSkill[]) => Promise<string[]>;
+  labels?: RepoViewLabels;
 }
 
 export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
-  const l = { ...DEFAULT_REPO_VIEW_LABELS, ...labels }
-  const [source, setSource] = useState("")
-  const [stage, setStage] = useState<RepoStage>({ kind: "input" })
-  const [error, setError] = useState("")
-  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const l = { ...DEFAULT_REPO_VIEW_LABELS, ...labels };
+  const [source, setSource] = useState("");
+  const [stage, setStage] = useState<RepoStage>({ kind: "input" });
+  const [error, setError] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
 
   const handleDiscover = useCallback(async () => {
-    const trimmed = source.trim()
-    if (!trimmed) return
-    setError("")
-    setStage({ kind: "loading", source: trimmed })
+    const trimmed = source.trim();
+    if (!trimmed) return;
+    setError("");
+    setStage({ kind: "loading", source: trimmed });
     try {
-      const skills = await onList(trimmed)
-      setStage({ kind: "selection", source: trimmed, skills })
-      setSelected(new Set(skills.map((s) => s.id)))
+      const skills = await onList(trimmed);
+      setStage({ kind: "selection", source: trimmed, skills });
+      setSelected(new Set(skills.map((s) => s.id)));
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-      setStage({ kind: "input" })
+      setError(e instanceof Error ? e.message : String(e));
+      setStage({ kind: "input" });
     }
-  }, [source, onList])
+  }, [source, onList]);
 
   const toggleSkill = useCallback((id: string) => {
     setSelected((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
-  }, [])
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const handleInstall = useCallback(async () => {
-    if (stage.kind !== "selection") return
-    const toInstall = stage.skills.filter((s) => selected.has(s.id))
-    if (toInstall.length === 0) return
-    setError("")
-    setStage({ kind: "installing", source: stage.source, skills: stage.skills, selected })
+    if (stage.kind !== "selection") return;
+    const toInstall = stage.skills.filter((s) => selected.has(s.id));
+    if (toInstall.length === 0) return;
+    setError("");
+    setStage({
+      kind: "installing",
+      source: stage.source,
+      skills: stage.skills,
+      selected,
+    });
     try {
-      const names = await onInstall(stage.source, toInstall)
-      setStage({ kind: "done", installed: names })
+      const names = await onInstall(stage.source, toInstall);
+      setStage({ kind: "done", installed: names });
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-      setStage({ kind: "selection", source: stage.source, skills: stage.skills })
+      setError(e instanceof Error ? e.message : String(e));
+      setStage({
+        kind: "selection",
+        source: stage.source,
+        skills: stage.skills,
+      });
     }
-  }, [stage, selected, onInstall])
+  }, [stage, selected, onInstall]);
 
-  const isLoading = stage.kind === "loading"
-  const isInstalling = stage.kind === "installing"
-  const showList = stage.kind === "selection" || stage.kind === "installing"
-  const listSkills = showList ? stage.skills : []
+  const isLoading = stage.kind === "loading";
+  const isInstalling = stage.kind === "installing";
+  const showList = stage.kind === "selection" || stage.kind === "installing";
+  const listSkills = showList ? stage.skills : [];
 
   return (
     <>
@@ -79,14 +88,19 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
                 type="text"
                 value={source}
                 onChange={(e) => {
-                  setSource(e.target.value)
-                  if (stage.kind !== "input") setStage({ kind: "input" })
-                  setError("")
+                  setSource(e.target.value);
+                  if (stage.kind !== "input") setStage({ kind: "input" });
+                  setError("");
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === "Enter" && source.trim() && !isLoading && !isInstalling) {
-                    if (stage.kind === "selection") handleInstall()
-                    else handleDiscover()
+                  if (
+                    e.key === "Enter" &&
+                    source.trim() &&
+                    !isLoading &&
+                    !isInstalling
+                  ) {
+                    if (stage.kind === "selection") handleInstall();
+                    else handleDiscover();
                   }
                 }}
                 placeholder={l.sourcePlaceholder}
@@ -111,7 +125,11 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
                 disabled={selected.size === 0 || isInstalling}
                 className="rounded-full shrink-0"
               >
-                {isInstalling ? <Spinner className="size-4" /> : l.installSelected(selected.size)}
+                {isInstalling ? (
+                  <Spinner className="size-4" />
+                ) : (
+                  l.installSelected(selected.size)
+                )}
               </Button>
             )}
           </div>
@@ -131,9 +149,9 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
             labels={l}
             onToggleAll={() => {
               if (selected.size === stage.skills.length) {
-                setSelected(new Set())
+                setSelected(new Set());
               } else {
-                setSelected(new Set(stage.skills.map((s) => s.id)))
+                setSelected(new Set(stage.skills.map((s) => s.id)));
               }
             }}
           />
@@ -164,8 +182,8 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
               const isSelected =
                 stage.kind === "installing"
                   ? stage.selected.has(skill.id)
-                  : selected.has(skill.id)
-              if (stage.kind === "installing" && !isSelected) return null
+                  : selected.has(skill.id);
+              if (stage.kind === "installing" && !isSelected) return null;
               return (
                 <RepoSkillRow
                   key={skill.id}
@@ -173,7 +191,7 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
                   selected={isSelected}
                   onToggle={() => toggleSkill(skill.id)}
                 />
-              )
+              );
             })}
           </div>
         )}
@@ -183,14 +201,14 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
             installed={stage.installed}
             labels={l}
             onReset={() => {
-              setStage({ kind: "input" })
-              setSource("")
-              setError("")
-              setSelected(new Set())
+              setStage({ kind: "input" });
+              setSource("");
+              setError("");
+              setSelected(new Set());
             }}
           />
         )}
       </div>
     </>
-  )
+  );
 }

@@ -1,5 +1,9 @@
 import { useEffect, useState } from "react";
-import type { HoustonEngineClient, ProviderId, ProviderInfo } from "@houston/runtime-client";
+import type {
+  HoustonEngineClient,
+  ProviderId,
+  ProviderInfo,
+} from "@houston/runtime-client";
 import { ui } from "./styles";
 
 /**
@@ -19,11 +23,17 @@ export function ConnectView({
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [note, setNote] = useState<string | null>(null);
   // Set when a headless Claude login is waiting for the user to paste a code.
-  const [pendingCode, setPendingCode] = useState<{ id: ProviderId; hint?: string } | null>(null);
+  const [pendingCode, setPendingCode] = useState<{
+    id: ProviderId;
+    hint?: string;
+  } | null>(null);
   const [code, setCode] = useState("");
 
   useEffect(() => {
-    client.listProviders().then(setProviders).catch(() => setNote("Could not reach the engine."));
+    client
+      .listProviders()
+      .then(setProviders)
+      .catch(() => setNote("Could not reach the engine."));
   }, [client]);
 
   const pollUntilConnected = (id: ProviderId) => {
@@ -56,11 +66,16 @@ export function ConnectView({
         setNote("Authorize in the new tab, then come back here.");
       } else if (info.kind === "auth_code") {
         window.open(info.url, "_blank", "noopener");
-        setNote(info.instructions ?? "Approve in the new tab, then paste the code Claude shows.");
+        setNote(
+          info.instructions ??
+            "Approve in the new tab, then paste the code Claude shows.",
+        );
         setPendingCode({ id: p.id, hint: info.instructions });
       } else {
         window.open(info.verificationUri, "_blank", "noopener");
-        setNote(`Open ${info.verificationUri} and enter code: ${info.userCode}`);
+        setNote(
+          `Open ${info.verificationUri} and enter code: ${info.userCode}`,
+        );
       }
     } catch (e) {
       setNote(e instanceof Error ? e.message : String(e));
@@ -88,7 +103,10 @@ export function ConnectView({
         {providers.map((p) => (
           <button
             key={p.id}
-            style={{ ...ui.button, ...(p.configured ? { background: "#2a2a2a" } : {}) }}
+            style={{
+              ...ui.button,
+              ...(p.configured ? { background: "#2a2a2a" } : {}),
+            }}
             disabled={p.configured}
             onClick={() => connect(p)}
           >
@@ -107,7 +125,11 @@ export function ConnectView({
                 if (e.key === "Enter") submitCode();
               }}
             />
-            <button style={ui.sendBtn} disabled={!code.trim()} onClick={submitCode}>
+            <button
+              style={ui.sendBtn}
+              disabled={!code.trim()}
+              onClick={submitCode}
+            >
               Submit
             </button>
           </div>

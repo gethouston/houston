@@ -8,8 +8,12 @@
 
 import type { AllocateResponse, Env } from "./types";
 
-export async function handleAllocate(request: Request, env: Env): Promise<Response> {
-  if (request.method !== "POST") return new Response("method not allowed", { status: 405 });
+export async function handleAllocate(
+  request: Request,
+  env: Env,
+): Promise<Response> {
+  if (request.method !== "POST")
+    return new Response("method not allowed", { status: 405 });
   if (!env.TUNNEL_SHARED_SECRET) {
     return Response.json({ error: "relay not configured" }, { status: 500 });
   }
@@ -36,7 +40,10 @@ export async function verifyTunnelToken(
 }
 
 /** Exported for tests: deterministic HMAC computation. */
-export async function tunnelTokenFor(tunnelId: string, secret: string): Promise<string> {
+export async function tunnelTokenFor(
+  tunnelId: string,
+  secret: string,
+): Promise<string> {
   return hmacHex(secret, tunnelId);
 }
 
@@ -57,7 +64,11 @@ async function hmacHex(secret: string, message: string): Promise<string> {
     false,
     ["sign"],
   );
-  const sig = await crypto.subtle.sign("HMAC", key, new TextEncoder().encode(message));
+  const sig = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(message),
+  );
   return Array.from(new Uint8Array(sig))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");

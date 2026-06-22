@@ -35,7 +35,11 @@ export function CodeBlockActions({
       title="Copy code"
       aria-label="Copy code"
     >
-      {copied ? <CheckIcon className="size-4" /> : <CopyIcon className="size-4" />}
+      {copied ? (
+        <CheckIcon className="size-4" />
+      ) : (
+        <CopyIcon className="size-4" />
+      )}
     </button>
   );
 }

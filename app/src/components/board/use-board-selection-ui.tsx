@@ -42,7 +42,9 @@ export function useBoardSelectionUI({
   );
   const idsInColumn = useCallback(
     (columnId: string) =>
-      allItems.filter((a) => columnOfStatus(a.status) === columnId).map((a) => a.id),
+      allItems
+        .filter((a) => columnOfStatus(a.status) === columnId)
+        .map((a) => a.id),
     [allItems, columnOfStatus],
   );
   const doneIds = useMemo(() => idsInColumn("done"), [idsInColumn]);
@@ -90,7 +92,10 @@ export function useBoardSelectionUI({
   );
 
   const menuLabels = useMemo(
-    () => ({ menu: t("board:column.menu"), selectAll: t("board:column.selectAll") }),
+    () => ({
+      menu: t("board:column.menu"),
+      selectAll: t("board:column.selectAll"),
+    }),
     [t],
   );
 
@@ -127,7 +132,10 @@ export function useBoardSelectionUI({
       try {
         await op();
       } catch (err) {
-        addToast({ title: t("board:bulk.error", { error: String(err) }), variant: "error" });
+        addToast({
+          title: t("board:bulk.error", { error: String(err) }),
+          variant: "error",
+        });
       }
     },
     [addToast, t],
@@ -136,11 +144,15 @@ export function useBoardSelectionUI({
   const bulkActions = useMemo(() => {
     if (!selection) return undefined;
     return {
-      moveTargets: moveTargetsForSection(selectionLockColumnId).map((status) => ({
-        status,
-        label:
-          status === "done" ? t("dashboard:columns.done") : t("dashboard:columns.needsYou"),
-      })),
+      moveTargets: moveTargetsForSection(selectionLockColumnId).map(
+        (status) => ({
+          status,
+          label:
+            status === "done"
+              ? t("dashboard:columns.done")
+              : t("dashboard:columns.needsYou"),
+        }),
+      ),
       onMove: (status: string) => runBulk(() => selection.move(status)),
       onArchive: () => runBulk(() => selection.archive()),
       onDelete: () => runBulk(() => selection.remove()),

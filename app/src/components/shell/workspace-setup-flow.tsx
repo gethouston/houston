@@ -38,11 +38,15 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
 
   if (step === 1) {
     return (
-      <div className={isPage ? "flex flex-col items-center justify-center" : ""}>
+      <div
+        className={isPage ? "flex flex-col items-center justify-center" : ""}
+      >
         <div className={isPage ? "w-full max-w-sm" : "space-y-4 pt-2"}>
           {isPage && (
             <div className="text-center mb-6">
-              <h2 className="text-lg font-semibold mb-1">{t("setup:name.title")}</h2>
+              <h2 className="text-lg font-semibold mb-1">
+                {t("setup:name.title")}
+              </h2>
               <p className="text-sm text-muted-foreground">
                 {t("setup:name.description")}
               </p>
@@ -55,7 +59,9 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
               onChange={(e) => setName(e.target.value)}
               placeholder={t("setup:name.placeholder")}
             />
-            <div className={isPage ? "flex justify-center" : "flex justify-end"}>
+            <div
+              className={isPage ? "flex justify-center" : "flex justify-end"}
+            >
               <Button
                 type="submit"
                 disabled={!name.trim()}
@@ -82,7 +88,13 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
             <ArrowLeft className="h-3.5 w-3.5" />
             {t("common:actions.back")}
           </button>
-          <h2 className={isPage ? "text-lg font-semibold mb-1" : "text-base font-medium mb-1"}>
+          <h2
+            className={
+              isPage
+                ? "text-lg font-semibold mb-1"
+                : "text-base font-medium mb-1"
+            }
+          >
             {t("setup:provider.title")}
           </h2>
           <p className="text-sm text-muted-foreground">
@@ -97,10 +109,16 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
         </div>
 
         {/* Provider picker */}
-        <ProviderPicker value={provider} model={model} onSelect={handleProviderSelect} />
+        <ProviderPicker
+          value={provider}
+          model={model}
+          onSelect={handleProviderSelect}
+        />
 
         {/* Continue */}
-        <div className={`mt-5 ${isPage ? "flex justify-center" : "flex justify-end"}`}>
+        <div
+          className={`mt-5 ${isPage ? "flex justify-center" : "flex justify-end"}`}
+        >
           <Button
             className="rounded-full"
             disabled={!provider || !model}

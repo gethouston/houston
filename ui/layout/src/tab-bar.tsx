@@ -32,11 +32,15 @@ export function TabBar({
       {(title || menu || actions) && (
         <div className="flex items-center gap-2 mb-3">
           {title && (
-            <h1 className="shrink-0 text-xl font-semibold text-foreground">{title}</h1>
+            <h1 className="shrink-0 text-xl font-semibold text-foreground">
+              {title}
+            </h1>
           )}
           {menu}
           {actions && (
-            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">{actions}</div>
+            <div className="flex min-w-0 flex-1 items-center justify-end gap-2">
+              {actions}
+            </div>
           )}
         </div>
       )}

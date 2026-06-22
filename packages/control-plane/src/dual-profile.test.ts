@@ -45,7 +45,10 @@ import type { TokenVerifier } from "./ports";
  */
 
 const TOKEN = "boot-secret";
-const auth = { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/json" };
+const auth = {
+  Authorization: `Bearer ${TOKEN}`,
+  "Content-Type": "application/json",
+};
 
 function freePort(): Promise<number> {
   return new Promise((resolve) => {
@@ -61,12 +64,17 @@ function freePort(): Promise<number> {
 // Neither profile dispatches a turn in this battery (every route exercised is
 // intercepted by the host BEFORE the runtime channel), so a never-invoked
 // spawner is enough for the local profile's ProcessLauncher.
-const fakeSpawner: RuntimeSpawner = { spawn: () => ({ port: 0, kill: () => {} }) };
+const fakeSpawner: RuntimeSpawner = {
+  spawn: () => ({ port: 0, kill: () => {} }),
+};
 
 /** The local adapter profile, assembled exactly as the desktop sidecar does. */
 async function bootLocal(): Promise<{ host: LocalHost; base: string }> {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "parity-local-"));
-  const credentialsPath = join(mkdtempSync(join(tmpdir(), "parity-cred-")), "credentials.json");
+  const credentialsPath = join(
+    mkdtempSync(join(tmpdir(), "parity-cred-")),
+    "credentials.json",
+  );
   const port = await freePort();
   const host = buildLocalHost({
     workspacesRoot,
@@ -87,7 +95,10 @@ async function bootLocal(): Promise<{ host: LocalHost; base: string }> {
  * CLOUD_CAPABILITIES. The single-tenant verifier mirrors the cloud identity
  * seam: a valid token resolves to one owner, anything else is unauthenticated.
  */
-async function bootCloud(): Promise<{ server: ReturnType<typeof createControlPlaneServer>; base: string }> {
+async function bootCloud(): Promise<{
+  server: ReturnType<typeof createControlPlaneServer>;
+  base: string;
+}> {
   const store = new MemoryWorkspaceStore({ defaultRuntime: "gke" });
   const credentials = new MemoryCredentialStore();
   const bus = new MemoryTurnBus();
@@ -104,7 +115,13 @@ async function bootCloud(): Promise<{ server: ReturnType<typeof createControlPla
     vfs: new MemoryVfs(),
     paths: new CloudPaths(),
     events: new BusEventHub(bus),
-    channels: { gke: new ProxyChannel({ launcher: new FakeLauncher(), proxy: { async forward() {} }, credentials }) },
+    channels: {
+      gke: new ProxyChannel({
+        launcher: new FakeLauncher(),
+        proxy: { async forward() {} },
+        credentials,
+      }),
+    },
     capabilities: CLOUD_CAPABILITIES,
     corsOrigin: "*",
   };
@@ -137,19 +154,31 @@ const VOLATILE = new Set([
 function norm(v: unknown, agentId: string): unknown {
   if (typeof v === "string") {
     let s = v;
-    if (agentId) s = s.split(agentId).join("<AGENT>").split(encodeURIComponent(agentId)).join("<AGENT>");
+    if (agentId)
+      s = s
+        .split(agentId)
+        .join("<AGENT>")
+        .split(encodeURIComponent(agentId))
+        .join("<AGENT>");
     return s.replace(/\d{4}-\d{2}-\d{2}(T[\d:.]+Z)?/g, "<DATE>");
   }
   if (Array.isArray(v)) return v.map((x) => norm(x, agentId));
   if (v && typeof v === "object") {
     const out: Record<string, unknown> = {};
-    for (const [k, val] of Object.entries(v)) out[k] = VOLATILE.has(k) ? "<X>" : norm(val, agentId);
+    for (const [k, val] of Object.entries(v))
+      out[k] = VOLATILE.has(k) ? "<X>" : norm(val, agentId);
     return out;
   }
   return v;
 }
 
-type Step = { label: string; status?: number; contentType?: string; body?: unknown; value?: unknown };
+type Step = {
+  label: string;
+  status?: number;
+  contentType?: string;
+  body?: unknown;
+  value?: unknown;
+};
 
 /**
  * The identical request battery, run against one host. Every operation here is
@@ -163,27 +192,50 @@ type Step = { label: string; status?: number; contentType?: string; body?: unkno
 async function battery(base: string): Promise<Step[]> {
   const raw: Step[] = [];
 
-  const created = await fetch(`${base}/agents`, { method: "POST", headers: auth, body: JSON.stringify({ name: "Helper" }) });
+  const created = await fetch(`${base}/agents`, {
+    method: "POST",
+    headers: auth,
+    body: JSON.stringify({ name: "Helper" }),
+  });
   const createdBody = (await created.json()) as { id: string };
   const agentId = createdBody.id;
   const a = encodeURIComponent(agentId);
-  raw.push({ label: "POST /agents", status: created.status, body: createdBody });
+  raw.push({
+    label: "POST /agents",
+    status: created.status,
+    body: createdBody,
+  });
 
   // A helper that fetches, records status + JSON (or zip metadata), one line each.
-  const hit = async (label: string, path: string, init?: RequestInit & { headers?: Record<string, string> }) => {
-    const res = await fetch(`${base}${path}`, { ...init, headers: { ...auth, ...(init?.headers ?? {}) } });
+  const hit = async (
+    label: string,
+    path: string,
+    init?: RequestInit & { headers?: Record<string, string> },
+  ) => {
+    const res = await fetch(`${base}${path}`, {
+      ...init,
+      headers: { ...auth, ...(init?.headers ?? {}) },
+    });
     const ct = res.headers.get("content-type") ?? "";
     if (ct.includes("application/json")) {
       raw.push({ label, status: res.status, body: await res.json() });
     } else {
       const buf = new Uint8Array(await res.arrayBuffer());
-      raw.push({ label, status: res.status, contentType: ct.split(";")[0], value: buf.length > 0 });
+      raw.push({
+        label,
+        status: res.status,
+        contentType: ct.split(";")[0],
+        value: buf.length > 0,
+      });
     }
     return res;
   };
 
   // Create validation.
-  await hit("POST /agents (no name → 400)", "/agents", { method: "POST", body: JSON.stringify({}) });
+  await hit("POST /agents (no name → 400)", "/agents", {
+    method: "POST",
+    body: JSON.stringify({}),
+  });
   await hit("GET /agents (list)", "/agents");
 
   // Activities CRUD.
@@ -192,29 +244,52 @@ async function battery(base: string): Promise<Step[]> {
     await fetch(`${base}/agents/${a}/activities`, {
       method: "POST",
       headers: auth,
-      body: JSON.stringify({ title: "Build the Q2 deck", description: "10 slides" }),
+      body: JSON.stringify({
+        title: "Build the Q2 deck",
+        description: "10 slides",
+      }),
     })
   ).json()) as { id: string; status: string };
   raw.push({ label: "POST activity", body: act });
-  await hit("PATCH activity → done", `/agents/${a}/activities/${encodeURIComponent(act.id)}`, {
-    method: "PATCH",
-    body: JSON.stringify({ status: "done" }),
-  });
+  await hit(
+    "PATCH activity → done",
+    `/agents/${a}/activities/${encodeURIComponent(act.id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status: "done" }),
+    },
+  );
   await hit("GET activities (one)", `/agents/${a}/activities`);
-  await hit("DELETE activity", `/agents/${a}/activities/${encodeURIComponent(act.id)}`, { method: "DELETE" });
-  await hit("PATCH deleted activity → 404", `/agents/${a}/activities/${encodeURIComponent(act.id)}`, {
-    method: "PATCH",
-    body: "{}",
-  });
+  await hit(
+    "DELETE activity",
+    `/agents/${a}/activities/${encodeURIComponent(act.id)}`,
+    { method: "DELETE" },
+  );
+  await hit(
+    "PATCH deleted activity → 404",
+    `/agents/${a}/activities/${encodeURIComponent(act.id)}`,
+    {
+      method: "PATCH",
+      body: "{}",
+    },
+  );
 
   // Routines: create, the cron validation gate, list, runs.
   await hit("POST routine (good cron)", `/agents/${a}/routines`, {
     method: "POST",
-    body: JSON.stringify({ name: "Daily report", prompt: "Write it", schedule: "0 9 * * 1-5" }),
+    body: JSON.stringify({
+      name: "Daily report",
+      prompt: "Write it",
+      schedule: "0 9 * * 1-5",
+    }),
   });
   await hit("POST routine (bad cron → 400)", `/agents/${a}/routines`, {
     method: "POST",
-    body: JSON.stringify({ name: "Broken", prompt: "p", schedule: "not a cron" }),
+    body: JSON.stringify({
+      name: "Broken",
+      prompt: "p",
+      schedule: "not a cron",
+    }),
   });
   await hit("GET routines", `/agents/${a}/routines`);
   await hit("GET routine_runs (empty)", `/agents/${a}/routine_runs`);
@@ -235,11 +310,19 @@ async function battery(base: string): Promise<Step[]> {
   // Skills lifecycle (slug is content-derived → identical on both profiles).
   await hit("POST skill", `/agents/${a}/skills`, {
     method: "POST",
-    body: JSON.stringify({ name: "Summarize Inbox", description: "Summarize unread email", content: "## Procedure\nDo the thing." }),
+    body: JSON.stringify({
+      name: "Summarize Inbox",
+      description: "Summarize unread email",
+      content: "## Procedure\nDo the thing.",
+    }),
   });
   await hit("POST skill (dup → 409)", `/agents/${a}/skills`, {
     method: "POST",
-    body: JSON.stringify({ name: "Summarize Inbox", description: "d", content: "c" }),
+    body: JSON.stringify({
+      name: "Summarize Inbox",
+      description: "d",
+      content: "c",
+    }),
   });
   await hit("GET skills (list)", `/agents/${a}/skills`);
   await hit("GET skill", `/agents/${a}/skills/summarize-inbox`);
@@ -247,10 +330,21 @@ async function battery(base: string): Promise<Step[]> {
   // Learnings via the raw agentfile route, then read back through the typed route
   // (proves the raw write and the typed read agree — one store, both profiles).
   const learnPath = ".houston/learnings/learnings.json";
-  await hit("GET learnings file (empty)", `/agents/${a}/agentfile/${learnPath}`);
+  await hit(
+    "GET learnings file (empty)",
+    `/agents/${a}/agentfile/${learnPath}`,
+  );
   await hit("PUT learnings file", `/agents/${a}/agentfile/${learnPath}`, {
     method: "PUT",
-    body: JSON.stringify({ content: JSON.stringify([{ id: "l1", text: "remember this", created_at: "2026-06-15T00:00:00.000Z" }]) }),
+    body: JSON.stringify({
+      content: JSON.stringify([
+        {
+          id: "l1",
+          text: "remember this",
+          created_at: "2026-06-15T00:00:00.000Z",
+        },
+      ]),
+    }),
   });
   await hit("GET learnings (typed)", `/agents/${a}/learnings`);
 
@@ -261,7 +355,12 @@ async function battery(base: string): Promise<Step[]> {
   const exp = await fetch(`${base}/agents/${a}/portable/export`, {
     method: "POST",
     headers: auth,
-    body: JSON.stringify({ includeClaudeMd: true, skillSlugs: ["summarize-inbox"], routineIds: [], learningIds: [] }),
+    body: JSON.stringify({
+      includeClaudeMd: true,
+      skillSlugs: ["summarize-inbox"],
+      routineIds: [],
+      learningIds: [],
+    }),
   });
   const zip = new Uint8Array(await exp.arrayBuffer());
   raw.push({
@@ -272,27 +371,45 @@ async function battery(base: string): Promise<Step[]> {
   });
   const prev = await fetch(`${base}/v1/portable/preview`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${TOKEN}`, "Content-Type": "application/zip" },
+    headers: {
+      Authorization: `Bearer ${TOKEN}`,
+      "Content-Type": "application/zip",
+    },
     body: zip,
   });
-  raw.push({ label: "POST portable/preview", status: prev.status, body: await prev.json() });
+  raw.push({
+    label: "POST portable/preview",
+    status: prev.status,
+    body: await prev.json(),
+  });
 
   // Delete the skill last (the export above needed it) and confirm 404 after.
-  await hit("DELETE skill", `/agents/${a}/skills/summarize-inbox`, { method: "DELETE" });
+  await hit("DELETE skill", `/agents/${a}/skills/summarize-inbox`, {
+    method: "DELETE",
+  });
   await hit("GET deleted skill → 404", `/agents/${a}/skills/summarize-inbox`);
 
   // Rename last (local renames the on-disk dir → the agent id changes, so nothing
   // may reference it afterward). Both return the renamed agent; ids/ts normalized.
-  await hit("PATCH /agents (rename)", `/agents/${a}`, { method: "PATCH", body: JSON.stringify({ name: "Planner" }) });
+  await hit("PATCH /agents (rename)", `/agents/${a}`, {
+    method: "PATCH",
+    body: JSON.stringify({ name: "Planner" }),
+  });
 
-  return raw.map((s) => ({ ...s, ...(s.body !== undefined ? { body: norm(s.body, agentId) } : {}) }));
+  return raw.map((s) => ({
+    ...s,
+    ...(s.body !== undefined ? { body: norm(s.body, agentId) } : {}),
+  }));
 }
 
 test("the v3 wire behavior is byte-identical across the local and cloud profiles", async () => {
   const local = await bootLocal();
   const cloud = await bootCloud();
   try {
-    const [localT, cloudT] = await Promise.all([battery(local.base), battery(cloud.base)]);
+    const [localT, cloudT] = await Promise.all([
+      battery(local.base),
+      battery(cloud.base),
+    ]);
     // Step count + labels line up (catches a route silently missing on one side).
     expect(localT.map((s) => s.label)).toEqual(cloudT.map((s) => s.label));
     // And every normalized step is identical — the actual no-drift assertion.
@@ -307,8 +424,12 @@ test("the documented profile asymmetries are exactly the intended ones", async (
   const local = await bootLocal();
   const cloud = await bootCloud();
   try {
-    const lc = (await (await fetch(`${local.base}/v1/capabilities`)).json()) as Capabilities;
-    const cc = (await (await fetch(`${cloud.base}/v1/capabilities`)).json()) as Capabilities;
+    const lc = (await (
+      await fetch(`${local.base}/v1/capabilities`)
+    ).json()) as Capabilities;
+    const cc = (await (
+      await fetch(`${cloud.base}/v1/capabilities`)
+    ).json()) as Capabilities;
 
     // Each serves its own real profile constant (the single source of truth).
     expect(lc).toEqual(LOCAL_CAPABILITIES);
@@ -328,8 +449,12 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     // Shared invariants: mobile/tunnel is gone everywhere; one protocol version.
     expect(lc.tunnel).toBe(false);
     expect(cc.tunnel).toBe(false);
-    const lv = (await (await fetch(`${local.base}/v1/version`)).json()) as { protocol: number };
-    const cv = (await (await fetch(`${cloud.base}/v1/version`)).json()) as { protocol: number };
+    const lv = (await (await fetch(`${local.base}/v1/version`)).json()) as {
+      protocol: number;
+    };
+    const cv = (await (await fetch(`${cloud.base}/v1/version`)).json()) as {
+      protocol: number;
+    };
     expect(lv.protocol).toBe(PROTOCOL_VERSION);
     expect(cv.protocol).toBe(PROTOCOL_VERSION);
   } finally {
@@ -344,8 +469,20 @@ test("an unauthenticated request is refused by both profiles", async () => {
   try {
     expect((await fetch(`${local.base}/agents`)).status).toBe(401);
     expect((await fetch(`${cloud.base}/agents`)).status).toBe(401);
-    expect((await fetch(`${local.base}/agents`, { headers: { Authorization: "Bearer nope" } })).status).toBe(401);
-    expect((await fetch(`${cloud.base}/agents`, { headers: { Authorization: "Bearer nope" } })).status).toBe(401);
+    expect(
+      (
+        await fetch(`${local.base}/agents`, {
+          headers: { Authorization: "Bearer nope" },
+        })
+      ).status,
+    ).toBe(401);
+    expect(
+      (
+        await fetch(`${cloud.base}/agents`, {
+          headers: { Authorization: "Bearer nope" },
+        })
+      ).status,
+    ).toBe(401);
   } finally {
     local.host.stop();
     await new Promise<void>((r) => cloud.server.close(() => r()));

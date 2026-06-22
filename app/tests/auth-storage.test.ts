@@ -22,7 +22,10 @@ test("release auth storage uses Keychain-backed production key", () => {
 
 test("local auth storage uses browser storage scoped to worktree", () => {
   assert.deepEqual(
-    resolveAuthStorageConfig({ storageMode: "browser", storageScope: "abc123" }),
+    resolveAuthStorageConfig({
+      storageMode: "browser",
+      storageScope: "abc123",
+    }),
     {
       mode: "browser",
       storageKey: "houston-auth-local-abc123",

@@ -14,13 +14,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import {
-  Button,
-  cn,
-  Dialog,
-  DialogContent,
-  Switch,
-} from "@houston-ai/core";
+import { Button, cn, Dialog, DialogContent, Switch } from "@houston-ai/core";
 import { useUIStore } from "../../stores/ui";
 import { useAgentStore } from "../../stores/agents";
 import { getEngine } from "../../lib/engine";
@@ -268,7 +262,9 @@ export function ExportAgentWizard() {
 
         <div className="flex-1 min-h-0 overflow-y-auto px-8 pt-2 pb-6">
           {loading ? (
-            <p className="text-sm text-muted-foreground">{t("export.loading")}</p>
+            <p className="text-sm text-muted-foreground">
+              {t("export.loading")}
+            </p>
           ) : !preview ? (
             <p className="text-sm text-muted-foreground">
               {t("export.errors.noPreview")}
@@ -303,7 +299,9 @@ export function ExportAgentWizard() {
         <footer className="shrink-0 px-8 py-4 flex items-center justify-between">
           <button
             type="button"
-            onClick={() => (step > 1 ? setStep((step - 1) as Step) : handleClose())}
+            onClick={() =>
+              step > 1 ? setStep((step - 1) as Step) : handleClose()
+            }
             className="text-sm text-muted-foreground hover:text-foreground"
           >
             {step > 1 ? t("export.actions.back") : t("export.actions.cancel")}
@@ -504,7 +502,10 @@ function AnonymizeStep({
                   onToggle={() =>
                     setAccept({
                       ...accept,
-                      skills: { ...accept.skills, [s.id]: !accept.skills[s.id] },
+                      skills: {
+                        ...accept.skills,
+                        [s.id]: !accept.skills[s.id],
+                      },
                     })
                   }
                 />
@@ -578,7 +579,10 @@ function SaveStep({
       </header>
 
       <dl className="space-y-2 text-sm">
-        <SummaryRow label={t("export.step3.skillsLabel")} value={counts.skills} />
+        <SummaryRow
+          label={t("export.step3.skillsLabel")}
+          value={counts.skills}
+        />
         <SummaryRow
           label={t("export.step3.routinesLabel")}
           value={counts.routines}
@@ -745,7 +749,11 @@ function DiffCard({
         </button>
       </header>
       <div className="grid grid-cols-2 gap-3">
-        <Pane label={t("export.step2.before")} body={before} dimmed={accepted} />
+        <Pane
+          label={t("export.step2.before")}
+          body={before}
+          dimmed={accepted}
+        />
         <Pane label={t("export.step2.after")} body={after} dimmed={!accepted} />
       </div>
       <p className="text-xs text-muted-foreground mt-3">{summary}</p>

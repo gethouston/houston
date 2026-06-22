@@ -20,7 +20,10 @@ export const DEFAULT_AGENT_COLOR = "#7a5cff";
 export const DEFAULT_AGENT_CONFIG_ID = "personal-assistant";
 const EPOCH = "2024-01-01T00:00:00.000Z";
 
-export function syntheticWorkspace(provider?: string, model?: string): Workspace {
+export function syntheticWorkspace(
+  provider?: string,
+  model?: string,
+): Workspace {
   return {
     id: DEFAULT_WORKSPACE_ID,
     name: "Houston",
@@ -45,9 +48,12 @@ export function syntheticAgent(): Agent {
 }
 
 /** Old desktop provider name -> new engine ProviderId. */
-export function toNewProvider(name: string): "anthropic" | "openai-codex" | null {
+export function toNewProvider(
+  name: string,
+): "anthropic" | "openai-codex" | null {
   if (name === "anthropic") return "anthropic";
-  if (name === "openai" || name === "openai-codex" || name === "codex") return "openai-codex";
+  if (name === "openai" || name === "openai-codex" || name === "codex")
+    return "openai-codex";
   return null;
 }
 

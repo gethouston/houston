@@ -23,7 +23,11 @@ import { TunnelRoom } from "./tunnel-do";
 export { TunnelRoom };
 
 export default {
-  async fetch(request: Request, env: Env, _ctx: ExecutionContext): Promise<Response> {
+  async fetch(
+    request: Request,
+    env: Env,
+    _ctx: ExecutionContext,
+  ): Promise<Response> {
     // Preflight first — some clients live on foreign origins (Vite
     // dev at localhost:5173, future third-party integrations) and
     // need a 204 before they'll touch the real request.
@@ -77,7 +81,8 @@ function corsHeaders(): Record<string, string> {
   return {
     "access-control-allow-origin": "*",
     "access-control-allow-methods": "GET,HEAD,POST,PUT,DELETE,OPTIONS",
-    "access-control-allow-headers": "authorization,content-type,sec-websocket-protocol",
+    "access-control-allow-headers":
+      "authorization,content-type,sec-websocket-protocol",
     "access-control-max-age": "86400",
   };
 }
@@ -96,7 +101,11 @@ function withCors(res: Response): Response {
  * portion routes us to the correct Durable Object. We split on the
  * LAST dash because base64url can itself contain dashes.
  */
-async function handlePairCode(request: Request, env: Env, code: string): Promise<Response> {
+async function handlePairCode(
+  request: Request,
+  env: Env,
+  code: string,
+): Promise<Response> {
   const dash = code.lastIndexOf("-");
   if (dash < 0) return malformedCode();
   const tunnelId = code.slice(0, dash);
@@ -127,7 +136,11 @@ function malformedCode(): Response {
  * register path is additionally gated by an HMAC check on the tunnel
  * token; everything else is authenticated downstream by the engine
  * itself. */
-async function handleTunnel(request: Request, env: Env, tunnelId: string): Promise<Response> {
+async function handleTunnel(
+  request: Request,
+  env: Env,
+  tunnelId: string,
+): Promise<Response> {
   const url = new URL(request.url);
   const action = url.pathname.split("/")[3] ?? "";
 
@@ -137,7 +150,11 @@ async function handleTunnel(request: Request, env: Env, tunnelId: string): Promi
     }
     const auth = request.headers.get("authorization") ?? "";
     const bearer = auth.replace(/^bearer\s+/i, "");
-    const ok = await verifyTunnelToken(tunnelId, bearer, env.TUNNEL_SHARED_SECRET);
+    const ok = await verifyTunnelToken(
+      tunnelId,
+      bearer,
+      env.TUNNEL_SHARED_SECRET,
+    );
     if (!ok) return new Response("bad tunnel token", { status: 401 });
   }
 

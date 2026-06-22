@@ -238,8 +238,8 @@ function EmptyCanvas() {
       </div>
       <h2>Drop a bank statement</h2>
       <p className="muted">
-        PDFs only. SmartBooks will extract every transaction and build the
-        table automatically.
+        PDFs only. SmartBooks will extract every transaction and build the table
+        automatically.
       </p>
     </div>
   );
@@ -251,8 +251,8 @@ function WorkingState({ count }: { count: number }) {
       <div className="canvas__spinner" />
       <h2>Reading your statement{count > 1 ? "s" : ""}…</h2>
       <p className="muted">
-        Your bookkeeper is pulling every transaction. This takes a few
-        seconds per page.
+        Your bookkeeper is pulling every transaction. This takes a few seconds
+        per page.
       </p>
     </div>
   );
@@ -270,8 +270,8 @@ function ProcessingPrompt({ statement, onProcess }: ProcessingPromptProps) {
     <div className="canvas__retry">
       <h2>Statement uploaded</h2>
       <p className="muted">
-        <strong>{displayName(statement.name)}</strong> is saved but the
-        table hasn't been generated. Try processing again?
+        <strong>{displayName(statement.name)}</strong> is saved but the table
+        hasn't been generated. Try processing again?
       </p>
       <button
         className="btn btn--primary"

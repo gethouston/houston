@@ -7,7 +7,9 @@ import { config } from "../config";
  * AuthStorage.getApiKey() auto-refreshes OAuth tokens under a file lock, so all
  * agent sessions transparently use the current Claude subscription token.
  */
-export const authStorage = AuthStorage.create(join(config.dataDir, "auth.json"));
+export const authStorage = AuthStorage.create(
+  join(config.dataDir, "auth.json"),
+);
 
 export const modelRegistry = ModelRegistry.create(
   authStorage,

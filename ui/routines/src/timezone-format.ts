@@ -30,7 +30,7 @@ const COMMON_TIMEZONES = [
   "Asia/Singapore",
   "Asia/Tokyo",
   "Australia/Sydney",
-]
+];
 
 /**
  * Strip combining accents so search is accent-insensitive: "São Paulo" folds to
@@ -39,7 +39,7 @@ const COMMON_TIMEZONES = [
  * combobox folds both the query and each item before scoring.
  */
 export function foldDiacritics(s: string): string {
-  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "")
+  return s.normalize("NFD").replace(/\p{Diacritic}/gu, "");
 }
 
 /** Every IANA zone the platform knows, or the curated fallback. */
@@ -47,27 +47,27 @@ export function listTimezones(): string[] {
   try {
     const supported = (
       Intl as { supportedValuesOf?: (k: string) => string[] }
-    ).supportedValuesOf?.("timeZone")
-    if (supported && supported.length) return supported
+    ).supportedValuesOf?.("timeZone");
+    if (supported && supported.length) return supported;
   } catch {
     // fall through to the curated list
   }
-  return COMMON_TIMEZONES
+  return COMMON_TIMEZONES;
 }
 
 export interface ZoneOption {
   /** IANA id, e.g. "America/New_York". The persisted value. */
-  id: string
+  id: string;
   /** Canonical path shown to the user, underscores spaced ("America/New York"). */
-  display: string
+  display: string;
   /** Last path segment, underscores spaced ("New York"). */
-  city: string
+  city: string;
   /** First path segment ("America"); empty for single-segment ids ("UTC"). */
-  region: string
+  region: string;
   /** Current `GMT±HH:MM`, or "" when the platform can't format it. */
-  offset: string
+  offset: string;
   /** Extra terms cmdk matches a query against (beyond the id itself). */
-  keywords: string[]
+  keywords: string[];
 }
 
 /**
@@ -76,17 +76,17 @@ export interface ZoneOption {
  * adds the runtime offset.
  */
 export function describeZone(id: string): Omit<ZoneOption, "offset"> {
-  const segments = id.split("/")
-  const city = (segments[segments.length - 1] ?? id).replace(/_/g, " ")
-  const region = segments.length > 1 ? segments[0].replace(/_/g, " ") : ""
+  const segments = id.split("/");
+  const city = (segments[segments.length - 1] ?? id).replace(/_/g, " ");
+  const region = segments.length > 1 ? segments[0].replace(/_/g, " ") : "";
   // Keep the full region/city path for display ("America/New York"); only swap
   // underscores for spaces so it reads cleanly without losing context.
-  const display = id.replace(/_/g, " ")
+  const display = id.replace(/_/g, " ");
   // The flattened id lets "america new york" match "America/New_York", and
   // keeps middle segments ("Argentina") searchable.
-  const flat = id.replace(/[/_]/g, " ")
-  const keywords = Array.from(new Set([flat, city, region].filter(Boolean)))
-  return { id, display, city, region, keywords }
+  const flat = id.replace(/[/_]/g, " ");
+  const keywords = Array.from(new Set([flat, city, region].filter(Boolean)));
+  return { id, display, city, region, keywords };
 }
 
 /** Current `GMT±HH:MM` for a zone at `now`, or "" if it can't be formatted. */
@@ -97,10 +97,10 @@ export function zoneOffset(id: string, now: Date): string {
       timeZoneName: "shortOffset",
     })
       .formatToParts(now)
-      .find((p) => p.type === "timeZoneName")
-    return part?.value ?? ""
+      .find((p) => p.type === "timeZoneName");
+    return part?.value ?? "";
   } catch {
-    return ""
+    return "";
   }
 }
 
@@ -112,17 +112,17 @@ export function buildZoneOptions(
   accountTimezone: string,
   now: Date,
 ): ZoneOption[] {
-  const ids = listTimezones()
+  const ids = listTimezones();
   const withAccount = ids.includes(accountTimezone)
     ? ids
-    : [accountTimezone, ...ids]
+    : [accountTimezone, ...ids];
   return withAccount.map((id) => {
-    const base = describeZone(id)
-    const offset = zoneOffset(id, now)
+    const base = describeZone(id);
+    const offset = zoneOffset(id, now);
     return {
       ...base,
       offset,
       keywords: offset ? [...base.keywords, offset] : base.keywords,
-    }
-  })
+    };
+  });
 }

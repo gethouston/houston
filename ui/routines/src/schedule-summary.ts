@@ -7,24 +7,24 @@
  * formatters in `./schedule-format` (which use `Intl.*Format(locale)` for day
  * names and clock time). The package itself stays i18n-agnostic — see `./labels`.
  */
-import type { SchedulePreset } from "./types"
+import type { SchedulePreset } from "./types";
 import {
   interp,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
   type ScheduleSummaryLabels,
-} from "./labels.ts"
+} from "./labels.ts";
 import {
   formatTime,
   ordinal,
   weekdayName,
   shortWeekdayNames,
   joinList,
-} from "./schedule-format.ts"
+} from "./schedule-format.ts";
 import {
   cronToPreset,
   cronToOptions,
   type ScheduleOptions,
-} from "./schedule-cron-utils.ts"
+} from "./schedule-cron-utils.ts";
 
 /** Generate a human-readable summary of a schedule preset */
 export function presetSummary(
@@ -33,37 +33,40 @@ export function presetSummary(
   labels: ScheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   locale = "en-US",
 ): string {
-  const t = formatTime(options.time, locale)
+  const t = formatTime(options.time, locale);
 
   switch (preset) {
     case "every_30min":
-      return labels.every30
+      return labels.every30;
     case "hourly":
-      return labels.everyHourStart
+      return labels.everyHourStart;
     case "daily":
-      return interp(labels.everyDay, { time: t })
+      return interp(labels.everyDay, { time: t });
     case "weekly": {
-      const days = [...options.daysOfWeek].sort((a, b) => a - b)
+      const days = [...options.daysOfWeek].sort((a, b) => a - b);
       if (days.length <= 1) {
         return interp(labels.weekly, {
           day: weekdayName(days[0] ?? 1, locale),
           time: t,
-        })
+        });
       }
-      const shorts = shortWeekdayNames(locale)
+      const shorts = shortWeekdayNames(locale);
       return interp(labels.weeklyOnDays, {
-        days: joinList(days.map((d) => shorts[d]), locale),
+        days: joinList(
+          days.map((d) => shorts[d]),
+          locale,
+        ),
         time: t,
-      })
+      });
     }
     case "monthly":
       return interp(labels.monthly, {
         n: options.dayOfMonth,
         ordinal: ordinal(options.dayOfMonth),
         time: t,
-      })
+      });
     case "custom":
-      return labels.customCron
+      return labels.customCron;
   }
 }
 
@@ -79,12 +82,12 @@ export function cronSummary(
   labels: ScheduleSummaryLabels = DEFAULT_SCHEDULE_SUMMARY_LABELS,
   locale = "en-US",
 ): string {
-  const trimmed = cron.trim()
-  if (!trimmed) return labels.noSchedule
+  const trimmed = cron.trim();
+  if (!trimmed) return labels.noSchedule;
 
-  const preset = cronToPreset(trimmed)
+  const preset = cronToPreset(trimmed);
   if (preset && preset !== "custom") {
-    const o = cronToOptions(trimmed)
+    const o = cronToOptions(trimmed);
     return presetSummary(
       preset,
       {
@@ -94,50 +97,64 @@ export function cronSummary(
       },
       labels,
       locale,
-    )
+    );
   }
 
-  const parts = trimmed.split(/\s+/)
+  const parts = trimmed.split(/\s+/);
   if (parts.length === 5) {
-    const [min, hour, dom, month, dow] = parts
-    const everyDay = dom === "*" && month === "*" && dow === "*"
+    const [min, hour, dom, month, dow] = parts;
+    const everyDay = dom === "*" && month === "*" && dow === "*";
     if (everyDay) {
       // Every N minutes: "*/N * * * *" (and "* * * * *" = every minute).
-      const minStep = min.match(/^\*\/(\d+)$/)
+      const minStep = min.match(/^\*\/(\d+)$/);
       if (hour === "*" && (min === "*" || minStep)) {
-        const n = minStep ? Number(minStep[1]) : 1
-        return n === 1 ? labels.everyMinute : interp(labels.everyNMinutes, { n })
+        const n = minStep ? Number(minStep[1]) : 1;
+        return n === 1
+          ? labels.everyMinute
+          : interp(labels.everyNMinutes, { n });
       }
       // Every N hours on the hour: "M */N * * *".
-      const hourStep = hour.match(/^\*\/(\d+)$/)
+      const hourStep = hour.match(/^\*\/(\d+)$/);
       if (/^\d+$/.test(min) && hourStep) {
-        const n = Number(hourStep[1])
-        return n === 1 ? labels.everyHour : interp(labels.everyNHours, { n })
+        const n = Number(hourStep[1]);
+        return n === 1 ? labels.everyHour : interp(labels.everyNHours, { n });
       }
     }
     // Every N days at a fixed time: "M H */N * *".
-    const domStep = dom.match(/^\*\/(\d+)$/)
-    if (month === "*" && dow === "*" && /^\d+$/.test(min) && /^\d+$/.test(hour) && domStep) {
-      const n = Number(domStep[1])
-      const t = formatTime(`${hour}:${min}`, locale)
+    const domStep = dom.match(/^\*\/(\d+)$/);
+    if (
+      month === "*" &&
+      dow === "*" &&
+      /^\d+$/.test(min) &&
+      /^\d+$/.test(hour) &&
+      domStep
+    ) {
+      const n = Number(domStep[1]);
+      const t = formatTime(`${hour}:${min}`, locale);
       return n === 1
         ? interp(labels.everyDay, { time: t })
-        : interp(labels.everyNDays, { n, time: t })
+        : interp(labels.everyNDays, { n, time: t });
     }
 
     // On a day-of-month, every N months: "M H D */N *" (every 1 month is the
     // Monthly preset, handled above).
-    const monthStep = month.match(/^\*\/(\d+)$/)
-    if (dow === "*" && monthStep && /^\d+$/.test(min) && /^\d+$/.test(hour) && /^\d+$/.test(dom)) {
-      const t = formatTime(`${hour}:${min}`, locale)
+    const monthStep = month.match(/^\*\/(\d+)$/);
+    if (
+      dow === "*" &&
+      monthStep &&
+      /^\d+$/.test(min) &&
+      /^\d+$/.test(hour) &&
+      /^\d+$/.test(dom)
+    ) {
+      const t = formatTime(`${hour}:${min}`, locale);
       return interp(labels.everyNMonths, {
         ordinal: ordinal(Number(dom)),
         n: Number(dom),
         months: Number(monthStep[1]),
         time: t,
-      })
+      });
     }
   }
 
-  return labels.custom
+  return labels.custom;
 }

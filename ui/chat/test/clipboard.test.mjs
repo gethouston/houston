@@ -25,7 +25,13 @@ test("copyTextToClipboard falls back when Clipboard API rejects", async () => {
   const previousDocument = globalThis.document;
   Object.defineProperty(globalThis, "navigator", {
     configurable: true,
-    value: { clipboard: { writeText: async () => { throw new Error("denied"); } } },
+    value: {
+      clipboard: {
+        writeText: async () => {
+          throw new Error("denied");
+        },
+      },
+    },
   });
   globalThis.document = {
     body: {

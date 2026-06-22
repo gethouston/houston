@@ -25,7 +25,9 @@ export class RedisTurnBus implements TurnBus {
       for (const h of [...(this.handlers.get(channel) ?? [])]) h(message);
     });
     for (const conn of [this.cmd, this.sub]) {
-      conn.on("error", (err: Error) => console.error("[bus:redis] connection error:", err.message));
+      conn.on("error", (err: Error) =>
+        console.error("[bus:redis] connection error:", err.message),
+      );
     }
   }
 
@@ -40,7 +42,12 @@ export class RedisTurnBus implements TurnBus {
       this.handlers.set(channel, set);
       this.sub
         .subscribe(channel)
-        .catch((err: Error) => console.error(`[bus:redis] subscribe ${channel} failed:`, err.message));
+        .catch((err: Error) =>
+          console.error(
+            `[bus:redis] subscribe ${channel} failed:`,
+            err.message,
+          ),
+        );
     }
     set.add(handler);
     return () => {
@@ -51,7 +58,12 @@ export class RedisTurnBus implements TurnBus {
         this.handlers.delete(channel);
         this.sub
           .unsubscribe(channel)
-          .catch((err: Error) => console.error(`[bus:redis] unsubscribe ${channel} failed:`, err.message));
+          .catch((err: Error) =>
+            console.error(
+              `[bus:redis] unsubscribe ${channel} failed:`,
+              err.message,
+            ),
+          );
       }
     };
   }

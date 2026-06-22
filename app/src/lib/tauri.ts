@@ -62,8 +62,15 @@ async function surfaceError(
   options?: EngineCallOptions,
 ): Promise<void> {
   const message =
-    err instanceof Error ? err.message : typeof err === "string" ? err : String(err);
-  logger.error(`[engine:${label}] ${message}`, context ? JSON.stringify(context) : undefined);
+    err instanceof Error
+      ? err.message
+      : typeof err === "string"
+        ? err
+        : String(err);
+  logger.error(
+    `[engine:${label}] ${message}`,
+    context ? JSON.stringify(context) : undefined,
+  );
 
   // Aborted requests (user typed again, navigated away, cancelled a sign-in)
   // are expected, not failures — never toast or report them.
@@ -88,10 +95,14 @@ async function surfaceError(
 // ─── Workspaces ────────────────────────────────────────────────────────
 
 export const tauriWorkspaces = {
-  list: () => call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
+  list: () =>
+    call<Workspace[]>("list_workspaces", () => getEngine().listWorkspaces()),
   create: (name: string) =>
-    call<Workspace>("create_workspace", () => getEngine().createWorkspace({ name })),
-  delete: (id: string) => call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
+    call<Workspace>("create_workspace", () =>
+      getEngine().createWorkspace({ name }),
+    ),
+  delete: (id: string) =>
+    call<void>("delete_workspace", () => getEngine().deleteWorkspace(id)),
   rename: (id: string, newName: string) =>
     call<void>("rename_workspace", async () => {
       await getEngine().renameWorkspace(id, { newName });
@@ -186,8 +197,9 @@ export const tauriAgents = {
   /** Agent configs installed on disk (bundled + user-authored), merged with the
    *  built-in templates by the agent loader to populate the create-agent gallery. */
   listInstalledConfigs: () =>
-    call<Array<{ config: unknown; path: string }>>("list_installed_configs", () =>
-      getEngine().listInstalledConfigs(),
+    call<Array<{ config: unknown; path: string }>>(
+      "list_installed_configs",
+      () => getEngine().listInstalledConfigs(),
     ),
 };
 
@@ -256,22 +268,30 @@ export const tauriAttachments = {
     );
   },
   delete: (scopeId: string) =>
-    call<void>("delete_attachments", () => getEngine().deleteAttachments(scopeId)),
+    call<void>("delete_attachments", () =>
+      getEngine().deleteAttachments(scopeId),
+    ),
 };
 
 // ─── Agent-data files (`.houston/**`) ─────────────────────────────────
 
 export const tauriAgent = {
   readFile: (agentPath: string, relPath: string) =>
-    call<string>("read_agent_file", () => getEngine().readAgentFile(agentPath, relPath)),
+    call<string>("read_agent_file", () =>
+      getEngine().readAgentFile(agentPath, relPath),
+    ),
   writeFile: (agentPath: string, relPath: string, content: string) =>
     call<void>("write_agent_file", () =>
       getEngine().writeAgentFile(agentPath, relPath, content),
     ),
   seedSchemas: (agentPath: string) =>
-    call<void>("seed_agent_schemas", () => getEngine().seedAgentSchemas(agentPath)),
+    call<void>("seed_agent_schemas", () =>
+      getEngine().seedAgentSchemas(agentPath),
+    ),
   migrateFiles: (agentPath: string) =>
-    call<void>("migrate_agent_files", () => getEngine().migrateAgentFiles(agentPath)),
+    call<void>("migrate_agent_files", () =>
+      getEngine().migrateAgentFiles(agentPath),
+    ),
 };
 
 // ─── Skills ───────────────────────────────────────────────────────────
@@ -303,10 +323,22 @@ export const tauriSkills = {
       })),
     ),
   load: (agentPath: string, name: string) =>
-    call<SkillDetail>("load_skill", () => getEngine().loadSkill(agentPath, name)),
-  create: (agentPath: string, name: string, description: string, content: string) =>
+    call<SkillDetail>("load_skill", () =>
+      getEngine().loadSkill(agentPath, name),
+    ),
+  create: (
+    agentPath: string,
+    name: string,
+    description: string,
+    content: string,
+  ) =>
     call<void>("create_skill", () =>
-      getEngine().createSkill({ workspacePath: agentPath, name, description, content }),
+      getEngine().createSkill({
+        workspacePath: agentPath,
+        name,
+        description,
+        content,
+      }),
     ),
   delete: (agentPath: string, name: string) =>
     call<void>("delete_skill", () => getEngine().deleteSkill(agentPath, name)),
@@ -338,7 +370,11 @@ export const tauriFiles = {
     osRevealFile(agentPath, relativePath),
   /** Raw bytes over HTTP — powers in-browser preview + download (web build).
    *  Pass `{ toast: false }` when the caller renders the failure inline. */
-  download: (agentPath: string, relativePath: string, options?: { toast?: boolean }) =>
+  download: (
+    agentPath: string,
+    relativePath: string,
+    options?: { toast?: boolean },
+  ) =>
     call<{ blob: Blob; contentType: string }>(
       "download_project_file",
       () => getEngine().downloadProjectFile(agentPath, relativePath),
@@ -346,7 +382,9 @@ export const tauriFiles = {
       options,
     ),
   delete: (agentPath: string, relativePath: string) =>
-    call<void>("delete_file", () => getEngine().deleteFile(agentPath, relativePath)),
+    call<void>("delete_file", () =>
+      getEngine().deleteFile(agentPath, relativePath),
+    ),
   rename: (agentPath: string, relativePath: string, newName: string) =>
     call<void>("rename_file", () =>
       getEngine().renameFile(agentPath, relativePath, newName),
@@ -382,7 +420,9 @@ export const tauriConversations = {
     ),
   listAll: (agentPaths: string[]) =>
     call<RawConversation[]>("list_all_conversations", async () =>
-      (await getEngine().listAllConversations(agentPaths)).map(conversationToRaw),
+      (await getEngine().listAllConversations(agentPaths)).map(
+        conversationToRaw,
+      ),
     ),
 };
 
@@ -467,7 +507,16 @@ export const tauriActivity = {
     worktreePath?: string,
     provider?: string,
     model?: string,
-  ) => activityData.create(agentPath, title, description ?? "", agent, worktreePath, provider, model),
+  ) =>
+    activityData.create(
+      agentPath,
+      title,
+      description ?? "",
+      agent,
+      worktreePath,
+      provider,
+      model,
+    ),
   update: (
     agentPath: string,
     activityId: string,
@@ -517,7 +566,8 @@ const DEFAULT_MODEL_PREF_KEY = "default_model";
 export const tauriProvider = {
   checkStatus: (provider: string) =>
     call<ProviderStatus>("check_provider_status", async () => {
-      const p: EngineProviderStatus = await getEngine().providerStatus(provider);
+      const p: EngineProviderStatus =
+        await getEngine().providerStatus(provider);
       return {
         provider: p.provider,
         cli_installed: p.cliInstalled,
@@ -529,7 +579,8 @@ export const tauriProvider = {
   getDefault: () =>
     call<string>(
       "get_default_provider",
-      async () => (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
+      async () =>
+        (await getEngine().getPreference(DEFAULT_PROVIDER_PREF_KEY)) ?? "",
     ),
   setDefault: (provider: string) =>
     call<void>("set_default_provider", () =>
@@ -561,7 +612,10 @@ export const tauriProvider = {
           eng.getPreference(DEFAULT_PROVIDER_PREF_KEY),
           eng.getPreference(DEFAULT_MODEL_PREF_KEY),
         ]);
-        return { provider: provider ?? null, model: normalizeLegacyModel(model) };
+        return {
+          provider: provider ?? null,
+          model: normalizeLegacyModel(model),
+        };
       },
     ),
   setLastUsed: (provider: string, model: string) =>
@@ -577,10 +631,14 @@ export const tauriProvider = {
     // device code). Callers may still override. Centralized here so every
     // entry point (picker, settings, reconnect card, banner) agrees.
     call<void>("launch_provider_login", () =>
-      getEngine().providerLogin(provider, { deviceAuth: opts?.deviceAuth ?? !osIsTauri() }),
+      getEngine().providerLogin(provider, {
+        deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
+      }),
     ),
   launchLogout: (provider: string) =>
-    call<void>("launch_provider_logout", () => getEngine().providerLogout(provider)),
+    call<void>("launch_provider_logout", () =>
+      getEngine().providerLogout(provider),
+    ),
   /**
    * Submit the OAuth verification code the user pasted from their
    * browser. Only meaningful for remote/headless engines (container,
@@ -603,7 +661,9 @@ export const tauriProvider = {
    * pending spinners clear without an error toast.
    */
   cancelLogin: (provider: string) =>
-    call<void>("cancel_provider_login", () => getEngine().cancelProviderLogin(provider)),
+    call<void>("cancel_provider_login", () =>
+      getEngine().cancelProviderLogin(provider),
+    ),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────
@@ -617,6 +677,9 @@ export const tauriSystem = {
 
 export const tauriWatcher = {
   start: (agentPath: string) =>
-    call<void>("start_agent_watcher", () => getEngine().startAgentWatcher(agentPath)),
-  stop: () => call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
+    call<void>("start_agent_watcher", () =>
+      getEngine().startAgentWatcher(agentPath),
+    ),
+  stop: () =>
+    call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
 };

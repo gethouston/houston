@@ -44,7 +44,11 @@ test("drains cleanly: close + idle-close, exits 0 when in-flight work finishes",
 
 test("a second signal is a no-op (no double close)", () => {
   const { server, calls } = fakeServer();
-  const drain = installGracefulShutdown(server, { graceMs: 5_000, log: () => {}, exit: () => {} });
+  const drain = installGracefulShutdown(server, {
+    graceMs: 5_000,
+    log: () => {},
+    exit: () => {},
+  });
   drain("SIGTERM");
   drain("SIGINT");
   expect(calls.close).toBe(1);

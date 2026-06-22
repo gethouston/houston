@@ -64,7 +64,10 @@ export function ModelUnavailableCard({
     <ErrorCard
       icon={<AlertTriangleIcon className="size-5" />}
       title={t("providerError.modelUnavailable.title")}
-      body={t("providerError.modelUnavailable.body", { provider, model: error.model })}
+      body={t("providerError.modelUnavailable.body", {
+        provider,
+        model: error.model,
+      })}
     >
       {error.suggested_fallback && onSwitchModel && (
         <Button

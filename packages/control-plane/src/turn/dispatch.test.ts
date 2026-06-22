@@ -28,7 +28,12 @@ const ws: Workspace = {
   runtime: "cloudrun",
   createdAt: 1,
 };
-const agent: Agent = { id: "agent-1", workspaceId: "w1", name: "Sales", createdAt: 1 };
+const agent: Agent = {
+  id: "agent-1",
+  workspaceId: "w1",
+  name: "Sales",
+  createdAt: 1,
+};
 
 // Fake turn runtime: records the request body, streams user→text→done.
 let turnBodies: Record<string, unknown>[] = [];
@@ -43,8 +48,12 @@ beforeAll(async () => {
       turnBodies.push(JSON.parse(Buffer.concat(chunks).toString("utf8")));
       res.writeHead(200, { "Content-Type": "text/event-stream" });
       res.write(": connected\n\n");
-      res.write(`data: ${JSON.stringify({ type: "user", data: { content: "hi", ts: 1 } })}\n\n`);
-      res.write(`data: ${JSON.stringify({ type: "text", data: "built your deck" })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ type: "user", data: { content: "hi", ts: 1 } })}\n\n`,
+      );
+      res.write(
+        `data: ${JSON.stringify({ type: "text", data: "built your deck" })}\n\n`,
+      );
       res.write(`data: ${JSON.stringify({ type: "done", data: null })}\n\n`);
       res.end();
     });
@@ -55,7 +64,11 @@ beforeAll(async () => {
 
 afterAll(() => fakeRuntime.close());
 
-function makeDeps(): { deps: TurnDeps; objects: MemoryVfs; credentials: MemoryCredentialStore } {
+function makeDeps(): {
+  deps: TurnDeps;
+  objects: MemoryVfs;
+  credentials: MemoryCredentialStore;
+} {
   const objects = new MemoryVfs();
   const credentials = new MemoryCredentialStore();
   const deps: TurnDeps = {
@@ -82,7 +95,15 @@ function serve(deps: TurnDeps): Promise<{ base: string; close: () => void }> {
   const s = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
     const rest = url.pathname.replace(/^\//, "");
-    void dispatchCloudrun(deps, ws, agent, req.method || "GET", rest, req, res).catch((err) => {
+    void dispatchCloudrun(
+      deps,
+      ws,
+      agent,
+      req.method || "GET",
+      rest,
+      req,
+      res,
+    ).catch((err) => {
       res.writeHead(500);
       res.end(String(err));
     });
@@ -125,7 +146,11 @@ test("a turn: refreshes the expiring credential, sends access-only, pumps frames
     expect(res.status).toBe(202);
     await done;
 
-    expect(events.map((e) => (e as { type: string }).type)).toEqual(["user", "text", "done"]);
+    expect(events.map((e) => (e as { type: string }).type)).toEqual([
+      "user",
+      "text",
+      "done",
+    ]);
     const sent = turnBodies[0]!;
     expect(sent.gcsPrefix).toBe("ws/w1/agent-1");
     expect(sent.nonce).toBe("n-1");
@@ -135,7 +160,9 @@ test("a turn: refreshes the expiring credential, sends access-only, pumps frames
     expect("refresh" in cred).toBe(false); // the refresh token NEVER rides a turn
     expect(JSON.stringify(sent)).not.toContain("RT-central");
     // The refreshed credential was persisted back centrally.
-    expect((await credentials.get("w1", "openai-codex"))?.accessToken).toBe("AT-refreshed");
+    expect((await credentials.get("w1", "openai-codex"))?.accessToken).toBe(
+      "AT-refreshed",
+    );
   } finally {
     close();
   }
@@ -155,7 +182,9 @@ test("conversation list + history read straight from object storage", async () =
   );
   const { base, close } = await serve(deps);
   try {
-    const list = (await (await fetch(`${base}/conversations`)).json()) as { id: string }[];
+    const list = (await (await fetch(`${base}/conversations`)).json()) as {
+      id: string;
+    }[];
     expect(list).toHaveLength(1);
     expect(list[0]!.id).toBe("c1");
     const history = (await (
@@ -163,7 +192,9 @@ test("conversation list + history read straight from object storage", async () =
     ).json()) as { title: string; messages: unknown[] };
     expect(history.title).toBe("Deck work");
     expect(history.messages).toHaveLength(1);
-    expect((await fetch(`${base}/conversations/nope/messages`)).status).toBe(404);
+    expect((await fetch(`${base}/conversations/nope/messages`)).status).toBe(
+      404,
+    );
   } finally {
     close();
   }
@@ -173,7 +204,9 @@ test("providers + auth/status reflect the central credential; settings persist t
   const { deps, objects, credentials } = makeDeps();
   const { base, close } = await serve(deps);
   try {
-    let providers = (await (await fetch(`${base}/providers`)).json()) as { configured: boolean }[];
+    let providers = (await (await fetch(`${base}/providers`)).json()) as {
+      configured: boolean;
+    }[];
     expect(providers[0]!.configured).toBe(false);
 
     await credentials.put({
@@ -183,7 +216,9 @@ test("providers + auth/status reflect the central credential; settings persist t
       refreshToken: "RT",
       expiresAt: Date.now() + 3_600_000,
     });
-    providers = (await (await fetch(`${base}/providers`)).json()) as { configured: boolean }[];
+    providers = (await (await fetch(`${base}/providers`)).json()) as {
+      configured: boolean;
+    }[];
     expect(providers[0]!.configured).toBe(true);
 
     const status = (await (await fetch(`${base}/auth/status`)).json()) as {
@@ -196,7 +231,9 @@ test("providers + auth/status reflect the central credential; settings persist t
       body: JSON.stringify({ model: "gpt-5.5" }),
     });
     expect(put.status).toBe(200);
-    expect(await objects.readText("ws/w1/agent-1/data/settings.json")).toContain("gpt-5.5");
+    expect(
+      await objects.readText("ws/w1/agent-1/data/settings.json"),
+    ).toContain("gpt-5.5");
   } finally {
     close();
   }

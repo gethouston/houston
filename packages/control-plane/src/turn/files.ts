@@ -45,9 +45,15 @@ export class FilePathError extends Error {
 function safeRel(rel: string): string {
   const cleaned = rel.replace(/\\/g, "/");
   // Absolute (POSIX or Windows-drive) paths are anomalous — reject, don't silently clamp.
-  if (cleaned.startsWith("/") || /^[A-Za-z]:/.test(cleaned)) throw new FilePathError(rel);
+  if (cleaned.startsWith("/") || /^[A-Za-z]:/.test(cleaned))
+    throw new FilePathError(rel);
   const norm = posix.normalize(cleaned);
-  if (norm === "" || norm === "." || norm.startsWith("..") || norm.split("/").includes("..")) {
+  if (
+    norm === "" ||
+    norm === "." ||
+    norm.startsWith("..") ||
+    norm.split("/").includes("..")
+  ) {
     throw new FilePathError(rel);
   }
   // Internal Houston state lives in top-level dot-dirs (.houston, .agents). The
@@ -89,7 +95,10 @@ export const mimeFor = (name: string): string =>
   MIME[extOf(name).toLowerCase()] ?? "application/octet-stream";
 
 /** RFC 6266 Content-Disposition with a safe ASCII fallback + UTF-8 filename*. */
-export const contentDisposition = (kind: "attachment" | "inline", name: string): string => {
+export const contentDisposition = (
+  kind: "attachment" | "inline",
+  name: string,
+): string => {
   const ascii = Array.from(name, (c) =>
     c.charCodeAt(0) < 0x7f && c !== '"' && c !== "\\" ? c : "_",
   ).join("");
@@ -102,7 +111,10 @@ export const contentDisposition = (kind: "attachment" | "inline", name: string):
  * The `.keep` markers that back empty folders are hidden but still surface their
  * directory; internal top-level dot-dirs (`.houston`, `.agents`) are hidden whole.
  */
-export async function listWorkspace(vfs: Vfs, root: string): Promise<ProjectFile[]> {
+export async function listWorkspace(
+  vfs: Vfs,
+  root: string,
+): Promise<ProjectFile[]> {
   const stats = await vfs.listDetailed(root);
   const files: ProjectFile[] = [];
   const dirs = new Map<string, number>(); // dir path -> latest mtime under it
@@ -132,7 +144,14 @@ export async function listWorkspace(vfs: Vfs, root: string): Promise<ProjectFile
 
   for (const [dir, mtime] of dirs) {
     const name = dir.split("/").pop()!;
-    files.push({ path: dir, name, extension: "", size: 0, is_directory: true, date_modified: mtime || undefined });
+    files.push({
+      path: dir,
+      name,
+      extension: "",
+      size: 0,
+      is_directory: true,
+      date_modified: mtime || undefined,
+    });
   }
   return files.sort((a, b) => {
     if (a.is_directory !== b.is_directory) return a.is_directory ? -1 : 1; // folders first
@@ -157,7 +176,11 @@ export async function readWorkspaceFile(
     : { content: buf.toString("base64"), base64: true };
 }
 
-export async function deleteWorkspaceFile(vfs: Vfs, root: string, rel: string): Promise<void> {
+export async function deleteWorkspaceFile(
+  vfs: Vfs,
+  root: string,
+  rel: string,
+): Promise<void> {
   const norm = safeRel(rel);
   const stats = await vfs.listDetailed(fileKey(root, norm));
   if (stats.length > 0) {
@@ -182,11 +205,17 @@ export async function renameWorkspaceFile(
     newName.startsWith(".")
   )
     throw new FilePathError(newName);
-  const parent = from.includes("/") ? from.slice(0, from.lastIndexOf("/") + 1) : "";
+  const parent = from.includes("/")
+    ? from.slice(0, from.lastIndexOf("/") + 1)
+    : "";
   await vfs.move(fileKey(root, from), fileKey(root, `${parent}${newName}`));
 }
 
-export async function createWorkspaceFolder(vfs: Vfs, root: string, folder: string): Promise<string> {
+export async function createWorkspaceFolder(
+  vfs: Vfs,
+  root: string,
+  folder: string,
+): Promise<string> {
   const norm = safeRel(folder);
   await vfs.writeText(fileKey(root, `${norm}/${FOLDER_KEEP}`), "");
   return norm;
@@ -222,9 +251,11 @@ export async function handleFiles(
     if (method === "GET" && rest === "files/download") {
       const rel = safeRel(query.get("path") ?? "");
       const buf = await vfs.readBytes(fileKey(root, rel));
-      if (buf === null) return (json(res, 404, { error: "file not found" }), true);
+      if (buf === null)
+        return json(res, 404, { error: "file not found" }), true;
       const name = rel.split("/").pop()!;
-      const kind = query.get("disposition") === "inline" ? "inline" : "attachment";
+      const kind =
+        query.get("disposition") === "inline" ? "inline" : "attachment";
       res.writeHead(200, {
         "Content-Type": mimeFor(name),
         "Content-Disposition": contentDisposition(kind, name),
@@ -236,7 +267,7 @@ export async function handleFiles(
     }
     if (method === "GET" && rest === "files/read") {
       const got = await readWorkspaceFile(vfs, root, query.get("path") ?? "");
-      if (!got) return (json(res, 404, { error: "file not found" }), true);
+      if (!got) return json(res, 404, { error: "file not found" }), true;
       await json(res, 200, got);
       return true;
     }
@@ -247,13 +278,22 @@ export async function handleFiles(
     }
     if (method === "POST" && rest === "files/rename") {
       const b = await readJson(req);
-      await renameWorkspaceFile(vfs, root, String(b.path ?? ""), String(b.newName ?? ""));
+      await renameWorkspaceFile(
+        vfs,
+        root,
+        String(b.path ?? ""),
+        String(b.newName ?? ""),
+      );
       await json(res, 200, { ok: true });
       return true;
     }
     if (method === "POST" && rest === "files/folder") {
       const b = await readJson(req);
-      const created = await createWorkspaceFolder(vfs, root, String(b.path ?? b.folder_name ?? ""));
+      const created = await createWorkspaceFolder(
+        vfs,
+        root,
+        String(b.path ?? b.folder_name ?? ""),
+      );
       await json(res, 200, { created });
       return true;
     }
@@ -262,7 +302,8 @@ export async function handleFiles(
     json(res, 404, { error: "not found" });
     return true;
   } catch (err) {
-    if (err instanceof FilePathError) return (json(res, 400, { error: err.message }), true);
+    if (err instanceof FilePathError)
+      return json(res, 400, { error: err.message }), true;
     throw err;
   }
 }

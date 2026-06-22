@@ -12,32 +12,34 @@
  * All visible text arrives via `labels` (English defaults) so the package stays
  * i18n-agnostic; `locale` drives day names + time formatting in the summary.
  */
-import { AnimatePresence } from "framer-motion"
-import { cn } from "@houston-ai/core"
-import type { SchedulePreset } from "./types"
-import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels"
-import {
-  DayOfMonthPicker,
-  WeekdaysPicker,
-} from "./schedule-picker-fields"
-import { TimePicker } from "./time-picker"
-import { IntervalPicker } from "./schedule-interval-picker"
-import { Reveal } from "./schedule-reveal"
-import { useScheduleBuilder } from "./use-schedule-builder"
+import { AnimatePresence } from "framer-motion";
+import { cn } from "@houston-ai/core";
+import type { SchedulePreset } from "./types";
+import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels";
+import { DayOfMonthPicker, WeekdaysPicker } from "./schedule-picker-fields";
+import { TimePicker } from "./time-picker";
+import { IntervalPicker } from "./schedule-interval-picker";
+import { Reveal } from "./schedule-reveal";
+import { useScheduleBuilder } from "./use-schedule-builder";
 
 export interface ScheduleBuilderProps {
-  value: string
-  onChange: (cronExpression: string) => void
-  presets?: SchedulePreset[]
+  value: string;
+  onChange: (cronExpression: string) => void;
+  presets?: SchedulePreset[];
   /** Localized labels. Defaults to English so standalone callers still work. */
-  labels?: ScheduleLabels
+  labels?: ScheduleLabels;
   /** BCP-47 locale for day names + time formatting in the live summary. */
-  locale?: string
+  locale?: string;
 }
 
 const DEFAULT_PRESETS: SchedulePreset[] = [
-  "every_30min", "hourly", "daily", "weekly", "monthly", "custom",
-]
+  "every_30min",
+  "hourly",
+  "daily",
+  "weekly",
+  "monthly",
+  "custom",
+];
 
 export function ScheduleBuilder({
   value,
@@ -59,10 +61,10 @@ export function ScheduleBuilder({
     isCustom,
     showTime,
     summary,
-  } = useScheduleBuilder(value, onChange, labels, locale)
+  } = useScheduleBuilder(value, onChange, labels, locale);
 
   const showCustomTime =
-    isCustom && (intervalUnit === "days" || intervalUnit === "months")
+    isCustom && (intervalUnit === "days" || intervalUnit === "months");
 
   return (
     <div className="space-y-4">
@@ -165,5 +167,5 @@ export function ScheduleBuilder({
         </AnimatePresence>
       </div>
     </div>
-  )
+  );
 }

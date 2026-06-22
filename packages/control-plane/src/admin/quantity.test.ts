@@ -1,5 +1,10 @@
 import { test, expect } from "bun:test";
-import { bytesToGiB, bytesToMiB, parseCpuToCores, parseMemToBytes } from "./quantity";
+import {
+  bytesToGiB,
+  bytesToMiB,
+  parseCpuToCores,
+  parseMemToBytes,
+} from "./quantity";
 
 test("parseCpuToCores handles milli, whole, fractional, and empty", () => {
   expect(parseCpuToCores("250m")).toBe(0.25);

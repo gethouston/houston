@@ -10,7 +10,7 @@
  * The card framing (gray panel, title + hint row) is kept so the control still
  * reads as "this one zone governs every routine below".
  */
-import { useMemo, useState } from "react"
+import { useMemo, useState } from "react";
 import {
   cn,
   Command,
@@ -22,9 +22,9 @@ import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@houston-ai/core"
-import { Check, ChevronDown, Globe } from "lucide-react"
-import { buildZoneOptions, foldDiacritics } from "./timezone-format.ts"
+} from "@houston-ai/core";
+import { Check, ChevronDown, Globe } from "lucide-react";
+import { buildZoneOptions, foldDiacritics } from "./timezone-format.ts";
 
 /**
  * Accent-insensitive wrapper around cmdk's default scorer: fold the query and
@@ -40,23 +40,23 @@ function filterZones(
     foldDiacritics(value),
     foldDiacritics(search),
     keywords?.map(foldDiacritics),
-  )
+  );
 }
 
 export interface TimezonePickerProps {
   /** The persisted account-wide IANA zone. */
-  accountTimezone: string
+  accountTimezone: string;
   /** Persist a newly chosen zone. */
-  onTimezoneChange: (tz: string) => void
+  onTimezoneChange: (tz: string) => void;
   /** Card title + accessible name for the trigger. */
-  label: string
+  label: string;
   /** One-line hint shown beside the title. */
-  hint: string
+  hint: string;
   /** Placeholder for the in-popover search field. */
-  searchPlaceholder: string
+  searchPlaceholder: string;
   /** Shown when no zone matches the query. */
-  noResults: string
-  className?: string
+  noResults: string;
+  className?: string;
 }
 
 export function TimezonePicker({
@@ -68,18 +68,18 @@ export function TimezonePicker({
   noResults,
   className,
 }: TimezonePickerProps) {
-  const [open, setOpen] = useState(false)
+  const [open, setOpen] = useState(false);
 
   // Built once: ~400 zones with offset + keywords. The account zone is always
   // present, so `current` resolves even if the platform list omits it.
   const zones = useMemo(
     () => buildZoneOptions(accountTimezone, new Date()),
     [accountTimezone],
-  )
+  );
   const current = useMemo(
     () => zones.find((z) => z.id === accountTimezone),
     [zones, accountTimezone],
-  )
+  );
 
   // The button's visible text is the live value, so give it an accessible name
   // that pairs the field label WITH that value, e.g. "Timezone: America/New
@@ -89,12 +89,12 @@ export function TimezonePicker({
     ? current.offset
       ? `${current.display}, ${current.offset}`
       : current.display
-    : accountTimezone
+    : accountTimezone;
 
   const handleSelect = (id: string) => {
-    if (id !== accountTimezone) onTimezoneChange(id)
-    setOpen(false)
-  }
+    if (id !== accountTimezone) onTimezoneChange(id);
+    setOpen(false);
+  };
 
   return (
     <section className={cn("rounded-xl bg-secondary px-5 py-4", className)}>
@@ -171,5 +171,5 @@ export function TimezonePicker({
         </PopoverContent>
       </Popover>
     </section>
-  )
+  );
 }

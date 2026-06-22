@@ -92,13 +92,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     new BunRuntimeSpawner({
       command: opts.runtimeCommand,
       env: {
-        ...(opts.systemPrompt ? { HOUSTON_SYSTEM_PROMPT: opts.systemPrompt } : {}),
+        ...(opts.systemPrompt
+          ? { HOUSTON_SYSTEM_PROMPT: opts.systemPrompt }
+          : {}),
         // Packaged: runtimeCommand() spawns this same compiled binary, so the
         // child must dispatch into RUNTIME role (sidecar-entry.ts reads this).
         // Additive to the per-runtime env the ProcessLauncher sets (workspace
         // dir, data dir, port, token). Only set when we ARE the compiled sidecar;
         // the dev `bun run <source>` command ignores it harmlessly anyway.
-        ...(process.env.HOUSTON_SIDECAR_BINARY ? { HOUSTON_SIDECAR_ROLE: "runtime" } : {}),
+        ...(process.env.HOUSTON_SIDECAR_BINARY
+          ? { HOUSTON_SIDECAR_ROLE: "runtime" }
+          : {}),
       },
       onLog: opts.onRuntimeLog,
     });
@@ -112,10 +116,17 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     mintToken: (a) => vault.sandboxToken(a.workspaceId, a.id),
     // Connect-once locally too: keyless runtimes fetch a fresh token from this
     // host, so the refresh token never sits in a runtime's environment.
-    credentialServing: { controlPlaneUrl, mintSandboxToken: (a) => vault.sandboxToken(a.workspaceId, a.id) },
+    credentialServing: {
+      controlPlaneUrl,
+      mintSandboxToken: (a) => vault.sandboxToken(a.workspaceId, a.id),
+    },
   });
 
-  const channel = new ProxyChannel({ launcher, proxy: { forward }, credentials });
+  const channel = new ProxyChannel({
+    launcher,
+    proxy: { forward },
+    credentials,
+  });
 
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
@@ -132,7 +143,9 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
 
   const server = createControlPlaneServer(deps);
   // The agent (or the user) editing files directly → reactivity, no host write.
-  const watcher = new FsWatcher(opts.workspacesRoot, (e) => events.emit(LOCAL_USER, e));
+  const watcher = new FsWatcher(opts.workspacesRoot, (e) =>
+    events.emit(LOCAL_USER, e),
+  );
   const scheduler = new Scheduler({
     store,
     vfs,
@@ -159,15 +172,22 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         } catch (err) {
           // No UI thread to toast on at boot; the supervisor must stay up. Log
           // loudly so the failure shows in the app logs / bug report tail.
-          console.error("[local-host] chat-history migration failed (continuing):", err);
+          console.error(
+            "[local-host] chat-history migration failed (continuing):",
+            err,
+          );
         }
       }
       const bind = opts.bind ?? "127.0.0.1";
-      await new Promise<void>((resolve) => server.listen(opts.port, bind, () => resolve()));
+      await new Promise<void>((resolve) =>
+        server.listen(opts.port, bind, () => resolve()),
+      );
       watcher.start();
       scheduler.start();
       // The banner the Tauri supervisor parses (mirrors the runtime's contract).
-      console.log(`HOUSTON_HOST_LISTENING port=${opts.port} token=${opts.token}`);
+      console.log(
+        `HOUSTON_HOST_LISTENING port=${opts.port} token=${opts.token}`,
+      );
     },
     stop() {
       scheduler.stop();

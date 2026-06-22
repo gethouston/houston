@@ -10,10 +10,14 @@ function writeLog(level: LogLevel, message: string, context?: string) {
 }
 
 export const logger = {
-  error: (message: string, context?: string) => writeLog("error", message, context),
-  warn: (message: string, context?: string) => writeLog("warn", message, context),
-  info: (message: string, context?: string) => writeLog("info", message, context),
-  debug: (message: string, context?: string) => writeLog("debug", message, context),
+  error: (message: string, context?: string) =>
+    writeLog("error", message, context),
+  warn: (message: string, context?: string) =>
+    writeLog("warn", message, context),
+  info: (message: string, context?: string) =>
+    writeLog("info", message, context),
+  debug: (message: string, context?: string) =>
+    writeLog("debug", message, context),
 };
 
 /**

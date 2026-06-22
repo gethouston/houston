@@ -26,7 +26,10 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
   "summary",
 ];
 
-export function buildMissionMeta(t: Translate, step: TutorialStep): MissionMeta {
+export function buildMissionMeta(
+  t: Translate,
+  step: TutorialStep,
+): MissionMeta {
   const index = TUTORIAL_STEPS.indexOf(step);
   const total = TUTORIAL_STEPS.length;
   const next = TUTORIAL_STEPS[index + 1];

@@ -8,7 +8,10 @@ import type { WireEvent } from "./types";
  */
 export type ConversationSnapshot = { running: boolean; partial: string };
 
-export const EMPTY_SNAPSHOT: ConversationSnapshot = { running: false, partial: "" };
+export const EMPTY_SNAPSHOT: ConversationSnapshot = {
+  running: false,
+  partial: "",
+};
 
 /**
  * Fold a wire event into the running snapshot. Pure. `partial` tracks only

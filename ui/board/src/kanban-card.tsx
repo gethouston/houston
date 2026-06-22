@@ -1,26 +1,26 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef, useEffect } from "react";
 import {
   cn,
   ConfirmDialog,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@houston-ai/core"
-import { Trash2, Check, Pencil } from "lucide-react"
-import type { KanbanItem } from "./types"
+} from "@houston-ai/core";
+import { Trash2, Check, Pencil } from "lucide-react";
+import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
   /** @deprecated kept for backward-compat. Was the visible Approve pill text;
    *  the action is now an icon-only button with `approveTooltip`. */
-  approve?: string
-  approveTooltip?: string
-  renameTooltip?: string
-  deleteTooltip?: string
+  approve?: string;
+  approveTooltip?: string;
+  renameTooltip?: string;
+  deleteTooltip?: string;
   /** Delete confirm title, `{name}` substituted with `item.title`. */
-  deleteTitle?: (name: string) => string
-  deleteDescription?: string
+  deleteTitle?: (name: string) => string;
+  deleteDescription?: string;
   /** Accessible label for the multi-select checkbox. */
-  selectTooltip?: string
+  selectTooltip?: string;
 }
 
 const DEFAULT_LABELS: Required<KanbanCardLabels> = {
@@ -31,42 +31,42 @@ const DEFAULT_LABELS: Required<KanbanCardLabels> = {
   deleteTitle: (name) => `Delete "${name}"?`,
   deleteDescription: "This item and its history will be permanently removed.",
   selectTooltip: "Select",
-}
+};
 
 export interface KanbanCardProps {
-  item: KanbanItem
-  onSelect: () => void
-  onDelete?: () => void
-  onApprove?: () => void
-  onRename?: (newTitle: string) => void
-  runningStatuses?: string[]
-  approveStatuses?: string[]
-  errorStatuses?: string[]
-  actions?: React.ReactNode
-  avatar?: React.ReactNode
-  labels?: KanbanCardLabels
+  item: KanbanItem;
+  onSelect: () => void;
+  onDelete?: () => void;
+  onApprove?: () => void;
+  onRename?: (newTitle: string) => void;
+  runningStatuses?: string[];
+  approveStatuses?: string[];
+  errorStatuses?: string[];
+  actions?: React.ReactNode;
+  avatar?: React.ReactNode;
+  labels?: KanbanCardLabels;
   /** Mark this card as the currently-open one in the right panel. */
-  selected?: boolean
+  selected?: boolean;
   /** Mark this card as keyboard-focused (highlighted via arrow nav, not yet
    *  opened). Renders a focus ring distinct from `selected`. */
-  highlighted?: boolean
+  highlighted?: boolean;
   /** Enable the multi-select checkbox. */
-  selectable?: boolean
+  selectable?: boolean;
   /** Whether this card is part of the current multi-select set. */
-  selectedForBulk?: boolean
+  selectedForBulk?: boolean;
   /** Whether ANY card is currently multi-selected (keeps every checkbox
    *  visible without hover so the affordance isn't hover-gated). */
-  anySelected?: boolean
+  anySelected?: boolean;
   /** Toggle this card's membership in the multi-select set. */
-  onToggleSelect?: () => void
+  onToggleSelect?: () => void;
   /** Make the card draggable so it can be dropped onto another column.
    *  Suppressed while renaming or during a multi-select so it doesn't
    *  collide with those interactions. The board reads the resulting
    *  `data-kanban-draggable` marker to start its pointer drag. */
-  enableDrag?: boolean
+  enableDrag?: boolean;
   /** True while THIS card is the one being dragged — dims it. Driven by the
    *  board's drag state. */
-  dragging?: boolean
+  dragging?: boolean;
 }
 
 export function KanbanCard({
@@ -90,50 +90,53 @@ export function KanbanCard({
   enableDrag = false,
   dragging = false,
 }: KanbanCardProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
-  const isRunning = runningStatuses.includes(item.status)
-  const isNeedsApproval = approveStatuses.includes(item.status)
-  const isError = errorStatuses.includes(item.status)
-  const [showConfirm, setShowConfirm] = useState(false)
-  const [editing, setEditing] = useState(false)
-  const [editValue, setEditValue] = useState(item.title)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const l = { ...DEFAULT_LABELS, ...labels };
+  const isRunning = runningStatuses.includes(item.status);
+  const isNeedsApproval = approveStatuses.includes(item.status);
+  const isError = errorStatuses.includes(item.status);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editValue, setEditValue] = useState(item.title);
+  const inputRef = useRef<HTMLInputElement>(null);
   // Don't let a drag start while renaming (the title input owns the gesture)
   // or while a multi-select is active (the bulk action bar owns moves then).
-  const canDrag = enableDrag && !editing && !anySelected
+  const canDrag = enableDrag && !editing && !anySelected;
 
   useEffect(() => {
-    if (editing) inputRef.current?.focus()
-  }, [editing])
+    if (editing) inputRef.current?.focus();
+  }, [editing]);
 
   const handleDeleteClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setShowConfirm(true)
-  }
+    e.stopPropagation();
+    setShowConfirm(true);
+  };
 
   const confirmDelete = () => {
-    onDelete?.()
-    setShowConfirm(false)
-  }
+    onDelete?.();
+    setShowConfirm(false);
+  };
 
   const handleRenameClick = (e: React.MouseEvent) => {
-    e.stopPropagation()
-    setEditValue(item.title)
-    setEditing(true)
-  }
+    e.stopPropagation();
+    setEditValue(item.title);
+    setEditing(true);
+  };
 
   const commitRename = () => {
-    const trimmed = editValue.trim()
+    const trimmed = editValue.trim();
     if (trimmed && trimmed !== item.title) {
-      onRename?.(trimmed)
+      onRename?.(trimmed);
     }
-    setEditing(false)
-  }
+    setEditing(false);
+  };
 
   return (
     <>
       <div
-        onClick={(e) => { e.stopPropagation(); onSelect() }}
+        onClick={(e) => {
+          e.stopPropagation();
+          onSelect();
+        }}
         // The board runs the drag (pointer events, delegated). These markers
         // tell it which element is a card and whether it may be dragged right
         // now; `canDrag` already excludes renaming + multi-select. Attribute
@@ -216,8 +219,8 @@ export function KanbanCard({
                   aria-checked={selectedForBulk}
                   aria-label={l.selectTooltip}
                   onClick={(e) => {
-                    e.stopPropagation()
-                    onToggleSelect()
+                    e.stopPropagation();
+                    onToggleSelect();
                   }}
                   className={cn(
                     "size-4 rounded-[5px] border flex items-center justify-center transition-colors",
@@ -230,13 +233,12 @@ export function KanbanCard({
                 </button>
               </div>
             )}
-            {avatar ?? (
-              item.icon && (
+            {avatar ??
+              (item.icon && (
                 <span className="size-3.5 shrink-0 flex items-center justify-center">
                   {item.icon}
                 </span>
-              )
-            )}
+              ))}
             {item.group && (
               <span className="text-[11px] text-muted-foreground truncate">
                 {item.group}
@@ -248,7 +250,10 @@ export function KanbanCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={(e) => { e.stopPropagation(); onApprove() }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onApprove();
+                    }}
                     className="p-1 rounded-md text-muted-foreground/40 hover:text-[#00a240] hover:bg-[#00a240]/10 transition-colors duration-200"
                     aria-label={l.approveTooltip}
                   >
@@ -297,8 +302,8 @@ export function KanbanCard({
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={commitRename}
             onKeyDown={(e) => {
-              if (e.key === "Enter") commitRename()
-              if (e.key === "Escape") setEditing(false)
+              if (e.key === "Enter") commitRename();
+              if (e.key === "Escape") setEditing(false);
             }}
             onClick={(e) => e.stopPropagation()}
             className="text-[13px] font-medium text-foreground bg-transparent border-b border-foreground/20 outline-none w-full"
@@ -310,7 +315,10 @@ export function KanbanCard({
                 drag is in flight. `stopPropagation` keeps a title click from
                 triggering the body's onSelect twice. */}
             <span
-              onClick={(e) => { e.stopPropagation(); onSelect() }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelect();
+              }}
               className="cursor-pointer"
             >
               {item.title}
@@ -340,9 +348,7 @@ export function KanbanCard({
                 </span>
               ))}
             </div>
-            <div className="shrink-0">
-              {actions}
-            </div>
+            <div className="shrink-0">{actions}</div>
           </div>
         )}
       </div>
@@ -355,5 +361,5 @@ export function KanbanCard({
         onConfirm={confirmDelete}
       />
     </>
-  )
+  );
 }

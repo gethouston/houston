@@ -1,11 +1,11 @@
-import { cn, Badge } from "@houston-ai/core"
-import type { EventType } from "./types"
-import { EVENT_TYPE_LABELS } from "./types"
+import { cn, Badge } from "@houston-ai/core";
+import type { EventType } from "./types";
+import { EVENT_TYPE_LABELS } from "./types";
 
 export interface EventFilterProps {
-  value: EventType | null
-  onChange: (type: EventType | null) => void
-  counts?: Partial<Record<EventType, number>>
+  value: EventType | null;
+  onChange: (type: EventType | null) => void;
+  counts?: Partial<Record<EventType, number>>;
 }
 
 const EVENT_TYPES: EventType[] = [
@@ -15,7 +15,7 @@ const EVENT_TYPES: EventType[] = [
   "hook",
   "webhook",
   "agent_message",
-]
+];
 
 export function EventFilter({ value, onChange, counts }: EventFilterProps) {
   return (
@@ -33,8 +33,8 @@ export function EventFilter({ value, onChange, counts }: EventFilterProps) {
       </button>
 
       {EVENT_TYPES.map((type) => {
-        const count = counts?.[type]
-        const isActive = value === type
+        const count = counts?.[type];
+        const isActive = value === type;
 
         return (
           <button
@@ -57,8 +57,8 @@ export function EventFilter({ value, onChange, counts }: EventFilterProps) {
               </Badge>
             )}
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

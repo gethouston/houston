@@ -22,14 +22,21 @@ const ws: Workspace = {
   runtime: "cloudrun",
   createdAt: 0,
 };
-const agent: Agent = { id: "a1", workspaceId: "w1", name: "Sales", createdAt: 0 };
+const agent: Agent = {
+  id: "a1",
+  workspaceId: "w1",
+  name: "Sales",
+  createdAt: 0,
+};
 
 test("CloudPaths reproduces today's GCS-prefix layout", () => {
   const p = new CloudPaths();
   expect(p.agentPrefix(ws, agent)).toBe("ws/w1/a1");
   expect(p.agentRoot(ws, agent)).toBe("ws/w1/a1/workspace");
   expect(p.dataRoot(ws, agent)).toBe("ws/w1/a1/data");
-  expect(conversationKey(p, ws, agent, "c1")).toBe("ws/w1/a1/data/conversations/c1.json");
+  expect(conversationKey(p, ws, agent, "c1")).toBe(
+    "ws/w1/a1/data/conversations/c1.json",
+  );
   expect(settingsKey(p, ws, agent)).toBe("ws/w1/a1/data/settings.json");
 });
 
@@ -37,7 +44,9 @@ test("CloudPaths agrees with the per-turn dispatch's own helpers (one set of key
   const p = new CloudPaths();
   const prefix = turnPrefixFor(ws, agent);
   expect(p.agentPrefix(ws, agent)).toBe(prefix);
-  expect(conversationKey(p, ws, agent, "c1")).toBe(turnConversationKey(prefix, "c1"));
+  expect(conversationKey(p, ws, agent, "c1")).toBe(
+    turnConversationKey(prefix, "c1"),
+  );
   expect(settingsKey(p, ws, agent)).toBe(turnSettingsKey(prefix));
 });
 
@@ -57,6 +66,11 @@ test("local agentRoot == agent.id, so a host write and a watched write hit the s
   // The FsWatcher emits agentPath = "<Workspace>/<Agent>" (= agent.id), and
   // agentRoot is that exact prefix — host-written and user-written files align.
   const p = new LocalPaths();
-  const root = p.agentRoot({ ...ws, id: "Work" }, { ...agent, id: "Work/Sales" });
-  expect(`${root}/.houston/activity/activity.json`).toBe("Work/Sales/.houston/activity/activity.json");
+  const root = p.agentRoot(
+    { ...ws, id: "Work" },
+    { ...agent, id: "Work/Sales" },
+  );
+  expect(`${root}/.houston/activity/activity.json`).toBe(
+    "Work/Sales/.houston/activity/activity.json",
+  );
 });

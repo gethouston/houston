@@ -8,7 +8,8 @@ import houstonWhite from "../../assets/houston-icon-white.svg";
 
 export function UpdateChecker() {
   const { t, i18n } = useTranslation("shell");
-  const { status, installAndRelaunch, relaunchInstalledApp, dismiss } = useUpdateChecker();
+  const { status, installAndRelaunch, relaunchInstalledApp, dismiss } =
+    useUpdateChecker();
 
   if (status.state === "idle") return null;
 
@@ -29,8 +30,10 @@ export function UpdateChecker() {
         : t("updateChecker.downloadingProgress", { progress });
     }
     if (ready) return t("updateChecker.ready");
-    if (error && status.phase === "install") return t("updateChecker.errorInstall");
-    if (error && status.phase === "relaunch") return t("updateChecker.errorRelaunch");
+    if (error && status.phase === "install")
+      return t("updateChecker.errorInstall");
+    if (error && status.phase === "relaunch")
+      return t("updateChecker.errorRelaunch");
     return t("updateChecker.availableDescription", {
       currentVersion: info.currentVersion,
       version: info.version,
@@ -70,9 +73,13 @@ export function UpdateChecker() {
             <h2 className="text-base font-semibold leading-tight">
               {t("updateChecker.title")}
             </h2>
-            {error && <AlertCircle className="size-4 shrink-0 text-destructive" />}
+            {error && (
+              <AlertCircle className="size-4 shrink-0 text-destructive" />
+            )}
           </div>
-          <p className="mt-1 text-sm leading-snug text-muted-foreground">{message}</p>
+          <p className="mt-1 text-sm leading-snug text-muted-foreground">
+            {message}
+          </p>
         </div>
         {!downloading && !ready && (
           <button
@@ -91,7 +98,11 @@ export function UpdateChecker() {
           {t("updateChecker.detailsHeading")}
         </p>
         <div className="mt-1 max-h-28 overflow-y-auto break-words text-xs leading-relaxed text-muted-foreground">
-          {notes ? <UpdateNotes notes={notes} /> : <p>{t("updateChecker.noDetails")}</p>}
+          {notes ? (
+            <UpdateNotes notes={notes} />
+          ) : (
+            <p>{t("updateChecker.noDetails")}</p>
+          )}
         </div>
       </div>
 

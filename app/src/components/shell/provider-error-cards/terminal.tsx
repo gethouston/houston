@@ -7,7 +7,12 @@
 import { useTranslation } from "react-i18next";
 import { CloudOffIcon, RefreshCwIcon, WrenchIcon } from "lucide-react";
 import type { ProviderError } from "@houston-ai/chat";
-import { ErrorCard, ReportBugButton, RetryButton, providerLabel } from "./shared";
+import {
+  ErrorCard,
+  ReportBugButton,
+  RetryButton,
+  providerLabel,
+} from "./shared";
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;

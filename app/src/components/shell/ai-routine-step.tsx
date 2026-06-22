@@ -37,24 +37,36 @@ export function AiRoutineStep({
       <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6 pt-6">
         <div className="max-w-2xl mx-auto space-y-6">
           <div>
-            <h2 className="text-base font-semibold">{t("aiRoutine.stepTitle")}</h2>
-            <p className="text-sm text-muted-foreground">{t("aiRoutine.stepDescription")}</p>
+            <h2 className="text-base font-semibold">
+              {t("aiRoutine.stepTitle")}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {t("aiRoutine.stepDescription")}
+            </p>
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">{t("aiRoutine.nameLabel")}</label>
+            <label className="block text-sm font-medium">
+              {t("aiRoutine.nameLabel")}
+            </label>
             <Input
               value={routine.name}
-              onChange={(e) => onRoutineChange({ ...routine, name: e.target.value })}
+              onChange={(e) =>
+                onRoutineChange({ ...routine, name: e.target.value })
+              }
               className="rounded-xl"
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">{t("aiRoutine.promptLabel")}</label>
+            <label className="block text-sm font-medium">
+              {t("aiRoutine.promptLabel")}
+            </label>
             <textarea
               value={routine.prompt}
-              onChange={(e) => onRoutineChange({ ...routine, prompt: e.target.value })}
+              onChange={(e) =>
+                onRoutineChange({ ...routine, prompt: e.target.value })
+              }
               rows={3}
               className={cn(
                 "w-full px-4 py-3 text-sm text-foreground leading-relaxed",
@@ -66,11 +78,15 @@ export function AiRoutineStep({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">{t("aiRoutine.scheduleLabel")}</label>
+            <label className="block text-sm font-medium">
+              {t("aiRoutine.scheduleLabel")}
+            </label>
             <div className="rounded-xl bg-secondary p-4">
               <ScheduleBuilder
                 value={routine.schedule}
-                onChange={(schedule) => onRoutineChange({ ...routine, schedule })}
+                onChange={(schedule) =>
+                  onRoutineChange({ ...routine, schedule })
+                }
                 presets={PRESETS}
                 labels={routineLabels.schedule}
                 locale={routineLabels.locale}
@@ -81,7 +97,9 @@ export function AiRoutineStep({
           <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 px-4 py-3 space-y-2">
             <div className="flex items-center gap-2">
               <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-              <p className="text-sm font-medium text-foreground">{t("aiRoutine.consentTitle")}</p>
+              <p className="text-sm font-medium text-foreground">
+                {t("aiRoutine.consentTitle")}
+              </p>
             </div>
             <ul className="text-xs text-muted-foreground space-y-1 list-disc pl-5">
               <li>{t("aiRoutine.consentScheduled")}</li>
@@ -95,10 +113,11 @@ export function AiRoutineStep({
           </p>
 
           <label className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-4 py-3 cursor-pointer">
-            <span className="text-sm font-medium text-foreground">{t("aiRoutine.enableLabel")}</span>
+            <span className="text-sm font-medium text-foreground">
+              {t("aiRoutine.enableLabel")}
+            </span>
             <Switch checked={accepted} onCheckedChange={onAcceptedChange} />
           </label>
-
         </div>
       </div>
 

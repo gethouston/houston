@@ -6,12 +6,12 @@
  * All visible text arrives via props so the package stays i18n-agnostic; the
  * pills show the singular or plural unit name depending on the count.
  */
-import { cn } from "@houston-ai/core"
-import { Minus, Plus } from "lucide-react"
-import type { IntervalUnit } from "./schedule-interval-utils"
-import { labelClass } from "./schedule-picker-fields"
+import { cn } from "@houston-ai/core";
+import { Minus, Plus } from "lucide-react";
+import type { IntervalUnit } from "./schedule-interval-utils";
+import { labelClass } from "./schedule-picker-fields";
 
-const UNIT_ORDER: IntervalUnit[] = ["minutes", "hours", "days", "months"]
+const UNIT_ORDER: IntervalUnit[] = ["minutes", "hours", "days", "months"];
 
 function NumberStepper({
   value,
@@ -20,13 +20,13 @@ function NumberStepper({
   decreaseLabel,
   increaseLabel,
 }: {
-  value: string
-  onChange: (value: string) => void
-  invalid?: boolean
-  decreaseLabel: string
-  increaseLabel: string
+  value: string;
+  onChange: (value: string) => void;
+  invalid?: boolean;
+  decreaseLabel: string;
+  increaseLabel: string;
 }) {
-  const n = Number(value) || 1
+  const n = Number(value) || 1;
   return (
     <div
       className={cn(
@@ -61,7 +61,7 @@ function NumberStepper({
         <Plus className="size-4" />
       </button>
     </div>
-  )
+  );
 }
 
 export function IntervalPicker({
@@ -76,18 +76,18 @@ export function IntervalPicker({
   onEveryChange,
   onUnitChange,
 }: {
-  label: string
-  units: Record<IntervalUnit, string>
-  unitsSingular: Record<IntervalUnit, string>
-  decreaseLabel: string
-  increaseLabel: string
-  every: string
-  unit: IntervalUnit
-  invalid?: boolean
-  onEveryChange: (every: string) => void
-  onUnitChange: (unit: IntervalUnit) => void
+  label: string;
+  units: Record<IntervalUnit, string>;
+  unitsSingular: Record<IntervalUnit, string>;
+  decreaseLabel: string;
+  increaseLabel: string;
+  every: string;
+  unit: IntervalUnit;
+  invalid?: boolean;
+  onEveryChange: (every: string) => void;
+  onUnitChange: (unit: IntervalUnit) => void;
 }) {
-  const plural = Number(every) > 1
+  const plural = Number(every) > 1;
   return (
     <div>
       <label className={labelClass}>{label}</label>
@@ -118,5 +118,5 @@ export function IntervalPicker({
         </div>
       </div>
     </div>
-  )
+  );
 }

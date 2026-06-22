@@ -168,7 +168,10 @@ export type { TextShimmerProps } from "./ai-elements/shimmer";
 
 // === AI Elements: Suggestion ===
 export { Suggestions, Suggestion } from "./ai-elements/suggestion";
-export type { SuggestionsProps, SuggestionProps } from "./ai-elements/suggestion";
+export type {
+  SuggestionsProps,
+  SuggestionProps,
+} from "./ai-elements/suggestion";
 
 // === Chat Components ===
 export { ChatPanel } from "./chat-panel";
@@ -192,8 +195,17 @@ export type {
   QueuedMessageListProps,
 } from "./queued-message-list";
 
-export { ToolActivity, ToolsAndCards, ToolBlock, feedItemsToMessages } from "./chat-helpers";
-export type { ToolActivityProps, ToolsAndCardsProps, ToolBlockProps } from "./chat-helpers";
+export {
+  ToolActivity,
+  ToolsAndCards,
+  ToolBlock,
+  feedItemsToMessages,
+} from "./chat-helpers";
+export type {
+  ToolActivityProps,
+  ToolsAndCardsProps,
+  ToolBlockProps,
+} from "./chat-helpers";
 
 // === Progress ===
 export { useProgressSteps } from "./use-progress-steps";
@@ -207,8 +219,14 @@ export type { ProgressPanelProps } from "./progress-panel";
 // (desktop, mobile) can render the same card.
 export { decodeSkillMessage, resolveSkillImage } from "./skill-message";
 export type { SkillInvocation, SkillInvocationField } from "./skill-message";
-export { decodeAttachmentMessage, normalizeAttachmentReferences } from "./attachment-message";
-export type { AttachmentInvocation, AttachmentReference } from "./attachment-message";
+export {
+  decodeAttachmentMessage,
+  normalizeAttachmentReferences,
+} from "./attachment-message";
+export type {
+  AttachmentInvocation,
+  AttachmentReference,
+} from "./attachment-message";
 // Clean, human-readable preview of a persisted user-message body: decodes the
 // Skill / attachment markers so cards and lists never show the raw marker.
 export { messagePreviewText } from "./message-preview";
@@ -220,7 +238,11 @@ export type { UserAttachmentMessageLabels } from "./user-attachment-message";
 
 // === Utilities ===
 export { Typewriter } from "./typewriter";
-export { mergeFeedItem, mergeFeedHistory, reconcileUserMessageEcho } from "./feed-merge";
+export {
+  mergeFeedItem,
+  mergeFeedHistory,
+  reconcileUserMessageEcho,
+} from "./feed-merge";
 export type { MergeFeedOptions, PendingUserEcho } from "./feed-merge";
 export { ChannelAvatar } from "./channel-avatar";
 export type { ChannelSource } from "./channel-avatar";

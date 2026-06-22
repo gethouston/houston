@@ -46,7 +46,11 @@ function assistantMsg(text: string) {
 
 /** A fresh per-conversation session dir, mirroring `dataDir/sessions/<id>`. */
 function freshSessionDir() {
-  return join(mkdtempSync(join(tmpdir(), "houston-data-")), "sessions", "conv-1");
+  return join(
+    mkdtempSync(join(tmpdir(), "houston-data-")),
+    "sessions",
+    "conv-1",
+  );
 }
 
 /** Drive one real turn (user prompt + assistant reply) through a manager. */

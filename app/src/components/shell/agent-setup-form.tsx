@@ -21,7 +21,11 @@ const FOCUS_KEYS = Object.keys(FOCUS_LABELS);
 const TRAIT_KEYS = Object.keys(TRAIT_LABELS);
 const MAX_TRAITS = 3;
 
-export function AgentSetupForm({ values, onChange, disabled }: AgentSetupFormProps) {
+export function AgentSetupForm({
+  values,
+  onChange,
+  disabled,
+}: AgentSetupFormProps) {
   const { t } = useTranslation("shell");
 
   const setFocus = (focus: string) => onChange({ ...values, focus });
@@ -29,14 +33,19 @@ export function AgentSetupForm({ values, onChange, disabled }: AgentSetupFormPro
   const toggleTrait = (trait: string) => {
     const has = values.traits.includes(trait);
     if (has) {
-      onChange({ ...values, traits: values.traits.filter((tr) => tr !== trait) });
+      onChange({
+        ...values,
+        traits: values.traits.filter((tr) => tr !== trait),
+      });
     } else if (values.traits.length < MAX_TRAITS) {
       onChange({ ...values, traits: [...values.traits, trait] });
     }
   };
 
   // verbosity is always 1–5 (clamped by slider min/max), key is always valid.
-  const verbosityKey = `aiAssist.verbosity.${values.verbosity}` as Parameters<typeof t>[0];
+  const verbosityKey = `aiAssist.verbosity.${values.verbosity}` as Parameters<
+    typeof t
+  >[0];
 
   return (
     <div className="space-y-7">
@@ -73,7 +82,10 @@ export function AgentSetupForm({ values, onChange, disabled }: AgentSetupFormPro
         <legend className="text-sm font-medium">
           {t("aiAssist.form.traitsLabel")}
           <span className="ml-2 text-xs font-normal text-muted-foreground">
-            {t("aiAssist.form.traitsHint", { selected: values.traits.length, max: MAX_TRAITS })}
+            {t("aiAssist.form.traitsHint", {
+              selected: values.traits.length,
+              max: MAX_TRAITS,
+            })}
           </span>
         </legend>
         <div className="flex flex-wrap gap-2">
@@ -107,7 +119,9 @@ export function AgentSetupForm({ values, onChange, disabled }: AgentSetupFormPro
           <label htmlFor="verbosity-slider" className="text-sm font-medium">
             {t("aiAssist.form.verbosityLabel")}
           </label>
-          <span className="text-xs text-muted-foreground">{t(verbosityKey)}</span>
+          <span className="text-xs text-muted-foreground">
+            {t(verbosityKey)}
+          </span>
         </div>
         <input
           id="verbosity-slider"
@@ -117,7 +131,9 @@ export function AgentSetupForm({ values, onChange, disabled }: AgentSetupFormPro
           step={1}
           value={values.verbosity}
           disabled={disabled}
-          onChange={(e) => onChange({ ...values, verbosity: Number(e.target.value) })}
+          onChange={(e) =>
+            onChange({ ...values, verbosity: Number(e.target.value) })
+          }
           className={cn(
             "w-full h-1.5 appearance-none rounded-full bg-secondary",
             "accent-primary cursor-pointer disabled:cursor-not-allowed disabled:opacity-50",
@@ -132,19 +148,28 @@ export function AgentSetupForm({ values, onChange, disabled }: AgentSetupFormPro
       {/* Field 4 — Ask first */}
       <label className="flex items-center justify-between gap-4 cursor-pointer">
         <div>
-          <p className="text-sm font-medium">{t("aiAssist.form.askFirstLabel")}</p>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("aiAssist.form.askFirstHint")}</p>
+          <p className="text-sm font-medium">
+            {t("aiAssist.form.askFirstLabel")}
+          </p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {t("aiAssist.form.askFirstHint")}
+          </p>
         </div>
         <Switch
           checked={values.askFirst}
-          onCheckedChange={(checked) => onChange({ ...values, askFirst: checked })}
+          onCheckedChange={(checked) =>
+            onChange({ ...values, askFirst: checked })
+          }
           disabled={disabled}
         />
       </label>
 
       {/* Field 5 — Extra instructions */}
       <div className="space-y-3">
-        <label htmlFor="extra-instructions" className="block text-sm font-medium">
+        <label
+          htmlFor="extra-instructions"
+          className="block text-sm font-medium"
+        >
           {t("aiAssist.form.extraLabel")}
           <span className="ml-2 text-xs font-normal text-muted-foreground">
             {t("aiAssist.form.extraOptional")}

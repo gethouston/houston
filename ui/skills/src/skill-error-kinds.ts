@@ -20,7 +20,7 @@ export type SkillErrorKind =
   | "repo_private"
   | "repo_not_found"
   | "repo_no_skills"
-  | "github_rate_limited"
+  | "github_rate_limited";
 
 /**
  * Pull the typed `kind` off any thrown value. Works whether the
@@ -31,12 +31,12 @@ export type SkillErrorKind =
  * default to a generic "something went wrong" copy in that case.
  */
 export function getSkillErrorKind(err: unknown): SkillErrorKind | undefined {
-  if (!err || typeof err !== "object") return undefined
+  if (!err || typeof err !== "object") return undefined;
   if ("kind" in err) {
-    const k = (err as { kind?: unknown }).kind
-    if (typeof k === "string") return k as SkillErrorKind
+    const k = (err as { kind?: unknown }).kind;
+    if (typeof k === "string") return k as SkillErrorKind;
   }
-  return undefined
+  return undefined;
 }
 
 /**
@@ -45,11 +45,14 @@ export function getSkillErrorKind(err: unknown): SkillErrorKind | undefined {
  * (browser) or `AbortError` (when we cancelled the request ourselves).
  * Map both into the typed surface so the UI can render the right copy.
  */
-export function classifySkillError(err: unknown): SkillErrorKind | "aborted" | "unknown" {
-  if (err instanceof DOMException && err.name === "AbortError") return "aborted"
-  if (err instanceof Error && err.name === "AbortError") return "aborted"
-  const kind = getSkillErrorKind(err)
-  if (kind) return kind
-  if (err instanceof TypeError && /fetch/i.test(err.message)) return "offline"
-  return "unknown"
+export function classifySkillError(
+  err: unknown,
+): SkillErrorKind | "aborted" | "unknown" {
+  if (err instanceof DOMException && err.name === "AbortError")
+    return "aborted";
+  if (err instanceof Error && err.name === "AbortError") return "aborted";
+  const kind = getSkillErrorKind(err);
+  if (kind) return kind;
+  if (err instanceof TypeError && /fetch/i.test(err.message)) return "offline";
+  return "unknown";
 }

@@ -44,8 +44,14 @@ export class RunCodeLimiter {
   acquire(): () => void {
     const t = this.now();
     this.starts = this.starts.filter((s) => t - s < 60_000);
-    if (this.inFlight >= this.limits.maxConcurrent || this.starts.length >= this.limits.maxPerMinute) {
-      throw new RunCodeLimitError(this.limits.maxConcurrent, this.limits.maxPerMinute);
+    if (
+      this.inFlight >= this.limits.maxConcurrent ||
+      this.starts.length >= this.limits.maxPerMinute
+    ) {
+      throw new RunCodeLimitError(
+        this.limits.maxConcurrent,
+        this.limits.maxPerMinute,
+      );
     }
     this.inFlight++;
     this.starts.push(t);

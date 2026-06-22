@@ -11,7 +11,11 @@ import { authStorage } from "../auth/storage";
  */
 export type ProviderId = "anthropic" | "openai-codex";
 
-export const PROVIDERS: { id: ProviderId; name: string; defaultModel: string }[] = [
+export const PROVIDERS: {
+  id: ProviderId;
+  name: string;
+  defaultModel: string;
+}[] = [
   { id: "anthropic", name: "Claude (Pro / Max)", defaultModel: config.model },
   {
     id: "openai-codex",
@@ -20,7 +24,8 @@ export const PROVIDERS: { id: ProviderId; name: string; defaultModel: string }[]
   },
 ];
 
-const isProvider = (s: string): s is ProviderId => PROVIDERS.some((p) => p.id === s);
+const isProvider = (s: string): s is ProviderId =>
+  PROVIDERS.some((p) => p.id === s);
 
 type Settings = {
   activeProvider?: ProviderId;
@@ -60,7 +65,10 @@ export function activeProvider(): ProviderId | null {
   return null;
 }
 
-export function setSettings(input: { activeProvider?: string; model?: string }): Settings {
+export function setSettings(input: {
+  activeProvider?: string;
+  model?: string;
+}): Settings {
   const s = loadSettings();
   if (input.activeProvider) {
     if (!isProvider(input.activeProvider))
@@ -85,7 +93,9 @@ export function setSettings(input: { activeProvider?: string; model?: string }):
 export function resolveModel(override?: string | null) {
   const provider = activeProvider();
   if (!provider)
-    throw new Error("No provider connected. Log in with Claude or Codex first.");
+    throw new Error(
+      "No provider connected. Log in with Claude or Codex first.",
+    );
   return getModel(provider as any, (override || modelFor(provider)) as any);
 }
 

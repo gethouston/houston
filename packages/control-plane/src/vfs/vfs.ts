@@ -37,7 +37,10 @@ export interface Vfs {
 
 /** Reject traversal/absolute keys before any impl maps them anywhere. */
 export function assertSafeKey(key: string): void {
-  if (key.startsWith("/") || key.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) {
+  if (
+    key.startsWith("/") ||
+    key.split("/").some((seg) => seg === "" || seg === "." || seg === "..")
+  ) {
     throw new Error(`unsafe vfs key: ${key}`);
   }
 }

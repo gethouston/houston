@@ -17,7 +17,11 @@ export type FeedItem =
   | { feed_type: "system_message"; data: string }
   | {
       feed_type: "final_result";
-      data: { result: string; cost_usd?: number | null; duration_ms?: number | null };
+      data: {
+        result: string;
+        cost_usd?: number | null;
+        duration_ms?: number | null;
+      };
     };
 
 /** HoustonEvent shape — engine-protocol::HoustonEvent. */
@@ -83,10 +87,7 @@ export function appendFeedItem(prev: Message[], item: FeedItem): Message[] {
       const last = prev[prev.length - 1];
       if (last && last.kind === "assistant" && last.streaming) {
         const copy = prev.slice(0, -1);
-        return [
-          ...copy,
-          { ...last, text: item.data, streaming: false },
-        ];
+        return [...copy, { ...last, text: item.data, streaming: false }];
       }
       return [
         ...prev,

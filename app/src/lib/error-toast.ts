@@ -1,6 +1,9 @@
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
-import { captureException as sentryCapture, sentrySuppressedInDev } from "./sentry";
+import {
+  captureException as sentryCapture,
+  sentrySuppressedInDev,
+} from "./sentry";
 import { devNoSendToastSpec } from "./sentry-dev";
 import { createSentryReportError } from "./sentry-report-error";
 import i18n from "./i18n";
@@ -81,32 +84,34 @@ export function showErrorToast(
   void sentryCapture(error, {
     source: command,
     error_kind: classifyAnalyticsError(message),
-  }).then((eventId) => {
-    if (!eventId) return;
+  })
+    .then((eventId) => {
+      if (!eventId) return;
 
-    const shortId = eventId.slice(0, 8);
-    setTimeout(() => {
-      addToast({
-        title: i18n.t("shell:errorToast.reportSentTitle"),
-        description: i18n.t("shell:errorToast.reportSentDescription", {
-          id: shortId,
-        }),
-        variant: "success",
-        action: {
-          label: i18n.t("shell:errorToast.copyId"),
-          onClick: () => {
-            void navigator.clipboard
-              .writeText(eventId)
-              .catch((copyErr: unknown) =>
-                console.error("[sentry] copy event id failed", copyErr),
-              );
+      const shortId = eventId.slice(0, 8);
+      setTimeout(() => {
+        addToast({
+          title: i18n.t("shell:errorToast.reportSentTitle"),
+          description: i18n.t("shell:errorToast.reportSentDescription", {
+            id: shortId,
+          }),
+          variant: "success",
+          action: {
+            label: i18n.t("shell:errorToast.copyId"),
+            onClick: () => {
+              void navigator.clipboard
+                .writeText(eventId)
+                .catch((copyErr: unknown) =>
+                  console.error("[sentry] copy event id failed", copyErr),
+                );
+            },
           },
-        },
-      });
-    }, GREEN_TOAST_DELAY_MS);
-  }).catch((flushErr: unknown) => {
-    console.error("[sentry] failed to flush captured error", flushErr);
-  });
+        });
+      }, GREEN_TOAST_DELAY_MS);
+    })
+    .catch((flushErr: unknown) => {
+      console.error("[sentry] failed to flush captured error", flushErr);
+    });
 }
 
 export function raiseJavascriptSentrySmokeTest(): never {

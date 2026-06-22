@@ -5,8 +5,12 @@ import { join } from "node:path";
 import type { WireEvent } from "@houston/runtime-client";
 
 // Keep any file the chat module touches inside a throwaway dir.
-process.env.HOUSTON_DATA_DIR = mkdtempSync(join(tmpdir(), "houston-chat-noauth-"));
-process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(join(tmpdir(), "houston-chat-ws-"));
+process.env.HOUSTON_DATA_DIR = mkdtempSync(
+  join(tmpdir(), "houston-chat-noauth-"),
+);
+process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
+  join(tmpdir(), "houston-chat-ws-"),
+);
 
 // Drive the connected/logged-out state hermetically — the runtime's module-level
 // authStorage is shared across suites (serve.test.ts writes served credentials
@@ -17,7 +21,9 @@ let connectedProvider: string | null = null;
 mock.module("../ai/providers", () => ({
   activeProvider: () => connectedProvider,
   resolveModel: () => {
-    throw new Error("No provider connected. Log in with Claude or Codex first.");
+    throw new Error(
+      "No provider connected. Log in with Claude or Codex first.",
+    );
   },
 }));
 
@@ -47,7 +53,9 @@ test("runTurn refuses with a clear error (never a hang) if the provider vanished
   await runTurn("conv-noauth", "are you there?");
   unsub();
 
-  const err = events.find((e): e is Extract<WireEvent, { type: "error" }> => e.type === "error");
+  const err = events.find(
+    (e): e is Extract<WireEvent, { type: "error" }> => e.type === "error",
+  );
   expect(err).toBeDefined();
   expect(err!.data.message).toContain("No provider connected");
   expect(events.some((e) => e.type === "done")).toBe(false);

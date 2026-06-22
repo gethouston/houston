@@ -24,7 +24,10 @@ export interface ColumnActionsMenuProps {
  * bar takes over for archive / move / delete. Same affordance on every column
  * that supports multi-select.
  */
-export function ColumnActionsMenu({ onSelectAll, labels }: ColumnActionsMenuProps) {
+export function ColumnActionsMenu({
+  onSelectAll,
+  labels,
+}: ColumnActionsMenuProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>

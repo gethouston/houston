@@ -187,7 +187,10 @@ export class PgWorkspaceStore implements WorkspaceStore {
     return res.rows.map(toAgent);
   }
 
-  async createAgent(input: { workspaceId: WorkspaceId; name: string }): Promise<Agent> {
+  async createAgent(input: {
+    workspaceId: WorkspaceId;
+    name: string;
+  }): Promise<Agent> {
     const agent: Agent = {
       id: mintId("agent"),
       workspaceId: input.workspaceId,
@@ -212,7 +215,10 @@ export class PgWorkspaceStore implements WorkspaceStore {
     return toAgent(row);
   }
 
-  async setWorkspaceRuntime(id: WorkspaceId, runtime: WorkspaceRuntime): Promise<Workspace> {
+  async setWorkspaceRuntime(
+    id: WorkspaceId,
+    runtime: WorkspaceRuntime,
+  ): Promise<Workspace> {
     const res = await this.pool.query<WorkspaceRow>(
       `UPDATE workspaces SET runtime = $2 WHERE id = $1
        RETURNING id, owner_user_id, kind, name, slug, runtime, created_at`,

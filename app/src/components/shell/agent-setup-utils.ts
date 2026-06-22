@@ -32,10 +32,14 @@ export function serializeFormValues(values: AgentSetupFormValues): string {
     lines.push(`Focus: ${FOCUS_LABELS[values.focus] ?? values.focus}`);
   }
   if (values.traits.length > 0) {
-    lines.push(`Traits: ${values.traits.map((k) => TRAIT_LABELS[k] ?? k).join(", ")}`);
+    lines.push(
+      `Traits: ${values.traits.map((k) => TRAIT_LABELS[k] ?? k).join(", ")}`,
+    );
   }
   lines.push(`Response detail level: ${values.verbosity}/5`);
-  lines.push(`Ask clarifying questions before answering: ${values.askFirst ? "yes" : "no"}`);
+  lines.push(
+    `Ask clarifying questions before answering: ${values.askFirst ? "yes" : "no"}`,
+  );
   if (values.extra.trim()) {
     lines.push(`Additional instructions: ${values.extra.trim()}`);
   }

@@ -67,7 +67,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
   }, [viewMode, selectedId]);
   const sessionKeyFor = useCallback(
     (activityId: string) =>
-      archived.find((a) => a.id === activityId)?.session_key ?? `activity-${activityId}`,
+      archived.find((a) => a.id === activityId)?.session_key ??
+      `activity-${activityId}`,
     [archived],
   );
   const selectedSessionKey = selectedId ? sessionKeyFor(selectedId) : null;
@@ -155,7 +156,8 @@ export default function ArchivedTab({ agent, agentDef }: TabProps) {
           panelAvatar={<AgentPanelAvatar color={agent.color} running={false} />}
           cardLabels={{
             deleteTooltip: t("board:cardActions.deleteTooltip"),
-            deleteTitle: (name: string) => t("board:deleteCard.titleWithName", { name }),
+            deleteTitle: (name: string) =>
+              t("board:deleteCard.titleWithName", { name }),
             deleteDescription: t("board:deleteCard.description"),
           }}
           chatEmptyState={panel.chatEmptyState}

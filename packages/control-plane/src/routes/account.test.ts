@@ -46,7 +46,13 @@ const deps = (over: Partial<ControlPlaneDeps> = {}): ControlPlaneDeps => ({
   store,
   credentials,
   vault: { sandboxToken: () => "x", validateSandboxToken: () => null },
-  channels: { gke: new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials }) },
+  channels: {
+    gke: new ProxyChannel({
+      launcher,
+      proxy: { async forward() {} },
+      credentials,
+    }),
+  },
   vfs,
   capabilities: CAPS,
   ...over,
@@ -54,7 +60,10 @@ const deps = (over: Partial<ControlPlaneDeps> = {}): ControlPlaneDeps => ({
 
 let server: Server;
 let base = "";
-const auth = (who: string) => ({ Authorization: `Bearer tok:${who}`, "Content-Type": "application/json" });
+const auth = (who: string) => ({
+  Authorization: `Bearer tok:${who}`,
+  "Content-Type": "application/json",
+});
 
 beforeAll(async () => {
   server = createControlPlaneServer(deps());
@@ -87,10 +96,14 @@ test("preferences round-trip per user, and locale shows up on the workspace", as
   expect(put.status).toBe(200);
   expect(((await put.json()) as { value: string }).value).toBe("es");
 
-  const get = await fetch(`${base}/v1/preferences/locale`, { headers: auth("alice") });
+  const get = await fetch(`${base}/v1/preferences/locale`, {
+    headers: auth("alice"),
+  });
   expect(((await get.json()) as { value: string }).value).toBe("es");
 
-  const ws = (await (await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })).json()) as Workspace[];
+  const ws = (await (
+    await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
+  ).json()) as Workspace[];
   expect(ws[0]!.locale).toBe("es");
 });
 
@@ -100,12 +113,18 @@ test("one user's preferences never leak to another", async () => {
     headers: auth("alice"),
     body: JSON.stringify({ value: "America/Bogota" }),
   });
-  const bob = await fetch(`${base}/v1/preferences/timezone`, { headers: auth("bob") });
+  const bob = await fetch(`${base}/v1/preferences/timezone`, {
+    headers: auth("bob"),
+  });
   expect(((await bob.json()) as { value: string | null }).value).toBeNull();
 });
 
 test("PATCH /v1/workspaces/:id sets locale; a non-owner is walled off (403)", async () => {
-  const aliceWs = ((await (await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })).json()) as Workspace[])[0]!;
+  const aliceWs = (
+    (await (
+      await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
+    ).json()) as Workspace[]
+  )[0]!;
 
   const patched = await fetch(`${base}/v1/workspaces/${aliceWs.id}`, {
     method: "PATCH",
@@ -129,7 +148,9 @@ test("preference routes 503 without a vfs", async () => {
   const addr = noVfs.address();
   const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   try {
-    const r = await fetch(`${b}/v1/preferences/locale`, { headers: auth("alice") });
+    const r = await fetch(`${b}/v1/preferences/locale`, {
+      headers: auth("alice"),
+    });
     expect(r.status).toBe(503);
     await r.text();
   } finally {

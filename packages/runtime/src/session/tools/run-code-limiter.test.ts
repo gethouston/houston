@@ -12,7 +12,10 @@ test("concurrency cap: the (N+1)th simultaneous run is rejected, release frees t
 
 test("rolling minute cap: refills as old runs age out", () => {
   let t = 1_000_000;
-  const limiter = new RunCodeLimiter({ maxConcurrent: 100, maxPerMinute: 3 }, () => t);
+  const limiter = new RunCodeLimiter(
+    { maxConcurrent: 100, maxPerMinute: 3 },
+    () => t,
+  );
   limiter.acquire()();
   limiter.acquire()();
   limiter.acquire()();

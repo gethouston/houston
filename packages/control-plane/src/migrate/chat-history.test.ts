@@ -74,7 +74,13 @@ function treeHashes(root: string): Record<string, string> {
   return out;
 }
 
-function writeTracker(agentRoot: string, provider: string, key: string, ext: "sid" | "history", body: string) {
+function writeTracker(
+  agentRoot: string,
+  provider: string,
+  key: string,
+  ext: "sid" | "history",
+  body: string,
+) {
   const dir = join(agentRoot, ".houston", "sessions", provider);
   mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, `${key}.${ext}`), body);
@@ -89,27 +95,111 @@ function setup() {
   // Conversation A: one agent, single session id, two turns. final_result drives
   // the assistant memory; tool_call/tool_result/thinking are transcript-only.
   const rows: Feed[] = [
-    { sid: "sid-A", type: "user_message", data: s("What's in the zip?"), ts: "2025-06-05T10:00:00.000Z" },
-    { sid: "sid-A", type: "assistant_text", data: s("Let me look"), ts: "2025-06-05T10:00:01.000Z" },
-    { sid: "sid-A", type: "thinking", data: s("I should unzip it"), ts: "2025-06-05T10:00:02.000Z" },
-    { sid: "sid-A", type: "tool_call", data: JSON.stringify({ name: "Bash", input: { cmd: "unzip" } }), ts: "2025-06-05T10:00:03.000Z" },
-    { sid: "sid-A", type: "tool_result", data: JSON.stringify({ content: "keys/ dotfiles/", is_error: false }), ts: "2025-06-05T10:00:04.000Z" },
-    { sid: "sid-A", type: "file_changes", data: JSON.stringify({ created: ["/a/qr.png"], modified: [] }), ts: "2025-06-05T10:00:05.000Z" },
-    { sid: "sid-A", type: "final_result", data: JSON.stringify({ result: "It has keys and dotfiles.", cost_usd: null, duration_ms: 100 }), ts: "2025-06-05T10:00:06.000Z" },
+    {
+      sid: "sid-A",
+      type: "user_message",
+      data: s("What's in the zip?"),
+      ts: "2025-06-05T10:00:00.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "assistant_text",
+      data: s("Let me look"),
+      ts: "2025-06-05T10:00:01.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "thinking",
+      data: s("I should unzip it"),
+      ts: "2025-06-05T10:00:02.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "tool_call",
+      data: JSON.stringify({ name: "Bash", input: { cmd: "unzip" } }),
+      ts: "2025-06-05T10:00:03.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "tool_result",
+      data: JSON.stringify({ content: "keys/ dotfiles/", is_error: false }),
+      ts: "2025-06-05T10:00:04.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "file_changes",
+      data: JSON.stringify({ created: ["/a/qr.png"], modified: [] }),
+      ts: "2025-06-05T10:00:05.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "final_result",
+      data: JSON.stringify({
+        result: "It has keys and dotfiles.",
+        cost_usd: null,
+        duration_ms: 100,
+      }),
+      ts: "2025-06-05T10:00:06.000Z",
+    },
     // Second turn, no final_result → falls back to concatenated assistant_text.
-    { sid: "sid-A", type: "user_message", data: s("Thanks!"), ts: "2025-06-05T10:01:00.000Z" },
-    { sid: "sid-A", type: "assistant_text", data: s("You're "), ts: "2025-06-05T10:01:01.000Z" },
-    { sid: "sid-A", type: "assistant_text", data: s("welcome."), ts: "2025-06-05T10:01:02.000Z" },
+    {
+      sid: "sid-A",
+      type: "user_message",
+      data: s("Thanks!"),
+      ts: "2025-06-05T10:01:00.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "assistant_text",
+      data: s("You're "),
+      ts: "2025-06-05T10:01:01.000Z",
+    },
+    {
+      sid: "sid-A",
+      type: "assistant_text",
+      data: s("welcome."),
+      ts: "2025-06-05T10:01:02.000Z",
+    },
 
     // Conversation B: spans anthropic + openai ids (cross-provider union).
-    { sid: "sid-B1", type: "user_message", data: s("Started on Claude"), ts: "2025-06-06T09:00:00.000Z" },
-    { sid: "sid-B1", type: "final_result", data: JSON.stringify({ result: "Reply on Claude" }), ts: "2025-06-06T09:00:01.000Z" },
-    { sid: "sid-B2", type: "user_message", data: s("Continued on Codex"), ts: "2025-06-06T09:05:00.000Z" },
-    { sid: "sid-B2", type: "final_result", data: JSON.stringify({ result: "Reply on Codex" }), ts: "2025-06-06T09:05:01.000Z" },
+    {
+      sid: "sid-B1",
+      type: "user_message",
+      data: s("Started on Claude"),
+      ts: "2025-06-06T09:00:00.000Z",
+    },
+    {
+      sid: "sid-B1",
+      type: "final_result",
+      data: JSON.stringify({ result: "Reply on Claude" }),
+      ts: "2025-06-06T09:00:01.000Z",
+    },
+    {
+      sid: "sid-B2",
+      type: "user_message",
+      data: s("Continued on Codex"),
+      ts: "2025-06-06T09:05:00.000Z",
+    },
+    {
+      sid: "sid-B2",
+      type: "final_result",
+      data: JSON.stringify({ result: "Reply on Codex" }),
+      ts: "2025-06-06T09:05:01.000Z",
+    },
 
     // Orphan: rows exist but NO tracker file references this id.
-    { sid: "sid-orphan", type: "user_message", data: s("Ghost convo"), ts: "2025-06-07T00:00:00.000Z" },
-    { sid: "sid-orphan", type: "final_result", data: JSON.stringify({ result: "Nobody links me" }), ts: "2025-06-07T00:00:01.000Z" },
+    {
+      sid: "sid-orphan",
+      type: "user_message",
+      data: s("Ghost convo"),
+      ts: "2025-06-07T00:00:00.000Z",
+    },
+    {
+      sid: "sid-orphan",
+      type: "final_result",
+      data: JSON.stringify({ result: "Nobody links me" }),
+      ts: "2025-06-07T00:00:01.000Z",
+    },
   ];
   const dbPath = buildDb(root, rows);
 
@@ -123,7 +213,13 @@ function setup() {
 }
 
 function readTranscript(agentRoot: string, key: string) {
-  const f = join(agentRoot, ".houston", "runtime", "conversations", `${encodeURIComponent(key)}.json`);
+  const f = join(
+    agentRoot,
+    ".houston",
+    "runtime",
+    "conversations",
+    `${encodeURIComponent(key)}.json`,
+  );
   return JSON.parse(readFileSync(f, "utf8")) as {
     id: string;
     title: string;
@@ -136,7 +232,11 @@ function readTranscript(agentRoot: string, key: string) {
 test("migrates linked conversations into v3 transcripts + a marker", () => {
   const { workspacesRoot, agentRoot, dbPath } = setup();
   const logs: string[] = [];
-  const res = migrateChatHistory({ workspacesRoot, dbPath, log: (l) => logs.push(l) });
+  const res = migrateChatHistory({
+    workspacesRoot,
+    dbPath,
+    log: (l) => logs.push(l),
+  });
 
   // Two linked conversations (A, B); the orphan is not migrated.
   expect(res.totalMigrated).toBe(2);
@@ -147,7 +247,10 @@ test("migrates linked conversations into v3 transcripts + a marker", () => {
   // Transcript renders the FULL feed in order (user, assistant chunk, thinking,
   // tool_call, tool_result, file_changes, final_result, then the 2nd turn).
   const kinds = a.messages.map((m) => m.content);
-  expect(a.messages[0]).toMatchObject({ role: "user", content: "What's in the zip?" });
+  expect(a.messages[0]).toMatchObject({
+    role: "user",
+    content: "What's in the zip?",
+  });
   expect(kinds.some((c) => c.startsWith("[thinking]"))).toBe(true);
   expect(kinds.some((c) => c.startsWith("[tool: Bash]"))).toBe(true);
   expect(kinds.some((c) => c.startsWith("[tool result]"))).toBe(true);
@@ -157,7 +260,9 @@ test("migrates linked conversations into v3 transcripts + a marker", () => {
 
   // Cross-provider conversation B merged both ids in timestamp order.
   const b = readTranscript(agentRoot, "activity-B");
-  const bUser = b.messages.filter((m) => m.role === "user").map((m) => m.content);
+  const bUser = b.messages
+    .filter((m) => m.role === "user")
+    .map((m) => m.content);
   expect(bUser).toEqual(["Started on Claude", "Continued on Codex"]);
 
   // Marker written.
@@ -172,7 +277,13 @@ test("the synthesized pi session restores user/assistant TEXT via continueRecent
   const { workspacesRoot, agentRoot, dbPath } = setup();
   migrateChatHistory({ workspacesRoot, dbPath });
 
-  const sessionDir = join(agentRoot, ".houston", "runtime", "sessions", "activity-A");
+  const sessionDir = join(
+    agentRoot,
+    ".houston",
+    "runtime",
+    "sessions",
+    "activity-A",
+  );
   const mgr = SessionManager.continueRecent(agentRoot, sessionDir);
   const ctx = mgr.buildSessionContext();
 
@@ -221,10 +332,14 @@ test("the SOURCE db + agent tree are byte-identical after migration", () => {
   migrateChatHistory({ workspacesRoot, dbPath });
 
   expect(sha(dbPath)).toBe(dbBefore); // db never touched
-  expect(treeHashes(join(agentRoot, ".houston", "sessions"))).toEqual(sessionsBefore); // trackers untouched
+  expect(treeHashes(join(agentRoot, ".houston", "sessions"))).toEqual(
+    sessionsBefore,
+  ); // trackers untouched
 
   // Only NEW files appeared, all under .houston/runtime.
-  expect(statSync(join(agentRoot, ".houston", "runtime")).isDirectory()).toBe(true);
+  expect(statSync(join(agentRoot, ".houston", "runtime")).isDirectory()).toBe(
+    true,
+  );
   void root;
 });
 
@@ -234,7 +349,12 @@ test("an agent with no tracker files is skipped cleanly (no runtime dir, no mark
   const agentRoot = join(workspacesRoot, "Personal", "Bare");
   mkdirSync(agentRoot, { recursive: true });
   const dbPath = buildDb(root, [
-    { sid: "x", type: "user_message", data: s("hi"), ts: "2025-01-01T00:00:00.000Z" },
+    {
+      sid: "x",
+      type: "user_message",
+      data: s("hi"),
+      ts: "2025-01-01T00:00:00.000Z",
+    },
   ]);
 
   const res = migrateChatHistory({ workspacesRoot, dbPath });

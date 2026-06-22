@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState } from "react";
 import {
   cn,
   ConfirmDialog,
@@ -6,24 +6,24 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-} from "@houston-ai/core"
-import { Trash2 } from "lucide-react"
-import type { BoardSearchSnippet, KanbanItem } from "./types"
-import type { KanbanCardLabels } from "./kanban-card"
+} from "@houston-ai/core";
+import { Trash2 } from "lucide-react";
+import type { BoardSearchSnippet, KanbanItem } from "./types";
+import type { KanbanCardLabels } from "./kanban-card";
 
 export interface KanbanListItemProps {
-  item: KanbanItem
+  item: KanbanItem;
   /** Small agent icon shown at the leading edge. Falls back to the item's own
    *  `icon` when omitted, so a cross-agent list can show a per-row avatar. */
-  avatar?: React.ReactNode
+  avatar?: React.ReactNode;
   /** Marks the row whose chat is currently open in the right panel. */
-  selected?: boolean
-  onSelect: () => void
-  onDelete?: () => void
-  labels?: KanbanCardLabels
+  selected?: boolean;
+  onSelect: () => void;
+  onDelete?: () => void;
+  labels?: KanbanCardLabels;
   /** Matched body/history fragment shown below the title when the search match
    *  was found there rather than in the title (the title is never highlighted). */
-  snippet?: BoardSearchSnippet
+  snippet?: BoardSearchSnippet;
 }
 
 /**
@@ -41,7 +41,7 @@ export function KanbanListItem({
   labels,
   snippet,
 }: KanbanListItemProps) {
-  const [confirm, setConfirm] = useState(false)
+  const [confirm, setConfirm] = useState(false);
   return (
     <>
       <div
@@ -58,7 +58,9 @@ export function KanbanListItem({
         )}
       >
         {(avatar ?? item.icon) && (
-          <span className={cn("shrink-0", snippet && "mt-0.5")}>{avatar ?? item.icon}</span>
+          <span className={cn("shrink-0", snippet && "mt-0.5")}>
+            {avatar ?? item.icon}
+          </span>
         )}
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
@@ -82,8 +84,8 @@ export function KanbanListItem({
             <TooltipTrigger asChild>
               <button
                 onClick={(e) => {
-                  e.stopPropagation()
-                  setConfirm(true)
+                  e.stopPropagation();
+                  setConfirm(true);
                 }}
                 className={cn(
                   "shrink-0 p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors duration-200",
@@ -104,10 +106,10 @@ export function KanbanListItem({
         title={labels?.deleteTitle?.(item.title) ?? `Delete "${item.title}"?`}
         description={labels?.deleteDescription ?? ""}
         onConfirm={() => {
-          onDelete?.()
-          setConfirm(false)
+          onDelete?.();
+          setConfirm(false);
         }}
       />
     </>
-  )
+  );
 }

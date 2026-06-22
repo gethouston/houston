@@ -50,12 +50,17 @@ export function scrubRefreshTokens(): string[] {
  */
 export async function syncServedCredential(): Promise<string | null> {
   if (!serveModeOn()) return null;
-  const res = await fetch(`${config.controlPlaneUrl}/sandbox/credential?provider=openai-codex`, {
-    headers: { Authorization: `Bearer ${config.sandboxToken}` },
-  });
+  const res = await fetch(
+    `${config.controlPlaneUrl}/sandbox/credential?provider=openai-codex`,
+    {
+      headers: { Authorization: `Bearer ${config.sandboxToken}` },
+    },
+  );
   if (res.status === 404) return null; // workspace not connected yet
   if (!res.ok) {
-    throw new Error(`serve credential failed (${res.status}): ${await res.text().catch(() => "")}`);
+    throw new Error(
+      `serve credential failed (${res.status}): ${await res.text().catch(() => "")}`,
+    );
   }
   const c = (await res.json()) as ServedCredential;
   applyServedCredential(authPathFor(), c);
@@ -81,7 +86,13 @@ export function exportCredential(): {
 } | null {
   for (const [provider, c] of Object.entries(readAuthFile(authPathFor()))) {
     if (c?.access && c?.refresh) {
-      return { provider, access: c.access, refresh: c.refresh, expires: c.expires, accountId: c.accountId };
+      return {
+        provider,
+        access: c.access,
+        refresh: c.refresh,
+        expires: c.expires,
+        accountId: c.accountId,
+      };
     }
   }
   return null;

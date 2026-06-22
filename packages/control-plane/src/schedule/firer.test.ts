@@ -71,20 +71,33 @@ test("ChannelRoutineFirer routes the prompt to the workspace's channel", async (
   await firer.fire(job());
   expect(cloudrun.calls).toEqual([
     // No pins on this routine → both inherit (undefined).
-    { cid: "routine-r1", text: "Write the daily report", pin: { model: undefined, effort: undefined } },
+    {
+      cid: "routine-r1",
+      text: "Write the daily report",
+      pin: { model: undefined, effort: undefined },
+    },
   ]);
 });
 
 test("ChannelRoutineFirer carries the routine's model/effort pins", async () => {
   const cloudrun = recordingChannel();
   const firer = new ChannelRoutineFirer({ cloudrun });
-  await firer.fire(job({ routine: { ...job().routine, model: "claude-opus-4-8", effort: "max" } }));
-  expect(cloudrun.calls[0]!.pin).toEqual({ model: "claude-opus-4-8", effort: "max" });
+  await firer.fire(
+    job({
+      routine: { ...job().routine, model: "claude-opus-4-8", effort: "max" },
+    }),
+  );
+  expect(cloudrun.calls[0]!.pin).toEqual({
+    model: "claude-opus-4-8",
+    effort: "max",
+  });
 });
 
 test("a missing channel for the workspace's runtime throws (→ errored run)", async () => {
   const firer = new ChannelRoutineFirer({}); // nothing wired
-  await expect(firer.fire(job({ workspace: ws("cloudrun") }))).rejects.toThrow("cloudrun runtime not configured");
+  await expect(firer.fire(job({ workspace: ws("cloudrun") }))).rejects.toThrow(
+    "cloudrun runtime not configured",
+  );
 });
 
 test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpoint", async () => {
@@ -93,13 +106,20 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
     port: 0,
     fetch: async (req) => {
       const u = new URL(req.url);
-      seen = { path: u.pathname, body: await req.json(), auth: req.headers.get("authorization") };
+      seen = {
+        path: u.pathname,
+        body: await req.json(),
+        auth: req.headers.get("authorization"),
+      };
       return Response.json({ ok: true, id: "routine-r1" }, { status: 202 });
     },
   });
   const launcher = {
     async ensureAwake() {
-      return { baseUrl: `http://127.0.0.1:${runtime.port}`, token: "sbx-token" };
+      return {
+        baseUrl: `http://127.0.0.1:${runtime.port}`,
+        token: "sbx-token",
+      };
     },
     async sleep() {},
     async destroy() {},
@@ -107,9 +127,17 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
       return "running" as const;
     },
   };
-  const channel = new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials: new MemoryCredentialStore() });
+  const channel = new ProxyChannel({
+    launcher,
+    proxy: { async forward() {} },
+    credentials: new MemoryCredentialStore(),
+  });
   try {
-    await channel.fireTurn({ workspace: ws("gke"), agent }, "routine-r1", "Write the daily report");
+    await channel.fireTurn(
+      { workspace: ws("gke"), agent },
+      "routine-r1",
+      "Write the daily report",
+    );
     expect(seen!.path).toBe("/conversations/routine-r1/messages");
     expect(seen!.body).toEqual({ text: "Write the daily report" });
     expect(seen!.auth).toBe("Bearer sbx-token");
@@ -137,12 +165,21 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
       return "running" as const;
     },
   };
-  const channel = new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials: new MemoryCredentialStore() });
+  const channel = new ProxyChannel({
+    launcher,
+    proxy: { async forward() {} },
+    credentials: new MemoryCredentialStore(),
+  });
   try {
-    await channel.fireTurn({ workspace: ws("gke"), agent }, "routine-r1", "go", {
-      model: "gpt-5.5",
-      effort: "high",
-    });
+    await channel.fireTurn(
+      { workspace: ws("gke"), agent },
+      "routine-r1",
+      "go",
+      {
+        model: "gpt-5.5",
+        effort: "high",
+      },
+    );
     expect(body).toEqual({ text: "go", model: "gpt-5.5", effort: "high" });
   } finally {
     runtime.stop(true);
@@ -150,7 +187,10 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
 });
 
 test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", async () => {
-  const runtime = Bun.serve({ port: 0, fetch: () => new Response("boom", { status: 500 }) });
+  const runtime = Bun.serve({
+    port: 0,
+    fetch: () => new Response("boom", { status: 500 }),
+  });
   const launcher = {
     async ensureAwake() {
       return { baseUrl: `http://127.0.0.1:${runtime.port}`, token: "t" };
@@ -161,9 +201,15 @@ test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", 
       return "running" as const;
     },
   };
-  const channel = new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials: new MemoryCredentialStore() });
+  const channel = new ProxyChannel({
+    launcher,
+    proxy: { async forward() {} },
+    credentials: new MemoryCredentialStore(),
+  });
   try {
-    await expect(channel.fireTurn({ workspace: ws("gke"), agent }, "c1", "hi")).rejects.toThrow("runtime 500");
+    await expect(
+      channel.fireTurn({ workspace: ws("gke"), agent }, "c1", "hi"),
+    ).rejects.toThrow("runtime 500");
   } finally {
     runtime.stop(true);
   }

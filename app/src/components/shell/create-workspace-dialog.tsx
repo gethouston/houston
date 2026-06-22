@@ -35,7 +35,9 @@ export function CreateAgentDialog() {
 
   const [step, setStep] = useState<Step>(1);
   const [selectedConfigId, setSelectedConfigId] = useState<string | null>(null);
-  const [generatedClaudeMd, setGeneratedClaudeMd] = useState<string | undefined>(undefined);
+  const [generatedClaudeMd, setGeneratedClaudeMd] = useState<
+    string | undefined
+  >(undefined);
   const [routineForm, setRoutineForm] = useState<RoutineFormData | null>(null);
   const [routineAccepted, setRoutineAccepted] = useState(false);
   // The AI suggestion the current routineForm was seeded from. Used to
@@ -158,12 +160,15 @@ export function CreateAgentDialog() {
 
   const selectedDef = agentDefs.find((d) => d.config.id === selectedConfigId);
 
-  const aiReviewBackStep = (): Step => (routineForm ? "ai-routine" : "ai-assist");
+  const aiReviewBackStep = (): Step =>
+    routineForm ? "ai-routine" : "ai-assist";
 
   return (
     <Dialog
       open={open}
-      onOpenChange={(o) => { if (!o) handleClose(); }}
+      onOpenChange={(o) => {
+        if (!o) handleClose();
+      }}
       // Modal mode applies pointer-events:none to everything outside the
       // dialog. While the tour is on, that would block the tour's own
       // Next/Back buttons (rendered outside DialogContent). Drop modality
@@ -176,8 +181,12 @@ export function CreateAgentDialog() {
         // pointer-down outside the content. Suppress while the tour is
         // active so clicking the tour's Next button doesn't kill the
         // dialog mid-step; the tour closes it explicitly on the outro.
-        onPointerDownOutside={(e) => { if (uiTourActive) e.preventDefault(); }}
-        onEscapeKeyDown={(e) => { if (uiTourActive) e.preventDefault(); }}
+        onPointerDownOutside={(e) => {
+          if (uiTourActive) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (uiTourActive) e.preventDefault();
+        }}
       >
         {step === 1 ? (
           <>
@@ -267,11 +276,16 @@ export function CreateAgentDialog() {
             existingPath={existingPath}
             provider={provider}
             model={model}
-            showLinkProject={selectedDef?.config.features?.includes("link-project")}
+            showLinkProject={selectedDef?.config.features?.includes(
+              "link-project",
+            )}
             onNameChange={setName}
             onColorChange={setColor}
             onExistingPathChange={setExistingPath}
-            onProviderChange={(p, m) => { setProvider(p); setModel(m); }}
+            onProviderChange={(p, m) => {
+              setProvider(p);
+              setModel(m);
+            }}
             onBack={() => setStep(1)}
             onSubmit={handleSubmit}
           />

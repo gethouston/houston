@@ -26,7 +26,8 @@ export const config = {
   runtimeClass: process.env.CP_RUNTIME_CLASS || "",
 
   /** Signs the non-secret sandbox tokens agents present to /sandbox/credential. */
-  sandboxTokenSecret: process.env.CP_SANDBOX_TOKEN_SECRET || "dev-insecure-sandbox-secret",
+  sandboxTokenSecret:
+    process.env.CP_SANDBOX_TOKEN_SECRET || "dev-insecure-sandbox-secret",
 
   /** Minutes of inactivity before an agent's sandbox is slept (scale to zero). */
   idleSleepMinutes: Number(process.env.CP_IDLE_SLEEP_MINUTES || 10),
@@ -47,7 +48,10 @@ export const config = {
   /** GCS bucket holding cloudrun workspaces (must match the runtime's HOUSTON_GCS_BUCKET). */
   gcsBucket: process.env.CP_GCS_BUCKET || "",
   /** Runtime for NEWLY-created workspaces: "cloudrun" (default) or "gke". */
-  defaultRuntime: process.env.CP_DEFAULT_RUNTIME === "gke" ? ("gke" as const) : ("cloudrun" as const),
+  defaultRuntime:
+    process.env.CP_DEFAULT_RUNTIME === "gke"
+      ? ("gke" as const)
+      : ("cloudrun" as const),
   /** Per-workspace turn budget (availability: one tenant can't hog the fleet). */
   turnsPerHour: Number(process.env.CP_TURNS_PER_HOUR || 120),
   turnMaxConcurrent: Number(process.env.CP_TURN_MAX_CONCURRENT || 3),

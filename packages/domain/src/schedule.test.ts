@@ -17,7 +17,14 @@ import {
 const NOW = "2026-06-12T12:00:00.000Z";
 
 function routine(over: Partial<Routine> = {}): Routine {
-  return { ...createRoutine({ name: "R", prompt: "p", schedule: "0 9 * * 1-5" }, "r1", NOW), ...over };
+  return {
+    ...createRoutine(
+      { name: "R", prompt: "p", schedule: "0 9 * * 1-5" },
+      "r1",
+      NOW,
+    ),
+    ...over,
+  };
 }
 
 test("validateSchedule accepts good patterns and rejects junk", () => {
@@ -54,7 +61,9 @@ test("dueAt evaluates the schedule in the account-wide timezone, not UTC", () =>
   const r = routine({ schedule: "0 9 * * *" });
   const since = new Date("2026-06-12T13:59:00.000Z");
   const now = new Date("2026-06-12T14:00:30.000Z");
-  expect(dueAt(r, since, now, "America/Bogota")?.toISOString()).toBe("2026-06-12T14:00:00.000Z");
+  expect(dueAt(r, since, now, "America/Bogota")?.toISOString()).toBe(
+    "2026-06-12T14:00:00.000Z",
+  );
   expect(dueAt(r, since, now, "UTC")).toBeNull();
 });
 
@@ -67,7 +76,9 @@ test("dueAt returns null when the next fire-time is still in the future", () => 
 
 test("dueAt never fires a disabled routine", () => {
   const r = routine({ schedule: "* * * * *", enabled: false });
-  expect(dueAt(r, new Date(NOW), new Date("2026-06-12T12:05:00.000Z"), "UTC")).toBeNull();
+  expect(
+    dueAt(r, new Date(NOW), new Date("2026-06-12T12:05:00.000Z"), "UTC"),
+  ).toBeNull();
 });
 
 test("dueAt returns the FIRST missed instant (one catch-up, deterministic across replicas)", () => {
@@ -76,7 +87,9 @@ test("dueAt returns the FIRST missed instant (one catch-up, deterministic across
   const r = routine({ schedule: "0 * * * *" });
   const since = new Date("2026-06-12T12:30:00.000Z");
   const now = new Date("2026-06-12T15:30:00.000Z");
-  expect(dueAt(r, since, now, "UTC")?.toISOString()).toBe("2026-06-12T13:00:00.000Z");
+  expect(dueAt(r, since, now, "UTC")?.toISOString()).toBe(
+    "2026-06-12T13:00:00.000Z",
+  );
 });
 
 test("routineConversationId: shared reuses one chat, per_run is unique per run", () => {
@@ -103,8 +116,12 @@ test("createRoutineRun starts as running with the run's conversation as session_
 // --- run completion (parity with runner.rs) ---
 
 test("routinePrompt appends the suppression instruction only when suppress_when_silent", () => {
-  expect(routinePrompt(routine({ prompt: "do it", suppress_when_silent: false }))).toBe("do it");
-  const suppressed = routinePrompt(routine({ prompt: "check email", suppress_when_silent: true }));
+  expect(
+    routinePrompt(routine({ prompt: "do it", suppress_when_silent: false })),
+  ).toBe("do it");
+  const suppressed = routinePrompt(
+    routine({ prompt: "check email", suppress_when_silent: true }),
+  );
   expect(suppressed).toBe(`check email${SUPPRESSION_INSTRUCTION}`);
   expect(suppressed).toContain('"ROUTINE_OK"');
 });
@@ -113,14 +130,18 @@ test("responseIsSilent matches the token at start or end, trimmed, case-sensitiv
   expect(responseIsSilent("ROUTINE_OK")).toBe(true);
   expect(responseIsSilent("  all good\nROUTINE_OK  ")).toBe(true); // ends_with, trimmed
   expect(responseIsSilent("ROUTINE_OK\nnothing happened")).toBe(true); // starts_with
-  expect(responseIsSilent("the word ROUTINE_OK appears mid-sentence here")).toBe(false); // substring only
+  expect(
+    responseIsSilent("the word ROUTINE_OK appears mid-sentence here"),
+  ).toBe(false); // substring only
   expect(responseIsSilent("routine_ok")).toBe(false); // case-sensitive
   expect(responseIsSilent("the report is ready")).toBe(false);
 });
 
 test("extractRunSummary strips the token, falls back to 'Nothing to report', truncates at 200", () => {
   expect(extractRunSummary("ROUTINE_OK")).toBe("Nothing to report");
-  expect(extractRunSummary("Found 3 issues.\nROUTINE_OK")).toBe("Found 3 issues.");
+  expect(extractRunSummary("Found 3 issues.\nROUTINE_OK")).toBe(
+    "Found 3 issues.",
+  );
   const long = "x".repeat(250);
   const summary = extractRunSummary(long);
   expect([...summary].length).toBe(200);
@@ -130,7 +151,12 @@ test("extractRunSummary strips the token, falls back to 'Nothing to report', tru
 test("completeRoutineRun → silent when suppressed and the agent emitted the token", () => {
   const r = routine({ suppress_when_silent: true });
   const run = createRoutineRun(r, "run-1", NOW);
-  const done = completeRoutineRun(run, r, "all quiet\nROUTINE_OK", "2026-06-12T12:01:00.000Z");
+  const done = completeRoutineRun(
+    run,
+    r,
+    "all quiet\nROUTINE_OK",
+    "2026-06-12T12:01:00.000Z",
+  );
   expect(done.status).toBe("silent");
   expect(done.summary).toBe("all quiet");
   expect(done.completed_at).toBe("2026-06-12T12:01:00.000Z");
@@ -139,7 +165,12 @@ test("completeRoutineRun → silent when suppressed and the agent emitted the to
 test("completeRoutineRun → surfaced when the agent reports findings", () => {
   const r = routine({ suppress_when_silent: true });
   const run = createRoutineRun(r, "run-1", NOW);
-  const done = completeRoutineRun(run, r, "The deploy failed on staging.", "2026-06-12T12:01:00.000Z");
+  const done = completeRoutineRun(
+    run,
+    r,
+    "The deploy failed on staging.",
+    "2026-06-12T12:01:00.000Z",
+  );
   expect(done.status).toBe("surfaced");
   expect(done.summary).toBe("The deploy failed on staging.");
 });

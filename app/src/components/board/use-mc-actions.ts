@@ -46,9 +46,17 @@ export function useMcActions({
       providerOverride,
       modelOverride,
     }: { text: string; files: File[] } & SendOverrides) => {
-      const plan = planNewMission({ activeAgent, activeAgentDef, providerOverride, modelOverride });
+      const plan = planNewMission({
+        activeAgent,
+        activeAgentDef,
+        providerOverride,
+        modelOverride,
+      });
       if (plan.kind === "no-agent") {
-        addToast({ title: t("dashboard:errors.noAgentForMission"), variant: "error" });
+        addToast({
+          title: t("dashboard:errors.noAgentForMission"),
+          variant: "error",
+        });
         throw new Error("New mission submitted with no active agent");
       }
       return mc.handleCreateConversation(plan.agent, text, files, {
@@ -64,8 +72,12 @@ export function useMcActions({
   // Cross-agent: ignore composer overrides, re-resolve from the activity (see
   // useMissionControl). 4th param keeps the BoardSource signature aligned.
   const sendMessageNow = useCallback(
-    (sessionKey: string, text: string, files: File[], _overrides: SendOverrides) =>
-      mc.handleSendMessage(sessionKey, text, files),
+    (
+      sessionKey: string,
+      text: string,
+      files: File[],
+      _overrides: SendOverrides,
+    ) => mc.handleSendMessage(sessionKey, text, files),
     [mc.handleSendMessage],
   );
 
@@ -74,7 +86,10 @@ export function useMcActions({
       const agentPath = missionControlAgentPathForSession(mc.items, sessionKey);
       if (!agentPath) return;
       tauriChat.stop(agentPath, sessionKey).catch((err) => {
-        addToast({ title: t("dashboard:errors.stopSession", { error: String(err) }), variant: "error" });
+        addToast({
+          title: t("dashboard:errors.stopSession", { error: String(err) }),
+          variant: "error",
+        });
       });
     },
     [mc.items, addToast, t],
@@ -100,7 +115,10 @@ export function useMcActions({
         qc.invalidateQueries({ queryKey: queryKeys.allConversations(paths) });
         qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
       } catch (err) {
-        addToast({ title: t("board:dnd.moveError", { error: String(err) }), variant: "error" });
+        addToast({
+          title: t("board:dnd.moveError", { error: String(err) }),
+          variant: "error",
+        });
       }
     },
     [qc, paths, addToast, t],

@@ -5,15 +5,34 @@
   "type": "array",
   "items": {
     "type": "object",
-    "required": ["id", "name", "description", "prompt", "schedule", "enabled", "suppress_when_silent", "created_at", "updated_at"],
+    "required": [
+      "id",
+      "name",
+      "description",
+      "prompt",
+      "schedule",
+      "enabled",
+      "suppress_when_silent",
+      "created_at",
+      "updated_at"
+    ],
     "properties": {
       "id": { "type": "string" },
       "name": { "type": "string" },
       "description": { "type": "string" },
-      "prompt": { "type": "string", "description": "Prompt sent to Claude when the routine fires." },
-      "schedule": { "type": "string", "description": "Cron expression (e.g. '0 9 * * 1-5')." },
+      "prompt": {
+        "type": "string",
+        "description": "Prompt sent to Claude when the routine fires."
+      },
+      "schedule": {
+        "type": "string",
+        "description": "Cron expression (e.g. '0 9 * * 1-5')."
+      },
       "enabled": { "type": "boolean" },
-      "suppress_when_silent": { "type": "boolean", "description": "If true, runs that respond ROUTINE_OK are silent." },
+      "suppress_when_silent": {
+        "type": "boolean",
+        "description": "If true, runs that respond ROUTINE_OK are silent."
+      },
       "chat_mode": {
         "type": "string",
         "enum": ["shared", "per_run"],
@@ -26,9 +45,18 @@
         "default": [],
         "description": "Composio toolkit slugs this routine uses (e.g. ['gmail', 'slack'])."
       },
-      "provider": { "type": ["string", "null"], "description": "Provider id override; null/absent means inherit the agent's provider." },
-      "model": { "type": ["string", "null"], "description": "Model override; null/absent means inherit the agent's model." },
-      "effort": { "type": ["string", "null"], "description": "Reasoning-effort override; null/absent means inherit the agent's effort." },
+      "provider": {
+        "type": ["string", "null"],
+        "description": "Provider id override; null/absent means inherit the agent's provider."
+      },
+      "model": {
+        "type": ["string", "null"],
+        "description": "Model override; null/absent means inherit the agent's model."
+      },
+      "effort": {
+        "type": ["string", "null"],
+        "description": "Reasoning-effort override; null/absent means inherit the agent's effort."
+      },
       "created_at": { "type": "string", "format": "date-time" },
       "updated_at": { "type": "string", "format": "date-time" }
     },

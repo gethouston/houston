@@ -8,7 +8,10 @@ const host = env.HOUSTON_HOST || "127.0.0.1";
 
 /** Loopback addresses — browser and runtime must be co-located to reach these. */
 function isLoopbackHost(h: string): boolean {
-  const v = h.trim().toLowerCase().replace(/^\[|\]$/g, "");
+  const v = h
+    .trim()
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "");
   return v === "127.0.0.1" || v === "localhost" || v === "::1";
 }
 

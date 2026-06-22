@@ -18,7 +18,11 @@ export interface ConversationsState {
   /** Set when any step in the chain failed. */
   error: Error | null;
   isFetching: boolean;
-  conversations: ReturnType<typeof useQuery<Awaited<ReturnType<ReturnType<typeof getEngine>["listAllConversations"]>>>>;
+  conversations: ReturnType<
+    typeof useQuery<
+      Awaited<ReturnType<ReturnType<typeof getEngine>["listAllConversations"]>>
+    >
+  >;
 }
 
 export function useAllConversations() {

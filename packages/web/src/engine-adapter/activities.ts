@@ -1,4 +1,8 @@
-import type { Activity, NewActivity, ActivityUpdate } from "../../../../ui/engine-client/src/types";
+import type {
+  Activity,
+  NewActivity,
+  ActivityUpdate,
+} from "../../../../ui/engine-client/src/types";
 import { readAgentFile, writeAgentFile } from "./agent-files";
 
 /**
@@ -30,7 +34,10 @@ export function listActivities(agentPath: string): Activity[] {
   return read(agentPath);
 }
 
-export function createActivity(agentPath: string, input: NewActivity): Activity {
+export function createActivity(
+  agentPath: string,
+  input: NewActivity,
+): Activity {
   const id = crypto.randomUUID();
   const activity: Activity = {
     id,
@@ -48,11 +55,19 @@ export function createActivity(agentPath: string, input: NewActivity): Activity 
   return activity;
 }
 
-export function updateActivity(agentPath: string, id: string, updates: ActivityUpdate): Activity {
+export function updateActivity(
+  agentPath: string,
+  id: string,
+  updates: ActivityUpdate,
+): Activity {
   const items = read(agentPath);
   const idx = items.findIndex((a) => a.id === id);
   if (idx < 0) throw new Error(`activity ${id} not found`);
-  const next: Activity = { ...items[idx], ...updates, updated_at: new Date().toISOString() };
+  const next: Activity = {
+    ...items[idx],
+    ...updates,
+    updated_at: new Date().toISOString(),
+  };
   items[idx] = next;
   write(agentPath, items);
   return next;
@@ -70,7 +85,11 @@ export function deleteActivity(agentPath: string, id: string): void {
  * without an explicit `session_key`, so the chat keys off the `activity-<id>`
  * convention; match either form.
  */
-export function setStatusBySessionKey(agentPath: string, sessionKey: string, status: string): void {
+export function setStatusBySessionKey(
+  agentPath: string,
+  sessionKey: string,
+  status: string,
+): void {
   const items = read(agentPath);
   const idx = items.findIndex(
     (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,

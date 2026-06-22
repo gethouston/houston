@@ -1,5 +1,12 @@
 import { test, expect } from "bun:test";
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalDirStore } from "./object-store";
@@ -19,7 +26,11 @@ function setup() {
   return { storeRoot, store, work };
 }
 
-function seed(storeRoot: string, prefix: string, files: Record<string, string>) {
+function seed(
+  storeRoot: string,
+  prefix: string,
+  files: Record<string, string>,
+) {
   for (const [rel, content] of Object.entries(files)) {
     const abs = join(storeRoot, ...prefix.split("/"), ...rel.split("/"));
     mkdirSync(join(abs, ".."), { recursive: true });
@@ -39,7 +50,9 @@ test("hydrate materializes the prefix and syncBack uploads only the delta", asyn
 
   const manifest = await hydrate(store, PREFIX, work);
   expect(readFileSync(join(work, "workspace", "notes.txt"), "utf8")).toBe("v1");
-  expect(readFileSync(join(work, "workspace", "sub", "deep.txt"), "utf8")).toBe("deep");
+  expect(readFileSync(join(work, "workspace", "sub", "deep.txt"), "utf8")).toBe(
+    "deep",
+  );
   expect(manifest.size).toBe(3);
 
   // Change one file, add one, delete one — only those move.
@@ -48,11 +61,18 @@ test("hydrate materializes the prefix and syncBack uploads only the delta", asyn
   rmSync(join(work, "workspace", "sub", "deep.txt"));
 
   const result = await syncBack(store, PREFIX, work, manifest);
-  expect(result.uploaded.sort()).toEqual(["workspace/deck.pptx", "workspace/notes.txt"]);
+  expect(result.uploaded.sort()).toEqual([
+    "workspace/deck.pptx",
+    "workspace/notes.txt",
+  ]);
   expect(result.deleted).toEqual(["workspace/sub/deep.txt"]);
 
   // The store now reflects the new truth.
-  const rehydrated = await hydrate(store, PREFIX, mkdtempSync(join(tmpdir(), "houston-re-")));
+  const rehydrated = await hydrate(
+    store,
+    PREFIX,
+    mkdtempSync(join(tmpdir(), "houston-re-")),
+  );
   expect([...rehydrated.keys()].sort()).toEqual([
     "data/conversations/c1.json",
     "workspace/deck.pptx",
@@ -71,7 +91,10 @@ test("auth.json never hydrates in and never syncs out", async () => {
   expect(manifest.has("data/auth.json")).toBe(false);
   // The per-turn credential is written locally AFTER hydration…
   mkdirSync(join(work, "data"), { recursive: true });
-  writeFileSync(join(work, "data", "auth.json"), JSON.stringify({ access: "AT-turn" }));
+  writeFileSync(
+    join(work, "data", "auth.json"),
+    JSON.stringify({ access: "AT-turn" }),
+  );
   const result = await syncBack(store, PREFIX, work, manifest);
   // …and must not be uploaded.
   expect(result.uploaded).toEqual([]);
@@ -103,9 +126,9 @@ test("symlinks created locally are never persisted", async () => {
 test("hydration size cap throws, never truncates silently", async () => {
   const { storeRoot, store, work } = setup();
   seed(storeRoot, PREFIX, { "workspace/big.bin": "x".repeat(2048) });
-  await expect(hydrate(store, PREFIX, work, { maxBytes: 1024 })).rejects.toThrow(
-    /hydration limit/,
-  );
+  await expect(
+    hydrate(store, PREFIX, work, { maxBytes: 1024 }),
+  ).rejects.toThrow(/hydration limit/);
 });
 
 test("empty prefix hydrates to an empty manifest (brand-new agent)", async () => {

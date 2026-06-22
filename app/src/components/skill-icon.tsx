@@ -50,9 +50,13 @@ function resolveImageValue(value: string | null | undefined): string {
 }
 
 function fluentEmojiUrl(slug: string): string {
-  const parts = slug.split(/[-_\s]+/).filter(Boolean).map((p) => p.toLowerCase());
+  const parts = slug
+    .split(/[-_\s]+/)
+    .filter(Boolean)
+    .map((p) => p.toLowerCase());
   const folder =
-    parts[0].charAt(0).toUpperCase() + parts[0].slice(1) +
+    parts[0].charAt(0).toUpperCase() +
+    parts[0].slice(1) +
     (parts.length > 1 ? " " + parts.slice(1).join(" ") : "");
   const file = parts.join("_") + "_3d.png";
   return `https://cdn.jsdelivr.net/gh/microsoft/fluentui-emoji@main/assets/${encodeURIComponent(folder)}/3D/${file}`;

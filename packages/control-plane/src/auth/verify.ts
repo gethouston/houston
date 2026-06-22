@@ -1,4 +1,9 @@
-import { createRemoteJWKSet, errors as joseErrors, jwtVerify, type JWTVerifyGetKey } from "jose";
+import {
+  createRemoteJWKSet,
+  errors as joseErrors,
+  jwtVerify,
+  type JWTVerifyGetKey,
+} from "jose";
 import { config } from "../config";
 import type { UserId } from "../domain/types";
 import type { TokenVerifier } from "../ports";
@@ -25,7 +30,9 @@ import type { TokenVerifier } from "../ports";
 function stripBearer(bearer: string): string {
   const trimmed = bearer.trim();
   const lower = trimmed.toLowerCase();
-  return lower.startsWith("bearer ") ? trimmed.slice("bearer ".length).trim() : trimmed;
+  return lower.startsWith("bearer ")
+    ? trimmed.slice("bearer ".length).trim()
+    : trimmed;
 }
 
 /** True for jose's auth-failure family — the only errors that become `null`. */
@@ -118,10 +125,9 @@ export class DevTokenVerifier implements TokenVerifier {
  * startup banner), so other local processes can't drive the agents.
  */
 export class SingleUserVerifier implements TokenVerifier {
-  constructor(
-    private readonly opts: { token: string; userId?: UserId },
-  ) {
-    if (!opts.token) throw new Error("SingleUserVerifier requires a non-empty boot token");
+  constructor(private readonly opts: { token: string; userId?: UserId }) {
+    if (!opts.token)
+      throw new Error("SingleUserVerifier requires a non-empty boot token");
   }
 
   async verify(bearer: string): Promise<{ userId: UserId } | null> {
@@ -155,15 +161,22 @@ export class ServiceTokenVerifier implements TokenVerifier {
 /** Parse `tok=user,tok2=user2`; malformed entries are a startup error, not a skip. */
 export function parseServiceTokens(raw: string): Map<string, UserId> {
   const map = new Map<string, UserId>();
-  for (const entry of raw.split(",").map((s) => s.trim()).filter(Boolean)) {
+  for (const entry of raw
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)) {
     const eq = entry.indexOf("=");
     const token = eq > 0 ? entry.slice(0, eq).trim() : "";
     const userId = eq > 0 ? entry.slice(eq + 1).trim() : "";
     if (!token || !userId) {
-      throw new Error(`CP_SERVICE_TOKENS entry is not <token>=<userId>: "${entry}"`);
+      throw new Error(
+        `CP_SERVICE_TOKENS entry is not <token>=<userId>: "${entry}"`,
+      );
     }
     if (token.length < 32) {
-      throw new Error("CP_SERVICE_TOKENS tokens must be at least 32 chars (mint with `openssl rand -hex 32`)");
+      throw new Error(
+        "CP_SERVICE_TOKENS tokens must be at least 32 chars (mint with `openssl rand -hex 32`)",
+      );
     }
     map.set(token, userId);
   }

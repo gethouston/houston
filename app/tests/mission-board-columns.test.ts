@@ -23,7 +23,11 @@ describe("mission board columns", () => {
       })),
       [
         { id: "running", label: "Running", statuses: ["running"] },
-        { id: "needs_you", label: "Needs you", statuses: ["needs_you", "error"] },
+        {
+          id: "needs_you",
+          label: "Needs you",
+          statuses: ["needs_you", "error"],
+        },
         { id: "done", label: "Done", statuses: ["done", "cancelled"] },
       ],
     );

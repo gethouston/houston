@@ -55,7 +55,9 @@ export async function handleAgentData(
   res: ServerResponse,
   emit?: (event: HoustonEvent) => void,
 ): Promise<boolean> {
-  const m = rest.match(/^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/);
+  const m = rest.match(
+    /^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/,
+  );
   if (!m) return false;
   const family = m[1]!;
   const itemId = m[2] ? decodeURIComponent(m[2]) : null;
@@ -71,7 +73,16 @@ export async function handleAgentData(
   const fireChange = () => emit?.(FAMILY_EVENT[family]!(ctx.agent.id));
 
   if (family === "activities") {
-    await handleActivitiesData(vfs, root, ctx.agent.id, method, itemId, req, res, emit);
+    await handleActivitiesData(
+      vfs,
+      root,
+      ctx.agent.id,
+      method,
+      itemId,
+      req,
+      res,
+      emit,
+    );
     return true;
   }
 
@@ -117,7 +128,11 @@ export async function handleAgentData(
         const next = applyRoutineUpdate(current, update, nowIso);
         // A PATCH may change the schedule; validate it against the account-wide
         // zone (HOU-470: no per-routine timezone).
-        const accountTz = await getPreference(vfs, ctx.workspace.id, "timezone");
+        const accountTz = await getPreference(
+          vfs,
+          ctx.workspace.id,
+          "timezone",
+        );
         const scheduleErr = validateSchedule(next.schedule, accountTz);
         if (scheduleErr) {
           json(res, 400, { error: `invalid schedule: ${scheduleErr}` });

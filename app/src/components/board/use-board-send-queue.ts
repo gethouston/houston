@@ -65,17 +65,29 @@ export function useBoardSendQueue({
 
   const handleComposerSubmit = useCallback<ComposerSubmit>(
     async (ctx) => {
-      if (ctx.sessionKey && ctx.sessionKey === selectedSessionKey && selectedSessionActive) {
+      if (
+        ctx.sessionKey &&
+        ctx.sessionKey === selectedSessionKey &&
+        selectedSessionActive
+      ) {
         messageQueue.queueMessage(ctx.text, ctx.files);
         return true;
       }
       return (await panelComposerSubmit?.(ctx)) ?? false;
     },
-    [selectedSessionKey, selectedSessionActive, messageQueue.queueMessage, panelComposerSubmit],
+    [
+      selectedSessionKey,
+      selectedSessionActive,
+      messageQueue.queueMessage,
+      panelComposerSubmit,
+    ],
   );
 
   const queuedMessages = useMemo<AIBoardProps["queuedMessages"]>(
-    () => (selectedSessionKey ? { [selectedSessionKey]: messageQueue.queuedMessages } : {}),
+    () =>
+      selectedSessionKey
+        ? { [selectedSessionKey]: messageQueue.queuedMessages }
+        : {},
     [selectedSessionKey, messageQueue.queuedMessages],
   );
 
@@ -84,5 +96,10 @@ export function useBoardSendQueue({
     [messageQueue.removeQueuedMessage],
   );
 
-  return { handleSendMessage, handleComposerSubmit, queuedMessages, onRemoveQueuedMessage };
+  return {
+    handleSendMessage,
+    handleComposerSubmit,
+    queuedMessages,
+    onRemoveQueuedMessage,
+  };
 }

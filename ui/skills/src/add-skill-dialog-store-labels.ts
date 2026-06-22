@@ -1,27 +1,27 @@
-import type { StoreRowLabels } from "./add-skill-dialog-store-row"
+import type { StoreRowLabels } from "./add-skill-dialog-store-row";
 
 export interface StoreViewLabels extends StoreRowLabels {
-  searchPlaceholder?: string
+  searchPlaceholder?: string;
   /** Section heading shown above the popular feed when the search box is empty. */
-  popularHeading?: string
+  popularHeading?: string;
   /** "X skills already installed" caption shown above the list when applicable. */
-  alreadyInstalledHint?: (count: number) => string
-  noResults?: (query: string) => string
-  minQuery?: string
+  alreadyInstalledHint?: (count: number) => string;
+  noResults?: (query: string) => string;
+  minQuery?: string;
   /** Single error caption shown when search fails for any reason. */
-  searchUnavailable?: string
+  searchUnavailable?: string;
   /** Skills.sh said it's busy. Suggests waiting + retry. */
-  searchRateLimited?: string
+  searchRateLimited?: string;
   /** Couldn't reach skills.sh at all (offline or DNS / firewall). */
-  searchOffline?: string
+  searchOffline?: string;
   /** Anything else (5xx, parse error, etc). */
-  searchGeneric?: string
+  searchGeneric?: string;
   /** "Loading popular skills..." while the empty-state list is fetching. */
-  loadingPopular?: string
+  loadingPopular?: string;
   /** "We couldn't load suggestions. Try searching above." */
-  popularUnavailable?: string
-  retry?: string
-  typeToSearch?: string
+  popularUnavailable?: string;
+  retry?: string;
+  typeToSearch?: string;
 }
 
 export const DEFAULT_STORE_VIEW_LABELS: Required<StoreViewLabels> = {
@@ -33,8 +33,10 @@ export const DEFAULT_STORE_VIEW_LABELS: Required<StoreViewLabels> = {
       : `${count} skills are already installed and shown below.`,
   noResults: (query) => `No skills found for "${query}"`,
   minQuery: "Type at least 2 characters to search",
-  searchUnavailable: "Skill search is having trouble. Wait a moment and try again.",
-  searchRateLimited: "Skills.sh is busy right now. Wait a moment and try again.",
+  searchUnavailable:
+    "Skill search is having trouble. Wait a moment and try again.",
+  searchRateLimited:
+    "Skills.sh is busy right now. Wait a moment and try again.",
   searchOffline:
     "Couldn't reach Skills.sh. Check your internet connection and try again.",
   searchGeneric: "Skill search hit a snag. Wait a moment and try again.",
@@ -55,4 +57,4 @@ export const DEFAULT_STORE_VIEW_LABELS: Required<StoreViewLabels> = {
   installFailedOffline: "Couldn't connect. Check your internet and try again.",
   installFailedGeneric: "Install failed. Try again in a moment.",
   installRetryAria: (name) => `Try installing ${name} again`,
-}
+};

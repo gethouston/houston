@@ -6,7 +6,8 @@ export class GcsVfs implements Vfs {
   private readonly bucket;
 
   constructor(bucketName: string, storage: Storage = new Storage()) {
-    if (!bucketName) throw new Error("GcsVfs requires a bucket name (CP_GCS_BUCKET)");
+    if (!bucketName)
+      throw new Error("GcsVfs requires a bucket name (CP_GCS_BUCKET)");
     this.bucket = storage.bucket(bucketName);
   }
 
@@ -43,12 +44,16 @@ export class GcsVfs implements Vfs {
 
   async writeText(key: string, content: string): Promise<void> {
     assertSafeKey(key);
-    await this.bucket.file(key).save(content, { contentType: "application/json" });
+    await this.bucket
+      .file(key)
+      .save(content, { contentType: "application/json" });
   }
 
   async writeBytes(key: string, content: Buffer): Promise<void> {
     assertSafeKey(key);
-    await this.bucket.file(key).save(content, { contentType: "application/octet-stream" });
+    await this.bucket
+      .file(key)
+      .save(content, { contentType: "application/octet-stream" });
   }
 
   async deleteKey(key: string): Promise<void> {

@@ -36,7 +36,10 @@ import { LocalWorkspaceStore } from "./local";
  *     THIS behavioral suite is integration territory (a real DB). Marked with a
  *     test.todo below so the gap is explicit, never silent.
  */
-function runWorkspaceStoreContract(name: string, make: () => WorkspaceStore): void {
+function runWorkspaceStoreContract(
+  name: string,
+  make: () => WorkspaceStore,
+): void {
   describe(`WorkspaceStore contract: ${name}`, () => {
     test("getOrCreatePersonalWorkspace is idempotent for the same caller", async () => {
       const s = make();
@@ -57,7 +60,10 @@ function runWorkspaceStoreContract(name: string, make: () => WorkspaceStore): vo
       const s = make();
       const ws = await s.getOrCreatePersonalWorkspace("user-1");
 
-      const sales = await s.createAgent({ workspaceId: ws.id, name: "SalesAgent" });
+      const sales = await s.createAgent({
+        workspaceId: ws.id,
+        name: "SalesAgent",
+      });
       await s.createAgent({ workspaceId: ws.id, name: "HRAgent" });
 
       expect(sales.workspaceId).toBe(ws.id);
@@ -68,7 +74,10 @@ function runWorkspaceStoreContract(name: string, make: () => WorkspaceStore): vo
 
       // The owner sees EVERY agent in the workspace (no grants, no filtering).
       const listed = await s.listAgents(ws.id);
-      expect(listed.map((a) => a.name).sort()).toEqual(["HRAgent", "SalesAgent"]);
+      expect(listed.map((a) => a.name).sort()).toEqual([
+        "HRAgent",
+        "SalesAgent",
+      ]);
     });
 
     test("renameAgent reflects in getAgent + listAgents; preserves the workspace", async () => {
@@ -80,7 +89,9 @@ function runWorkspaceStoreContract(name: string, make: () => WorkspaceStore): vo
       expect(renamed.name).toBe("PeopleAgent");
       expect(renamed.workspaceId).toBe(ws.id);
       expect((await s.getAgent(renamed.id))?.name).toBe("PeopleAgent");
-      expect((await s.listAgents(ws.id)).map((a) => a.name)).toEqual(["PeopleAgent"]);
+      expect((await s.listAgents(ws.id)).map((a) => a.name)).toEqual([
+        "PeopleAgent",
+      ]);
     });
 
     test("deleteAgent removes it; getAgent then reads null and it leaves the list", async () => {
@@ -132,7 +143,10 @@ function runWorkspaceStoreContract(name: string, make: () => WorkspaceStore): vo
       await s.createAgent({ workspaceId: ws2, name: "B2" });
 
       expect((await s.listAgents(ws1.id)).map((a) => a.id)).toEqual([a1.id]);
-      expect((await s.listAgents(ws2)).map((a) => a.name).sort()).toEqual(["B1", "B2"]);
+      expect((await s.listAgents(ws2)).map((a) => a.name).sort()).toEqual([
+        "B1",
+        "B2",
+      ]);
     });
   });
 }
@@ -143,7 +157,10 @@ function runWorkspaceStoreContract(name: string, make: () => WorkspaceStore): vo
  * Returns the second workspace's id. Kept out of the contract body so the
  * divergence in HOW a workspace comes to exist stays explicit.
  */
-async function secondWorkspace(s: WorkspaceStore, firstId: string): Promise<string> {
+async function secondWorkspace(
+  s: WorkspaceStore,
+  firstId: string,
+): Promise<string> {
   const ws2 = await s.getOrCreatePersonalWorkspace("user-2");
   if (ws2.id !== firstId) return ws2.id; // memory/pg: a fresh per-user workspace
   // Single-local-user store: getOrCreate ignores the userId and returns the
@@ -154,10 +171,16 @@ async function secondWorkspace(s: WorkspaceStore, firstId: string): Promise<stri
   return "Workspace2";
 }
 
-runWorkspaceStoreContract("MemoryWorkspaceStore", () => new MemoryWorkspaceStore());
+runWorkspaceStoreContract(
+  "MemoryWorkspaceStore",
+  () => new MemoryWorkspaceStore(),
+);
 runWorkspaceStoreContract(
   "LocalWorkspaceStore",
-  () => new LocalWorkspaceStore(mkdtempSync(join(tmpdir(), "houston-store-contract-"))),
+  () =>
+    new LocalWorkspaceStore(
+      mkdtempSync(join(tmpdir(), "houston-store-contract-")),
+    ),
 );
 
 // PgWorkspaceStore: behavioral contract needs a live Postgres + the
@@ -173,7 +196,9 @@ describe("WorkspaceStore divergences (asserted per-impl, NOT in the shared contr
     const flipped = await mem.setWorkspaceRuntime(ws.id, "cloudrun");
     expect(flipped.runtime).toBe("cloudrun");
 
-    const local = new LocalWorkspaceStore(mkdtempSync(join(tmpdir(), "houston-store-div-")));
+    const local = new LocalWorkspaceStore(
+      mkdtempSync(join(tmpdir(), "houston-store-div-")),
+    );
     const lws = await local.getOrCreatePersonalWorkspace("local-owner");
     expect(lws.runtime).toBe("local");
     await expect(local.setWorkspaceRuntime(lws.id, "cloudrun")).rejects.toThrow(
@@ -187,7 +212,9 @@ describe("WorkspaceStore divergences (asserted per-impl, NOT in the shared contr
     const b = await mem.getOrCreatePersonalWorkspace("user-2");
     expect(a.id).not.toBe(b.id); // distinct per user
 
-    const local = new LocalWorkspaceStore(mkdtempSync(join(tmpdir(), "houston-store-user-")));
+    const local = new LocalWorkspaceStore(
+      mkdtempSync(join(tmpdir(), "houston-store-user-")),
+    );
     const l1 = await local.getOrCreatePersonalWorkspace("user-1");
     const l2 = await local.getOrCreatePersonalWorkspace("user-2");
     expect(l1.id).toBe(l2.id); // userId ignored on a laptop

@@ -16,7 +16,11 @@ import {
 import { analytics } from "../../lib/analytics";
 import { shortcutLabel } from "../../lib/shortcuts";
 import { TabBar } from "@houston-ai/layout";
-import { STANDARD_TABS, DEFAULT_TAB_ID, STANDARD_TAB_IDS } from "../../agents/standard-tabs";
+import {
+  STANDARD_TABS,
+  DEFAULT_TAB_ID,
+  STANDARD_TAB_IDS,
+} from "../../agents/standard-tabs";
 import { useActivity } from "../../hooks/queries";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
@@ -42,7 +46,10 @@ interface WorkspaceShellProps {
   onDismissToast: (id: string) => void;
 }
 
-export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) {
+export function WorkspaceShell({
+  toasts,
+  onDismissToast,
+}: WorkspaceShellProps) {
   const { t } = useTranslation(["agents", "shell", "board"]);
   const currentAgent = useAgentStore((s) => s.current);
   const agents = useAgentStore((s) => s.agents);
@@ -53,23 +60,35 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
   const onStartMission = useUIStore((s) => s.onStartMission);
   const boardActions = useUIStore((s) => s.boardActions);
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
-  const setCreateAgentDialogOpen = useUIStore((s) => s.setCreateAgentDialogOpen);
+  const setCreateAgentDialogOpen = useUIStore(
+    (s) => s.setCreateAgentDialogOpen,
+  );
   const agentMissionSearchQuery = useUIStore((s) =>
-    currentAgent ? s.agentMissionSearchQueries[currentAgent.folderPath] ?? "" : "",
+    currentAgent
+      ? (s.agentMissionSearchQueries[currentAgent.folderPath] ?? "")
+      : "",
   );
   const agentMissionSearchLoading = useUIStore((s) =>
-    currentAgent ? s.agentMissionSearchLoading[currentAgent.folderPath] ?? false : false,
+    currentAgent
+      ? (s.agentMissionSearchLoading[currentAgent.folderPath] ?? false)
+      : false,
   );
-  const setAgentMissionSearchQuery = useUIStore((s) => s.setAgentMissionSearchQuery);
+  const setAgentMissionSearchQuery = useUIStore(
+    (s) => s.setAgentMissionSearchQuery,
+  );
   const uiTourActive = useUIStore((s) => s.uiTourActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
-  const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(null);
+  const [panelContainer, setPanelContainer] = useState<HTMLDivElement | null>(
+    null,
+  );
   const agentDef = currentAgent ? getById(currentAgent.configId) : undefined;
   const { data: activities } = useActivity(currentAgent?.folderPath);
-  const needsYouCount = (activities ?? []).filter((a) => a.status === "needs_you").length;
-  const isAgentView =
-    viewMode !== "dashboard" && viewMode !== "settings";
-  const tabOr = (id: string) => (STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID);
+  const needsYouCount = (activities ?? []).filter(
+    (a) => a.status === "needs_you",
+  ).length;
+  const isAgentView = viewMode !== "dashboard" && viewMode !== "settings";
+  const tabOr = (id: string) =>
+    STANDARD_TAB_IDS.has(id) ? id : DEFAULT_TAB_ID;
 
   useEffect(() => {
     if (isAgentView && !STANDARD_TAB_IDS.has(viewMode)) {
@@ -121,100 +140,117 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
               ) : currentAgent && agentDef && isAgentView ? (
                 <>
                   <div data-tour-target="tabs">
-                  <TabBar
-                    title={currentAgent.name}
-                    tabs={STANDARD_TABS.map((tab) => ({
-                      id: tab.id,
-                      label: t(`agents:tabLabels.${tab.id}`, { defaultValue: tab.label }),
-                      badge: tab.badge === "activity" ? needsYouCount : undefined,
-                    }))}
-                    activeTab={viewMode}
-                    onTabChange={setViewMode}
-                    actions={
-                      <div
-                        data-keep-panel-open
-                        className="flex min-w-0 flex-1 items-center justify-end gap-2"
-                      >
-                        {currentAgent && (
-                          <MissionSearchInput
-                            value={agentMissionSearchQuery}
-                            isSearchingText={agentMissionSearchLoading}
-                            labels={{
-                              placeholder: t("board:search.placeholder"),
-                              placeholderShort: t("board:search.placeholderShort"),
-                              clear: t("board:search.clear"),
-                              searchingText: t("board:search.searchingText"),
-                            }}
-                            className="relative min-w-0 flex-1 max-w-[320px]"
-                            onChange={(value) => {
-                              setAgentMissionSearchQuery(currentAgent.folderPath, value);
-                              if (viewMode !== "activity") setViewMode("activity");
-                            }}
-                          />
-                        )}
-                        <div className="flex shrink-0 items-center gap-2">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button
-                                data-tour-target="appTour"
-                                variant="ghost"
-                                size={missionPanelOpen ? "icon" : "default"}
-                                className="rounded-full"
-                                onClick={() => setUiTourActive(true)}
-                                aria-label={t("shell:tabActions.startTour")}
-                              >
-                                <Compass className="size-4" />
-                                {!missionPanelOpen && t("shell:tabActions.startTour")}
-                              </Button>
-                            </TooltipTrigger>
-                            {missionPanelOpen && (
-                              <TooltipContent side="bottom">
-                                {t("shell:tabActions.startTour")}
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                          {onStartMission && (
+                    <TabBar
+                      title={currentAgent.name}
+                      tabs={STANDARD_TABS.map((tab) => ({
+                        id: tab.id,
+                        label: t(`agents:tabLabels.${tab.id}`, {
+                          defaultValue: tab.label,
+                        }),
+                        badge:
+                          tab.badge === "activity" ? needsYouCount : undefined,
+                      }))}
+                      activeTab={viewMode}
+                      onTabChange={setViewMode}
+                      actions={
+                        <div
+                          data-keep-panel-open
+                          className="flex min-w-0 flex-1 items-center justify-end gap-2"
+                        >
+                          {currentAgent && (
+                            <MissionSearchInput
+                              value={agentMissionSearchQuery}
+                              isSearchingText={agentMissionSearchLoading}
+                              labels={{
+                                placeholder: t("board:search.placeholder"),
+                                placeholderShort: t(
+                                  "board:search.placeholderShort",
+                                ),
+                                clear: t("board:search.clear"),
+                                searchingText: t("board:search.searchingText"),
+                              }}
+                              className="relative min-w-0 flex-1 max-w-[320px]"
+                              onChange={(value) => {
+                                setAgentMissionSearchQuery(
+                                  currentAgent.folderPath,
+                                  value,
+                                );
+                                if (viewMode !== "activity")
+                                  setViewMode("activity");
+                              }}
+                            />
+                          )}
+                          <div className="flex shrink-0 items-center gap-2">
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button
-                                  data-tour-target="newMission"
+                                  data-tour-target="appTour"
+                                  variant="ghost"
                                   size={missionPanelOpen ? "icon" : "default"}
-                                  className={cn(missionPanelOpen && "rounded-full")}
-                                  onClick={() => {
-                                    setViewMode("activity");
-                                    setTimeout(() => {
-                                      useUIStore.getState().onStartMission?.();
-                                    }, 50);
-                                  }}
-                                  aria-label={t("shell:tabActions.newMission")}
+                                  className="rounded-full"
+                                  onClick={() => setUiTourActive(true)}
+                                  aria-label={t("shell:tabActions.startTour")}
                                 >
-                                  <HoustonLogo size={16} />
-                                  {!missionPanelOpen && t("shell:tabActions.newMission")}
+                                  <Compass className="size-4" />
+                                  {!missionPanelOpen &&
+                                    t("shell:tabActions.startTour")}
                                 </Button>
                               </TooltipTrigger>
-                              <TooltipContent side="bottom">
-                                {missionPanelOpen
-                                  ? t("shell:tabActions.newMission")
-                                  : shortcutLabel("newMission")}
-                              </TooltipContent>
+                              {missionPanelOpen && (
+                                <TooltipContent side="bottom">
+                                  {t("shell:tabActions.startTour")}
+                                </TooltipContent>
+                              )}
                             </Tooltip>
-                          )}
-                          {boardActions.map((action) => (
-                            <Button
-                              key={action.id}
-                              variant="secondary"
-                              onClick={() => {
-                                setViewMode("activity");
-                                setTimeout(() => action.onClick(), 50);
-                              }}
-                            >
-                              {action.label}
-                            </Button>
-                          ))}
+                            {onStartMission && (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    data-tour-target="newMission"
+                                    size={missionPanelOpen ? "icon" : "default"}
+                                    className={cn(
+                                      missionPanelOpen && "rounded-full",
+                                    )}
+                                    onClick={() => {
+                                      setViewMode("activity");
+                                      setTimeout(() => {
+                                        useUIStore
+                                          .getState()
+                                          .onStartMission?.();
+                                      }, 50);
+                                    }}
+                                    aria-label={t(
+                                      "shell:tabActions.newMission",
+                                    )}
+                                  >
+                                    <HoustonLogo size={16} />
+                                    {!missionPanelOpen &&
+                                      t("shell:tabActions.newMission")}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom">
+                                  {missionPanelOpen
+                                    ? t("shell:tabActions.newMission")
+                                    : shortcutLabel("newMission")}
+                                </TooltipContent>
+                              </Tooltip>
+                            )}
+                            {boardActions.map((action) => (
+                              <Button
+                                key={action.id}
+                                variant="secondary"
+                                onClick={() => {
+                                  setViewMode("activity");
+                                  setTimeout(() => action.onClick(), 50);
+                                }}
+                              >
+                                {action.label}
+                              </Button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    }
-                  />
+                      }
+                    />
                   </div>
                   <main className="min-h-0 flex-1 overflow-hidden">
                     <AgentRenderer
@@ -229,7 +265,9 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
                   <Empty className="border-0">
                     <EmptyHeader>
                       <EmptyTitle>{t("agents:empty.title")}</EmptyTitle>
-                      <EmptyDescription>{t("agents:empty.description")}</EmptyDescription>
+                      <EmptyDescription>
+                        {t("agents:empty.description")}
+                      </EmptyDescription>
                     </EmptyHeader>
                     <Button
                       className="mt-4 rounded-full"
@@ -242,7 +280,9 @@ export function WorkspaceShell({ toasts, onDismissToast }: WorkspaceShellProps) 
                 </div>
               ) : (
                 <div className="flex flex-1 flex-col items-center justify-center">
-                  <p className="text-muted-foreground text-sm">{t("shell:engineGate.starting")}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {t("shell:engineGate.starting")}
+                  </p>
                 </div>
               )}
             </main>

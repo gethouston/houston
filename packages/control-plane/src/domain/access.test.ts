@@ -22,27 +22,35 @@ const agent = (over: Partial<Agent> = {}): Agent => ({
 });
 
 test("the owner of the agent's workspace may use it", () => {
-  expect(canUseAgent({ userId: "u1", agent: agent(), workspace: workspace() })).toEqual({
+  expect(
+    canUseAgent({ userId: "u1", agent: agent(), workspace: workspace() }),
+  ).toEqual({
     ok: true,
   });
 });
 
 test("a different user may not use the agent", () => {
-  expect(canUseAgent({ userId: "u2", agent: agent(), workspace: workspace() })).toEqual({
+  expect(
+    canUseAgent({ userId: "u2", agent: agent(), workspace: workspace() }),
+  ).toEqual({
     ok: false,
     reason: "not your agent",
   });
 });
 
 test("a null agent is not found", () => {
-  expect(canUseAgent({ userId: "u1", agent: null, workspace: workspace() })).toEqual({
+  expect(
+    canUseAgent({ userId: "u1", agent: null, workspace: workspace() }),
+  ).toEqual({
     ok: false,
     reason: "agent not found",
   });
 });
 
 test("a null workspace is treated as workspace not found", () => {
-  expect(canUseAgent({ userId: "u1", agent: agent(), workspace: null })).toEqual({
+  expect(
+    canUseAgent({ userId: "u1", agent: agent(), workspace: null }),
+  ).toEqual({
     ok: false,
     reason: "workspace not found",
   });
@@ -50,7 +58,9 @@ test("a null workspace is treated as workspace not found", () => {
 
 test("a workspace whose id does not match the agent's is workspace not found", () => {
   const other = workspace({ id: "ws-2" });
-  expect(canUseAgent({ userId: "u1", agent: agent(), workspace: other })).toEqual({
+  expect(
+    canUseAgent({ userId: "u1", agent: agent(), workspace: other }),
+  ).toEqual({
     ok: false,
     reason: "workspace not found",
   });

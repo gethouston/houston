@@ -54,13 +54,17 @@ export function useAgentBoardSend({
     const out: Record<string, boolean> = {};
     const activityStatusBySession = new Map<string, string>();
     for (const a of rawItems ?? []) {
-      activityStatusBySession.set(a.session_key ?? `activity-${a.id}`, a.status);
+      activityStatusBySession.set(
+        a.session_key ?? `activity-${a.id}`,
+        a.status,
+      );
     }
     for (const [key, value] of Object.entries(loadingState)) {
       if (!value) continue;
       const knownStatus = sessionStatuses[getSessionStatusKey(path, key)];
       const activityStatus = activityStatusBySession.get(key);
-      if (!knownStatus && activityStatus && activityStatus !== "running") continue;
+      if (!knownStatus && activityStatus && activityStatus !== "running")
+        continue;
       if (!knownStatus || isActiveSessionStatus(knownStatus)) out[key] = true;
     }
     for (const a of rawItems ?? []) {
@@ -86,7 +90,12 @@ export function useAgentBoardSend({
       );
       let userMessage = text;
       const { conversationId, sessionKey } = await createMission(
-        { id: agent.id, name: agent.name, color: agent.color, folderPath: path },
+        {
+          id: agent.id,
+          name: agent.name,
+          color: agent.color,
+          folderPath: path,
+        },
         text,
         {
           agentMode,
@@ -95,27 +104,52 @@ export function useAgentBoardSend({
           modelOverride,
           titleText: visible,
           buildPrompt: async (activityId) => {
-            const saved = await tauriAttachments.save(`activity-${activityId}`, files);
+            const saved = await tauriAttachments.save(
+              `activity-${activityId}`,
+              files,
+            );
             userMessage = buildAttachmentPrompt(text, files, saved);
             return userMessage;
           },
         },
       );
-      pushFeedItem(path, sessionKey, { feed_type: "user_message", data: userMessage });
+      pushFeedItem(path, sessionKey, {
+        feed_type: "user_message",
+        data: userMessage,
+      });
       setLoading((prev) => ({ ...prev, [sessionKey]: true }));
       setPendingAgentMode(null);
       // createMission bypassed useCreateActivity so invalidate manually.
       queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
-      analytics.track("mission_created", { agent_mode: agentMode ?? "default" });
+      analytics.track("mission_created", {
+        agent_mode: agentMode ?? "default",
+      });
       analytics.track("chat_message_sent");
-      for (const f of files) analytics.track("file_attached", { file_kind: classifyFileKind(f) });
+      for (const f of files)
+        analytics.track("file_attached", { file_kind: classifyFileKind(f) });
       return conversationId;
     },
-    [path, agent.id, agent.name, agent.color, pushFeedItem, pendingAgentMode, agentModes, queryClient, t, setPendingAgentMode],
+    [
+      path,
+      agent.id,
+      agent.name,
+      agent.color,
+      pushFeedItem,
+      pendingAgentMode,
+      agentModes,
+      queryClient,
+      t,
+      setPendingAgentMode,
+    ],
   );
 
   const sendMessageNow = useCallback(
-    async (sessionKey: string, text: string, files: File[], overrides: SendOverrides) => {
+    async (
+      sessionKey: string,
+      text: string,
+      files: File[],
+      overrides: SendOverrides,
+    ) => {
       const activity = (rawItems ?? []).find(
         (a) => (a.session_key ?? `activity-${a.id}`) === sessionKey,
       );
@@ -131,10 +165,14 @@ export function useAgentBoardSend({
           providerOverride: overrides.providerOverride,
           modelOverride: overrides.modelOverride,
         });
-        pushFeedItem(path, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(path, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         setLoading((prev) => ({ ...prev, [sessionKey]: true }));
         analytics.track("chat_message_sent");
-        for (const f of files) analytics.track("file_attached", { file_kind: classifyFileKind(f) });
+        for (const f of files)
+          analytics.track("file_attached", { file_kind: classifyFileKind(f) });
       } catch (err) {
         setLoading((prev) => ({ ...prev, [sessionKey]: false }));
         pushFeedItem(path, sessionKey, {

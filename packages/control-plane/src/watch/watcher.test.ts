@@ -21,14 +21,20 @@ test("a write under an agent's .houston surfaces a debounced ActivityChanged", a
   try {
     // Give the recursive watch a moment to arm, then write.
     await new Promise((r) => setTimeout(r, 100));
-    writeFileSync(join(agentDir, "activity.json"), JSON.stringify([{ id: "a1" }]));
+    writeFileSync(
+      join(agentDir, "activity.json"),
+      JSON.stringify([{ id: "a1" }]),
+    );
 
     const deadline = Date.now() + 3000;
     while (events.length === 0 && Date.now() < deadline) {
       await new Promise((r) => setTimeout(r, 50));
     }
     expect(events.length).toBeGreaterThan(0);
-    expect(events[0]).toEqual({ type: "ActivityChanged", agentPath: "Work/Sales" } as never);
+    expect(events[0]).toEqual({
+      type: "ActivityChanged",
+      agentPath: "Work/Sales",
+    } as never);
   } finally {
     watcher.stop();
   }

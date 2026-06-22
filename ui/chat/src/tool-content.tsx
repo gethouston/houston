@@ -6,7 +6,9 @@ import { CodeBlockActions } from "./code-block-actions";
 import { TruncatedCode, truncateStr } from "./tool-code";
 
 export const ToolContent = memo(({ tool }: { tool: ToolEntry }) => {
-  const short = tool.name.includes("__") ? tool.name.split("__").pop()! : tool.name;
+  const short = tool.name.includes("__")
+    ? tool.name.split("__").pop()!
+    : tool.name;
   const inp = tool.input as Record<string, unknown> | null | undefined;
   const result = tool.result;
 
@@ -59,7 +61,13 @@ function BashContent({
   );
 }
 
-function FileContent({ result, label }: { result?: ToolEntry["result"]; label?: string }) {
+function FileContent({
+  result,
+  label,
+}: {
+  result?: ToolEntry["result"];
+  label?: string;
+}) {
   if (!result) return null;
   if (label && result.content === "ok") {
     return <p className="text-xs text-muted-foreground py-1">{label}</p>;
@@ -96,10 +104,22 @@ function EditContent({
   );
 }
 
-function DiffLine({ sign, text, tone }: { sign: string; text: string; tone: "red" | "green" }) {
+function DiffLine({
+  sign,
+  text,
+  tone,
+}: {
+  sign: string;
+  text: string;
+  tone: "red" | "green";
+}) {
   return (
-    <div className={`${tone === "red" ? "bg-red-50 border-b" : "bg-green-50"} px-3 py-1.5 border-border/30`}>
-      <span className={`${tone === "red" ? "text-red-400" : "text-green-400"} select-none`}>
+    <div
+      className={`${tone === "red" ? "bg-red-50 border-b" : "bg-green-50"} px-3 py-1.5 border-border/30`}
+    >
+      <span
+        className={`${tone === "red" ? "text-red-400" : "text-green-400"} select-none`}
+      >
         {sign}{" "}
       </span>
       <span className={tone === "red" ? "text-red-700" : "text-green-700"}>
@@ -119,7 +139,13 @@ function GenericContent({ result }: { result?: ToolEntry["result"] }) {
   return <CodeResult result={result} maxLines={10} />;
 }
 
-function CodeResult({ result, maxLines }: { result: NonNullable<ToolEntry["result"]>; maxLines: number }) {
+function CodeResult({
+  result,
+  maxLines,
+}: {
+  result: NonNullable<ToolEntry["result"]>;
+  maxLines: number;
+}) {
   return (
     <div className="rounded-lg border border-border/50 overflow-hidden">
       <TruncatedCode content={result.content} maxLines={maxLines} />

@@ -3,7 +3,12 @@ import type { Agent } from "../domain/types";
 import { FakeLauncher } from "./fake";
 
 function agent(id: string): Agent {
-  return { id, workspaceId: "ws-1", name: `Agent ${id}`, createdAt: Date.now() };
+  return {
+    id,
+    workspaceId: "ws-1",
+    name: `Agent ${id}`,
+    createdAt: Date.now(),
+  };
 }
 
 test("absent before anything happens", async () => {
@@ -44,7 +49,10 @@ test("ensureAwake is idempotent and wakes a slept sandbox", async () => {
 });
 
 test("configurable endpoint via constructor and env default", async () => {
-  const sb = new FakeLauncher({ baseUrl: "http://10.0.0.5:9000", token: "tok-xyz" });
+  const sb = new FakeLauncher({
+    baseUrl: "http://10.0.0.5:9000",
+    token: "tok-xyz",
+  });
   const ep = await sb.ensureAwake(agent("a3"));
   expect(ep).toEqual({ baseUrl: "http://10.0.0.5:9000", token: "tok-xyz" });
 });

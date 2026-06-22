@@ -1,4 +1,9 @@
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
 import { timingSafeEqual } from "node:crypto";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -42,12 +47,16 @@ function authorized(req: IncomingMessage, token: string): boolean {
   return got.length === want.length && timingSafeEqual(got, want);
 }
 
-async function readJson(req: IncomingMessage, maxBytes: number): Promise<unknown> {
+async function readJson(
+  req: IncomingMessage,
+  maxBytes: number,
+): Promise<unknown> {
   const chunks: Buffer[] = [];
   let size = 0;
   for await (const c of req) {
     size += (c as Buffer).byteLength;
-    if (size > maxBytes) throw new Error(`request body exceeds ${maxBytes} bytes`);
+    if (size > maxBytes)
+      throw new Error(`request body exceeds ${maxBytes} bytes`);
     chunks.push(c as Buffer);
   }
   return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}");
@@ -58,7 +67,12 @@ function json(res: ServerResponse, status: number, body: unknown) {
   res.end(JSON.stringify(body));
 }
 
-async function executeTurn(deps: TurnServerDeps, turn: TurnRequest, req: IncomingMessage, res: ServerResponse) {
+async function executeTurn(
+  deps: TurnServerDeps,
+  turn: TurnRequest,
+  req: IncomingMessage,
+  res: ServerResponse,
+) {
   const root = await mkdtemp(join(tmpdir(), "houston-turn-"));
   const abort = new AbortController();
   req.on("close", () => abort.abort());
@@ -75,8 +89,13 @@ async function executeTurn(deps: TurnServerDeps, turn: TurnRequest, req: Incomin
 
     let outcome: TurnOutcome;
     if (!turn.credential) {
-      emit({ type: "user", data: { content: turn.text, ts: Date.now(), nonce: turn.nonce } });
-      outcome = { error: "No provider connected. Connect your subscription first." };
+      emit({
+        type: "user",
+        data: { content: turn.text, ts: Date.now(), nonce: turn.nonce },
+      });
+      outcome = {
+        error: "No provider connected. Connect your subscription first.",
+      };
     } else {
       const run = deps.runTurn ?? runPiTurn;
       outcome = await run(
@@ -97,7 +116,11 @@ async function executeTurn(deps: TurnServerDeps, turn: TurnRequest, req: Incomin
       await syncBack(deps.store, turn.gcsPrefix, root, manifest);
     } catch (err) {
       const m = err instanceof Error ? err.message : String(err);
-      outcome = { error: outcome.error ? `${outcome.error}; sync failed: ${m}` : `workspace sync failed: ${m}` };
+      outcome = {
+        error: outcome.error
+          ? `${outcome.error}; sync failed: ${m}`
+          : `workspace sync failed: ${m}`,
+      };
     }
 
     if (outcome.error) sse.send("error", { message: outcome.error });
@@ -118,12 +141,15 @@ export function createTurnServer(deps: TurnServerDeps): Server {
       if (req.method !== "POST" || path !== "/turn") {
         return json(res, 404, { error: "not found" });
       }
-      if (!authorized(req, deps.token)) return json(res, 401, { error: "unauthorized" });
+      if (!authorized(req, deps.token))
+        return json(res, 401, { error: "unauthorized" });
       let turn: TurnRequest;
       try {
         turn = parseTurnRequest(await readJson(req, 1024 * 1024));
       } catch (err) {
-        return json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+        return json(res, 400, {
+          error: err instanceof Error ? err.message : String(err),
+        });
       }
       await executeTurn(deps, turn, req, res);
     })().catch((err) => {

@@ -43,13 +43,17 @@ const active = new Map<ProviderId, LoginState>();
  * the runtime binds; `headless` only guards the exotic "desktop pointed at a
  * remote headless runtime" case where the loopback can't be reached.
  */
-export function codexLoginMethod(opts: { deviceAuth: boolean; headless: boolean }): string {
+export function codexLoginMethod(opts: {
+  deviceAuth: boolean;
+  headless: boolean;
+}): string {
   return !opts.deviceAuth && !opts.headless
     ? OPENAI_CODEX_BROWSER_LOGIN_METHOD
     : OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
 }
 
-const known = (id: string): id is ProviderId => PROVIDERS.some((p) => p.id === id);
+const known = (id: string): id is ProviderId =>
+  PROVIDERS.some((p) => p.id === id);
 
 export function getAuthStatus() {
   return {
@@ -59,7 +63,9 @@ export function getAuthStatus() {
         provider: p.id,
         name: p.name,
         configured: authStorage.hasAuth(p.id),
-        login: st ? { status: st.status, info: st.info, error: st.error } : null,
+        login: st
+          ? { status: st.status, info: st.info, error: st.error }
+          : null,
       };
     }),
     activeProvider: activeProvider(),
@@ -70,7 +76,10 @@ export function getAuthStatus() {
 // OAuth callback (a remote webapp). Defaults to true (the safe device-code path)
 // so any caller that omits it never strands a remote user on an unreachable
 // loopback; the co-located desktop app passes false to get the browser login.
-export async function startLogin(providerId: string, deviceAuth = true): Promise<LoginInfo> {
+export async function startLogin(
+  providerId: string,
+  deviceAuth = true,
+): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   const provider = providerId;
 
@@ -97,8 +106,11 @@ export async function startLogin(providerId: string, deviceAuth = true): Promise
         // A provider with no loopback server (the headless Claude flow) can't
         // catch a redirect — the user must paste the code back. Signal that to
         // the webapp with `auth_code` so it shows a paste box.
-        const needsCode = getOAuthProvider(provider)?.usesCallbackServer === false;
-        state.info = needsCode ? { kind: "auth_code", url, instructions } : { kind: "url", url };
+        const needsCode =
+          getOAuthProvider(provider)?.usesCallbackServer === false;
+        state.info = needsCode
+          ? { kind: "auth_code", url, instructions }
+          : { kind: "url", url };
         state.status = "awaiting_user";
         resolveInfo(state.info);
       },
@@ -114,7 +126,8 @@ export async function startLogin(providerId: string, deviceAuth = true): Promise
       // Codex offers browser (loopback) or device-code login; let the client
       // pick so the co-located desktop redirects to the browser to approve and
       // remote webapp clients type a code (see codexLoginMethod).
-      onSelect: async () => codexLoginMethod({ deviceAuth, headless: config.headless }),
+      onSelect: async () =>
+        codexLoginMethod({ deviceAuth, headless: config.headless }),
       onPrompt: () => pastePromise,
       onManualCodeInput: () => pastePromise,
       onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
@@ -132,7 +145,10 @@ export async function startLogin(providerId: string, deviceAuth = true): Promise
   return Promise.race([
     infoReady,
     new Promise<LoginInfo>((_, rej) =>
-      setTimeout(() => rej(new Error(`timed out starting ${provider} login`)), 15_000),
+      setTimeout(
+        () => rej(new Error(`timed out starting ${provider} login`)),
+        15_000,
+      ),
     ),
   ]);
 }
@@ -140,7 +156,8 @@ export async function startLogin(providerId: string, deviceAuth = true): Promise
 /** Paste-code completion (Anthropic remote path). */
 export function completeLogin(providerId: string, code: string): void {
   const state = active.get(providerId as ProviderId);
-  if (!state?.resolvePaste) throw new Error(`no active login for ${providerId}`);
+  if (!state?.resolvePaste)
+    throw new Error(`no active login for ${providerId}`);
   state.resolvePaste(code);
 }
 

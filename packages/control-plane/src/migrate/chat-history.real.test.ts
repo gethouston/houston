@@ -45,74 +45,78 @@ function realTreeFingerprint(): string {
   return out.trim();
 }
 
-test.if(haveDataset)("real-data migration on a /tmp COPY; real ~/.houston untouched", () => {
-  const scratch = "/tmp/hmig";
-  rmSync(scratch, { recursive: true, force: true });
-  mkdirSync(scratch, { recursive: true });
+test.if(haveDataset)(
+  "real-data migration on a /tmp COPY; real ~/.houston untouched",
+  () => {
+    const scratch = "/tmp/hmig";
+    rmSync(scratch, { recursive: true, force: true });
+    mkdirSync(scratch, { recursive: true });
 
-  // Fingerprint the real tree BEFORE we read it, excluding WAL sidecars.
-  const before = realTreeFingerprint();
-  const realDbBefore = sha(REAL_DB);
+    // Fingerprint the real tree BEFORE we read it, excluding WAL sidecars.
+    const before = realTreeFingerprint();
+    const realDbBefore = sha(REAL_DB);
 
-  try {
-    // Copy-only: the tree + a point-in-time copy of the db. The live db is in
-    // WAL mode, so a self-consistent read of the copy needs its `-wal`/`-shm`
-    // sidecars copied alongside the main file (a bare `.db` copy would miss the
-    // uncommitted tail and fail to open read-only).
-    cpSync(REAL_WS, join(scratch, "workspaces"), { recursive: true });
-    cpSync(REAL_DB, join(scratch, "houston.db"));
-    for (const ext of ["-wal", "-shm"]) {
-      if (existsSync(REAL_DB + ext)) cpSync(REAL_DB + ext, join(scratch, "houston.db" + ext));
+    try {
+      // Copy-only: the tree + a point-in-time copy of the db. The live db is in
+      // WAL mode, so a self-consistent read of the copy needs its `-wal`/`-shm`
+      // sidecars copied alongside the main file (a bare `.db` copy would miss the
+      // uncommitted tail and fail to open read-only).
+      cpSync(REAL_WS, join(scratch, "workspaces"), { recursive: true });
+      cpSync(REAL_DB, join(scratch, "houston.db"));
+      for (const ext of ["-wal", "-shm"]) {
+        if (existsSync(REAL_DB + ext))
+          cpSync(REAL_DB + ext, join(scratch, "houston.db" + ext));
+      }
+
+      // The source tree may ITSELF already be migrated (the user ran the packaged
+      // app, which migrates `~/.houston` on first boot). That would make this an
+      // idempotent no-op. Strip the migration output (`.houston/runtime`) from the
+      // COPY so we always exercise a FRESH migration. Only the /tmp copy is touched.
+      execFileSync(
+        "bash",
+        [
+          "-c",
+          `find ${JSON.stringify(join(scratch, "workspaces"))} -type d -path '*/.houston/runtime' -prune -exec rm -rf {} +`,
+        ],
+        { encoding: "utf8" },
+      );
+
+      const logs: string[] = [];
+      const res = migrateChatHistory({
+        workspacesRoot: join(scratch, "workspaces"),
+        dbPath: join(scratch, "houston.db"),
+        log: (l) => logs.push(l),
+      });
+
+      // Sane shape on the reference dataset: ~39 link, ~7 orphans (the prompt's
+      // verified numbers). We assert ranges, not exact counts, so the test is
+      // robust to the user adding a chat or two before running it.
+      expect(res.totalMigrated).toBeGreaterThanOrEqual(20);
+      expect(res.totalMigrated).toBeLessThanOrEqual(200);
+      expect(res.orphanSessionIds).toBeGreaterThanOrEqual(0);
+      expect(logs.join("\n")).toContain("[migrate:chat] done:");
+
+      // A 2nd run on the copy is a no-op.
+      const res2 = migrateChatHistory({
+        workspacesRoot: join(scratch, "workspaces"),
+        dbPath: join(scratch, "houston.db"),
+      });
+      expect(res2.totalMigrated).toBe(0);
+
+      // eslint-disable-next-line no-console
+      console.log(
+        `[real-smoke] migrated=${res.totalMigrated} skipped=${res.totalSkipped} orphans=${res.orphanSessionIds} agents=${res.agents.length}`,
+      );
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
     }
 
-    // The source tree may ITSELF already be migrated (the user ran the packaged
-    // app, which migrates `~/.houston` on first boot). That would make this an
-    // idempotent no-op. Strip the migration output (`.houston/runtime`) from the
-    // COPY so we always exercise a FRESH migration. Only the /tmp copy is touched.
-    execFileSync(
-      "bash",
-      [
-        "-c",
-        `find ${JSON.stringify(join(scratch, "workspaces"))} -type d -path '*/.houston/runtime' -prune -exec rm -rf {} +`,
-      ],
-      { encoding: "utf8" },
-    );
-
-    const logs: string[] = [];
-    const res = migrateChatHistory({
-      workspacesRoot: join(scratch, "workspaces"),
-      dbPath: join(scratch, "houston.db"),
-      log: (l) => logs.push(l),
-    });
-
-    // Sane shape on the reference dataset: ~39 link, ~7 orphans (the prompt's
-    // verified numbers). We assert ranges, not exact counts, so the test is
-    // robust to the user adding a chat or two before running it.
-    expect(res.totalMigrated).toBeGreaterThanOrEqual(20);
-    expect(res.totalMigrated).toBeLessThanOrEqual(200);
-    expect(res.orphanSessionIds).toBeGreaterThanOrEqual(0);
-    expect(logs.join("\n")).toContain("[migrate:chat] done:");
-
-    // A 2nd run on the copy is a no-op.
-    const res2 = migrateChatHistory({
-      workspacesRoot: join(scratch, "workspaces"),
-      dbPath: join(scratch, "houston.db"),
-    });
-    expect(res2.totalMigrated).toBe(0);
-
-    // eslint-disable-next-line no-console
-    console.log(
-      `[real-smoke] migrated=${res.totalMigrated} skipped=${res.totalSkipped} orphans=${res.orphanSessionIds} agents=${res.agents.length}`,
-    );
-  } finally {
-    rmSync(scratch, { recursive: true, force: true });
-  }
-
-  // The real db file is byte-identical, and the whole real tree fingerprint
-  // (minus the WAL sidecars the live app owns) is unchanged.
-  expect(sha(REAL_DB)).toBe(realDbBefore);
-  expect(realTreeFingerprint()).toBe(before);
-});
+    // The real db file is byte-identical, and the whole real tree fingerprint
+    // (minus the WAL sidecars the live app owns) is unchanged.
+    expect(sha(REAL_DB)).toBe(realDbBefore);
+    expect(realTreeFingerprint()).toBe(before);
+  },
+);
 
 test("real-data test is a deliberate no-op when the reference dataset is absent", () => {
   // A trivially-green assertion so the suite reports the guard ran. The .if()

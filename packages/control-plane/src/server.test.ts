@@ -1,12 +1,21 @@
 import { test, expect, beforeAll, afterAll } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities } from "@houston/protocol";
-import { createControlPlaneServer, type AdminDeps, type ControlPlaneDeps } from "./server";
+import {
+  createControlPlaneServer,
+  type AdminDeps,
+  type ControlPlaneDeps,
+} from "./server";
 import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { SingleUserVerifier } from "./auth/verify";
 import { MemoryWorkspaceStore } from "./store/memory";
 import { MemoryCredentialStore } from "./credentials/store";
-import type { CredentialVault, RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "./ports";
+import type {
+  CredentialVault,
+  RuntimeEndpoint,
+  RuntimeLauncher,
+  TokenVerifier,
+} from "./ports";
 import type { Agent } from "./domain/types";
 import { FakeClusterReader } from "./admin/cluster";
 import type { AutopilotRates } from "./admin/billing";
@@ -67,7 +76,9 @@ const vault: CredentialVault = {
     return `sbx:${workspaceId}`;
   },
   validateSandboxToken(token) {
-    return token.startsWith("sbx:") ? { workspaceId: token.slice(4), agentId: "a" } : null;
+    return token.startsWith("sbx:")
+      ? { workspaceId: token.slice(4), agentId: "a" }
+      : null;
   },
 };
 let server: Server;
@@ -100,10 +111,16 @@ beforeAll(async () => {
 
   // Alice owns two agents; Bob owns one — each in their own personal workspace.
   const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
-  aliceSalesId = (await store.createAgent({ workspaceId: aliceWs.id, name: "SalesAgent" })).id;
-  aliceHrId = (await store.createAgent({ workspaceId: aliceWs.id, name: "HRAgent" })).id;
+  aliceSalesId = (
+    await store.createAgent({ workspaceId: aliceWs.id, name: "SalesAgent" })
+  ).id;
+  aliceHrId = (
+    await store.createAgent({ workspaceId: aliceWs.id, name: "HRAgent" })
+  ).id;
   const bobWs = await store.getOrCreatePersonalWorkspace("bob");
-  bobAgentId = (await store.createAgent({ workspaceId: bobWs.id, name: "BobAgent" })).id;
+  bobAgentId = (
+    await store.createAgent({ workspaceId: bobWs.id, name: "BobAgent" })
+  ).id;
 });
 
 afterAll(async () => {
@@ -133,42 +150,58 @@ test("another user sees only THEIR agents, never anyone else's", async () => {
 });
 
 test("the owner can message their agent → forwarded 1:1 to the sandbox runtime", async () => {
-  const r = await fetch(`${base}/agents/${aliceSalesId}/conversations/c1/messages`, {
-    method: "POST",
-    headers: { ...auth("alice"), "Content-Type": "application/json" },
-    body: JSON.stringify({ text: "what are this quarter's sales?" }),
-  });
+  const r = await fetch(
+    `${base}/agents/${aliceSalesId}/conversations/c1/messages`,
+    {
+      method: "POST",
+      headers: { ...auth("alice"), "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "what are this quarter's sales?" }),
+    },
+  );
   expect(r.status).toBe(200);
   const last = forwarded.at(-1)!;
   expect(last.method).toBe("POST");
   expect(last.path).toBe("/conversations/c1/messages");
-  expect(JSON.parse(last.body!)).toEqual({ text: "what are this quarter's sales?" });
+  expect(JSON.parse(last.body!)).toEqual({
+    text: "what are this quarter's sales?",
+  });
 });
 
 test("a different user CANNOT reach someone else's agent → 403, nothing forwarded", async () => {
   const before = forwarded.length;
-  const r = await fetch(`${base}/agents/${aliceSalesId}/conversations/c2/messages`, {
-    method: "POST",
-    headers: { ...auth("bob"), "Content-Type": "application/json" },
-    body: JSON.stringify({ text: "show me Alice's sales" }),
-  });
+  const r = await fetch(
+    `${base}/agents/${aliceSalesId}/conversations/c2/messages`,
+    {
+      method: "POST",
+      headers: { ...auth("bob"), "Content-Type": "application/json" },
+      body: JSON.stringify({ text: "show me Alice's sales" }),
+    },
+  );
   expect(r.status).toBe(403);
   expect(forwarded.length).toBe(before);
 });
 
 test("the owner can reach their agent's provider auth status (the connect passthrough)", async () => {
-  const r = await fetch(`${base}/agents/${aliceSalesId}/auth/status`, { headers: auth("alice") });
+  const r = await fetch(`${base}/agents/${aliceSalesId}/auth/status`, {
+    headers: auth("alice"),
+  });
   expect(r.status).toBe(200);
-  expect(forwarded.at(-1)).toMatchObject({ method: "GET", path: "/auth/status" });
+  expect(forwarded.at(-1)).toMatchObject({
+    method: "GET",
+    path: "/auth/status",
+  });
 });
 
 test("a different user cannot start a provider login on someone else's agent → 403", async () => {
   const before = forwarded.length;
-  const r = await fetch(`${base}/agents/${aliceSalesId}/auth/openai-codex/login`, {
-    method: "POST",
-    headers: { ...auth("bob"), "Content-Type": "application/json" },
-    body: "{}",
-  });
+  const r = await fetch(
+    `${base}/agents/${aliceSalesId}/auth/openai-codex/login`,
+    {
+      method: "POST",
+      headers: { ...auth("bob"), "Content-Type": "application/json" },
+      body: "{}",
+    },
+  );
   expect(r.status).toBe(403);
   expect(forwarded.length).toBe(before);
 });
@@ -190,10 +223,15 @@ test("the owner can create, rename, and delete their agents", async () => {
   expect(renamed.status).toBe(200);
   expect(((await renamed.json()) as Agent).name).toBe("GrowthAgent");
 
-  const deleted = await fetch(`${base}/agents/${agent.id}`, { method: "DELETE", headers: auth("alice") });
+  const deleted = await fetch(`${base}/agents/${agent.id}`, {
+    method: "DELETE",
+    headers: auth("alice"),
+  });
   expect(deleted.status).toBe(200);
 
-  const list = (await (await fetch(`${base}/agents`, { headers: auth("alice") })).json()) as Agent[];
+  const list = (await (
+    await fetch(`${base}/agents`, { headers: auth("alice") })
+  ).json()) as Agent[];
   expect(list.map((a) => a.id)).not.toContain(agent.id);
 });
 
@@ -207,7 +245,10 @@ test("a user cannot rename someone else's agent → 403", async () => {
 });
 
 test("events stream from the owner's agent", async () => {
-  const r = await fetch(`${base}/agents/${bobAgentId}/conversations/c9/events`, { headers: auth("bob") });
+  const r = await fetch(
+    `${base}/agents/${bobAgentId}/conversations/c9/events`,
+    { headers: auth("bob") },
+  );
   expect(r.status).toBe(200);
   expect(await r.text()).toContain("data: streaming /conversations/c9/events");
 });
@@ -263,7 +304,10 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
     channels: channelsWith({
       ...sandboxes,
       async ensureAwake(): Promise<RuntimeEndpoint> {
-        return { baseUrl: `http://127.0.0.1:${fakeRuntime.port}`, token: "runtime-token" };
+        return {
+          baseUrl: `http://127.0.0.1:${fakeRuntime.port}`,
+          token: "runtime-token",
+        };
       },
     }),
   };
@@ -306,7 +350,10 @@ test("a failed scrub surfaces as an error (credential still stored)", async () =
     channels: channelsWith({
       ...sandboxes,
       async ensureAwake(): Promise<RuntimeEndpoint> {
-        return { baseUrl: `http://127.0.0.1:${fakeRuntime.port}`, token: "runtime-token" };
+        return {
+          baseUrl: `http://127.0.0.1:${fakeRuntime.port}`,
+          token: "runtime-token",
+        };
       },
     }),
   };
@@ -383,7 +430,9 @@ const baseDeps = () => ({
   capabilities: TEST_CAPABILITIES,
 });
 
-async function startServer(deps: ControlPlaneDeps): Promise<{ base: string; close: () => Promise<void> }> {
+async function startServer(
+  deps: ControlPlaneDeps,
+): Promise<{ base: string; close: () => Promise<void> }> {
   const s = createControlPlaneServer(deps);
   await new Promise<void>((r) => s.listen(0, "127.0.0.1", () => r()));
   const addr = s.address();
@@ -417,17 +466,30 @@ test("admin overview: a non-admin is 403; an admin sees every user's pods", asyn
     ],
     volumes: [],
   });
-  const admin: AdminDeps = { adminUserIds: ["alice"], cluster, billing: null, rates: RATES };
+  const admin: AdminDeps = {
+    adminUserIds: ["alice"],
+    cluster,
+    billing: null,
+    rates: RATES,
+  };
   const { base: abase, close } = await startServer({ ...baseDeps(), admin });
   try {
-    expect((await fetch(`${abase}/admin/overview`, { headers: auth("bob") })).status).toBe(403);
+    expect(
+      (await fetch(`${abase}/admin/overview`, { headers: auth("bob") })).status,
+    ).toBe(403);
 
-    const r = await fetch(`${abase}/admin/overview`, { headers: auth("alice") });
+    const r = await fetch(`${abase}/admin/overview`, {
+      headers: auth("alice"),
+    });
     expect(r.status).toBe(200);
     const ov = (await r.json()) as any;
     expect(ov.totals.pods.running).toBe(1);
     const aliceUser = ov.users.find((u: any) => u.userId === "alice");
-    expect(aliceUser.agents.some((a: any) => a.agentId === aliceSalesId && a.state === "running")).toBe(true);
+    expect(
+      aliceUser.agents.some(
+        (a: any) => a.agentId === aliceSalesId && a.state === "running",
+      ),
+    ).toBe(true);
     // Bob shows up too (cross-tenant view), with no running pods.
     expect(ov.users.some((u: any) => u.userId === "bob")).toBe(true);
   } finally {
@@ -436,7 +498,12 @@ test("admin overview: a non-admin is 403; an admin sees every user's pods", asyn
 });
 
 test("admin billing: estimate renders, actuals report 'not-configured' without BigQuery", async () => {
-  const admin: AdminDeps = { adminUserIds: ["alice"], cluster: new FakeClusterReader(), billing: null, rates: RATES };
+  const admin: AdminDeps = {
+    adminUserIds: ["alice"],
+    cluster: new FakeClusterReader(),
+    billing: null,
+    rates: RATES,
+  };
   const { base: abase, close } = await startServer({ ...baseDeps(), admin });
   try {
     const r = await fetch(`${abase}/admin/billing`, { headers: auth("alice") });
@@ -466,7 +533,12 @@ test("admin billing: ?days defaults to 30 when absent, and is honored when given
       };
     },
   };
-  const admin: AdminDeps = { adminUserIds: ["alice"], cluster: new FakeClusterReader(), billing: recordingBilling, rates: RATES };
+  const admin: AdminDeps = {
+    adminUserIds: ["alice"],
+    cluster: new FakeClusterReader(),
+    billing: recordingBilling,
+    rates: RATES,
+  };
   const { base: abase, close } = await startServer({ ...baseDeps(), admin });
   try {
     await fetch(`${abase}/admin/billing`, { headers: auth("alice") }); // no ?days
@@ -478,10 +550,18 @@ test("admin billing: ?days defaults to 30 when absent, and is honored when given
 });
 
 test("admin routes reject non-GET with 405", async () => {
-  const admin: AdminDeps = { adminUserIds: ["alice"], cluster: new FakeClusterReader(), billing: null, rates: RATES };
+  const admin: AdminDeps = {
+    adminUserIds: ["alice"],
+    cluster: new FakeClusterReader(),
+    billing: null,
+    rates: RATES,
+  };
   const { base: abase, close } = await startServer({ ...baseDeps(), admin });
   try {
-    const r = await fetch(`${abase}/admin/overview`, { method: "POST", headers: auth("alice") });
+    const r = await fetch(`${abase}/admin/overview`, {
+      method: "POST",
+      headers: auth("alice"),
+    });
     expect(r.status).toBe(405);
   } finally {
     await close();
@@ -493,7 +573,10 @@ test("admin routes reject non-GET with 405", async () => {
 test("/v1/version and /v1/capabilities are public and serve the v3 contract", async () => {
   const v = await fetch(`${base}/v1/version`);
   expect(v.status).toBe(200);
-  expect((await v.json()) as object).toMatchObject({ engine: "houston-host", protocol: 3 });
+  expect((await v.json()) as object).toMatchObject({
+    engine: "houston-host",
+    protocol: 3,
+  });
 
   const c = await fetch(`${base}/v1/capabilities`);
   expect(c.status).toBe(200);
@@ -510,11 +593,19 @@ test("SingleUserVerifier: the boot token resolves to the owner; anything else is
   });
   try {
     // The owner's token reaches the same authorize() seam as cloud users.
-    const ok = await fetch(`${b}/agents`, { headers: { Authorization: "Bearer boot-secret" } });
+    const ok = await fetch(`${b}/agents`, {
+      headers: { Authorization: "Bearer boot-secret" },
+    });
     expect(ok.status).toBe(200);
 
     // A wrong/missing token is rejected — loopback neighbors can't drive the agents.
-    expect((await fetch(`${b}/agents`, { headers: { Authorization: "Bearer guess" } })).status).toBe(401);
+    expect(
+      (
+        await fetch(`${b}/agents`, {
+          headers: { Authorization: "Bearer guess" },
+        })
+      ).status,
+    ).toBe(401);
     expect((await fetch(`${b}/agents`)).status).toBe(401);
   } finally {
     await close();
@@ -524,9 +615,13 @@ test("SingleUserVerifier: the boot token resolves to the owner; anything else is
 test("a workspace whose hosting model has no channel wired answers 503", async () => {
   const { base: b, close } = await startServer({ ...baseDeps(), channels: {} });
   try {
-    const r = await fetch(`${b}/agents/${aliceSalesId}/auth/status`, { headers: auth("alice") });
+    const r = await fetch(`${b}/agents/${aliceSalesId}/auth/status`, {
+      headers: auth("alice"),
+    });
     expect(r.status).toBe(503);
-    expect(((await r.json()) as { error: string }).error).toContain("not configured");
+    expect(((await r.json()) as { error: string }).error).toContain(
+      "not configured",
+    );
   } finally {
     await close();
   }
@@ -534,10 +629,18 @@ test("a workspace whose hosting model has no channel wired answers 503", async (
 
 test("the credential endpoint rejects a bad sandbox token (401) and an unconnected workspace (404)", async () => {
   expect(
-    (await fetch(`${base}/sandbox/credential`, { headers: { Authorization: "Bearer nope" } })).status,
+    (
+      await fetch(`${base}/sandbox/credential`, {
+        headers: { Authorization: "Bearer nope" },
+      })
+    ).status,
   ).toBe(401);
   const bobWs = await store.getOrCreatePersonalWorkspace("bob");
   expect(
-    (await fetch(`${base}/sandbox/credential`, { headers: { Authorization: `Bearer sbx:${bobWs.id}` } })).status,
+    (
+      await fetch(`${base}/sandbox/credential`, {
+        headers: { Authorization: `Bearer sbx:${bobWs.id}` },
+      })
+    ).status,
   ).toBe(404);
 });

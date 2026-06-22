@@ -26,7 +26,10 @@ export function RoutineModelControls({
   onChange: (patch: Partial<RoutineFormData>) => void;
 }) {
   const { data: agentConfig } = useAgentConfig(agentPath);
-  const { provider, model, effort } = routineModelPickerDefaults(form, agentConfig);
+  const { provider, model, effort } = routineModelPickerDefaults(
+    form,
+    agentConfig,
+  );
 
   const onModel = useCallback(
     (p: string, m: string) => onChange({ provider: p, model: m }),

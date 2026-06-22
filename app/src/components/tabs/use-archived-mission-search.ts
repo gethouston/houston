@@ -7,10 +7,17 @@ import { useUIStore } from "../../stores/ui";
 import { tauriChat } from "../../lib/tauri";
 import { useMissionSearch } from "../use-mission-search";
 
-export function useArchivedMissionSearch(agentPath: string, items: KanbanItem[]) {
+export function useArchivedMissionSearch(
+  agentPath: string,
+  items: KanbanItem[],
+) {
   const { t } = useTranslation("board");
-  const query = useUIStore((s) => s.agentArchivedSearchQueries[agentPath] ?? "");
-  const isLoading = useUIStore((s) => s.agentArchivedSearchLoading[agentPath] ?? false);
+  const query = useUIStore(
+    (s) => s.agentArchivedSearchQueries[agentPath] ?? "",
+  );
+  const isLoading = useUIStore(
+    (s) => s.agentArchivedSearchLoading[agentPath] ?? false,
+  );
   const setQuery = useUIStore((s) => s.setAgentArchivedSearchQuery);
   const setLoading = useUIStore((s) => s.setAgentArchivedSearchLoading);
   const addToast = useUIStore((s) => s.addToast);

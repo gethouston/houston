@@ -31,10 +31,7 @@ const items = [
 
 describe("Mission Control session key resolution", () => {
   it("uses the stored session key for routine activity rows", () => {
-    strictEqual(
-      missionControlSessionKey(items[1]),
-      "routine-morning-digest",
-    );
+    strictEqual(missionControlSessionKey(items[1]), "routine-morning-digest");
     strictEqual(
       missionControlSessionKeyForId(items, "routine-activity-row"),
       "routine-morning-digest",
@@ -43,7 +40,10 @@ describe("Mission Control session key resolution", () => {
 
   it("falls back to activity-{id} for legacy rows", () => {
     strictEqual(missionControlSessionKey(items[2]), "activity-legacy");
-    strictEqual(missionControlSessionKeyForId(items, "missing"), "activity-missing");
+    strictEqual(
+      missionControlSessionKeyForId(items, "missing"),
+      "activity-missing",
+    );
   });
 
   it("resolves the agent path from the active chat session key", () => {

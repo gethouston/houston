@@ -38,7 +38,10 @@ describe("shouldShowThinkingIndicator", () => {
   });
 
   it("hides the indicator while the answer streams", () => {
-    equal(shouldShowThinkingIndicator([message("assistant")], "streaming"), false);
+    equal(
+      shouldShowThinkingIndicator([message("assistant")], "streaming"),
+      false,
+    );
   });
 
   it("shows the indicator after sending before any output", () => {
@@ -51,7 +54,10 @@ describe("shouldShowThinkingIndicator", () => {
 
   it("suppresses the indicator while an active process block shows progress", () => {
     equal(
-      shouldShowThinkingIndicator([message("user"), process(true)], "submitted"),
+      shouldShowThinkingIndicator(
+        [message("user"), process(true)],
+        "submitted",
+      ),
       false,
     );
   });

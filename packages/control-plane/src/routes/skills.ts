@@ -39,7 +39,8 @@ export async function handleSkills(
     return true;
   }
   const root = paths.agentRoot(ctx.workspace, ctx.agent);
-  const fireChange = () => emit?.({ type: "SkillsChanged", agentPath: ctx.agent.id });
+  const fireChange = () =>
+    emit?.({ type: "SkillsChanged", agentPath: ctx.agent.id });
 
   if (method === "GET" && !slug) {
     json(res, 200, await loadSkills(vfs, root));
@@ -73,7 +74,12 @@ export async function handleSkills(
     const today = new Date().toISOString().slice(0, 10);
     await vfs.writeText(
       skillKey(root, newSlug),
-      composeSkillMd({ name: newSlug, description: body.description, content: body.content, createdIsoDate: today }),
+      composeSkillMd({
+        name: newSlug,
+        description: body.description,
+        content: body.content,
+        createdIsoDate: today,
+      }),
     );
     fireChange();
     const detail = await loadSkillDetail(vfs, root, newSlug);

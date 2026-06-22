@@ -1,5 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Agent, AgentId, UserId, Workspace, WorkspaceId, WorkspaceRuntime } from "./domain/types";
+import type {
+  Agent,
+  AgentId,
+  UserId,
+  Workspace,
+  WorkspaceId,
+  WorkspaceRuntime,
+} from "./domain/types";
 
 /**
  * The control plane's outward dependencies, as interfaces ("ports"). Each has at
@@ -24,11 +31,17 @@ export interface WorkspaceStore {
   listWorkspacesForUser(userId: UserId): Promise<Workspace[]>;
   /** Every agent across all workspaces (admin/operator only). */
   listAllAgents(): Promise<Agent[]>;
-  createAgent(input: { workspaceId: WorkspaceId; name: string }): Promise<Agent>;
+  createAgent(input: {
+    workspaceId: WorkspaceId;
+    name: string;
+  }): Promise<Agent>;
   renameAgent(id: AgentId, name: string): Promise<Agent>;
   deleteAgent(id: AgentId): Promise<void>;
   /** Flip a workspace between hosting runtimes (admin-driven migration control). */
-  setWorkspaceRuntime(id: WorkspaceId, runtime: WorkspaceRuntime): Promise<Workspace>;
+  setWorkspaceRuntime(
+    id: WorkspaceId,
+    runtime: WorkspaceRuntime,
+  ): Promise<Workspace>;
 }
 
 /** Verifies a caller's bearer token and resolves it to a principal. */
@@ -123,7 +136,12 @@ export interface RuntimeChannel {
    *
    * `pin` carries the routine's model/effort overrides (absent = inherit).
    */
-  fireTurn(ctx: ChannelCtx, conversationId: string, text: string, pin?: TurnPin): Promise<void>;
+  fireTurn(
+    ctx: ChannelCtx,
+    conversationId: string,
+    text: string,
+    pin?: TurnPin,
+  ): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
   /** Connect-once: pull/confirm the workspace credential after the user connects. */
@@ -155,7 +173,10 @@ export interface WorkspaceCredential {
 
 /** Stores + serves the one connect-once credential per (workspace, provider). */
 export interface CredentialStore {
-  get(workspaceId: WorkspaceId, provider: string): Promise<WorkspaceCredential | null>;
+  get(
+    workspaceId: WorkspaceId,
+    provider: string,
+  ): Promise<WorkspaceCredential | null>;
   /** Upsert (overwrite in place on refresh). */
   put(cred: WorkspaceCredential): Promise<void>;
   remove(workspaceId: WorkspaceId, provider: string): Promise<void>;
@@ -166,5 +187,7 @@ export interface CredentialVault {
   /** Mint the non-secret token a sandbox carries to /sandbox/credential. */
   sandboxToken(workspaceId: WorkspaceId, agentId: AgentId): string;
   /** Validate + decode a sandbox token. */
-  validateSandboxToken(token: string): { workspaceId: WorkspaceId; agentId: AgentId } | null;
+  validateSandboxToken(
+    token: string,
+  ): { workspaceId: WorkspaceId; agentId: AgentId } | null;
 }

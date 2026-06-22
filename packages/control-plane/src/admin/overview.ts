@@ -75,7 +75,10 @@ export interface Overview {
   orphans: OrphanView;
 }
 
-function group<T>(items: T[], keyOf: (t: T) => string | null): Map<string, T[]> {
+function group<T>(
+  items: T[],
+  keyOf: (t: T) => string | null,
+): Map<string, T[]> {
   const map = new Map<string, T[]>();
   for (const item of items) {
     const key = keyOf(item);
@@ -124,8 +127,12 @@ export function buildOverview(
       const agentViews: AgentView[] = wsAgents.map((agent) => {
         const pods = podsByAgent.get(agent.id) ?? [];
         const vols = volsByAgent.get(agent.id) ?? [];
-        const representativePod = pods.find((p) => p.phase === "Running") ?? pods[0] ?? null;
-        const storageBytes = vols.reduce((acc, v) => acc + v.storageRequestBytes, 0);
+        const representativePod =
+          pods.find((p) => p.phase === "Running") ?? pods[0] ?? null;
+        const storageBytes = vols.reduce(
+          (acc, v) => acc + v.storageRequestBytes,
+          0,
+        );
         return {
           agentId: agent.id,
           name: agent.name,
@@ -152,12 +159,21 @@ export function buildOverview(
     })
     .sort((a, b) => b.cost.perMonthUsd - a.cost.perMonthUsd);
 
-  const orphanPods = snapshot.pods.filter((p) => p.agentId === null || !knownAgentIds.has(p.agentId));
-  const orphanVols = snapshot.volumes.filter((v) => v.agentId === null || !knownAgentIds.has(v.agentId));
+  const orphanPods = snapshot.pods.filter(
+    (p) => p.agentId === null || !knownAgentIds.has(p.agentId),
+  );
+  const orphanVols = snapshot.volumes.filter(
+    (v) => v.agentId === null || !knownAgentIds.has(v.agentId),
+  );
 
   const podPhase = (phase: string) =>
     phase === "Running" ? "running" : phase === "Pending" ? "pending" : "other";
-  const podCounts = { running: 0, pending: 0, other: 0, total: snapshot.pods.length };
+  const podCounts = {
+    running: 0,
+    pending: 0,
+    other: 0,
+    total: snapshot.pods.length,
+  };
   for (const p of snapshot.pods) podCounts[podPhase(p.phase)] += 1;
 
   return {
@@ -219,7 +235,8 @@ export function buildBillingReport(
   now: number,
 ): BillingReport {
   const actualByNs = new Map<string, number>();
-  for (const n of actuals?.byNamespace ?? []) actualByNs.set(n.namespace, n.netCostUsd);
+  for (const n of actuals?.byNamespace ?? [])
+    actualByNs.set(n.namespace, n.netCostUsd);
 
   const byUser: BillingUserLine[] = overview.users.map((u) => ({
     userId: u.userId,
@@ -228,7 +245,7 @@ export function buildBillingReport(
     namespace: u.namespace,
     runningAgents: u.runningAgents,
     cost: u.cost,
-    actualUsd: actuals ? actualByNs.get(u.namespace) ?? 0 : null,
+    actualUsd: actuals ? (actualByNs.get(u.namespace) ?? 0) : null,
   }));
 
   return {
@@ -237,7 +254,8 @@ export function buildBillingReport(
     rates,
     estimate: {
       total: overview.totals.cost,
-      clusterFeeMonthUsd: Math.round(rates.clusterHourUsd * HOURS_PER_MONTH * 100) / 100,
+      clusterFeeMonthUsd:
+        Math.round(rates.clusterHourUsd * HOURS_PER_MONTH * 100) / 100,
       byUser,
     },
     actuals,

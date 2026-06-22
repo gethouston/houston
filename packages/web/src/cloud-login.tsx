@@ -23,7 +23,8 @@ import AppTree from "./app-tree";
  * real build, so production always uses the live Supabase session.
  */
 const DEV_TOKEN =
-  (import.meta as { env?: Record<string, string | undefined> }).env?.VITE_CP_DEV_TOKEN || "";
+  (import.meta as { env?: Record<string, string | undefined> }).env
+    ?.VITE_CP_DEV_TOKEN || "";
 
 export function CloudApp({ controlPlaneUrl }: { controlPlaneUrl: string }) {
   // Set the engine globals synchronously on first render, before AppTree's
@@ -42,7 +43,9 @@ export function CloudApp({ controlPlaneUrl }: { controlPlaneUrl: string }) {
       apply(DEV_TOKEN); // dev: skip Supabase entirely
       return;
     }
-    void supabase.auth.getSession().then(({ data }) => apply(data.session?.access_token ?? ""));
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => apply(data.session?.access_token ?? ""));
     const { data: sub } = supabase.auth.onAuthStateChange((_event, session) =>
       apply(session?.access_token ?? ""),
     );

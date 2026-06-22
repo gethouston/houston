@@ -16,7 +16,10 @@ test("toPodInfo reads tenancy labels, phase, requests, restarts and normalises s
     spec: {
       nodeName: "gke-node-7",
       containers: [
-        { name: "runtime", resources: { requests: { cpu: "250m", memory: "512Mi" } } },
+        {
+          name: "runtime",
+          resources: { requests: { cpu: "250m", memory: "512Mi" } },
+        },
       ],
     },
     status: {
@@ -57,14 +60,24 @@ test("toPodInfo: a Pending pod with no containerStatuses is not ready and has nu
 
 test("toPodInfo sums requests across multiple containers", () => {
   const raw = {
-    metadata: { name: "p", namespace: "ws-x", labels: { "houston.ai/agent": "a" } },
+    metadata: {
+      name: "p",
+      namespace: "ws-x",
+      labels: { "houston.ai/agent": "a" },
+    },
     spec: {
       containers: [
         { resources: { requests: { cpu: "250m", memory: "512Mi" } } },
         { resources: { requests: { cpu: "500m", memory: "256Mi" } } },
       ],
     },
-    status: { phase: "Running", containerStatuses: [{ ready: true, restartCount: 0 }, { ready: true, restartCount: 1 }] },
+    status: {
+      phase: "Running",
+      containerStatuses: [
+        { ready: true, restartCount: 0 },
+        { ready: true, restartCount: 1 },
+      ],
+    },
   } as unknown as V1Pod;
   const info = toPodInfo(raw);
   expect(info.cpuRequestCores).toBe(0.75);
@@ -74,13 +87,21 @@ test("toPodInfo sums requests across multiple containers", () => {
 
 test("toVolumeInfo prefers bound capacity, falls back to the request", () => {
   const requested = {
-    metadata: { name: "agent-a1-data", namespace: "ws-alice", labels: { "houston.ai/agent": "a1" } },
+    metadata: {
+      name: "agent-a1-data",
+      namespace: "ws-alice",
+      labels: { "houston.ai/agent": "a1" },
+    },
     spec: { resources: { requests: { storage: "10Gi" } } },
   } as unknown as V1PersistentVolumeClaim;
   expect(toVolumeInfo(requested).storageRequestBytes).toBe(10 * 1024 ** 3);
 
   const bound = {
-    metadata: { name: "agent-a1-data", namespace: "ws-alice", labels: { "houston.ai/agent": "a1" } },
+    metadata: {
+      name: "agent-a1-data",
+      namespace: "ws-alice",
+      labels: { "houston.ai/agent": "a1" },
+    },
     spec: { resources: { requests: { storage: "10Gi" } } },
     status: { capacity: { storage: "16Gi" } },
   } as unknown as V1PersistentVolumeClaim;

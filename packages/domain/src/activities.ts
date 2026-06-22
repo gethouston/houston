@@ -1,9 +1,20 @@
 import type { Activity, ActivityUpdate, NewActivity } from "@houston/protocol";
 import { docKey } from "./layout";
-import { loadJson, saveJson, type DocDiagnostic, type TextStore } from "./store";
+import {
+  loadJson,
+  saveJson,
+  type DocDiagnostic,
+  type TextStore,
+} from "./store";
 
 /** Board statuses, per ui/agent-schemas/activity.schema.json. */
-export const ACTIVITY_STATUSES = ["running", "needs_you", "done", "error", "archived"] as const;
+export const ACTIVITY_STATUSES = [
+  "running",
+  "needs_you",
+  "done",
+  "error",
+  "archived",
+] as const;
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -20,7 +31,10 @@ export function normalizeActivities(
 ): { items: Activity[]; diagnostics: DocDiagnostic[] } {
   if (raw === null || raw === undefined) return { items: [], diagnostics: [] };
   if (!Array.isArray(raw)) {
-    return { items: [], diagnostics: [{ key, message: "activity.json is not an array" }] };
+    return {
+      items: [],
+      diagnostics: [{ key, message: "activity.json is not an array" }],
+    };
   }
   const items: Activity[] = [];
   const diagnostics: DocDiagnostic[] = [];
@@ -33,7 +47,10 @@ export function normalizeActivities(
     ) {
       items.push({ description: "", ...entry } as Activity);
     } else {
-      diagnostics.push({ key, message: `dropped malformed activity entry: ${JSON.stringify(entry)?.slice(0, 120)}` });
+      diagnostics.push({
+        key,
+        message: `dropped malformed activity entry: ${JSON.stringify(entry)?.slice(0, 120)}`,
+      });
     }
   }
   return { items, diagnostics };
@@ -47,12 +64,20 @@ export async function loadActivities(
   return normalizeActivities(await loadJson<unknown>(store, key, []), key);
 }
 
-export async function saveActivities(store: TextStore, root: string, items: Activity[]): Promise<void> {
+export async function saveActivities(
+  store: TextStore,
+  root: string,
+  items: Activity[],
+): Promise<void> {
   await saveJson(store, docKey(root, "activity"), items);
 }
 
 /** Materialize a NewActivity. Caller supplies identity + clock (domain stays pure). */
-export function createActivity(input: NewActivity, id: string, nowIso: string): Activity {
+export function createActivity(
+  input: NewActivity,
+  id: string,
+  nowIso: string,
+): Activity {
   return {
     id,
     title: input.title,
@@ -60,15 +85,23 @@ export function createActivity(input: NewActivity, id: string, nowIso: string): 
     status: "running",
     updated_at: nowIso,
     ...(input.agent !== undefined ? { agent: input.agent } : {}),
-    ...(input.worktree_path !== undefined ? { worktree_path: input.worktree_path } : {}),
+    ...(input.worktree_path !== undefined
+      ? { worktree_path: input.worktree_path }
+      : {}),
     ...(input.provider !== undefined ? { provider: input.provider } : {}),
     ...(input.model !== undefined ? { model: input.model } : {}),
   };
 }
 
 /** Apply a partial update; undefined fields leave the current value alone (explicit null clears). */
-export function applyActivityUpdate(current: Activity, update: ActivityUpdate, nowIso: string): Activity {
-  const defined = Object.fromEntries(Object.entries(update).filter(([, v]) => v !== undefined));
+export function applyActivityUpdate(
+  current: Activity,
+  update: ActivityUpdate,
+  nowIso: string,
+): Activity {
+  const defined = Object.fromEntries(
+    Object.entries(update).filter(([, v]) => v !== undefined),
+  );
   return { ...current, ...defined, updated_at: nowIso } as Activity;
 }
 
@@ -78,7 +111,10 @@ export function upsertById<T extends { id: string }>(items: T[], item: T): T[] {
   return [...items.slice(0, i), item, ...items.slice(i + 1)];
 }
 
-export function removeById<T extends { id: string }>(items: T[], id: string): { items: T[]; removed: boolean } {
+export function removeById<T extends { id: string }>(
+  items: T[],
+  id: string,
+): { items: T[]; removed: boolean } {
   const next = items.filter((x) => x.id !== id);
   return { items: next, removed: next.length !== items.length };
 }

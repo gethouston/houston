@@ -23,7 +23,10 @@ import { MemoryTurnBus } from "./bus";
  *     a Redis integration run can prove the wire mapping. Marked with a
  *     test.todo below so the gap is explicit, never silent.
  */
-function runTurnBusContract(name: string, make: (now: () => number) => TurnBus): void {
+function runTurnBusContract(
+  name: string,
+  make: (now: () => number) => TurnBus,
+): void {
   describe(`TurnBus contract: ${name}`, () => {
     test("publish fans out to every subscriber; unsubscribe stops delivery", async () => {
       const bus = make(() => 0);

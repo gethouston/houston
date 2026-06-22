@@ -35,7 +35,9 @@ const section = (t: string) => log(`\n=== ${t} ===`);
 function withTimeout<T>(p: Promise<T>, ms: number, label: string): Promise<T> {
   return Promise.race([
     p,
-    new Promise<T>((_, rej) => setTimeout(() => rej(new Error(`timeout(${ms}ms): ${label}`)), ms)),
+    new Promise<T>((_, rej) =>
+      setTimeout(() => rej(new Error(`timeout(${ms}ms): ${label}`)), ms),
+    ),
   ]);
 }
 
@@ -67,7 +69,9 @@ async function runFauxTurn(opts: {
   const faux = registerFauxProvider({
     provider: "faux",
     api: "faux",
-    models: [{ id: "faux-1", name: "Faux 1", contextWindow: 200000, maxTokens: 8192 }],
+    models: [
+      { id: "faux-1", name: "Faux 1", contextWindow: 200000, maxTokens: 8192 },
+    ],
   });
   faux.setResponses(opts.responses);
 
@@ -75,7 +79,10 @@ async function runFauxTurn(opts: {
   authStorage.setRuntimeApiKey("faux", "faux-key"); // faux ignores it; satisfies the pre-flight auth gate
   const modelRegistry = ModelRegistry.inMemory(authStorage);
   const sessionManager = SessionManager.inMemory(cwd);
-  const resourceLoader = makeHeadlessLoader(cwd, "You are Houston, a helpful agent.");
+  const resourceLoader = makeHeadlessLoader(
+    cwd,
+    "You are Houston, a helpful agent.",
+  );
   await resourceLoader.reload();
 
   const { session } = await createAgentSession({
@@ -93,14 +100,21 @@ async function runFauxTurn(opts: {
   let textOut = "";
   const unsub = session.subscribe((event: any) => {
     seen.push(event.type);
-    if (event.type === "message_update" && event.assistantMessageEvent?.type === "text_delta") {
+    if (
+      event.type === "message_update" &&
+      event.assistantMessageEvent?.type === "text_delta"
+    ) {
       textOut += event.assistantMessageEvent.delta ?? "";
     }
     if (event.type === "tool_execution_start") {
-      log(`  • tool_execution_start: ${event.toolName} ${JSON.stringify(event.args ?? {})}`);
+      log(
+        `  • tool_execution_start: ${event.toolName} ${JSON.stringify(event.args ?? {})}`,
+      );
     }
     if (event.type === "tool_execution_end") {
-      log(`  • tool_execution_end:   ${event.toolName} isError=${event.isError}`);
+      log(
+        `  • tool_execution_end:   ${event.toolName} isError=${event.isError}`,
+      );
     }
   });
 
@@ -118,8 +132,12 @@ async function runFauxTurn(opts: {
 }
 
 async function probeCodexDeviceCode() {
-  section("Codex device-code login (headless probe; aborts after capturing code)");
-  const { loginOpenAICodexDeviceCode } = await import("@earendil-works/pi-ai/oauth");
+  section(
+    "Codex device-code login (headless probe; aborts after capturing code)",
+  );
+  const { loginOpenAICodexDeviceCode } = await import(
+    "@earendil-works/pi-ai/oauth"
+  );
   const ac = new AbortController();
   try {
     await loginOpenAICodexDeviceCode({
@@ -133,7 +151,11 @@ async function probeCodexDeviceCode() {
       },
     });
   } catch (e: any) {
-    log("  login ended:", e?.message ?? String(e), "(expected: aborted after capturing code)");
+    log(
+      "  login ended:",
+      e?.message ?? String(e),
+      "(expected: aborted after capturing code)",
+    );
   }
 }
 
@@ -141,33 +163,53 @@ async function liveTurnIfCreds() {
   const hasAnthropic = !!process.env.ANTHROPIC_API_KEY;
   const hasOpenAI = !!process.env.OPENAI_API_KEY;
   if (!hasAnthropic && !hasOpenAI) {
-    section("Live LLM turn — SKIPPED (no ANTHROPIC_API_KEY / OPENAI_API_KEY in env)");
+    section(
+      "Live LLM turn — SKIPPED (no ANTHROPIC_API_KEY / OPENAI_API_KEY in env)",
+    );
     return;
   }
   section("Live LLM turn");
   const cwd = mkdtempSync(join(tmpdir(), "houston-spike-live-"));
   const authStorage = AuthStorage.inMemory();
   const provider = hasAnthropic ? "anthropic" : "openai";
-  const key = hasAnthropic ? process.env.ANTHROPIC_API_KEY! : process.env.OPENAI_API_KEY!;
+  const key = hasAnthropic
+    ? process.env.ANTHROPIC_API_KEY!
+    : process.env.OPENAI_API_KEY!;
   authStorage.setRuntimeApiKey(provider, key);
   const modelRegistry = ModelRegistry.inMemory(authStorage);
   const model = hasAnthropic
     ? getModel("anthropic", "claude-opus-4-5" as any)
     : getModel("openai", "gpt-5.1-codex" as any);
-  const resourceLoader = makeHeadlessLoader(cwd, "You are Houston. Answer in one short sentence.");
+  const resourceLoader = makeHeadlessLoader(
+    cwd,
+    "You are Houston. Answer in one short sentence.",
+  );
   await resourceLoader.reload();
   const { session } = await createAgentSession({
-    cwd, agentDir: cwd, model: model as any, authStorage, modelRegistry,
-    sessionManager: SessionManager.inMemory(cwd), resourceLoader: resourceLoader as any,
+    cwd,
+    agentDir: cwd,
+    model: model as any,
+    authStorage,
+    modelRegistry,
+    sessionManager: SessionManager.inMemory(cwd),
+    resourceLoader: resourceLoader as any,
     tools: ["read", "ls", "bash"],
   });
   let text = "";
   const unsub = session.subscribe((e: any) => {
-    if (e.type === "message_update" && e.assistantMessageEvent?.type === "text_delta")
+    if (
+      e.type === "message_update" &&
+      e.assistantMessageEvent?.type === "text_delta"
+    )
       text += e.assistantMessageEvent.delta ?? "";
   });
-  await withTimeout(session.prompt("Say hello and tell me what model you are in one sentence."), 60000, "live");
-  unsub(); session.dispose();
+  await withTimeout(
+    session.prompt("Say hello and tell me what model you are in one sentence."),
+    60000,
+    "live",
+  );
+  unsub();
+  session.dispose();
   log("  live answer:", JSON.stringify(text.slice(0, 300)));
 }
 
@@ -180,7 +222,11 @@ async function main() {
     label: "2. Headless faux turn — text only",
     prompt: "Hi there.",
     tools: ["read", "ls", "bash"],
-    responses: [fauxAssistantMessage("Hello from the faux model. The loop works.", { stopReason: "stop" })],
+    responses: [
+      fauxAssistantMessage("Hello from the faux model. The loop works.", {
+        stopReason: "stop",
+      }),
+    ],
   });
 
   // Tool execution path: scripted tool call, then a final answer.
@@ -189,7 +235,9 @@ async function main() {
     prompt: "List the files in this directory.",
     tools: ["read", "ls", "bash"],
     responses: [
-      fauxAssistantMessage([fauxToolCall("ls", { path: "." })], { stopReason: "toolUse" }),
+      fauxAssistantMessage([fauxToolCall("ls", { path: "." })], {
+        stopReason: "toolUse",
+      }),
       fauxAssistantMessage("I listed the directory.", { stopReason: "stop" }),
     ],
   });

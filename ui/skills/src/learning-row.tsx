@@ -1,13 +1,13 @@
-import { CATEGORY_LABELS } from "./types"
-import type { LearningCategory } from "./types"
-import { Trash2 } from "lucide-react"
+import { CATEGORY_LABELS } from "./types";
+import type { LearningCategory } from "./types";
+import { Trash2 } from "lucide-react";
 
 export interface LearningRowProps {
-  content: string
-  category: LearningCategory
-  sourceTitle: string | null
-  createdAt: string
-  onDelete: () => void
+  content: string;
+  category: LearningCategory;
+  sourceTitle: string | null;
+  createdAt: string;
+  onDelete: () => void;
 }
 
 export function LearningRow({
@@ -17,11 +17,11 @@ export function LearningRow({
   createdAt,
   onDelete,
 }: LearningRowProps) {
-  const label = CATEGORY_LABELS[category] ?? category
+  const label = CATEGORY_LABELS[category] ?? category;
   const date = new Date(createdAt).toLocaleDateString("en-US", {
     month: "short",
     day: "numeric",
-  })
+  });
 
   return (
     <div className="rounded-xl border border-border p-4 group">
@@ -47,5 +47,5 @@ export function LearningRow({
         <span>{date}</span>
       </div>
     </div>
-  )
+  );
 }

@@ -76,7 +76,7 @@ export function useUpdateChecker() {
     if (!info) return;
 
     try {
-      const appPath = appPathRef.current ?? await osCurrentAppBundlePath();
+      const appPath = appPathRef.current ?? (await osCurrentAppBundlePath());
       await osRelaunchAppFromPath(appPath);
     } catch (error) {
       console.error("[updater] relaunch failed", error);
@@ -114,9 +114,10 @@ export function useUpdateChecker() {
           setStatus({ state: "downloading", info, progress: null });
         } else if (event.event === "Progress") {
           downloaded += event.data.chunkLength;
-          const progress = totalLength > 0
-            ? Math.min(100, Math.round((downloaded / totalLength) * 100))
-            : null;
+          const progress =
+            totalLength > 0
+              ? Math.min(100, Math.round((downloaded / totalLength) * 100))
+              : null;
           setStatus({ state: "downloading", info, progress });
         } else if (event.event === "Finished") {
           setStatus({ state: "downloading", info, progress: 100 });
