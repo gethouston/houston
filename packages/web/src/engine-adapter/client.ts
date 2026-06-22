@@ -277,16 +277,22 @@ export class HoustonClient {
     return { name: "Houston", provider, model, effort: "medium" };
   }
   async setAgentConfig(
-    _agentPath: string,
+    agentPath: string,
     config: ProjectConfig,
   ): Promise<ProjectConfig> {
     if (config.provider) {
       const pid = toNewProvider(config.provider);
-      if (pid)
-        await this.engine.setSettings({
-          activeProvider: pid,
-          model: config.model,
-        });
+      if (pid) {
+        // Settings are PER-AGENT on the host (`/agents/:id/settings`); the host
+        // root has no `/settings` route. In cloud / desktop-new-engine mode this
+        // MUST go through the agent's runtime client (the same one activeOld()
+        // READS from) — writing via the root client silently 404s, so a model
+        // pick never persists and every turn falls back to the active provider.
+        const engine = this.cp
+          ? controlPlane.runtimeClientFor(this.cp, agentPath || this.requireAgentId())
+          : this.engine;
+        await engine.setSettings({ activeProvider: pid, model: config.model });
+      }
     }
     return config;
   }
@@ -744,9 +750,17 @@ export class HoustonClient {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     if (this.cp) {
-      await controlPlane.setApiKey(this.cp, this.requireAgentId(), pid, apiKey);
+      const agentId = this.requireAgentId();
+      await controlPlane.setApiKey(this.cp, agentId, pid, apiKey);
+      // Make the just-connected provider active so chats use it immediately,
+      // exactly as the OAuth connect path does (pollProviderConnect). Without
+      // this the engine keeps whatever was active (e.g. a still-connected Codex),
+      // and every turn silently runs that model instead of OpenCode. Settings are
+      // PER-AGENT on the host, so this MUST go through the agent's runtime client.
+      await controlPlane.runtimeClientFor(this.cp, agentId).setSettings({ activeProvider: pid });
     } else {
       await this.engine.setApiKey(pid, apiKey);
+      await this.engine.setSettings({ activeProvider: pid });
     }
     emitEvent("ProviderLoginComplete", { provider: name, success: true, error: null });
   }

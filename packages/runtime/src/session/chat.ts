@@ -180,7 +180,20 @@ export async function ensureProviderForTurn(): Promise<string | null> {
   } catch (err) {
     console.error("[serve] credential sync failed:", errMessage(err));
   }
-  return activeProvider();
+  const provider = activeProvider();
+  // Ground-truth diagnostic: the provider + model + the model's actual API base
+  // URL this turn will run against. baseUrl is unambiguous — opencode.ai/zen/go/v1
+  // is OpenCode Go, openai/chatgpt is Codex — unlike asking the model itself,
+  // which open models (GLM/Kimi/…) routinely get wrong.
+  if (provider) {
+    try {
+      const m = resolveModel() as { id?: string; baseUrl?: string };
+      console.log(`[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`);
+    } catch {
+      /* resolveModel can throw on a bad pin; the turn surfaces it as an error */
+    }
+  }
+  return provider;
 }
 
 export async function runTurn(

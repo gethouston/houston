@@ -121,10 +121,16 @@ export async function runPiTurn(
     // (absent → omitted, so pi keeps its own default). pi clamps the level to
     // what the resolved model actually supports.
     const thinkingLevel = toThinkingLevel(pin?.effort);
+    const model = resolveTurnModel(dataDir, provider, pin?.model);
+    // Ground-truth diagnostic: provider + model + the model's actual API base URL
+    // (opencode.ai/zen/go/v1 = OpenCode Go, openai/chatgpt = Codex). Unambiguous,
+    // unlike asking the model itself.
+    const m = model as unknown as { id?: string; baseUrl?: string };
+    console.log(`[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`);
     const { session } = await createAgentSession({
       cwd: workspaceDir,
       agentDir: dataDir,
-      model: resolveTurnModel(dataDir, provider, pin?.model),
+      model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
       authStorage,
       modelRegistry,
