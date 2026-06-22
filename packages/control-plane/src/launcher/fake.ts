@@ -1,9 +1,5 @@
 import type { Agent, AgentId } from "../domain/types";
-import type {
-  RuntimeEndpoint,
-  RuntimeLauncher,
-  RuntimeState,
-} from "../ports";
+import type { RuntimeEndpoint, RuntimeLauncher, RuntimeState } from "../ports";
 
 /**
  * In-memory RuntimeLauncher for dev and tests. No cluster: it tracks each agent's
@@ -48,7 +44,10 @@ export class FakeLauncher implements RuntimeLauncher {
     this.states.set(agentId, "asleep");
   }
 
-  async destroy(agentId: AgentId, _opts?: { dropVolume?: boolean }): Promise<void> {
+  async destroy(
+    agentId: AgentId,
+    _opts?: { dropVolume?: boolean },
+  ): Promise<void> {
     this.states.set(agentId, "absent");
   }
 

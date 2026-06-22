@@ -1,9 +1,4 @@
-import {
-  Component,
-  useEffect,
-  useState,
-  type ReactNode,
-} from "react";
+import { Component, useEffect, useState, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { I18nextProvider } from "react-i18next";
@@ -61,9 +56,14 @@ window.onunhandledrejection = (event: PromiseRejectionEvent) => {
   showErrorToast("unhandled_rejection", message, event.reason);
 };
 
-class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | null }> {
+class ErrorBoundary extends Component<
+  { children: ReactNode },
+  { error: Error | null }
+> {
   state: { error: Error | null } = { error: null };
-  static getDerivedStateFromError(error: Error) { return { error }; }
+  static getDerivedStateFromError(error: Error) {
+    return { error };
+  }
   componentDidCatch(error: Error) {
     logger.error(`[react-crash] ${error.message}`, error.stack);
     analytics.captureException(error, {
@@ -89,13 +89,22 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
             zIndex: 999999,
           }}
         >
-          <h1 style={{ color: "#ff6666", fontSize: 24, margin: 0, marginBottom: 16 }}>
+          <h1
+            style={{
+              color: "#ff6666",
+              fontSize: 24,
+              margin: 0,
+              marginBottom: 16,
+            }}
+          >
             App crashed
           </h1>
           <p style={{ fontSize: 15, marginBottom: 16, color: "#ffffff" }}>
             {this.state.error.message}
           </p>
-          <pre style={{ fontSize: 12, opacity: 0.85 }}>{this.state.error.stack}</pre>
+          <pre style={{ fontSize: 12, opacity: 0.85 }}>
+            {this.state.error.stack}
+          </pre>
         </div>
       );
     }

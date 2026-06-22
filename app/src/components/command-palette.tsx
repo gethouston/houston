@@ -12,12 +12,7 @@ import {
   HoustonAvatar,
   resolveAgentColor,
 } from "@houston-ai/core";
-import {
-  Keyboard,
-  LayoutDashboard,
-  Plus,
-  Settings,
-} from "lucide-react";
+import { Keyboard, LayoutDashboard, Plus, Settings } from "lucide-react";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { useAllConversations } from "../hooks/queries";
@@ -31,7 +26,9 @@ import { shortcutLabel } from "../lib/shortcuts";
 const AVATAR_PX = 28;
 
 function PaletteAvatar({ color }: { color?: string }) {
-  return <HoustonAvatar color={resolveAgentColor(color)} diameter={AVATAR_PX} />;
+  return (
+    <HoustonAvatar color={resolveAgentColor(color)} diameter={AVATAR_PX} />
+  );
 }
 
 const RECENT_MISSION_LIMIT = 12;
@@ -61,15 +58,15 @@ export function CommandPalette() {
 
   const recentMissions = useMemo(() => {
     if (!convos) return [];
-    return convos
-      // Archived missions live in the per-agent Archived tab, not the
-      // quick-switcher's recent list.
-      .filter((c) => c.type === "activity" && c.status !== "archived")
-      .slice()
-      .sort((a, b) =>
-        (b.updated_at ?? "").localeCompare(a.updated_at ?? ""),
-      )
-      .slice(0, RECENT_MISSION_LIMIT);
+    return (
+      convos
+        // Archived missions live in the per-agent Archived tab, not the
+        // quick-switcher's recent list.
+        .filter((c) => c.type === "activity" && c.status !== "archived")
+        .slice()
+        .sort((a, b) => (b.updated_at ?? "").localeCompare(a.updated_at ?? ""))
+        .slice(0, RECENT_MISSION_LIMIT)
+    );
   }, [convos]);
 
   const colorByPath = useMemo(() => {

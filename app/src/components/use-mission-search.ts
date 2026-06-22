@@ -26,7 +26,9 @@ export function useMissionSearch({
   loadHistory,
   onHistoryLoadError,
 }: UseMissionSearchOptions) {
-  const [historyTextById, setHistoryTextById] = useState<Record<string, string>>({});
+  const [historyTextById, setHistoryTextById] = useState<
+    Record<string, string>
+  >({});
   const [pendingCount, setPendingCount] = useState(0);
   const loadingIdsRef = useRef<Set<string>>(new Set());
   const mountedRef = useRef(true);

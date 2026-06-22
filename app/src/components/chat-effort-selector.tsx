@@ -22,7 +22,12 @@ interface ChatEffortSelectorProps {
  * menu. Renders nothing when the model has no effort control, so the composer
  * row collapses cleanly.
  */
-export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEffortSelectorProps) {
+export function ChatEffortSelector({
+  provider,
+  model,
+  effort,
+  onSelect,
+}: ChatEffortSelectorProps) {
   const { t } = useTranslation("chat");
   const levels = getEffortLevels(provider, model);
   if (levels.length === 0) return null;
@@ -45,10 +50,14 @@ export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEf
   // Stored configs can carry an effort unsupported by the active model; show
   // an unselected state until the next click resets to the model's first level.
   const activeLevel =
-    effort && levels.includes(effort as EffortLevel) ? (effort as EffortLevel) : undefined;
+    effort && levels.includes(effort as EffortLevel)
+      ? (effort as EffortLevel)
+      : undefined;
   const nextLevel = nextEffort(levels, effort);
 
-  const activeLabel = activeLevel ? labels[activeLevel] : t("modelSelector.effort");
+  const activeLabel = activeLevel
+    ? labels[activeLevel]
+    : t("modelSelector.effort");
 
   return (
     <button
@@ -58,7 +67,9 @@ export function ChatEffortSelector({ provider, model, effort, onSelect }: ChatEf
           ? t("modelSelector.effortValue", { level: activeLabel })
           : t("modelSelector.effort")
       }
-      title={activeLevel ? descriptions[activeLevel] : t("modelSelector.effort")}
+      title={
+        activeLevel ? descriptions[activeLevel] : t("modelSelector.effort")
+      }
       // Stop pointer events from bubbling: keeps the board detail panel from
       // reading the click as click-outside and closing the panel.
       onPointerDown={(e) => e.stopPropagation()}

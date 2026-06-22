@@ -1,4 +1,11 @@
-import { existsSync, mkdirSync, readdirSync, renameSync, statSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { Database } from "bun:sqlite";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
@@ -90,8 +97,14 @@ function writeTranscript(dir: string, conv: StoredConversation): void {
  * pi persists a session only once it holds an assistant message, so we only
  * synthesize a session when at least one non-empty assistant turn exists.
  */
-function synthesizeSession(workspaceDir: string, sessionDir: string, pairs: SessionPair[]): void {
-  const hasAssistant = pairs.some((p) => p.role === "assistant" && p.content.length > 0);
+function synthesizeSession(
+  workspaceDir: string,
+  sessionDir: string,
+  pairs: SessionPair[],
+): void {
+  const hasAssistant = pairs.some(
+    (p) => p.role === "assistant" && p.content.length > 0,
+  );
   if (!hasAssistant) return;
 
   const mgr = SessionManager.create(workspaceDir, sessionDir);
@@ -125,10 +138,16 @@ export function migrateAgentChatHistory(
   const marker = join(runtimeDir, MARKER_NAME);
 
   const groups = sessionGroupsForAgent(agentRoot);
-  if (referenced) for (const set of groups.values()) for (const id of set) referenced.add(id);
+  if (referenced)
+    for (const set of groups.values()) for (const id of set) referenced.add(id);
 
   if (existsSync(marker)) {
-    return { agentRoot, migrated: 0, skipped: groups.size, alreadyMarked: true };
+    return {
+      agentRoot,
+      migrated: 0,
+      skipped: groups.size,
+      alreadyMarked: true,
+    };
   }
 
   // One reusable statement for all of this agent's ids.
@@ -140,7 +159,10 @@ export function migrateAgentChatHistory(
   let skipped = 0;
 
   for (const [sessionKey, ids] of groups) {
-    const transcriptFile = join(conversationsDir, `${encodeURIComponent(sessionKey)}.json`);
+    const transcriptFile = join(
+      conversationsDir,
+      `${encodeURIComponent(sessionKey)}.json`,
+    );
     if (existsSync(transcriptFile)) {
       skipped++;
       continue; // idempotent: this conversation is already migrated
@@ -168,7 +190,11 @@ export function migrateAgentChatHistory(
       messages: transcript,
     });
 
-    synthesizeSession(agentRoot, join(sessionsOutDir, sessionKey), sessionPairs);
+    synthesizeSession(
+      agentRoot,
+      join(sessionsOutDir, sessionKey),
+      sessionPairs,
+    );
     migrated++;
   }
 
@@ -212,7 +238,9 @@ function agentRoots(workspacesRoot: string): string[] {
  * the call entirely otherwise). Opens the db READ-ONLY so we can never lock or
  * mutate it.
  */
-export function migrateChatHistory(opts: MigrateChatHistoryOptions): MigrateResult {
+export function migrateChatHistory(
+  opts: MigrateChatHistoryOptions,
+): MigrateResult {
   const log = opts.log ?? ((l: string) => console.log(l));
 
   const db = new Database(opts.dbPath, { readonly: true });
@@ -225,7 +253,9 @@ export function migrateChatHistory(opts: MigrateChatHistoryOptions): MigrateResu
 
     // Orphans: chat_feed conversations no tracker file references.
     const allIds = db
-      .query<{ claude_session_id: string }, []>("SELECT DISTINCT claude_session_id FROM chat_feed")
+      .query<{ claude_session_id: string }, []>(
+        "SELECT DISTINCT claude_session_id FROM chat_feed",
+      )
       .all()
       .map((r) => r.claude_session_id);
     const orphanSessionIds = allIds.filter((id) => !referenced.has(id)).length;

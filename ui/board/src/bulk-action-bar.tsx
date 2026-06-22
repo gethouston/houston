@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState } from "react";
 import {
   Button,
   ConfirmDialog,
@@ -6,48 +6,48 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@houston-ai/core"
-import { Archive, ChevronDown, Trash2, X } from "lucide-react"
+} from "@houston-ai/core";
+import { Archive, ChevronDown, Trash2, X } from "lucide-react";
 
 /** A status a selection can be moved to (e.g. Done / Needs me). */
 export interface BulkMoveTarget {
-  status: string
-  label: string
+  status: string;
+  label: string;
 }
 
 export interface BulkActionBarLabels {
-  selected: (count: number) => string
-  moveTo: string
-  archive: string
-  delete: string
-  clear: string
-  cancel: string
-  confirmMoveTitle: string
-  confirmMoveDescription: (count: number, target: string) => string
-  confirmMoveAction: string
-  confirmArchiveTitle: string
-  confirmArchiveDescription: (count: number) => string
-  confirmArchiveAction: string
-  confirmDeleteTitle: string
-  confirmDeleteDescription: (count: number) => string
-  confirmDeleteAction: string
+  selected: (count: number) => string;
+  moveTo: string;
+  archive: string;
+  delete: string;
+  clear: string;
+  cancel: string;
+  confirmMoveTitle: string;
+  confirmMoveDescription: (count: number, target: string) => string;
+  confirmMoveAction: string;
+  confirmArchiveTitle: string;
+  confirmArchiveDescription: (count: number) => string;
+  confirmArchiveAction: string;
+  confirmDeleteTitle: string;
+  confirmDeleteDescription: (count: number) => string;
+  confirmDeleteAction: string;
 }
 
 export interface BulkActionBarProps {
-  count: number
-  moveTargets: BulkMoveTarget[]
-  onMove: (status: string) => void
-  onArchive: () => void
-  onDelete: () => void
-  onClear: () => void
-  labels: BulkActionBarLabels
+  count: number;
+  moveTargets: BulkMoveTarget[];
+  onMove: (status: string) => void;
+  onArchive: () => void;
+  onDelete: () => void;
+  onClear: () => void;
+  labels: BulkActionBarLabels;
 }
 
 type Pending =
   | { kind: "move"; target: BulkMoveTarget }
   | { kind: "archive" }
   | { kind: "delete" }
-  | null
+  | null;
 
 /**
  * Floating action bar shown while one or more board cards are multi-
@@ -63,18 +63,21 @@ export function BulkActionBar({
   onClear,
   labels,
 }: BulkActionBarProps) {
-  const [pending, setPending] = useState<Pending>(null)
+  const [pending, setPending] = useState<Pending>(null);
 
   const confirm = (() => {
     switch (pending?.kind) {
       case "move":
         return {
           title: labels.confirmMoveTitle,
-          description: labels.confirmMoveDescription(count, pending.target.label),
+          description: labels.confirmMoveDescription(
+            count,
+            pending.target.label,
+          ),
           action: labels.confirmMoveAction,
           variant: "default" as const,
           run: () => onMove(pending.target.status),
-        }
+        };
       case "archive":
         return {
           title: labels.confirmArchiveTitle,
@@ -82,7 +85,7 @@ export function BulkActionBar({
           action: labels.confirmArchiveAction,
           variant: "default" as const,
           run: onArchive,
-        }
+        };
       case "delete":
         return {
           title: labels.confirmDeleteTitle,
@@ -90,11 +93,11 @@ export function BulkActionBar({
           action: labels.confirmDeleteAction,
           variant: "destructive" as const,
           run: onDelete,
-        }
+        };
       default:
-        return null
+        return null;
     }
-  })()
+  })();
 
   return (
     <>
@@ -120,7 +123,11 @@ export function BulkActionBar({
         ) : moveTargets.length > 1 ? (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="h-7 gap-1 rounded-full">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 gap-1 rounded-full"
+              >
                 {labels.moveTo}
                 <ChevronDown className="size-3.5" />
               </Button>
@@ -169,7 +176,7 @@ export function BulkActionBar({
       <ConfirmDialog
         open={pending !== null}
         onOpenChange={(open) => {
-          if (!open) setPending(null)
+          if (!open) setPending(null);
         }}
         title={confirm?.title ?? ""}
         description={confirm?.description ?? ""}
@@ -177,10 +184,10 @@ export function BulkActionBar({
         cancelLabel={labels.cancel}
         variant={confirm?.variant ?? "destructive"}
         onConfirm={() => {
-          confirm?.run()
-          setPending(null)
+          confirm?.run();
+          setPending(null);
         }}
       />
     </>
-  )
+  );
 }

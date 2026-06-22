@@ -55,7 +55,8 @@ export function AiReviewStep({
             <div className="flex items-center gap-2">
               {AGENT_COLORS.map((c) => {
                 const hex = colorHex(c);
-                const isSelected = color === c.id || color === c.light || color === c.dark;
+                const isSelected =
+                  color === c.id || color === c.light || color === c.dark;
                 return (
                   <button
                     key={c.id}
@@ -63,7 +64,9 @@ export function AiReviewStep({
                     onClick={() => onColorChange(c.id)}
                     className={cn(
                       "h-6 w-6 rounded-full flex items-center justify-center transition-all duration-150",
-                      isSelected ? "ring-2 ring-offset-2 ring-foreground/30" : "hover:scale-110",
+                      isSelected
+                        ? "ring-2 ring-offset-2 ring-foreground/30"
+                        : "hover:scale-110",
                     )}
                     style={{ backgroundColor: hex }}
                   >
@@ -76,7 +79,9 @@ export function AiReviewStep({
 
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">{t("aiAssist.nameLabel")}</label>
+            <label className="block text-sm font-medium">
+              {t("aiAssist.nameLabel")}
+            </label>
             <Input
               autoFocus
               value={name}
@@ -89,8 +94,12 @@ export function AiReviewStep({
           {/* Instructions */}
           <div className="space-y-2">
             <div>
-              <p className="text-sm font-medium">{t("aiReview.instructionsLabel")}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("aiReview.instructionsHelper")}</p>
+              <p className="text-sm font-medium">
+                {t("aiReview.instructionsLabel")}
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                {t("aiReview.instructionsHelper")}
+              </p>
             </div>
             <section className="rounded-xl bg-secondary p-3">
               <textarea
@@ -107,9 +116,7 @@ export function AiReviewStep({
             </section>
           </div>
 
-          {error && (
-            <p className="text-xs text-destructive">{error}</p>
-          )}
+          {error && <p className="text-xs text-destructive">{error}</p>}
         </div>
       </div>
 

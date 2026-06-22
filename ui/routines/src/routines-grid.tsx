@@ -14,11 +14,11 @@ import {
   EmptyTitle,
   EmptyDescription,
   Button,
-} from "@houston-ai/core"
-import { Plus } from "lucide-react"
-import type { Routine, RoutineRun } from "./types"
-import { RoutineRow } from "./routine-row"
-import { TimezonePicker } from "./timezone-picker"
+} from "@houston-ai/core";
+import { Plus } from "lucide-react";
+import type { Routine, RoutineRun } from "./types";
+import { RoutineRow } from "./routine-row";
+import { TimezonePicker } from "./timezone-picker";
 import {
   DEFAULT_GRID_LABELS,
   DEFAULT_ROW_LABELS,
@@ -28,35 +28,35 @@ import {
   type RoutineRowLabels,
   type ScheduleSummaryLabels,
   type NextFireLabels,
-} from "./labels"
+} from "./labels";
 
 export interface RoutinesGridProps {
-  routines: Routine[]
+  routines: Routine[];
   /** Most recent run per routine, keyed by routine ID. */
-  lastRuns?: Record<string, RoutineRun>
+  lastRuns?: Record<string, RoutineRun>;
   /** The account-wide IANA timezone every routine fires in. */
-  accountTimezone: string
+  accountTimezone: string;
   /**
    * Persist a new account-wide timezone. Changing it re-times every routine.
    * Omit it (standalone callers) and the timezone bar is hidden.
    */
-  onTimezoneChange?: (tz: string) => void
-  loading?: boolean
-  onSelect: (routineId: string) => void
-  onCreate?: () => void
-  onToggle?: (routineId: string, enabled: boolean) => void
+  onTimezoneChange?: (tz: string) => void;
+  loading?: boolean;
+  onSelect: (routineId: string) => void;
+  onCreate?: () => void;
+  onToggle?: (routineId: string, enabled: boolean) => void;
   /**
    * Localized labels. English defaults so existing callers still work.
    * Consumers pass `t()` results for localization — `ui/` stays i18n-agnostic
    * per the library-boundary rule.
    */
-  labels?: RoutinesGridLabels
+  labels?: RoutinesGridLabels;
   /** Row-level labels + schedule/next-run formatter labels, threaded to rows. */
-  rowLabels?: RoutineRowLabels
-  scheduleSummaryLabels?: ScheduleSummaryLabels
-  nextFireLabels?: NextFireLabels
+  rowLabels?: RoutineRowLabels;
+  scheduleSummaryLabels?: ScheduleSummaryLabels;
+  nextFireLabels?: NextFireLabels;
   /** BCP-47 locale for day names + time formatting in row summaries. */
-  locale?: string
+  locale?: string;
 }
 
 export function RoutinesGrid({
@@ -74,12 +74,12 @@ export function RoutinesGrid({
   nextFireLabels = DEFAULT_NEXT_FIRE_LABELS,
   locale = "en-US",
 }: RoutinesGridProps) {
-  const l = labels
+  const l = labels;
   // Sort: enabled first, then alphabetical
   const sorted = [...routines].sort((a, b) => {
-    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1
-    return a.name.localeCompare(b.name)
-  })
+    if (a.enabled !== b.enabled) return a.enabled ? -1 : 1;
+    return a.name.localeCompare(b.name);
+  });
 
   if (loading && routines.length === 0) {
     return (
@@ -88,7 +88,7 @@ export function RoutinesGrid({
           {l.loading}
         </p>
       </div>
-    )
+    );
   }
 
   if (sorted.length === 0) {
@@ -97,9 +97,7 @@ export function RoutinesGrid({
         <div className="mx-auto max-w-md flex flex-col items-center gap-6 text-center pt-24 px-6">
           <EmptyHeader>
             <EmptyTitle>{l.emptyTitle}</EmptyTitle>
-            <EmptyDescription>
-              {l.emptyDescription}
-            </EmptyDescription>
+            <EmptyDescription>{l.emptyDescription}</EmptyDescription>
           </EmptyHeader>
           {onCreate && (
             <Button onClick={onCreate}>
@@ -109,7 +107,7 @@ export function RoutinesGrid({
           )}
         </div>
       </div>
-    )
+    );
   }
 
   return (
@@ -156,7 +154,9 @@ export function RoutinesGrid({
               accountTimezone={accountTimezone}
               onClick={() => onSelect(routine.id)}
               onToggle={
-                onToggle ? (enabled) => onToggle(routine.id, enabled) : undefined
+                onToggle
+                  ? (enabled) => onToggle(routine.id, enabled)
+                  : undefined
               }
               labels={rowLabels}
               scheduleSummaryLabels={scheduleSummaryLabels}
@@ -167,5 +167,5 @@ export function RoutinesGrid({
         </div>
       </div>
     </div>
-  )
+  );
 }

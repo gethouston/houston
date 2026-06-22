@@ -30,7 +30,8 @@ function walk(dir) {
   for (const entry of readdirSync(dir)) {
     const full = join(dir, entry);
     if (statSync(full).isDirectory()) out.push(...walk(full));
-    else if (/\.(ts|tsx)$/.test(entry) && !/\.test\./.test(entry)) out.push(full);
+    else if (/\.(ts|tsx)$/.test(entry) && !/\.test\./.test(entry))
+      out.push(full);
   }
   return out;
 }
@@ -40,7 +41,8 @@ const allSrc = files.map((f) => readFileSync(f, "utf8"));
 
 // 1. @tauri-apps/* specifiers imported by app/src.
 const specifiers = new Set();
-const specRe = /from\s+["'](@tauri-apps\/[^"']+)["']|import\(\s*["'](@tauri-apps\/[^"']+)["']\s*\)/g;
+const specRe =
+  /from\s+["'](@tauri-apps\/[^"']+)["']|import\(\s*["'](@tauri-apps\/[^"']+)["']\s*\)/g;
 for (const src of allSrc) {
   let m;
   while ((m = specRe.exec(src))) specifiers.add(m[1] ?? m[2]);
@@ -73,7 +75,11 @@ const shim = readFileSync(
 );
 // Keychain commands intentionally never run on web (browser storage forced);
 // they're covered by the shim's default guard and don't need explicit cases.
-const KEYCHAIN_ONLY = new Set(["auth_get_item", "auth_set_item", "auth_remove_item"]);
+const KEYCHAIN_ONLY = new Set([
+  "auth_get_item",
+  "auth_set_item",
+  "auth_remove_item",
+]);
 for (const cmd of commands) {
   if (KEYCHAIN_ONLY.has(cmd)) continue;
   if (!shim.includes(`"${cmd}"`)) {

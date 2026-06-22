@@ -44,17 +44,23 @@ test("context_compacted becomes a system divider carrying compaction info", () =
   assert.equal(divider.compaction.trigger, "proactive");
   assert.equal(divider.compaction.preTokens, 185000);
   // The surrounding turns are preserved (full history stays visible).
-  assert.ok(messages.some((m) => m.from === "user" && m.content === "keep going"));
+  assert.ok(
+    messages.some((m) => m.from === "user" && m.content === "keep going"),
+  );
   assert.ok(
     messages.some(
-      (m) => m.from === "assistant" && m.content === "Continuing from the summary.",
+      (m) =>
+        m.from === "assistant" && m.content === "Continuing from the summary.",
     ),
   );
 });
 
 test("context_compacted tolerates a null pre_tokens", () => {
   const messages = feedItemsToMessages([
-    { feed_type: "context_compacted", data: { trigger: "native", pre_tokens: null } },
+    {
+      feed_type: "context_compacted",
+      data: { trigger: "native", pre_tokens: null },
+    },
   ]);
   const divider = messages.find((m) => m.compaction);
   assert.ok(divider);

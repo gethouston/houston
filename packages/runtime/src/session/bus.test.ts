@@ -92,7 +92,10 @@ test("reduceSnapshot keeps the turn running through tool/thinking frames", () =>
   s = reduceSnapshot(s, { type: "text", data: "work" });
   s = reduceSnapshot(s, { type: "tool_start", data: { name: "ls", args: {} } });
   expect(s).toEqual({ running: true, partial: "work" }); // tool frame doesn't touch text
-  s = reduceSnapshot(s, { type: "tool_end", data: { name: "ls", isError: false } });
+  s = reduceSnapshot(s, {
+    type: "tool_end",
+    data: { name: "ls", isError: false },
+  });
   expect(s.running).toBe(true);
   s = reduceSnapshot(s, { type: "error", data: { message: "boom" } });
   expect(s).toEqual({ running: false, partial: "" });

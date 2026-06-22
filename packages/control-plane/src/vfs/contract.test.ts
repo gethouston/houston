@@ -23,7 +23,9 @@ function runVfsContract(name: string, make: () => Vfs): void {
       await vfs.writeBytes(`${P}/workspace/deck.pptx`, Buffer.from([1, 2, 3]));
 
       expect(await vfs.readText(`${P}/data/settings.json`)).toBe(`{"a":1}`);
-      expect([...(await vfs.readBytes(`${P}/workspace/deck.pptx`))!]).toEqual([1, 2, 3]);
+      expect([...(await vfs.readBytes(`${P}/workspace/deck.pptx`))!]).toEqual([
+        1, 2, 3,
+      ]);
       expect(await vfs.readText(`${P}/nope.txt`)).toBeNull();
       expect(await vfs.readBytes(`${P}/nope.bin`)).toBeNull();
     });
@@ -57,7 +59,9 @@ function runVfsContract(name: string, make: () => Vfs): void {
       expect(await vfs.readText(`${P}/workspace/old.txt`)).toBeNull();
       expect(await vfs.readText(`${P}/workspace/new.txt`)).toBe("content");
 
-      await expect(vfs.move(`${P}/ghost.txt`, `${P}/x.txt`)).rejects.toThrow("source not found");
+      await expect(vfs.move(`${P}/ghost.txt`, `${P}/x.txt`)).rejects.toThrow(
+        "source not found",
+      );
     });
 
     test("deleteKey is idempotent; deletePrefix removes only the prefix", async () => {
@@ -77,12 +81,21 @@ function runVfsContract(name: string, make: () => Vfs): void {
 
     test("traversal keys are rejected, never mapped", async () => {
       const vfs = make();
-      await expect(vfs.writeText(`${P}/../../../etc/passwd`, "x")).rejects.toThrow("unsafe vfs key");
-      await expect(vfs.writeText(`/absolute.txt`, "x")).rejects.toThrow("unsafe vfs key");
-      await expect(vfs.move(`${P}/a.txt`, `${P}/../escape.txt`)).rejects.toThrow();
+      await expect(
+        vfs.writeText(`${P}/../../../etc/passwd`, "x"),
+      ).rejects.toThrow("unsafe vfs key");
+      await expect(vfs.writeText(`/absolute.txt`, "x")).rejects.toThrow(
+        "unsafe vfs key",
+      );
+      await expect(
+        vfs.move(`${P}/a.txt`, `${P}/../escape.txt`),
+      ).rejects.toThrow();
     });
   });
 }
 
 runVfsContract("MemoryVfs", () => new MemoryVfs());
-runVfsContract("FsVfs", () => new FsVfs(mkdtempSync(join(tmpdir(), "houston-vfs-"))));
+runVfsContract(
+  "FsVfs",
+  () => new FsVfs(mkdtempSync(join(tmpdir(), "houston-vfs-"))),
+);

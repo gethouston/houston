@@ -31,7 +31,10 @@ import {
 } from "./synthetic";
 import * as agents from "./agents";
 import * as activities from "./activities";
-import { readAgentFile as readAgentFileStore, writeAgentFile as writeAgentFileStore } from "./agent-files";
+import {
+  readAgentFile as readAgentFileStore,
+  writeAgentFile as writeAgentFileStore,
+} from "./agent-files";
 import { streamTurn, historyToFeed } from "./translate";
 import * as controlPlane from "./control-plane";
 import type { ControlPlaneConfig } from "./control-plane";
@@ -81,17 +84,23 @@ export class HoustonClient {
 
   constructor(opts: HoustonClientOptions) {
     const useCp =
-      opts.controlPlane ?? (typeof window !== "undefined" && !!window.__HOUSTON_CP__);
-    this.cp = useCp ? { baseUrl: opts.baseUrl.replace(/\/+$/, ""), token: opts.token } : null;
+      opts.controlPlane ??
+      (typeof window !== "undefined" && !!window.__HOUSTON_CP__);
+    this.cp = useCp
+      ? { baseUrl: opts.baseUrl.replace(/\/+$/, ""), token: opts.token }
+      : null;
     this.engine = new HoustonEngineClient({
       baseUrl: opts.baseUrl,
       token: opts.token || undefined,
     });
     return new Proxy(this, {
       get(target, prop, recv) {
-        if (prop in target || typeof prop === "symbol") return Reflect.get(target, prop, recv);
+        if (prop in target || typeof prop === "symbol")
+          return Reflect.get(target, prop, recv);
         return async () => {
-          console.warn(`[engine-adapter] unsupported HoustonClient.${String(prop)}() → []`);
+          console.warn(
+            `[engine-adapter] unsupported HoustonClient.${String(prop)}() → []`,
+          );
           return [];
         };
       },
@@ -118,8 +127,14 @@ export class HoustonClient {
       const engine = this.providerEngine();
       if (engine) {
         const providers = await engine.listProviders();
-        const active = providers.find((p) => p.isActive) ?? providers.find((p) => p.configured);
-        if (active) return { provider: toOldProvider(active.id), model: active.activeModel };
+        const active =
+          providers.find((p) => p.isActive) ??
+          providers.find((p) => p.configured);
+        if (active)
+          return {
+            provider: toOldProvider(active.id),
+            model: active.activeModel,
+          };
       }
     } catch {
       /* engine unreachable / no agent selected / not authed → defaults below */
@@ -169,14 +184,20 @@ export class HoustonClient {
   }
   async createWorkspace(req: { name?: string }): Promise<Workspace> {
     const { provider, model } = await this.activeOld();
-    return { ...syntheticWorkspace(provider, model), name: req?.name || "Houston" };
+    return {
+      ...syntheticWorkspace(provider, model),
+      name: req?.name || "Houston",
+    };
   }
   async renameWorkspace(): Promise<Workspace> {
     const { provider, model } = await this.activeOld();
     return syntheticWorkspace(provider, model);
   }
   async deleteWorkspace(): Promise<void> {}
-  async setWorkspaceLocale(_id: string, locale: string | null): Promise<Workspace> {
+  async setWorkspaceLocale(
+    _id: string,
+    locale: string | null,
+  ): Promise<Workspace> {
     const { provider, model } = await this.activeOld();
     return { ...syntheticWorkspace(provider, model), locale };
   }
@@ -190,16 +211,31 @@ export class HoustonClient {
   async setWorkspaceContext(_id: string, body: unknown) {
     return body;
   }
-  async createAgent(workspaceId: string, req: CreateAgent): Promise<CreateAgentResult> {
-    if (this.cp) return { agent: await controlPlane.createAgent(this.cp, req.name, req.color) };
+  async createAgent(
+    workspaceId: string,
+    req: CreateAgent,
+  ): Promise<CreateAgentResult> {
+    if (this.cp)
+      return {
+        agent: await controlPlane.createAgent(this.cp, req.name, req.color),
+      };
     return agents.createAgent(workspaceId, req);
   }
-  async renameAgent(workspaceId: string, agentId: string, newName: string): Promise<Agent> {
+  async renameAgent(
+    workspaceId: string,
+    agentId: string,
+    newName: string,
+  ): Promise<Agent> {
     if (this.cp) return controlPlane.renameAgent(this.cp, agentId, newName);
     return agents.renameAgent(workspaceId, agentId, newName);
   }
-  async updateAgent(workspaceId: string, agentId: string, req: UpdateAgent): Promise<Agent> {
-    if (this.cp) return controlPlane.updateAgentColor(this.cp, agentId, req.color);
+  async updateAgent(
+    workspaceId: string,
+    agentId: string,
+    req: UpdateAgent,
+  ): Promise<Agent> {
+    if (this.cp)
+      return controlPlane.updateAgentColor(this.cp, agentId, req.color);
     return agents.updateAgentColor(workspaceId, agentId, req.color);
   }
   async deleteAgent(workspaceId: string, agentId: string): Promise<void> {
@@ -233,10 +269,17 @@ export class HoustonClient {
     const { provider, model } = await this.activeOld();
     return { name: "Houston", provider, model, effort: "medium" };
   }
-  async setAgentConfig(_agentPath: string, config: ProjectConfig): Promise<ProjectConfig> {
+  async setAgentConfig(
+    _agentPath: string,
+    config: ProjectConfig,
+  ): Promise<ProjectConfig> {
     if (config.provider) {
       const pid = toNewProvider(config.provider);
-      if (pid) await this.engine.setSettings({ activeProvider: pid, model: config.model });
+      if (pid)
+        await this.engine.setSettings({
+          activeProvider: pid,
+          model: config.model,
+        });
     }
     return config;
   }
@@ -251,12 +294,20 @@ export class HoustonClient {
     if (this.cp) return controlPlane.listActivities(this.cp, agentPath);
     return activities.listActivities(agentPath);
   }
-  async createActivity(agentPath: string, input: NewActivity): Promise<Activity> {
+  async createActivity(
+    agentPath: string,
+    input: NewActivity,
+  ): Promise<Activity> {
     if (this.cp) return controlPlane.createActivity(this.cp, agentPath, input);
     return activities.createActivity(agentPath, input);
   }
-  async updateActivity(agentPath: string, id: string, updates: ActivityUpdate): Promise<Activity> {
-    if (this.cp) return controlPlane.updateActivity(this.cp, agentPath, id, updates);
+  async updateActivity(
+    agentPath: string,
+    id: string,
+    updates: ActivityUpdate,
+  ): Promise<Activity> {
+    if (this.cp)
+      return controlPlane.updateActivity(this.cp, agentPath, id, updates);
     return activities.updateActivity(agentPath, id, updates);
   }
   async deleteActivity(agentPath: string, id: string): Promise<void> {
@@ -272,13 +323,19 @@ export class HoustonClient {
    * and the card would hang in "running". Matches by session_key, or the
    * `activity-<id>` convention the board uses for missions with no explicit key.
    */
-  private async setActivityStatus(agentPath: string, sessionKey: string, status: string): Promise<void> {
+  private async setActivityStatus(
+    agentPath: string,
+    sessionKey: string,
+    status: string,
+  ): Promise<void> {
     if (!this.cp) {
       activities.setStatusBySessionKey(agentPath, sessionKey, status);
       return;
     }
     const list = await controlPlane.listActivities(this.cp, agentPath);
-    const match = list.find((a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey);
+    const match = list.find(
+      (a) => a.session_key === sessionKey || `activity-${a.id}` === sessionKey,
+    );
     if (!match) return; // transient session with no board card — nothing to update
     await controlPlane.updateActivity(this.cp, agentPath, match.id, { status });
   }
@@ -291,8 +348,13 @@ export class HoustonClient {
     if (this.cp) return controlPlane.readAgentFile(this.cp, agentPath, relPath);
     return readAgentFileStore(agentPath, relPath);
   }
-  async writeAgentFile(agentPath: string, relPath: string, content: string): Promise<void> {
-    if (this.cp) return controlPlane.writeAgentFile(this.cp, agentPath, relPath, content);
+  async writeAgentFile(
+    agentPath: string,
+    relPath: string,
+    content: string,
+  ): Promise<void> {
+    if (this.cp)
+      return controlPlane.writeAgentFile(this.cp, agentPath, relPath, content);
     writeAgentFileStore(agentPath, relPath, content);
   }
   async seedAgentSchemas(): Promise<void> {}
@@ -306,36 +368,61 @@ export class HoustonClient {
   async saveAttachments(scopeId: string, files: File[]): Promise<string[]> {
     if (files.length === 0) return [];
     if (!this.cp) throw new Error("Attachments need a cloud workspace.");
-    return controlPlane.saveAttachments(this.cp, this.requireAgentId(), scopeId, files);
+    return controlPlane.saveAttachments(
+      this.cp,
+      this.requireAgentId(),
+      scopeId,
+      files,
+    );
   }
   async deleteAttachments(scopeId: string): Promise<void> {
     if (!this.cp) throw new Error("Attachments need a cloud workspace.");
-    return controlPlane.deleteAttachments(this.cp, this.requireAgentId(), scopeId);
+    return controlPlane.deleteAttachments(
+      this.cp,
+      this.requireAgentId(),
+      scopeId,
+    );
   }
 
   // ---- project files (the agent's REAL workspace) ----
   // In cloud mode the workspace is a GCS prefix served by the control plane at
   // /agents/:id/files*. agentPath IS the agentId here (folderPath = agent.id).
   // In synthetic/local web mode there is no real workspace, so these are inert.
-  private async cpFilesFetch(agentId: string, path: string, init?: RequestInit): Promise<Response> {
-    const res = await fetch(`${this.cp!.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`, {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${controlPlane.liveToken(this.cp!.token)}`,
-        "Content-Type": "application/json",
-        ...init?.headers,
+  private async cpFilesFetch(
+    agentId: string,
+    path: string,
+    init?: RequestInit,
+  ): Promise<Response> {
+    const res = await fetch(
+      `${this.cp!.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`,
+      {
+        ...init,
+        headers: {
+          Authorization: `Bearer ${controlPlane.liveToken(this.cp!.token)}`,
+          "Content-Type": "application/json",
+          ...init?.headers,
+        },
       },
-    });
-    if (!res.ok) throw new HoustonEngineError(res.status, await res.json().catch(() => ({})));
+    );
+    if (!res.ok)
+      throw new HoustonEngineError(
+        res.status,
+        await res.json().catch(() => ({})),
+      );
     return res;
   }
   async listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
     if (!this.cp) return [];
-    return (await (await this.cpFilesFetch(agentPath, "files")).json()) as ProjectFile[];
+    return (await (
+      await this.cpFilesFetch(agentPath, "files")
+    ).json()) as ProjectFile[];
   }
   async readProjectFile(agentPath: string, relPath: string): Promise<string> {
     if (!this.cp) return "";
-    const res = await this.cpFilesFetch(agentPath, `files/read?path=${encodeURIComponent(relPath)}`);
+    const res = await this.cpFilesFetch(
+      agentPath,
+      `files/read?path=${encodeURIComponent(relPath)}`,
+    );
     const body = (await res.json()) as { content: string; base64: boolean };
     return body.base64 ? atob(body.content) : body.content;
   }
@@ -351,21 +438,33 @@ export class HoustonClient {
     );
     return {
       blob: await res.blob(),
-      contentType: res.headers.get("content-type") ?? "application/octet-stream",
+      contentType:
+        res.headers.get("content-type") ?? "application/octet-stream",
     };
   }
   async deleteFile(agentPath: string, relPath: string): Promise<void> {
     if (!this.cp) return;
-    await this.cpFilesFetch(agentPath, `files?path=${encodeURIComponent(relPath)}`, { method: "DELETE" });
+    await this.cpFilesFetch(
+      agentPath,
+      `files?path=${encodeURIComponent(relPath)}`,
+      { method: "DELETE" },
+    );
   }
-  async renameFile(agentPath: string, relPath: string, newName: string): Promise<void> {
+  async renameFile(
+    agentPath: string,
+    relPath: string,
+    newName: string,
+  ): Promise<void> {
     if (!this.cp) return;
     await this.cpFilesFetch(agentPath, "files/rename", {
       method: "POST",
       body: JSON.stringify({ path: relPath, newName }),
     });
   }
-  async createFolder(agentPath: string, folderName: string): Promise<{ created: string }> {
+  async createFolder(
+    agentPath: string,
+    folderName: string,
+  ): Promise<{ created: string }> {
     if (!this.cp) return { created: folderName };
     return (await (
       await this.cpFilesFetch(agentPath, "files/folder", {
@@ -393,8 +492,12 @@ export class HoustonClient {
       agent_name: agentName,
     }));
   }
-  async listAllConversations(agentPaths: string[]): Promise<ConversationEntry[]> {
-    const all = await Promise.all(agentPaths.map((p) => this.listConversations(p)));
+  async listAllConversations(
+    agentPaths: string[],
+  ): Promise<ConversationEntry[]> {
+    const all = await Promise.all(
+      agentPaths.map((p) => this.listConversations(p)),
+    );
     return all.flat();
   }
   async listRoutines(agentPath: string) {
@@ -416,8 +519,13 @@ export class HoustonClient {
     if (this.cp) return controlPlane.createRoutine(this.cp, agentPath, input);
     return {} as Routine;
   }
-  async updateRoutine(agentPath: string, id: string, updates: RoutineUpdate): Promise<Routine> {
-    if (this.cp) return controlPlane.updateRoutine(this.cp, agentPath, id, updates);
+  async updateRoutine(
+    agentPath: string,
+    id: string,
+    updates: RoutineUpdate,
+  ): Promise<Routine> {
+    if (this.cp)
+      return controlPlane.updateRoutine(this.cp, agentPath, id, updates);
     return {} as Routine;
   }
   async deleteRoutine(agentPath: string, id: string): Promise<void> {
@@ -425,7 +533,8 @@ export class HoustonClient {
   }
   /** Fire a routine on demand: the host records a routine_run and starts the turn now. */
   async runRoutineNow(agentPath: string, routineId: string): Promise<void> {
-    if (this.cp) return controlPlane.runRoutineNow(this.cp, agentPath, routineId);
+    if (this.cp)
+      return controlPlane.runRoutineNow(this.cp, agentPath, routineId);
     throw new Error("Running a routine needs a cloud workspace.");
   }
   async createSkill(req: CreateSkillRequest): Promise<void> {
@@ -437,7 +546,13 @@ export class HoustonClient {
       });
   }
   async saveSkill(name: string, req: SaveSkillRequest): Promise<void> {
-    if (this.cp) return controlPlane.saveSkill(this.cp, req.workspacePath, name, req.content);
+    if (this.cp)
+      return controlPlane.saveSkill(
+        this.cp,
+        req.workspacePath,
+        name,
+        req.content,
+      );
   }
   async deleteSkill(workspacePath: string, name: string): Promise<void> {
     if (this.cp) return controlPlane.deleteSkill(this.cp, workspacePath, name);
@@ -456,7 +571,8 @@ export class HoustonClient {
         const engine = this.providerEngine();
         if (engine) {
           const s = await engine.authStatus();
-          configured = s.providers.find((p) => p.provider === pid)?.configured ?? false;
+          configured =
+            s.providers.find((p) => p.provider === pid)?.configured ?? false;
         }
       } catch {
         /* sandbox unreachable / no agent selected → report not-connected */
@@ -476,7 +592,10 @@ export class HoustonClient {
   // Codex's flow (false → browser/loopback, true → device code); Claude keys off
   // the runtime's own headless mode regardless. Default true so a caller that
   // omits it never asks a remote runtime for an unreachable loopback.
-  async providerLogin(name: string, opts?: { deviceAuth?: boolean }): Promise<void> {
+  async providerLogin(
+    name: string,
+    opts?: { deviceAuth?: boolean },
+  ): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     const deviceAuth = opts?.deviceAuth ?? true;
@@ -489,7 +608,11 @@ export class HoustonClient {
       const info = await this.engine.startLogin(pid, deviceAuth);
       const url = info.kind === "device_code" ? info.verificationUri : info.url;
       const userCode = info.kind === "device_code" ? info.userCode : null;
-      emitEvent("ProviderLoginUrl", { provider: name, url, user_code: userCode });
+      emitEvent("ProviderLoginUrl", {
+        provider: name,
+        url,
+        user_code: userCode,
+      });
       if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
       this.watchLoginCompletion(pid, name);
       return;
@@ -506,16 +629,26 @@ export class HoustonClient {
     const engine = controlPlane.runtimeClientFor(this.cp, agentId);
     const info = await engine.startLogin(pid, deviceAuth);
     if (info.kind === "device_code") {
-      emitEvent("ProviderLoginUrl", { provider: old, url: info.verificationUri, user_code: info.userCode });
+      emitEvent("ProviderLoginUrl", {
+        provider: old,
+        url: info.verificationUri,
+        user_code: info.userCode,
+      });
     } else {
-      emitEvent("ProviderLoginUrl", { provider: old, url: info.url, user_code: null });
+      emitEvent("ProviderLoginUrl", {
+        provider: old,
+        url: info.url,
+        user_code: null,
+      });
     }
     void this.pollProviderConnect(agentId, pid, old);
   }
   async submitProviderLoginCode(name: string, code: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) return;
-    const engine = this.cp ? controlPlane.runtimeClientFor(this.cp, this.requireAgentId()) : this.engine;
+    const engine = this.cp
+      ? controlPlane.runtimeClientFor(this.cp, this.requireAgentId())
+      : this.engine;
     await engine.completeLogin(pid, code);
   }
   async cancelProviderLogin(name?: string): Promise<void> {
@@ -529,7 +662,11 @@ export class HoustonClient {
     this.stopLoginWatch(name);
     // Benign completion: clears the dialog + spinner without an error toast,
     // matching the old engine's cancel semantics.
-    emitEvent("ProviderLoginComplete", { provider: name, success: false, error: null });
+    emitEvent("ProviderLoginComplete", {
+      provider: name,
+      success: false,
+      error: null,
+    });
   }
 
   /**
@@ -538,7 +675,10 @@ export class HoustonClient {
    * Covers all three flows: loopback auto-catch, pasted headless code, and
    * device-code polling. Local mode only (cloud uses pollProviderConnect).
    */
-  private watchLoginCompletion(pid: "anthropic" | "openai-codex", name: string): void {
+  private watchLoginCompletion(
+    pid: "anthropic" | "openai-codex",
+    name: string,
+  ): void {
     this.stopLoginWatch(name);
     const startedAt = Date.now();
     const finish = (success: boolean, error: string | null) => {
@@ -551,8 +691,10 @@ export class HoustonClient {
           const status = await this.engine.authStatus();
           const pr = status.providers.find((p) => p.provider === pid);
           if (pr?.configured) finish(true, null);
-          else if (pr?.login?.status === "error") finish(false, pr?.login?.error ?? "Login failed");
-          else if (Date.now() - startedAt > 10 * 60 * 1000) finish(false, "Login timed out");
+          else if (pr?.login?.status === "error")
+            finish(false, pr?.login?.error ?? "Login failed");
+          else if (Date.now() - startedAt > 10 * 60 * 1000)
+            finish(false, "Login timed out");
         } catch {
           /* engine briefly unreachable; keep polling */
         }
@@ -593,7 +735,11 @@ export class HoustonClient {
    * dialog and refreshes provider status. Emits a failure on timeout (no silent
    * stall). Cancellable via `cancelProviderLogin`.
    */
-  private async pollProviderConnect(agentId: string, pid: ProviderId, oldProvider: string): Promise<void> {
+  private async pollProviderConnect(
+    agentId: string,
+    pid: ProviderId,
+    oldProvider: string,
+  ): Promise<void> {
     if (!this.cp) return;
     const key = `${agentId}:${pid}`;
     this.activeLogins.add(key);
@@ -606,7 +752,8 @@ export class HoustonClient {
         let configured = false;
         try {
           const s = await engine.authStatus();
-          configured = s.providers.find((p) => p.provider === pid)?.configured ?? false;
+          configured =
+            s.providers.find((p) => p.provider === pid)?.configured ?? false;
         } catch {
           /* transient — keep polling */
         }
@@ -624,7 +771,11 @@ export class HoustonClient {
           } catch (e) {
             console.error("[connect] workspace credential capture failed", e);
           }
-          emitEvent("ProviderLoginComplete", { provider: oldProvider, success: true, error: null });
+          emitEvent("ProviderLoginComplete", {
+            provider: oldProvider,
+            success: true,
+            error: null,
+          });
           return;
         }
       }
@@ -639,11 +790,16 @@ export class HoustonClient {
   }
 
   // ---- sessions / chat ----
-  async startSession(agentPath: string, req: SessionStartRequest): Promise<SessionStartResponse> {
+  async startSession(
+    agentPath: string,
+    req: SessionStartRequest,
+  ): Promise<SessionStartResponse> {
     const path = agentPath || DEFAULT_AGENT_PATH;
     // In cloud mode, talk to this agent's sandbox via the control plane's proxy;
     // locally, the single runtime. Either way `streamTurn` is identical.
-    const engine = this.cp ? controlPlane.runtimeClientFor(this.cp, path) : this.engine;
+    const engine = this.cp
+      ? controlPlane.runtimeClientFor(this.cp, path)
+      : this.engine;
     // Fire-and-stream: events flow to the feed store over the bus/WS adapter.
     // The board-status setter is cloud-aware (writes land where the board reads).
     void streamTurn(engine, path, req.sessionKey, req.prompt, (status) =>
@@ -653,19 +809,29 @@ export class HoustonClient {
   }
   async cancelSession(agentPath: string, sessionKey: string) {
     try {
-      const engine = this.cp ? controlPlane.runtimeClientFor(this.cp, agentPath) : this.engine;
+      const engine = this.cp
+        ? controlPlane.runtimeClientFor(this.cp, agentPath)
+        : this.engine;
       await engine.cancel(sessionKey);
     } catch {
       /* already done */
     }
     return { cancelled: true };
   }
-  async startOnboarding(_agentPath: string, sessionKey: string): Promise<SessionStartResponse> {
+  async startOnboarding(
+    _agentPath: string,
+    sessionKey: string,
+  ): Promise<SessionStartResponse> {
     return { sessionKey };
   }
-  async loadChatHistory(agentPath: string, sessionKey: string): Promise<ChatHistoryEntry[]> {
+  async loadChatHistory(
+    agentPath: string,
+    sessionKey: string,
+  ): Promise<ChatHistoryEntry[]> {
     try {
-      const engine = this.cp ? controlPlane.runtimeClientFor(this.cp, agentPath) : this.engine;
+      const engine = this.cp
+        ? controlPlane.runtimeClientFor(this.cp, agentPath)
+        : this.engine;
       const history = await engine.getHistory(sessionKey);
       return historyToFeed(history.messages);
     } catch {
@@ -680,10 +846,15 @@ export class HoustonClient {
    * agent, or any transport failure — the title is cosmetic, never block the send.
    */
   async summarizeActivity(message: string, opts: { agentPath?: string } = {}) {
-    const truncated = message.replace(/\s+/g, " ").trim().slice(0, 60) || "New chat";
+    const truncated =
+      message.replace(/\s+/g, " ").trim().slice(0, 60) || "New chat";
     try {
       const agentId = opts.agentPath || this.currentAgentId() || undefined;
-      const engine = this.cp ? (agentId ? controlPlane.runtimeClientFor(this.cp, agentId) : null) : this.engine;
+      const engine = this.cp
+        ? agentId
+          ? controlPlane.runtimeClientFor(this.cp, agentId)
+          : null
+        : this.engine;
       if (engine) {
         const { title } = await engine.summarizeText(message);
         const clean = title.trim();

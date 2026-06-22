@@ -67,18 +67,14 @@ export function MissionDoneScreen({
               running
             />
             <div className="flex flex-col items-center gap-2">
-              <h1 className="text-[28px] font-normal leading-tight">
-                {title}
-              </h1>
+              <h1 className="text-[28px] font-normal leading-tight">{title}</h1>
               {subtitle && (
                 <p className="max-w-md text-sm text-muted-foreground">
                   {subtitle}
                 </p>
               )}
               {assistantName && (
-                <p className="text-xs text-muted-foreground">
-                  {assistantName}
-                </p>
+                <p className="text-xs text-muted-foreground">{assistantName}</p>
               )}
             </div>
           </div>

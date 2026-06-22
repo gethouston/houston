@@ -2,7 +2,11 @@ import { useEffect } from "react";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { orderAgents } from "../lib/agent-order";
-import { isEmptyEditable, isTypingTarget, matchShortcut } from "../lib/shortcuts";
+import {
+  isEmptyEditable,
+  isTypingTarget,
+  matchShortcut,
+} from "../lib/shortcuts";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 
 /**
@@ -96,22 +100,33 @@ export function useKeyboardShortcuts() {
         const { agents, current, setCurrent } = useAgentStore.getState();
         if (agents.length === 0) return;
         const ordered = orderAgents(agents);
-        const idx = current ? ordered.findIndex((a) => a.id === current.id) : -1;
-        const nextIdx = idx === -1
-          ? (dir === 1 ? 0 : ordered.length - 1)
-          : (idx + dir + ordered.length) % ordered.length;
+        const idx = current
+          ? ordered.findIndex((a) => a.id === current.id)
+          : -1;
+        const nextIdx =
+          idx === -1
+            ? dir === 1
+              ? 0
+              : ordered.length - 1
+            : (idx + dir + ordered.length) % ordered.length;
         const next = ordered[nextIdx];
         setCurrent(next);
         useUIStore.getState().setViewMode(DEFAULT_TAB_ID);
         return;
       }
 
-      const arrowDir: "up" | "down" | "left" | "right" | null =
-        matchShortcut("boardUp", e) ? "up"
-        : matchShortcut("boardDown", e) ? "down"
-        : matchShortcut("boardLeft", e) ? "left"
-        : matchShortcut("boardRight", e) ? "right"
-        : null;
+      const arrowDir: "up" | "down" | "left" | "right" | null = matchShortcut(
+        "boardUp",
+        e,
+      )
+        ? "up"
+        : matchShortcut("boardDown", e)
+          ? "down"
+          : matchShortcut("boardLeft", e)
+            ? "left"
+            : matchShortcut("boardRight", e)
+              ? "right"
+              : null;
       if (arrowDir) {
         const ui = useUIStore.getState();
         // Chat panel is open → arrows are a chat-reading affordance,
@@ -131,7 +146,8 @@ export function useKeyboardShortcuts() {
         // the panel; Enter does that. Yield to any editable so
         // search inputs etc. keep their cursor motion.
         if (isTypingTarget(e)) return;
-        const onBoard = ui.viewMode === "dashboard" || ui.viewMode === "activity";
+        const onBoard =
+          ui.viewMode === "dashboard" || ui.viewMode === "activity";
         if (!onBoard || ui.paletteOpen || ui.cheatsheetOpen) return;
         e.preventDefault();
         ui.onBoardNavigate?.(arrowDir);
@@ -144,7 +160,8 @@ export function useKeyboardShortcuts() {
         if (isTypingTarget(e)) return;
         const ui = useUIStore.getState();
         if (ui.missionPanelOpen || ui.paletteOpen || ui.cheatsheetOpen) return;
-        const onBoard = ui.viewMode === "dashboard" || ui.viewMode === "activity";
+        const onBoard =
+          ui.viewMode === "dashboard" || ui.viewMode === "activity";
         if (!onBoard) return;
         e.preventDefault();
         ui.onBoardOpen?.();
@@ -152,8 +169,11 @@ export function useKeyboardShortcuts() {
       }
 
       if (
-        e.key === "Escape"
-        && !e.metaKey && !e.ctrlKey && !e.shiftKey && !e.altKey
+        e.key === "Escape" &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        !e.shiftKey &&
+        !e.altKey
       ) {
         // chat-input stops streaming on Escape with preventDefault; if
         // that already ran, don't also collapse the panel.
@@ -164,7 +184,9 @@ export function useKeyboardShortcuts() {
           // First Escape: leave the composer so arrows scroll the
           // chat log and a second Escape can close the panel.
           const active = document.activeElement as HTMLElement | null;
-          const log = document.querySelector('[role="log"]') as HTMLElement | null;
+          const log = document.querySelector(
+            '[role="log"]',
+          ) as HTMLElement | null;
           active?.blur();
           log?.focus();
           e.preventDefault();

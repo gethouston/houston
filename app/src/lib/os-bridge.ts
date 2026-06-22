@@ -18,7 +18,12 @@
  */
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
-import { listen, emit, type Event, type UnlistenFn } from "@tauri-apps/api/event";
+import {
+  listen,
+  emit,
+  type Event,
+  type UnlistenFn,
+} from "@tauri-apps/api/event";
 
 // ── Platform detection ────────────────────────────────────────────────
 
@@ -64,8 +69,14 @@ export function osOpenUrl(url: string): Promise<void> {
 }
 
 /** Reveal an agent-relative file in Finder / Explorer. */
-export function osRevealFile(agentPath: string, relativePath: string): Promise<void> {
-  return invoke<void>("reveal_file", { agent_path: agentPath, relative_path: relativePath });
+export function osRevealFile(
+  agentPath: string,
+  relativePath: string,
+): Promise<void> {
+  return invoke<void>("reveal_file", {
+    agent_path: agentPath,
+    relative_path: relativePath,
+  });
 }
 
 /** Reveal the agent's folder in Finder / Explorer. */
@@ -80,8 +91,14 @@ export function osRevealPath(path: string): Promise<void> {
 }
 
 /** Open an agent-relative file with the user's default application. */
-export function osOpenFile(agentPath: string, relativePath: string): Promise<void> {
-  return invoke<void>("open_file", { agent_path: agentPath, relative_path: relativePath });
+export function osOpenFile(
+  agentPath: string,
+  relativePath: string,
+): Promise<void> {
+  return invoke<void>("open_file", {
+    agent_path: agentPath,
+    relative_path: relativePath,
+  });
 }
 
 /** Resolve the app bundle/executable path before updater install moves it. */
@@ -107,7 +124,10 @@ export function osWriteFrontendLog(
  * raises the window and emits `notification-clicked` (which navigates to the
  * mission — a plain refocus does not). macOS uses the JS notification plugin
  * instead — see session-notifications.ts. */
-export function osShowSessionNotification(title: string, body: string): Promise<void> {
+export function osShowSessionNotification(
+  title: string,
+  body: string,
+): Promise<void> {
   return invoke<void>("show_session_notification", { title, body });
 }
 
@@ -115,7 +135,9 @@ export function osShowSessionNotification(title: string, body: string): Promise<
 export function osReadRecentLogs(
   lines = 50,
 ): Promise<{ backend: string; frontend: string }> {
-  return invoke<{ backend: string; frontend: string }>("read_recent_logs", { lines });
+  return invoke<{ backend: string; frontend: string }>("read_recent_logs", {
+    lines,
+  });
 }
 
 /** Send a prepared bug report to Houston's native bug-report intake.

@@ -37,11 +37,17 @@ function round4(n: number): number {
 
 /** Hourly compute cost of one running pod from its CPU + memory requests. */
 export function podHourlyUsd(pod: PodInfo, rates: AutopilotRates): number {
-  return pod.cpuRequestCores * rates.vcpuHourUsd + bytesToGiB(pod.memRequestBytes) * rates.memGiBHourUsd;
+  return (
+    pod.cpuRequestCores * rates.vcpuHourUsd +
+    bytesToGiB(pod.memRequestBytes) * rates.memGiBHourUsd
+  );
 }
 
 /** Monthly storage cost of one PVC from its requested size. */
-export function volumeMonthlyUsd(vol: VolumeInfo, rates: AutopilotRates): number {
+export function volumeMonthlyUsd(
+  vol: VolumeInfo,
+  rates: AutopilotRates,
+): number {
   return bytesToGiB(vol.storageRequestBytes) * rates.pdGiBMonthUsd;
 }
 
@@ -60,7 +66,10 @@ export function estimate(
   const computeHourly = pods
     .filter((p) => p.phase === "Running")
     .reduce((acc, p) => acc + podHourlyUsd(p, rates), 0);
-  const storageMonthly = volumes.reduce((acc, v) => acc + volumeMonthlyUsd(v, rates), 0);
+  const storageMonthly = volumes.reduce(
+    (acc, v) => acc + volumeMonthlyUsd(v, rates),
+    0,
+  );
   return {
     perHourUsd: round4(computeHourly),
     perMonthUsd: round4(computeHourly * HOURS_PER_MONTH + storageMonthly),
@@ -118,7 +127,9 @@ export interface BigQueryConfig {
 /** Only a trusted operator env value reaches the table name; still, fail closed on anything odd. */
 function assertSafeTable(table: string): void {
   if (!/^[A-Za-z0-9_.-]+$/.test(table)) {
-    throw new Error(`refusing to query unsafe BigQuery table name: ${JSON.stringify(table)}`);
+    throw new Error(
+      `refusing to query unsafe BigQuery table name: ${JSON.stringify(table)}`,
+    );
   }
 }
 
@@ -133,7 +144,8 @@ export class BigQueryBillingReader implements BillingActualsReader {
   private readonly fetchImpl: typeof fetch;
 
   constructor(private readonly cfg: BigQueryConfig) {
-    if (!cfg.project) throw new Error("BigQueryBillingReader requires a GCP project");
+    if (!cfg.project)
+      throw new Error("BigQueryBillingReader requires a GCP project");
     assertSafeTable(cfg.table);
     this.fetchImpl = cfg.fetchImpl ?? fetch;
     this.fetchToken = cfg.fetchToken ?? (() => this.metadataToken());
@@ -144,10 +156,13 @@ export class BigQueryBillingReader implements BillingActualsReader {
       headers: { "Metadata-Flavor": "Google" },
     });
     if (!res.ok) {
-      throw new Error(`metadata token fetch failed: ${res.status} ${await res.text().catch(() => "")}`);
+      throw new Error(
+        `metadata token fetch failed: ${res.status} ${await res.text().catch(() => "")}`,
+      );
     }
     const body = (await res.json()) as { access_token?: string };
-    if (!body.access_token) throw new Error("metadata token response had no access_token");
+    if (!body.access_token)
+      throw new Error("metadata token response had no access_token");
     return body.access_token;
   }
 
@@ -179,7 +194,10 @@ export class BigQueryBillingReader implements BillingActualsReader {
     const token = await this.fetchToken();
     const res = await this.fetchImpl(BQ_QUERY_URL(this.cfg.project), {
       method: "POST",
-      headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         query: this.sql(),
         useLegacySql: false,
@@ -194,11 +212,15 @@ export class BigQueryBillingReader implements BillingActualsReader {
       }),
     });
     if (!res.ok) {
-      throw new Error(`BigQuery query failed: ${res.status} ${await res.text().catch(() => "")}`);
+      throw new Error(
+        `BigQuery query failed: ${res.status} ${await res.text().catch(() => "")}`,
+      );
     }
     const data = (await res.json()) as BqQueryResponse;
     if (data.errors?.length) {
-      throw new Error(`BigQuery job error: ${data.errors.map((e) => e.message).join("; ")}`);
+      throw new Error(
+        `BigQuery job error: ${data.errors.map((e) => e.message).join("; ")}`,
+      );
     }
     // jobs.query returns jobComplete=false (no rows, no errors) when the query is
     // still running past timeoutMs. Surfacing that as $0 billed would be a confident
@@ -211,7 +233,12 @@ export class BigQueryBillingReader implements BillingActualsReader {
     return this.parse(data, days, startDate, endDate);
   }
 
-  private parse(data: BqQueryResponse, days: number, startDate: string, endDate: string): BillingActuals {
+  private parse(
+    data: BqQueryResponse,
+    days: number,
+    startDate: string,
+    endDate: string,
+  ): BillingActuals {
     const byNamespace: NamespaceCost[] = (data.rows ?? []).map((row) => {
       const cells = row.f ?? [];
       return {
@@ -228,7 +255,10 @@ export class BigQueryBillingReader implements BillingActualsReader {
       endDate,
       currency,
       totalUsd: round4(totalUsd),
-      byNamespace: byNamespace.map((n) => ({ ...n, netCostUsd: round4(n.netCostUsd) })),
+      byNamespace: byNamespace.map((n) => ({
+        ...n,
+        netCostUsd: round4(n.netCostUsd),
+      })),
     };
   }
 }

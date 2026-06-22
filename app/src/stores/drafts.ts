@@ -56,10 +56,12 @@ export const useDraftStore = create<DraftsState>((set) => ({
 
 /** Read-only selector for a single draft's text. Returns "" if no draft exists. */
 export function useDraftText(key: string | null): string {
-  return useDraftStore((s) => (key ? s.drafts[key]?.text ?? "" : ""));
+  return useDraftStore((s) => (key ? (s.drafts[key]?.text ?? "") : ""));
 }
 
 /** Read-only selector for a single draft's files. Returns [] if no draft exists. */
 export function useDraftFiles(key: string | null): File[] {
-  return useDraftStore((s) => (key ? s.drafts[key]?.files ?? EMPTY_FILES : EMPTY_FILES));
+  return useDraftStore((s) =>
+    key ? (s.drafts[key]?.files ?? EMPTY_FILES) : EMPTY_FILES,
+  );
 }

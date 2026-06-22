@@ -17,7 +17,9 @@ export const SYSTEM_PROMPT = [
  */
 const CONTEXT_CANDIDATES = ["AGENTS.md", "AGENTS.MD", "CLAUDE.md", "CLAUDE.MD"];
 
-function loadWorkspaceContextFile(cwd: string): Array<{ path: string; content: string }> {
+function loadWorkspaceContextFile(
+  cwd: string,
+): Array<{ path: string; content: string }> {
   for (const name of CONTEXT_CANDIDATES) {
     const path = join(cwd, name);
     if (!existsSync(path)) continue;
@@ -50,7 +52,9 @@ export function buildAgentLoader(opts: {
     noThemes: true,
     noContextFiles: true,
     additionalSkillPaths: existsSync(opts.skillsDir) ? [opts.skillsDir] : [],
-    agentsFilesOverride: () => ({ agentsFiles: loadWorkspaceContextFile(opts.cwd) }),
+    agentsFilesOverride: () => ({
+      agentsFiles: loadWorkspaceContextFile(opts.cwd),
+    }),
     systemPrompt: opts.systemPrompt,
   });
 }

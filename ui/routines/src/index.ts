@@ -5,29 +5,29 @@ export type {
   RoutineRun,
   RunStatus,
   SchedulePreset,
-} from "./types"
-export { SCHEDULE_PRESET_LABELS } from "./types"
+} from "./types";
+export { SCHEDULE_PRESET_LABELS } from "./types";
 
 // Components
-export { RoutinesGrid } from "./routines-grid"
-export type { RoutinesGridProps } from "./routines-grid"
+export { RoutinesGrid } from "./routines-grid";
+export type { RoutinesGridProps } from "./routines-grid";
 
-export { RoutineRow } from "./routine-row"
-export type { RoutineRowProps } from "./routine-row"
+export { RoutineRow } from "./routine-row";
+export type { RoutineRowProps } from "./routine-row";
 
-export { TimezonePicker } from "./timezone-picker"
-export type { TimezonePickerProps } from "./timezone-picker"
+export { TimezonePicker } from "./timezone-picker";
+export type { TimezonePickerProps } from "./timezone-picker";
 
-export { RoutineEditor } from "./routine-editor"
-export type { RoutineEditorProps, RoutineFormData } from "./routine-editor"
+export { RoutineEditor } from "./routine-editor";
+export type { RoutineEditorProps, RoutineFormData } from "./routine-editor";
 
-export { RunHistory } from "./run-history"
-export type { RunHistoryProps } from "./run-history"
+export { RunHistory } from "./run-history";
+export type { RunHistoryProps } from "./run-history";
 
-export { ScheduleBuilder } from "./schedule-builder"
-export type { ScheduleBuilderProps } from "./schedule-builder"
+export { ScheduleBuilder } from "./schedule-builder";
+export type { ScheduleBuilderProps } from "./schedule-builder";
 
-export { nextFire, describeNextFire } from "./next-fire"
+export { nextFire, describeNextFire } from "./next-fire";
 
 // Localization labels — the app builds these from `t()` and passes them in.
 export {
@@ -39,7 +39,7 @@ export {
   DEFAULT_EDITOR_LABELS,
   DEFAULT_GRID_LABELS,
   DEFAULT_ROW_LABELS,
-} from "./labels"
+} from "./labels";
 export type {
   ScheduleSummaryLabels,
   NextFireLabels,
@@ -48,4 +48,4 @@ export type {
   RoutineEditorLabels,
   RoutinesGridLabels,
   RoutineRowLabels,
-} from "./labels"
+} from "./labels";

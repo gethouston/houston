@@ -71,7 +71,10 @@ test("estimate of nothing is zero", () => {
 test("BigQueryBillingReader builds a parameterized query and parses net cost per namespace", async () => {
   const calls: { url: string; body: any }[] = [];
   const fetchImpl = (async (url: any, init: any) => {
-    calls.push({ url: String(url), body: init?.body ? JSON.parse(init.body) : null });
+    calls.push({
+      url: String(url),
+      body: init?.body ? JSON.parse(init.body) : null,
+    });
     return {
       ok: true,
       async json() {
@@ -118,9 +121,13 @@ test("BigQueryBillingReader builds a parameterized query and parses net cost per
 
 test("BigQueryBillingReader surfaces a query error (never swallows)", async () => {
   const fetchImpl = (async () =>
-    ({ ok: false, status: 403, async text() {
-      return "permission denied";
-    } }) as any) as unknown as typeof fetch;
+    ({
+      ok: false,
+      status: 403,
+      async text() {
+        return "permission denied";
+      },
+    }) as any) as unknown as typeof fetch;
   const reader = new BigQueryBillingReader({
     project: "p",
     table: "p.d.t",
@@ -134,11 +141,15 @@ test("BigQueryBillingReader surfaces a query error (never swallows)", async () =
 test("BigQueryBillingReader throws on an incomplete job rather than reporting $0", async () => {
   // jobComplete=false with no rows/errors must NOT become an authoritative $0.
   const fetchImpl = (async () =>
-    ({ ok: true, async json() {
-      return { jobComplete: false };
-    }, async text() {
-      return "";
-    } }) as any) as unknown as typeof fetch;
+    ({
+      ok: true,
+      async json() {
+        return { jobComplete: false };
+      },
+      async text() {
+        return "";
+      },
+    }) as any) as unknown as typeof fetch;
   const reader = new BigQueryBillingReader({
     project: "p",
     table: "p.d.t",
@@ -151,6 +162,11 @@ test("BigQueryBillingReader throws on an incomplete job rather than reporting $0
 
 test("BigQueryBillingReader refuses an unsafe table name", () => {
   expect(
-    () => new BigQueryBillingReader({ project: "p", table: "p.d.t; DROP", location: "US" }),
+    () =>
+      new BigQueryBillingReader({
+        project: "p",
+        table: "p.d.t; DROP",
+        location: "US",
+      }),
   ).toThrow(/unsafe BigQuery table/);
 });

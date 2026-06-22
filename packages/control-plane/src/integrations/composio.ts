@@ -99,19 +99,26 @@ export class ComposioProvider implements IntegrationProvider {
     if (opts.nullStatuses?.includes(res.status)) return null;
     if (!res.ok) {
       const detail = await res.text().catch(() => "");
-      throw new Error(`composio ${opts.method ?? "GET"} ${path} → ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`);
+      throw new Error(
+        `composio ${opts.method ?? "GET"} ${path} → ${res.status}${detail ? `: ${detail.slice(0, 300)}` : ""}`,
+      );
     }
     if (res.status === 204) return null;
     return (await res.json()) as T;
   }
 
-  async verifyCredential(cred: ProviderCredential): Promise<AccountIdentity | null> {
+  async verifyCredential(
+    cred: ProviderCredential,
+  ): Promise<AccountIdentity | null> {
     const c = this.toCred(cred);
     // GET /api/v3/auth/session/info (x-user-api-key) — 401/403 ⇒ the key is bad.
-    const info = await this.call<{ org_member?: { id?: string; user_id?: string; email?: string } }>(
-      "/api/v3/auth/session/info",
-      { apiKey: c.apiKey, orgId: c.orgId, nullStatuses: [401, 403] },
-    );
+    const info = await this.call<{
+      org_member?: { id?: string; user_id?: string; email?: string };
+    }>("/api/v3/auth/session/info", {
+      apiKey: c.apiKey,
+      orgId: c.orgId,
+      nullStatuses: [401, 403],
+    });
     if (!info) return null;
     const m = info.org_member ?? {};
     const accountId = m.user_id ?? m.id;
@@ -131,7 +138,10 @@ export class ComposioProvider implements IntegrationProvider {
 
   async listConnections(cred: ProviderCredential): Promise<Connection[]> {
     const c = this.toCred(cred);
-    if (!c.userId) throw new Error("composio credential missing 'userId' (resolved at login)");
+    if (!c.userId)
+      throw new Error(
+        "composio credential missing 'userId' (resolved at login)",
+      );
     // GET /api/v3/org/consumer/connected_toolkits?user_id=… (the "Composio for
     // you" consumer namespace — the same one `composio execute` reads). Verified
     // live: the `toolkits` array is plain slug STRINGS, e.g. ["gmail","github"]
@@ -148,30 +158,43 @@ export class ComposioProvider implements IntegrationProvider {
     if (!c.userId) throw new Error("composio credential missing 'userId'");
     // Remove every connected account for the toolkit (a toolkit can have more
     // than one, e.g. two Gmail logins). List then DELETE each — both confirmed.
-    const accounts = await this.call<{ items?: { id: string }[] }>("/api/v3/connected_accounts", {
-      apiKey: c.apiKey,
-      orgId: c.orgId,
-      query: { user_ids: c.userId, toolkit_slugs: toolkit },
-    });
-    for (const acct of accounts?.items ?? []) {
-      await this.call(`/api/v3/connected_accounts/${encodeURIComponent(acct.id)}`, {
-        method: "DELETE",
+    const accounts = await this.call<{ items?: { id: string }[] }>(
+      "/api/v3/connected_accounts",
+      {
         apiKey: c.apiKey,
         orgId: c.orgId,
-      });
+        query: { user_ids: c.userId, toolkit_slugs: toolkit },
+      },
+    );
+    for (const acct of accounts?.items ?? []) {
+      await this.call(
+        `/api/v3/connected_accounts/${encodeURIComponent(acct.id)}`,
+        {
+          method: "DELETE",
+          apiKey: c.apiKey,
+          orgId: c.orgId,
+        },
+      );
     }
   }
 
-  async execute(cred: ProviderCredential, action: string, params: Record<string, unknown>): Promise<ActionResult> {
+  async execute(
+    cred: ProviderCredential,
+    action: string,
+    params: Record<string, unknown>,
+  ): Promise<ActionResult> {
     const c = this.toCred(cred);
     if (!c.userId) throw new Error("composio credential missing 'userId'");
     // POST /api/v3/tools/execute/{action} with the user's id + arguments.
-    const body = await this.call<RawExecute>(`/api/v3/tools/execute/${encodeURIComponent(action)}`, {
-      method: "POST",
-      apiKey: c.apiKey,
-      orgId: c.orgId,
-      body: { user_id: c.userId, arguments: params },
-    });
+    const body = await this.call<RawExecute>(
+      `/api/v3/tools/execute/${encodeURIComponent(action)}`,
+      {
+        method: "POST",
+        apiKey: c.apiKey,
+        orgId: c.orgId,
+        body: { user_id: c.userId, arguments: params },
+      },
+    );
     return mapExecute(body);
   }
 
@@ -192,13 +215,20 @@ export class ComposioProvider implements IntegrationProvider {
   // needs live confirmation; wired with the connect UX). Declared so the port
   // is complete; they fail loudly rather than pretend to work. ───────────────
   async startLogin(): Promise<LoginStart> {
-    throw new Error("composio startLogin is wired in slice (b) via @composio/client.createSession");
+    throw new Error(
+      "composio startLogin is wired in slice (b) via @composio/client.createSession",
+    );
   }
   async pollLogin(_pollKey: string): Promise<LoginResult> {
     throw new Error("composio pollLogin is wired in slice (b)");
   }
-  async connect(_cred: ProviderCredential, _toolkit: string): Promise<ConnectStart> {
-    throw new Error("composio connect is wired in slice (b) with the connect UX");
+  async connect(
+    _cred: ProviderCredential,
+    _toolkit: string,
+  ): Promise<ConnectStart> {
+    throw new Error(
+      "composio connect is wired in slice (b) with the connect UX",
+    );
   }
 }
 
@@ -239,24 +269,31 @@ function mapToolkit(t: RawToolkit): Toolkit {
     name: t.name ?? t.slug ?? "",
     description: t.meta?.description ?? t.description,
     logoUrl: t.meta?.logo ?? t.logo_url,
-    categories: (t.categories ?? []).map((c) => (typeof c === "string" ? c : (c.name ?? ""))).filter(Boolean),
+    categories: (t.categories ?? [])
+      .map((c) => (typeof c === "string" ? c : (c.name ?? "")))
+      .filter(Boolean),
   };
 }
 
 function mapConnection(c: RawConnection | string): Connection {
   // The consumer connected_toolkits endpoint returns plain slug strings; the
   // object form is kept defensively for the per-account endpoints.
-  if (typeof c === "string") return { toolkit: c, connectionId: "", status: "active" };
+  if (typeof c === "string")
+    return { toolkit: c, connectionId: "", status: "active" };
   const status = c.status?.toLowerCase();
   return {
     toolkit: c.toolkit ?? c.slug ?? "",
     connectionId: c.connected_account_id ?? c.id ?? "",
-    status: status === "active" || status === "pending" || status === "error" ? status : "active",
+    status:
+      status === "active" || status === "pending" || status === "error"
+        ? status
+        : "active",
   };
 }
 
 function mapTool(t: RawTool): ToolMatch {
-  const toolkit = typeof t.toolkit === "string" ? t.toolkit : (t.toolkit?.slug ?? "");
+  const toolkit =
+    typeof t.toolkit === "string" ? t.toolkit : (t.toolkit?.slug ?? "");
   return {
     action: t.slug ?? "",
     toolkit,

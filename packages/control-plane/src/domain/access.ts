@@ -29,6 +29,9 @@ export function canUseAgent(opts: {
 }
 
 /** Does this user own this workspace? (Used for agent CRUD, all owner-only today.) */
-export function ownsWorkspace(userId: UserId, workspace: Workspace | null): boolean {
+export function ownsWorkspace(
+  userId: UserId,
+  workspace: Workspace | null,
+): boolean {
   return !!workspace && workspace.ownerUserId === userId;
 }

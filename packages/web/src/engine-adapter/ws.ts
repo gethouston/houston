@@ -41,7 +41,13 @@ export class EngineWebSocket {
     this.offBus = bus.on((event) => {
       for (const h of this.eventHandlers) h(event);
       if (this.envelopeHandlers.size > 0) {
-        const env = { v: 1, id: crypto.randomUUID(), kind: "event", ts: Date.now(), payload: event };
+        const env = {
+          v: 1,
+          id: crypto.randomUUID(),
+          kind: "event",
+          ts: Date.now(),
+          payload: event,
+        };
         for (const h of this.envelopeHandlers) h(env);
       }
     });

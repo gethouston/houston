@@ -9,13 +9,19 @@ import { loadJson, saveJson, type TextStore } from "./store";
  */
 export type Preferences = Record<string, string | null>;
 
-export const prefDocKey = (workspaceId: string) => `ws/${workspaceId}/preferences.json`;
+export const prefDocKey = (workspaceId: string) =>
+  `ws/${workspaceId}/preferences.json`;
 
-export async function loadPreferences(store: TextStore, workspaceId: string): Promise<Preferences> {
+export async function loadPreferences(
+  store: TextStore,
+  workspaceId: string,
+): Promise<Preferences> {
   const prefs = await loadJson<unknown>(store, prefDocKey(workspaceId), {});
   // A non-object doc (corrupt/hand-edited) reads as empty rather than crashing
   // the boot-path gates that depend on locale/legal_acceptance.
-  return prefs && typeof prefs === "object" && !Array.isArray(prefs) ? (prefs as Preferences) : {};
+  return prefs && typeof prefs === "object" && !Array.isArray(prefs)
+    ? (prefs as Preferences)
+    : {};
 }
 
 export async function getPreference(

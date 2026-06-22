@@ -42,8 +42,15 @@ describe("sidebar item row layout", () => {
     ok(includes(sidebarItemRowClasses.menuButton, "shrink-0"));
     ok(includes(sidebarItemRowClasses.menuButton, "opacity-0"));
     ok(includes(sidebarItemRowClasses.menuButton, "group-hover:opacity-100"));
-    ok(includes(sidebarItemRowClasses.menuButton, "group-focus-within:opacity-100"));
-    ok(includes(sidebarItemRowClasses.trailingWithMenu, "group-hover:opacity-0"));
+    ok(
+      includes(
+        sidebarItemRowClasses.menuButton,
+        "group-focus-within:opacity-100",
+      ),
+    );
+    ok(
+      includes(sidebarItemRowClasses.trailingWithMenu, "group-hover:opacity-0"),
+    );
     ok(includes(sidebarItemRowClasses.trailingMenuOpen, "opacity-0"));
   });
 });

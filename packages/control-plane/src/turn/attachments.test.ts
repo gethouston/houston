@@ -33,7 +33,10 @@ test("save returns relative workspace paths; bytes land where the agent reads th
 
   // The returned paths are relative to the workspace root (what the agent's
   // Read tool resolves), keyed by scopeId.
-  expect(paths).toEqual([".attachments/activity-7/brief.txt", ".attachments/activity-7/data.csv"]);
+  expect(paths).toEqual([
+    ".attachments/activity-7/brief.txt",
+    ".attachments/activity-7/data.csv",
+  ]);
   // The bytes are at `<root>/<relPath>` — i.e. resolvable under the clamp root.
   expect(await vfs.readText(`${ROOT}/${paths[0]}`)).toBe("hello brief");
   expect(await vfs.readText(`${ROOT}/${paths[1]}`)).toBe("a,b\n1,2");
@@ -55,7 +58,10 @@ test("duplicate filenames in one batch are disambiguated, never overwritten", as
     { name: "report.pdf", contentBase64: b64("first") },
     { name: "report.pdf", contentBase64: b64("second") },
   ]);
-  expect(paths).toEqual([".attachments/s1/report.pdf", ".attachments/s1/report (1).pdf"]);
+  expect(paths).toEqual([
+    ".attachments/s1/report.pdf",
+    ".attachments/s1/report (1).pdf",
+  ]);
   expect(await vfs.readText(`${ROOT}/${paths[0]}`)).toBe("first");
   expect(await vfs.readText(`${ROOT}/${paths[1]}`)).toBe("second");
 });
@@ -63,7 +69,9 @@ test("duplicate filenames in one batch are disambiguated, never overwritten", as
 test("attachments are invisible to the Files tab (top-level dot-dir)", async () => {
   const vfs = new MemoryVfs();
   await vfs.writeText(`${ROOT}/report.txt`, "visible");
-  await saveAttachments(vfs, ROOT, "s1", [{ name: "secret.txt", contentBase64: b64("x") }]);
+  await saveAttachments(vfs, ROOT, "s1", [
+    { name: "secret.txt", contentBase64: b64("x") },
+  ]);
   const listed = (await listWorkspace(vfs, ROOT)).map((f) => f.path);
   expect(listed).toContain("report.txt");
   expect(listed.some((p) => p.startsWith(".attachments"))).toBe(false);
@@ -75,7 +83,9 @@ test("delete drops the whole scope's batch", async () => {
     { name: "a.txt", contentBase64: b64("a") },
     { name: "b.txt", contentBase64: b64("b") },
   ]);
-  await saveAttachments(vfs, ROOT, "s2", [{ name: "c.txt", contentBase64: b64("c") }]);
+  await saveAttachments(vfs, ROOT, "s2", [
+    { name: "c.txt", contentBase64: b64("c") },
+  ]);
 
   await deleteAttachments(vfs, ROOT, "s1");
   expect(await vfs.list(`${ROOT}/.attachments/s1`)).toEqual([]);
@@ -85,16 +95,24 @@ test("delete drops the whole scope's batch", async () => {
 
 test("traversal in scopeId or filename is rejected, never silently clamped", async () => {
   const vfs = new MemoryVfs();
-  await expect(saveAttachments(vfs, ROOT, "../escape", [{ name: "a.txt", contentBase64: b64("a") }])).rejects.toThrow(
+  await expect(
+    saveAttachments(vfs, ROOT, "../escape", [
+      { name: "a.txt", contentBase64: b64("a") },
+    ]),
+  ).rejects.toThrow(AttachmentError);
+  await expect(
+    saveAttachments(vfs, ROOT, "s1", [
+      { name: "../../auth.json", contentBase64: b64("x") },
+    ]),
+  ).rejects.toThrow(AttachmentError);
+  await expect(
+    saveAttachments(vfs, ROOT, "s1", [
+      { name: "sub/evil.txt", contentBase64: b64("x") },
+    ]),
+  ).rejects.toThrow(AttachmentError);
+  await expect(deleteAttachments(vfs, ROOT, "..")).rejects.toThrow(
     AttachmentError,
   );
-  await expect(saveAttachments(vfs, ROOT, "s1", [{ name: "../../auth.json", contentBase64: b64("x") }])).rejects.toThrow(
-    AttachmentError,
-  );
-  await expect(saveAttachments(vfs, ROOT, "s1", [{ name: "sub/evil.txt", contentBase64: b64("x") }])).rejects.toThrow(
-    AttachmentError,
-  );
-  await expect(deleteAttachments(vfs, ROOT, "..")).rejects.toThrow(AttachmentError);
 });
 
 // --- HTTP handler ---
@@ -107,7 +125,10 @@ function fakeRes() {
       return this;
     },
     end(buf?: Buffer | string) {
-      if (buf !== undefined) state.body = JSON.parse(Buffer.isBuffer(buf) ? buf.toString("utf8") : String(buf));
+      if (buf !== undefined)
+        state.body = JSON.parse(
+          Buffer.isBuffer(buf) ? buf.toString("utf8") : String(buf),
+        );
     },
   };
   return { res: res as never, state };
@@ -133,14 +154,21 @@ test("POST uploads then DELETE clears, over the HTTP handler", async () => {
     CTX,
     "POST",
     "attachments",
-    fakeReq({ scopeId: "activity-1", files: [{ name: "n.txt", contentBase64: b64("body") }] }),
+    fakeReq({
+      scopeId: "activity-1",
+      files: [{ name: "n.txt", contentBase64: b64("body") }],
+    }),
     post.res,
     new URLSearchParams(),
   );
   expect(handledPost).toBe(true);
   expect(post.state.status).toBe(200);
-  expect((post.state.body as { paths: string[] }).paths).toEqual([".attachments/activity-1/n.txt"]);
-  expect(await vfs.readText(`${ROOT}/.attachments/activity-1/n.txt`)).toBe("body");
+  expect((post.state.body as { paths: string[] }).paths).toEqual([
+    ".attachments/activity-1/n.txt",
+  ]);
+  expect(await vfs.readText(`${ROOT}/.attachments/activity-1/n.txt`)).toBe(
+    "body",
+  );
 
   const del = fakeRes();
   await handleAttachments(
@@ -161,7 +189,16 @@ test("malformed upload bodies fail loudly (400), DELETE without scopeId 400s", a
   const vfs = new MemoryVfs();
 
   const noScope = fakeRes();
-  await handleAttachments(vfs, PATHS, CTX, "POST", "attachments", fakeReq({ files: [] }), noScope.res, new URLSearchParams());
+  await handleAttachments(
+    vfs,
+    PATHS,
+    CTX,
+    "POST",
+    "attachments",
+    fakeReq({ files: [] }),
+    noScope.res,
+    new URLSearchParams(),
+  );
   expect(noScope.state.status).toBe(400);
 
   const badFile = fakeRes();
@@ -178,7 +215,16 @@ test("malformed upload bodies fail loudly (400), DELETE without scopeId 400s", a
   expect(badFile.state.status).toBe(400);
 
   const delNoScope = fakeRes();
-  await handleAttachments(vfs, PATHS, CTX, "DELETE", "attachments", fakeReq({}), delNoScope.res, new URLSearchParams());
+  await handleAttachments(
+    vfs,
+    PATHS,
+    CTX,
+    "DELETE",
+    "attachments",
+    fakeReq({}),
+    delNoScope.res,
+    new URLSearchParams(),
+  );
   expect(delNoScope.state.status).toBe(400);
 });
 

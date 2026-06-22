@@ -13,7 +13,11 @@ describe("createSentryReportError", () => {
   it("preserves an original Error stack without mutating it", () => {
     const original = new Error("original");
     const originalStack = original.stack;
-    const error = createSentryReportError("uncaught_error", "wrapped", original);
+    const error = createSentryReportError(
+      "uncaught_error",
+      "wrapped",
+      original,
+    );
 
     assert.equal(original.name, "Error");
     assert.equal(error.name, "uncaught_error");

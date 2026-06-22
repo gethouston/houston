@@ -42,7 +42,10 @@ export function MissionControlArchived({
   const [filterPath, setFilterPath] = useState("");
   const [search, setSearch] = useState("");
   const agentFilteredItems = useMemo(
-    () => (filterPath ? data.items.filter((i) => i.metadata?.agentPath === filterPath) : data.items),
+    () =>
+      filterPath
+        ? data.items.filter((i) => i.metadata?.agentPath === filterPath)
+        : data.items,
     [data.items, filterPath],
   );
   const handleSearchError = useCallback(() => {
@@ -60,14 +63,17 @@ export function MissionControlArchived({
   });
 
   const selectedItem = data.selectedId
-    ? data.items.find((i) => i.id === data.selectedId) ?? null
+    ? (data.items.find((i) => i.id === data.selectedId) ?? null)
     : null;
   const activeAgent = selectedItem
-    ? data.agentMap[selectedItem.metadata?.agentPath as string] ?? null
+    ? (data.agentMap[selectedItem.metadata?.agentPath as string] ?? null)
     : null;
-  const activeAgentDef = activeAgent ? getAgentDef(activeAgent.configId) ?? null : null;
+  const activeAgentDef = activeAgent
+    ? (getAgentDef(activeAgent.configId) ?? null)
+    : null;
   const selectedSessionKey = selectedItem
-    ? (selectedItem.metadata?.sessionKey as string | undefined) ?? `activity-${selectedItem.id}`
+    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
+      `activity-${selectedItem.id}`)
     : null;
 
   const panel = useAgentChatPanel({
@@ -130,16 +136,21 @@ export function MissionControlArchived({
             />
           }
           onPanelOpenChange={setMissionPanelOpen}
-          onOpenLink={(url) => activeAgent && openAgentHref(url, activeAgent.folderPath)}
+          onOpenLink={(url) =>
+            activeAgent && openAgentHref(url, activeAgent.folderPath)
+          }
           prepareAttachments={attachmentValidation.prepareAttachments}
           onAttachmentRejections={attachmentValidation.onAttachmentRejections}
           thinkingIndicator={panel.thinkingIndicator}
           endOfTurnIndicator={panel.endOfTurnIndicator}
           panelAgentName={activeAgent?.name ?? selectedItem?.subtitle}
-          panelAvatar={<AgentPanelAvatar color={activeAgent?.color} running={false} />}
+          panelAvatar={
+            <AgentPanelAvatar color={activeAgent?.color} running={false} />
+          }
           cardLabels={{
             deleteTooltip: t("cardActions.deleteTooltip"),
-            deleteTitle: (name: string) => t("deleteCard.titleWithName", { name }),
+            deleteTitle: (name: string) =>
+              t("deleteCard.titleWithName", { name }),
             deleteDescription: t("deleteCard.description"),
           }}
           chatEmptyState={panel.chatEmptyState}

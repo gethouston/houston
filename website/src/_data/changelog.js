@@ -15,10 +15,12 @@ export default async function () {
     }
     const res = await fetch(
       `https://api.github.com/repos/${REPO}/releases?per_page=${PER_PAGE}`,
-      { headers }
+      { headers },
     );
     if (!res.ok) {
-      console.warn(`[changelog] GitHub API ${res.status}; rendering empty list.`);
+      console.warn(
+        `[changelog] GitHub API ${res.status}; rendering empty list.`,
+      );
       return [];
     }
     const releases = await res.json();
@@ -38,7 +40,8 @@ export default async function () {
           body: r.body || "",
           url: r.html_url,
           isPrerelease: !!r.prerelease,
-          dmgAsset: (r.assets || []).find((a) => a.name.endsWith(".dmg")) || null,
+          dmgAsset:
+            (r.assets || []).find((a) => a.name.endsWith(".dmg")) || null,
         };
       });
   } catch (err) {

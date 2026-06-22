@@ -17,24 +17,45 @@ interface Row {
 }
 
 const NAV_ROWS: Row[] = [
-  { glyphs: shortcutLabel("palette"), labelKey: "shell:cheatsheet.rows.palette" },
-  { glyphs: shortcutLabel("missionControl"), labelKey: "shell:cheatsheet.rows.missionControl" },
-  { glyphs: shortcutLabel("newMission"), labelKey: "shell:cheatsheet.rows.newMission" },
+  {
+    glyphs: shortcutLabel("palette"),
+    labelKey: "shell:cheatsheet.rows.palette",
+  },
+  {
+    glyphs: shortcutLabel("missionControl"),
+    labelKey: "shell:cheatsheet.rows.missionControl",
+  },
+  {
+    glyphs: shortcutLabel("newMission"),
+    labelKey: "shell:cheatsheet.rows.newMission",
+  },
 ];
 
 const CYCLE_ROWS: Row[] = [
-  { glyphs: shortcutLabel("prevAgent"), labelKey: "shell:cheatsheet.rows.prevAgent" },
-  { glyphs: shortcutLabel("nextAgent"), labelKey: "shell:cheatsheet.rows.nextAgent" },
+  {
+    glyphs: shortcutLabel("prevAgent"),
+    labelKey: "shell:cheatsheet.rows.prevAgent",
+  },
+  {
+    glyphs: shortcutLabel("nextAgent"),
+    labelKey: "shell:cheatsheet.rows.nextAgent",
+  },
   {
     glyphs: `${shortcutLabel("boardUp")} ${shortcutLabel("boardDown")} ${shortcutLabel("boardLeft")} ${shortcutLabel("boardRight")}`,
     labelKey: "shell:cheatsheet.rows.boardNavigate",
   },
-  { glyphs: shortcutLabel("boardOpen"), labelKey: "shell:cheatsheet.rows.boardOpen" },
+  {
+    glyphs: shortcutLabel("boardOpen"),
+    labelKey: "shell:cheatsheet.rows.boardOpen",
+  },
   { glyphs: "Esc", labelKey: "shell:cheatsheet.rows.panelEscape" },
 ];
 
 const HELP_ROWS: Row[] = [
-  { glyphs: shortcutLabel("cheatsheet"), labelKey: "shell:cheatsheet.rows.cheatsheet" },
+  {
+    glyphs: shortcutLabel("cheatsheet"),
+    labelKey: "shell:cheatsheet.rows.cheatsheet",
+  },
 ];
 
 function Section({
@@ -81,9 +102,21 @@ export function ShortcutCheatsheet() {
           <DialogDescription>{t("cheatsheet.description")}</DialogDescription>
         </DialogHeader>
         <div className="flex flex-col gap-5 pt-2">
-          <Section title={t("cheatsheet.sections.navigation")} rows={NAV_ROWS} t={t} />
-          <Section title={t("cheatsheet.sections.cycle")} rows={CYCLE_ROWS} t={t} />
-          <Section title={t("cheatsheet.sections.help")} rows={HELP_ROWS} t={t} />
+          <Section
+            title={t("cheatsheet.sections.navigation")}
+            rows={NAV_ROWS}
+            t={t}
+          />
+          <Section
+            title={t("cheatsheet.sections.cycle")}
+            rows={CYCLE_ROWS}
+            t={t}
+          />
+          <Section
+            title={t("cheatsheet.sections.help")}
+            rows={HELP_ROWS}
+            t={t}
+          />
         </div>
       </DialogContent>
     </Dialog>

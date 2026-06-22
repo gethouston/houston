@@ -29,12 +29,21 @@ function seed(rel: string, content: string) {
 
 // A fake pi turn: proves it sees the hydrated workspace + injected credential,
 // mutates the workspace, emits frames.
-const fakeTurn: typeof runPiTurn = async (root, conversationId, text, provider, emit) => {
+const fakeTurn: typeof runPiTurn = async (
+  root,
+  conversationId,
+  text,
+  provider,
+  emit,
+) => {
   const notes = await readFile(join(root, "workspace", "notes.txt"), "utf8");
   const auth = await readFile(join(root, "data", "auth.json"), "utf8");
   await writeFile(join(root, "workspace", "deck.pptx"), "DECK-BYTES");
   emit({ type: "user", data: { content: text, ts: 1 } });
-  emit({ type: "text", data: `saw:${notes};provider:${provider};auth:${JSON.parse(auth)[provider].access}` });
+  emit({
+    type: "text",
+    data: `saw:${notes};provider:${provider};auth:${JSON.parse(auth)[provider].access}`,
+  });
   return {};
 };
 
@@ -50,7 +59,12 @@ beforeAll(async () => {
 
 afterAll(() => server.close());
 
-const CRED = { provider: "openai-codex", access: "AT-turn", expires: 1750000000000, accountId: "acc" };
+const CRED = {
+  provider: "openai-codex",
+  access: "AT-turn",
+  expires: 1750000000000,
+  accountId: "acc",
+};
 const turnBody = (over: Record<string, unknown> = {}) => ({
   workspaceId: "w1",
   agentId: "agent-1",
@@ -88,7 +102,9 @@ test("a full turn: hydrates, injects the credential, streams frames, syncs back"
   expect(raw).toContain("saw:hello-from-gcs");
   expect(raw).toContain("provider:openai-codex");
   expect(raw).toContain("auth:AT-turn");
-  expect(raw.indexOf('"type":"text"')).toBeLessThan(raw.indexOf('"type":"done"'));
+  expect(raw.indexOf('"type":"text"')).toBeLessThan(
+    raw.indexOf('"type":"done"'),
+  );
 
   // The mutation is durable in the store; the credential is NOT.
   const keys = await store.list(PREFIX);
@@ -128,7 +144,9 @@ test("a sync failure surfaces as the turn's error — never a quiet done", async
     const res = await fetch(`${b2}/turn`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(turnBody({ workspaceId: "w2", agentId: "agent-2", gcsPrefix: PREFIX2 })),
+      body: JSON.stringify(
+        turnBody({ workspaceId: "w2", agentId: "agent-2", gcsPrefix: PREFIX2 }),
+      ),
     });
     const raw = await res.text();
     expect(raw).toContain("sync failed");
@@ -142,7 +160,16 @@ test("a sync failure surfaces as the turn's error — never a quiet done", async
 test("a routine's model/effort pin reaches the pi turn", async () => {
   // Capture the pin the server forwards to runPiTurn (8th arg).
   let seen: { model?: string | null; effort?: string | null } | undefined;
-  const capture: typeof runPiTurn = async (_root, _cid, text, _provider, emit, _signal, _nonce, pin) => {
+  const capture: typeof runPiTurn = async (
+    _root,
+    _cid,
+    text,
+    _provider,
+    emit,
+    _signal,
+    _nonce,
+    pin,
+  ) => {
     seen = pin;
     emit({ type: "user", data: { content: text, ts: 1 } });
     return {};
@@ -155,7 +182,9 @@ test("a routine's model/effort pin reaches the pi turn", async () => {
     await fetch(`${b}/turn`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify(turnBody({ model: "claude-opus-4-8", effort: "high" })),
+      body: JSON.stringify(
+        turnBody({ model: "claude-opus-4-8", effort: "high" }),
+      ),
     });
     expect(seen).toEqual({ model: "claude-opus-4-8", effort: "high" });
   } finally {

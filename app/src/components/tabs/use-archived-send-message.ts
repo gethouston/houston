@@ -38,17 +38,25 @@ export function useArchivedSendMessage({
     async (sessionKey: string, text: string, files: File[]) => {
       const missionId = selectedId ?? sessionKey.replace(/^activity-/, "");
       const activity = archived.find((a) => a.id === missionId);
-      const mode = agentDef.config.agents?.find((m) => m.id === activity?.agent);
+      const mode = agentDef.config.agents?.find(
+        (m) => m.id === activity?.agent,
+      );
 
       try {
-        const paths = await tauriAttachments.save(`activity-${missionId}`, files);
+        const paths = await tauriAttachments.save(
+          `activity-${missionId}`,
+          files,
+        );
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey, {
           mode: mode?.promptFile,
           providerOverride: effectiveProvider,
           modelOverride: effectiveModel,
         });
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         analytics.track("chat_message_sent");
         for (const f of files) {
           analytics.track("file_attached", { file_kind: classifyFileKind(f) });

@@ -10,7 +10,12 @@ export interface QueuedChatMessage {
 
 interface QueuedMessageState {
   queues: Record<string, QueuedChatMessage[]>;
-  enqueue: (agentPath: string, sessionKey: string, text: string, files: File[]) => void;
+  enqueue: (
+    agentPath: string,
+    sessionKey: string,
+    text: string,
+    files: File[],
+  ) => void;
   remove: (agentPath: string, sessionKey: string, id: string) => void;
   takeAll: (agentPath: string, sessionKey: string) => QueuedChatMessage[];
   clear: (agentPath: string, sessionKey: string) => void;
@@ -74,9 +79,14 @@ export const useQueuedMessageStore = create<QueuedMessageState>((set, get) => ({
     }),
 }));
 
-export function useQueuedMessages(agentPath: string | null, sessionKey: string | null) {
+export function useQueuedMessages(
+  agentPath: string | null,
+  sessionKey: string | null,
+) {
   return useQueuedMessageStore((state) => {
     if (!agentPath || !sessionKey) return EMPTY_QUEUE;
-    return state.queues[getSessionStatusKey(agentPath, sessionKey)] ?? EMPTY_QUEUE;
+    return (
+      state.queues[getSessionStatusKey(agentPath, sessionKey)] ?? EMPTY_QUEUE
+    );
   });
 }

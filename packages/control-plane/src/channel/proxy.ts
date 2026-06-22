@@ -16,7 +16,11 @@ import type {
  * shape so the channel depends on an interface, not a module.
  */
 export interface RuntimeProxy {
-  forward(endpoint: RuntimeEndpoint, request: ForwardRequest, res: ServerResponse): Promise<void>;
+  forward(
+    endpoint: RuntimeEndpoint,
+    request: ForwardRequest,
+    res: ServerResponse,
+  ): Promise<void>;
 }
 
 /**
@@ -70,7 +74,12 @@ export class ProxyChannel implements RuntimeChannel {
     );
   }
 
-  async fireTurn(ctx: ChannelCtx, conversationId: string, text: string, pin?: TurnPin): Promise<void> {
+  async fireTurn(
+    ctx: ChannelCtx,
+    conversationId: string,
+    text: string,
+    pin?: TurnPin,
+  ): Promise<void> {
     // Wake the standing runtime and POST the routine's prompt as a normal
     // message — the runtime starts the turn (202) and persists the reply into
     // the conversation, exactly as a user message would. The routine's model/
@@ -81,7 +90,10 @@ export class ProxyChannel implements RuntimeChannel {
       `${endpoint.baseUrl}/conversations/${encodeURIComponent(conversationId)}/messages`,
       {
         method: "POST",
-        headers: { "content-type": "application/json", Authorization: `Bearer ${endpoint.token}` },
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${endpoint.token}`,
+        },
         body: JSON.stringify({
           text,
           ...(pin?.model ? { model: pin.model } : {}),
@@ -90,7 +102,9 @@ export class ProxyChannel implements RuntimeChannel {
       },
     );
     if (!res.ok) {
-      throw new Error(`runtime ${res.status}: ${await res.text().catch(() => "")}`);
+      throw new Error(
+        `runtime ${res.status}: ${await res.text().catch(() => "")}`,
+      );
     }
   }
 
@@ -124,7 +138,12 @@ export class ProxyChannel implements RuntimeChannel {
       expires?: number;
       accountId?: string;
     };
-    if (!c.provider || !c.access || !c.refresh || typeof c.expires !== "number") {
+    if (
+      !c.provider ||
+      !c.access ||
+      !c.refresh ||
+      typeof c.expires !== "number"
+    ) {
       return { ok: false, status: 400, error: "agent is not connected yet" };
     }
     await this.opts.credentials.put({

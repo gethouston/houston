@@ -40,7 +40,9 @@ test("absolute path outside the workspace throws", () => {
 });
 
 test("absolute path inside the workspace is allowed", () => {
-  expect(guard.clamp(join(guard.root, "notes.txt"))).toBe(join(guard.root, "notes.txt"));
+  expect(guard.clamp(join(guard.root, "notes.txt"))).toBe(
+    join(guard.root, "notes.txt"),
+  );
 });
 
 test("~ and ~/ expand to the home dir and throw", () => {
@@ -59,7 +61,9 @@ test("file:// URL to an outside path throws", () => {
 });
 
 test("not-yet-existing nested path inside the workspace is allowed (write/mkdir)", () => {
-  expect(guard.clamp("new/deep/file.txt")).toBe(join(guard.root, "new", "deep", "file.txt"));
+  expect(guard.clamp("new/deep/file.txt")).toBe(
+    join(guard.root, "new", "deep", "file.txt"),
+  );
 });
 
 test("symlinked FILE pointing outside the workspace throws", () => {
@@ -88,16 +92,20 @@ test("a sibling data dir (auth.json) is unreachable from the workspace", () => {
   const base = mkdtempSync(join(tmpdir(), "houston-data-"));
   const ws = join(base, "workspace");
   mkdirSync(ws);
-  writeFileSync(join(base, "auth.json"), "{\"secret\":true}");
+  writeFileSync(join(base, "auth.json"), '{"secret":true}');
   const g = new WorkspaceGuard(ws);
   expect(() => g.clamp("../auth.json")).toThrow(PathEscapeError);
   expect(() => g.clamp(join(base, "auth.json"))).toThrow(PathEscapeError);
 });
 
 test("assertInside guards pi-resolved absolute paths (inner wall)", () => {
-  expect(guard.assertInside(join(guard.root, "notes.txt"))).toBe(join(guard.root, "notes.txt"));
+  expect(guard.assertInside(join(guard.root, "notes.txt"))).toBe(
+    join(guard.root, "notes.txt"),
+  );
   expect(() => guard.assertInside("/etc/passwd")).toThrow(PathEscapeError);
-  expect(() => guard.assertInside(resolve(homedir(), ".ssh"))).toThrow(PathEscapeError);
+  expect(() => guard.assertInside(resolve(homedir(), ".ssh"))).toThrow(
+    PathEscapeError,
+  );
 });
 
 test("guard root is canonical even when the configured root holds symlinks (macOS /tmp)", () => {

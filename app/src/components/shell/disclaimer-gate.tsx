@@ -160,7 +160,9 @@ function DisclaimerOverlay({
               disabled={busy !== null}
               className="rounded-full border-border/50 bg-card text-foreground hover:bg-muted"
             >
-              {busy === "decline" ? t("buttons.decline_busy") : t("buttons.decline")}
+              {busy === "decline"
+                ? t("buttons.decline_busy")
+                : t("buttons.decline")}
             </Button>
             <Button
               type="button"
@@ -168,7 +170,9 @@ function DisclaimerOverlay({
               disabled={!hasScrolledToEnd || busy !== null}
               className="rounded-full bg-gray-950 text-white hover:bg-gray-800"
             >
-              {busy === "accept" ? t("buttons.accept_busy") : t("buttons.accept")}
+              {busy === "accept"
+                ? t("buttons.accept_busy")
+                : t("buttons.accept")}
             </Button>
           </div>
         </footer>

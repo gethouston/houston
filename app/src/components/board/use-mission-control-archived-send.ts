@@ -46,16 +46,23 @@ export function useMissionControlArchivedSend({
         (m) => m.id === (selectedItem.metadata?.agent as string | undefined),
       );
       try {
-        const paths = await tauriAttachments.save(`activity-${missionId}`, files);
+        const paths = await tauriAttachments.save(
+          `activity-${missionId}`,
+          files,
+        );
         const prompt = buildAttachmentPrompt(text, files, paths);
         await tauriChat.send(agentPath, prompt, sessionKey, {
           mode: mode?.promptFile,
           providerOverride,
           modelOverride,
         });
-        pushFeedItem(agentPath, sessionKey, { feed_type: "user_message", data: prompt });
+        pushFeedItem(agentPath, sessionKey, {
+          feed_type: "user_message",
+          data: prompt,
+        });
         analytics.track("chat_message_sent");
-        for (const f of files) analytics.track("file_attached", { file_kind: classifyFileKind(f) });
+        for (const f of files)
+          analytics.track("file_attached", { file_kind: classifyFileKind(f) });
         // Reactivated (archived → running): hand off to the agent's board.
         onReactivated();
         useAgentStore.getState().setCurrent(activeAgent);

@@ -22,7 +22,10 @@ interface StoredConversation {
 }
 
 /** The agent's reply for this run: the last assistant message after the run started. */
-function replyAfter(conversation: StoredConversation | null, startedAtMs: number): string | null {
+function replyAfter(
+  conversation: StoredConversation | null,
+  startedAtMs: number,
+): string | null {
   if (!conversation) return null;
   for (let i = conversation.messages.length - 1; i >= 0; i--) {
     const m = conversation.messages[i]!;
@@ -48,7 +51,11 @@ export interface ReconcileDeps {
  * is marked errored (never stuck 'running'). Idempotent + multi-replica safe:
  * a per-run setNx lock arbitrates, and a terminal run is never revisited.
  */
-export async function reconcileAgentRuns(deps: ReconcileDeps, ws: Workspace, agent: Agent): Promise<void> {
+export async function reconcileAgentRuns(
+  deps: ReconcileDeps,
+  ws: Workspace,
+  agent: Agent,
+): Promise<void> {
   const root = deps.paths.agentRoot(ws, agent);
   const { items: runs } = await loadRoutineRuns(deps.vfs, root);
   const running = runs.filter((r) => r.status === "running");
@@ -64,15 +71,19 @@ export async function reconcileAgentRuns(deps: ReconcileDeps, ws: Workspace, age
     const routine = routines.find((r) => r.id === run.routine_id);
     if (!routine) continue; // routine deleted; leave the run to the next sweep
 
-    const raw = await deps.vfs.readText(conversationKey(deps.paths, ws, agent, run.session_key));
+    const raw = await deps.vfs.readText(
+      conversationKey(deps.paths, ws, agent, run.session_key),
+    );
     const conversation = raw ? (JSON.parse(raw) as StoredConversation) : null;
     const reply = replyAfter(conversation, Date.parse(run.started_at));
 
-    const timedOut = !reply && nowMs - Date.parse(run.started_at) > RUN_TIMEOUT_MS;
+    const timedOut =
+      !reply && nowMs - Date.parse(run.started_at) > RUN_TIMEOUT_MS;
     if (!reply && !timedOut) continue; // turn still in flight
 
     // One replica owns this run's completion.
-    if (!(await deps.lock.setNx(`routine:reconcile:${run.id}`, "1", 120))) continue;
+    if (!(await deps.lock.setNx(`routine:reconcile:${run.id}`, "1", 120)))
+      continue;
 
     if (timedOut) {
       nextRuns = upsertById(nextRuns, {
@@ -85,11 +96,24 @@ export async function reconcileAgentRuns(deps: ReconcileDeps, ws: Workspace, age
       continue;
     }
 
-    const done = completeRoutineRun(run, routine, reply!, deps.now().toISOString());
+    const done = completeRoutineRun(
+      run,
+      routine,
+      reply!,
+      deps.now().toISOString(),
+    );
     if (done.status === "surfaced") {
       const { items: activities } = await loadActivities(deps.vfs, root);
-      const existing = activities.find((a) => a.session_key === run.session_key);
-      const activity = routineActivity(routine, done, existing, deps.newId(), deps.now().toISOString());
+      const existing = activities.find(
+        (a) => a.session_key === run.session_key,
+      );
+      const activity = routineActivity(
+        routine,
+        done,
+        existing,
+        deps.newId(),
+        deps.now().toISOString(),
+      );
       await saveActivities(deps.vfs, root, upsertById(activities, activity));
       done.activity_id = activity.id;
       activitiesTouched = true;
@@ -100,9 +124,15 @@ export async function reconcileAgentRuns(deps: ReconcileDeps, ws: Workspace, age
 
   if (changed) {
     await saveRoutineRuns(deps.vfs, root, nextRuns);
-    deps.events?.emit(ws.ownerUserId, { type: "RoutineRunsChanged", agentPath: agent.id });
+    deps.events?.emit(ws.ownerUserId, {
+      type: "RoutineRunsChanged",
+      agentPath: agent.id,
+    });
   }
   if (activitiesTouched) {
-    deps.events?.emit(ws.ownerUserId, { type: "ActivityChanged", agentPath: agent.id });
+    deps.events?.emit(ws.ownerUserId, {
+      type: "ActivityChanged",
+      agentPath: agent.id,
+    });
   }
 }

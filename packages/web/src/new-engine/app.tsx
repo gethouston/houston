@@ -36,16 +36,27 @@ export function WebApp({
   const refresh = () =>
     client
       .authStatus()
-      .then((s) => { setStatus(s); setError(null); })
+      .then((s) => {
+        setStatus(s);
+        setError(null);
+      })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)));
 
   // Cloud is keyless (Supabase auth + control-plane credentials): there is no
   // per-runtime OAuth gate, so skip the auth probe and mount the app directly.
-  useEffect(() => { if (!cloud) void refresh(); }, [client, cloud]);
+  useEffect(() => {
+    if (!cloud) void refresh();
+  }, [client, cloud]);
 
   if (cloud) {
     return (
-      <Suspense fallback={<div style={ui.page}><div style={ui.muted}>Loading Houston…</div></div>}>
+      <Suspense
+        fallback={
+          <div style={ui.page}>
+            <div style={ui.muted}>Loading Houston…</div>
+          </div>
+        }
+      >
         <AppTree />
       </Suspense>
     );
@@ -74,14 +85,24 @@ export function WebApp({
     );
   }
   if (!status) {
-    return <div style={ui.page}><div style={ui.muted}>Connecting to engine…</div></div>;
+    return (
+      <div style={ui.page}>
+        <div style={ui.muted}>Connecting to engine…</div>
+      </div>
+    );
   }
   if (!status.activeProvider) {
     return <ConnectView client={client} onConnected={refresh} />;
   }
 
   return (
-    <Suspense fallback={<div style={ui.page}><div style={ui.muted}>Loading Houston…</div></div>}>
+    <Suspense
+      fallback={
+        <div style={ui.page}>
+          <div style={ui.muted}>Loading Houston…</div>
+        </div>
+      }
+    >
       <AppTree />
     </Suspense>
   );

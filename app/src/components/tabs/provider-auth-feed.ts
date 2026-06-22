@@ -27,7 +27,10 @@ export function isProviderAuthFeedItem(item: FeedItem): boolean {
     case "assistant_text":
     case "assistant_text_streaming":
     case "system_message":
-      return item.data === "Checking connection..." || isProviderAuthMessage(item.data);
+      return (
+        item.data === "Checking connection..." ||
+        isProviderAuthMessage(item.data)
+      );
     case "tool_result":
       return isProviderAuthMessage(item.data.content);
     case "final_result":
@@ -38,7 +41,10 @@ export function isProviderAuthFeedItem(item: FeedItem): boolean {
 }
 
 function isProviderAuthSessionError(item: FeedItem): boolean {
-  return item.feed_type === "system_message" && item.data.startsWith("Session error:");
+  return (
+    item.feed_type === "system_message" &&
+    item.data.startsWith("Session error:")
+  );
 }
 
 export function filterProviderAuthFeedItems(items: FeedItem[]): FeedItem[] {

@@ -33,7 +33,10 @@ export function Dashboard() {
             <EmptyTitle>{t("noAgents.title")}</EmptyTitle>
             <EmptyDescription>{t("noAgents.description")}</EmptyDescription>
           </EmptyHeader>
-          <Button className="mt-4 rounded-full" onClick={() => setDialogOpen(true)}>
+          <Button
+            className="mt-4 rounded-full"
+            onClick={() => setDialogOpen(true)}
+          >
             <Plus className="h-4 w-4" />
             {t("noAgents.cta")}
           </Button>
@@ -45,9 +48,15 @@ export function Dashboard() {
   return (
     <div className="h-full flex flex-col overflow-hidden">
       {showArchived ? (
-        <MissionControlArchived agents={agents} onShowActive={() => setShowArchived(false)} />
+        <MissionControlArchived
+          agents={agents}
+          onShowActive={() => setShowArchived(false)}
+        />
       ) : (
-        <MissionControlActive agents={agents} onShowArchived={() => setShowArchived(true)} />
+        <MissionControlActive
+          agents={agents}
+          onShowArchived={() => setShowArchived(true)}
+        />
       )}
     </div>
   );

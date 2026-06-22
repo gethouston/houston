@@ -33,7 +33,9 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
   // spend. Its own Supabase sign-in + control-plane /admin/* calls; the desktop UI
   // never mounts here.
   void import("./admin/dashboard").then(({ AdminDashboard }) =>
-    createRoot(rootEl).render(<AdminDashboard controlPlaneUrl={controlPlaneUrl} />),
+    createRoot(rootEl).render(
+      <AdminDashboard controlPlaneUrl={controlPlaneUrl} />,
+    ),
   );
 } else if (controlPlaneUrl) {
   // Cloud mode: the app's own Supabase auth gates sign-in, then the desktop UI
@@ -62,7 +64,7 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
       : null);
   if (initial) window.__HOUSTON_ENGINE__ = initial;
   void import("./new-engine/root").then(({ NewEngineRoot }) =>
-    createRoot(rootEl).render(<NewEngineRoot initialConfig={initial} />)
+    createRoot(rootEl).render(<NewEngineRoot initialConfig={initial} />),
   );
 } else {
   const stored = readStoredEngineConfig();

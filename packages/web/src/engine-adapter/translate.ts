@@ -1,5 +1,10 @@
 import { EngineError } from "@houston/runtime-client";
-import type { HoustonEngineClient, ChatMessage, TokenUsage, WireEvent } from "@houston/runtime-client";
+import type {
+  HoustonEngineClient,
+  ChatMessage,
+  TokenUsage,
+  WireEvent,
+} from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
 
@@ -23,10 +28,24 @@ export function turnErrorMessage(e: unknown): string {
 }
 
 function feed(agentPath: string, sessionKey: string, item: unknown): void {
-  emitEvent("FeedItem", { agent_path: agentPath, session_key: sessionKey, item });
+  emitEvent("FeedItem", {
+    agent_path: agentPath,
+    session_key: sessionKey,
+    item,
+  });
 }
-function sessionStatus(agentPath: string, sessionKey: string, status: string, error?: string): void {
-  emitEvent("SessionStatus", { agent_path: agentPath, session_key: sessionKey, status, error });
+function sessionStatus(
+  agentPath: string,
+  sessionKey: string,
+  status: string,
+  error?: string,
+): void {
+  emitEvent("SessionStatus", {
+    agent_path: agentPath,
+    session_key: sessionKey,
+    status,
+    error,
+  });
 }
 
 /**
@@ -85,8 +104,10 @@ export async function streamTurn(
   const finishOk = (): void => {
     if (settled) return;
     settled = true;
-    if (thinking) feed(agentPath, sessionKey, { feed_type: "thinking", data: thinking });
-    if (text) feed(agentPath, sessionKey, { feed_type: "assistant_text", data: text });
+    if (thinking)
+      feed(agentPath, sessionKey, { feed_type: "thinking", data: thinking });
+    if (text)
+      feed(agentPath, sessionKey, { feed_type: "assistant_text", data: text });
     feed(agentPath, sessionKey, {
       feed_type: "final_result",
       data: { result: text, cost_usd: null, duration_ms: null, usage },
@@ -110,7 +131,10 @@ export async function streamTurn(
         // arrives as `done`, so never treat `sync` itself as terminal.
         if (ev.data.running && ev.data.partial) {
           text = ev.data.partial;
-          feed(agentPath, sessionKey, { feed_type: "assistant_text_streaming", data: text });
+          feed(agentPath, sessionKey, {
+            feed_type: "assistant_text_streaming",
+            data: text,
+          });
         }
         break;
       case "user":
@@ -119,11 +143,17 @@ export async function streamTurn(
         break;
       case "text":
         text += ev.data;
-        feed(agentPath, sessionKey, { feed_type: "assistant_text_streaming", data: text });
+        feed(agentPath, sessionKey, {
+          feed_type: "assistant_text_streaming",
+          data: text,
+        });
         break;
       case "thinking":
         thinking += ev.data;
-        feed(agentPath, sessionKey, { feed_type: "thinking_streaming", data: thinking });
+        feed(agentPath, sessionKey, {
+          feed_type: "thinking_streaming",
+          data: thinking,
+        });
         break;
       case "tool_start":
         feed(agentPath, sessionKey, {
@@ -157,7 +187,10 @@ export async function streamTurn(
     // the turn. The engine's per-conversation bus keeps an in-flight snapshot, so
     // even subscribing to a brand-new conversation is fine (it emits `sync` then
     // live-tails) and no event is lost to send/subscribe ordering.
-    const streaming = engine.streamEvents(sessionKey, { signal: ac.signal, onEvent });
+    const streaming = engine.streamEvents(sessionKey, {
+      signal: ac.signal,
+      onEvent,
+    });
     await engine.sendMessage(sessionKey, prompt);
     await streaming;
     // The stream closed without our abort (engine closed it) — finalize from
@@ -190,7 +223,10 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
     } else {
       for (const t of m.tools ?? []) {
         out.push({ feed_type: "tool_call", data: { name: t.name, input: {} } });
-        out.push({ feed_type: "tool_result", data: { content: "", is_error: !!t.isError } });
+        out.push({
+          feed_type: "tool_result",
+          data: { content: "", is_error: !!t.isError },
+        });
       }
       if (m.content) out.push({ feed_type: "assistant_text", data: m.content });
       // Replay the turn's usage as a final_result (which only flushes, never
@@ -198,7 +234,12 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
       if (m.usage) {
         out.push({
           feed_type: "final_result",
-          data: { result: m.content, cost_usd: null, duration_ms: null, usage: m.usage },
+          data: {
+            result: m.content,
+            cost_usd: null,
+            duration_ms: null,
+            usage: m.usage,
+          },
         });
       }
     }

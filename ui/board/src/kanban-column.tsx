@@ -1,49 +1,49 @@
-import { AnimatePresence, motion } from "framer-motion"
-import { Plus } from "lucide-react"
-import { cn } from "@houston-ai/core"
-import type { KanbanItem } from "./types"
-import { KanbanCard, type KanbanCardLabels } from "./kanban-card"
+import { AnimatePresence, motion } from "framer-motion";
+import { Plus } from "lucide-react";
+import { cn } from "@houston-ai/core";
+import type { KanbanItem } from "./types";
+import { KanbanCard, type KanbanCardLabels } from "./kanban-card";
 
 export interface KanbanColumnProps {
   /** This column's id. Exposed on the DOM (`data-kanban-column`) so the board's
    *  pointer drag can hit-test which column a card is dropped on. */
-  columnId?: string
-  label: string
-  items: KanbanItem[]
-  selectedId?: string | null
-  highlightedId?: string | null
-  onAdd?: () => void
-  addLabel?: string
-  onSelect: (item: KanbanItem) => void
-  onDelete?: (item: KanbanItem) => void
-  onApprove?: (item: KanbanItem) => void
-  onRename?: (item: KanbanItem, newTitle: string) => void
-  runningStatuses?: string[]
-  approveStatuses?: string[]
-  errorStatuses?: string[]
-  renderCard?: (item: KanbanItem) => React.ReactNode
-  actions?: (item: KanbanItem) => React.ReactNode
-  avatar?: React.ReactNode
-  cardLabels?: KanbanCardLabels
+  columnId?: string;
+  label: string;
+  items: KanbanItem[];
+  selectedId?: string | null;
+  highlightedId?: string | null;
+  onAdd?: () => void;
+  addLabel?: string;
+  onSelect: (item: KanbanItem) => void;
+  onDelete?: (item: KanbanItem) => void;
+  onApprove?: (item: KanbanItem) => void;
+  onRename?: (item: KanbanItem, newTitle: string) => void;
+  runningStatuses?: string[];
+  approveStatuses?: string[];
+  errorStatuses?: string[];
+  renderCard?: (item: KanbanItem) => React.ReactNode;
+  actions?: (item: KanbanItem) => React.ReactNode;
+  avatar?: React.ReactNode;
+  cardLabels?: KanbanCardLabels;
   /** Node rendered on the right of the column header (e.g. archive-all). */
-  headerAction?: React.ReactNode
+  headerAction?: React.ReactNode;
   /** Enable per-card multi-select checkboxes. */
-  selectable?: boolean
+  selectable?: boolean;
   /** Ids currently in the multi-select set. */
-  selectedIds?: ReadonlySet<string>
+  selectedIds?: ReadonlySet<string>;
   /** Toggle a card's membership in the multi-select set. */
-  onToggleSelect?: (item: KanbanItem) => void
+  onToggleSelect?: (item: KanbanItem) => void;
   /** Make this column's cards draggable. */
-  dndEnabled?: boolean
+  dndEnabled?: boolean;
   /** Whether this column accepts the card currently being dragged. Drives the
    *  faint "drop here" ring during a drag. */
-  isDropTarget?: boolean
+  isDropTarget?: boolean;
   /** Whether the dragged card is currently over this (drop-target) column.
    *  Drives the stronger highlight. */
-  isOver?: boolean
+  isOver?: boolean;
   /** Id of the card being dragged anywhere on the board (null when idle), used
    *  to dim the dragged card. */
-  draggingId?: string | null
+  draggingId?: string | null;
 }
 
 export function KanbanColumn({
@@ -74,7 +74,7 @@ export function KanbanColumn({
   draggingId = null,
   columnId,
 }: KanbanColumnProps) {
-  const anySelected = (selectedIds?.size ?? 0) > 0
+  const anySelected = (selectedIds?.size ?? 0) > 0;
 
   return (
     <div
@@ -130,7 +130,9 @@ export function KanbanColumn({
                   onSelect={() => onSelect(item)}
                   onDelete={onDelete ? () => onDelete(item) : undefined}
                   onApprove={onApprove ? () => onApprove(item) : undefined}
-                  onRename={onRename ? (title) => onRename(item, title) : undefined}
+                  onRename={
+                    onRename ? (title) => onRename(item, title) : undefined
+                  }
                   runningStatuses={runningStatuses}
                   approveStatuses={approveStatuses}
                   errorStatuses={errorStatuses}
@@ -163,5 +165,5 @@ export function KanbanColumn({
         )}
       </div>
     </div>
-  )
+  );
 }

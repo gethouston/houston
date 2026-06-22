@@ -25,11 +25,15 @@ export class FsWatcher {
     if (this.fsWatcher) return;
     // Recursive watch (supported on macOS + Windows + Bun on Linux). A missing
     // root simply yields no events until the supervisor creates it.
-    this.fsWatcher = watch(this.root, { recursive: true }, (_type, filename) => {
-      if (!filename) return;
-      const event = classifyChange(filename.toString());
-      if (event) this.schedule(event);
-    });
+    this.fsWatcher = watch(
+      this.root,
+      { recursive: true },
+      (_type, filename) => {
+        if (!filename) return;
+        const event = classifyChange(filename.toString());
+        if (event) this.schedule(event);
+      },
+    );
   }
 
   private schedule(event: HoustonEvent): void {

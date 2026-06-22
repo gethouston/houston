@@ -44,7 +44,12 @@ interface Props {
   onClose: () => void;
 }
 
-export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props) {
+export function ProviderLoginDialog({
+  provider,
+  url,
+  userCode,
+  onClose,
+}: Props) {
   const { t } = useTranslation("providers");
   const addToast = useUIStore((s) => s.addToast);
   const [code, setCode] = useState("");
@@ -121,7 +126,9 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t("providerLogin.title", { name: provider.name })}</DialogTitle>
+          <DialogTitle>
+            {t("providerLogin.title", { name: provider.name })}
+          </DialogTitle>
           <DialogDescription>
             {userCode
               ? t("providerLogin.deviceDescription", { name: provider.name })
@@ -171,7 +178,9 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
               ) : (
                 <Eye className="size-3.5" />
               )}
-              {showUrl ? t("providerLogin.hideUrl") : t("providerLogin.showUrl")}
+              {showUrl
+                ? t("providerLogin.hideUrl")
+                : t("providerLogin.showUrl")}
             </Button>
           </div>
 
@@ -193,7 +202,10 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
-                <label htmlFor="provider-login-code" className="text-[13px] font-medium">
+                <label
+                  htmlFor="provider-login-code"
+                  className="text-[13px] font-medium"
+                >
                   {t("providerLogin.codeLabel")}
                 </label>
                 <input
@@ -220,7 +232,9 @@ export function ProviderLoginDialog({ provider, url, userCode, onClose }: Props)
                   {t("providerLogin.cancel")}
                 </Button>
                 <Button type="submit" disabled={submitting || !code.trim()}>
-                  {submitting ? t("providerLogin.submitting") : t("providerLogin.submit")}
+                  {submitting
+                    ? t("providerLogin.submitting")
+                    : t("providerLogin.submit")}
                 </Button>
               </DialogFooter>
             </form>

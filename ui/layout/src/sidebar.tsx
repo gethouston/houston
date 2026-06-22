@@ -147,57 +147,54 @@ export function AppSidebar({
         {/* Agents section: label + items list, wrapped together so the tour
             can spotlight just this region. `flex-1 min-h-0` preserves the
             existing scroll behavior for the items list. */}
-        <div
-          data-tour-target="agents"
-          className="flex min-h-0 flex-1 flex-col"
-        >
-        {/* Section label */}
-        {sectionLabel && (
-          <div className="px-3 pt-3 pb-1">
-            <div className="text-xs font-medium text-muted-foreground">
-              {sectionLabel}
+        <div data-tour-target="agents" className="flex min-h-0 flex-1 flex-col">
+          {/* Section label */}
+          {sectionLabel && (
+            <div className="px-3 pt-3 pb-1">
+              <div className="text-xs font-medium text-muted-foreground">
+                {sectionLabel}
+              </div>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* Items list */}
-        <ScrollArea className="flex-1 px-2">
-          <div className={sidebarClasses.itemsList}>
-            {items.map((item) => (
-              <SidebarItemRow
-                key={item.id}
-                item={item}
-                isActive={item.id === selectedId}
-                isEditing={editingId === item.id}
-                editValue={editValue}
-                hasMenu={hasDefaultMenu || !!item.menuContent}
-                onSelect={onSelect}
-                onKeyDown={handleKeyDown}
-                onEditChange={setEditValue}
-                onCommitRename={commitRename}
-                onCancelEdit={() => setEditingId(null)}
-                onStartRename={onRename ? startRename : undefined}
-                onDelete={onDelete}
-                labels={l}
-              />
-            ))}
-            {onAdd && (
-              <button
-                aria-label={l.addItem}
-                onClick={onAdd}
-                className={sidebarClasses.addButton}
-                {...(addItemDataAttrs ?? {})}
-              >
-                <span className={sidebarClasses.addButtonInner}>
-                  <Plus className={sidebarClasses.addButtonIcon} />
-                  <span className={sidebarClasses.addButtonLabel}>
-                    {l.addItem}
+          {/* Items list */}
+          <ScrollArea className="flex-1 px-2">
+            <div className={sidebarClasses.itemsList}>
+              {items.map((item) => (
+                <SidebarItemRow
+                  key={item.id}
+                  item={item}
+                  isActive={item.id === selectedId}
+                  isEditing={editingId === item.id}
+                  editValue={editValue}
+                  hasMenu={hasDefaultMenu || !!item.menuContent}
+                  onSelect={onSelect}
+                  onKeyDown={handleKeyDown}
+                  onEditChange={setEditValue}
+                  onCommitRename={commitRename}
+                  onCancelEdit={() => setEditingId(null)}
+                  onStartRename={onRename ? startRename : undefined}
+                  onDelete={onDelete}
+                  labels={l}
+                />
+              ))}
+              {onAdd && (
+                <button
+                  aria-label={l.addItem}
+                  onClick={onAdd}
+                  className={sidebarClasses.addButton}
+                  {...(addItemDataAttrs ?? {})}
+                >
+                  <span className={sidebarClasses.addButtonInner}>
+                    <Plus className={sidebarClasses.addButtonIcon} />
+                    <span className={sidebarClasses.addButtonLabel}>
+                      {l.addItem}
+                    </span>
                   </span>
-                </span>
-              </button>
-            )}
-          </div>
-        </ScrollArea>
+                </button>
+              )}
+            </div>
+          </ScrollArea>
         </div>
 
         {/* Footer slot (e.g., update notification) */}

@@ -64,7 +64,9 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
   }
 
   async listAgents(workspaceId: WorkspaceId): Promise<Agent[]> {
-    return [...this.agents.values()].filter((a) => a.workspaceId === workspaceId);
+    return [...this.agents.values()].filter(
+      (a) => a.workspaceId === workspaceId,
+    );
   }
 
   async listWorkspaces(): Promise<Workspace[]> {
@@ -72,14 +74,19 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
   }
 
   async listWorkspacesForUser(userId: UserId): Promise<Workspace[]> {
-    return [...this.workspaces.values()].filter((w) => w.ownerUserId === userId);
+    return [...this.workspaces.values()].filter(
+      (w) => w.ownerUserId === userId,
+    );
   }
 
   async listAllAgents(): Promise<Agent[]> {
     return [...this.agents.values()];
   }
 
-  async createAgent(input: { workspaceId: WorkspaceId; name: string }): Promise<Agent> {
+  async createAgent(input: {
+    workspaceId: WorkspaceId;
+    name: string;
+  }): Promise<Agent> {
     const agent: Agent = {
       id: this.id("agent"),
       workspaceId: input.workspaceId,
@@ -99,10 +106,14 @@ export class MemoryWorkspaceStore implements WorkspaceStore {
   }
 
   async deleteAgent(id: AgentId): Promise<void> {
-    if (!this.agents.delete(id)) throw new Error(`deleteAgent: unknown agent ${id}`);
+    if (!this.agents.delete(id))
+      throw new Error(`deleteAgent: unknown agent ${id}`);
   }
 
-  async setWorkspaceRuntime(id: WorkspaceId, runtime: WorkspaceRuntime): Promise<Workspace> {
+  async setWorkspaceRuntime(
+    id: WorkspaceId,
+    runtime: WorkspaceRuntime,
+  ): Promise<Workspace> {
     const ws = this.workspaces.get(id);
     if (!ws) throw new Error(`setWorkspaceRuntime: unknown workspace ${id}`);
     const next: Workspace = { ...ws, runtime };

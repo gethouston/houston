@@ -42,7 +42,6 @@ export function ChatInputAttachments({
           ))}
         </div>
       )}
-
     </>
   );
 }
@@ -78,7 +77,9 @@ export function ChatInputAttachButton({
   );
 
   if (!attachMenu) {
-    return <div className="flex items-center [grid-area:leading]">{button}</div>;
+    return (
+      <div className="flex items-center [grid-area:leading]">{button}</div>
+    );
   }
 
   const content =

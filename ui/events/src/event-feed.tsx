@@ -1,14 +1,14 @@
-import { useRef, useEffect, useCallback } from "react"
-import { AnimatePresence, motion } from "framer-motion"
-import { EventItem } from "./event-item"
-import { EventFilter } from "./event-filter"
-import { EventEmpty } from "./event-empty"
-import type { EventEntry, EventType } from "./types"
+import { useRef, useEffect, useCallback } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import { EventItem } from "./event-item";
+import { EventFilter } from "./event-filter";
+import { EventEmpty } from "./event-empty";
+import type { EventEntry, EventType } from "./types";
 
 export interface EventFeedLabels {
-  emptyTitle?: string
-  emptyDescription?: string
-  loading?: string
+  emptyTitle?: string;
+  emptyDescription?: string;
+  loading?: string;
 }
 
 const DEFAULT_LABELS: Required<EventFeedLabels> = {
@@ -16,18 +16,18 @@ const DEFAULT_LABELS: Required<EventFeedLabels> = {
   emptyDescription:
     "Heartbeats, cron jobs, and channel messages will appear here as they happen.",
   loading: "Loading...",
-}
+};
 
 export interface EventFeedProps {
-  events: EventEntry[]
-  loading?: boolean
-  filter?: EventType | null
-  onFilterChange?: (type: EventType | null) => void
-  onEventClick?: (event: EventEntry) => void
-  maxHeight?: string
+  events: EventEntry[];
+  loading?: boolean;
+  filter?: EventType | null;
+  onFilterChange?: (type: EventType | null) => void;
+  onEventClick?: (event: EventEntry) => void;
+  maxHeight?: string;
   /** @deprecated pass `labels.emptyDescription` instead */
-  emptyMessage?: string
-  labels?: EventFeedLabels
+  emptyMessage?: string;
+  labels?: EventFeedLabels;
 }
 
 export function EventFeed({
@@ -40,53 +40,50 @@ export function EventFeed({
   emptyMessage,
   labels,
 }: EventFeedProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
-  const scrollRef = useRef<HTMLDivElement>(null)
-  const isAtBottomRef = useRef(true)
+  const l = { ...DEFAULT_LABELS, ...labels };
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const isAtBottomRef = useRef(true);
 
   const checkIsAtBottom = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return true
-    return el.scrollHeight - el.scrollTop - el.clientHeight < 32
-  }, [])
+    const el = scrollRef.current;
+    if (!el) return true;
+    return el.scrollHeight - el.scrollTop - el.clientHeight < 32;
+  }, []);
 
   const scrollToBottom = useCallback(() => {
-    const el = scrollRef.current
-    if (!el) return
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
-  }, [])
+    const el = scrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+  }, []);
 
   // Track scroll position
   useEffect(() => {
-    const el = scrollRef.current
-    if (!el) return
+    const el = scrollRef.current;
+    if (!el) return;
 
     const handleScroll = () => {
-      isAtBottomRef.current = checkIsAtBottom()
-    }
+      isAtBottomRef.current = checkIsAtBottom();
+    };
 
-    el.addEventListener("scroll", handleScroll, { passive: true })
-    return () => el.removeEventListener("scroll", handleScroll)
-  }, [checkIsAtBottom])
+    el.addEventListener("scroll", handleScroll, { passive: true });
+    return () => el.removeEventListener("scroll", handleScroll);
+  }, [checkIsAtBottom]);
 
   // Auto-scroll when new events arrive (only if already at bottom)
   useEffect(() => {
     if (isAtBottomRef.current) {
-      scrollToBottom()
+      scrollToBottom();
     }
-  }, [events.length, scrollToBottom])
+  }, [events.length, scrollToBottom]);
 
   const filteredEvents = filter
     ? events.filter((e) => e.type === filter)
-    : events
+    : events;
 
-  const counts = events.reduce<Partial<Record<EventType, number>>>(
-    (acc, e) => {
-      acc[e.type] = (acc[e.type] ?? 0) + 1
-      return acc
-    },
-    {},
-  )
+  const counts = events.reduce<Partial<Record<EventType, number>>>((acc, e) => {
+    acc[e.type] = (acc[e.type] ?? 0) + 1;
+    return acc;
+  }, {});
 
   return (
     <div className="flex flex-col flex-1" style={{ maxHeight }}>
@@ -102,7 +99,10 @@ export function EventFeed({
       )}
 
       {/* Event list */}
-      <div ref={scrollRef} className="flex-1 flex flex-col overflow-y-auto min-h-0">
+      <div
+        ref={scrollRef}
+        className="flex-1 flex flex-col overflow-y-auto min-h-0"
+      >
         {filteredEvents.length === 0 && !loading ? (
           <EventEmpty
             title={l.emptyTitle}
@@ -136,5 +136,5 @@ export function EventFeed({
         )}
       </div>
     </div>
-  )
+  );
 }

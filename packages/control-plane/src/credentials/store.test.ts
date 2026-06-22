@@ -3,7 +3,9 @@ import { MemoryCredentialStore } from "./store";
 import { isExpiring } from "./refresh";
 import type { WorkspaceCredential } from "../ports";
 
-const cred = (over: Partial<WorkspaceCredential> = {}): WorkspaceCredential => ({
+const cred = (
+  over: Partial<WorkspaceCredential> = {},
+): WorkspaceCredential => ({
   workspaceId: "ws_1",
   provider: "openai-codex",
   accessToken: "at",

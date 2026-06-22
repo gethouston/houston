@@ -46,8 +46,15 @@ test("lists workspace files with synthesized folders, newest metadata", async ()
   expect(byPath["data"]?.is_directory).toBe(true);
   expect(files[0]!.is_directory).toBe(true);
   // Files carry name/extension/size.
-  expect(byPath["deck.pptx"]).toMatchObject({ name: "deck.pptx", extension: "pptx", is_directory: false });
-  expect(byPath["data/sales.csv"]).toMatchObject({ name: "sales.csv", extension: "csv" });
+  expect(byPath["deck.pptx"]).toMatchObject({
+    name: "deck.pptx",
+    extension: "pptx",
+    is_directory: false,
+  });
+  expect(byPath["data/sales.csv"]).toMatchObject({
+    name: "sales.csv",
+    extension: "csv",
+  });
   expect(byPath["data/sales.csv"]!.size).toBeGreaterThan(0);
 });
 
@@ -103,7 +110,10 @@ test("rename moves a file within its folder, preserving content", async () => {
   const objects = new MemoryVfs();
   await seed(objects, "data/old.csv", "1,2,3");
   await renameWorkspaceFile(objects, ROOT, "data/old.csv", "new.csv");
-  expect(await readWorkspaceFile(objects, ROOT, "data/new.csv")).toEqual({ content: "1,2,3", base64: false });
+  expect(await readWorkspaceFile(objects, ROOT, "data/new.csv")).toEqual({
+    content: "1,2,3",
+    base64: false,
+  });
   expect(await readWorkspaceFile(objects, ROOT, "data/old.csv")).toBeNull();
 });
 
@@ -118,24 +128,48 @@ test("createFolder makes an empty folder visible via a hidden marker", async () 
 
 test("path traversal and absolute paths are rejected everywhere", async () => {
   const objects = new MemoryVfs();
-  await expect(readWorkspaceFile(objects, ROOT, "../auth.json")).rejects.toThrow(FilePathError);
-  await expect(readWorkspaceFile(objects, ROOT, "/etc/passwd")).rejects.toThrow(FilePathError);
-  await expect(deleteWorkspaceFile(objects, ROOT, "../../other")).rejects.toThrow(FilePathError);
-  await expect(renameWorkspaceFile(objects, ROOT, "a.txt", "../evil")).rejects.toThrow(FilePathError);
-  await expect(renameWorkspaceFile(objects, ROOT, "a.txt", "sub/evil")).rejects.toThrow(FilePathError);
-  await expect(createWorkspaceFolder(objects, ROOT, "../evil")).rejects.toThrow(FilePathError);
+  await expect(
+    readWorkspaceFile(objects, ROOT, "../auth.json"),
+  ).rejects.toThrow(FilePathError);
+  await expect(readWorkspaceFile(objects, ROOT, "/etc/passwd")).rejects.toThrow(
+    FilePathError,
+  );
+  await expect(
+    deleteWorkspaceFile(objects, ROOT, "../../other"),
+  ).rejects.toThrow(FilePathError);
+  await expect(
+    renameWorkspaceFile(objects, ROOT, "a.txt", "../evil"),
+  ).rejects.toThrow(FilePathError);
+  await expect(
+    renameWorkspaceFile(objects, ROOT, "a.txt", "sub/evil"),
+  ).rejects.toThrow(FilePathError);
+  await expect(createWorkspaceFolder(objects, ROOT, "../evil")).rejects.toThrow(
+    FilePathError,
+  );
 });
 
 test("internal dot-dirs are refused by every path op", async () => {
   const objects = new MemoryVfs();
-  await expect(readWorkspaceFile(objects, ROOT, ".houston/activity/activity.json")).rejects.toThrow(FilePathError);
-  await expect(deleteWorkspaceFile(objects, ROOT, ".agents")).rejects.toThrow(FilePathError);
-  await expect(renameWorkspaceFile(objects, ROOT, "a.txt", ".hidden")).rejects.toThrow(FilePathError);
-  await expect(createWorkspaceFolder(objects, ROOT, ".secret")).rejects.toThrow(FilePathError);
+  await expect(
+    readWorkspaceFile(objects, ROOT, ".houston/activity/activity.json"),
+  ).rejects.toThrow(FilePathError);
+  await expect(deleteWorkspaceFile(objects, ROOT, ".agents")).rejects.toThrow(
+    FilePathError,
+  );
+  await expect(
+    renameWorkspaceFile(objects, ROOT, "a.txt", ".hidden"),
+  ).rejects.toThrow(FilePathError);
+  await expect(createWorkspaceFolder(objects, ROOT, ".secret")).rejects.toThrow(
+    FilePathError,
+  );
 });
 
 function fakeRes() {
-  const state = { status: 0, headers: {} as Record<string, unknown>, body: null as Buffer | null };
+  const state = {
+    status: 0,
+    headers: {} as Record<string, unknown>,
+    body: null as Buffer | null,
+  };
   const res = {
     writeHead(code: number, h?: Record<string, unknown>) {
       state.status = code;
@@ -143,7 +177,8 @@ function fakeRes() {
       return this;
     },
     end(buf?: Buffer | string) {
-      if (buf !== undefined) state.body = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
+      if (buf !== undefined)
+        state.body = Buffer.isBuffer(buf) ? buf : Buffer.from(buf);
     },
   };
   return { res: res as never, state };
@@ -171,13 +206,18 @@ test("download serves raw bytes with the right MIME + disposition", async () => 
   expect(state.headers["Content-Type"]).toBe(
     "application/vnd.openxmlformats-officedocument.presentationml.presentation",
   );
-  expect(String(state.headers["Content-Disposition"])).toContain('attachment; filename="deck.pptx"');
+  expect(String(state.headers["Content-Disposition"])).toContain(
+    'attachment; filename="deck.pptx"',
+  );
   expect(Buffer.compare(state.body!, payload)).toBe(0);
 });
 
 test("download honors disposition=inline, 404s on missing, rejects traversal", async () => {
   const objects = new MemoryVfs();
-  await objects.writeBytes(`${ROOT}/chart.png`, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+  await objects.writeBytes(
+    `${ROOT}/chart.png`,
+    Buffer.from([0x89, 0x50, 0x4e, 0x47]),
+  );
 
   expect(mimeFor("Reporte Ventas.PDF")).toBe("application/pdf");
   expect(mimeFor("weird.bin")).toBe("application/octet-stream");
@@ -197,7 +237,9 @@ test("download honors disposition=inline, 404s on missing, rejects traversal", a
     new URLSearchParams({ path: "chart.png", disposition: "inline" }),
   );
   expect(inline.state.status).toBe(200);
-  expect(String(inline.state.headers["Content-Disposition"]).startsWith("inline;")).toBe(true);
+  expect(
+    String(inline.state.headers["Content-Disposition"]).startsWith("inline;"),
+  ).toBe(true);
 
   const missing = fakeRes();
   await handleFiles(

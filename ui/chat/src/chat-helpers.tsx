@@ -46,7 +46,8 @@ export function ToolsAndCards({
   isSpecialTool,
   renderToolResult,
 }: ToolsAndCardsProps) {
-  const allDone = isStreaming && tools.length > 0 && tools.every((t) => t.result);
+  const allDone =
+    isStreaming && tools.length > 0 && tools.every((t) => t.result);
 
   return (
     <div className="space-y-2 mb-4">

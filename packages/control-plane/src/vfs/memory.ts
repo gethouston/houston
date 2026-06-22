@@ -6,13 +6,19 @@ export class MemoryVfs implements Vfs {
   private clock = 1;
 
   async list(prefix: string): Promise<string[]> {
-    return [...this.files.keys()].filter((k) => k.startsWith(`${prefix}/`)).sort();
+    return [...this.files.keys()]
+      .filter((k) => k.startsWith(`${prefix}/`))
+      .sort();
   }
 
   async listDetailed(prefix: string): Promise<ObjectStat[]> {
     return [...this.files.entries()]
       .filter(([k]) => k.startsWith(`${prefix}/`))
-      .map(([key, v]) => ({ key, size: v.content.byteLength, updatedMs: v.updatedMs }))
+      .map(([key, v]) => ({
+        key,
+        size: v.content.byteLength,
+        updatedMs: v.updatedMs,
+      }))
       .sort((a, b) => a.key.localeCompare(b.key));
   }
 
@@ -26,7 +32,10 @@ export class MemoryVfs implements Vfs {
 
   async writeText(key: string, content: string): Promise<void> {
     assertSafeKey(key);
-    this.files.set(key, { content: Buffer.from(content, "utf8"), updatedMs: this.clock++ });
+    this.files.set(key, {
+      content: Buffer.from(content, "utf8"),
+      updatedMs: this.clock++,
+    });
   }
 
   async writeBytes(key: string, content: Buffer): Promise<void> {

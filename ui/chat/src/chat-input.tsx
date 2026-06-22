@@ -18,7 +18,10 @@ import {
   ChatInputAttachments,
 } from "./chat-input-attachments";
 import { QueuedMessageList } from "./queued-message-list";
-import type { QueuedChatMessage, QueuedMessageLabels } from "./queued-message-list";
+import type {
+  QueuedChatMessage,
+  QueuedMessageLabels,
+} from "./queued-message-list";
 import { useControllable } from "./use-file-drop-zone";
 import { useComposerAttachments } from "./use-composer-attachments";
 
@@ -131,7 +134,15 @@ export function ChatInput({
       if (!isTextControlled) setText("");
       if (!isFilesControlled) setFiles([]);
     },
-    [onSend, files, canSendEmpty, isTextControlled, isFilesControlled, setText, setFiles],
+    [
+      onSend,
+      files,
+      canSendEmpty,
+      isTextControlled,
+      isFilesControlled,
+      setText,
+      setFiles,
+    ],
   );
 
   const hasContent = canSendEmpty || text.trim().length > 0 || files.length > 0;
@@ -154,9 +165,7 @@ export function ChatInput({
 
         <PromptInput onSubmit={handleSubmit}>
           {header && (
-            <PromptInputHeader className="pb-1">
-              {header}
-            </PromptInputHeader>
+            <PromptInputHeader className="pb-1">{header}</PromptInputHeader>
           )}
 
           <ChatInputAttachButton
@@ -182,9 +191,7 @@ export function ChatInput({
         </PromptInput>
 
         {footer && (
-          <div className="flex items-center px-2.5 pt-1">
-            {footer}
-          </div>
+          <div className="flex items-center px-2.5 pt-1">{footer}</div>
         )}
       </div>
     </div>

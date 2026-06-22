@@ -58,7 +58,12 @@ export interface RoutineUpdate {
   integrations?: string[];
 }
 
-export type RoutineRunStatus = "running" | "silent" | "surfaced" | "error" | "cancelled";
+export type RoutineRunStatus =
+  | "running"
+  | "silent"
+  | "surfaced"
+  | "error"
+  | "cancelled";
 
 export interface RoutineRun {
   id: string;

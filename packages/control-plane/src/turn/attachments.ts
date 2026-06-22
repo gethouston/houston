@@ -71,7 +71,8 @@ function relPath(scopeId: string, filename: string): string {
   return `${ATTACHMENTS_DIR}/${scopeId}/${filename}`;
 }
 
-const dirKey = (root: string, scopeId: string) => `${root}/${ATTACHMENTS_DIR}/${scopeId}`;
+const dirKey = (root: string, scopeId: string) =>
+  `${root}/${ATTACHMENTS_DIR}/${scopeId}`;
 const fileKey = (root: string, rel: string) => `${root}/${rel}`;
 
 /**
@@ -118,13 +119,20 @@ function dedupe(name: string, used: Set<string>): string {
 }
 
 /** Drop every file stored for a scope (the whole `.attachments/<scopeId>` dir). */
-export async function deleteAttachments(vfs: Vfs, root: string, scopeId: string): Promise<void> {
+export async function deleteAttachments(
+  vfs: Vfs,
+  root: string,
+  scopeId: string,
+): Promise<void> {
   safeSegment(scopeId, "scopeId");
   await vfs.deletePrefix(dirKey(root, scopeId));
 }
 
 /** Parse + validate the upload body. Throws AttachmentError (→ 4xx) on any malformed input. */
-function parseUploadBody(body: Record<string, unknown>): { scopeId: string; files: UploadFile[] } {
+function parseUploadBody(body: Record<string, unknown>): {
+  scopeId: string;
+  files: UploadFile[];
+} {
   const scopeId = body.scopeId;
   if (typeof scopeId !== "string" || scopeId === "") {
     throw new AttachmentError(400, "missing 'scopeId'");
@@ -136,12 +144,18 @@ function parseUploadBody(body: Record<string, unknown>): { scopeId: string; file
   const files: UploadFile[] = body.files.map((raw, i) => {
     const f = raw as { name?: unknown; contentBase64?: unknown };
     if (typeof f.name !== "string" || typeof f.contentBase64 !== "string") {
-      throw new AttachmentError(400, `file[${i}] needs string 'name' and 'contentBase64'`);
+      throw new AttachmentError(
+        400,
+        `file[${i}] needs string 'name' and 'contentBase64'`,
+      );
     }
     // base64 is ~4/3 the byte size; estimate to fail oversized uploads loudly.
     total += Math.floor((f.contentBase64.length * 3) / 4);
     if (total > MAX_UPLOAD_BYTES) {
-      throw new AttachmentError(413, "attachments exceed the upload size limit");
+      throw new AttachmentError(
+        413,
+        "attachments exceed the upload size limit",
+      );
     }
     return { name: f.name, contentBase64: f.contentBase64 };
   });

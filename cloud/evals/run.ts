@@ -17,7 +17,14 @@
  * eval-results.json (override with EVAL_OUT). Exit 1 if any case fails.
  */
 import { CASES } from "./cases";
-import { createAgent, deleteAgent, downloadFile, listFiles, runTurn, type CpClient } from "./client";
+import {
+  createAgent,
+  deleteAgent,
+  downloadFile,
+  listFiles,
+  runTurn,
+  type CpClient,
+} from "./client";
 import type { Check } from "./validators";
 
 interface CaseResult {
@@ -40,10 +47,16 @@ if (!cp.baseUrl || !cp.token) {
   console.error("EVAL_CP_URL and EVAL_TOKEN are required");
   process.exit(2);
 }
-const only = (process.env.EVAL_ONLY ?? "").split(",").map((s) => s.trim()).filter(Boolean);
+const only = (process.env.EVAL_ONLY ?? "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
 const outPath = process.env.EVAL_OUT ?? "eval-results.json";
 
-async function runCase(c: (typeof CASES)[number], stamp: string): Promise<CaseResult> {
+async function runCase(
+  c: (typeof CASES)[number],
+  stamp: string,
+): Promise<CaseResult> {
   const result: CaseResult = {
     id: c.id,
     pass: false,
@@ -59,7 +72,13 @@ async function runCase(c: (typeof CASES)[number], stamp: string): Promise<CaseRe
     const agent = await createAgent(cp, `eval-${c.id}-${stamp}`);
     agentId = agent.id;
     const started = Date.now();
-    const turn = await runTurn(cp, agent.id, `eval-${c.id}`, c.prompt, c.timeoutSec);
+    const turn = await runTurn(
+      cp,
+      agent.id,
+      `eval-${c.id}`,
+      c.prompt,
+      c.timeoutSec,
+    );
     result.turnSeconds = Math.round((Date.now() - started) / 1000);
     result.turnOutcome = turn.outcome;
     result.events = turn.events;
@@ -96,7 +115,9 @@ async function runCase(c: (typeof CASES)[number], stamp: string): Promise<CaseRe
     if (agentId) {
       // Cleanup is part of the eval: orphaned eval agents are cost + clutter.
       await deleteAgent(cp, agentId).catch((err) => {
-        console.error(`  cleanup failed for ${agentId}: ${err instanceof Error ? err.message : err}`);
+        console.error(
+          `  cleanup failed for ${agentId}: ${err instanceof Error ? err.message : err}`,
+        );
         result.error = result.error ?? `cleanup failed: ${String(err)}`;
       });
     }
@@ -113,9 +134,13 @@ for (const c of selected) {
   const r = await runCase(c, stamp);
   results.push(r);
   const verdict = r.pass ? "PASS" : "FAIL";
-  console.log(`  ${verdict} — turn=${r.turnOutcome} in ${r.turnSeconds}s, artifact=${r.artifactBytes}b`);
+  console.log(
+    `  ${verdict} — turn=${r.turnOutcome} in ${r.turnSeconds}s, artifact=${r.artifactBytes}b`,
+  );
   for (const ch of r.checks) {
-    console.log(`    ${ch.pass ? "✓" : "✗"} ${ch.name}${ch.detail ? ` (${ch.detail})` : ""}`);
+    console.log(
+      `    ${ch.pass ? "✓" : "✗"} ${ch.name}${ch.detail ? ` (${ch.detail})` : ""}`,
+    );
   }
   if (r.error) console.log(`    error: ${r.error}`);
   console.log("");

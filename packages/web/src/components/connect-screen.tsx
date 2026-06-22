@@ -152,7 +152,9 @@ export function ConnectScreen({
 
         <p style={styles.hint}>
           {t.hint}{" "}
-          <code style={styles.code}>HOUSTON_ENGINE_LISTENING port=… token=…</code>
+          <code style={styles.code}>
+            HOUSTON_ENGINE_LISTENING port=… token=…
+          </code>
         </p>
       </form>
     </div>

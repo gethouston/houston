@@ -23,14 +23,18 @@ export function useActivity(agentPath: string | undefined) {
 export function useCreateActivity(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ title, description, agent }: {
+    mutationFn: ({
+      title,
+      description,
+      agent,
+    }: {
       title: string;
       description?: string;
       agent?: string;
-    }) =>
-      tauriActivity.create(agentPath!, title, description, agent),
+    }) => tauriActivity.create(agentPath!, title, description, agent),
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
     },
   });
 }
@@ -38,10 +42,16 @@ export function useCreateActivity(agentPath: string | undefined) {
 export function useUpdateActivity(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ activityId, update }: { activityId: string; update: { status?: string; title?: string; description?: string } }) =>
-      tauriActivity.update(agentPath!, activityId, update),
+    mutationFn: ({
+      activityId,
+      update,
+    }: {
+      activityId: string;
+      update: { status?: string; title?: string; description?: string };
+    }) => tauriActivity.update(agentPath!, activityId, update),
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
     },
   });
 }
@@ -57,7 +67,8 @@ export function useDeleteActivity(agentPath: string | undefined) {
       useDraftStore.getState().clearDraft(`activity-${activityId}`);
     },
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
     },
   });
 }
@@ -66,10 +77,16 @@ export function useDeleteActivity(agentPath: string | undefined) {
 export function useBulkUpdateActivity(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ ids, update }: { ids: string[]; update: { status?: string } }) =>
-      tauriActivity.bulkUpdate(agentPath!, ids, update),
+    mutationFn: ({
+      ids,
+      update,
+    }: {
+      ids: string[];
+      update: { status?: string };
+    }) => tauriActivity.bulkUpdate(agentPath!, ids, update),
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
     },
   });
 }
@@ -89,7 +106,8 @@ export function useBulkDeleteActivity(agentPath: string | undefined) {
       }
     },
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
     },
   });
 }

@@ -5,8 +5,8 @@
  * snapping. Wrap each conditional field in an `<AnimatePresence>`. Values per
  * design-system.md.
  */
-import type { ReactNode } from "react"
-import { motion } from "framer-motion"
+import type { ReactNode } from "react";
+import { motion } from "framer-motion";
 
 export function Reveal({ children }: { children: ReactNode }) {
   return (
@@ -19,5 +19,5 @@ export function Reveal({ children }: { children: ReactNode }) {
     >
       {children}
     </motion.div>
-  )
+  );
 }

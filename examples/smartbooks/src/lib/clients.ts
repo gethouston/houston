@@ -89,7 +89,10 @@ export async function listClients(agentPath: string): Promise<Client[]> {
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function createClient(agentPath: string, name: string): Promise<Client> {
+export async function createClient(
+  agentPath: string,
+  name: string,
+): Promise<Client> {
   const slug = slugify(name);
   const client: Client = {
     id: crypto.randomUUID(),
@@ -108,7 +111,10 @@ export async function createClient(agentPath: string, name: string): Promise<Cli
 }
 
 /** List statement PDFs uploaded for a client. */
-export function listStatements(all: ProjectFile[], slug: string): ProjectFile[] {
+export function listStatements(
+  all: ProjectFile[],
+  slug: string,
+): ProjectFile[] {
   const prefix = `${statementsFolder(slug)}/`;
   return all
     .filter((f) => !f.is_directory && f.path.startsWith(prefix))
@@ -121,10 +127,7 @@ export async function uploadStatement(
   file: File,
 ): Promise<ProjectFile> {
   const b64 = await fileToBase64(file);
-  const stamp = new Date()
-    .toISOString()
-    .replace(/[:.]/g, "-")
-    .slice(0, 19);
+  const stamp = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
   const target = `${statementsFolder(slug)}/${stamp}-${file.name}`;
   return await getClient().importFileBytes(agentPath, target, b64);
 }
@@ -135,7 +138,10 @@ export async function loadWorkbook(
   slug: string,
 ): Promise<Workbook | null> {
   try {
-    const content = await getClient().readProjectFile(agentPath, workbookPath(slug));
+    const content = await getClient().readProjectFile(
+      agentPath,
+      workbookPath(slug),
+    );
     return parseCsv(content);
   } catch {
     return null;
@@ -143,7 +149,10 @@ export async function loadWorkbook(
 }
 
 /** Build the prompt that processes a newly-uploaded statement into the workbook. */
-export function buildProcessPrompt(client: Client, statementPath: string): string {
+export function buildProcessPrompt(
+  client: Client,
+  statementPath: string,
+): string {
   // Strip the timestamp prefix the UI adds on upload so the `source`
   // column reflects the original filename the user recognizes.
   const fileName = statementPath.split("/").pop() ?? statementPath;
@@ -165,7 +174,12 @@ export function parseCsv(text: string): Workbook {
   if (lines.length === 0) return { columns: [], rows: [] };
   const columns = lines[0];
   const rows: Transaction[] = lines.slice(1).map((cells) => {
-    const row: Transaction = { date: "", description: "", amount: "", category: "" };
+    const row: Transaction = {
+      date: "",
+      description: "",
+      amount: "",
+      category: "",
+    };
     columns.forEach((col, i) => {
       row[col] = cells[i] ?? "";
     });

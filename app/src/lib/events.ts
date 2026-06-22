@@ -33,7 +33,9 @@ function toHandler<T>(handler: (ev: T) => void) {
  * `EngineWebSocket` de-duplicates subscriptions, so the firehose topic is
  * added once regardless of how many UI hooks mount.
  */
-export function subscribeHoustonEvents(handler: (ev: HoustonEvent) => void): Unsub {
+export function subscribeHoustonEvents(
+  handler: (ev: HoustonEvent) => void,
+): Unsub {
   const ws = getEngineWs();
   ws.subscribe([topics.firehose]);
   return ws.onEvent(toHandler(handler));
@@ -43,7 +45,10 @@ export function subscribeHoustonEvents(handler: (ev: HoustonEvent) => void): Uns
  * Listen to a raw Tauri event. Use for events that have no engine counterpart:
  * - `app-activated` (OS window resume)
  */
-export function listenOsEvent<T>(event: string, handler: (ev: T) => void): Unsub {
+export function listenOsEvent<T>(
+  event: string,
+  handler: (ev: T) => void,
+): Unsub {
   let off: Unsub | undefined;
   legacyListen<T>(event, (tauriEv) => handler(tauriEv.payload))
     .then((fn) => {

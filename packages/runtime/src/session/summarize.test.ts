@@ -3,7 +3,10 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
-import { registerFauxProvider, fauxAssistantMessage } from "@earendil-works/pi-ai";
+import {
+  registerFauxProvider,
+  fauxAssistantMessage,
+} from "@earendil-works/pi-ai";
 import { buildExcerpt, generateTitle, titleFromText } from "./summarize";
 
 /**
@@ -36,10 +39,14 @@ test("generateTitle runs a faux turn and returns a single trimmed line", async (
   const faux = registerFauxProvider({
     provider: "faux",
     api: "faux",
-    models: [{ id: "faux-1", name: "Faux 1", contextWindow: 200000, maxTokens: 8192 }],
+    models: [
+      { id: "faux-1", name: "Faux 1", contextWindow: 200000, maxTokens: 8192 },
+    ],
   });
   faux.setResponses([
-    fauxAssistantMessage("  Quarterly Sales Deck \nignored second line", { stopReason: "stop" }),
+    fauxAssistantMessage("  Quarterly Sales Deck \nignored second line", {
+      stopReason: "stop",
+    }),
   ]);
 
   const authStorage = AuthStorage.inMemory();

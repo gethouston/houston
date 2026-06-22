@@ -16,7 +16,8 @@ export function useSaveInstructions(agentPath: string | undefined) {
     mutationFn: ({ name, content }: { name: string; content: string }) =>
       tauriAgent.writeFile(agentPath!, name, content),
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.instructions(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.instructions(agentPath) });
     },
   });
 }

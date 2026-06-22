@@ -13,8 +13,13 @@ export interface AccountDeps {
 }
 
 /** Map the tenancy-store workspace to the wire shape (UI never sees slug/runtime). */
-async function toWire(deps: AccountDeps, ws: Workspace): Promise<WireWorkspace> {
-  const locale = deps.vfs ? await getPreference(deps.vfs, ws.id, "locale") : null;
+async function toWire(
+  deps: AccountDeps,
+  ws: Workspace,
+): Promise<WireWorkspace> {
+  const locale = deps.vfs
+    ? await getPreference(deps.vfs, ws.id, "locale")
+    : null;
   return {
     id: ws.id,
     name: ws.name,
@@ -53,11 +58,18 @@ export async function handleAccount(
   if (wsPatch && method === "PATCH") {
     const wsId = wsPatch[1]!;
     const ws = await deps.store.getWorkspace(wsId);
-    if (!ws || ws.ownerUserId !== userId) return reject(res, ws ? 403 : 404), true;
-    if (!deps.vfs) return json(res, 503, { error: "preferences not configured" }), true;
+    if (!ws || ws.ownerUserId !== userId)
+      return reject(res, ws ? 403 : 404), true;
+    if (!deps.vfs)
+      return json(res, 503, { error: "preferences not configured" }), true;
     const body = await readJson(req);
     if ("locale" in body) {
-      await setPreference(deps.vfs, wsId, "locale", body.locale === null ? null : String(body.locale));
+      await setPreference(
+        deps.vfs,
+        wsId,
+        "locale",
+        body.locale === null ? null : String(body.locale),
+      );
     }
     json(res, 200, await toWire(deps, ws));
     return true;
@@ -67,15 +79,21 @@ export async function handleAccount(
   const pref = path.match(/^\/v1\/preferences\/([^/]+)$/);
   if (pref) {
     const key = decodeURIComponent(pref[1]!);
-    if (!deps.vfs) return json(res, 503, { error: "preferences not configured" }), true;
+    if (!deps.vfs)
+      return json(res, 503, { error: "preferences not configured" }), true;
     const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
     if (method === "GET") {
-      json(res, 200, { value: (await loadPreferences(deps.vfs, ws.id))[key] ?? null });
+      json(res, 200, {
+        value: (await loadPreferences(deps.vfs, ws.id))[key] ?? null,
+      });
       return true;
     }
     if (method === "PUT") {
       const body = await readJson(req);
-      const value = body.value === null || body.value === undefined ? null : String(body.value);
+      const value =
+        body.value === null || body.value === undefined
+          ? null
+          : String(body.value);
       await setPreference(deps.vfs, ws.id, key, value);
       json(res, 200, { value });
       return true;
@@ -86,4 +104,6 @@ export async function handleAccount(
 }
 
 const reject = (res: ServerResponse, status: number) =>
-  json(res, status, { error: status === 404 ? "workspace not found" : "forbidden" });
+  json(res, status, {
+    error: status === 404 ? "workspace not found" : "forbidden",
+  });

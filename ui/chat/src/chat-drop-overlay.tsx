@@ -18,16 +18,11 @@ export function ChatDropOverlay({
       aria-hidden="true"
     >
       <div className="flex w-full max-w-sm -translate-y-12 flex-col items-center gap-3 px-6 text-center">
-        <FilesIcon
-          className="size-8 text-muted-foreground"
-          strokeWidth={1.5}
-        />
+        <FilesIcon className="size-8 text-muted-foreground" strokeWidth={1.5} />
         <div className="text-2xl font-semibold tracking-tight text-foreground">
           {title}
         </div>
-        <p className="text-sm/relaxed text-muted-foreground">
-          {description}
-        </p>
+        <p className="text-sm/relaxed text-muted-foreground">{description}</p>
       </div>
     </div>
   );

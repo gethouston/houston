@@ -38,8 +38,22 @@ export function App() {
             <OfflineBanner />
             <InvalidationPump />
             <Routes>
-              <Route path="/" element={<RequirePaired><MissionControl /></RequirePaired>} />
-              <Route path="/session/:sessionKey" element={<RequirePaired><ChatView /></RequirePaired>} />
+              <Route
+                path="/"
+                element={
+                  <RequirePaired>
+                    <MissionControl />
+                  </RequirePaired>
+                }
+              />
+              <Route
+                path="/session/:sessionKey"
+                element={
+                  <RequirePaired>
+                    <ChatView />
+                  </RequirePaired>
+                }
+              />
               <Route path="/pair" element={<PairScreen />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>

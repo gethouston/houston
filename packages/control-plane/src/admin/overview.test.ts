@@ -12,12 +12,25 @@ const RATES: AutopilotRates = {
 };
 
 function ws(id: string, owner: string, slug: string): Workspace {
-  return { id, ownerUserId: owner, kind: "personal", runtime: "gke", name: "Personal", slug, createdAt: 1 } as const;
+  return {
+    id,
+    ownerUserId: owner,
+    kind: "personal",
+    runtime: "gke",
+    name: "Personal",
+    slug,
+    createdAt: 1,
+  } as const;
 }
 function agent(id: string, workspaceId: string, name: string): Agent {
   return { id, workspaceId, name, createdAt: 1 };
 }
-function pod(agentId: string, workspaceId: string, ns: string, phase: string): PodInfo {
+function pod(
+  agentId: string,
+  workspaceId: string,
+  ns: string,
+  phase: string,
+): PodInfo {
   return {
     workspaceId,
     agentId,
@@ -58,10 +71,16 @@ test("buildOverview joins agents to their pods and derives per-agent state", () 
 
   expect(ov.totals.users).toBe(2);
   expect(ov.totals.agents).toBe(3);
-  expect(ov.totals.pods).toEqual({ running: 1, pending: 0, other: 0, total: 1 });
+  expect(ov.totals.pods).toEqual({
+    running: 1,
+    pending: 0,
+    other: 0,
+    total: 1,
+  });
 
   const alice = ov.users.find((u) => u.userId === "alice")!;
-  const stateOf = (name: string) => alice.agents.find((a) => a.name === name)!.state;
+  const stateOf = (name: string) =>
+    alice.agents.find((a) => a.name === name)!.state;
   expect(stateOf("Sales")).toBe("running");
   expect(stateOf("HR")).toBe("asleep"); // PVC exists, no pod
   const bob = ov.users.find((u) => u.userId === "bob")!;
@@ -70,7 +89,11 @@ test("buildOverview joins agents to their pods and derives per-agent state", () 
   // Alice has one running agent; its pod view carries the requests.
   expect(alice.runningAgents).toBe(1);
   const sales = alice.agents.find((a) => a.name === "Sales")!;
-  expect(sales.pod).toMatchObject({ phase: "Running", cpuRequestCores: 0.25, memRequestMiB: 512 });
+  expect(sales.pod).toMatchObject({
+    phase: "Running",
+    cpuRequestCores: 0.25,
+    memRequestMiB: 512,
+  });
   expect(sales.storageGiB).toBe(10);
 });
 
@@ -79,7 +102,10 @@ test("buildOverview surfaces orphan pods/volumes that match no known agent", () 
   const agents = [agent("a1", "w1", "Sales")];
   const snapshot: ClusterSnapshot = {
     // a leaked pod for a deleted agent + a labelless pod
-    pods: [pod("ghost", "w1", "ws-alice", "Running"), pod("a1", "w1", "ws-alice", "Running")],
+    pods: [
+      pod("ghost", "w1", "ws-alice", "Running"),
+      pod("a1", "w1", "ws-alice", "Running"),
+    ],
     volumes: [vol("ghost", "w1", "ws-alice")],
   };
   const ov = buildOverview(workspaces, agents, snapshot, RATES, 1);
@@ -92,9 +118,17 @@ test("buildOverview surfaces orphan pods/volumes that match no known agent", () 
 
 test("buildOverview sorts users by monthly cost desc", () => {
   const workspaces = [ws("w1", "cheap", "cheap"), ws("w2", "pricey", "pricey")];
-  const agents = [agent("a1", "w1", "x"), agent("a2", "w2", "y"), agent("a3", "w2", "z")];
+  const agents = [
+    agent("a1", "w1", "x"),
+    agent("a2", "w2", "y"),
+    agent("a3", "w2", "z"),
+  ];
   const snapshot: ClusterSnapshot = {
-    pods: [pod("a1", "w1", "ws-cheap", "Running"), pod("a2", "w2", "ws-pricey", "Running"), pod("a3", "w2", "ws-pricey", "Running")],
+    pods: [
+      pod("a1", "w1", "ws-cheap", "Running"),
+      pod("a2", "w2", "ws-pricey", "Running"),
+      pod("a3", "w2", "ws-pricey", "Running"),
+    ],
     volumes: [],
   };
   const ov = buildOverview(workspaces, agents, snapshot, RATES, 1);
@@ -104,11 +138,21 @@ test("buildOverview sorts users by monthly cost desc", () => {
 test("buildBillingReport maps actuals to users by namespace and flags status", () => {
   const workspaces = [ws("w1", "alice", "alice")];
   const agents = [agent("a1", "w1", "Sales")];
-  const snapshot: ClusterSnapshot = { pods: [pod("a1", "w1", "ws-alice", "Running")], volumes: [] };
+  const snapshot: ClusterSnapshot = {
+    pods: [pod("a1", "w1", "ws-alice", "Running")],
+    volumes: [],
+  };
   const ov = buildOverview(workspaces, agents, snapshot, RATES, 1);
 
   // not configured
-  const none = buildBillingReport(ov, RATES, null, "not-configured", undefined, 5);
+  const none = buildBillingReport(
+    ov,
+    RATES,
+    null,
+    "not-configured",
+    undefined,
+    5,
+  );
   expect(none.actuals).toBeNull();
   expect(none.actualsStatus).toBe("not-configured");
   expect(none.estimate.byUser[0]!.actualUsd).toBeNull();
@@ -135,7 +179,14 @@ test("buildBillingReport maps actuals to users by namespace and flags status", (
   expect(withActuals.estimate.byUser[0]!.actualUsd).toBe(9.99);
 
   // error path carries the message
-  const errored = buildBillingReport(ov, RATES, null, "error", "permission denied", 5);
+  const errored = buildBillingReport(
+    ov,
+    RATES,
+    null,
+    "error",
+    "permission denied",
+    5,
+  );
   expect(errored.actualsStatus).toBe("error");
   expect(errored.actualsError).toBe("permission denied");
 });

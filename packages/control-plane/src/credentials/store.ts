@@ -17,7 +17,10 @@ export class MemoryCredentialStore implements CredentialStore {
   private key(workspaceId: string, provider: string): string {
     return `${workspaceId}:${provider}`;
   }
-  async get(workspaceId: WorkspaceId, provider: string): Promise<WorkspaceCredential | null> {
+  async get(
+    workspaceId: WorkspaceId,
+    provider: string,
+  ): Promise<WorkspaceCredential | null> {
     return this.creds.get(this.key(workspaceId, provider)) ?? null;
   }
   async put(cred: WorkspaceCredential): Promise<void> {
@@ -40,7 +43,10 @@ interface CredRow {
 export class PgCredentialStore implements CredentialStore {
   constructor(private readonly pool: Pool) {}
 
-  async get(workspaceId: WorkspaceId, provider: string): Promise<WorkspaceCredential | null> {
+  async get(
+    workspaceId: WorkspaceId,
+    provider: string,
+  ): Promise<WorkspaceCredential | null> {
     const res = await this.pool.query<CredRow>(
       `SELECT workspace_id, provider, access_token, refresh_token, account_id, expires_at
          FROM workspace_credentials
@@ -71,7 +77,15 @@ export class PgCredentialStore implements CredentialStore {
          account_id    = EXCLUDED.account_id,
          expires_at    = EXCLUDED.expires_at,
          updated_at    = EXCLUDED.updated_at`,
-      [c.workspaceId, c.provider, c.accessToken, c.refreshToken, c.accountId ?? null, c.expiresAt, Date.now()],
+      [
+        c.workspaceId,
+        c.provider,
+        c.accessToken,
+        c.refreshToken,
+        c.accountId ?? null,
+        c.expiresAt,
+        Date.now(),
+      ],
     );
   }
 

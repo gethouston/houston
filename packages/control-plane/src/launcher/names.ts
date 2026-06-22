@@ -26,7 +26,8 @@ function dnsLabel(raw: string): string {
     .replace(/-+/g, "-")
     .replace(/^-+|-+$/g, "");
   const trimmed = cleaned.slice(0, 63).replace(/-+$/g, "");
-  if (!trimmed) throw new Error(`cannot derive a DNS label from ${JSON.stringify(raw)}`);
+  if (!trimmed)
+    throw new Error(`cannot derive a DNS label from ${JSON.stringify(raw)}`);
   return trimmed;
 }
 

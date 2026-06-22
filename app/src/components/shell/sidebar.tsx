@@ -40,10 +40,8 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const items = buildAgentSidebarItems({
     agents: sorted,
     summaries: activitySummaries,
-    runningLabel: (count) =>
-      t("shell:sidebar.runningCount", { count }),
-    needsYouLabel: (count) =>
-      t("shell:sidebar.needsYouCount", { count }),
+    runningLabel: (count) => t("shell:sidebar.runningCount", { count }),
+    needsYouLabel: (count) => t("shell:sidebar.needsYouCount", { count }),
     onChangeColor: (agentId, color) => {
       void handleChangeColor(agentId, color);
     },
@@ -63,7 +61,6 @@ export function Sidebar({ children }: { children: ReactNode }) {
   const handleCreateWorkspace = () => {
     setCreateWsOpen(true);
   };
-
 
   const handleSelectAgent = (agentId: string) => {
     const agent = agents.find((a) => a.id === agentId);
@@ -94,68 +91,75 @@ export function Sidebar({ children }: { children: ReactNode }) {
 
   return (
     <>
-    <ConfirmDialog
-      open={pendingDeleteId !== null}
-      onOpenChange={(open) => { if (!open) setPendingDeleteId(null); }}
-      title={t("shell:agentDelete.title")}
-      description={t("shell:agentDelete.description")}
-      confirmLabel={t("common:actions.delete")}
-      onConfirm={confirmDelete}
-    />
-    <CreateWorkspaceDialog open={createWsOpen} onOpenChange={setCreateWsOpen} />
-    <div className="flex h-full flex-1 min-w-0">
-      <AppSidebar
-        header={
-          <WorkspaceSwitcher
-            workspaces={workspaces}
-            currentId={currentWorkspace?.id ?? null}
-            currentName={currentWorkspace?.name ?? t("shell:sidebar.selectWorkspace")}
-            onSwitch={handleWorkspaceSwitch}
-            onCreate={handleCreateWorkspace}
-          />
-        }
-        navItems={[
-          {
-            id: "dashboard",
-            label: t("shell:sidebar.missionControl"),
-            icon: <LayoutDashboard className="h-4 w-4" />,
-            onClick: () => setViewMode("dashboard"),
-            dataAttrs: { "data-tour-target": "nav-dashboard" },
-          },
-          {
-            id: "settings",
-            label: t("shell:sidebar.settings"),
-            icon: <Settings className="h-4 w-4" />,
-            onClick: () => setViewMode("settings"),
-          },
-        ]}
-        activeNavId={isTopLevel ? viewMode : undefined}
-        sectionLabel={t("shell:sidebar.yourAgents")}
-        items={items}
-        selectedId={!isTopLevel ? currentAgent?.id ?? null : null}
-        onSelect={handleSelectAgent}
-        onAdd={() => setDialogOpen(true)}
-        addItemDataAttrs={{ "data-tour-target": "newAgent" }}
-        onRename={handleRename}
-        onDelete={handleDelete}
-        labels={{
-          addItem: t("shell:sidebar.addAgent"),
-          moreOptions: t("shell:sidebar.agentMenu"),
-          renameItem: t("common:actions.rename"),
-          deleteItem: t("common:actions.delete"),
+      <ConfirmDialog
+        open={pendingDeleteId !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingDeleteId(null);
         }}
-        footer={
-          <div className="flex flex-col">
-            <UserMenu />
-            <UpdateChecker />
+        title={t("shell:agentDelete.title")}
+        description={t("shell:agentDelete.description")}
+        confirmLabel={t("common:actions.delete")}
+        onConfirm={confirmDelete}
+      />
+      <CreateWorkspaceDialog
+        open={createWsOpen}
+        onOpenChange={setCreateWsOpen}
+      />
+      <div className="flex h-full flex-1 min-w-0">
+        <AppSidebar
+          header={
+            <WorkspaceSwitcher
+              workspaces={workspaces}
+              currentId={currentWorkspace?.id ?? null}
+              currentName={
+                currentWorkspace?.name ?? t("shell:sidebar.selectWorkspace")
+              }
+              onSwitch={handleWorkspaceSwitch}
+              onCreate={handleCreateWorkspace}
+            />
+          }
+          navItems={[
+            {
+              id: "dashboard",
+              label: t("shell:sidebar.missionControl"),
+              icon: <LayoutDashboard className="h-4 w-4" />,
+              onClick: () => setViewMode("dashboard"),
+              dataAttrs: { "data-tour-target": "nav-dashboard" },
+            },
+            {
+              id: "settings",
+              label: t("shell:sidebar.settings"),
+              icon: <Settings className="h-4 w-4" />,
+              onClick: () => setViewMode("settings"),
+            },
+          ]}
+          activeNavId={isTopLevel ? viewMode : undefined}
+          sectionLabel={t("shell:sidebar.yourAgents")}
+          items={items}
+          selectedId={!isTopLevel ? (currentAgent?.id ?? null) : null}
+          onSelect={handleSelectAgent}
+          onAdd={() => setDialogOpen(true)}
+          addItemDataAttrs={{ "data-tour-target": "newAgent" }}
+          onRename={handleRename}
+          onDelete={handleDelete}
+          labels={{
+            addItem: t("shell:sidebar.addAgent"),
+            moreOptions: t("shell:sidebar.agentMenu"),
+            renameItem: t("common:actions.rename"),
+            deleteItem: t("common:actions.delete"),
+          }}
+          footer={
+            <div className="flex flex-col">
+              <UserMenu />
+              <UpdateChecker />
+            </div>
+          }
+        >
+          <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
+            {children}
           </div>
-        }
-      >
-        <div className="flex-1 min-w-0 h-full overflow-hidden flex flex-col">
-          {children}
-        </div>
-      </AppSidebar>
-    </div>
+        </AppSidebar>
+      </div>
     </>
   );
 }

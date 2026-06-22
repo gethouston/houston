@@ -89,7 +89,8 @@ export function NamingStep({
       <div className="flex items-center gap-2 mb-6">
         {AGENT_COLORS.map((c) => {
           const hex = colorHex(c);
-          const isSelected = color === c.id || color === c.light || color === c.dark;
+          const isSelected =
+            color === c.id || color === c.light || color === c.dark;
           return (
             <button
               key={c.id}
@@ -103,9 +104,7 @@ export function NamingStep({
               )}
               style={{ backgroundColor: hex }}
             >
-              {isSelected && (
-                <Check className="h-3.5 w-3.5 text-white" />
-              )}
+              {isSelected && <Check className="h-3.5 w-3.5 text-white" />}
             </button>
           );
         })}
@@ -126,7 +125,9 @@ export function NamingStep({
             {existingPath ? (
               <div className="flex items-center gap-2 text-xs text-muted-foreground bg-secondary rounded-full px-3 py-1.5">
                 <FolderOpen className="size-3" />
-                <span className="truncate max-w-[200px]">{existingPath.split("/").pop()}</span>
+                <span className="truncate max-w-[200px]">
+                  {existingPath.split("/").pop()}
+                </span>
                 <button
                   type="button"
                   onClick={() => onExistingPathChange(null)}
@@ -144,7 +145,8 @@ export function NamingStep({
                   if (picked) {
                     onExistingPathChange(picked);
                     if (!name.trim()) {
-                      const folderName = picked.replace(/\/$/, "").split("/").pop() ?? "";
+                      const folderName =
+                        picked.replace(/\/$/, "").split("/").pop() ?? "";
                       onNameChange(folderName);
                     }
                   }
@@ -196,7 +198,9 @@ export function InlineModelSelector({
 
   const loadStatuses = useCallback(async () => {
     const entries = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      PROVIDERS.map(
+        async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
+      ),
     );
     setStatuses(Object.fromEntries(entries));
   }, []);
@@ -222,17 +226,27 @@ export function InlineModelSelector({
       >
         <ProviderIcon providerId={provider} className="size-5 shrink-0" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium">{currentModel?.label ?? model}</div>
-          <div className="text-xs text-muted-foreground">{currentProvider?.name}</div>
+          <div className="text-sm font-medium">
+            {currentModel?.label ?? model}
+          </div>
+          <div className="text-xs text-muted-foreground">
+            {currentProvider?.name}
+          </div>
         </div>
-        <ChevronDown className={cn("size-4 text-muted-foreground transition-transform", open && "rotate-180")} />
+        <ChevronDown
+          className={cn(
+            "size-4 text-muted-foreground transition-transform",
+            open && "rotate-180",
+          )}
+        />
       </button>
 
       {open && (
         <div className="mt-2 max-h-72 overflow-y-auto overscroll-contain rounded-xl border border-border bg-card p-1 space-y-0.5">
           {PROVIDERS.map((prov) => {
             const status = statuses[prov.id];
-            const connected = (status?.cli_installed && status?.authenticated) ?? false;
+            const connected =
+              (status?.cli_installed && status?.authenticated) ?? false;
             if (!connected && prov.id !== provider) return null;
             return (
               <div key={prov.id}>
@@ -240,7 +254,9 @@ export function InlineModelSelector({
                   <ProviderIcon providerId={prov.id} className="size-3.5" />
                   {prov.name}
                   {!connected && (
-                    <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("card.notConnected")}</span>
+                    <span className="text-[10px] text-muted-foreground/60 ml-auto">
+                      {t("card.notConnected")}
+                    </span>
                   )}
                 </div>
                 {prov.models.map((m) => {
@@ -261,11 +277,15 @@ export function InlineModelSelector({
                       )}
                     >
                       <div className="w-4 shrink-0 mt-0.5 flex justify-center">
-                        {isActive && <Check className="h-3.5 w-3.5 text-foreground" />}
+                        {isActive && (
+                          <Check className="h-3.5 w-3.5 text-foreground" />
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <div className="text-sm">{m.label}</div>
-                        <div className="text-xs text-muted-foreground leading-snug">{m.description}</div>
+                        <div className="text-xs text-muted-foreground leading-snug">
+                          {m.description}
+                        </div>
                       </div>
                     </button>
                   );
@@ -279,7 +299,13 @@ export function InlineModelSelector({
   );
 }
 
-function ProviderIcon({ providerId, className }: { providerId: string; className?: string }) {
+function ProviderIcon({
+  providerId,
+  className,
+}: {
+  providerId: string;
+  className?: string;
+}) {
   if (providerId === "anthropic") {
     return (
       <svg viewBox="0 0 24 24" className={className} fill="currentColor">

@@ -15,7 +15,12 @@ import {
  * (the real BunRuntimeSpawner is exercised by an integration run, not here).
  */
 
-const agent = (id: string): Agent => ({ id, workspaceId: "w1", name: id, createdAt: 0 });
+const agent = (id: string): Agent => ({
+  id,
+  workspaceId: "w1",
+  name: id,
+  createdAt: 0,
+});
 
 /** Records spawns + kills; hands back sequential ports. */
 function recordingSpawner() {
@@ -33,7 +38,10 @@ function recordingSpawner() {
   return { spawner, spawns, killed };
 }
 
-const opts = (spawner: RuntimeSpawner, over: Partial<ProcessLauncherOptions> = {}): ProcessLauncherOptions => ({
+const opts = (
+  spawner: RuntimeSpawner,
+  over: Partial<ProcessLauncherOptions> = {},
+): ProcessLauncherOptions => ({
   spawner,
   workspaceDirFor: (a: Agent) => `/houston/${a.id}/workspace`,
   dataDirFor: (a: Agent) => `/houston/${a.id}/data`,
@@ -86,9 +94,15 @@ test("sleep kills the process; the next ensureAwake spawns a fresh one", async (
 test("a runtime that never becomes healthy is killed and not cached (the turn errors visibly)", async () => {
   const { spawner, killed } = recordingSpawner();
   const launcher = new ProcessLauncher(
-    opts(spawner, { waitHealthy: async () => { throw new Error("never healthy"); } }),
+    opts(spawner, {
+      waitHealthy: async () => {
+        throw new Error("never healthy");
+      },
+    }),
   );
-  await expect(launcher.ensureAwake(agent("bad"))).rejects.toThrow("never healthy");
+  await expect(launcher.ensureAwake(agent("bad"))).rejects.toThrow(
+    "never healthy",
+  );
   expect(killed).toEqual([5000]); // zombie reaped
   expect(await launcher.status("bad")).toBe("asleep"); // not cached as running
 });

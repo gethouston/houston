@@ -101,9 +101,7 @@ export function SummaryScreen({
         <section className="flex flex-col gap-2">
           <div className="flex items-center gap-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
             <Calendar className="size-3.5" aria-hidden />
-            <span>
-              {t("setup:tutorial.missions.summary.routineCardTitle")}
-            </span>
+            <span>{t("setup:tutorial.missions.summary.routineCardTitle")}</span>
           </div>
           {onboardingRoutine ? (
             <div className="flex flex-col gap-3 rounded-2xl bg-secondary p-4">

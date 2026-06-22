@@ -5,7 +5,10 @@ import type { ProviderCredential } from "./types";
 
 // Drive the FAKE through the PORT type only — if this compiles + passes, the
 // interface is implementable end-to-end without leaking provider specifics.
-const cred: ProviderCredential = { provider: "fake", data: { user: "u1", apiKey: "k1" } };
+const cred: ProviderCredential = {
+  provider: "fake",
+  data: { user: "u1", apiKey: "k1" },
+};
 
 test("the full lifecycle runs through the IntegrationProvider port", async () => {
   const p: IntegrationProvider = new FakeIntegrationProvider({ id: "fake" });
@@ -15,7 +18,10 @@ test("the full lifecycle runs through the IntegrationProvider port", async () =>
   expect(start.loginUrl).toContain(start.pollKey);
   expect(await p.pollLogin(start.pollKey)).toEqual({ status: "pending" });
   (p as FakeIntegrationProvider).completeLogin(start.pollKey, cred);
-  expect(await p.pollLogin(start.pollKey)).toEqual({ status: "linked", credential: cred });
+  expect(await p.pollLogin(start.pollKey)).toEqual({
+    status: "linked",
+    credential: cred,
+  });
 
   // verify
   expect(await p.verifyCredential(cred)).toEqual({ accountId: "u1" });
@@ -25,7 +31,9 @@ test("the full lifecycle runs through the IntegrationProvider port", async () =>
   expect(await p.listConnections(cred)).toEqual([]);
   const conn = await p.connect(cred, "gmail");
   expect(conn.redirectUrl).toContain("gmail");
-  expect((await p.listConnections(cred)).map((c) => c.toolkit)).toEqual(["gmail"]);
+  expect((await p.listConnections(cred)).map((c) => c.toolkit)).toEqual([
+    "gmail",
+  ]);
 
   // search + execute
   const matches = await p.search(cred, "send an email");

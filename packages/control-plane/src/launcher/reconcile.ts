@@ -1,8 +1,4 @@
-import {
-  AppsV1Api,
-  CoreV1Api,
-  HttpError,
-} from "@kubernetes/client-node";
+import { AppsV1Api, CoreV1Api, HttpError } from "@kubernetes/client-node";
 import type { Agent } from "../domain/types";
 import {
   buildDeployment,
@@ -11,12 +7,7 @@ import {
   buildScale,
   buildService,
 } from "./manifest";
-import {
-  deploymentName,
-  namespaceFor,
-  pvcName,
-  serviceName,
-} from "./names";
+import { deploymentName, namespaceFor, pvcName, serviceName } from "./names";
 
 /**
  * Low-level, idempotent apiserver reconcile steps used by GkeLauncher.
@@ -25,14 +16,18 @@ import {
  * there). Every other apiserver error propagates per the no-silent-failure rule.
  */
 
-const MERGE_PATCH = { headers: { "content-type": "application/merge-patch+json" } } as const;
+const MERGE_PATCH = {
+  headers: { "content-type": "application/merge-patch+json" },
+} as const;
 
 export function isStatus(err: unknown, code: number): boolean {
   return err instanceof HttpError && err.statusCode === code;
 }
 
 /** Create, treating 409 Conflict (raced create) as success. */
-async function createIgnoringExisting(op: () => Promise<unknown>): Promise<void> {
+async function createIgnoringExisting(
+  op: () => Promise<unknown>,
+): Promise<void> {
   try {
     await op();
   } catch (err) {
@@ -42,7 +37,9 @@ async function createIgnoringExisting(op: () => Promise<unknown>): Promise<void>
 }
 
 /** Delete, treating 404 Not Found as success (already gone). */
-export async function deleteIgnoringMissing(op: () => Promise<unknown>): Promise<void> {
+export async function deleteIgnoringMissing(
+  op: () => Promise<unknown>,
+): Promise<void> {
   try {
     await op();
   } catch (err) {
@@ -51,12 +48,17 @@ export async function deleteIgnoringMissing(op: () => Promise<unknown>): Promise
   }
 }
 
-export async function ensureNamespace(core: CoreV1Api, workspaceSlug: string): Promise<void> {
+export async function ensureNamespace(
+  core: CoreV1Api,
+  workspaceSlug: string,
+): Promise<void> {
   try {
     await core.readNamespace(namespaceFor(workspaceSlug));
   } catch (err) {
     if (!isStatus(err, 404)) throw err;
-    await createIgnoringExisting(() => core.createNamespace(buildNamespace(workspaceSlug)));
+    await createIgnoringExisting(() =>
+      core.createNamespace(buildNamespace(workspaceSlug)),
+    );
   }
 }
 
@@ -71,7 +73,10 @@ export async function ensurePvc(
   } catch (err) {
     if (!isStatus(err, 404)) throw err;
     await createIgnoringExisting(() =>
-      core.createNamespacedPersistentVolumeClaim(ns, buildPvc(agent, workspaceSlug)),
+      core.createNamespacedPersistentVolumeClaim(
+        ns,
+        buildPvc(agent, workspaceSlug),
+      ),
     );
   }
 }
@@ -90,7 +95,10 @@ export async function ensureDeployment(
   } catch (err) {
     if (!isStatus(err, 404)) throw err;
     await createIgnoringExisting(() =>
-      apps.createNamespacedDeployment(ns, buildDeployment(agent, workspaceSlug, token)),
+      apps.createNamespacedDeployment(
+        ns,
+        buildDeployment(agent, workspaceSlug, token),
+      ),
     );
   }
 }
@@ -142,7 +150,9 @@ export async function waitForReady(
     const { body } = await apps.readNamespacedDeployment(name, ns);
     if ((body.status?.readyReplicas ?? 0) > 0) return;
     if (Date.now() >= deadline) {
-      throw new Error(`sandbox ${ns}/${name} did not become ready within ${timeoutMs}ms`);
+      throw new Error(
+        `sandbox ${ns}/${name} did not become ready within ${timeoutMs}ms`,
+      );
     }
     await new Promise((r) => setTimeout(r, pollIntervalMs));
   }

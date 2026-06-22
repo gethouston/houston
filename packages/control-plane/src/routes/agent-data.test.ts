@@ -49,7 +49,13 @@ const deps = (): ControlPlaneDeps => ({
   store,
   credentials,
   vault: { sandboxToken: () => "x", validateSandboxToken: () => null },
-  channels: { gke: new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials }) },
+  channels: {
+    gke: new ProxyChannel({
+      launcher,
+      proxy: { async forward() {} },
+      credentials,
+    }),
+  },
   vfs,
   capabilities: CAPS,
 });
@@ -57,7 +63,10 @@ const deps = (): ControlPlaneDeps => ({
 let server: Server;
 let base = "";
 let agentId = "";
-const auth = (who: string) => ({ Authorization: `Bearer tok:${who}`, "Content-Type": "application/json" });
+const auth = (who: string) => ({
+  Authorization: `Bearer tok:${who}`,
+  "Content-Type": "application/json",
+});
 
 beforeAll(async () => {
   server = createControlPlaneServer(deps());
@@ -90,39 +99,62 @@ test("activities: full CRUD lifecycle over the host", async () => {
   const created = await fetch(`${base}/agents/${agentId}/activities`, {
     method: "POST",
     headers: auth("alice"),
-    body: JSON.stringify({ title: "Build the Q2 deck", description: "10 slides" }),
+    body: JSON.stringify({
+      title: "Build the Q2 deck",
+      description: "10 slides",
+    }),
   });
   expect(created.status).toBe(201);
   const activity = (await created.json()) as Activity;
   expect(activity.status).toBe("running");
 
-  const patched = await fetch(`${base}/agents/${agentId}/activities/${activity.id}`, {
-    method: "PATCH",
-    headers: auth("alice"),
-    body: JSON.stringify({ status: "done" }),
-  });
+  const patched = await fetch(
+    `${base}/agents/${agentId}/activities/${activity.id}`,
+    {
+      method: "PATCH",
+      headers: auth("alice"),
+      body: JSON.stringify({ status: "done" }),
+    },
+  );
   expect(patched.status).toBe(200);
   expect(((await patched.json()) as Activity).status).toBe("done");
 
-  const list = await fetch(`${base}/agents/${agentId}/activities`, { headers: auth("alice") });
-  const body = (await list.json()) as { items: Activity[]; diagnostics: unknown[] };
-  expect(body.items.map((a) => a.title)).toEqual(["Build the Q2 deck"]);
-
-  const deleted = await fetch(`${base}/agents/${agentId}/activities/${activity.id}`, {
-    method: "DELETE",
+  const list = await fetch(`${base}/agents/${agentId}/activities`, {
     headers: auth("alice"),
   });
+  const body = (await list.json()) as {
+    items: Activity[];
+    diagnostics: unknown[];
+  };
+  expect(body.items.map((a) => a.title)).toEqual(["Build the Q2 deck"]);
+
+  const deleted = await fetch(
+    `${base}/agents/${agentId}/activities/${activity.id}`,
+    {
+      method: "DELETE",
+      headers: auth("alice"),
+    },
+  );
   expect(deleted.status).toBe(200);
   expect(await deleted.json()).toEqual({ ok: true, deleted: true });
 
-  const deletedAgain = await fetch(`${base}/agents/${agentId}/activities/${activity.id}`, {
-    method: "DELETE",
-    headers: auth("alice"),
-  });
+  const deletedAgain = await fetch(
+    `${base}/agents/${agentId}/activities/${activity.id}`,
+    {
+      method: "DELETE",
+      headers: auth("alice"),
+    },
+  );
   expect(deletedAgain.status).toBe(200);
   expect(await deletedAgain.json()).toEqual({ ok: true, deleted: false });
   expect(
-    (await fetch(`${base}/agents/${agentId}/activities/${activity.id}`, { method: "PATCH", headers: auth("alice"), body: "{}" })).status,
+    (
+      await fetch(`${base}/agents/${agentId}/activities/${activity.id}`, {
+        method: "PATCH",
+        headers: auth("alice"),
+        body: "{}",
+      })
+    ).status,
   ).toBe(404);
 });
 
@@ -132,7 +164,12 @@ test("routines: created with schema defaults; a stray per-routine timezone is ig
     headers: auth("alice"),
     // `timezone` is no longer a routine field (one account-wide zone); a client
     // still sending it must be ignored, not written onto the routine.
-    body: JSON.stringify({ name: "Daily report", prompt: "Write it", schedule: "0 9 * * 1-5", timezone: "America/Bogota" }),
+    body: JSON.stringify({
+      name: "Daily report",
+      prompt: "Write it",
+      schedule: "0 9 * * 1-5",
+      timezone: "America/Bogota",
+    }),
   });
   expect(created.status).toBe(201);
   const routine = (await created.json()) as Routine;
@@ -140,7 +177,9 @@ test("routines: created with schema defaults; a stray per-routine timezone is ig
   expect(routine.chat_mode).toBe("shared");
   expect("timezone" in routine).toBe(false);
 
-  const runs = await fetch(`${base}/agents/${agentId}/routine_runs`, { headers: auth("alice") });
+  const runs = await fetch(`${base}/agents/${agentId}/routine_runs`, {
+    headers: auth("alice"),
+  });
   expect(((await runs.json()) as { items: unknown[] }).items).toEqual([]);
 });
 
@@ -148,10 +187,16 @@ test("routines: an invalid cron is rejected at create (400), never saved to fail
   const bad = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
-    body: JSON.stringify({ name: "Broken", prompt: "p", schedule: "not a cron" }),
+    body: JSON.stringify({
+      name: "Broken",
+      prompt: "p",
+      schedule: "not a cron",
+    }),
   });
   expect(bad.status).toBe(400);
-  expect(((await bad.json()) as { error: string }).error).toContain("invalid schedule");
+  expect(((await bad.json()) as { error: string }).error).toContain(
+    "invalid schedule",
+  );
 
   // The schedule is validated against the single account-wide zone (HOU-470),
   // not a per-routine one: an invalid account timezone rejects the create.
@@ -164,7 +209,11 @@ test("routines: an invalid cron is rejected at create (400), never saved to fail
     const badTz = await fetch(`${base}/agents/${agentId}/routines`, {
       method: "POST",
       headers: auth("alice"),
-      body: JSON.stringify({ name: "BadTz", prompt: "p", schedule: "0 9 * * *" }),
+      body: JSON.stringify({
+        name: "BadTz",
+        prompt: "p",
+        schedule: "0 9 * * *",
+      }),
     });
     expect(badTz.status).toBe(400);
   } finally {
@@ -184,8 +233,12 @@ test("config: PUT replaces, GET reads back", async () => {
     body: JSON.stringify({ provider: "openai-codex", model: "gpt-5.5" }),
   });
   expect(put.status).toBe(200);
-  const got = await fetch(`${base}/agents/${agentId}/config`, { headers: auth("alice") });
-  expect(((await got.json()) as { config: { model: string } }).config.model).toBe("gpt-5.5");
+  const got = await fetch(`${base}/agents/${agentId}/config`, {
+    headers: auth("alice"),
+  });
+  expect(
+    ((await got.json()) as { config: { model: string } }).config.model,
+  ).toBe("gpt-5.5");
 });
 
 test("agent-written junk in activity.json drops bad entries AND surfaces diagnostics", async () => {
@@ -193,29 +246,43 @@ test("agent-written junk in activity.json drops bad entries AND surfaces diagnos
   const agent = (await store.listAgents(ws.id))[0]!;
   await vfs.writeText(
     docKey(workspaceRoot(ws, agent), "activity"),
-    JSON.stringify([{ id: "ok", title: "Good", description: "", status: "done" }, { broken: true }]),
+    JSON.stringify([
+      { id: "ok", title: "Good", description: "", status: "done" },
+      { broken: true },
+    ]),
   );
-  const r = await fetch(`${base}/agents/${agentId}/activities`, { headers: auth("alice") });
-  const body = (await r.json()) as { items: Activity[]; diagnostics: { message: string }[] };
+  const r = await fetch(`${base}/agents/${agentId}/activities`, {
+    headers: auth("alice"),
+  });
+  const body = (await r.json()) as {
+    items: Activity[];
+    diagnostics: { message: string }[];
+  };
   expect(body.items.map((a) => a.id)).toEqual(["ok"]);
   expect(body.diagnostics).toHaveLength(1);
   expect(body.diagnostics[0]!.message).toContain("malformed");
 });
 
 test("another user is walled off from the data families (403)", async () => {
-  const r = await fetch(`${base}/agents/${agentId}/activities`, { headers: auth("bob") });
+  const r = await fetch(`${base}/agents/${agentId}/activities`, {
+    headers: auth("bob"),
+  });
   expect(r.status).toBe(403);
 });
 
 test("raw agentfile read/write — what the desktop board actually uses", async () => {
   // Use learnings (untouched by other tests). Missing → "" (app falls back to []).
   const path = ".houston/learnings/learnings.json";
-  const empty = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, { headers: auth("alice") });
+  const empty = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, {
+    headers: auth("alice"),
+  });
   expect(empty.status).toBe(200);
   expect(((await empty.json()) as { content: string }).content).toBe("");
 
   // Write the whole doc, then read it back verbatim.
-  const doc = JSON.stringify([{ id: "l1", text: "remember this", created_at: "2026-06-15T00:00:00.000Z" }]);
+  const doc = JSON.stringify([
+    { id: "l1", text: "remember this", created_at: "2026-06-15T00:00:00.000Z" },
+  ]);
   const put = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, {
     method: "PUT",
     headers: auth("alice"),
@@ -223,12 +290,18 @@ test("raw agentfile read/write — what the desktop board actually uses", async 
   });
   expect(put.status).toBe(200);
 
-  const read = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, { headers: auth("alice") });
+  const read = await fetch(`${base}/agents/${agentId}/agentfile/${path}`, {
+    headers: auth("alice"),
+  });
   expect(((await read.json()) as { content: string }).content).toBe(doc);
 
   // The typed route sees the SAME file (one store — the raw write and typed read agree).
-  const typed = await fetch(`${base}/agents/${agentId}/learnings`, { headers: auth("alice") });
-  expect(((await typed.json()) as { items: { id: string }[] }).items[0]!.id).toBe("l1");
+  const typed = await fetch(`${base}/agents/${agentId}/learnings`, {
+    headers: auth("alice"),
+  });
+  expect(
+    ((await typed.json()) as { items: { id: string }[] }).items[0]!.id,
+  ).toBe("l1");
 });
 
 // (No HTTP traversal test: the URL spec normalizes `..`/`%2e%2e` path segments
@@ -236,17 +309,26 @@ test("raw agentfile read/write — what the desktop board actually uses", async 
 // depth — is unreachable over HTTP. Asserting it via fetch would be meaningless.)
 
 test("CORS preflight allows PUT (writeAgentFile/preferences/saveSkill all PUT)", async () => {
-  const r = await fetch(`${base}/agents/${agentId}/agentfile/.houston/config/config.json`, {
-    method: "OPTIONS",
-    headers: { Origin: "http://localhost:1430", "Access-Control-Request-Method": "PUT" },
-  });
+  const r = await fetch(
+    `${base}/agents/${agentId}/agentfile/.houston/config/config.json`,
+    {
+      method: "OPTIONS",
+      headers: {
+        Origin: "http://localhost:1430",
+        "Access-Control-Request-Method": "PUT",
+      },
+    },
+  );
   expect(r.status).toBe(204);
   expect(r.headers.get("access-control-allow-methods")).toContain("PUT");
   await r.text();
 });
 
 test("agentfile is walled off across users (403)", async () => {
-  const r = await fetch(`${base}/agents/${agentId}/agentfile/.houston/config/config.json`, { headers: auth("bob") });
+  const r = await fetch(
+    `${base}/agents/${agentId}/agentfile/.houston/config/config.json`,
+    { headers: auth("bob") },
+  );
   expect(r.status).toBe(403);
 });
 
@@ -269,21 +351,34 @@ test("skills: create → list → read → edit → delete, full lifecycle over 
   const dup = await fetch(`${base}/agents/${agentId}/skills`, {
     method: "POST",
     headers: auth("alice"),
-    body: JSON.stringify({ name: "Summarize Inbox", description: "d", content: "c" }),
+    body: JSON.stringify({
+      name: "Summarize Inbox",
+      description: "d",
+      content: "c",
+    }),
   });
   expect(dup.status).toBe(409);
 
-  const list = await fetch(`${base}/agents/${agentId}/skills`, { headers: auth("alice") });
-  const skills = (await list.json()) as { items: { name: string; featured: boolean }[] };
+  const list = await fetch(`${base}/agents/${agentId}/skills`, {
+    headers: auth("alice"),
+  });
+  const skills = (await list.json()) as {
+    items: { name: string; featured: boolean }[];
+  };
   expect(skills.items.map((s) => s.name)).toContain("summarize-inbox");
 
   const put = await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, {
     method: "PUT",
     headers: auth("alice"),
-    body: JSON.stringify({ content: "---\nname: summarize-inbox\ndescription: v2\nversion: 2\n---\n\nNew body.\n" }),
+    body: JSON.stringify({
+      content:
+        "---\nname: summarize-inbox\ndescription: v2\nversion: 2\n---\n\nNew body.\n",
+    }),
   });
   expect(put.status).toBe(200);
-  const read = await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, { headers: auth("alice") });
+  const read = await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, {
+    headers: auth("alice"),
+  });
   expect(((await read.json()) as { version: number }).version).toBe(2);
 
   const del = await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, {
@@ -291,11 +386,20 @@ test("skills: create → list → read → edit → delete, full lifecycle over 
     headers: auth("alice"),
   });
   expect(del.status).toBe(200);
-  expect((await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, { headers: auth("alice") })).status).toBe(404);
+  expect(
+    (
+      await fetch(`${base}/agents/${agentId}/skills/summarize-inbox`, {
+        headers: auth("alice"),
+      })
+    ).status,
+  ).toBe(404);
 });
 
 test("skills are walled off across users (403) like every agent surface", async () => {
-  expect((await fetch(`${base}/agents/${agentId}/skills`, { headers: auth("bob") })).status).toBe(403);
+  expect(
+    (await fetch(`${base}/agents/${agentId}/skills`, { headers: auth("bob") }))
+      .status,
+  ).toBe(403);
 });
 
 test("no vfs wired → typed data routes answer 503, runtime dispatch unaffected", async () => {
@@ -304,7 +408,9 @@ test("no vfs wired → typed data routes answer 503, runtime dispatch unaffected
   const addr = noVfs.address();
   const b = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
   try {
-    const r = await fetch(`${b}/agents/${agentId}/activities`, { headers: auth("alice") });
+    const r = await fetch(`${b}/agents/${agentId}/activities`, {
+      headers: auth("alice"),
+    });
     expect(r.status).toBe(503);
   } finally {
     await new Promise<void>((r) => noVfs.close(() => r()));

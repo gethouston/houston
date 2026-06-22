@@ -39,10 +39,14 @@ export function ProviderModelGroup({
         <ProviderIcon providerId={provider.id} className="size-3.5" />
         {provider.name}
         {state === "checking" && (
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.checking")}</span>
+          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+            {t("modelSelector.checking")}
+          </span>
         )}
         {state === "disconnected" && (
-          <span className="text-[10px] text-muted-foreground/60 ml-auto">{t("modelSelector.notConnected")}</span>
+          <span className="text-[10px] text-muted-foreground/60 ml-auto">
+            {t("modelSelector.notConnected")}
+          </span>
         )}
       </DropdownMenuLabel>
       {provider.models.map((m) => {
@@ -63,7 +67,9 @@ export function ProviderModelGroup({
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm">{m.label}</div>
-              <div className="text-xs text-muted-foreground leading-snug">{m.description}</div>
+              <div className="text-xs text-muted-foreground leading-snug">
+                {m.description}
+              </div>
             </div>
           </DropdownMenuItem>
         );
@@ -78,7 +84,13 @@ export function ProviderModelGroup({
  * (which renders at its native viewBox); the chat panel uses size-3.5 vs
  * the provider picker's size-5.
  */
-export function ProviderIcon({ providerId, className }: { providerId: string; className?: string }) {
+export function ProviderIcon({
+  providerId,
+  className,
+}: {
+  providerId: string;
+  className?: string;
+}) {
   return (
     <span className={className} style={{ display: "inline-flex" }}>
       {iconFor(providerId)}

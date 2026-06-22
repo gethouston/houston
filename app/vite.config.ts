@@ -58,7 +58,9 @@ export default defineConfig(({ mode }) => {
         : [],
     },
     define: {
-      __APP_VERSION__: JSON.stringify(mode === "production" ? version : `${version}-dev`),
+      __APP_VERSION__: JSON.stringify(
+        mode === "production" ? version : `${version}-dev`,
+      ),
       __POSTHOG_KEY__: JSON.stringify(env.POSTHOG_KEY ?? ""),
       __POSTHOG_HOST__: JSON.stringify(
         env.POSTHOG_HOST ?? "https://us.i.posthog.com",

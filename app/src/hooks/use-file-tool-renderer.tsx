@@ -3,7 +3,10 @@ import { ToolBlock } from "@houston-ai/chat";
 import type { ToolEntry, TurnEndSummary } from "@houston-ai/chat";
 import { FileCard } from "../components/file-card";
 import { TurnFileSummary } from "../components/turn-file-summary";
-import { buildTurnSummaryItems, isUserVisibleFilePath } from "../lib/turn-summary-items";
+import {
+  buildTurnSummaryItems,
+  isUserVisibleFilePath,
+} from "../lib/turn-summary-items";
 
 /** Tool short names that produce files the user might want to open. */
 const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit"]);

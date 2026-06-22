@@ -43,7 +43,10 @@ interface CpAgent {
 const COLOR_KEY = "houston.web.cp.agentColors";
 function colorOverlay(): Record<string, string> {
   try {
-    return JSON.parse(localStorage.getItem(COLOR_KEY) || "{}") as Record<string, string>;
+    return JSON.parse(localStorage.getItem(COLOR_KEY) || "{}") as Record<
+      string,
+      string
+    >;
   } catch {
     return {};
   }
@@ -125,11 +128,18 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
  * picked up without rebuilding the client.
  */
 export function liveToken(fallback: string): string {
-  const t = typeof window !== "undefined" ? window.__HOUSTON_ENGINE__?.token : undefined;
+  const t =
+    typeof window !== "undefined"
+      ? window.__HOUSTON_ENGINE__?.token
+      : undefined;
   return t || fallback;
 }
 
-async function cpFetch(cfg: ControlPlaneConfig, path: string, init?: RequestInit): Promise<Response> {
+async function cpFetch(
+  cfg: ControlPlaneConfig,
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
   const res = await fetch(`${cfg.baseUrl}${path}`, {
     ...init,
     headers: {
@@ -152,14 +162,25 @@ export async function listAgents(cfg: ControlPlaneConfig): Promise<Agent[]> {
   return ((await res.json()) as CpAgent[]).map((a) => toUiAgent(a, colors));
 }
 
-export async function createAgent(cfg: ControlPlaneConfig, name: string, color?: string): Promise<Agent> {
-  const res = await cpFetch(cfg, "/agents", { method: "POST", body: JSON.stringify({ name }) });
+export async function createAgent(
+  cfg: ControlPlaneConfig,
+  name: string,
+  color?: string,
+): Promise<Agent> {
+  const res = await cpFetch(cfg, "/agents", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
   const agent = (await res.json()) as CpAgent;
   if (color) setColor(agent.id, color);
   return toUiAgent(agent);
 }
 
-export async function renameAgent(cfg: ControlPlaneConfig, agentId: string, name: string): Promise<Agent> {
+export async function renameAgent(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  name: string,
+): Promise<Agent> {
   const res = await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}`, {
     method: "PATCH",
     body: JSON.stringify({ name }),
@@ -173,16 +194,28 @@ export async function renameAgent(cfg: ControlPlaneConfig, agentId: string, name
 }
 
 /** Color is overlay-only; the server agent is unchanged. Returns the updated view. */
-export async function updateAgentColor(cfg: ControlPlaneConfig, agentId: string, color: string): Promise<Agent> {
+export async function updateAgentColor(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  color: string,
+): Promise<Agent> {
   setColor(agentId, color);
   const res = await cpFetch(cfg, "/agents");
   const found = ((await res.json()) as CpAgent[]).find((a) => a.id === agentId);
-  if (!found) throw new HoustonEngineError(404, { error: { message: "agent not found" } });
+  if (!found)
+    throw new HoustonEngineError(404, {
+      error: { message: "agent not found" },
+    });
   return toUiAgent(found);
 }
 
-export async function deleteAgent(cfg: ControlPlaneConfig, agentId: string): Promise<void> {
-  await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}`, { method: "DELETE" });
+export async function deleteAgent(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+): Promise<void> {
+  await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}`, {
+    method: "DELETE",
+  });
   clearColor(agentId);
 }
 
@@ -191,8 +224,15 @@ export async function deleteAgent(cfg: ControlPlaneConfig, agentId: string): Pro
  * credential into the workspace's central store so every agent (existing + new)
  * shares the connection. Idempotent; safe to call on each successful connect.
  */
-export async function captureCredential(cfg: ControlPlaneConfig, agentId: string): Promise<void> {
-  await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}/credential/capture`, { method: "POST" });
+export async function captureCredential(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/credential/capture`,
+    { method: "POST" },
+  );
 }
 
 /**
@@ -201,18 +241,29 @@ export async function captureCredential(cfg: ControlPlaneConfig, agentId: string
  * runtime's local auth.json and the next turn re-served the credential from the
  * central store — so the provider reconnected itself. Idempotent.
  */
-export async function forgetCredential(cfg: ControlPlaneConfig, agentId: string, provider: string): Promise<void> {
-  await cpFetch(cfg, `/agents/${encodeURIComponent(agentId)}/credential/forget`, {
-    method: "POST",
-    body: JSON.stringify({ provider }),
-  });
+export async function forgetCredential(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  provider: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/credential/forget`,
+    {
+      method: "POST",
+      body: JSON.stringify({ provider }),
+    },
+  );
 }
 
 /**
  * A runtime client scoped to ONE agent, via the control plane's transparent proxy.
  * Its `/conversations/:id/*` calls land on `${baseUrl}/agents/${agentId}/conversations/:id/*`.
  */
-export function runtimeClientFor(cfg: ControlPlaneConfig, agentId: string): HoustonEngineClient {
+export function runtimeClientFor(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+): HoustonEngineClient {
   return new HoustonEngineClient({
     baseUrl: `${cfg.baseUrl}/agents/${encodeURIComponent(agentId)}`,
     token: liveToken(cfg.token) || undefined,
@@ -224,12 +275,22 @@ export function runtimeClientFor(cfg: ControlPlaneConfig, agentId: string): Hous
 
 const agentPath = (id: string) => `/agents/${encodeURIComponent(id)}`;
 
-export async function listActivities(cfg: ControlPlaneConfig, agentId: string): Promise<Activity[]> {
+export async function listActivities(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+): Promise<Activity[]> {
   const res = await cpFetch(cfg, `${agentPath(agentId)}/activities`);
   return ((await res.json()) as { items: Activity[] }).items;
 }
-export async function createActivity(cfg: ControlPlaneConfig, agentId: string, input: NewActivity): Promise<Activity> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/activities`, { method: "POST", body: JSON.stringify(input) });
+export async function createActivity(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  input: NewActivity,
+): Promise<Activity> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/activities`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
   return (await res.json()) as Activity;
 }
 export async function updateActivity(
@@ -238,35 +299,67 @@ export async function updateActivity(
   id: string,
   updates: ActivityUpdate,
 ): Promise<Activity> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/activities/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(updates),
-  });
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/activities/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    },
+  );
   return (await res.json()) as Activity;
 }
-export async function deleteActivity(cfg: ControlPlaneConfig, agentId: string, id: string): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/activities/${encodeURIComponent(id)}`, { method: "DELETE" });
+export async function deleteActivity(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  id: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/activities/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
 }
 
-export async function listRoutines(cfg: ControlPlaneConfig, agentId: string): Promise<Routine[]> {
+export async function listRoutines(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+): Promise<Routine[]> {
   const res = await cpFetch(cfg, `${agentPath(agentId)}/routines`);
   return ((await res.json()) as { items: Routine[] }).items;
 }
-export async function listRoutineRuns(cfg: ControlPlaneConfig, agentId: string): Promise<RoutineRun[]> {
+export async function listRoutineRuns(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+): Promise<RoutineRun[]> {
   const res = await cpFetch(cfg, `${agentPath(agentId)}/routine_runs`);
   return ((await res.json()) as { items: RoutineRun[] }).items;
 }
 
-export async function listSkills(cfg: ControlPlaneConfig, agentId: string): Promise<SkillSummary[]> {
+export async function listSkills(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+): Promise<SkillSummary[]> {
   const res = await cpFetch(cfg, `${agentPath(agentId)}/skills`);
-  const items = ((await res.json()) as { items: Omit<SkillSummary, "inputs" | "promptTemplate">[] }).items;
+  const items = (
+    (await res.json()) as {
+      items: Omit<SkillSummary, "inputs" | "promptTemplate">[];
+    }
+  ).items;
   // The host dropped the legacy structured-inputs/prompt-template fields (the UI
   // ignores them); restore them as empty so the v1 SkillSummary type is satisfied.
   return items.map((s) => ({ ...s, inputs: [], promptTemplate: null }));
 }
 
-export async function createRoutine(cfg: ControlPlaneConfig, agentId: string, input: unknown): Promise<Routine> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/routines`, { method: "POST", body: JSON.stringify(input) });
+export async function createRoutine(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  input: unknown,
+): Promise<Routine> {
+  const res = await cpFetch(cfg, `${agentPath(agentId)}/routines`, {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
   return (await res.json()) as Routine;
 }
 export async function updateRoutine(
@@ -275,19 +368,39 @@ export async function updateRoutine(
   id: string,
   updates: unknown,
 ): Promise<Routine> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/routines/${encodeURIComponent(id)}`, {
-    method: "PATCH",
-    body: JSON.stringify(updates),
-  });
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/routines/${encodeURIComponent(id)}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify(updates),
+    },
+  );
   return (await res.json()) as Routine;
 }
-export async function deleteRoutine(cfg: ControlPlaneConfig, agentId: string, id: string): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/routines/${encodeURIComponent(id)}`, { method: "DELETE" });
+export async function deleteRoutine(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  id: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/routines/${encodeURIComponent(id)}`,
+    { method: "DELETE" },
+  );
 }
 
 /** Fire a routine immediately — the host records a routine_run and starts the turn now. */
-export async function runRoutineNow(cfg: ControlPlaneConfig, agentId: string, id: string): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/routines/${encodeURIComponent(id)}/run`, { method: "POST" });
+export async function runRoutineNow(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  id: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/routines/${encodeURIComponent(id)}/run`,
+    { method: "POST" },
+  );
 }
 
 export async function createSkill(
@@ -295,27 +408,56 @@ export async function createSkill(
   agentId: string,
   body: { name: string; description: string; content: string },
 ): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/skills`, { method: "POST", body: JSON.stringify(body) });
-}
-export async function saveSkill(cfg: ControlPlaneConfig, agentId: string, slug: string, content: string): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`, {
-    method: "PUT",
-    body: JSON.stringify({ content }),
+  await cpFetch(cfg, `${agentPath(agentId)}/skills`, {
+    method: "POST",
+    body: JSON.stringify(body),
   });
 }
-export async function deleteSkill(cfg: ControlPlaneConfig, agentId: string, slug: string): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`, { method: "DELETE" });
+export async function saveSkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  slug: string,
+  content: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    },
+  );
+}
+export async function deleteSkill(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  slug: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/skills/${encodeURIComponent(slug)}`,
+    { method: "DELETE" },
+  );
 }
 
-export async function listWorkspaces(cfg: ControlPlaneConfig): Promise<Workspace[]> {
+export async function listWorkspaces(
+  cfg: ControlPlaneConfig,
+): Promise<Workspace[]> {
   const res = await cpFetch(cfg, "/v1/workspaces");
   return (await res.json()) as Workspace[];
 }
 
 // Raw .houston/** doc read/write — what the desktop UI's files-first data layer
 // (readAgentJson/writeAgentJson) uses for the board, config, and learnings.
-export async function readAgentFile(cfg: ControlPlaneConfig, agentId: string, relPath: string): Promise<string> {
-  const res = await cpFetch(cfg, `${agentPath(agentId)}/agentfile/${relPath.split("/").map(encodeURIComponent).join("/")}`);
+export async function readAgentFile(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  relPath: string,
+): Promise<string> {
+  const res = await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/agentfile/${relPath.split("/").map(encodeURIComponent).join("/")}`,
+  );
   return ((await res.json()) as { content: string }).content;
 }
 export async function writeAgentFile(
@@ -324,10 +466,14 @@ export async function writeAgentFile(
   relPath: string,
   content: string,
 ): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/agentfile/${relPath.split("/").map(encodeURIComponent).join("/")}`, {
-    method: "PUT",
-    body: JSON.stringify({ content }),
-  });
+  await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/agentfile/${relPath.split("/").map(encodeURIComponent).join("/")}`,
+    {
+      method: "PUT",
+      body: JSON.stringify({ content }),
+    },
+  );
 }
 
 /**
@@ -347,7 +493,10 @@ export async function saveAttachments(
   const payload = {
     scopeId,
     files: await Promise.all(
-      files.map(async (f) => ({ name: f.name, contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())) })),
+      files.map(async (f) => ({
+        name: f.name,
+        contentBase64: bytesToBase64(new Uint8Array(await f.arrayBuffer())),
+      })),
     ),
   };
   const res = await cpFetch(cfg, `${agentPath(agentId)}/attachments`, {
@@ -357,10 +506,18 @@ export async function saveAttachments(
   return ((await res.json()) as { paths: string[] }).paths;
 }
 
-export async function deleteAttachments(cfg: ControlPlaneConfig, agentId: string, scopeId: string): Promise<void> {
-  await cpFetch(cfg, `${agentPath(agentId)}/attachments?scopeId=${encodeURIComponent(scopeId)}`, {
-    method: "DELETE",
-  });
+export async function deleteAttachments(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  scopeId: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `${agentPath(agentId)}/attachments?scopeId=${encodeURIComponent(scopeId)}`,
+    {
+      method: "DELETE",
+    },
+  );
 }
 
 /** Base64-encode bytes without blowing the call stack on large files (chunked btoa). */
@@ -373,12 +530,22 @@ function bytesToBase64(bytes: Uint8Array): string {
   return btoa(binary);
 }
 
-export async function getPreference(cfg: ControlPlaneConfig, key: string): Promise<string | null> {
+export async function getPreference(
+  cfg: ControlPlaneConfig,
+  key: string,
+): Promise<string | null> {
   const res = await cpFetch(cfg, `/v1/preferences/${encodeURIComponent(key)}`);
   return ((await res.json()) as { value: string | null }).value;
 }
-export async function setPreference(cfg: ControlPlaneConfig, key: string, value: string): Promise<void> {
-  await cpFetch(cfg, `/v1/preferences/${encodeURIComponent(key)}`, { method: "PUT", body: JSON.stringify({ value }) });
+export async function setPreference(
+  cfg: ControlPlaneConfig,
+  key: string,
+  value: string,
+): Promise<void> {
+  await cpFetch(cfg, `/v1/preferences/${encodeURIComponent(key)}`, {
+    method: "PUT",
+    body: JSON.stringify({ value }),
+  });
 }
 
 /**
@@ -393,13 +560,19 @@ export async function setPreference(cfg: ControlPlaneConfig, key: string, value:
  * the UI's invalidation map reads `{ type, data: { agent_path } }`, so translate.
  * Reconnects with a short backoff on any drop, mirroring EventSource's auto-retry.
  */
-export function subscribeEvents(cfg: ControlPlaneConfig, onEvent: (event: unknown) => void): () => void {
+export function subscribeEvents(
+  cfg: ControlPlaneConfig,
+  onEvent: (event: unknown) => void,
+): () => void {
   const ac = new AbortController();
   void (async () => {
     while (!ac.signal.aborted) {
       try {
         const url = `${cfg.baseUrl}/v1/events?token=${encodeURIComponent(liveToken(cfg.token))}`;
-        const res = await fetch(url, { headers: { Accept: "text/event-stream" }, signal: ac.signal });
+        const res = await fetch(url, {
+          headers: { Accept: "text/event-stream" },
+          signal: ac.signal,
+        });
         if (!res.ok || !res.body) throw new Error(`/v1/events ${res.status}`);
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -420,7 +593,13 @@ export function subscribeEvents(cfg: ControlPlaneConfig, onEvent: (event: unknow
                 agentPath?: string;
                 workspaceId?: string;
               };
-              onEvent({ type: ev.type, data: { agent_path: ev.agentPath, workspace_id: ev.workspaceId } });
+              onEvent({
+                type: ev.type,
+                data: {
+                  agent_path: ev.agentPath,
+                  workspace_id: ev.workspaceId,
+                },
+              });
             } catch {
               /* a malformed frame is dropped, never thrown into the UI */
             }

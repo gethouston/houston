@@ -9,7 +9,11 @@ import {
   Terminal,
 } from "lucide-react";
 import { AsyncButton, Button, cn } from "@houston-ai/core";
-import { tauriProvider, tauriSystem, type ProviderStatus } from "../../../lib/tauri";
+import {
+  tauriProvider,
+  tauriSystem,
+  type ProviderStatus,
+} from "../../../lib/tauri";
 import {
   PROVIDERS,
   COMING_SOON_PROVIDERS,
@@ -35,7 +39,9 @@ export function BrainMission({
 
   const refresh = useCallback(async () => {
     const entries = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      PROVIDERS.map(
+        async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
+      ),
     );
     setStatuses(Object.fromEntries(entries));
     setLoading(false);
@@ -57,7 +63,9 @@ export function BrainMission({
   }, [provider, refresh, statuses]);
 
   const selectedConnected =
-    !!provider && !!statuses[provider]?.cli_installed && !!statuses[provider]?.authenticated;
+    !!provider &&
+    !!statuses[provider]?.cli_installed &&
+    !!statuses[provider]?.authenticated;
 
   const handleContinue = async () => {
     if (!selectedConnected) return;
@@ -94,9 +102,7 @@ export function BrainMission({
           disabled={!selectedConnected || submitting}
           onClick={() => void handleContinue()}
         >
-          {submitting ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : null}
+          {submitting ? <Loader2 className="size-4 animate-spin" /> : null}
           {submitting
             ? t("setup:tutorial.missions.brain.creating")
             : t("setup:tutorial.missions.brain.continue")}
