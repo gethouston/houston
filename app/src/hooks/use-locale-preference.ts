@@ -100,8 +100,8 @@ export function useLocalePreference(): LocalePreferenceState {
   // the user switching workspaces); before that, the boot query stands in so
   // the first paint already reflects the active workspace's override.
   const workspaceLocale = storeCurrent
-    ? storeCurrent.locale ?? null
-    : bootWorkspaceQuery.data ?? null;
+    ? (storeCurrent.locale ?? null)
+    : (bootWorkspaceQuery.data ?? null);
   const effective = resolveEffectiveLocale(workspaceLocale, globalLocale);
 
   // Apply the engine-resolved locale to the live i18n instance once the GLOBAL

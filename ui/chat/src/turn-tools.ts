@@ -1,5 +1,9 @@
 import type { ChatStatus } from "./chat-panel-types";
-import type { ChatMessage, FileChangeEntry, ToolEntry } from "./feed-to-messages";
+import type {
+  ChatMessage,
+  FileChangeEntry,
+  ToolEntry,
+} from "./feed-to-messages";
 
 export interface TurnEndSummary {
   tools: ToolEntry[];

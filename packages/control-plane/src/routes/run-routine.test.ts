@@ -28,7 +28,11 @@ class SpyChannel implements RuntimeChannel {
   fired: { conversationId: string; text: string }[] = [];
   throwMessage: string | null = null;
   async dispatch() {}
-  async fireTurn(_ctx: ChannelCtx, conversationId: string, text: string): Promise<void> {
+  async fireTurn(
+    _ctx: ChannelCtx,
+    conversationId: string,
+    text: string,
+  ): Promise<void> {
     this.fired.push({ conversationId, text });
     if (this.throwMessage) throw new Error(this.throwMessage);
   }
@@ -56,9 +60,14 @@ let store: MemoryWorkspaceStore;
 let vfs: MemoryVfs;
 let channel: SpyChannel;
 
-const auth = (who: string) => ({ Authorization: `Bearer tok:${who}`, "Content-Type": "application/json" });
+const auth = (who: string) => ({
+  Authorization: `Bearer tok:${who}`,
+  "Content-Type": "application/json",
+});
 
-async function makeRoutine(over: Partial<{ prompt: string; suppress_when_silent: boolean }> = {}): Promise<Routine> {
+async function makeRoutine(
+  over: Partial<{ prompt: string; suppress_when_silent: boolean }> = {},
+): Promise<Routine> {
   const created = await fetch(`${base}/agents/${agentId}/routines`, {
     method: "POST",
     headers: auth("alice"),
@@ -101,10 +110,13 @@ beforeEach(async () => {
 test("fires the routine now: records a running run and calls fireTurn with the prompt", async () => {
   const routine = await makeRoutine({ prompt: "send the weekly digest" });
 
-  const res = await fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, {
-    method: "POST",
-    headers: auth("alice"),
-  });
+  const res = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}/run`,
+    {
+      method: "POST",
+      headers: auth("alice"),
+    },
+  );
   expect(res.status).toBe(200);
   const body = (await res.json()) as { ok: boolean; runId: string };
   expect(body.ok).toBe(true);
@@ -119,12 +131,22 @@ test("fires the routine now: records a running run and calls fireTurn with the p
   const agent = (await store.listAgents(ws.id))[0]!;
   const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
   expect(items).toHaveLength(1);
-  expect(items[0]).toMatchObject({ routine_id: routine.id, id: body.runId, status: "running" });
+  expect(items[0]).toMatchObject({
+    routine_id: routine.id,
+    id: body.runId,
+    status: "running",
+  });
 });
 
 test("the suppression instruction rides on the prompt when opted in", async () => {
-  const routine = await makeRoutine({ prompt: "check the inbox", suppress_when_silent: true });
-  await fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, { method: "POST", headers: auth("alice") });
+  const routine = await makeRoutine({
+    prompt: "check the inbox",
+    suppress_when_silent: true,
+  });
+  await fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, {
+    method: "POST",
+    headers: auth("alice"),
+  });
   expect(channel.fired[0]!.text).toContain("check the inbox");
   expect(channel.fired[0]!.text).toContain("ROUTINE_OK");
 });
@@ -133,12 +155,17 @@ test("a fire failure answers 502 and marks the run errored — never stuck runni
   const routine = await makeRoutine();
   channel.throwMessage = "runtime unreachable";
 
-  const res = await fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, {
-    method: "POST",
-    headers: auth("alice"),
-  });
+  const res = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}/run`,
+    {
+      method: "POST",
+      headers: auth("alice"),
+    },
+  );
   expect(res.status).toBe(502);
-  expect(((await res.json()) as { error: string }).error).toContain("runtime unreachable");
+  expect(((await res.json()) as { error: string }).error).toContain(
+    "runtime unreachable",
+  );
 
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = (await store.listAgents(ws.id))[0]!;
@@ -151,20 +178,26 @@ test("a fire failure answers 502 and marks the run errored — never stuck runni
 });
 
 test("an unknown routine 404s, never fires", async () => {
-  const res = await fetch(`${base}/agents/${agentId}/routines/does-not-exist/run`, {
-    method: "POST",
-    headers: auth("alice"),
-  });
+  const res = await fetch(
+    `${base}/agents/${agentId}/routines/does-not-exist/run`,
+    {
+      method: "POST",
+      headers: auth("alice"),
+    },
+  );
   expect(res.status).toBe(404);
   expect(channel.fired).toHaveLength(0);
 });
 
 test("another user cannot run the agent's routine (403)", async () => {
   const routine = await makeRoutine();
-  const res = await fetch(`${base}/agents/${agentId}/routines/${routine.id}/run`, {
-    method: "POST",
-    headers: auth("bob"),
-  });
+  const res = await fetch(
+    `${base}/agents/${agentId}/routines/${routine.id}/run`,
+    {
+      method: "POST",
+      headers: auth("bob"),
+    },
+  );
   expect(res.status).toBe(403);
   expect(channel.fired).toHaveLength(0);
 });

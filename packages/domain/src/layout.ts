@@ -11,7 +11,12 @@ import { saveJson, type TextStore } from "./store";
  * in cloud it is the agent's object prefix + "/workspace". Each typed family
  * lives at `.houston/<family>/<family>.json` beside its seeded JSON schema.
  */
-export type HoustonFamily = "activity" | "routines" | "routine_runs" | "config" | "learnings";
+export type HoustonFamily =
+  | "activity"
+  | "routines"
+  | "routine_runs"
+  | "config"
+  | "learnings";
 
 export const FAMILIES: HoustonFamily[] = [
   "activity",
@@ -43,7 +48,10 @@ const SCHEMAS: Record<HoustonFamily, unknown> = {
  * with the app and is not user data). Run on agent creation so agents and
  * external tools can validate what they write.
  */
-export async function seedSchemas(store: TextStore, root: string): Promise<void> {
+export async function seedSchemas(
+  store: TextStore,
+  root: string,
+): Promise<void> {
   for (const family of FAMILIES) {
     await saveJson(store, schemaKey(root, family), SCHEMAS[family]);
   }

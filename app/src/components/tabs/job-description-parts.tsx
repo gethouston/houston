@@ -89,11 +89,17 @@ export function InstructionsContent({
         <span
           className={cn(
             "text-[11px] tabular-nums transition-opacity duration-200",
-            state === "idle" ? "opacity-0" : "opacity-100 text-muted-foreground",
+            state === "idle"
+              ? "opacity-0"
+              : "opacity-100 text-muted-foreground",
           )}
           aria-live="polite"
         >
-          {state === "saving" ? resolved.saving : state === "saved" ? resolved.saved : ""}
+          {state === "saving"
+            ? resolved.saving
+            : state === "saved"
+              ? resolved.saved
+              : ""}
         </span>
       </div>
       <section className="rounded-xl bg-secondary p-3">

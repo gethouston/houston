@@ -28,7 +28,11 @@ export function readAgentFile(agentPath: string, relPath: string): string {
   }
 }
 
-export function writeAgentFile(agentPath: string, relPath: string, content: string): void {
+export function writeAgentFile(
+  agentPath: string,
+  relPath: string,
+  content: string,
+): void {
   try {
     localStorage.setItem(storageKey(agentPath, relPath), content);
   } catch {

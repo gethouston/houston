@@ -33,7 +33,10 @@ function normalizeLikePi(input: string): string {
   let p = input.replace(UNICODE_SPACES, " ");
   if (p.startsWith("@")) p = p.slice(1);
   if (p === "~") return homedir();
-  if (p.startsWith("~/") || (process.platform === "win32" && p.startsWith("~\\"))) {
+  if (
+    p.startsWith("~/") ||
+    (process.platform === "win32" && p.startsWith("~\\"))
+  ) {
     return join(homedir(), p.slice(2));
   }
   if (/^file:\/\//.test(p)) return fileURLToPath(p);
@@ -57,7 +60,9 @@ export class WorkspaceGuard {
   clamp(raw: string | undefined): string {
     const input = raw ?? ".";
     const normalized = normalizeLikePi(input);
-    const abs = isAbsolute(normalized) ? resolve(normalized) : resolve(this.root, normalized);
+    const abs = isAbsolute(normalized)
+      ? resolve(normalized)
+      : resolve(this.root, normalized);
     if (!this.contains(abs) || !this.contains(this.realNearest(abs))) {
       throw new PathEscapeError(input, this.root);
     }

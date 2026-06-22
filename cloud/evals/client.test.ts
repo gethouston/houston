@@ -1,13 +1,24 @@
 import { test, expect } from "bun:test";
 import { createServer, type Server } from "node:http";
-import { createAgent, deleteAgent, downloadFile, listFiles, runTurn, type CpClient } from "./client";
+import {
+  createAgent,
+  deleteAgent,
+  downloadFile,
+  listFiles,
+  runTurn,
+  type CpClient,
+} from "./client";
 
 /**
  * The harness driver against a stub control plane: subscribe-then-send order,
  * SSE terminal-frame detection, timeout behavior, and binary download.
  */
 
-function stubCp(): Promise<{ cp: CpClient; close: () => Promise<void>; log: string[] }> {
+function stubCp(): Promise<{
+  cp: CpClient;
+  close: () => Promise<void>;
+  log: string[];
+}> {
   const log: string[] = [];
   const server: Server = createServer(async (req, res) => {
     const url = new URL(req.url || "/", "http://x");
@@ -27,7 +38,9 @@ function stubCp(): Promise<{ cp: CpClient; close: () => Promise<void>; log: stri
       res.write(`data: ${JSON.stringify({ type: "sync", data: {} })}\n\n`);
       // Terminal frame arrives only after the message has been posted.
       const finish = () => {
-        res.write(`data: ${JSON.stringify({ type: "text", data: { delta: "working" } })}\n\n`);
+        res.write(
+          `data: ${JSON.stringify({ type: "text", data: { delta: "working" } })}\n\n`,
+        );
         res.write(`data: ${JSON.stringify({ type: "done", data: null })}\n\n`);
       };
       const poll = setInterval(() => {
@@ -46,7 +59,14 @@ function stubCp(): Promise<{ cp: CpClient; close: () => Promise<void>; log: stri
     if (url.pathname.endsWith("/files") && req.method === "GET") {
       res.writeHead(200, { "Content-Type": "application/json" });
       return res.end(
-        JSON.stringify([{ path: "deck.pptx", name: "deck.pptx", size: 4, is_directory: false }]),
+        JSON.stringify([
+          {
+            path: "deck.pptx",
+            name: "deck.pptx",
+            size: 4,
+            is_directory: false,
+          },
+        ]),
       );
     }
     if (url.pathname.endsWith("/files/download")) {

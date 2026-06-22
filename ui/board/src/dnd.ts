@@ -1,4 +1,4 @@
-import type { KanbanColumn, KanbanItem } from "./types"
+import type { KanbanColumn, KanbanItem } from "./types";
 
 /**
  * Default drop eligibility: a card may drop on any column whose statuses do
@@ -10,7 +10,7 @@ export function defaultCanDropItem(
   item: KanbanItem,
   column: KanbanColumn,
 ): boolean {
-  return !column.statuses.includes(item.status)
+  return !column.statuses.includes(item.status);
 }
 
 /**
@@ -28,14 +28,14 @@ export function defaultCanDropItem(
  * `canDrop` is the already-resolved eligibility for THIS column (from the
  * board's `canDropItem` override or `defaultCanDropItem`).
  */
-export type ColumnDragRole = "idle" | "origin" | "drop-target" | "forbidden"
+export type ColumnDragRole = "idle" | "origin" | "drop-target" | "forbidden";
 
 export function columnDragRole(
   draggingItem: KanbanItem | null,
   column: KanbanColumn,
   canDrop: boolean,
 ): ColumnDragRole {
-  if (!draggingItem) return "idle"
-  if (column.statuses.includes(draggingItem.status)) return "origin"
-  return canDrop ? "drop-target" : "forbidden"
+  if (!draggingItem) return "idle";
+  if (column.statuses.includes(draggingItem.status)) return "origin";
+  return canDrop ? "drop-target" : "forbidden";
 }

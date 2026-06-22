@@ -77,7 +77,8 @@ export function filesFromClipboardData(
   // image to appear twice. Use `items` when it yields anything; fall back to
   // `files` only for environments that don't support the items API.
   const candidates = filesFromClipboardItems(data.items);
-  const raw = candidates.length > 0 ? candidates : filesFromClipboardList(data.files);
+  const raw =
+    candidates.length > 0 ? candidates : filesFromClipboardList(data.files);
   // Index is post-dedupe so multiple unnamed files in one paste get distinct
   // generated names instead of colliding.
   return uniqueFiles(raw).map((file, index) => ensureFileName(file, index));
@@ -112,7 +113,11 @@ export function ensureFileName(file: File, index = 0): File {
 }
 
 export function filesFromClipboardItems(
-  items: Iterable<ClipboardFileItem> | ArrayLike<ClipboardFileItem> | null | undefined,
+  items:
+    | Iterable<ClipboardFileItem>
+    | ArrayLike<ClipboardFileItem>
+    | null
+    | undefined,
 ): File[] {
   if (!items) return [];
 
@@ -125,7 +130,9 @@ export function filesFromClipboardItems(
   return files;
 }
 
-function filesFromClipboardList(files: FileList | File[] | null | undefined): File[] {
+function filesFromClipboardList(
+  files: FileList | File[] | null | undefined,
+): File[] {
   return files ? Array.from(files) : [];
 }
 

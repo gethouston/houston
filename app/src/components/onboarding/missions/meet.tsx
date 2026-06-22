@@ -71,11 +71,7 @@ export function MeetMission({
           );
         })}
       </div>
-      <Button
-        type="submit"
-        disabled={!trimmed}
-        className="w-full rounded-full"
-      >
+      <Button type="submit" disabled={!trimmed} className="w-full rounded-full">
         {beginLabel}
       </Button>
     </form>

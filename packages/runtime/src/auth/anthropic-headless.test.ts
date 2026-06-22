@@ -19,9 +19,14 @@ afterEach(() => {
 });
 
 test("parseAuthCode handles code#state, full URL, and bare code", () => {
-  expect(parseAuthCode("abc123#st-99")).toEqual({ code: "abc123", state: "st-99" });
+  expect(parseAuthCode("abc123#st-99")).toEqual({
+    code: "abc123",
+    state: "st-99",
+  });
   expect(
-    parseAuthCode("https://console.anthropic.com/oauth/code/callback?code=abc&state=xyz"),
+    parseAuthCode(
+      "https://console.anthropic.com/oauth/code/callback?code=abc&state=xyz",
+    ),
   ).toEqual({ code: "abc", state: "xyz" });
   expect(parseAuthCode("just-a-code")).toEqual({ code: "just-a-code" });
   expect(parseAuthCode("   ")).toEqual({});
@@ -101,7 +106,9 @@ test("login exchanges the pasted code for tokens via the headless flow", async (
   // Exchange must use the same headless redirect + the pasted code.
   expect(exchangeBody.grant_type).toBe("authorization_code");
   expect(exchangeBody.code).toBe("the-code");
-  expect(exchangeBody.redirect_uri).toBe("https://console.anthropic.com/oauth/code/callback");
+  expect(exchangeBody.redirect_uri).toBe(
+    "https://console.anthropic.com/oauth/code/callback",
+  );
   expect(typeof exchangeBody.code_verifier).toBe("string");
 });
 

@@ -76,14 +76,20 @@ export class TurnRelay {
   async start(
     agentId: string,
     conversationKey: string,
-    run: (publish: (e: WireEvent) => Promise<void>, signal: AbortSignal) => Promise<void>,
+    run: (
+      publish: (e: WireEvent) => Promise<void>,
+      signal: AbortSignal,
+    ) => Promise<void>,
   ): Promise<boolean> {
     if (this.inflightLocal.has(agentId)) return false;
-    if (!(await this.bus.setNx(inflightKey(agentId), "1", LEASE_SEC))) return false;
+    if (!(await this.bus.setNx(inflightKey(agentId), "1", LEASE_SEC)))
+      return false;
     this.inflightLocal.add(agentId);
 
     const ctrl = new AbortController();
-    const unsubCancel = this.bus.subscribe(cancelChannel(agentId), () => ctrl.abort());
+    const unsubCancel = this.bus.subscribe(cancelChannel(agentId), () =>
+      ctrl.abort(),
+    );
     const lease = setInterval(() => {
       this.bus.expire(inflightKey(agentId), LEASE_SEC).catch((err: unknown) => {
         // No request to reject here; losing the lease means another replica
@@ -111,7 +117,10 @@ export class TurnRelay {
       .finally(async () => {
         try {
           if (this.local.get(conversationKey)?.snap.running) {
-            await publish({ type: "error", data: { message: "The turn ended unexpectedly" } });
+            await publish({
+              type: "error",
+              data: { message: "The turn ended unexpectedly" },
+            });
           }
         } finally {
           clearInterval(lease);
@@ -120,7 +129,10 @@ export class TurnRelay {
           this.inflightLocal.delete(agentId);
           await this.bus.del(inflightKey(agentId)).catch((err: unknown) => {
             // The lease TTL frees the slot within LEASE_SEC even if this fails.
-            console.error(`[relay] inflight release failed for ${agentId}:`, err);
+            console.error(
+              `[relay] inflight release failed for ${agentId}:`,
+              err,
+            );
           });
         }
       });
@@ -129,7 +141,10 @@ export class TurnRelay {
 
   /** Abort the agent's in-flight turn — on whichever replica owns it. */
   async cancel(agentId: string): Promise<boolean> {
-    if (!this.inflightLocal.has(agentId) && (await this.bus.get(inflightKey(agentId))) === null) {
+    if (
+      !this.inflightLocal.has(agentId) &&
+      (await this.bus.get(inflightKey(agentId))) === null
+    ) {
       return false;
     }
     await this.bus.publish(cancelChannel(agentId), "cancel");
@@ -138,7 +153,11 @@ export class TurnRelay {
 
   /** Reduce + persist the snapshot, then broadcast the frame to every replica. */
   async publish(key: string, event: WireEvent): Promise<void> {
-    const st = this.local.get(key) ?? { turnId: "", seq: 0, snap: EMPTY_SNAPSHOT };
+    const st = this.local.get(key) ?? {
+      turnId: "",
+      seq: 0,
+      snap: EMPTY_SNAPSHOT,
+    };
     st.seq++;
     st.snap = reduceSnapshot(st.snap, event);
     this.local.set(key, st);
@@ -157,9 +176,14 @@ export class TurnRelay {
     );
   }
 
-  subscribe(key: string, cb: (e: WireEvent, meta: FrameMeta) => void): () => void {
+  subscribe(
+    key: string,
+    cb: (e: WireEvent, meta: FrameMeta) => void,
+  ): () => void {
     return this.bus.subscribe(eventChannel(key), (message) => {
-      const { turnId, seq, event } = JSON.parse(message) as FrameMeta & { event: WireEvent };
+      const { turnId, seq, event } = JSON.parse(message) as FrameMeta & {
+        event: WireEvent;
+      };
       cb(event, { turnId, seq });
     });
   }
@@ -167,7 +191,8 @@ export class TurnRelay {
   /** The conversation's current snapshot with its (turnId, seq) watermark. */
   async snapshot(key: string): Promise<RelaySnapshot> {
     const owned = this.local.get(key);
-    if (owned) return { snapshot: owned.snap, turnId: owned.turnId, seq: owned.seq };
+    if (owned)
+      return { snapshot: owned.snap, turnId: owned.turnId, seq: owned.seq };
     const raw = await this.bus.get(snapKey(key));
     if (!raw) return { snapshot: EMPTY_SNAPSHOT, turnId: "", seq: 0 };
     return JSON.parse(raw) as RelaySnapshot;

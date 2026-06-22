@@ -28,7 +28,11 @@ export interface DocDiagnostic {
  * surface, not silently reset (which would destroy the user's data on the
  * next write).
  */
-export async function loadJson<T>(store: TextStore, key: string, fallback: T): Promise<T> {
+export async function loadJson<T>(
+  store: TextStore,
+  key: string,
+  fallback: T,
+): Promise<T> {
   const raw = await store.readText(key);
   if (raw === null) return fallback;
   try {
@@ -41,6 +45,10 @@ export async function loadJson<T>(store: TextStore, key: string, fallback: T): P
 }
 
 /** Pretty-printed write: agents and users read these files directly (files-first). */
-export async function saveJson(store: TextStore, key: string, value: unknown): Promise<void> {
+export async function saveJson(
+  store: TextStore,
+  key: string,
+  value: unknown,
+): Promise<void> {
   await store.writeText(key, `${JSON.stringify(value, null, 2)}\n`);
 }

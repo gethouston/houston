@@ -38,24 +38,26 @@ function triggerJavascriptSmokeTest(): void {
 }
 
 function triggerNativeSmokeTest(): Promise<void> {
-  return osTriggerNativeSentrySmokeTest().then(() => {
-    // In suppressed dev the app-side Sentry client was never initialized, so
-    // the native panic is captured by nothing — don't tell the developer to
-    // "Check Sentry". Show the same dev notice the JS path uses, consistent
-    // with the dev-suppression gate (HOU-469).
-    if (sentrySuppressedInDev) {
-      useUIStore.getState().addToast(devNoSendToastSpec());
-      return;
-    }
-    useUIStore.getState().addToast({
-      title: i18n.t("shell:sentrySmoke.nativeTriggeredTitle"),
-      description: i18n.t("shell:sentrySmoke.nativeTriggeredDescription"),
-      variant: "success",
+  return osTriggerNativeSentrySmokeTest()
+    .then(() => {
+      // In suppressed dev the app-side Sentry client was never initialized, so
+      // the native panic is captured by nothing — don't tell the developer to
+      // "Check Sentry". Show the same dev notice the JS path uses, consistent
+      // with the dev-suppression gate (HOU-469).
+      if (sentrySuppressedInDev) {
+        useUIStore.getState().addToast(devNoSendToastSpec());
+        return;
+      }
+      useUIStore.getState().addToast({
+        title: i18n.t("shell:sentrySmoke.nativeTriggeredTitle"),
+        description: i18n.t("shell:sentrySmoke.nativeTriggeredDescription"),
+        variant: "success",
+      });
+    })
+    .catch((error: unknown) => {
+      const message = error instanceof Error ? error.message : String(error);
+      showErrorToast("sentry_native_smoke_failed", message, error);
     });
-  }).catch((error: unknown) => {
-    const message = error instanceof Error ? error.message : String(error);
-    showErrorToast("sentry_native_smoke_failed", message, error);
-  });
 }
 
 declare global {

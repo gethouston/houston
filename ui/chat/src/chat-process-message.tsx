@@ -33,9 +33,10 @@ export function ChatProcessMessage({
   renderToolResult,
   getThinkingMessage,
 }: ChatProcessMessageProps) {
-  const summary = item.isTrailing && !item.isActive
-    ? turnEndSummaries.get(item.sourceIndex)
-    : undefined;
+  const summary =
+    item.isTrailing && !item.isActive
+      ? turnEndSummaries.get(item.sourceIndex)
+      : undefined;
 
   return (
     <Message

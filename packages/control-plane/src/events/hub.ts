@@ -39,17 +39,28 @@ export class BusEventHub implements EventHub {
     // succeeded and returned 2xx. The event is a reactivity nicety — if publish
     // fails the UI still refetches on focus, so we log (no UI thread to toast on,
     // the documented beta-policy exception) rather than sink the request.
-    void this.bus.publish(channelFor(userId), JSON.stringify(event)).catch((err) => {
-      console.error("[events] publish failed:", err instanceof Error ? err.message : err);
-    });
+    void this.bus
+      .publish(channelFor(userId), JSON.stringify(event))
+      .catch((err) => {
+        console.error(
+          "[events] publish failed:",
+          err instanceof Error ? err.message : err,
+        );
+      });
   }
 
-  subscribe(userId: UserId, handler: (event: HoustonEvent) => void): () => void {
+  subscribe(
+    userId: UserId,
+    handler: (event: HoustonEvent) => void,
+  ): () => void {
     return this.bus.subscribe(channelFor(userId), (message) => {
       try {
         handler(JSON.parse(message) as HoustonEvent);
       } catch (err) {
-        console.error("[events] dropped malformed frame:", err instanceof Error ? err.message : err);
+        console.error(
+          "[events] dropped malformed frame:",
+          err instanceof Error ? err.message : err,
+        );
       }
     });
   }

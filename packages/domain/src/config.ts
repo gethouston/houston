@@ -1,6 +1,11 @@
 import type { AgentConfig, Learning } from "@houston/protocol";
 import { docKey } from "./layout";
-import { loadJson, saveJson, type DocDiagnostic, type TextStore } from "./store";
+import {
+  loadJson,
+  saveJson,
+  type DocDiagnostic,
+  type TextStore,
+} from "./store";
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -13,12 +18,19 @@ export async function loadConfig(
   const key = docKey(root, "config");
   const raw = await loadJson<unknown>(store, key, {});
   if (!isRecord(raw)) {
-    return { config: {}, diagnostics: [{ key, message: "config.json is not an object" }] };
+    return {
+      config: {},
+      diagnostics: [{ key, message: "config.json is not an object" }],
+    };
   }
   return { config: raw as AgentConfig, diagnostics: [] };
 }
 
-export async function saveConfig(store: TextStore, root: string, config: AgentConfig): Promise<void> {
+export async function saveConfig(
+  store: TextStore,
+  root: string,
+  config: AgentConfig,
+): Promise<void> {
   await saveJson(store, docKey(root, "config"), config);
 }
 
@@ -28,15 +40,25 @@ export function normalizeLearnings(
 ): { items: Learning[]; diagnostics: DocDiagnostic[] } {
   if (raw === null || raw === undefined) return { items: [], diagnostics: [] };
   if (!Array.isArray(raw)) {
-    return { items: [], diagnostics: [{ key, message: "learnings.json is not an array" }] };
+    return {
+      items: [],
+      diagnostics: [{ key, message: "learnings.json is not an array" }],
+    };
   }
   const items: Learning[] = [];
   const diagnostics: DocDiagnostic[] = [];
   for (const entry of raw) {
-    if (isRecord(entry) && typeof entry.id === "string" && typeof entry.text === "string") {
+    if (
+      isRecord(entry) &&
+      typeof entry.id === "string" &&
+      typeof entry.text === "string"
+    ) {
       items.push({ created_at: "", ...entry } as Learning);
     } else {
-      diagnostics.push({ key, message: `dropped malformed learning: ${JSON.stringify(entry)?.slice(0, 120)}` });
+      diagnostics.push({
+        key,
+        message: `dropped malformed learning: ${JSON.stringify(entry)?.slice(0, 120)}`,
+      });
     }
   }
   return { items, diagnostics };
@@ -50,6 +72,10 @@ export async function loadLearnings(
   return normalizeLearnings(await loadJson<unknown>(store, key, []), key);
 }
 
-export async function saveLearnings(store: TextStore, root: string, items: Learning[]): Promise<void> {
+export async function saveLearnings(
+  store: TextStore,
+  root: string,
+  items: Learning[],
+): Promise<void> {
   await saveJson(store, docKey(root, "learnings"), items);
 }

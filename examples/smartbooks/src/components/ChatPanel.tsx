@@ -61,7 +61,10 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
         if (cancelled) return;
         const replay: Message[] = [];
         for (const entry of history) {
-          const item = { feed_type: entry.feed_type, data: entry.data } as FeedItem;
+          const item = {
+            feed_type: entry.feed_type,
+            data: entry.data,
+          } as FeedItem;
           const next = appendFeedItem(replay, item);
           replay.splice(0, replay.length, ...next);
         }
@@ -214,9 +217,9 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
         {messages.length === 0 && (
           <div className="chat-panel__empty">
             <p className="chat-panel__pitch">
-              Tell SmartBooks how to work for you. Your bookkeeper edits
-              the app itself — columns, categories, rules — so every
-              future statement handles your edge cases automatically.
+              Tell SmartBooks how to work for you. Your bookkeeper edits the app
+              itself — columns, categories, rules — so every future statement
+              handles your edge cases automatically.
             </p>
             <p className="muted chat-panel__pitch-small">Try:</p>
             <ul className="chips">

@@ -54,7 +54,12 @@ export interface Overview {
   };
   users: UserView[];
   orphans: {
-    pods: { namespace: string; podName: string; agentId: string | null; phase: string }[];
+    pods: {
+      namespace: string;
+      podName: string;
+      agentId: string | null;
+      phase: string;
+    }[];
     volumes: { namespace: string; pvcName: string; agentId: string | null }[];
     cost: CostRate;
   };
@@ -91,32 +96,56 @@ export interface BillingReport {
   note: string;
 }
 
-async function getJson<T>(controlPlaneUrl: string, path: string, token: string): Promise<T> {
+async function getJson<T>(
+  controlPlaneUrl: string,
+  path: string,
+  token: string,
+): Promise<T> {
   const res = await fetch(`${controlPlaneUrl}${path}`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 403) {
-    throw new Error("This account is not an operator. Ask to be added to CP_ADMIN_USER_IDS.");
+    throw new Error(
+      "This account is not an operator. Ask to be added to CP_ADMIN_USER_IDS.",
+    );
   }
   if (res.status === 404) {
-    throw new Error("The operator dashboard is not enabled on this control plane (CP_ADMIN_USER_IDS is empty).");
+    throw new Error(
+      "The operator dashboard is not enabled on this control plane (CP_ADMIN_USER_IDS is empty).",
+    );
   }
   if (!res.ok) {
     const detail = await res.text().catch(() => "");
-    throw new Error(`Request failed (${res.status}): ${detail || res.statusText}`);
+    throw new Error(
+      `Request failed (${res.status}): ${detail || res.statusText}`,
+    );
   }
   return (await res.json()) as T;
 }
 
-export function fetchOverview(controlPlaneUrl: string, token: string): Promise<Overview> {
+export function fetchOverview(
+  controlPlaneUrl: string,
+  token: string,
+): Promise<Overview> {
   return getJson<Overview>(controlPlaneUrl, "/admin/overview", token);
 }
 
-export function fetchBilling(controlPlaneUrl: string, token: string, days: number): Promise<BillingReport> {
-  return getJson<BillingReport>(controlPlaneUrl, `/admin/billing?days=${days}`, token);
+export function fetchBilling(
+  controlPlaneUrl: string,
+  token: string,
+  days: number,
+): Promise<BillingReport> {
+  return getJson<BillingReport>(
+    controlPlaneUrl,
+    `/admin/billing?days=${days}`,
+    token,
+  );
 }
 
-const USD = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const USD = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+});
 export function usd(n: number): string {
   return USD.format(n);
 }

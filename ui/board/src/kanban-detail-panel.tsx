@@ -1,6 +1,6 @@
-import { forwardRef } from "react"
-import { XIcon, Loader2 } from "lucide-react"
-import { cn } from "@houston-ai/core"
+import { forwardRef } from "react";
+import { XIcon, Loader2 } from "lucide-react";
+import { cn } from "@houston-ai/core";
 
 const STATUS_LABEL: Record<string, string> = {
   running: "Running",
@@ -10,24 +10,27 @@ const STATUS_LABEL: Record<string, string> = {
   completed: "Done",
   error: "Failed",
   failed: "Failed",
-}
+};
 
 export interface KanbanDetailPanelProps {
-  title: string
-  subtitle?: string
-  status?: string
-  onClose: () => void
-  children: React.ReactNode
-  actions?: React.ReactNode
+  title: string;
+  subtitle?: string;
+  status?: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  actions?: React.ReactNode;
   /** Large avatar shown in the header */
-  avatar?: React.ReactNode
+  avatar?: React.ReactNode;
   /** Name displayed next to the avatar (e.g. "Houston") */
-  agentName?: string
-  runningStatuses?: string[]
-  statusLabels?: Record<string, string>
+  agentName?: string;
+  runningStatuses?: string[];
+  statusLabels?: Record<string, string>;
 }
 
-export const KanbanDetailPanel = forwardRef<HTMLDivElement, KanbanDetailPanelProps>(function KanbanDetailPanel(
+export const KanbanDetailPanel = forwardRef<
+  HTMLDivElement,
+  KanbanDetailPanelProps
+>(function KanbanDetailPanel(
   {
     title,
     subtitle,
@@ -42,9 +45,9 @@ export const KanbanDetailPanel = forwardRef<HTMLDivElement, KanbanDetailPanelPro
   },
   ref,
 ) {
-  const labels = statusLabels ?? STATUS_LABEL
-  const isRunning = status ? runningStatuses.includes(status) : false
-  const missionLabel = title ? `Mission: ${title}` : subtitle
+  const labels = statusLabels ?? STATUS_LABEL;
+  const isRunning = status ? runningStatuses.includes(status) : false;
+  const missionLabel = title ? `Mission: ${title}` : subtitle;
 
   return (
     <div ref={ref} className="flex flex-col h-full min-h-0">
@@ -88,5 +91,5 @@ export const KanbanDetailPanel = forwardRef<HTMLDivElement, KanbanDetailPanelPro
       {/* Content */}
       {children}
     </div>
-  )
-})
+  );
+});

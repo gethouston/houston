@@ -9,14 +9,42 @@ import { classifyChange } from "./classify";
 
 const cases: [string, string | null, string | null][] = [
   // [relPath, expected type, expected agentPath]
-  ["Work/Sales/.houston/activity/activity.json", "ActivityChanged", "Work/Sales"],
-  ["Work/Sales/.houston/routines/routines.json", "RoutinesChanged", "Work/Sales"],
-  ["Work/Sales/.houston/routine_runs/routine_runs.json", "RoutineRunsChanged", "Work/Sales"],
+  [
+    "Work/Sales/.houston/activity/activity.json",
+    "ActivityChanged",
+    "Work/Sales",
+  ],
+  [
+    "Work/Sales/.houston/routines/routines.json",
+    "RoutinesChanged",
+    "Work/Sales",
+  ],
+  [
+    "Work/Sales/.houston/routine_runs/routine_runs.json",
+    "RoutineRunsChanged",
+    "Work/Sales",
+  ],
   ["Work/Sales/.houston/config/config.json", "ConfigChanged", "Work/Sales"],
-  ["Work/Sales/.houston/learnings/learnings.json", "LearningsChanged", "Work/Sales"],
-  ["Work/Sales/.houston/conversations/c1.json", "ConversationsChanged", "Work/Sales"],
-  ["Work/Sales/.houston/sessions/anthropic/s1.json", "ConversationsChanged", "Work/Sales"],
-  ["Work/Sales/.agents/skills/research/SKILL.md", "SkillsChanged", "Work/Sales"],
+  [
+    "Work/Sales/.houston/learnings/learnings.json",
+    "LearningsChanged",
+    "Work/Sales",
+  ],
+  [
+    "Work/Sales/.houston/conversations/c1.json",
+    "ConversationsChanged",
+    "Work/Sales",
+  ],
+  [
+    "Work/Sales/.houston/sessions/anthropic/s1.json",
+    "ConversationsChanged",
+    "Work/Sales",
+  ],
+  [
+    "Work/Sales/.agents/skills/research/SKILL.md",
+    "SkillsChanged",
+    "Work/Sales",
+  ],
   ["Work/Sales/.claude/skills/research", "SkillsChanged", "Work/Sales"],
   ["Work/Sales/CLAUDE.md", "ContextChanged", "Work/Sales"],
   ["Work/Sales/AGENTS.md", "ContextChanged", "Work/Sales"],
@@ -41,8 +69,12 @@ for (const [relPath, type, agentPath] of cases) {
 }
 
 test("routine_runs is not misclassified as routines (prefix overlap)", () => {
-  expect(classifyChange("W/A/.houston/routine_runs/x.json")?.type).toBe("RoutineRunsChanged");
-  expect(classifyChange("W/A/.houston/routines/x.json")?.type).toBe("RoutinesChanged");
+  expect(classifyChange("W/A/.houston/routine_runs/x.json")?.type).toBe(
+    "RoutineRunsChanged",
+  );
+  expect(classifyChange("W/A/.houston/routines/x.json")?.type).toBe(
+    "RoutinesChanged",
+  );
 });
 
 test("windows-style backslashes are handled", () => {

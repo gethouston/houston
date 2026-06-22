@@ -78,7 +78,8 @@ export class TunnelRoom implements DurableObject {
       const tag = ws.deserializeAttachment() as WsTag | null;
       if (!tag) continue;
       if (tag.role === "desktop") this.desktop = ws;
-      else if (tag.role === "mobile" && tag.wsId) this.mobileSockets.set(tag.wsId, ws);
+      else if (tag.role === "mobile" && tag.wsId)
+        this.mobileSockets.set(tag.wsId, ws);
     }
   }
 
@@ -89,12 +90,19 @@ export class TunnelRoom implements DurableObject {
     const action = segments[2] ?? "";
 
     // 1) Desktop is dialing us to register this tunnel.
-    if (action === "register" && request.headers.get("Upgrade") === "websocket") {
+    if (
+      action === "register" &&
+      request.headers.get("Upgrade") === "websocket"
+    ) {
       return this.handleDesktopRegister(request);
     }
 
     // 2) Mobile opening the engine WS via tunnel.
-    if (action === "v1" && segments[3] === "ws" && request.headers.get("Upgrade") === "websocket") {
+    if (
+      action === "v1" &&
+      segments[3] === "ws" &&
+      request.headers.get("Upgrade") === "websocket"
+    ) {
       return this.handleMobileWs(request);
     }
 
@@ -158,7 +166,10 @@ export class TunnelRoom implements DurableObject {
   }
 
   /** Hibernation API entry point — replaces the old addEventListener pattern. */
-  webSocketMessage(ws: WebSocket, message: ArrayBuffer | string): void | Promise<void> {
+  webSocketMessage(
+    ws: WebSocket,
+    message: ArrayBuffer | string,
+  ): void | Promise<void> {
     const tag = ws.deserializeAttachment() as WsTag | null;
     if (!tag) return;
     if (tag.role === "desktop") {
@@ -321,7 +332,10 @@ export class TunnelRoom implements DurableObject {
   // HTTP proxy
   // ---------------------------------------------------------------------
 
-  private async handleProxyHttp(request: Request, path: string): Promise<Response> {
+  private async handleProxyHttp(
+    request: Request,
+    path: string,
+  ): Promise<Response> {
     if (!this.desktop) {
       return new Response("desktop offline", { status: 503 });
     }
@@ -333,7 +347,11 @@ export class TunnelRoom implements DurableObject {
     const headers: Record<string, string> = {};
     request.headers.forEach((v, k) => {
       // Strip hop-by-hop headers before proxying.
-      if (/^(?:connection|upgrade|keep-alive|proxy-.*|te|trailer|transfer-encoding)$/i.test(k)) {
+      if (
+        /^(?:connection|upgrade|keep-alive|proxy-.*|te|trailer|transfer-encoding)$/i.test(
+          k,
+        )
+      ) {
         return;
       }
       headers[k] = v;
@@ -476,7 +494,10 @@ export class TunnelRoom implements DurableObject {
       );
     }
 
-    const body = (await request.json()) as { code: string; deviceLabel?: string };
+    const body = (await request.json()) as {
+      code: string;
+      deviceLabel?: string;
+    };
     if (!body?.code) {
       return Response.json(
         { ok: false, code: "code_malformed", error: "missing code" },

@@ -15,13 +15,15 @@ export async function createPersonalAssistantForWorkspace(
   workspaceId: string,
   options: CreatePersonalAssistantOptions,
 ): Promise<Agent> {
-  const { agent } = await useAgentStore.getState().create(
-    workspaceId,
-    options.name,
-    PERSONAL_ASSISTANT_CONFIG_ID,
-    options.color ?? "navy",
-    options.instructions,
-  );
+  const { agent } = await useAgentStore
+    .getState()
+    .create(
+      workspaceId,
+      options.name,
+      PERSONAL_ASSISTANT_CONFIG_ID,
+      options.color ?? "navy",
+      options.instructions,
+    );
 
   if (options.provider || options.model) {
     const cfg = await tauriConfig.read(agent.folderPath);

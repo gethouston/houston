@@ -37,7 +37,10 @@ async function setup() {
   const port = await freePort();
   const host = buildLocalHost({
     workspacesRoot,
-    credentialsPath: join(mkdtempSync(join(tmpdir(), "houston-cred-")), "credentials.json"),
+    credentialsPath: join(
+      mkdtempSync(join(tmpdir(), "houston-cred-")),
+      "credentials.json",
+    ),
     port,
     token: "boot-secret",
     runtimeCommand: ["true"],
@@ -47,7 +50,10 @@ async function setup() {
   return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
 }
 
-const auth = { Authorization: "Bearer boot-secret", "Content-Type": "application/json" };
+const auth = {
+  Authorization: "Bearer boot-secret",
+  "Content-Type": "application/json",
+};
 
 test("capabilities report the local profile", async () => {
   const { host, base } = await setup();
@@ -68,7 +74,13 @@ test("the boot token is required; anything else is 401", async () => {
   const { host, base } = await setup();
   try {
     expect((await fetch(`${base}/agents`)).status).toBe(401);
-    expect((await fetch(`${base}/agents`, { headers: { Authorization: "Bearer nope" } })).status).toBe(401);
+    expect(
+      (
+        await fetch(`${base}/agents`, {
+          headers: { Authorization: "Bearer nope" },
+        })
+      ).status,
+    ).toBe(401);
     expect((await fetch(`${base}/agents`, { headers: auth })).status).toBe(200);
   } finally {
     host.stop();
@@ -78,11 +90,15 @@ test("the boot token is required; anything else is 401", async () => {
 test("workspaces + agents are read from the on-disk desktop tree", async () => {
   const { host, base } = await setup();
   try {
-    const workspaces = (await (await fetch(`${base}/v1/workspaces`, { headers: auth })).json()) as Workspace[];
+    const workspaces = (await (
+      await fetch(`${base}/v1/workspaces`, { headers: auth })
+    ).json()) as Workspace[];
     expect(workspaces.map((w) => w.id)).toEqual(["Work"]);
 
     // GET /agents lists the (default = first) workspace's agents.
-    const agents = (await (await fetch(`${base}/agents`, { headers: auth })).json()) as Agent[];
+    const agents = (await (
+      await fetch(`${base}/agents`, { headers: auth })
+    ).json()) as Agent[];
     expect(agents.map((a) => a.id)).toEqual(["Work/Sales"]);
   } finally {
     host.stop();
@@ -94,7 +110,10 @@ test("a slash-bearing agent id round-trips through the URL (encode → decode)",
   try {
     // The activities route is served by the host (no runtime needed); reaching
     // it proves /agents/Work%2FSales/... decodes back to the "Work/Sales" agent.
-    const r = await fetch(`${base}/agents/${encodeURIComponent("Work/Sales")}/activities`, { headers: auth });
+    const r = await fetch(
+      `${base}/agents/${encodeURIComponent("Work/Sales")}/activities`,
+      { headers: auth },
+    );
     expect(r.status).toBe(200);
     const body = (await r.json()) as { items: unknown[] };
     expect(body.items).toEqual([]);
@@ -106,7 +125,11 @@ test("a slash-bearing agent id round-trips through the URL (encode → decode)",
 test("preferences persist via the vfs under the workspace", async () => {
   const { host, base } = await setup();
   try {
-    await fetch(`${base}/v1/preferences/locale`, { method: "PUT", headers: auth, body: JSON.stringify({ value: "es" }) });
+    await fetch(`${base}/v1/preferences/locale`, {
+      method: "PUT",
+      headers: auth,
+      body: JSON.stringify({ value: "es" }),
+    });
     const got = await fetch(`${base}/v1/preferences/locale`, { headers: auth });
     expect(((await got.json()) as { value: string }).value).toBe("es");
   } finally {

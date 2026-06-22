@@ -41,7 +41,9 @@ export function providerPickerState(
   isLoading: boolean,
 ): ProviderPickerState {
   if (status) {
-    return status.cli_installed && status.authenticated ? "connected" : "disconnected";
+    return status.cli_installed && status.authenticated
+      ? "connected"
+      : "disconnected";
   }
   return isLoading ? "checking" : "disconnected";
 }

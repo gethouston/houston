@@ -83,7 +83,10 @@ export function activeProvider(): ProviderId | null {
   return null;
 }
 
-export function setSettings(input: { activeProvider?: string; model?: string }): Settings {
+export function setSettings(input: {
+  activeProvider?: string;
+  model?: string;
+}): Settings {
   const s = loadSettings();
   if (input.activeProvider) {
     if (!isProvider(input.activeProvider))

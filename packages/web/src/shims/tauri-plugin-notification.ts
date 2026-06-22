@@ -16,7 +16,9 @@ export type Permission =
   | "prompt-with-rationale";
 
 export async function isPermissionGranted(): Promise<boolean> {
-  return typeof Notification !== "undefined" && Notification.permission === "granted";
+  return (
+    typeof Notification !== "undefined" && Notification.permission === "granted"
+  );
 }
 
 export async function requestPermission(): Promise<Permission> {
@@ -36,7 +38,10 @@ export interface Options {
 
 export function sendNotification(options: Options | string): void {
   try {
-    if (typeof Notification === "undefined" || Notification.permission !== "granted") {
+    if (
+      typeof Notification === "undefined" ||
+      Notification.permission !== "granted"
+    ) {
       return;
     }
     // The web API has no `sound` option; it's ignored. Wire onclick to

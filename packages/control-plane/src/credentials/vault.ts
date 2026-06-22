@@ -39,7 +39,10 @@ export class EnvCredentialVault implements CredentialVault {
   }
 
   sandboxToken(workspaceId: WorkspaceId, agentId: AgentId): string {
-    const payload = JSON.stringify({ workspaceId, agentId } satisfies SandboxTokenPayload);
+    const payload = JSON.stringify({
+      workspaceId,
+      agentId,
+    } satisfies SandboxTokenPayload);
     const payloadB64 = Buffer.from(payload, "utf8").toString("base64url");
     const sig = this.sign(payloadB64);
     return `${payloadB64}.${sig}`;
@@ -59,7 +62,9 @@ export class EnvCredentialVault implements CredentialVault {
 
     let parsed: unknown;
     try {
-      parsed = JSON.parse(Buffer.from(payloadB64, "base64url").toString("utf8"));
+      parsed = JSON.parse(
+        Buffer.from(payloadB64, "base64url").toString("utf8"),
+      );
     } catch {
       return null;
     }
@@ -70,6 +75,8 @@ export class EnvCredentialVault implements CredentialVault {
 
   /** HMAC-SHA256 over the base64url payload, hex-encoded. */
   private sign(payloadB64: string): string {
-    return createHmac("sha256", this.secret).update(payloadB64).digest("base64url");
+    return createHmac("sha256", this.secret)
+      .update(payloadB64)
+      .digest("base64url");
   }
 }

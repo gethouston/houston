@@ -2,7 +2,11 @@ import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
 import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import { tauriProvider, tauriSystem, type ProviderStatus } from "../../lib/tauri";
+import {
+  tauriProvider,
+  tauriSystem,
+  type ProviderStatus,
+} from "../../lib/tauri";
 import {
   PROVIDERS,
   COMING_SOON_PROVIDERS,
@@ -32,7 +36,8 @@ export function ProviderPicker({ onSelect }: Props) {
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
+  const [confirmSignOutFor, setConfirmSignOutFor] =
+    useState<ProviderInfo | null>(null);
   // OAuth URL surfaced by the engine when the CLI couldn't open the
   // user's browser (remote/headless deployments). `userCode` is set for
   // codex's device-grant flow (the one-time code to enter on OpenAI's
@@ -66,7 +71,8 @@ export function ProviderPicker({ onSelect }: Props) {
       const wasConnected =
         prevStatuses.current[prov.id]?.cli_installed &&
         prevStatuses.current[prov.id]?.authenticated;
-      const isConnected = next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
+      const isConnected =
+        next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
       if (!wasConnected && isConnected) {
         analytics.track("provider_configured", { provider: prov.id });
         onSelect(prov.id, prov.defaultModel);
@@ -115,7 +121,12 @@ export function ProviderPicker({ onSelect }: Props) {
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
-        if (shouldOpenLoginUrlDirectly({ isDesktop: osIsTauri(), userCode: ev.data.user_code })) {
+        if (
+          shouldOpenLoginUrlDirectly({
+            isDesktop: osIsTauri(),
+            userCode: ev.data.user_code,
+          })
+        ) {
           // Desktop: the runtime is co-located, so a loopback OAuth flow
           // finishes when the user approves in their OWN browser (the localhost
           // callback flips the card on ProviderLoginComplete). Open the URL and
@@ -123,7 +134,9 @@ export function ProviderPicker({ onSelect }: Props) {
           // so the user isn't left on a silent spinner.
           tauriSystem.openUrl(ev.data.url).catch((err) => {
             addToast({
-              title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+              title: t("toast.signInFailed", {
+                provider: prov?.name ?? ev.data.provider,
+              }),
               description: err instanceof Error ? err.message : String(err),
               variant: "error",
             });
@@ -147,14 +160,18 @@ export function ProviderPicker({ onSelect }: Props) {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
         if (ev.data.success) {
           addToast({
-            title: t("toast.signInSucceeded", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInSucceeded", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             variant: "success",
           });
         } else if (ev.data.error) {
           // A user cancel completes with `success: false` and no
           // `error` — benign, so we stay quiet and just clear state.
           addToast({
-            title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInFailed", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             description: ev.data.error,
             variant: "error",
           });
@@ -162,7 +179,9 @@ export function ProviderPicker({ onSelect }: Props) {
         setLoginDialog((current) =>
           current?.provider.id === ev.data.provider ? null : current,
         );
-        setPendingId((current) => (current === ev.data.provider ? null : current));
+        setPendingId((current) =>
+          current === ev.data.provider ? null : current,
+        );
         loadStatuses();
       }
     });
@@ -184,7 +203,10 @@ export function ProviderPicker({ onSelect }: Props) {
       await tauriProvider.launchLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] launchLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] launchLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signInFailed", { provider: provider.name }),
         description: msg,
@@ -203,7 +225,10 @@ export function ProviderPicker({ onSelect }: Props) {
       await tauriProvider.cancelLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] cancelLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] cancelLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.cancelFailed", { provider: provider.name }),
         description: msg,
@@ -211,7 +236,9 @@ export function ProviderPicker({ onSelect }: Props) {
       });
     } finally {
       setPendingId((current) => (current === provider.id ? null : current));
-      setLoginDialog((current) => (current?.provider.id === provider.id ? null : current));
+      setLoginDialog((current) =>
+        current?.provider.id === provider.id ? null : current,
+      );
     }
   };
 
@@ -222,7 +249,10 @@ export function ProviderPicker({ onSelect }: Props) {
       await loadStatuses();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-picker] launchLogout(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-picker] launchLogout(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signOutFailed", { provider: provider.name }),
         description: msg,
@@ -246,7 +276,8 @@ export function ProviderPicker({ onSelect }: Props) {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {visibleProviders.map((prov) => {
           const status = statuses[prov.id];
-          const connected = (status?.cli_installed && status?.authenticated) ?? false;
+          const connected =
+            (status?.cli_installed && status?.authenticated) ?? false;
           return (
             <ProviderCard
               key={prov.id}
@@ -270,8 +301,12 @@ export function ProviderPicker({ onSelect }: Props) {
         onOpenChange={(open) => {
           if (!open) setConfirmSignOutFor(null);
         }}
-        title={t("signOutConfirm.title", { provider: confirmSignOutFor?.name ?? "" })}
-        description={t("signOutConfirm.description", { provider: confirmSignOutFor?.name ?? "" })}
+        title={t("signOutConfirm.title", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
+        description={t("signOutConfirm.description", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
         confirmLabel={t("signOutConfirm.confirm")}
         cancelLabel={t("signOutConfirm.cancel")}
         variant="destructive"
@@ -293,4 +328,3 @@ export function ProviderPicker({ onSelect }: Props) {
     </>
   );
 }
-

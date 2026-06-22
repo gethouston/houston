@@ -33,8 +33,8 @@ export function NewClientDialog({ agentPath, onClose, onCreated }: Props) {
       <div className="modal__card" onClick={(e) => e.stopPropagation()}>
         <h2 className="modal__title">New client</h2>
         <p className="muted modal__hint">
-          We'll create a folder for their statements, receipts, and
-          workbooks. You can drop files in right after.
+          We'll create a folder for their statements, receipts, and workbooks.
+          You can drop files in right after.
         </p>
         <form onSubmit={submit} className="form">
           <label className="field">

@@ -2,7 +2,15 @@ import { defineTool } from "@earendil-works/pi-coding-agent";
 import { Type, type Static } from "typebox";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { basename, dirname, extname, join, relative, resolve, sep } from "node:path";
+import {
+  basename,
+  dirname,
+  extname,
+  join,
+  relative,
+  resolve,
+  sep,
+} from "node:path";
 import { RunCodeLimiter, type RunCodeLimits } from "./run-code-limiter";
 
 /**
@@ -99,10 +107,15 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
       "Files the program writes are saved into the user's workspace. " +
       "To MODIFY an existing workspace file, list it in input_files; otherwise a same-named output is saved under a new name. " +
       "Use this whenever a task needs real computation or to produce a file — e.g. building a spreadsheet, a chart, or a PowerPoint.",
-    promptSnippet: "Run code in a secure cloud sandbox to compute or produce files",
+    promptSnippet:
+      "Run code in a secure cloud sandbox to compute or produce files",
     parameters: Params,
     executionMode: "sequential",
-    async execute(_toolCallId: string, params: RunCodeParams, signal: AbortSignal | undefined) {
+    async execute(
+      _toolCallId: string,
+      params: RunCodeParams,
+      signal: AbortSignal | undefined,
+    ) {
       // 1. Gather requested input files (missing/escaping paths throw → surfaced
       //    as a tool error, never silently skipped). Declared inputs may be
       //    overwritten by artifacts of the same path (see step 3).
@@ -130,7 +143,11 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
             ...(opts.token ? { "x-sandbox-token": opts.token } : {}),
             ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
           },
-          body: JSON.stringify({ language: params.language, code: params.code, files }),
+          body: JSON.stringify({
+            language: params.language,
+            code: params.code,
+            files,
+          }),
           signal,
         });
       } finally {
@@ -181,22 +198,34 @@ export function makeRunCodeTool(opts: RunCodeOptions) {
       if (result.stdout?.trim()) parts.push(result.stdout.trimEnd());
       if (result.stderr?.trim()) {
         // A clean exit that still wrote to stderr is warnings, not errors.
-        parts.push(`${result.exitCode === 0 ? "[warnings]" : "[errors]"}\n${result.stderr.trimEnd()}`);
+        parts.push(
+          `${result.exitCode === 0 ? "[warnings]" : "[errors]"}\n${result.stderr.trimEnd()}`,
+        );
       }
-      if (result.truncated) parts.push("[output was truncated to the size limit]");
-      if (result.timedOut) parts.push("[the program hit the time limit and was stopped]");
+      if (result.truncated)
+        parts.push("[output was truncated to the size limit]");
+      if (result.timedOut)
+        parts.push("[the program hit the time limit and was stopped]");
       if (saved.length) parts.push(`[saved files: ${saved.join(", ")}]`);
-      if (updated.length) parts.push(`[updated input files: ${updated.join(", ")}]`);
+      if (updated.length)
+        parts.push(`[updated input files: ${updated.join(", ")}]`);
       for (const r of renamed) {
         parts.push(
           `[${r.requested} already existed and was not an input file; saved as: ${r.savedAs}]`,
         );
       }
-      if (skipped.length) parts.push(`[could not save (invalid path): ${skipped.join(", ")}]`);
+      if (skipped.length)
+        parts.push(`[could not save (invalid path): ${skipped.join(", ")}]`);
       if (result.droppedArtifacts?.length) {
-        parts.push(`[these files were produced but too large to return: ${result.droppedArtifacts.join(", ")}]`);
+        parts.push(
+          `[these files were produced but too large to return: ${result.droppedArtifacts.join(", ")}]`,
+        );
       }
-      if (typeof result.exitCode === "number" && result.exitCode !== 0 && !result.timedOut) {
+      if (
+        typeof result.exitCode === "number" &&
+        result.exitCode !== 0 &&
+        !result.timedOut
+      ) {
         parts.push(`[exit code ${result.exitCode}]`);
       }
       const text = parts.join("\n\n") || "(the program produced no output)";

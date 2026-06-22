@@ -10,7 +10,9 @@ export function ProviderSection() {
       <p className="text-sm text-muted-foreground mb-4">
         <Trans
           i18nKey="settings:provider.description"
-          components={{ emph: <strong className="text-foreground font-medium" /> }}
+          components={{
+            emph: <strong className="text-foreground font-medium" />,
+          }}
         />
       </p>
       <ProviderSettings />

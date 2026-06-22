@@ -29,15 +29,21 @@ const PREFIX = /^[A-Za-z0-9][A-Za-z0-9._/-]{0,255}$/;
 /** Validate an untyped body into a TurnRequest. Throws with the real reason. */
 export function parseTurnRequest(body: unknown): TurnRequest {
   const b = body as Record<string, unknown>;
-  if (!b || typeof b !== "object") throw new Error("body must be a JSON object");
+  if (!b || typeof b !== "object")
+    throw new Error("body must be a JSON object");
   for (const field of ["workspaceId", "agentId", "conversationId"] as const) {
     if (typeof b[field] !== "string" || !ID.test(b[field] as string)) {
       throw new Error(`invalid '${field}'`);
     }
   }
-  if (typeof b.text !== "string" || !b.text.length) throw new Error("missing 'text'");
+  if (typeof b.text !== "string" || !b.text.length)
+    throw new Error("missing 'text'");
   const prefix = b.gcsPrefix;
-  if (typeof prefix !== "string" || !PREFIX.test(prefix) || prefix.includes("..")) {
+  if (
+    typeof prefix !== "string" ||
+    !PREFIX.test(prefix) ||
+    prefix.includes("..")
+  ) {
     throw new Error("invalid 'gcsPrefix'");
   }
   let credential: ServedCredential | null = null;

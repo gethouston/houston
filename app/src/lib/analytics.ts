@@ -184,10 +184,26 @@ function daysBetween(fromISO: string, toISO: string): number {
 
 export function classifyAnalyticsError(message: string): string {
   const lower = message.toLowerCase();
-  if (lower.includes("auth") || lower.includes("token") || lower.includes("login")) return "auth";
-  if (lower.includes("network") || lower.includes("fetch") || lower.includes("timeout")) return "network";
-  if (lower.includes("permission") || lower.includes("denied")) return "permission";
-  if (lower.includes("provider") || lower.includes("openai") || lower.includes("anthropic")) return "provider";
+  if (
+    lower.includes("auth") ||
+    lower.includes("token") ||
+    lower.includes("login")
+  )
+    return "auth";
+  if (
+    lower.includes("network") ||
+    lower.includes("fetch") ||
+    lower.includes("timeout")
+  )
+    return "network";
+  if (lower.includes("permission") || lower.includes("denied"))
+    return "permission";
+  if (
+    lower.includes("provider") ||
+    lower.includes("openai") ||
+    lower.includes("anthropic")
+  )
+    return "provider";
   if (
     lower.includes("unknown option") ||
     lower.includes("enoent") ||
@@ -313,7 +329,8 @@ export const analytics = {
   captureException: (error: unknown, props?: Props) => {
     if (!KEY) return;
     try {
-      const normalized = error instanceof Error ? error : new Error(String(error));
+      const normalized =
+        error instanceof Error ? error : new Error(String(error));
       posthog.captureException(normalized, cleanProps(props));
     } catch {
       // Analytics unavailable

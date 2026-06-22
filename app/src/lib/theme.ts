@@ -11,7 +11,6 @@ export function applyTheme(theme: Theme) {
   } else {
     el.removeAttribute("data-theme");
   }
-
 }
 
 export async function loadTheme(): Promise<Theme> {

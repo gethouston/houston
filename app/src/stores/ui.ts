@@ -63,14 +63,19 @@ interface UIState {
   importFromFriendOpen: boolean;
   setViewMode: (mode: string) => void;
   setAssistantPanelOpen: (open: boolean) => void;
-  setActivityPanelId: (id: string | null, options?: { forceOpen?: boolean }) => void;
+  setActivityPanelId: (
+    id: string | null,
+    options?: { forceOpen?: boolean },
+  ) => void;
   setClaudeAvailable: (available: boolean | null) => void;
   setAuthRequired: (provider: string | null) => void;
   addToast: (toast: Omit<ToastItem, "id">) => void;
   dismissToast: (id: string) => void;
   setCreateAgentDialogOpen: (open: boolean) => void;
   setOnStartMission: (cb: (() => void) | null) => void;
-  setBoardActions: (actions: Array<{ id: string; label: string; onClick: () => void }>) => void;
+  setBoardActions: (
+    actions: Array<{ id: string; label: string; onClick: () => void }>,
+  ) => void;
   setAgentMissionSearchQuery: (agentPath: string, query: string) => void;
   setAgentMissionSearchLoading: (agentPath: string, loading: boolean) => void;
   setAgentArchivedSearchQuery: (agentPath: string, query: string) => void;
@@ -78,7 +83,9 @@ interface UIState {
   setMissionPanelOpen: (open: boolean) => void;
   setPaletteOpen: (open: boolean) => void;
   setCheatsheetOpen: (open: boolean) => void;
-  setOnBoardNavigate: (cb: ((dir: "up" | "down" | "left" | "right") => void) | null) => void;
+  setOnBoardNavigate: (
+    cb: ((dir: "up" | "down" | "left" | "right") => void) | null,
+  ) => void;
   setOnBoardOpen: (cb: (() => void) | null) => void;
   setOnPanelClose: (cb: (() => void) | null) => void;
   setJobDescriptionTarget: (target: JobDescriptionTarget | null) => void;
@@ -122,7 +129,9 @@ export const useUIStore = create<UIState>((set) => ({
   setActivityPanelId: (activityPanelId, options) =>
     set({
       activityPanelId,
-      activityPanelForceOpen: activityPanelId ? (options?.forceOpen ?? false) : false,
+      activityPanelForceOpen: activityPanelId
+        ? (options?.forceOpen ?? false)
+        : false,
     }),
   setClaudeAvailable: (claudeAvailable) => set({ claudeAvailable }),
   setAuthRequired: (authRequired) => set({ authRequired }),
@@ -190,7 +199,8 @@ export const useUIStore = create<UIState>((set) => ({
   setOnBoardNavigate: (onBoardNavigate) => set({ onBoardNavigate }),
   setOnBoardOpen: (onBoardOpen) => set({ onBoardOpen }),
   setOnPanelClose: (onPanelClose) => set({ onPanelClose }),
-  setJobDescriptionTarget: (jobDescriptionTarget) => set({ jobDescriptionTarget }),
+  setJobDescriptionTarget: (jobDescriptionTarget) =>
+    set({ jobDescriptionTarget }),
   setTutorialActive: (tutorialActive) => set({ tutorialActive }),
   setUiTourActive: (uiTourActive) => set({ uiTourActive }),
   setShareAgentId: (shareAgentId) => set({ shareAgentId }),

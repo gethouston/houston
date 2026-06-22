@@ -31,12 +31,17 @@ export function LearningPreview({
             "transition-colors",
           )}
           aria-label={
-            expanded ? t("agents:learnings.collapseAria") : t("agents:learnings.expandAria")
+            expanded
+              ? t("agents:learnings.collapseAria")
+              : t("agents:learnings.expandAria")
           }
           aria-expanded={expanded}
         >
           <ChevronDown
-            className={cn("size-4 transition-transform duration-200", expanded && "-rotate-180")}
+            className={cn(
+              "size-4 transition-transform duration-200",
+              expanded && "-rotate-180",
+            )}
           />
         </button>
       ) : (
@@ -61,7 +66,11 @@ export function LearningPreview({
           <Pencil className="size-3.5" />
         </IconButton>
         {onDelete && (
-          <IconButton label={t("agents:learnings.removeAria")} onClick={onDelete} danger>
+          <IconButton
+            label={t("agents:learnings.removeAria")}
+            onClick={onDelete}
+            danger
+          >
             <Trash2 className="size-3.5" />
           </IconButton>
         )}

@@ -10,7 +10,10 @@ import { useSessionStatusStore } from "../stores/session-status";
 import { subscribeHoustonEvents, listenOsEvent } from "../lib/events";
 import { logger } from "../lib/logger";
 import { isMac } from "../lib/platform";
-import { resolveNotificationTarget, shouldNavigateOnAppActivation } from "../lib/notification-nav";
+import {
+  resolveNotificationTarget,
+  shouldNavigateOnAppActivation,
+} from "../lib/notification-nav";
 import { hasToolRuntimeError } from "../components/tool-runtime-feed";
 import {
   consumePendingNav,
@@ -125,7 +128,8 @@ export function useSessionEvents() {
             );
             if (
               !nav &&
-              (session_key.startsWith("activity-") || session_key.startsWith("routine-"))
+              (session_key.startsWith("activity-") ||
+                session_key.startsWith("routine-"))
             ) {
               logger.debug(
                 `[notification] completed chat not navigable (agent not in loaded list?): agent_path=${agent_path} session_key=${session_key}`,
@@ -149,7 +153,9 @@ export function useSessionEvents() {
           });
           break;
         case "AuthRequired":
-          logger.info(`[auth] AuthRequired received: provider=${payload.data.provider}`);
+          logger.info(
+            `[auth] AuthRequired received: provider=${payload.data.provider}`,
+          );
           h.setAuthRequired(payload.data.provider);
           break;
       }
@@ -164,15 +170,23 @@ export function useSessionEvents() {
     let unlistenNotificationAction: (() => void) | undefined;
     import("@tauri-apps/plugin-notification").then(({ onAction }) => {
       onAction((action) => {
-        logger.debug(`[notification] onAction fired: ${JSON.stringify(action)} pendingNav=${describePendingNotificationNav()}`);
+        logger.debug(
+          `[notification] onAction fired: ${JSON.stringify(action)} pendingNav=${describePendingNotificationNav()}`,
+        );
         consumePendingNav().catch((e) => {
-          logger.error(`[notification] consumePendingNav (onAction) failed: ${e}`);
+          logger.error(
+            `[notification] consumePendingNav (onAction) failed: ${e}`,
+          );
         });
-      }).then((unlisten) => {
-        unlistenNotificationAction = () => { unlisten.unregister(); };
-      }).catch((e) => {
-        logger.debug(`[notification] onAction registration failed: ${e}`);
-      });
+      })
+        .then((unlisten) => {
+          unlistenNotificationAction = () => {
+            unlisten.unregister();
+          };
+        })
+        .catch((e) => {
+          logger.debug(`[notification] onAction registration failed: ${e}`);
+        });
     });
 
     // `app-activated` fires on ANY foregrounding (window focus, dock click,
@@ -188,10 +202,14 @@ export function useSessionEvents() {
     //  - Agent-list refresh: always, so external changes (e.g. Finder delete)
     //    are picked up when the window comes forward.
     const unlistenActivated = listenOsEvent<unknown>("app-activated", () => {
-      logger.debug(`[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`);
+      logger.debug(
+        `[notification] app-activated event fired: pendingNav=${describePendingNotificationNav()}`,
+      );
       if (shouldNavigateOnAppActivation(isMac)) {
         consumePendingNav().catch((e) => {
-          logger.error(`[notification] consumePendingNav (app-activated) failed: ${e}`);
+          logger.error(
+            `[notification] consumePendingNav (app-activated) failed: ${e}`,
+          );
         });
       }
       const ws = useWorkspaceStore.getState().current;
@@ -205,12 +223,19 @@ export function useSessionEvents() {
     // Linux/Windows: a genuine notification click (emitted by notification.rs).
     // This is the ONLY foregrounding that should navigate to the finished
     // mission on those platforms. macOS never emits it (uses the focus path).
-    const unlistenNotifClick = listenOsEvent<unknown>("notification-clicked", () => {
-      logger.debug(`[notification] notification-clicked event fired: pendingNav=${describePendingNotificationNav()}`);
-      consumePendingNav().catch((e) => {
-        logger.error(`[notification] consumePendingNav (notification-clicked) failed: ${e}`);
-      });
-    });
+    const unlistenNotifClick = listenOsEvent<unknown>(
+      "notification-clicked",
+      () => {
+        logger.debug(
+          `[notification] notification-clicked event fired: pendingNav=${describePendingNotificationNav()}`,
+        );
+        consumePendingNav().catch((e) => {
+          logger.error(
+            `[notification] consumePendingNav (notification-clicked) failed: ${e}`,
+          );
+        });
+      },
+    );
 
     // Fallback: Tauri window focus event (macOS only — see listenForNotificationFocus).
     const unlistenTauriFocus = listenForNotificationFocus();
@@ -220,9 +245,13 @@ export function useSessionEvents() {
       unlistenActivated();
       unlistenNotifClick();
       unlistenNotificationAction?.();
-      unlistenTauriFocus?.then((fn) => fn()).catch((e) => {
-        logger.debug(`[notification] Tauri focus listener cleanup failed: ${e}`);
-      });
+      unlistenTauriFocus
+        ?.then((fn) => fn())
+        .catch((e) => {
+          logger.debug(
+            `[notification] Tauri focus listener cleanup failed: ${e}`,
+          );
+        });
     };
   }, []);
 }

@@ -19,11 +19,17 @@ describe("isMacPlatform", () => {
   });
 
   it("treats Windows as non-mac", () => {
-    strictEqual(isMacPlatform("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64)"), false);
+    strictEqual(
+      isMacPlatform("Win32", "Mozilla/5.0 (Windows NT 10.0; Win64)"),
+      false,
+    );
   });
 
   it("treats Linux as non-mac", () => {
-    strictEqual(isMacPlatform("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64)"), false);
+    strictEqual(
+      isMacPlatform("Linux x86_64", "Mozilla/5.0 (X11; Linux x86_64)"),
+      false,
+    );
   });
 
   it("prefers platform over userAgent (Windows platform wins despite Mac UA)", () => {
@@ -39,7 +45,10 @@ describe("isMacPlatform", () => {
 
 describe("detectPlatformOs", () => {
   it("normalizes macOS", () => {
-    strictEqual(detectPlatformOs("MacIntel", "Mozilla/5.0 (Macintosh)"), "macos");
+    strictEqual(
+      detectPlatformOs("MacIntel", "Mozilla/5.0 (Macintosh)"),
+      "macos",
+    );
   });
 
   it("normalizes Windows", () => {
@@ -64,7 +73,10 @@ describe("detectPlatformOs", () => {
   });
 
   it("prefers platform over userAgent", () => {
-    strictEqual(detectPlatformOs("Win32", "Mozilla/5.0 (Macintosh)"), "windows");
+    strictEqual(
+      detectPlatformOs("Win32", "Mozilla/5.0 (Macintosh)"),
+      "windows",
+    );
   });
 
   it("returns unknown when navigator fields are missing or empty", () => {

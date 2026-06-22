@@ -33,7 +33,8 @@ export function ProviderSettings() {
   const [statuses, setStatuses] = useState<Record<string, ProviderStatus>>({});
   const [loading, setLoading] = useState(true);
   const [pendingId, setPendingId] = useState<string | null>(null);
-  const [confirmSignOutFor, setConfirmSignOutFor] = useState<ProviderInfo | null>(null);
+  const [confirmSignOutFor, setConfirmSignOutFor] =
+    useState<ProviderInfo | null>(null);
   // OAuth URL surfaced by the engine when the CLI couldn't open the
   // user's browser itself (remote/headless deployments). `userCode` is
   // set for codex's device-grant flow (the one-time code to enter on
@@ -94,21 +95,24 @@ export function ProviderSettings() {
   // completed connect or sign-out) so the card flips immediately instead of
   // waiting on the multi-second CLI re-probe. loadStatuses still runs and
   // reconciles against the real probe.
-  const patchAuthState = useCallback((providerId: string, authenticated: boolean) => {
-    setStatuses((prev) => {
-      const existing = prev[providerId];
-      return {
-        ...prev,
-        [providerId]: {
-          provider: existing?.provider ?? providerId,
-          cli_name: existing?.cli_name ?? "",
-          cli_installed: existing?.cli_installed ?? true,
-          auth_state: authenticated ? "authenticated" : "unauthenticated",
-          authenticated,
-        },
-      };
-    });
-  }, []);
+  const patchAuthState = useCallback(
+    (providerId: string, authenticated: boolean) => {
+      setStatuses((prev) => {
+        const existing = prev[providerId];
+        return {
+          ...prev,
+          [providerId]: {
+            provider: existing?.provider ?? providerId,
+            cli_name: existing?.cli_name ?? "",
+            cli_installed: existing?.cli_installed ?? true,
+            auth_state: authenticated ? "authenticated" : "unauthenticated",
+            authenticated,
+          },
+        };
+      });
+    },
+    [],
+  );
 
   useEffect(() => {
     loadStatuses();
@@ -147,7 +151,12 @@ export function ProviderSettings() {
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
-        if (shouldOpenLoginUrlDirectly({ isDesktop: osIsTauri(), userCode: ev.data.user_code })) {
+        if (
+          shouldOpenLoginUrlDirectly({
+            isDesktop: osIsTauri(),
+            userCode: ev.data.user_code,
+          })
+        ) {
           // Desktop: the runtime is co-located, so a loopback OAuth flow
           // finishes when the user approves in their OWN browser (the localhost
           // callback flips the card on ProviderLoginComplete). Open the URL and
@@ -155,7 +164,9 @@ export function ProviderSettings() {
           // so the user isn't left on a silent spinner.
           tauriSystem.openUrl(ev.data.url).catch((err) => {
             addToast({
-              title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+              title: t("toast.signInFailed", {
+                provider: prov?.name ?? ev.data.provider,
+              }),
               description: err instanceof Error ? err.message : String(err),
               variant: "error",
             });
@@ -179,14 +190,18 @@ export function ProviderSettings() {
         const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
         if (ev.data.success) {
           addToast({
-            title: t("toast.signInSucceeded", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInSucceeded", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             variant: "success",
           });
           // Flip the card to connected immediately; loadStatuses reconciles.
           patchAuthState(ev.data.provider, true);
         } else if (ev.data.error) {
           addToast({
-            title: t("toast.signInFailed", { provider: prov?.name ?? ev.data.provider }),
+            title: t("toast.signInFailed", {
+              provider: prov?.name ?? ev.data.provider,
+            }),
             description: ev.data.error,
             variant: "error",
           });
@@ -200,7 +215,9 @@ export function ProviderSettings() {
         // Same rule for the spinner-tracking pending id: on failure
         // the status poll won't ever see authenticated, so without
         // this clear the row would spin forever.
-        setPendingId((current) => (current === ev.data.provider ? null : current));
+        setPendingId((current) =>
+          current === ev.data.provider ? null : current,
+        );
         loadStatuses();
       }
     });
@@ -223,7 +240,10 @@ export function ProviderSettings() {
       await tauriProvider.launchLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-settings] launchLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-settings] launchLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signInFailed", { provider: provider.name }),
         description: msg,
@@ -242,7 +262,10 @@ export function ProviderSettings() {
       await tauriProvider.cancelLogin(provider.id);
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-settings] cancelLogin(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-settings] cancelLogin(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.cancelFailed", { provider: provider.name }),
         description: msg,
@@ -250,7 +273,9 @@ export function ProviderSettings() {
       });
     } finally {
       setPendingId((current) => (current === provider.id ? null : current));
-      setLoginDialog((current) => (current?.provider.id === provider.id ? null : current));
+      setLoginDialog((current) =>
+        current?.provider.id === provider.id ? null : current,
+      );
     }
   };
 
@@ -265,7 +290,10 @@ export function ProviderSettings() {
       void loadStatuses();
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
-      console.error(`[provider-settings] launchLogout(${provider.id}) failed:`, msg);
+      console.error(
+        `[provider-settings] launchLogout(${provider.id}) failed:`,
+        msg,
+      );
       addToast({
         title: t("toast.signOutFailed", { provider: provider.name }),
         description: msg,
@@ -325,8 +353,12 @@ export function ProviderSettings() {
         onOpenChange={(open) => {
           if (!open) setConfirmSignOutFor(null);
         }}
-        title={t("signOutConfirm.title", { provider: confirmSignOutFor?.name ?? "" })}
-        description={t("signOutConfirm.description", { provider: confirmSignOutFor?.name ?? "" })}
+        title={t("signOutConfirm.title", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
+        description={t("signOutConfirm.description", {
+          provider: confirmSignOutFor?.name ?? "",
+        })}
         confirmLabel={t("signOutConfirm.confirm")}
         cancelLabel={t("signOutConfirm.cancel")}
         variant="destructive"

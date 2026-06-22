@@ -10,10 +10,7 @@ import {
   DialogTitle,
 } from "@houston-ai/core";
 import { AlertTriangle } from "lucide-react";
-import type {
-  AttachmentRejection,
-  PrepareAttachments,
-} from "@houston-ai/chat";
+import type { AttachmentRejection, PrepareAttachments } from "@houston-ai/chat";
 import {
   formatBytes,
   splitComposerAttachments,

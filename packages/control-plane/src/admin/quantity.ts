@@ -16,11 +16,13 @@ export function parseCpuToCores(q: string | undefined | null): number {
   const trimmed = q.trim();
   if (trimmed.endsWith("m")) {
     const millis = Number(trimmed.slice(0, -1));
-    if (!Number.isFinite(millis)) throw new Error(`unparseable cpu quantity: ${q}`);
+    if (!Number.isFinite(millis))
+      throw new Error(`unparseable cpu quantity: ${q}`);
     return millis / 1000;
   }
   const cores = Number(trimmed);
-  if (!Number.isFinite(cores)) throw new Error(`unparseable cpu quantity: ${q}`);
+  if (!Number.isFinite(cores))
+    throw new Error(`unparseable cpu quantity: ${q}`);
   return cores;
 }
 
@@ -49,10 +51,12 @@ export function parseMemToBytes(q: string | undefined | null): number {
   if (!match) throw new Error(`unparseable memory quantity: ${q}`);
   const value = Number(match[1]);
   const suffix = match[2];
-  if (!Number.isFinite(value)) throw new Error(`unparseable memory quantity: ${q}`);
+  if (!Number.isFinite(value))
+    throw new Error(`unparseable memory quantity: ${q}`);
   if (!suffix) return value;
   const mult = MEM_MULTIPLIER[suffix];
-  if (mult === undefined) throw new Error(`unknown memory suffix in quantity: ${q}`);
+  if (mult === undefined)
+    throw new Error(`unknown memory suffix in quantity: ${q}`);
   return value * mult;
 }
 

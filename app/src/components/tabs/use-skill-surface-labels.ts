@@ -45,7 +45,8 @@ export function useSkillDialogLabels() {
       typeToSearch: t("addDialog.store.typeToSearch"),
       installCount: (count: number, formatted: string) =>
         t("addDialog.store.installCount", { count, formatted }),
-      installSkill: (name: string) => t("addDialog.store.installSkill", { name }),
+      installSkill: (name: string) =>
+        t("addDialog.store.installSkill", { name }),
       installedSkill: (name: string) =>
         t("addDialog.store.installedSkill", { name }),
       alreadyInstalledBadge: t("addDialog.store.alreadyInstalledBadge"),
@@ -64,7 +65,8 @@ export function useSkillDialogLabels() {
       findSkills: t("addDialog.repo.findSkills"),
       installSelected: (count: number) =>
         t("addDialog.repo.installSelected", { count }),
-      skillsFound: (count: number) => t("addDialog.repo.skillsFound", { count }),
+      skillsFound: (count: number) =>
+        t("addDialog.repo.skillsFound", { count }),
       selectAll: t("addDialog.repo.selectAll"),
       deselectAll: t("addDialog.repo.deselectAll"),
       inputHint: t("addDialog.repo.inputHint"),

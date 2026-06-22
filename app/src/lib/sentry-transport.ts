@@ -39,7 +39,9 @@ export function isAcceptedStatus(statusCode: number | undefined): boolean {
 }
 
 /** Pull the event id from an envelope header, if present. */
-export function eventIdFromEnvelope(envelope: EnvelopeLike): string | undefined {
+export function eventIdFromEnvelope(
+  envelope: EnvelopeLike,
+): string | undefined {
   const header = envelope[0];
   return typeof header?.event_id === "string" ? header.event_id : undefined;
 }

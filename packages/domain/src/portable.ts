@@ -41,7 +41,12 @@ const skillPath = (slug: string) => `skills/${slug}/SKILL.md`;
 /** Build the `.houstonagent` bytes. Caller supplies content already filtered by selection. */
 export function packAgent(
   content: PortableContent,
-  meta: { agentName: string; description?: string; exporter?: string; houstonVersion: string },
+  meta: {
+    agentName: string;
+    description?: string;
+    exporter?: string;
+    houstonVersion: string;
+  },
   createdAt: string,
 ): Uint8Array {
   const manifest: PortableManifest = {
@@ -55,10 +60,13 @@ export function packAgent(
   const files: Record<string, Uint8Array> = {
     [MANIFEST]: strToU8(JSON.stringify(manifest, null, 2)),
   };
-  if (content.claudeMd !== undefined) files[CLAUDE_MD] = strToU8(content.claudeMd);
+  if (content.claudeMd !== undefined)
+    files[CLAUDE_MD] = strToU8(content.claudeMd);
   for (const s of content.skills) files[skillPath(s.slug)] = strToU8(s.body);
-  if (content.routines.length) files[ROUTINES] = strToU8(JSON.stringify(content.routines, null, 2));
-  if (content.learnings.length) files[LEARNINGS] = strToU8(JSON.stringify(content.learnings, null, 2));
+  if (content.routines.length)
+    files[ROUTINES] = strToU8(JSON.stringify(content.routines, null, 2));
+  if (content.learnings.length)
+    files[LEARNINGS] = strToU8(JSON.stringify(content.learnings, null, 2));
   return zipSync(files);
 }
 
@@ -71,12 +79,15 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
   try {
     entries = unzipSync(bytes);
   } catch (err) {
-    throw new Error(`not a valid .houstonagent archive: ${err instanceof Error ? err.message : err}`);
+    throw new Error(
+      `not a valid .houstonagent archive: ${err instanceof Error ? err.message : err}`,
+    );
   }
   const manifestRaw = entries[MANIFEST];
   if (!manifestRaw) throw new Error("archive is missing manifest.json");
   const manifest = JSON.parse(strFromU8(manifestRaw)) as PortableManifest;
-  if (typeof manifest.formatVersion !== "number") throw new Error("manifest has no formatVersion");
+  if (typeof manifest.formatVersion !== "number")
+    throw new Error("manifest has no formatVersion");
   if (manifest.formatVersion > PORTABLE_FORMAT_VERSION) {
     throw new Error(
       `this agent was shared from a newer Houston (format ${manifest.formatVersion}) — update to open it`,
@@ -104,8 +115,12 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
     manifest,
     ...(claude !== undefined ? { claudeMd: strFromU8(claude) } : {}),
     skills,
-    routines: parseArray<Routine>(routinesRaw).filter((r) => isRecord(r) && typeof r.id === "string"),
-    learnings: parseArray<Learning>(learningsRaw).filter((l) => isRecord(l) && typeof l.id === "string"),
+    routines: parseArray<Routine>(routinesRaw).filter(
+      (r) => isRecord(r) && typeof r.id === "string",
+    ),
+    learnings: parseArray<Learning>(learningsRaw).filter(
+      (l) => isRecord(l) && typeof l.id === "string",
+    ),
   };
 }
 
@@ -113,8 +128,15 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
 export function portableInventory(pkg: PortablePackage): PortableInventory {
   return {
     hasClaudeMd: pkg.claudeMd !== undefined,
-    skills: pkg.skills.map((s) => ({ slug: s.slug, description: skillDescription(s.body) })),
-    routines: pkg.routines.map((r) => ({ id: r.id, name: r.name, schedule: r.schedule })),
+    skills: pkg.skills.map((s) => ({
+      slug: s.slug,
+      description: skillDescription(s.body),
+    })),
+    routines: pkg.routines.map((r) => ({
+      id: r.id,
+      name: r.name,
+      schedule: r.schedule,
+    })),
     learnings: pkg.learnings.map((l) => ({ id: l.id, text: l.text })),
   };
 }
@@ -123,6 +145,8 @@ export function portableInventory(pkg: PortablePackage): PortableInventory {
 function skillDescription(body: string): string {
   const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!m) return "";
-  const line = m[1]!.split(/\r?\n/).find((l) => l.trim().startsWith("description:"));
+  const line = m[1]!
+    .split(/\r?\n/)
+    .find((l) => l.trim().startsWith("description:"));
   return line ? line.slice(line.indexOf(":") + 1).trim() : "";
 }

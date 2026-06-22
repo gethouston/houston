@@ -7,16 +7,26 @@ import {
 import { getModel } from "@earendil-works/pi-ai";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import type { TokenUsage, ToolCallRecord, WireEvent } from "@houston/runtime-client";
+import type {
+  TokenUsage,
+  ToolCallRecord,
+  WireEvent,
+} from "@houston/runtime-client";
 import { config } from "../config";
 import { providerDefaultModel } from "../ai/providers";
 import { toThinkingLevel } from "../ai/effort";
 import { makeAgentLoader } from "../session/resource-loader";
 import { toWire } from "../session/wire";
-import { CLAMPED_FILE_TOOL_NAMES, makeClampedFileTools } from "../session/tools/clamped-fs";
+import {
+  CLAMPED_FILE_TOOL_NAMES,
+  makeClampedFileTools,
+} from "../session/tools/clamped-fs";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
-import { appendAssistantMessageAt, appendUserMessageAt } from "../store/conversation-file";
+import {
+  appendAssistantMessageAt,
+  appendUserMessageAt,
+} from "../store/conversation-file";
 
 /**
  * One pi turn against a hydrated throwaway root (<root>/workspace +
@@ -37,7 +47,11 @@ type Settings = { activeProvider?: string; models?: Record<string, string> };
  * `getModel` throws for a model id the provider doesn't offer — we let it
  * propagate so a bad pin surfaces as the turn's error, never a silent fallback.
  */
-function resolveTurnModel(dataDir: string, provider: string, override?: string | null) {
+function resolveTurnModel(
+  dataDir: string,
+  provider: string,
+  override?: string | null,
+) {
   let settings: Settings = {};
   const f = join(dataDir, "settings.json");
   if (existsSync(f)) {
@@ -83,7 +97,10 @@ export async function runPiTurn(
   const tools: ToolCallRecord[] = [];
   try {
     const authStorage = AuthStorage.create(join(dataDir, "auth.json"));
-    const modelRegistry = ModelRegistry.create(authStorage, join(dataDir, "models.json"));
+    const modelRegistry = ModelRegistry.create(
+      authStorage,
+      join(dataDir, "models.json"),
+    );
     const loader = makeAgentLoader(workspaceDir);
     await loader.reload();
 
@@ -92,7 +109,10 @@ export async function runPiTurn(
           baseUrl: config.codeSandboxUrl,
           token: config.codeSandboxToken,
           workspaceDir,
-          limits: { maxConcurrent: config.runCodeMaxConcurrent, maxPerMinute: config.runCodePerMinute },
+          limits: {
+            maxConcurrent: config.runCodeMaxConcurrent,
+            maxPerMinute: config.runCodePerMinute,
+          },
           idToken: makeIdTokenProvider(config.codeSandboxUrl),
         })
       : null;
@@ -115,7 +135,10 @@ export async function runPiTurn(
       resourceLoader: loader as never,
       // No bash, ever, in the cloud: untrusted code belongs to run_code.
       tools: [...CLAMPED_FILE_TOOL_NAMES, ...(sandbox ? ["run_code"] : [])],
-      customTools: [...makeClampedFileTools(workspaceDir), ...(sandbox ? [sandbox] : [])],
+      customTools: [
+        ...makeClampedFileTools(workspaceDir),
+        ...(sandbox ? [sandbox] : []),
+      ],
     });
 
     const unsub = session.subscribe((e: unknown) => {
@@ -138,10 +161,23 @@ export async function runPiTurn(
       signal?.removeEventListener("abort", onAbort);
       unsub();
     }
-    appendAssistantMessageAt(conversationsDir, conversationId, assistantText, tools, usage);
+    appendAssistantMessageAt(
+      conversationsDir,
+      conversationId,
+      assistantText,
+      tools,
+      usage,
+    );
     return {};
   } catch (err) {
-    if (assistantText) appendAssistantMessageAt(conversationsDir, conversationId, assistantText, tools, usage);
+    if (assistantText)
+      appendAssistantMessageAt(
+        conversationsDir,
+        conversationId,
+        assistantText,
+        tools,
+        usage,
+      );
     return { error: err instanceof Error ? err.message : String(err) };
   }
 }

@@ -19,7 +19,11 @@ test("rename carries the agent's color to its new id", () => {
 });
 
 test("rename strands no color under the old id", () => {
-  const next = renameColorOverlay({ "Home/Bob": "#1b6b3a" }, "Home/Bob", "Home/Robert");
+  const next = renameColorOverlay(
+    { "Home/Bob": "#1b6b3a" },
+    "Home/Bob",
+    "Home/Robert",
+  );
   expect("Home/Bob" in next).toBe(false);
 });
 
@@ -35,7 +39,9 @@ test("rename leaves the overlay untouched when the agent had no color", () => {
 
 test("delete drops the agent's overlay entry so a reused path-id can't inherit it", () => {
   const overlay = { "Home/Bob": "#1b6b3a", "Home/Ada": "#5b21b6" };
-  expect(removeColorOverlay(overlay, "Home/Bob")).toEqual({ "Home/Ada": "#5b21b6" });
+  expect(removeColorOverlay(overlay, "Home/Bob")).toEqual({
+    "Home/Ada": "#5b21b6",
+  });
 });
 
 test("delete is a no-op when the agent had no color", () => {

@@ -19,7 +19,9 @@ export class IntegrationRegistry {
   /** Register a provider. Duplicate ids are a wiring bug, not a silent overwrite. */
   register(provider: IntegrationProvider): void {
     if (this.byId.has(provider.id)) {
-      throw new Error(`integration provider '${provider.id}' already registered`);
+      throw new Error(
+        `integration provider '${provider.id}' already registered`,
+      );
     }
     this.byId.set(provider.id, provider);
   }

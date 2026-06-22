@@ -26,11 +26,20 @@ export interface WorkspacePaths {
   dataRoot(ws: Workspace, agent: Agent): string;
 }
 
-export function conversationKey(paths: WorkspacePaths, ws: Workspace, agent: Agent, cid: string): string {
+export function conversationKey(
+  paths: WorkspacePaths,
+  ws: Workspace,
+  agent: Agent,
+  cid: string,
+): string {
   return `${paths.dataRoot(ws, agent)}/conversations/${encodeURIComponent(cid)}.json`;
 }
 
-export function settingsKey(paths: WorkspacePaths, ws: Workspace, agent: Agent): string {
+export function settingsKey(
+  paths: WorkspacePaths,
+  ws: Workspace,
+  agent: Agent,
+): string {
   return `${paths.dataRoot(ws, agent)}/settings.json`;
 }
 
@@ -70,4 +79,5 @@ export class LocalPaths implements WorkspacePaths {
 const CLOUD = new CloudPaths();
 
 /** Cloud-layout agent root — a convenience for cloud tests + callers without a paths instance. */
-export const workspaceRoot = (ws: Workspace, agent: Agent) => CLOUD.agentRoot(ws, agent);
+export const workspaceRoot = (ws: Workspace, agent: Agent) =>
+  CLOUD.agentRoot(ws, agent);

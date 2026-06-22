@@ -50,13 +50,21 @@ test("echo of an optimistic push is dropped (issue #363)", () => {
   const pending = {};
   // The local client pushed the prompt optimistically first.
   assert.equal(
-    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "ping" }, false),
+    reconcileUserMessageEcho(
+      pending,
+      { feed_type: "user_message", data: "ping" },
+      false,
+    ),
     true,
   );
   assert.deepEqual(pending, { ping: 1 });
   // The engine's WS echo of that same prompt is the duplicate — drop it.
   assert.equal(
-    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "ping" }, true),
+    reconcileUserMessageEcho(
+      pending,
+      { feed_type: "user_message", data: "ping" },
+      true,
+    ),
     false,
   );
   assert.deepEqual(pending, { ping: 0 });
@@ -67,7 +75,11 @@ test("an echo with no pending optimistic push appends (routine run / cross-clien
   // only as a WS echo and must append.
   const pending = {};
   assert.equal(
-    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "check email" }, true),
+    reconcileUserMessageEcho(
+      pending,
+      { feed_type: "user_message", data: "check email" },
+      true,
+    ),
     true,
   );
   assert.deepEqual(pending, {});
@@ -79,7 +91,11 @@ test("repeated routine runs with the identical prompt all append (issue #381)", 
   const pending = {};
   for (let i = 0; i < 3; i += 1) {
     assert.equal(
-      reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "check email" }, true),
+      reconcileUserMessageEcho(
+        pending,
+        { feed_type: "user_message", data: "check email" },
+        true,
+      ),
       true,
       `run ${i} appends`,
     );
@@ -88,15 +104,31 @@ test("repeated routine runs with the identical prompt all append (issue #381)", 
 
 test("deliberate local repeat keeps both; both echoes drop", () => {
   const pending = {};
-  reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, false);
-  reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, false);
+  reconcileUserMessageEcho(
+    pending,
+    { feed_type: "user_message", data: "again" },
+    false,
+  );
+  reconcileUserMessageEcho(
+    pending,
+    { feed_type: "user_message", data: "again" },
+    false,
+  );
   assert.deepEqual(pending, { again: 2 });
   assert.equal(
-    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, true),
+    reconcileUserMessageEcho(
+      pending,
+      { feed_type: "user_message", data: "again" },
+      true,
+    ),
     false,
   );
   assert.equal(
-    reconcileUserMessageEcho(pending, { feed_type: "user_message", data: "again" }, true),
+    reconcileUserMessageEcho(
+      pending,
+      { feed_type: "user_message", data: "again" },
+      true,
+    ),
     false,
   );
   assert.deepEqual(pending, { again: 0 });
@@ -105,7 +137,11 @@ test("deliberate local repeat keeps both; both echoes drop", () => {
 test("non-user_message items are never gated by the echo tally", () => {
   const pending = {};
   assert.equal(
-    reconcileUserMessageEcho(pending, { feed_type: "assistant_text", data: "hi" }, true),
+    reconcileUserMessageEcho(
+      pending,
+      { feed_type: "assistant_text", data: "hi" },
+      true,
+    ),
     true,
   );
   assert.deepEqual(pending, {});
@@ -115,7 +151,10 @@ test("non-user_message items are never gated by the echo tally", () => {
 
 test("mergeFeedItem appends user_messages verbatim (dedup moved out)", () => {
   const feed = [{ feed_type: "user_message", data: "ping" }];
-  const merged = mergeFeedItem(feed, { feed_type: "user_message", data: "ping" });
+  const merged = mergeFeedItem(feed, {
+    feed_type: "user_message",
+    data: "ping",
+  });
   assert.deepEqual(merged, [
     { feed_type: "user_message", data: "ping" },
     { feed_type: "user_message", data: "ping" },
@@ -131,12 +170,18 @@ test("history reconcile: surfaced routine does not duplicate its turn", () => {
   const history = [
     { feed_type: "user_message", data: "run the report" },
     { feed_type: "assistant_text", data: "done" },
-    { feed_type: "final_result", data: { result: "done", cost_usd: null, duration_ms: null } },
+    {
+      feed_type: "final_result",
+      data: { result: "done", cost_usd: null, duration_ms: null },
+    },
   ];
   const current = [
     { feed_type: "user_message", data: "run the report" },
     { feed_type: "assistant_text", data: "done" },
-    { feed_type: "final_result", data: { result: "done", cost_usd: null, duration_ms: null } },
+    {
+      feed_type: "final_result",
+      data: { result: "done", cost_usd: null, duration_ms: null },
+    },
   ];
 
   assert.deepEqual(mergeFeedHistory(history, current), history);

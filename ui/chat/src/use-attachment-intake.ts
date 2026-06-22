@@ -1,5 +1,8 @@
 import { useCallback } from "react";
-import type { AttachmentRejection, PrepareAttachments } from "./chat-panel-types";
+import type {
+  AttachmentRejection,
+  PrepareAttachments,
+} from "./chat-panel-types";
 import { mergeUniqueFiles } from "./use-file-drop-zone";
 
 /**
@@ -40,6 +43,13 @@ export function useAttachmentIntake({
       }
       setFiles(merged);
     },
-    [files, setFiles, onNotice, duplicateNotice, prepareAttachments, onAttachmentRejections],
+    [
+      files,
+      setFiles,
+      onNotice,
+      duplicateNotice,
+      prepareAttachments,
+      onAttachmentRejections,
+    ],
   );
 }

@@ -11,18 +11,18 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@houston-ai/core"
-import { MoreHorizontal, Trash2 } from "lucide-react"
-import type { Skill } from "./types"
+} from "@houston-ai/core";
+import { MoreHorizontal, Trash2 } from "lucide-react";
+import type { Skill } from "./types";
 
 export interface SkillRowProps {
-  skill: Skill
-  onClick: () => void
-  onDelete?: () => void
+  skill: Skill;
+  onClick: () => void;
+  onDelete?: () => void;
 }
 
 export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
-  const displayName = humanizeSkillName(skill.name)
+  const displayName = humanizeSkillName(skill.name);
 
   return (
     <div
@@ -31,8 +31,8 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault()
-          onClick()
+          e.preventDefault();
+          onClick();
         }
       }}
       className={cn(
@@ -56,11 +56,7 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
         <div onClick={(e) => e.stopPropagation()} className="shrink-0 -mr-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label="More actions"
-              >
+              <Button variant="ghost" size="icon-sm" aria-label="More actions">
                 <MoreHorizontal className="size-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -74,11 +70,11 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
         </div>
       )}
     </div>
-  )
+  );
 }
 
 function humanizeSkillName(slug: string): string {
-  const spaced = slug.replace(/[-_]+/g, " ").trim()
-  if (spaced.length === 0) return slug
-  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
+  const spaced = slug.replace(/[-_]+/g, " ").trim();
+  if (spaced.length === 0) return slug;
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1);
 }

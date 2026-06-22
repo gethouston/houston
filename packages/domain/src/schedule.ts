@@ -8,7 +8,10 @@ import type { Activity, Routine, RoutineRun } from "@houston/protocol";
  */
 
 /** Validate a cron expression (+ optional IANA tz). Returns null when valid, else the reason. */
-export function validateSchedule(schedule: string, timezone?: string | null): string | null {
+export function validateSchedule(
+  schedule: string,
+  timezone?: string | null,
+): string | null {
   try {
     // Construction throws on a bad pattern; the timezone is only resolved when a
     // date is computed, so force a nextRun() to surface an invalid tz too.
@@ -24,7 +27,11 @@ export function validateSchedule(schedule: string, timezone?: string | null): st
  * IANA `timezone` (the account-wide zone; or the host's local tz when absent).
  * Null when the pattern never fires again or is invalid.
  */
-export function nextRun(schedule: string, timezone: string | null | undefined, after: Date): Date | null {
+export function nextRun(
+  schedule: string,
+  timezone: string | null | undefined,
+  after: Date,
+): Date | null {
   try {
     const cron = new Cron(schedule, timezone ? { timezone } : {});
     return cron.nextRun(after);
@@ -62,11 +69,17 @@ export function dueAt(
  * conversation per run. Matches the RoutineChatMode contract.
  */
 export function routineConversationId(routine: Routine, runId: string): string {
-  return routine.chat_mode === "per_run" ? `routine-${routine.id}-${runId}` : `routine-${routine.id}`;
+  return routine.chat_mode === "per_run"
+    ? `routine-${routine.id}-${runId}`
+    : `routine-${routine.id}`;
 }
 
 /** A fresh "running" run record. Caller supplies id + clock (domain stays pure). */
-export function createRoutineRun(routine: Routine, runId: string, nowIso: string): RoutineRun {
+export function createRoutineRun(
+  routine: Routine,
+  runId: string,
+  nowIso: string,
+): RoutineRun {
   return {
     id: runId,
     routine_id: routine.id,
@@ -90,20 +103,26 @@ export const SUPPRESSION_INSTRUCTION = `\n\n---\nIMPORTANT: If nothing requires 
 
 /** The prompt actually sent when firing a routine (suppression instruction appended if opted in). */
 export function routinePrompt(routine: Routine): string {
-  return routine.suppress_when_silent ? `${routine.prompt}${SUPPRESSION_INSTRUCTION}` : routine.prompt;
+  return routine.suppress_when_silent
+    ? `${routine.prompt}${SUPPRESSION_INSTRUCTION}`
+    : routine.prompt;
 }
 
 /** Silent iff the trimmed response starts or ends with the token (case-sensitive). */
 export function responseIsSilent(response: string): boolean {
   const trimmed = response.trim();
-  return trimmed.startsWith(ROUTINE_OK_TOKEN) || trimmed.endsWith(ROUTINE_OK_TOKEN);
+  return (
+    trimmed.startsWith(ROUTINE_OK_TOKEN) || trimmed.endsWith(ROUTINE_OK_TOKEN)
+  );
 }
 
 /** Run summary: response with the token stripped, trimmed, capped at 200 chars (…), or "Nothing to report". */
 export function extractRunSummary(response: string): string {
   const without = response.trim().split(ROUTINE_OK_TOKEN).join("").trim();
   if (without === "") return "Nothing to report";
-  return [...without].length <= 200 ? without : `${[...without].slice(0, 199).join("")}…`;
+  return [...without].length <= 200
+    ? without
+    : `${[...without].slice(0, 199).join("")}…`;
 }
 
 /**

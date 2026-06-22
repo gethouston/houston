@@ -30,7 +30,8 @@ export async function collectArtifacts(
       }
       if (!entry.isFile() || abs === programPath) continue;
       const priorBytes = seeded.get(abs);
-      if (priorBytes !== undefined && priorBytes === (await stat(abs)).size) continue; // unchanged input
+      if (priorBytes !== undefined && priorBytes === (await stat(abs)).size)
+        continue; // unchanged input
       const buf = await readFile(abs);
       const encoded = encodedSize(buf.byteLength);
       if (total + encoded > maxBytes) {
@@ -40,7 +41,11 @@ export async function collectArtifacts(
         continue;
       }
       total += encoded;
-      out.push({ path: relative(root, abs), contentBase64: buf.toString("base64"), bytes: buf.byteLength });
+      out.push({
+        path: relative(root, abs),
+        contentBase64: buf.toString("base64"),
+        bytes: buf.byteLength,
+      });
     }
   };
 

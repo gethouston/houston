@@ -35,13 +35,18 @@ test("attachment prompt includes display marker and hidden path block", () => {
       },
     ],
   });
-  assert.match(prompt, /\[User attached these files\. Read them with the Read tool if needed:/);
-  assert.match(prompt, /- \/Users\/ja\/\.houston\/cache\/attachments\/brief\.pdf/);
+  assert.match(
+    prompt,
+    /\[User attached these files\. Read them with the Read tool if needed:/,
+  );
+  assert.match(
+    prompt,
+    /- \/Users\/ja\/\.houston\/cache\/attachments\/brief\.pdf/,
+  );
 });
 
 test("attachment references fall back to file name from path", () => {
-  assert.deepEqual(
-    attachmentReferences([], ["/tmp/report.csv"]),
-    [{ name: "report.csv", path: "/tmp/report.csv" }],
-  );
+  assert.deepEqual(attachmentReferences([], ["/tmp/report.csv"]), [
+    { name: "report.csv", path: "/tmp/report.csv" },
+  ]);
 });

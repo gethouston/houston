@@ -31,7 +31,8 @@ export function isExpiring(cred: WorkspaceCredential, skewMs = 120_000): boolean
 export async function refreshCredential(cred: WorkspaceCredential): Promise<WorkspaceCredential> {
   if (isApiKeyCredential(cred)) return cred;
   const cfg = OAUTH[cred.provider];
-  if (!cfg) throw new Error(`no OAuth refresh config for provider ${cred.provider}`);
+  if (!cfg)
+    throw new Error(`no OAuth refresh config for provider ${cred.provider}`);
 
   const res = await fetch(cfg.tokenUrl, {
     method: "POST",
@@ -44,15 +45,23 @@ export async function refreshCredential(cred: WorkspaceCredential): Promise<Work
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`OAuth refresh failed (${res.status}) for ${cred.provider}: ${body.slice(0, 200)}`);
+    throw new Error(
+      `OAuth refresh failed (${res.status}) for ${cred.provider}: ${body.slice(0, 200)}`,
+    );
   }
   const json = (await res.json()) as {
     access_token?: string;
     refresh_token?: string;
     expires_in?: number;
   };
-  if (!json.access_token || !json.refresh_token || typeof json.expires_in !== "number") {
-    throw new Error(`OAuth refresh response missing fields for ${cred.provider}`);
+  if (
+    !json.access_token ||
+    !json.refresh_token ||
+    typeof json.expires_in !== "number"
+  ) {
+    throw new Error(
+      `OAuth refresh response missing fields for ${cred.provider}`,
+    );
   }
   return {
     workspaceId: cred.workspaceId,

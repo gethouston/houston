@@ -24,7 +24,12 @@ interface Props {
  * the per-agent New Mission button. See the dashboard wiring for that
  * sequencing (it lives there because it depends on view-mode state).
  */
-export function AgentPickerDialog({ open, onOpenChange, agents, onPick }: Props) {
+export function AgentPickerDialog({
+  open,
+  onOpenChange,
+  agents,
+  onPick,
+}: Props) {
   const { t } = useTranslation("dashboard");
 
   return (

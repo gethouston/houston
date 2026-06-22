@@ -100,10 +100,14 @@ export function MissionBoard({ source }: { source: BoardSource }) {
   });
 
   const handleCreateConversation = useCallback(
-    (text: string, files: File[]) => source.createConversation({ text, files, ...overrides }),
+    (text: string, files: File[]) =>
+      source.createConversation({ text, files, ...overrides }),
     [source.createConversation, overrides],
   );
-  const handleNotice = useCallback((message: string) => addToast({ title: message }), [addToast]);
+  const handleNotice = useCallback(
+    (message: string) => addToast({ title: message }),
+    [addToast],
+  );
   const handleOpenLink = useCallback(
     (url: string) => {
       const path = source.activeAgent?.folderPath;

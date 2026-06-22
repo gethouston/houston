@@ -12,14 +12,50 @@ import { tauriFiles } from "../lib/tauri";
 type LucideIcon = ComponentType<{ className?: string }>;
 
 const CODE_EXTS = new Set([
-  "ts", "tsx", "js", "jsx", "py", "rs", "go", "rb", "java", "c", "cpp", "h",
-  "css", "scss", "html", "json", "yaml", "yml", "toml", "xml", "sh", "bash",
-  "swift", "kt", "lua", "zig", "sql", "graphql", "vue", "svelte",
+  "ts",
+  "tsx",
+  "js",
+  "jsx",
+  "py",
+  "rs",
+  "go",
+  "rb",
+  "java",
+  "c",
+  "cpp",
+  "h",
+  "css",
+  "scss",
+  "html",
+  "json",
+  "yaml",
+  "yml",
+  "toml",
+  "xml",
+  "sh",
+  "bash",
+  "swift",
+  "kt",
+  "lua",
+  "zig",
+  "sql",
+  "graphql",
+  "vue",
+  "svelte",
 ]);
 
 const TEXT_EXTS = new Set(["md", "txt", "doc", "docx", "rtf", "csv", "log"]);
 
-const IMAGE_EXTS = new Set(["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp"]);
+const IMAGE_EXTS = new Set([
+  "png",
+  "jpg",
+  "jpeg",
+  "gif",
+  "svg",
+  "webp",
+  "ico",
+  "bmp",
+]);
 
 export function getFileIcon(ext?: string): LucideIcon {
   if (!ext) return FileIcon;
@@ -36,7 +72,9 @@ interface FileCardProps {
 
 export function FileCard({ filePath, agentPath }: FileCardProps) {
   const fileName = filePath.split("/").pop() ?? filePath;
-  const ext = fileName.includes(".") ? fileName.split(".").pop()?.toLowerCase() : undefined;
+  const ext = fileName.includes(".")
+    ? fileName.split(".").pop()?.toLowerCase()
+    : undefined;
   const Icon = getFileIcon(ext);
 
   const handleOpen = useCallback(() => {

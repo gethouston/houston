@@ -20,7 +20,9 @@ export type PiThinkingLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
  * the override entirely and pi falls back to its own default — never a silent
  * substitution of a level the user didn't ask for.
  */
-export function toThinkingLevel(effort: string | null | undefined): PiThinkingLevel | undefined {
+export function toThinkingLevel(
+  effort: string | null | undefined,
+): PiThinkingLevel | undefined {
   switch (effort) {
     case "minimal":
       return "minimal";

@@ -18,7 +18,8 @@ type AuthFile = Record<
   { type: string; access?: string; refresh?: string; expires?: number; accountId?: string; key?: string }
 >;
 
-const freshAuthPath = () => join(mkdtempSync(join(tmpdir(), "houston-auth-")), "auth.json");
+const freshAuthPath = () =>
+  join(mkdtempSync(join(tmpdir(), "houston-auth-")), "auth.json");
 const readAuth = (p: string) => JSON.parse(readFileSync(p, "utf8")) as AuthFile;
 
 test("a served credential is written WITHOUT a refresh token", () => {
@@ -46,7 +47,12 @@ test("a served credential overwrites a refresh-bearing entry from device-code lo
   writeFileSync(
     path,
     JSON.stringify({
-      "openai-codex": { type: "oauth", access: "AT-old", refresh: "RT-SECRET", expires: 1 },
+      "openai-codex": {
+        type: "oauth",
+        access: "AT-old",
+        refresh: "RT-SECRET",
+        expires: 1,
+      },
     }),
   );
   applyServedCredential(path, {
@@ -65,11 +71,19 @@ test("scrub rewrites every refresh-bearing entry and reports the providers", () 
   writeFileSync(
     path,
     JSON.stringify({
-      "openai-codex": { type: "oauth", access: "A1", refresh: "RT-1", expires: 1 },
+      "openai-codex": {
+        type: "oauth",
+        access: "A1",
+        refresh: "RT-1",
+        expires: 1,
+      },
       anthropic: { type: "oauth", access: "A2", refresh: "RT-2", expires: 2 },
     }),
   );
-  expect(scrubRefreshTokensAt(path).sort()).toEqual(["anthropic", "openai-codex"]);
+  expect(scrubRefreshTokensAt(path).sort()).toEqual([
+    "anthropic",
+    "openai-codex",
+  ]);
   const auth = readAuth(path);
   expect(auth["openai-codex"]!.refresh).toBe("");
   expect(auth["anthropic"]!.refresh).toBe("");
@@ -111,7 +125,9 @@ test("scrub is idempotent and a missing auth.json is a no-op", () => {
   expect(scrubRefreshTokensAt(path)).toEqual([]); // no file
   writeFileSync(
     path,
-    JSON.stringify({ "openai-codex": { type: "oauth", access: "A", refresh: "", expires: 1 } }),
+    JSON.stringify({
+      "openai-codex": { type: "oauth", access: "A", refresh: "", expires: 1 },
+    }),
   );
   expect(scrubRefreshTokensAt(path)).toEqual([]); // already clean
 });

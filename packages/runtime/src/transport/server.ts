@@ -1,9 +1,18 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { config } from "../config";
 import { getAuthStatus, startLogin, completeLogin, logout, setApiKey } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
-import { runTurn, ensureProviderForTurn, cancelTurn, disposeConversation } from "../session/chat";
+import {
+  runTurn,
+  ensureProviderForTurn,
+  cancelTurn,
+  disposeConversation,
+} from "../session/chat";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { snapshot, subscribe } from "../session/bus";
 import {
@@ -65,7 +74,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     try {
       return json(res, 200, setSettings(body));
     } catch (e) {
-      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
@@ -115,7 +126,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       logout(provider);
       return json(res, 200, { ok: true });
     } catch (e) {
-      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
@@ -136,7 +149,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     try {
       return json(res, 200, { title: await titleFromText(text) });
     } catch (e) {
-      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
@@ -162,7 +177,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
   }
 
-  const convMatch = path.match(/^\/conversations\/([^/]+)\/(messages|events|cancel|title)$/);
+  const convMatch = path.match(
+    /^\/conversations\/([^/]+)\/(messages|events|cancel|title)$/,
+  );
   if (convMatch) {
     const id = decodeURIComponent(convMatch[1]);
     const action = convMatch[2];
@@ -203,7 +220,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
           ? json(res, 200, { title })
           : json(res, 404, { error: "conversation not found" });
       } catch (e) {
-        return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+        return json(res, 400, {
+          error: e instanceof Error ? e.message : String(e),
+        });
       }
     }
 
@@ -228,7 +247,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         model: typeof model === "string" ? model : undefined,
         effort: typeof effort === "string" ? effort : undefined,
       };
-      void runTurn(id, text, typeof nonce === "string" ? nonce : undefined, pin);
+      void runTurn(
+        id,
+        text,
+        typeof nonce === "string" ? nonce : undefined,
+        pin,
+      );
       return json(res, 202, { ok: true, id });
     }
   }
@@ -245,12 +269,18 @@ export function startServer() {
     });
   });
   server.listen(config.port, config.host, () => {
-    console.log(`\nhouston-runtime listening on http://${config.host}:${config.port}`);
+    console.log(
+      `\nhouston-runtime listening on http://${config.host}:${config.port}`,
+    );
     console.log(`  workspace: ${config.workspaceDir}`);
     console.log(`  data dir:  ${config.dataDir}`);
     console.log(`  model:     ${config.model}`);
-    console.log(`  auth:      ${config.token ? "bearer token required" : "open (local dev)"}`);
-    console.log(`  claude:    ${config.headless ? "headless (paste code)" : "loopback (local)"}`);
+    console.log(
+      `  auth:      ${config.token ? "bearer token required" : "open (local dev)"}`,
+    );
+    console.log(
+      `  claude:    ${config.headless ? "headless (paste code)" : "loopback (local)"}`,
+    );
     console.log(`  cors:      ${config.corsOrigin}`);
   });
   return server;

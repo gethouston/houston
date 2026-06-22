@@ -13,18 +13,24 @@ export function formatVisibleMessageText(
   return `${text}${text ? "\n\n" : ""}${formatAttached(names)}`;
 }
 
-export function combineQueuedMessageText(items: readonly QueuedChatPayload[]): string {
+export function combineQueuedMessageText(
+  items: readonly QueuedChatPayload[],
+): string {
   return items
     .map((item) => item.text.trim())
     .filter(Boolean)
     .join("\n\n");
 }
 
-export function combineQueuedMessageFiles(items: readonly QueuedChatPayload[]): File[] {
+export function combineQueuedMessageFiles(
+  items: readonly QueuedChatPayload[],
+): File[] {
   return items.flatMap((item) => [...item.files]);
 }
 
-export function combineQueuedVisibleText(items: readonly QueuedChatPayload[]): string {
+export function combineQueuedVisibleText(
+  items: readonly QueuedChatPayload[],
+): string {
   return items
     .map((item) => formatVisibleMessageText(item.text.trim(), item.files))
     .filter(Boolean)

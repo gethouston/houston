@@ -82,8 +82,14 @@ export function runProcess(
       return next;
     };
 
-    child.stdout.on("data", (d: Buffer) => (stdout = cap(stdout, d.toString("utf8"))));
-    child.stderr.on("data", (d: Buffer) => (stderr = cap(stderr, d.toString("utf8"))));
+    child.stdout.on(
+      "data",
+      (d: Buffer) => (stdout = cap(stdout, d.toString("utf8"))),
+    );
+    child.stderr.on(
+      "data",
+      (d: Buffer) => (stderr = cap(stderr, d.toString("utf8"))),
+    );
 
     const timer = setTimeout(() => {
       timedOut = true;
@@ -95,14 +101,23 @@ export function runProcess(
       settled = true;
       clearTimeout(timer);
       killGroup(child.pid); // reap any grandchildren the program left behind
-      resolveP({ exitCode, stdout, stderr: stderr + extraStderr, timedOut, truncated });
+      resolveP({
+        exitCode,
+        stdout,
+        stderr: stderr + extraStderr,
+        timedOut,
+        truncated,
+      });
     };
 
     // Settle on `exit` (the program ended) rather than `close` (all stdio closed),
     // which a lingering grandchild could hold open indefinitely.
     child.on("exit", (code) => finish(code));
     child.on("error", (err: Error) =>
-      finish(null, `\n[sandbox] failed to start ${INTERPRETER[language]}: ${err.message}`),
+      finish(
+        null,
+        `\n[sandbox] failed to start ${INTERPRETER[language]}: ${err.message}`,
+      ),
     );
   });
 }

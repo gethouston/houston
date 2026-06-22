@@ -1,8 +1,4 @@
-import {
-  AppsV1Api,
-  CoreV1Api,
-  type KubeConfig,
-} from "@kubernetes/client-node";
+import { AppsV1Api, CoreV1Api, type KubeConfig } from "@kubernetes/client-node";
 import type { Agent, AgentId } from "../domain/types";
 import type {
   CredentialVault,
@@ -90,10 +86,18 @@ export class GkeLauncher implements RuntimeLauncher {
 
   async sleep(agentId: AgentId): Promise<void> {
     const { agent, workspaceSlug } = await this.deps.resolver.resolve(agentId);
-    await scaleDeployment(this.apps, namespaceFor(workspaceSlug), deploymentName(agent.id), 0);
+    await scaleDeployment(
+      this.apps,
+      namespaceFor(workspaceSlug),
+      deploymentName(agent.id),
+      0,
+    );
   }
 
-  async destroy(agentId: AgentId, opts?: { dropVolume?: boolean }): Promise<void> {
+  async destroy(
+    agentId: AgentId,
+    opts?: { dropVolume?: boolean },
+  ): Promise<void> {
     const { agent, workspaceSlug } = await this.deps.resolver.resolve(agentId);
     const ns = namespaceFor(workspaceSlug);
     await deleteIgnoringMissing(() =>
@@ -113,7 +117,10 @@ export class GkeLauncher implements RuntimeLauncher {
     const { agent, workspaceSlug } = await this.deps.resolver.resolve(agentId);
     const ns = namespaceFor(workspaceSlug);
     try {
-      const { body } = await this.apps.readNamespacedDeployment(deploymentName(agent.id), ns);
+      const { body } = await this.apps.readNamespacedDeployment(
+        deploymentName(agent.id),
+        ns,
+      );
       const desired = body.spec?.replicas ?? 0;
       const ready = body.status?.readyReplicas ?? 0;
       if (desired === 0) return "asleep";

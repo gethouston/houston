@@ -91,13 +91,22 @@ class ErrorBoundary extends Component<
             zIndex: 999999,
           }}
         >
-          <h1 style={{ color: "#ff6666", fontSize: 24, margin: 0, marginBottom: 16 }}>
+          <h1
+            style={{
+              color: "#ff6666",
+              fontSize: 24,
+              margin: 0,
+              marginBottom: 16,
+            }}
+          >
             App crashed
           </h1>
           <p style={{ fontSize: 15, marginBottom: 16, color: "#ffffff" }}>
             {this.state.error.message}
           </p>
-          <pre style={{ fontSize: 12, opacity: 0.85 }}>{this.state.error.stack}</pre>
+          <pre style={{ fontSize: 12, opacity: 0.85 }}>
+            {this.state.error.stack}
+          </pre>
         </div>
       );
     }

@@ -10,10 +10,12 @@ import type { DocDiagnostic, FileStore } from "./store";
  * picker UI; the body is the procedure.
  */
 
-export const skillKey = (root: string, slug: string) => `${skillsDirKey(root)}/${slug}/SKILL.md`;
+export const skillKey = (root: string, slug: string) =>
+  `${skillsDirKey(root)}/${slug}/SKILL.md`;
 
 /** The slug dir, for whole-skill deletion (host calls vfs.deletePrefix on it). */
-export const skillDirKey = (root: string, slug: string) => `${skillsDirKey(root)}/${slug}`;
+export const skillDirKey = (root: string, slug: string) =>
+  `${skillsDirKey(root)}/${slug}`;
 
 const FM = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?([\s\S]*)$/;
 
@@ -39,10 +41,13 @@ export function parseSkillMd(
   let fm: Record<string, unknown>;
   try {
     const parsed = parseYaml(m[1]!) as unknown;
-    if (typeof parsed !== "object" || parsed === null) return { error: `frontmatter of '${slug}' is not a map` };
+    if (typeof parsed !== "object" || parsed === null)
+      return { error: `frontmatter of '${slug}' is not a map` };
     fm = parsed as Record<string, unknown>;
   } catch (err) {
-    return { error: `frontmatter of '${slug}' is not valid YAML: ${err instanceof Error ? err.message : String(err)}` };
+    return {
+      error: `frontmatter of '${slug}' is not valid YAML: ${err instanceof Error ? err.message : String(err)}`,
+    };
   }
   const summary: SkillSummary = {
     name: str(fm.name) ?? slug,
@@ -53,7 +58,9 @@ export function parseSkillMd(
     lastUsed: str(fm.last_used),
     category: str(fm.category),
     featured: truthy(fm.featured),
-    integrations: Array.isArray(fm.integrations) ? fm.integrations.map(String) : [],
+    integrations: Array.isArray(fm.integrations)
+      ? fm.integrations.map(String)
+      : [],
     image: str(fm.image),
   };
   return { summary, body: m[2] ?? "" };
@@ -66,12 +73,14 @@ export async function loadSkills(
 ): Promise<{ items: SkillSummary[]; diagnostics: DocDiagnostic[] }> {
   const dir = skillsDirKey(root);
   const keys = await store.list(dir);
-  const slugs = [...new Set(
-    keys
-      .filter((k) => k.endsWith("/SKILL.md"))
-      .map((k) => k.slice(dir.length + 1).split("/")[0]!)
-      .filter(Boolean),
-  )].sort();
+  const slugs = [
+    ...new Set(
+      keys
+        .filter((k) => k.endsWith("/SKILL.md"))
+        .map((k) => k.slice(dir.length + 1).split("/")[0]!)
+        .filter(Boolean),
+    ),
+  ].sort();
 
   const items: SkillSummary[] = [];
   const diagnostics: DocDiagnostic[] = [];

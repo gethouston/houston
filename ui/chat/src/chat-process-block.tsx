@@ -69,14 +69,8 @@ export function ChatProcessBlock({
   });
 
   return (
-    <Collapsible
-      className="not-prose"
-      open={isOpen}
-      onOpenChange={setIsOpen}
-    >
-      <CollapsibleTrigger
-        className="inline-flex max-w-full items-center gap-1.5 text-muted-foreground/65 transition-colors hover:text-muted-foreground"
-      >
+    <Collapsible className="not-prose" open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger className="inline-flex max-w-full items-center gap-1.5 text-muted-foreground/65 transition-colors hover:text-muted-foreground">
         <ChatStatusLine label={headerLabel} active={isActive} />
         <ChevronDownIcon
           className={cn(
@@ -102,11 +96,19 @@ export function ChatProcessBlock({
                 <div key={segment.key} className="space-y-3">
                   {segment.reasoning && (
                     <Reasoning
-                      isStreaming={segmentActive && segment.reasoning.isStreaming}
-                      defaultOpen={segmentActive && segment.reasoning.isStreaming}
+                      isStreaming={
+                        segmentActive && segment.reasoning.isStreaming
+                      }
+                      defaultOpen={
+                        segmentActive && segment.reasoning.isStreaming
+                      }
                     >
-                      <ReasoningTrigger getThinkingMessage={getThinkingMessage} />
-                      <ReasoningContent>{segment.reasoning.content}</ReasoningContent>
+                      <ReasoningTrigger
+                        getThinkingMessage={getThinkingMessage}
+                      />
+                      <ReasoningContent>
+                        {segment.reasoning.content}
+                      </ReasoningContent>
                     </Reasoning>
                   )}
                   {segment.tools.length > 0 && (

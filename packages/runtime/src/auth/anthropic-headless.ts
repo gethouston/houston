@@ -39,11 +39,17 @@ function base64url(bytes: Uint8Array): string {
 }
 
 /** PKCE pair via Web Crypto (same algorithm as pi-ai's pkce.ts). */
-export async function generatePKCE(): Promise<{ verifier: string; challenge: string }> {
+export async function generatePKCE(): Promise<{
+  verifier: string;
+  challenge: string;
+}> {
   const verifierBytes = new Uint8Array(32);
   crypto.getRandomValues(verifierBytes);
   const verifier = base64url(verifierBytes);
-  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(verifier));
+  const digest = await crypto.subtle.digest(
+    "SHA-256",
+    new TextEncoder().encode(verifier),
+  );
   return { verifier, challenge: base64url(new Uint8Array(digest)) };
 }
 
@@ -62,7 +68,10 @@ export function buildAuthorizeUrl(challenge: string, state: string): string {
 }
 
 /** Accept the `code#state` Claude shows, a full redirect URL, or a bare code. */
-export function parseAuthCode(input: string): { code?: string; state?: string } {
+export function parseAuthCode(input: string): {
+  code?: string;
+  state?: string;
+} {
   const value = input.trim();
   if (!value) return {};
   try {
@@ -108,7 +117,9 @@ async function exchangeCode(
   });
   const text = await res.text();
   if (!res.ok) {
-    throw new Error(`Claude token exchange failed (HTTP ${res.status}): ${text}`);
+    throw new Error(
+      `Claude token exchange failed (HTTP ${res.status}): ${text}`,
+    );
   }
   const data = JSON.parse(text) as {
     access_token: string;
@@ -123,7 +134,9 @@ async function exchangeCode(
   };
 }
 
-async function headlessLogin(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
+async function headlessLogin(
+  callbacks: OAuthLoginCallbacks,
+): Promise<OAuthCredentials> {
   // state === verifier mirrors pi-ai; Claude echoes it back in `code#state`.
   const { verifier, challenge } = await generatePKCE();
   callbacks.onAuth({
@@ -153,7 +166,8 @@ export const anthropicHeadlessOAuthProvider: OAuthProviderInterface = {
   // No loopback server — the user pastes a code, so the engine emits `auth_code`.
   usesCallbackServer: false,
   login: headlessLogin,
-  refreshToken: (credentials) => refreshAnthropicToken(credentials.refresh as string),
+  refreshToken: (credentials) =>
+    refreshAnthropicToken(credentials.refresh as string),
   getApiKey: (credentials) => credentials.access as string,
 };
 

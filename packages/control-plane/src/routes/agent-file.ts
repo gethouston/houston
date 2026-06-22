@@ -16,11 +16,16 @@ import { json, readJson } from "./http";
 
 /** The reactivity event a write under a known `.houston` family should fire. */
 function eventForPath(rel: string, agentPath: string): HoustonEvent | null {
-  if (rel.startsWith(".houston/routine_runs")) return { type: "RoutineRunsChanged", agentPath };
-  if (rel.startsWith(".houston/routines")) return { type: "RoutinesChanged", agentPath };
-  if (rel.startsWith(".houston/activity")) return { type: "ActivityChanged", agentPath };
-  if (rel.startsWith(".houston/config")) return { type: "ConfigChanged", agentPath };
-  if (rel.startsWith(".houston/learnings")) return { type: "LearningsChanged", agentPath };
+  if (rel.startsWith(".houston/routine_runs"))
+    return { type: "RoutineRunsChanged", agentPath };
+  if (rel.startsWith(".houston/routines"))
+    return { type: "RoutinesChanged", agentPath };
+  if (rel.startsWith(".houston/activity"))
+    return { type: "ActivityChanged", agentPath };
+  if (rel.startsWith(".houston/config"))
+    return { type: "ConfigChanged", agentPath };
+  if (rel.startsWith(".houston/learnings"))
+    return { type: "LearningsChanged", agentPath };
   return { type: "FilesChanged", agentPath };
 }
 
@@ -43,7 +48,10 @@ export async function handleAgentFile(
     return true;
   }
   // Clamp: a relative path inside the agent root, never an escape.
-  if (rel.startsWith("/") || rel.split("/").some((seg) => seg === "" || seg === "." || seg === "..")) {
+  if (
+    rel.startsWith("/") ||
+    rel.split("/").some((seg) => seg === "" || seg === "." || seg === "..")
+  ) {
     json(res, 400, { error: "invalid path" });
     return true;
   }

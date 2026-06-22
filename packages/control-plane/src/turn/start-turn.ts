@@ -69,7 +69,8 @@ export async function dispatchTurn(
   try {
     release = await deps.quota.acquire(ws.id);
   } catch (err) {
-    if (err instanceof TurnQuotaError) return { status: "quota", message: err.message };
+    if (err instanceof TurnQuotaError)
+      return { status: "quota", message: err.message };
     throw err;
   }
   const prefix = prefixFor(ws, agent);
@@ -113,10 +114,11 @@ export async function dispatchTurn(
         );
       }
       await pumpSse(upstream.body, publish);
-    } finally {
-      await release();
-    }
-  });
+      } finally {
+        await release();
+      }
+    },
+  );
   if (!started) {
     await release();
     return { status: "busy" };
@@ -135,7 +137,11 @@ export async function startTurn(
   res: ServerResponse,
 ): Promise<void> {
   const outcome = await dispatchTurn(deps, ws, agent, cid, text, nonce);
-  if (outcome.status === "quota") return json(res, 429, { error: outcome.message });
-  if (outcome.status === "busy") return json(res, 409, { error: "a turn is already running for this agent" });
+  if (outcome.status === "quota")
+    return json(res, 429, { error: outcome.message });
+  if (outcome.status === "busy")
+    return json(res, 409, {
+      error: "a turn is already running for this agent",
+    });
   return json(res, 202, { ok: true });
 }

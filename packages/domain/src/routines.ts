@@ -1,6 +1,16 @@
-import type { NewRoutine, Routine, RoutineRun, RoutineUpdate } from "@houston/protocol";
+import type {
+  NewRoutine,
+  Routine,
+  RoutineRun,
+  RoutineUpdate,
+} from "@houston/protocol";
 import { docKey } from "./layout";
-import { loadJson, saveJson, type DocDiagnostic, type TextStore } from "./store";
+import {
+  loadJson,
+  saveJson,
+  type DocDiagnostic,
+  type TextStore,
+} from "./store";
 
 const isRecord = (v: unknown): v is Record<string, unknown> =>
   typeof v === "object" && v !== null && !Array.isArray(v);
@@ -12,7 +22,10 @@ export function normalizeRoutines(
 ): { items: Routine[]; diagnostics: DocDiagnostic[] } {
   if (raw === null || raw === undefined) return { items: [], diagnostics: [] };
   if (!Array.isArray(raw)) {
-    return { items: [], diagnostics: [{ key, message: "routines.json is not an array" }] };
+    return {
+      items: [],
+      diagnostics: [{ key, message: "routines.json is not an array" }],
+    };
   }
   const items: Routine[] = [];
   const diagnostics: DocDiagnostic[] = [];
@@ -33,7 +46,9 @@ export function normalizeRoutines(
         enabled: true,
         suppress_when_silent: false,
         chat_mode: entry.chat_mode === "per_run" ? "per_run" : "shared",
-        integrations: Array.isArray(entry.integrations) ? entry.integrations : [],
+        integrations: Array.isArray(entry.integrations)
+          ? entry.integrations
+          : [],
         created_at: "",
         updated_at: "",
         ...entry,
@@ -41,7 +56,10 @@ export function normalizeRoutines(
       delete item.timezone;
       items.push(item);
     } else {
-      diagnostics.push({ key, message: `dropped malformed routine entry: ${JSON.stringify(entry)?.slice(0, 120)}` });
+      diagnostics.push({
+        key,
+        message: `dropped malformed routine entry: ${JSON.stringify(entry)?.slice(0, 120)}`,
+      });
     }
   }
   return { items, diagnostics };
@@ -55,12 +73,20 @@ export async function loadRoutines(
   return normalizeRoutines(await loadJson<unknown>(store, key, []), key);
 }
 
-export async function saveRoutines(store: TextStore, root: string, items: Routine[]): Promise<void> {
+export async function saveRoutines(
+  store: TextStore,
+  root: string,
+  items: Routine[],
+): Promise<void> {
   await saveJson(store, docKey(root, "routines"), items);
 }
 
 /** Materialize a NewRoutine. Caller supplies identity + clock (domain stays pure). */
-export function createRoutine(input: NewRoutine, id: string, nowIso: string): Routine {
+export function createRoutine(
+  input: NewRoutine,
+  id: string,
+  nowIso: string,
+): Routine {
   return {
     id,
     name: input.name,
@@ -86,9 +112,15 @@ export function createRoutine(input: NewRoutine, id: string, nowIso: string): Ro
  * `timezone` key is ignored: the per-routine override was removed in HOU-470
  * (one account-wide zone), so a client still sending it must not write it back.
  */
-export function applyRoutineUpdate(current: Routine, update: RoutineUpdate, nowIso: string): Routine {
+export function applyRoutineUpdate(
+  current: Routine,
+  update: RoutineUpdate,
+  nowIso: string,
+): Routine {
   const defined = Object.fromEntries(
-    Object.entries(update).filter(([k, v]) => v !== undefined && k !== "timezone"),
+    Object.entries(update).filter(
+      ([k, v]) => v !== undefined && k !== "timezone",
+    ),
   );
   return { ...current, ...defined, updated_at: nowIso } as Routine;
 }
@@ -100,7 +132,10 @@ export function normalizeRoutineRuns(
 ): { items: RoutineRun[]; diagnostics: DocDiagnostic[] } {
   if (raw === null || raw === undefined) return { items: [], diagnostics: [] };
   if (!Array.isArray(raw)) {
-    return { items: [], diagnostics: [{ key, message: "routine_runs.json is not an array" }] };
+    return {
+      items: [],
+      diagnostics: [{ key, message: "routine_runs.json is not an array" }],
+    };
   }
   const items: RoutineRun[] = [];
   const diagnostics: DocDiagnostic[] = [];
@@ -113,7 +148,10 @@ export function normalizeRoutineRuns(
     ) {
       items.push({ session_key: "", started_at: "", ...entry } as RoutineRun);
     } else {
-      diagnostics.push({ key, message: `dropped malformed routine run: ${JSON.stringify(entry)?.slice(0, 120)}` });
+      diagnostics.push({
+        key,
+        message: `dropped malformed routine run: ${JSON.stringify(entry)?.slice(0, 120)}`,
+      });
     }
   }
   return { items, diagnostics };
@@ -127,6 +165,10 @@ export async function loadRoutineRuns(
   return normalizeRoutineRuns(await loadJson<unknown>(store, key, []), key);
 }
 
-export async function saveRoutineRuns(store: TextStore, root: string, items: RoutineRun[]): Promise<void> {
+export async function saveRoutineRuns(
+  store: TextStore,
+  root: string,
+  items: RoutineRun[],
+): Promise<void> {
   await saveJson(store, docKey(root, "routine_runs"), items);
 }

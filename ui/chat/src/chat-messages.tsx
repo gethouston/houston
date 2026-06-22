@@ -21,7 +21,10 @@ import type { RenderLinkProps } from "./ai-elements/message";
 import type { ReasoningTriggerProps } from "./ai-elements/reasoning";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatProcessLabels } from "./chat-process-block";
-import { getChatDisplayItems, shouldShowThinkingIndicator } from "./chat-process-groups";
+import {
+  getChatDisplayItems,
+  shouldShowThinkingIndicator,
+} from "./chat-process-groups";
 import { ChatProcessMessage } from "./chat-process-message";
 import { ChatSystemMessage } from "./chat-system-message";
 import { computeTurnEndSummary } from "./turn-tools";
@@ -94,7 +97,10 @@ export function ChatMessages({
     () => getChatDisplayItems(messages, status),
     [messages, status],
   );
-  const showThinkingIndicator = shouldShowThinkingIndicator(displayItems, status);
+  const showThinkingIndicator = shouldShowThinkingIndicator(
+    displayItems,
+    status,
+  );
   const lastMessage = messages[messages.length - 1];
   const showEndOfTurnIndicator =
     status === "ready" &&
@@ -137,30 +143,36 @@ export function ChatMessages({
           const isLastMsg = idx === messages.length - 1;
           const streaming = msg.isStreaming && isLastMsg;
           return (
-            <Message from={msg.from} key={msg.key} avatar={renderMessageAvatar?.(msg)}>
+            <Message
+              from={msg.from}
+              key={msg.key}
+              avatar={renderMessageAvatar?.(msg)}
+            >
               <div>
-                {msg.content && (() => {
-                  if (msg.from === "user" && renderUserMessage) {
-                    const custom = renderUserMessage(msg);
-                    if (custom !== undefined) return custom;
-                  }
-                  const transformed = msg.from === "assistant" && transformContent
-                    ? transformContent(msg.content)
-                    : null;
-                  const displayContent = transformed?.content ?? msg.content;
-                  return (
-                    <MessageContent>
-                      <MessageResponse
-                        isAnimating={streaming}
-                        onOpenLink={onOpenLink}
-                        renderLink={renderLink}
-                      >
-                        {displayContent}
-                      </MessageResponse>
-                      {transformed?.extra}
-                    </MessageContent>
-                  );
-                })()}
+                {msg.content &&
+                  (() => {
+                    if (msg.from === "user" && renderUserMessage) {
+                      const custom = renderUserMessage(msg);
+                      if (custom !== undefined) return custom;
+                    }
+                    const transformed =
+                      msg.from === "assistant" && transformContent
+                        ? transformContent(msg.content)
+                        : null;
+                    const displayContent = transformed?.content ?? msg.content;
+                    return (
+                      <MessageContent>
+                        <MessageResponse
+                          isAnimating={streaming}
+                          onOpenLink={onOpenLink}
+                          renderLink={renderLink}
+                        >
+                          {displayContent}
+                        </MessageResponse>
+                        {transformed?.extra}
+                      </MessageContent>
+                    );
+                  })()}
                 {(() => {
                   if (!renderTurnSummary) return null;
                   const summary = turnEndSummaries.get(idx);
@@ -173,16 +185,12 @@ export function ChatMessages({
         })}
         {showThinkingIndicator ? (
           <Message from="assistant">
-            <MessageContent>
-              {thinkingIndicator}
-            </MessageContent>
+            <MessageContent>{thinkingIndicator}</MessageContent>
           </Message>
         ) : null}
         {showEndOfTurnIndicator ? (
           <Message from="assistant">
-            <MessageContent>
-              {endOfTurnIndicator}
-            </MessageContent>
+            <MessageContent>{endOfTurnIndicator}</MessageContent>
           </Message>
         ) : null}
         {afterMessages}

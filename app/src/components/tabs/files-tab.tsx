@@ -3,7 +3,12 @@ import { useTranslation } from "react-i18next";
 import { isTauri } from "@tauri-apps/api/core";
 import { FilesBrowser, type FileEntry } from "@houston-ai/agent";
 import { FolderOpen } from "lucide-react";
-import { useFiles, useDeleteFile, useRenameFile, useCreateFolder } from "../../hooks/queries";
+import {
+  useFiles,
+  useDeleteFile,
+  useRenameFile,
+  useCreateFolder,
+} from "../../hooks/queries";
 import { tauriFiles } from "../../lib/tauri";
 import { saveBlob } from "../../lib/save-blob";
 import type { TabProps } from "../../lib/types";
@@ -49,11 +54,17 @@ export default function FilesTab({ agent }: TabProps) {
       <FilesBrowser
         files={files ?? []}
         loading={loading}
-        onOpen={(file) => (desktop ? tauriFiles.open(path, file.path) : setPreview(file))}
-        onReveal={desktop ? (file) => tauriFiles.reveal(path, file.path) : undefined}
+        onOpen={(file) =>
+          desktop ? tauriFiles.open(path, file.path) : setPreview(file)
+        }
+        onReveal={
+          desktop ? (file) => tauriFiles.reveal(path, file.path) : undefined
+        }
         onDownload={desktop ? undefined : downloadFile}
         onDelete={(file) => deleteFile.mutate(file.path)}
-        onRename={(file, newName) => renameFile.mutate({ relativePath: file.path, newName })}
+        onRename={(file, newName) =>
+          renameFile.mutate({ relativePath: file.path, newName })
+        }
         onCreateFolder={(name) => createFolder.mutate(name)}
         emptyTitle={t("files.emptyTitle")}
         emptyDescription={t("files.emptyDescription")}

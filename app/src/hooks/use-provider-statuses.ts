@@ -33,7 +33,9 @@ export function useProviderStatuses(): ProviderStatusesState {
     queryKey: queryKeys.providerStatuses(),
     queryFn: async (): Promise<Record<string, ProviderStatus>> => {
       const entries = await Promise.all(
-        PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+        PROVIDERS.map(
+          async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
+        ),
       );
       return Object.fromEntries(entries);
     },

@@ -8,26 +8,26 @@
  * We render the derived slug below the title field so the user sees
  * exactly what their skill will be called inside Houston — no surprises.
  */
-import { useEffect, useMemo, useRef, useState } from "react"
-import { Button, cn } from "@houston-ai/core"
-import { Loader2 } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, cn } from "@houston-ai/core";
+import { Loader2 } from "lucide-react";
 
 export interface ScratchViewLabels {
-  titleLabel?: string
-  titlePlaceholder?: string
-  titleHint?: string
-  slugPreviewPrefix?: string
-  descriptionLabel?: string
-  descriptionPlaceholder?: string
-  descriptionHint?: string
-  bodyLabel?: string
-  bodyPlaceholder?: string
-  bodyHint?: string
-  submit?: string
-  submitting?: string
-  errorTitleRequired?: string
-  errorBodyRequired?: string
-  errorSlugTaken?: string
+  titleLabel?: string;
+  titlePlaceholder?: string;
+  titleHint?: string;
+  slugPreviewPrefix?: string;
+  descriptionLabel?: string;
+  descriptionPlaceholder?: string;
+  descriptionHint?: string;
+  bodyLabel?: string;
+  bodyPlaceholder?: string;
+  bodyHint?: string;
+  submit?: string;
+  submitting?: string;
+  errorTitleRequired?: string;
+  errorBodyRequired?: string;
+  errorSlugTaken?: string;
 }
 
 const DEFAULT_LABELS: Required<ScratchViewLabels> = {
@@ -48,7 +48,7 @@ const DEFAULT_LABELS: Required<ScratchViewLabels> = {
   errorTitleRequired: "Give your skill a title.",
   errorBodyRequired: "Add at least one instruction step.",
   errorSlugTaken: "A skill with this name already exists.",
-}
+};
 
 export interface ScratchViewProps {
   /**
@@ -57,15 +57,15 @@ export interface ScratchViewProps {
    * surfacing toast confirmation.
    */
   onCreate: (input: {
-    name: string
-    description: string
-    content: string
-  }) => Promise<string>
+    name: string;
+    description: string;
+    content: string;
+  }) => Promise<string>;
   /** Lowercase slugs already on disk — used to flag collisions inline. */
-  installedSkillNames?: Set<string>
-  labels?: ScratchViewLabels
+  installedSkillNames?: Set<string>;
+  labels?: ScratchViewLabels;
   /** Reset internal form state when the dialog re-opens. */
-  resetKey?: number
+  resetKey?: number;
 }
 
 export function ScratchView({
@@ -74,59 +74,62 @@ export function ScratchView({
   labels,
   resetKey,
 }: ScratchViewProps) {
-  const l = { ...DEFAULT_LABELS, ...labels }
-  const [title, setTitle] = useState("")
-  const [description, setDescription] = useState("")
-  const [body, setBody] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [submitting, setSubmitting] = useState(false)
-  const titleRef = useRef<HTMLInputElement>(null)
+  const l = { ...DEFAULT_LABELS, ...labels };
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [body, setBody] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    setTitle("")
-    setDescription("")
-    setBody("")
-    setError(null)
+    setTitle("");
+    setDescription("");
+    setBody("");
+    setError(null);
     // Defer focus past the dialog's mount animation so the cursor
     // actually lands inside the input.
-    setTimeout(() => titleRef.current?.focus(), 50)
-  }, [resetKey])
+    setTimeout(() => titleRef.current?.focus(), 50);
+  }, [resetKey]);
 
-  const slug = useMemo(() => toSlug(title), [title])
+  const slug = useMemo(() => toSlug(title), [title]);
   const slugTaken =
-    slug.length > 0 && installedSkillNames?.has(slug.toLowerCase()) === true
+    slug.length > 0 && installedSkillNames?.has(slug.toLowerCase()) === true;
 
   const canSubmit =
-    title.trim().length > 0 && body.trim().length > 0 && !slugTaken && !submitting
+    title.trim().length > 0 &&
+    body.trim().length > 0 &&
+    !slugTaken &&
+    !submitting;
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
     if (!title.trim()) {
-      setError(l.errorTitleRequired)
-      return
+      setError(l.errorTitleRequired);
+      return;
     }
     if (!body.trim()) {
-      setError(l.errorBodyRequired)
-      return
+      setError(l.errorBodyRequired);
+      return;
     }
     if (slugTaken) {
-      setError(l.errorSlugTaken)
-      return
+      setError(l.errorSlugTaken);
+      return;
     }
-    setError(null)
-    setSubmitting(true)
+    setError(null);
+    setSubmitting(true);
     try {
       await onCreate({
         name: slug,
         description: description.trim(),
         content: body,
-      })
+      });
     } catch (err) {
-      setError(err instanceof Error ? err.message : String(err))
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
-      setSubmitting(false)
+      setSubmitting(false);
     }
-  }
+  };
 
   return (
     <form
@@ -199,14 +202,14 @@ export function ScratchView({
         </Button>
       </footer>
     </form>
-  )
+  );
 }
 
 const inputClass = cn(
   "w-full rounded-lg border border-border/20 bg-background px-3 py-2 text-sm",
   "text-foreground placeholder:text-muted-foreground/60",
   "outline-none focus:shadow-sm transition-shadow",
-)
+);
 
 function Field({
   label,
@@ -214,10 +217,10 @@ function Field({
   suffix,
   children,
 }: {
-  label: string
-  hint?: string
-  suffix?: React.ReactNode
-  children: React.ReactNode
+  label: string;
+  hint?: string;
+  suffix?: React.ReactNode;
+  children: React.ReactNode;
 }) {
   return (
     <div>
@@ -232,7 +235,7 @@ function Field({
         <p className="text-[11px] text-muted-foreground/70 mt-1">{hint}</p>
       )}
     </div>
-  )
+  );
 }
 
 /**
@@ -247,5 +250,5 @@ function toSlug(input: string): string {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
-    .slice(0, 64)
+    .slice(0, 64);
 }

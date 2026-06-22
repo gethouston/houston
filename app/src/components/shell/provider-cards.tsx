@@ -94,7 +94,11 @@ export function ProviderCard({
           )}
         </p>
         <p className="text-[11px] text-muted-foreground truncate">
-          {pending ? t("card.connecting") : connected ? provider.cost : provider.subtitle}
+          {pending
+            ? t("card.connecting")
+            : connected
+              ? provider.cost
+              : provider.subtitle}
         </p>
       </div>
       {pending ? (
@@ -111,7 +115,11 @@ export function ProviderCard({
   );
 }
 
-export function ComingSoonCard({ provider }: { provider: ComingSoonProviderInfo }) {
+export function ComingSoonCard({
+  provider,
+}: {
+  provider: ComingSoonProviderInfo;
+}) {
   const { t } = useTranslation("providers");
   return (
     <div
@@ -122,8 +130,12 @@ export function ComingSoonCard({ provider }: { provider: ComingSoonProviderInfo 
         <ComingSoonLogo provider={provider} />
       </div>
       <div className="flex-1 min-w-0">
-        <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
-        <p className="text-[11px] text-muted-foreground truncate">{provider.subtitle}</p>
+        <p className="text-[13px] font-medium text-foreground truncate">
+          {provider.name}
+        </p>
+        <p className="text-[11px] text-muted-foreground truncate">
+          {provider.subtitle}
+        </p>
       </div>
       <span className="rounded-full bg-foreground/5 px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground shrink-0">
         {t("card.comingSoon")}

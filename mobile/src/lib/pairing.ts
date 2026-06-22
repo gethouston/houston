@@ -73,11 +73,13 @@ export class PairError extends Error {
   }
 }
 
-export function parseCode(raw: string): { tunnelId: string; accessSecret: string } | null {
+export function parseCode(
+  raw: string,
+): { tunnelId: string; accessSecret: string } | null {
   const trimmed = raw.trim();
   // Accept: "abc123-842759" OR a full URL "https://tunnel.../pair/abc123-842759"
   const code = trimmed.includes("/pair/")
-    ? trimmed.split("/pair/")[1]?.split(/[?#]/)[0] ?? ""
+    ? (trimmed.split("/pair/")[1]?.split(/[?#]/)[0] ?? "")
     : trimmed;
   // tunnelId is base64url (hyphens allowed); accessSecret is the suffix.
   // Split on the LAST dash.
@@ -147,7 +149,11 @@ async function attemptRedeem(
   };
   if (!body.ok || !body.engineToken) {
     console.warn("[pairing] 200 but body.ok=false", body);
-    throw new PairError(body.error || "Pairing rejected.", 400, normalizeErrorCode(body.code));
+    throw new PairError(
+      body.error || "Pairing rejected.",
+      400,
+      normalizeErrorCode(body.code),
+    );
   }
   return {
     engineToken: body.engineToken,
@@ -166,7 +172,8 @@ export async function redeemPairingCode(
   deviceLabel: string,
 ): Promise<void> {
   const parsed = parseCode(rawCode);
-  if (!parsed) throw new PairError("Invalid pairing code.", 400, "code_malformed");
+  if (!parsed)
+    throw new PairError("Invalid pairing code.", 400, "code_malformed");
 
   const { baseUrl } = relayConfig();
   const url = `${baseUrl.replace(/\/+$/, "")}/pair/${parsed.tunnelId}-${parsed.accessSecret}`;

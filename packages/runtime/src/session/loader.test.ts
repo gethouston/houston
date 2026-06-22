@@ -21,7 +21,12 @@ function freshWorkspace(): { parent: string; ws: string } {
   return { parent, ws };
 }
 
-function seedSkill(ws: string, slug: string, name: string, description: string) {
+function seedSkill(
+  ws: string,
+  slug: string,
+  name: string,
+  description: string,
+) {
   const dir = join(ws, ".agents", "skills", slug);
   mkdirSync(dir, { recursive: true });
   writeFileSync(
@@ -50,7 +55,12 @@ const loaderFor = (ws: string) =>
 
 test("Houston's existing .agents/skills SKILL.md layout loads as-is", async () => {
   const { ws } = freshWorkspace();
-  seedSkill(ws, "research-company", "research-company", "Deep-dive on a company");
+  seedSkill(
+    ws,
+    "research-company",
+    "research-company",
+    "Deep-dive on a company",
+  );
   seedSkill(ws, "weekly-report", "weekly-report", "Write the weekly report");
 
   const loader = loaderFor(ws);

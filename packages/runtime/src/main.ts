@@ -14,22 +14,32 @@ async function start(): Promise<Server> {
     const { GcsStore } = await import("./turn/gcs-store");
     const { LocalDirStore } = await import("./turn/object-store");
     if (!config.gcsBucket && !config.localStoreDir) {
-      throw new Error("turn mode needs HOUSTON_GCS_BUCKET (prod) or HOUSTON_LOCAL_STORE_DIR (dev)");
+      throw new Error(
+        "turn mode needs HOUSTON_GCS_BUCKET (prod) or HOUSTON_LOCAL_STORE_DIR (dev)",
+      );
     }
     const store = config.gcsBucket
       ? new GcsStore(config.gcsBucket)
       : new LocalDirStore(config.localStoreDir);
     const server = createTurnServer({ store, token: config.turnToken });
     server.listen(config.port, config.host, () => {
-      console.log(`houston-runtime (turn mode) listening on http://${config.host}:${config.port}`);
-      console.log(`  store: ${config.gcsBucket ? `gs://${config.gcsBucket}` : config.localStoreDir}`);
-      console.log(`  auth: ${config.turnToken ? "X-Internal-Token required" : "open (local dev)"}`);
+      console.log(
+        `houston-runtime (turn mode) listening on http://${config.host}:${config.port}`,
+      );
+      console.log(
+        `  store: ${config.gcsBucket ? `gs://${config.gcsBucket}` : config.localStoreDir}`,
+      );
+      console.log(
+        `  auth: ${config.turnToken ? "X-Internal-Token required" : "open (local dev)"}`,
+      );
     });
     return server;
   }
   // Swap Claude's loopback OAuth for the headless copy-paste flow when remote.
   if (config.headless) {
-    const { registerHeadlessAnthropicProvider } = await import("./auth/anthropic-headless");
+    const { registerHeadlessAnthropicProvider } = await import(
+      "./auth/anthropic-headless"
+    );
     registerHeadlessAnthropicProvider();
   }
   const { startServer } = await import("./transport/server");

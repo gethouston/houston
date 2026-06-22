@@ -20,14 +20,23 @@ import type { Agent, AgentDefinition } from "../../lib/types";
  * Control click publishes its target via `activityPanelId`, which this reused
  * tab reconciles on agent switch).
  */
-export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): BoardSource {
+export function useAgentBoardSource(
+  agent: Agent,
+  agentDef: AgentDefinition,
+): BoardSource {
   const { t } = useTranslation(["board", "dashboard"]);
   const path = agent.folderPath;
 
   const missionPanelOpen = useUIStore((s) => s.missionPanelOpen);
-  const missionSearchQuery = useUIStore((s) => s.agentMissionSearchQueries[path] ?? "");
-  const setAgentMissionSearchQuery = useUIStore((s) => s.setAgentMissionSearchQuery);
-  const setAgentMissionSearchLoading = useUIStore((s) => s.setAgentMissionSearchLoading);
+  const missionSearchQuery = useUIStore(
+    (s) => s.agentMissionSearchQueries[path] ?? "",
+  );
+  const setAgentMissionSearchQuery = useUIStore(
+    (s) => s.setAgentMissionSearchQuery,
+  );
+  const setAgentMissionSearchLoading = useUIStore(
+    (s) => s.setAgentMissionSearchLoading,
+  );
   const addToast = useUIStore((s) => s.addToast);
 
   const pendingId = useUIStore((s) => s.activityPanelId);
@@ -71,7 +80,12 @@ export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): Bo
   }, [pendingId, pendingForceOpen, clearPending, selectedId, missionPanelOpen]);
 
   const newMission = useAgentNewMission({ agentDef, selectedId });
-  const data = useAgentBoardData({ agent, agentDef, selectedId, setSelectedId });
+  const data = useAgentBoardData({
+    agent,
+    agentDef,
+    selectedId,
+    setSelectedId,
+  });
   const send = useAgentBoardSend({
     agent,
     agentDef,
@@ -127,7 +141,10 @@ export function useAgentBoardSource(agent: Agent, agentDef: AgentDefinition): Bo
     />
   ) : undefined;
 
-  const cardAvatar = useMemo(() => <AgentCardAvatar color={agent.color} />, [agent.color]);
+  const cardAvatar = useMemo(
+    () => <AgentCardAvatar color={agent.color} />,
+    [agent.color],
+  );
 
   return {
     variant: "agent",

@@ -69,7 +69,9 @@ export function ProviderAccountRow({
             <ProviderLogo provider={provider} />
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-[13px] font-medium text-foreground truncate">{provider.name}</p>
+            <p className="text-[13px] font-medium text-foreground truncate">
+              {provider.name}
+            </p>
             <p className="text-[11px] text-muted-foreground truncate">
               {connected ? t("card.connected") : provider.subtitle}
             </p>
@@ -78,7 +80,9 @@ export function ProviderAccountRow({
         <button
           type="button"
           onClick={pending ? onCancel : connected ? onSignOut : onConnect}
-          title={pending ? t("card.cancelTitle", { name: provider.name }) : undefined}
+          title={
+            pending ? t("card.cancelTitle", { name: provider.name }) : undefined
+          }
           className="text-[12px] font-medium px-2.5 py-1 rounded-md border border-input bg-background hover:bg-black/[0.05] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 shrink-0"
         >
           {pending ? (

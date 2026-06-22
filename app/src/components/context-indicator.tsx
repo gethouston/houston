@@ -16,7 +16,12 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { HoverCard, HoverCardContent, HoverCardTrigger, Progress } from "@houston-ai/core";
+import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+  Progress,
+} from "@houston-ai/core";
 import type { TokenUsage } from "@houston-ai/chat";
 import { contextFillPercent } from "../lib/context-usage";
 

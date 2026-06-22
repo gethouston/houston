@@ -29,7 +29,10 @@ test("non-string children (React nodes) never match a string href → labeled", 
     classifyMarkdownLink("https://example.com", ["https://example.com"]),
     "labeled",
   );
-  assert.equal(classifyMarkdownLink("https://example.com", { href: "x" }), "labeled");
+  assert.equal(
+    classifyMarkdownLink("https://example.com", { href: "x" }),
+    "labeled",
+  );
 });
 
 test("relative path the agent dropped (perfil.md) classifies as autolink when shown bare", () => {

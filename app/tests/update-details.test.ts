@@ -15,7 +15,9 @@ describe("normalizeUpdateNotes", () => {
 
   it("suppresses the generic Tauri placeholder so the card shows the fallback", () => {
     strictEqual(
-      normalizeUpdateNotes("See the assets to download and install this version."),
+      normalizeUpdateNotes(
+        "See the assets to download and install this version.",
+      ),
       null,
     );
   });
@@ -28,7 +30,8 @@ describe("normalizeUpdateNotes", () => {
   });
 
   it("trims surrounding whitespace but preserves the markdown body", () => {
-    const body = "\n\n## Houston 0.4.16\n\n- Archive missions\n- Manage apps\n\n";
+    const body =
+      "\n\n## Houston 0.4.16\n\n- Archive missions\n- Manage apps\n\n";
     strictEqual(
       normalizeUpdateNotes(body),
       "## Houston 0.4.16\n\n- Archive missions\n- Manage apps",
@@ -54,7 +57,10 @@ describe("selectUpdateNotes", () => {
     strictEqual(selectUpdateNotes(undefined, "pt"), null);
     strictEqual(selectUpdateNotes("", "es"), null);
     strictEqual(
-      selectUpdateNotes("See the assets to download and install this version.", "pt"),
+      selectUpdateNotes(
+        "See the assets to download and install this version.",
+        "pt",
+      ),
       null,
     );
   });
@@ -83,7 +89,10 @@ describe("selectUpdateNotes", () => {
   });
 
   it("strips the i18n comment so the marker never leaks into the English body", () => {
-    strictEqual(selectUpdateNotes(withI18n("Clean English", { es: "x" }), "en"), "Clean English");
+    strictEqual(
+      selectUpdateNotes(withI18n("Clean English", { es: "x" }), "en"),
+      "Clean English",
+    );
   });
 
   it("normalizes the chosen translation (CRLF + trim)", () => {
@@ -94,9 +103,18 @@ describe("selectUpdateNotes", () => {
   });
 
   it("falls back to the English base when the i18n payload is malformed", () => {
-    strictEqual(selectUpdateNotes("English\n<!--houston-i18n:{not json-->", "es"), "English");
-    strictEqual(selectUpdateNotes('English\n<!--houston-i18n:"a string"-->', "es"), "English");
-    strictEqual(selectUpdateNotes("English\n<!--houston-i18n:[1,2]-->", "es"), "English");
+    strictEqual(
+      selectUpdateNotes("English\n<!--houston-i18n:{not json-->", "es"),
+      "English",
+    );
+    strictEqual(
+      selectUpdateNotes('English\n<!--houston-i18n:"a string"-->', "es"),
+      "English",
+    );
+    strictEqual(
+      selectUpdateNotes("English\n<!--houston-i18n:[1,2]-->", "es"),
+      "English",
+    );
   });
 
   it("treats a marker with no terminator as plain notes", () => {
@@ -111,7 +129,8 @@ describe("selectUpdateNotes", () => {
   // markdown parser would never emit <li>s for it to style.
   it("preserves markdown list structure through localization + normalize", () => {
     const en = "## Title\n\n### Added\n\n- One\n- Two\n\n1. First\n2. Second";
-    const es = "## Titulo\n\n### Añadido\n\n- Uno\n- Dos\n\n1. Primero\n2. Segundo";
+    const es =
+      "## Titulo\n\n### Añadido\n\n- Uno\n- Dos\n\n1. Primero\n2. Segundo";
     const body = `${en}\n\n<!--houston-i18n:${JSON.stringify({ es })}-->`;
 
     const outEn = selectUpdateNotes(body, "en");
@@ -122,7 +141,10 @@ describe("selectUpdateNotes", () => {
     for (const out of [outEn, outEs]) {
       const lines = out!.split("\n");
       // blank line before each list survives (loose-list separation)
-      ok(out!.includes("\n\n- "), "unordered list keeps its leading blank line");
+      ok(
+        out!.includes("\n\n- "),
+        "unordered list keeps its leading blank line",
+      );
       ok(out!.includes("\n\n1. "), "ordered list keeps its leading blank line");
       strictEqual(lines.filter((l) => l.startsWith("- ")).length, 2);
       strictEqual(lines.filter((l) => /^\d+\. /.test(l)).length, 2);

@@ -1,5 +1,11 @@
 import { test, expect } from "bun:test";
-import { DUMMY_VALUES, render, stripComments, validateAll, type ManifestDoc } from "./validate";
+import {
+  DUMMY_VALUES,
+  render,
+  stripComments,
+  validateAll,
+  type ManifestDoc,
+} from "./validate";
 
 /** Find the first rendered doc of a given kind across all manifest files. */
 function docOfKind(kind: string): ManifestDoc {
@@ -36,18 +42,24 @@ test("every manifest parses, renders, and keeps no surviving placeholder", () =>
 });
 
 test("render throws on an unknown placeholder (no silent skip)", () => {
-  expect(() => render("name: {{NOPE}}", DUMMY_VALUES)).toThrow(/unknown placeholder/);
+  expect(() => render("name: {{NOPE}}", DUMMY_VALUES)).toThrow(
+    /unknown placeholder/,
+  );
 });
 
 test("render substitutes every known placeholder", () => {
   const out = render("a: {{WORKSPACE_NS}}\nb: {{AGENT_ID}}", DUMMY_VALUES);
-  expect(out).toBe(`a: ${DUMMY_VALUES.WORKSPACE_NS}\nb: ${DUMMY_VALUES.AGENT_ID}`);
+  expect(out).toBe(
+    `a: ${DUMMY_VALUES.WORKSPACE_NS}\nb: ${DUMMY_VALUES.AGENT_ID}`,
+  );
   expect(out.includes("{{")).toBe(false);
 });
 
 test("stripComments drops comment text but keeps quoted '#' and real values", () => {
   // A `{{...}}` inside a comment is removed (so the lint ignores documentation).
-  expect(stripComments("name: x  # carries {{FOO}}").includes("{{")).toBe(false);
+  expect(stripComments("name: x  # carries {{FOO}}").includes("{{")).toBe(
+    false,
+  );
   // A real value survives, including a `#` inside a quoted scalar.
   expect(stripComments('key: "a#b"')).toBe('key: "a#b"');
   // A `#` with no preceding whitespace is not a comment (e.g. a URL fragment).
@@ -56,7 +68,10 @@ test("stripComments drops comment text but keeps quoted '#' and real values", ()
 
 test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env", () => {
   const deploy = docOfKind("Deployment");
-  const podSpec = deep(deploy, ["spec", "template", "spec"]) as Record<string, unknown>;
+  const podSpec = deep(deploy, ["spec", "template", "spec"]) as Record<
+    string,
+    unknown
+  >;
 
   // gVisor runtime — THIS is the §2 wall, not pi.
   expect(podSpec.runtimeClassName).toBe(DUMMY_VALUES.RUNTIME_CLASS);
@@ -95,7 +110,9 @@ test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env",
   const env = c.env as Array<Record<string, unknown>>;
   const byName = new Map(env.map((e) => [e.name as string, e]));
   expect(byName.get("HOUSTON_CLOUD")!.value).toBe("1");
-  expect(byName.get("HOUSTON_PROXY_BASE_URL")!.value).toBe(DUMMY_VALUES.PROXY_BASE_URL);
+  expect(byName.get("HOUSTON_PROXY_BASE_URL")!.value).toBe(
+    DUMMY_VALUES.PROXY_BASE_URL,
+  );
   expect(byName.get("HOUSTON_HOST")!.value).toBe("0.0.0.0");
   expect(byName.get("HOUSTON_WORKSPACE_DIR")!.value).toBe("/data");
 
@@ -106,9 +123,13 @@ test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env",
     `agent-${DUMMY_VALUES.AGENT_ID}-sandbox-token`,
   );
   // Inbound engine bearer also from a Secret.
-  expect(deep(byName.get("HOUSTON_RUNTIME_TOKEN")!, ["valueFrom", "secretKeyRef", "name"])).toBe(
-    `agent-${DUMMY_VALUES.AGENT_ID}-engine-token`,
-  );
+  expect(
+    deep(byName.get("HOUSTON_RUNTIME_TOKEN")!, [
+      "valueFrom",
+      "secretKeyRef",
+      "name",
+    ]),
+  ).toBe(`agent-${DUMMY_VALUES.AGENT_ID}-engine-token`);
 });
 
 test("NetworkPolicy is default-deny and blocks metadata + internal ranges on egress", () => {
@@ -125,7 +146,12 @@ test("NetworkPolicy is default-deny and blocks metadata + internal ranges on egr
     return to.some((t) => deep(t, ["ipBlock", "cidr"]) === "0.0.0.0/0");
   });
   expect(internetRule).toBeDefined();
-  const except = deep(internetRule, ["to", "0", "ipBlock", "except"]) as string[];
+  const except = deep(internetRule, [
+    "to",
+    "0",
+    "ipBlock",
+    "except",
+  ]) as string[];
   expect(except).toContain("169.254.169.254/32"); // GCP metadata endpoint
   expect(except).toContain(DUMMY_VALUES.POD_CIDR); // no agent->agent
   expect(except).toContain(DUMMY_VALUES.SERVICE_CIDR); // no internal Services
@@ -133,10 +159,12 @@ test("NetworkPolicy is default-deny and blocks metadata + internal ranges on egr
 
   // Ingress is allowed only from the control plane control-plane namespace.
   const ingress = spec.ingress as Array<Record<string, unknown>>;
-  const fromControlPlane = deep(ingress[0], ["from", "0", "namespaceSelector", "matchLabels"]) as Record<
-    string,
-    unknown
-  >;
+  const fromControlPlane = deep(ingress[0], [
+    "from",
+    "0",
+    "namespaceSelector",
+    "matchLabels",
+  ]) as Record<string, unknown>;
   expect(fromControlPlane["houston.ai/component"]).toBe("control-plane");
 });
 

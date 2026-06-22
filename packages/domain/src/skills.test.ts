@@ -1,6 +1,13 @@
 import { test, expect } from "bun:test";
 import type { FileStore } from "./store";
-import { composeSkillMd, loadSkillDetail, loadSkills, parseSkillMd, skillKey, slugify } from "./skills";
+import {
+  composeSkillMd,
+  loadSkillDetail,
+  loadSkills,
+  parseSkillMd,
+  skillKey,
+  slugify,
+} from "./skills";
 
 function memStore(): FileStore {
   const m = new Map<string, string>();
@@ -47,14 +54,23 @@ test("parses Houston's existing frontmatter, including YAML-1.1 'featured: yes' 
 
 test("loadSkills lists slugs, sorted; broken frontmatter surfaces as a diagnostic", async () => {
   const store = memStore();
-  await store.writeText(skillKey(ROOT, "weekly-report"), HOUSTON_SKILL.replace("research-company", "weekly-report"));
+  await store.writeText(
+    skillKey(ROOT, "weekly-report"),
+    HOUSTON_SKILL.replace("research-company", "weekly-report"),
+  );
   await store.writeText(skillKey(ROOT, "research-company"), HOUSTON_SKILL);
   await store.writeText(skillKey(ROOT, "broken"), "no frontmatter at all");
   // A nested helper file must not register as a skill of its own.
-  await store.writeText(`${ROOT}/.agents/skills/research-company/helpers/notes.md`, "x");
+  await store.writeText(
+    `${ROOT}/.agents/skills/research-company/helpers/notes.md`,
+    "x",
+  );
 
   const { items, diagnostics } = await loadSkills(store, ROOT);
-  expect(items.map((s) => s.name)).toEqual(["research-company", "weekly-report"]);
+  expect(items.map((s) => s.name)).toEqual([
+    "research-company",
+    "weekly-report",
+  ]);
   expect(diagnostics).toHaveLength(1);
   expect(diagnostics[0]!.message).toContain("broken");
 });
@@ -76,7 +92,10 @@ test("compose → parse round-trip (create flow)", () => {
 
 test("loadSkillDetail returns full content; unparseable file still readable (slug fallback)", async () => {
   const store = memStore();
-  await store.writeText(skillKey(ROOT, "broken"), "just a body, no frontmatter");
+  await store.writeText(
+    skillKey(ROOT, "broken"),
+    "just a body, no frontmatter",
+  );
   const detail = await loadSkillDetail(store, ROOT, "broken");
   expect(detail!.name).toBe("broken");
   expect(detail!.content).toContain("just a body");

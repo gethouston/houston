@@ -1,4 +1,4 @@
-import { cn } from "@houston-ai/core"
+import { cn } from "@houston-ai/core";
 import {
   MessageSquare,
   Heart,
@@ -7,55 +7,68 @@ import {
   Globe,
   Bot,
   Check,
-} from "lucide-react"
-import type { EventEntry, EventType } from "./types"
+} from "lucide-react";
+import type { EventEntry, EventType } from "./types";
 
 export interface EventItemProps {
-  event: EventEntry
-  onClick?: (event: EventEntry) => void
+  event: EventEntry;
+  onClick?: (event: EventEntry) => void;
 }
 
-const iconMap: Record<EventType, React.ComponentType<{ className?: string }>> = {
+const iconMap: Record<
+  EventType,
+  React.ComponentType<{ className?: string }>
+> = {
   message: MessageSquare,
   heartbeat: Heart,
   cron: Clock,
   hook: Zap,
   webhook: Globe,
   agent_message: Bot,
-}
+};
 
 function statusIndicator(status: EventEntry["status"]) {
   switch (status) {
     case "pending":
-      return <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/40" />
+      return (
+        <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/40" />
+      );
     case "processing":
-      return <span className="flex size-2 shrink-0 rounded-full bg-primary tool-active-dot" />
+      return (
+        <span className="flex size-2 shrink-0 rounded-full bg-primary tool-active-dot" />
+      );
     case "completed":
-      return <Check className="size-3 shrink-0 text-green-600" />
+      return <Check className="size-3 shrink-0 text-green-600" />;
     case "suppressed":
-      return <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/30" />
+      return (
+        <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/30" />
+      );
     case "error":
-      return <span className="flex size-2 shrink-0 rounded-full bg-destructive" />
+      return (
+        <span className="flex size-2 shrink-0 rounded-full bg-destructive" />
+      );
     default:
-      return <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/30" />
+      return (
+        <span className="flex size-2 shrink-0 rounded-full bg-muted-foreground/30" />
+      );
   }
 }
 
 function relativeTime(iso: string): string {
-  const now = Date.now()
-  const then = new Date(iso).getTime()
-  const diffSec = Math.floor((now - then) / 1000)
+  const now = Date.now();
+  const then = new Date(iso).getTime();
+  const diffSec = Math.floor((now - then) / 1000);
 
-  if (diffSec < 60) return "just now"
-  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`
-  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`
-  return `${Math.floor(diffSec / 86400)}d ago`
+  if (diffSec < 60) return "just now";
+  if (diffSec < 3600) return `${Math.floor(diffSec / 60)}m ago`;
+  if (diffSec < 86400) return `${Math.floor(diffSec / 3600)}h ago`;
+  return `${Math.floor(diffSec / 86400)}d ago`;
 }
 
 export function EventItem({ event, onClick }: EventItemProps) {
-  const Icon = iconMap[event.type]
-  const isSuppressed = event.status === "suppressed"
-  const isSuppressedHeartbeat = isSuppressed && event.type === "heartbeat"
+  const Icon = iconMap[event.type];
+  const isSuppressed = event.status === "suppressed";
+  const isSuppressedHeartbeat = isSuppressed && event.type === "heartbeat";
 
   return (
     <button
@@ -95,5 +108,5 @@ export function EventItem({ event, onClick }: EventItemProps) {
         {statusIndicator(event.status)}
       </div>
     </button>
-  )
+  );
 }

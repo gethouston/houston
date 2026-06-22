@@ -18,7 +18,12 @@ import { EnvCredentialVault } from "./credentials/vault";
 import { forward } from "./proxy/route";
 import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
 import { BigQueryBillingReader, type AutopilotRates } from "./admin/billing";
-import type { CredentialStore, CredentialVault, RuntimeLauncher, WorkspaceStore } from "./ports";
+import type {
+  CredentialStore,
+  CredentialVault,
+  RuntimeLauncher,
+  WorkspaceStore,
+} from "./ports";
 import type { Agent } from "./domain/types";
 import type { TurnDeps } from "./turn/deps";
 import { TurnRelay } from "./turn/relay";
@@ -49,16 +54,25 @@ import { installGracefulShutdown } from "./shutdown";
  */
 
 /** Workspace store + the connect-once credential store, sharing one Pool in prod. */
-function buildStores(): { store: WorkspaceStore; credentials: CredentialStore } {
+function buildStores(): {
+  store: WorkspaceStore;
+  credentials: CredentialStore;
+} {
   const runtime = { defaultRuntime: config.defaultRuntime };
   if (config.dev) {
-    return { store: new MemoryWorkspaceStore(runtime), credentials: new MemoryCredentialStore() };
+    return {
+      store: new MemoryWorkspaceStore(runtime),
+      credentials: new MemoryCredentialStore(),
+    };
   }
   if (!config.databaseUrl) {
     throw new Error("CP_DATABASE_URL is required outside dev mode (CP_DEV=1)");
   }
   const pool = new Pool({ connectionString: config.databaseUrl });
-  return { store: new PgWorkspaceStore(pool, runtime), credentials: new PgCredentialStore(pool) };
+  return {
+    store: new PgWorkspaceStore(pool, runtime),
+    credentials: new PgCredentialStore(pool),
+  };
 }
 
 /**
@@ -78,14 +92,22 @@ function buildVfs(): Vfs | undefined {
  * both — and so a domain-change emit on replica A reaches an SSE subscriber on B.
  */
 function buildBus(): TurnBus {
-  return config.redisUrl ? new RedisTurnBus(config.redisUrl) : new MemoryTurnBus();
+  return config.redisUrl
+    ? new RedisTurnBus(config.redisUrl)
+    : new MemoryTurnBus();
 }
 
 /** Per-turn Cloud Run dispatch wiring; undefined until CP_TURN_RUNTIME_URL is set. */
-function buildTurn(credentials: CredentialStore, vfs: Vfs | undefined, bus: TurnBus): TurnDeps | undefined {
+function buildTurn(
+  credentials: CredentialStore,
+  vfs: Vfs | undefined,
+  bus: TurnBus,
+): TurnDeps | undefined {
   if (!config.turnRuntimeUrl) return undefined;
   if (!vfs) {
-    throw new Error("CP_GCS_BUCKET is required when CP_TURN_RUNTIME_URL is set");
+    throw new Error(
+      "CP_GCS_BUCKET is required when CP_TURN_RUNTIME_URL is set",
+    );
   }
   return {
     runtimeUrl: config.turnRuntimeUrl,
@@ -116,7 +138,10 @@ function buildSandboxes(
   // per-sandbox token the runtime carries is minted by the vault.
   const workspaceSlugFor = async (agent: Agent): Promise<string> => {
     const ws = await store.getWorkspace(agent.workspaceId);
-    if (!ws) throw new Error(`workspace ${agent.workspaceId} not found for agent ${agent.id}`);
+    if (!ws)
+      throw new Error(
+        `workspace ${agent.workspaceId} not found for agent ${agent.id}`,
+      );
     return ws.slug;
   };
   const resolver: AgentResolver = {
@@ -139,12 +164,19 @@ function buildAdmin(kubeConfig: KubeConfig | null): AdminDeps {
   };
   if (!kubeConfig) {
     // dev: no cluster, no billing export. The dashboard renders against fakes.
-    return { adminUserIds: config.adminUserIds, cluster: new FakeClusterReader(), billing: null, rates };
+    return {
+      adminUserIds: config.adminUserIds,
+      cluster: new FakeClusterReader(),
+      billing: null,
+      rates,
+    };
   }
   // Guard with the actionable, env-named message BEFORE constructing the reader,
   // whose own constructor would otherwise throw a vaguer error first.
   if (config.billingBqTable && !config.gcpProject) {
-    throw new Error("CP_GCP_PROJECT is required when CP_BILLING_BQ_TABLE is set");
+    throw new Error(
+      "CP_GCP_PROJECT is required when CP_BILLING_BQ_TABLE is set",
+    );
   }
   const billing = config.billingBqTable
     ? new BigQueryBillingReader({
@@ -217,7 +249,9 @@ function main(): void {
 
   const server = createControlPlaneServer(deps);
   server.listen(config.port, config.host, () => {
-    console.log(`[control-plane] API   http://${config.host}:${config.port}  (dev=${config.dev})`);
+    console.log(
+      `[control-plane] API   http://${config.host}:${config.port}  (dev=${config.dev})`,
+    );
   });
   // Zero-downtime deploys: drain on SIGTERM so the RollingUpdate replacement
   // takes over without dropped requests (see shutdown.ts + k8s strategy).
@@ -228,7 +262,14 @@ function main(): void {
   // Every replica scans; the bus's setNx arbitrates so each run fires once.
   // The timer is unref'd, so it never blocks graceful shutdown.
   if (vfs) {
-    const scheduler = new Scheduler({ store, vfs, paths, lock: bus, firer: new ChannelRoutineFirer(channels), events });
+    const scheduler = new Scheduler({
+      store,
+      vfs,
+      paths,
+      lock: bus,
+      firer: new ChannelRoutineFirer(channels),
+      events,
+    });
     scheduler.start();
     console.log("[control-plane] scheduler started");
   }

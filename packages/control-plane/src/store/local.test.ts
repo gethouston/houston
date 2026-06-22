@@ -28,7 +28,10 @@ test("reads workspaces + agents off disk; ids are the on-disk paths", async () =
 
   const agents = await store.listAgents("Work");
   expect(agents.map((a) => a.id).sort()).toEqual(["Work/HR", "Work/Sales"]);
-  expect(agents.find((a) => a.id === "Work/Sales")).toMatchObject({ workspaceId: "Work", name: "Sales" });
+  expect(agents.find((a) => a.id === "Work/Sales")).toMatchObject({
+    workspaceId: "Work",
+    name: "Sales",
+  });
 });
 
 test("getAgent resolves an existing path, rejects unknown + traversal", async () => {
@@ -41,19 +44,26 @@ test("getAgent resolves an existing path, rejects unknown + traversal", async ()
 });
 
 test("getOrCreatePersonalWorkspace returns the first, or creates the default when empty", async () => {
-  const empty = new LocalWorkspaceStore(mkdtempSync(join(tmpdir(), "houston-empty-")));
+  const empty = new LocalWorkspaceStore(
+    mkdtempSync(join(tmpdir(), "houston-empty-")),
+  );
   const created = await empty.getOrCreatePersonalWorkspace("local-owner");
   expect(created.id).toBe("Houston");
 
   const existing = new LocalWorkspaceStore(tree({ Acme: ["Bot"] }));
-  expect((await existing.getOrCreatePersonalWorkspace("local-owner")).id).toBe("Acme");
+  expect((await existing.getOrCreatePersonalWorkspace("local-owner")).id).toBe(
+    "Acme",
+  );
 });
 
 test("createAgent makes the directory; rename + delete move/remove it on disk", async () => {
   const root = tree({ Work: [] });
   const store = new LocalWorkspaceStore(root);
 
-  const agent = await store.createAgent({ workspaceId: "Work", name: "Marketing" });
+  const agent = await store.createAgent({
+    workspaceId: "Work",
+    name: "Marketing",
+  });
   expect(agent.id).toBe("Work/Marketing");
   expect(existsSync(join(root, "Work", "Marketing"))).toBe(true);
 
@@ -68,14 +78,22 @@ test("createAgent makes the directory; rename + delete move/remove it on disk", 
 
 test("createAgent rejects a name with a slash or traversal", async () => {
   const store = new LocalWorkspaceStore(tree({ Work: [] }));
-  await expect(store.createAgent({ workspaceId: "Work", name: "a/b" })).rejects.toThrow("invalid agent name");
-  await expect(store.createAgent({ workspaceId: "Work", name: ".." })).rejects.toThrow("invalid agent name");
+  await expect(
+    store.createAgent({ workspaceId: "Work", name: "a/b" }),
+  ).rejects.toThrow("invalid agent name");
+  await expect(
+    store.createAgent({ workspaceId: "Work", name: ".." }),
+  ).rejects.toThrow("invalid agent name");
 });
 
 test("listWorkspacesForUser returns everything (single local user); listAllAgents flattens", async () => {
   const store = new LocalWorkspaceStore(tree({ A: ["x"], B: ["y", "z"] }));
   expect((await store.listWorkspacesForUser("local-owner")).length).toBe(2);
-  expect((await store.listAllAgents()).map((a) => a.id).sort()).toEqual(["A/x", "B/y", "B/z"]);
+  expect((await store.listAllAgents()).map((a) => a.id).sort()).toEqual([
+    "A/x",
+    "B/y",
+    "B/z",
+  ]);
 });
 
 test("dotfiles + stray files are ignored (only real dirs are workspaces/agents)", async () => {
@@ -84,5 +102,7 @@ test("dotfiles + stray files are ignored (only real dirs are workspaces/agents)"
   writeFileSync(join(root, "Work", "notes.txt"), "");
   const store = new LocalWorkspaceStore(root);
   expect((await store.listWorkspaces()).map((w) => w.id)).toEqual(["Work"]);
-  expect((await store.listAgents("Work")).map((a) => a.id)).toEqual(["Work/Sales"]);
+  expect((await store.listAgents("Work")).map((a) => a.id)).toEqual([
+    "Work/Sales",
+  ]);
 });

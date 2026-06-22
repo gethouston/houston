@@ -53,8 +53,7 @@ function resolveConfig(): { baseUrl: string; token: string } | null {
     return window.__HOUSTON_ENGINE__;
   }
   // Dev fallback — if HOUSTON_ENGINE_BASE / TOKEN present on Vite env, use them.
-  const baseUrl =
-    (import.meta as any).env?.VITE_HOUSTON_ENGINE_BASE ?? null;
+  const baseUrl = (import.meta as any).env?.VITE_HOUSTON_ENGINE_BASE ?? null;
   const token = (import.meta as any).env?.VITE_HOUSTON_ENGINE_TOKEN ?? null;
   if (baseUrl && token) return { baseUrl, token };
   return null;
@@ -149,7 +148,7 @@ export function getEngine(): HoustonClient {
   if (!_client) {
     throw new Error(
       "[engine] not bootstrapped. window.__HOUSTON_ENGINE__ missing. " +
-      "Did you forget to wrap the app in <EngineGate>?",
+        "Did you forget to wrap the app in <EngineGate>?",
     );
   }
   return _client;
@@ -197,14 +196,11 @@ function notifyEngineRestarted() {
 // as its own sidecar; a Rust `houston-engine-restarted` must never hijack the
 // frontend back onto the Rust transport).
 if (!HOST_URL) {
-  listen<{ baseUrl: string; token: string }>(
-    "houston-engine-ready",
-    (ev) => {
-      if (!_client) {
-        applyConfig(ev.payload);
-      }
-    },
-  ).catch(() => {
+  listen<{ baseUrl: string; token: string }>("houston-engine-ready", (ev) => {
+    if (!_client) {
+      applyConfig(ev.payload);
+    }
+  }).catch(() => {
     // Non-Tauri environment (tests, mobile web) — no-op.
   });
 

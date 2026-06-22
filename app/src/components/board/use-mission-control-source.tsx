@@ -33,15 +33,21 @@ export function useMissionControlSource(
 
   const [filterPath, setFilterPath] = useState("");
   const [missionSearchQuery, setMissionSearchQuery] = useState("");
-  const [highlightedId, setHighlightedId] = useState<string | null>(mc.selectedId);
+  const [highlightedId, setHighlightedId] = useState<string | null>(
+    mc.selectedId,
+  );
 
   const paths = useMemo(() => agents.map((a) => a.folderPath), [agents]);
   const agentFilteredItems = useMemo(
-    () => (filterPath ? mc.items.filter((i) => i.metadata?.agentPath === filterPath) : mc.items),
+    () =>
+      filterPath
+        ? mc.items.filter((i) => i.metadata?.agentPath === filterPath)
+        : mc.items,
     [mc.items, filterPath],
   );
   const visibleAgents = useMemo(
-    () => (filterPath ? agents.filter((a) => a.folderPath === filterPath) : agents),
+    () =>
+      filterPath ? agents.filter((a) => a.folderPath === filterPath) : agents,
     [agents, filterPath],
   );
 
@@ -67,7 +73,7 @@ export function useMissionControlSource(
   });
 
   const selectedItem = mc.selectedId
-    ? mc.items.find((i) => i.id === mc.selectedId) ?? null
+    ? (mc.items.find((i) => i.id === mc.selectedId) ?? null)
     : null;
   const activeAgent = useMemo<Agent | null>(() => {
     if (selectedItem) {
@@ -76,11 +82,15 @@ export function useMissionControlSource(
     }
     return newMission.pendingAgent;
   }, [selectedItem, newMission.pendingAgent, agents]);
-  const activeAgentDef = activeAgent ? getAgentDef(activeAgent.configId) ?? null : null;
-  const selectedSessionKey = selectedItem
-    ? (selectedItem.metadata?.sessionKey as string | undefined) ?? `activity-${selectedItem.id}`
+  const activeAgentDef = activeAgent
+    ? (getAgentDef(activeAgent.configId) ?? null)
     : null;
-  const selectedAgentPath = (selectedItem?.metadata?.agentPath as string | undefined) ?? null;
+  const selectedSessionKey = selectedItem
+    ? ((selectedItem.metadata?.sessionKey as string | undefined) ??
+      `activity-${selectedItem.id}`)
+    : null;
+  const selectedAgentPath =
+    (selectedItem?.metadata?.agentPath as string | undefined) ?? null;
   const selectedSessionActive = selectedSessionKey
     ? (mc.loading[selectedSessionKey] ?? false)
     : false;
@@ -88,7 +98,10 @@ export function useMissionControlSource(
   const actions = useMcActions({ mc, activeAgent, activeAgentDef, paths });
 
   const agentPathForId = useCallback(
-    (id: string) => mc.items.find((i) => i.id === id)?.metadata?.agentPath as string | undefined,
+    (id: string) =>
+      mc.items.find((i) => i.id === id)?.metadata?.agentPath as
+        | string
+        | undefined,
     [mc.items],
   );
   const selection = useCrossAgentSelection({

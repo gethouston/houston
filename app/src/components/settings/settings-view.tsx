@@ -1,7 +1,15 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@houston-ai/core";
-import { User, Folder, Bot, Bug, FileText, Keyboard, UserCircle } from "lucide-react";
+import {
+  User,
+  Folder,
+  Bot,
+  Bug,
+  FileText,
+  Keyboard,
+  UserCircle,
+} from "lucide-react";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -52,7 +60,11 @@ export function SettingsView() {
   const items = useMemo<SidebarSectionItem<SettingsSectionId>[]>(() => {
     const list: SidebarSectionItem<SettingsSectionId>[] = [];
     if (accountAvailable) {
-      list.push({ id: "account", label: t("settings:nav.account"), icon: User });
+      list.push({
+        id: "account",
+        label: t("settings:nav.account"),
+        icon: User,
+      });
     }
     list.push(
       { id: "workspace", label: t("settings:nav.workspace"), icon: Folder },
@@ -86,7 +98,9 @@ export function SettingsView() {
   }
 
   // If the active id was hidden (e.g., signed out), fall back to a visible one.
-  const activeVisible = items.some((i) => i.id === active) ? active : items[0].id;
+  const activeVisible = items.some((i) => i.id === active)
+    ? active
+    : items[0].id;
 
   return (
     <div className="flex-1 flex min-h-0">

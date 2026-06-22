@@ -1,4 +1,10 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
 import type { WorkspaceId } from "../domain/types";
@@ -18,8 +24,11 @@ export class FileCredentialStore implements CredentialStore {
     mkdirSync(dirname(path), { recursive: true });
     if (existsSync(path)) {
       try {
-        const raw = JSON.parse(readFileSync(path, "utf8")) as WorkspaceCredential[];
-        for (const c of raw) this.creds.set(this.key(c.workspaceId, c.provider), c);
+        const raw = JSON.parse(
+          readFileSync(path, "utf8"),
+        ) as WorkspaceCredential[];
+        for (const c of raw)
+          this.creds.set(this.key(c.workspaceId, c.provider), c);
       } catch {
         // A corrupt file means the user reconnects — never crash boot over it.
       }
@@ -36,7 +45,10 @@ export class FileCredentialStore implements CredentialStore {
     renameSync(tmp, this.path); // atomic swap
   }
 
-  async get(workspaceId: WorkspaceId, provider: string): Promise<WorkspaceCredential | null> {
+  async get(
+    workspaceId: WorkspaceId,
+    provider: string,
+  ): Promise<WorkspaceCredential | null> {
     return this.creds.get(this.key(workspaceId, provider)) ?? null;
   }
 

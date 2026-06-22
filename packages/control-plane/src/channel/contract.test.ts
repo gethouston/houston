@@ -59,7 +59,12 @@ const ws: Workspace = {
   runtime: "cloudrun",
   createdAt: 1,
 };
-const agent: Agent = { id: "agent-1", workspaceId: "w1", name: "Sales", createdAt: 1 };
+const agent: Agent = {
+  id: "agent-1",
+  workspaceId: "w1",
+  name: "Sales",
+  createdAt: 1,
+};
 const ctx: ChannelCtx = { workspace: ws, agent };
 
 interface ChannelFixture {
@@ -72,14 +77,18 @@ interface ChannelFixture {
 }
 
 /** Drive a RuntimeChannel.dispatch through a real HTTP server (it needs req/res). */
-function serve(channel: RuntimeChannel): Promise<{ base: string; close: () => void }> {
+function serve(
+  channel: RuntimeChannel,
+): Promise<{ base: string; close: () => void }> {
   const s = createServer((req, res) => {
     const url = new URL(req.url || "/", "http://x");
     const rest = url.pathname.replace(/^\//, "");
-    void channel.dispatch(ctx, req.method || "GET", rest, url, req, res).catch((err) => {
-      res.writeHead(500);
-      res.end(String(err));
-    });
+    void channel
+      .dispatch(ctx, req.method || "GET", rest, url, req, res)
+      .catch((err) => {
+        res.writeHead(500);
+        res.end(String(err));
+      });
   });
   return new Promise((resolve) =>
     s.listen(0, "127.0.0.1", () =>
@@ -91,7 +100,10 @@ function serve(channel: RuntimeChannel): Promise<{ base: string; close: () => vo
   );
 }
 
-function runRuntimeChannelContract(name: string, make: () => ChannelFixture): void {
+function runRuntimeChannelContract(
+  name: string,
+  make: () => ChannelFixture,
+): void {
   describe(`RuntimeChannel contract: ${name}`, () => {
     test("captureCredential is not-connected before, connected after", async () => {
       const { channel, connect } = make();
@@ -130,11 +142,15 @@ function runRuntimeChannelContract(name: string, make: () => ChannelFixture): vo
       const { channel, connect } = make();
       const { base, close } = await serve(channel);
       try {
-        let providers = (await (await fetch(`${base}/providers`)).json()) as { configured: boolean }[];
+        let providers = (await (await fetch(`${base}/providers`)).json()) as {
+          configured: boolean;
+        }[];
         expect(providers[0]!.configured).toBe(false);
 
         await connect();
-        providers = (await (await fetch(`${base}/providers`)).json()) as { configured: boolean }[];
+        providers = (await (await fetch(`${base}/providers`)).json()) as {
+          configured: boolean;
+        }[];
         expect(providers[0]!.configured).toBe(true);
       } finally {
         close();
@@ -144,7 +160,9 @@ function runRuntimeChannelContract(name: string, make: () => ChannelFixture): vo
     test("fireTurn resolves once a turn is accepted (happy path)", async () => {
       const { channel, connect } = make();
       await connect();
-      await expect(channel.fireTurn(ctx, "c1", "run the routine")).resolves.toBeUndefined();
+      await expect(
+        channel.fireTurn(ctx, "c1", "run the routine"),
+      ).resolves.toBeUndefined();
     });
 
     test("teardown resolves without throwing", async () => {
@@ -193,7 +211,9 @@ beforeAll(async () => {
     if (path.match(/^\/conversations\/[^/]+\/messages$/)) return reply(202, { ok: true });
     return reply(404, { error: "not found" });
   });
-  await new Promise<void>((r) => proxyRuntime.listen(0, "127.0.0.1", () => r()));
+  await new Promise<void>((r) =>
+    proxyRuntime.listen(0, "127.0.0.1", () => r()),
+  );
   proxyRuntimeUrl = `http://127.0.0.1:${(proxyRuntime.address() as AddressInfo).port}`;
 });
 
@@ -233,8 +253,12 @@ beforeAll(async () => {
     req.on("end", () => {
       res.writeHead(200, { "Content-Type": "text/event-stream" });
       res.write(": connected\n\n");
-      res.write(`data: ${JSON.stringify({ type: "user", data: { content: "hi", ts: 1 } })}\n\n`);
-      res.write(`data: ${JSON.stringify({ type: "text", data: "done work" })}\n\n`);
+      res.write(
+        `data: ${JSON.stringify({ type: "user", data: { content: "hi", ts: 1 } })}\n\n`,
+      );
+      res.write(
+        `data: ${JSON.stringify({ type: "text", data: "done work" })}\n\n`,
+      );
       res.write(`data: ${JSON.stringify({ type: "done", data: null })}\n\n`);
       res.end();
     });

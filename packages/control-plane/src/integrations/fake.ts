@@ -26,11 +26,17 @@ export class FakeIntegrationProvider implements IntegrationProvider {
   private readonly invalidKeys = new Set<string>();
   private seq = 0;
 
-  constructor(opts: { id?: string; toolkits?: Toolkit[]; actions?: ToolMatch[] } = {}) {
+  constructor(
+    opts: { id?: string; toolkits?: Toolkit[]; actions?: ToolMatch[] } = {},
+  ) {
     this.id = opts.id ?? "fake";
     this.toolkits = opts.toolkits ?? [{ slug: "gmail", name: "Gmail" }];
     this.actions = opts.actions ?? [
-      { action: "GMAIL_SEND_EMAIL", toolkit: "gmail", description: "Send an email" },
+      {
+        action: "GMAIL_SEND_EMAIL",
+        toolkit: "gmail",
+        description: "Send an email",
+      },
     ];
   }
 
@@ -55,10 +61,14 @@ export class FakeIntegrationProvider implements IntegrationProvider {
 
   async pollLogin(pollKey: string): Promise<LoginResult> {
     const credential = this.pending.get(pollKey);
-    return credential ? { status: "linked", credential } : { status: "pending" };
+    return credential
+      ? { status: "linked", credential }
+      : { status: "pending" };
   }
 
-  async verifyCredential(cred: ProviderCredential): Promise<AccountIdentity | null> {
+  async verifyCredential(
+    cred: ProviderCredential,
+  ): Promise<AccountIdentity | null> {
     const key = String(cred.data.apiKey ?? this.userOf(cred));
     if (this.invalidKeys.has(key)) return null;
     return { accountId: this.userOf(cred) };
@@ -72,28 +82,43 @@ export class FakeIntegrationProvider implements IntegrationProvider {
     return [...(this.connections.get(this.userOf(cred)) ?? [])];
   }
 
-  async connect(cred: ProviderCredential, toolkit: string): Promise<ConnectStart> {
+  async connect(
+    cred: ProviderCredential,
+    toolkit: string,
+  ): Promise<ConnectStart> {
     const connectionId = `conn-${++this.seq}`;
     const user = this.userOf(cred);
     const list = this.connections.get(user) ?? [];
     list.push({ toolkit, connectionId, status: "active" });
     this.connections.set(user, list);
-    return { redirectUrl: `https://fake.local/connect/${toolkit}/${connectionId}`, connectionId };
+    return {
+      redirectUrl: `https://fake.local/connect/${toolkit}/${connectionId}`,
+      connectionId,
+    };
   }
 
   async disconnect(cred: ProviderCredential, toolkit: string): Promise<void> {
     const user = this.userOf(cred);
-    this.connections.set(user, (this.connections.get(user) ?? []).filter((c) => c.toolkit !== toolkit));
+    this.connections.set(
+      user,
+      (this.connections.get(user) ?? []).filter((c) => c.toolkit !== toolkit),
+    );
   }
 
   async search(_cred: ProviderCredential, query: string): Promise<ToolMatch[]> {
     const q = query.toLowerCase();
     return this.actions.filter(
-      (a) => a.description.toLowerCase().includes(q) || a.action.toLowerCase().includes(q),
+      (a) =>
+        a.description.toLowerCase().includes(q) ||
+        a.action.toLowerCase().includes(q),
     );
   }
 
-  async execute(_cred: ProviderCredential, action: string, params: Record<string, unknown>): Promise<ActionResult> {
+  async execute(
+    _cred: ProviderCredential,
+    action: string,
+    params: Record<string, unknown>,
+  ): Promise<ActionResult> {
     return { successful: true, data: { action, params } };
   }
 }

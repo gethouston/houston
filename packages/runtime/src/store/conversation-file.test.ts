@@ -72,8 +72,14 @@ test("assistant message persists token usage so the indicator survives a reload"
     cached_tokens: 89,
   });
 
-  const msg = getHistoryAt(dir, "c1")!.messages.find((m) => m.role === "assistant")!;
-  expect(msg.usage).toEqual({ context_tokens: 12345, output_tokens: 67, cached_tokens: 89 });
+  const msg = getHistoryAt(dir, "c1")!.messages.find(
+    (m) => m.role === "assistant",
+  )!;
+  expect(msg.usage).toEqual({
+    context_tokens: 12345,
+    output_tokens: 67,
+    cached_tokens: 89,
+  });
 });
 
 test("assistant message without usage stores no usage field (degrades cleanly)", () => {
@@ -81,6 +87,8 @@ test("assistant message without usage stores no usage field (degrades cleanly)",
   appendUserMessageAt(dir, "c1", "hi");
   appendAssistantMessageAt(dir, "c1", "hello!");
 
-  const msg = getHistoryAt(dir, "c1")!.messages.find((m) => m.role === "assistant")!;
+  const msg = getHistoryAt(dir, "c1")!.messages.find(
+    (m) => m.role === "assistant",
+  )!;
   expect(msg.usage ?? null).toBeNull();
 });

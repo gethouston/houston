@@ -45,9 +45,17 @@ import {
  *     overlooked port.
  *   Both are marked with a test.todo below so the boundary is explicit.
  */
-const agent = (id: string): Agent => ({ id, workspaceId: "w1", name: id, createdAt: 0 });
+const agent = (id: string): Agent => ({
+  id,
+  workspaceId: "w1",
+  name: id,
+  createdAt: 0,
+});
 
-function runRuntimeLauncherContract(name: string, make: () => RuntimeLauncher): void {
+function runRuntimeLauncherContract(
+  name: string,
+  make: () => RuntimeLauncher,
+): void {
   describe(`RuntimeLauncher contract: ${name}`, () => {
     test("ensureAwake returns a reachable endpoint and marks the agent running", async () => {
       const l = make();

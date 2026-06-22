@@ -1,5 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { CaptureResult, ChannelCtx, RuntimeChannel, TurnPin } from "../ports";
+import type {
+  CaptureResult,
+  ChannelCtx,
+  RuntimeChannel,
+  TurnPin,
+} from "../ports";
 import { dispatchCloudrun } from "../turn/dispatch";
 import { dispatchTurn } from "../turn/start-turn";
 import { PROVIDER, prefixFor, type TurnDeps } from "../turn/deps";
@@ -21,13 +26,35 @@ export class TurnChannel implements RuntimeChannel {
     req: IncomingMessage,
     res: ServerResponse,
   ): Promise<void> {
-    return dispatchCloudrun(this.deps, ctx.workspace, ctx.agent, method, rest, req, res);
+    return dispatchCloudrun(
+      this.deps,
+      ctx.workspace,
+      ctx.agent,
+      method,
+      rest,
+      req,
+      res,
+    );
   }
 
-  async fireTurn(ctx: ChannelCtx, conversationId: string, text: string, pin?: TurnPin): Promise<void> {
-    const outcome = await dispatchTurn(this.deps, ctx.workspace, ctx.agent, conversationId, text, undefined, pin);
+  async fireTurn(
+    ctx: ChannelCtx,
+    conversationId: string,
+    text: string,
+    pin?: TurnPin,
+  ): Promise<void> {
+    const outcome = await dispatchTurn(
+      this.deps,
+      ctx.workspace,
+      ctx.agent,
+      conversationId,
+      text,
+      undefined,
+      pin,
+    );
     if (outcome.status === "quota") throw new Error(outcome.message);
-    if (outcome.status === "busy") throw new Error("a turn is already running for this agent");
+    if (outcome.status === "busy")
+      throw new Error("a turn is already running for this agent");
   }
 
   async teardown(ctx: ChannelCtx): Promise<void> {

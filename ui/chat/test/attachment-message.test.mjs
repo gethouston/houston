@@ -17,7 +17,9 @@ test("decodes attachment marker without exposing prompt body", () => {
 
 test("normalizes names from paths when marker omits file name", () => {
   assert.deepEqual(
-    normalizeAttachmentReferences([{ path: "C:\\Users\\ja\\Desktop\\notes.txt" }]),
+    normalizeAttachmentReferences([
+      { path: "C:\\Users\\ja\\Desktop\\notes.txt" },
+    ]),
     [{ name: "notes.txt", path: "C:\\Users\\ja\\Desktop\\notes.txt" }],
   );
 });
@@ -25,7 +27,9 @@ test("normalizes names from paths when marker omits file name", () => {
 test("ignores invalid attachment marker payloads", () => {
   assert.equal(decodeAttachmentMessage("hello"), null);
   assert.equal(
-    decodeAttachmentMessage('<!--houston:attachments {"message":"x","files":[]}-->'),
+    decodeAttachmentMessage(
+      '<!--houston:attachments {"message":"x","files":[]}-->',
+    ),
     null,
   );
 });

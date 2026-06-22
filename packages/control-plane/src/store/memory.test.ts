@@ -27,7 +27,10 @@ test("getWorkspace returns a created workspace and null for unknown ids", async 
   const s = new MemoryWorkspaceStore();
   const ws = await s.getOrCreatePersonalWorkspace("user-1");
 
-  expect(await s.getWorkspace(ws.id)).toMatchObject({ id: ws.id, ownerUserId: "user-1" });
+  expect(await s.getWorkspace(ws.id)).toMatchObject({
+    id: ws.id,
+    ownerUserId: "user-1",
+  });
   expect(await s.getWorkspace("nope")).toBeNull();
 });
 
@@ -51,7 +54,9 @@ test("create / list / rename / delete agents in a workspace", async () => {
 
   await s.deleteAgent(sales.id);
   expect(await s.getAgent(sales.id)).toBeNull();
-  expect((await s.listAgents(ws.id)).map((a) => a.name)).toEqual(["PeopleAgent"]);
+  expect((await s.listAgents(ws.id)).map((a) => a.name)).toEqual([
+    "PeopleAgent",
+  ]);
 });
 
 test("listWorkspaces / listAllAgents enumerate every tenant (admin view)", async () => {
@@ -63,7 +68,10 @@ test("listWorkspaces / listAllAgents enumerate every tenant (admin view)", async
   await s.createAgent({ workspaceId: ws2.id, name: "B2" });
 
   const workspaces = await s.listWorkspaces();
-  expect(workspaces.map((w) => w.ownerUserId).sort()).toEqual(["user-1", "user-2"]);
+  expect(workspaces.map((w) => w.ownerUserId).sort()).toEqual([
+    "user-1",
+    "user-2",
+  ]);
 
   const all = await s.listAllAgents();
   expect(all.map((a) => a.name).sort()).toEqual(["A1", "B1", "B2"]);
@@ -89,5 +97,8 @@ test("a second workspace's agents never appear in the first's list", async () =>
   await s.createAgent({ workspaceId: ws2.id, name: "B2" });
 
   expect((await s.listAgents(ws1.id)).map((a) => a.id)).toEqual([a1.id]);
-  expect((await s.listAgents(ws2.id)).map((a) => a.name).sort()).toEqual(["B1", "B2"]);
+  expect((await s.listAgents(ws2.id)).map((a) => a.name).sort()).toEqual([
+    "B1",
+    "B2",
+  ]);
 });

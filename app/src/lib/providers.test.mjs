@@ -56,33 +56,63 @@ test("effort levels empty for unknown / effort-less models", () => {
 });
 
 test("validEffortOrDefault keeps a value the model accepts", () => {
-  assert.equal(validEffortOrDefault("anthropic", "claude-sonnet-4-6", "max"), "max");
+  assert.equal(
+    validEffortOrDefault("anthropic", "claude-sonnet-4-6", "max"),
+    "max",
+  );
   assert.equal(validEffortOrDefault("openai", "gpt-5.5", "xhigh"), "xhigh");
-  assert.equal(validEffortOrDefault("anthropic", "claude-opus-4-7", "high"), "high");
-  assert.equal(validEffortOrDefault("anthropic", "claude-opus-4-8", "xhigh"), "xhigh");
+  assert.equal(
+    validEffortOrDefault("anthropic", "claude-opus-4-7", "high"),
+    "high",
+  );
+  assert.equal(
+    validEffortOrDefault("anthropic", "claude-opus-4-8", "xhigh"),
+    "xhigh",
+  );
 });
 
 test("validEffortOrDefault clamps a value the model rejects to the default", () => {
   // Sonnet has no xhigh; codex has no max — both fall back to medium.
-  assert.equal(validEffortOrDefault("anthropic", "claude-sonnet-4-6", "xhigh"), "medium");
+  assert.equal(
+    validEffortOrDefault("anthropic", "claude-sonnet-4-6", "xhigh"),
+    "medium",
+  );
   assert.equal(validEffortOrDefault("openai", "gpt-5.5", "max"), "medium");
 });
 
 test("validEffortOrDefault falls back to default when unset or garbage", () => {
-  assert.equal(validEffortOrDefault("anthropic", "claude-sonnet-4-6", null), "medium");
-  assert.equal(validEffortOrDefault("anthropic", "claude-sonnet-4-6", "ultra"), "medium");
+  assert.equal(
+    validEffortOrDefault("anthropic", "claude-sonnet-4-6", null),
+    "medium",
+  );
+  assert.equal(
+    validEffortOrDefault("anthropic", "claude-sonnet-4-6", "ultra"),
+    "medium",
+  );
 });
 
 test("validEffortOrDefault is undefined for models without effort control", () => {
-  assert.equal(validEffortOrDefault("unknown-provider", "unknown-model", "high"), undefined);
+  assert.equal(
+    validEffortOrDefault("unknown-provider", "unknown-model", "high"),
+    undefined,
+  );
 });
 
 test("validModelOrNull rejects retired aliases and accepts catalog IDs", () => {
   assert.equal(validModelOrNull("anthropic", "opus"), null);
   assert.equal(validModelOrNull("anthropic", "sonnet"), null);
-  assert.equal(validModelOrNull("anthropic", "claude-opus-4-8"), "claude-opus-4-8");
-  assert.equal(validModelOrNull("anthropic", "claude-opus-4-7"), "claude-opus-4-7");
-  assert.equal(validModelOrNull("anthropic", "claude-sonnet-4-6"), "claude-sonnet-4-6");
+  assert.equal(
+    validModelOrNull("anthropic", "claude-opus-4-8"),
+    "claude-opus-4-8",
+  );
+  assert.equal(
+    validModelOrNull("anthropic", "claude-opus-4-7"),
+    "claude-opus-4-7",
+  );
+  assert.equal(
+    validModelOrNull("anthropic", "claude-sonnet-4-6"),
+    "claude-sonnet-4-6",
+  );
 });
 
 test("normalizeLegacyModel maps retired aliases, passes everything else through", () => {

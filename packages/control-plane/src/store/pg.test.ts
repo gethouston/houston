@@ -85,7 +85,16 @@ test("every method issues only parameterized queries (no input interpolation)", 
               },
             ],
           }
-        : { rows: [{ id: "a-789", workspace_id: "ws-456", name: "Mallory", created_at: "1" }] };
+        : {
+            rows: [
+              {
+                id: "a-789",
+                workspace_id: "ws-456",
+                name: "Mallory",
+                created_at: "1",
+              },
+            ],
+          };
     }
     return { rows: [] };
   });
@@ -97,7 +106,10 @@ test("every method issues only parameterized queries (no input interpolation)", 
   await store.listAgents("ws-456");
   await store.listWorkspaces();
   await store.listAllAgents();
-  await store.createAgent({ workspaceId: "ws-456", name: "Robert'); DROP TABLE workspaces;--" });
+  await store.createAgent({
+    workspaceId: "ws-456",
+    name: "Robert'); DROP TABLE workspaces;--",
+  });
   await store.renameAgent("a-789", "Mallory");
   await store.setWorkspaceRuntime("ws-x", "cloudrun");
   await store.deleteAgent("a-789");
@@ -183,7 +195,9 @@ test("getOrCreatePersonalWorkspace inserts a personal workspace upsert when none
   const insert = calls.find((c) => /INSERT INTO workspaces/i.test(c.text))!;
   expect(insert).toBeDefined();
   // Upsert guard: the partial unique index on the personal workspace.
-  expect(insert.text).toMatch(/ON CONFLICT \(owner_user_id\) WHERE kind = 'personal'/i);
+  expect(insert.text).toMatch(
+    /ON CONFLICT \(owner_user_id\) WHERE kind = 'personal'/i,
+  );
   expect(insert.text).toMatch(/DO NOTHING/i);
   expect(insert.text).toMatch(/RETURNING/i);
   // kind is a literal in SQL, name/slug come from params; never the userId raw in text.
@@ -300,7 +314,10 @@ test("listAllAgents selects every agent with no caller input", async () => {
 test("createAgent inserts id/workspace_id/name/created_at as bound params", async () => {
   const { pool, calls } = fakePool();
   const store = new PgWorkspaceStore(pool);
-  const agent = await store.createAgent({ workspaceId: "ws-456", name: "Scout" });
+  const agent = await store.createAgent({
+    workspaceId: "ws-456",
+    name: "Scout",
+  });
   const insert = calls[0]!;
   expect(insert.text).toMatch(/INSERT INTO agents/i);
   expect(insert.params).toEqual([agent.id, "ws-456", "Scout", agent.createdAt]);
@@ -313,7 +330,12 @@ test("renameAgent updates by id and returns the updated row", async () => {
     text.includes("UPDATE agents")
       ? {
           rows: [
-            { id: "a-1", workspace_id: "ws-1", name: "Renamed", created_at: "7" },
+            {
+              id: "a-1",
+              workspace_id: "ws-1",
+              name: "Renamed",
+              created_at: "7",
+            },
           ],
         }
       : {},
@@ -324,13 +346,20 @@ test("renameAgent updates by id and returns the updated row", async () => {
   expect(update.text).toMatch(/UPDATE agents SET name = \$2 WHERE id = \$1/i);
   expect(update.text).toMatch(/RETURNING/i);
   expect(update.params).toEqual(["a-1", "Renamed"]);
-  expect(agent).toEqual({ id: "a-1", workspaceId: "ws-1", name: "Renamed", createdAt: 7 });
+  expect(agent).toEqual({
+    id: "a-1",
+    workspaceId: "ws-1",
+    name: "Renamed",
+    createdAt: 7,
+  });
 });
 
 test("renameAgent surfaces an error when the agent does not exist (no silent default)", async () => {
   const { pool } = fakePool(() => ({ rows: [] })); // UPDATE ... RETURNING matched nothing
   const store = new PgWorkspaceStore(pool);
-  await expect(store.renameAgent("a-missing", "X")).rejects.toThrow(/unknown agent/);
+  await expect(store.renameAgent("a-missing", "X")).rejects.toThrow(
+    /unknown agent/,
+  );
 });
 
 test("deleteAgent deletes by bound id", async () => {
@@ -366,5 +395,7 @@ test("a corrupted workspace kind surfaces as an error, never a silent default", 
       : {},
   );
   const store = new PgWorkspaceStore(pool);
-  await expect(store.getWorkspace("ws-x")).rejects.toThrow(/invalid workspace kind/);
+  await expect(store.getWorkspace("ws-x")).rejects.toThrow(
+    /invalid workspace kind/,
+  );
 });

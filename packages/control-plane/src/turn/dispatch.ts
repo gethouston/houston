@@ -42,7 +42,9 @@ export async function dispatchCloudrun(
       if (!key.endsWith(".json")) continue;
       const raw = await deps.vfs.readText(key);
       if (!raw) continue;
-      const conv = JSON.parse(raw) as ConversationSummary & { messages: { content: string }[] };
+      const conv = JSON.parse(raw) as ConversationSummary & {
+        messages: { content: string }[];
+      };
       const last = conv.messages[conv.messages.length - 1];
       out.push({
         id: conv.id,
@@ -52,7 +54,11 @@ export async function dispatchCloudrun(
         lastMessage: last?.content.slice(0, 80),
       });
     }
-    return json(res, 200, out.sort((a, b) => b.updatedAt - a.updatedAt));
+    return json(
+      res,
+      200,
+      out.sort((a, b) => b.updatedAt - a.updatedAt),
+    );
   }
 
   const conv = rest.match(/^conversations\/([^/]+)\/(messages|events|cancel)$/);
@@ -63,7 +69,11 @@ export async function dispatchCloudrun(
     if (method === "GET" && action === "messages") {
       const raw = await deps.vfs.readText(conversationKey(prefix, cid));
       if (!raw) return json(res, 404, { error: "conversation not found" });
-      const c = JSON.parse(raw) as { id: string; title: string; messages: unknown[] };
+      const c = JSON.parse(raw) as {
+        id: string;
+        title: string;
+        messages: unknown[];
+      };
       return json(res, 200, { id: c.id, title: c.title, messages: c.messages });
     }
 
@@ -79,7 +89,8 @@ export async function dispatchCloudrun(
       res.write(": connected\n\n");
       const key = `${agent.id}/${cid}`;
       const send = (type: string, data: unknown) => {
-        if (!res.writableEnded) res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
+        if (!res.writableEnded)
+          res.write(`data: ${JSON.stringify({ type, data })}\n\n`);
       };
       // Subscribe FIRST (buffering), then read the snapshot, then flush the
       // buffer through the (turnId, seq) watermark: frames the snapshot
@@ -88,8 +99,16 @@ export async function dispatchCloudrun(
       let live = false;
       let snapTurn = "";
       let snapSeq = 0;
-      const buffered: { e: import("@houston/runtime-client").WireEvent; turnId: string; seq: number }[] = [];
-      const deliver = (e: { type: string; data: unknown }, turnId: string, seq: number) => {
+      const buffered: {
+        e: import("@houston/runtime-client").WireEvent;
+        turnId: string;
+        seq: number;
+      }[] = [];
+      const deliver = (
+        e: { type: string; data: unknown },
+        turnId: string,
+        seq: number,
+      ) => {
         if (turnId === snapTurn && seq <= snapSeq) return; // already in the sync frame
         send(e.type, e.data);
       };
@@ -175,14 +194,18 @@ export async function dispatchCloudrun(
   if (method === "PUT" && rest === "settings") {
     const body = await readJson(req);
     const settings = await readSettings(deps, prefix);
-    if (typeof body.activeProvider === "string") settings.activeProvider = body.activeProvider;
+    if (typeof body.activeProvider === "string")
+      settings.activeProvider = body.activeProvider;
     if (typeof body.model === "string") {
       const prov =
         (typeof body.activeProvider === "string" ? body.activeProvider : settings.activeProvider) ??
         PROVIDER;
       settings.models = { ...settings.models, [prov]: body.model };
     }
-    await deps.vfs.writeText(`${prefix}/data/settings.json`, JSON.stringify(settings));
+    await deps.vfs.writeText(
+      `${prefix}/data/settings.json`,
+      JSON.stringify(settings),
+    );
     return json(res, 200, settings);
   }
 

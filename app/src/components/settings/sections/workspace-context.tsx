@@ -26,7 +26,9 @@ function useSlotEditor(slot: Slot) {
   return { ready: !!currentWorkspace && !!data, content, onSave };
 }
 
-function useSlotLabels(prefix: "workspaceContext" | "userContext"): InstructionsContentLabels {
+function useSlotLabels(
+  prefix: "workspaceContext" | "userContext",
+): InstructionsContentLabels {
   const { t } = useTranslation("settings");
   return {
     emptyTitle: t(`${prefix}.emptyTitle`),

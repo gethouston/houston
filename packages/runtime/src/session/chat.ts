@@ -12,12 +12,18 @@ import { authStorage, modelRegistry } from "../auth/storage";
 import { resolveModel, activeProvider } from "../ai/providers";
 import { toThinkingLevel } from "../ai/effort";
 import { makeAgentLoader } from "./resource-loader";
-import { appendAssistantMessage, appendUserMessage } from "../store/conversations";
+import {
+  appendAssistantMessage,
+  appendUserMessage,
+} from "../store/conversations";
 import { publish } from "./bus";
 import { syncServedCredential } from "../auth/serve";
 import { makeRunCodeTool } from "./tools/run-code";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
-import { CLAMPED_FILE_TOOL_NAMES, makeClampedFileTools } from "./tools/clamped-fs";
+import {
+  CLAMPED_FILE_TOOL_NAMES,
+  makeClampedFileTools,
+} from "./tools/clamped-fs";
 
 // Workspace-clamped file tools (security Gate #1). These shadow pi's builtins
 // by name: pi's defaults resolve absolute paths as-is, so without the clamp a
@@ -48,12 +54,15 @@ const runCodeTool = useRemoteSandbox
 // built-in like `bash` needs only its name here; a custom tool like `run_code`
 // needs BOTH its name here AND its object in `customTools` (below) — omit either
 // and pi filters it out. This is the pi SDK's design, not accidental duplication.
-const TOOLS = useRemoteSandbox ? [...FILE_TOOLS, "run_code"] : [...FILE_TOOLS, "bash"];
+const TOOLS = useRemoteSandbox
+  ? [...FILE_TOOLS, "run_code"]
+  : [...FILE_TOOLS, "bash"];
 
 type Conversation = { session: AgentSession; queue: Promise<unknown> };
 const conversations = new Map<string, Conversation>();
 
-const errMessage = (err: unknown) => (err instanceof Error ? err.message : String(err));
+const errMessage = (err: unknown) =>
+  err instanceof Error ? err.message : String(err);
 
 async function getConversation(id: string): Promise<Conversation> {
   const existing = conversations.get(id);
@@ -90,7 +99,6 @@ async function getConversation(id: string): Promise<Conversation> {
   return conv;
 }
 
-
 /** A routine's pinned model/effort for this turn. Absent = keep the session's current. */
 export interface TurnPin {
   model?: string | null;
@@ -102,7 +110,13 @@ export interface TurnPin {
  * every event to the conversation's bus. Self-contained: any failure is published
  * as an `error` event and never rethrown, so the per-conversation queue survives.
  */
-async function execTurn(conv: Conversation, id: string, text: string, nonce?: string, pin?: TurnPin) {
+async function execTurn(
+  conv: Conversation,
+  id: string,
+  text: string,
+  nonce?: string,
+  pin?: TurnPin,
+) {
   appendUserMessage(id, text);
   publish(id, { type: "user", data: { content: text, ts: Date.now(), nonce } });
 
@@ -169,7 +183,12 @@ export async function ensureProviderForTurn(): Promise<string | null> {
   return activeProvider();
 }
 
-export async function runTurn(id: string, text: string, nonce?: string, pin?: TurnPin): Promise<void> {
+export async function runTurn(
+  id: string,
+  text: string,
+  nonce?: string,
+  pin?: TurnPin,
+): Promise<void> {
   // The message route already synced the credential and confirmed a provider via
   // ensureProviderForTurn. Re-check here as a cheap guard for the narrow window
   // where the provider is logged out mid-turn: getConversation returns a CACHED
@@ -222,6 +241,9 @@ export async function disposeConversation(
     conv.session.dispose();
   }
   if (opts?.deleteSessions) {
-    rmSync(join(config.dataDir, "sessions", id), { recursive: true, force: true });
+    rmSync(join(config.dataDir, "sessions", id), {
+      recursive: true,
+      force: true,
+    });
   }
 }

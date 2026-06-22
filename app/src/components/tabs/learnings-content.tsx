@@ -31,7 +31,9 @@ export function LearningsContent({
 }) {
   const { t } = useTranslation("agents");
   const [drafts, setDrafts] = useState<string[]>([]);
-  const [pendingRemove, setPendingRemove] = useState<LearningEntry | null>(null);
+  const [pendingRemove, setPendingRemove] = useState<LearningEntry | null>(
+    null,
+  );
   const draftCounterRef = useRef(0);
 
   const addDraft = () => {
@@ -71,7 +73,11 @@ export function LearningsContent({
   }
 
   return (
-    <div className={layout === "full" ? "max-w-3xl mx-auto w-full px-6 pb-12 pt-2" : ""}>
+    <div
+      className={
+        layout === "full" ? "max-w-3xl mx-auto w-full px-6 pb-12 pt-2" : ""
+      }
+    >
       <div className="flex items-center justify-between gap-4 mb-4">
         <p className="text-xs text-muted-foreground max-w-md">
           {t("learnings.helper")}

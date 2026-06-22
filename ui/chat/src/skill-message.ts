@@ -89,7 +89,9 @@ export function decodeSkillMessage(body: string): SkillInvocation | null {
  * Used by both the desktop and mobile renderers so the visual stays
  * consistent.
  */
-export function resolveSkillImage(value: string | null | undefined): string | null {
+export function resolveSkillImage(
+  value: string | null | undefined,
+): string | null {
   if (!value) return null;
   const trimmed = value.trim();
   if (!trimmed) return null;

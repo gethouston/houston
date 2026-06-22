@@ -43,11 +43,21 @@ import { WorkspaceGuard } from "./fs-guard";
  * a search; a symlink given directly as `path` is rejected by the outer wall.
  */
 
-export const CLAMPED_FILE_TOOL_NAMES = ["read", "ls", "grep", "find", "edit", "write"] as const;
+export const CLAMPED_FILE_TOOL_NAMES = [
+  "read",
+  "ls",
+  "grep",
+  "find",
+  "edit",
+  "write",
+] as const;
 
 type AnyToolDefinition = ToolDefinition<any, any, any>;
 
-function withClampedPath(def: AnyToolDefinition, guard: WorkspaceGuard): AnyToolDefinition {
+function withClampedPath(
+  def: AnyToolDefinition,
+  guard: WorkspaceGuard,
+): AnyToolDefinition {
   return {
     ...def,
     async execute(toolCallId, params, signal, onUpdate, ctx) {
@@ -56,23 +66,33 @@ function withClampedPath(def: AnyToolDefinition, guard: WorkspaceGuard): AnyTool
         throw new Error(`${def.name}: 'path' must be a string`);
       }
       const abs = guard.clamp(raw as string | undefined);
-      return def.execute(toolCallId, { ...(params as object), path: abs }, signal, onUpdate, ctx);
+      return def.execute(
+        toolCallId,
+        { ...(params as object), path: abs },
+        signal,
+        onUpdate,
+        ctx,
+      );
     },
   };
 }
 
-export function makeClampedFileTools(workspaceDir: string): AnyToolDefinition[] {
+export function makeClampedFileTools(
+  workspaceDir: string,
+): AnyToolDefinition[] {
   const guard = new WorkspaceGuard(workspaceDir);
   const g = (p: string) => guard.assertInside(p);
 
   // Inner-wall operations mirror pi's defaults exactly, plus the guard.
   const editOps = {
     readFile: (p: string) => fsReadFile(g(p)),
-    writeFile: (p: string, content: string) => fsWriteFile(g(p), content, "utf-8"),
+    writeFile: (p: string, content: string) =>
+      fsWriteFile(g(p), content, "utf-8"),
     access: (p: string) => fsAccess(g(p), constants.R_OK | constants.W_OK),
   };
   const writeOps = {
-    writeFile: (p: string, content: string) => fsWriteFile(g(p), content, "utf-8"),
+    writeFile: (p: string, content: string) =>
+      fsWriteFile(g(p), content, "utf-8"),
     mkdir: (dir: string) => fsMkdir(g(dir), { recursive: true }).then(() => {}),
   };
   const lsOps = {
@@ -95,10 +115,22 @@ export function makeClampedFileTools(workspaceDir: string): AnyToolDefinition[] 
 
   return [
     withClampedPath(createReadToolDefinition(workspaceDir), guard),
-    withClampedPath(createLsToolDefinition(workspaceDir, { operations: lsOps }), guard),
-    withClampedPath(createGrepToolDefinition(workspaceDir, { operations: grepOps }), guard),
+    withClampedPath(
+      createLsToolDefinition(workspaceDir, { operations: lsOps }),
+      guard,
+    ),
+    withClampedPath(
+      createGrepToolDefinition(workspaceDir, { operations: grepOps }),
+      guard,
+    ),
     withClampedPath(createFindToolDefinition(workspaceDir), guard),
-    withClampedPath(createEditToolDefinition(workspaceDir, { operations: editOps }), guard),
-    withClampedPath(createWriteToolDefinition(workspaceDir, { operations: writeOps }), guard),
+    withClampedPath(
+      createEditToolDefinition(workspaceDir, { operations: editOps }),
+      guard,
+    ),
+    withClampedPath(
+      createWriteToolDefinition(workspaceDir, { operations: writeOps }),
+      guard,
+    ),
   ];
 }

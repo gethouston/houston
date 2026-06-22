@@ -76,13 +76,14 @@ export function NewMissionPickerDialog({
   const hasFeatured = featured.length > 0;
 
   const tabs = useMemo(
-    () => buildSkillPickerTabs({
-      categoryNames,
-      hasFeatured,
-      hasOther,
-      featuredLabel: t("skillPicker.featuredTab"),
-      otherLabel: t("skillPicker.otherTab"),
-    }),
+    () =>
+      buildSkillPickerTabs({
+        categoryNames,
+        hasFeatured,
+        hasOther,
+        featuredLabel: t("skillPicker.featuredTab"),
+        otherLabel: t("skillPicker.otherTab"),
+      }),
     [categoryNames, hasFeatured, hasOther, t],
   );
 
@@ -97,14 +98,15 @@ export function NewMissionPickerDialog({
   const skillsForActiveTab: SkillSummary[] =
     activeTabId === FEATURED_SKILLS_TAB_ID
       ? featured
-      : byCategory.get(activeTabId) ?? [];
+      : (byCategory.get(activeTabId) ?? []);
 
   const sortedSkills = useMemo(
     () => [...skillsForActiveTab].sort((a, b) => a.name.localeCompare(b.name)),
     [skillsForActiveTab],
   );
 
-  const showBlankCard = !hideBlank && (tabs.length === 0 || activeTabId === firstTabId);
+  const showBlankCard =
+    !hideBlank && (tabs.length === 0 || activeTabId === firstTabId);
 
   const handleBlank = () => {
     if (!onBlank) return;
@@ -128,14 +130,19 @@ export function NewMissionPickerDialog({
           <DialogTitle>{t("skillPicker.title")}</DialogTitle>
           <DialogDescription>
             {lockedAgent
-              ? t("skillPicker.descriptionWithAgent", { name: lockedAgent.name })
+              ? t("skillPicker.descriptionWithAgent", {
+                  name: lockedAgent.name,
+                })
               : t("skillPicker.description")}
           </DialogDescription>
         </DialogHeader>
 
         {!lockedAgent && agents.length > 1 && (
           <div className="shrink-0 px-6 pb-3">
-            <label htmlFor="nmp-agent" className="text-sm font-medium block mb-1.5">
+            <label
+              htmlFor="nmp-agent"
+              className="text-sm font-medium block mb-1.5"
+            >
               {t("skillPicker.agentLabel")}
             </label>
             <select
@@ -181,7 +188,9 @@ export function NewMissionPickerDialog({
               loading={skillsLoading}
               skills={sortedSkills}
               emptyLabel={
-                activeTabId ? t("skillPicker.skillsEmpty") : t("skillPicker.empty")
+                activeTabId
+                  ? t("skillPicker.skillsEmpty")
+                  : t("skillPicker.empty")
               }
               pickAgentLabel={t("skillPicker.pickAgentFirst")}
               loadingLabel={t("skillPicker.skillsLoading")}

@@ -17,7 +17,11 @@ interface WireEvent {
   data: unknown;
 }
 
-async function api(cp: CpClient, path: string, init?: RequestInit): Promise<Response> {
+async function api(
+  cp: CpClient,
+  path: string,
+  init?: RequestInit,
+): Promise<Response> {
   const res = await fetch(`${cp.baseUrl}${path}`, {
     ...init,
     headers: {
@@ -28,18 +32,28 @@ async function api(cp: CpClient, path: string, init?: RequestInit): Promise<Resp
   });
   if (!res.ok) {
     const body = await res.text().catch(() => "");
-    throw new Error(`${init?.method ?? "GET"} ${path} → ${res.status}${body ? ` ${body.slice(0, 300)}` : ""}`);
+    throw new Error(
+      `${init?.method ?? "GET"} ${path} → ${res.status}${body ? ` ${body.slice(0, 300)}` : ""}`,
+    );
   }
   return res;
 }
 
-export async function createAgent(cp: CpClient, name: string): Promise<{ id: string }> {
-  return (await (await api(cp, "/agents", { method: "POST", body: JSON.stringify({ name }) })).json()) as {
+export async function createAgent(
+  cp: CpClient,
+  name: string,
+): Promise<{ id: string }> {
+  return (await (
+    await api(cp, "/agents", { method: "POST", body: JSON.stringify({ name }) })
+  ).json()) as {
     id: string;
   };
 }
 
-export async function deleteAgent(cp: CpClient, agentId: string): Promise<void> {
+export async function deleteAgent(
+  cp: CpClient,
+  agentId: string,
+): Promise<void> {
   await api(cp, `/agents/${encodeURIComponent(agentId)}`, { method: "DELETE" });
 }
 
@@ -54,7 +68,11 @@ export async function runTurn(
   conversationId: string,
   text: string,
   timeoutSec: number,
-): Promise<{ outcome: "done" | "error"; errorMessage?: string; events: number }> {
+): Promise<{
+  outcome: "done" | "error";
+  errorMessage?: string;
+  events: number;
+}> {
   const ctrl = new AbortController();
   const events = await fetch(
     `${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(
@@ -67,19 +85,27 @@ export async function runTurn(
     throw new Error(`events stream failed: ${events.status}`);
   }
 
-  let settle: (v: { outcome: "done" | "error"; errorMessage?: string; events: number }) => void;
+  let settle: (v: {
+    outcome: "done" | "error";
+    errorMessage?: string;
+    events: number;
+  }) => void;
   let fail: (e: Error) => void;
-  const result = new Promise<{ outcome: "done" | "error"; errorMessage?: string; events: number }>(
-    (res, rej) => {
-      settle = res;
-      fail = rej;
-    },
-  );
+  const result = new Promise<{
+    outcome: "done" | "error";
+    errorMessage?: string;
+    events: number;
+  }>((res, rej) => {
+    settle = res;
+    fail = rej;
+  });
   let count = 0;
 
   const timer = setTimeout(() => {
     ctrl.abort();
-    fail(new Error(`turn timed out after ${timeoutSec}s (${count} events seen)`));
+    fail(
+      new Error(`turn timed out after ${timeoutSec}s (${count} events seen)`),
+    );
   }, timeoutSec * 1000);
 
   void (async () => {
@@ -109,25 +135,38 @@ export async function runTurn(
               clearTimeout(timer);
               ctrl.abort();
               const message = (e.data as { message?: string } | null)?.message;
-              settle({ outcome: "error", errorMessage: message, events: count });
+              settle({
+                outcome: "error",
+                errorMessage: message,
+                events: count,
+              });
               return;
             }
           }
         }
       }
       clearTimeout(timer);
-      fail(new Error(`event stream closed without a terminal frame (${count} events)`));
+      fail(
+        new Error(
+          `event stream closed without a terminal frame (${count} events)`,
+        ),
+      );
     } catch (err) {
       clearTimeout(timer);
-      if (!ctrl.signal.aborted) fail(err instanceof Error ? err : new Error(String(err)));
+      if (!ctrl.signal.aborted)
+        fail(err instanceof Error ? err : new Error(String(err)));
     }
   })();
 
   // Stream is open — now send the message (202 expected).
-  await api(cp, `/agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}/messages`, {
-    method: "POST",
-    body: JSON.stringify({ text, nonce: `eval-${conversationId}` }),
-  });
+  await api(
+    cp,
+    `/agents/${encodeURIComponent(agentId)}/conversations/${encodeURIComponent(conversationId)}/messages`,
+    {
+      method: "POST",
+      body: JSON.stringify({ text, nonce: `eval-${conversationId}` }),
+    },
+  );
 
   return result;
 }
@@ -139,11 +178,20 @@ export interface ProjectFile {
   is_directory: boolean;
 }
 
-export async function listFiles(cp: CpClient, agentId: string): Promise<ProjectFile[]> {
-  return (await (await api(cp, `/agents/${encodeURIComponent(agentId)}/files`)).json()) as ProjectFile[];
+export async function listFiles(
+  cp: CpClient,
+  agentId: string,
+): Promise<ProjectFile[]> {
+  return (await (
+    await api(cp, `/agents/${encodeURIComponent(agentId)}/files`)
+  ).json()) as ProjectFile[];
 }
 
-export async function downloadFile(cp: CpClient, agentId: string, relPath: string): Promise<Uint8Array> {
+export async function downloadFile(
+  cp: CpClient,
+  agentId: string,
+  relPath: string,
+): Promise<Uint8Array> {
   const res = await api(
     cp,
     `/agents/${encodeURIComponent(agentId)}/files/download?path=${encodeURIComponent(relPath)}`,
