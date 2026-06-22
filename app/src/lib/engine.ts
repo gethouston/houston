@@ -11,9 +11,9 @@
  * `@tauri-apps/api` — everything else flows through the engine wire.
  */
 
-import { HoustonClient, EngineWebSocket } from "@houston-ai/engine-client";
-import { listen } from "@tauri-apps/api/event";
+import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import { controlPlaneBuild } from "./engine-mode";
 
 declare global {
@@ -49,7 +49,7 @@ const HOST_TOKEN: string =
 // built against the v3 host -> every turn fails with "Session error" until the
 // next launch (the warm sidecar lets the injection land first). Setting the
 // flag from the build constant closes that race for all delivery paths. HOU-546.
-const NEW_ENGINE = controlPlaneBuild((import.meta as any).env ?? {});
+const NEW_ENGINE = controlPlaneBuild(import.meta.env ?? {});
 if (NEW_ENGINE && typeof window !== "undefined") {
   (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
 }

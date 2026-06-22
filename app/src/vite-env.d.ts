@@ -18,4 +18,8 @@ interface ImportMetaEnv {
    * (e.g. 5) to force compaction while testing.
    */
   readonly VITE_AUTOCOMPACT_THRESHOLD?: string;
+  /** Cloud control-plane / new-engine URL; its presence flips the app to the new TS engine. */
+  readonly VITE_NEW_ENGINE_URL?: string;
+  /** Set to "1" to force the new TS engine on. */
+  readonly VITE_NEW_ENGINE?: string;
 }
