@@ -45,13 +45,20 @@ export function syntheticAgent(): Agent {
 }
 
 /** Old desktop provider name -> new engine ProviderId. */
-export function toNewProvider(name: string): "anthropic" | "openai-codex" | null {
+export function toNewProvider(
+  name: string,
+): "anthropic" | "openai-codex" | "opencode" | "opencode-go" | null {
   if (name === "anthropic") return "anthropic";
   if (name === "openai" || name === "openai-codex" || name === "codex") return "openai-codex";
+  if (name === "opencode") return "opencode";
+  if (name === "opencode-go") return "opencode-go";
   return null;
 }
 
-/** New engine ProviderId -> old desktop provider name. */
+/**
+ * New engine ProviderId -> old desktop provider name. Only Codex is renamed
+ * (openai-codex -> openai); the OpenCode ids are the same on both sides.
+ */
 export function toOldProvider(id: string): string {
   return id === "openai-codex" ? "openai" : id;
 }

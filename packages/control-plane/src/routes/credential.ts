@@ -1,5 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { CredentialStore, CredentialVault } from "../ports";
+import { isApiKeyCredential, type CredentialStore, type CredentialVault } from "../ports";
 import { isExpiring, refreshCredential } from "../credentials/refresh";
 import { bearer, json } from "./http";
 
@@ -39,12 +39,14 @@ export async function handleSandboxCredential(
   }
   // Access token ONLY (Gate #2): the refresh token never leaves this process.
   // A stolen sandbox credential is then worth minutes, not an account. The
-  // ChatGPT backend needs accountId, so that still ships.
+  // ChatGPT backend needs accountId, so that still ships. `kind` tells the
+  // runtime to write an api_key entry (no refresh/expiry) vs an oauth one.
   json(res, 200, {
     provider: cred.provider,
     access: cred.accessToken,
     expires: cred.expiresAt,
     accountId: cred.accountId ?? null,
+    kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
   });
   return true;
 }

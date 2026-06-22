@@ -4,8 +4,14 @@
  * Source of truth for these shapes; @houston/runtime-client re-exports them.
  */
 
-/** Subscription providers. "anthropic" = Claude Pro/Max, "openai-codex" = ChatGPT/Codex. */
-export type ProviderId = "anthropic" | "openai-codex";
+/**
+ * Connectable AI providers.
+ * - `anthropic` = Claude Pro/Max (subscription OAuth)
+ * - `openai-codex` = ChatGPT/Codex (subscription OAuth)
+ * - `opencode` = OpenCode Zen (pasted API key; OpenAI-compatible gateway)
+ * - `opencode-go` = OpenCode Go (pasted API key; OpenAI-compatible gateway)
+ */
+export type ProviderId = "anthropic" | "openai-codex" | "opencode" | "opencode-go";
 
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 

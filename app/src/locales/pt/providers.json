@@ -57,5 +57,18 @@
     "codeCopied": "Código copiado!",
     "codeCopyFailed": "Não foi possível copiar o código",
     "cancel": "Cancelar"
+  },
+  "apiKey": {
+    "title": "Conectar {{name}}",
+    "description": "Cole sua chave de API do {{name}}. O Houston a mantém em segurança e a usa nos seus chats.",
+    "getKey": "Obtenha sua chave de API",
+    "label": "Chave de API",
+    "placeholder": "Cole sua chave de API",
+    "required": "Primeiro informe sua chave de API.",
+    "show": "Mostrar chave",
+    "hide": "Ocultar chave",
+    "save": "Conectar",
+    "saving": "Conectando...",
+    "cancel": "Cancelar"
   }
 }

@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import type { TokenUsage, ToolCallRecord, WireEvent } from "@houston/runtime-client";
 import { config } from "../config";
+import { providerDefaultModel } from "../ai/providers";
 import { toThinkingLevel } from "../ai/effort";
 import { makeAgentLoader } from "../session/resource-loader";
 import { toWire } from "../session/wire";
@@ -46,8 +47,7 @@ function resolveTurnModel(dataDir: string, provider: string, override?: string |
       settings = {};
     }
   }
-  const fallback = provider === "anthropic" ? config.model : config.codexModel;
-  const modelId = override || settings.models?.[provider] || fallback;
+  const modelId = override || settings.models?.[provider] || providerDefaultModel(provider);
   return getModel(provider as never, modelId as never);
 }
 

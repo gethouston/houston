@@ -57,5 +57,18 @@
     "codeCopied": "Code copied!",
     "codeCopyFailed": "Couldn't copy the code",
     "cancel": "Cancel"
+  },
+  "apiKey": {
+    "title": "Connect {{name}}",
+    "description": "Paste your {{name}} API key. Houston keeps it safe and uses it for your chats.",
+    "getKey": "Get your API key",
+    "label": "API key",
+    "placeholder": "Paste your API key",
+    "required": "Enter your API key first.",
+    "show": "Show key",
+    "hide": "Hide key",
+    "save": "Connect",
+    "saving": "Connecting...",
+    "cancel": "Cancel"
   }
 }

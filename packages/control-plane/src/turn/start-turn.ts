@@ -1,8 +1,9 @@
 import type { ServerResponse } from "node:http";
 import type { Agent, Workspace } from "../domain/types";
-import type { TurnPin, WorkspaceCredential } from "../ports";
+import { isApiKeyCredential, type TurnPin, type WorkspaceCredential } from "../ports";
 import { isExpiring } from "../credentials/refresh";
-import { json, prefixFor, PROVIDER, type TurnDeps } from "./deps";
+import { json, prefixFor, PROVIDER, readSettings, type TurnDeps } from "./deps";
+import { isCloudProvider } from "../providers";
 import { TurnQuotaError } from "./quota";
 import { pumpSse } from "./sse";
 
@@ -13,18 +14,34 @@ import { pumpSse } from "./sse";
  * relay where this conversation's subscribers receive them.
  */
 
-/** The workspace's credential, refreshed centrally when expiring. Null = not connected. */
+/**
+ * The workspace's credential for `provider`, refreshed centrally when expiring
+ * (an API-key credential never expires, so it's served as-is). Null = the
+ * workspace hasn't connected that provider.
+ */
 export async function freshCredential(
   deps: TurnDeps,
   wsId: string,
+  provider: string,
 ): Promise<WorkspaceCredential | null> {
-  let cred = await deps.credentials.get(wsId, PROVIDER);
+  let cred = await deps.credentials.get(wsId, provider);
   if (!cred) return null;
   if (isExpiring(cred)) {
     cred = await deps.refresh(cred);
     await deps.credentials.put(cred);
   }
   return cred;
+}
+
+/**
+ * The provider a cloud turn should run: the agent's saved active provider when
+ * it's one the cloud runtime offers, else Codex (the cloud default). Anthropic
+ * is never served in cloud (ToS), so a stale anthropic setting falls back too.
+ */
+async function activeCloudProvider(deps: TurnDeps, prefix: string): Promise<string> {
+  const settings = await readSettings(deps, prefix);
+  const saved = settings.activeProvider;
+  return saved && isCloudProvider(saved) ? saved : PROVIDER;
 }
 
 /** Outcome of asking the per-turn runtime to start a turn. */
@@ -56,9 +73,10 @@ export async function dispatchTurn(
     throw err;
   }
   const prefix = prefixFor(ws, agent);
+  const provider = await activeCloudProvider(deps, prefix);
   const started = await deps.relay.start(agent.id, `${agent.id}/${cid}`, async (publish, signal) => {
     try {
-      const cred = await freshCredential(deps, ws.id);
+      const cred = await freshCredential(deps, ws.id, provider);
       const idToken = await deps.idToken();
       const upstream = await fetch(`${deps.runtimeUrl.replace(/\/$/, "")}/turn`, {
         method: "POST",
@@ -83,6 +101,7 @@ export async function dispatchTurn(
                 access: cred.accessToken,
                 expires: cred.expiresAt,
                 accountId: cred.accountId ?? null,
+                kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
               }
             : null,
         }),

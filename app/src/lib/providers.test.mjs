@@ -5,6 +5,9 @@ import {
   validEffortOrDefault,
   validModelOrNull,
   normalizeLegacyModel,
+  getProvider,
+  getVisibleProviders,
+  PROVIDERS,
 } from "./providers.ts";
 
 test("effort levels are per model", () => {
@@ -96,6 +99,39 @@ test("normalizeLegacyModel maps retired aliases, passes everything else through"
   assert.equal(normalizeLegacyModel("constructor"), "constructor");
   assert.equal(normalizeLegacyModel("__proto__"), "__proto__");
   assert.equal(normalizeLegacyModel("toString"), "toString");
+});
+
+test("OpenCode Zen + Go are api-key providers with a dashboard URL", () => {
+  for (const id of ["opencode", "opencode-go"]) {
+    const p = getProvider(id);
+    assert.ok(p, `${id} is in the catalog`);
+    assert.equal(p.auth, "apiKey");
+    assert.equal(p.apiKeyUrl, "https://opencode.ai/auth");
+    assert.ok(p.models.length > 0, `${id} has models`);
+    assert.ok(
+      p.models.some((m) => m.id === p.defaultModel),
+      `${id} default model is in its model list`,
+    );
+  }
+  // The OAuth providers are unchanged (no auth field or "oauth").
+  assert.notEqual(getProvider("anthropic").auth, "apiKey");
+  assert.notEqual(getProvider("openai").auth, "apiKey");
+});
+
+test("getVisibleProviders hides api-key providers off the new engine, shows them on it", () => {
+  const onNewEngine = getVisibleProviders({ newEngine: true });
+  const onRustEngine = getVisibleProviders({ newEngine: false });
+
+  // New engine: every catalog provider is visible.
+  assert.equal(onNewEngine.length, PROVIDERS.length);
+  assert.ok(onNewEngine.some((p) => p.id === "opencode"));
+  assert.ok(onNewEngine.some((p) => p.id === "opencode-go"));
+
+  // Rust engine: api-key providers are filtered out, OAuth ones stay.
+  assert.ok(!onRustEngine.some((p) => p.auth === "apiKey"));
+  assert.ok(onRustEngine.some((p) => p.id === "anthropic"));
+  assert.ok(onRustEngine.some((p) => p.id === "openai"));
+  assert.equal(onRustEngine.length, PROVIDERS.filter((p) => p.auth !== "apiKey").length);
 });
 
 test("normalized legacy model resolves through validModelOrNull (no Opus->Sonnet downgrade)", () => {

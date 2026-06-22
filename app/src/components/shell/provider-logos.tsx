@@ -24,6 +24,25 @@ export function OpenAILogo({ className = "h-5 w-5" }: { className?: string } = {
   );
 }
 
+export function OpenCodeLogo({ className = "h-5 w-5" }: { className?: string } = {}) {
+  // A terminal prompt glyph (chevron + caret line) — OpenCode's coding-agent
+  // brand. Shared by OpenCode Zen and OpenCode Go.
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="m7 8 4 4-4 4" />
+      <path d="M13 16h4" />
+    </svg>
+  );
+}
+
 export function DeepSeekLogo() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">

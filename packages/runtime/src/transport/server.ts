@@ -1,6 +1,6 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { config } from "../config";
-import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
+import { getAuthStatus, startLogin, completeLogin, logout, setApiKey } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
 import { runTurn, ensureProviderForTurn, cancelTurn, disposeConversation } from "../session/chat";
@@ -82,6 +82,18 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // this sandbox stops holding the user's refresh token. Idempotent.
   if (method === "POST" && path === "/auth/scrub-refresh") {
     return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
+  }
+  // API-key connect (OpenCode Zen / Go): the user pastes a key, no OAuth dance.
+  const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
+  if (method === "POST" && apiKeyMatch) {
+    const provider = apiKeyMatch[1]!;
+    try {
+      const { key } = await readJson(req);
+      setApiKey(provider, String(key || ""));
+      return json(res, 200, { ok: true });
+    } catch (e) {
+      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+    }
   }
   const authMatch = path.match(/^\/auth\/([^/]+)\/(login|login\/complete|logout)$/);
   if (method === "POST" && authMatch) {
@@ -208,7 +220,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       // signal is an `error` event that can race the client's SSE subscribe and
       // be lost — which left the chat spinning forever after logout.
       if (!(await ensureProviderForTurn())) {
-        return json(res, 409, { error: "No provider connected. Log in with Claude or Codex first." });
+        return json(res, 409, { error: "No provider connected. Connect an AI provider first." });
       }
       // model/effort ride on a routine-fired message (a routine's pin); a normal
       // user message omits them, leaving the session's current model/effort.

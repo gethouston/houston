@@ -179,7 +179,7 @@ export async function runTurn(id: string, text: string, nonce?: string, pin?: Tu
   if (!activeProvider()) {
     publish(id, {
       type: "error",
-      data: { message: "No provider connected. Log in with Claude or Codex first." },
+      data: { message: "No provider connected. Connect an AI provider first." },
     });
     return;
   }

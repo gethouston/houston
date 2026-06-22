@@ -6,7 +6,7 @@ import {
 import type { LoginInfo } from "@houston/runtime-client";
 import { authStorage } from "./storage";
 import { config } from "../config";
-import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
+import { PROVIDERS, activeProvider, providerAuthMethod, type ProviderId } from "../ai/providers";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
@@ -72,6 +72,8 @@ export function getAuthStatus() {
 // loopback; the co-located desktop app passes false to get the browser login.
 export async function startLogin(providerId: string, deviceAuth = true): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
+  if (providerAuthMethod(providerId) === "apiKey")
+    throw new Error(`${providerId} connects with an API key, not OAuth sign-in`);
   const provider = providerId;
 
   // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).
@@ -135,6 +137,23 @@ export async function startLogin(providerId: string, deviceAuth = true): Promise
       setTimeout(() => rej(new Error(`timed out starting ${provider} login`)), 15_000),
     ),
   ]);
+}
+
+/**
+ * Store a pasted API key for an api-key provider (OpenCode Zen / Go). pi's
+ * AuthStorage persists it as the `api_key` credential variant; `getApiKey`
+ * then returns it for any `getModel(provider, ...)` call against the provider's
+ * built-in OpenAI-compatible gateway. There is no OAuth dance and nothing to
+ * refresh or scrub.
+ */
+export function setApiKey(providerId: string, key: string): void {
+  if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
+  if (providerAuthMethod(providerId) !== "apiKey")
+    throw new Error(`${providerId} signs in with OAuth, not an API key`);
+  const trimmed = key.trim();
+  if (!trimmed) throw new Error("missing API key");
+  authStorage.set(providerId, { type: "api_key", key: trimmed });
+  active.delete(providerId as ProviderId);
 }
 
 /** Paste-code completion (Anthropic remote path). */

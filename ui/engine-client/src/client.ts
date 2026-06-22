@@ -533,6 +533,14 @@ export class HoustonClient {
   setGeminiApiKey(apiKey: string): Promise<void> {
     return this.request("POST", "/providers/gemini/credentials", { apiKey });
   }
+  /**
+   * Connect an API-key provider (OpenCode Zen / Go) by submitting a pasted key.
+   * Only the new TS engine serves these providers; the UI gates the call behind
+   * `newEngineActive()`, so on the legacy Rust engine this route is never hit.
+   */
+  setProviderApiKey(name: string, apiKey: string): Promise<void> {
+    return this.request("POST", `/providers/${this.seg(name)}/api-key`, { apiKey });
+  }
   // "Sign in with Google" for Gemini goes through the standard
   // `providerLogin("gemini")` call — the engine detects the gemini id
   // and delegates to gemini-cli's own OAuth via the ACP `authenticate`

@@ -17,6 +17,14 @@ import {
   type ComingSoonProviderInfo,
 } from "../../../lib/providers";
 
+/**
+ * The first-run tutorial connects an OAuth subscription provider (Claude /
+ * Codex). API-key providers (OpenCode Zen / Go) connect by pasting a key, which
+ * doesn't fit this mission's inline install/sign-in hint — the user connects
+ * them in Settings or the chat provider picker instead.
+ */
+const ONBOARDING_PROVIDERS = PROVIDERS.filter((p) => p.auth !== "apiKey");
+
 interface BrainMissionProps {
   provider: string | null;
   onSelect: (provider: string, model: string) => void;
@@ -35,7 +43,7 @@ export function BrainMission({
 
   const refresh = useCallback(async () => {
     const entries = await Promise.all(
-      PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
+      ONBOARDING_PROVIDERS.map(async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const),
     );
     setStatuses(Object.fromEntries(entries));
     setLoading(false);
@@ -72,7 +80,7 @@ export function BrainMission({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {PROVIDERS.map((prov) => (
+        {ONBOARDING_PROVIDERS.map((prov) => (
           <ProviderCard
             key={prov.id}
             provider={prov}

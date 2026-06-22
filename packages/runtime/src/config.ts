@@ -42,6 +42,10 @@ export const config = {
   model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+  /** Default OpenCode Zen model (pay-as-you-go curated gateway, API key). */
+  opencodeModel: env.HOUSTON_OPENCODE_MODEL || "claude-sonnet-4-6",
+  /** Default OpenCode Go model ($10/mo open-model gateway, API key). */
+  opencodeGoModel: env.HOUSTON_OPENCODE_GO_MODEL || "glm-5.1",
 
   /**
    * Override for the skills directory. Default is <workspace>/.agents/skills —

@@ -1,0 +1,74 @@
+import type { ProviderId } from "@houston/protocol";
+
+/**
+ * Host-side provider catalog. The runtime (packages/runtime) owns the full model
+ * lists; the host only needs to know which providers exist, how they authenticate,
+ * and which ones the cloud per-turn runtime offers — for the api-key submit route
+ * and the cloudrun providers/auth-status listing. The standing-runtime (proxy)
+ * path doesn't use this: it relays the runtime's own /providers + /auth/* surface.
+ */
+
+export type ProviderAuthMethod = "oauth" | "apiKey";
+
+export interface HostProvider {
+  id: ProviderId;
+  name: string;
+  auth: ProviderAuthMethod;
+  /** Offered on the cloud per-turn runtime. Anthropic stays off in cloud (ToS). */
+  cloud: boolean;
+  /**
+   * Curated model ids the cloud per-turn `/providers` listing advertises. Codex
+   * gets its list injected (deps.codexModels), so it's omitted here; the api-key
+   * gateways carry a small curated set. The standing-runtime path ignores this —
+   * it relays the runtime's own getModels()-derived list.
+   */
+  models?: readonly string[];
+  /** Default model for the cloud listing's activeModel when settings has none. */
+  defaultModel?: string;
+}
+
+export const PROVIDERS: readonly HostProvider[] = [
+  { id: "anthropic", name: "Claude (Pro / Max)", auth: "oauth", cloud: false },
+  { id: "openai-codex", name: "ChatGPT / Codex (Plus / Pro)", auth: "oauth", cloud: true },
+  {
+    id: "opencode",
+    name: "OpenCode Zen",
+    auth: "apiKey",
+    cloud: true,
+    models: ["claude-sonnet-4-6", "claude-opus-4-8", "gpt-5.5", "gemini-3.5-flash"],
+    defaultModel: "claude-sonnet-4-6",
+  },
+  {
+    id: "opencode-go",
+    name: "OpenCode Go",
+    auth: "apiKey",
+    cloud: true,
+    models: ["glm-5.1", "kimi-k2.6", "minimax-m3", "qwen3.7-max", "deepseek-v4-pro"],
+    defaultModel: "glm-5.1",
+  },
+];
+
+const byId = new Map(PROVIDERS.map((p) => [p.id as string, p]));
+
+/** A provider the cloud per-turn runtime serves. */
+export const CLOUD_PROVIDERS: readonly HostProvider[] = PROVIDERS.filter((p) => p.cloud);
+
+/** True when `id` names a known API-key provider (OpenCode Zen / Go). */
+export function isApiKeyProvider(id: string): boolean {
+  return byId.get(id)?.auth === "apiKey";
+}
+
+/** True when `id` is a provider the cloud per-turn runtime offers. */
+export function isCloudProvider(id: string): boolean {
+  return byId.get(id)?.cloud === true;
+}
+
+/** Lookup a provider by id. */
+export function hostProvider(id: string): HostProvider | undefined {
+  return byId.get(id);
+}
+
+/** A provider's display name, or the id itself when unknown. */
+export function providerName(id: string): string {
+  return byId.get(id)?.name ?? id;
+}

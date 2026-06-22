@@ -48,16 +48,19 @@ export class PgCredentialStore implements CredentialStore {
       [workspaceId, provider],
     );
     const r = res.rows[0];
-    return r
-      ? {
-          workspaceId: r.workspace_id,
-          provider: r.provider,
-          accessToken: r.access_token,
-          refreshToken: r.refresh_token,
-          accountId: r.account_id ?? undefined,
-          expiresAt: Number(r.expires_at),
-        }
-      : null;
+    if (!r) return null;
+    const expiresAt = Number(r.expires_at);
+    return {
+      workspaceId: r.workspace_id,
+      provider: r.provider,
+      accessToken: r.access_token,
+      refreshToken: r.refresh_token,
+      accountId: r.account_id ?? undefined,
+      expiresAt,
+      // No dedicated column: the expiresAt=0 sentinel (set on every api-key put)
+      // distinguishes a pasted key from an OAuth token, so no migration is needed.
+      kind: expiresAt === 0 ? "api_key" : "oauth",
+    };
   }
 
   async put(c: WorkspaceCredential): Promise<void> {

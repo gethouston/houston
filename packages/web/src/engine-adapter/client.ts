@@ -87,6 +87,13 @@ export class HoustonClient {
       baseUrl: opts.baseUrl,
       token: opts.token || undefined,
     });
+    // Mark the new TS engine as the active backend so the frontend can surface
+    // new-engine-only capabilities (e.g. API-key providers like OpenCode). The
+    // Rust engine uses the real `@houston-ai/engine-client`, never this adapter,
+    // so the flag stays unset there.
+    if (typeof window !== "undefined") {
+      (window as unknown as { __HOUSTON_NEW_ENGINE__?: boolean }).__HOUSTON_NEW_ENGINE__ = true;
+    }
     return new Proxy(this, {
       get(target, prop, recv) {
         if (prop in target || typeof prop === "symbol") return Reflect.get(target, prop, recv);
@@ -538,7 +545,7 @@ export class HoustonClient {
    * Covers all three flows: loopback auto-catch, pasted headless code, and
    * device-code polling. Local mode only (cloud uses pollProviderConnect).
    */
-  private watchLoginCompletion(pid: "anthropic" | "openai-codex", name: string): void {
+  private watchLoginCompletion(pid: ProviderId, name: string): void {
     this.stopLoginWatch(name);
     const startedAt = Date.now();
     const finish = (success: boolean, error: string | null) => {
@@ -584,6 +591,25 @@ export class HoustonClient {
       return;
     }
     await this.engine.logout(pid);
+  }
+
+  /**
+   * Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
+   * OAuth dance. Cloud stores it centrally (and pushes it into the agent runtime)
+   * via the control plane; local writes it straight to the single runtime. On
+   * success we fire `ProviderLoginComplete` so the connect dialog closes and the
+   * provider card flips to connected — the same signal the OAuth flow emits. A
+   * failure rejects so the caller surfaces the real reason (never swallowed).
+   */
+  async setProviderApiKey(name: string, apiKey: string): Promise<void> {
+    const pid = toNewProvider(name);
+    if (!pid) throw new Error(`provider ${name} not supported`);
+    if (this.cp) {
+      await controlPlane.setApiKey(this.cp, this.requireAgentId(), pid, apiKey);
+    } else {
+      await this.engine.setApiKey(pid, apiKey);
+    }
+    emitEvent("ProviderLoginComplete", { provider: name, success: true, error: null });
   }
 
   /**

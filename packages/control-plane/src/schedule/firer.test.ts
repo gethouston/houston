@@ -62,6 +62,7 @@ function recordingChannel(): RuntimeChannel & {
       return { ok: true, provider: "openai-codex" };
     },
     async forgetCredential() {},
+    async saveApiKeyCredential() {},
   };
 }
 

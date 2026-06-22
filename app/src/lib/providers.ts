@@ -57,6 +57,15 @@ export interface ProviderInfo {
   cost: string;
   models: readonly ModelOption[];
   defaultModel: string;
+  /**
+   * How the user connects this provider. Default (absent) is subscription OAuth
+   * (Claude / Codex). `"apiKey"` providers (OpenCode Zen / Go) ask the user to
+   * paste a key instead — Houston opens `apiKeyUrl` for them to grab one. API-key
+   * providers run only on the new TS engine (see `getVisibleProviders`).
+   */
+  auth?: "oauth" | "apiKey";
+  /** For `auth: "apiKey"`: the dashboard URL where the user creates/copies the key. */
+  apiKeyUrl?: string;
 }
 
 export const PROVIDERS: readonly ProviderInfo[] = [
@@ -135,11 +144,62 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     ],
     defaultModel: "claude-sonnet-4-6",
   },
+  {
+    id: "opencode",
+    name: "OpenCode Zen",
+    subtitle: "Curated frontier models",
+    cliName: "opencode",
+    installUrl: "https://opencode.ai/auth",
+    loginCommand: "",
+    cost: "Pay as you go",
+    auth: "apiKey",
+    apiKeyUrl: "https://opencode.ai/auth",
+    models: [
+      {
+        id: "claude-sonnet-4-6",
+        label: "Sonnet 4.6",
+        description: "Best balance of speed and quality.",
+      },
+      { id: "claude-opus-4-8", label: "Opus 4.8", description: "Most capable Claude, slower." },
+      { id: "gpt-5.5", label: "GPT-5.5", description: "OpenAI's frontier model." },
+      { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash", description: "Fast and capable." },
+    ],
+    defaultModel: "claude-sonnet-4-6",
+  },
+  {
+    id: "opencode-go",
+    name: "OpenCode Go",
+    subtitle: "Open coding models",
+    cliName: "opencode-go",
+    installUrl: "https://opencode.ai/auth",
+    loginCommand: "",
+    cost: "$10 / month",
+    auth: "apiKey",
+    apiKeyUrl: "https://opencode.ai/auth",
+    models: [
+      { id: "glm-5.1", label: "GLM-5.1", description: "Strong open coding model." },
+      { id: "kimi-k2.6", label: "Kimi K2.6", description: "Fast, capable open model." },
+      { id: "minimax-m3", label: "MiniMax M3", description: "Capable open model." },
+      { id: "qwen3.7-max", label: "Qwen3.7 Max", description: "Large open model." },
+      { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", description: "Strong reasoning." },
+    ],
+    defaultModel: "glm-5.1",
+  },
 ] as const;
 
 /** Find a provider by id. */
 export function getProvider(id: string): ProviderInfo | undefined {
   return PROVIDERS.find((p) => p.id === id);
+}
+
+/**
+ * Providers to show in connect UIs. API-key providers (OpenCode Zen / Go) run
+ * only on the new TS engine — they paste a key Houston serves through the host —
+ * so they're hidden when the legacy Rust engine is active. Pass
+ * `newEngineActive()` from `lib/engine`.
+ */
+export function getVisibleProviders(opts: { newEngine: boolean }): readonly ProviderInfo[] {
+  return PROVIDERS.filter((p) => p.auth !== "apiKey" || opts.newEngine);
 }
 
 /** Find the model object for a provider + model id. */

@@ -5,20 +5,43 @@ import { config } from "../config";
 import { authStorage } from "../auth/storage";
 
 /**
- * Supported subscription providers. The OAuth provider id and the pi-ai model
- * provider are the same string, so a stored credential under `id` authenticates
- * `getModel(id, ...)` directly.
+ * Supported providers. The provider id is the SAME string pi-ai uses for its
+ * model provider, so a stored credential under `id` authenticates
+ * `getModel(id, ...)` directly — whether that credential is an OAuth token
+ * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go, which
+ * pi exposes as built-in OpenAI-compatible gateways).
  */
-export type ProviderId = "anthropic" | "openai-codex";
+export type ProviderId = "anthropic" | "openai-codex" | "opencode" | "opencode-go";
 
-export const PROVIDERS: { id: ProviderId; name: string; defaultModel: string }[] = [
-  { id: "anthropic", name: "Claude (Pro / Max)", defaultModel: config.model },
+/** How a provider authenticates: a subscription OAuth flow, or a pasted API key. */
+export type ProviderAuthMethod = "oauth" | "apiKey";
+
+export const PROVIDERS: {
+  id: ProviderId;
+  name: string;
+  defaultModel: string;
+  auth: ProviderAuthMethod;
+}[] = [
+  { id: "anthropic", name: "Claude (Pro / Max)", defaultModel: config.model, auth: "oauth" },
   {
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     defaultModel: config.codexModel,
+    auth: "oauth",
   },
+  { id: "opencode", name: "OpenCode Zen", defaultModel: config.opencodeModel, auth: "apiKey" },
+  { id: "opencode-go", name: "OpenCode Go", defaultModel: config.opencodeGoModel, auth: "apiKey" },
 ];
+
+/** A provider's auth method (defaults to OAuth for an unknown id). */
+export function providerAuthMethod(id: string): ProviderAuthMethod {
+  return PROVIDERS.find((p) => p.id === id)?.auth ?? "oauth";
+}
+
+/** A provider's default model id (its catalog default, or the Codex default). */
+export function providerDefaultModel(id: string): string {
+  return PROVIDERS.find((p) => p.id === id)?.defaultModel ?? config.codexModel;
+}
 
 const isProvider = (s: string): s is ProviderId => PROVIDERS.some((p) => p.id === s);
 
@@ -84,8 +107,7 @@ export function setSettings(input: { activeProvider?: string; model?: string }):
  */
 export function resolveModel(override?: string | null) {
   const provider = activeProvider();
-  if (!provider)
-    throw new Error("No provider connected. Log in with Claude or Codex first.");
+  if (!provider) throw new Error("No provider connected. Connect an AI provider first.");
   return getModel(provider as any, (override || modelFor(provider)) as any);
 }
 

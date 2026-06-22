@@ -115,6 +115,17 @@ function runRuntimeChannelContract(name: string, make: () => ChannelFixture): vo
       expect(await credentials.get(ws.id, "openai-codex")).toBeNull();
     });
 
+    test("saveApiKeyCredential stores a pasted key centrally (api-key, no refresh/expiry)", async () => {
+      const { channel, credentials } = make();
+      await channel.saveApiKeyCredential(ctx, "opencode", "sk-opencode-zen");
+      const cred = await credentials.get(ws.id, "opencode");
+      expect(cred).not.toBeNull();
+      expect(cred?.accessToken).toBe("sk-opencode-zen");
+      expect(cred?.refreshToken).toBe("");
+      expect(cred?.expiresAt).toBe(0);
+      expect(cred?.kind).toBe("api_key");
+    });
+
     test("dispatch serves /providers; `configured` reflects the connection", async () => {
       const { channel, connect } = make();
       const { base, close } = await serve(channel);
@@ -176,6 +187,8 @@ beforeAll(async () => {
         : reply(200, {}); // present but incomplete → "agent is not connected yet"
     }
     if (path === "/auth/scrub-refresh") return reply(200, { ok: true });
+    // API-key connect pushes the pasted key into the standing runtime.
+    if (path.match(/^\/auth\/[^/]+\/api-key$/)) return reply(200, { ok: true });
     if (path === "/providers") return reply(200, [{ id: "openai-codex", configured: proxyConnected }]);
     if (path.match(/^\/conversations\/[^/]+\/messages$/)) return reply(202, { ok: true });
     return reply(404, { error: "not found" });

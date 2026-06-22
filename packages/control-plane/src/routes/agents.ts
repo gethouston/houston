@@ -15,6 +15,7 @@ import { handleAttachments } from "../turn/attachments";
 import { handlePortableExport } from "./portable";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { fireRoutineRun } from "../schedule/run";
+import { isApiKeyProvider } from "../providers";
 import { json, readJson } from "./http";
 
 export interface AgentRouteDeps {
@@ -188,6 +189,48 @@ export async function handleAgents(
     }
     await channel.forgetCredential({ workspace: authz.workspace, agent: authz.agent }, provider);
     json(res, 200, { ok: true });
+    return true;
+  }
+
+  // Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
+  // OAuth dance. Stored centrally for the whole workspace (and pushed into the
+  // standing runtime so it reads as connected at once). Must precede dispatch.
+  const apiKey = path.match(/^\/agents\/([^/]+)\/credential\/api-key$/);
+  if (apiKey && method === "POST") {
+    const agentId = apiKey[1] ? decodeURIComponent(apiKey[1]) : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    const { provider, apiKey: key } = await readJson(req);
+    if (!provider || typeof provider !== "string" || !isApiKeyProvider(provider)) {
+      json(res, 400, { error: "unknown API-key provider" });
+      return true;
+    }
+    if (!key || typeof key !== "string" || !key.trim()) {
+      json(res, 400, { error: "missing 'apiKey'" });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    try {
+      await channel.saveApiKeyCredential(
+        { workspace: authz.workspace, agent: authz.agent },
+        provider,
+        key.trim(),
+      );
+      json(res, 200, { ok: true, provider });
+    } catch (err) {
+      json(res, 502, { error: err instanceof Error ? err.message : String(err) });
+    }
     return true;
   }
 

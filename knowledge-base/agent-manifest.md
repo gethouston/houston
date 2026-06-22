@@ -226,6 +226,15 @@ Notes:
 - Adding a fourth provider = one new adapter file + one registry entry +
   three dispatch arms (runner, parser, summarizer). See "Engine boundary"
   in `CLAUDE.md`.
+- _[NEW ENGINE only]_ The TS engine (pi runtime) adds **OpenCode Zen**
+  (`opencode`) and **OpenCode Go** (`opencode-go`) as **API-key** providers —
+  pi ships both as built-in OpenAI-compatible gateways, so there is no adapter
+  file and no CLI. The user pastes a key (dialog has a "Get your API key" button
+  → `opencode.ai/auth`); it's stored as a connect-once `kind:"api_key"` workspace
+  credential. The frontend catalog gates them behind `newEngineActive()` so the
+  Rust build never shows them. Full design: `convergence/README.md` standing
+  decisions. Runtime registry: `packages/runtime/src/ai/providers.ts`; host
+  catalog: `packages/control-plane/src/providers.ts`.
 
 ### Reasoning effort
 
