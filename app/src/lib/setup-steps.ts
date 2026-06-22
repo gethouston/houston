@@ -1,16 +1,12 @@
 /**
- * The single ordered list of numbered setup steps, shared across the gates and
- * the onboarding orchestrator so the "Step N of N" header is consistent
- * everywhere (the totals used to disagree between screens). The rotating
- * Welcome hero and the unnumbered framing/celebration screens (intro,
- * setupReady, done) sit OUTSIDE this list.
+ * The ordered first-run steps, split into the two phases the UI shows:
+ *   Setup       — get the account ready: language, agreement, log in to the AI,
+ *                 connect your apps.
+ *   Onboarding  — put it to work: create your first agent, send your first email.
  *
- * Setup before creation: the account is fully set up (AI + apps) BEFORE the
- * user creates their first agent, so the two phases read distinctly.
- *
- *   1 language → 2 agreement → 3 brain (log in to AI subscription) →
- *   4 providerLogin (log in to provider) → 5 tools (apps) →
- *   6 meet (create your first agent) → 7 email (send first email)
+ * Each phase numbers its own steps ("Setup · 2 of 5", "Onboarding · 1 of 2") so
+ * the two phases read as distinct. The rotating Welcome hero and the unnumbered
+ * framing/celebration screens (intro, setupReady, done) sit OUTSIDE this list.
  */
 export const SETUP_STEPS = [
   "language",
@@ -23,11 +19,25 @@ export const SETUP_STEPS = [
 ] as const;
 
 export type SetupStep = (typeof SETUP_STEPS)[number];
+export type SetupSection = "setup" | "onboarding";
 
-/** 1-based position + total for a step, for the "Step N of N" eyebrow. */
-export function setupStepNumber(step: SetupStep): {
+const SECTION_OF: Record<SetupStep, SetupSection> = {
+  language: "setup",
+  agreement: "setup",
+  brain: "setup",
+  providerLogin: "setup",
+  tools: "setup",
+  meet: "onboarding",
+  email: "onboarding",
+};
+
+/** The section a step belongs to + its 1-based position WITHIN that section. */
+export function stepSection(step: SetupStep): {
+  section: SetupSection;
   current: number;
   total: number;
 } {
-  return { current: SETUP_STEPS.indexOf(step) + 1, total: SETUP_STEPS.length };
+  const section = SECTION_OF[step];
+  const peers = SETUP_STEPS.filter((s) => SECTION_OF[s] === section);
+  return { section, current: peers.indexOf(step) + 1, total: peers.length };
 }

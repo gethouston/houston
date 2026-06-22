@@ -23,7 +23,7 @@ import {
 } from "./personal-assistant-artifacts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
 import { type OnboardingStep, type TutorialStep } from "./tutorial-copy";
-import { setupStepNumber, type SetupStep } from "../../lib/setup-steps";
+import { stepSection, type SetupStep } from "../../lib/setup-steps";
 
 interface PersonalAssistantOnboardingProps {
   toasts: Toast[];
@@ -186,10 +186,20 @@ export function PersonalAssistantOnboarding({
   const missionProvider = provider ?? "anthropic";
   const missionModel = model ?? getDefaultModel(missionProvider);
 
-  // One shared step counter across the whole setup (language + agreement +
-  // these), so every screen's "Step N of N" agrees.
-  const stepEyebrow = (s: TutorialStep) =>
-    t("setup:tutorial.counter", setupStepNumber(s as SetupStep));
+  // Section-aware eyebrow: "Setup · 3 of 5" / "Onboarding · 1 of 2", so the two
+  // phases read as distinct.
+  const stepEyebrow = (s: TutorialStep) => {
+    const { section, current, total } = stepSection(s as SetupStep);
+    const sectionName =
+      section === "setup"
+        ? t("setup:tutorial.sections.setup")
+        : t("setup:tutorial.sections.onboarding");
+    return t("setup:tutorial.sectionCounter", {
+      section: sectionName,
+      current,
+      total,
+    });
+  };
 
   return (
     <>

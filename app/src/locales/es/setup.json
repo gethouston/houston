@@ -21,7 +21,6 @@
       "back": "Atrás",
       "continue": "Continuar"
     },
-    "counter": "Paso {{current}} de {{total}}",
     "eyebrow": "Paso {{number}}",
     "missionLabel": "Configuración: {{title}}",
     "upNext": "Sigue",
@@ -137,6 +136,11 @@
         "body": "Tu primer correo fue enviado a {{recipient}}. ¡Te damos la bienvenida a Houston!",
         "cta": "Entrar a Houston"
       }
+    },
+    "sectionCounter": "{{section}} · {{current}} de {{total}}",
+    "sections": {
+      "setup": "Configuración",
+      "onboarding": "Primeros pasos"
     }
   }
 }

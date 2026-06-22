@@ -21,7 +21,6 @@
       "back": "Back",
       "continue": "Continue"
     },
-    "counter": "Step {{current}} of {{total}}",
     "eyebrow": "Step {{number}}",
     "missionLabel": "Set up: {{title}}",
     "upNext": "Up next",
@@ -137,6 +136,11 @@
         "body": "Your first email is sent to {{recipient}}. Welcome to Houston!",
         "cta": "Enter Houston"
       }
+    },
+    "sectionCounter": "{{section}} · {{current}} of {{total}}",
+    "sections": {
+      "setup": "Setup",
+      "onboarding": "Onboarding"
     }
   }
 }

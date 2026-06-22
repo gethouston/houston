@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
-import { setupStepNumber } from "../../lib/setup-steps";
+import { stepSection } from "../../lib/setup-steps";
 import { SetupCard } from "../onboarding/setup-card";
 
 interface Section {
@@ -51,7 +51,7 @@ function AgreementScreen({
   const [error, setError] = useState<string | null>(null);
 
   const sections = (t("legal:sections", { returnObjects: true }) as Section[]) ?? [];
-  const { current, total } = setupStepNumber("agreement");
+  const { current, total } = stepSection("agreement");
 
   const handleAccept = useCallback(async () => {
     if (busy) return;
@@ -69,7 +69,11 @@ function AgreementScreen({
 
   return (
     <SetupCard
-      eyebrow={t("setup:tutorial.counter", { current, total })}
+      eyebrow={t("setup:tutorial.sectionCounter", {
+        section: t("setup:tutorial.sections.setup"),
+        current,
+        total,
+      })}
       title={t("legal:title")}
       subtitle={t("legal:intro")}
       onBack={onBack}
