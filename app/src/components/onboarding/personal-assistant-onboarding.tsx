@@ -8,13 +8,12 @@ import { useAgentStore } from "../../stores/agents";
 import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import { getDefaultModel } from "../../lib/providers";
 import type { Agent } from "../../lib/types";
-import { IntroMission } from "./missions/intro";
 import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
 import { ProviderLoginMission } from "./missions/provider-login";
 import { ToolsMission } from "./missions/tools";
 import { EmailMission } from "./missions/email";
-import { SuccessMission } from "./success-mission";
+import { SetupProgress } from "./setup-progress";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
 import {
@@ -204,7 +203,13 @@ export function PersonalAssistantOnboarding({
   return (
     <>
       {step === "intro" && (
-        <IntroMission onContinue={() => setStep("brain")} />
+        <SetupProgress
+          title={t("setup:tutorial.missions.intro.title")}
+          message={t("setup:tutorial.missions.intro.body")}
+          done={[]}
+          ctaLabel={t("setup:tutorial.missions.intro.cta")}
+          onContinue={() => setStep("brain")}
+        />
       )}
       {step === "brain" && (
         <BrainMission
@@ -234,9 +239,11 @@ export function PersonalAssistantOnboarding({
         />
       )}
       {step === "setupReady" && (
-        <SuccessMission
+        <SetupProgress
           title={t("setup:tutorial.missions.setupReady.title")}
-          body={t("setup:tutorial.missions.setupReady.body")}
+          message={t("setup:tutorial.missions.setupReady.body")}
+          done={["ai", "apps"]}
+          justCompleted="apps"
           ctaLabel={t("setup:tutorial.missions.setupReady.cta")}
           onContinue={() => setStep("meet")}
         />
@@ -268,12 +275,14 @@ export function PersonalAssistantOnboarding({
         />
       )}
       {step === "done" && (
-        <SuccessMission
+        <SetupProgress
           title={t("setup:tutorial.missions.done.title")}
-          body={t("setup:tutorial.missions.done.body", {
+          message={t("setup:tutorial.missions.done.body", {
             recipient:
               sentTo ?? t("setup:tutorial.missions.email.recipient.youLabel"),
           })}
+          done={["ai", "apps", "agent", "email"]}
+          justCompleted="email"
           ctaLabel={t("setup:tutorial.missions.done.cta")}
           onContinue={finishOnboarding}
         />

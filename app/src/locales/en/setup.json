@@ -90,8 +90,8 @@
         }
       },
       "setupReady": {
-        "title": "You're all set up",
-        "body": "Your AI and your apps are connected. Now let's create your first agent and put it to work.",
+        "title": "Setup complete!",
+        "body": "Nice work, you're one step closer. Now let's create your first agent.",
         "cta": "Create my agent"
       },
       "meet": {

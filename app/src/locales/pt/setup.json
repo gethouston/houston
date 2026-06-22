@@ -90,8 +90,8 @@
         }
       },
       "setupReady": {
-        "title": "Tudo pronto",
-        "body": "Sua IA e seus apps estão conectados. Agora vamos criar seu primeiro agente e colocá-lo para trabalhar.",
+        "title": "Configuração concluída!",
+        "body": "Mandou bem, você está um passo mais perto. Agora vamos criar seu primeiro agente.",
         "cta": "Criar meu agente"
       },
       "meet": {
