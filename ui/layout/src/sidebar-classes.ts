@@ -23,4 +23,6 @@ export const sidebarItemRowClasses = {
   trailingMenuOpen: "opacity-0",
   menuButton:
     "absolute inset-0 flex size-7 shrink-0 items-center justify-center rounded-md text-muted-foreground opacity-0 pointer-events-none transition-[background-color,color,opacity] hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring group-hover:pointer-events-auto group-hover:opacity-100 group-focus-within:pointer-events-auto group-focus-within:opacity-100 data-[state=open]:pointer-events-auto data-[state=open]:opacity-100",
+  collapsedTrailing:
+    "pointer-events-none absolute -right-1 -top-1 flex scale-75 items-center justify-center",
 } as const;

@@ -5,8 +5,8 @@
  * clickable; delete tucked into an overflow menu.
  */
 import {
-  cn,
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -25,10 +25,9 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
   const displayName = humanizeSkillName(skill.name);
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      role="button"
-      tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
@@ -36,7 +35,8 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
         }
       }}
       className={cn(
-        "group flex items-start gap-3 px-5 py-4 cursor-pointer",
+        "group flex items-start gap-3 px-5 py-4 cursor-pointer w-full text-left",
+        "bg-transparent border-0 p-0",
         "transition-colors duration-150",
         "hover:bg-black/[0.03]",
         "focus-visible:outline-none focus-visible:bg-black/[0.03]",
@@ -53,23 +53,27 @@ export function SkillRow({ skill, onClick, onDelete }: SkillRowProps) {
         )}
       </div>
       {onDelete && (
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0 -mr-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="More actions">
-                <MoreHorizontal className="size-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem variant="destructive" onClick={onDelete}>
-                <Trash2 className="size-3.5" />
-                Delete action
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="More actions"
+              className="shrink-0 -mr-1"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MoreHorizontal className="size-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-40">
+            <DropdownMenuItem variant="destructive" onClick={onDelete}>
+              <Trash2 className="size-3.5" />
+              Delete action
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       )}
-    </div>
+    </button>
   );
 }
 

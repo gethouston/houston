@@ -1,5 +1,5 @@
-import { useMemo } from "react";
 import { cn } from "@houston-ai/core";
+import { useMemo } from "react";
 import type { ReviewItemData } from "./types";
 
 export interface ReviewSidebarProps {
@@ -50,6 +50,7 @@ export function ReviewSidebar({
             {group.items.length > 0 ? (
               group.items.map((item) => (
                 <button
+                  type="button"
                   key={item.id}
                   onClick={() => onSelect(item.id)}
                   className={cn(

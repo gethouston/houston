@@ -1,8 +1,8 @@
-import { useTranslation } from "react-i18next";
-import { AlertTriangle } from "lucide-react";
-import { DialogTitle, Input, Switch, cn } from "@houston-ai/core";
+import { cn, DialogTitle, Input, Switch } from "@houston-ai/core";
+import type { RoutineFormData, SchedulePreset } from "@houston-ai/routines";
 import { ScheduleBuilder } from "@houston-ai/routines";
-import type { SchedulePreset, RoutineFormData } from "@houston-ai/routines";
+import { AlertTriangle } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { useRoutineLabels } from "../../hooks/use-routine-labels";
 import { AiStepFooter } from "./ai-step-footer";
 
@@ -46,10 +46,11 @@ export function AiRoutineStep({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">
+            <label htmlFor="routine-name" className="block text-sm font-medium">
               {t("aiRoutine.nameLabel")}
             </label>
             <Input
+              id="routine-name"
               value={routine.name}
               onChange={(e) =>
                 onRoutineChange({ ...routine, name: e.target.value })
@@ -59,10 +60,14 @@ export function AiRoutineStep({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">
+            <label
+              htmlFor="routine-prompt"
+              className="block text-sm font-medium"
+            >
               {t("aiRoutine.promptLabel")}
             </label>
             <textarea
+              id="routine-prompt"
               value={routine.prompt}
               onChange={(e) =>
                 onRoutineChange({ ...routine, prompt: e.target.value })
@@ -78,9 +83,9 @@ export function AiRoutineStep({
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">
+            <p className="block text-sm font-medium">
               {t("aiRoutine.scheduleLabel")}
-            </label>
+            </p>
             <div className="rounded-xl bg-secondary p-4">
               <ScheduleBuilder
                 value={routine.schedule}
@@ -112,12 +117,12 @@ export function AiRoutineStep({
             {t("aiRoutine.laterNote")}
           </p>
 
-          <label className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-4 py-3 cursor-pointer">
+          <div className="flex items-center justify-between gap-3 rounded-xl bg-secondary px-4 py-3 cursor-pointer">
             <span className="text-sm font-medium text-foreground">
               {t("aiRoutine.enableLabel")}
             </span>
             <Switch checked={accepted} onCheckedChange={onAcceptedChange} />
-          </label>
+          </div>
         </div>
       </div>
 

@@ -1,7 +1,6 @@
 "use client";
 
-import { Button } from "@houston-ai/core";
-import { cn } from "@houston-ai/core";
+import { Button, cn } from "@houston-ai/core";
 import type { UIMessage } from "ai";
 import { ArrowDownIcon, DownloadIcon } from "lucide-react";
 import type { ComponentProps } from "react";

@@ -1,9 +1,9 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
+import { execFileSync } from "node:child_process";
+import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
-import { execFileSync } from "node:child_process";
 import { migrateChatHistory } from "./chat-history";
 
 /**
@@ -65,7 +65,7 @@ test.if(haveDataset)(
       cpSync(REAL_DB, join(scratch, "houston.db"));
       for (const ext of ["-wal", "-shm"]) {
         if (existsSync(REAL_DB + ext))
-          cpSync(REAL_DB + ext, join(scratch, "houston.db" + ext));
+          cpSync(REAL_DB + ext, join(scratch, `houston.db${ext}`));
       }
 
       // The source tree may ITSELF already be migrated (the user ran the packaged

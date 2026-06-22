@@ -9,8 +9,8 @@ import type {
   SkillSummary,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
-import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 import { HoustonEngineError } from "./client";
+import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 
 /**
  * Control-plane mode for the web adapter.
@@ -581,10 +581,11 @@ export function subscribeEvents(
           const { done, value } = await reader.read();
           if (done) break;
           buf += decoder.decode(value, { stream: true });
-          let idx: number;
-          while ((idx = buf.indexOf("\n\n")) >= 0) {
+          let idx = buf.indexOf("\n\n");
+          while (idx >= 0) {
             const frame = buf.slice(0, idx);
             buf = buf.slice(idx + 2);
+            idx = buf.indexOf("\n\n");
             const line = frame.split("\n").find((l) => l.startsWith("data:"));
             if (!line) continue; // skip ": connected" / ": hb" comment frames
             try {

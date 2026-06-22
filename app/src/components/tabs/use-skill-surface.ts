@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useTranslation } from "react-i18next";
 import type { Skill } from "@houston-ai/skills";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useCreateSkill,
   useDeleteSkill,
@@ -9,8 +9,8 @@ import {
   useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
-import { queryKeys } from "../../lib/query-keys";
 import { isMissingSkillError } from "../../lib/missing-skill";
+import { queryKeys } from "../../lib/query-keys";
 import { useUIStore } from "../../stores/ui";
 import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
 

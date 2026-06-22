@@ -1,9 +1,9 @@
 import {
-  refreshAnthropicToken,
-  registerOAuthProvider,
   type OAuthCredentials,
   type OAuthLoginCallbacks,
   type OAuthProviderInterface,
+  refreshAnthropicToken,
+  registerOAuthProvider,
 } from "@earendil-works/pi-ai/oauth";
 
 /**

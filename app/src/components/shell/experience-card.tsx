@@ -1,12 +1,13 @@
 import type { AgentConfig } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { AgentAvatar } from "./agent-avatar";
+
 export {
   AgentAvatar,
-  HoustonLogo,
   getAgentIcon,
   getAgentIconColor,
   getHoustonLogo,
+  HoustonLogo,
   isLightColor,
 } from "./agent-avatar";
 

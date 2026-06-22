@@ -1,11 +1,11 @@
-import { test, expect } from "bun:test";
-import type { TextStore } from "./store";
+import { expect, test } from "bun:test";
 import {
   getPreference,
   loadPreferences,
   prefDocKey,
   setPreference,
 } from "./preferences";
+import type { TextStore } from "./store";
 
 function memStore(): TextStore & { raw: Map<string, string> } {
   const raw = new Map<string, string>();

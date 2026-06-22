@@ -1,8 +1,8 @@
-import * as React from "react";
 import useEmblaCarousel, {
   type UseEmblaCarouselType,
 } from "embla-carousel-react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import * as React from "react";
 
 import { cn } from "../utils";
 import { Button } from "./button";
@@ -116,6 +116,7 @@ function Carousel({
         canScrollNext,
       }}
     >
+      {/* biome-ignore lint/a11y/useSemanticElements: <section> without an accessible name gains no implicit role, making aria-roledescription invalid; the div+role="region" pattern is the correct ARIA carousel landmark. */}
       <div
         onKeyDownCapture={handleKeyDown}
         className={cn("relative", className)}
@@ -155,6 +156,7 @@ function CarouselItem({ className, ...props }: React.ComponentProps<"div">) {
   const { orientation } = useCarousel();
 
   return (
+    // biome-ignore lint/a11y/useSemanticElements: <fieldset> is for form controls; a carousel slide is content grouping, not a form group. role="group" on a div is the correct ARIA pattern here.
     <div
       role="group"
       aria-roledescription="slide"
@@ -230,10 +232,10 @@ function CarouselNext({
 }
 
 export {
-  type CarouselApi,
   Carousel,
+  type CarouselApi,
   CarouselContent,
   CarouselItem,
-  CarouselPrevious,
   CarouselNext,
+  CarouselPrevious,
 };

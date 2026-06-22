@@ -1,10 +1,5 @@
-import { useCallback } from "react";
 import type { ReactNode } from "react";
-import type {
-  AttachmentRejection,
-  ChatComposerLabels,
-  PrepareAttachments,
-} from "./chat-panel-types";
+import { useCallback } from "react";
 import type { PromptInputMessage } from "./ai-elements/prompt-input";
 import {
   PromptInput,
@@ -17,13 +12,18 @@ import {
   ChatInputAttachButton,
   ChatInputAttachments,
 } from "./chat-input-attachments";
-import { QueuedMessageList } from "./queued-message-list";
+import type {
+  AttachmentRejection,
+  ChatComposerLabels,
+  PrepareAttachments,
+} from "./chat-panel-types";
 import type {
   QueuedChatMessage,
   QueuedMessageLabels,
 } from "./queued-message-list";
-import { useControllable } from "./use-file-drop-zone";
+import { QueuedMessageList } from "./queued-message-list";
 import { useComposerAttachments } from "./use-composer-attachments";
+import { useControllable } from "./use-file-drop-zone";
 
 type InputStatus = "ready" | "streaming" | "submitted";
 

@@ -120,7 +120,7 @@ export function reconstruct(rows: ChatFeedRow[]): {
         );
         const content =
           obj && typeof obj.content === "string" ? obj.content : "";
-        const isError = !!(obj && obj.is_error);
+        const isError = !!obj?.is_error;
         transcript.push({
           role: "assistant",
           content: `[tool result]\n${content}`,
@@ -143,10 +143,10 @@ export function reconstruct(rows: ChatFeedRow[]): {
           row.data_json,
         );
         const created = Array.isArray(obj?.created)
-          ? (obj!.created as unknown[])
+          ? (obj?.created as unknown[])
           : [];
         const modified = Array.isArray(obj?.modified)
-          ? (obj!.modified as unknown[])
+          ? (obj?.modified as unknown[])
           : [];
         const lines: string[] = [];
         for (const f of created) lines.push(`created ${String(f)}`);

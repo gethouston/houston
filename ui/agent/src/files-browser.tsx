@@ -2,17 +2,18 @@
  * FilesBrowser — macOS Finder list-view clone.
  * Column headers with sort, file/folder tree, status bar, drag-and-drop.
  */
+
+import { Button, cn } from "@houston-ai/core";
+import { Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn, Button } from "@houston-ai/core";
-import { Upload } from "lucide-react";
-import type { FileEntry } from "./types";
 import { useDropZone } from "./drop-zone";
-import { FileRow, FolderSection, COL_GRID } from "./file-row";
 import type { FileMenuLabels } from "./file-menu";
+import { COL_GRID, FileRow, FolderSection } from "./file-row";
 import { NewFolderInput } from "./new-folder-input";
 import { buildTree } from "./tree";
-import { sortTree, type SortKey, type SortDirection } from "./utils";
+import type { FileEntry } from "./types";
+import { type SortDirection, type SortKey, sortTree } from "./utils";
 
 export interface FilesBrowserLabels {
   columnName?: string;
@@ -212,6 +213,8 @@ export function FilesBrowser({
         </div>
       </div>
 
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: click-to-deselect and right-click-for-context-menu on the file list backdrop are pointer-only affordances; no keyboard equivalent exists for these background gestures */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: same rationale — background click deselection has no keyboard equivalent */}
       <div
         className="flex-1 flex flex-col overflow-y-auto px-1"
         style={{
@@ -351,17 +354,22 @@ function FillerStripes({
 
   return (
     <div ref={containerRef} className="flex-1 min-h-0">
-      {Array.from({ length: count }, (_, i) => (
-        <div
-          key={i}
-          className={cn(
-            "h-[24px]",
-            (startIndex + i) % 2 === 1 && "bg-muted/30 rounded-lg",
-          )}
-          onClick={onDeselect}
-          onContextMenu={onContextMenu}
-        />
-      ))}
+      {Array.from({ length: count }, (_, i) => {
+        const rowIndex = startIndex + i;
+        return (
+          // biome-ignore lint/a11y/noStaticElementInteractions: decorative filler stripe; click-to-deselect and right-click-for-context-menu are pointer-only background gestures with no keyboard equivalent
+          // biome-ignore lint/a11y/useKeyWithClickEvents: same rationale as noStaticElementInteractions above
+          <div
+            key={`filler-${rowIndex}`}
+            className={cn(
+              "h-[24px]",
+              rowIndex % 2 === 1 && "bg-muted/30 rounded-lg",
+            )}
+            onClick={onDeselect}
+            onContextMenu={onContextMenu}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -377,6 +385,8 @@ function BgContextMenu({
 }) {
   return createPortal(
     <>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: full-screen backdrop that closes the context menu on pointer interaction; no keyboard role applies */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: backdrop dismiss is a pointer-only pattern; Escape key is handled at the document level by the menu itself */}
       <div
         className="fixed inset-0 z-50"
         onClick={onClose}
@@ -390,6 +400,7 @@ function BgContextMenu({
         style={{ left: position.x, top: position.y }}
       >
         <button
+          type="button"
           onClick={onNewFolder}
           className="w-full text-left px-3 py-1.5 text-[13px] hover:bg-primary hover:text-primary-foreground rounded-md mx-0.5"
           style={{ width: "calc(100% - 4px)" }}
@@ -422,6 +433,7 @@ function HeaderCell({
   const active = sortKey === col;
   return (
     <button
+      type="button"
       onClick={() => onSort(col)}
       className={cn(
         "flex items-center justify-between h-full px-2 text-[11px] font-medium text-muted-foreground hover:bg-muted transition-colors",
@@ -439,6 +451,10 @@ function HeaderCell({
           strokeWidth="1.5"
           strokeLinecap="round"
           strokeLinejoin="round"
+          role="img"
+          aria-label={
+            sortDir === "asc" ? "sorted ascending" : "sorted descending"
+          }
         >
           {sortDir === "asc" ? (
             <path d="M1 4.5L4 1.5L7 4.5" />

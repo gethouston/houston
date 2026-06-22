@@ -1,14 +1,14 @@
-import type { FormEvent } from "react";
-import { Check } from "lucide-react";
 import {
   AGENT_COLORS,
   Button,
-  HoustonAvatar,
-  Input,
   cn,
   colorHex,
+  HoustonAvatar,
+  Input,
   resolveAgentColor,
 } from "@houston-ai/core";
+import { Check } from "lucide-react";
+import type { FormEvent } from "react";
 
 interface MeetMissionProps {
   name: string;

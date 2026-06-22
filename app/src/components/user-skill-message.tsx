@@ -2,8 +2,8 @@ import {
   UserAttachmentBadge,
   type UserAttachmentMessageLabels,
 } from "@houston-ai/chat";
-import { SkillIcon } from "./skill-icon";
 import type { SkillInvocation } from "../lib/skill-message";
+import { SkillIcon } from "./skill-icon";
 
 interface Props {
   invocation: SkillInvocation;
@@ -41,8 +41,8 @@ export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
 
         {fields.length > 0 && (
           <div className="mt-3 flex flex-col gap-2 border-t border-border/50 pt-3">
-            {fields.map((f, idx) => (
-              <div key={idx} className="flex flex-col gap-0.5">
+            {fields.map((f) => (
+              <div key={f.label} className="flex flex-col gap-0.5">
                 <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground/70">
                   {f.label}
                 </span>

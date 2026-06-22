@@ -1,17 +1,17 @@
-import { useCallback, useState } from "react";
-import { useTranslation } from "react-i18next";
+import { cn } from "@houston-ai/core";
 import type { TFunction } from "i18next";
 import { ChevronDownIcon, Lightbulb, Play, ScrollText } from "lucide-react";
-import { cn } from "@houston-ai/core";
+import { useCallback, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { tauriFiles } from "../lib/tauri";
-import type { JobDescriptionTarget } from "../stores/ui";
-import { useAgentStore } from "../stores/agents";
-import { useUIStore } from "../stores/ui";
 import {
   groupTurnSummaryItems,
   type SemanticUpdateKind,
   type TurnSummaryItem,
 } from "../lib/turn-summary-items";
+import { useAgentStore } from "../stores/agents";
+import type { JobDescriptionTarget } from "../stores/ui";
+import { useUIStore } from "../stores/ui";
 import { getFileIcon } from "./file-card";
 
 interface TurnFileSummaryProps {

@@ -1,5 +1,46 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
+import type {
+  AssistantMessage,
+  Usage,
+  UserMessage,
+} from "@earendil-works/pi-ai";
+import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import { normalizeUsage, toWire } from "./wire";
+
+/** A valid pi `Usage` for fixtures; `cost` is required by the type. */
+function usage(partial: Partial<Usage>): Usage {
+  return {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 },
+    ...partial,
+  };
+}
+
+/** A minimal valid assistant message carrying the given usage. */
+function assistantMessage(u: Usage): AssistantMessage {
+  return {
+    role: "assistant",
+    content: [],
+    api: "anthropic",
+    provider: "anthropic",
+    model: "test",
+    usage: u,
+    stopReason: "stop",
+    timestamp: 0,
+  };
+}
+
+/** A user message — has no `usage` field, like a turn that ended without one. */
+const userMessage: UserMessage = { role: "user", content: "", timestamp: 0 };
+
+/** A `turn_end` session event with the given final message. */
+function turnEnd(message: AssistantMessage | UserMessage): AgentSessionEvent {
+  return { type: "turn_end", message, toolResults: [] };
+}
 
 test("normalizeUsage: context_tokens = totalTokens - output; cached = cacheRead", () => {
   // input 100 + output 20 + cacheRead 300 + cacheWrite 50 = 470 totalTokens.
@@ -34,20 +75,19 @@ test("normalizeUsage: clamps a degenerate output > total to zero, never negative
 
 test("toWire maps turn_end (with usage) to a usage frame", () => {
   expect(
-    toWire({
-      type: "turn_end",
-      turnIndex: 0,
-      message: {
-        usage: {
-          input: 100,
-          output: 20,
-          cacheRead: 300,
-          cacheWrite: 50,
-          totalTokens: 470,
-        },
-      },
-      toolResults: [],
-    }),
+    toWire(
+      turnEnd(
+        assistantMessage(
+          usage({
+            input: 100,
+            output: 20,
+            cacheRead: 300,
+            cacheWrite: 50,
+            totalTokens: 470,
+          }),
+        ),
+      ),
+    ),
   ).toEqual({
     type: "usage",
     data: { context_tokens: 450, output_tokens: 20, cached_tokens: 300 },
@@ -55,6 +95,6 @@ test("toWire maps turn_end (with usage) to a usage frame", () => {
 });
 
 test("toWire drops a turn_end whose final message has no usage", () => {
-  expect(toWire({ type: "turn_end", message: {} })).toBeNull();
-  expect(toWire({ type: "turn_end" })).toBeNull();
+  // A user message carries no `usage` field, so there is nothing to report.
+  expect(toWire(turnEnd(userMessage))).toBeNull();
 });

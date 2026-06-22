@@ -1,26 +1,26 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadRoutines, seedSchemas } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
+import { canUseAgent } from "../domain/access";
 import type {
   Agent,
   UserId,
   Workspace,
   WorkspaceRuntime,
 } from "../domain/types";
-import type { RuntimeChannel, WorkspaceStore } from "../ports";
-import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
 import { CloudPaths, type WorkspacePaths } from "../paths";
-import { canUseAgent } from "../domain/access";
-import { handleAgentData } from "./agent-data";
-import { handleAgentFile } from "./agent-file";
-import { handleSkills } from "./skills";
-import { handleFiles } from "../turn/files";
-import { handleAttachments } from "../turn/attachments";
-import { handlePortableExport } from "./portable";
+import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { fireRoutineRun } from "../schedule/run";
+import { handleAttachments } from "../turn/attachments";
+import { handleFiles } from "../turn/files";
+import type { Vfs } from "../vfs";
+import { handleAgentData } from "./agent-data";
+import { handleAgentFile } from "./agent-file";
 import { json, readJson } from "./http";
+import { handlePortableExport } from "./portable";
+import { handleSkills } from "./skills";
 
 export interface AgentRouteDeps {
   store: WorkspaceStore;
@@ -317,7 +317,7 @@ export async function handleAgents(
     // Reactivity emits target the workspace owner (the only member, personal tier).
     const emit = deps.events
       ? (event: HoustonEvent) =>
-          deps.events!.emit(authz.workspace.ownerUserId, event)
+          deps.events?.emit(authz.workspace.ownerUserId, event)
       : undefined;
 
     // Typed .houston families + skills are served by the HOST off the workspace

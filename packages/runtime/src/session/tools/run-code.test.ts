@@ -1,9 +1,42 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { createServer, type Server } from "node:http";
 import { mkdtemp, readFile, writeFile } from "node:fs/promises";
+import { createServer, type Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { makeRunCodeTool } from "./run-code";
+
+interface SandboxArtifact {
+  path: string;
+  contentBase64: string;
+  bytes?: number;
+}
+
+interface SandboxResult {
+  exitCode: number | null;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  truncated?: boolean;
+  artifacts: SandboxArtifact[];
+  droppedArtifacts?: string[];
+}
+
+interface SandboxRequestBody {
+  language: string;
+  code: string;
+  files?: SandboxArtifact[];
+}
+
+interface RunCodeDetails {
+  exitCode: number | null;
+  timedOut: boolean;
+  truncated: boolean;
+  saved: string[];
+  updated: string[];
+  renamed: { requested: string; savedAs: string }[];
+  skipped: string[];
+}
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 const fromB64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
@@ -12,11 +45,11 @@ const fromB64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
 // scripted result, optionally after a delay (for the concurrency-budget test).
 let server: Server;
 let base: string;
-let lastBody: any = null;
+let lastBody: SandboxRequestBody | null = null;
 let lastHeaders: Record<string, string | string[] | undefined> = {};
 let nextStatus = 200;
 let nextDelayMs = 0;
-let nextResult: any = {
+let nextResult: SandboxResult = {
   exitCode: 0,
   stdout: "ok",
   stderr: "",
@@ -66,8 +99,9 @@ describe("run_code tool", () => {
       { language: "python", code: "print(2+2)" },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
+    if (!lastBody) throw new Error("request body not captured");
     expect(lastBody.language).toBe("python");
     expect(lastBody.code).toBe("print(2+2)");
     expect(r.content[0]).toEqual({ type: "text", text: "4" });
@@ -90,10 +124,12 @@ describe("run_code tool", () => {
       { language: "python", code: "..." },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
     expect(await readFile(join(ws, "deck.pptx"), "utf8")).toBe("PPTX-BYTES");
-    expect((r.details as any).saved).toEqual(["deck.pptx"]);
+    expect((r.details as unknown as RunCodeDetails).saved).toEqual([
+      "deck.pptx",
+    ]);
     const first = r.content[0];
     expect(first.type === "text" && first.text).toContain(
       "saved files: deck.pptx",
@@ -116,11 +152,14 @@ describe("run_code tool", () => {
       { language: "python", code: "x", input_files: ["data.csv"] },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
-    expect(lastBody.files).toHaveLength(1);
-    expect(lastBody.files[0].path).toBe("data.csv");
-    expect(fromB64(lastBody.files[0].contentBase64)).toBe("a,b\n1,2\n");
+    if (!lastBody) throw new Error("request body not captured");
+    const files = lastBody.files;
+    if (!files) throw new Error("expected uploaded files");
+    expect(files).toHaveLength(1);
+    expect(files[0].path).toBe("data.csv");
+    expect(fromB64(files[0].contentBase64)).toBe("a,b\n1,2\n");
   });
 
   test("throws on a non-2xx sandbox response (no silent failure)", async () => {
@@ -132,7 +171,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as any,
+        {} as unknown as ExtensionContext,
       ),
     ).rejects.toThrow(/code sandbox returned 500/);
   });
@@ -146,7 +185,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as any,
+        {} as unknown as ExtensionContext,
       ),
     ).rejects.toThrow(/HOUSTON_CODE_SANDBOX_TOKEN/);
   });
@@ -167,7 +206,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
     const first = r.content[0];
     expect(first.type === "text" && first.text).toContain("truncated");
@@ -192,11 +231,15 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
     expect(await readFile(join(ws, "good.txt"), "utf8")).toBe("yes");
-    expect((r.details as any).saved).toEqual(["good.txt"]);
-    expect((r.details as any).skipped).toEqual(["../evil.txt"]);
+    expect((r.details as unknown as RunCodeDetails).saved).toEqual([
+      "good.txt",
+    ]);
+    expect((r.details as unknown as RunCodeDetails).skipped).toEqual([
+      "../evil.txt",
+    ]);
   });
 
   test("rejects an input file that escapes the workspace", async () => {
@@ -208,7 +251,7 @@ describe("run_code tool", () => {
         { language: "bash", code: "x", input_files: ["../escape"] },
         undefined,
         undefined,
-        {} as any,
+        {} as unknown as ExtensionContext,
       ),
     ).rejects.toThrow(/escapes the workspace/);
   });
@@ -235,10 +278,10 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
     expect(lastHeaders["x-sandbox-token"]).toBe("app-secret");
-    expect(lastHeaders["authorization"]).toBe("Bearer google-id-token");
+    expect(lastHeaders.authorization).toBe("Bearer google-id-token");
   });
 
   test("an artifact colliding with an UNDECLARED workspace file is renamed, never overwritten", async () => {
@@ -257,7 +300,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
     expect(await readFile(join(ws, "report.txt"), "utf8")).toBe(
       "PRECIOUS USER DATA",
@@ -265,7 +308,7 @@ describe("run_code tool", () => {
     expect(await readFile(join(ws, "report (2).txt"), "utf8")).toBe(
       "NEW CONTENT",
     );
-    expect((r.details as any).renamed).toEqual([
+    expect((r.details as unknown as RunCodeDetails).renamed).toEqual([
       { requested: "report.txt", savedAs: "report (2).txt" },
     ]);
     const first = r.content[0];
@@ -288,11 +331,13 @@ describe("run_code tool", () => {
       { language: "python", code: "x", input_files: ["deck.pptx"] },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
     expect(await readFile(join(ws, "deck.pptx"), "utf8")).toBe("V2 DECK");
-    expect((r.details as any).updated).toEqual(["deck.pptx"]);
-    expect((r.details as any).renamed).toEqual([]);
+    expect((r.details as unknown as RunCodeDetails).updated).toEqual([
+      "deck.pptx",
+    ]);
+    expect((r.details as unknown as RunCodeDetails).renamed).toEqual([]);
   });
 
   test("the per-workspace budget rejects a run over the concurrency cap (Gate #5)", async () => {
@@ -317,7 +362,7 @@ describe("run_code tool", () => {
       { language: "python", code: "x" },
       undefined,
       undefined,
-      {} as any,
+      {} as unknown as ExtensionContext,
     );
     await new Promise((r) => setTimeout(r, 10)); // let the first call claim the slot
     await expect(
@@ -326,7 +371,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as any,
+        {} as unknown as ExtensionContext,
       ),
     ).rejects.toThrow(/code-execution budget/);
     await first;
@@ -342,7 +387,7 @@ describe("run_code tool", () => {
         { language: "python", code: "x" },
         undefined,
         undefined,
-        {} as any,
+        {} as unknown as ExtensionContext,
       ),
     ).rejects.toThrow(/run\.invoker/);
     nextStatus = 200;

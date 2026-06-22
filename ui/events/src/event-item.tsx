@@ -1,12 +1,12 @@
 import { cn } from "@houston-ai/core";
 import {
-  MessageSquare,
-  Heart,
-  Clock,
-  Zap,
-  Globe,
   Bot,
   Check,
+  Clock,
+  Globe,
+  Heart,
+  MessageSquare,
+  Zap,
 } from "lucide-react";
 import type { EventEntry, EventType } from "./types";
 
@@ -72,6 +72,7 @@ export function EventItem({ event, onClick }: EventItemProps) {
 
   return (
     <button
+      type="button"
       onClick={() => onClick?.(event)}
       className={cn(
         "w-full text-left flex items-center gap-3 px-3 py-2 transition-colors duration-150",

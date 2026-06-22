@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -69,7 +69,7 @@ test("Houston's existing .agents/skills SKILL.md layout loads as-is", async () =
   const { skills, diagnostics } = loader.getSkills();
   const names = skills.map((s) => s.name).sort();
   expect(names).toEqual(["research-company", "weekly-report"]);
-  expect(skills[0]!.description).toBeTruthy();
+  expect(skills[0]?.description).toBeTruthy();
   expect(diagnostics).toHaveLength(0);
 });
 
@@ -84,8 +84,8 @@ test("workspace CLAUDE.md is the context file; ancestor context files do NOT lea
 
   const { agentsFiles } = loader.getAgentsFiles();
   expect(agentsFiles).toHaveLength(1);
-  expect(agentsFiles[0]!.path).toBe(join(ws, "CLAUDE.md"));
-  expect(agentsFiles[0]!.content).toContain("sales agent");
+  expect(agentsFiles[0]?.path).toBe(join(ws, "CLAUDE.md"));
+  expect(agentsFiles[0]?.content).toContain("sales agent");
   expect(JSON.stringify(agentsFiles)).not.toContain("LEAKED");
 });
 
@@ -99,7 +99,7 @@ test("AGENTS.md wins over CLAUDE.md (pi's own precedence), root only", async () 
 
   const { agentsFiles } = loader.getAgentsFiles();
   expect(agentsFiles).toHaveLength(1);
-  expect(agentsFiles[0]!.content).toBe("agents-file");
+  expect(agentsFiles[0]?.content).toBe("agents-file");
 });
 
 test("no skills dir, no context file: loader stays empty (nothing discovered from disk)", async () => {

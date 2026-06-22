@@ -1,14 +1,15 @@
 import {
+  type AgentSessionEvent,
+  type AuthStorage,
   createAgentSession,
   DefaultResourceLoader,
-  SessionManager,
-  type AuthStorage,
   type ModelRegistry,
+  SessionManager,
 } from "@earendil-works/pi-coding-agent";
-import { config } from "../config";
-import { authStorage, modelRegistry } from "../auth/storage";
-import { resolveModel } from "../ai/providers";
 import type { ChatMessage } from "@houston/runtime-client";
+import { resolveModel } from "../ai/providers";
+import { authStorage, modelRegistry } from "../auth/storage";
+import { config } from "../config";
 import { getHistory, renameConversation } from "../store/conversations";
 
 const TITLE_PROMPT = [
@@ -63,7 +64,7 @@ export async function generateTitle(opts: {
   });
 
   let text = "";
-  const unsub = session.subscribe((e: any) => {
+  const unsub = session.subscribe((e: AgentSessionEvent) => {
     if (
       e.type === "message_update" &&
       e.assistantMessageEvent?.type === "text_delta"

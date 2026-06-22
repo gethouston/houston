@@ -1,10 +1,10 @@
+import type { KanbanColumnConfig, KanbanItem } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { KanbanColumnConfig, KanbanItem } from "@houston-ai/board";
-import { useUIStore } from "../../stores/ui";
 import { moveTargetsForSection } from "../../lib/mission-selection";
-import { ColumnActionsMenu } from "./column-actions-menu";
+import { useUIStore } from "../../stores/ui";
 import type { BoardSelectionModel } from "./board-source";
+import { ColumnActionsMenu } from "./column-actions-menu";
 
 // Sentinel lock used when a selection no longer maps to exactly one board
 // section (a live status change split it, or it spans sections). It matches no

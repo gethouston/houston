@@ -5,15 +5,16 @@
 // header off screen. Header sticks to the top, composer to the
 // bottom, messages scroll between them.
 
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ChatPanel,
-  UserAttachmentMessage,
-  decodeSkillMessage,
   decodeAttachmentMessage,
+  decodeSkillMessage,
   type FeedItem,
+  UserAttachmentMessage,
 } from "@houston-ai/chat";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useAgents } from "../hooks/use-agents";
 import {
   useChatHistory,
   useCreateMission,
@@ -23,7 +24,6 @@ import {
   useAllConversations,
   useCurrentWorkspace,
 } from "../hooks/use-conversations";
-import { useAgents } from "../hooks/use-agents";
 import { useVisualViewport } from "../hooks/use-keyboard-height";
 import { ChatHeader } from "./chat-header";
 import { UserSkillMessage } from "./user-skill-message";
@@ -88,6 +88,7 @@ export function ChatView() {
 
   // Scroll the message list to the bottom when the route changes —
   // so arriving at an existing session lands on the latest message.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sessionKey is an intentional trigger — the effect body reads no React state, but must re-run on every route change to scroll the new session to the bottom.
   useEffect(() => {
     window.scrollTo({ top: document.body.scrollHeight });
   }, [sessionKey]);

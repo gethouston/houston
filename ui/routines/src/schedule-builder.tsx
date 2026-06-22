@@ -12,14 +12,15 @@
  * All visible text arrives via `labels` (English defaults) so the package stays
  * i18n-agnostic; `locale` drives day names + time formatting in the summary.
  */
-import { AnimatePresence } from "framer-motion";
+
 import { cn } from "@houston-ai/core";
-import type { SchedulePreset } from "./types";
+import { AnimatePresence } from "framer-motion";
 import { DEFAULT_SCHEDULE_LABELS, type ScheduleLabels } from "./labels";
-import { DayOfMonthPicker, WeekdaysPicker } from "./schedule-picker-fields";
-import { TimePicker } from "./time-picker";
 import { IntervalPicker } from "./schedule-interval-picker";
+import { DayOfMonthPicker, WeekdaysPicker } from "./schedule-picker-fields";
 import { Reveal } from "./schedule-reveal";
+import { TimePicker } from "./time-picker";
+import type { SchedulePreset } from "./types";
 import { useScheduleBuilder } from "./use-schedule-builder";
 
 export interface ScheduleBuilderProps {
@@ -72,6 +73,7 @@ export function ScheduleBuilder({
       <div className="flex flex-wrap gap-1.5">
         {presets.map((preset) => (
           <button
+            type="button"
             key={preset}
             onClick={() => selectPreset(preset)}
             className={cn(

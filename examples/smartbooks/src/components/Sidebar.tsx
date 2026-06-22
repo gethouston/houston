@@ -12,14 +12,18 @@ export function Sidebar({ clients, selectedId, onSelect, onNew }: Props) {
     <aside className="sidebar">
       <div className="sidebar__header">
         <span className="sidebar__label">Clients</span>
-        <button className="btn btn--ghost btn--small" onClick={onNew}>
+        <button
+          type="button"
+          className="btn btn--ghost btn--small"
+          onClick={onNew}
+        >
           + New
         </button>
       </div>
       {clients.length === 0 ? (
         <div className="sidebar__empty">
           <p className="muted">No clients yet.</p>
-          <button className="btn btn--primary" onClick={onNew}>
+          <button type="button" className="btn btn--primary" onClick={onNew}>
             Add your first client
           </button>
         </div>
@@ -30,6 +34,7 @@ export function Sidebar({ clients, selectedId, onSelect, onNew }: Props) {
             return (
               <li key={c.id}>
                 <button
+                  type="button"
                   className={`sidebar__item${active ? " sidebar__item--active" : ""}`}
                   onClick={() => onSelect(c)}
                 >

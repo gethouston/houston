@@ -1,12 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createClient, type Session } from "@supabase/supabase-js";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  type BillingReport,
   fetchBilling,
   fetchOverview,
-  type BillingReport,
   type Overview,
 } from "./api";
-import { StatCards, SpendPanel, UsersTable, OrphansPanel } from "./components";
+import { OrphansPanel, SpendPanel, StatCards, UsersTable } from "./components";
 import { btn, C, ghostBtn, page } from "./styles";
 
 /**
@@ -98,7 +98,7 @@ function Dashboard({
     void load();
     const id = setInterval(() => void load(), REFRESH_MS);
     return () => clearInterval(id);
-  }, [load, days]);
+  }, [load]);
 
   // Sign-out surfaces failures: supabase returns { error }, and a transport
   // problem can reject — both reach the dashboard's error banner.
@@ -134,10 +134,15 @@ function Dashboard({
           </div>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button style={btn} onClick={() => void load()} disabled={busy}>
+          <button
+            type="button"
+            style={btn}
+            onClick={() => void load()}
+            disabled={busy}
+          >
             Refresh
           </button>
-          <button style={ghostBtn} onClick={onSignOut}>
+          <button type="button" style={ghostBtn} onClick={onSignOut}>
             Sign out
           </button>
         </div>
@@ -245,7 +250,7 @@ function SignIn({ supabase, ready }: { supabase: SupaClient; ready: boolean }) {
         <div style={{ opacity: 0.6, fontSize: 13, marginBottom: 4 }}>
           {ready ? "Operator sign in." : "Loading…"}
         </div>
-        <button style={btn} onClick={google} disabled={busy}>
+        <button type="button" style={btn} onClick={google} disabled={busy}>
           Continue with Google
         </button>
         <div style={{ textAlign: "center", opacity: 0.4, fontSize: 12 }}>

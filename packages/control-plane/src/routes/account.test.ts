@@ -1,12 +1,12 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities, Workspace } from "@houston/protocol";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
 import { ProxyChannel } from "../channel/proxy";
-import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryVfs } from "../vfs";
 
 /**
  * Workspaces + preferences: the user-level resources the host owns (the last
@@ -36,6 +36,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 const store = new MemoryWorkspaceStore();
 const credentials = new MemoryCredentialStore();
@@ -81,7 +82,7 @@ test("GET /v1/workspaces returns the caller's personal workspace in wire shape",
   const list = (await r.json()) as Workspace[];
   expect(list).toHaveLength(1);
   expect(list[0]).toMatchObject({ isDefault: true, locale: null });
-  expect(typeof list[0]!.createdAt).toBe("string");
+  expect(typeof list[0]?.createdAt).toBe("string");
   // No tenancy internals leak to the wire.
   expect(JSON.stringify(list[0])).not.toContain("slug");
   expect(JSON.stringify(list[0])).not.toContain("runtime");
@@ -104,7 +105,7 @@ test("preferences round-trip per user, and locale shows up on the workspace", as
   const ws = (await (
     await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
   ).json()) as Workspace[];
-  expect(ws[0]!.locale).toBe("es");
+  expect(ws[0]?.locale).toBe("es");
 });
 
 test("one user's preferences never leak to another", async () => {
@@ -120,11 +121,11 @@ test("one user's preferences never leak to another", async () => {
 });
 
 test("PATCH /v1/workspaces/:id sets locale; a non-owner is walled off (403)", async () => {
-  const aliceWs = (
-    (await (
-      await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
-    ).json()) as Workspace[]
-  )[0]!;
+  const aliceWsList = (await (
+    await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
+  ).json()) as Workspace[];
+  const aliceWs = aliceWsList[0];
+  if (!aliceWs) throw new Error("expected alice to have a workspace");
 
   const patched = await fetch(`${base}/v1/workspaces/${aliceWs.id}`, {
     method: "PATCH",

@@ -1,4 +1,3 @@
-import type { WorkspaceStore } from "../ports";
 import type {
   Agent,
   AgentId,
@@ -7,6 +6,7 @@ import type {
   WorkspaceId,
   WorkspaceRuntime,
 } from "../domain/types";
+import type { WorkspaceStore } from "../ports";
 
 /** DNS-safe slug for a workspace (used for the K8s namespace). */
 function slugify(name: string): string {

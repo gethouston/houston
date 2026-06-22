@@ -6,7 +6,7 @@ const TIMEZONE_KEY = "timezone";
 export function detectTimezone(): string {
   try {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-    if (tz && tz.length) return tz;
+    if (tz?.length) return tz;
   } catch {
     // fall through
   }
@@ -32,7 +32,7 @@ async function fetchOnce(): Promise<string | null> {
   inflight = (async () => {
     try {
       const stored = await tauriPreferences.get(TIMEZONE_KEY);
-      let value = stored && stored.trim() ? stored : null;
+      let value = stored?.trim() ? stored : null;
 
       // Auto-seed: if the user has never set a timezone, save their
       // browser-detected one silently. Previously we showed a full-page

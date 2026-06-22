@@ -6,11 +6,12 @@
  * search, optional dedicated popular feed, typed-error-aware copy,
  * and per-row install state machine.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { CommunitySkill } from "./types";
-import { CommunitySkillRow } from "./community-skill-row";
+
 import { AlertCircle, Search } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CommunitySkillRow } from "./community-skill-row";
 import { classifySkillError } from "./skill-error-kinds";
+import type { CommunitySkill } from "./types";
 
 const PAGE_SIZE = 20;
 const SEARCH_DEBOUNCE_MS = 350;
@@ -336,6 +337,7 @@ export function CommunitySkillsSection({
 
       {hasMore && (
         <button
+          type="button"
           onClick={() => setShowAll(true)}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >

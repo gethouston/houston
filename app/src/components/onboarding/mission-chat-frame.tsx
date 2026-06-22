@@ -1,5 +1,5 @@
-import type { ReactNode } from "react";
 import { cn } from "@houston-ai/core";
+import type { ReactNode } from "react";
 import { HoustonLogo } from "../shell/experience-card";
 import type { MissionMeta } from "./mission-frame";
 
@@ -68,6 +68,7 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: static dot sequence derived from a count — no id exists, order is fixed by position
           key={i}
           className={cn(
             "size-2 rounded-full transition-colors",

@@ -1,14 +1,13 @@
+import { Button, cn } from "@houston-ai/core";
 import {
+  type ReactNode,
+  type UIEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
-  type ReactNode,
-  type UIEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-
-import { Button, cn } from "@houston-ai/core";
 
 import { useLegalAcceptance } from "../../hooks/use-legal-acceptance";
 
@@ -125,6 +124,7 @@ function DisclaimerOverlay({
         >
           <p className="mb-5 text-foreground">{t("intro")}</p>
           {sections.map((section, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: sections is a static translation array — no reordering, no add/remove, no per-item state
             <section key={i} className="mb-5 last:mb-0">
               <h2 className="mb-1.5 text-sm font-semibold text-foreground">
                 {section.heading}

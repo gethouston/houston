@@ -1,4 +1,14 @@
+import { topics } from "@houston-ai/engine-client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ChatHandle } from "./components/ChatPanel";
+import { ChatPanel } from "./components/ChatPanel";
+import { ClientView } from "./components/ClientView";
+import { ConnectScreen } from "./components/ConnectScreen";
+import { NewClientDialog } from "./components/NewClientDialog";
+import { Sidebar } from "./components/Sidebar";
+import { ensureAgent } from "./lib/bootstrap";
+import type { Client } from "./lib/clients";
+import { listClients } from "./lib/clients";
 import type { AgentConfig, EngineConfig } from "./lib/config";
 import {
   clearEngineConfig,
@@ -7,17 +17,7 @@ import {
   saveEngineConfig,
 } from "./lib/config";
 import { connectEngine, getClient, getWs } from "./lib/engine";
-import { ensureAgent } from "./lib/bootstrap";
-import { listClients } from "./lib/clients";
-import type { Client } from "./lib/clients";
-import { topics } from "@houston-ai/engine-client";
 import type { HoustonEvent } from "./lib/feed";
-import { ConnectScreen } from "./components/ConnectScreen";
-import { Sidebar } from "./components/Sidebar";
-import { ClientView } from "./components/ClientView";
-import { ChatPanel } from "./components/ChatPanel";
-import type { ChatHandle } from "./components/ChatPanel";
-import { NewClientDialog } from "./components/NewClientDialog";
 
 type Status =
   | { kind: "connecting"; config: EngineConfig }
@@ -30,9 +30,10 @@ export function App() {
     config: resolveEngineConfig(),
   }));
 
+  const connectingConfig = status.kind === "connecting" ? status.config : null;
   useEffect(() => {
-    if (status.kind !== "connecting") return;
-    const cfg = status.config;
+    if (connectingConfig === null) return;
+    const cfg = connectingConfig;
     let cancelled = false;
     (async () => {
       try {
@@ -53,7 +54,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [status.kind, status.kind === "connecting" ? status.config : null]);
+  }, [connectingConfig]);
 
   if (status.kind === "error") {
     return (
@@ -188,6 +189,7 @@ function Ready({ engine, agent, setStatus }: ReadyProps) {
           )}
           {hasUserOverride() && (
             <button
+              type="button"
               className="btn btn--ghost btn--small"
               onClick={() => {
                 if (
@@ -262,7 +264,7 @@ function EmptyWorkspace({ onNew }: { onNew: () => void }) {
         Add a client to get started. Drop a bank statement and SmartBooks will
         build the transaction table automatically.
       </p>
-      <button className="btn btn--primary" onClick={onNew}>
+      <button type="button" className="btn btn--primary" onClick={onNew}>
         + Add your first client
       </button>
     </div>
@@ -271,7 +273,14 @@ function EmptyWorkspace({ onNew }: { onNew: () => void }) {
 
 function Logo() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <title>SmartBooks logo</title>
       <rect x="3" y="3" width="18" height="18" rx="5" fill="#0f6b4f" />
       <path
         d="M7 15 L10 10 L13 13 L17 8"

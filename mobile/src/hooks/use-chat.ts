@@ -10,9 +10,9 @@
 // remount of the chat view doesn't lose it. Entries are dropped once
 // the refetched server history contains a matching user_message.
 
-import { useEffect, useSyncExternalStore } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { topics } from "@houston-ai/engine-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useSyncExternalStore } from "react";
 import { getEngine, getWs, useEngineReady } from "../lib/engine";
 import {
   dropPending,
@@ -22,6 +22,7 @@ import {
   snapshot,
   subscribe,
 } from "./chat-optimistic";
+
 export { autoTitleFromText, useCreateMission } from "./use-create-mission";
 
 interface ChatEntry {
@@ -45,8 +46,12 @@ export function useChatHistory(
   const query = useQuery({
     queryKey: ["chat", sessionKey, agentPath],
     enabled: ready && !!agentPath && !!sessionKey,
-    queryFn: async () =>
-      await getEngine().loadChatHistory(agentPath!, sessionKey!),
+    queryFn: async () => {
+      if (!agentPath || !sessionKey) {
+        throw new Error("agentPath and sessionKey are required");
+      }
+      return await getEngine().loadChatHistory(agentPath, sessionKey);
+    },
     // Backstop polling: while a session is "running" (agent is
     // actively writing), refetch every 2s. The WS firehose is the
     // primary delivery mechanism and usually wins; this is the

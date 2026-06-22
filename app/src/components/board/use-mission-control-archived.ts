@@ -1,15 +1,15 @@
+import type { KanbanItem } from "@houston-ai/board";
+import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import { createElement, useCallback, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
-import type { FeedItem } from "@houston-ai/chat";
-import { useFeedStore } from "../../stores/feeds";
 import { useAllConversations } from "../../hooks/queries";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
-import { tauriActivity, tauriAttachments, tauriChat } from "../../lib/tauri";
 import { missionCardTags } from "../../lib/mission-card";
-import { AgentCardAvatar } from "../shell/agent-card-avatar";
+import { tauriActivity, tauriAttachments, tauriChat } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
+import { useAgentCatalogStore } from "../../stores/agent-catalog";
+import { useFeedStore } from "../../stores/feeds";
+import { AgentCardAvatar } from "../shell/agent-card-avatar";
 
 /**
  * Cross-agent archived data: every agent's *archived* missions on one list,
@@ -81,7 +81,7 @@ export function useMissionControlArchived(agents: Agent[]) {
           icon: createElement(AgentCardAvatar, {
             color: agentColorMap[c.agent_path],
           }),
-          status: c.status!,
+          status: c.status ?? "archived",
           updatedAt: c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags({
             agent: c.agent,

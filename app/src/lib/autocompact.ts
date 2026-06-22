@@ -12,7 +12,6 @@
  * engine runs a normal first turn.
  */
 import { useFeedStore } from "../stores/feeds";
-import { getContextWindowConfig } from "./providers";
 import {
   contextFillPercent,
   effectiveContextWindow,
@@ -20,6 +19,7 @@ import {
   sessionContextUsage,
   shouldAutocompact,
 } from "./context-usage";
+import { getContextWindowConfig } from "./providers";
 
 /**
  * Percent-full at which a turn proactively compacts. A tuning constant, not a

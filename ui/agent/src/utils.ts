@@ -1,7 +1,7 @@
 /**
  * Finder-style formatting and sorting utilities.
  */
-import type { FolderNode, FileNode } from "./tree";
+import type { FileNode, FolderNode } from "./tree";
 
 /** Format bytes like Finder (SI units: 1000, not 1024). */
 export function formatSize(bytes: number): string {

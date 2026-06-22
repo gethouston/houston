@@ -1,15 +1,15 @@
-import { useState } from "react";
 import {
-  cn,
   ConfirmDialog,
+  cn,
   HighlightedText,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
 import { Trash2 } from "lucide-react";
-import type { BoardSearchSnippet, KanbanItem } from "./types";
+import { useState } from "react";
 import type { KanbanCardLabels } from "./kanban-card";
+import type { BoardSearchSnippet, KanbanItem } from "./types";
 
 export interface KanbanListItemProps {
   item: KanbanItem;
@@ -45,8 +45,16 @@ export function KanbanListItem({
   return (
     <>
       <div
+        role="option"
+        aria-selected={selected}
+        tabIndex={0}
         onClick={onSelect}
-        aria-selected={selected || undefined}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
+        }}
         className={cn(
           "group/row flex gap-2 rounded-lg border px-3 py-2 cursor-pointer transition-colors",
           // Compact single-line row when there's no snippet (the default
@@ -83,6 +91,7 @@ export function KanbanListItem({
           <Tooltip>
             <TooltipTrigger asChild>
               <button
+                type="button"
                 onClick={(e) => {
                   e.stopPropagation();
                   setConfirm(true);

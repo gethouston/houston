@@ -1,33 +1,33 @@
+import { type Toast, ToastContainer } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { ToastContainer, type Toast } from "@houston-ai/core";
 import { analytics } from "../../lib/analytics";
+import { getDefaultModel } from "../../lib/providers";
+import { tauriProvider, tauriWorkspaces } from "../../lib/tauri";
+import type { Agent } from "../../lib/types";
+import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { useAgentStore } from "../../stores/agents";
-import { tauriProvider, tauriWorkspaces } from "../../lib/tauri";
-import { getDefaultModel } from "../../lib/providers";
-import type { Agent } from "../../lib/types";
-import { MissionFrame } from "./mission-frame";
-import { MeetMission } from "./missions/meet";
-import { BrainMission } from "./missions/brain";
-import { TryMission } from "./missions/try";
-import { SkillMission } from "./missions/skill";
-import { RoutineMission } from "./missions/routine";
-import { SummaryScreen } from "./summary-screen";
-import { WelcomeScreen } from "./welcome-screen";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
+import { MissionFrame } from "./mission-frame";
+import { BrainMission } from "./missions/brain";
+import { MeetMission } from "./missions/meet";
+import { RoutineMission } from "./missions/routine";
+import { SkillMission } from "./missions/skill";
+import { TryMission } from "./missions/try";
 import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
+import { SummaryScreen } from "./summary-screen";
 import {
   buildFrameLabels,
   buildMissionMeta,
   type OnboardingStep,
   type TutorialStep,
 } from "./tutorial-copy";
+import { WelcomeScreen } from "./welcome-screen";
 
 interface PersonalAssistantOnboardingProps {
   toasts: Toast[];

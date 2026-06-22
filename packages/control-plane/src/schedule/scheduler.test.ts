@@ -1,17 +1,17 @@
-import { test, expect } from "bun:test";
-import type { Routine, RoutineRun } from "@houston/protocol";
+import { expect, test } from "bun:test";
 import {
   createRoutine,
   loadRoutineRuns,
   saveRoutines,
   setPreference,
 } from "@houston/domain";
-import { MemoryWorkspaceStore } from "../store/memory";
-import { MemoryVfs } from "../vfs";
-import { MemoryTurnBus } from "../turn/bus";
-import { workspaceRoot } from "../routes/agent-data";
+import type { Routine, RoutineRun } from "@houston/protocol";
 import { CloudPaths } from "../paths";
-import { Scheduler, type FiringJob, type RoutineFirer } from "./scheduler";
+import { workspaceRoot } from "../routes/agent-data";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryTurnBus } from "../turn/bus";
+import { MemoryVfs } from "../vfs";
+import { type FiringJob, type RoutineFirer, Scheduler } from "./scheduler";
 
 /**
  * The scheduler driver: scans agents, fires routines that come due in the
@@ -83,8 +83,8 @@ test("a due routine fires once, with the right job and a recorded running run", 
   await s.tick(DUE);
 
   expect(firer.jobs).toHaveLength(1);
-  expect(firer.jobs[0]!.routine.prompt).toBe("send the report");
-  expect(firer.jobs[0]!.conversationId).toBe("routine-r1"); // shared chat_mode
+  expect(firer.jobs[0]?.routine.prompt).toBe("send the report");
+  expect(firer.jobs[0]?.conversationId).toBe("routine-r1"); // shared chat_mode
 
   const { items } = await loadRoutineRuns(
     env.vfs,
@@ -136,7 +136,7 @@ test("per_run routine fires into a run-unique conversation", async () => {
   const s = makeScheduler(env, firer);
   s.start();
   await s.tick(DUE);
-  expect(firer.jobs[0]!.conversationId).toBe("routine-r1-run-1");
+  expect(firer.jobs[0]?.conversationId).toBe("routine-r1-run-1");
 });
 
 test("a fire failure marks the run errored — never stuck running, never silent", async () => {
@@ -168,5 +168,5 @@ test("the workspace timezone preference re-times routines (account-wide zone)", 
   s.start();
   await s.tick(DUE);
   expect(firer.jobs).toHaveLength(1);
-  expect(firer.jobs[0]!.routine.schedule).toBe("0 9 * * *");
+  expect(firer.jobs[0]?.routine.schedule).toBe("0 9 * * *");
 });

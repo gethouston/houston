@@ -1,7 +1,7 @@
+import { Button, DialogFooter, Spinner } from "@houston-ai/core";
+import { Check, Copy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, Copy } from "lucide-react";
-import { Button, DialogFooter, Spinner } from "@houston-ai/core";
 import { useUIStore } from "../../stores/ui";
 
 /**
@@ -32,6 +32,7 @@ export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
   // Drop the confirmation if a fresh code arrives (e.g. a re-emit), and
   // clear any pending timer on unmount so it can't fire into an unmounted
   // component.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `code` is intentionally in deps to reset the copied state whenever a new code prop arrives; the effect body calls only the stable setCopied setter but the trigger is the prop change.
   useEffect(() => {
     setCopied(false);
   }, [code]);

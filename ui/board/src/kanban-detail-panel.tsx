@@ -1,6 +1,6 @@
-import { forwardRef } from "react";
-import { XIcon, Loader2 } from "lucide-react";
 import { cn } from "@houston-ai/core";
+import { Loader2, XIcon } from "lucide-react";
+import { forwardRef } from "react";
 
 const STATUS_LABEL: Record<string, string> = {
   running: "Running",
@@ -80,6 +80,7 @@ export const KanbanDetailPanel = forwardRef<
           )}
           {actions}
           <button
+            type="button"
             onClick={onClose}
             className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
           >

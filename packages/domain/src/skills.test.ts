@@ -1,5 +1,4 @@
-import { test, expect } from "bun:test";
-import type { FileStore } from "./store";
+import { expect, test } from "bun:test";
 import {
   composeSkillMd,
   loadSkillDetail,
@@ -8,6 +7,7 @@ import {
   skillKey,
   slugify,
 } from "./skills";
+import type { FileStore } from "./store";
 
 function memStore(): FileStore {
   const m = new Map<string, string>();
@@ -72,7 +72,9 @@ test("loadSkills lists slugs, sorted; broken frontmatter surfaces as a diagnosti
     "weekly-report",
   ]);
   expect(diagnostics).toHaveLength(1);
-  expect(diagnostics[0]!.message).toContain("broken");
+  const diag = diagnostics[0];
+  if (!diag) throw new Error("expected a diagnostic at index 0");
+  expect(diag.message).toContain("broken");
 });
 
 test("list + load use the directory slug when frontmatter name: drifts (HOU-515)", async () => {
@@ -93,8 +95,9 @@ test("list + load use the directory slug when frontmatter name: drifts (HOU-515)
 
   // The id list handed back round-trips cleanly through loadSkillDetail.
   const detail = await loadSkillDetail(store, ROOT, slug);
-  expect(detail!.name).toBe(slug);
-  expect(detail!.content).toContain("Draft it.");
+  if (!detail) throw new Error(`expected detail for '${slug}'`);
+  expect(detail.name).toBe(slug);
+  expect(detail.content).toContain("Draft it.");
 
   // The drifted phrase never named a real directory — still null (-> host 404).
   expect(
@@ -134,8 +137,9 @@ test("loadSkillDetail returns full content; unparseable file still readable (slu
     "just a body, no frontmatter",
   );
   const detail = await loadSkillDetail(store, ROOT, "broken");
-  expect(detail!.name).toBe("broken");
-  expect(detail!.content).toContain("just a body");
+  if (!detail) throw new Error("expected detail to be non-null for 'broken'");
+  expect(detail.name).toBe("broken");
+  expect(detail.content).toContain("just a body");
   expect(await loadSkillDetail(store, ROOT, "ghost")).toBeNull();
 });
 

@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogDescription,
 } from "@houston-ai/core";
+import { useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useSkills } from "../hooks/queries";
-import { SkillCard } from "./skill-card";
+import type { Agent, SkillSummary } from "../lib/types";
 import { SkillList } from "./new-mission-picker-skill-list";
 import {
   buildSkillPickerTabs,
@@ -18,7 +18,7 @@ import {
   shouldShowSkillPickerTabs,
 } from "./new-mission-picker-tab-model";
 import { ScrollableTabs } from "./new-mission-picker-tabs";
-import type { Agent, SkillSummary } from "../lib/types";
+import { SkillCard } from "./skill-card";
 
 interface Props {
   open: boolean;
@@ -91,6 +91,7 @@ export function NewMissionPickerDialog({
   const firstTabId = tabs[0]?.id ?? "";
   const activeTabId = resolveActiveSkillPickerTab(tabs, activeTab);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeAgentPath is an intentional trigger — switching agents should reset the tab to the first one even though it is not read inside the effect body
   useEffect(() => {
     if (open) setActiveTab(firstTabId);
   }, [open, activeAgentPath, firstTabId]);

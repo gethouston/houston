@@ -1,12 +1,12 @@
-import { useState, type KeyboardEvent } from "react";
-import { MoreHorizontal } from "lucide-react";
 import {
   cn,
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@houston-ai/core";
+import { MoreHorizontal } from "lucide-react";
+import { type KeyboardEvent, useState } from "react";
 import type { SidebarItem } from "./sidebar";
 import { sidebarItemRowClasses } from "./sidebar-classes";
 
@@ -65,7 +65,6 @@ export function SidebarItemRow({
     >
       {isEditing ? (
         <input
-          autoFocus
           value={editValue}
           onChange={(e) => onEditChange(e.target.value)}
           onBlur={() => onCommitRename(item.id)}
@@ -77,6 +76,7 @@ export function SidebarItemRow({
         />
       ) : (
         <button
+          type="button"
           onClick={() => onSelect(item.id)}
           onKeyDown={(e) => onKeyDown(e, item.id)}
           className={cn(
@@ -108,6 +108,7 @@ export function SidebarItemRow({
             <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
               <DropdownMenuTrigger asChild>
                 <button
+                  type="button"
                   aria-label={l.moreOptions}
                   className={sidebarItemRowClasses.menuButton}
                   onClick={(e) => e.stopPropagation()}

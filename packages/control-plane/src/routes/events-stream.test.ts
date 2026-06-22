@@ -1,14 +1,14 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities, HoustonEvent } from "@houston/protocol";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
 import { ProxyChannel } from "../channel/proxy";
-import { BusEventHub } from "../events/hub";
-import { MemoryTurnBus } from "../turn/bus";
-import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
+import { BusEventHub } from "../events/hub";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryTurnBus } from "../turn/bus";
+import { MemoryVfs } from "../vfs";
 
 /**
  * The global /v1/events SSE channel end to end: a mutation on the host emits a
@@ -39,6 +39,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 
 const store = new MemoryWorkspaceStore();
@@ -107,7 +108,9 @@ async function firstEvent(
   });
   expect(res.status).toBe(200);
   expect(res.headers.get("content-type")).toContain("text/event-stream");
-  const reader = res.body!.getReader();
+  if (!res.body)
+    throw new Error("Expected a readable body from the SSE response");
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
 
   let connected = false;

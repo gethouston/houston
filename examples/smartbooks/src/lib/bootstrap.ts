@@ -6,10 +6,10 @@
  * already exist we reuse them.
  */
 
-import { HoustonClient } from "@houston-ai/engine-client";
+import type { HoustonClient } from "@houston-ai/engine-client";
 import type { AgentConfig } from "./config";
 import { loadAgentConfig, saveAgentConfig } from "./config";
-import { SEEDS, CLAUDE_MD } from "./seed";
+import { CLAUDE_MD, SEEDS } from "./seed";
 
 const WORKSPACE_NAME = "SmartBooks";
 const AGENT_NAME = "Bookkeeper";

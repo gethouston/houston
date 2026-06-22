@@ -6,6 +6,9 @@
     "selectWorkspace": "Select workspace",
     "addAgent": "New agent",
     "agentMenu": "Agent menu",
+    "collapse": "Collapse sidebar",
+    "expand": "Expand sidebar",
+    "createWorkspace": "Create workspace",
     "color": "Color",
     "changeColor": "Change color",
     "colorLabels": {

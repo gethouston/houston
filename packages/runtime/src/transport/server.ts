@@ -3,23 +3,23 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { config } from "../config";
-import {
-  getAuthStatus,
-  startLogin,
-  completeLogin,
-  logout,
-} from "../auth/login";
-import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
 import {
-  runTurn,
-  ensureProviderForTurn,
+  completeLogin,
+  getAuthStatus,
+  logout,
+  startLogin,
+} from "../auth/login";
+import { exportCredential, scrubRefreshTokens } from "../auth/serve";
+import { config } from "../config";
+import { snapshot, subscribe } from "../session/bus";
+import {
   cancelTurn,
   disposeConversation,
+  ensureProviderForTurn,
+  runTurn,
 } from "../session/chat";
 import { summarizeTitle, titleFromText } from "../session/summarize";
-import { snapshot, subscribe } from "../session/bus";
 import {
   deleteConversation,
   getHistory,
@@ -35,11 +35,13 @@ function json(res: ServerResponse, status: number, body: unknown) {
   res.end(buf);
 }
 
-async function readJson(req: IncomingMessage): Promise<any> {
+async function readJson(
+  req: IncomingMessage,
+): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
   const raw = Buffer.concat(chunks).toString("utf8");
-  return raw ? JSON.parse(raw) : {};
+  return (raw ? JSON.parse(raw) : {}) as Record<string, unknown>;
 }
 
 /** Bearer-token check. Empty config.token => open (local dev). */

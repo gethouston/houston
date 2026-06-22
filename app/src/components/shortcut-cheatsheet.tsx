@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
@@ -6,8 +5,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import { useUIStore } from "../stores/ui";
+import { useTranslation } from "react-i18next";
 import { shortcutLabel } from "../lib/shortcuts";
+import { useUIStore } from "../stores/ui";
 
 interface Row {
   /** Either a single action (label = its glyph) or an array of glyphs

@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import type { Agent, Workspace } from "../domain/types";
 import type { CredentialStore, WorkspaceCredential } from "../ports";
-import type { ConnectManager } from "./connect";
 import type { Vfs } from "../vfs";
+import type { ConnectManager } from "./connect";
 import type { TurnQuota } from "./quota";
 import type { TurnRelay } from "./relay";
 

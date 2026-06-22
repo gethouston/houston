@@ -1,11 +1,11 @@
-import { unzipSync, zipSync, strFromU8, strToU8 } from "fflate";
 import {
-  PORTABLE_FORMAT_VERSION,
   type Learning,
+  PORTABLE_FORMAT_VERSION,
   type PortableInventory,
   type PortableManifest,
   type Routine,
 } from "@houston/protocol";
+import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
 
 /**
  * Pack / unpack a `.houstonagent` — a zip of an agent's shareable content. Pure
@@ -101,7 +101,7 @@ export function unpackAgent(bytes: Uint8Array): PortablePackage {
   const skills: { slug: string; body: string }[] = [];
   for (const [name, bytes2] of Object.entries(entries)) {
     const m = name.match(/^skills\/([^/]+)\/SKILL\.md$/);
-    if (m) skills.push({ slug: m[1]!, body: strFromU8(bytes2) });
+    if (m) skills.push({ slug: m[1] ?? "", body: strFromU8(bytes2) });
   }
   skills.sort((a, b) => a.slug.localeCompare(b.slug));
 
@@ -145,8 +145,8 @@ export function portableInventory(pkg: PortablePackage): PortableInventory {
 function skillDescription(body: string): string {
   const m = body.match(/^---\r?\n([\s\S]*?)\r?\n---/);
   if (!m) return "";
-  const line = m[1]!
-    .split(/\r?\n/)
+  const line = m[1]
+    ?.split(/\r?\n/)
     .find((l) => l.trim().startsWith("description:"));
   return line ? line.slice(line.indexOf(":") + 1).trim() : "";
 }

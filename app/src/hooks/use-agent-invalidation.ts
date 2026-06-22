@@ -1,9 +1,9 @@
-import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 import type { HoustonEvent } from "@houston-ai/core";
-import { queryKeys } from "../lib/query-keys";
-import { subscribeHoustonEvents } from "../lib/events";
+import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { onEngineRestarted } from "../lib/engine";
+import { subscribeHoustonEvents } from "../lib/events";
+import { queryKeys } from "../lib/query-keys";
 import { useSessionStatusStore } from "../stores/session-status";
 
 /**

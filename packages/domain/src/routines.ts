@@ -6,9 +6,9 @@ import type {
 } from "@houston/protocol";
 import { docKey } from "./layout";
 import {
+  type DocDiagnostic,
   loadJson,
   saveJson,
-  type DocDiagnostic,
   type TextStore,
 } from "./store";
 

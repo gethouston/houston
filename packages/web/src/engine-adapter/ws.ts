@@ -1,5 +1,5 @@
-import type { HoustonClient } from "./client";
 import { bus } from "./bus";
+import type { HoustonClient } from "./client";
 
 /** Same topic helpers shape as the real package (the UI imports `topics`). */
 export const topics = {

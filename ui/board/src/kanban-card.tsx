@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react";
 import {
-  cn,
   ConfirmDialog,
+  cn,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { Trash2, Check, Pencil } from "lucide-react";
+import { Check, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {
@@ -133,9 +133,17 @@ export function KanbanCard({
   return (
     <>
       <div
+        role="option"
+        tabIndex={0}
         onClick={(e) => {
           e.stopPropagation();
           onSelect();
+        }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            onSelect();
+          }
         }}
         // The board runs the drag (pointer events, delegated). These markers
         // tell it which element is a card and whether it may be dragged right
@@ -143,7 +151,7 @@ export function KanbanCard({
         // names must match board-drag-dom (data-kanban-card / -draggable).
         data-kanban-card={item.id}
         data-kanban-draggable={canDrag ? "" : undefined}
-        aria-selected={selected || undefined}
+        aria-selected={selected || highlighted}
         data-highlighted={highlighted || undefined}
         // For running + active, override the running-glow inner fill
         // (--glow-bg) so the accent tint is visible through the rotating
@@ -166,13 +174,13 @@ export function KanbanCard({
           // colliding with the conic-gradient keyframe animation.
           // Restrict transitions to the safe properties we actually
           // care about.
-          "group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
+          "kanban-card group/card relative rounded-xl p-3 transition-[background-color,box-shadow,border-color] duration-200",
           // The whole card reads as clickable: a plain pointer, never the grab
           // "hand". During a drag the global `body.kanban-dragging` cursor (set
           // by the board) overrides this everywhere, so the same grab/not-
           // allowed cursor shows on every OS.
           "cursor-pointer",
-          selected || highlighted ? "bg-accent shadow-md" : "bg-background",
+          selected || highlighted ? "bg-accent" : "bg-background",
           // Running cards keep their own animated border untouched —
           // setting Tailwind's `border` would override the
           // `border-style: solid` from card-running-glow's shorthand
@@ -182,10 +190,10 @@ export function KanbanCard({
           isRunning
             ? "card-running-glow shadow-[0_2px_12px_rgba(59,130,246,0.12)]"
             : isError
-              ? "border border-destructive/60 shadow-sm hover:shadow-md"
+              ? "border border-destructive/60"
               : selected || highlighted
                 ? "border border-transparent"
-                : "border border-border/20 shadow-sm hover:shadow-md",
+                : "border border-border/20",
           // Multi-select ring sits on top of (not replacing) the card's
           // own border treatment so a selected running card keeps its glow.
           // Half-strength primary (not solid) so selecting a whole column
@@ -213,24 +221,30 @@ export function KanbanCard({
                     : "w-0 opacity-0 group-hover/card:w-4 group-hover/card:opacity-100 group-focus-within/card:w-4 group-focus-within/card:opacity-100",
                 )}
               >
-                <button
-                  type="button"
-                  role="checkbox"
-                  aria-checked={selectedForBulk}
-                  aria-label={l.selectTooltip}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onToggleSelect();
-                  }}
+                <span
                   className={cn(
-                    "size-4 rounded-[5px] border flex items-center justify-center transition-colors",
+                    "size-4 rounded-[5px] border flex items-center justify-center transition-colors relative",
                     selectedForBulk
                       ? "bg-primary border-primary text-primary-foreground"
                       : "border-muted-foreground/40 text-transparent hover:border-foreground",
                   )}
                 >
-                  <Check className="size-3" strokeWidth={3} />
-                </button>
+                  <input
+                    type="checkbox"
+                    checked={selectedForBulk}
+                    aria-label={l.selectTooltip}
+                    onChange={(e) => {
+                      e.stopPropagation();
+                      onToggleSelect();
+                    }}
+                    onClick={(e) => e.stopPropagation()}
+                    className="absolute inset-0 opacity-0 cursor-pointer size-full"
+                  />
+                  <Check
+                    className="size-3 pointer-events-none"
+                    strokeWidth={3}
+                  />
+                </span>
               </div>
             )}
             {avatar ??
@@ -250,6 +264,7 @@ export function KanbanCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       onApprove();
@@ -267,6 +282,7 @@ export function KanbanCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={handleRenameClick}
                     className="p-1 rounded-md text-muted-foreground/40 hover:text-foreground hover:bg-accent transition-colors duration-200"
                     aria-label={l.renameTooltip}
@@ -281,6 +297,7 @@ export function KanbanCard({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
+                    type="button"
                     onClick={handleDeleteClick}
                     className="p-1 rounded-md text-muted-foreground/40 hover:text-destructive hover:bg-destructive/10 transition-colors duration-200"
                     aria-label={l.deleteTooltip}
@@ -309,20 +326,8 @@ export function KanbanCard({
             className="text-[13px] font-medium text-foreground bg-transparent border-b border-foreground/20 outline-none w-full"
           />
         ) : (
-          <p className="text-[13px] font-medium text-foreground line-clamp-2">
-            {/* The title click selects the card (same as the body); no hover
-                underline. The global drag cursor overrides this pointer while a
-                drag is in flight. `stopPropagation` keeps a title click from
-                triggering the body's onSelect twice. */}
-            <span
-              onClick={(e) => {
-                e.stopPropagation();
-                onSelect();
-              }}
-              className="cursor-pointer"
-            >
-              {item.title}
-            </span>
+          <p className="text-[13px] font-medium text-foreground line-clamp-2 cursor-pointer">
+            {item.title}
           </p>
         )}
 

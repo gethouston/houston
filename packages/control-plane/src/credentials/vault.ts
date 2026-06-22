@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { CredentialVault } from "../ports";
-import type { AgentId, WorkspaceId } from "../domain/types";
 import { config } from "../config";
+import type { AgentId, WorkspaceId } from "../domain/types";
+import type { CredentialVault } from "../ports";
 
 /**
  * EnvCredentialVault — mints and validates the NON-SECRET sandbox identity

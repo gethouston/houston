@@ -1,13 +1,13 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
-import type { Capabilities, Activity, Routine } from "@houston/protocol";
 import { docKey } from "@houston/domain";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
+import type { Activity, Capabilities, Routine } from "@houston/protocol";
 import { ProxyChannel } from "../channel/proxy";
-import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
 /**
@@ -42,6 +42,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 
 const deps = (): ControlPlaneDeps => ({
@@ -88,7 +89,8 @@ afterAll(async () => {
 
 test("agent creation seeds the .houston schemas into the workspace", async () => {
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id))[0]!;
+  const agent = (await store.listAgents(ws.id))[0];
+  if (!agent) throw new Error("Expected at least one agent in workspace");
   const root = workspaceRoot(ws, agent);
   const keys = await vfs.list(root);
   expect(keys).toContain(`${root}/.houston/activity/activity.schema.json`);
@@ -243,7 +245,8 @@ test("config: PUT replaces, GET reads back", async () => {
 
 test("agent-written junk in activity.json drops bad entries AND surfaces diagnostics", async () => {
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id))[0]!;
+  const agent = (await store.listAgents(ws.id))[0];
+  if (!agent) throw new Error("Expected at least one agent in workspace");
   await vfs.writeText(
     docKey(workspaceRoot(ws, agent), "activity"),
     JSON.stringify([
@@ -260,7 +263,7 @@ test("agent-written junk in activity.json drops bad entries AND surfaces diagnos
   };
   expect(body.items.map((a) => a.id)).toEqual(["ok"]);
   expect(body.diagnostics).toHaveLength(1);
-  expect(body.diagnostics[0]!.message).toContain("malformed");
+  expect(body.diagnostics[0]?.message).toContain("malformed");
 });
 
 test("another user is walled off from the data families (403)", async () => {
@@ -300,7 +303,7 @@ test("raw agentfile read/write — what the desktop board actually uses", async 
     headers: auth("alice"),
   });
   expect(
-    ((await typed.json()) as { items: { id: string }[] }).items[0]!.id,
+    ((await typed.json()) as { items: { id: string }[] }).items[0]?.id,
   ).toBe("l1");
 });
 

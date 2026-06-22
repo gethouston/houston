@@ -1,7 +1,7 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
-import type { Server } from "node:http";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
+import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { LocalDirStore, type ObjectStore } from "./object-store";
@@ -31,7 +31,7 @@ function seed(rel: string, content: string) {
 // mutates the workspace, emits frames.
 const fakeTurn: typeof runPiTurn = async (
   root,
-  conversationId,
+  _conversationId,
   text,
   provider,
   emit,

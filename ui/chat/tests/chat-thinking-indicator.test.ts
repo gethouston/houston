@@ -1,8 +1,8 @@
 import { equal } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  shouldShowThinkingIndicator,
   type ChatDisplayItem,
+  shouldShowThinkingIndicator,
 } from "../src/chat-process-groups.ts";
 import type { ChatMessage } from "../src/feed-to-messages.ts";
 

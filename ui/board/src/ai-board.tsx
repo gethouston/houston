@@ -1,21 +1,20 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { createPortal } from "react-dom";
-import type { ReactNode } from "react";
-
-import { ChatPanel } from "@houston-ai/chat";
 import type {
   ChatPanelProps,
   FeedItem,
   ToolsAndCardsProps,
 } from "@houston-ai/chat";
+import { ChatPanel } from "@houston-ai/chat";
 import { SplitView } from "@houston-ai/layout";
-import { KanbanBoard } from "./kanban-board";
-import { KanbanList } from "./kanban-list";
-import { KanbanDetailPanel } from "./kanban-detail-panel";
-import { BulkActionBar } from "./bulk-action-bar";
+import type { ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { BulkActionBarLabels, BulkMoveTarget } from "./bulk-action-bar";
+import { BulkActionBar } from "./bulk-action-bar";
+import { KanbanBoard } from "./kanban-board";
 import type { KanbanCardLabels } from "./kanban-card";
-import type { BoardSearchSnippet, KanbanItem, KanbanColumn } from "./types";
+import { KanbanDetailPanel } from "./kanban-detail-panel";
+import { KanbanList } from "./kanban-list";
+import type { BoardSearchSnippet, KanbanColumn, KanbanItem } from "./types";
 
 export interface NewPanelOptions {
   focusComposer?: boolean;
@@ -351,9 +350,10 @@ export function AIBoard({
   );
 
   // Hydrate on mount if there's an initial controlled selection
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only — a second effect (below) handles subsequent selectedId changes; adding deps here would double-hydrate on every selection
   useEffect(() => {
     if (selectedId) hydrateSession(selectedId);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // When the selection changes from OUTSIDE (e.g. arrow-key navigation
   // sets selectedId via the controlled prop, or session-notifications
@@ -480,16 +480,17 @@ export function AIBoard({
   // Notify parent when panel opens/closes
   useEffect(() => {
     onPanelOpenChange?.(!!showPanel);
-  }, [!!showPanel, onPanelOpenChange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showPanel, onPanelOpenChange]);
 
   // Ensure parent resets its "panel open" state when AIBoard unmounts
   // (e.g. tab switch). Without this, portal containers in the app layout
   // would remain visible but empty.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally empty deps — this cleanup must run only on unmount with the final onPanelOpenChange ref; re-registering on every render would cause spurious false notifications
   useEffect(() => {
     return () => {
       onPanelOpenChange?.(false);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const closePanel = useCallback(() => {
     setNewPanelOpen(false);
@@ -699,7 +700,13 @@ export function AIBoard({
           attachMenu={
             typeof attachMenu === "function"
               ? ({ openFilePicker, close }) =>
-                  (attachMenu as Extract<typeof attachMenu, Function>)({
+                  (
+                    attachMenu as (ctx: {
+                      hasMessages: boolean;
+                      openFilePicker: () => void;
+                      close: () => void;
+                    }) => ReactNode
+                  )({
                     hasMessages: activeFeed.length > 0,
                     openFilePicker,
                     close,

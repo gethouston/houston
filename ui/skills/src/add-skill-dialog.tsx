@@ -5,7 +5,7 @@
  * - DialogContent is a fixed-size flex column. Switching tabs never resizes.
  * - Header + pill row are fixed. Body is the only scrollable region.
  */
-import { useEffect, useState } from "react";
+
 import {
   cn,
   Dialog,
@@ -14,13 +14,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
-import type { CommunitySkill, RepoSkill } from "./types";
-import { StoreView } from "./add-skill-dialog-store-view";
-import type { StoreViewLabels } from "./add-skill-dialog-store-labels";
-import { RepoView } from "./add-skill-dialog-repo-view";
+import { useEffect, useState } from "react";
 import type { RepoViewLabels } from "./add-skill-dialog-repo-labels";
-import { ScratchView } from "./add-skill-dialog-scratch-view";
+import { RepoView } from "./add-skill-dialog-repo-view";
 import type { ScratchViewLabels } from "./add-skill-dialog-scratch-view";
+import { ScratchView } from "./add-skill-dialog-scratch-view";
+import type { StoreViewLabels } from "./add-skill-dialog-store-labels";
+import { StoreView } from "./add-skill-dialog-store-view";
+import type { CommunitySkill, RepoSkill } from "./types";
 
 export interface AddSkillDialogProps {
   open: boolean;
@@ -91,9 +92,23 @@ export function AddSkillDialog({
 }: AddSkillDialogProps) {
   const l = { ...DEFAULT_LABELS, ...labels };
 
-  const canBrowseStore = !!onSearch && !!onInstallCommunity;
-  const canInstallFromRepo = !!onListFromRepo && !!onInstallFromRepo;
-  const canCreateFromScratch = !!onCreateFromScratch;
+  // Narrowed capability objects — TypeScript can guarantee the callbacks
+  // are defined inside each truthy branch without non-null assertions.
+  const storeCapability =
+    onSearch && onInstallCommunity
+      ? { onSearch, onInstallCommunity }
+      : undefined;
+  const repoCapability =
+    onListFromRepo && onInstallFromRepo
+      ? { onListFromRepo, onInstallFromRepo }
+      : undefined;
+  const scratchCapability = onCreateFromScratch
+    ? { onCreateFromScratch }
+    : undefined;
+
+  const canBrowseStore = !!storeCapability;
+  const canInstallFromRepo = !!repoCapability;
+  const canCreateFromScratch = !!scratchCapability;
   const tabs: View[] = [];
   if (canBrowseStore) tabs.push("store");
   if (canInstallFromRepo) tabs.push("repo");
@@ -124,6 +139,7 @@ export function AddSkillDialog({
             {tabs.map((tab) => (
               <button
                 key={tab}
+                type="button"
                 onClick={() => setView(tab)}
                 className={cn(
                   "px-3 py-1.5 text-sm rounded-full transition-colors",
@@ -142,27 +158,27 @@ export function AddSkillDialog({
           </div>
         )}
 
-        {view === "store" && canBrowseStore && (
+        {view === "store" && storeCapability && (
           <StoreView
             open={open}
-            onSearch={onSearch!}
+            onSearch={storeCapability.onSearch}
             onPopular={onPopular}
-            onInstall={onInstallCommunity!}
+            onInstall={storeCapability.onInstallCommunity}
             installedSkillNames={installedSkillNames}
             labels={labels?.store}
           />
         )}
-        {view === "repo" && canInstallFromRepo && (
+        {view === "repo" && repoCapability && (
           <RepoView
-            onList={onListFromRepo!}
-            onInstall={onInstallFromRepo!}
+            onList={repoCapability.onListFromRepo}
+            onInstall={repoCapability.onInstallFromRepo}
             labels={labels?.repo}
           />
         )}
-        {view === "scratch" && canCreateFromScratch && (
+        {view === "scratch" && scratchCapability && (
           <ScratchView
             onCreate={async (input) => {
-              const slug = await onCreateFromScratch!(input);
+              const slug = await scratchCapability.onCreateFromScratch(input);
               onOpenChange(false);
               return slug;
             }}

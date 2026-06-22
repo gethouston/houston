@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
 import type {
   HoustonEngineClient,
   ProviderId,
   ProviderInfo,
 } from "@houston/runtime-client";
+import { useEffect, useState } from "react";
 import { ui } from "./styles";
 
 /**
@@ -47,7 +47,7 @@ export function ConnectView({
         } else if (pr?.login?.status === "error") {
           clearInterval(poll);
           setPendingCode(null);
-          setNote("Login failed: " + pr.login.error);
+          setNote(`Login failed: ${pr.login.error}`);
         }
       } catch {
         /* transient; keep polling */
@@ -103,6 +103,7 @@ export function ConnectView({
         {providers.map((p) => (
           <button
             key={p.id}
+            type="button"
             style={{
               ...ui.button,
               ...(p.configured ? { background: "#2a2a2a" } : {}),
@@ -119,13 +120,13 @@ export function ConnectView({
               style={ui.composerInput}
               placeholder="code#state"
               value={code}
-              autoFocus
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitCode();
               }}
             />
             <button
+              type="button"
               style={ui.sendBtn}
               disabled={!code.trim()}
               onClick={submitCode}

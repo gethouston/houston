@@ -4,9 +4,9 @@ import type { Agent, Workspace } from "../domain/types";
 import {
   conversationKey,
   json,
-  prefixFor,
   PROVIDER,
   PROVIDER_NAME,
+  prefixFor,
   readJson,
   readSettings,
   type TurnDeps,
@@ -62,8 +62,8 @@ export async function dispatchCloudrun(
 
   const conv = rest.match(/^conversations\/([^/]+)\/(messages|events|cancel)$/);
   if (conv) {
-    const cid = decodeURIComponent(conv[1]!);
-    const action = conv[2]!;
+    const cid = decodeURIComponent(conv[1] ?? "");
+    const action = conv[2] ?? "";
 
     if (method === "GET" && action === "messages") {
       const raw = await deps.vfs.readText(conversationKey(prefix, cid));

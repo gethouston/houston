@@ -1,10 +1,10 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   DUMMY_VALUES,
+  type ManifestDoc,
   render,
   stripComments,
   validateAll,
-  type ManifestDoc,
 } from "./validate";
 
 /** Find the first rendered doc of a given kind across all manifest files. */
@@ -83,9 +83,10 @@ test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env",
   // Single container, on the engine port, mounting /data from the PVC.
   const containers = podSpec.containers as Array<Record<string, unknown>>;
   expect(containers.length).toBe(1);
-  const c = containers[0]!;
+  const c = containers[0];
+  if (c === undefined) throw new Error("containers[0] is undefined");
   const ports = c.ports as Array<Record<string, unknown>>;
-  expect(ports[0]!.containerPort).toBe(4317);
+  expect(ports[0]?.containerPort).toBe(4317);
 
   const mounts = c.volumeMounts as Array<Record<string, unknown>>;
   expect(mounts.some((m) => m.mountPath === "/data")).toBe(true);
@@ -94,7 +95,7 @@ test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env",
   const volumes = podSpec.volumes as Array<Record<string, unknown>>;
   const tmpVol = volumes.find((v) => v.name === "tmp");
   expect(tmpVol).toBeDefined();
-  expect(tmpVol!.emptyDir).toBeDefined();
+  expect(tmpVol?.emptyDir).toBeDefined();
 
   // Container hardening.
   const cSec = c.securityContext as Record<string, unknown>;
@@ -109,22 +110,24 @@ test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env",
   // Keyless-proxy + engine env wiring.
   const env = c.env as Array<Record<string, unknown>>;
   const byName = new Map(env.map((e) => [e.name as string, e]));
-  expect(byName.get("HOUSTON_CLOUD")!.value).toBe("1");
-  expect(byName.get("HOUSTON_PROXY_BASE_URL")!.value).toBe(
+  expect(byName.get("HOUSTON_CLOUD")?.value).toBe("1");
+  expect(byName.get("HOUSTON_PROXY_BASE_URL")?.value).toBe(
     DUMMY_VALUES.PROXY_BASE_URL,
   );
-  expect(byName.get("HOUSTON_HOST")!.value).toBe("0.0.0.0");
-  expect(byName.get("HOUSTON_WORKSPACE_DIR")!.value).toBe("/data");
+  expect(byName.get("HOUSTON_HOST")?.value).toBe("0.0.0.0");
+  expect(byName.get("HOUSTON_WORKSPACE_DIR")?.value).toBe("/data");
 
   // The sandbox token comes from a Secret, NEVER an inline real key.
-  const tokenEnv = byName.get("HOUSTON_SANDBOX_TOKEN")!;
+  const tokenEnv = byName.get("HOUSTON_SANDBOX_TOKEN");
+  if (tokenEnv === undefined)
+    throw new Error("HOUSTON_SANDBOX_TOKEN env not found");
   expect("value" in tokenEnv).toBe(false);
   expect(deep(tokenEnv, ["valueFrom", "secretKeyRef", "name"])).toBe(
     `agent-${DUMMY_VALUES.AGENT_ID}-sandbox-token`,
   );
   // Inbound engine bearer also from a Secret.
   expect(
-    deep(byName.get("HOUSTON_RUNTIME_TOKEN")!, [
+    deep(byName.get("HOUSTON_RUNTIME_TOKEN"), [
       "valueFrom",
       "secretKeyRef",
       "name",

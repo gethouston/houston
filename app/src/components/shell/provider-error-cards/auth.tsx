@@ -4,11 +4,11 @@
  * understands WHY they need to reconnect.
  */
 
+import type { ProviderError } from "@houston-ai/chat";
+import { Button, Spinner } from "@houston-ai/core";
+import { KeyIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { KeyIcon } from "lucide-react";
-import { Button, Spinner } from "@houston-ai/core";
-import type { ProviderError } from "@houston-ai/chat";
 import { tauriProvider } from "../../../lib/tauri";
 import { ErrorCard, providerLabel } from "./shared";
 
@@ -34,7 +34,6 @@ export function UnauthenticatedCard({
         return "providerError.unauthenticated.bodyInvalidApiKey";
       case "token_revoked":
         return "providerError.unauthenticated.bodyTokenRevoked";
-      case "unknown":
       default:
         return "providerError.unauthenticated.bodyUnknown";
     }

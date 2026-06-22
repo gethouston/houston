@@ -1,3 +1,4 @@
+import { Database } from "bun:sqlite";
 import {
   existsSync,
   mkdirSync,
@@ -7,11 +8,10 @@ import {
   writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import { Database } from "bun:sqlite";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
-import type { ChatFeedRow, SessionPair, StoredConversation } from "./types";
 import { sessionGroupsForAgent } from "./linkage";
 import { messageFor, reconstruct, rowTs, titleFor } from "./reconstruct";
+import type { ChatFeedRow, SessionPair, StoredConversation } from "./types";
 
 /**
  * One-time migration of the Rust-desktop era's chat history into the v3

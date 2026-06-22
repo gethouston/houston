@@ -1,13 +1,13 @@
 import { useEffect } from "react";
-import { useAgentStore } from "../stores/agents";
-import { useUIStore } from "../stores/ui";
+import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
 import { orderAgents } from "../lib/agent-order";
 import {
   isEmptyEditable,
   isTypingTarget,
   matchShortcut,
 } from "../lib/shortcuts";
-import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
+import { useAgentStore } from "../stores/agents";
+import { useUIStore } from "../stores/ui";
 
 /**
  * Programmatic step-scroll of the chat message log. The conversation

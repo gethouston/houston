@@ -6,42 +6,43 @@
  * The composer hero is the only "boxed" element — it's the substance of the
  * routine — everything else is plain settings rows.
  */
-import { useMemo } from "react";
+
 import {
-  cn,
   Button,
-  Switch,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
+  Switch,
 } from "@houston-ai/core";
 import {
   ArrowLeft,
-  Play,
-  Pause,
-  Square,
-  Trash2,
   CalendarClock,
   MoreHorizontal,
+  Pause,
+  Play,
+  Square,
+  Trash2,
 } from "lucide-react";
-import type { Routine, RoutineChatMode, RoutineRun } from "./types";
-import { ScheduleBuilder } from "./schedule-builder";
-import { RunHistory } from "./run-history";
-import { nextFire, describeNextFire } from "./next-fire";
-import { useNow } from "./use-now";
+import { useMemo } from "react";
 import {
-  interp,
   DEFAULT_EDITOR_LABELS,
-  DEFAULT_SCHEDULE_LABELS,
   DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_RUN_HISTORY_LABELS,
-  type RoutineEditorLabels,
-  type ScheduleLabels,
+  DEFAULT_SCHEDULE_LABELS,
+  interp,
   type NextFireLabels,
+  type RoutineEditorLabels,
   type RunHistoryLabels,
+  type ScheduleLabels,
 } from "./labels";
+import { describeNextFire, nextFire } from "./next-fire";
+import { RunHistory } from "./run-history";
+import { ScheduleBuilder } from "./schedule-builder";
+import type { Routine, RoutineChatMode, RoutineRun } from "./types";
+import { useNow } from "./use-now";
 
 export interface RoutineFormData {
   name: string;
@@ -137,9 +138,9 @@ function SectionCard({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+    <p className="text-xs font-medium text-muted-foreground mb-1.5 block">
       {children}
-    </label>
+    </p>
   );
 }
 
@@ -194,7 +195,7 @@ export function RoutineEditor({
   const hasOverflow = isEdit && (onToggle || onDelete);
 
   return (
-    <div className="flex-1 flex flex-col min-h-0 bg-background">
+    <div className="flex-1 flex flex-col min-h-0 bg-transparent">
       {/* Single action bar: back · context · primary on right */}
       <header className="px-4 py-2.5 shrink-0">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
@@ -298,6 +299,7 @@ export function RoutineEditor({
                   "outline-none transition-shadow duration-200",
                   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                 )}
+                // biome-ignore lint/a11y/noAutofocus: focuses the name field on new-routine creation — intentional UX, no navigation disruption since the editor is a dedicated screen
                 autoFocus={!isEdit}
               />
             </div>

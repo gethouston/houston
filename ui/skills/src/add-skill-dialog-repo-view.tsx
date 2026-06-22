@@ -1,15 +1,15 @@
-import { useCallback, useState } from "react";
-import { cn, Button, Spinner } from "@houston-ai/core";
+import { Button, cn, Spinner } from "@houston-ai/core";
 import { AlertCircle, Search } from "lucide-react";
-import type { RepoSkill } from "./types";
-import type { RepoStage } from "./add-skill-dialog-repo-stage";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { RepoDoneState } from "./add-skill-dialog-repo-done";
 import {
   DEFAULT_REPO_VIEW_LABELS,
   type RepoViewLabels,
 } from "./add-skill-dialog-repo-labels";
-import { RepoDoneState } from "./add-skill-dialog-repo-done";
 import { RepoSkillRow } from "./add-skill-dialog-repo-row";
 import { RepoSelectionSummary } from "./add-skill-dialog-repo-selection";
+import type { RepoStage } from "./add-skill-dialog-repo-stage";
+import type { RepoSkill } from "./types";
 
 export interface RepoViewProps {
   onList: (source: string) => Promise<RepoSkill[]>;
@@ -23,6 +23,11 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
   const [stage, setStage] = useState<RepoStage>({ kind: "input" });
   const [error, setError] = useState("");
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const handleDiscover = useCallback(async () => {
     const trimmed = source.trim();
@@ -85,6 +90,7 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
               <input
+                ref={inputRef}
                 type="text"
                 value={source}
                 onChange={(e) => {
@@ -105,7 +111,6 @@ export function RepoView({ onList, onInstall, labels }: RepoViewProps) {
                 }}
                 placeholder={l.sourcePlaceholder}
                 disabled={isLoading || isInstalling}
-                autoFocus
                 className="w-full h-9 pl-9 pr-3 rounded-full border border-border bg-background text-sm
                            placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring transition-colors
                            disabled:opacity-60 disabled:cursor-not-allowed"

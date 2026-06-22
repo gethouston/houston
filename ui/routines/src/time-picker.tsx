@@ -15,20 +15,21 @@
  * via props; AM/PM markers and the 12h-vs-24h choice come from `Intl` in the
  * given `locale`. The scroll columns live in time-picker-columns.tsx.
  */
-import { Clock } from "lucide-react";
+
 import { cn, Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
-import { parseTime, formatTime } from "./schedule-format.ts";
+import { Clock } from "lucide-react";
+import { formatTime, parseTime } from "./schedule-format.ts";
 import { labelClass } from "./schedule-picker-fields.tsx";
-import { TimeColumn, PeriodColumn } from "./time-picker-columns.tsx";
+import { PeriodColumn, TimeColumn } from "./time-picker-columns.tsx";
 import {
-  is12HourLocale,
-  periodLabels,
-  to12Hour,
-  from12Hour,
   buildTime,
+  from12Hour,
   hourOptions,
+  is12HourLocale,
   minuteOptions,
   type Period,
+  periodLabels,
+  to12Hour,
 } from "./time-picker-utils.ts";
 
 /** Accessible names for the picker's columns. */
@@ -62,12 +63,17 @@ export function TimePicker({
   const selectPeriod = (p: Period) =>
     onChange(buildTime(from12Hour(hour12, p), minute));
 
+  const triggerId = `time-picker-trigger-${label.toLowerCase().replace(/\s+/g, "-")}`;
+
   return (
     <div>
-      <label className={labelClass}>{label}</label>
+      <label htmlFor={triggerId} className={labelClass}>
+        {label}
+      </label>
       <Popover>
         <PopoverTrigger asChild>
           <button
+            id={triggerId}
             type="button"
             aria-label={`${label}: ${formatTime(value, locale)}`}
             className={cn(
@@ -82,7 +88,7 @@ export function TimePicker({
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-auto rounded-2xl p-2">
-          <div className="flex gap-1" role="group" aria-label={label}>
+          <fieldset className="flex gap-1 border-0 p-0 m-0" aria-label={label}>
             <TimeColumn
               ariaLabel={labels.hour}
               options={hourOptions(twelveHour)}
@@ -103,7 +109,7 @@ export function TimePicker({
                 onSelect={selectPeriod}
               />
             )}
-          </div>
+          </fieldset>
         </PopoverContent>
       </Popover>
     </div>

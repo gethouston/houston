@@ -1,14 +1,14 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   AGENT_COLORS,
+  agentColorId,
   Button,
   ConfirmDialog,
-  agentColorId,
-  colorHex,
   cn,
+  colorHex,
 } from "@houston-ai/core";
 import { Share2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { AGENT_COLOR_LABEL_KEYS } from "../shell/agent-sidebar-color-menu";
 import { canSaveName } from "./agent-settings-model";
 

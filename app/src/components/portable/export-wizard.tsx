@@ -11,19 +11,20 @@
  * h1, progress dots beside the eyebrow (close button owns the right
  * corner). Switches match the routine editor.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
+
 import { Button, cn, Dialog, DialogContent, Switch } from "@houston-ai/core";
-import { useUIStore } from "../../stores/ui";
-import { useAgentStore } from "../../stores/agents";
-import { getEngine } from "../../lib/engine";
-import { osRevealPath } from "../../lib/os-bridge";
-import { analytics } from "../../lib/analytics";
 import type {
   PortableAnonymizeResponse,
   PortableInventoryPreview,
 } from "@houston-ai/engine-client";
+import { invoke } from "@tauri-apps/api/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
+import { getEngine } from "../../lib/engine";
+import { osRevealPath } from "../../lib/os-bridge";
+import { useAgentStore } from "../../stores/agents";
+import { useUIStore } from "../../stores/ui";
 
 type Step = 1 | 2 | 3;
 
@@ -101,7 +102,7 @@ export function ExportAgentWizard() {
         setLoading(false);
       }
     })();
-  }, [agentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agentId, agent?.folderPath, addToast, setAgentId, t]);
 
   const counts = useMemo(
     () => ({
@@ -626,7 +627,8 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
-          key={i}
+          // biome-ignore lint/suspicious/noArrayIndexKey: dots are positional counters — no identity field exists; order is invariant
+          key={`dot-${i}`}
           className={cn(
             "size-2 rounded-full transition-colors",
             i < index && "bg-foreground/60",

@@ -1,12 +1,12 @@
-import { test, expect, beforeEach } from "bun:test";
+import { beforeEach, expect, test } from "bun:test";
 import type { Server } from "node:http";
-import type { Capabilities, Routine, RoutineRun } from "@houston/protocol";
 import { loadRoutineRuns } from "@houston/domain";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
-import { MemoryWorkspaceStore } from "../store/memory";
+import type { Capabilities, Routine, RoutineRun } from "@houston/protocol";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
 import type { ChannelCtx, RuntimeChannel, TokenVerifier } from "../ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
 /**
@@ -50,6 +50,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 
 let server: Server;
@@ -122,12 +123,16 @@ test("fires the routine now: records a running run and calls fireTurn with the p
 
   // The firer reached the channel with the routine's prompt + its shared conversation.
   expect(channel.fired).toHaveLength(1);
-  expect(channel.fired[0]!.text).toBe("send the weekly digest");
-  expect(channel.fired[0]!.conversationId).toBe(`routine-${routine.id}`);
+  const fired0 = channel.fired[0];
+  if (!fired0) throw new Error("expected channel.fired[0] to exist");
+  expect(fired0.text).toBe("send the weekly digest");
+  expect(fired0.conversationId).toBe(`routine-${routine.id}`);
 
   // A run was recorded (the same record a scheduled fire writes).
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id))[0]!;
+  const agents = await store.listAgents(ws.id);
+  const agent = agents[0];
+  if (!agent) throw new Error("expected at least one agent to exist");
   const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
   expect(items).toHaveLength(1);
   expect(items[0]).toMatchObject({
@@ -146,8 +151,10 @@ test("the suppression instruction rides on the prompt when opted in", async () =
     method: "POST",
     headers: auth("alice"),
   });
-  expect(channel.fired[0]!.text).toContain("check the inbox");
-  expect(channel.fired[0]!.text).toContain("ROUTINE_OK");
+  const firedSuppressed = channel.fired[0];
+  if (!firedSuppressed) throw new Error("expected channel.fired[0] to exist");
+  expect(firedSuppressed.text).toContain("check the inbox");
+  expect(firedSuppressed.text).toContain("ROUTINE_OK");
 });
 
 test("a fire failure answers 502 and marks the run errored — never stuck running, never silent", async () => {
@@ -167,7 +174,9 @@ test("a fire failure answers 502 and marks the run errored — never stuck runni
   );
 
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id))[0]!;
+  const agentsErr = await store.listAgents(ws.id);
+  const agent = agentsErr[0];
+  if (!agent) throw new Error("expected at least one agent to exist");
   const { items } = await loadRoutineRuns(vfs, workspaceRoot(ws, agent));
   expect(items).toHaveLength(1);
   const run = items[0] as RoutineRun;

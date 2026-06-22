@@ -7,11 +7,11 @@
 // blank canvas. The actual activity (and therefore the desktop row)
 // is created on the first real send. See `chat-view.tsx::handleSend`.
 
+import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import type { Agent } from "@houston-ai/engine-client";
+import { AnimatePresence, motion } from "framer-motion";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
-import type { Agent } from "@houston-ai/engine-client";
-import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 
 interface Props {
   open: boolean;
@@ -75,6 +75,7 @@ export function NewMissionSheet({ open, onClose, agents }: Props) {
                 {agents.map((a) => (
                   <li key={a.id}>
                     <button
+                      type="button"
                       className="touchable w-full flex items-center gap-3 py-3 text-left hover:bg-accent/60 rounded-lg px-2"
                       onClick={() => pickAgent(a)}
                     >

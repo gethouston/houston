@@ -1,6 +1,6 @@
-import { test, expect } from "bun:test";
-import { IntegrationRegistry } from "./registry";
+import { expect, test } from "bun:test";
 import { FakeIntegrationProvider } from "./fake";
+import { IntegrationRegistry } from "./registry";
 
 test("registers, resolves, and reports providers by id", () => {
   const composio = new FakeIntegrationProvider({ id: "composio" });

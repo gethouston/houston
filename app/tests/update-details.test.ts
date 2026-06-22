@@ -139,13 +139,11 @@ describe("selectUpdateNotes", () => {
     strictEqual(outEs, es);
 
     for (const out of [outEn, outEs]) {
-      const lines = out!.split("\n");
+      ok(out !== null, "selectUpdateNotes must return a string, not null");
+      const lines = out.split("\n");
       // blank line before each list survives (loose-list separation)
-      ok(
-        out!.includes("\n\n- "),
-        "unordered list keeps its leading blank line",
-      );
-      ok(out!.includes("\n\n1. "), "ordered list keeps its leading blank line");
+      ok(out.includes("\n\n- "), "unordered list keeps its leading blank line");
+      ok(out.includes("\n\n1. "), "ordered list keeps its leading blank line");
       strictEqual(lines.filter((l) => l.startsWith("- ")).length, 2);
       strictEqual(lines.filter((l) => /^\d+\. /.test(l)).length, 2);
     }

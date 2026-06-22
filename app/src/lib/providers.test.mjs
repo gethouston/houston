@@ -1,10 +1,10 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
   getEffortLevels,
+  normalizeLegacyModel,
   validEffortOrDefault,
   validModelOrNull,
-  normalizeLegacyModel,
 } from "./providers.ts";
 
 test("effort levels are per model", () => {

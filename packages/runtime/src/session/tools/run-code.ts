@@ -1,5 +1,3 @@
-import { defineTool } from "@earendil-works/pi-coding-agent";
-import { Type, type Static } from "typebox";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import {
@@ -11,6 +9,8 @@ import {
   resolve,
   sep,
 } from "node:path";
+import { defineTool } from "@earendil-works/pi-coding-agent";
+import { type Static, Type } from "typebox";
 import { RunCodeLimiter, type RunCodeLimits } from "./run-code-limiter";
 
 /**

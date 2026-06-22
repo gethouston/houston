@@ -1,5 +1,5 @@
-import { useEffect } from "react";
 import { supabase } from "@houston/app/lib/supabase";
+import { useEffect } from "react";
 import AppTree from "./app-tree";
 
 /**

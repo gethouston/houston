@@ -7,22 +7,23 @@
  *     containing the row list. Title is omitted because the host tab already
  *     labels this surface "Actions".
  */
-import { useMemo, useState } from "react";
+
 import {
   Button,
   ConfirmDialog,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  EmptyDescription,
 } from "@houston-ai/core";
 import { Plus } from "lucide-react";
-import type { Skill, CommunitySkill, RepoSkill } from "./types";
-import { SkillRow } from "./skill-row";
+import { useMemo, useState } from "react";
 import { AddSkillDialog } from "./add-skill-dialog";
+import { SkillRow } from "./skill-row";
 import {
   DEFAULT_SKILLS_GRID_LABELS,
   type SkillsGridLabels,
 } from "./skills-grid-labels";
+import type { CommunitySkill, RepoSkill, Skill } from "./types";
 
 /**
  * Optional translated labels. Defaults are English so existing callers

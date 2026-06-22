@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -20,10 +20,17 @@ mkdirSync(join(ws, "docs"));
 writeFileSync(join(base, "auth.json"), JSON.stringify({ access: "SECRET" }));
 
 const tools = new Map(makeClampedFileTools(ws).map((t) => [t.name, t]));
-const exec = (name: string, params: Record<string, unknown>) =>
-  tools
-    .get(name)!
-    .execute("call-1", params as never, undefined, undefined, {} as never);
+const exec = (name: string, params: Record<string, unknown>) => {
+  const tool = tools.get(name);
+  if (!tool) throw new Error(`Unknown tool: ${name}`);
+  return tool.execute(
+    "call-1",
+    params as Parameters<typeof tool.execute>[1],
+    undefined,
+    undefined,
+    {} as Parameters<typeof tool.execute>[4],
+  );
+};
 
 test("all six file tools are produced with the builtin-shadowing names", () => {
   expect([...tools.keys()].sort()).toEqual([...CLAMPED_FILE_TOOL_NAMES].sort());

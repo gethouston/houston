@@ -5,8 +5,9 @@
  * `./schedule-summary`; the friendly custom-interval model in
  * `./schedule-interval-utils`.
  */
-import type { SchedulePreset } from "./types";
+
 import { parseTime } from "./schedule-format.ts";
+import type { SchedulePreset } from "./types";
 
 export interface ScheduleOptions {
   time: string; // "09:00"
@@ -95,7 +96,7 @@ export function cronToOptions(cron: string): Partial<ScheduleOptions> {
 
   const minute = Number(min);
   const hour = Number(hr);
-  if (!isNaN(minute) && !isNaN(hour)) {
+  if (!Number.isNaN(minute) && !Number.isNaN(hour)) {
     result.time = `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`;
   }
 
@@ -103,7 +104,7 @@ export function cronToOptions(cron: string): Partial<ScheduleOptions> {
   if (daysOfWeek) result.daysOfWeek = daysOfWeek;
 
   const dayOfMonth = Number(dom);
-  if (!isNaN(dayOfMonth) && dayOfMonth >= 1 && dayOfMonth <= 31) {
+  if (!Number.isNaN(dayOfMonth) && dayOfMonth >= 1 && dayOfMonth <= 31) {
     result.dayOfMonth = dayOfMonth;
   }
 

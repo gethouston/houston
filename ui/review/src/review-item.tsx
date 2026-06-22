@@ -78,6 +78,7 @@ export function ReviewItem({ item, onClick }: ReviewItemProps) {
 
   return (
     <button
+      type="button"
       onClick={onClick}
       className={cn(
         "w-full text-left flex items-center gap-3 px-4 py-3 transition-colors duration-200",

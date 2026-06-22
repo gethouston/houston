@@ -6,18 +6,19 @@
  * smart truncation. No Houston-specific logic.
  */
 
-import type { ComponentType } from "react";
 import {
-  TerminalIcon,
-  FileTextIcon,
-  PencilIcon,
+  DownloadIcon,
   FilePlusIcon,
-  SearchIcon,
+  FileTextIcon,
   FolderSearchIcon,
   GlobeIcon,
-  DownloadIcon,
+  PencilIcon,
+  SearchIcon,
+  TerminalIcon,
   WrenchIcon,
 } from "lucide-react";
+import type { ComponentType } from "react";
+
 export { ToolContent } from "./tool-content";
 
 // ---------------------------------------------------------------------------
@@ -38,7 +39,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 };
 
 export function getToolIcon(name: string): LucideIcon {
-  const short = name.includes("__") ? name.split("__").pop()! : name;
+  const short = name.includes("__") ? (name.split("__").pop() ?? name) : name;
   return TOOL_ICONS[short] ?? WrenchIcon;
 }
 
@@ -49,13 +50,13 @@ export function getToolIcon(name: string): LucideIcon {
 export function getToolDetail(name: string, input: unknown): string | null {
   const inp = input as Record<string, unknown> | null | undefined;
   if (!inp) return null;
-  const short = name.includes("__") ? name.split("__").pop()! : name;
+  const short = name.includes("__") ? (name.split("__").pop() ?? name) : name;
 
   switch (short) {
     case "Bash": {
       const cmd = inp.command as string | undefined;
       if (!cmd) return null;
-      return cmd.length > 80 ? cmd.slice(0, 77) + "..." : cmd;
+      return cmd.length > 80 ? `${cmd.slice(0, 77)}...` : cmd;
     }
     case "Read":
     case "Write":
@@ -84,6 +85,6 @@ function shortUrl(url: string | undefined): string | null {
   try {
     return new URL(url).hostname;
   } catch {
-    return url.length > 60 ? url.slice(0, 57) + "..." : url;
+    return url.length > 60 ? `${url.slice(0, 57)}...` : url;
   }
 }

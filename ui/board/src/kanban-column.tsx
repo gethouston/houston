@@ -1,8 +1,8 @@
+import { cn } from "@houston-ai/core";
 import { AnimatePresence, motion } from "framer-motion";
 import { Plus } from "lucide-react";
-import { cn } from "@houston-ai/core";
-import type { KanbanItem } from "./types";
 import { KanbanCard, type KanbanCardLabels } from "./kanban-card";
+import type { KanbanItem } from "./types";
 
 export interface KanbanColumnProps {
   /** This column's id. Exposed on the DOM (`data-kanban-column`) so the board's

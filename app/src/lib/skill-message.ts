@@ -16,13 +16,13 @@
  */
 
 import {
-  decodeSkillMessage as decodeSkillMessageFromChat,
   type AttachmentReference,
+  decodeSkillMessage as decodeSkillMessageFromChat,
   type SkillInvocation,
   type SkillInvocationField,
 } from "@houston-ai/chat";
-import type { SkillSummary } from "./types";
 import { humanizeSkillName } from "./humanize-skill-name";
+import type { SkillSummary } from "./types";
 
 export type { SkillInvocation, SkillInvocationField };
 

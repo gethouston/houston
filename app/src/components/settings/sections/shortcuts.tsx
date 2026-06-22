@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { Kbd, KbdGroup } from "@houston-ai/core";
-import { shortcutParts, type ShortcutAction } from "../../../lib/shortcuts";
+import { useTranslation } from "react-i18next";
+import { type ShortcutAction, shortcutParts } from "../../../lib/shortcuts";
 
 interface Row {
   action?: ShortcutAction;
@@ -42,8 +42,8 @@ function RowKbd({ row }: { row: Row }) {
   const groups = row.action ? [shortcutParts(row.action)] : (row.parts ?? []);
   return (
     <div className="flex items-center gap-1">
-      {groups.map((parts, i) => (
-        <KbdGroup key={i}>
+      {groups.map((parts) => (
+        <KbdGroup key={parts.join("+")}>
           {parts.map((p) => (
             <Kbd key={p}>{p}</Kbd>
           ))}

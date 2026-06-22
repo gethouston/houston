@@ -1,10 +1,10 @@
-import { EngineError } from "@houston/runtime-client";
 import type {
-  HoustonEngineClient,
   ChatMessage,
+  HoustonEngineClient,
   TokenUsage,
   WireEvent,
 } from "@houston/runtime-client";
+import { EngineError } from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
 

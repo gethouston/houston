@@ -1,8 +1,8 @@
 "use client";
 
-import * as React from "react";
 import { Command as CommandPrimitive, defaultFilter } from "cmdk";
 import { SearchIcon } from "lucide-react";
+import type * as React from "react";
 
 import { cn } from "../utils";
 import {
@@ -174,13 +174,13 @@ function CommandShortcut({
 export {
   Command,
   CommandDialog,
-  CommandInput,
-  CommandList,
   CommandEmpty,
   CommandGroup,
+  CommandInput,
   CommandItem,
-  CommandShortcut,
+  CommandList,
   CommandSeparator,
+  CommandShortcut,
   // cmdk's built-in fuzzy scorer, re-exported so consumers can wrap it (e.g. to
   // fold diacritics before scoring) without taking a direct `cmdk` dependency.
   defaultFilter,

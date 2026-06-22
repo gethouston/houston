@@ -3,18 +3,19 @@
  * Files: click to select, double-click to open, right-click context menu, draggable.
  * Folders: click to expand/collapse, drop target for moves.
  */
-import { useEffect, useRef, useState } from "react";
+
 import { cn } from "@houston-ai/core";
-import type { FileEntry } from "./types";
-import type { FolderNode } from "./tree";
+import { useEffect, useRef, useState } from "react";
 import { INTERNAL_DRAG_TYPE, useFolderDropTarget } from "./drop-zone";
 import {
-  FolderIcon,
   DisclosureChevron,
+  FolderIcon,
   getFileIcon,
 } from "./file-manager-icons";
-import { formatSize, formatFileManagerDate, getKind } from "./utils";
 import { FileMenu, type FileMenuLabels } from "./file-menu";
+import type { FolderNode } from "./tree";
+import type { FileEntry } from "./types";
+import { formatFileManagerDate, formatSize, getKind } from "./utils";
 
 const DEPTH_INDENT = 20;
 const BASE_INDENT = 12;
@@ -64,9 +65,8 @@ export function FolderSection({
 
   return (
     <>
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         draggable={!!onMove}
         onDragStart={(e) => {
           e.dataTransfer.setData(INTERNAL_DRAG_TYPE, node.path);
@@ -77,7 +77,7 @@ export function FolderSection({
         onClick={() => setOpen(!open)}
         onKeyDown={(e) => e.key === "Enter" && setOpen(!open)}
         className={cn(
-          "h-[24px] select-none cursor-default items-center",
+          "h-[24px] select-none cursor-default items-center w-full text-left",
           isOver ? "!bg-[rgba(0,122,255,0.12)] !rounded-lg" : "",
           dragging && "opacity-40",
         )}
@@ -101,7 +101,7 @@ export function FolderSection({
         <span className="text-[11px] text-muted-foreground truncate px-2">
           Folder
         </span>
-      </div>
+      </button>
       {open &&
         node.children.map((child) =>
           child.kind === "folder" ? (
@@ -197,6 +197,7 @@ export function FileRow({
 
   return (
     <>
+      {/* biome-ignore lint/a11y/useSemanticElements: CSS grid layout — <tr> would break column sizing; role="row" is correct ARIA but the element must stay a div */}
       <div
         role="row"
         tabIndex={0}

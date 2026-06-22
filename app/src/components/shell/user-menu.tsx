@@ -1,6 +1,6 @@
+import { LogOut, MessageSquare, User } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LogOut, MessageSquare, User } from "lucide-react";
 import { useSession } from "../../hooks/use-session";
 import { signOut } from "../../lib/auth";
 import { useUIStore } from "../../stores/ui";
@@ -16,7 +16,7 @@ import { FeedbackDialog } from "./feedback-dialog";
  * throw). Crash data flows to Sentry automatically — this is the
  * complement, not a replacement.
  */
-export function UserMenu() {
+export function UserMenu({ collapsed = false }: { collapsed?: boolean }) {
   const { t } = useTranslation("shell");
   const { data: session } = useSession();
   const [open, setOpen] = useState(false);
@@ -41,10 +41,23 @@ export function UserMenu() {
 
   return (
     <>
-      <div className="relative mx-2 mb-2">
+      <div
+        className={
+          collapsed
+            ? "relative mx-2 mb-2 flex justify-center"
+            : "relative mx-2 mb-2"
+        }
+      >
         <button
+          type="button"
           onClick={() => setOpen((v) => !v)}
-          className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-accent transition-colors"
+          aria-label={collapsed ? displayName : undefined}
+          title={collapsed ? displayName : undefined}
+          className={
+            collapsed
+              ? "flex size-9 items-center justify-center rounded-lg hover:bg-accent transition-colors"
+              : "w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-accent transition-colors"
+          }
         >
           {avatar ? (
             <img
@@ -58,7 +71,11 @@ export function UserMenu() {
               <User className="h-3.5 w-3.5 text-muted-foreground" />
             </div>
           )}
-          <span className="text-sm truncate flex-1 min-w-0">{displayName}</span>
+          {!collapsed && (
+            <span className="text-sm truncate flex-1 min-w-0">
+              {displayName}
+            </span>
+          )}
         </button>
 
         {open && (
@@ -68,8 +85,15 @@ export function UserMenu() {
               onClick={() => setOpen(false)}
               aria-hidden="true"
             />
-            <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-border bg-popover shadow-md z-20 overflow-hidden">
+            <div
+              className={
+                collapsed
+                  ? "absolute bottom-full left-0 mb-1 w-56 rounded-lg border border-border bg-popover shadow-md z-20 overflow-hidden"
+                  : "absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-border bg-popover shadow-md z-20 overflow-hidden"
+              }
+            >
               <button
+                type="button"
                 onClick={() => {
                   setOpen(false);
                   setViewMode("settings");
@@ -80,6 +104,7 @@ export function UserMenu() {
                 Account settings
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setOpen(false);
                   setFeedbackOpen(true);
@@ -90,6 +115,7 @@ export function UserMenu() {
                 {t("userMenu.sendFeedback")}
               </button>
               <button
+                type="button"
                 onClick={handleSignOut}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
               >

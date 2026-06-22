@@ -4,10 +4,10 @@
  * the right provider console.
  */
 
-import { useTranslation } from "react-i18next";
-import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
-import { Button } from "@houston-ai/core";
 import type { ProviderError } from "@houston-ai/chat";
+import { Button } from "@houston-ai/core";
+import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { tauriSystem } from "../../../lib/tauri";
 import { ErrorCard, providerLabel } from "./shared";
 
@@ -23,17 +23,18 @@ export function QuotaExhaustedCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
+  const upgradeUrl = error.upgrade_url;
   return (
     <ErrorCard
       icon={<XCircleIcon className="size-5" />}
       title={t("providerError.quotaExhausted.title")}
       body={t("providerError.quotaExhausted.body", { provider })}
     >
-      {error.upgrade_url && (
+      {upgradeUrl && (
         <Button
           size="sm"
           className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={() => void tauriSystem.openUrl(error.upgrade_url!)}
+          onClick={() => void tauriSystem.openUrl(upgradeUrl)}
         >
           {t("providerError.quotaExhausted.upgrade")}
         </Button>

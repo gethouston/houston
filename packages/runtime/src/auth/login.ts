@@ -1,12 +1,13 @@
 import {
   getOAuthProvider,
+  type OAuthDeviceCodeInfo,
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
-import { authStorage } from "./storage";
+import { activeProvider, PROVIDERS, type ProviderId } from "../ai/providers";
 import { config } from "../config";
-import { PROVIDERS, activeProvider, type ProviderId } from "../ai/providers";
+import { authStorage } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
@@ -114,7 +115,7 @@ export async function startLogin(
         state.status = "awaiting_user";
         resolveInfo(state.info);
       },
-      onDeviceCode: (info: any) => {
+      onDeviceCode: (info: OAuthDeviceCodeInfo) => {
         state.info = {
           kind: "device_code",
           verificationUri: info.verificationUri,

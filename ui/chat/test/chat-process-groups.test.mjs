@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { getChatDisplayItems } from "../src/chat-process-groups.ts";
 
 const assistant = (key, content, extras = {}) => ({

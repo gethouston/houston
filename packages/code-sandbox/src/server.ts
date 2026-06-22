@@ -1,11 +1,11 @@
+import { timingSafeEqual } from "node:crypto";
 import {
   createServer,
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { timingSafeEqual } from "node:crypto";
 import { config } from "./config";
-import { runInSandbox, DEFAULT_LIMITS, type RunRequest } from "./run";
+import { DEFAULT_LIMITS, type RunRequest, runInSandbox } from "./run";
 
 function json(res: ServerResponse, status: number, body: unknown) {
   const buf = Buffer.from(JSON.stringify(body));
@@ -64,7 +64,7 @@ export async function handle(req: IncomingMessage, res: ServerResponse) {
 
   if (method === "POST" && path === "/run") {
     if (!authorized(req)) return json(res, 401, { error: "unauthorized" });
-    let body: any;
+    let body: unknown;
     try {
       body = await readJson(req, config.maxBodyBytes);
     } catch (e) {
@@ -73,11 +73,12 @@ export async function handle(req: IncomingMessage, res: ServerResponse) {
       });
     }
     try {
+      const b = body as Record<string, unknown>;
       const request: RunRequest = {
-        language: body.language,
-        code: body.code,
-        files: body.files,
-        timeoutMs: body.timeoutMs,
+        language: b.language as RunRequest["language"],
+        code: b.code as RunRequest["code"],
+        files: b.files as RunRequest["files"],
+        timeoutMs: b.timeoutMs as RunRequest["timeoutMs"],
       };
       const result = await runInSandbox(request, DEFAULT_LIMITS);
       return json(res, 200, result);

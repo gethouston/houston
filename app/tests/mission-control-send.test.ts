@@ -1,8 +1,8 @@
 import { deepStrictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  resolveActivityOverride,
   type ActivityOverrideSource,
+  resolveActivityOverride,
 } from "../src/components/mission-control-send.ts";
 
 const opus47Activity: ActivityOverrideSource = {

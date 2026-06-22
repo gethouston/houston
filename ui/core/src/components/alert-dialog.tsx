@@ -1,5 +1,5 @@
-import * as React from "react";
 import { AlertDialog as AlertDialogPrimitive } from "radix-ui";
+import type * as React from "react";
 
 import { cn } from "../utils";
 import { Button } from "./button";

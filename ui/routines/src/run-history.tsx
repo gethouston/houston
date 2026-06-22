@@ -4,14 +4,14 @@
  * Visual: dense one-line rows so a long history scans quickly. Surfaced runs
  * get a "View" affordance that links back to the activity board.
  */
-import { cn, Button } from "@houston-ai/core";
+import { Button, cn } from "@houston-ai/core";
 import { ArrowUpRight, PauseCircle, Square } from "lucide-react";
-import type { RoutineRun } from "./types";
 import {
-  interp,
   DEFAULT_RUN_HISTORY_LABELS,
+  interp,
   type RunHistoryLabels,
 } from "./labels";
+import type { RoutineRun } from "./types";
 
 export interface RunHistoryProps {
   runs: RoutineRun[];
@@ -91,8 +91,9 @@ export function RunHistory({
     <ul className="space-y-1.5">
       {sorted.map((run) => {
         const duration = formatDuration(run.started_at, run.completed_at);
+        const activityId = run.activity_id;
         const isSurfaced =
-          run.status === "surfaced" && run.activity_id && onViewActivity;
+          run.status === "surfaced" && activityId && onViewActivity;
         const isPaused = run.status === "running" && !!run.paused_until;
         // While paused, the CLI is sleeping — show an amber dot instead of
         // the blue pulse so a long-running routine reads as "waiting" not
@@ -151,9 +152,10 @@ export function RunHistory({
                 ? interp(labels.waiting, { time: run.paused_until ?? "" })
                 : (run.summary ?? "")}
             </span>
-            {isSurfaced && (
+            {isSurfaced && activityId && onViewActivity && (
               <button
-                onClick={() => onViewActivity!(run.activity_id!)}
+                type="button"
+                onClick={() => onViewActivity(activityId)}
                 className={cn(
                   "flex items-center gap-1 text-xs text-foreground shrink-0",
                   "hover:text-foreground/70 transition-colors",

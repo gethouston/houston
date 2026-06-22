@@ -11,9 +11,10 @@
  * `@tauri-apps/api` — everything else flows through the engine wire.
  */
 
-import { HoustonClient, EngineWebSocket } from "@houston-ai/engine-client";
-import { listen } from "@tauri-apps/api/event";
+import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
+import { controlPlaneBuild } from "./engine-mode";
 
 declare global {
   interface Window {
@@ -32,16 +33,31 @@ declare global {
  * path below is completely untouched, so the default build stays releasable and
  * a downgrade is just "don't set the flag".
  */
-const HOST_URL: string | undefined =
-  (import.meta as any).env?.VITE_NEW_ENGINE_URL || undefined;
+const _env = import.meta.env as Record<string, string | undefined>;
+const HOST_URL: string | undefined = _env.VITE_NEW_ENGINE_URL || undefined;
 const HOST_TOKEN: string =
-  (import.meta as any).env?.VITE_NEW_ENGINE_TOKEN ??
-  (import.meta as any).env?.VITE_HOUSTON_ENGINE_TOKEN ??
-  "";
+  _env.VITE_NEW_ENGINE_TOKEN ?? _env.VITE_HOUSTON_ENGINE_TOKEN ?? "";
 
-// In host mode the engine-client is aliased to the new-engine adapter (see
-// app/vite.config.ts); flip it into control-plane mode against the host.
-if (HOST_URL && typeof window !== "undefined") {
+// When the new-engine adapter is aliased in (VITE_NEW_ENGINE or
+// VITE_NEW_ENGINE_URL — see app/vite.config.ts `useHost`), the desktop ALWAYS
+// talks to a v3 host, so flip the adapter into control-plane mode. This must be
+// set HERE, at module load, before any HoustonClient is constructed: the
+// adapter reads window.__HOUSTON_CP__ in its constructor, and the handshake can
+// arrive via the get_engine_handshake poll or the houston-engine-ready event —
+// neither of which sets this flag. On a cold first launch that poll wins the
+// race against the Tauri window.eval injection and a Rust-wire client gets
+// built against the v3 host -> every turn fails with "Session error" until the
+// next launch (the warm sidecar lets the injection land first). Setting the
+// flag from the build constant closes that race for all delivery paths. HOU-546.
+// import.meta typing differs between the app and packages/web tsconfigs that
+// both compile this file, so cast env to controlPlaneBuild's expected shape.
+const NEW_ENGINE = controlPlaneBuild(
+  (import.meta.env ?? {}) as unknown as {
+    VITE_NEW_ENGINE_URL?: string;
+    VITE_NEW_ENGINE?: string;
+  },
+);
+if (NEW_ENGINE && typeof window !== "undefined") {
   (window as unknown as { __HOUSTON_CP__?: boolean }).__HOUSTON_CP__ = true;
 }
 
@@ -53,8 +69,8 @@ function resolveConfig(): { baseUrl: string; token: string } | null {
     return window.__HOUSTON_ENGINE__;
   }
   // Dev fallback — if HOUSTON_ENGINE_BASE / TOKEN present on Vite env, use them.
-  const baseUrl = (import.meta as any).env?.VITE_HOUSTON_ENGINE_BASE ?? null;
-  const token = (import.meta as any).env?.VITE_HOUSTON_ENGINE_TOKEN ?? null;
+  const baseUrl = _env.VITE_HOUSTON_ENGINE_BASE ?? null;
+  const token = _env.VITE_HOUSTON_ENGINE_TOKEN ?? null;
   if (baseUrl && token) return { baseUrl, token };
   return null;
 }

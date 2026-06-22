@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { runInSandbox, safeJoin, DEFAULT_LIMITS } from "./run";
+import type { Language } from "./run";
+import { DEFAULT_LIMITS, runInSandbox, safeJoin } from "./run";
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 const fromB64 = (s: string) => Buffer.from(s, "base64").toString("utf8");
@@ -32,7 +33,8 @@ describe("runInSandbox", () => {
     expect(r.exitCode).toBe(0);
     const deck = r.artifacts.find((a) => a.path === "deck.txt");
     expect(deck).toBeDefined();
-    expect(fromB64(deck!.contentBase64)).toBe("slide 1");
+    if (!deck) throw new Error("deck.txt artifact missing");
+    expect(fromB64(deck.contentBase64)).toBe("slide 1");
   });
 
   test("input file is readable and not echoed back unchanged", async () => {
@@ -75,7 +77,7 @@ describe("runInSandbox", () => {
 
   test("unsupported language throws", async () => {
     await expect(
-      runInSandbox({ language: "ruby" as any, code: "puts 1" }),
+      runInSandbox({ language: "ruby" as unknown as Language, code: "puts 1" }),
     ).rejects.toThrow(/unsupported/);
   });
 

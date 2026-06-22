@@ -1,11 +1,18 @@
 import {
   createServer,
   type IncomingMessage,
-  type ServerResponse,
   type Server,
+  type ServerResponse,
 } from "node:http";
-import { PROTOCOL_VERSION, type Capabilities } from "@houston/protocol";
+import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
 import type { UserId, WorkspaceRuntime } from "./domain/types";
+import type { EventHub } from "./events/hub";
+import {
+  type FeedbackPayload,
+  type FeedbackSender,
+  parseFeedbackPayload,
+} from "./feedback";
+import type { WorkspacePaths } from "./paths";
 import type {
   CredentialStore,
   CredentialVault,
@@ -13,20 +20,22 @@ import type {
   TokenVerifier,
   WorkspaceStore,
 } from "./ports";
-import type { Vfs } from "./vfs";
-import type { WorkspacePaths } from "./paths";
-import type { EventHub } from "./events/hub";
-import { bearer, json, readJson } from "./routes/http";
-import { handleSandboxCredential } from "./routes/credential";
-import { handleAdmin, type AdminDeps } from "./routes/admin";
-import { handleAgents } from "./routes/agents";
 import { handleAccount } from "./routes/account";
-import { handlePortableAccount } from "./routes/portable";
+import { type AdminDeps, handleAdmin } from "./routes/admin";
+import { handleAgents } from "./routes/agents";
+import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
-import { parseFeedbackPayload, type FeedbackSender } from "./feedback";
+import { bearer, json, readJson } from "./routes/http";
+import {
+  handleIntegrations,
+  handleSandboxIntegrations,
+  type IntegrationDeps,
+} from "./routes/integrations";
+import { handlePortableAccount } from "./routes/portable";
+import type { Vfs } from "./vfs";
 
-export type { AdminDeps } from "./routes/admin";
 export type { RuntimeProxy } from "./channel/proxy";
+export type { AdminDeps } from "./routes/admin";
 
 export interface ControlPlaneDeps {
   verifier: TokenVerifier;
@@ -53,6 +62,8 @@ export interface ControlPlaneDeps {
   admin?: AdminDeps;
   /** "Send feedback" intake (web build → Linear); omit and POST /feedback answers 503. */
   feedback?: FeedbackSender;
+  /** Third-party integrations (Composio "for you"); absent → integration routes 503. */
+  integrations?: IntegrationDeps;
   corsOrigin?: string;
 }
 
@@ -111,6 +122,9 @@ async function handle(
 
   // Sandbox-facing credential serve (HMAC sandbox token, not a user JWT).
   if (await handleSandboxCredential(deps, method, path, url, req, res)) return;
+  // Runtime-facing integration proxy (HMAC sandbox token, not a user JWT).
+  if (await handleSandboxIntegrations(deps, method, path, url, req, res))
+    return;
 
   // Everything past here is authenticated.
   const userId = await principal(deps, req, url);
@@ -133,7 +147,7 @@ async function handle(
   if (path === "/feedback" && method === "POST") {
     if (!deps.feedback)
       return json(res, 503, { error: "feedback intake not configured" });
-    let payload;
+    let payload: FeedbackPayload;
     try {
       payload = parseFeedbackPayload(await readJson(req));
     } catch (err) {
@@ -147,6 +161,7 @@ async function handle(
   // User-level resources (workspaces, preferences) — no agent in the path.
   if (await handleAccount(deps, userId, method, path, req, res)) return;
   if (await handlePortableAccount(deps, userId, method, path, req, res)) return;
+  if (await handleIntegrations(deps, userId, method, path, req, res)) return;
 
   if (await handleAgents(deps, userId, method, path, url, req, res)) return;
 

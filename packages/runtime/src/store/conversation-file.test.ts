@@ -1,10 +1,10 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { existsSync, mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
-  appendUserMessageAt,
   appendAssistantMessageAt,
+  appendUserMessageAt,
   deleteConversationAt,
   getHistoryAt,
   listConversationsAt,
@@ -17,15 +17,17 @@ const freshDir = () => mkdtempSync(join(tmpdir(), "houston-conv-"));
 test("rename persists the new title and bumps updatedAt", () => {
   const dir = freshDir();
   appendUserMessageAt(dir, "c1", "hello there, long opening message");
-  const before = loadConversation(dir, "c1")!;
+  const before = loadConversation(dir, "c1");
+  if (!before) throw new Error("loadConversation returned null after append");
 
   expect(renameConversationAt(dir, "c1", "Quarterly report")).toBe(true);
 
-  const after = loadConversation(dir, "c1")!;
+  const after = loadConversation(dir, "c1");
+  if (!after) throw new Error("loadConversation returned null after rename");
   expect(after.title).toBe("Quarterly report");
   expect(after.updatedAt).toBeGreaterThanOrEqual(before.updatedAt);
   expect(after.messages).toHaveLength(1); // transcript untouched
-  expect(listConversationsAt(dir)[0]!.title).toBe("Quarterly report");
+  expect(listConversationsAt(dir)[0]?.title).toBe("Quarterly report");
 });
 
 test("rename of an unknown conversation reports failure, writes nothing", () => {
@@ -58,9 +60,10 @@ test("delete then re-append starts a fresh conversation, not a resurrected one",
   deleteConversationAt(dir, "c1");
   appendUserMessageAt(dir, "c1", "second life");
 
-  const conv = loadConversation(dir, "c1")!;
+  const conv = loadConversation(dir, "c1");
+  if (!conv) throw new Error("loadConversation returned null after append");
   expect(conv.messages).toHaveLength(1);
-  expect(conv.messages[0]!.content).toBe("second life");
+  expect(conv.messages[0]?.content).toBe("second life");
 });
 
 test("assistant message persists token usage so the indicator survives a reload", () => {
@@ -72,9 +75,10 @@ test("assistant message persists token usage so the indicator survives a reload"
     cached_tokens: 89,
   });
 
-  const msg = getHistoryAt(dir, "c1")!.messages.find(
-    (m) => m.role === "assistant",
-  )!;
+  const history = getHistoryAt(dir, "c1");
+  if (!history) throw new Error("getHistoryAt returned null after append");
+  const msg = history.messages.find((m) => m.role === "assistant");
+  if (!msg) throw new Error("no assistant message found in history");
   expect(msg.usage).toEqual({
     context_tokens: 12345,
     output_tokens: 67,
@@ -87,8 +91,9 @@ test("assistant message without usage stores no usage field (degrades cleanly)",
   appendUserMessageAt(dir, "c1", "hi");
   appendAssistantMessageAt(dir, "c1", "hello!");
 
-  const msg = getHistoryAt(dir, "c1")!.messages.find(
-    (m) => m.role === "assistant",
-  )!;
+  const history = getHistoryAt(dir, "c1");
+  if (!history) throw new Error("getHistoryAt returned null after append");
+  const msg = history.messages.find((m) => m.role === "assistant");
+  if (!msg) throw new Error("no assistant message found in history");
   expect(msg.usage ?? null).toBeNull();
 });

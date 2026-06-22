@@ -1,8 +1,8 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  MISSING_SKILL_KIND,
   isMissingSkillError,
+  MISSING_SKILL_KIND,
 } from "../src/lib/missing-skill.ts";
 
 describe("missing-skill classifier (HOU-515 / HOU-441)", () => {

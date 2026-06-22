@@ -1,13 +1,13 @@
-import { join } from "node:path";
 import {
   existsSync,
   mkdirSync,
-  readFileSync,
   readdirSync,
+  readFileSync,
   renameSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
+import { join } from "node:path";
 import type {
   ChatMessage,
   ConversationHistory,
@@ -82,7 +82,7 @@ export function appendAssistantMessageAt(
     role: "assistant",
     content,
     ts: Date.now(),
-    tools: tools && tools.length ? tools : undefined,
+    tools: tools?.length ? tools : undefined,
     usage: usage ?? undefined,
   });
   conv.updatedAt = Date.now();

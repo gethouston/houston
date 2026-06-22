@@ -1,11 +1,11 @@
-import { useTranslation } from "react-i18next";
 import { Loader2, LogIn, LogOut } from "lucide-react";
-import type { ProviderInfo, ComingSoonProviderInfo } from "../../lib/providers";
+import { useTranslation } from "react-i18next";
+import type { ComingSoonProviderInfo, ProviderInfo } from "../../lib/providers";
 import {
   ClaudeLogo,
-  OpenAILogo,
   DeepSeekLogo,
   MiniMaxLogo,
+  OpenAILogo,
 } from "./provider-logos";
 
 /**
@@ -84,8 +84,9 @@ export function ProviderCard({
           {provider.name}
           {connected && (
             <span
-              className="size-1.5 rounded-full bg-emerald-500 shrink-0"
+              role="img"
               aria-label={t("card.connected")}
+              className="size-1.5 rounded-full bg-emerald-500 shrink-0"
             />
           )}
         </p>

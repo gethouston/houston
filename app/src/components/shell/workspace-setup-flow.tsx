@@ -1,7 +1,7 @@
-import { useState, type FormEvent } from "react";
-import { ArrowLeft } from "lucide-react";
-import { useTranslation, Trans } from "react-i18next";
 import { Button, Input } from "@houston-ai/core";
+import { ArrowLeft } from "lucide-react";
+import { type FormEvent, useState } from "react";
+import { Trans, useTranslation } from "react-i18next";
 import { ProviderPicker } from "./provider-picker";
 
 interface Props {
@@ -82,6 +82,7 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
         {/* Header */}
         <div className={isPage ? "text-center mb-6" : "mb-4"}>
           <button
+            type="button"
             onClick={() => setStep(1)}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
           >

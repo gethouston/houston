@@ -6,19 +6,19 @@
  * switch stops propagation so toggling doesn't open the editor.
  */
 import { cn, Switch } from "@houston-ai/core";
-import type { Routine, RoutineRun } from "./types";
-import { cronSummary } from "./schedule-summary";
-import { nextFire, describeNextFire } from "./next-fire";
-import { useNow } from "./use-now";
 import {
-  interp,
+  DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  DEFAULT_NEXT_FIRE_LABELS,
+  interp,
+  type NextFireLabels,
   type RoutineRowLabels,
   type ScheduleSummaryLabels,
-  type NextFireLabels,
 } from "./labels";
+import { describeNextFire, nextFire } from "./next-fire";
+import { cronSummary } from "./schedule-summary";
+import type { Routine, RoutineRun } from "./types";
+import { useNow } from "./use-now";
 
 export interface RoutineRowProps {
   routine: Routine;
@@ -83,18 +83,11 @@ export function RoutineRow({
   const isPaused = lastRun?.status === "running" && !!lastRun.paused_until;
 
   return (
-    <div
+    <button
+      type="button"
       onClick={onClick}
-      role="button"
-      tabIndex={0}
-      onKeyDown={(e) => {
-        if (e.key === "Enter" || e.key === " ") {
-          e.preventDefault();
-          onClick?.();
-        }
-      }}
       className={cn(
-        "group relative flex items-center gap-4 px-5 py-4 cursor-pointer",
+        "group relative flex w-full items-center gap-4 px-5 py-4 cursor-pointer text-left",
         "transition-colors duration-150",
         "hover:bg-black/[0.03]",
         "focus-visible:outline-none focus-visible:bg-black/[0.03]",
@@ -156,9 +149,14 @@ export function RoutineRow({
         )}
       </div>
 
-      {/* Switch */}
+      {/* Switch — stop click from bubbling to the outer button */}
       {onToggle && (
-        <div onClick={(e) => e.stopPropagation()} className="shrink-0">
+        <div
+          role="none"
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          className="shrink-0"
+        >
           <Switch
             checked={routine.enabled}
             onCheckedChange={(checked) => onToggle(checked)}
@@ -168,6 +166,6 @@ export function RoutineRow({
           />
         </div>
       )}
-    </div>
+    </button>
   );
 }

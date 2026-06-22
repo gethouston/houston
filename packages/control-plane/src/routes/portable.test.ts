@@ -1,15 +1,15 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
-import type { Capabilities, Routine } from "@houston/protocol";
 import { loadRoutines } from "@houston/domain";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
+import type { Capabilities, Routine } from "@houston/protocol";
 import { ProxyChannel } from "../channel/proxy";
-import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
 import { CloudPaths } from "../paths";
-import { workspaceRoot } from "../routes/agent-data";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
+import { workspaceRoot } from "../routes/agent-data";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryVfs } from "../vfs";
 
 /**
  * The `.houstonagent` share flow end to end through the host: export an agent's
@@ -40,6 +40,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  integrations: [],
 };
 const store = new MemoryWorkspaceStore();
 const credentials = new MemoryCredentialStore();
@@ -86,7 +87,8 @@ beforeAll(async () => {
     ).json()) as { id: string }
   ).id;
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id))[0]!;
+  const agent = (await store.listAgents(ws.id))[0];
+  if (!agent) throw new Error("Expected alice's agent to exist after creation");
   const root = workspaceRoot(ws, agent);
   await vfs.writeText(`${root}/CLAUDE.md`, "# Role\nYou are the sales agent.");
   await fetch(`${base}/agents/${agentId}/skills`, {
@@ -116,12 +118,16 @@ afterAll(async () => {
 test("export → preview → install round-trips the agent's content into a new agent", async () => {
   // Find the routine id to select it.
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id)).find((a) => a.id === agentId)!;
+  const agent = (await store.listAgents(ws.id)).find((a) => a.id === agentId);
+  if (!agent)
+    throw new Error(`Expected to find alice's agent with id ${agentId}`);
   const { items: routines } = await loadRoutines(
     vfs,
     new CloudPaths().agentRoot(ws, agent),
   );
-  const routineId = routines[0]!.id;
+  const routine = routines[0];
+  if (!routine) throw new Error("Expected at least one routine to exist");
+  const routineId = routine.id;
 
   // Export.
   const exp = await fetch(`${base}/agents/${agentId}/portable/export`, {
@@ -178,7 +184,9 @@ test("export → preview → install round-trips the agent's content into a new 
   const bobWs = await store.getOrCreatePersonalWorkspace("bob");
   const bobAgent = (await store.listAgents(bobWs.id)).find(
     (a) => a.name === "SalesCopy",
-  )!;
+  );
+  if (!bobAgent)
+    throw new Error("Expected bob's SalesCopy agent to exist after install");
   const bobRoot = new CloudPaths().agentRoot(bobWs, bobAgent);
   expect(await vfs.readText(`${bobRoot}/CLAUDE.md`)).toContain("sales agent");
   expect(

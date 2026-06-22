@@ -1,11 +1,14 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriFiles } from "../../lib/tauri";
 
 export function useFiles(agentPath: string | undefined) {
   return useQuery({
     queryKey: queryKeys.files(agentPath ?? ""),
-    queryFn: () => tauriFiles.list(agentPath!),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriFiles.list(agentPath);
+    },
     enabled: !!agentPath,
   });
 }
@@ -13,8 +16,10 @@ export function useFiles(agentPath: string | undefined) {
 export function useDeleteFile(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (relativePath: string) =>
-      tauriFiles.delete(agentPath!, relativePath),
+    mutationFn: (relativePath: string) => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriFiles.delete(agentPath, relativePath);
+    },
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
@@ -31,7 +36,10 @@ export function useRenameFile(agentPath: string | undefined) {
     }: {
       relativePath: string;
       newName: string;
-    }) => tauriFiles.rename(agentPath!, relativePath, newName),
+    }) => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriFiles.rename(agentPath, relativePath, newName);
+    },
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });
@@ -42,7 +50,10 @@ export function useRenameFile(agentPath: string | undefined) {
 export function useCreateFolder(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (name: string) => tauriFiles.createFolder(agentPath!, name),
+    mutationFn: (name: string) => {
+      if (!agentPath) throw new Error("agentPath is required");
+      return tauriFiles.createFolder(agentPath, name);
+    },
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.files(agentPath) });

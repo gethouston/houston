@@ -27,7 +27,9 @@ export class BunRuntimeSpawner implements RuntimeSpawner {
 
   spawn(spec: SpawnSpec): RuntimeHandle {
     const [cmd, ...args] = this.opts.command;
-    const child = spawn(cmd!, args, {
+    if (cmd === undefined)
+      throw new Error("BunRuntimeSpawner: command is empty");
+    const child = spawn(cmd, args, {
       env: {
         ...process.env,
         ...this.opts.env,

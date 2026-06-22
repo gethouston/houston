@@ -1,12 +1,15 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import type { NewRoutine, RoutineUpdate } from "@houston-ai/engine-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
 import { tauriRoutines } from "../../lib/tauri";
 
 export function useRoutines(agentPath: string | undefined) {
   return useQuery({
-    queryKey: queryKeys.routines(agentPath!),
-    queryFn: () => tauriRoutines.list(agentPath!),
+    queryKey: queryKeys.routines(agentPath ?? ""),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriRoutines.list(agentPath);
+    },
     enabled: !!agentPath,
   });
 }
@@ -16,8 +19,11 @@ export function useRoutineRuns(
   routineId?: string,
 ) {
   return useQuery({
-    queryKey: queryKeys.routineRuns(agentPath!, routineId),
-    queryFn: () => tauriRoutines.listRuns(agentPath!, routineId),
+    queryKey: queryKeys.routineRuns(agentPath ?? "", routineId),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriRoutines.listRuns(agentPath, routineId);
+    },
     enabled: !!agentPath,
   });
 }

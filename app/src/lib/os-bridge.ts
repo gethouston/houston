@@ -19,9 +19,9 @@
 
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import {
-  listen,
-  emit,
   type Event,
+  emit,
+  listen,
   type UnlistenFn,
 } from "@tauri-apps/api/event";
 

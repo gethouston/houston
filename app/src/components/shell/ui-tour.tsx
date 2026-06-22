@@ -1,6 +1,6 @@
+import { Button, cn } from "@houston-ai/core";
 import { useLayoutEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button, cn } from "@houston-ai/core";
 
 export interface UiTourStep {
   title: string;
@@ -87,6 +87,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
       setRect(null);
       return;
     }
+    const targetSelector = step.targetSelector;
     // The target may not be in the DOM yet if onEnter just switched views or
     // opened a dialog. Retry a few frames until it appears.
     let cancelled = false;
@@ -94,7 +95,7 @@ export function UiTour({ steps, onDismiss }: UiTourProps) {
     let tries = 0;
     const measure = () => {
       if (cancelled) return;
-      const el = document.querySelector(step.targetSelector!);
+      const el = document.querySelector(targetSelector);
       if (!el) {
         if (tries++ < 30) {
           raf = window.requestAnimationFrame(measure);

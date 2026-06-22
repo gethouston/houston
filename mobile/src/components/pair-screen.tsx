@@ -8,11 +8,11 @@
 // On failure we show a clear recovery path: open Houston on the Mac and scan
 // the current QR again. The QR is reusable until phone access is reset.
 
+import { HoustonHelmet } from "@houston-ai/core";
+import { Camera, RotateCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Camera, RotateCw } from "lucide-react";
-import { redeemPairingCode, PairError } from "../lib/pairing";
-import { HoustonHelmet } from "@houston-ai/core";
+import { PairError, redeemPairingCode } from "../lib/pairing";
 
 type State =
   | { kind: "awaiting-scan" }
@@ -44,8 +44,7 @@ export function PairScreen() {
       .catch((e) => {
         setState({ kind: "error", message: friendlyError(e) });
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [nav, params, setParams]);
 
   if (state.kind === "connecting") {
     return (
@@ -66,6 +65,7 @@ export function PairScreen() {
           {state.message}
         </p>
         <button
+          type="button"
           className="touchable mt-6 inline-flex items-center gap-1.5 rounded-full bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground active:opacity-80"
           onClick={() => setState({ kind: "awaiting-scan" })}
         >
@@ -126,7 +126,6 @@ function friendlyError(e: unknown): string {
       return "Your Mac took too long to respond. Tap Try again.";
     case "network":
       return "No internet connection. Check your signal and tap Try again.";
-    case "internal":
     default:
       return "Something went wrong on Houston\u2019s end. Tap Try again in a moment.";
   }

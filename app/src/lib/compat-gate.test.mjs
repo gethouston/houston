@@ -1,6 +1,6 @@
-import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
+import test from "node:test";
 import { fileURLToPath } from "node:url";
 
 // Tests the real shipped artifact (public/compat-gate.js) rather than a copy,
@@ -31,7 +31,7 @@ function runGate({ navigatorLanguage, lookbehindThrows, hasWindow = false }) {
   };
   const fakeNavigator = { language: navigatorLanguage };
   const FakeRegExp = lookbehindThrows
-    ? function () {
+    ? () => {
         throw new SyntaxError("invalid group specifier name");
       }
     : RegExp;
@@ -115,7 +115,7 @@ test("gate copy contains no em dashes (i18n validator rule)", () => {
 
 test("isModernEngineSupported tracks the engine's lookbehind support", () => {
   assert.equal(isModernEngineSupported(RegExp), true);
-  const throwing = function () {
+  const throwing = () => {
     throw new SyntaxError("invalid group specifier name");
   };
   assert.equal(isModernEngineSupported(throwing), false);

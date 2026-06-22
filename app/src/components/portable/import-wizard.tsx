@@ -15,34 +15,35 @@
  * `NamingStep` for name+color, so it feels exactly like creating an
  * agent from scratch.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
+
 import {
   AGENT_COLORS,
   Button,
   cn,
+  colorHex,
   Dialog,
   DialogContent,
   HoustonAvatar,
   Input,
-  Switch,
-  colorHex,
   resolveAgentColor,
+  Switch,
 } from "@houston-ai/core";
-import { Check } from "lucide-react";
-import { useUIStore } from "../../stores/ui";
-import { useWorkspaceStore } from "../../stores/workspaces";
-import { useAgentStore } from "../../stores/agents";
-import { getEngine } from "../../lib/engine";
-import { tauriConfig, tauriProvider } from "../../lib/tauri";
-import { analytics } from "../../lib/analytics";
-import { getDefaultModel } from "../../lib/providers";
-import { InlineModelSelector } from "../shell/naming-step";
 import type {
   PortableScanResponse,
   PortableUploadPreviewResponse,
 } from "@houston-ai/engine-client";
+import { invoke } from "@tauri-apps/api/core";
+import { Check } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
+import { getEngine } from "../../lib/engine";
+import { getDefaultModel } from "../../lib/providers";
+import { tauriConfig, tauriProvider } from "../../lib/tauri";
+import { useAgentStore } from "../../stores/agents";
+import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { InlineModelSelector } from "../shell/naming-step";
 
 type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
 
@@ -637,6 +638,7 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: dots are purely positional — generated from a length, no real items or ids exist
           key={i}
           className={cn(
             "size-2 rounded-full transition-colors",

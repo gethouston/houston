@@ -1,3 +1,4 @@
+import { topics } from "@houston-ai/engine-client";
 import {
   forwardRef,
   useEffect,
@@ -5,10 +6,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { topics } from "@houston-ai/engine-client";
-import type { AgentConfig } from "../lib/config";
 import type { Client } from "../lib/clients";
 import { clientContextLine } from "../lib/clients";
+import type { AgentConfig } from "../lib/config";
 import { getClient, getWs } from "../lib/engine";
 import type { FeedItem, HoustonEvent, Message } from "../lib/feed";
 import { appendFeedItem } from "../lib/feed";
@@ -121,6 +121,7 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
     if (open) setHasNew(false);
   }, [open]);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: scrollerRef is a stable ref object (not reactive state); messages.length and open are the intended triggers for auto-scroll
   useEffect(() => {
     const el = scrollerRef.current;
     if (!el) return;
@@ -150,7 +151,7 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
 
   async function sendFromInput() {
     if (!input.trim() || status === "running") return;
-    const ctx = client ? clientContextLine(client) + "\n" : "";
+    const ctx = client ? `${clientContextLine(client)}\n` : "";
     const prompt = `${ctx}${input.trim()}`;
     setInput("");
     await runPrompt(prompt);
@@ -167,6 +168,7 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
     return (
       <aside className="chat-rail">
         <button
+          type="button"
           className={`chat-rail__toggle${hasNew ? " chat-rail__toggle--new" : ""}`}
           onClick={() => onOpenChange(true)}
           title="Customize SmartBooks (⌘K)"
@@ -200,6 +202,7 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
         <div className="chat-panel__titlebar">
           <span className="chat-panel__title">Customize</span>
           <button
+            type="button"
             className="chat-panel__close"
             onClick={() => onOpenChange(false)}
             title="Close (⌘K)"
@@ -283,6 +286,7 @@ export const ChatPanel = forwardRef<ChatHandle, Props>(function ChatPanel(
 function WrenchIcon() {
   return (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden>
+      <title>Wrench</title>
       <path
         d="M14.7 6.3a4 4 0 0 1-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-3 3-2-2 3-3z"
         stroke="currentColor"

@@ -1,4 +1,4 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import type { TurnBus } from "./bus";
 import { MemoryTurnBus } from "./bus";
 

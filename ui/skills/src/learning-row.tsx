@@ -1,6 +1,6 @@
-import { CATEGORY_LABELS } from "./types";
-import type { LearningCategory } from "./types";
 import { Trash2 } from "lucide-react";
+import type { LearningCategory } from "./types";
+import { CATEGORY_LABELS } from "./types";
 
 export interface LearningRowProps {
   content: string;
@@ -30,6 +30,7 @@ export function LearningRow({
           {content}
         </p>
         <button
+          type="button"
           onClick={onDelete}
           className="shrink-0 size-7 flex items-center justify-center rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
           aria-label="Delete learning"

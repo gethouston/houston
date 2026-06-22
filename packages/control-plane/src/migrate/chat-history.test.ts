@@ -1,16 +1,16 @@
-import { test, expect } from "bun:test";
+import { Database } from "bun:sqlite";
+import { expect, test } from "bun:test";
+import { createHash } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
-  readFileSync,
   readdirSync,
+  readFileSync,
   statSync,
   writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { createHash } from "node:crypto";
-import { Database } from "bun:sqlite";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { migrateChatHistory } from "./chat-history";
 
