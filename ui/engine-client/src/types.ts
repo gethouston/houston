@@ -182,8 +182,6 @@ export interface Routine {
   suppress_when_silent: boolean;
   /** Whether each run reuses one chat or starts a fresh one. */
   chat_mode: RoutineChatMode;
-  /** IANA timezone override; absent means use the user's preference. */
-  timezone?: string | null;
   /** Composio toolkit slugs this routine uses (e.g. ["gmail", "slack"]). */
   integrations: string[];
   /** Provider id override (e.g. "anthropic", "openai"); absent means inherit the agent's provider. */
@@ -205,8 +203,6 @@ export interface NewRoutine {
   suppress_when_silent?: boolean;
   /** Defaults to `"shared"` (one chat per routine) when omitted. */
   chat_mode?: RoutineChatMode;
-  /** IANA timezone override (e.g. "America/Bogota"). Falls back to user pref. */
-  timezone?: string | null;
   /** Composio toolkit slugs this routine uses. */
   integrations?: string[];
   /** Provider id to pin (e.g. "openai"); omit to inherit the agent's provider. */
@@ -225,8 +221,6 @@ export interface RoutineUpdate {
   enabled?: boolean;
   suppress_when_silent?: boolean;
   chat_mode?: RoutineChatMode;
-  /** Set to a string to override, `null` to clear, omit to leave unchanged. */
-  timezone?: string | null;
   integrations?: string[];
   /** Provider id to pin (e.g. "openai"); omit or null to leave unchanged. */
   provider?: string | null;
@@ -770,7 +764,6 @@ export interface PortableRoutinePreview {
   schedule: string;
   enabled: boolean;
   integrations: string[];
-  timezone: string | null;
 }
 
 export interface PortableLearningPreview {

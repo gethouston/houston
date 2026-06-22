@@ -41,6 +41,33 @@
   });
 </script>
 {% endif %}
+{% if env.gaMeasurementId %}
+<!-- Google Analytics 4 (gtag.js) — loaded once site-wide via this base layout.
+     Static multi-page site: every navigation is a full load, so gtag's config
+     call emits page_view on each page. No SPA route tracking needed; GA4
+     enhanced measurement (configured in the GA UI) covers scroll, outbound
+     clicks and file downloads. Conversion events are forwarded from the
+     existing track() helper, so PostHog and GA stay in sync with no duplicate
+     pageviews and no second Google tag. -->
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  // Consent Mode v2. This site runs no advertising, so all ad signals are
+  // denied by default. Analytics mirrors the existing PostHog posture: on by
+  // default but disabled when the visitor has Do Not Track enabled
+  // (PostHog uses respect_dnt: true above).
+  var __houstonDNT = (navigator.doNotTrack == '1' || window.doNotTrack == '1' || navigator.msDoNotTrack == '1');
+  gtag('consent', 'default', {
+    ad_storage: 'denied',
+    ad_user_data: 'denied',
+    ad_personalization: 'denied',
+    analytics_storage: __houstonDNT ? 'denied' : 'granted'
+  });
+  gtag('js', new Date());
+  gtag('config', '{{ env.gaMeasurementId }}');
+</script>
+<script async src="https://www.googletagmanager.com/gtag/js?id={{ env.gaMeasurementId }}"></script>
+{% endif %}
 </head>
 <body>
 {% block body %}{% endblock %}

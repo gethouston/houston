@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Spinner } from "@houston-ai/core";
-import { User, Smartphone, Folder, Bot, Bug, FileText, Keyboard, UserCircle } from "lucide-react";
+import { User, Folder, Bot, Bug, FileText, Keyboard, UserCircle } from "lucide-react";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { useUIStore } from "../../stores/ui";
 import {
@@ -26,7 +26,6 @@ import {
   UserContextSection,
 } from "./sections/workspace-context";
 import { ProviderSection } from "./sections/provider";
-import { TimezoneSection } from "./sections/timezone";
 import { LanguageSection } from "./sections/language";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
@@ -70,7 +69,6 @@ export function SettingsView() {
         icon: UserCircle,
       },
       { id: "provider", label: t("settings:nav.provider"), icon: Bot },
-      { id: "phone", label: t("settings:nav.phone"), icon: Smartphone, beta: true },
       { id: "shortcuts", label: t("settings:nav.shortcuts"), icon: Keyboard },
       { id: "reportBug", label: t("settings:nav.reportBug"), icon: Bug },
     );
@@ -121,12 +119,14 @@ export function SettingsView() {
               <div className="space-y-10">
                 <WorkspaceSection />
                 <LanguageSection />
-                <TimezoneSection />
                 <AppearanceSection />
                 <DangerSection />
               </div>
             )}
             {activeVisible === "provider" && <ProviderSection />}
+            {/* Connect-phone section kept but intentionally not in the nav above:
+                the entry point was removed (HOU-473) so it's unreachable today.
+                Re-add the `phone` nav item to surface it again. */}
             {activeVisible === "phone" && <ConnectPhoneSection />}
             {activeVisible === "shortcuts" && <ShortcutsSection />}
             {activeVisible === "reportBug" && <ReportBugSection />}

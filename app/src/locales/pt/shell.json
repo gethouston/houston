@@ -83,8 +83,8 @@
         "body": "Documentos que seu assistente pode ler ou compartilhar com você. Solte qualquer coisa aqui para dar contexto."
       },
       "tabJobDescription": {
-        "title": "Descrição do Cargo",
-        "body": "As instruções permanentes do seu assistente. Edite quando quiser para mudar como ele se comporta."
+        "title": "Configurações do agente",
+        "body": "Defina como o seu assistente trabalha: suas instruções, skills e configurações. Atualize quando quiser."
       },
       "missionControl": {
         "title": "Central de Missão",
@@ -280,21 +280,22 @@
       "title": "Atingiu um limite de uso",
       "body": "A API do {{provider}} está limitando as requisições. Aguarde um momento e tente novamente.",
       "bodyWithRetry": "A API do {{provider}} está limitando as requisições. Tente novamente em {{seconds}}s.",
-      "retry": "Tentar de novo",
-      "switchModel": "Trocar de modelo"
+      "retry": "Tentar de novo"
+    },
+    "usageLimitPaused": {
+      "title": "Você atingiu o limite do seu plano",
+      "body": "Por enquanto você esgotou seu plano. Aguarde ele ser restabelecido e continue.",
+      "bodyWithReset": "Por enquanto você esgotou seu plano. Ele é restabelecido às {{time}} e você poderá continuar."
     },
     "quotaExhausted": {
       "title": "Sem capacidade disponível",
       "body": "Seu plano do {{provider}} chegou ao limite. Faça upgrade ou troque de provedor para continuar.",
-      "upgrade": "Fazer upgrade",
-      "switchProvider": "Trocar de provedor",
+      "bodyWithReset": "Seu plano do {{provider}} chegou ao limite. Ele reinicia {{time}}, ou faça upgrade para continuar.",
       "useApiKey": "Usar chave de API no lugar"
     },
     "modelUnavailable": {
       "title": "Modelo não disponível",
-      "body": "O modelo {{model}} não está disponível na sua conta {{provider}}.",
-      "switchToFallback": "Trocar para {{model}}",
-      "pickAnother": "Escolher outro modelo"
+      "body": "O modelo {{model}} não está disponível na sua conta {{provider}}."
     },
     "unauthenticated": {
       "title": "Conecte-se ao {{provider}} novamente",
@@ -313,14 +314,12 @@
     "networkUnreachable": {
       "title": "Não foi possível alcançar o {{provider}}",
       "body": "O Houston não conseguiu acessar a API do {{provider}}. Verifique sua internet e tente de novo.",
-      "retry": "Tentar de novo",
-      "checkStatus": "Ver página de status"
+      "retry": "Tentar de novo"
     },
     "providerInternal": {
       "title": "{{provider}} está com um problema",
       "body": "A API do {{provider}} retornou um erro do lado deles. Tente de novo em alguns minutos.",
-      "retry": "Tentar de novo",
-      "checkStatus": "Ver página de status"
+      "retry": "Tentar de novo"
     },
     "sessionResumeMissing": {
       "title": "Sessão reiniciada",

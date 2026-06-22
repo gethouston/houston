@@ -2424,7 +2424,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agent-files"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "chrono",
  "serde",
@@ -2438,7 +2438,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agent-portable"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "chrono",
  "serde",
@@ -2451,7 +2451,7 @@ dependencies = [
 
 [[package]]
 name = "houston-agents-conversations"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "houston-db",
  "houston-terminal-manager",
@@ -2465,7 +2465,7 @@ dependencies = [
 
 [[package]]
 name = "houston-app"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "chrono",
  "dirs 5.0.1",
@@ -2473,6 +2473,8 @@ dependencies = [
  "houston-ui-events",
  "keyring",
  "notify-rust",
+ "objc2",
+ "objc2-app-kit",
  "reqwest 0.12.28",
  "rfd",
  "sentry",
@@ -2496,7 +2498,7 @@ dependencies = [
 
 [[package]]
 name = "houston-claude-installer"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "futures-util",
  "hex",
@@ -2516,7 +2518,7 @@ dependencies = [
 
 [[package]]
 name = "houston-cli-bundle"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "serde",
  "serde_json",
@@ -2526,7 +2528,7 @@ dependencies = [
 
 [[package]]
 name = "houston-composio"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "base64 0.22.1",
  "dirs 5.0.1",
@@ -2544,7 +2546,7 @@ dependencies = [
 
 [[package]]
 name = "houston-db"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2557,7 +2559,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-core"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "async-trait",
  "base64 0.22.1",
@@ -2594,7 +2596,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-protocol"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "chrono",
  "houston-terminal-manager",
@@ -2606,7 +2608,7 @@ dependencies = [
 
 [[package]]
 name = "houston-engine-server"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2646,7 +2648,7 @@ dependencies = [
 
 [[package]]
 name = "houston-events"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2660,7 +2662,7 @@ dependencies = [
 
 [[package]]
 name = "houston-file-watcher"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "houston-ui-events",
  "notify",
@@ -2671,7 +2673,7 @@ dependencies = [
 
 [[package]]
 name = "houston-scheduler"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "anyhow",
  "chrono",
@@ -2685,7 +2687,7 @@ dependencies = [
 
 [[package]]
 name = "houston-skills"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "chrono",
  "reqwest 0.12.28",
@@ -2701,7 +2703,7 @@ dependencies = [
 
 [[package]]
 name = "houston-tauri"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "dirs 5.0.1",
  "houston-agent-files",
@@ -2720,8 +2722,9 @@ dependencies = [
 
 [[package]]
 name = "houston-terminal-manager"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
+ "chrono",
  "dirs 5.0.1",
  "houston-cli-bundle",
  "serde",
@@ -2734,7 +2737,7 @@ dependencies = [
 
 [[package]]
 name = "houston-tunnel"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2754,7 +2757,7 @@ dependencies = [
 
 [[package]]
 name = "houston-ui-events"
-version = "0.4.23"
+version = "0.4.24"
 dependencies = [
  "houston-terminal-manager",
  "serde",
@@ -4172,9 +4175,17 @@ checksum = "d49e936b501e5c5bf01fda3a9452ff86dc3ea98ad5f283e1455153142d97518c"
 dependencies = [
  "bitflags 2.11.0",
  "block2",
+ "libc",
  "objc2",
+ "objc2-cloud-kit",
+ "objc2-core-data",
  "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-core-image",
+ "objc2-core-text",
+ "objc2-core-video",
  "objc2-foundation",
+ "objc2-quartz-core",
 ]
 
 [[package]]
@@ -4194,6 +4205,7 @@ version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0b402a653efbb5e82ce4df10683b6b28027616a2715e90009947d50b8dd298fa"
 dependencies = [
+ "bitflags 2.11.0",
  "objc2",
  "objc2-foundation",
 ]
@@ -4252,6 +4264,19 @@ dependencies = [
  "objc2",
  "objc2-core-foundation",
  "objc2-core-graphics",
+]
+
+[[package]]
+name = "objc2-core-video"
+version = "0.3.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d425caf1df73233f29fd8a5c3e5edbc30d2d4307870f802d18f00d83dc5141a6"
+dependencies = [
+ "bitflags 2.11.0",
+ "objc2",
+ "objc2-core-foundation",
+ "objc2-core-graphics",
+ "objc2-io-surface",
 ]
 
 [[package]]

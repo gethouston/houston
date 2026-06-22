@@ -199,6 +199,20 @@ every weekly routine fired a day early and Sunday routines never scheduled
 (issue #389). Keep cron generation/parsing on the standard convention; never
 hand a raw `schedule` to `Schedule::from_str`.
 
+**Suspend-safe waiting (HOU-541).** The cron task must NOT wait for its next
+fire in one long `tokio::time::sleep`. That timer runs on the monotonic clock,
+which macOS *freezes while the machine is asleep* (App Nap, closed lid, idle
+suspend) — so a single multi-hour sleep undercounts wall-clock time by the nap
+duration and the routine fires late, or across an overnight suspend never that
+day, with no run row ever written (the run row is only created when the timer
+actually fires). The loop instead re-reads the wall clock in capped chunks
+(`MAX_TICK`, 30s) and fires the moment `now` has reached *or passed* the
+instant, so a wake catches up an overdue fire within `MAX_TICK`. After firing it
+re-arms with `upcoming().next()` (strictly-after-now), which collapses every
+instant skipped during a long suspend into a single catch-up instead of
+replaying the backlog. Same pattern in `houston-scheduler::cron_job`. Never
+reintroduce a single unbounded sleep for a wall-clock deadline.
+
 **Conversations** (cross-agent read)
 | Method | Path | Description |
 |---|---|---|

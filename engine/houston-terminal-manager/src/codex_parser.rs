@@ -208,6 +208,12 @@ pub struct CodexAccumulator {
     /// banner up to 5× and then restarts the whole turn, so without this the
     /// feed would stack a reconnect card per retry. One per session is enough.
     auth_card_emitted: bool,
+    /// True once a NON-auth terminal error (typed `ProviderError` card or the
+    /// raw `Error: …` fallback) has been surfaced for this run. codex emits the
+    /// same failure as BOTH an `error` and a `turn.failed` event back-to-back
+    /// (e.g. the usage-limit banner, HOU-495), so without this the feed would
+    /// stack two identical cards. Auth keeps its own dedup above.
+    terminal_error_emitted: bool,
 }
 
 impl CodexAccumulator {
@@ -349,10 +355,14 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                         );
                         items.push(FeedItem::ProviderError(typed));
                     }
-                } else {
+                } else if !acc.terminal_error_emitted {
+                    // codex repeats the same failure across its `error` +
+                    // `turn.failed` pair; surface the typed card once per run.
+                    acc.terminal_error_emitted = true;
                     items.push(FeedItem::ProviderError(typed));
                 }
-            } else {
+            } else if !acc.terminal_error_emitted {
+                acc.terminal_error_emitted = true;
                 items.push(FeedItem::SystemMessage(format!("Error: {msg}")));
             }
             items
@@ -883,6 +893,51 @@ mod tests {
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Context window")));
+    }
+
+    #[test]
+    fn codex_usage_limit_emits_single_quota_card_across_error_and_turn_failed() {
+        // HOU-495: a spent ChatGPT-account Codex allowance fails every turn
+        // with this banner, emitted as BOTH an `error` and a `turn.failed`
+        // event. The parser must surface ONE QuotaExhausted card (Upgrade CTA)
+        // — not the old generic "runtime error" text, and not two cards.
+        use crate::provider_error_kind::{ProviderError, QuotaScope};
+        let mut a = acc();
+        let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
+
+        let banner = "You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus), or try again at Jul 1st, 2026 1:16 PM.";
+        let err = format!(r#"{{"type":"error","message":"{banner}"}}"#);
+        let first = parse_codex_event(&err, &mut a);
+        let cards: Vec<_> = first
+            .iter()
+            .filter(|i| matches!(i, FeedItem::ProviderError(_)))
+            .collect();
+        assert_eq!(cards.len(), 1, "expected exactly one card, got {first:?}");
+        match cards[0] {
+            FeedItem::ProviderError(ProviderError::QuotaExhausted {
+                provider, scope, ..
+            }) => {
+                assert_eq!(provider, "openai");
+                assert_eq!(*scope, QuotaScope::FreeTier);
+            }
+            other => panic!("expected QuotaExhausted card, got {other:?}"),
+        }
+        // No raw "Error: ..." text alongside the card.
+        assert!(
+            !first
+                .iter()
+                .any(|i| matches!(i, FeedItem::SystemMessage(m) if m.starts_with("Error:"))),
+            "usage limit must not also render as raw text, got {first:?}"
+        );
+
+        // The duplicate `turn.failed` carrying the same banner must not stack a
+        // second card.
+        let failed = format!(r#"{{"type":"turn.failed","error":{{"message":"{banner}"}}}}"#);
+        let second = parse_codex_event(&failed, &mut a);
+        assert!(
+            !second.iter().any(|i| matches!(i, FeedItem::ProviderError(_))),
+            "duplicate usage-limit event must not emit a second card, got {second:?}"
+        );
     }
 
     #[test]

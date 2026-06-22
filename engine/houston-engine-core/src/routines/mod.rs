@@ -60,7 +60,6 @@ pub fn create(root: &Path, input: NewRoutine) -> CoreResult<Routine> {
         enabled: input.enabled,
         suppress_when_silent: input.suppress_when_silent,
         chat_mode: input.chat_mode,
-        timezone: input.timezone,
         integrations: input.integrations,
         provider: input.provider,
         model: input.model,
@@ -100,9 +99,6 @@ pub fn update(root: &Path, id: &str, updates: RoutineUpdate) -> CoreResult<Routi
     }
     if let Some(chat_mode) = updates.chat_mode {
         routine.chat_mode = chat_mode;
-    }
-    if let Some(tz) = updates.timezone {
-        routine.timezone = tz;
     }
     if let Some(integrations) = updates.integrations {
         routine.integrations = integrations;
@@ -147,7 +143,6 @@ mod tests {
             enabled: true,
             suppress_when_silent: true,
             chat_mode: RoutineChatMode::Shared,
-            timezone: None,
             integrations: vec![],
             provider: None,
             model: None,
@@ -348,6 +343,41 @@ mod tests {
     }
 
     #[test]
+    fn legacy_timezone_key_on_disk_is_ignored() {
+        // HOU-470 removed the per-routine `timezone` override. A routine written
+        // by an older build still carries a `"timezone"` key on disk; the reader
+        // must drop it silently (no `deny_unknown_fields`) so existing users'
+        // routines keep loading. The field is gone, so on the next write it
+        // disappears — an idempotent, no-migration cleanup.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::write(
+            dir.join("routines.json"),
+            r#"[{
+              "id": "legacy-tz",
+              "name": "Old",
+              "description": "",
+              "prompt": "p",
+              "schedule": "0 9 * * *",
+              "enabled": true,
+              "suppress_when_silent": true,
+              "timezone": "America/Bogota",
+              "integrations": [],
+              "created_at": "2026-05-01T00:00:00Z",
+              "updated_at": "2026-05-01T00:00:00Z"
+            }]"#,
+        )
+        .unwrap();
+        let loaded = list(d.path()).unwrap();
+        assert_eq!(loaded.len(), 1, "the stray timezone key must not break the read");
+        assert_eq!(loaded[0].id, "legacy-tz");
+        // Re-serialize: the dropped field stays dropped (no `timezone` round-trips).
+        let json = serde_json::to_string(&loaded).unwrap();
+        assert!(!json.contains("timezone"), "the field is gone after a rewrite");
+    }
+
+    #[test]
     fn delete_missing_errors() {
         let d = TempDir::new().unwrap();
         let err = delete(d.path(), "nope").unwrap_err();
@@ -397,5 +427,45 @@ mod tests {
         let all = list(d.path()).unwrap();
         assert_eq!(all.len(), 1);
         assert_eq!(all[0].id, r.id);
+    }
+
+    #[test]
+    fn unescaped_newline_in_prompt_recovers_routines_instead_of_wiping_them() {
+        // HOU-494 end to end: a routine's `prompt` held a LITERAL newline (an
+        // external editor / sync client / the agent wrote it raw instead of
+        // `\n`), making routines.json unparseable. v0.4.23's recovery then
+        // reset the file to `[]` and every routine vanished. The fix escapes
+        // the stray control char and recovers all routines, prompt intact.
+        let d = TempDir::new().unwrap();
+        let dir = d.path().join(".houston/routines");
+        std::fs::create_dir_all(&dir).unwrap();
+
+        // `@@` marks where a RAW newline byte sits inside the prompt string —
+        // the exact shape of the `.corrupt-*.bak` files attached to the issue.
+        let template = r#"[
+          {"id":"a","name":"Keep me","description":"","prompt":"single line",
+           "schedule":"0 9 * * 1-5","enabled":true,"suppress_when_silent":true,
+           "integrations":[],"created_at":"2026-05-01T00:00:00Z","updated_at":"2026-05-01T00:00:00Z"},
+          {"id":"b","name":"Multi line","description":"","prompt":"first line@@second line",
+           "schedule":"0 * * * *","enabled":true,"suppress_when_silent":true,
+           "integrations":[],"created_at":"2026-05-01T00:00:00Z","updated_at":"2026-05-01T00:00:00Z"}
+        ]"#;
+        std::fs::write(dir.join("routines.json"), template.replace("@@", "\n")).unwrap();
+
+        let loaded = list(d.path()).unwrap();
+        assert_eq!(loaded.len(), 2, "both routines recovered, none wiped");
+        assert_eq!(loaded[0].id, "a");
+        assert_eq!(loaded[1].id, "b");
+        assert_eq!(loaded[1].prompt, "first line\nsecond line", "newline preserved");
+
+        // Original corrupt bytes are preserved as a sibling `.corrupt-*.bak`.
+        let has_bak = std::fs::read_dir(&dir)
+            .unwrap()
+            .filter_map(Result::ok)
+            .any(|e| e.file_name().to_string_lossy().contains(".corrupt-"));
+        assert!(has_bak, "original bytes preserved in a .corrupt-*.bak");
+
+        // The live file is valid JSON again: a re-read is clean and stable.
+        assert_eq!(list(d.path()).unwrap().len(), 2);
     }
 }

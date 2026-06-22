@@ -106,7 +106,7 @@ export function ContextIndicator({
           <ContextRing percent={percent} />
         </button>
       </HoverCardTrigger>
-      <HoverCardContent align="end" className="flex w-64 flex-col gap-2">
+      <HoverCardContent align="end" className="flex w-64 flex-col gap-2 rounded-2xl">
         <p className="text-sm font-medium leading-none">{t("card.title")}</p>
 
         {!usage ? (

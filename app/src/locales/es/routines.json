@@ -5,7 +5,11 @@
     "emptyTitle": "Programa y olvídate",
     "emptyDescription": "Las rutinas se disparan en el horario que elijas y solo te avisan cuando algo de verdad necesita atención.",
     "newRoutine": "Nueva rutina",
-    "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención."
+    "descriptionShort": "Tareas recurrentes que corren en un horario y solo te avisan cuando algo necesita tu atención.",
+    "timezoneLabel": "Zona horaria",
+    "timezoneHint": "Todas tus rutinas se ejecutan en esta zona horaria.",
+    "timezoneSearchPlaceholder": "Buscar zonas horarias…",
+    "timezoneNoResults": "No se encontraron zonas horarias"
   },
   "editor": {
     "back": "Volver a rutinas",
@@ -29,8 +33,6 @@
     "sectionWhen": "Cuándo se ejecuta",
     "sectionBehavior": "Comportamiento",
     "sectionRecent": "Ejecuciones recientes",
-    "timezoneLabel": "Zona horaria",
-    "accountDefault": "Predeterminada de la cuenta · {tz}",
     "nextRun": "Próxima ejecución {relative}",
     "schedulePreview": "Vista previa del horario",
     "schedulePreviewHint": "Elige un horario válido para ver cuándo se ejecutará esta rutina.",
@@ -78,6 +80,11 @@
     "shortcuts": { "everyDay": "Todos los días", "weekdays": "Días laborables", "weekends": "Fines de semana" },
     "decrease": "Disminuir",
     "increase": "Aumentar",
+    "timePicker": {
+      "hour": "Hora",
+      "minute": "Minuto",
+      "period": "a. m./p. m."
+    },
     "summary": {
       "noSchedule": "Sin horario definido",
       "custom": "Horario personalizado",
@@ -124,12 +131,8 @@
     "yesterday": "Ayer, {time}",
     "onDate": "{date}, {time}"
   },
-  "timezoneGate": {
-    "title": "¿Cuál es tu zona horaria?",
-    "description": "Las rutinas se ejecutan según un horario. Necesitamos saber tu zona antes de que se ejecuten, para que las 9am sean tus 9am.",
-    "timezoneLabel": "Zona horaria",
-    "detected": "Detectada desde tu computador.",
-    "saving": "Guardando…",
-    "confirm": "Confirmar zona horaria"
+  "toasts": {
+    "timezoneSet": "Zona horaria establecida en {{zone}}",
+    "timezoneError": "No se pudo actualizar la zona horaria"
   }
 }

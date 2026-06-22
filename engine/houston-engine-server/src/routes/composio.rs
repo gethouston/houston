@@ -13,7 +13,8 @@ use axum::{
 };
 use houston_composio::apps::ComposioAppEntry;
 use houston_composio::cli::{
-    ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginResponse,
+    ComposioStatus, CompleteLoginError, StartLinkError, StartLinkResponse, StartLoginError,
+    StartLoginResponse,
 };
 use houston_composio::commands as inner;
 use houston_composio::connection_watcher;
@@ -94,6 +95,23 @@ fn map_complete_login_err(e: CompleteLoginError) -> ApiError {
     }
 }
 
+/// Map a login-start failure to the wire error.
+///
+/// `AlreadySignedIn` is benign: `login --no-wait` prints nothing when creds
+/// already exist, so it surfaces as a typed `composio_already_signed_in` the
+/// frontend treats as success (close the dialog, refresh status) with no toast
+/// or crash report. Anything else is an internal fault worth a bug report.
+fn map_start_login_err(e: StartLoginError) -> ApiError {
+    match e {
+        StartLoginError::AlreadySignedIn => ApiError(CoreError::Labeled {
+            code: ErrorCode::Conflict,
+            kind: "composio_already_signed_in",
+            message: "You're already signed in to Composio.".to_string(),
+        }),
+        StartLoginError::Failed(detail) => ApiError(CoreError::Internal(detail)),
+    }
+}
+
 async fn status(State(_st): State<Arc<ServerState>>) -> Json<ComposioStatus> {
     Json(inner::list_composio_connections().await)
 }
@@ -111,7 +129,10 @@ async fn install_cli(State(_st): State<Arc<ServerState>>) -> Result<(), ApiError
 async fn start_login(
     State(_st): State<Arc<ServerState>>,
 ) -> Result<Json<StartLoginResponse>, ApiError> {
-    inner::start_composio_oauth().await.map(Json).map_err(lift)
+    inner::start_composio_oauth()
+        .await
+        .map(Json)
+        .map_err(map_start_login_err)
 }
 
 async fn complete_login(
@@ -142,7 +163,26 @@ async fn connect_app(
     inner::connect_composio_app(req.toolkit)
         .await
         .map(Json)
-        .map_err(lift)
+        .map_err(map_start_link_err)
+}
+
+/// Map a connect failure to the wire error.
+///
+/// `AlreadyConnected` is an expected state — the toolkit is already linked,
+/// so the CLI issued no new auth URL. It surfaces as a typed
+/// `composio_already_connected` (HTTP 409) the frontend silences (no red bug
+/// toast, no Sentry report) while it refreshes its connected-toolkits list so
+/// the card flips to connected (HOU-463). Anything else is an internal fault
+/// worth a bug report.
+fn map_start_link_err(e: StartLinkError) -> ApiError {
+    match e {
+        StartLinkError::AlreadyConnected { .. } => ApiError(CoreError::Labeled {
+            code: ErrorCode::Conflict,
+            kind: "composio_already_connected",
+            message: e.to_string(),
+        }),
+        StartLinkError::Other(detail) => ApiError(CoreError::Internal(detail)),
+    }
 }
 
 /// Disconnect every connected account for a toolkit in the consumer

@@ -145,6 +145,10 @@ interface AgentChatPanelProps {
   renderToolResult: ChatPanelProps["renderToolResult"];
   processLabels: ChatPanelProps["processLabels"];
   getThinkingMessage: ChatPanelProps["getThinkingMessage"];
+  /** Calm "Mission in progress..." line shown while a turn is in flight. */
+  thinkingIndicator: ChatPanelProps["thinkingIndicator"];
+  /** Static Houston helmet shown after the agent's reply when it settles. */
+  endOfTurnIndicator: ChatPanelProps["endOfTurnIndicator"];
   renderTurnSummary: ChatPanelProps["renderTurnSummary"];
   renderSystemMessage: AIBoardProps["renderSystemMessage"];
   mapFeedItems: AIBoardProps["mapFeedItems"];
@@ -167,7 +171,8 @@ export function useAgentChatPanel({
   onSelectSession,
 }: UseAgentChatPanelArgs): AgentChatPanelProps {
   const { t } = useTranslation(["board", "chat"]);
-  const { processLabels, getThinkingMessage } = useChatDisplayLabels();
+  const { processLabels, getThinkingMessage, thinkingIndicator, endOfTurnIndicator } =
+    useChatDisplayLabels();
   const queryClient = useQueryClient();
   const addToast = useUIStore((s) => s.addToast);
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
@@ -727,14 +732,13 @@ export function useAgentChatPanel({
                 data: text,
               });
             }}
-            onSwitchModel={() => setPickerOpen(true)}
           />
         );
       }
       if (isProviderAuthMessage(msg.content)) return null;
       return undefined;
     },
-    [effectiveModel, effectiveProvider, effectiveEffort, handleModelSelect, path, pushFeedItem, selectedSessionKey, setPickerOpen, t],
+    [effectiveModel, effectiveProvider, effectiveEffort, handleModelSelect, path, pushFeedItem, selectedSessionKey, t],
   );
   const mapFeedItems = useCallback(
     ({ items }: { sessionKey: string; items: FeedItem[] }) =>
@@ -913,6 +917,7 @@ export function useAgentChatPanel({
       />
       <ProviderSwitchDialog
         open={switchDialog !== null}
+        providerId={switchDialog?.toProvider ?? ""}
         providerName={
           switchDialog
             ? getProvider(switchDialog.toProvider)?.name ?? switchDialog.toProvider
@@ -937,6 +942,8 @@ export function useAgentChatPanel({
     renderToolResult,
     processLabels,
     getThinkingMessage,
+    thinkingIndicator,
+    endOfTurnIndicator,
     renderTurnSummary,
     renderSystemMessage,
     mapFeedItems,

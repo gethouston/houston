@@ -1,35 +1,31 @@
 /**
- * Transient typed-provider-error variants — rate-limited, network,
- * provider-internal, malformed-response. All four share the
- * "wait/retry" recovery shape; differing only in icon + body copy +
- * status-page CTA target.
+ * Transient typed-provider-error variants — rate-limited, usage-limit-paused,
+ * network, provider-internal, malformed-response. They share the "wait"
+ * recovery shape; rate-limited/network/internal offer a retry (and the
+ * network/internal ones a status-page link), while usage-limit-paused is
+ * informational — the user waits for the plan window to reset. All render on
+ * the unified `RowCard` (HOU-467).
  */
 
 import { useTranslation } from "react-i18next";
 import {
   AlertTriangleIcon,
+  Clock,
   ServerCrashIcon,
-  TimerIcon,
+  TimerResetIcon,
   WifiOffIcon,
 } from "lucide-react";
-import { Button } from "@houston-ai/core";
 import type { ProviderError } from "@houston-ai/chat";
-import {
-  ErrorCard,
-  RetryButton,
-  StatusPageButton,
-  providerLabel,
-} from "./shared";
+import { RowCard } from "../../cards/row-card";
+import { RetryButton, providerLabel } from "./shared";
 
 interface BaseProps {
   onRetry?: () => Promise<void> | void;
-  onSwitchModel?: () => void;
 }
 
 export function RateLimitedCard({
   error,
   onRetry,
-  onSwitchModel,
 }: BaseProps & {
   error: Extract<ProviderError, { kind: "rate_limited" }>;
 }) {
@@ -42,25 +38,47 @@ export function RateLimitedCard({
       })
     : t("providerError.rateLimited.body", { provider });
   return (
-    <ErrorCard
-      icon={<TimerIcon className="size-5" />}
-      title={t("providerError.rateLimited.title")}
-      body={body}
-    >
-      {onRetry && (
-        <RetryButton onRetry={onRetry} label={t("providerError.rateLimited.retry")} />
-      )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.rateLimited.switchModel")}
-        </Button>
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<Clock className="size-5" />}
+        title={t("providerError.rateLimited.title")}
+        description={body}
+        action={
+          onRetry && (
+            <RetryButton
+              onRetry={onRetry}
+              label={t("providerError.rateLimited.retry")}
+            />
+          )
+        }
+      />
+    </div>
+  );
+}
+
+/**
+ * Plan-window usage limit (Anthropic's 5-hour subscription session limit).
+ * Distinct from RateLimited: retrying now fails, so there is no action — the
+ * user just waits for the reset. We surface the reset time when the engine
+ * could resolve it.
+ */
+export function UsageLimitPausedCard({
+  error,
+}: {
+  error: Extract<ProviderError, { kind: "usage_limit_paused" }>;
+}) {
+  const { t } = useTranslation("shell");
+  const body = error.resets_at
+    ? t("providerError.usageLimitPaused.bodyWithReset", { time: error.resets_at })
+    : t("providerError.usageLimitPaused.body");
+  return (
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<TimerResetIcon className="size-5" />}
+        title={t("providerError.usageLimitPaused.title")}
+        description={body}
+      />
+    </div>
   );
 }
 
@@ -73,22 +91,21 @@ export function NetworkUnreachableCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<WifiOffIcon className="size-5" />}
-      title={t("providerError.networkUnreachable.title", { provider })}
-      body={t("providerError.networkUnreachable.body", { provider })}
-    >
-      {onRetry && (
-        <RetryButton
-          onRetry={onRetry}
-          label={t("providerError.networkUnreachable.retry")}
-        />
-      )}
-      <StatusPageButton
-        provider={error.provider}
-        label={t("providerError.networkUnreachable.checkStatus")}
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<WifiOffIcon className="size-5" />}
+        title={t("providerError.networkUnreachable.title", { provider })}
+        description={t("providerError.networkUnreachable.body", { provider })}
+        action={
+          onRetry && (
+            <RetryButton
+              onRetry={onRetry}
+              label={t("providerError.networkUnreachable.retry")}
+            />
+          )
+        }
       />
-    </ErrorCard>
+    </div>
   );
 }
 
@@ -101,22 +118,21 @@ export function ProviderInternalCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<ServerCrashIcon className="size-5" />}
-      title={t("providerError.providerInternal.title", { provider })}
-      body={t("providerError.providerInternal.body", { provider })}
-    >
-      {onRetry && (
-        <RetryButton
-          onRetry={onRetry}
-          label={t("providerError.providerInternal.retry")}
-        />
-      )}
-      <StatusPageButton
-        provider={error.provider}
-        label={t("providerError.providerInternal.checkStatus")}
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<ServerCrashIcon className="size-5" />}
+        title={t("providerError.providerInternal.title", { provider })}
+        description={t("providerError.providerInternal.body", { provider })}
+        action={
+          onRetry && (
+            <RetryButton
+              onRetry={onRetry}
+              label={t("providerError.providerInternal.retry")}
+            />
+          )
+        }
       />
-    </ErrorCard>
+    </div>
   );
 }
 
@@ -129,17 +145,20 @@ export function MalformedResponseCard({
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<AlertTriangleIcon className="size-5" />}
-      title={t("providerError.malformedResponse.title")}
-      body={t("providerError.malformedResponse.body", { provider })}
-    >
-      {onRetry && (
-        <RetryButton
-          onRetry={onRetry}
-          label={t("providerError.malformedResponse.retry")}
-        />
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<AlertTriangleIcon className="size-5" />}
+        title={t("providerError.malformedResponse.title")}
+        description={t("providerError.malformedResponse.body", { provider })}
+        action={
+          onRetry && (
+            <RetryButton
+              onRetry={onRetry}
+              label={t("providerError.malformedResponse.retry")}
+            />
+          )
+        }
+      />
+    </div>
   );
 }

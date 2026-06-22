@@ -223,3 +223,88 @@ test("history reconcile: distinct turns of the same type stay distinct", () => {
     { feed_type: "assistant_text", data: "three" },
   ]);
 });
+
+// ── mergeFeedHistory: client-only items keep their position (HOU-457) ───────
+
+test("history reconcile: a client-only error stays where it first appeared", () => {
+  // The desktop pushes a synthetic `Session error: …` system_message on a
+  // failed turn; the engine never persists it. After the user retries, the new
+  // turn is persisted ABOVE nothing — the error must stay between the failed
+  // prompt and the retry, not get re-pinned to the bottom of the chat.
+  const history = [
+    { feed_type: "user_message", data: "do the thing" },
+    { feed_type: "user_message", data: "retry" },
+    { feed_type: "assistant_text", data: "done" },
+  ];
+  const current = [
+    { feed_type: "user_message", data: "do the thing" },
+    { feed_type: "system_message", data: "Session error: boom" },
+    { feed_type: "user_message", data: "retry" },
+    { feed_type: "assistant_text", data: "done" },
+  ];
+
+  assert.deepEqual(mergeFeedHistory(history, current), [
+    { feed_type: "user_message", data: "do the thing" },
+    { feed_type: "system_message", data: "Session error: boom" },
+    { feed_type: "user_message", data: "retry" },
+    { feed_type: "assistant_text", data: "done" },
+  ]);
+});
+
+test("history reconcile: a trailing client-only error appends after history", () => {
+  // The failed turn has no successor yet: the error is the latest event, so it
+  // belongs at the end — and below the persisted prompt, never above it.
+  const history = [{ feed_type: "user_message", data: "do the thing" }];
+  const current = [
+    { feed_type: "user_message", data: "do the thing" },
+    { feed_type: "system_message", data: "Session error: boom" },
+  ];
+
+  assert.deepEqual(mergeFeedHistory(history, current), [
+    { feed_type: "user_message", data: "do the thing" },
+    { feed_type: "system_message", data: "Session error: boom" },
+  ]);
+});
+
+test("history reconcile: consecutive client-only items keep their order", () => {
+  const history = [
+    { feed_type: "user_message", data: "go" },
+    { feed_type: "assistant_text", data: "ok" },
+  ];
+  const current = [
+    { feed_type: "user_message", data: "go" },
+    { feed_type: "system_message", data: "Session error: one" },
+    { feed_type: "system_message", data: "Session error: two" },
+    { feed_type: "assistant_text", data: "ok" },
+  ];
+
+  assert.deepEqual(mergeFeedHistory(history, current), [
+    { feed_type: "user_message", data: "go" },
+    { feed_type: "system_message", data: "Session error: one" },
+    { feed_type: "system_message", data: "Session error: two" },
+    { feed_type: "assistant_text", data: "ok" },
+  ]);
+});
+
+test("history reconcile: a history-only background turn weaves in around a client-only error", () => {
+  // History gained a turn the live bucket never saw (another client / a
+  // background run). The persisted turn stays in history order; the client-only
+  // error keeps its slot after its anchor.
+  const history = [
+    { feed_type: "user_message", data: "first" },
+    { feed_type: "assistant_text", data: "reply" },
+    { feed_type: "user_message", data: "second" },
+  ];
+  const current = [
+    { feed_type: "user_message", data: "first" },
+    { feed_type: "system_message", data: "Session error: boom" },
+    { feed_type: "user_message", data: "second" },
+  ];
+
+  assert.deepEqual(mergeFeedHistory(history, current), [
+    { feed_type: "user_message", data: "first" },
+    { feed_type: "system_message", data: "Session error: boom" },
+    { feed_type: "assistant_text", data: "reply" },
+    { feed_type: "user_message", data: "second" },
+  ]);
+});

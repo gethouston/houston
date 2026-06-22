@@ -1,92 +1,58 @@
 /**
- * Quota / model-availability variants — these are the "pay or switch"
- * outcomes. CTAs lean on `tauriSystem.openUrl` to drop the user into
- * the right provider console.
+ * Quota / model-availability variants — the "pay or switch" outcomes. Both are
+ * informational: the body tells the user to upgrade or switch provider, and
+ * QuotaExhausted names the reset time when the provider gives one. Rendered on
+ * the unified `RowCard` (HOU-467).
  */
 
 import { useTranslation } from "react-i18next";
 import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
-import { Button } from "@houston-ai/core";
 import type { ProviderError } from "@houston-ai/chat";
-import { tauriSystem } from "../../../lib/tauri";
-import { ErrorCard, providerLabel } from "./shared";
-
-interface BaseProps {
-  onSwitchModel?: () => void;
-}
+import { RowCard } from "../../cards/row-card";
+import { providerLabel } from "./shared";
 
 export function QuotaExhaustedCard({
   error,
-  onSwitchModel,
-}: BaseProps & {
+}: {
   error: Extract<ProviderError, { kind: "quota_exhausted" }>;
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<XCircleIcon className="size-5" />}
-      title={t("providerError.quotaExhausted.title")}
-      body={t("providerError.quotaExhausted.body", { provider })}
-    >
-      {error.upgrade_url && (
-        <Button
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={() => void tauriSystem.openUrl(error.upgrade_url!)}
-        >
-          {t("providerError.quotaExhausted.upgrade")}
-        </Button>
-      )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.quotaExhausted.switchProvider")}
-        </Button>
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<XCircleIcon className="size-5" />}
+        title={t("providerError.quotaExhausted.title")}
+        description={
+          error.resets_at
+            ? t("providerError.quotaExhausted.bodyWithReset", {
+                provider,
+                time: error.resets_at,
+              })
+            : t("providerError.quotaExhausted.body", { provider })
+        }
+      />
+    </div>
   );
 }
 
 export function ModelUnavailableCard({
   error,
-  onSwitchModel,
-}: BaseProps & {
+}: {
   error: Extract<ProviderError, { kind: "model_unavailable" }>;
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
   return (
-    <ErrorCard
-      icon={<AlertTriangleIcon className="size-5" />}
-      title={t("providerError.modelUnavailable.title")}
-      body={t("providerError.modelUnavailable.body", { provider, model: error.model })}
-    >
-      {error.suggested_fallback && onSwitchModel && (
-        <Button
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.modelUnavailable.switchToFallback", {
-            model: error.suggested_fallback,
-          })}
-        </Button>
-      )}
-      {onSwitchModel && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
-        >
-          {t("providerError.modelUnavailable.pickAnother")}
-        </Button>
-      )}
-    </ErrorCard>
+    <div className="w-full px-1 py-2">
+      <RowCard
+        media={<AlertTriangleIcon className="size-5" />}
+        title={t("providerError.modelUnavailable.title")}
+        description={t("providerError.modelUnavailable.body", {
+          provider,
+          model: error.model,
+        })}
+      />
+    </div>
   );
 }

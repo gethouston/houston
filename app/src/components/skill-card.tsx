@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { cn } from "@houston-ai/core";
+import { cn, Spinner } from "@houston-ai/core";
 import { SkillIcon } from "./skill-icon";
 import { IntegrationLogos } from "./integration-logos";
 
@@ -69,6 +69,9 @@ export function SkillCard({
           <IntegrationLogos toolkits={visibleIntegrations} />
         )}
       </div>
+      {busy && (
+        <Spinner className="size-4 shrink-0 self-center text-muted-foreground" />
+      )}
     </button>
   );
 }

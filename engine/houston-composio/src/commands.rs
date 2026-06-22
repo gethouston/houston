@@ -7,7 +7,10 @@
 //! Tauri command decorators live in the adapter crate (`houston-tauri`),
 //! keeping this crate frontend-agnostic.
 
-use crate::cli::{self, ComposioStatus, CompleteLoginError, StartLinkResponse, StartLoginResponse};
+use crate::cli::{
+    self, ComposioStatus, CompleteLoginError, StartLinkError, StartLinkResponse, StartLoginError,
+    StartLoginResponse,
+};
 use crate::install;
 use crate::toolkits::normalize_toolkit_slugs;
 
@@ -27,8 +30,10 @@ pub async fn install_composio_cli() -> Result<(), String> {
     install::install().await.map(|_| ())
 }
 
-/// Start the composio login flow. Returns `{login_url, cli_key}`.
-pub async fn start_composio_oauth() -> Result<StartLoginResponse, String> {
+/// Start the composio login flow. Returns `{login_url, cli_key}`, or a typed
+/// `StartLoginError` so the server can render "already signed in" as a benign
+/// success instead of a bug toast.
+pub async fn start_composio_oauth() -> Result<StartLoginResponse, StartLoginError> {
     cli::start_login().await
 }
 
@@ -47,8 +52,12 @@ pub async fn logout_composio() -> Result<(), String> {
     cli::logout().await
 }
 
-/// Start the flow to link an external app to the currently-signed-in account.
-pub async fn connect_composio_app(toolkit: String) -> Result<StartLinkResponse, String> {
+/// Start the flow to link an external app to the currently-signed-in
+/// account. The typed error lets the engine server distinguish an expected
+/// "already connected" no-op from a genuine CLI fault (see `cli::start_link`).
+pub async fn connect_composio_app(
+    toolkit: String,
+) -> Result<StartLinkResponse, StartLinkError> {
     cli::start_link(&toolkit).await
 }
 

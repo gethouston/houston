@@ -15,11 +15,11 @@ export type { RoutinesGridProps } from "./routines-grid"
 export { RoutineRow } from "./routine-row"
 export type { RoutineRowProps } from "./routine-row"
 
+export { TimezonePicker } from "./timezone-picker"
+export type { TimezonePickerProps } from "./timezone-picker"
+
 export { RoutineEditor } from "./routine-editor"
 export type { RoutineEditorProps, RoutineFormData } from "./routine-editor"
-
-export { TimezoneGate } from "./timezone-gate"
-export type { TimezoneGateProps } from "./timezone-gate"
 
 export { RunHistory } from "./run-history"
 export type { RunHistoryProps } from "./run-history"
@@ -39,7 +39,6 @@ export {
   DEFAULT_EDITOR_LABELS,
   DEFAULT_GRID_LABELS,
   DEFAULT_ROW_LABELS,
-  DEFAULT_TIMEZONE_GATE_LABELS,
 } from "./labels"
 export type {
   ScheduleSummaryLabels,
@@ -49,5 +48,4 @@ export type {
   RoutineEditorLabels,
   RoutinesGridLabels,
   RoutineRowLabels,
-  TimezoneGateLabels,
 } from "./labels"

@@ -25,7 +25,7 @@ and mirrored in `ui/chat/src/types.ts`. The two MUST stay in sync.
 |----------------------------|-----------------------------------------------------------------------------------------|------------------------------------------------------|
 | `RateLimited`              | Per-minute / short-window throttle. Wait helps.                                         | Retry, Switch model, optional `retry_after_seconds`. |
 | `QuotaExhausted`           | Long-window / billing-period limit. Wait won't help.                                    | Upgrade plan (`upgrade_url`), Switch provider.       |
-| `UsageLimitPaused`         | CLI is sleeping internally until the plan-window reset (today: Anthropic claude-code).  | None — non-terminal. Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
+| `UsageLimitPaused`         | Plan-window limit hit (today: Anthropic claude-code's 5-hour subscription session limit). Fires from `rate_limit_event` `status:"rejected"` (structured `resetsAt` epoch), a `429` result whose body names a session/usage limit + reset, or the stderr "usage limit ... reset at" banner. Retrying now fails — wait for the reset. | Chat: `UsageLimitPausedCard` (title + "resets at {time}" from `resets_at`, plus Switch model — a different provider has its own limit). Routines surface "Waiting · resumes at HH:MM" via `routine_run.paused_until`. |
 | `ModelUnavailable`         | The requested model isn't available to this account (preview, deprecated, regioned).    | Switch to `suggested_fallback`, Pick another model.  |
 | `Unauthenticated`          | Auth missing/expired/invalid. `cause` narrows the body copy.                            | Reconnect (drives `tauriProvider.launchLogin`); the card then WAITS on the `ProviderLoginComplete` WS event (launchLogin resolves at CLI spawn, not completion) and flips to a green "Reconnected" state with a retry CTA, or shows the failure and re-arms. |
 | `NetworkUnreachable`       | Cannot reach the provider's API (DNS, connect refused, ECONNRESET).                     | Retry, Check status page.                            |
@@ -74,10 +74,24 @@ ONE `RateLimited` card, not ten.
 `is_error:true` with a numeric `api_error_status` (e.g. `429`) but the
 `subtype` is often `"success"` and the human `result` string omits the
 status word — so `parser.rs` tries `anthropic_classify::classify_api_error_status`
-(429→`RateLimited`, 401/403→`Unauthenticated`, 5xx→`ProviderInternal`)
-BEFORE the text-based `classify_result_error`, then falls back to
-`Unknown`. Text matching alone misfiled rate-limits as `Unknown`
-("Report bug") — see Luis / 2026-06-09.
+(401/403→`Unauthenticated`, 5xx→`ProviderInternal`) BEFORE the text-based
+`classify_result_error`, then falls back to `Unknown`. Text matching alone
+misfiled rate-limits as `Unknown` ("Report bug") — see Luis / 2026-06-09.
+
+**429 splits two ways.** claude-code returns `429` for BOTH a genuine
+short-window throttle AND the 5-hour subscription *session* limit. So
+`classify_api_error_status(429, msg)` inspects the body: a session/usage limit
+naming a reset ("You've hit your session limit · resets 3:30pm") →
+`UsageLimitPaused` (wait, no "Retry now"); otherwise → `RateLimited` with the
+`retry after Ns` countdown. The same limit also arrives mid-stream as
+`rate_limit_event` events — `parse_rate_limit_event` keeps `allowed`/
+`allowed_warning` SILENT (a warning is still allowed), maps `rejected` →
+`UsageLimitPaused` reading the structured `resetsAt` epoch
+(`anthropic_classify::format_reset_time`), and leaves genuine throttles as
+`RateLimited`. Feed dedup by `(kind, provider)` collapses the mid-stream + the
+terminal card to one. Before this, every `allowed_warning` raised a spurious
+RateLimited card and the session limit showed a per-minute "Retry" card with
+claude's raw English body — see Esteban / 2026-06-11.
 
 **No double cards.** claude reports these failures on stdout with empty
 stderr, then exits non-zero. `cli_process::handle_failed_exit` would
@@ -120,6 +134,23 @@ printing them. `codex_parser` suppresses these reconnect-progress lines so
 they do not persist as mission-log errors. If the retry loop actually fails,
 Codex emits a final non-`Reconnecting...` `turn.failed` / `error` event, and
 that still surfaces to the user.
+
+**Codex usage limit → `QuotaExhausted` (HOU-495).** A spent ChatGPT-account
+Codex allowance fails every turn with `You've hit your usage limit. Upgrade to
+Plus to continue using Codex (<url>), or try again at <date>.`, emitted on
+stdout as BOTH an `error` and a `turn.failed` event. It is not a 429 throttle
+and not the API-key `quota exceeded` billing error, so it matched no
+`openai_classify::classify_stderr` branch and fell through to a raw `Error: …`
+SystemMessage (shown twice) + a generic `codex hit a runtime error` status +
+a `SpawnFailed` fallback card — the user saw no actionable next step, just
+noise (the symptom behind "unable to use codex"). `classify_stderr` now maps
+any `usage limit` line to `QuotaExhausted` (scope inferred from
+`upgrade to plus` → `FreeTier` / `upgrade to pro` → `PaidPlan`; `upgrade_url`
+lifted from the banner via `extract_first_url`, falling back to the ChatGPT
+plan page). `CodexAccumulator::terminal_error_emitted` dedupes the
+`error`+`turn.failed` pair to one card (the auth path keeps its separate
+`auth_card_emitted` guard). The card is `QuotaExhaustedCard` — same "Upgrade
+plan" CTA Anthropic/Gemini quota errors get.
 
 **Auth cards: prefer the persisted inline card over the store card.** The
 store-driven `ProviderReconnectCard` (anchored to the `authRequired` flag,
@@ -174,6 +205,10 @@ Resist if `Unknown` covers it. If you must:
 3. Add a renderer file under
    `app/src/components/shell/provider-error-cards/<group>.tsx`. Pick
    the group by recovery shape (transient, auth, quota, terminal).
+   Single-action / provider-branded variants (e.g. `UnauthenticatedCard`,
+   `RateLimitedCard`) render via the shared `RowCard` (logo-left; see
+   design-system.md); multi-button variants stay on `ErrorCard`
+   (icon-bubble) in `shared.tsx`.
 4. Add a `case` in `provider-error-card.tsx`'s dispatcher.
 5. Update this doc's table.
 6. Add the classifier(s) that produce the new variant.

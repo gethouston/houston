@@ -93,6 +93,7 @@
   },
   "process": {
     "active": "Misión en curso...",
+    "activeAction": "Misión en curso: {{action}}",
     "complete": "Registro de misión"
   },
   "summary": {

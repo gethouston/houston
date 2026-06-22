@@ -7,7 +7,6 @@ import type {
   ScheduleLabels,
   NextFireLabels,
   RunHistoryLabels,
-  TimezoneGateLabels,
 } from "@houston-ai/routines";
 
 /**
@@ -28,7 +27,6 @@ export interface RoutineLabels {
   nextFire: NextFireLabels;
   runHistory: RunHistoryLabels;
   editor: RoutineEditorLabels;
-  timezoneGate: TimezoneGateLabels;
 }
 
 /** Map the app's base locale tag to a region the formatters should use. */
@@ -50,9 +48,6 @@ export function useRoutineLabels(): RoutineLabels {
       nextFire: t("nextFire", { returnObjects: true }) as NextFireLabels,
       runHistory: t("runHistory", { returnObjects: true }) as RunHistoryLabels,
       editor: t("editor", { returnObjects: true }) as RoutineEditorLabels,
-      timezoneGate: t("timezoneGate", {
-        returnObjects: true,
-      }) as TimezoneGateLabels,
     }),
     [t, i18n.language],
   );

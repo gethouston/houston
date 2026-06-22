@@ -34,6 +34,7 @@ import { osPickDirectory } from "./os-bridge";
 import { logger } from "./logger";
 import { engineCallSurface } from "./engine-call-policy";
 import { MISSING_SKILL_KIND } from "./missing-skill";
+import { COMPOSIO_ALREADY_CONNECTED_KIND } from "./composio-already-connected";
 import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
 import { useProviderSwitchStore } from "../stores/provider-switch";
@@ -463,14 +464,23 @@ export const tauriConnections = {
       getEngine().composioListConnections(),
     ),
   connectApp: (toolkit: string) =>
-    call<StartLinkResponse>("connect_composio_app", async () => {
-      const r = await getEngine().composioConnectApp(toolkit);
-      return {
-        redirect_url: r.redirect_url,
-        connected_account_id: r.connected_account_id,
-        toolkit: r.toolkit,
-      };
-    }),
+    call<StartLinkResponse>(
+      "connect_composio_app",
+      async () => {
+        const r = await getEngine().composioConnectApp(toolkit);
+        return {
+          redirect_url: r.redirect_url,
+          connected_account_id: r.connected_account_id,
+          toolkit: r.toolkit,
+        };
+      },
+      { toolkit },
+      // "Already connected" is an expected state, not a Houston bug: the
+      // caller refreshes the connected-toolkits list so the card flips to
+      // connected (HOU-463). Silence it so it gets no red bug toast and no
+      // Sentry report — the prior over-reporting was the source of this issue.
+      { silenceKinds: [COMPOSIO_ALREADY_CONNECTED_KIND] },
+    ),
   disconnectApp: (toolkit: string) =>
     call<void>(
       "disconnect_composio_app",
@@ -498,10 +508,18 @@ export const tauriConnections = {
       { toast: false, capture: false },
     ),
   startOAuth: () =>
-    call<StartLoginResponse>("start_composio_oauth", async () => {
-      const r = await getEngine().composioStartLogin();
-      return { login_url: r.login_url, cli_key: r.cli_key };
-    }),
+    call<StartLoginResponse>(
+      "start_composio_oauth",
+      async () => {
+        const r = await getEngine().composioStartLogin();
+        return { login_url: r.login_url, cli_key: r.cli_key };
+      },
+      undefined,
+      // "Already signed in" is a benign no-op (the CLI prints nothing when
+      // creds already exist); the dialog handles that kind as success, so no
+      // red bug toast and no Sentry report.
+      { silenceKinds: ["composio_already_signed_in"] },
+    ),
   completeLogin: (cliKey: string) =>
     call<void>(
       "complete_composio_login",

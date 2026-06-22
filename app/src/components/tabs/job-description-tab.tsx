@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { FileText, LibraryBig, Brain } from "lucide-react";
+import { FileText, LibraryBig, Brain, Settings } from "lucide-react";
 import { SkillDetailPage } from "@houston-ai/skills";
 import {
   useInstructions,
@@ -12,8 +12,11 @@ import {
 } from "../../hooks/queries";
 import type { TabProps } from "../../lib/types";
 import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
+import { useAgentStore } from "../../stores/agents";
 import { LearningsContent } from "./learnings-content";
 import { InstructionsContent, type SubTab } from "./job-description-parts";
+import { AgentSettingsContent } from "./agent-settings-content";
 import { SkillsContent } from "./skills-content";
 import { useSkillSurface } from "./use-skill-surface";
 import {
@@ -28,6 +31,11 @@ export default function JobDescriptionTab({ agent }: TabProps) {
   const [activeTab, setActiveTab] = useState<SubTab>("instructions");
   const targetTab = useUIStore((s) => s.jobDescriptionTarget);
   const setTargetTab = useUIStore((s) => s.setJobDescriptionTarget);
+  const setShareAgentId = useUIStore((s) => s.setShareAgentId);
+  const currentWorkspace = useWorkspaceStore((s) => s.current);
+  const renameAgent = useAgentStore((s) => s.rename);
+  const deleteAgent = useAgentStore((s) => s.delete);
+  const updateAgentColor = useAgentStore((s) => s.updateColor);
 
   const { data: instructions } = useInstructions(path);
   const saveInstructions = useSaveInstructions(path);
@@ -49,6 +57,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
       { id: "instructions", label: t("subTabs.instructions"), icon: FileText },
       { id: "skills", label: t("subTabs.skills"), icon: LibraryBig },
       { id: "learnings", label: t("subTabs.learnings"), icon: Brain },
+      { id: "general", label: t("subTabs.general"), icon: Settings },
     ],
     [t],
   );
@@ -89,6 +98,7 @@ export default function JobDescriptionTab({ agent }: TabProps) {
             <SkillsContent
               skills={surface.skills}
               loading={surface.skillsLoading}
+              loadingSkillName={surface.loadingSkillName}
               onSkillClick={surface.selectSkill}
               onSearch={surface.handleSearch}
               onPopular={surface.handlePopular}
@@ -107,6 +117,29 @@ export default function JobDescriptionTab({ agent }: TabProps) {
             onAdd={(text) => addLearning.mutateAsync(text)}
             onRemove={(index) => removeLearning.mutateAsync(index)}
             onUpdate={(id, text) => updateLearning.mutateAsync({ id, text })}
+          />
+        )}
+
+        {activeTab === "general" && (
+          <AgentSettingsContent
+            name={agent.name}
+            color={agent.color}
+            onRename={(newName) =>
+              currentWorkspace
+                ? renameAgent(currentWorkspace.id, agent.id, newName)
+                : Promise.resolve()
+            }
+            onChangeColor={(color) =>
+              currentWorkspace
+                ? updateAgentColor(currentWorkspace.id, agent.id, color)
+                : Promise.resolve()
+            }
+            onShare={() => setShareAgentId(agent.id)}
+            onDelete={() =>
+              currentWorkspace
+                ? deleteAgent(currentWorkspace.id, agent.id)
+                : Promise.resolve()
+            }
           />
         )}
       </div>

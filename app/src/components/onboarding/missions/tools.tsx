@@ -1,98 +1,109 @@
-import { useCallback } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ExternalLink, Loader2 } from "lucide-react";
-import { Button, cn } from "@houston-ai/core";
+import { Check, LayoutGrid, Loader2 } from "lucide-react";
+import { AsyncButton } from "@houston-ai/core";
+import { analytics } from "../../../lib/analytics";
 import {
   useConnections,
   useResetConnections,
 } from "../../../hooks/queries";
 import { useComposioAuth } from "../../../hooks/use-composio-auth";
-import { ComposioAuthDialog } from "../../composio-auth-dialog";
+import { SetupCard } from "../setup-card";
 
 interface ToolsMissionProps {
+  eyebrow: string;
+  onBack: () => void;
   onContinue: () => void;
 }
 
 /**
- * M3 Tools — sign the user into Composio (the account-level token) so
- * the assistant can call any toolkit later. Per-toolkit connections are
- * still posted by the agent in M4 as connect cards. Continue is gated
- * on `useConnections().status === "ok"`.
+ * Let the assistant use the user's real apps. Deliberately jargon-free (no
+ * "Composio" / "integration provider") and modeled exactly on the AI-connect
+ * screen: one "Sign in" button that flips to an INLINE "waiting / cancel"
+ * state (no modal), then a success state once the account is connected.
  */
-export function ToolsMission({ onContinue }: ToolsMissionProps) {
+export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps) {
   const { t } = useTranslation("setup");
-  const { data: status, isLoading } = useConnections();
+  const { data: status } = useConnections();
   const reset = useResetConnections();
-  const auth = useComposioAuth(() => reset());
-  const isSignedIn = status?.status === "ok";
+  // Optimistic: the moment sign-in resolves, show connected — don't flash the
+  // "Sign in" button while the connections query refetches (~2s). The refetch
+  // then reconciles the real status.
+  const [justConnected, setJustConnected] = useState(false);
+  const auth = useComposioAuth(() => {
+    setJustConnected(true);
+    void reset();
+  });
+  const connected = justConnected || status?.status === "ok";
+  const waiting = auth.state.phase === "waiting";
 
-  const handleSignIn = useCallback(() => {
-    void auth.startAuth();
-  }, [auth]);
+  // Funnel step 9 (action): the user connected their apps account. `connected`
+  // is derived from a polled query, so guard with a ref to fire exactly once.
+  const toolsConnectedFired = useRef(false);
+  useEffect(() => {
+    if (connected && !toolsConnectedFired.current) {
+      toolsConnectedFired.current = true;
+      analytics.track("tools_provider_connected");
+    }
+  }, [connected]);
+
+  const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
-      <div
-        className={cn(
-          "flex items-center gap-4 rounded-xl border bg-background p-4 transition-colors",
-          isSignedIn ? "border-emerald-200" : "border-black/5",
-        )}
-      >
-        <div className="flex min-w-0 flex-1 flex-col">
-          <p className="text-sm font-medium text-foreground">
-            {t("tutorial.missions.tools.cardTitle")}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {isSignedIn
-              ? t("tutorial.missions.tools.cardSignedInBody")
-              : t("tutorial.missions.tools.cardBody")}
-          </p>
-        </div>
-        {isLoading ? (
-          <Loader2 className="size-4 animate-spin text-muted-foreground" />
-        ) : isSignedIn ? (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
-            <Check className="size-3" />
-            {t("tutorial.missions.tools.signedInPill")}
-          </span>
+    <SetupCard
+      eyebrow={eyebrow}
+      title={t("tutorial.missions.tools.title")}
+      subtitle={connected ? undefined : t("tutorial.missions.tools.body")}
+      onBack={onBack}
+      backLabel={t("tutorial.nav.back")}
+      onNext={onContinue}
+      nextLabel={t("tutorial.nav.continue")}
+      nextDisabled={!connected}
+    >
+      <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
+        <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
+          <LayoutGrid className="size-7 text-foreground" />
+        </span>
+
+        {connected ? (
+          <div className="flex flex-col items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
+              <Check className="size-4" />
+              {t("tutorial.missions.tools.connected.title")}
+            </span>
+            <p className="max-w-sm text-sm text-muted-foreground">
+              {t("tutorial.missions.tools.connected.body")}
+            </p>
+          </div>
+        ) : waiting ? (
+          <div className="flex flex-col items-center gap-2">
+            <span className="inline-flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="size-4 animate-spin" />
+              {t("tutorial.missions.tools.waiting")}
+            </span>
+            <button
+              type="button"
+              onClick={() => auth.close()}
+              className="text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            >
+              {t("tutorial.missions.tools.cancel")}
+            </button>
+          </div>
         ) : (
-          <Button
-            type="button"
-            size="sm"
-            className="rounded-full"
-            onClick={handleSignIn}
-            disabled={auth.state.phase === "waiting"}
-          >
-            {auth.state.phase === "waiting" ? (
-              <Loader2 className="size-3.5 animate-spin" />
-            ) : (
-              <ExternalLink className="size-3.5" />
+          <div className="flex flex-col items-center gap-2">
+            <AsyncButton
+              className="h-11 rounded-full px-5"
+              spinner={false}
+              onClick={handleSignIn}
+            >
+              {t("tutorial.missions.tools.allow")}
+            </AsyncButton>
+            {auth.state.phase === "error" && auth.state.error && (
+              <p className="text-sm text-destructive">{auth.state.error}</p>
             )}
-            {t("tutorial.missions.tools.signIn")}
-          </Button>
+          </div>
         )}
       </div>
-      <div className="flex justify-end">
-        <Button
-          type="button"
-          className="rounded-full"
-          disabled={!isSignedIn}
-          onClick={onContinue}
-        >
-          {t("tutorial.missions.tools.continue")}
-        </Button>
-      </div>
-      {isSignedIn && (
-        <p className="text-xs text-muted-foreground">
-          {t("tutorial.missions.tools.continueHint")}
-        </p>
-      )}
-      <ComposioAuthDialog
-        state={auth.state}
-        onClose={auth.close}
-        onReopenBrowser={auth.reopenBrowser}
-        onRetry={auth.startAuth}
-      />
-    </div>
+    </SetupCard>
   );
 }

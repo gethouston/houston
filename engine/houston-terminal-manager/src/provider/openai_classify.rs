@@ -87,14 +87,43 @@ pub(crate) fn classify_stderr(line: &str) -> Option<ProviderError> {
         });
     }
 
+    // ChatGPT-account Codex usage limit. When a ChatGPT plan's Codex
+    // allowance for the billing window is spent, codex fails EVERY turn with
+    // "You've hit your usage limit. Upgrade to Plus to continue using Codex
+    // (<url>), or try again at <date>." It is NOT a per-minute 429 throttle
+    // (waiting a minute won't help) and NOT the API-key "quota exceeded"
+    // billing error below — it's the plan allowance. Without this branch it
+    // matched nothing and surfaced as a generic "codex hit a runtime error"
+    // (HOU-495). Map it to a QuotaExhausted card whose Upgrade CTA points at
+    // the plan page codex itself names (free → Plus, Plus → Pro), so the user
+    // gets an actionable next step. Must precede the `quota`-keyword branch.
+    if lower.contains("usage limit") {
+        let scope = if lower.contains("upgrade to plus") {
+            QuotaScope::FreeTier
+        } else if lower.contains("upgrade to pro") {
+            QuotaScope::PaidPlan
+        } else {
+            QuotaScope::Unknown
+        };
+        return Some(ProviderError::QuotaExhausted {
+            provider: PROVIDER.into(),
+            model: None,
+            scope,
+            // codex names the absolute time the allowance frees up; surface it
+            // so the card reads "resets <when>" instead of a bare upgrade nag.
+            resets_at: extract_reset_hint(line),
+            message: truncate_excerpt(line.trim()),
+        });
+    }
+
     // Quota exhausted — paid plan / org quota.
     if lower.contains("quota") && (lower.contains("exceed") || lower.contains("exhaust")) {
         return Some(ProviderError::QuotaExhausted {
             provider: PROVIDER.into(),
             model: None,
             scope: QuotaScope::Unknown,
+            resets_at: None,
             message: truncate_excerpt(line.trim()),
-            upgrade_url: Some("https://platform.openai.com/account/billing".into()),
         });
     }
 
@@ -163,6 +192,22 @@ fn extract_quoted_model(line: &str) -> Option<String> {
         None
     } else {
         Some(model.to_string())
+    }
+}
+
+/// Lift the reset hint out of codex's "…, or try again at <when>." tail.
+/// The banner names an absolute time the Codex allowance frees up
+/// (e.g. `Jul 1st, 2026 1:16 PM`); we surface it verbatim on the quota card.
+/// Returns `None` when the banner names no reset (open-ended limit). The
+/// marker is ASCII, so the lowercase byte offset is valid in the original.
+fn extract_reset_hint(line: &str) -> Option<String> {
+    const MARKER: &str = "try again at ";
+    let idx = line.to_lowercase().find(MARKER)?;
+    let hint = line[idx + MARKER.len()..].trim().trim_end_matches('.').trim();
+    if hint.is_empty() {
+        None
+    } else {
+        Some(hint.to_string())
     }
 }
 
@@ -248,14 +293,56 @@ mod tests {
     }
 
     #[test]
-    fn quota_exhausted_includes_billing_url() {
+    fn quota_exceeded_classified_as_quota_exhausted() {
         let line = "Quota exceeded for this account";
+        assert!(matches!(
+            classify_stderr(line),
+            Some(ProviderError::QuotaExhausted { .. })
+        ));
+    }
+
+    #[test]
+    fn codex_usage_limit_classified_as_quota_exhausted_free_tier() {
+        // The exact codex banner a ChatGPT free-tier user hits once their
+        // Codex allowance is spent (HOU-495). Previously matched nothing and
+        // showed a generic "codex hit a runtime error"; now a QuotaExhausted
+        // card carrying the reset hint parsed from the banner.
+        let line = "You've hit your usage limit. Upgrade to Plus to continue using Codex (https://chatgpt.com/explore/plus), or try again at Jul 1st, 2026 1:16 PM.";
         match classify_stderr(line).unwrap() {
-            ProviderError::QuotaExhausted { upgrade_url, .. } => {
-                assert!(upgrade_url.unwrap().contains("openai.com"));
+            ProviderError::QuotaExhausted {
+                provider,
+                scope,
+                resets_at,
+                ..
+            } => {
+                assert_eq!(provider, "openai");
+                assert_eq!(scope, QuotaScope::FreeTier);
+                assert_eq!(resets_at.as_deref(), Some("Jul 1st, 2026 1:16 PM"));
             }
             other => panic!("expected QuotaExhausted, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn extract_reset_hint_pulls_date_without_trailing_period() {
+        let line = "You've hit your usage limit. ..., or try again at Jul 1st, 2026 1:16 PM.";
+        assert_eq!(
+            extract_reset_hint(line).as_deref(),
+            Some("Jul 1st, 2026 1:16 PM")
+        );
+        // No reset named → None (open-ended limit).
+        assert!(extract_reset_hint("Quota exceeded for this account").is_none());
+    }
+
+    #[test]
+    fn codex_usage_limit_is_not_misfiled_as_rate_limited() {
+        // "usage limit" is a billing-window cap, not a 429 throttle — a wait
+        // won't clear it. Must NOT fall into the RateLimited branch.
+        let line = "You've hit your usage limit. Upgrade to Plus to continue using Codex.";
+        assert!(matches!(
+            classify_stderr(line),
+            Some(ProviderError::QuotaExhausted { .. })
+        ));
     }
 
     #[test]

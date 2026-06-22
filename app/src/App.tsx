@@ -15,7 +15,6 @@ import { useUIStore } from "./stores/ui";
 import { useConnections, useComposioApps } from "./hooks/queries";
 import { analytics } from "./lib/analytics";
 import { setUser as setSentryUser, clearUser as clearSentryUser } from "./lib/sentry";
-import { loadTheme } from "./lib/theme";
 import { isAuthConfigured } from "./lib/supabase";
 import { installDeepLinkListener } from "./lib/auth";
 import { useSession } from "./hooks/use-session";
@@ -34,40 +33,11 @@ export default function App() {
   useConnections();
   useComposioApps();
 
-  // Track active installs once per day. This is the canonical DAU/WAU/MAU
-  // signal; launch counts are intentionally not captured.
-  useEffect(() => {
-    analytics.init().then(({ installId, isNew }) => {
-      analytics.trackActive();
-      if (isNew) {
-        analytics.track("install_created");
-        // Attribution bridge: open the website's /welcome page in the
-        // user's default browser. The page reads ?install_id, calls
-        // posthog.identify(install_id), which MERGES the website's
-        // anonymous person — containing $initial_utm_* from the original
-        // landing pageview — into the app's install identity. From this
-        // point on every app event carries the original attribution.
-        //
-        // Only fires once per install (isNew flips false after first
-        // launch via the install_id cache in install-id.ts). If the
-        // browser-open fails or the user closes the tab before PostHog
-        // identifies, we lose attribution for this install — that's the
-        // accepted tradeoff for not requiring clipboard/extension hacks.
-        if (installId) {
-          const url = `https://gethouston.ai/welcome?install_id=${encodeURIComponent(installId)}`;
-          tauriSystem.openUrl(url).catch(() => {
-            // openUrl failed (no default browser? dev build?) — silent;
-            // attribution falls back to app-only events with no UTMs.
-          });
-        }
-      }
-      // `session_started` fires every app launch (cf. `app_active` which
-      // dedupes per UTC day for DAU). Lets us measure sessions-per-day
-      // intensity AND time-of-day usage patterns.
-      analytics.track("session_started");
-    });
-    loadTheme();
-  }, []);
+  // NOTE: install identity, `install_created`, `session_started`, and theme
+  // load run in <StartupEffects> at the top of the tree (main.tsx), NOT here.
+  // They MUST fire before the language/disclaimer gates' `onboarding_*` events,
+  // and those gates block <App/> from mounting on a fresh install — so this
+  // effect would run too late and break the sequential onboarding funnel.
 
   // Session-end signal: fired when the window goes hidden (cmd-tab away,
   // minimize, close). Tauri's WKWebView delivers `pagehide` reliably on

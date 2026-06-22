@@ -17,34 +17,26 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "counter": "Missão {{current}} de {{total}}",
-    "eyebrow": "Missão {{number}}",
-    "missionLabel": "Missão: {{title}}",
+    "nav": { "back": "Voltar", "continue": "Continuar" },
+    "counter": "Passo {{current}} de {{total}}",
+    "eyebrow": "Passo {{number}}",
+    "missionLabel": "Configuração: {{title}}",
     "upNext": "A seguir",
     "errors": {
       "setupFailed": "Não conseguimos terminar de configurar seu espaço de trabalho. Tente novamente."
     },
     "welcome": {
       "title": "Bem-vindo ao Houston",
-      "tagline": "O Houston é onde você constrói Agentes que funcionam com as mesmas ferramentas que você usa para trabalhar.",
-      "stepsTitle": "O tutorial vai guiar você para criar seu primeiro agente:",
+      "tagline": "O Houston é onde você cria assistentes que funcionam com os mesmos apps que você já usa.",
+      "stepsTitle": "Uma configuração rápida para deixar seu assistente trabalhando:",
       "steps": {
         "meet": "Conheça seu assistente",
         "brain": "Conecte um provedor de IA para ele pensar",
-        "tools": "Dê as suas próprias ferramentas",
-        "try": "Teste uma missão real com seu assistente",
-        "skill": "Salve como uma Habilidade reutilizável",
-        "routine": "Agende como uma Rotina recorrente",
-        "summary": "Conheça seu assistente pronto para trabalhar"
+        "tools": "Conecte seus apps",
+        "email": "Envie seu primeiro e-mail real com ele"
       },
-      "start": "Começar tutorial",
-      "skip": "Pular tutorial"
-    },
-    "toolkits": {
-      "gmail": "Gmail",
-      "googlecalendar": "Google Calendar",
-      "outlook": "Outlook",
-      "outlook_calendar": "Outlook Calendar"
+      "start": "Começar",
+      "skip": "Configuro isso mais tarde"
     },
     "defaults": {
       "workspaceName": "Pessoal",
@@ -56,91 +48,49 @@
     "missions": {
       "meet": {
         "title": "Conheça seu assistente",
-        "body": "Dê um nome e uma cor para seu assistente. Você pode mudar depois.",
-        "begin": "Começar treinamento"
+        "body": "Dê um nome e uma cor ao seu assistente. Você pode mudar depois.",
+        "begin": "Continuar"
       },
       "brain": {
-        "title": "Dê um cérebro",
-        "body": "Seu assistente precisa de um provedor de IA para pensar e escrever. O Houston usa sua própria assinatura.",
-        "continue": "Criar meu assistente",
-        "creating": "Criando",
-        "continueHint": "O Houston vai criar seu assistente e abrir a próxima missão."
+        "title": "Escolha sua IA",
+        "body": "Escolha a IA que move seu assistente. Você usa sua própria assinatura, o Houston nunca vê suas credenciais."
+      },
+      "providerLogin": {
+        "title": "Conecte o {{provider}}",
+        "body": "Entre uma vez para que seu assistente possa usar o {{provider}} por você.",
+        "loginButton": "Entrar no {{provider}}",
+        "waiting": "Aguardando o {{provider}}...",
+        "cancel": "Cancelar",
+        "creating": "Criando seu assistente...",
+        "connected": {
+          "title": "Tudo pronto",
+          "body": "Encontramos o {{provider}} neste computador. Você já está conectado com sua própria assinatura, então não há nada para configurar aqui."
+        }
       },
       "tools": {
-        "title": "Dê as suas próprias ferramentas",
-        "body": "O Houston se conecta ao seu e-mail, calendário e mais de 1000 apps através do seu provedor de integrações. Por padrão usamos o Composio. Entre uma vez para seu assistente poder trabalhar com seus apps reais.",
-        "cardTitle": "Provedor de integrações",
-        "cardBody": "Entre para seu assistente usar seus apps. Provedor padrão: Composio.",
-        "cardSignedInBody": "Seu assistente já pode usar seus apps",
-        "signIn": "Entrar",
-        "signedInPill": "Conectado",
-        "continue": "Continuar",
-        "continueHint": "Seu assistente vai pedir cada app na primeira vez que precisar."
-      },
-      "try": {
-        "title": "Teste uma missão real",
-        "intro": {
-          "title": "Trabalhe com seu primeiro agente",
-          "body": "No Houston, seus agentes se conectam às suas ferramentas reais para fazer o trabalho por você.",
-          "cta": "Vamos testar"
-        },
-        "doneTitle": "Você conseguiu. Primeira missão concluída.",
-        "placeholder": "Responda ao seu assistente...",
-        "skill": {
-          "title": "Planeja meu próximo dia de trabalho",
-          "description": "Lê sua agenda e caixa de entrada em paralelo, cruza para achar coisas que você ia perder e posta um plano estruturado com o que é urgente, sua agenda e quem responder."
-        },
-        "chip": "Planeja meu próximo dia de trabalho",
-        "continueChip": "Salve isto como uma Habilidade",
-        "skip": "Pular tutorial"
-      },
-      "skill": {
-        "title": "Salve isto como uma Habilidade",
-        "intro": {
-          "title": "Salve como uma Habilidade",
-          "body": "Se você quiser executar este mesmo fluxo depois, salve como uma Habilidade. Seu assistente pode repetir com um clique ou sempre que você pedir.",
-          "cta": "Entendi"
-        },
-        "chip": "Salve isto como uma Habilidade",
-        "continueChip": "Transforme em uma Rotina",
-        "skip": "Pular tutorial",
-        "placeholder": "Responda ao seu assistente...",
-        "savedDescription": "Planeja o próximo dia útil cruzando e-mail e agenda, com um rascunho de resposta para o e-mail mais importante.",
-        "savedMessage": "Salva como Habilidade chamada **{{slug}}**. Você pode executar quando quiser, com um clique ou me pedindo.",
-        "done": {
-          "title": "Salva como Habilidade",
-          "subtitle": "Agora você pode executar quando quiser, com um clique ou pedindo.",
-          "integrationsLabel": "Usa",
-          "savedLabel": "Habilidade"
+        "title": "Entre uma vez para usar seus apps",
+        "body": "Com um único login, seu assistente pode trabalhar com seus apps. Depois ele conecta cada app, como Gmail ou seu calendário, só quando você realmente precisar, então não precisa configurar tudo agora.",
+        "allow": "Entrar",
+        "waiting": "Esperando você no navegador...",
+        "cancel": "Cancelar",
+        "connected": {
+          "title": "Tudo pronto",
+          "body": "Seu assistente já pode conectar seus apps quando você precisar."
         }
       },
-      "routine": {
-        "title": "Transforme em uma Rotina",
+      "email": {
+        "title": "Envie seu primeiro e-mail",
+        "body": "Conecte seu e-mail e seu assistente vai enviar uma mensagem real por você. Com isso a configuração termina.",
         "intro": {
-          "title": "Transforme em uma Rotina",
-          "body": "Se você quiser que isso rode automaticamente num horário, salve como uma Rotina. Seu assistente executa em segundo plano e mostra o resultado.",
-          "cta": "Entendi"
+          "title": "Envie um e-mail real",
+          "body": "Seu assistente se conecta aos seus apps reais para fazer trabalho de verdade. Vamos conectar seu e-mail e enviar um, de verdade.",
+          "cta": "Vamos lá"
         },
-        "chip": "Transforme em uma Rotina",
-        "continueChip": "Conheça seu assistente",
-        "skip": "Pular tutorial",
-        "placeholder": "Responda ao seu assistente...",
-        "done": {
-          "title": "Sua Rotina está pronta",
-          "subtitle": "O Houston vai executar isso automaticamente no horário que você escolheu.",
-          "everyWeekdayAt": "Todo dia útil às {{time}}",
-          "runsSkill": "Executa sua Habilidade {{skill}}",
-          "manualHint": "Você também pode criar rotinas pela aba Rotinas ou pedindo a qualquer agente."
-        }
-      },
-      "summary": {
-        "title": "Seu assistente está pronto",
-        "body": "Isto é tudo que você acabou de configurar. Você pode mudar qualquer coisa depois pela aba Habilidades ou Rotinas, ou apenas pedindo ao seu assistente.",
-        "skillCardTitle": "Habilidade",
-        "routineCardTitle": "Rotina",
-        "noSkill": "Nenhuma Habilidade salva",
-        "noRoutine": "Nenhuma Rotina salva",
-        "continueChip": "Entre no Houston"
+        "chip": "Envie um e-mail por mim",
+        "continueChip": "Entrar no Houston",
+        "skip": "Configuro isso mais tarde",
+        "doneTitle": "Enviado. Tudo pronto.",
+        "placeholder": "Responda ao seu assistente..."
       }
     }
   }

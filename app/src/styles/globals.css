@@ -67,3 +67,64 @@ body {
   -webkit-mask-repeat: no-repeat;
   flex-shrink: 0;
 }
+
+/* First-run setup: a gentle per-step entrance so stepping through the wizard
+   feels smooth (like joining a Discord server) instead of hard-cutting between
+   screens. Keyed by step in <SetupCard>, so it replays on each transition. */
+@keyframes setup-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.setup-step-in {
+  animation: setup-step-in 0.22s cubic-bezier(0.25, 0.1, 0.25, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .setup-step-in {
+    animation: none;
+  }
+}
+
+/* The exact "Always On" pricing-card glow from the landing page
+   (website/src/index.html) — a faint blue ellipse from the bottom-left and a
+   faint orange ellipse from the top-right over a light base. Static, no blur;
+   the refinement is in how subtle it is. Used behind the whole setup flow and
+   the main app. */
+.houston-glow {
+  background:
+    radial-gradient(
+      ellipse 80% 60% at 20% 100%,
+      rgba(59, 130, 246, 0.08),
+      transparent
+    ),
+    radial-gradient(
+      ellipse 60% 50% at 80% 0%,
+      rgba(249, 115, 22, 0.06),
+      transparent
+    );
+}
+@keyframes welcome-greeting-in {
+  0% {
+    opacity: 0;
+    filter: blur(14px);
+    transform: translateY(14px) scale(0.96);
+  }
+  100% {
+    opacity: 1;
+    filter: blur(0);
+    transform: translateY(0) scale(1);
+  }
+}
+.welcome-greeting-in {
+  animation: welcome-greeting-in 0.7s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome-greeting-in {
+    animation: none;
+  }
+}

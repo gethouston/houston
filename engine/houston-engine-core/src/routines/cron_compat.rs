@@ -161,6 +161,39 @@ mod tests {
     }
 
     #[test]
+    fn today_plus_one_minute_fires_today_for_every_preset() {
+        // HOU-455 at the cron layer: a routine set for "today, one minute from
+        // now" must fire *today* for the weekly and monthly presets — not slip
+        // to next week / next month. Mirrors the scheduler's evaluation
+        // (`schedule.upcoming(tz)` == `after(&now_in_tz)`) in a non-UTC zone
+        // with nonzero seconds, exactly the real environment.
+        use chrono::{Datelike, Duration, TimeZone as _, Timelike};
+        use chrono_tz::America::Bogota; // UTC-5
+        let now = Bogota.with_ymd_and_hms(2026, 6, 12, 14, 30, 37).unwrap(); // a Friday
+        let fire = now + Duration::minutes(1); // 14:31 today, Bogota wall-clock
+        let (min, hour, dom) = (fire.minute(), fire.hour(), fire.day());
+        // The UI emits JS getDay()-style dow: Sunday=0..Saturday=6.
+        let dow = fire.weekday().num_days_from_sunday();
+
+        for cron5 in [
+            format!("{min} {hour} * * *"),     // daily
+            format!("{min} {hour} * * {dow}"), // weekly, on today's weekday
+            format!("{min} {hour} {dom} * *"), // monthly, on today's day-of-month
+        ] {
+            let schedule = Schedule::from_str(&to_engine_cron(&cron5))
+                .unwrap_or_else(|e| panic!("'{cron5}' should parse: {e}"));
+            let next = schedule.after(&now).next().expect("an upcoming fire");
+            let delta = next.signed_duration_since(now);
+            assert!(
+                delta > Duration::zero() && delta <= Duration::seconds(90),
+                "'{cron5}' should fire ~1 min out, got {next} ({}s away)",
+                delta.num_seconds(),
+            );
+            assert_eq!(next.day(), 12, "'{cron5}' should fire today, got {next}");
+        }
+    }
+
+    #[test]
     fn weekly_monday_actually_fires_on_monday() {
         assert_eq!(next_weekday("0 9 * * 1"), Weekday::Mon);
     }

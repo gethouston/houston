@@ -18,6 +18,7 @@ import {
   type ComposioCardPhase,
 } from "./composio-card-state";
 import { AppLogo, ComposioStatusSlot } from "./composio-card-visuals";
+import { RowCard } from "./cards/row-card";
 
 /**
  * After clicking Connect, the user leaves for the browser to authorize. If
@@ -178,19 +179,13 @@ export function ComposioLinkCard({
   // wherever the link happened to land. `ComposioWaitingFooter` (wired via the
   // chat's `transformContent`) renders it from the same connection state.
   return (
-    <span className="not-prose inline-flex my-1 max-w-full align-middle">
-      <span className="inline-flex items-center gap-3 px-3 py-2.5 rounded-xl border border-black/5 bg-background min-w-0">
-        <AppLogo app={app} />
-        <span className="flex-1 min-w-0 flex flex-col">
-          <span className="text-[13px] font-medium text-foreground truncate">
-            {app.name}
-          </span>
-          <span className="text-[11px] text-muted-foreground truncate">
-            {isConnected ? t("composio.alreadyConnected") : app.description}
-          </span>
-        </span>
-        <ComposioStatusSlot view={view} onConnect={startConnect} />
-      </span>
-    </span>
+    <RowCard
+      inline
+      truncate
+      media={<AppLogo app={app} />}
+      title={app.name}
+      description={isConnected ? t("composio.alreadyConnected") : app.description}
+      action={<ComposioStatusSlot view={view} onConnect={startConnect} />}
+    />
   );
 }

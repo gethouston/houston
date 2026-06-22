@@ -3,6 +3,10 @@
  *
  * The parent tab already labels this surface "Routines", so this view skips
  * a redundant page header and goes straight to a meta row + the list.
+ *
+ * Timezone is an account-wide setting (one zone for every routine), so its
+ * picker lives HERE on the list — not inside each routine's editor. It sits
+ * directly under the "New routine" row, capping the list it governs.
  */
 import {
   cn,
@@ -14,6 +18,7 @@ import {
 import { Plus } from "lucide-react"
 import type { Routine, RoutineRun } from "./types"
 import { RoutineRow } from "./routine-row"
+import { TimezonePicker } from "./timezone-picker"
 import {
   DEFAULT_GRID_LABELS,
   DEFAULT_ROW_LABELS,
@@ -29,8 +34,13 @@ export interface RoutinesGridProps {
   routines: Routine[]
   /** Most recent run per routine, keyed by routine ID. */
   lastRuns?: Record<string, RoutineRun>
-  /** Account-default IANA timezone — passed to rows for "next run" preview. */
+  /** The account-wide IANA timezone every routine fires in. */
   accountTimezone: string
+  /**
+   * Persist a new account-wide timezone. Changing it re-times every routine.
+   * Omit it (standalone callers) and the timezone bar is hidden.
+   */
+  onTimezoneChange?: (tz: string) => void
   loading?: boolean
   onSelect: (routineId: string) => void
   onCreate?: () => void
@@ -53,6 +63,7 @@ export function RoutinesGrid({
   routines,
   lastRuns = {},
   accountTimezone,
+  onTimezoneChange,
   loading,
   onSelect,
   onCreate,
@@ -116,6 +127,19 @@ export function RoutinesGrid({
             </Button>
           )}
         </div>
+
+        {/* Account-wide timezone — governs every routine in the list below. */}
+        {onTimezoneChange && (
+          <TimezonePicker
+            accountTimezone={accountTimezone}
+            onTimezoneChange={onTimezoneChange}
+            label={l.timezoneLabel}
+            hint={l.timezoneHint}
+            searchPlaceholder={l.timezoneSearchPlaceholder}
+            noResults={l.timezoneNoResults}
+            className="mb-3"
+          />
+        )}
 
         {/* List card — gray, divides hold rows */}
         <div

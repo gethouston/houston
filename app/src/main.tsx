@@ -19,6 +19,9 @@ import { LanguageGate } from "./components/shell/language-gate";
 import { showErrorToast } from "./lib/error-toast";
 import { isBenignLockRejection } from "./lib/benign-rejections";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
+import { runStartupAnalytics } from "./lib/startup-analytics";
+import { tauriSystem } from "./lib/tauri";
+import { loadTheme } from "./lib/theme";
 import { initSentry } from "./lib/sentry";
 import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 
@@ -115,6 +118,41 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { error: Error | 
 }
 
 /**
+ * Install-lifecycle + theme bootstrap, mounted ABOVE the language/disclaimer
+ * gates. Emits `install_created` and runs `posthog.identify(install_id)` BEFORE
+ * any `onboarding_*` event so the sequential acquisition→activation funnel
+ * (keyed on `install_created` as step 1) doesn't break at step 2. The gates
+ * short-circuit `<App/>` on a fresh install, so analytics.init() can't live in
+ * App's mount effect — it would fire after the gate events. See
+ * `runStartupAnalytics`. Renders children immediately; never blocks.
+ */
+function StartupEffects({ children }: { children: ReactNode }) {
+  useEffect(() => {
+    // Wait for the engine handshake before touching engine-backed preferences.
+    // `install_id`, the first-install vintage, the daily-active date, and the
+    // theme all read through `tauriPreferences -> getEngine()`, which THROWS
+    // until the handshake lands. Running before then would have getInstallId
+    // swallow the failure, mint a fresh id, and re-fire `install_created` (and
+    // re-open the /welcome bridge) on every launch — churning identity. The
+    // race is widest on Windows, where the sidecar spawns slowest. Gating here
+    // restores the original "engine-ready" precondition (these used to run in
+    // App's mount effect, below <EngineGate>) while still emitting
+    // `install_created` BEFORE the language/disclaimer gates — they render
+    // inside <EngineGate>, i.e. only once this same handshake resolves.
+    let cancelled = false;
+    void whenEngineReady().then(() => {
+      if (cancelled) return;
+      void runStartupAnalytics(analytics, (url) => tauriSystem.openUrl(url));
+      void loadTheme();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+  return <>{children}</>;
+}
+
+/**
  * Blocks the app from rendering until the Tauri supervisor emits
  * `houston-engine-ready` (or the injection raced in early). Hooks deep in
  * the tree synchronously call `getEngine()` in their first useEffect, so
@@ -170,15 +208,17 @@ createRoot(document.getElementById("root")!).render(
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <TooltipProvider>
-        <EngineGate>
-          <I18nextProvider i18n={i18n}>
-            <LanguageGate>
-              <DisclaimerGate>
-                <App />
-              </DisclaimerGate>
-            </LanguageGate>
-          </I18nextProvider>
-        </EngineGate>
+        <StartupEffects>
+          <EngineGate>
+            <I18nextProvider i18n={i18n}>
+              <LanguageGate>
+                <DisclaimerGate>
+                  <App />
+                </DisclaimerGate>
+              </LanguageGate>
+            </I18nextProvider>
+          </EngineGate>
+        </StartupEffects>
       </TooltipProvider>
     </ErrorBoundary>
   </QueryClientProvider>,

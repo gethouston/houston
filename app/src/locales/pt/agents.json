@@ -35,14 +35,26 @@
   "subTabs": {
     "instructions": "Instruções",
     "skills": "Skills",
-    "learnings": "Aprendizados"
+    "learnings": "Aprendizados",
+    "general": "Geral"
+  },
+  "agentSettings": {
+    "nameTitle": "Nome",
+    "nameLabel": "Como o seu agente se chama",
+    "namePlaceholder": "Dê um nome ao seu agente",
+    "colorTitle": "Cor",
+    "colorHelper": "Escolha uma cor para o avatar do seu agente.",
+    "shareTitle": "Compartilhar",
+    "shareHelper": "Envie uma cópia deste agente para um amigo.",
+    "dangerTitle": "Excluir agente",
+    "dangerHelper": "Remova este agente e tudo o que ele fez permanentemente. Isso não pode ser desfeito."
   },
   "tabLabels": {
     "activity": "Atividade",
     "archived": "Arquivadas",
     "routines": "Rotinas",
     "files": "Arquivos",
-    "job-description": "Descrição do papel",
+    "job-description": "Configurações do agente",
     "integrations": "Integrações",
     "chat": "Chat",
     "board": "Quadro",

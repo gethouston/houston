@@ -1,20 +1,24 @@
 import { useEffect, useState } from "react";
-import { Button } from "@houston-ai/core";
+import { Button, Separator } from "@houston-ai/core";
 import { HoustonLogo } from "../shell/experience-card";
 import { onAuthError, signInWithGoogle } from "../../lib/auth";
 import { reportBug } from "../../lib/bug-report";
 import { logger } from "../../lib/logger";
+import { prettifyAuthError } from "./auth-errors";
+import { EmailSignIn } from "./email-sign-in";
 
-// Microsoft sign-in is temporarily disabled in the UI while the Azure
-// App Registration + Supabase azure-provider settings are sorted out.
-// The handler in `auth.ts` (`signInWithMicrosoft`) stays exported so
-// re-enabling is a one-line revert here.
+// Microsoft is intentionally not offered for now. The generic `azure`
+// provider plumbing stays in lib/auth.ts (signInWithMicrosoft) so re-enabling
+// is just re-adding the button below.
 type Provider = "google";
 
 /**
  * Full-screen sign-in overlay. Rendered by App.tsx when Supabase is
  * configured but no session is present. Keeps copy product-benefit-focused
  * — the audience is non-technical, so no mention of OAuth / tokens / APIs.
+ *
+ * Two ways in: Google (OAuth via the loopback flow) and passwordless email
+ * (6-digit code, fully in-app — see EmailSignIn).
  *
  * Re-click semantics: the loading spinner is only on while the system
  * browser is being opened (a few ms). After that, the user is free to
@@ -103,6 +107,14 @@ export function SignInScreen() {
           </Button>
         </div>
 
+        <div className="flex items-center gap-3 w-full">
+          <Separator className="flex-1" />
+          <span className="text-xs text-muted-foreground">or</span>
+          <Separator className="flex-1" />
+        </div>
+
+        <EmailSignIn />
+
         <p className="text-xs text-muted-foreground text-center">
           Wrong browser profile? Just click again to retry.
         </p>
@@ -140,40 +152,6 @@ export function SignInScreen() {
       </div>
     </div>
   );
-}
-
-/**
- * Map raw provider / Supabase error strings to a short, actionable
- * sentence. The original message is appended in parentheses so support
- * still has the technical detail when triaging from logs.
- */
-function prettifyAuthError(raw: string): string {
-  const msg = raw.toLowerCase();
-  if (msg.includes("identity") && msg.includes("already")) {
-    return "That email is already signed in with another provider. Use the original sign-in option, or contact support to merge accounts.";
-  }
-  if (msg.includes("aadsts50020") || msg.includes("does not exist in tenant")) {
-    return "Your Microsoft account isn't allowed in this Houston workspace. Try a different account, or ask your admin to invite it.";
-  }
-  if (msg.includes("aadsts700016") || msg.includes("application with identifier")) {
-    return "Microsoft sign-in isn't fully configured for Houston yet. Please contact support.";
-  }
-  if (msg.includes("aadsts65001") || msg.includes("consent")) {
-    return "Microsoft needs admin consent before this account can sign in. Ask your IT admin to approve Houston, then try again.";
-  }
-  if (msg.includes("redirect") && msg.includes("invalid")) {
-    return "The sign-in callback URL isn't allow-listed. Please contact support.";
-  }
-  if (msg.includes("provider") && msg.includes("not enabled")) {
-    return "This sign-in option isn't turned on for Houston yet. Try the other provider.";
-  }
-  if (msg.includes("authorization code")) {
-    return "Sign-in didn't complete cleanly. Please try again.";
-  }
-  // Fallback: show the raw message so the user has something to copy
-  // when reporting. Keep it bounded so the UI doesn't blow up.
-  const trimmed = raw.length > 220 ? `${raw.slice(0, 220)}…` : raw;
-  return `Sign-in failed: ${trimmed}`;
 }
 
 function GoogleIcon() {
