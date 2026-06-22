@@ -1,6 +1,6 @@
-import { watch, type FSWatcher } from "node:fs";
-import { classifyChange } from "./classify";
+import { type FSWatcher, watch } from "node:fs";
 import type { HoustonEvent } from "@houston/protocol";
+import { classifyChange } from "./classify";
 
 /**
  * Watches the local `~/.houston/workspaces` tree and emits reactivity events for

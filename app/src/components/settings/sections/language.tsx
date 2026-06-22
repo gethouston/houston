@@ -1,4 +1,3 @@
-import { useTranslation } from "react-i18next";
 import {
   Select,
   SelectContent,
@@ -6,6 +5,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 import {
   changeLocale,
   isSupported,

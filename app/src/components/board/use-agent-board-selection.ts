@@ -1,11 +1,11 @@
 import { useCallback } from "react";
 import {
-  useBulkUpdateActivity,
   useBulkDeleteActivity,
+  useBulkUpdateActivity,
 } from "../../hooks/queries";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection";
-import { useSelectionSet } from "./use-selection-set";
 import type { BoardSelectionModel } from "./board-source";
+import { useSelectionSet } from "./use-selection-set";
 
 /**
  * Per-agent multi-select + bulk actions for the board tab. The selection

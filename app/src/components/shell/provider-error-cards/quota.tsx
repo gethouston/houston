@@ -4,10 +4,10 @@
  * the right provider console.
  */
 
-import { useTranslation } from "react-i18next";
-import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
-import { Button } from "@houston-ai/core";
 import type { ProviderError } from "@houston-ai/chat";
+import { Button } from "@houston-ai/core";
+import { AlertTriangleIcon, XCircleIcon } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { tauriSystem } from "../../../lib/tauri";
 import { ErrorCard, providerLabel } from "./shared";
 

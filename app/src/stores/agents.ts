@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import { selectCurrentAgent } from "../lib/agent-selection";
+import { analytics } from "../lib/analytics";
 import {
   tauriAgents,
   tauriAttachments,
@@ -6,11 +8,9 @@ import {
   tauriRoutines,
   tauriWatcher,
 } from "../lib/tauri";
-import { useFeedStore } from "./feeds";
-import { useDraftStore } from "./drafts";
-import { analytics } from "../lib/analytics";
-import { selectCurrentAgent } from "../lib/agent-selection";
 import type { Agent } from "../lib/types";
+import { useDraftStore } from "./drafts";
+import { useFeedStore } from "./feeds";
 
 export interface CreatedAgent {
   agent: Agent;

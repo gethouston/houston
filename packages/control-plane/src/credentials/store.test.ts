@@ -57,9 +57,10 @@ test("an api-key credential round-trips with its kind and never looks expiring",
   });
   await s.put(apiKeyCred);
   const got = await s.get("ws_1", "openrouter");
-  expect(got?.kind).toBe("api_key");
-  expect(got?.accessToken).toBe("sk-or-v1-THEKEY");
+  if (!got) throw new Error("expected the stored openrouter credential");
+  expect(got.kind).toBe("api_key");
+  expect(got.accessToken).toBe("sk-or-v1-THEKEY");
   // Far-future expiry → /sandbox/credential never tries to refresh it (which
   // would throw — there is no OAuth refresh config for openrouter).
-  expect(isExpiring(got!)).toBe(false);
+  expect(isExpiring(got)).toBe(false);
 });

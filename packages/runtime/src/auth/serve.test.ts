@@ -131,7 +131,7 @@ test("a served api-key credential is written as pi's api_key shape", () => {
     unknown
   >;
   // pi reads `{ type: "api_key", key }` — no access/refresh/expires fields.
-  expect(auth["openrouter"]).toEqual({
+  expect(auth.openrouter).toEqual({
     type: "api_key",
     key: "sk-or-v1-THEKEY",
   });
@@ -160,6 +160,6 @@ test("scrub leaves api-key entries untouched (no refresh token to strip)", () =>
     { type?: string; key?: string; refresh?: string }
   >;
   expect(auth["openai-codex"]?.refresh).toBe("");
-  expect(auth["openrouter"]).toEqual({ type: "api_key", key: "sk-or-v1-KEEP" });
-  expect(auth["google"]).toEqual({ type: "api_key", key: "AIza-KEEP" });
+  expect(auth.openrouter).toEqual({ type: "api_key", key: "sk-or-v1-KEEP" });
+  expect(auth.google).toEqual({ type: "api_key", key: "AIza-KEEP" });
 });

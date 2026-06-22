@@ -1,5 +1,4 @@
-import { test, expect } from "bun:test";
-import type { FileStore } from "./store";
+import { expect, test } from "bun:test";
 import {
   composeSkillMd,
   loadSkillDetail,
@@ -8,6 +7,7 @@ import {
   skillKey,
   slugify,
 } from "./skills";
+import type { FileStore } from "./store";
 
 function memStore(): FileStore {
   const m = new Map<string, string>();

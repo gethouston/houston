@@ -197,7 +197,9 @@ export function ProviderPicker({ onSelect }: Props) {
       // loopback callback (Codex browser login), a remote webapp can't (device
       // code) — so no flag is needed here. Claude keys off the runtime's
       // headless mode regardless.
-      await tauriProvider.launchLogin(provider.id);
+      // `toast: false`: the catch below renders the provider-specific failure
+      // toast, so `call` must not also toast the same message (it showed twice).
+      await tauriProvider.launchLogin(provider.id, { toast: false });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(

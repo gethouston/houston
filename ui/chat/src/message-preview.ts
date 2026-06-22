@@ -20,8 +20,8 @@
  * archived lists, future embedded chats) derives the same preview.
  */
 
-import { decodeSkillMessage } from "./skill-message.ts";
 import { decodeAttachmentMessage } from "./attachment-message.ts";
+import { decodeSkillMessage } from "./skill-message.ts";
 
 export function messagePreviewText(body: string | null | undefined): string {
   if (!body) return "";

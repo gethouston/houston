@@ -1,11 +1,11 @@
 import type { ComponentType } from "react";
-import type { TabProps } from "../lib/types";
-import type { AgentTab } from "./standard-tabs";
-import BoardTab from "../components/tabs/board-tab";
 import ArchivedTab from "../components/tabs/archived-tab";
+import BoardTab from "../components/tabs/board-tab";
 import FilesTab from "../components/tabs/files-tab";
 import JobDescriptionTab from "../components/tabs/job-description-tab";
 import RoutinesTab from "../components/tabs/routines-tab";
+import type { TabProps } from "../lib/types";
+import type { AgentTab } from "./standard-tabs";
 
 const BUILTIN_TABS: Record<string, ComponentType<TabProps>> = {
   board: BoardTab,

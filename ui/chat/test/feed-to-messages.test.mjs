@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { feedItemsToMessages } from "../src/feed-to-messages.ts";
 
 test("attaches file changes to the previous assistant message after final result", () => {

@@ -1,12 +1,12 @@
 import { cn } from "@houston-ai/core";
 import {
-  MessageSquare,
-  Heart,
-  Clock,
-  Zap,
-  Globe,
   Bot,
   Check,
+  Clock,
+  Globe,
+  Heart,
+  MessageSquare,
+  Zap,
 } from "lucide-react";
 import type { EventEntry, EventType } from "./types";
 

@@ -6,7 +6,7 @@
  * and over the engine REST route tomorrow.
  */
 
-import Ajv, { type ValidateFunction, type Schema } from "ajv";
+import Ajv, { type Schema, type ValidateFunction } from "ajv";
 import { logger } from "../lib/logger";
 import { tauriAgent } from "../lib/tauri";
 

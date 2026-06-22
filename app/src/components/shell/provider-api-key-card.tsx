@@ -52,6 +52,8 @@ export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
   }, [provider]);
 
   if (!provider) return null;
+  // Narrow once so the "Get a key" button doesn't need a non-null assertion.
+  const createKeyUrl = provider.createKeyUrl;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,13 +94,13 @@ export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {provider.createKeyUrl && (
+          {createKeyUrl && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => void tauriSystem.openUrl(provider.createKeyUrl!)}
+              onClick={() => void tauriSystem.openUrl(createKeyUrl)}
             >
               <ExternalLink className="size-3.5" />
               {t("apiKey.getKey", { name: provider.name })}

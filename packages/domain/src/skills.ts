@@ -1,5 +1,5 @@
-import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import type { SkillDetail, SkillSummary } from "@houston/protocol";
+import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
 import { skillsDirKey } from "./layout";
 import type { DocDiagnostic, FileStore } from "./store";
 

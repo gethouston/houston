@@ -5,8 +5,8 @@
  * clickable; delete tucked into an overflow menu.
  */
 import {
-  cn,
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,

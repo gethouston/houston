@@ -1,21 +1,20 @@
+import type { KanbanItem } from "@houston-ai/board";
+import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
-import type { FeedItem } from "@houston-ai/chat";
-
-import { useFeedStore } from "../../stores/feeds";
-import { useUIStore } from "../../stores/ui";
 import {
   useActivity,
   useDeleteActivity,
   useUpdateActivity,
 } from "../../hooks/queries";
-import { tauriActivity, tauriChat } from "../../lib/tauri";
-import { selectActive, canDropMission } from "../../lib/mission-selection";
 import { missionCardTags } from "../../lib/mission-card";
-import { missionColumnIdForStatus } from "../mission-board-columns";
+import { canDropMission, selectActive } from "../../lib/mission-selection";
+import { tauriActivity, tauriChat } from "../../lib/tauri";
 import type { Agent, AgentDefinition } from "../../lib/types";
+import { useFeedStore } from "../../stores/feeds";
+import { useUIStore } from "../../stores/ui";
+import { missionColumnIdForStatus } from "../mission-board-columns";
 
 // Stable empty reference so the feed store selector doesn't return a new
 // object every render when this agent has no feeds yet (which would otherwise

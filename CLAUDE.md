@@ -171,6 +171,9 @@ Ask: "Ready to commit? (yes/no/skip)" **STOP.** Yes → stage specific files, co
 ### Debugging
 **Never guess.** Read logs first. See `/debug`.
 
+### Formatting + linting (Biome) — run after EVERY change
+After any TS/JS/JSON modification or addition, run **`pnpm check:fix`** before the work is "done". End state must be Biome-clean — `pnpm check` exits 0.
+
 ### Library boundary (ui/)
 - Generic reusable → ui/. App-specific → app/. Unsure → start in app/, extract later.
 - **Props over stores, always.** No Zustand/Redux/etc imports in ui/.

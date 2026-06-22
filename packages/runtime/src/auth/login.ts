@@ -1,8 +1,8 @@
 import {
   getOAuthProvider,
+  type OAuthDeviceCodeInfo,
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
-  type OAuthDeviceCodeInfo,
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
 import {

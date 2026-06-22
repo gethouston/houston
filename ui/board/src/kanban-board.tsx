@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
-import { KanbanColumn } from "./kanban-column";
-import type { KanbanCardLabels } from "./kanban-card";
-import type { KanbanItem, KanbanColumn as KanbanColumnType } from "./types";
 import { columnDragRole, defaultCanDropItem } from "./dnd";
+import type { KanbanCardLabels } from "./kanban-card";
+import { KanbanColumn } from "./kanban-column";
+import type { KanbanColumn as KanbanColumnType, KanbanItem } from "./types";
 import { useBoardDrag } from "./use-board-drag";
 
 export interface KanbanBoardProps {
@@ -116,7 +116,7 @@ export function KanbanBoard({
     // itself is driven by `body` classes (see use-board-drag), not here.
     <div
       {...dragHandlers}
-      className="flex-1 flex gap-3 p-3 min-h-0 overflow-hidden"
+      className="flex-1 flex gap-3 p-3 min-h-0 overflow-x-auto overflow-y-hidden"
     >
       {columnData.map((col) => {
         // `idle | origin | drop-target | forbidden` — see `columnDragRole`. A

@@ -7,7 +7,6 @@ import {
   statSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { WorkspaceStore } from "../ports";
 import type {
   Agent,
   AgentId,
@@ -16,6 +15,7 @@ import type {
   WorkspaceId,
   WorkspaceRuntime,
 } from "../domain/types";
+import type { WorkspaceStore } from "../ports";
 
 /**
  * The local profile's WorkspaceStore — the desktop tree on disk is the source

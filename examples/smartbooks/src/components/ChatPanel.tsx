@@ -1,3 +1,4 @@
+import { topics } from "@houston-ai/engine-client";
 import {
   forwardRef,
   useEffect,
@@ -5,10 +6,9 @@ import {
   useRef,
   useState,
 } from "react";
-import { topics } from "@houston-ai/engine-client";
-import type { AgentConfig } from "../lib/config";
 import type { Client } from "../lib/clients";
 import { clientContextLine } from "../lib/clients";
+import type { AgentConfig } from "../lib/config";
 import { getClient, getWs } from "../lib/engine";
 import type { FeedItem, HoustonEvent, Message } from "../lib/feed";
 import { appendFeedItem } from "../lib/feed";

@@ -1,10 +1,10 @@
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { WorkspaceStore } from "../ports";
-import { MemoryWorkspaceStore } from "./memory";
 import { LocalWorkspaceStore } from "./local";
+import { MemoryWorkspaceStore } from "./memory";
 
 /**
  * The WorkspaceStore CONTRACT, run verbatim against every locally-testable

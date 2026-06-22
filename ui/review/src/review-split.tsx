@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from "react";
-import { ReviewSidebar } from "./review-sidebar";
+import { type ReactNode, useMemo, useState } from "react";
 import { ReviewDetailPanel } from "./review-detail-panel";
+import { ReviewSidebar } from "./review-sidebar";
 import type { ReviewItemData } from "./types";
 
 export interface ReviewSplitProps {

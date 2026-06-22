@@ -17,8 +17,8 @@
 //   3. Per-event invalidation (the original behavior) → fast path for
 //      the common case where the WS works.
 
-import { useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 import { getWs, useEngineReady } from "../lib/engine";
 
 type Env = { type: string; data?: Record<string, unknown> };

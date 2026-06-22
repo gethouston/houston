@@ -1,11 +1,11 @@
+import { Calendar, Sparkles } from "lucide-react";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { Calendar, Sparkles } from "lucide-react";
 import { useRoutines, useSkills } from "../../hooks/queries";
-import { ONBOARDING_SKILL_SLUG } from "./onboarding-skill";
+import type { Agent } from "../../lib/types";
 import { SkillCard } from "../skill-card";
 import { MissionDoneScreen } from "./mission-done-screen";
-import type { Agent } from "../../lib/types";
+import { ONBOARDING_SKILL_SLUG } from "./onboarding-skill";
 
 interface FrameLabels {
   brandLabel: string;

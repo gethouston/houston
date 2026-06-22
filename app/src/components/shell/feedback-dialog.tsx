@@ -1,5 +1,3 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Button,
   Dialog,
@@ -9,6 +7,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { reportBug } from "../../lib/bug-report";
 import { getCurrentUserEmail } from "../../lib/current-user";
 import { useUIStore } from "../../stores/ui";

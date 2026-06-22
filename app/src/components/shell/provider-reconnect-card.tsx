@@ -1,9 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { AsyncButton, Spinner } from "@houston-ai/core";
-import { useUIStore } from "../../stores/ui";
-import { tauriProvider } from "../../lib/tauri";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getProvider } from "../../lib/providers";
+import { tauriProvider } from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
 import {
   providerIsAuthenticated,
   providerReconnectSignalState,

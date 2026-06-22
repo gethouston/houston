@@ -5,15 +5,16 @@
 // header off screen. Header sticks to the top, composer to the
 // bottom, messages scroll between them.
 
-import { useCallback, useEffect, useState } from "react";
-import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
   ChatPanel,
-  UserAttachmentMessage,
-  decodeSkillMessage,
   decodeAttachmentMessage,
+  decodeSkillMessage,
   type FeedItem,
+  UserAttachmentMessage,
 } from "@houston-ai/chat";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { useAgents } from "../hooks/use-agents";
 import {
   useChatHistory,
   useCreateMission,
@@ -23,7 +24,6 @@ import {
   useAllConversations,
   useCurrentWorkspace,
 } from "../hooks/use-conversations";
-import { useAgents } from "../hooks/use-agents";
 import { useVisualViewport } from "../hooks/use-keyboard-height";
 import { ChatHeader } from "./chat-header";
 import { UserSkillMessage } from "./user-skill-message";

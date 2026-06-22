@@ -1,12 +1,12 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  interp,
   DEFAULT_NEXT_FIRE_LABELS,
+  interp,
   type ScheduleSummaryLabels,
 } from "../src/labels.ts";
-import { cronSummary, presetSummary } from "../src/schedule-summary.ts";
 import { describeNextFire } from "../src/next-fire.ts";
+import { cronSummary, presetSummary } from "../src/schedule-summary.ts";
 
 describe("interp", () => {
   it("fills single-brace tokens", () => {

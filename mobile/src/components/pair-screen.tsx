@@ -8,11 +8,11 @@
 // On failure we show a clear recovery path: open Houston on the Mac and scan
 // the current QR again. The QR is reusable until phone access is reset.
 
+import { HoustonHelmet } from "@houston-ai/core";
+import { Camera, RotateCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Camera, RotateCw } from "lucide-react";
-import { redeemPairingCode, PairError } from "../lib/pairing";
-import { HoustonHelmet } from "@houston-ai/core";
+import { PairError, redeemPairingCode } from "../lib/pairing";
 
 type State =
   | { kind: "awaiting-scan" }

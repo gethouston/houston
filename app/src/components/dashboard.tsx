@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
+  Button,
   Empty,
+  EmptyDescription,
   EmptyHeader,
   EmptyTitle,
-  EmptyDescription,
-  Button,
 } from "@houston-ai/core";
 import { Plus } from "lucide-react";
+import { useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useAgentStore } from "../stores/agents";
 import { useUIStore } from "../stores/ui";
 import { MissionControlActive } from "./board/mission-control-active";

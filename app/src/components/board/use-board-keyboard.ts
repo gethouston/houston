@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef } from "react";
 import type { KanbanColumnConfig, KanbanItem } from "@houston-ai/board";
-import { useUIStore } from "../../stores/ui";
+import { useCallback, useEffect, useRef } from "react";
 import { navigateBoard } from "../../lib/board-navigate";
+import { useUIStore } from "../../stores/ui";
 
 /**
  * Keyboard + panel orchestration shared by both board views.

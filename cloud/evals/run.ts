@@ -18,12 +18,12 @@
  */
 import { CASES } from "./cases";
 import {
+  type CpClient,
   createAgent,
   deleteAgent,
   downloadFile,
   listFiles,
   runTurn,
-  type CpClient,
 } from "./client";
 import type { Check } from "./validators";
 

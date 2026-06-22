@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-import { useTranslation } from "react-i18next";
 import {
   CommandDialog,
   CommandEmpty,
@@ -13,12 +11,14 @@ import {
   resolveAgentColor,
 } from "@houston-ai/core";
 import { Keyboard, LayoutDashboard, Plus, Settings } from "lucide-react";
-import { useAgentStore } from "../stores/agents";
-import { useUIStore } from "../stores/ui";
-import { useAllConversations } from "../hooks/queries";
+import { useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../agents/standard-tabs";
+import { useAllConversations } from "../hooks/queries";
 import { orderAgents } from "../lib/agent-order";
 import { shortcutLabel } from "../lib/shortcuts";
+import { useAgentStore } from "../stores/agents";
+import { useUIStore } from "../stores/ui";
 
 // 28px outer circle so the inner helmet (forced to 20px by cmdk's
 // `[&_[cmdk-item]_svg]:h-5` rule) sits at roughly its native 65%

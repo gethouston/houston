@@ -7,14 +7,14 @@
  * per-variant files small (each renderer = copy + which CTAs to mount).
  */
 
+import { Button, Spinner } from "@houston-ai/core";
+import { BugIcon, RotateCcwIcon } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { BugIcon, RotateCcwIcon } from "lucide-react";
-import { Button, Spinner } from "@houston-ai/core";
 import { reportBug } from "../../../lib/bug-report";
 import { getCurrentUserEmail } from "../../../lib/current-user";
-import { tauriSystem } from "../../../lib/tauri";
 import { getProvider } from "../../../lib/providers";
+import { tauriSystem } from "../../../lib/tauri";
 import { useUIStore } from "../../../stores/ui";
 import { useWorkspaceStore } from "../../../stores/workspaces";
 

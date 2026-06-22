@@ -1,11 +1,11 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { Activity } from "../src/data/activity.ts";
 import {
   applyBulkPatch,
   applyBulkRemove,
   applyRemove,
 } from "../src/data/activity-bulk.ts";
-import type { Activity } from "../src/data/activity.ts";
 
 const item = (id: string, status: string): Activity => ({
   id,

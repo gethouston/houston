@@ -1,6 +1,6 @@
-import { builtinConfigs } from "./builtin";
-import type { AgentDefinition, AgentConfig } from "../lib/types";
 import { tauriAgents } from "../lib/tauri";
+import type { AgentConfig, AgentDefinition } from "../lib/types";
+import { builtinConfigs } from "./builtin";
 
 export async function loadAllConfigs(): Promise<AgentDefinition[]> {
   const byId = new Map<string, AgentDefinition>();

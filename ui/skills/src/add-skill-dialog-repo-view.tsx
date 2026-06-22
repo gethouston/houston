@@ -1,15 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { cn, Button, Spinner } from "@houston-ai/core";
+import { Button, cn, Spinner } from "@houston-ai/core";
 import { AlertCircle, Search } from "lucide-react";
-import type { RepoSkill } from "./types";
-import type { RepoStage } from "./add-skill-dialog-repo-stage";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { RepoDoneState } from "./add-skill-dialog-repo-done";
 import {
   DEFAULT_REPO_VIEW_LABELS,
   type RepoViewLabels,
 } from "./add-skill-dialog-repo-labels";
-import { RepoDoneState } from "./add-skill-dialog-repo-done";
 import { RepoSkillRow } from "./add-skill-dialog-repo-row";
 import { RepoSelectionSummary } from "./add-skill-dialog-repo-selection";
+import type { RepoStage } from "./add-skill-dialog-repo-stage";
+import type { RepoSkill } from "./types";
 
 export interface RepoViewProps {
   onList: (source: string) => Promise<RepoSkill[]>;

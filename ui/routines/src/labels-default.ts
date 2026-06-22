@@ -5,16 +5,17 @@
  *
  * These mirror `app/src/locales/en/routines.json`; keep them in sync.
  */
-import { SCHEDULE_PRESET_LABELS } from "./types.ts";
+
 import type {
-  ScheduleSummaryLabels,
   NextFireLabels,
+  RoutineEditorLabels,
+  RoutineRowLabels,
+  RoutinesGridLabels,
   RunHistoryLabels,
   ScheduleLabels,
-  RoutineEditorLabels,
-  RoutinesGridLabels,
-  RoutineRowLabels,
+  ScheduleSummaryLabels,
 } from "./labels";
+import { SCHEDULE_PRESET_LABELS } from "./types.ts";
 
 export const DEFAULT_SCHEDULE_SUMMARY_LABELS: ScheduleSummaryLabels = {
   noSchedule: "No schedule set",
