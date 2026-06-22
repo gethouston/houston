@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { Bot, Check, LayoutGrid, Mail, Sparkles } from "lucide-react";
+import { Bot, Check, LayoutGrid, Mail, Send, Sparkles } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import confetti from "canvas-confetti";
 import { cn } from "@houston-ai/core";
@@ -8,13 +8,14 @@ import { cn } from "@houston-ai/core";
 import { HoustonLogo } from "../shell/experience-card";
 import { SetupCard } from "./setup-card";
 
-export type Milestone = "ai" | "apps" | "agent" | "email";
+export type Milestone = "ai" | "apps" | "agent" | "email" | "send";
 
 const ICON: Record<Milestone, LucideIcon> = {
   ai: Sparkles,
   apps: LayoutGrid,
   agent: Bot,
   email: Mail,
+  send: Send,
 };
 
 const prefersReducedMotion = () =>
@@ -70,10 +71,14 @@ export function SetupProgress({
     apps: t("tutorial.missions.intro.steps.apps"),
     agent: t("tutorial.missions.intro.steps.agent"),
     email: t("tutorial.missions.intro.steps.email"),
+    send: t("tutorial.missions.intro.steps.send"),
   };
   const sections: { name: string; items: Milestone[] }[] = [
     { name: t("tutorial.sections.setup"), items: ["ai", "apps"] },
-    { name: t("tutorial.sections.onboarding"), items: ["agent", "email"] },
+    {
+      name: t("tutorial.sections.onboarding"),
+      items: ["agent", "email", "send"],
+    },
   ];
 
   return (

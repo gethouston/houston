@@ -1,22 +1,14 @@
 import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
-import {
-  AGENT_COLORS,
-  HoustonAvatar,
-  Input,
-  cn,
-  colorHex,
-  resolveAgentColor,
-} from "@houston-ai/core";
+import { HoustonAvatar, Input, resolveAgentColor } from "@houston-ai/core";
 import { SetupCard } from "../setup-card";
 
 interface MeetMissionProps {
   eyebrow: string;
   name: string;
+  /** The agent's avatar color (a sensible default; not chosen here anymore). */
   color: string;
   namePlaceholder: string;
   onNameChange: (name: string) => void;
-  onColorChange: (color: string) => void;
   /** Optional back link (omitted when there's nothing useful to go back to). */
   onBack?: () => void;
   /** Provisioning in flight — disables + spins the create button. */
@@ -24,13 +16,13 @@ interface MeetMissionProps {
   onBegin: () => void;
 }
 
+/** Create-your-first-agent step. Just the name — color uses a default. */
 export function MeetMission({
   eyebrow,
   name,
   color,
   namePlaceholder,
   onNameChange,
-  onColorChange,
   onBack,
   creating,
   onBegin,
@@ -62,30 +54,6 @@ export function MeetMission({
           className="max-w-sm rounded-full text-center"
           onChange={(event) => onNameChange(event.target.value)}
         />
-        <div className="flex items-center gap-2">
-          {AGENT_COLORS.map((item) => {
-            const selected =
-              color === item.id || color === item.light || color === item.dark;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                aria-pressed={selected}
-                aria-label={item.id}
-                onClick={() => onColorChange(item.id)}
-                className={cn(
-                  "flex size-7 items-center justify-center rounded-full transition-transform",
-                  selected
-                    ? "ring-2 ring-foreground/30 ring-offset-2"
-                    : "hover:scale-110",
-                )}
-                style={{ backgroundColor: colorHex(item) }}
-              >
-                {selected && <Check className="size-3.5 text-white" />}
-              </button>
-            );
-          })}
-        </div>
       </div>
     </SetupCard>
   );

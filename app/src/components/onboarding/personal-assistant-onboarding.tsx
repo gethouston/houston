@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ToastContainer, type Toast } from "@houston-ai/core";
+import { Send } from "lucide-react";
 import { analytics } from "../../lib/analytics";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -12,8 +13,11 @@ import { MeetMission } from "./missions/meet";
 import { BrainMission } from "./missions/brain";
 import { ProviderLoginMission } from "./missions/provider-login";
 import { ToolsMission } from "./missions/tools";
+import { ConnectEmailMission } from "./missions/connect-email";
 import { EmailMission } from "./missions/email";
+import { FinishedMission } from "./missions/finished";
 import { SetupProgress } from "./setup-progress";
+import { SetupCard } from "./setup-card";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
 import {
@@ -21,8 +25,8 @@ import {
   defaultAssistantSetup,
 } from "./personal-assistant-artifacts";
 import { TUTORIAL_MISSION } from "./personal-assistant-missions";
-import { type OnboardingStep, type TutorialStep } from "./tutorial-copy";
-import { stepSection, type SetupStep } from "../../lib/setup-steps";
+import { type OnboardingStep } from "./tutorial-copy";
+import { stepSection } from "../../lib/setup-steps";
 
 interface PersonalAssistantOnboardingProps {
   toasts: Toast[];
@@ -41,29 +45,28 @@ export function PersonalAssistantOnboarding({
   const [agent, setAgent] = useState<Agent | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
   const [model, setModel] = useState<string | null>(null);
-  // Set while the "create your first agent" step is provisioning the
-  // workspace + assistant, to drive the button's loading state.
+  // Set while the create-agent step is provisioning, to drive the loading state.
   const [creatingAgent, setCreatingAgent] = useState(false);
-  // Recipient label of the first email, shown on the final success screen.
-  const [sentTo, setSentTo] = useState<string | null>(null);
+  // The email toolkit connected in the "give access to your email" step.
+  const [emailTool, setEmailTool] = useState<{
+    toolkit: string;
+    label: string;
+  } | null>(null);
   const [assistantName, setAssistantName] = useState(() =>
     t("setup:tutorial.defaults.assistantName"),
   );
-  const [assistantColor, setAssistantColor] = useState("navy");
+  // A sensible default — the agent's color is no longer chosen during setup.
+  const [assistantColor] = useState("navy");
   // Collapses concurrent / repeated default-workspace creation onto a single
   // in-flight operation so first-run can never fire `createWorkspace` twice
-  // (a double-clicked Continue, Skip racing a mission) — HOU-444.
+  // (a double-clicked Continue, a remount) — HOU-444.
   const creationRef = useRef<Promise<Agent> | null>(null);
 
-  // Title stamped on the agent's first-run instructions — the one task setup
-  // walks the user through.
+  // Title stamped on the agent's first-run instructions.
   const missionTitle = t("setup:tutorial.missions.email.chip");
 
   // `tutorialActive` pins the orchestrator in front of the workspace shell so
-  // the workspace-create event in the Brain step doesn't unmount us. Welcome +
-  // the agreement now run in the first-run gate BEFORE the app renders this, so
-  // by the time onboarding mounts (post-load, `workspaces.length === 0`) the
-  // user is genuinely starting setup — safe to pin on mount.
+  // the workspace-create event in the create step doesn't unmount us.
   useEffect(() => {
     analytics.track("onboarding_started", { source: "setup" });
     setTutorialActive(true);
@@ -74,10 +77,6 @@ export function PersonalAssistantOnboarding({
     pickedProvider: string,
     pickedModel: string,
   ): Promise<Agent> => {
-    // Reuse an in-flight creation rather than starting a second one, so a
-    // double-clicked Continue (or a Skip racing a mission) can't fire two
-    // `createWorkspace("Personal")` calls and trip the engine's dup-name
-    // conflict (HOU-444).
     if (creationRef.current) return creationRef.current;
 
     const op = (async (): Promise<Agent> => {
@@ -90,9 +89,6 @@ export function PersonalAssistantOnboarding({
       });
       setup.color = assistantColor;
 
-      // Get-or-create: a prior partial run (or an orchestrator remount) may
-      // have already created "Personal" and/or its assistant. Reuse them
-      // instead of re-creating, which the engine rejects as a duplicate.
       const { workspace: ws, assistant: created, createdWorkspace } =
         await ensureWorkspaceWithAssistant(setup.workspaceName, {
           listWorkspaces: () => tauriWorkspaces.list(),
@@ -108,11 +104,7 @@ export function PersonalAssistantOnboarding({
             }),
         });
 
-      // Persist the picked pair as the new global default so the next new
-      // agent starts from the same place the user just chose during onboarding.
       await tauriProvider.setLastUsed(pickedProvider, pickedModel);
-      // Count activation only for a genuinely new workspace — a reused one
-      // (retry / remount) must not double-fire the event.
       if (createdWorkspace) {
         analytics.track("workspace_created", {
           provider: pickedProvider,
@@ -131,44 +123,34 @@ export function PersonalAssistantOnboarding({
     })();
 
     creationRef.current = op;
-    // If it fails partway, drop the memo so a retry re-runs the (now
-    // idempotent) get-or-create instead of being stuck on a rejected promise.
     op.catch(() => {
       creationRef.current = null;
     });
     return op;
   };
 
-  // Terminal hand-off. Arm the UI tour BEFORE clearing `tutorialActive`
-  // so the workspace shell mounts with the tour overlay already up —
-  // no flicker of bare workspace. Called when the email sends (the email
-  // mission's "Enter Houston" CTA) AND by the always-on escape gate so a
-  // user who bails midway still lands in the workspace shell cleanly.
-  const finishOnboarding = () => {
+  // Terminal hand-off. Arm the UI tour BEFORE clearing `tutorialActive` so the
+  // workspace shell mounts with the tour overlay already up — no flicker.
+  const finishOnboarding = (withTour: boolean) => {
     analytics.track("onboarding_completed", {
       mission: TUTORIAL_MISSION.id,
       integrations_skipped: false,
       tutorial_run: true,
     });
-    setUiTourActive(true);
+    if (withTour) setUiTourActive(true);
     setTutorialActive(false);
   };
 
-  // The "create your first agent" step now owns provisioning the workspace +
-  // assistant (it used to live on the provider-login Continue, but creation now
-  // happens AFTER the AI + apps setup phase). By here provider/model are picked
-  // and the user has just chosen the name/color on this step. Reused creation
-  // is deduped inside createWorkspaceAndAssistant (HOU-444); on failure we toast
-  // and stay so the user can retry.
+  // The create-agent step owns provisioning the workspace + assistant. By here
+  // provider/model are picked; reused creation is deduped (HOU-444).
   const handleCreateAgent = async () => {
     if (!provider || !model) return;
     setCreatingAgent(true);
     try {
-      // Funnel: the user named + created their first agent.
       analytics.track("onboarding_assistant_named");
       await createWorkspaceAndAssistant(provider, model);
       setCreatingAgent(false);
-      setStep("email");
+      setStep("agentCreated");
     } catch (err) {
       addToast({
         title: t("setup:tutorial.errors.setupFailed"),
@@ -179,24 +161,23 @@ export function PersonalAssistantOnboarding({
     }
   };
 
-  // Provider/model the back-half missions (Try, Routine) run against. The
-  // user picks these in the Brain mission; fall back to the platform default
-  // model for the chosen provider if a mission renders before a pick.
+  // Provider/model the email send runs against (fall back to the default).
   const missionProvider = provider ?? "anthropic";
   const missionModel = model ?? getDefaultModel(missionProvider);
 
-  // Section-aware eyebrow: "Setup · 3 of 5" / "Onboarding · 1 of 2", so the two
-  // phases read as distinct.
-  const stepEyebrow = (s: TutorialStep) => {
-    const { section, current, total } = stepSection(s as SetupStep);
+  // Section-aware eyebrow: "Setup · 1 of 2", "Onboarding · 2 of 3". Empty for
+  // screens that aren't numbered steps (never rendered on those).
+  const stepEyebrow = (screen: string): string => {
+    const s = stepSection(screen);
+    if (!s) return "";
     const sectionName =
-      section === "setup"
+      s.section === "setup"
         ? t("setup:tutorial.sections.setup")
         : t("setup:tutorial.sections.onboarding");
     return t("setup:tutorial.sectionCounter", {
       section: sectionName,
-      current,
-      total,
+      current: s.current,
+      total: s.total,
     });
   };
 
@@ -211,6 +192,7 @@ export function PersonalAssistantOnboarding({
           onContinue={() => setStep("brain")}
         />
       )}
+
       {step === "brain" && (
         <BrainMission
           eyebrow={stepEyebrow("brain")}
@@ -241,6 +223,7 @@ export function PersonalAssistantOnboarding({
           onContinue={() => setStep("tools")}
         />
       )}
+
       {step === "tools" && (
         <ToolsMission
           eyebrow={stepEyebrow("tools")}
@@ -258,6 +241,7 @@ export function PersonalAssistantOnboarding({
           onContinue={() => setStep("meet")}
         />
       )}
+
       {step === "meet" && (
         <MeetMission
           eyebrow={stepEyebrow("meet")}
@@ -265,38 +249,89 @@ export function PersonalAssistantOnboarding({
           color={assistantColor}
           namePlaceholder={t("setup:tutorial.defaults.assistantName")}
           onNameChange={setAssistantName}
-          onColorChange={setAssistantColor}
           creating={creatingAgent}
           onBegin={() => void handleCreateAgent()}
         />
       )}
-      {step === "email" && agent && (
+      {step === "agentCreated" && (
+        <SetupProgress
+          title={t("setup:tutorial.missions.agentCreated.title")}
+          message={t("setup:tutorial.missions.agentCreated.body")}
+          done={["ai", "apps", "agent"]}
+          justCompleted="agent"
+          ctaLabel={t("setup:tutorial.missions.agentCreated.cta")}
+          onContinue={() => setStep("connectEmail")}
+        />
+      )}
+
+      {step === "connectEmail" && (
+        <ConnectEmailMission
+          eyebrow={stepEyebrow("connectEmail")}
+          onBack={() => setStep("meet")}
+          onConnected={(toolkit, label) => {
+            setEmailTool({ toolkit, label });
+            setStep("emailConnected");
+          }}
+        />
+      )}
+      {step === "emailConnected" && (
+        <SetupProgress
+          title={t("setup:tutorial.missions.emailConnected.title")}
+          message={t("setup:tutorial.missions.emailConnected.body")}
+          done={["ai", "apps", "agent", "email"]}
+          justCompleted="email"
+          ctaLabel={t("setup:tutorial.missions.emailConnected.cta")}
+          onContinue={() => setStep("emailIntro")}
+        />
+      )}
+
+      {step === "emailIntro" && (
+        <SetupCard
+          title={t("setup:tutorial.missions.emailIntro.title")}
+          subtitle={t("setup:tutorial.missions.emailIntro.body")}
+          onBack={() => setStep("connectEmail")}
+          backLabel={t("setup:tutorial.nav.back")}
+          onNext={() => setStep("emailChat")}
+          nextLabel={t("setup:tutorial.missions.emailIntro.cta")}
+        >
+          <div className="flex flex-1 items-center justify-center">
+            <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary text-foreground">
+              <Send className="size-7" />
+            </span>
+          </div>
+        </SetupCard>
+      )}
+      {step === "emailChat" && agent && emailTool && (
         <EmailMission
-          eyebrow={stepEyebrow("email")}
+          eyebrow={stepEyebrow("emailChat")}
           agent={agent}
           assistantColor={assistantColor}
           provider={missionProvider}
           model={missionModel}
-          onBack={() => setStep("meet")}
-          onContinue={(to) => {
-            setSentTo(to ?? null);
-            setStep("done");
-          }}
+          emailToolkit={emailTool.toolkit}
+          emailToolkitLabel={emailTool.label}
+          onBack={() => setStep("emailIntro")}
+          onContinue={() => setStep("emailSent")}
         />
       )}
-      {step === "done" && (
+      {step === "emailSent" && (
         <SetupProgress
-          title={t("setup:tutorial.missions.done.title")}
-          message={t("setup:tutorial.missions.done.body", {
-            recipient:
-              sentTo ?? t("setup:tutorial.missions.email.recipient.youLabel"),
-          })}
-          done={["ai", "apps", "agent", "email"]}
-          justCompleted="email"
-          ctaLabel={t("setup:tutorial.missions.done.cta")}
-          onContinue={finishOnboarding}
+          title={t("setup:tutorial.missions.emailSent.title")}
+          message={t("setup:tutorial.missions.emailSent.body")}
+          done={["ai", "apps", "agent", "email", "send"]}
+          justCompleted="send"
+          ctaLabel={t("setup:tutorial.missions.emailSent.cta")}
+          onContinue={() => setStep("finished")}
         />
       )}
+
+      {step === "finished" && (
+        <FinishedMission
+          onTour={() => finishOnboarding(true)}
+          onConnectMore={() => finishOnboarding(false)}
+        />
+      )}
+
       <ToastContainer toasts={toasts} onDismiss={onDismissToast} />
     </>
   );

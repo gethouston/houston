@@ -1,45 +1,46 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { SETUP_STEPS, stepSection } from "./setup-steps.ts";
+import { stepSection } from "./setup-steps.ts";
 
-test("setup steps are the full ordered flow", () => {
-  assert.deepEqual(SETUP_STEPS, [
-    "language",
-    "agreement",
-    "brain",
-    "providerLogin",
-    "tools",
-    "meet",
-    "email",
-  ]);
-});
-
-test("each step is numbered within its own section", () => {
-  // Setup phase: language, agreement, brain, providerLogin, tools (5).
-  assert.deepEqual(stepSection("language"), {
-    section: "setup",
-    current: 1,
-    total: 5,
-  });
+test("Setup is two logical steps; Connect-your-AI spans pick + login", () => {
   assert.deepEqual(stepSection("brain"), {
     section: "setup",
-    current: 3,
-    total: 5,
+    current: 1,
+    total: 2,
+  });
+  assert.deepEqual(stepSection("providerLogin"), {
+    section: "setup",
+    current: 1,
+    total: 2,
   });
   assert.deepEqual(stepSection("tools"), {
     section: "setup",
-    current: 5,
-    total: 5,
-  });
-  // Onboarding phase: meet, email (2).
-  assert.deepEqual(stepSection("meet"), {
-    section: "onboarding",
-    current: 1,
-    total: 2,
-  });
-  assert.deepEqual(stepSection("email"), {
-    section: "onboarding",
     current: 2,
     total: 2,
   });
+});
+
+test("Onboarding is three logical steps", () => {
+  assert.deepEqual(stepSection("meet"), {
+    section: "onboarding",
+    current: 1,
+    total: 3,
+  });
+  assert.deepEqual(stepSection("connectEmail"), {
+    section: "onboarding",
+    current: 2,
+    total: 3,
+  });
+  assert.deepEqual(stepSection("emailChat"), {
+    section: "onboarding",
+    current: 3,
+    total: 3,
+  });
+});
+
+test("gates and success screens are not numbered steps", () => {
+  assert.equal(stepSection("language"), null);
+  assert.equal(stepSection("agreement"), null);
+  assert.equal(stepSection("aiConnected"), null);
+  assert.equal(stepSection("finished"), null);
 });

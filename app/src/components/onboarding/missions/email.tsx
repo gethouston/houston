@@ -16,45 +16,20 @@ import {
 } from "../../../stores/session-status";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
 import { ComposioLinkCard } from "../../composio-link-card";
-import {
-  parseComposioToolkitFromHref,
-  isToolkitConnected,
-} from "../../composio-card-state";
+import { parseComposioToolkitFromHref } from "../../composio-card-state";
 import { withComposioWaitingFooter } from "../../composio-waiting-footer";
 import {
   ComposioSigninCard,
   isComposioSigninHref,
 } from "../../composio-signin-card";
-import { useComposioConnect } from "../../../hooks/use-composio-connect";
-import { useConnectedToolkits } from "../../../hooks/queries";
 import type { Agent } from "../../../lib/types";
 import { SetupCard } from "../setup-card";
-import {
-  OfferCard,
-  RecipientCard,
-  ProviderCard,
-  ConnectCard,
-  type RecipientChoice,
-  type ProviderChoice,
-} from "./email-cards";
+import { OfferCard } from "./email-cards";
 
-/** The agent emits this once the email actually sent (it's lenient because
- *  codex sometimes wraps/escapes the token). Unlocks the final success step. */
+/** The agent emits this once the email actually sent. */
 const SETUP_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
 const SETUP_END_STRIP_RE =
   /\*{0,2}\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]\*{0,2}/gi;
-
-const FAKE_THINKING_MS = 3000;
-
-type Phase =
-  | "offer"
-  | "thinking1"
-  | "recipient"
-  | "thinking2"
-  | "provider"
-  | "connect"
-  | "thinking3"
-  | "live";
 
 interface EmailMissionProps {
   eyebrow: string;
@@ -62,19 +37,19 @@ interface EmailMissionProps {
   assistantColor: string;
   provider: string;
   model: string;
+  /** The email toolkit connected in the previous step (e.g. "gmail"). */
+  emailToolkit: string;
+  emailToolkitLabel: string;
   onBack: () => void;
-  /** Advance to the success screen once the email is sent. `sentTo` is the
-   *  recipient label to show there (the address, or "you" for a self-test). */
-  onContinue: (sentTo?: string) => void;
+  /** Advance to the success screen once the email is sent. */
+  onContinue: () => void;
 }
 
 /**
- * Final setup step. The first beats are a FAKED guided flow (no agent): a card
- * replaces the composer, the user picks who to email + what to say + which
- * provider, with a brief "thinking" pause between beats. Only once the provider
- * is chosen do we spin up the REAL agent, pre-fed with every choice, and let it
- * connect the email IN the chat (the teaching moment) and send for real. The
- * fake transcript and the real one render in one continuous ChatPanel.
+ * Final onboarding step: the agent sends one real email to the user themselves.
+ * The email is already connected (previous step), so this is just a single
+ * "Send an email to myself" card; the agent reads the directive from CLAUDE.md
+ * and sends. Auto-advances the moment the agent confirms.
  */
 export function EmailMission({
   eyebrow,
@@ -82,18 +57,16 @@ export function EmailMission({
   assistantColor,
   provider,
   model,
+  emailToolkit,
+  emailToolkitLabel,
   onBack,
   onContinue,
 }: EmailMissionProps) {
   const { t } = useTranslation(["setup", "chat"]);
   const agentPath = agent.folderPath;
 
-  const [phase, setPhase] = useState<Phase>("offer");
+  const [started, setStarted] = useState(false);
   const [fakeFeed, setFakeFeed] = useState<FeedItem[]>([]);
-  const [recipient, setRecipient] = useState<RecipientChoice | null>(null);
-  const [chosenProvider, setChosenProvider] = useState<ProviderChoice | null>(
-    null,
-  );
   const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
     null,
   );
@@ -104,22 +77,7 @@ export function EmailMission({
   const { processLabels, getThinkingMessage } = useChatDisplayLabels();
   const queuedLabels = useQueuedMessageLabels();
 
-  // Don't fire timers / setState after the step unmounts (navigation away).
-  const mounted = useRef(true);
-  const later = useCallback((fn: () => void, ms: number) => {
-    window.setTimeout(() => {
-      if (mounted.current) fn();
-    }, ms);
-  }, []);
-  useEffect(() => {
-    mounted.current = true;
-    return () => {
-      mounted.current = false;
-    };
-  }, []);
-
-  // Strip the setup directive from CLAUDE.md on unmount (idempotent, and safe
-  // even if we never appended it because the user bailed before the handoff).
+  // Strip the setup directive from CLAUDE.md on unmount (idempotent).
   useEffect(() => {
     return () => {
       void (async () => {
@@ -142,23 +100,6 @@ export function EmailMission({
   const sessionStatus = useSessionStatus(agentPath, sessionKeyForHooks);
   const isActive = isActiveSessionStatus(sessionStatus);
 
-  // Real Composio connection, driven by the scripted Connect card (not the
-  // agent). We poll connected toolkits while picking/connecting so we can
-  // advance the moment the OAuth round-trip lands.
-  const { connect, connecting } = useComposioConnect();
-  const pollConnections = phase === "provider" || phase === "connect";
-  const { data: connectedToolkits } = useConnectedToolkits(pollConnections);
-  const connectedSet = useMemo(
-    () => new Set(connectedToolkits ?? []),
-    [connectedToolkits],
-  );
-
-  const pushFake = useCallback(
-    (item: FeedItem) => setFakeFeed((f) => [...f, item]),
-    [],
-  );
-
-  // Conversion: the agent emitted its completion token (the email sent).
   const setupDone = useMemo(() => {
     const items = realFeed ?? [];
     for (let i = items.length - 1; i >= 0; i--) {
@@ -171,171 +112,74 @@ export function EmailMission({
     return false;
   }, [realFeed]);
 
-  // Hand off to the success screen with the recipient label to show there.
-  const finish = useCallback(() => {
-    const sentTo =
-      recipient && !recipient.toMyself
-        ? recipient.email
-        : t("setup:tutorial.missions.email.recipient.youLabel");
-    onContinue(sentTo);
-  }, [recipient, onContinue, t]);
-
-  // The agent emitted its completion token: the email is sent. Fire the
-  // conversion and AUTO-advance to the success screen so the user lands on a
-  // clear "sent" confirmation instead of continuing the conversation.
-  const emailSentFired = useRef(false);
+  // Conversion + auto-advance to the success screen the moment it sends.
+  const doneFired = useRef(false);
   useEffect(() => {
-    if (setupDone && !emailSentFired.current) {
-      emailSentFired.current = true;
+    if (setupDone && !doneFired.current) {
+      doneFired.current = true;
       analytics.track("first_email_sent", { provider });
-      finish();
+      onContinue();
     }
-  }, [setupDone, provider, finish]);
+  }, [setupDone, provider, onContinue]);
 
-  // ── Scripted beats ───────────────────────────────────────────────────────
-
-  const handleOffer = useCallback(() => {
+  const handleSend = useCallback(async () => {
+    if (started) return;
+    setStarted(true);
+    setError(null);
     analytics.track("first_message_sent");
-    pushFake({
-      feed_type: "user_message",
-      data: t("setup:tutorial.missions.email.offer.userSaid"),
-    });
-    setPhase("thinking1");
-    later(() => {
-      pushFake({
-        feed_type: "assistant_text",
-        data: t("setup:tutorial.missions.email.recipient.prompt"),
+    setFakeFeed([
+      {
+        feed_type: "user_message",
+        data: t("setup:tutorial.missions.email.offer.option"),
+      },
+    ]);
+    // Pre-feed the agent (send to self via the already-connected toolkit).
+    try {
+      const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
+      const updated = appendSetupSection(current, {
+        toolkit: emailToolkit,
+        toolkitLabel: emailToolkitLabel,
+        toMyself: true,
       });
-      setPhase("recipient");
-    }, FAKE_THINKING_MS);
-  }, [later, pushFake, t]);
-
-  const handleRecipient = useCallback(
-    (choice: RecipientChoice) => {
-      setRecipient(choice);
-      if (choice.toMyself) {
-        pushFake({
-          feed_type: "user_message",
-          data: t("setup:tutorial.missions.email.recipient.selfSaid"),
-        });
-      } else {
-        pushFake({
-          feed_type: "user_message",
-          data: t("setup:tutorial.missions.email.recipient.otherSaid", {
-            email: choice.email,
-          }),
-        });
-        if (choice.message) {
-          pushFake({ feed_type: "user_message", data: choice.message });
-        }
+      if (updated !== current) {
+        await tauriAgent.writeFile(agentPath, "CLAUDE.md", updated);
       }
-      setPhase("thinking2");
-      later(() => {
-        pushFake({
-          feed_type: "assistant_text",
-          data: t("setup:tutorial.missions.email.provider.prompt"),
-        });
-        setPhase("provider");
-      }, FAKE_THINKING_MS);
-    },
-    [later, pushFake, t],
-  );
-
-  // ── Hand off to the real agent (send only — the card already connected) ────
-
-  const goLive = useCallback(
-    async (choice: ProviderChoice, who: RecipientChoice) => {
-      setError(null);
-      setPhase("live");
-      // Pre-feed the agent every choice via CLAUDE.md, BEFORE the session spawns
-      // (it reads CLAUDE.md at start). The email is already connected, so it
-      // only has to send.
-      try {
-        const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
-        const updated = appendSetupSection(current, {
-          toolkit: choice.toolkit,
-          toolkitLabel: choice.label,
-          toMyself: who.toMyself,
-          recipientEmail: who.email,
-          message: who.message,
-        });
-        if (updated !== current) {
-          await tauriAgent.writeFile(agentPath, "CLAUDE.md", updated);
-        }
-      } catch (e) {
-        logger.warn(`[email-setup] could not append setup section: ${e}`);
-      }
-      // Kick the agent off WITHOUT a visible bubble — CLAUDE.md holds every
-      // detail, so this trigger never needs to show in the transcript.
-      try {
-        const result = await createMission(
-          {
-            id: agent.id,
-            name: agent.name,
-            color: agent.color,
-            folderPath: agent.folderPath,
-          },
-          "Send the email now.",
-          {
-            title: choice.label,
-            providerOverride: provider,
-            modelOverride: model,
-            effortOverride: "medium",
-          },
-        );
-        setMissionSessionKey(result.sessionKey);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-        setPhase("connect");
-      }
-    },
-    [agent, agentPath, model, provider],
-  );
-
-  const goConnectDone = useCallback(
-    (choice: ProviderChoice, who: RecipientChoice) => {
-      pushFake({
-        feed_type: "assistant_text",
-        data: t("setup:tutorial.missions.email.connect.done", {
-          provider: choice.label,
-        }),
-      });
-      setPhase("thinking3");
-      later(() => void goLive(choice, who), FAKE_THINKING_MS);
-    },
-    [goLive, later, pushFake, t],
-  );
-
-  const handleProvider = useCallback(
-    (choice: ProviderChoice) => {
-      if (!recipient) return;
-      setChosenProvider(choice);
-      pushFake({ feed_type: "user_message", data: choice.label });
-      if (isToolkitConnected(connectedSet, choice.toolkit)) {
-        goConnectDone(choice, recipient);
-      } else {
-        setPhase("connect");
-      }
-    },
-    [connectedSet, goConnectDone, pushFake, recipient],
-  );
-
-  // The Connect card kicked off a real OAuth round-trip; advance the moment the
-  // toolkit shows up connected (the query refetches when the window regains
-  // focus after the browser hop).
-  useEffect(() => {
-    if (
-      phase === "connect" &&
-      chosenProvider &&
-      recipient &&
-      isToolkitConnected(connectedSet, chosenProvider.toolkit)
-    ) {
-      goConnectDone(chosenProvider, recipient);
+    } catch (e) {
+      logger.warn(`[email-setup] could not append setup section: ${e}`);
     }
-  }, [phase, chosenProvider, recipient, connectedSet, goConnectDone]);
+    try {
+      const result = await createMission(
+        {
+          id: agent.id,
+          name: agent.name,
+          color: agent.color,
+          folderPath: agent.folderPath,
+        },
+        "Send the email now.",
+        {
+          title: emailToolkitLabel,
+          providerOverride: provider,
+          modelOverride: model,
+          effortOverride: "medium",
+        },
+      );
+      setMissionSessionKey(result.sessionKey);
+    } catch (e) {
+      setStarted(false);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [
+    started,
+    agent,
+    agentPath,
+    emailToolkit,
+    emailToolkitLabel,
+    provider,
+    model,
+    t,
+  ]);
 
-  // ── Live composer (only used once the real agent is running) ───────────────
-
+  // Live composer (only used if the user wants to chat after).
   const sendNow = useCallback(
     async (text: string, _files: File[]) => {
       const trimmed = text.trim();
@@ -364,7 +208,7 @@ export function EmailMission({
     sendNow,
   });
 
-  const handleSend = useCallback(
+  const handleComposerSend = useCallback(
     async (text: string, files: File[]) => {
       const trimmed = text.trim();
       if (!trimmed) return;
@@ -401,30 +245,8 @@ export function EmailMission({
     return withComposioWaitingFooter({ content: stripped });
   }, []);
 
-  // ── Render ─────────────────────────────────────────────────────────────────
-
   const feedItems = [...fakeFeed, ...((realFeed ?? []) as FeedItem[])];
-  const thinking =
-    phase === "thinking1" || phase === "thinking2" || phase === "thinking3";
-  const isLoading = thinking || (phase === "live" && isActive);
-
-  const composerOverride =
-    phase === "offer" ? (
-      <OfferCard onSend={handleOffer} />
-    ) : phase === "recipient" ? (
-      <RecipientCard onConfirm={handleRecipient} />
-    ) : phase === "provider" ? (
-      <ProviderCard onConfirm={handleProvider} />
-    ) : phase === "connect" && chosenProvider ? (
-      <ConnectCard
-        label={chosenProvider.label}
-        connecting={connecting === chosenProvider.toolkit}
-        onConnect={() => connect(chosenProvider.toolkit)}
-      />
-    ) : thinking ? (
-      // Blank the input while the (faked) agent "thinks".
-      <div className="h-1" />
-    ) : undefined;
+  const isLoading = started && isActive;
 
   return (
     <SetupCard
@@ -453,8 +275,8 @@ export function EmailMission({
           <ChatPanel
             sessionKey={missionSessionKey ?? "setup-wizard"}
             feedItems={feedItems}
-            onSend={handleSend}
-            onStop={phase === "live" && isActive ? handleStop : undefined}
+            onSend={handleComposerSend}
+            onStop={started && isActive ? handleStop : undefined}
             isLoading={isLoading}
             placeholder={t("setup:tutorial.missions.email.placeholder")}
             processLabels={processLabels}
@@ -469,7 +291,9 @@ export function EmailMission({
             queuedMessages={messageQueue.queuedMessages}
             onRemoveQueuedMessage={messageQueue.removeQueuedMessage}
             queuedLabels={queuedLabels}
-            composerOverride={composerOverride}
+            composerOverride={
+              started ? undefined : <OfferCard onSend={handleSend} />
+            }
           />
         </div>
       </div>

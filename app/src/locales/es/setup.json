@@ -53,10 +53,11 @@
         "body": "Unos pasos rápidos y tu agente estará listo para trabajar.",
         "cta": "Comenzar configuración",
         "steps": {
-          "ai": "Inicia sesión en tu IA",
+          "ai": "Conecta tu IA",
           "apps": "Conecta tus apps",
-          "agent": "Crea tu primer agente",
-          "email": "Envía tu primer correo"
+          "agent": "Crea tu agente",
+          "email": "Conecta tu correo",
+          "send": "Envía tu primer correo"
         }
       },
       "brain": {
@@ -91,45 +92,17 @@
       },
       "meet": {
         "title": "Crea tu primer agente",
-        "body": "Dale a tu agente un nombre y un color. Puedes cambiarlos cuando quieras.",
+        "body": "Dale un nombre a tu agente. Puedes cambiarlo cuando quieras.",
         "begin": "Crear agente",
         "creating": "Creando..."
       },
       "email": {
-        "title": "Haz que tu agente envíe un correo por ti",
+        "title": "Envía tu primer correo",
         "offer": {
-          "option": "Enviar un correo en mi nombre",
-          "userSaid": "Enviar un correo en mi nombre"
-        },
-        "recipient": {
-          "prompt": "Genial. ¿A quién le enviamos este primer correo?",
-          "self": "Envíamelo a mí (solo para probar)",
-          "other": "Envíalo a otra persona",
-          "emailPlaceholder": "Su correo electrónico",
-          "messagePlaceholder": "¿Qué debería decir? (opcional)",
-          "confirm": "Continuar",
-          "selfSaid": "Envíamelo a mí, solo para probar.",
-          "otherSaid": "Envíalo a {{email}}.",
-          "youLabel": "ti"
-        },
-        "provider": {
-          "prompt": "Listo. ¿Qué correo usas?",
-          "other": "Otro correo",
-          "otherPlaceholder": "¿Qué proveedor de correo?",
-          "confirm": "Conectar y enviar"
-        },
-        "connect": {
-          "prompt": "Último paso. Conecta tu {{provider}} para que tu agente pueda enviarlo.",
-          "waiting": "Conectando {{provider}}... termina en tu navegador y vuelve.",
-          "done": "{{provider}} conectado. Enviando tu correo..."
+          "option": "Enviar un correo a mí mismo"
         },
         "chip": "Envía un correo por mí",
         "placeholder": "Responde a tu agente..."
-      },
-      "done": {
-        "title": "¡Todo listo!",
-        "body": "Tu primer correo fue enviado a {{recipient}}. ¡Te damos la bienvenida a Houston!",
-        "cta": "Entrar a Houston"
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",
@@ -140,6 +113,42 @@
         "title": "¡Apps conectadas!",
         "body": "Configuración lista, bien hecho. Ahora vamos a crear tu primer agente.",
         "cta": "Crear mi agente"
+      },
+      "connectEmail": {
+        "title": "Dale a tu agente acceso a tu correo",
+        "body": "Elige tu correo para que tu agente pueda enviar por ti. Lo conectas una vez, de forma segura.",
+        "other": "Otro proveedor",
+        "otherPlaceholder": "¿Qué proveedor de correo?",
+        "connect": "Conectar",
+        "connecting": "Conectando..."
+      },
+      "agentCreated": {
+        "title": "¡Agente creado!",
+        "body": "Conoce a tu nuevo agente. Dos pasos rápidos y estará trabajando para ti.",
+        "cta": "Continuar"
+      },
+      "emailConnected": {
+        "title": "¡Correo conectado!",
+        "body": "Así de fácil es conectar una app, y tu agente puede acceder a más de 1000 así.",
+        "cta": "Continuar"
+      },
+      "emailIntro": {
+        "title": "Mira a tu agente en acción",
+        "body": "Tu agente te enviará un correo real, para que lo veas funcionar.",
+        "cta": "Muéstrame"
+      },
+      "emailSent": {
+        "title": "¡Correo enviado!",
+        "body": "Revisa tu bandeja de entrada, tu agente acaba de enviarte un correo real.",
+        "cta": "Continuar"
+      },
+      "finished": {
+        "title": "¡Todo listo!",
+        "body": "Tu agente está listo. ¿Qué quieres hacer ahora?",
+        "tour": "Hacer un recorrido por Houston",
+        "tourBody": "Un repaso rápido de lo básico.",
+        "connectMore": "Conectar más apps",
+        "connectMoreBody": "Dale a tu agente acceso a más de tus herramientas."
       }
     },
     "sectionCounter": "{{section}} · {{current}} de {{total}}",

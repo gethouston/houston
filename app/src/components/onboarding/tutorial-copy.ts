@@ -1,25 +1,33 @@
 /**
- * Onboarding step types. The unified "Step N of N" numbering (including the
- * language + agreement gates) lives in `lib/setup-steps.ts`; only the numbered
- * actionable steps are `TutorialStep`s. Welcome is a hero in the first-run gate.
+ * Every screen the onboarding orchestrator can render, in flow order. The
+ * numbered steps (their section + position) live in `lib/setup-steps.ts`; the
+ * rest are unnumbered framing/celebration screens.
  *
- * The orchestrator also renders three UNNUMBERED framing/celebration screens
- * (`intro`, `setupReady`, `done`) which carry no "Step N of N" eyebrow. Flow:
- *   intro → brain (log in to your AI subscription) →
- *   providerLogin (log in to the specific provider) → tools (apps) →
- *   setupReady (setup done ✓) → meet (create your first agent) →
- *   email (send the first real email) → done (all set ✓).
+ *  intro (overview of all steps)
+ *  ── Setup ──────────────────────────────────────────
+ *  brain → providerLogin → aiConnected ✓
+ *  tools → appsConnected ✓
+ *  ── Onboarding ─────────────────────────────────────
+ *  meet (name) → agentCreated ✓
+ *  connectEmail (Gmail/Outlook) → emailConnected ✓
+ *  emailIntro (it'll email you) → emailChat (send to myself) → emailSent ✓
+ *  finished (tour or connect more)
+ *
+ * `numbered` steps that drive the "Setup · N of M" eyebrow: brain,
+ * providerLogin, tools, meet, connectEmail, emailChat.
  */
 export type OnboardingStep =
   | "intro"
-  | TutorialStep
-  | "aiConnected"
-  | "appsConnected"
-  | "done";
-
-export type TutorialStep =
   | "brain"
   | "providerLogin"
+  | "aiConnected"
   | "tools"
+  | "appsConnected"
   | "meet"
-  | "email";
+  | "agentCreated"
+  | "connectEmail"
+  | "emailConnected"
+  | "emailIntro"
+  | "emailChat"
+  | "emailSent"
+  | "finished";

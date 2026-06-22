@@ -6,7 +6,6 @@ import { HoustonLogo } from "./experience-card";
 import { analytics } from "../../lib/analytics";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "../../lib/i18n";
-import { stepSection } from "../../lib/setup-steps";
 import { SetupCard, OptionCard } from "../onboarding/setup-card";
 
 /**
@@ -97,12 +96,8 @@ function LanguageIntro({
     }
   };
 
-  // Pre-locale screen, so the eyebrow is hardcoded English (no t() yet).
-  const { current, total } = stepSection("language");
-
   return (
     <SetupCard
-      eyebrow={`Setup · ${current} of ${total}`}
       title="Choose your language"
       subtitle="English · Español · Português"
       onBack={() => setStage("welcome")}

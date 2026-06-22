@@ -53,10 +53,11 @@
         "body": "A few quick steps and your agent is ready to work for you.",
         "cta": "Start setup",
         "steps": {
-          "ai": "Log in to your AI",
+          "ai": "Connect your AI",
           "apps": "Connect your apps",
-          "agent": "Create your first agent",
-          "email": "Send your first email"
+          "agent": "Create your agent",
+          "email": "Connect your email",
+          "send": "Send your first email"
         }
       },
       "brain": {
@@ -91,45 +92,17 @@
       },
       "meet": {
         "title": "Create your first agent",
-        "body": "Give your agent a name and a color. You can change these anytime.",
+        "body": "Give your agent a name. You can change it anytime.",
         "begin": "Create agent",
         "creating": "Creating..."
       },
       "email": {
-        "title": "Make your agent send an email for you",
+        "title": "Send your first email",
         "offer": {
-          "option": "Send an email on my behalf",
-          "userSaid": "Send an email on my behalf"
-        },
-        "recipient": {
-          "prompt": "Love it. Who should this first email go to?",
-          "self": "Send it to me (just to test)",
-          "other": "Send it to someone else",
-          "emailPlaceholder": "Their email address",
-          "messagePlaceholder": "What should it say? (optional)",
-          "confirm": "Continue",
-          "selfSaid": "Send it to me, just to test.",
-          "otherSaid": "Send it to {{email}}.",
-          "youLabel": "you"
-        },
-        "provider": {
-          "prompt": "Got it. Which email do you use?",
-          "other": "Another email",
-          "otherPlaceholder": "Which email provider?",
-          "confirm": "Connect and send"
-        },
-        "connect": {
-          "prompt": "Last step. Connect your {{provider}} so your agent can send it.",
-          "waiting": "Connecting {{provider}}... finish in your browser, then come back.",
-          "done": "{{provider}} connected. Sending your email..."
+          "option": "Send an email to myself"
         },
         "chip": "Send an email for me",
         "placeholder": "Reply to your agent..."
-      },
-      "done": {
-        "title": "You're all set!",
-        "body": "Your first email is sent to {{recipient}}. Welcome to Houston!",
-        "cta": "Enter Houston"
       },
       "aiConnected": {
         "title": "Your AI is connected!",
@@ -140,6 +113,42 @@
         "title": "Apps connected!",
         "body": "Setup done, nice work. Now let's create your first agent.",
         "cta": "Create my agent"
+      },
+      "connectEmail": {
+        "title": "Give your agent access to your email",
+        "body": "Pick your email so your agent can send on your behalf. You connect it once, securely.",
+        "other": "Another provider",
+        "otherPlaceholder": "Which email provider?",
+        "connect": "Connect",
+        "connecting": "Connecting..."
+      },
+      "agentCreated": {
+        "title": "Agent created!",
+        "body": "Meet your new agent. Two quick steps and it's working for you.",
+        "cta": "Continue"
+      },
+      "emailConnected": {
+        "title": "Email connected!",
+        "body": "That's how easy connecting an app is, and your agent can reach 1000+ this way.",
+        "cta": "Continue"
+      },
+      "emailIntro": {
+        "title": "See your agent in action",
+        "body": "Your agent will send a real email to you, so you can watch it work.",
+        "cta": "Show me"
+      },
+      "emailSent": {
+        "title": "Email sent!",
+        "body": "Go check your inbox, your agent just sent you a real email.",
+        "cta": "Continue"
+      },
+      "finished": {
+        "title": "You're all set!",
+        "body": "Your agent is ready. What would you like to do next?",
+        "tour": "Take a tour of Houston",
+        "tourBody": "A quick walkthrough of the basics.",
+        "connectMore": "Connect more apps",
+        "connectMoreBody": "Give your agent access to more of your tools."
       }
     },
     "sectionCounter": "{{section}} · {{current}} of {{total}}",
