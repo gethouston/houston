@@ -1,10 +1,10 @@
-import { useState, type KeyboardEvent, type ReactNode } from "react";
-import { Plus } from "lucide-react";
 import { ScrollArea } from "@houston-ai/core";
-import { SidebarNavItem } from "./sidebar-nav";
-import { SidebarItemRow } from "./sidebar-item-row";
-import type { SidebarItemRowLabels } from "./sidebar-item-row";
+import { Plus } from "lucide-react";
+import { type KeyboardEvent, type ReactNode, useState } from "react";
 import { sidebarClasses } from "./sidebar-classes";
+import type { SidebarItemRowLabels } from "./sidebar-item-row";
+import { SidebarItemRow } from "./sidebar-item-row";
+import { SidebarNavItem } from "./sidebar-nav";
 
 export interface SidebarItem {
   id: string;

@@ -1,4 +1,4 @@
-import { writeFileSync, renameSync, readFileSync, existsSync } from "node:fs";
+import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 
 /**
  * Pure auth.json file logic (no config import — tests drive it with explicit

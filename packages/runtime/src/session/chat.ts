@@ -1,30 +1,30 @@
-import {
-  createAgentSession,
-  SessionManager,
-  type AgentSession,
-  type AgentSessionEvent,
-} from "@earendil-works/pi-coding-agent";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
+import {
+  type AgentSession,
+  type AgentSessionEvent,
+  createAgentSession,
+  SessionManager,
+} from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, ToolCallRecord } from "@houston/runtime-client";
-import { toWire } from "./wire";
-import { config } from "../config";
-import { authStorage, modelRegistry } from "../auth/storage";
-import { resolveModel, activeProvider } from "../ai/providers";
 import { toThinkingLevel } from "../ai/effort";
-import { makeAgentLoader } from "./resource-loader";
+import { activeProvider, resolveModel } from "../ai/providers";
+import { syncServedCredential } from "../auth/serve";
+import { authStorage, modelRegistry } from "../auth/storage";
+import { config } from "../config";
 import {
   appendAssistantMessage,
   appendUserMessage,
 } from "../store/conversations";
 import { publish } from "./bus";
-import { syncServedCredential } from "../auth/serve";
-import { makeRunCodeTool } from "./tools/run-code";
-import { makeIdTokenProvider } from "./tools/gcp-id-token";
+import { makeAgentLoader } from "./resource-loader";
 import {
   CLAMPED_FILE_TOOL_NAMES,
   makeClampedFileTools,
 } from "./tools/clamped-fs";
+import { makeIdTokenProvider } from "./tools/gcp-id-token";
+import { makeRunCodeTool } from "./tools/run-code";
+import { toWire } from "./wire";
 
 // Workspace-clamped file tools (security Gate #1). These shadow pi's builtins
 // by name: pi's defaults resolve absolute paths as-is, so without the clamp a

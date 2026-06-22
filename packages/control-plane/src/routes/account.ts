@@ -1,6 +1,6 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
-import type { Workspace as WireWorkspace } from "@houston/protocol";
 import { getPreference, loadPreferences, setPreference } from "@houston/domain";
+import type { Workspace as WireWorkspace } from "@houston/protocol";
 import type { UserId, Workspace } from "../domain/types";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";

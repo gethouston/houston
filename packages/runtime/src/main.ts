@@ -1,5 +1,5 @@
-import { config } from "./config";
 import type { Server } from "node:http";
+import { config } from "./config";
 
 /**
  * Two modes, one binary:

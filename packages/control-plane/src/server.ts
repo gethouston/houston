@@ -1,11 +1,18 @@
 import {
   createServer,
   type IncomingMessage,
-  type ServerResponse,
   type Server,
+  type ServerResponse,
 } from "node:http";
-import { PROTOCOL_VERSION, type Capabilities } from "@houston/protocol";
+import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
 import type { UserId, WorkspaceRuntime } from "./domain/types";
+import type { EventHub } from "./events/hub";
+import {
+  type FeedbackPayload,
+  type FeedbackSender,
+  parseFeedbackPayload,
+} from "./feedback";
+import type { WorkspacePaths } from "./paths";
 import type {
   CredentialStore,
   CredentialVault,
@@ -13,24 +20,17 @@ import type {
   TokenVerifier,
   WorkspaceStore,
 } from "./ports";
-import type { Vfs } from "./vfs";
-import type { WorkspacePaths } from "./paths";
-import type { EventHub } from "./events/hub";
-import { bearer, json, readJson } from "./routes/http";
-import { handleSandboxCredential } from "./routes/credential";
-import { handleAdmin, type AdminDeps } from "./routes/admin";
-import { handleAgents } from "./routes/agents";
 import { handleAccount } from "./routes/account";
-import { handlePortableAccount } from "./routes/portable";
+import { type AdminDeps, handleAdmin } from "./routes/admin";
+import { handleAgents } from "./routes/agents";
+import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
-import {
-  parseFeedbackPayload,
-  type FeedbackPayload,
-  type FeedbackSender,
-} from "./feedback";
+import { bearer, json, readJson } from "./routes/http";
+import { handlePortableAccount } from "./routes/portable";
+import type { Vfs } from "./vfs";
 
-export type { AdminDeps } from "./routes/admin";
 export type { RuntimeProxy } from "./channel/proxy";
+export type { AdminDeps } from "./routes/admin";
 
 export interface ControlPlaneDeps {
   verifier: TokenVerifier;

@@ -2,11 +2,11 @@ import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
 import {
   activityIdForSessionKey,
+  type NavAgent,
   resolveNotificationTarget,
   resolvePendingActivitySelection,
   shouldArmNotificationNav,
   shouldNavigateOnAppActivation,
-  type NavAgent,
 } from "../src/lib/notification-nav.ts";
 
 const agents: NavAgent[] = [

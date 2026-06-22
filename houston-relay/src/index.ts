@@ -17,8 +17,8 @@
 //   *    everything else                      PWA static assets
 
 import { handleAllocate, verifyTunnelToken } from "./allocate";
-import type { Env } from "./types";
 import { TunnelRoom } from "./tunnel-do";
+import type { Env } from "./types";
 
 export { TunnelRoom };
 

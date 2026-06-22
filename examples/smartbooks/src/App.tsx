@@ -1,4 +1,14 @@
+import { topics } from "@houston-ai/engine-client";
 import { useCallback, useEffect, useRef, useState } from "react";
+import type { ChatHandle } from "./components/ChatPanel";
+import { ChatPanel } from "./components/ChatPanel";
+import { ClientView } from "./components/ClientView";
+import { ConnectScreen } from "./components/ConnectScreen";
+import { NewClientDialog } from "./components/NewClientDialog";
+import { Sidebar } from "./components/Sidebar";
+import { ensureAgent } from "./lib/bootstrap";
+import type { Client } from "./lib/clients";
+import { listClients } from "./lib/clients";
 import type { AgentConfig, EngineConfig } from "./lib/config";
 import {
   clearEngineConfig,
@@ -7,17 +17,7 @@ import {
   saveEngineConfig,
 } from "./lib/config";
 import { connectEngine, getClient, getWs } from "./lib/engine";
-import { ensureAgent } from "./lib/bootstrap";
-import { listClients } from "./lib/clients";
-import type { Client } from "./lib/clients";
-import { topics } from "@houston-ai/engine-client";
 import type { HoustonEvent } from "./lib/feed";
-import { ConnectScreen } from "./components/ConnectScreen";
-import { Sidebar } from "./components/Sidebar";
-import { ClientView } from "./components/ClientView";
-import { ChatPanel } from "./components/ChatPanel";
-import type { ChatHandle } from "./components/ChatPanel";
-import { NewClientDialog } from "./components/NewClientDialog";
 
 type Status =
   | { kind: "connecting"; config: EngineConfig }

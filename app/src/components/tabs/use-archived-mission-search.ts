@@ -1,10 +1,9 @@
-import { useCallback, useEffect } from "react";
-import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
 import type { FeedItem } from "@houston-ai/chat";
-
-import { useUIStore } from "../../stores/ui";
+import { useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { tauriChat } from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
 import { useMissionSearch } from "../use-mission-search";
 
 export function useArchivedMissionSearch(

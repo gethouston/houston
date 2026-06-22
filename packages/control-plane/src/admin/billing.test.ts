@@ -1,11 +1,11 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
+  type AutopilotRates,
   BigQueryBillingReader,
   estimate,
+  HOURS_PER_MONTH,
   podHourlyUsd,
   volumeMonthlyUsd,
-  HOURS_PER_MONTH,
-  type AutopilotRates,
 } from "./billing";
 import type { PodInfo, VolumeInfo } from "./cluster";
 

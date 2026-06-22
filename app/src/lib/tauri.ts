@@ -12,22 +12,23 @@
  */
 
 import type {
-  Workspace,
-  Agent,
-  SkillSummary,
-  SkillDetail,
-  FileEntry,
-} from "./types";
-import type {
-  ProviderAuthState,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
+  ProviderAuthState,
 } from "@houston-ai/engine-client";
-import { getEngine } from "./engine";
-import { osIsTauri, osPickDirectory } from "./os-bridge";
-import { logger } from "./logger";
-import { normalizeLegacyModel } from "./providers";
 import { shouldAutocompactForSession } from "./autocompact";
+import { getEngine } from "./engine";
+import { logger } from "./logger";
+import { osIsTauri, osPickDirectory } from "./os-bridge";
+import { normalizeLegacyModel } from "./providers";
+import type {
+  Agent,
+  FileEntry,
+  SkillDetail,
+  SkillSummary,
+  Workspace,
+} from "./types";
+
 export { withAttachmentPaths } from "./attachment-message";
 
 interface EngineCallOptions {
@@ -447,12 +448,12 @@ function conversationToRaw(
 
 // ─── Routines (engine-backed: CRUD + scheduler) ───────────────────────
 
-import * as activityData from "../data/activity";
-import * as configData from "../data/config";
 import type {
   NewRoutine as EngineNewRoutine,
   RoutineUpdate as EngineRoutineUpdate,
 } from "@houston-ai/engine-client";
+import * as activityData from "../data/activity";
+import * as configData from "../data/config";
 
 export const tauriRoutines = {
   list: (agentPath: string) =>

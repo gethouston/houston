@@ -1,5 +1,3 @@
-import { useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
 import {
   Button,
   ConfirmDialog,
@@ -8,6 +6,8 @@ import {
   EmptyTitle,
 } from "@houston-ai/core";
 import { Plus } from "lucide-react";
+import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { LearningCard } from "./learning-card";
 
 export interface LearningEntry {

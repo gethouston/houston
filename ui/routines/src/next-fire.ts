@@ -8,8 +8,8 @@
  * malformed cron).
  */
 import {
-  interp,
   DEFAULT_NEXT_FIRE_LABELS,
+  interp,
   type NextFireLabels,
 } from "./labels.ts";
 

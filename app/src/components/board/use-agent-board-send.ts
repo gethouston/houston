@@ -1,22 +1,21 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
-
+import type { Activity } from "../../data/activity";
+import { analytics } from "../../lib/analytics";
+import { buildAttachmentPrompt } from "../../lib/attachment-message";
+import { createMission } from "../../lib/create-mission";
+import { classifyFileKind } from "../../lib/file-kind";
+import { queryKeys } from "../../lib/query-keys";
+import { formatVisibleMessageText } from "../../lib/queued-chat";
+import { tauriAttachments, tauriChat } from "../../lib/tauri";
+import type { Agent, AgentDefinition } from "../../lib/types";
 import { useFeedStore } from "../../stores/feeds";
 import {
   getSessionStatusKey,
   isActiveSessionStatus,
   useSessionStatusStore,
 } from "../../stores/session-status";
-import { tauriChat, tauriAttachments } from "../../lib/tauri";
-import { createMission } from "../../lib/create-mission";
-import { formatVisibleMessageText } from "../../lib/queued-chat";
-import { buildAttachmentPrompt } from "../../lib/attachment-message";
-import { queryKeys } from "../../lib/query-keys";
-import { analytics } from "../../lib/analytics";
-import { classifyFileKind } from "../../lib/file-kind";
-import type { Activity } from "../../data/activity";
-import type { Agent, AgentDefinition } from "../../lib/types";
 import type { SendOverrides } from "./board-source";
 
 /**

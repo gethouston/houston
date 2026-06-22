@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useWorkspaceStore } from "../../../stores/workspaces";
 import { useUIStore } from "../../../stores/ui";
+import { useWorkspaceStore } from "../../../stores/workspaces";
 
 export function WorkspaceSection() {
   const { t } = useTranslation("settings");

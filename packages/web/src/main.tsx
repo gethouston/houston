@@ -13,9 +13,9 @@
  */
 import { createRoot } from "react-dom/client";
 import {
-  readStoredEngineConfig,
-  NEW_ENGINE_STORAGE_KEY,
   type EngineConfig,
+  NEW_ENGINE_STORAGE_KEY,
+  readStoredEngineConfig,
 } from "./engine-config";
 
 const rootEl = document.getElementById("root");

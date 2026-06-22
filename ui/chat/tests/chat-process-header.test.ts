@@ -1,10 +1,10 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
+import type { ChatProcessSegment } from "../src/chat-process-groups.ts";
 import {
   buildProcessHeaderLabel,
   getCurrentActionToolName,
 } from "../src/chat-process-header.ts";
-import type { ChatProcessSegment } from "../src/chat-process-groups.ts";
 
 type ToolStub = { name: string; result?: unknown };
 

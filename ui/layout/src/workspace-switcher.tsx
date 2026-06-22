@@ -1,11 +1,11 @@
-import { Plus, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuTrigger,
 } from "@houston-ai/core";
+import { ChevronDown, Plus } from "lucide-react";
 
 export interface WorkspaceSwitcherProps {
   workspaces: { id: string; name: string }[];

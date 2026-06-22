@@ -1,8 +1,8 @@
-import { useCallback } from "react";
 import type { RoutineFormData } from "@houston-ai/routines";
-import { ChatModelSelector } from "../chat-model-selector";
-import { ChatEffortSelector } from "../chat-effort-selector";
+import { useCallback } from "react";
 import { useAgentConfig } from "../../hooks/queries";
+import { ChatEffortSelector } from "../chat-effort-selector";
+import { ChatModelSelector } from "../chat-model-selector";
 import { routineModelPickerDefaults } from "./routines-tab-model";
 
 /**

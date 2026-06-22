@@ -2,17 +2,18 @@
  * FilesBrowser — macOS Finder list-view clone.
  * Column headers with sort, file/folder tree, status bar, drag-and-drop.
  */
+
+import { Button, cn } from "@houston-ai/core";
+import { Upload } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { cn, Button } from "@houston-ai/core";
-import { Upload } from "lucide-react";
-import type { FileEntry } from "./types";
 import { useDropZone } from "./drop-zone";
-import { FileRow, FolderSection, COL_GRID } from "./file-row";
 import type { FileMenuLabels } from "./file-menu";
+import { COL_GRID, FileRow, FolderSection } from "./file-row";
 import { NewFolderInput } from "./new-folder-input";
 import { buildTree } from "./tree";
-import { sortTree, type SortKey, type SortDirection } from "./utils";
+import type { FileEntry } from "./types";
+import { type SortDirection, type SortKey, sortTree } from "./utils";
 
 export interface FilesBrowserLabels {
   columnName?: string;

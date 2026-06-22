@@ -17,27 +17,50 @@
  * duplicate the encoding + feed-push logic in two places.
  */
 
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
-import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
-import { Button } from "@houston-ai/core";
-import { Paperclip, Play } from "lucide-react";
+import type { AIBoardProps } from "@houston-ai/board";
+import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
 import {
   decodeAttachmentMessage,
   UserAttachmentMessage,
   type UserAttachmentMessageLabels,
 } from "@houston-ai/chat";
-
-import { useFeedStore } from "../stores/feeds";
-import { useUIStore } from "../stores/ui";
+import { Button } from "@houston-ai/core";
+import { useQueryClient } from "@tanstack/react-query";
+import { Paperclip, Play } from "lucide-react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
+import { useTranslation } from "react-i18next";
 import { useActivity, useSkills } from "../hooks/queries";
+import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
+import { analytics } from "../lib/analytics";
+import { attachmentReferences } from "../lib/attachment-message";
+import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
+import {
+  effectiveContextWindow,
+  sessionContextUsage,
+} from "../lib/context-usage";
+import { createMission } from "../lib/create-mission";
+import { humanizeSkillName } from "../lib/humanize-skill-name";
+import {
+  type EffortLevel,
+  getContextWindowConfig,
+  getDefaultModel,
+  normalizeLegacyModel,
+  validEffortOrDefault,
+  validModelOrNull,
+} from "../lib/providers";
+import { queryKeys } from "../lib/query-keys";
+import {
+  buildSkillClaudePrompt,
+  decodeSkillMessage,
+  encodeSkillMessage,
+} from "../lib/skill-message";
 import {
   tauriActivity,
   tauriAttachments,
@@ -46,51 +69,26 @@ import {
   tauriProvider,
   withAttachmentPaths,
 } from "../lib/tauri";
-import { createMission } from "../lib/create-mission";
-import { queryKeys } from "../lib/query-keys";
-import { humanizeSkillName } from "../lib/humanize-skill-name";
-import { useFileToolRenderer } from "../hooks/use-file-tool-renderer";
-import { ChatModelSelector } from "./chat-model-selector";
+import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
+import { useFeedStore } from "../stores/feeds";
+import { useUIStore } from "../stores/ui";
 import { ChatEffortSelector } from "./chat-effort-selector";
+import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
-import {
-  getContextWindowConfig,
-  getDefaultModel,
-  validModelOrNull,
-  validEffortOrDefault,
-  normalizeLegacyModel,
-  type EffortLevel,
-} from "../lib/providers";
-import {
-  sessionContextUsage,
-  effectiveContextWindow,
-} from "../lib/context-usage";
 import { ContextIndicator } from "./context-indicator";
-import { analytics } from "../lib/analytics";
-import {
-  buildSkillClaudePrompt,
-  decodeSkillMessage,
-  encodeSkillMessage,
-} from "../lib/skill-message";
-import { attachmentReferences } from "../lib/attachment-message";
-import { filterAutoContinueFeedItems } from "../lib/auto-continue-message";
-import { SkillCard } from "./skill-card";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
-import { UserSkillMessage } from "./user-skill-message";
 import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
-import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
-import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { SkillCard } from "./skill-card";
 import {
   filterProviderAuthFeedItems,
   isProviderAuthMessage,
   providerAuthSignalKey,
 } from "./tabs/provider-auth-feed";
-
-import type { AIBoardProps } from "@houston-ai/board";
-import type { ChatMessage, ChatPanelProps, FeedItem } from "@houston-ai/chat";
-import type { Agent, AgentDefinition, SkillSummary } from "../lib/types";
+import { isToolRuntimeErrorMessage } from "./tool-runtime-feed";
+import { useChatDisplayLabels } from "./use-chat-display-labels";
+import { UserSkillMessage } from "./user-skill-message";
 
 interface UseAgentChatPanelArgs {
   /** The agent the panel is currently scoped to. Null disables features. */

@@ -1,4 +1,4 @@
-import { supabase, isAuthConfigured } from "./supabase";
+import { isAuthConfigured, supabase } from "./supabase";
 
 /**
  * Synchronous accessor for the signed-in user's email. Returns `null`

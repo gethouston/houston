@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   mkdirSync,
   mkdtempSync,
@@ -9,8 +9,8 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { LocalDirStore } from "./object-store";
 import { hydrate, syncBack } from "./hydrate";
+import { LocalDirStore } from "./object-store";
 
 /**
  * The hydrate→run→syncBack loop is what makes "agent = a GCS prefix" real.

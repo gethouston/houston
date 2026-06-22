@@ -1,3 +1,4 @@
+import { type AuthStatus, HoustonEngineClient } from "@houston/runtime-client";
 import {
   lazy,
   Suspense,
@@ -6,7 +7,6 @@ import {
   useMemo,
   useState,
 } from "react";
-import { HoustonEngineClient, type AuthStatus } from "@houston/runtime-client";
 import { ConnectView } from "./connect";
 import { ui } from "./styles";
 

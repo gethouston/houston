@@ -8,14 +8,14 @@
  * at import).
  */
 import { lazy, Suspense, useState } from "react";
+import {
+  clearStoredEngineConfig,
+  type EngineConfig,
+  NEW_ENGINE_STORAGE_KEY,
+  storeEngineConfig,
+} from "../engine-config";
 import { EngineConnectScreen } from "./engine-connect";
 import { ui } from "./styles";
-import {
-  storeEngineConfig,
-  clearStoredEngineConfig,
-  NEW_ENGINE_STORAGE_KEY,
-  type EngineConfig,
-} from "../engine-config";
 
 const WebApp = lazy(() => import("./app").then((m) => ({ default: m.WebApp })));
 

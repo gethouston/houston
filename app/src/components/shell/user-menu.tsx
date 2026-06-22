@@ -1,6 +1,6 @@
+import { LogOut, MessageSquare, User } from "lucide-react";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { LogOut, MessageSquare, User } from "lucide-react";
 import { useSession } from "../../hooks/use-session";
 import { signOut } from "../../lib/auth";
 import { useUIStore } from "../../stores/ui";

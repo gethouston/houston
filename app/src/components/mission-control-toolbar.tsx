@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import {
   Button,
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -8,14 +8,14 @@ import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  cn,
 } from "@houston-ai/core";
 import { Archive, ArrowLeft, ChevronDown, ListFilter } from "lucide-react";
-import { HoustonLogo } from "./shell/experience-card";
-import { AgentCardAvatar } from "./shell/agent-card-avatar";
+import { useTranslation } from "react-i18next";
+import { shortcutLabel } from "../lib/shortcuts";
 import type { Agent } from "../lib/types";
 import { MissionSearchInput } from "./mission-search-input";
-import { shortcutLabel } from "../lib/shortcuts";
+import { AgentCardAvatar } from "./shell/agent-card-avatar";
+import { HoustonLogo } from "./shell/experience-card";
 
 interface MissionControlToolbarProps {
   agents: Agent[];

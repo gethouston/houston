@@ -1,8 +1,8 @@
-import { useTranslation } from "react-i18next";
 import { X } from "lucide-react";
-import { SkillIcon } from "./skill-icon";
-import type { SkillSummary } from "../lib/types";
+import { useTranslation } from "react-i18next";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
+import type { SkillSummary } from "../lib/types";
+import { SkillIcon } from "./skill-icon";
 
 interface Props {
   skill: SkillSummary;

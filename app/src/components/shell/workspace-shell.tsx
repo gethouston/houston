@@ -1,45 +1,45 @@
-import { useEffect, useRef, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { Compass, Plus } from "lucide-react";
 import {
   Button,
+  cn,
   Empty,
   EmptyDescription,
   EmptyHeader,
   EmptyTitle,
+  type Toast,
   ToastContainer,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
-  type Toast,
 } from "@houston-ai/core";
-import { analytics } from "../../lib/analytics";
-import { shortcutLabel } from "../../lib/shortcuts";
 import { TabBar } from "@houston-ai/layout";
+import { Compass, Plus } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
-  STANDARD_TABS,
   DEFAULT_TAB_ID,
   STANDARD_TAB_IDS,
+  STANDARD_TABS,
 } from "../../agents/standard-tabs";
 import { useActivity } from "../../hooks/queries";
+import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
+import { analytics } from "../../lib/analytics";
+import { shortcutLabel } from "../../lib/shortcuts";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
-import { AgentRenderer } from "./experience-renderer";
+import { CommandPalette } from "../command-palette";
 import { Dashboard } from "../dashboard";
-import { SettingsView } from "../settings/settings-view";
-import { Sidebar } from "./sidebar";
-import { HoustonLogo } from "./experience-card";
-import { CreateAgentDialog } from "./create-workspace-dialog";
+import { MissionSearchInput } from "../mission-search-input";
 import { ExportAgentWizard } from "../portable/export-wizard";
 import { ImportAgentWizard } from "../portable/import-wizard";
-import { DetailPanelProvider } from "./detail-panel-context";
-import { MissionSearchInput } from "../mission-search-input";
-import { UiTour } from "./ui-tour";
-import { CommandPalette } from "../command-palette";
+import { SettingsView } from "../settings/settings-view";
 import { ShortcutCheatsheet } from "../shortcut-cheatsheet";
-import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
-import { cn } from "@houston-ai/core";
+import { CreateAgentDialog } from "./create-workspace-dialog";
+import { DetailPanelProvider } from "./detail-panel-context";
+import { HoustonLogo } from "./experience-card";
+import { AgentRenderer } from "./experience-renderer";
+import { Sidebar } from "./sidebar";
+import { UiTour } from "./ui-tour";
 
 interface WorkspaceShellProps {
   toasts: Toast[];

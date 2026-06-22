@@ -1,14 +1,14 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import { createServer } from "node:http";
 import type { AddressInfo } from "node:net";
+import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import type { WorkspaceCredential } from "../ports";
-import { MemoryCredentialStore } from "../credentials/store";
-import { ConnectManager } from "./connect";
-import { dispatchCloudrun } from "./dispatch";
-import type { TurnDeps } from "./deps";
 import { MemoryVfs } from "../vfs";
+import { ConnectManager } from "./connect";
+import type { TurnDeps } from "./deps";
+import { dispatchCloudrun } from "./dispatch";
 import { TurnQuota } from "./quota";
 import { TurnRelay } from "./relay";
 

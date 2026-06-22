@@ -1,6 +1,6 @@
+import { Button } from "@houston-ai/core";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Button } from "@houston-ai/core";
 import { reportBug } from "../../../lib/bug-report";
 import { getCurrentUserEmail } from "../../../lib/current-user";
 import { useUIStore } from "../../../stores/ui";

@@ -1,6 +1,3 @@
-import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { AddSkillDialog } from "@houston-ai/skills";
 import {
   Button,
   EmptyDescription,
@@ -8,10 +5,13 @@ import {
   EmptyTitle,
   Spinner,
 } from "@houston-ai/core";
+import { AddSkillDialog } from "@houston-ai/skills";
 import { Plus } from "lucide-react";
-import { SkillCard } from "../skill-card";
-import type { SkillSummary } from "../../lib/types";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { humanizeSkillName } from "../../lib/humanize-skill-name";
+import type { SkillSummary } from "../../lib/types";
+import { SkillCard } from "../skill-card";
 import { useSkillDialogLabels } from "./use-skill-surface-labels";
 
 export function SkillsContent({

@@ -1,10 +1,10 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import {
+  clipboardSignalsImage,
+  ensureFileName,
   filesFromClipboardData,
   filesFromClipboardItems,
-  ensureFileName,
-  clipboardSignalsImage,
   resolveClipboardPaste,
 } from "../src/clipboard-files.ts";
 

@@ -1,20 +1,20 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
-import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import {
-  tauriProvider,
-  tauriSystem,
-  type ProviderStatus,
-} from "../../lib/tauri";
-import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
-import { useUIStore } from "../../stores/ui";
+import { ConfirmDialog, Spinner } from "@houston-ai/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
+import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
+import {
+  type ProviderStatus,
+  tauriProvider,
+  tauriSystem,
+} from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
+import { ProviderAccountRow } from "./provider-account-row";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
-import { ProviderAccountRow } from "./provider-account-row";
 import { providerAppearsConnected } from "./provider-reconnect-state";
 
 /**

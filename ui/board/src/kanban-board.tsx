@@ -1,8 +1,8 @@
 import { useCallback, useMemo } from "react";
-import { KanbanColumn } from "./kanban-column";
-import type { KanbanCardLabels } from "./kanban-card";
-import type { KanbanItem, KanbanColumn as KanbanColumnType } from "./types";
 import { columnDragRole, defaultCanDropItem } from "./dnd";
+import type { KanbanCardLabels } from "./kanban-card";
+import { KanbanColumn } from "./kanban-column";
+import type { KanbanColumn as KanbanColumnType, KanbanItem } from "./types";
 import { useBoardDrag } from "./use-board-drag";
 
 export interface KanbanBoardProps {

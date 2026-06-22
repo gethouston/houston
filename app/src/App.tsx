@@ -2,28 +2,27 @@ import "./styles/globals.css";
 import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-
-import { tauriSystem } from "./lib/tauri";
-import { useHoustonInit } from "./hooks/use-houston-init";
-import { useSessionEvents } from "./hooks/use-session-events";
-import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
-import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
-import { useWorkspaceStore } from "./stores/workspaces";
-import { useAgentStore } from "./stores/agents";
-import { useUIStore } from "./stores/ui";
-import { analytics } from "./lib/analytics";
-import {
-  setUser as setSentryUser,
-  clearUser as clearSentryUser,
-} from "./lib/sentry";
-import { loadTheme } from "./lib/theme";
-import { isAuthConfigured } from "./lib/supabase";
-import { installDeepLinkListener } from "./lib/auth";
-import { useSession } from "./hooks/use-session";
 import { SignInScreen } from "./components/auth/sign-in-screen";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
+import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
+import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
+import { useHoustonInit } from "./hooks/use-houston-init";
+import { useSession } from "./hooks/use-session";
+import { useSessionEvents } from "./hooks/use-session-events";
+import { analytics } from "./lib/analytics";
+import { installDeepLinkListener } from "./lib/auth";
 import { shouldAllowNativeContextMenu } from "./lib/context-menu";
+import {
+  clearUser as clearSentryUser,
+  setUser as setSentryUser,
+} from "./lib/sentry";
+import { isAuthConfigured } from "./lib/supabase";
+import { tauriSystem } from "./lib/tauri";
+import { loadTheme } from "./lib/theme";
+import { useAgentStore } from "./stores/agents";
+import { useUIStore } from "./stores/ui";
+import { useWorkspaceStore } from "./stores/workspaces";
 
 export default function App() {
   useHoustonInit();

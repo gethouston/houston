@@ -1,12 +1,12 @@
-import { useState, useRef, useEffect } from "react";
 import {
-  cn,
   ConfirmDialog,
+  cn,
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from "@houston-ai/core";
-import { Trash2, Check, Pencil } from "lucide-react";
+import { Check, Pencil, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import type { KanbanItem } from "./types";
 
 export interface KanbanCardLabels {

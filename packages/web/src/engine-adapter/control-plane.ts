@@ -9,8 +9,8 @@ import type {
   SkillSummary,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
-import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 import { HoustonEngineError } from "./client";
+import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 
 /**
  * Control-plane mode for the web adapter.

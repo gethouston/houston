@@ -6,18 +6,19 @@
  * smart truncation. No Houston-specific logic.
  */
 
-import type { ComponentType } from "react";
 import {
-  TerminalIcon,
-  FileTextIcon,
-  PencilIcon,
+  DownloadIcon,
   FilePlusIcon,
-  SearchIcon,
+  FileTextIcon,
   FolderSearchIcon,
   GlobeIcon,
-  DownloadIcon,
+  PencilIcon,
+  SearchIcon,
+  TerminalIcon,
   WrenchIcon,
 } from "lucide-react";
+import type { ComponentType } from "react";
+
 export { ToolContent } from "./tool-content";
 
 // ---------------------------------------------------------------------------

@@ -1,10 +1,10 @@
-import type { Routine } from "@houston/protocol";
 import { dueAt, getPreference, loadRoutines } from "@houston/domain";
+import type { Routine } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
+import type { EventHub } from "../events/hub";
+import type { WorkspacePaths } from "../paths";
 import type { WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
-import type { WorkspacePaths } from "../paths";
-import type { EventHub } from "../events/hub";
 import { reconcileAgentRuns } from "./reconcile";
 import { fireRoutineRun } from "./run";
 

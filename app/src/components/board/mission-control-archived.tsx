@@ -1,20 +1,19 @@
+import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { AIBoard } from "@houston-ai/board";
-
-import { useUIStore } from "../../stores/ui";
-import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { openAgentHref } from "../../lib/open-href";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useAgentChatPanel } from "../use-agent-chat-panel";
+import type { Agent } from "../../lib/types";
+import { useAgentCatalogStore } from "../../stores/agent-catalog";
+import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
-import { useMissionSearch } from "../use-mission-search";
 import { MissionControlToolbar } from "../mission-control-toolbar";
+import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
+import { useDetailPanelContainer } from "../shell/detail-panel-context";
 import { ArchivedEmptyState } from "../tabs/archived-tab-search";
+import { useAgentChatPanel } from "../use-agent-chat-panel";
+import { useMissionSearch } from "../use-mission-search";
 import { useMissionControlArchived } from "./use-mission-control-archived";
 import { useMissionControlArchivedSend } from "./use-mission-control-archived-send";
-import type { Agent } from "../../lib/types";
 
 /**
  * Cross-agent Archived view for Mission Control. Same list UI as the per-agent

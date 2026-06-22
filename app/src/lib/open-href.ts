@@ -1,5 +1,5 @@
-import { tauriFiles, tauriSystem } from "./tauri";
 import { logger } from "./logger";
+import { tauriFiles, tauriSystem } from "./tauri";
 
 /**
  * Open a link the agent emitted in chat. Two shapes land here:

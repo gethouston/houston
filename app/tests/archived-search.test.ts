@@ -1,7 +1,7 @@
 import { deepStrictEqual, strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { selectArchived } from "../src/lib/mission-selection.ts";
 import { searchMissions } from "../src/components/mission-search.ts";
+import { selectArchived } from "../src/lib/mission-selection.ts";
 
 const missions = [
   {

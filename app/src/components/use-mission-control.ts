@@ -1,27 +1,26 @@
-import { useState, useCallback, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import type { KanbanItem } from "@houston-ai/board";
-import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
 import type { FeedItem } from "@houston-ai/chat";
+import { mergeFeedHistory, messagePreviewText } from "@houston-ai/chat";
+import { useQueryClient } from "@tanstack/react-query";
+import { createElement, useCallback, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { useAllConversations } from "../hooks/queries";
+import { buildAttachmentPrompt } from "../lib/attachment-message";
+import { createMission } from "../lib/create-mission";
+import { missionCardTags } from "../lib/mission-card";
+import { queryKeys } from "../lib/query-keys";
+import { formatVisibleMessageText } from "../lib/queued-chat";
+import { tauriActivity, tauriAttachments, tauriChat } from "../lib/tauri";
+import type { Agent } from "../lib/types";
+import { useAgentCatalogStore } from "../stores/agent-catalog";
 import { useFeedStore } from "../stores/feeds";
 import {
   getSessionStatusKey,
   isActiveSessionStatus,
   useSessionStatusStore,
 } from "../stores/session-status";
-import { useQueryClient } from "@tanstack/react-query";
-import { useAllConversations } from "../hooks/queries";
-import { useAgentCatalogStore } from "../stores/agent-catalog";
-import { tauriActivity, tauriChat, tauriAttachments } from "../lib/tauri";
-import { buildAttachmentPrompt } from "../lib/attachment-message";
-import { createMission } from "../lib/create-mission";
-import { resolveActivityOverride } from "./mission-control-send";
-import { formatVisibleMessageText } from "../lib/queued-chat";
-import { queryKeys } from "../lib/query-keys";
-import { missionCardTags } from "../lib/mission-card";
 import { useUIStore } from "../stores/ui";
-import type { Agent } from "../lib/types";
-import { createElement } from "react";
+import { resolveActivityOverride } from "./mission-control-send";
 import { AgentCardAvatar } from "./shell/agent-card-avatar";
 
 export function useMissionControl(agents: Agent[]) {

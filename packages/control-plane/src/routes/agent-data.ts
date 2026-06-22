@@ -16,8 +16,8 @@ import {
 } from "@houston/domain";
 import type { HoustonEvent, NewRoutine } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
-import type { Vfs } from "../vfs";
 import type { WorkspacePaths } from "../paths";
+import type { Vfs } from "../vfs";
 import { handleActivitiesData } from "./agent-data-activities";
 import { json, readJson } from "./http";
 

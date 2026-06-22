@@ -1,9 +1,9 @@
-import { useEffect, useState } from "react";
 import { Button } from "@houston-ai/core";
-import { HoustonLogo } from "../shell/experience-card";
+import { useEffect, useState } from "react";
 import { onAuthError, signInWithGoogle } from "../../lib/auth";
 import { reportBug } from "../../lib/bug-report";
 import { logger } from "../../lib/logger";
+import { HoustonLogo } from "../shell/experience-card";
 
 // Microsoft sign-in is temporarily disabled in the UI while the Azure
 // App Registration + Supabase azure-provider settings are sorted out.

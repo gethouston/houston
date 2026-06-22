@@ -1,10 +1,10 @@
 import { strict as assert } from "node:assert";
 import { describe, it } from "node:test";
 import {
-  describeZone,
-  zoneOffset,
   buildZoneOptions,
+  describeZone,
   foldDiacritics,
+  zoneOffset,
 } from "../src/timezone-format.ts";
 
 describe("foldDiacritics", () => {

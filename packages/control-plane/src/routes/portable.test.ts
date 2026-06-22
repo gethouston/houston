@@ -1,15 +1,15 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
-import type { Capabilities, Routine } from "@houston/protocol";
 import { loadRoutines } from "@houston/domain";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
+import type { Capabilities, Routine } from "@houston/protocol";
 import { ProxyChannel } from "../channel/proxy";
-import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
 import { CloudPaths } from "../paths";
-import { workspaceRoot } from "../routes/agent-data";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
+import { workspaceRoot } from "../routes/agent-data";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryVfs } from "../vfs";
 
 /**
  * The `.houstonagent` share flow end to end through the host: export an agent's

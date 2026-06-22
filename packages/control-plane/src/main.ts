@@ -1,46 +1,46 @@
 import { KubeConfig } from "@kubernetes/client-node";
 import { Pool } from "pg";
-import { config } from "./config";
-import {
-  createControlPlaneServer,
-  type AdminDeps,
-  type ControlPlaneDeps,
-} from "./server";
+import { type AutopilotRates, BigQueryBillingReader } from "./admin/billing";
+import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
+import { makeTokenVerifier } from "./auth/verify";
+import { CLOUD_CAPABILITIES } from "./capabilities";
 import { ProxyChannel } from "./channel/proxy";
 import { TurnChannel } from "./channel/turn";
-import { makeTokenVerifier } from "./auth/verify";
-import { MemoryWorkspaceStore } from "./store/memory";
-import { PgWorkspaceStore } from "./store/pg";
+import { config } from "./config";
+import { refreshCredential } from "./credentials/refresh";
 import { MemoryCredentialStore, PgCredentialStore } from "./credentials/store";
-import { FakeLauncher } from "./launcher/fake";
-import { GkeLauncher, type AgentResolver } from "./launcher/gke";
 import { EnvCredentialVault } from "./credentials/vault";
-import { forward } from "./proxy/route";
-import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
-import { BigQueryBillingReader, type AutopilotRates } from "./admin/billing";
+import type { Agent } from "./domain/types";
+import { BusEventHub } from "./events/hub";
+import { type FeedbackSender, LinearFeedbackSender } from "./feedback";
+import { FakeLauncher } from "./launcher/fake";
+import { type AgentResolver, GkeLauncher } from "./launcher/gke";
+import { CloudPaths } from "./paths";
 import type {
   CredentialStore,
   CredentialVault,
   RuntimeLauncher,
   WorkspaceStore,
 } from "./ports";
-import type { Agent } from "./domain/types";
-import type { TurnDeps } from "./turn/deps";
-import { TurnRelay } from "./turn/relay";
-import { TurnQuota } from "./turn/quota";
-import { ConnectManager } from "./turn/connect";
+import { forward } from "./proxy/route";
+import { ChannelRoutineFirer } from "./schedule/firer";
+import { Scheduler } from "./schedule/scheduler";
+import {
+  type AdminDeps,
+  type ControlPlaneDeps,
+  createControlPlaneServer,
+} from "./server";
+import { installGracefulShutdown } from "./shutdown";
+import { MemoryWorkspaceStore } from "./store/memory";
+import { PgWorkspaceStore } from "./store/pg";
 import { MemoryTurnBus, type TurnBus } from "./turn/bus";
 import { RedisTurnBus } from "./turn/bus-redis";
-import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
-import { BusEventHub } from "./events/hub";
-import { CloudPaths } from "./paths";
-import { CLOUD_CAPABILITIES } from "./capabilities";
-import { Scheduler } from "./schedule/scheduler";
-import { ChannelRoutineFirer } from "./schedule/firer";
+import { ConnectManager } from "./turn/connect";
+import type { TurnDeps } from "./turn/deps";
 import { makeIdTokenProvider } from "./turn/id-token";
-import { refreshCredential } from "./credentials/refresh";
-import { LinearFeedbackSender, type FeedbackSender } from "./feedback";
-import { installGracefulShutdown } from "./shutdown";
+import { TurnQuota } from "./turn/quota";
+import { TurnRelay } from "./turn/relay";
+import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
 
 /**
  * Boot the control plane: one frontend-facing API listener (auth + access +

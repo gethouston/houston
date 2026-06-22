@@ -1,13 +1,13 @@
-import { test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
-import type { Capabilities, Activity, Routine } from "@houston/protocol";
 import { docKey } from "@houston/domain";
-import { createControlPlaneServer, type ControlPlaneDeps } from "../server";
+import type { Activity, Capabilities, Routine } from "@houston/protocol";
 import { ProxyChannel } from "../channel/proxy";
-import { MemoryWorkspaceStore } from "../store/memory";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "../ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "../server";
+import { MemoryWorkspaceStore } from "../store/memory";
+import { MemoryVfs } from "../vfs";
 import { workspaceRoot } from "./agent-data";
 
 /**

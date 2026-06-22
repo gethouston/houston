@@ -1,22 +1,22 @@
-import { test, expect } from "bun:test";
-import { createServer as netCreateServer } from "node:net";
+import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
+import { createServer as netCreateServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { PROTOCOL_VERSION, type Capabilities } from "@houston/protocol";
-import { createControlPlaneServer, type ControlPlaneDeps } from "./server";
-import { buildLocalHost, type LocalHost } from "./local/host";
-import { LOCAL_CAPABILITIES, CLOUD_CAPABILITIES } from "./capabilities";
-import { MemoryWorkspaceStore } from "./store/memory";
-import { MemoryCredentialStore } from "./credentials/store";
-import { MemoryVfs } from "./vfs";
-import { MemoryTurnBus } from "./turn/bus";
-import { BusEventHub } from "./events/hub";
-import { CloudPaths } from "./paths";
+import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
+import { CLOUD_CAPABILITIES, LOCAL_CAPABILITIES } from "./capabilities";
 import { ProxyChannel } from "./channel/proxy";
+import { MemoryCredentialStore } from "./credentials/store";
+import { BusEventHub } from "./events/hub";
 import { FakeLauncher } from "./launcher/fake";
 import type { RuntimeSpawner } from "./launcher/process";
+import { buildLocalHost, type LocalHost } from "./local/host";
+import { CloudPaths } from "./paths";
 import type { TokenVerifier } from "./ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "./server";
+import { MemoryWorkspaceStore } from "./store/memory";
+import { MemoryTurnBus } from "./turn/bus";
+import { MemoryVfs } from "./vfs";
 
 /**
  * THE DUAL-PROFILE PARITY GATE (the automated half of the P6 parity net).

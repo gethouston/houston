@@ -1,11 +1,11 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { createServer, type Server } from "node:http";
 import {
-  LinearFeedbackSender,
+  type FeedbackPayload,
   formatIssueDescription,
   formatIssueTitle,
+  LinearFeedbackSender,
   parseFeedbackPayload,
-  type FeedbackPayload,
 } from "./feedback";
 
 /**
@@ -161,11 +161,11 @@ test("LinearFeedbackSender surfaces GraphQL errors instead of swallowing", async
 // ---------------------------------------------------------------------------
 
 import type { Capabilities } from "@houston/protocol";
-import { createControlPlaneServer, type ControlPlaneDeps } from "./server";
 import { ProxyChannel } from "./channel/proxy";
-import { MemoryWorkspaceStore } from "./store/memory";
 import { MemoryCredentialStore } from "./credentials/store";
 import type { RuntimeEndpoint, RuntimeLauncher, TokenVerifier } from "./ports";
+import { type ControlPlaneDeps, createControlPlaneServer } from "./server";
+import { MemoryWorkspaceStore } from "./store/memory";
 
 function routeDeps(feedback?: ControlPlaneDeps["feedback"]): ControlPlaneDeps {
   const verifier: TokenVerifier = {

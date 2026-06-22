@@ -12,21 +12,21 @@
  *   QueryClientProvider > ErrorBoundary > TooltipProvider > EngineGate >
  *   I18nextProvider > LanguageGate > DisclaimerGate > App
  */
-import { Component, useEffect, useState, type ReactNode } from "react";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { I18nextProvider } from "react-i18next";
-import { TooltipProvider } from "@houston-ai/core";
 
-import { queryClient } from "@houston/app/lib/query-client";
 import App from "@houston/app/App";
-import i18n from "@houston/app/lib/i18n";
-import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { DisclaimerGate } from "@houston/app/components/shell/disclaimer-gate";
-import { whenEngineReady, isEngineReady } from "@houston/app/lib/engine";
-import { initFrontendLogging, logger } from "@houston/app/lib/logger";
-import { initSentry } from "@houston/app/lib/sentry";
-import { showErrorToast } from "@houston/app/lib/error-toast";
+import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
+import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
+import { showErrorToast } from "@houston/app/lib/error-toast";
+import i18n from "@houston/app/lib/i18n";
+import { initFrontendLogging, logger } from "@houston/app/lib/logger";
+import { queryClient } from "@houston/app/lib/query-client";
+import { initSentry } from "@houston/app/lib/sentry";
+import { TooltipProvider } from "@houston-ai/core";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Component, type ReactNode, useEffect, useState } from "react";
+import { I18nextProvider } from "react-i18next";
 import "@houston/app/styles/globals.css";
 
 // Sentry first so the global handlers below can capture from the first render.

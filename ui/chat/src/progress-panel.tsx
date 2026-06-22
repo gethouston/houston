@@ -8,7 +8,7 @@
  * - done: filled checkmark
  */
 
-import { ScrollArea, cn } from "@houston-ai/core";
+import { cn, ScrollArea } from "@houston-ai/core";
 import { Check, Circle, Loader2 } from "lucide-react";
 import type { ProgressStep } from "./use-progress-steps";
 

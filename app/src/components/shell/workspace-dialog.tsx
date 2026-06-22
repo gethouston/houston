@@ -1,19 +1,19 @@
-import { useTranslation } from "react-i18next";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
+import { useTranslation } from "react-i18next";
 import { tauriProvider } from "../../lib/tauri";
 import { useAgentStore } from "../../stores/agents";
 import { useWorkspaceStore } from "../../stores/workspaces";
-import { WorkspaceSetupFlow } from "./workspace-setup-flow";
 import { createPersonalAssistantForWorkspace } from "../onboarding/create-personal-assistant";
 import {
   buildAssistantInstructions,
   defaultAssistantSetup,
 } from "../onboarding/personal-assistant-artifacts";
+import { WorkspaceSetupFlow } from "./workspace-setup-flow";
 
 export function CreateWorkspaceDialog({
   open,

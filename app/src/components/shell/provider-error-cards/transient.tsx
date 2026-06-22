@@ -5,20 +5,20 @@
  * status-page CTA target.
  */
 
-import { useTranslation } from "react-i18next";
+import type { ProviderError } from "@houston-ai/chat";
+import { Button } from "@houston-ai/core";
 import {
   AlertTriangleIcon,
   ServerCrashIcon,
   TimerIcon,
   WifiOffIcon,
 } from "lucide-react";
-import { Button } from "@houston-ai/core";
-import type { ProviderError } from "@houston-ai/chat";
+import { useTranslation } from "react-i18next";
 import {
   ErrorCard,
+  providerLabel,
   RetryButton,
   StatusPageButton,
-  providerLabel,
 } from "./shared";
 
 interface BaseProps {
