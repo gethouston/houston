@@ -2,7 +2,10 @@ import type { ReactNode } from "react";
 import type { ToolsAndCardsProps } from "./chat-helpers";
 import type { ChatMessagesProps } from "./chat-messages";
 import type { ChatMessage } from "./feed-to-messages";
-import type { QueuedChatMessage, QueuedMessageLabels } from "./queued-message-list";
+import type {
+  QueuedChatMessage,
+  QueuedMessageLabels,
+} from "./queued-message-list";
 import type { FeedItem } from "./types";
 
 export type ChatStatus = "ready" | "streaming" | "submitted";
@@ -17,7 +20,10 @@ export interface PreparedAttachments {
   rejected: AttachmentRejection[];
 }
 
-export type PrepareAttachments = (incoming: File[], existing: File[]) => PreparedAttachments;
+export type PrepareAttachments = (
+  incoming: File[],
+  existing: File[],
+) => PreparedAttachments;
 
 /** Translated strings the composer surfaces to the user. English defaults
  *  live in the components; the app passes `t()` results in. */
@@ -62,7 +68,10 @@ export interface ChatPanelProps {
   status?: ChatStatus;
   thinkingIndicator?: ReactNode;
   endOfTurnIndicator?: ReactNode;
-  transformContent?: (content: string) => { content: string; extra?: ReactNode };
+  transformContent?: (content: string) => {
+    content: string;
+    extra?: ReactNode;
+  };
   toolLabels?: ToolsAndCardsProps["toolLabels"];
   isSpecialTool?: ToolsAndCardsProps["isSpecialTool"];
   renderToolResult?: ToolsAndCardsProps["renderToolResult"];

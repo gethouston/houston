@@ -10,7 +10,8 @@ export function useBoardDrafts() {
   const rawDrafts = useDraftStore((s) => s.drafts);
   const drafts = useMemo(() => {
     const out: Record<string, string> = {};
-    for (const [key, value] of Object.entries(rawDrafts)) if (value.text) out[key] = value.text;
+    for (const [key, value] of Object.entries(rawDrafts))
+      if (value.text) out[key] = value.text;
     return out;
   }, [rawDrafts]);
   const onDraftChange = useCallback((sessionKey: string, text: string) => {

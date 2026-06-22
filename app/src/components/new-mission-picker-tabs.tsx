@@ -46,14 +46,23 @@ export function ScrollableTabs({
   const scrollBy = (dir: -1 | 1) => {
     const el = scrollRef.current;
     if (!el) return;
-    el.scrollBy({ left: dir * Math.max(120, el.clientWidth * 0.6), behavior: "smooth" });
+    el.scrollBy({
+      left: dir * Math.max(120, el.clientWidth * 0.6),
+      behavior: "smooth",
+    });
   };
 
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    const active = el.querySelector<HTMLElement>(`[data-tab-id="${activeTab}"]`);
-    active?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+    const active = el.querySelector<HTMLElement>(
+      `[data-tab-id="${activeTab}"]`,
+    );
+    active?.scrollIntoView({
+      block: "nearest",
+      inline: "nearest",
+      behavior: "smooth",
+    });
   }, [activeTab]);
 
   return (

@@ -80,7 +80,10 @@ export class Scheduler {
     this.lastTick = this.now();
     this.timer = setInterval(() => {
       void this.tick(this.now()).catch((err) =>
-        console.error("[scheduler] tick failed:", err instanceof Error ? err.message : err),
+        console.error(
+          "[scheduler] tick failed:",
+          err instanceof Error ? err.message : err,
+        ),
       );
     }, this.intervalMs);
     // The scheduler must not keep the process alive on its own.
@@ -143,16 +146,30 @@ export class Scheduler {
    * rethrows a fire failure; here — the background scan, with no UI thread to
    * toast on — we log it (the one sanctioned `console.error` boundary).
    */
-  private async fireRoutine(ws: Workspace, agent: Agent, routine: Routine): Promise<void> {
+  private async fireRoutine(
+    ws: Workspace,
+    agent: Agent,
+    routine: Routine,
+  ): Promise<void> {
     try {
       await fireRoutineRun(
-        { vfs: this.deps.vfs, paths: this.deps.paths, firer: this.deps.firer, events: this.deps.events, now: this.now, newId: this.newId },
+        {
+          vfs: this.deps.vfs,
+          paths: this.deps.paths,
+          firer: this.deps.firer,
+          events: this.deps.events,
+          now: this.now,
+          newId: this.newId,
+        },
         ws,
         agent,
         routine,
       );
     } catch (err) {
-      console.error(`[scheduler] routine ${routine.id} fire failed:`, err instanceof Error ? err.message : err);
+      console.error(
+        `[scheduler] routine ${routine.id} fire failed:`,
+        err instanceof Error ? err.message : err,
+      );
     }
   }
 }

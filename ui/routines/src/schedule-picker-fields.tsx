@@ -7,25 +7,26 @@
  * All visible text arrives via props so the package stays i18n-agnostic;
  * weekday names come from `Intl` in the given `locale`.
  */
-import { cn } from "@houston-ai/core"
-import { shortWeekdayNames, narrowWeekdayNames } from "./schedule-format"
+import { cn } from "@houston-ai/core";
+import { shortWeekdayNames, narrowWeekdayNames } from "./schedule-format";
 
 const inputClass = cn(
   "px-3 py-2 rounded-lg border border-border/20 bg-background",
   "text-sm text-foreground",
   "focus:outline-none focus:shadow-sm transition-shadow",
-)
+);
 
-export const labelClass = "text-xs font-medium text-muted-foreground mb-1.5 block"
+export const labelClass =
+  "text-xs font-medium text-muted-foreground mb-1.5 block";
 
 export function DayOfMonthPicker({
   label,
   value,
   onChange,
 }: {
-  label: string
-  value: number
-  onChange: (day: number) => void
+  label: string;
+  value: number;
+  onChange: (day: number) => void;
 }) {
   return (
     <div>
@@ -39,17 +40,17 @@ export function DayOfMonthPicker({
         className={cn(inputClass, "w-24")}
       />
     </div>
-  )
+  );
 }
 
 const WEEKDAY_SHORTCUTS: {
-  key: "everyDay" | "weekdays" | "weekends"
-  days: number[]
+  key: "everyDay" | "weekdays" | "weekends";
+  days: number[];
 }[] = [
   { key: "everyDay", days: [0, 1, 2, 3, 4, 5, 6] },
   { key: "weekdays", days: [1, 2, 3, 4, 5] },
   { key: "weekends", days: [0, 6] },
-]
+];
 
 /**
  * "On these days" — multi-select weekday toggle (S M T W T F S) plus quick
@@ -64,26 +65,26 @@ export function WeekdaysPicker({
   value,
   onChange,
 }: {
-  label: string
-  locale?: string
-  shortcuts: { everyDay: string; weekdays: string; weekends: string }
-  value: number[]
-  onChange: (days: number[]) => void
+  label: string;
+  locale?: string;
+  shortcuts: { everyDay: string; weekdays: string; weekends: string };
+  value: number[];
+  onChange: (days: number[]) => void;
 }) {
-  const narrow = narrowWeekdayNames(locale)
-  const short = shortWeekdayNames(locale)
+  const narrow = narrowWeekdayNames(locale);
+  const short = shortWeekdayNames(locale);
   const toggle = (d: number) =>
     onChange(
       value.includes(d)
         ? value.filter((x) => x !== d)
         : [...value, d].sort((a, b) => a - b),
-    )
+    );
   return (
     <div>
       <label className={labelClass}>{label}</label>
       <div className="flex gap-1.5">
         {narrow.map((glyph, d) => {
-          const on = value.includes(d)
+          const on = value.includes(d);
           return (
             <button
               key={d}
@@ -100,7 +101,7 @@ export function WeekdaysPicker({
             >
               {glyph}
             </button>
-          )
+          );
         })}
       </div>
       <div className="mt-2 flex gap-1.5">
@@ -116,5 +117,5 @@ export function WeekdaysPicker({
         ))}
       </div>
     </div>
-  )
+  );
 }

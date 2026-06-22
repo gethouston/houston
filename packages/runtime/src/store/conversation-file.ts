@@ -31,9 +31,13 @@ export type StoredConversation = {
   messages: ChatMessage[];
 };
 
-const fileFor = (dir: string, id: string) => join(dir, `${encodeURIComponent(id)}.json`);
+const fileFor = (dir: string, id: string) =>
+  join(dir, `${encodeURIComponent(id)}.json`);
 
-export function loadConversation(dir: string, id: string): StoredConversation | null {
+export function loadConversation(
+  dir: string,
+  id: string,
+): StoredConversation | null {
   const f = fileFor(dir, id);
   if (!existsSync(f)) return null;
   try {
@@ -85,7 +89,11 @@ export function appendAssistantMessageAt(
   save(dir, conv);
 }
 
-export function renameConversationAt(dir: string, id: string, title: string): boolean {
+export function renameConversationAt(
+  dir: string,
+  id: string,
+  title: string,
+): boolean {
   const conv = loadConversation(dir, id);
   if (!conv) return false;
   conv.title = title;
@@ -101,7 +109,10 @@ export function deleteConversationAt(dir: string, id: string): boolean {
   return true;
 }
 
-export function getHistoryAt(dir: string, id: string): ConversationHistory | null {
+export function getHistoryAt(
+  dir: string,
+  id: string,
+): ConversationHistory | null {
   const conv = loadConversation(dir, id);
   if (!conv) return null;
   return { id: conv.id, title: conv.title, messages: conv.messages };
@@ -113,7 +124,9 @@ export function listConversationsAt(dir: string): ConversationSummary[] {
   for (const f of readdirSync(dir)) {
     if (!f.endsWith(".json")) continue;
     try {
-      const conv = JSON.parse(readFileSync(join(dir, f), "utf8")) as StoredConversation;
+      const conv = JSON.parse(
+        readFileSync(join(dir, f), "utf8"),
+      ) as StoredConversation;
       const last = conv.messages[conv.messages.length - 1];
       out.push({
         id: conv.id,

@@ -37,8 +37,10 @@ export interface AgentConfig {
 export function resolveEngineConfig(): EngineConfig {
   const stored = loadEngineConfig();
   if (stored) return stored;
-  const envBase = (import.meta as ImportMetaWithEnv).env?.VITE_HOUSTON_ENGINE_BASE;
-  const envToken = (import.meta as ImportMetaWithEnv).env?.VITE_HOUSTON_ENGINE_TOKEN;
+  const envBase = (import.meta as ImportMetaWithEnv).env
+    ?.VITE_HOUSTON_ENGINE_BASE;
+  const envToken = (import.meta as ImportMetaWithEnv).env
+    ?.VITE_HOUSTON_ENGINE_TOKEN;
   if (envBase && envToken) return { baseUrl: envBase, token: envToken };
   return DEMO_DEFAULT;
 }

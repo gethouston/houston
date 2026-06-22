@@ -41,6 +41,7 @@ export async function update(
 export async function remove(agentPath: string, id: string): Promise<void> {
   const items = await list(agentPath);
   const next = items.filter((l) => l.id !== id);
-  if (next.length === items.length) throw new Error(`Learning not found: ${id}`);
+  if (next.length === items.length)
+    throw new Error(`Learning not found: ${id}`);
   await writeAgentJson(agentPath, NAME, s, next);
 }

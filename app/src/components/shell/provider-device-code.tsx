@@ -80,7 +80,11 @@ export function ProviderDeviceCode({ code, providerName, onClose }: Props) {
             aria-label={t("providerLogin.copyCode")}
             onClick={copyCode}
           >
-            {copied ? <Check className="size-3.5" /> : <Copy className="size-3.5" />}
+            {copied ? (
+              <Check className="size-3.5" />
+            ) : (
+              <Copy className="size-3.5" />
+            )}
           </Button>
         </div>
         <p className="text-[12px] text-muted-foreground">

@@ -24,7 +24,10 @@ function eventTypeFor(rest: string): HoustonEvent["type"] | null {
   if (rest.startsWith(".houston/activity")) return "ActivityChanged";
   if (rest.startsWith(".houston/config")) return "ConfigChanged";
   if (rest.startsWith(".houston/learnings")) return "LearningsChanged";
-  if (rest.startsWith(".houston/conversations") || rest.startsWith(".houston/sessions")) {
+  if (
+    rest.startsWith(".houston/conversations") ||
+    rest.startsWith(".houston/sessions")
+  ) {
     return "ConversationsChanged";
   }
   if (
@@ -34,7 +37,8 @@ function eventTypeFor(rest: string): HoustonEvent["type"] | null {
   ) {
     return "SkillsChanged";
   }
-  if (rest === "CLAUDE.md" || rest === "AGENTS.md" || rest === "GEMINI.md") return "ContextChanged";
+  if (rest === "CLAUDE.md" || rest === "AGENTS.md" || rest === "GEMINI.md")
+    return "ContextChanged";
   // Internal bookkeeping we never surface.
   if (rest.startsWith(".git/") || rest === ".DS_Store") return null;
   // Any other file in the agent's working tree.

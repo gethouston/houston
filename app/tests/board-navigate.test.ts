@@ -9,7 +9,11 @@ const COLUMNS: KanbanColumnConfig[] = [
   { id: "done", label: "Done", statuses: ["done"] },
 ];
 
-function item(id: string, status: string, updatedAt = "2025-01-01T00:00:00Z"): KanbanItem {
+function item(
+  id: string,
+  status: string,
+  updatedAt = "2025-01-01T00:00:00Z",
+): KanbanItem {
   return { id, title: id, status, updatedAt };
 }
 
@@ -27,14 +31,20 @@ const ITEMS = [r1, r2, n1, n2, n3, d1];
 describe("navigateBoard", () => {
   it("picks the first card of the first non-empty column when nothing is selected", () => {
     strictEqual(
-      navigateBoard({ items: ITEMS, columns: COLUMNS, selectedId: null }, "down"),
+      navigateBoard(
+        { items: ITEMS, columns: COLUMNS, selectedId: null },
+        "down",
+      ),
       "r1",
     );
   });
 
   it("moves down within a column", () => {
     strictEqual(
-      navigateBoard({ items: ITEMS, columns: COLUMNS, selectedId: "n1" }, "down"),
+      navigateBoard(
+        { items: ITEMS, columns: COLUMNS, selectedId: "n1" },
+        "down",
+      ),
       "n2",
     );
   });
@@ -48,7 +58,10 @@ describe("navigateBoard", () => {
 
   it("stops at the bottom of a column (no wrap)", () => {
     strictEqual(
-      navigateBoard({ items: ITEMS, columns: COLUMNS, selectedId: "n3" }, "down"),
+      navigateBoard(
+        { items: ITEMS, columns: COLUMNS, selectedId: "n3" },
+        "down",
+      ),
       null,
     );
   });
@@ -62,7 +75,10 @@ describe("navigateBoard", () => {
 
   it("moves right to the next non-empty column, keeping the row index when possible", () => {
     strictEqual(
-      navigateBoard({ items: ITEMS, columns: COLUMNS, selectedId: "n2" }, "right"),
+      navigateBoard(
+        { items: ITEMS, columns: COLUMNS, selectedId: "n2" },
+        "right",
+      ),
       // Done has only d1 → clamp from row 1 to row 0
       "d1",
     );
@@ -70,7 +86,10 @@ describe("navigateBoard", () => {
 
   it("moves left to the previous non-empty column, clamping the row index", () => {
     strictEqual(
-      navigateBoard({ items: ITEMS, columns: COLUMNS, selectedId: "n2" }, "left"),
+      navigateBoard(
+        { items: ITEMS, columns: COLUMNS, selectedId: "n2" },
+        "left",
+      ),
       // Running has r1, r2 → row 1 lands on r2
       "r2",
     );
@@ -78,14 +97,20 @@ describe("navigateBoard", () => {
 
   it("returns null when there is no column on the right", () => {
     strictEqual(
-      navigateBoard({ items: ITEMS, columns: COLUMNS, selectedId: "d1" }, "right"),
+      navigateBoard(
+        { items: ITEMS, columns: COLUMNS, selectedId: "d1" },
+        "right",
+      ),
       null,
     );
   });
 
   it("returns null when there is no column on the left", () => {
     strictEqual(
-      navigateBoard({ items: ITEMS, columns: COLUMNS, selectedId: "r1" }, "left"),
+      navigateBoard(
+        { items: ITEMS, columns: COLUMNS, selectedId: "r1" },
+        "left",
+      ),
       null,
     );
   });

@@ -3,9 +3,14 @@
  * time-picker.tsx so each file stays small; these are presentational and own no
  * time logic — the parent computes values and hands selection callbacks down.
  */
-import { useEffect, useRef } from "react"
-import { cn } from "@houston-ai/core"
-import { pad2, centerPadding, centerScrollTop, type Period } from "./time-picker-utils.ts"
+import { useEffect, useRef } from "react";
+import { cn } from "@houston-ai/core";
+import {
+  pad2,
+  centerPadding,
+  centerScrollTop,
+  type Period,
+} from "./time-picker-utils.ts";
 
 /**
  * One scrollable column of zero-padded numbers. The selected value is kept
@@ -20,23 +25,27 @@ export function TimeColumn({
   selected,
   onSelect,
 }: {
-  ariaLabel: string
-  options: number[]
-  selected: number
-  onSelect: (n: number) => void
+  ariaLabel: string;
+  options: number[];
+  selected: number;
+  onSelect: (n: number) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const selectedRef = useRef<HTMLButtonElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectedRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    const c = containerRef.current
-    const el = selectedRef.current
-    if (!c || !el) return
+    const c = containerRef.current;
+    const el = selectedRef.current;
+    if (!c || !el) return;
     // Pad the ends so the extreme values can also center, then bring the current
     // selection to the middle. (offsetTop reflects the padding once it's set.)
-    c.style.paddingBlock = `${centerPadding(c.clientHeight, el.clientHeight)}px`
-    c.scrollTop = centerScrollTop(el.offsetTop, c.clientHeight, el.clientHeight)
-  }, [selected])
+    c.style.paddingBlock = `${centerPadding(c.clientHeight, el.clientHeight)}px`;
+    c.scrollTop = centerScrollTop(
+      el.offsetTop,
+      c.clientHeight,
+      el.clientHeight,
+    );
+  }, [selected]);
 
   return (
     <div
@@ -46,7 +55,7 @@ export function TimeColumn({
       className="relative flex h-28 w-14 flex-col gap-0.5 overflow-y-auto scroll-smooth"
     >
       {options.map((n) => {
-        const on = n === selected
+        const on = n === selected;
         return (
           <button
             key={n}
@@ -64,10 +73,10 @@ export function TimeColumn({
           >
             {pad2(n)}
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }
 
 /** The AM/PM column, shown only for 12-hour locales. */
@@ -77,15 +86,15 @@ export function PeriodColumn({
   selected,
   onSelect,
 }: {
-  ariaLabel: string
-  periods: { am: string; pm: string }
-  selected: Period
-  onSelect: (p: Period) => void
+  ariaLabel: string;
+  periods: { am: string; pm: string };
+  selected: Period;
+  onSelect: (p: Period) => void;
 }) {
   const items: { key: Period; label: string }[] = [
     { key: "am", label: periods.am },
     { key: "pm", label: periods.pm },
-  ]
+  ];
   return (
     <div
       role="group"
@@ -93,7 +102,7 @@ export function PeriodColumn({
       className="flex w-14 flex-col justify-center gap-0.5"
     >
       {items.map((it) => {
-        const on = it.key === selected
+        const on = it.key === selected;
         return (
           <button
             key={it.key}
@@ -109,8 +118,8 @@ export function PeriodColumn({
           >
             {it.label}
           </button>
-        )
+        );
       })}
     </div>
-  )
+  );
 }

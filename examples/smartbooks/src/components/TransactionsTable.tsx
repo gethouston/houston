@@ -26,7 +26,9 @@ export function TransactionsTable({ workbook, onDownload }: Props) {
   if (workbook.rows.length === 0) {
     return (
       <div className="table-empty muted">
-        <p>Workbook exists but has no rows yet. Drop a statement to populate it.</p>
+        <p>
+          Workbook exists but has no rows yet. Drop a statement to populate it.
+        </p>
       </div>
     );
   }

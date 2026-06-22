@@ -7,7 +7,10 @@ test("sandboxToken round-trips through validateSandboxToken", () => {
   const v = new EnvCredentialVault({ secret: SECRET });
   const token = v.sandboxToken("ws-1", "agent-9");
   expect(token).toContain(".");
-  expect(v.validateSandboxToken(token)).toEqual({ workspaceId: "ws-1", agentId: "agent-9" });
+  expect(v.validateSandboxToken(token)).toEqual({
+    workspaceId: "ws-1",
+    agentId: "agent-9",
+  });
 });
 
 test("a tampered payload is rejected (signature no longer matches)", () => {
@@ -45,7 +48,10 @@ test("malformed tokens are rejected, never thrown", () => {
   expect(v.validateSandboxToken(".onlysig")).toBeNull();
   expect(v.validateSandboxToken("onlypayload.")).toBeNull();
   // Valid-looking shape but payload is not the right object.
-  const badPayload = Buffer.from(JSON.stringify({ foo: "bar" }), "utf8").toString("base64url");
+  const badPayload = Buffer.from(
+    JSON.stringify({ foo: "bar" }),
+    "utf8",
+  ).toString("base64url");
   const stamped = new EnvCredentialVault({ secret: SECRET });
   // Sign the bad payload so the HMAC passes but the schema check fails.
   const token = (() => {
@@ -56,4 +62,3 @@ test("malformed tokens are rejected, never thrown", () => {
   // The signature won't match badPayload, so it's null either way — assert null.
   expect(v.validateSandboxToken(token)).toBeNull();
 });
-

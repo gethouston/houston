@@ -49,7 +49,8 @@ export function useMcNewMission({
     setOpenerReady(true);
   }, []);
   const onAutoOpenEmpty = useCallback(() => {
-    if (visibleAgents.length === 1) handlePickAgent(visibleAgents[0], { focusComposer: false });
+    if (visibleAgents.length === 1)
+      handlePickAgent(visibleAgents[0], { focusComposer: false });
     else if (visibleAgents.length > 1) setAgentPickerOpen(true);
   }, [visibleAgents, handlePickAgent]);
   // Reset the pending agent when the panel closes without a card selected, so

@@ -11,10 +11,7 @@ import {
   shouldShowProviderInPicker,
 } from "../lib/model-picker";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
-import {
-  ProviderModelGroup,
-  ProviderIcon,
-} from "./chat-model-selector-parts";
+import { ProviderModelGroup, ProviderIcon } from "./chat-model-selector-parts";
 
 interface ChatModelSelectorProps {
   /** Current provider id (from workspace/agent config). */
@@ -42,7 +39,10 @@ export function ChatModelSelector({
 
   const currentProvider = getProvider(provider);
   const currentModel = getModel(provider, model);
-  const displayLabel = currentModel?.label ?? currentProvider?.subtitle ?? t("modelSelector.selectModel");
+  const displayLabel =
+    currentModel?.label ??
+    currentProvider?.subtitle ??
+    t("modelSelector.selectModel");
 
   // Honour `lockedProvider` only when it points at a currently-active
   // provider that the engine reports as installed. Two cases drop the
@@ -58,7 +58,9 @@ export function ChatModelSelector({
   // In both cases every send would route to a provider the user cannot
   // currently invoke, so the dropdown must expose installed
   // alternatives instead of pinning the broken choice.
-  const lockedProviderEntry = lockedProvider ? getProvider(lockedProvider) : undefined;
+  const lockedProviderEntry = lockedProvider
+    ? getProvider(lockedProvider)
+    : undefined;
   const lockedStatus = lockedProvider ? statuses[lockedProvider] : undefined;
   const lockedProviderInstalled = lockedStatus?.cli_installed ?? true;
   const effectiveLock =
@@ -69,7 +71,10 @@ export function ChatModelSelector({
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
     // from interpreting dropdown clicks as "click outside → close panel".
-    <div onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <div
+      onPointerDown={(e) => e.stopPropagation()}
+      onClick={(e) => e.stopPropagation()}
+    >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button

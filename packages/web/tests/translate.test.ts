@@ -1,9 +1,16 @@
 import { test, expect } from "bun:test";
-import type { ChatMessage, HoustonEngineClient, WireEvent } from "@houston/runtime-client";
+import type {
+  ChatMessage,
+  HoustonEngineClient,
+  WireEvent,
+} from "@houston/runtime-client";
 import { streamTurn, historyToFeed } from "../src/engine-adapter/translate";
 import { bus } from "../src/engine-adapter/bus";
 
-type FinalResult = { feed_type?: string; data?: { usage?: { context_tokens: number } | null } };
+type FinalResult = {
+  feed_type?: string;
+  data?: { usage?: { context_tokens: number } | null };
+};
 
 /**
  * A fake runtime client whose `streamEvents` replays a fixed list of wire events
@@ -54,7 +61,11 @@ test("a completed turn drives the activity setter running -> needs_you", async (
 
   expect(statuses).toEqual(["running", "needs_you"]);
   // The agent's text reached the feed as a final result (the turn really ran).
-  expect(feed.items.some((i) => (i as { feed_type?: string })?.feed_type === "final_result")).toBe(true);
+  expect(
+    feed.items.some(
+      (i) => (i as { feed_type?: string })?.feed_type === "final_result",
+    ),
+  ).toBe(true);
 });
 
 test("an errored turn drives the activity setter running -> error", async () => {
@@ -83,7 +94,10 @@ test("a turn's usage frame is attached to the final_result", async () => {
   await streamTurn(
     fakeEngine([
       { type: "text", data: "hello" },
-      { type: "usage", data: { context_tokens: 1234, output_tokens: 56, cached_tokens: 78 } },
+      {
+        type: "usage",
+        data: { context_tokens: 1234, output_tokens: 56, cached_tokens: 78 },
+      },
       { type: "done", data: null },
     ]),
     "Houston/Bo",
@@ -133,7 +147,9 @@ test("historyToFeed replays persisted usage as a final_result, once, with no ext
 
   const out = historyToFeed(messages);
 
-  const final = out.find((i) => i.feed_type === "final_result") as FinalResult | undefined;
+  const final = out.find((i) => i.feed_type === "final_result") as
+    | FinalResult
+    | undefined;
   expect(final?.data?.usage?.context_tokens).toBe(999);
   // The assistant text still renders exactly once; final_result only flushes.
   expect(out.filter((i) => i.feed_type === "assistant_text")).toHaveLength(1);
@@ -163,7 +179,11 @@ test("a failing status persist surfaces in the feed, not silently", async () => 
 
   const surfaced = feed.items.some((i) => {
     const it = i as { feed_type?: string; data?: string };
-    return it?.feed_type === "system_message" && typeof it.data === "string" && it.data.includes("board status");
+    return (
+      it?.feed_type === "system_message" &&
+      typeof it.data === "string" &&
+      it.data.includes("board status")
+    );
   });
   expect(surfaced).toBe(true);
 });

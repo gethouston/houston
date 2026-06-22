@@ -26,7 +26,10 @@ describe("agent selection", () => {
   it("keeps the matching loaded agent when the current selection still exists", () => {
     const previous = agent("a2", "Old Grace");
     const refreshed = agent("a2", "Grace");
-    const selected = selectCurrentAgent([agent("a1", "Ada"), refreshed], previous);
+    const selected = selectCurrentAgent(
+      [agent("a1", "Ada"), refreshed],
+      previous,
+    );
 
     strictEqual(selected, refreshed);
   });

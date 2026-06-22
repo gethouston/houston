@@ -1,9 +1,23 @@
-import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+} from "node:http";
 import { config } from "../config";
-import { getAuthStatus, startLogin, completeLogin, logout } from "../auth/login";
+import {
+  getAuthStatus,
+  startLogin,
+  completeLogin,
+  logout,
+} from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
-import { runTurn, ensureProviderForTurn, cancelTurn, disposeConversation } from "../session/chat";
+import {
+  runTurn,
+  ensureProviderForTurn,
+  cancelTurn,
+  disposeConversation,
+} from "../session/chat";
 import { summarizeTitle, titleFromText } from "../session/summarize";
 import { snapshot, subscribe } from "../session/bus";
 import {
@@ -65,7 +79,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     try {
       return json(res, 200, setSettings(body));
     } catch (e) {
-      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
@@ -83,12 +99,20 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (method === "POST" && path === "/auth/scrub-refresh") {
     return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
   }
-  const authMatch = path.match(/^\/auth\/([^/]+)\/(login|login\/complete|logout)$/);
+  const authMatch = path.match(
+    /^\/auth\/([^/]+)\/(login|login\/complete|logout)$/,
+  );
   if (method === "POST" && authMatch) {
     const provider = authMatch[1];
     const action = authMatch[2];
     try {
-      if (action === "login") return json(res, 200, await startLogin(provider));
+      if (action === "login") {
+        // `deviceAuth=false` (sent only by the co-located desktop client)
+        // selects Codex's browser/loopback login; default true keeps the
+        // device-code path for remote webapp clients.
+        const deviceAuth = url.searchParams.get("deviceAuth") !== "false";
+        return json(res, 200, await startLogin(provider, deviceAuth));
+      }
       if (action === "login/complete") {
         const { code } = await readJson(req);
         completeLogin(provider, String(code || ""));
@@ -97,7 +121,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       logout(provider);
       return json(res, 200, { ok: true });
     } catch (e) {
-      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
@@ -118,7 +144,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     try {
       return json(res, 200, { title: await titleFromText(text) });
     } catch (e) {
-      return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
   }
 
@@ -144,7 +172,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
   }
 
-  const convMatch = path.match(/^\/conversations\/([^/]+)\/(messages|events|cancel|title)$/);
+  const convMatch = path.match(
+    /^\/conversations\/([^/]+)\/(messages|events|cancel|title)$/,
+  );
   if (convMatch) {
     const id = decodeURIComponent(convMatch[1]);
     const action = convMatch[2];
@@ -185,7 +215,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
           ? json(res, 200, { title })
           : json(res, 404, { error: "conversation not found" });
       } catch (e) {
-        return json(res, 400, { error: e instanceof Error ? e.message : String(e) });
+        return json(res, 400, {
+          error: e instanceof Error ? e.message : String(e),
+        });
       }
     }
 
@@ -202,7 +234,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       // signal is an `error` event that can race the client's SSE subscribe and
       // be lost — which left the chat spinning forever after logout.
       if (!(await ensureProviderForTurn())) {
-        return json(res, 409, { error: "No provider connected. Log in with Claude or Codex first." });
+        return json(res, 409, {
+          error: "No provider connected. Log in with Claude or Codex first.",
+        });
       }
       // model/effort ride on a routine-fired message (a routine's pin); a normal
       // user message omits them, leaving the session's current model/effort.
@@ -210,7 +244,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         model: typeof model === "string" ? model : undefined,
         effort: typeof effort === "string" ? effort : undefined,
       };
-      void runTurn(id, text, typeof nonce === "string" ? nonce : undefined, pin);
+      void runTurn(
+        id,
+        text,
+        typeof nonce === "string" ? nonce : undefined,
+        pin,
+      );
       return json(res, 202, { ok: true, id });
     }
   }
@@ -227,12 +266,18 @@ export function startServer() {
     });
   });
   server.listen(config.port, config.host, () => {
-    console.log(`\nhouston-runtime listening on http://${config.host}:${config.port}`);
+    console.log(
+      `\nhouston-runtime listening on http://${config.host}:${config.port}`,
+    );
     console.log(`  workspace: ${config.workspaceDir}`);
     console.log(`  data dir:  ${config.dataDir}`);
     console.log(`  model:     ${config.model}`);
-    console.log(`  auth:      ${config.token ? "bearer token required" : "open (local dev)"}`);
-    console.log(`  claude:    ${config.headless ? "headless (paste code)" : "loopback (local)"}`);
+    console.log(
+      `  auth:      ${config.token ? "bearer token required" : "open (local dev)"}`,
+    );
+    console.log(
+      `  claude:    ${config.headless ? "headless (paste code)" : "loopback (local)"}`,
+    );
     console.log(`  cors:      ${config.corsOrigin}`);
   });
   return server;

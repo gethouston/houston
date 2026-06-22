@@ -12,7 +12,11 @@ export interface Check {
   detail?: string;
 }
 
-const check = (name: string, pass: boolean, detail?: string): Check => ({ name, pass, detail });
+const check = (name: string, pass: boolean, detail?: string): Check => ({
+  name,
+  pass,
+  detail,
+});
 
 async function openZip(bytes: Uint8Array): Promise<JSZip | null> {
   try {
@@ -26,28 +30,63 @@ export async function validatePptx(
   bytes: Uint8Array,
   opts: { minSlides: number },
 ): Promise<Check[]> {
-  const checks: Check[] = [check("non-empty", bytes.length > 0, `${bytes.length} bytes`)];
+  const checks: Check[] = [
+    check("non-empty", bytes.length > 0, `${bytes.length} bytes`),
+  ];
   const zip = await openZip(bytes);
   checks.push(check("valid zip container", zip !== null));
   if (!zip) return checks;
-  checks.push(check("[Content_Types].xml present", zip.file("[Content_Types].xml") !== null));
-  checks.push(check("ppt/presentation.xml present", zip.file("ppt/presentation.xml") !== null));
-  const slides = Object.keys(zip.files).filter((f) => /^ppt\/slides\/slide\d+\.xml$/.test(f));
   checks.push(
-    check(`at least ${opts.minSlides} slides`, slides.length >= opts.minSlides, `${slides.length} slides`),
+    check(
+      "[Content_Types].xml present",
+      zip.file("[Content_Types].xml") !== null,
+    ),
+  );
+  checks.push(
+    check(
+      "ppt/presentation.xml present",
+      zip.file("ppt/presentation.xml") !== null,
+    ),
+  );
+  const slides = Object.keys(zip.files).filter((f) =>
+    /^ppt\/slides\/slide\d+\.xml$/.test(f),
+  );
+  checks.push(
+    check(
+      `at least ${opts.minSlides} slides`,
+      slides.length >= opts.minSlides,
+      `${slides.length} slides`,
+    ),
   );
   return checks;
 }
 
 export async function validateXlsx(bytes: Uint8Array): Promise<Check[]> {
-  const checks: Check[] = [check("non-empty", bytes.length > 0, `${bytes.length} bytes`)];
+  const checks: Check[] = [
+    check("non-empty", bytes.length > 0, `${bytes.length} bytes`),
+  ];
   const zip = await openZip(bytes);
   checks.push(check("valid zip container", zip !== null));
   if (!zip) return checks;
-  checks.push(check("[Content_Types].xml present", zip.file("[Content_Types].xml") !== null));
-  checks.push(check("xl/workbook.xml present", zip.file("xl/workbook.xml") !== null));
-  const sheets = Object.keys(zip.files).filter((f) => /^xl\/worksheets\/sheet\d+\.xml$/.test(f));
-  checks.push(check("at least 1 worksheet", sheets.length >= 1, `${sheets.length} worksheets`));
+  checks.push(
+    check(
+      "[Content_Types].xml present",
+      zip.file("[Content_Types].xml") !== null,
+    ),
+  );
+  checks.push(
+    check("xl/workbook.xml present", zip.file("xl/workbook.xml") !== null),
+  );
+  const sheets = Object.keys(zip.files).filter((f) =>
+    /^xl\/worksheets\/sheet\d+\.xml$/.test(f),
+  );
+  checks.push(
+    check(
+      "at least 1 worksheet",
+      sheets.length >= 1,
+      `${sheets.length} worksheets`,
+    ),
+  );
   if (sheets[0]) {
     const xml = await zip.file(sheets[0])!.async("string");
     const rows = (xml.match(/<row[ >]/g) ?? []).length;
@@ -64,7 +103,10 @@ export async function validatePng(
 ): Promise<Check[]> {
   return [
     check("non-empty", bytes.length > 0, `${bytes.length} bytes`),
-    check("PNG magic header", PNG_MAGIC.every((b, i) => bytes[i] === b)),
+    check(
+      "PNG magic header",
+      PNG_MAGIC.every((b, i) => bytes[i] === b),
+    ),
     check(
       `at least ${opts.minBytes} bytes (a real chart, not a stub)`,
       bytes.length >= opts.minBytes,

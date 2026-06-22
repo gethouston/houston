@@ -57,6 +57,11 @@ describe("routines tab model — routineToFormData", () => {
       suppress_when_silent: false,
       chat_mode: "shared",
       integrations: ["gmail", "slack"],
+      // Per-routine provider/model/effort pins (HOU-506); unset on the fixture,
+      // so they project to null (inherit the agent's model).
+      provider: null,
+      model: null,
+      effort: null,
     });
   });
 });
@@ -86,7 +91,10 @@ describe("routines tab model — formMatchesRoutine", () => {
   it("detects a reordered or resized integrations list", () => {
     const baseline = routineToFormData(routine());
     strictEqual(
-      formMatchesRoutine({ ...baseline, integrations: ["slack", "gmail"] }, baseline),
+      formMatchesRoutine(
+        { ...baseline, integrations: ["slack", "gmail"] },
+        baseline,
+      ),
       false,
     );
     strictEqual(
@@ -113,9 +121,21 @@ describe("routines tab model — latestRunByRoutine", () => {
   });
 
   it("keeps the newest run per routine", () => {
-    const older = run({ id: "a", routine_id: "r1", started_at: "2026-01-01T00:00:00Z" });
-    const newer = run({ id: "b", routine_id: "r1", started_at: "2026-01-03T00:00:00Z" });
-    const other = run({ id: "c", routine_id: "r2", started_at: "2026-01-02T00:00:00Z" });
+    const older = run({
+      id: "a",
+      routine_id: "r1",
+      started_at: "2026-01-01T00:00:00Z",
+    });
+    const newer = run({
+      id: "b",
+      routine_id: "r1",
+      started_at: "2026-01-03T00:00:00Z",
+    });
+    const other = run({
+      id: "c",
+      routine_id: "r2",
+      started_at: "2026-01-02T00:00:00Z",
+    });
 
     const map = latestRunByRoutine([older, newer, other]);
 

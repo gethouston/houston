@@ -15,11 +15,11 @@
  * via props; AM/PM markers and the 12h-vs-24h choice come from `Intl` in the
  * given `locale`. The scroll columns live in time-picker-columns.tsx.
  */
-import { Clock } from "lucide-react"
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core"
-import { parseTime, formatTime } from "./schedule-format.ts"
-import { labelClass } from "./schedule-picker-fields.tsx"
-import { TimeColumn, PeriodColumn } from "./time-picker-columns.tsx"
+import { Clock } from "lucide-react";
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@houston-ai/core";
+import { parseTime, formatTime } from "./schedule-format.ts";
+import { labelClass } from "./schedule-picker-fields.tsx";
+import { TimeColumn, PeriodColumn } from "./time-picker-columns.tsx";
 import {
   is12HourLocale,
   periodLabels,
@@ -29,13 +29,13 @@ import {
   hourOptions,
   minuteOptions,
   type Period,
-} from "./time-picker-utils.ts"
+} from "./time-picker-utils.ts";
 
 /** Accessible names for the picker's columns. */
 export interface TimePickerLabels {
-  hour: string
-  minute: string
-  period: string
+  hour: string;
+  minute: string;
+  period: string;
 }
 
 export function TimePicker({
@@ -45,22 +45,22 @@ export function TimePicker({
   locale = "en-US",
   labels,
 }: {
-  label: string
-  value: string
-  onChange: (time: string) => void
-  locale?: string
-  labels: TimePickerLabels
+  label: string;
+  value: string;
+  onChange: (time: string) => void;
+  locale?: string;
+  labels: TimePickerLabels;
 }) {
-  const twelveHour = is12HourLocale(locale)
-  const { hour: hour24, minute } = parseTime(value)
-  const { hour: hour12, period } = to12Hour(hour24)
-  const periods = periodLabels(locale)
+  const twelveHour = is12HourLocale(locale);
+  const { hour: hour24, minute } = parseTime(value);
+  const { hour: hour12, period } = to12Hour(hour24);
+  const periods = periodLabels(locale);
 
   const selectHour = (h: number) =>
-    onChange(buildTime(twelveHour ? from12Hour(h, period) : h, minute))
-  const selectMinute = (m: number) => onChange(buildTime(hour24, m))
+    onChange(buildTime(twelveHour ? from12Hour(h, period) : h, minute));
+  const selectMinute = (m: number) => onChange(buildTime(hour24, m));
   const selectPeriod = (p: Period) =>
-    onChange(buildTime(from12Hour(hour12, p), minute))
+    onChange(buildTime(from12Hour(hour12, p), minute));
 
   return (
     <div>
@@ -107,5 +107,5 @@ export function TimePicker({
         </PopoverContent>
       </Popover>
     </div>
-  )
+  );
 }

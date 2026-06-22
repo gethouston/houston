@@ -21,7 +21,8 @@ export async function handleActivitiesData(
   res: ServerResponse,
   emit?: (event: HoustonEvent) => void,
 ): Promise<void> {
-  const fireChange = () => emit?.({ type: "ActivityChanged", agentPath: agentId });
+  const fireChange = () =>
+    emit?.({ type: "ActivityChanged", agentPath: agentId });
   const nowIso = new Date().toISOString();
 
   if (method === "GET" && !itemId) {

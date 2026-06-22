@@ -52,52 +52,60 @@ export async function dispatchTurn(
   try {
     release = await deps.quota.acquire(ws.id);
   } catch (err) {
-    if (err instanceof TurnQuotaError) return { status: "quota", message: err.message };
+    if (err instanceof TurnQuotaError)
+      return { status: "quota", message: err.message };
     throw err;
   }
   const prefix = prefixFor(ws, agent);
-  const started = await deps.relay.start(agent.id, `${agent.id}/${cid}`, async (publish, signal) => {
-    try {
-      const cred = await freshCredential(deps, ws.id);
-      const idToken = await deps.idToken();
-      const upstream = await fetch(`${deps.runtimeUrl.replace(/\/$/, "")}/turn`, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          ...(deps.turnToken ? { "x-internal-token": deps.turnToken } : {}),
-          ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
-        },
-        body: JSON.stringify({
-          workspaceId: ws.id,
-          agentId: agent.id,
-          conversationId: cid,
-          text,
-          nonce,
-          // Routine model/effort pins (omitted when absent → runtime inherits).
-          ...(pin?.model ? { model: pin.model } : {}),
-          ...(pin?.effort ? { effort: pin.effort } : {}),
-          gcsPrefix: prefix,
-          credential: cred
-            ? {
-                provider: cred.provider,
-                access: cred.accessToken,
-                expires: cred.expiresAt,
-                accountId: cred.accountId ?? null,
-              }
-            : null,
-        }),
-        signal,
-      });
-      if (!upstream.ok || !upstream.body) {
-        throw new Error(
-          `turn runtime ${upstream.status}: ${await upstream.text().catch(() => "")}`,
+  const started = await deps.relay.start(
+    agent.id,
+    `${agent.id}/${cid}`,
+    async (publish, signal) => {
+      try {
+        const cred = await freshCredential(deps, ws.id);
+        const idToken = await deps.idToken();
+        const upstream = await fetch(
+          `${deps.runtimeUrl.replace(/\/$/, "")}/turn`,
+          {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              ...(deps.turnToken ? { "x-internal-token": deps.turnToken } : {}),
+              ...(idToken ? { authorization: `Bearer ${idToken}` } : {}),
+            },
+            body: JSON.stringify({
+              workspaceId: ws.id,
+              agentId: agent.id,
+              conversationId: cid,
+              text,
+              nonce,
+              // Routine model/effort pins (omitted when absent → runtime inherits).
+              ...(pin?.model ? { model: pin.model } : {}),
+              ...(pin?.effort ? { effort: pin.effort } : {}),
+              gcsPrefix: prefix,
+              credential: cred
+                ? {
+                    provider: cred.provider,
+                    access: cred.accessToken,
+                    expires: cred.expiresAt,
+                    accountId: cred.accountId ?? null,
+                  }
+                : null,
+            }),
+            signal,
+          },
         );
+        if (!upstream.ok || !upstream.body) {
+          throw new Error(
+            `turn runtime ${upstream.status}: ${await upstream.text().catch(() => "")}`,
+          );
+        }
+        await pumpSse(upstream.body, publish);
+      } finally {
+        await release();
       }
-      await pumpSse(upstream.body, publish);
-    } finally {
-      await release();
-    }
-  });
+    },
+  );
   if (!started) {
     await release();
     return { status: "busy" };
@@ -116,7 +124,11 @@ export async function startTurn(
   res: ServerResponse,
 ): Promise<void> {
   const outcome = await dispatchTurn(deps, ws, agent, cid, text, nonce);
-  if (outcome.status === "quota") return json(res, 429, { error: outcome.message });
-  if (outcome.status === "busy") return json(res, 409, { error: "a turn is already running for this agent" });
+  if (outcome.status === "quota")
+    return json(res, 429, { error: outcome.message });
+  if (outcome.status === "busy")
+    return json(res, 409, {
+      error: "a turn is already running for this agent",
+    });
   return json(res, 202, { ok: true });
 }

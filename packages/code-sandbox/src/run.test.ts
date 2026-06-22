@@ -14,7 +14,10 @@ describe("safeJoin", () => {
 
 describe("runInSandbox", () => {
   test("python: captures stdout, exit 0, no artifacts", async () => {
-    const r = await runInSandbox({ language: "python", code: "print('hello houston')" });
+    const r = await runInSandbox({
+      language: "python",
+      code: "print('hello houston')",
+    });
     expect(r.exitCode).toBe(0);
     expect(r.stdout.trim()).toBe("hello houston");
     expect(r.artifacts).toHaveLength(0);
@@ -43,30 +46,46 @@ describe("runInSandbox", () => {
   });
 
   test("nonzero exit is reported, not thrown", async () => {
-    const r = await runInSandbox({ language: "python", code: "import sys; sys.exit(3)" });
+    const r = await runInSandbox({
+      language: "python",
+      code: "import sys; sys.exit(3)",
+    });
     expect(r.exitCode).toBe(3);
   });
 
   test("timeout kills the process and flags timedOut", async () => {
     const r = await runInSandbox(
-      { language: "python", code: "import time; time.sleep(10)", timeoutMs: 300 },
+      {
+        language: "python",
+        code: "import time; time.sleep(10)",
+        timeoutMs: 300,
+      },
       DEFAULT_LIMITS,
     );
     expect(r.timedOut).toBe(true);
   });
 
   test("bash works", async () => {
-    const r = await runInSandbox({ language: "bash", code: "echo hi from bash" });
+    const r = await runInSandbox({
+      language: "bash",
+      code: "echo hi from bash",
+    });
     expect(r.stdout.trim()).toBe("hi from bash");
   });
 
   test("unsupported language throws", async () => {
-    await expect(runInSandbox({ language: "ruby" as any, code: "puts 1" })).rejects.toThrow(/unsupported/);
+    await expect(
+      runInSandbox({ language: "ruby" as any, code: "puts 1" }),
+    ).rejects.toThrow(/unsupported/);
   });
 
   test("input-file path traversal throws", async () => {
     await expect(
-      runInSandbox({ language: "bash", code: "true", files: [{ path: "../escape", contentBase64: b64("x") }] }),
+      runInSandbox({
+        language: "bash",
+        code: "true",
+        files: [{ path: "../escape", contentBase64: b64("x") }],
+      }),
     ).rejects.toThrow(/escapes/);
   });
 
@@ -94,7 +113,10 @@ describe("runInSandbox", () => {
   test("reaps grandchild processes on completion (process group killed)", async () => {
     // Non-interactive bash runs `&` jobs in its own process group, so killing the
     // group must take out the orphaned `sleep`.
-    const r = await runInSandbox({ language: "bash", code: "sleep 30 & echo $!" });
+    const r = await runInSandbox({
+      language: "bash",
+      code: "sleep 30 & echo $!",
+    });
     const pid = Number(r.stdout.trim().split(/\s+/)[0]);
     expect(Number.isInteger(pid) && pid > 0).toBe(true);
     await new Promise((res) => setTimeout(res, 250));

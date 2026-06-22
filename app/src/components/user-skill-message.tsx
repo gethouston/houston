@@ -20,14 +20,8 @@ interface Props {
  * bubbles live) so the speaker attribution stays the same.
  */
 export function UserSkillMessage({ invocation, attachmentLabels }: Props) {
-  const {
-    displayName,
-    image,
-    description,
-    fields,
-    message,
-    attachments,
-  } = invocation;
+  const { displayName, image, description, fields, message, attachments } =
+    invocation;
   return (
     <div className="flex max-w-md flex-col items-end gap-2">
       <div className="inline-block rounded-2xl bg-secondary p-4 text-left">

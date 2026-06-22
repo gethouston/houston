@@ -42,7 +42,9 @@ export default function RoutinesTab({ agent }: TabProps) {
   const cancelRun = useCancelRoutineRun(path);
 
   const [view, setView] = useState<View>(() => freshRoutinesState().view);
-  const [form, setForm] = useState<RoutineFormData>(() => freshRoutinesState().form);
+  const [form, setForm] = useState<RoutineFormData>(
+    () => freshRoutinesState().form,
+  );
   const [baseline, setBaseline] = useState<RoutineFormData>(
     () => freshRoutinesState().baseline,
   );
@@ -172,7 +174,9 @@ export default function RoutinesTab({ agent }: TabProps) {
   if (!tz.loaded || !tz.timezone) {
     return (
       <div className="flex-1 flex items-center justify-center">
-        <p className="text-sm text-muted-foreground animate-pulse">{t("loading")}</p>
+        <p className="text-sm text-muted-foreground animate-pulse">
+          {t("loading")}
+        </p>
       </div>
     );
   }

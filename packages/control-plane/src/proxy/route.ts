@@ -63,9 +63,14 @@ export async function forward(
     // Fresh headers: only the per-sandbox Bearer the runtime enforces, plus the
     // content-type for a forwarded body. The caller's own Authorization is never
     // relayed to the pod.
-    const headers: Record<string, string> = { Authorization: `Bearer ${endpoint.token}` };
-    if (!bodyless && request.contentType) headers["Content-Type"] = request.contentType;
-    headers["Accept"] = request.path.endsWith("/events") ? "text/event-stream" : "application/json";
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${endpoint.token}`,
+    };
+    if (!bodyless && request.contentType)
+      headers["Content-Type"] = request.contentType;
+    headers["Accept"] = request.path.endsWith("/events")
+      ? "text/event-stream"
+      : "application/json";
 
     // Retry on a pure CONNECTION failure only — the request never reached the
     // runtime, so a retry is safe even for a POST (no double-send). This covers the
@@ -80,7 +85,10 @@ export async function forward(
           headers,
           // A Buffer is a Uint8Array at runtime, but TS's BodyInit union doesn't
           // list Node's Buffer — hand fetch a plain Uint8Array view of the bytes.
-          body: bodyless || !request.body ? undefined : new Uint8Array(request.body),
+          body:
+            bodyless || !request.body
+              ? undefined
+              : new Uint8Array(request.body),
           signal: controller.signal,
         });
         break;
@@ -95,7 +103,11 @@ export async function forward(
     const contentType = upstream.headers.get("content-type") ?? "";
 
     if (contentType.startsWith("text/event-stream")) {
-      if (!upstream.body) throw new ProxyError(upstream.status, "no response body for event stream");
+      if (!upstream.body)
+        throw new ProxyError(
+          upstream.status,
+          "no response body for event stream",
+        );
       // Reflect the runtime's SSE headers so intermediaries don't buffer it.
       res.writeHead(upstream.status, {
         "Content-Type": contentType,
@@ -138,7 +150,9 @@ export async function forward(
     if (controller.signal.aborted) return;
     if (!res.headersSent) {
       res.writeHead(502, { "Content-Type": "application/json; charset=utf-8" });
-      res.end(JSON.stringify({ error: "sandbox proxy failed", detail: String(err) }));
+      res.end(
+        JSON.stringify({ error: "sandbox proxy failed", detail: String(err) }),
+      );
     } else {
       res.destroy(err instanceof Error ? err : new Error(String(err)));
     }

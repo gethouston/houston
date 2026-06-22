@@ -2,12 +2,8 @@ import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { KanbanColumnConfig, KanbanItem } from "@houston-ai/board";
 import { useUIStore } from "../../stores/ui";
-import {
-  areAllSelected,
-  moveTargetsForSection,
-} from "../../lib/mission-selection";
-import { ArchiveDoneButton } from "../archive-done-button";
-import { SelectAllButton } from "../select-all-button";
+import { moveTargetsForSection } from "../../lib/mission-selection";
+import { ColumnActionsMenu } from "./column-actions-menu";
 import type { BoardSelectionModel } from "./board-source";
 
 // Sentinel lock used when a selection no longer maps to exactly one board
@@ -18,14 +14,14 @@ const LOCKED_SECTION_SENTINEL = " mixed-section";
 
 /**
  * Derives the multi-select UI from a {@link BoardSelectionModel}: the section
- * lock, the toggle guard (so a selection can never span sections), the Done
- * "archive all" + Needs-you "select all" column header actions, and the
+ * lock, the toggle guard (so a selection can never span sections), the kebab
+ * column-header "Select all in column" menus (Done + Needs you), and the
  * floating bulk-action-bar config. Identical for the per-agent board and
  * cross-agent Mission Control — only the model's bulk dispatch differs.
  *
- * Section ids and the archive-all target are read from `allItems` (the
- * unsearched active set) so the header actions act on the whole section
- * regardless of the current search.
+ * Per-column ids are read from `allItems` (the unsearched active set) so
+ * "Select all in column" grabs the whole section regardless of the current
+ * search.
  */
 export function useBoardSelectionUI({
   baseColumns,
@@ -46,7 +42,9 @@ export function useBoardSelectionUI({
   );
   const idsInColumn = useCallback(
     (columnId: string) =>
-      allItems.filter((a) => columnOfStatus(a.status) === columnId).map((a) => a.id),
+      allItems
+        .filter((a) => columnOfStatus(a.status) === columnId)
+        .map((a) => a.id),
     [allItems, columnOfStatus],
   );
   const doneIds = useMemo(() => idsInColumn("done"), [idsInColumn]);
@@ -80,39 +78,40 @@ export function useBoardSelectionUI({
     [selection, selectionLockColumnId, columnOfStatus],
   );
 
-  const handleArchiveDone = useCallback(() => {
-    selection?.archiveIds(doneIds).catch((err) =>
-      addToast({ title: t("board:bulk.error", { error: String(err) }), variant: "error" }),
-    );
-  }, [selection, doneIds, addToast, t]);
+  // "Select all in column" clears first so the result is always a clean,
+  // single-section selection of the clicked column — `selectAll` itself
+  // bypasses the per-card cross-section guard, so without the clear it could
+  // otherwise bolt a column onto a selection already locked to another section.
+  const handleSelectAll = useCallback(
+    (ids: string[]) => {
+      if (!selection) return;
+      selection.clear();
+      selection.selectAll(ids);
+    },
+    [selection],
+  );
+
+  const menuLabels = useMemo(
+    () => ({
+      menu: t("board:column.menu"),
+      selectAll: t("board:column.selectAll"),
+    }),
+    [t],
+  );
 
   const doneHeaderAction =
     selection && doneIds.length > 0 ? (
-      <ArchiveDoneButton
-        onConfirm={handleArchiveDone}
-        labels={{
-          tooltip: t("board:doneArchive.tooltip"),
-          confirmTitle: t("board:doneArchive.confirmTitle"),
-          confirmDescription: t("board:doneArchive.confirmDescription", {
-            count: doneIds.length,
-          }),
-          confirmAction: t("board:doneArchive.confirmAction"),
-          cancel: t("board:bulk.cancel"),
-        }}
+      <ColumnActionsMenu
+        onSelectAll={() => handleSelectAll(doneIds)}
+        labels={menuLabels}
       />
     ) : undefined;
 
-  const selectedIds = selection?.selectedIds ?? new Set<string>();
-  const needsYouAllSelected = areAllSelected(needsYouIds, selectedIds);
   const needsYouHeaderAction =
-    selection && selectionLockColumnId === "needs_you" ? (
-      <SelectAllButton
-        checked={needsYouAllSelected}
-        indeterminate={
-          !needsYouAllSelected && needsYouIds.some((id) => selectedIds.has(id))
-        }
-        onToggle={() => selection.toggleAll(needsYouIds)}
-        label={t("board:bulk.selectAll")}
+    selection && needsYouIds.length > 0 ? (
+      <ColumnActionsMenu
+        onSelectAll={() => handleSelectAll(needsYouIds)}
+        labels={menuLabels}
       />
     ) : undefined;
 
@@ -133,7 +132,10 @@ export function useBoardSelectionUI({
       try {
         await op();
       } catch (err) {
-        addToast({ title: t("board:bulk.error", { error: String(err) }), variant: "error" });
+        addToast({
+          title: t("board:bulk.error", { error: String(err) }),
+          variant: "error",
+        });
       }
     },
     [addToast, t],
@@ -142,11 +144,15 @@ export function useBoardSelectionUI({
   const bulkActions = useMemo(() => {
     if (!selection) return undefined;
     return {
-      moveTargets: moveTargetsForSection(selectionLockColumnId).map((status) => ({
-        status,
-        label:
-          status === "done" ? t("dashboard:columns.done") : t("dashboard:columns.needsYou"),
-      })),
+      moveTargets: moveTargetsForSection(selectionLockColumnId).map(
+        (status) => ({
+          status,
+          label:
+            status === "done"
+              ? t("dashboard:columns.done")
+              : t("dashboard:columns.needsYou"),
+        }),
+      ),
       onMove: (status: string) => runBulk(() => selection.move(status)),
       onArchive: () => runBulk(() => selection.archive()),
       onDelete: () => runBulk(() => selection.remove()),

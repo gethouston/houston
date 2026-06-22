@@ -50,7 +50,13 @@ const deps: ControlPlaneDeps = {
   store,
   credentials,
   vault: { sandboxToken: () => "x", validateSandboxToken: () => null },
-  channels: { gke: new ProxyChannel({ launcher, proxy: { async forward() {} }, credentials }) },
+  channels: {
+    gke: new ProxyChannel({
+      launcher,
+      proxy: { async forward() {} },
+      credentials,
+    }),
+  },
   vfs,
   capabilities: CAPS,
 };
@@ -58,7 +64,10 @@ const deps: ControlPlaneDeps = {
 let server: Server;
 let base = "";
 let agentId = "";
-const auth = (who: string) => ({ Authorization: `Bearer tok:${who}`, "Content-Type": "application/json" });
+const auth = (who: string) => ({
+  Authorization: `Bearer tok:${who}`,
+  "Content-Type": "application/json",
+});
 
 beforeAll(async () => {
   server = createControlPlaneServer(deps);
@@ -67,13 +76,37 @@ beforeAll(async () => {
   base = `http://127.0.0.1:${typeof addr === "object" && addr ? addr.port : 0}`;
 
   // Seed an agent with a CLAUDE.md, a skill, and a routine.
-  agentId = ((await (await fetch(`${base}/agents`, { method: "POST", headers: auth("alice"), body: JSON.stringify({ name: "Sales" }) })).json()) as { id: string }).id;
+  agentId = (
+    (await (
+      await fetch(`${base}/agents`, {
+        method: "POST",
+        headers: auth("alice"),
+        body: JSON.stringify({ name: "Sales" }),
+      })
+    ).json()) as { id: string }
+  ).id;
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = (await store.listAgents(ws.id))[0]!;
   const root = workspaceRoot(ws, agent);
   await vfs.writeText(`${root}/CLAUDE.md`, "# Role\nYou are the sales agent.");
-  await fetch(`${base}/agents/${agentId}/skills`, { method: "POST", headers: auth("alice"), body: JSON.stringify({ name: "Research", description: "Deep dive", content: "## Procedure\nx" }) });
-  await fetch(`${base}/agents/${agentId}/routines`, { method: "POST", headers: auth("alice"), body: JSON.stringify({ name: "Daily", prompt: "check", schedule: "0 9 * * *" }) });
+  await fetch(`${base}/agents/${agentId}/skills`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Research",
+      description: "Deep dive",
+      content: "## Procedure\nx",
+    }),
+  });
+  await fetch(`${base}/agents/${agentId}/routines`, {
+    method: "POST",
+    headers: auth("alice"),
+    body: JSON.stringify({
+      name: "Daily",
+      prompt: "check",
+      schedule: "0 9 * * *",
+    }),
+  });
 });
 
 afterAll(async () => {
@@ -84,14 +117,22 @@ test("export → preview → install round-trips the agent's content into a new 
   // Find the routine id to select it.
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = (await store.listAgents(ws.id)).find((a) => a.id === agentId)!;
-  const { items: routines } = await loadRoutines(vfs, new CloudPaths().agentRoot(ws, agent));
+  const { items: routines } = await loadRoutines(
+    vfs,
+    new CloudPaths().agentRoot(ws, agent),
+  );
   const routineId = routines[0]!.id;
 
   // Export.
   const exp = await fetch(`${base}/agents/${agentId}/portable/export`, {
     method: "POST",
     headers: auth("alice"),
-    body: JSON.stringify({ includeClaudeMd: true, skillSlugs: ["research"], routineIds: [routineId], learningIds: [] }),
+    body: JSON.stringify({
+      includeClaudeMd: true,
+      skillSlugs: ["research"],
+      routineIds: [routineId],
+      learningIds: [],
+    }),
   });
   expect(exp.status).toBe(200);
   expect(exp.headers.get("content-type")).toBe("application/zip");
@@ -101,11 +142,17 @@ test("export → preview → install round-trips the agent's content into a new 
   // Preview.
   const prev = await fetch(`${base}/v1/portable/preview`, {
     method: "POST",
-    headers: { Authorization: "Bearer tok:bob", "Content-Type": "application/octet-stream" },
+    headers: {
+      Authorization: "Bearer tok:bob",
+      "Content-Type": "application/octet-stream",
+    },
     body: archive,
   });
   expect(prev.status).toBe(200);
-  const preview = (await prev.json()) as { manifest: { agentName: string }; inventory: { hasClaudeMd: boolean; skills: unknown[]; routines: unknown[] } };
+  const preview = (await prev.json()) as {
+    manifest: { agentName: string };
+    inventory: { hasClaudeMd: boolean; skills: unknown[]; routines: unknown[] };
+  };
   expect(preview.manifest.agentName).toBe("Sales");
   expect(preview.inventory.hasClaudeMd).toBe(true);
   expect(preview.inventory.skills).toHaveLength(1);
@@ -115,31 +162,51 @@ test("export → preview → install round-trips the agent's content into a new 
   const inst = await fetch(`${base}/v1/portable/install`, {
     method: "POST",
     headers: auth("bob"),
-    body: JSON.stringify({ agentName: "SalesCopy", archive: archive.toString("base64") }),
+    body: JSON.stringify({
+      agentName: "SalesCopy",
+      archive: archive.toString("base64"),
+    }),
   });
   expect(inst.status).toBe(201);
-  const installed = (await inst.json()) as { agent: { id: string }; installed: { skills: unknown[] } };
+  const installed = (await inst.json()) as {
+    agent: { id: string };
+    installed: { skills: unknown[] };
+  };
   expect(installed.installed.skills).toHaveLength(1);
 
   // The new agent really has the skill + routine on disk.
   const bobWs = await store.getOrCreatePersonalWorkspace("bob");
-  const bobAgent = (await store.listAgents(bobWs.id)).find((a) => a.name === "SalesCopy")!;
+  const bobAgent = (await store.listAgents(bobWs.id)).find(
+    (a) => a.name === "SalesCopy",
+  )!;
   const bobRoot = new CloudPaths().agentRoot(bobWs, bobAgent);
   expect(await vfs.readText(`${bobRoot}/CLAUDE.md`)).toContain("sales agent");
-  expect(await vfs.readText(`${bobRoot}/.agents/skills/research/SKILL.md`)).toContain("## Procedure");
-  expect((await loadRoutines(vfs, bobRoot)).items.map((r: Routine) => r.name)).toEqual(["Daily"]);
+  expect(
+    await vfs.readText(`${bobRoot}/.agents/skills/research/SKILL.md`),
+  ).toContain("## Procedure");
+  expect(
+    (await loadRoutines(vfs, bobRoot)).items.map((r: Routine) => r.name),
+  ).toEqual(["Daily"]);
 });
 
 test("preview of junk bytes is a clean 400, not a crash", async () => {
   const r = await fetch(`${base}/v1/portable/preview`, {
     method: "POST",
-    headers: { Authorization: "Bearer tok:alice", "Content-Type": "application/octet-stream" },
+    headers: {
+      Authorization: "Bearer tok:alice",
+      "Content-Type": "application/octet-stream",
+    },
     body: Buffer.from([1, 2, 3, 4]),
   });
   expect(r.status).toBe(400);
-  expect(((await r.json()) as { error: string }).error).toContain("not a valid");
+  expect(((await r.json()) as { error: string }).error).toContain(
+    "not a valid",
+  );
 });
 
 test("portable routes still require auth", async () => {
-  expect((await fetch(`${base}/v1/portable/preview`, { method: "POST", body: "x" })).status).toBe(401);
+  expect(
+    (await fetch(`${base}/v1/portable/preview`, { method: "POST", body: "x" }))
+      .status,
+  ).toBe(401);
 });

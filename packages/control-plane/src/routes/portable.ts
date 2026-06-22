@@ -106,7 +106,10 @@ export async function handlePortableAccount(
   req: IncomingMessage,
   res: ServerResponse,
 ): Promise<boolean> {
-  if (method !== "POST" || (path !== "/v1/portable/preview" && path !== "/v1/portable/install")) {
+  if (
+    method !== "POST" ||
+    (path !== "/v1/portable/preview" && path !== "/v1/portable/install")
+  ) {
     return false;
   }
   if (!deps.vfs) {
@@ -121,16 +124,25 @@ export async function handlePortableAccount(
     try {
       pkg = unpackAgent(new Uint8Array(await readBytes(req)));
     } catch (err) {
-      json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+      json(res, 400, {
+        error: err instanceof Error ? err.message : String(err),
+      });
       return true;
     }
-    json(res, 200, { manifest: pkg.manifest, inventory: portableInventory(pkg) });
+    json(res, 200, {
+      manifest: pkg.manifest,
+      inventory: portableInventory(pkg),
+    });
     return true;
   }
 
   // install
   const body = await readJson(req);
-  if (!body.agentName || typeof body.agentName !== "string" || typeof body.archive !== "string") {
+  if (
+    !body.agentName ||
+    typeof body.agentName !== "string" ||
+    typeof body.archive !== "string"
+  ) {
     json(res, 400, { error: "missing 'agentName' or 'archive' (base64)" });
     return true;
   }
@@ -143,12 +155,17 @@ export async function handlePortableAccount(
   }
 
   const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
-  const agent = await deps.store.createAgent({ workspaceId: ws.id, name: body.agentName });
+  const agent = await deps.store.createAgent({
+    workspaceId: ws.id,
+    name: body.agentName,
+  });
   const root = paths.agentRoot(ws, agent);
   await seedSchemas(deps.vfs, root);
 
-  if (pkg.claudeMd !== undefined) await deps.vfs.writeText(ctxFile(root), pkg.claudeMd);
-  for (const s of pkg.skills) await deps.vfs.writeText(skillKey(root, s.slug), s.body);
+  if (pkg.claudeMd !== undefined)
+    await deps.vfs.writeText(ctxFile(root), pkg.claudeMd);
+  for (const s of pkg.skills)
+    await deps.vfs.writeText(skillKey(root, s.slug), s.body);
   if (pkg.routines.length) await saveRoutines(deps.vfs, root, pkg.routines);
   if (pkg.learnings.length) await saveLearnings(deps.vfs, root, pkg.learnings);
 

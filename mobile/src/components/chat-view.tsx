@@ -41,7 +41,7 @@ export function ChatView() {
   // state, no orphan.
   const isDraft = sessionKey?.startsWith("draft-") ?? false;
   // When draft, skip history fetch + per-session WS subscribe.
-  const querySessionKey = isDraft ? null : sessionKey ?? null;
+  const querySessionKey = isDraft ? null : (sessionKey ?? null);
 
   const ws = useCurrentWorkspace();
   const { data: agents } = useAgents(ws?.id ?? null);

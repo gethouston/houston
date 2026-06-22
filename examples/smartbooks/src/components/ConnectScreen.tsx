@@ -9,7 +9,9 @@ interface Props {
 }
 
 export function ConnectScreen({ error, defaults, onConnect }: Props) {
-  const [baseUrl, setBaseUrl] = useState(defaults?.baseUrl ?? "http://127.0.0.1:7777");
+  const [baseUrl, setBaseUrl] = useState(
+    defaults?.baseUrl ?? "http://127.0.0.1:7777",
+  );
   const [token, setToken] = useState(defaults?.token ?? "");
   const [submitting, setSubmitting] = useState(false);
 
@@ -38,7 +40,9 @@ export function ConnectScreen({ error, defaults, onConnect }: Props) {
             e.preventDefault();
             if (disabled) return;
             setSubmitting(true);
-            onConnect(baseUrl.trim(), token.trim()).finally(() => setSubmitting(false));
+            onConnect(baseUrl.trim(), token.trim()).finally(() =>
+              setSubmitting(false),
+            );
           }}
         >
           <label className="field">
@@ -65,7 +69,11 @@ export function ConnectScreen({ error, defaults, onConnect }: Props) {
               required
             />
           </label>
-          <button type="submit" className="btn btn--primary" disabled={disabled}>
+          <button
+            type="submit"
+            className="btn btn--primary"
+            disabled={disabled}
+          >
             {submitting ? "Connecting…" : "Connect"}
           </button>
           {error && <p className="error">{error}</p>}
@@ -74,7 +82,10 @@ export function ConnectScreen({ error, defaults, onConnect }: Props) {
           <summary>How do I find these?</summary>
           <p>
             Start the engine locally with{" "}
-            <code>HOUSTON_ENGINE_TOKEN=your-token cargo run -p houston-engine-server --bin houston-engine</code>{" "}
+            <code>
+              HOUSTON_ENGINE_TOKEN=your-token cargo run -p houston-engine-server
+              --bin houston-engine
+            </code>{" "}
             — it prints the port on stdout and writes a manifest to{" "}
             <code>~/.houston/engine.json</code>. Or point this at any remote
             deployment running the same binary (e.g. Houston Always On).

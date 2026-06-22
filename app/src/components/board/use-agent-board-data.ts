@@ -111,7 +111,10 @@ export function useAgentBoardData({
   );
   const handleApprove = useCallback(
     async (item: KanbanItem) => {
-      await updateActivity.mutateAsync({ activityId: item.id, update: { status: "done" } });
+      await updateActivity.mutateAsync({
+        activityId: item.id,
+        update: { status: "done" },
+      });
     },
     [updateActivity],
   );
@@ -121,9 +124,15 @@ export function useAgentBoardData({
   const handleItemMove = useCallback(
     async (item: KanbanItem, toColumnId: string) => {
       try {
-        await updateActivity.mutateAsync({ activityId: item.id, update: { status: toColumnId } });
+        await updateActivity.mutateAsync({
+          activityId: item.id,
+          update: { status: toColumnId },
+        });
       } catch (err) {
-        addToast({ title: t("board:dnd.moveError", { error: String(err) }), variant: "error" });
+        addToast({
+          title: t("board:dnd.moveError", { error: String(err) }),
+          variant: "error",
+        });
       }
     },
     [updateActivity, addToast, t],

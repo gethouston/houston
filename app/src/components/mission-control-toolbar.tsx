@@ -142,7 +142,11 @@ export function MissionControlToolbar({
                   {!collapsed && t("archived.button")}
                 </Button>
               </TooltipTrigger>
-              {collapsed && <TooltipContent side="bottom">{t("archived.button")}</TooltipContent>}
+              {collapsed && (
+                <TooltipContent side="bottom">
+                  {t("archived.button")}
+                </TooltipContent>
+              )}
             </Tooltip>
             {onNewMission && (
               <Tooltip>
@@ -159,7 +163,9 @@ export function MissionControlToolbar({
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                  {collapsed ? t("empty.newMission") : shortcutLabel("newMission")}
+                  {collapsed
+                    ? t("empty.newMission")
+                    : shortcutLabel("newMission")}
                 </TooltipContent>
               </Tooltip>
             )}

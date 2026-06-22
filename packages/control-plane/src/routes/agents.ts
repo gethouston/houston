@@ -1,7 +1,12 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadRoutines, seedSchemas } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
-import type { Agent, UserId, Workspace, WorkspaceRuntime } from "../domain/types";
+import type {
+  Agent,
+  UserId,
+  Workspace,
+  WorkspaceRuntime,
+} from "../domain/types";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
@@ -36,19 +41,33 @@ type AgentAuthz =
   | { ok: false; status: number; reason: string };
 
 /** Load an agent + its workspace and run the ownership check in one place. */
-async function authorizeAgent(deps: AgentRouteDeps, userId: UserId, agentId: string): Promise<AgentAuthz> {
+async function authorizeAgent(
+  deps: AgentRouteDeps,
+  userId: UserId,
+  agentId: string,
+): Promise<AgentAuthz> {
   const agent = await deps.store.getAgent(agentId);
-  const workspace = agent ? await deps.store.getWorkspace(agent.workspaceId) : null;
+  const workspace = agent
+    ? await deps.store.getWorkspace(agent.workspaceId)
+    : null;
   const access = canUseAgent({ userId, agent, workspace });
   if (!access.ok) {
-    return { ok: false, status: access.reason === "agent not found" ? 404 : 403, reason: access.reason };
+    return {
+      ok: false,
+      status: access.reason === "agent not found" ? 404 : 403,
+      reason: access.reason,
+    };
   }
-  if (!agent || !workspace) return { ok: false, status: 404, reason: "agent not found" }; // narrows the type
+  if (!agent || !workspace)
+    return { ok: false, status: 404, reason: "agent not found" }; // narrows the type
   return { ok: true, agent, workspace };
 }
 
 /** The workspace's channel, or null (route answers 503 — hosting model not wired). */
-function channelFor(deps: AgentRouteDeps, workspace: Workspace): RuntimeChannel | null {
+function channelFor(
+  deps: AgentRouteDeps,
+  workspace: Workspace,
+): RuntimeChannel | null {
   return deps.channels[workspace.runtime] ?? null;
 }
 
@@ -87,8 +106,15 @@ export async function handleAgents(
     // Seed the .houston JSON schemas beside the (future) docs so the agent and
     // external tools can validate what they write. Skipped only when no vfs is
     // wired (legacy gke-only deploys); the typed-data routes 503 there anyway.
-    if (deps.vfs) await seedSchemas(deps.vfs, (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent));
-    deps.events?.emit(ws.ownerUserId, { type: "AgentsChanged", workspaceId: ws.id });
+    if (deps.vfs)
+      await seedSchemas(
+        deps.vfs,
+        (deps.paths ?? DEFAULT_PATHS).agentRoot(ws, agent),
+      );
+    deps.events?.emit(ws.ownerUserId, {
+      type: "AgentsChanged",
+      workspaceId: ws.id,
+    });
     json(res, 201, agent);
     return true;
   }
@@ -114,7 +140,10 @@ export async function handleAgents(
         return true;
       }
       const renamed = await deps.store.renameAgent(agentId, name);
-      deps.events?.emit(authz.workspace.ownerUserId, { type: "AgentsChanged", workspaceId: authz.workspace.id });
+      deps.events?.emit(authz.workspace.ownerUserId, {
+        type: "AgentsChanged",
+        workspaceId: authz.workspace.id,
+      });
       json(res, 200, renamed);
       return true;
     }
@@ -129,7 +158,10 @@ export async function handleAgents(
     }
     await channel.teardown({ workspace: authz.workspace, agent: authz.agent });
     await deps.store.deleteAgent(agentId);
-    deps.events?.emit(authz.workspace.ownerUserId, { type: "AgentsChanged", workspaceId: authz.workspace.id });
+    deps.events?.emit(authz.workspace.ownerUserId, {
+      type: "AgentsChanged",
+      workspaceId: authz.workspace.id,
+    });
     json(res, 200, { ok: true });
     return true;
   }
@@ -154,9 +186,16 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    const result = await channel.captureCredential({ workspace: authz.workspace, agent: authz.agent });
+    const result = await channel.captureCredential({
+      workspace: authz.workspace,
+      agent: authz.agent,
+    });
     if (result.ok) json(res, 200, { ok: true, provider: result.provider });
-    else json(res, result.status, { error: result.error, ...(result.detail ? { detail: result.detail } : {}) });
+    else
+      json(res, result.status, {
+        error: result.error,
+        ...(result.detail ? { detail: result.detail } : {}),
+      });
     return true;
   }
 
@@ -186,7 +225,10 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    await channel.forgetCredential({ workspace: authz.workspace, agent: authz.agent }, provider);
+    await channel.forgetCredential(
+      { workspace: authz.workspace, agent: authz.agent },
+      provider,
+    );
     json(res, 200, { ok: true });
     return true;
   }
@@ -232,14 +274,23 @@ export async function handleAgents(
     const firer = new ChannelRoutineFirer(deps.channels);
     try {
       const { runId } = await fireRoutineRun(
-        { vfs: deps.vfs, paths, firer, events: deps.events, now: () => new Date(), newId: () => crypto.randomUUID() },
+        {
+          vfs: deps.vfs,
+          paths,
+          firer,
+          events: deps.events,
+          now: () => new Date(),
+          newId: () => crypto.randomUUID(),
+        },
         authz.workspace,
         authz.agent,
         routine,
       );
       json(res, 200, { ok: true, runId });
     } catch (err) {
-      json(res, 502, { error: err instanceof Error ? err.message : String(err) });
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
     return true;
   }
@@ -265,22 +316,64 @@ export async function handleAgents(
     const ctx = { workspace: authz.workspace, agent: authz.agent };
     // Reactivity emits target the workspace owner (the only member, personal tier).
     const emit = deps.events
-      ? (event: HoustonEvent) => deps.events!.emit(authz.workspace.ownerUserId, event)
+      ? (event: HoustonEvent) =>
+          deps.events!.emit(authz.workspace.ownerUserId, event)
       : undefined;
 
     // Typed .houston families + skills are served by the HOST off the workspace
     // vfs — the runtime surface (chat, auth, settings, files) goes to the channel.
     const paths = deps.paths ?? DEFAULT_PATHS;
-    if (await handleAgentData(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
-    if (await handleAgentFile(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
-    if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit)) return true;
+    if (
+      await handleAgentData(deps.vfs, paths, ctx, method, rest, req, res, emit)
+    )
+      return true;
+    if (
+      await handleAgentFile(deps.vfs, paths, ctx, method, rest, req, res, emit)
+    )
+      return true;
+    if (await handleSkills(deps.vfs, paths, ctx, method, rest, req, res, emit))
+      return true;
     // The Files tab: served by the HOST off the workspace vfs for every profile
     // (the runtime has no /files route). Same handler cloud + local — zero drift.
-    if (await handleFiles(deps.vfs, paths, ctx, method, rest, req, res, url.searchParams)) return true;
+    if (
+      await handleFiles(
+        deps.vfs,
+        paths,
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+        url.searchParams,
+      )
+    )
+      return true;
     // Composer attachments: uploaded into the workspace so the runtime's clamped
     // file tools can Read them during the turn (the runtime has no /attachments).
-    if (await handleAttachments(deps.vfs, paths, ctx, method, rest, req, res, url.searchParams)) return true;
-    if (await handlePortableExport({ vfs: deps.vfs, paths }, ctx, method, rest, req, res)) return true;
+    if (
+      await handleAttachments(
+        deps.vfs,
+        paths,
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+        url.searchParams,
+      )
+    )
+      return true;
+    if (
+      await handlePortableExport(
+        { vfs: deps.vfs, paths },
+        ctx,
+        method,
+        rest,
+        req,
+        res,
+      )
+    )
+      return true;
 
     const channel = channelFor(deps, authz.workspace);
     if (!channel) {

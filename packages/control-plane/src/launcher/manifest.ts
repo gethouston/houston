@@ -42,7 +42,10 @@ export function buildNamespace(workspaceSlug: string): V1Namespace {
   };
 }
 
-export function buildPvc(agent: Agent, workspaceSlug: string): V1PersistentVolumeClaim {
+export function buildPvc(
+  agent: Agent,
+  workspaceSlug: string,
+): V1PersistentVolumeClaim {
   return {
     apiVersion: "v1",
     kind: "PersistentVolumeClaim",
@@ -99,7 +102,10 @@ export function buildDeployment(
             seccompProfile: { type: "RuntimeDefault" },
           },
           volumes: [
-            { name: "data", persistentVolumeClaim: { claimName: pvcName(agent.id) } },
+            {
+              name: "data",
+              persistentVolumeClaim: { claimName: pvcName(agent.id) },
+            },
           ],
           containers: [
             {
@@ -122,7 +128,10 @@ export function buildDeployment(
                 // its workspace's central subscription token per turn. Omitting the URL
                 // (no CP_INTERNAL_URL) leaves the agent on its own local credential.
                 { name: "HOUSTON_SANDBOX_TOKEN", value: sandboxToken },
-                { name: "HOUSTON_CONTROL_PLANE_URL", value: config.controlPlaneInternalUrl },
+                {
+                  name: "HOUSTON_CONTROL_PLANE_URL",
+                  value: config.controlPlaneInternalUrl,
+                },
               ],
               volumeMounts: [{ name: "data", mountPath: DATA_MOUNT }],
               // Cold Bun start on Autopilot bundles node scale-up + a ~120MB image

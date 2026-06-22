@@ -1,14 +1,28 @@
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
-import { type Language, type RunRequest, type RunResult, type Limits, DEFAULT_LIMITS, isLanguage } from "./types";
+import {
+  type Language,
+  type RunRequest,
+  type RunResult,
+  type Limits,
+  DEFAULT_LIMITS,
+  isLanguage,
+} from "./types";
 import { safeJoin } from "./paths";
 import { runProcess } from "./exec";
 import { collectArtifacts } from "./artifacts";
 
 // Public surface re-exported so callers import everything from "./run".
 export { DEFAULT_LIMITS, isLanguage, LANGUAGES } from "./types";
-export type { Language, RunRequest, RunResult, Artifact, InputFile, Limits } from "./types";
+export type {
+  Language,
+  RunRequest,
+  RunResult,
+  Artifact,
+  InputFile,
+  Limits,
+} from "./types";
 export { safeJoin } from "./paths";
 
 /**
@@ -30,14 +44,23 @@ const PROGRAM_FILE: Record<Language, string> = {
   node: "__houston_main__.mjs",
 };
 
-export async function runInSandbox(req: RunRequest, limits: Limits = DEFAULT_LIMITS): Promise<RunResult> {
-  if (!isLanguage(req.language)) throw new Error(`unsupported language: ${String(req.language)}`);
+export async function runInSandbox(
+  req: RunRequest,
+  limits: Limits = DEFAULT_LIMITS,
+): Promise<RunResult> {
+  if (!isLanguage(req.language))
+    throw new Error(`unsupported language: ${String(req.language)}`);
   if (typeof req.code !== "string") throw new Error("missing 'code' (string)");
   const files = req.files ?? [];
   if (files.length > limits.maxInputFiles) {
-    throw new Error(`too many input files: ${files.length} (max ${limits.maxInputFiles})`);
+    throw new Error(
+      `too many input files: ${files.length} (max ${limits.maxInputFiles})`,
+    );
   }
-  const timeoutMs = Math.min(Math.max(1, req.timeoutMs ?? limits.defaultTimeoutMs), limits.maxTimeoutMs);
+  const timeoutMs = Math.min(
+    Math.max(1, req.timeoutMs ?? limits.defaultTimeoutMs),
+    limits.maxTimeoutMs,
+  );
 
   const work = await mkdtemp(join(tmpdir(), "houston-sbx-"));
   const programPath = join(work, PROGRAM_FILE[req.language]);
@@ -57,10 +80,21 @@ export async function runInSandbox(req: RunRequest, limits: Limits = DEFAULT_LIM
     await writeFile(programPath, req.code, "utf8");
 
     const started = Date.now();
-    const exec = await runProcess(req.language, programPath, work, timeoutMs, limits.maxOutputBytes);
+    const exec = await runProcess(
+      req.language,
+      programPath,
+      work,
+      timeoutMs,
+      limits.maxOutputBytes,
+    );
     const durationMs = Date.now() - started;
 
-    const { artifacts, dropped } = await collectArtifacts(work, programPath, seeded, limits.maxArtifactBytes);
+    const { artifacts, dropped } = await collectArtifacts(
+      work,
+      programPath,
+      seeded,
+      limits.maxArtifactBytes,
+    );
     return { ...exec, artifacts, droppedArtifacts: dropped, durationMs };
   } finally {
     await rm(work, { recursive: true, force: true });

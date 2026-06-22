@@ -1,18 +1,18 @@
-import type { CommunitySkill } from "./types"
-import { cn } from "@houston-ai/core"
-import { Plus, Loader2, Check } from "lucide-react"
+import type { CommunitySkill } from "./types";
+import { cn } from "@houston-ai/core";
+import { Plus, Loader2, Check } from "lucide-react";
 
 export interface CommunitySkillRowProps {
-  skill: CommunitySkill
-  installing: boolean
-  installed: boolean
-  onInstall: () => void
+  skill: CommunitySkill;
+  installing: boolean;
+  installed: boolean;
+  onInstall: () => void;
 }
 
 function formatInstalls(n: number): string {
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`
-  return String(n)
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return String(n);
 }
 
 /** Convert "vercel-react-best-practices" to "Vercel React Best Practices" */
@@ -21,7 +21,7 @@ function kebabToTitle(s: string): string {
     .split("-")
     .filter(Boolean)
     .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
-    .join(" ")
+    .join(" ");
 }
 
 export function CommunitySkillRow({
@@ -63,5 +63,5 @@ export function CommunitySkillRow({
         )}
       </button>
     </div>
-  )
+  );
 }

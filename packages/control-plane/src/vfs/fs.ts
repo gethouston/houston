@@ -1,5 +1,13 @@
 import { existsSync } from "node:fs";
-import { mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
+import {
+  mkdir,
+  readFile,
+  readdir,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from "node:fs/promises";
 import { dirname, join, sep } from "node:path";
 import { assertSafeKey, type ObjectStat, type Vfs } from "./vfs";
 
@@ -19,7 +27,10 @@ export class FsVfs implements Vfs {
     return join(this.root, ...key.split("/"));
   }
 
-  private async walk(dir: string, out: { path: string; size: number; mtimeMs: number }[]): Promise<void> {
+  private async walk(
+    dir: string,
+    out: { path: string; size: number; mtimeMs: number }[],
+  ): Promise<void> {
     const entries = await readdir(dir, { withFileTypes: true });
     for (const e of entries) {
       const p = join(dir, e.name);
@@ -38,7 +49,10 @@ export class FsVfs implements Vfs {
     await this.walk(dir, found);
     return found
       .map((f) => ({
-        key: f.path.slice(this.root.length + 1).split(sep).join("/"),
+        key: f.path
+          .slice(this.root.length + 1)
+          .split(sep)
+          .join("/"),
         size: f.size,
         updatedMs: Math.round(f.mtimeMs),
       }))
@@ -84,7 +98,8 @@ export class FsVfs implements Vfs {
   async move(fromKey: string, toKey: string): Promise<void> {
     const from = this.pathFor(fromKey);
     const to = this.pathFor(toKey);
-    if (!existsSync(from)) throw new Error(`move: source not found: ${fromKey}`);
+    if (!existsSync(from))
+      throw new Error(`move: source not found: ${fromKey}`);
     await mkdir(dirname(to), { recursive: true });
     await rename(from, to);
   }

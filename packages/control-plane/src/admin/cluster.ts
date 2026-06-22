@@ -82,12 +82,18 @@ function sumRestarts(pod: V1Pod): number {
 function sumCpuRequestCores(pod: V1Pod): number {
   const containers = pod.spec?.containers ?? [];
   // In @kubernetes/client-node v0.22, requests is a plain { [k]: string } map.
-  return containers.reduce((acc, c) => acc + parseCpuToCores(c.resources?.requests?.["cpu"]), 0);
+  return containers.reduce(
+    (acc, c) => acc + parseCpuToCores(c.resources?.requests?.["cpu"]),
+    0,
+  );
 }
 
 function sumMemRequestBytes(pod: V1Pod): number {
   const containers = pod.spec?.containers ?? [];
-  return containers.reduce((acc, c) => acc + parseMemToBytes(c.resources?.requests?.["memory"]), 0);
+  return containers.reduce(
+    (acc, c) => acc + parseMemToBytes(c.resources?.requests?.["memory"]),
+    0,
+  );
 }
 
 /** Map a raw V1Pod (already managed-by filtered) into our flat PodInfo. */
@@ -115,7 +121,8 @@ export function toVolumeInfo(pvc: V1PersistentVolumeClaim): VolumeInfo {
   const labels = pvc.metadata?.labels ?? {};
   // Prefer the bound capacity; fall back to the request (always present in our spec).
   const storage =
-    pvc.status?.capacity?.["storage"] ?? pvc.spec?.resources?.requests?.["storage"];
+    pvc.status?.capacity?.["storage"] ??
+    pvc.spec?.resources?.requests?.["storage"];
   return {
     workspaceId: labels[WORKSPACE_LABEL] ?? null,
     agentId: labels[AGENT_LABEL] ?? null,
@@ -141,7 +148,12 @@ export class GkeClusterReader implements ClusterReader {
 
   async snapshot(): Promise<ClusterSnapshot> {
     const [pods, pvcs] = await Promise.all([
-      this.core.listPodForAllNamespaces(undefined, undefined, undefined, MANAGED_SELECTOR),
+      this.core.listPodForAllNamespaces(
+        undefined,
+        undefined,
+        undefined,
+        MANAGED_SELECTOR,
+      ),
       this.core.listPersistentVolumeClaimForAllNamespaces(
         undefined,
         undefined,
@@ -158,7 +170,9 @@ export class GkeClusterReader implements ClusterReader {
 
 /** In-memory ClusterReader for dev and tests — returns a fixed snapshot. */
 export class FakeClusterReader implements ClusterReader {
-  constructor(private readonly snap: ClusterSnapshot = { pods: [], volumes: [] }) {}
+  constructor(
+    private readonly snap: ClusterSnapshot = { pods: [], volumes: [] },
+  ) {}
   async snapshot(): Promise<ClusterSnapshot> {
     return this.snap;
   }

@@ -23,7 +23,8 @@ export class LocalDirStore implements ObjectStore {
 
   private fileFor(key: string): string {
     const abs = join(this.root, ...key.split("/"));
-    if (!abs.startsWith(this.root + sep)) throw new Error(`key escapes the store root: ${key}`);
+    if (!abs.startsWith(this.root + sep))
+      throw new Error(`key escapes the store root: ${key}`);
     return abs;
   }
 
@@ -35,7 +36,10 @@ export class LocalDirStore implements ObjectStore {
       for (const entry of await readdir(dir, { withFileTypes: true })) {
         const abs = join(dir, entry.name);
         if (entry.isDirectory()) await walk(abs);
-        else out.push(posix.join(prefix, relative(base, abs).split(sep).join("/")));
+        else
+          out.push(
+            posix.join(prefix, relative(base, abs).split(sep).join("/")),
+          );
       }
     };
     await walk(base);
@@ -44,7 +48,10 @@ export class LocalDirStore implements ObjectStore {
 
   async download(key: string, destFile: string): Promise<void> {
     await mkdir(dirname(destFile), { recursive: true });
-    await pipeline(createReadStream(this.fileFor(key)), createWriteStream(destFile));
+    await pipeline(
+      createReadStream(this.fileFor(key)),
+      createWriteStream(destFile),
+    );
   }
 
   async upload(srcFile: string, key: string): Promise<void> {

@@ -16,7 +16,8 @@ export function AccountSection() {
     full_name?: string;
     avatar_url?: string;
   };
-  const displayName = meta.full_name ?? meta.name ?? user.email ?? t("account.fallbackName");
+  const displayName =
+    meta.full_name ?? meta.name ?? user.email ?? t("account.fallbackName");
   const avatar = meta.avatar_url ?? null;
 
   return (

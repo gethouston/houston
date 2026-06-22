@@ -4,7 +4,11 @@ export type SessionRunStatus = "starting" | "running" | "completed" | "error";
 
 interface SessionStatusState {
   statuses: Record<string, SessionRunStatus>;
-  setStatus: (agentPath: string, sessionKey: string, status: SessionRunStatus) => void;
+  setStatus: (
+    agentPath: string,
+    sessionKey: string,
+    status: SessionRunStatus,
+  ) => void;
   clearAll: () => void;
 }
 

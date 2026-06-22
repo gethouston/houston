@@ -30,11 +30,17 @@ test("frames fan out to subscribers and build the sync snapshot", async () => {
   await publishFrame({ type: "user", data: { content: "hi", ts: 1 } });
   await publishFrame({ type: "text", data: "Hello " });
   await publishFrame({ type: "text", data: "world" });
-  expect((await relay.snapshot("a1/c1")).snapshot).toEqual({ running: true, partial: "Hello world" });
+  expect((await relay.snapshot("a1/c1")).snapshot).toEqual({
+    running: true,
+    partial: "Hello world",
+  });
   expect(seen).toHaveLength(3);
 
   await publishFrame({ type: "done", data: null });
-  expect((await relay.snapshot("a1/c1")).snapshot).toEqual({ running: false, partial: "" });
+  expect((await relay.snapshot("a1/c1")).snapshot).toEqual({
+    running: false,
+    partial: "",
+  });
   finish();
   await drainTick();
   expect(await relay.busy("a1")).toBe(false);
@@ -59,7 +65,9 @@ test("a thrown pump surfaces as an error frame, never silently", async () => {
     throw new Error("runtime unreachable");
   });
   await drainTick();
-  expect(seen).toEqual([{ type: "error", data: { message: "runtime unreachable" } }]);
+  expect(seen).toEqual([
+    { type: "error", data: { message: "runtime unreachable" } },
+  ]);
 });
 
 test("cancel aborts the pump and reads as a cancelled-turn error", async () => {
@@ -68,13 +76,17 @@ test("cancel aborts the pump and reads as a cancelled-turn error", async () => {
   relay.subscribe("a1/c1", (e) => seen.push(e));
   await relay.start("a1", "a1/c1", async (_publish, signal) => {
     await new Promise((_, rej) =>
-      signal.addEventListener("abort", () => rej(new Error("aborted")), { once: true }),
+      signal.addEventListener("abort", () => rej(new Error("aborted")), {
+        once: true,
+      }),
     );
   });
   expect(await relay.cancel("a1")).toBe(true);
   await drainTick();
   await drainTick();
-  expect(seen).toEqual([{ type: "error", data: { message: "Turn cancelled" } }]);
+  expect(seen).toEqual([
+    { type: "error", data: { message: "Turn cancelled" } },
+  ]);
   expect(await relay.cancel("a1")).toBe(false); // nothing in flight anymore
 });
 
@@ -90,7 +102,10 @@ test("an upstream that dies mid-turn synthesizes an error (client never hangs)",
   await drainTick();
   await drainTick();
   const last = seen[seen.length - 1];
-  expect(last).toEqual({ type: "error", data: { message: "The turn ended unexpectedly" } });
+  expect(last).toEqual({
+    type: "error",
+    data: { message: "The turn ended unexpectedly" },
+  });
   expect((await relay.snapshot("a1/c1")).snapshot.running).toBe(false);
 });
 
@@ -123,7 +138,10 @@ test("a subscriber on replica B receives a turn pumped on replica A", async () =
 
   // The snapshot (with its turnId/seq watermark) is readable from replica B.
   const snapB = await replicaB.snapshot("a1/c1");
-  expect(snapB.snapshot).toEqual({ running: true, partial: "streamed across replicas" });
+  expect(snapB.snapshot).toEqual({
+    running: true,
+    partial: "streamed across replicas",
+  });
   expect(snapB.seq).toBe(2);
   expect(snapB.turnId).not.toBe("");
 
@@ -142,12 +160,16 @@ test("cancel from replica B aborts a turn owned by replica A", async () => {
   replicaB.subscribe("a1/c1", (e) => seen.push(e));
   await replicaA.start("a1", "a1/c1", async (_publish, signal) => {
     await new Promise((_, rej) =>
-      signal.addEventListener("abort", () => rej(new Error("aborted")), { once: true }),
+      signal.addEventListener("abort", () => rej(new Error("aborted")), {
+        once: true,
+      }),
     );
   });
 
   expect(await replicaB.cancel("a1")).toBe(true);
   await drainTick();
   await drainTick();
-  expect(seen).toEqual([{ type: "error", data: { message: "Turn cancelled" } }]);
+  expect(seen).toEqual([
+    { type: "error", data: { message: "Turn cancelled" } },
+  ]);
 });

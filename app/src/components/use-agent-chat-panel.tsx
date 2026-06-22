@@ -187,9 +187,11 @@ export function useAgentChatPanel({
   const { data: activities } = useActivity(path ?? undefined);
   const selectedActivity = useMemo(() => {
     if (!selectedSessionKey || !activities) return null;
-    return activities.find(
-      (a) => (a.session_key ?? `activity-${a.id}`) === selectedSessionKey,
-    ) ?? null;
+    return (
+      activities.find(
+        (a) => (a.session_key ?? `activity-${a.id}`) === selectedSessionKey,
+      ) ?? null
+    );
   }, [activities, selectedSessionKey]);
   const activityProvider = selectedActivity?.provider ?? null;
   const activityModel = normalizeLegacyModel(selectedActivity?.model ?? null);
@@ -325,7 +327,9 @@ export function useAgentChatPanel({
   // While a Skill is selected, the regular composer still owns text
   // and attachments. This hook only wraps the submitted message with the
   // hidden Skill marker + deterministic "Use the X skill" prompt.
-  const handleSkillComposerSubmit = useCallback<NonNullable<AIBoardProps["onComposerSubmit"]>>(
+  const handleSkillComposerSubmit = useCallback<
+    NonNullable<AIBoardProps["onComposerSubmit"]>
+  >(
     async ({ sessionKey, text, files }) => {
       const skill = activeSkill;
       if (!skill || !agent || !path) return false;
@@ -386,7 +390,10 @@ export function useAgentChatPanel({
             modelOverride: effectiveModel,
             effortOverride: effectiveEffort,
             buildPrompt: async (activityId) => {
-              const paths = await tauriAttachments.save(`activity-${activityId}`, files);
+              const paths = await tauriAttachments.save(
+                `activity-${activityId}`,
+                files,
+              );
               const prompt = withAttachmentPaths(claudePrompt, paths);
               encodedUserMessage = encodeSkillMessage(
                 skill,
@@ -492,7 +499,16 @@ export function useAgentChatPanel({
       if (isProviderAuthMessage(msg.content)) return null;
       return undefined;
     },
-    [effectiveModel, effectiveProvider, effectiveEffort, handleModelSelect, path, pushFeedItem, selectedSessionKey, t],
+    [
+      effectiveModel,
+      effectiveProvider,
+      effectiveEffort,
+      handleModelSelect,
+      path,
+      pushFeedItem,
+      selectedSessionKey,
+      t,
+    ],
   );
   const mapFeedItems = useCallback(
     ({ items }: { sessionKey: string; items: FeedItem[] }) =>
@@ -594,7 +610,17 @@ export function useAgentChatPanel({
         </div>
       </div>
     );
-  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect, contextUsage, contextWindow]);
+  }, [
+    agent,
+    t,
+    effectiveProvider,
+    effectiveModel,
+    effectiveEffort,
+    handleModelSelect,
+    handleEffortSelect,
+    contextUsage,
+    contextWindow,
+  ]);
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {
     if (!agent) return undefined;
@@ -639,7 +665,15 @@ export function useAgentChatPanel({
         </div>
       </div>
     );
-  }, [agent, t, effectiveProvider, effectiveModel, effectiveEffort, handleModelSelect, handleEffortSelect]);
+  }, [
+    agent,
+    t,
+    effectiveProvider,
+    effectiveModel,
+    effectiveEffort,
+    handleModelSelect,
+    handleEffortSelect,
+  ]);
 
   const pickerDialog = agent ? (
     <NewMissionPickerDialog

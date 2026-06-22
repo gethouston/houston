@@ -18,7 +18,10 @@ import {
   SelectValue,
 } from "@houston-ai/core";
 import type { Agent, ConversationEntry } from "@houston-ai/engine-client";
-import { useAllConversations, useCurrentWorkspace } from "../hooks/use-conversations";
+import {
+  useAllConversations,
+  useCurrentWorkspace,
+} from "../hooks/use-conversations";
 import { useAgents } from "../hooks/use-agents";
 import { NewMissionSheet } from "./new-mission-sheet";
 
@@ -88,7 +91,9 @@ export function MissionControl() {
             onClick={() => refetch()}
             aria-label="Refresh"
           >
-            <RefreshCw className={`size-4 ${isFetching ? "animate-spin" : ""}`} />
+            <RefreshCw
+              className={`size-4 ${isFetching ? "animate-spin" : ""}`}
+            />
           </button>
           <Button
             size="sm"

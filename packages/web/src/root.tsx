@@ -14,7 +14,11 @@ import { storeEngineConfig, type EngineConfig } from "./engine-config";
 
 const AppTree = lazy(() => import("./app-tree"));
 
-export function Root({ initialConfig }: { initialConfig: EngineConfig | null }) {
+export function Root({
+  initialConfig,
+}: {
+  initialConfig: EngineConfig | null;
+}) {
   const [config, setConfig] = useState<EngineConfig | null>(initialConfig);
 
   if (!config) {

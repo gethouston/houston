@@ -11,7 +11,10 @@ export function useRoutines(agentPath: string | undefined) {
   });
 }
 
-export function useRoutineRuns(agentPath: string | undefined, routineId?: string) {
+export function useRoutineRuns(
+  agentPath: string | undefined,
+  routineId?: string,
+) {
   return useQuery({
     queryKey: queryKeys.routineRuns(agentPath!, routineId),
     queryFn: () => tauriRoutines.listRuns(agentPath!, routineId),
@@ -52,7 +55,8 @@ export function useUpdateRoutine(agentPath: string) {
 export function useDeleteRoutine(agentPath: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (routineId: string) => tauriRoutines.delete(agentPath, routineId),
+    mutationFn: (routineId: string) =>
+      tauriRoutines.delete(agentPath, routineId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.routines(agentPath) });
       tauriRoutines.syncScheduler(agentPath).catch(console.error);
@@ -63,7 +67,8 @@ export function useDeleteRoutine(agentPath: string) {
 export function useRunRoutineNow(agentPath: string) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (routineId: string) => tauriRoutines.runNow(agentPath, routineId),
+    mutationFn: (routineId: string) =>
+      tauriRoutines.runNow(agentPath, routineId),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["routine-runs", agentPath] });
     },

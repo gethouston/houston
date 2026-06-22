@@ -38,10 +38,10 @@ const routineActivity: ActivityOverrideSource = {
 
 describe("resolveActivityOverride (Mission Control send-path override drop fix)", () => {
   it("returns the activity's provider+model when the activity is found", () => {
-    const overrides = resolveActivityOverride(
-      `activity-${opus47Activity.id}`,
-      [opus47Activity, codexActivity],
-    );
+    const overrides = resolveActivityOverride(`activity-${opus47Activity.id}`, [
+      opus47Activity,
+      codexActivity,
+    ]);
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
       modelOverride: "claude-opus-4-7",
@@ -68,9 +68,10 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     // aliases on disk and are NOT migrated by the engine (only config.json
     // is). The frontend must normalize on read so the send doesn't ship
     // "opus" to a CLI that no longer accepts it.
-    const overrides = resolveActivityOverride(`activity-${legacyOpusActivity.id}`, [
-      legacyOpusActivity,
-    ]);
+    const overrides = resolveActivityOverride(
+      `activity-${legacyOpusActivity.id}`,
+      [legacyOpusActivity],
+    );
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
       modelOverride: "claude-opus-4-7",
@@ -78,9 +79,10 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
   });
 
   it("normalizes the legacy 'sonnet' alias to claude-sonnet-4-6", () => {
-    const overrides = resolveActivityOverride(`activity-${legacySonnetActivity.id}`, [
-      legacySonnetActivity,
-    ]);
+    const overrides = resolveActivityOverride(
+      `activity-${legacySonnetActivity.id}`,
+      [legacySonnetActivity],
+    );
     deepStrictEqual(overrides, {
       providerOverride: "anthropic",
       modelOverride: "claude-sonnet-4-6",
@@ -91,11 +93,17 @@ describe("resolveActivityOverride (Mission Control send-path override drop fix)"
     // Activity deleted between render and send, or sessionKey for a different
     // agent's activity. Empty override lets the engine fall back to the agent
     // config — the only safe default with no activity context.
-    deepStrictEqual(resolveActivityOverride("activity-missing", [opus47Activity]), {});
+    deepStrictEqual(
+      resolveActivityOverride("activity-missing", [opus47Activity]),
+      {},
+    );
   });
 
   it("returns an empty object when the activities list is undefined", () => {
-    deepStrictEqual(resolveActivityOverride("activity-anything", undefined), {});
+    deepStrictEqual(
+      resolveActivityOverride("activity-anything", undefined),
+      {},
+    );
   });
 
   it("returns model=undefined (not null) when the activity has no model", () => {

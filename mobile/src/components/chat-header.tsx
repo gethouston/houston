@@ -20,11 +20,11 @@ export function ChatHeader({
   onBack,
 }: ChatHeaderProps) {
   const title = isDraft
-    ? agent?.name ?? "New mission"
-    : convo?.title ?? agent?.name ?? "Session";
+    ? (agent?.name ?? "New mission")
+    : (convo?.title ?? agent?.name ?? "Session");
   const subtitle = isDraft
     ? "Type a message to start"
-    : agent?.name ?? agentPath;
+    : (agent?.name ?? agentPath);
 
   return (
     <header

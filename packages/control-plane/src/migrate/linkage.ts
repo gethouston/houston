@@ -31,7 +31,9 @@ function idsFromTrackerFile(path: string): string[] {
  * `routine-<uuid>`, ...) — it becomes the conversation id, so an existing board
  * card links straight to the migrated transcript.
  */
-export function sessionGroupsForAgent(agentRoot: string): Map<string, Set<string>> {
+export function sessionGroupsForAgent(
+  agentRoot: string,
+): Map<string, Set<string>> {
   const groups = new Map<string, Set<string>>();
   const sessionsDir = join(agentRoot, SESSIONS_REL);
   if (!existsSync(sessionsDir)) return groups;
@@ -45,7 +47,11 @@ export function sessionGroupsForAgent(agentRoot: string): Map<string, Set<string
       continue; // not a directory (stray file) — skip
     }
     for (const entry of entries) {
-      const ext = entry.endsWith(".sid") ? ".sid" : entry.endsWith(".history") ? ".history" : null;
+      const ext = entry.endsWith(".sid")
+        ? ".sid"
+        : entry.endsWith(".history")
+          ? ".history"
+          : null;
       if (!ext) continue;
       const sessionKey = entry.slice(0, -ext.length);
       let set = groups.get(sessionKey);
@@ -53,7 +59,8 @@ export function sessionGroupsForAgent(agentRoot: string): Map<string, Set<string
         set = new Set<string>();
         groups.set(sessionKey, set);
       }
-      for (const id of idsFromTrackerFile(join(providerDir, entry))) set.add(id);
+      for (const id of idsFromTrackerFile(join(providerDir, entry)))
+        set.add(id);
     }
   }
   return groups;

@@ -51,5 +51,9 @@ export interface IntegrationProvider {
   /** Discover actions matching a natural-language query (slug + param schema). */
   search(cred: ProviderCredential, query: string): Promise<ToolMatch[]>;
   /** Run one action by slug with its params. */
-  execute(cred: ProviderCredential, action: string, params: Record<string, unknown>): Promise<ActionResult>;
+  execute(
+    cred: ProviderCredential,
+    action: string,
+    params: Record<string, unknown>,
+  ): Promise<ActionResult>;
 }

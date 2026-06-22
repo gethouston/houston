@@ -1,4 +1,7 @@
-import type { Agent, CreateAgent } from "../../../../ui/engine-client/src/types";
+import type {
+  Agent,
+  CreateAgent,
+} from "../../../../ui/engine-client/src/types";
 import { DEFAULT_AGENT_COLOR, syntheticAgent } from "./synthetic";
 import { writeAgentFile } from "./agent-files";
 
@@ -56,7 +59,10 @@ export function agentNameByPath(agentPath: string): string | undefined {
   return undefined;
 }
 
-export function createAgent(workspaceId: string, req: CreateAgent): { agent: Agent } {
+export function createAgent(
+  workspaceId: string,
+  req: CreateAgent,
+): { agent: Agent } {
   const id = crypto.randomUUID();
   const at = new Date().toISOString();
   const agent: Agent = {
@@ -82,21 +88,35 @@ export function createAgent(workspaceId: string, req: CreateAgent): { agent: Age
   return { agent };
 }
 
-export function renameAgent(workspaceId: string, agentId: string, newName: string): Agent {
+export function renameAgent(
+  workspaceId: string,
+  agentId: string,
+  newName: string,
+): Agent {
   return mutate(workspaceId, agentId, (a) => ({ ...a, name: newName }));
 }
 
-export function updateAgentColor(workspaceId: string, agentId: string, color: string): Agent {
+export function updateAgentColor(
+  workspaceId: string,
+  agentId: string,
+  color: string,
+): Agent {
   return mutate(workspaceId, agentId, (a) => ({ ...a, color }));
 }
 
 export function deleteAgent(workspaceId: string, agentId: string): void {
   const store = load();
-  store[workspaceId] = seeded(store, workspaceId).filter((a) => a.id !== agentId);
+  store[workspaceId] = seeded(store, workspaceId).filter(
+    (a) => a.id !== agentId,
+  );
   save(store);
 }
 
-function mutate(workspaceId: string, agentId: string, fn: (a: Agent) => Agent): Agent {
+function mutate(
+  workspaceId: string,
+  agentId: string,
+  fn: (a: Agent) => Agent,
+): Agent {
   const store = load();
   const agents = seeded(store, workspaceId);
   const idx = agents.findIndex((a) => a.id === agentId);

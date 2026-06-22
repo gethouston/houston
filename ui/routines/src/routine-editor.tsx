@@ -6,7 +6,7 @@
  * The composer hero is the only "boxed" element — it's the substance of the
  * routine — everything else is plain settings rows.
  */
-import { useMemo } from "react"
+import { useMemo } from "react";
 import {
   cn,
   Button,
@@ -16,7 +16,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-} from "@houston-ai/core"
+} from "@houston-ai/core";
 import {
   ArrowLeft,
   Play,
@@ -25,12 +25,12 @@ import {
   Trash2,
   CalendarClock,
   MoreHorizontal,
-} from "lucide-react"
-import type { Routine, RoutineChatMode, RoutineRun } from "./types"
-import { ScheduleBuilder } from "./schedule-builder"
-import { RunHistory } from "./run-history"
-import { nextFire, describeNextFire } from "./next-fire"
-import { useNow } from "./use-now"
+} from "lucide-react";
+import type { Routine, RoutineChatMode, RoutineRun } from "./types";
+import { ScheduleBuilder } from "./schedule-builder";
+import { RunHistory } from "./run-history";
+import { nextFire, describeNextFire } from "./next-fire";
+import { useNow } from "./use-now";
 import {
   interp,
   DEFAULT_EDITOR_LABELS,
@@ -41,57 +41,57 @@ import {
   type ScheduleLabels,
   type NextFireLabels,
   type RunHistoryLabels,
-} from "./labels"
+} from "./labels";
 
 export interface RoutineFormData {
-  name: string
-  description: string
-  prompt: string
-  schedule: string
-  suppress_when_silent: boolean
+  name: string;
+  description: string;
+  prompt: string;
+  schedule: string;
+  suppress_when_silent: boolean;
   /** Whether each run reuses one chat (`"shared"`) or starts a fresh one. */
-  chat_mode: RoutineChatMode
+  chat_mode: RoutineChatMode;
   /** Composio toolkit slugs this routine uses. */
-  integrations: string[]
+  integrations: string[];
   /** Provider id override. `null`/absent means inherit the agent's provider. */
-  provider?: string | null
+  provider?: string | null;
   /** Model override. `null`/absent means inherit the agent's model. */
-  model?: string | null
+  model?: string | null;
   /** Reasoning-effort override. `null`/absent means inherit the agent's effort. */
-  effort?: string | null
+  effort?: string | null;
 }
 
 export interface RoutineEditorProps {
-  value: RoutineFormData
-  onChange: (patch: Partial<RoutineFormData>) => void
-  onBack: () => void
-  onSubmit: () => void
+  value: RoutineFormData;
+  onChange: (patch: Partial<RoutineFormData>) => void;
+  onBack: () => void;
+  onSubmit: () => void;
   /** Falsy = "new" mode. Provide the existing routine to enter edit mode. */
-  routine?: Routine
-  runs?: RoutineRun[]
-  onRunNow?: () => void
+  routine?: Routine;
+  runs?: RoutineRun[];
+  onRunNow?: () => void;
   /** Disable the "Run now" button while a manual-run request is in flight.
    *  Guards against spam-click races where the disk-state `running` row
    *  hasn't propagated through TanStack invalidation yet — without this,
    *  each extra click queues a redundant request that the engine then
    *  rejects with 409 (or, on older builds, recorded as a conflict-error
    *  row in run history). */
-  runNowPending?: boolean
+  runNowPending?: boolean;
   /** Stop an in-flight run. When present + a run is `running`, the header
    *  "Run now" button swaps to "Stop" and the matching run row shows a stop
    *  control. */
-  onCancelRun?: (runId: string) => void
-  onToggle?: (enabled: boolean) => void
-  onDelete?: () => void
-  onViewActivity?: (activityId: string) => void
+  onCancelRun?: (runId: string) => void;
+  onToggle?: (enabled: boolean) => void;
+  onDelete?: () => void;
+  onViewActivity?: (activityId: string) => void;
   /**
    * The single account-wide IANA timezone every routine fires in. Drives the
    * "next run" preview. The zone itself is chosen on the routines list (see
    * `RoutinesGrid`), not here — every routine shares it.
    */
-  accountTimezone: string
+  accountTimezone: string;
   /** Disable Save when the form hasn't actually been touched. */
-  hasChanges?: boolean
+  hasChanges?: boolean;
   /**
    * App-supplied provider + model picker (e.g. the chat model selector),
    * rendered in the Behavior section. `ui/` stays provider-agnostic per the
@@ -100,17 +100,17 @@ export interface RoutineEditorProps {
    * callers) and the model row is hidden. The picker drives `value.provider` +
    * `value.model` through `onChange`.
    */
-  modelPicker?: React.ReactNode
+  modelPicker?: React.ReactNode;
   /**
    * Localized labels. English defaults so standalone callers still work; the
    * app passes `t()` results in per the library-boundary rule.
    */
-  labels?: RoutineEditorLabels
-  scheduleLabels?: ScheduleLabels
-  nextFireLabels?: NextFireLabels
-  runHistoryLabels?: RunHistoryLabels
+  labels?: RoutineEditorLabels;
+  scheduleLabels?: ScheduleLabels;
+  nextFireLabels?: NextFireLabels;
+  runHistoryLabels?: RunHistoryLabels;
   /** BCP-47 locale for day names + time formatting in schedules. */
-  locale?: string
+  locale?: string;
 }
 
 // ----- Building blocks -----
@@ -124,15 +124,15 @@ function SectionCard({
   title,
   children,
 }: {
-  title: string
-  children: React.ReactNode
+  title: string;
+  children: React.ReactNode;
 }) {
   return (
     <section className="rounded-xl bg-secondary px-5 py-5">
       <h3 className="text-sm font-medium text-foreground mb-4">{title}</h3>
       <div className="space-y-4">{children}</div>
     </section>
-  )
+  );
 }
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
@@ -140,7 +140,7 @@ function FieldLabel({ children }: { children: React.ReactNode }) {
     <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
       {children}
     </label>
-  )
+  );
 }
 
 // ----- Main -----
@@ -167,30 +167,31 @@ export function RoutineEditor({
   runHistoryLabels = DEFAULT_RUN_HISTORY_LABELS,
   locale = "en-US",
 }: RoutineEditorProps) {
-  const runningRun = runs.find((r) => r.status === "running")
-  const isEdit = !!routine
+  const runningRun = runs.find((r) => r.status === "running");
+  const isEdit = !!routine;
   const canSubmit =
     !!value.name.trim() &&
     !!value.prompt.trim() &&
     !!value.schedule.trim() &&
-    (!isEdit || hasChanges !== false)
+    (!isEdit || hasChanges !== false);
 
   // Live "next run" preview, ticking every minute. Every routine fires in the
   // account-wide zone, so the preview is computed against `accountTimezone`.
-  const now = useNow(60_000)
+  const now = useNow(60_000);
   const next = useMemo(
-    () => (value.schedule ? nextFire(value.schedule, accountTimezone, now) : null),
+    () =>
+      value.schedule ? nextFire(value.schedule, accountTimezone, now) : null,
     [value.schedule, accountTimezone, now],
-  )
+  );
   const nextDescr = next
     ? describeNextFire(next, accountTimezone, now, nextFireLabels, locale)
-    : null
+    : null;
 
   // Header title — live, mirrors what the user is typing.
   const headerTitle = isEdit
     ? value.name.trim() || routine?.name || labels.untitled
-    : labels.newRoutine
-  const hasOverflow = isEdit && (onToggle || onDelete)
+    : labels.newRoutine;
+  const hasOverflow = isEdit && (onToggle || onDelete);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">
@@ -250,15 +251,22 @@ export function RoutineEditor({
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   {onToggle && routine && (
-                    <DropdownMenuItem onClick={() => onToggle(!routine.enabled)}>
+                    <DropdownMenuItem
+                      onClick={() => onToggle(!routine.enabled)}
+                    >
                       <Pause className="size-3.5" />
-                      {routine.enabled ? labels.pauseRoutine : labels.resumeRoutine}
+                      {routine.enabled
+                        ? labels.pauseRoutine
+                        : labels.resumeRoutine}
                     </DropdownMenuItem>
                   )}
                   {onDelete && (
                     <>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                      <DropdownMenuItem
+                        variant="destructive"
+                        onClick={onDelete}
+                      >
                         <Trash2 className="size-3.5" />
                         {labels.deleteRoutine}
                       </DropdownMenuItem>
@@ -350,7 +358,8 @@ export function RoutineEditor({
                     <p className="text-xs text-muted-foreground tabular-nums mt-0.5">
                       {nextDescr.absolute}
                       <span className="text-muted-foreground/60">
-                        {" "}· {accountTimezone}
+                        {" "}
+                        · {accountTimezone.replace(/_/g, " ")}
                       </span>
                     </p>
                   </>
@@ -428,5 +437,5 @@ export function RoutineEditor({
         </div>
       </div>
     </div>
-  )
+  );
 }

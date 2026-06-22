@@ -87,13 +87,7 @@ test("runs as a non-root user", () => {
 });
 
 test(".dockerignore excludes the heavy / non-shipping paths", () => {
-  for (const pat of [
-    "node_modules/",
-    ".git/",
-    "spike/",
-    "*.md",
-    "*.log",
-  ]) {
+  for (const pat of ["node_modules/", ".git/", "spike/", "*.md", "*.log"]) {
     expect(dockerignore).toContain(pat);
   }
   // Tests are never run in the image.

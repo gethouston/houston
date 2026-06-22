@@ -30,10 +30,16 @@ const missions = [
 describe("archived search wiring", () => {
   it("filters the archived subset before applying search", () => {
     const archived = selectArchived(missions);
-    deepStrictEqual(archived.map((m) => m.id), ["a1", "a2"]);
+    deepStrictEqual(
+      archived.map((m) => m.id),
+      ["a1", "a2"],
+    );
 
     const result = searchMissions(archived, "budget");
-    deepStrictEqual(result.items.map((m) => m.id), ["a1"]);
+    deepStrictEqual(
+      result.items.map((m) => m.id),
+      ["a1"],
+    );
   });
 
   it("does not surface active missions even when their title matches", () => {
@@ -51,6 +57,9 @@ describe("archived search wiring", () => {
     const archived = selectArchived(missions);
     const result = searchMissions(archived, "");
     strictEqual(result.hasQuery, false);
-    deepStrictEqual(result.items.map((m) => m.id), ["a1", "a2"]);
+    deepStrictEqual(
+      result.items.map((m) => m.id),
+      ["a1", "a2"],
+    );
   });
 });

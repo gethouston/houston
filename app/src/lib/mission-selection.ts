@@ -46,27 +46,17 @@ export function canDropMission(
   );
 }
 
-/** True when every id in `ids` is selected (and `ids` is non-empty). Drives the
- *  "select all" checkbox state for a section. */
-export function areAllSelected(
-  ids: string[],
-  selected: ReadonlySet<string>,
-): boolean {
-  return ids.length > 0 && ids.every((id) => selected.has(id));
-}
-
-/** Toggle a group of ids as one: if all are already selected, remove them all;
- *  otherwise add them all. Returns a new Set (never mutates the input). */
-export function toggleAllIds(
+/** Add every id in `ids` to the selection (the column header "Select all in
+ *  column"). Returns a new Set (never mutates the input) and is idempotent —
+ *  ids already selected stay selected, so the menu item can be clicked
+ *  repeatedly without toggling anything back off. Deselecting is the bulk
+ *  bar's "Clear" / per-card checkboxes, never this entry point. */
+export function selectAllIds(
   selected: ReadonlySet<string>,
   ids: string[],
 ): Set<string> {
   const next = new Set(selected);
-  const all = areAllSelected(ids, selected);
-  for (const id of ids) {
-    if (all) next.delete(id);
-    else next.add(id);
-  }
+  for (const id of ids) next.add(id);
   return next;
 }
 

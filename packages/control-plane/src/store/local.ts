@@ -1,7 +1,21 @@
-import { existsSync, mkdirSync, readdirSync, renameSync, rmSync, statSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readdirSync,
+  renameSync,
+  rmSync,
+  statSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { WorkspaceStore } from "../ports";
-import type { Agent, AgentId, UserId, Workspace, WorkspaceId, WorkspaceRuntime } from "../domain/types";
+import type {
+  Agent,
+  AgentId,
+  UserId,
+  Workspace,
+  WorkspaceId,
+  WorkspaceRuntime,
+} from "../domain/types";
 
 /**
  * The local profile's WorkspaceStore — the desktop tree on disk is the source
@@ -77,11 +91,15 @@ export class LocalWorkspaceStore implements WorkspaceStore {
     const agentName = id.slice(slash + 1);
     // Reject traversal: an agent id is exactly <Workspace>/<Agent>.
     if (!agentName || agentName.includes("/") || id.includes("..")) return null;
-    return this.isDir(join(this.root, wsName, agentName)) ? this.toAgent(wsName, agentName) : null;
+    return this.isDir(join(this.root, wsName, agentName))
+      ? this.toAgent(wsName, agentName)
+      : null;
   }
 
   async listAgents(workspaceId: WorkspaceId): Promise<Agent[]> {
-    return this.listDirs(join(this.root, workspaceId)).map((name) => this.toAgent(workspaceId, name));
+    return this.listDirs(join(this.root, workspaceId)).map((name) =>
+      this.toAgent(workspaceId, name),
+    );
   }
 
   async listWorkspaces(): Promise<Workspace[]> {
@@ -95,34 +113,52 @@ export class LocalWorkspaceStore implements WorkspaceStore {
   async listAllAgents(): Promise<Agent[]> {
     const out: Agent[] = [];
     for (const ws of this.listDirs(this.root)) {
-      for (const a of this.listDirs(join(this.root, ws))) out.push(this.toAgent(ws, a));
+      for (const a of this.listDirs(join(this.root, ws)))
+        out.push(this.toAgent(ws, a));
     }
     return out;
   }
 
-  async createAgent(input: { workspaceId: WorkspaceId; name: string }): Promise<Agent> {
+  async createAgent(input: {
+    workspaceId: WorkspaceId;
+    name: string;
+  }): Promise<Agent> {
     if (input.name.includes("/") || input.name.includes("..")) {
       throw new Error(`invalid agent name: ${input.name}`);
     }
-    mkdirSync(join(this.root, input.workspaceId, input.name), { recursive: true });
+    mkdirSync(join(this.root, input.workspaceId, input.name), {
+      recursive: true,
+    });
     return this.toAgent(input.workspaceId, input.name);
   }
 
   async renameAgent(id: AgentId, name: string): Promise<Agent> {
     const agent = await this.getAgent(id);
     if (!agent) throw new Error(`renameAgent: unknown agent ${id}`);
-    if (name.includes("/") || name.includes("..")) throw new Error(`invalid agent name: ${name}`);
-    renameSync(join(this.root, agent.workspaceId, agent.name), join(this.root, agent.workspaceId, name));
+    if (name.includes("/") || name.includes(".."))
+      throw new Error(`invalid agent name: ${name}`);
+    renameSync(
+      join(this.root, agent.workspaceId, agent.name),
+      join(this.root, agent.workspaceId, name),
+    );
     return this.toAgent(agent.workspaceId, name);
   }
 
   async deleteAgent(id: AgentId): Promise<void> {
     const agent = await this.getAgent(id);
     if (!agent) throw new Error(`deleteAgent: unknown agent ${id}`);
-    rmSync(join(this.root, agent.workspaceId, agent.name), { recursive: true, force: true });
+    rmSync(join(this.root, agent.workspaceId, agent.name), {
+      recursive: true,
+      force: true,
+    });
   }
 
-  async setWorkspaceRuntime(_id: WorkspaceId, _runtime: WorkspaceRuntime): Promise<Workspace> {
-    throw new Error("local workspaces always run 'local' — runtime is not switchable");
+  async setWorkspaceRuntime(
+    _id: WorkspaceId,
+    _runtime: WorkspaceRuntime,
+  ): Promise<Workspace> {
+    throw new Error(
+      "local workspaces always run 'local' — runtime is not switchable",
+    );
   }
 }

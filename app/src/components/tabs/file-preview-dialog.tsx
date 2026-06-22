@@ -36,7 +36,12 @@ interface Props {
   onClose: () => void;
 }
 
-export function FilePreviewDialog({ agentPath, filePath, fileName, onClose }: Props) {
+export function FilePreviewDialog({
+  agentPath,
+  filePath,
+  fileName,
+  onClose,
+}: Props) {
   const { t } = useTranslation("agents");
   const [loaded, setLoaded] = useState<Loaded>({ state: "loading" });
 
@@ -68,7 +73,10 @@ export function FilePreviewDialog({ agentPath, filePath, fileName, onClose }: Pr
       })
       .catch((err: unknown) => {
         if (!cancelled)
-          setLoaded({ state: "error", message: err instanceof Error ? err.message : String(err) });
+          setLoaded({
+            state: "error",
+            message: err instanceof Error ? err.message : String(err),
+          });
       });
     return () => {
       cancelled = true;
@@ -84,30 +92,50 @@ export function FilePreviewDialog({ agentPath, filePath, fileName, onClose }: Pr
         <DialogHeader>
           <DialogTitle className="truncate">{fileName}</DialogTitle>
           {loaded.state === "binary" && (
-            <DialogDescription>{t("files.preview.unsupportedDescription")}</DialogDescription>
+            <DialogDescription>
+              {t("files.preview.unsupportedDescription")}
+            </DialogDescription>
           )}
         </DialogHeader>
         <div className="min-h-[200px] max-h-[60vh] overflow-auto rounded-md border border-border bg-muted/20">
           {loaded.state === "loading" && (
-            <p className="p-6 text-sm text-muted-foreground">{t("files.preview.loading")}</p>
+            <p className="p-6 text-sm text-muted-foreground">
+              {t("files.preview.loading")}
+            </p>
           )}
           {loaded.state === "error" && (
             <div className="p-6 space-y-1">
-              <p className="text-sm font-medium">{t("files.preview.errorTitle")}</p>
-              <p className="text-sm text-muted-foreground break-all">{loaded.message}</p>
+              <p className="text-sm font-medium">
+                {t("files.preview.errorTitle")}
+              </p>
+              <p className="text-sm text-muted-foreground break-all">
+                {loaded.message}
+              </p>
             </div>
           )}
           {loaded.state === "image" && (
-            <img src={loaded.url} alt={fileName} className="mx-auto max-h-[58vh] object-contain" />
+            <img
+              src={loaded.url}
+              alt={fileName}
+              className="mx-auto max-h-[58vh] object-contain"
+            />
           )}
           {loaded.state === "pdf" && (
-            <iframe src={loaded.url} title={fileName} className="h-[58vh] w-full border-0" />
+            <iframe
+              src={loaded.url}
+              title={fileName}
+              className="h-[58vh] w-full border-0"
+            />
           )}
           {loaded.state === "text" && (
-            <pre className="p-4 text-xs whitespace-pre-wrap break-all">{loaded.text}</pre>
+            <pre className="p-4 text-xs whitespace-pre-wrap break-all">
+              {loaded.text}
+            </pre>
           )}
           {loaded.state === "binary" && (
-            <p className="p-6 text-sm text-muted-foreground">{t("files.preview.unsupportedTitle")}</p>
+            <p className="p-6 text-sm text-muted-foreground">
+              {t("files.preview.unsupportedTitle")}
+            </p>
           )}
         </div>
         <DialogFooter>

@@ -54,10 +54,14 @@ export function MissionSearchInput({
       const font = `${cs.fontWeight} ${cs.fontSize} ${cs.fontFamily}`;
       const available = Math.max(
         0,
-        el.clientWidth - (parseFloat(cs.paddingLeft) || 0) - (parseFloat(cs.paddingRight) || 0),
+        el.clientWidth -
+          (parseFloat(cs.paddingLeft) || 0) -
+          (parseFloat(cs.paddingRight) || 0),
       );
       // +4px so it switches just before the text would actually clip.
-      setPlaceholder(textWidth(full, font) + 4 <= available ? full : placeholderShort);
+      setPlaceholder(
+        textWidth(full, font) + 4 <= available ? full : placeholderShort,
+      );
     };
     update();
     const observer = new ResizeObserver(update);

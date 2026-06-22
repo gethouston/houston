@@ -37,18 +37,30 @@ function runtimeCommand(): string[] {
   if (selfBinary) return [selfBinary];
   // 3. Dev fallback: run the runtime from source, resolved relative to this file
   // (src/local/main.ts → ../../../runtime/src/main.ts).
-  const runtimeMain = join(import.meta.dir, "..", "..", "..", "runtime", "src", "main.ts");
+  const runtimeMain = join(
+    import.meta.dir,
+    "..",
+    "..",
+    "..",
+    "runtime",
+    "src",
+    "main.ts",
+  );
   return ["bun", "run", runtimeMain];
 }
 
 const houstonHome = join(homedir(), ".houston");
 const host = buildLocalHost({
-  workspacesRoot: process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
-  credentialsPath: process.env.HOUSTON_CREDENTIALS_PATH || join(houstonHome, "credentials.json"),
+  workspacesRoot:
+    process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),
+  credentialsPath:
+    process.env.HOUSTON_CREDENTIALS_PATH ||
+    join(houstonHome, "credentials.json"),
   // The Rust-era chat-history db. Default to the canonical path; the migration
   // is a no-op when it is absent (a fresh install) or already done (marker).
   chatHistoryDbPath:
-    process.env.HOUSTON_CHAT_HISTORY_DB || join(houstonHome, "db", "houston.db"),
+    process.env.HOUSTON_CHAT_HISTORY_DB ||
+    join(houstonHome, "db", "houston.db"),
   port: Number(process.env.HOUSTON_HOST_PORT || 4318),
   // Loopback by default (desktop). Self-host sets HOUSTON_HOST_BIND=0.0.0.0.
   bind: process.env.HOUSTON_HOST_BIND || undefined,

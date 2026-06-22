@@ -1,7 +1,18 @@
-import { createServer, type IncomingMessage, type ServerResponse, type Server } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type ServerResponse,
+  type Server,
+} from "node:http";
 import { PROTOCOL_VERSION, type Capabilities } from "@houston/protocol";
 import type { UserId, WorkspaceRuntime } from "./domain/types";
-import type { CredentialStore, CredentialVault, RuntimeChannel, TokenVerifier, WorkspaceStore } from "./ports";
+import type {
+  CredentialStore,
+  CredentialVault,
+  RuntimeChannel,
+  TokenVerifier,
+  WorkspaceStore,
+} from "./ports";
 import type { Vfs } from "./vfs";
 import type { WorkspacePaths } from "./paths";
 import type { EventHub } from "./events/hub";
@@ -48,18 +59,29 @@ export interface ControlPlaneDeps {
 function applyCors(deps: ControlPlaneDeps, res: ServerResponse): void {
   res.setHeader("Access-Control-Allow-Origin", deps.corsOrigin || "*");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
+  res.setHeader(
+    "Access-Control-Allow-Methods",
+    "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+  );
 }
 
 /** Resolve the caller to a verified user id, or null if unauthenticated. */
-async function principal(deps: ControlPlaneDeps, req: IncomingMessage, url: URL): Promise<UserId | null> {
+async function principal(
+  deps: ControlPlaneDeps,
+  req: IncomingMessage,
+  url: URL,
+): Promise<UserId | null> {
   const token = bearer(req, url);
   if (!token) return null;
   const verified = await deps.verifier.verify(token);
   return verified?.userId ?? null;
 }
 
-async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerResponse): Promise<void> {
+async function handle(
+  deps: ControlPlaneDeps,
+  req: IncomingMessage,
+  res: ServerResponse,
+): Promise<void> {
   applyCors(deps, res);
   const method = req.method || "GET";
   if (method === "OPTIONS") {
@@ -77,7 +99,11 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
     return json(res, 200, { status: "ok" });
   }
   if (method === "GET" && path === "/v1/version") {
-    return json(res, 200, { engine: "houston-host", protocol: PROTOCOL_VERSION, build: null });
+    return json(res, 200, {
+      engine: "houston-host",
+      protocol: PROTOCOL_VERSION,
+      build: null,
+    });
   }
   if (method === "GET" && path === "/v1/capabilities") {
     return json(res, 200, deps.capabilities);
@@ -94,7 +120,9 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
   // Long-lived — do not fall through, and never end the response here.
   if (method === "GET" && path === "/v1/events") {
     if (!deps.events) return json(res, 503, { error: "events not configured" });
-    return handleEventStream(deps.events, userId, res, (cb) => req.on("close", cb));
+    return handleEventStream(deps.events, userId, res, (cb) =>
+      req.on("close", cb),
+    );
   }
 
   if (await handleAdmin(deps, userId, method, path, url, req, res)) return;
@@ -103,12 +131,15 @@ async function handle(deps: ControlPlaneDeps, req: IncomingMessage, res: ServerR
   // via Tauri, fronted here so the browser never holds the Linear key. Errors
   // surface as real statuses — the dialog shows them (beta policy: no silent loss).
   if (path === "/feedback" && method === "POST") {
-    if (!deps.feedback) return json(res, 503, { error: "feedback intake not configured" });
+    if (!deps.feedback)
+      return json(res, 503, { error: "feedback intake not configured" });
     let payload;
     try {
       payload = parseFeedbackPayload(await readJson(req));
     } catch (err) {
-      return json(res, 400, { error: err instanceof Error ? err.message : String(err) });
+      return json(res, 400, {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
     return json(res, 200, { id: await deps.feedback.send(payload, userId) });
   }

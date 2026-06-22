@@ -1,5 +1,8 @@
 import { useCallback } from "react";
-import { useBulkUpdateActivity, useBulkDeleteActivity } from "../../hooks/queries";
+import {
+  useBulkUpdateActivity,
+  useBulkDeleteActivity,
+} from "../../hooks/queries";
 import { ARCHIVED_STATUS } from "../../lib/mission-selection";
 import { useSelectionSet } from "./use-selection-set";
 import type { BoardSelectionModel } from "./board-source";
@@ -16,13 +19,16 @@ export function useAgentBoardSelection(
   agentPath: string | undefined,
   resetKey: string,
 ): BoardSelectionModel {
-  const { selectedIds, toggle, toggleAll, clear } = useSelectionSet(resetKey);
+  const { selectedIds, toggle, selectAll, clear } = useSelectionSet(resetKey);
   const bulkUpdate = useBulkUpdateActivity(agentPath);
   const bulkDelete = useBulkDeleteActivity(agentPath);
 
   const move = useCallback(
     async (status: string) => {
-      await bulkUpdate.mutateAsync({ ids: Array.from(selectedIds), update: { status } });
+      await bulkUpdate.mutateAsync({
+        ids: Array.from(selectedIds),
+        update: { status },
+      });
       clear();
     },
     [bulkUpdate, selectedIds, clear],
@@ -41,12 +47,5 @@ export function useAgentBoardSelection(
     clear();
   }, [bulkDelete, selectedIds, clear]);
 
-  const archiveIds = useCallback(
-    async (ids: string[]) => {
-      await bulkUpdate.mutateAsync({ ids, update: { status: ARCHIVED_STATUS } });
-    },
-    [bulkUpdate],
-  );
-
-  return { selectedIds, toggle, toggleAll, clear, move, archive, remove, archiveIds };
+  return { selectedIds, toggle, selectAll, clear, move, archive, remove };
 }

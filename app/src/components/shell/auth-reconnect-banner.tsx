@@ -72,7 +72,9 @@ export function AuthReconnectBanner() {
                 className="rounded-full"
                 size="sm"
               >
-                {t("shell:authReconnect.signInWith", { provider: provider.name })}
+                {t("shell:authReconnect.signInWith", {
+                  provider: provider.name,
+                })}
               </AsyncButton>
             ) : (
               <div className="flex items-center gap-3">

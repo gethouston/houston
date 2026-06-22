@@ -44,12 +44,7 @@ import type {
   PortableUploadPreviewResponse,
 } from "@houston-ai/engine-client";
 
-type StepId =
-  | "upload"
-  | "name"
-  | "skills"
-  | "routines"
-  | "learnings";
+type StepId = "upload" | "name" | "skills" | "routines" | "learnings";
 
 interface Selection {
   skillSlugs: Set<string>;
@@ -155,7 +150,8 @@ export function ImportAgentWizard() {
           result.preview.learnings.map((l: { id: string }) => l.id),
         ),
       });
-      if (!name && result.manifest.agentName) setName(result.manifest.agentName);
+      if (!name && result.manifest.agentName)
+        setName(result.manifest.agentName);
     } catch (err) {
       addToast({
         variant: "error",
@@ -248,9 +244,7 @@ export function ImportAgentWizard() {
     <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="sm:max-w-[680px] h-[78vh] flex flex-col p-0 gap-0 overflow-hidden">
         <header className="shrink-0 px-8 pt-6 pb-2 flex items-center gap-4">
-          <p className="text-xs text-muted-foreground">
-            {t("import.eyebrow")}
-          </p>
+          <p className="text-xs text-muted-foreground">{t("import.eyebrow")}</p>
           <ProgressDots index={stepIndex} total={steps.length} />
         </header>
 
@@ -343,13 +337,13 @@ export function ImportAgentWizard() {
           <button
             type="button"
             onClick={() =>
-              stepIndex > 0
-                ? setStepIndex(stepIndex - 1)
-                : handleClose()
+              stepIndex > 0 ? setStepIndex(stepIndex - 1) : handleClose()
             }
             className="text-sm text-muted-foreground hover:text-foreground"
           >
-            {stepIndex > 0 ? t("import.actions.back") : t("import.actions.cancel")}
+            {stepIndex > 0
+              ? t("import.actions.back")
+              : t("import.actions.cancel")}
           </button>
           {!isLast ? (
             <Button

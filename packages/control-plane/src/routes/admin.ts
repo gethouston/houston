@@ -3,7 +3,11 @@ import type { UserId } from "../domain/types";
 import type { WorkspaceStore } from "../ports";
 import type { ClusterReader } from "../admin/cluster";
 import type { AutopilotRates, BillingActualsReader } from "../admin/billing";
-import { buildBillingReport, buildOverview, type ActualsStatus } from "../admin/overview";
+import {
+  buildBillingReport,
+  buildOverview,
+  type ActualsStatus,
+} from "../admin/overview";
 import { json, readJson } from "./http";
 
 /**
@@ -44,7 +48,10 @@ export async function handleAdmin(
   res: ServerResponse,
 ): Promise<boolean> {
   const adminRuntime = path.match(/^\/admin\/workspaces\/([^/]+)\/runtime$/);
-  const isAdminPath = adminRuntime !== null || path === "/admin/overview" || path === "/admin/billing";
+  const isAdminPath =
+    adminRuntime !== null ||
+    path === "/admin/overview" ||
+    path === "/admin/billing";
   if (!isAdminPath) return false;
 
   const admin = deps.admin;
@@ -88,7 +95,13 @@ export async function handleAdmin(
     admin.cluster.snapshot(),
   ]);
   const now = Date.now();
-  const overview = buildOverview(workspaces, agents, snapshot, admin.rates, now);
+  const overview = buildOverview(
+    workspaces,
+    agents,
+    snapshot,
+    admin.rates,
+    now,
+  );
 
   if (path === "/admin/overview") {
     json(res, 200, overview);
@@ -111,6 +124,17 @@ export async function handleAdmin(
       actualsError = err instanceof Error ? err.message : String(err);
     }
   }
-  json(res, 200, buildBillingReport(overview, admin.rates, actuals, actualsStatus, actualsError, now));
+  json(
+    res,
+    200,
+    buildBillingReport(
+      overview,
+      admin.rates,
+      actuals,
+      actualsStatus,
+      actualsError,
+      now,
+    ),
+  );
   return true;
 }

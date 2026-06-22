@@ -6,6 +6,8 @@ export function hasToolRuntimeError(items: readonly FeedItem[]): boolean {
 
 export function isToolRuntimeErrorMessage(
   msg: ChatMessage,
-): msg is ChatMessage & { runtimeError: NonNullable<ChatMessage["runtimeError"]> } {
+): msg is ChatMessage & {
+  runtimeError: NonNullable<ChatMessage["runtimeError"]>;
+} {
   return msg.runtimeError !== undefined;
 }

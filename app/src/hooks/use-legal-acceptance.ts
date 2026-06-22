@@ -2,7 +2,10 @@ import { useCallback } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { LEGAL_ACCEPTANCE_KEY, type LegalAcceptance } from "@houston-ai/engine-client";
+import {
+  LEGAL_ACCEPTANCE_KEY,
+  type LegalAcceptance,
+} from "@houston-ai/engine-client";
 
 import { tauriPreferences } from "../lib/tauri";
 import { CURRENT_DISCLAIMER_VERSION } from "../lib/legal";
@@ -93,7 +96,8 @@ export function useLegalAcceptance(): LegalAcceptanceState {
 
   const accepted = query.data;
   const isAccepted =
-    accepted !== null && accepted !== undefined &&
+    accepted !== null &&
+    accepted !== undefined &&
     accepted.version >= CURRENT_DISCLAIMER_VERSION;
 
   return {

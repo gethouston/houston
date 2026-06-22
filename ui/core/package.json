@@ -26,6 +26,6 @@
     "sonner": "^2.0.7"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsgo --noEmit"
   }
 }

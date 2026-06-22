@@ -28,25 +28,37 @@ export interface TurnDeps {
 export const PROVIDER = "openai-codex";
 export const PROVIDER_NAME = "ChatGPT / Codex (Plus / Pro)";
 
-export type Settings = { activeProvider?: string; models?: Record<string, string> };
+export type Settings = {
+  activeProvider?: string;
+  models?: Record<string, string>;
+};
 
 export function json(res: ServerResponse, status: number, body: unknown) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(body));
 }
 
-export async function readJson(req: IncomingMessage): Promise<Record<string, unknown>> {
+export async function readJson(
+  req: IncomingMessage,
+): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
-  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as Record<string, unknown>;
+  return JSON.parse(Buffer.concat(chunks).toString("utf8") || "{}") as Record<
+    string,
+    unknown
+  >;
 }
 
-export const prefixFor = (ws: Workspace, agent: Agent) => `ws/${ws.id}/${agent.id}`;
+export const prefixFor = (ws: Workspace, agent: Agent) =>
+  `ws/${ws.id}/${agent.id}`;
 export const settingsKey = (p: string) => `${p}/data/settings.json`;
 export const conversationKey = (p: string, cid: string) =>
   `${p}/data/conversations/${encodeURIComponent(cid)}.json`;
 
-export async function readSettings(deps: TurnDeps, prefix: string): Promise<Settings> {
+export async function readSettings(
+  deps: TurnDeps,
+  prefix: string,
+): Promise<Settings> {
   const raw = await deps.vfs.readText(settingsKey(prefix));
   if (!raw) return {};
   return JSON.parse(raw) as Settings;

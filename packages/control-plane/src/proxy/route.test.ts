@@ -1,11 +1,18 @@
 import { test, expect } from "bun:test";
-import { createServer, type IncomingMessage, type Server, type ServerResponse } from "node:http";
+import {
+  createServer,
+  type IncomingMessage,
+  type Server,
+  type ServerResponse,
+} from "node:http";
 import { AddressInfo } from "node:net";
 import { forward } from "./route";
 import type { RuntimeEndpoint } from "../ports";
 
 /** Spin up a node:http server on an ephemeral port and resolve its base URL. */
-function listen(handler: (req: IncomingMessage, res: ServerResponse) => void): Promise<{
+function listen(
+  handler: (req: IncomingMessage, res: ServerResponse) => void,
+): Promise<{
   server: Server;
   baseUrl: string;
 }> {
@@ -19,7 +26,9 @@ function listen(handler: (req: IncomingMessage, res: ServerResponse) => void): P
 }
 
 function close(server: Server): Promise<void> {
-  return new Promise((resolve, reject) => server.close((err) => (err ? reject(err) : resolve())));
+  return new Promise((resolve, reject) =>
+    server.close((err) => (err ? reject(err) : resolve())),
+  );
 }
 
 async function readBody(req: IncomingMessage): Promise<string> {
@@ -91,7 +100,13 @@ test("forward relays a runtime error response AS ITSELF (e.g. 400), never maskin
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
     done = forward(
       endpoint,
-      { method: "POST", path: "/auth/openai-codex/login", search: "", contentType: "application/json", body: Buffer.from("{}") },
+      {
+        method: "POST",
+        path: "/auth/openai-codex/login",
+        search: "",
+        contentType: "application/json",
+        body: Buffer.from("{}"),
+      },
       res,
     );
   });
@@ -112,7 +127,10 @@ test("forward pipes a text/event-stream response 1:1, including the heartbeat co
   const { server: upstream, baseUrl } = await listen((req, res) => {
     seenAccept = req.headers.accept;
     seenAuth = req.headers.authorization;
-    res.writeHead(200, { "Content-Type": "text/event-stream", "Cache-Control": "no-cache" });
+    res.writeHead(200, {
+      "Content-Type": "text/event-stream",
+      "Cache-Control": "no-cache",
+    });
     res.write(SSE_PAYLOAD);
     res.end();
   });
@@ -120,7 +138,11 @@ test("forward pipes a text/event-stream response 1:1, including the heartbeat co
   const endpoint: RuntimeEndpoint = { baseUrl, token: "sbx-stream" };
   let done: Promise<void> | undefined;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
-    done = forward(endpoint, { method: "GET", path: "/conversations/c1/events", search: "" }, res);
+    done = forward(
+      endpoint,
+      { method: "GET", path: "/conversations/c1/events", search: "" },
+      res,
+    );
   });
 
   const r = await fetch(`${proxyUrl}/`);
@@ -150,7 +172,11 @@ test("forward aborts the upstream stream when the client disconnects (clean reso
   const endpoint: RuntimeEndpoint = { baseUrl, token: "t" };
   let resolved = false;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
-    forward(endpoint, { method: "GET", path: "/conversations/c/events", search: "" }, res).then(() => {
+    forward(
+      endpoint,
+      { method: "GET", path: "/conversations/c/events", search: "" },
+      res,
+    ).then(() => {
       resolved = true;
     });
   });
@@ -179,7 +205,11 @@ test("forward surfaces an unreachable runtime as a 502 (no swallow)", async () =
   const endpoint: RuntimeEndpoint = { baseUrl: deadUrl, token: "t" };
   let err: unknown;
   const { server: proxy, baseUrl: proxyUrl } = await listen((_req, res) => {
-    forward(endpoint, { method: "GET", path: "/auth/status", search: "" }, res).catch((e) => {
+    forward(
+      endpoint,
+      { method: "GET", path: "/auth/status", search: "" },
+      res,
+    ).catch((e) => {
       err = e;
     });
   });

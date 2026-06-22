@@ -84,7 +84,8 @@ async function pollHealth(port: number): Promise<void> {
     } catch {
       // not up yet
     }
-    if (Date.now() > deadline) throw new Error(`runtime on port ${port} never became healthy`);
+    if (Date.now() > deadline)
+      throw new Error(`runtime on port ${port} never became healthy`);
     await new Promise((r) => setTimeout(r, 100));
   }
 }
@@ -109,7 +110,11 @@ export class ProcessLauncher implements RuntimeLauncher {
 
   async ensureAwake(agent: Agent): Promise<RuntimeEndpoint> {
     const existing = this.running.get(agent.id);
-    if (existing) return { baseUrl: `http://127.0.0.1:${existing.handle.port}`, token: existing.token };
+    if (existing)
+      return {
+        baseUrl: `http://127.0.0.1:${existing.handle.port}`,
+        token: existing.token,
+      };
 
     const token = this.opts.mintToken(agent);
     const port = await this.allocatePort();
@@ -120,7 +125,10 @@ export class ProcessLauncher implements RuntimeLauncher {
       token,
       port,
       ...(cred
-        ? { sandboxToken: cred.mintSandboxToken(agent), controlPlaneUrl: cred.controlPlaneUrl }
+        ? {
+            sandboxToken: cred.mintSandboxToken(agent),
+            controlPlaneUrl: cred.controlPlaneUrl,
+          }
         : {}),
     });
     this.running.set(agent.id, { handle, token });

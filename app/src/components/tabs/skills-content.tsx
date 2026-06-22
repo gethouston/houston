@@ -88,7 +88,11 @@ export function SkillsContent({
           {t("grid.descriptionShort")}
         </p>
         {addDialogProps && (
-          <Button size="sm" onClick={() => setDialogOpen(true)} className="shrink-0">
+          <Button
+            size="sm"
+            onClick={() => setDialogOpen(true)}
+            className="shrink-0"
+          >
             <Plus className="size-3.5" />
             {t("grid.addSkill")}
           </Button>

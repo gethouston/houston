@@ -1,9 +1,4 @@
-import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogTitle,
-} from "@houston-ai/core";
+import { Button, Dialog, DialogContent, DialogTitle } from "@houston-ai/core";
 
 interface MissionIntroModalProps {
   /** Visible while the user hasn't kicked off the mission yet. */

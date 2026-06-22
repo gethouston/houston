@@ -64,7 +64,10 @@ export async function generateTitle(opts: {
 
   let text = "";
   const unsub = session.subscribe((e: any) => {
-    if (e.type === "message_update" && e.assistantMessageEvent?.type === "text_delta") {
+    if (
+      e.type === "message_update" &&
+      e.assistantMessageEvent?.type === "text_delta"
+    ) {
       text += e.assistantMessageEvent.delta ?? "";
     }
   });
@@ -85,17 +88,29 @@ export async function generateTitle(opts: {
  * real LLM title instead of a client-side truncation. Returns "" for empty
  * input or when the model emits nothing (the caller falls back to truncation).
  */
-export async function titleFromText(text: string, model = resolveModel()): Promise<string> {
+export async function titleFromText(
+  text: string,
+  model = resolveModel(),
+): Promise<string> {
   const excerpt = text.trim().slice(0, 2400);
   if (!excerpt) return "";
-  return generateTitle({ cwd: config.workspaceDir, model, authStorage, modelRegistry, excerpt });
+  return generateTitle({
+    cwd: config.workspaceDir,
+    model,
+    authStorage,
+    modelRegistry,
+    excerpt,
+  });
 }
 
 /**
  * Summarize a conversation into a short title and persist it. Returns the new
  * title, or null when the conversation does not exist or is empty.
  */
-export async function summarizeTitle(id: string, model = resolveModel()): Promise<string | null> {
+export async function summarizeTitle(
+  id: string,
+  model = resolveModel(),
+): Promise<string | null> {
   const history = getHistory(id);
   if (!history || history.messages.length === 0) return null;
 

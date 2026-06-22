@@ -13,14 +13,18 @@ test("the prompt carries the interaction gates + Houston context", () => {
   expect(p).toContain("# Load Relevant Guidance");
   expect(p).toContain("Classify the request");
   expect(p).toContain("Routine request");
-  expect(p).toContain("Ask for explicit approval before work that will change persistent user data");
+  expect(p).toContain(
+    "Ask for explicit approval before work that will change persistent user data",
+  );
 });
 
 test("routine guidance maps recurring requests to routines + names the file", () => {
   const p = houstonSystemPrompt();
   expect(p).toContain("## How-To Guidance: Routines");
   expect(p).toContain('explicitly says "routine"');
-  expect(p).toContain("Ask for approval before creating, enabling, or changing a Routine");
+  expect(p).toContain(
+    "Ask for approval before creating, enabling, or changing a Routine",
+  );
   // The actionable bit the agent was missing: where routines are persisted.
   expect(p).toContain(".houston/routines/routines.json");
 });

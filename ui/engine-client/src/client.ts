@@ -196,18 +196,25 @@ export class HoustonClient {
    * the workspace record, so every client of this engine shares the value.
    */
   setWorkspaceLocale(id: string, locale: string | null): Promise<Workspace> {
-    return this.request("PATCH", `/workspaces/${this.seg(id)}/locale`, { locale });
+    return this.request("PATCH", `/workspaces/${this.seg(id)}/locale`, {
+      locale,
+    });
   }
   setWorkspaceProvider(id: string, req: UpdateProvider): Promise<Workspace> {
     return this.request("PATCH", `/workspaces/${this.seg(id)}/provider`, req);
   }
-  installWorkspaceFromGithub(req: InstallFromGithub): Promise<ImportedWorkspace> {
+  installWorkspaceFromGithub(
+    req: InstallFromGithub,
+  ): Promise<ImportedWorkspace> {
     return this.request("POST", "/workspaces/install-from-github", req);
   }
   getWorkspaceContext(id: string): Promise<WorkspaceContext> {
     return this.request("GET", `/workspaces/${this.seg(id)}/context`);
   }
-  setWorkspaceContext(id: string, body: WorkspaceContext): Promise<WorkspaceContext> {
+  setWorkspaceContext(
+    id: string,
+    body: WorkspaceContext,
+  ): Promise<WorkspaceContext> {
     return this.request("PUT", `/workspaces/${this.seg(id)}/context`, body);
   }
 
@@ -216,8 +223,15 @@ export class HoustonClient {
   listAgents(workspaceId: string): Promise<Agent[]> {
     return this.request("GET", `/workspaces/${this.seg(workspaceId)}/agents`);
   }
-  createAgent(workspaceId: string, req: CreateAgent): Promise<CreateAgentResult> {
-    return this.request("POST", `/workspaces/${this.seg(workspaceId)}/agents`, req);
+  createAgent(
+    workspaceId: string,
+    req: CreateAgent,
+  ): Promise<CreateAgentResult> {
+    return this.request(
+      "POST",
+      `/workspaces/${this.seg(workspaceId)}/agents`,
+      req,
+    );
   }
   deleteAgent(workspaceId: string, agentId: string): Promise<void> {
     return this.request(
@@ -225,14 +239,22 @@ export class HoustonClient {
       `/workspaces/${this.seg(workspaceId)}/agents/${this.seg(agentId)}`,
     );
   }
-  renameAgent(workspaceId: string, agentId: string, newName: string): Promise<Agent> {
+  renameAgent(
+    workspaceId: string,
+    agentId: string,
+    newName: string,
+  ): Promise<Agent> {
     return this.request(
       "POST",
       `/workspaces/${this.seg(workspaceId)}/agents/${this.seg(agentId)}/rename`,
       { newName },
     );
   }
-  updateAgent(workspaceId: string, agentId: string, req: UpdateAgent): Promise<Agent> {
+  updateAgent(
+    workspaceId: string,
+    agentId: string,
+    req: UpdateAgent,
+  ): Promise<Agent> {
     return this.request(
       "PATCH",
       `/workspaces/${this.seg(workspaceId)}/agents/${this.seg(agentId)}`,
@@ -248,7 +270,11 @@ export class HoustonClient {
       rel_path: relPath,
     }).then((r) => r.content);
   }
-  writeAgentFile(agentPath: string, relPath: string, content: string): Promise<void> {
+  writeAgentFile(
+    agentPath: string,
+    relPath: string,
+    content: string,
+  ): Promise<void> {
     return this.request("POST", "/agents/files/write", {
       agent_path: agentPath,
       rel_path: relPath,
@@ -256,22 +282,32 @@ export class HoustonClient {
     });
   }
   seedAgentSchemas(agentPath: string): Promise<void> {
-    return this.request("POST", "/agents/files/seed-schemas", { agent_path: agentPath });
+    return this.request("POST", "/agents/files/seed-schemas", {
+      agent_path: agentPath,
+    });
   }
   migrateAgentFiles(agentPath: string): Promise<void> {
-    return this.request("POST", "/agents/files/migrate", { agent_path: agentPath });
+    return this.request("POST", "/agents/files/migrate", {
+      agent_path: agentPath,
+    });
   }
 
   // ---------- project files (browser) ----------
 
   listProjectFiles(agentPath: string): Promise<ProjectFile[]> {
-    return this.request("GET", "/agents/files", undefined, { agent_path: agentPath });
+    return this.request("GET", "/agents/files", undefined, {
+      agent_path: agentPath,
+    });
   }
   readProjectFile(agentPath: string, relPath: string): Promise<string> {
-    return this.request<{ content: string }>("POST", "/agents/files/read-project", {
-      agent_path: agentPath,
-      rel_path: relPath,
-    }).then((r) => r.content);
+    return this.request<{ content: string }>(
+      "POST",
+      "/agents/files/read-project",
+      {
+        agent_path: agentPath,
+        rel_path: relPath,
+      },
+    ).then((r) => r.content);
   }
   /** Raw bytes of a project file (binary-safe) plus its served MIME type. */
   async downloadProjectFile(
@@ -287,10 +323,15 @@ export class HoustonClient {
     }
     return {
       blob: await res.blob(),
-      contentType: res.headers.get("content-type") ?? "application/octet-stream",
+      contentType:
+        res.headers.get("content-type") ?? "application/octet-stream",
     };
   }
-  renameFile(agentPath: string, relPath: string, newName: string): Promise<void> {
+  renameFile(
+    agentPath: string,
+    relPath: string,
+    newName: string,
+  ): Promise<void> {
     return this.request("POST", "/agents/files/rename", {
       agent_path: agentPath,
       rel_path: relPath,
@@ -303,7 +344,10 @@ export class HoustonClient {
       rel_path: relPath,
     });
   }
-  createFolder(agentPath: string, folderName: string): Promise<{ created: string }> {
+  createFolder(
+    agentPath: string,
+    folderName: string,
+  ): Promise<{ created: string }> {
     return this.request("POST", "/agents/files/folder", {
       agent_path: agentPath,
       folder_name: folderName,
@@ -335,48 +379,78 @@ export class HoustonClient {
   // ---------- agents: activities ----------
 
   listActivities(agentPath: string): Promise<Activity[]> {
-    return this.request("GET", "/agents/activities", undefined, { agent_path: agentPath });
+    return this.request("GET", "/agents/activities", undefined, {
+      agent_path: agentPath,
+    });
   }
   createActivity(agentPath: string, input: NewActivity): Promise<Activity> {
-    return this.request("POST", "/agents/activities", input, { agent_path: agentPath });
+    return this.request("POST", "/agents/activities", input, {
+      agent_path: agentPath,
+    });
   }
   updateActivity(
     agentPath: string,
     id: string,
     updates: ActivityUpdate,
   ): Promise<Activity> {
-    return this.request("PATCH", `/agents/activities/${this.seg(id)}`, updates, {
-      agent_path: agentPath,
-    });
+    return this.request(
+      "PATCH",
+      `/agents/activities/${this.seg(id)}`,
+      updates,
+      {
+        agent_path: agentPath,
+      },
+    );
   }
   deleteActivity(agentPath: string, id: string): Promise<void> {
-    return this.request("DELETE", `/agents/activities/${this.seg(id)}`, undefined, {
-      agent_path: agentPath,
-    });
+    return this.request(
+      "DELETE",
+      `/agents/activities/${this.seg(id)}`,
+      undefined,
+      {
+        agent_path: agentPath,
+      },
+    );
   }
 
   // ---------- agents: routines ----------
 
   listRoutines(agentPath: string): Promise<Routine[]> {
-    return this.request("GET", "/agents/routines", undefined, { agent_path: agentPath });
+    return this.request("GET", "/agents/routines", undefined, {
+      agent_path: agentPath,
+    });
   }
   createRoutine(agentPath: string, input: NewRoutine): Promise<Routine> {
-    return this.request("POST", "/agents/routines", input, { agent_path: agentPath });
+    return this.request("POST", "/agents/routines", input, {
+      agent_path: agentPath,
+    });
   }
-  updateRoutine(agentPath: string, id: string, updates: RoutineUpdate): Promise<Routine> {
+  updateRoutine(
+    agentPath: string,
+    id: string,
+    updates: RoutineUpdate,
+  ): Promise<Routine> {
     return this.request("PATCH", `/agents/routines/${this.seg(id)}`, updates, {
       agent_path: agentPath,
     });
   }
   deleteRoutine(agentPath: string, id: string): Promise<void> {
-    return this.request("DELETE", `/agents/routines/${this.seg(id)}`, undefined, {
-      agent_path: agentPath,
-    });
+    return this.request(
+      "DELETE",
+      `/agents/routines/${this.seg(id)}`,
+      undefined,
+      {
+        agent_path: agentPath,
+      },
+    );
   }
 
   // ---------- agents: routine runs ----------
 
-  listRoutineRuns(agentPath: string, routineId?: string): Promise<RoutineRun[]> {
+  listRoutineRuns(
+    agentPath: string,
+    routineId?: string,
+  ): Promise<RoutineRun[]> {
     return this.request("GET", "/agents/routine-runs", undefined, {
       agent_path: agentPath,
       routine_id: routineId,
@@ -395,18 +469,30 @@ export class HoustonClient {
     id: string,
     updates: RoutineRunUpdate,
   ): Promise<RoutineRun> {
-    return this.request("PATCH", `/agents/routine-runs/${this.seg(id)}`, updates, {
-      agent_path: agentPath,
-    });
+    return this.request(
+      "PATCH",
+      `/agents/routine-runs/${this.seg(id)}`,
+      updates,
+      {
+        agent_path: agentPath,
+      },
+    );
   }
 
   // ---------- agents: config ----------
 
   getAgentConfig(agentPath: string): Promise<ProjectConfig> {
-    return this.request("GET", "/agents/config", undefined, { agent_path: agentPath });
+    return this.request("GET", "/agents/config", undefined, {
+      agent_path: agentPath,
+    });
   }
-  setAgentConfig(agentPath: string, config: ProjectConfig): Promise<ProjectConfig> {
-    return this.request("PUT", "/agents/config", config, { agent_path: agentPath });
+  setAgentConfig(
+    agentPath: string,
+    config: ProjectConfig,
+  ): Promise<ProjectConfig> {
+    return this.request("PUT", "/agents/config", config, {
+      agent_path: agentPath,
+    });
   }
 
   // ---------- agent configs (installed manifests) ----------
@@ -430,7 +516,9 @@ export class HoustonClient {
     return this.request("GET", "/skills", undefined, { workspacePath });
   }
   loadSkill(workspacePath: string, name: string): Promise<SkillDetail> {
-    return this.request("GET", `/skills/${this.seg(name)}`, undefined, { workspacePath });
+    return this.request("GET", `/skills/${this.seg(name)}`, undefined, {
+      workspacePath,
+    });
   }
   createSkill(req: CreateSkillRequest): Promise<void> {
     return this.request("POST", "/skills", req);
@@ -439,30 +527,69 @@ export class HoustonClient {
     return this.request("PUT", `/skills/${this.seg(name)}`, req);
   }
   deleteSkill(workspacePath: string, name: string): Promise<void> {
-    return this.request("DELETE", `/skills/${this.seg(name)}`, undefined, { workspacePath });
+    return this.request("DELETE", `/skills/${this.seg(name)}`, undefined, {
+      workspacePath,
+    });
   }
-  searchCommunitySkills(query: string, signal?: AbortSignal): Promise<CommunitySkill[]> {
-    return this.request("POST", "/skills/community/search", { query }, undefined, signal);
+  searchCommunitySkills(
+    query: string,
+    signal?: AbortSignal,
+  ): Promise<CommunitySkill[]> {
+    return this.request(
+      "POST",
+      "/skills/community/search",
+      { query },
+      undefined,
+      signal,
+    );
   }
   popularCommunitySkills(signal?: AbortSignal): Promise<CommunitySkill[]> {
-    return this.request("POST", "/skills/community/popular", undefined, undefined, signal);
+    return this.request(
+      "POST",
+      "/skills/community/popular",
+      undefined,
+      undefined,
+      signal,
+    );
   }
-  installCommunitySkill(req: InstallCommunityRequest, signal?: AbortSignal): Promise<string> {
-    return this.request("POST", "/skills/community/install", req, undefined, signal);
+  installCommunitySkill(
+    req: InstallCommunityRequest,
+    signal?: AbortSignal,
+  ): Promise<string> {
+    return this.request(
+      "POST",
+      "/skills/community/install",
+      req,
+      undefined,
+      signal,
+    );
   }
-  listSkillsFromRepo(source: string, signal?: AbortSignal): Promise<RepoSkill[]> {
-    return this.request("POST", "/skills/repo/list", { source }, undefined, signal);
+  listSkillsFromRepo(
+    source: string,
+    signal?: AbortSignal,
+  ): Promise<RepoSkill[]> {
+    return this.request(
+      "POST",
+      "/skills/repo/list",
+      { source },
+      undefined,
+      signal,
+    );
   }
-  installSkillsFromRepo(req: InstallFromRepoRequest, signal?: AbortSignal): Promise<string[]> {
+  installSkillsFromRepo(
+    req: InstallFromRepoRequest,
+    signal?: AbortSignal,
+  ): Promise<string[]> {
     return this.request("POST", "/skills/repo/install", req, undefined, signal);
   }
 
   // ---------- preferences ----------
 
   getPreference(key: string): Promise<string | null> {
-    return this.request<PreferenceValue>("GET", `/preferences/${this.seg(key)}`).then(
-      (r) => r.value,
-    );
+    return this.request<PreferenceValue>(
+      "GET",
+      `/preferences/${this.seg(key)}`,
+    ).then((r) => r.value);
   }
   setPreference(key: string, value: string): Promise<void> {
     return this.request("PUT", `/preferences/${this.seg(key)}`, { value });
@@ -615,7 +742,9 @@ export class HoustonClient {
         }
       }
     };
-    const workers = Array.from({ length: Math.min(3, files.length) }, () => worker());
+    const workers = Array.from({ length: Math.min(3, files.length) }, () =>
+      worker(),
+    );
     await Promise.all(workers);
     if (firstError !== undefined) throw firstError;
   }
@@ -671,26 +800,38 @@ export class HoustonClient {
   ): Promise<SessionStartResponse> {
     return this.request("POST", `/agents/${this.seg(agentPath)}/sessions`, req);
   }
-  cancelSession(agentPath: string, sessionKey: string): Promise<SessionCancelResponse> {
+  cancelSession(
+    agentPath: string,
+    sessionKey: string,
+  ): Promise<SessionCancelResponse> {
     return this.request(
       "POST",
       `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}:cancel`,
     );
   }
-  startOnboarding(agentPath: string, sessionKey: string): Promise<SessionStartResponse> {
+  startOnboarding(
+    agentPath: string,
+    sessionKey: string,
+  ): Promise<SessionStartResponse> {
     return this.request(
       "POST",
       `/agents/${this.seg(agentPath)}/sessions/onboarding`,
       { sessionKey },
     );
   }
-  loadChatHistory(agentPath: string, sessionKey: string): Promise<ChatHistoryEntry[]> {
+  loadChatHistory(
+    agentPath: string,
+    sessionKey: string,
+  ): Promise<ChatHistoryEntry[]> {
     return this.request(
       "GET",
       `/agents/${this.seg(agentPath)}/sessions/${this.seg(sessionKey)}/history`,
     );
   }
-  summarizeActivity(message: string, opts: SummarizeOptions = {}): Promise<SummarizeResult> {
+  summarizeActivity(
+    message: string,
+    opts: SummarizeOptions = {},
+  ): Promise<SummarizeResult> {
     return this.request("POST", "/sessions/summarize", {
       message,
       agentPath: opts.agentPath,
@@ -715,9 +856,14 @@ export class HoustonClient {
   // ---------- routine scheduler ----------
 
   runRoutineNow(agentPath: string, routineId: string): Promise<void> {
-    return this.request("POST", `/routines/${this.seg(routineId)}/run-now`, undefined, {
-      agentPath,
-    });
+    return this.request(
+      "POST",
+      `/routines/${this.seg(routineId)}/run-now`,
+      undefined,
+      {
+        agentPath,
+      },
+    );
   }
   cancelRoutineRun(
     agentPath: string,
@@ -732,13 +878,19 @@ export class HoustonClient {
     );
   }
   startRoutineScheduler(agentPath: string): Promise<void> {
-    return this.request("POST", "/routines/scheduler/start", undefined, { agentPath });
+    return this.request("POST", "/routines/scheduler/start", undefined, {
+      agentPath,
+    });
   }
   stopRoutineScheduler(agentPath: string): Promise<void> {
-    return this.request("POST", "/routines/scheduler/stop", undefined, { agentPath });
+    return this.request("POST", "/routines/scheduler/stop", undefined, {
+      agentPath,
+    });
   }
   syncRoutineScheduler(agentPath: string): Promise<void> {
-    return this.request("POST", "/routines/scheduler/sync", undefined, { agentPath });
+    return this.request("POST", "/routines/scheduler/sync", undefined, {
+      agentPath,
+    });
   }
 
   // ---------- agent file watcher ----------
@@ -778,9 +930,10 @@ export class HoustonClient {
     return this.request("GET", "/composio/status");
   }
   composioCliInstalled(): Promise<boolean> {
-    return this.request<{ installed: boolean }>("GET", "/composio/cli-installed").then(
-      (r) => r.installed,
-    );
+    return this.request<{ installed: boolean }>(
+      "GET",
+      "/composio/cli-installed",
+    ).then((r) => r.installed);
   }
   composioInstallCli(): Promise<void> {
     return this.request("POST", "/composio/cli");
@@ -805,7 +958,9 @@ export class HoustonClient {
   }
   /** Disconnect a toolkit: removes its connected account(s). */
   composioDisconnect(toolkit: string): Promise<void> {
-    return this.request("POST", "/composio/connections/disconnect", { toolkit });
+    return this.request("POST", "/composio/connections/disconnect", {
+      toolkit,
+    });
   }
   /**
    * Reconnect a toolkit by refreshing its auth. Resolves to a browser URL
@@ -885,7 +1040,10 @@ export class HoustonClient {
 }
 
 export class HoustonEngineError extends Error {
-  constructor(public status: number, public body: ErrorBody | null) {
+  constructor(
+    public status: number,
+    public body: ErrorBody | null,
+  ) {
     super(body?.error.message ?? `Engine error ${status}`);
     this.name = "HoustonEngineError";
   }

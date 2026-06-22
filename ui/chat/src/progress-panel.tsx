@@ -18,7 +18,10 @@ export interface ProgressPanelProps {
   title?: string;
 }
 
-export function ProgressPanel({ steps, title = "Working on" }: ProgressPanelProps) {
+export function ProgressPanel({
+  steps,
+  title = "Working on",
+}: ProgressPanelProps) {
   const doneCount = steps.filter((s) => s.status === "done").length;
   const total = steps.length;
 
@@ -61,10 +64,16 @@ function StepRow({ step }: { step: ProgressStep }) {
           </div>
         )}
         {step.status === "active" && (
-          <Loader2 className="size-5 text-foreground/60 animate-spin" strokeWidth={1.5} />
+          <Loader2
+            className="size-5 text-foreground/60 animate-spin"
+            strokeWidth={1.5}
+          />
         )}
         {step.status === "pending" && (
-          <Circle className="size-5 text-muted-foreground/25" strokeWidth={1.5} />
+          <Circle
+            className="size-5 text-muted-foreground/25"
+            strokeWidth={1.5}
+          />
         )}
       </div>
       <p

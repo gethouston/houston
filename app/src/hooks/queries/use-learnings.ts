@@ -9,7 +9,11 @@ export function useLearnings(agentPath: string | undefined) {
     enabled: !!agentPath,
   });
   // Adapt to legacy `{ index, text }[]` shape so existing UIs keep working.
-  const entries = (q.data ?? []).map((l, index) => ({ index, text: l.text, id: l.id }));
+  const entries = (q.data ?? []).map((l, index) => ({
+    index,
+    text: l.text,
+    id: l.id,
+  }));
   return { data: { entries }, isLoading: q.isLoading };
 }
 
@@ -18,7 +22,8 @@ export function useAddLearning(agentPath: string | undefined) {
   return useMutation({
     mutationFn: (text: string) => learnings.add(agentPath!, text),
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.learnings(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.learnings(agentPath) });
     },
   });
 }
@@ -33,7 +38,8 @@ export function useRemoveLearning(agentPath: string | undefined) {
       await learnings.remove(agentPath!, target.id);
     },
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.learnings(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.learnings(agentPath) });
     },
   });
 }
@@ -44,7 +50,8 @@ export function useUpdateLearning(agentPath: string | undefined) {
     mutationFn: ({ id, text }: { id: string; text: string }) =>
       learnings.update(agentPath!, id, text),
     onSuccess: () => {
-      if (agentPath) qc.invalidateQueries({ queryKey: queryKeys.learnings(agentPath) });
+      if (agentPath)
+        qc.invalidateQueries({ queryKey: queryKeys.learnings(agentPath) });
     },
   });
 }

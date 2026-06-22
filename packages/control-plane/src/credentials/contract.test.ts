@@ -24,7 +24,9 @@ import { FileCredentialStore } from "./file-store";
  *     is integration territory. Marked with a test.todo below so the gap is
  *     explicit, never silent.
  */
-const cred = (over: Partial<WorkspaceCredential> = {}): WorkspaceCredential => ({
+const cred = (
+  over: Partial<WorkspaceCredential> = {},
+): WorkspaceCredential => ({
   workspaceId: "ws_1",
   provider: "openai-codex",
   accessToken: "at",
@@ -33,7 +35,10 @@ const cred = (over: Partial<WorkspaceCredential> = {}): WorkspaceCredential => (
   ...over,
 });
 
-function runCredentialStoreContract(name: string, make: () => CredentialStore): void {
+function runCredentialStoreContract(
+  name: string,
+  make: () => CredentialStore,
+): void {
   describe(`CredentialStore contract: ${name}`, () => {
     test("get is null before a put", async () => {
       const s = make();
@@ -51,7 +56,13 @@ function runCredentialStoreContract(name: string, make: () => CredentialStore): 
     test("put on the same (workspace, provider) overwrites in place (refresh)", async () => {
       const s = make();
       await s.put(cred());
-      await s.put(cred({ accessToken: "at2", refreshToken: "rt2", expiresAt: 1_950_000_000_000 }));
+      await s.put(
+        cred({
+          accessToken: "at2",
+          refreshToken: "rt2",
+          expiresAt: 1_950_000_000_000,
+        }),
+      );
       const got = await s.get("ws_1", "openai-codex");
       expect(got?.accessToken).toBe("at2");
       expect(got?.refreshToken).toBe("rt2");
@@ -62,7 +73,9 @@ function runCredentialStoreContract(name: string, make: () => CredentialStore): 
       const s = make();
       await s.put(cred({ workspaceId: "ws_a" }));
       await s.put(cred({ workspaceId: "ws_b", accessToken: "bb" }));
-      await s.put(cred({ workspaceId: "ws_a", provider: "anthropic", accessToken: "an" }));
+      await s.put(
+        cred({ workspaceId: "ws_a", provider: "anthropic", accessToken: "an" }),
+      );
 
       expect((await s.get("ws_a", "openai-codex"))?.accessToken).toBe("at");
       expect((await s.get("ws_b", "openai-codex"))?.accessToken).toBe("bb");
@@ -91,10 +104,16 @@ function runCredentialStoreContract(name: string, make: () => CredentialStore): 
   });
 }
 
-runCredentialStoreContract("MemoryCredentialStore", () => new MemoryCredentialStore());
+runCredentialStoreContract(
+  "MemoryCredentialStore",
+  () => new MemoryCredentialStore(),
+);
 runCredentialStoreContract(
   "FileCredentialStore",
-  () => new FileCredentialStore(join(mkdtempSync(join(tmpdir(), "houston-cred-contract-")), "creds.json")),
+  () =>
+    new FileCredentialStore(
+      join(mkdtempSync(join(tmpdir(), "houston-cred-contract-")), "creds.json"),
+    ),
 );
 
 // PgCredentialStore: behavioral contract needs a live Postgres + the
@@ -108,10 +127,15 @@ test.todo("CredentialStore contract: PgCredentialStore (needs a live Postgres â€
 // here (not in the contract) since MemoryCredentialStore intentionally does NOT
 // persist.
 test("FileCredentialStore persists across re-open (a login survives a restart)", async () => {
-  const path = join(mkdtempSync(join(tmpdir(), "houston-cred-persist-")), "creds.json");
+  const path = join(
+    mkdtempSync(join(tmpdir(), "houston-cred-persist-")),
+    "creds.json",
+  );
   const first = new FileCredentialStore(path);
   await first.put(cred({ accountId: "acct-9" }));
 
   const reopened = new FileCredentialStore(path);
-  expect((await reopened.get("ws_1", "openai-codex"))?.accountId).toBe("acct-9");
+  expect((await reopened.get("ws_1", "openai-codex"))?.accountId).toBe(
+    "acct-9",
+  );
 });

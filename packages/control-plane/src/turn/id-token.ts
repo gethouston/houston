@@ -12,7 +12,9 @@ const METADATA_IDENTITY_URL =
 function tokenExpiryMs(jwt: string): number {
   try {
     const payload = jwt.split(".")[1] ?? "";
-    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
+    const claims = JSON.parse(
+      Buffer.from(payload, "base64url").toString("utf8"),
+    ) as {
       exp?: number;
     };
     return typeof claims.exp === "number" ? claims.exp * 1000 : 0;
@@ -22,16 +24,22 @@ function tokenExpiryMs(jwt: string): number {
 }
 
 /** Caching ID-token provider for one audience (refreshes 5 min before expiry). */
-export function makeIdTokenProvider(audience: string): () => Promise<string | null> {
+export function makeIdTokenProvider(
+  audience: string,
+): () => Promise<string | null> {
   let cached: { token: string; expiresMs: number } | null = null;
 
   return async () => {
-    if (cached && Date.now() < cached.expiresMs - 5 * 60_000) return cached.token;
+    if (cached && Date.now() < cached.expiresMs - 5 * 60_000)
+      return cached.token;
     let res: Response;
     try {
       res = await fetch(
         `${METADATA_IDENTITY_URL}?audience=${encodeURIComponent(audience)}&format=full`,
-        { headers: { "Metadata-Flavor": "Google" }, signal: AbortSignal.timeout(1500) },
+        {
+          headers: { "Metadata-Flavor": "Google" },
+          signal: AbortSignal.timeout(1500),
+        },
       );
     } catch {
       return null; // no metadata server: dev machine. IAM enforcement is server-side.

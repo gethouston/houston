@@ -205,7 +205,11 @@
           /* fall through to selection fallback */
         }
         var pre = root.querySelector("#houston-gate-diagnostics");
-        if (pre && typeof getSelection === "function" && typeof document.createRange === "function") {
+        if (
+          pre &&
+          typeof getSelection === "function" &&
+          typeof document.createRange === "function"
+        ) {
           var range = document.createRange();
           range.selectNodeContents(pre);
           var sel = getSelection();
@@ -282,14 +286,18 @@
   if (!isModernEngineSupported(RegExp)) {
     var unsupportedRoot = document.getElementById("root");
     if (unsupportedRoot) {
-      renderUnsupportedScreen(unsupportedRoot, MESSAGES[pickLanguage(navigator.language)]);
+      renderUnsupportedScreen(
+        unsupportedRoot,
+        MESSAGES[pickLanguage(navigator.language)],
+      );
     }
     return;
   }
 
   // 2) Modern engine — install the crash safety net. window/setTimeout may not
   //    exist in non-browser hosts (Node SSR test harness); degrade silently.
-  if (typeof window === "undefined" || typeof setTimeout === "undefined") return;
+  if (typeof window === "undefined" || typeof setTimeout === "undefined")
+    return;
 
   var firstError = null;
   function rememberError(err) {

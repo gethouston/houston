@@ -21,7 +21,9 @@ export interface AttachmentInvocation {
   files: AttachmentReference[];
 }
 
-export function normalizeAttachmentReferences(value: unknown): AttachmentReference[] {
+export function normalizeAttachmentReferences(
+  value: unknown,
+): AttachmentReference[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
@@ -36,7 +38,9 @@ export function normalizeAttachmentReferences(value: unknown): AttachmentReferen
   });
 }
 
-export function decodeAttachmentMessage(body: string): AttachmentInvocation | null {
+export function decodeAttachmentMessage(
+  body: string,
+): AttachmentInvocation | null {
   const match = body.match(MARKER_RE);
   if (!match) return null;
   try {

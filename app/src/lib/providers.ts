@@ -143,7 +143,10 @@ export function getProvider(id: string): ProviderInfo | undefined {
 }
 
 /** Find the model object for a provider + model id. */
-export function getModel(providerId: string, modelId: string): ModelOption | undefined {
+export function getModel(
+  providerId: string,
+  modelId: string,
+): ModelOption | undefined {
   return getProvider(providerId)?.models.find((m) => m.id === modelId);
 }
 
@@ -189,7 +192,9 @@ export function getContextWindowConfig(
  * selected a provider that is no longer available). Callers chain it
  * with `??` to fall through to the next tier of preference.
  */
-export function validProviderOrNull(providerId: string | null | undefined): string | null {
+export function validProviderOrNull(
+  providerId: string | null | undefined,
+): string | null {
   return providerId && getProvider(providerId) ? providerId : null;
 }
 
@@ -204,7 +209,9 @@ export function validModelOrNull(
   providerId: string | null | undefined,
   modelId: string | null | undefined,
 ): string | null {
-  return providerId && modelId && getModel(providerId, modelId) ? modelId : null;
+  return providerId && modelId && getModel(providerId, modelId)
+    ? modelId
+    : null;
 }
 
 /**
@@ -228,7 +235,9 @@ const LEGACY_MODEL_ALIASES: Readonly<Record<string, string>> = {
  * providers' models pass through unchanged; null/undefined returns null so it
  * composes in `??` chains.
  */
-export function normalizeLegacyModel(model: string | null | undefined): string | null {
+export function normalizeLegacyModel(
+  model: string | null | undefined,
+): string | null {
   if (!model) return null;
   // `hasOwnProperty` guard so a hand-edited config with a model like
   // "constructor"/"__proto__" resolves to itself, not an Object.prototype member.
@@ -260,7 +269,8 @@ export function validEffortOrDefault(
 ): EffortLevel | undefined {
   const levels = getEffortLevels(providerId, modelId);
   if (levels.length === 0) return undefined;
-  if (effort && levels.includes(effort as EffortLevel)) return effort as EffortLevel;
+  if (effort && levels.includes(effort as EffortLevel))
+    return effort as EffortLevel;
   return levels.includes(DEFAULT_EFFORT) ? DEFAULT_EFFORT : levels[0];
 }
 

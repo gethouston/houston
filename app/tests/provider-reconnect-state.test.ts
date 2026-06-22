@@ -58,7 +58,10 @@ describe("provider reconnect signal state", () => {
 describe("provider appears connected (settings card)", () => {
   it("treats authenticated as connected", () => {
     strictEqual(
-      providerAppearsConnected({ cli_installed: true, auth_state: "authenticated" }),
+      providerAppearsConnected({
+        cli_installed: true,
+        auth_state: "authenticated",
+      }),
       true,
     );
   });
@@ -72,7 +75,10 @@ describe("provider appears connected (settings card)", () => {
 
   it("treats confirmed unauthenticated as disconnected", () => {
     strictEqual(
-      providerAppearsConnected({ cli_installed: true, auth_state: "unauthenticated" }),
+      providerAppearsConnected({
+        cli_installed: true,
+        auth_state: "unauthenticated",
+      }),
       false,
     );
   });
@@ -83,7 +89,10 @@ describe("provider appears connected (settings card)", () => {
       false,
     );
     strictEqual(
-      providerAppearsConnected({ cli_installed: false, auth_state: "authenticated" }),
+      providerAppearsConnected({
+        cli_installed: false,
+        auth_state: "authenticated",
+      }),
       false,
     );
   });

@@ -37,14 +37,23 @@ export default defineConfig(({ mode }) => {
           ? [
               {
                 find: "@houston-ai/engine-client",
-                replacement: path.resolve(__dirname, "src/engine-adapter/index.ts"),
+                replacement: path.resolve(
+                  __dirname,
+                  "src/engine-adapter/index.ts",
+                ),
               },
             ]
           : []),
         { find: "@tauri-apps/api/core", replacement: shim("tauri-core.ts") },
         { find: "@tauri-apps/api/event", replacement: shim("tauri-event.ts") },
-        { find: "@tauri-apps/api/window", replacement: shim("tauri-window.ts") },
-        { find: "@tauri-apps/plugin-updater", replacement: shim("tauri-plugin-updater.ts") },
+        {
+          find: "@tauri-apps/api/window",
+          replacement: shim("tauri-window.ts"),
+        },
+        {
+          find: "@tauri-apps/plugin-updater",
+          replacement: shim("tauri-plugin-updater.ts"),
+        },
         {
           find: "@tauri-apps/plugin-notification",
           replacement: shim("tauri-plugin-notification.ts"),

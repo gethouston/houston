@@ -36,7 +36,8 @@ export interface FeedbackSender {
 // Formatting (port of bug_report/format.rs)
 // ---------------------------------------------------------------------------
 
-const collapseWhitespace = (s: string): string => s.split(/\s+/).filter(Boolean).join(" ");
+const collapseWhitespace = (s: string): string =>
+  s.split(/\s+/).filter(Boolean).join(" ");
 
 const truncateChars = (s: string, max: number): string =>
   s.length <= max ? s : `${s.slice(0, Math.max(0, max - 3))}...`;
@@ -45,7 +46,10 @@ const truncateStart = (s: string, max: number): string =>
   s.length <= max ? s : `...\n${s.slice(s.length - Math.max(0, max - 4))}`;
 
 function codeBlock(language: string, content: string): string {
-  const longestRun = Math.max(0, ...content.split(/[^`]+/).map((r) => r.length));
+  const longestRun = Math.max(
+    0,
+    ...content.split(/[^`]+/).map((r) => r.length),
+  );
   const fence = "`".repeat(Math.max(3, longestRun + 1));
   return `${fence}${language}\n${content}\n${fence}\n`;
 }
@@ -55,10 +59,18 @@ export function formatIssueTitle(p: FeedbackPayload): string {
   if (message) return truncateChars(`Houston feedback: ${message}`, 140);
   const command = collapseWhitespace(p.command);
   const summary = collapseWhitespace(p.error.split("\n")[0] ?? "");
-  return truncateChars(summary ? `Houston bug: ${command} - ${summary}` : `Houston bug: ${command}`, 140);
+  return truncateChars(
+    summary
+      ? `Houston bug: ${command} - ${summary}`
+      : `Houston bug: ${command}`,
+    140,
+  );
 }
 
-export function formatIssueDescription(p: FeedbackPayload, userId: string): string {
+export function formatIssueDescription(
+  p: FeedbackPayload,
+  userId: string,
+): string {
   let d = "";
   const message = (p.userMessage ?? "").trim();
   if (message) d += `## What the user said\n\n${message}\n\n`;
@@ -77,8 +89,10 @@ export function formatIssueDescription(p: FeedbackPayload, userId: string): stri
   line("Workspace", p.workspaceName);
   const backend = p.logs?.backend ?? "";
   const frontend = p.logs?.frontend ?? "";
-  if (backend) d += `\n## Backend Logs (last 50 lines)\n\n${codeBlock("text", truncateStart(backend, MAX_LOG_CHARS))}`;
-  if (frontend) d += `\n## Frontend Logs (last 50 lines)\n\n${codeBlock("text", truncateStart(frontend, MAX_LOG_CHARS))}`;
+  if (backend)
+    d += `\n## Backend Logs (last 50 lines)\n\n${codeBlock("text", truncateStart(backend, MAX_LOG_CHARS))}`;
+  if (frontend)
+    d += `\n## Frontend Logs (last 50 lines)\n\n${codeBlock("text", truncateStart(frontend, MAX_LOG_CHARS))}`;
   return d;
 }
 
@@ -118,36 +132,53 @@ export class LinearFeedbackSender implements FeedbackSender {
   private async graphql<T>(query: string, variables: unknown): Promise<T> {
     const res = await fetch(this.cfg.apiUrl ?? LINEAR_API_URL, {
       method: "POST",
-      headers: { Authorization: this.cfg.apiKey, "Content-Type": "application/json" },
+      headers: {
+        Authorization: this.cfg.apiKey,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ query, variables }),
     });
     if (!res.ok) {
       const body = (await res.text().catch(() => "")).trim();
-      throw new Error(`Linear API failed: ${res.status}${body ? ` ${truncateChars(body, 160)}` : ""}`);
+      throw new Error(
+        `Linear API failed: ${res.status}${body ? ` ${truncateChars(body, 160)}` : ""}`,
+      );
     }
-    const parsed = (await res.json()) as { data?: T; errors?: { message: string }[] };
+    const parsed = (await res.json()) as {
+      data?: T;
+      errors?: { message: string }[];
+    };
     if (parsed.errors?.length) {
-      throw new Error(`Linear API returned GraphQL errors: ${parsed.errors.map((e) => e.message).join("; ")}`);
+      throw new Error(
+        `Linear API returned GraphQL errors: ${parsed.errors.map((e) => e.message).join("; ")}`,
+      );
     }
-    if (!parsed.data) throw new Error("Linear API response did not include data");
+    if (!parsed.data)
+      throw new Error("Linear API response did not include data");
     return parsed.data;
   }
 
   private async resolveLabelId(): Promise<string> {
-    const data = await this.graphql<{ team: { labels: { nodes: { id: string; name: string }[] } } | null }>(
-      LABEL_QUERY,
-      { teamId: this.cfg.teamId, labelName: this.cfg.labelName },
+    const data = await this.graphql<{
+      team: { labels: { nodes: { id: string; name: string }[] } } | null;
+    }>(LABEL_QUERY, { teamId: this.cfg.teamId, labelName: this.cfg.labelName });
+    if (!data.team)
+      throw new Error(`Linear team not found: ${this.cfg.teamId}`);
+    const label = data.team.labels.nodes.find(
+      (l) => l.name === this.cfg.labelName,
     );
-    if (!data.team) throw new Error(`Linear team not found: ${this.cfg.teamId}`);
-    const label = data.team.labels.nodes.find((l) => l.name === this.cfg.labelName);
-    if (!label) throw new Error(`Linear bug label not found: ${this.cfg.labelName}`);
+    if (!label)
+      throw new Error(`Linear bug label not found: ${this.cfg.labelName}`);
     return label.id;
   }
 
   async send(payload: FeedbackPayload, userId: string): Promise<string | null> {
     const labelId = await this.resolveLabelId();
     const data = await this.graphql<{
-      issueCreate: { success: boolean; issue: { id: string; identifier: string | null } | null } | null;
+      issueCreate: {
+        success: boolean;
+        issue: { id: string; identifier: string | null } | null;
+      } | null;
     }>(ISSUE_CREATE_MUTATION, {
       input: {
         teamId: this.cfg.teamId,
@@ -156,14 +187,18 @@ export class LinearFeedbackSender implements FeedbackSender {
         labelIds: [labelId],
       },
     });
-    if (!data.issueCreate?.success) throw new Error("Linear issue creation failed");
+    if (!data.issueCreate?.success)
+      throw new Error("Linear issue creation failed");
     return data.issueCreate.issue?.identifier ?? null;
   }
 }
 
 /** Parse + bound the untrusted request body into a FeedbackPayload, or throw. */
-export function parseFeedbackPayload(body: Record<string, unknown>): FeedbackPayload {
-  const str = (v: unknown, max: number): string => (typeof v === "string" ? v.slice(0, max) : "");
+export function parseFeedbackPayload(
+  body: Record<string, unknown>,
+): FeedbackPayload {
+  const str = (v: unknown, max: number): string =>
+    typeof v === "string" ? v.slice(0, max) : "";
   const opt = (v: unknown, max: number): string | undefined =>
     typeof v === "string" && v ? v.slice(0, max) : undefined;
   const command = str(body.command, 200);
@@ -177,7 +212,10 @@ export function parseFeedbackPayload(body: Record<string, unknown>): FeedbackPay
     userEmail: opt(body.userEmail, 320),
     timestamp: str(body.timestamp, 64),
     appVersion: str(body.appVersion, 64),
-    logs: { backend: str(logs.backend, 50_000), frontend: str(logs.frontend, 50_000) },
+    logs: {
+      backend: str(logs.backend, 50_000),
+      frontend: str(logs.frontend, 50_000),
+    },
     userMessage: opt(body.userMessage, 10_000),
   };
 }

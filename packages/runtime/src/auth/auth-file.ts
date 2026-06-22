@@ -42,7 +42,12 @@ function writeAuthFile(path: string, contents: Record<string, PiCred>): void {
 
 /** Write a served credential into auth.json — always with an empty refresh field. */
 export function applyServedCredential(path: string, c: ServedCredential): void {
-  const entry: PiCred = { type: "oauth", access: c.access, refresh: "", expires: c.expires };
+  const entry: PiCred = {
+    type: "oauth",
+    access: c.access,
+    refresh: "",
+    expires: c.expires,
+  };
   if (c.accountId) entry.accountId = c.accountId;
   const merged = readAuthFile(path);
   merged[c.provider] = entry;

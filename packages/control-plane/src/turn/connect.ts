@@ -20,7 +20,11 @@ import { MemoryTurnBus, type TurnBus } from "./bus";
  * racing a duplicate login.
  */
 
-export type ConnectInfo = { kind: "device_code"; verificationUri: string; userCode: string };
+export type ConnectInfo = {
+  kind: "device_code";
+  verificationUri: string;
+  userCode: string;
+};
 export type ConnectState = {
   status: "starting" | "awaiting_user" | "complete" | "error";
   info?: ConnectInfo;
@@ -61,9 +65,16 @@ export class ConnectManager {
   }
 
   /** Mirror a transition to the bus so every replica's status() agrees. */
-  private async setState(workspaceId: string, state: ConnectState): Promise<void> {
+  private async setState(
+    workspaceId: string,
+    state: ConnectState,
+  ): Promise<void> {
     this.active.set(workspaceId, state);
-    await this.bus.set(stateKey(workspaceId), JSON.stringify(state), STATE_TTL_SEC);
+    await this.bus.set(
+      stateKey(workspaceId),
+      JSON.stringify(state),
+      STATE_TTL_SEC,
+    );
   }
 
   /** Begin (or resume) a device-code connect for a workspace. */
@@ -84,7 +95,8 @@ export class ConnectManager {
         await new Promise((r) => setTimeout(r, 500));
         const st = await this.status(workspaceId);
         if (st?.info) return st.info;
-        if (st?.status === "error") throw new Error(st.error ?? "connect failed");
+        if (st?.status === "error")
+          throw new Error(st.error ?? "connect failed");
       }
       throw new Error("timed out waiting for the in-progress connect flow");
     }
@@ -115,11 +127,16 @@ export class ConnectManager {
         // providers' flows and must never fire here — failing loudly if they do.
         onAuth: () => {
           state.status = "error";
-          state.error = "unexpected browser-redirect flow during a device-code connect";
+          state.error =
+            "unexpected browser-redirect flow during a device-code connect";
           mirror(state);
         },
         onPrompt: () =>
-          Promise.reject(new Error("unexpected paste-code prompt during a device-code connect")),
+          Promise.reject(
+            new Error(
+              "unexpected paste-code prompt during a device-code connect",
+            ),
+          ),
         onDeviceCode: (info: { verificationUri: string; userCode: string }) => {
           state.info = {
             kind: "device_code",
@@ -134,10 +151,15 @@ export class ConnectManager {
         onProgress: (m: string) => console.log(`[connect:${workspaceId}]`, m),
       })
       .then(async () => {
-        const auth = JSON.parse(readFileSync(authPath, "utf8")) as Record<string, PiAuthEntry>;
+        const auth = JSON.parse(readFileSync(authPath, "utf8")) as Record<
+          string,
+          PiAuthEntry
+        >;
         const c = auth[PROVIDER];
         if (!c?.access || !c.refresh || typeof c.expires !== "number") {
-          throw new Error("login completed but no usable credential was written");
+          throw new Error(
+            "login completed but no usable credential was written",
+          );
         }
         await this.credentials.put({
           workspaceId,
@@ -161,15 +183,20 @@ export class ConnectManager {
       })
       .finally(() => {
         rmSync(dir, { recursive: true, force: true }); // the tokens live ONLY centrally
-        this.bus.del(lockKey(workspaceId)).catch((err: unknown) =>
-          console.error(`[connect:${workspaceId}] lock release failed:`, err),
-        );
+        this.bus
+          .del(lockKey(workspaceId))
+          .catch((err: unknown) =>
+            console.error(`[connect:${workspaceId}] lock release failed:`, err),
+          );
       });
 
     return Promise.race([
       infoReady,
       new Promise<ConnectInfo>((_, rej) =>
-        setTimeout(() => rej(new Error("timed out starting the connect flow")), 15_000),
+        setTimeout(
+          () => rej(new Error("timed out starting the connect flow")),
+          15_000,
+        ),
       ),
     ]);
   }

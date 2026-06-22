@@ -1,5 +1,9 @@
 import type { Routine } from "@houston/protocol";
-import { createRoutineRun, loadRoutineRuns, saveRoutineRuns } from "@houston/domain";
+import {
+  createRoutineRun,
+  loadRoutineRuns,
+  saveRoutineRuns,
+} from "@houston/domain";
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
 import type { WorkspacePaths } from "../paths";
@@ -39,10 +43,19 @@ export async function fireRoutineRun(
   const run = createRoutineRun(routine, runId, deps.now().toISOString());
   const { items } = await loadRoutineRuns(deps.vfs, root);
   await saveRoutineRuns(deps.vfs, root, [run, ...items]); // newest first
-  deps.events?.emit(ws.ownerUserId, { type: "RoutineRunsChanged", agentPath: agent.id });
+  deps.events?.emit(ws.ownerUserId, {
+    type: "RoutineRunsChanged",
+    agentPath: agent.id,
+  });
 
   try {
-    await deps.firer.fire({ workspace: ws, agent, routine, conversationId: run.session_key, runId });
+    await deps.firer.fire({
+      workspace: ws,
+      agent,
+      routine,
+      conversationId: run.session_key,
+      runId,
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     const { items: current } = await loadRoutineRuns(deps.vfs, root);
@@ -51,11 +64,19 @@ export async function fireRoutineRun(
       root,
       current.map((r) =>
         r.id === runId
-          ? { ...r, status: "error" as const, summary: message, completed_at: deps.now().toISOString() }
+          ? {
+              ...r,
+              status: "error" as const,
+              summary: message,
+              completed_at: deps.now().toISOString(),
+            }
           : r,
       ),
     );
-    deps.events?.emit(ws.ownerUserId, { type: "RoutineRunsChanged", agentPath: agent.id });
+    deps.events?.emit(ws.ownerUserId, {
+      type: "RoutineRunsChanged",
+      agentPath: agent.id,
+    });
     throw err;
   }
   return { runId, conversationId: run.session_key };

@@ -14,8 +14,12 @@ test("registers, resolves, and reports providers by id", () => {
 });
 
 test("a duplicate id is a wiring bug, not a silent overwrite", () => {
-  const reg = new IntegrationRegistry([new FakeIntegrationProvider({ id: "composio" })]);
-  expect(() => reg.register(new FakeIntegrationProvider({ id: "composio" }))).toThrow(/already registered/);
+  const reg = new IntegrationRegistry([
+    new FakeIntegrationProvider({ id: "composio" }),
+  ]);
+  expect(() =>
+    reg.register(new FakeIntegrationProvider({ id: "composio" })),
+  ).toThrow(/already registered/);
 });
 
 test("an unknown id throws rather than returning undefined", () => {
