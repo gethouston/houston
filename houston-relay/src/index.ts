@@ -9,6 +9,7 @@
 // Route table:
 //   GET  /health                              liveness probe
 //   POST /allocate                            mint {tunnelId, tunnelToken}
+//   POST /capture-country                     stamp signup country (cf.country)
 //   GET  /e/:tunnelId/register   (Upgrade)    desktop engine registers
 //   GET  /e/:tunnelId/v1/ws      (Upgrade)    mobile engine WebSocket
 //   *    /e/:tunnelId/v1/*                    proxied engine HTTP
@@ -17,6 +18,7 @@
 //   *    everything else                      PWA static assets
 
 import { handleAllocate, verifyTunnelToken } from "./allocate";
+import { handleCaptureCountry } from "./capture-country";
 import type { Env } from "./types";
 import { TunnelRoom } from "./tunnel-do";
 
@@ -56,6 +58,7 @@ async function route(
 ): Promise<Response> {
   if (url.pathname === "/health") return Response.json({ ok: true });
   if (url.pathname === "/allocate") return handleAllocate(request, env);
+  if (url.pathname === "/capture-country") return handleCaptureCountry(request, env);
 
   if (segments[0] === "pair" && segments[1]) {
     if (request.method === "GET") {

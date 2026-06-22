@@ -16,6 +16,30 @@ function applySessionToCache(session: Session | null): void {
   queryClient.setQueryData<Session | null>(SESSION_QUERY_KEY, session);
 }
 
+// Relay route that stamps the user's signup country. The Worker reads
+// `request.cf.country` server-side (tamper-proof) and writes it to the
+// profile — see houston-relay `POST /capture-country`.
+const RELAY_CAPTURE_COUNTRY_URL = "https://tunnel.gethouston.ai/capture-country";
+
+/**
+ * Best-effort signup-country capture, fired once right after sign-in.
+ * Deliberately fire-and-forget: it is never awaited in the auth path and a
+ * failure only logs — country capture must never block or fail sign-in.
+ * (Background analytics ping, not a user-initiated action, so a warning log
+ * is the right surface rather than a toast.)
+ */
+function captureSignupCountry(accessToken: string | undefined): void {
+  if (!accessToken) return;
+  void fetch(RELAY_CAPTURE_COUNTRY_URL, {
+    method: "POST",
+    headers: { authorization: `Bearer ${accessToken}` },
+  })
+    .then((res) => {
+      if (!res.ok) logger.warn(`[auth] country capture returned ${res.status}`);
+    })
+    .catch((e) => logger.warn(`[auth] country capture failed: ${e}`));
+}
+
 // Where Supabase sends the browser after Google consent. Resolved per
 // client at sign-in time by `resolveRedirectUri`:
 //
@@ -265,6 +289,7 @@ export function installDeepLinkListener(): () => void {
           return;
         }
         applySessionToCache(data.session ?? null);
+        captureSignupCountry(data.session?.access_token);
         analytics.track("user_signed_in", { provider: pendingProvider ?? "unknown" });
         pendingProvider = null;
         logger.info(`[auth] session established (pkce) for ${data.user?.email}`);
@@ -297,6 +322,7 @@ export function installDeepLinkListener(): () => void {
         // cache key directly here makes the UI transition deterministic
         // regardless of whether the listener fires.
         applySessionToCache(data.session);
+        captureSignupCountry(data.session?.access_token);
         analytics.track("user_signed_in", { provider: pendingProvider ?? "unknown" });
         pendingProvider = null;
         logger.info(

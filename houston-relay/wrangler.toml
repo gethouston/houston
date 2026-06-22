@@ -30,10 +30,16 @@ new_sqlite_classes = ["TunnelRoom"]
 # Public host. Used by /allocate to build the `publicHost` field so
 # desktops know where to build WSS register URLs + QR codes.
 RELAY_PUBLIC_HOST = "tunnel.gethouston.ai"
+# Supabase project URL. Public (also baked into the app bundle + present
+# in the OAuth redirect URIs). Used by /capture-country to verify the
+# caller's access token and PATCH their profile row.
+SUPABASE_URL = "https://zfpnlvxazrataiannvtq.supabase.co"
 
 # ---------------------------------------------------------------------------
 # Secrets (set via `wrangler secret put`):
-#   TUNNEL_SHARED_SECRET  — HMAC key for tunnel allocation tokens
+#   TUNNEL_SHARED_SECRET       — HMAC key for tunnel allocation tokens
+#   SUPABASE_SERVICE_ROLE_KEY  — privileged key for /capture-country writes
+#                                (prod + `--env staging`)
 # ---------------------------------------------------------------------------
 
 # Static assets binding — serves the mobile PWA from the SAME origin
@@ -58,7 +64,7 @@ workers_dev = false
 routes = [
   { pattern = "tunnel-staging.gethouston.ai", custom_domain = true }
 ]
-vars = { RELAY_PUBLIC_HOST = "tunnel-staging.gethouston.ai" }
+vars = { RELAY_PUBLIC_HOST = "tunnel-staging.gethouston.ai", SUPABASE_URL = "https://zfpnlvxazrataiannvtq.supabase.co" }
 
 [env.staging.assets]
 directory = "../mobile/dist"

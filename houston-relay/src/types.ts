@@ -17,8 +17,18 @@ export interface Env {
   ASSETS: { fetch: (req: Request) => Promise<Response> };
   RELAY_PUBLIC_HOST: string;
 
+  /** Supabase project URL (e.g. https://<ref>.supabase.co). Public —
+   * set in `[vars]`. Used by `POST /capture-country` to verify the
+   * caller's access token and PATCH their profile row. */
+  SUPABASE_URL?: string;
+
   // Secrets (wrangler secret put):
   TUNNEL_SHARED_SECRET?: string;
+  /** Supabase `service_role` key. Lets `POST /capture-country` write the
+   * Worker-derived country (bypassing RLS) so the value can't be spoofed
+   * by a client. Set via `wrangler secret put SUPABASE_SERVICE_ROLE_KEY`
+   * (prod + `--env staging`). Never bundled into the app. */
+  SUPABASE_SERVICE_ROLE_KEY?: string;
 }
 
 // ---------------------------------------------------------------------------
