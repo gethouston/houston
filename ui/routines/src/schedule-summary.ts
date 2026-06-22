@@ -7,24 +7,25 @@
  * formatters in `./schedule-format` (which use `Intl.*Format(locale)` for day
  * names and clock time). The package itself stays i18n-agnostic — see `./labels`.
  */
-import type { SchedulePreset } from "./types";
+
 import {
-  interp,
   DEFAULT_SCHEDULE_SUMMARY_LABELS,
+  interp,
   type ScheduleSummaryLabels,
 } from "./labels.ts";
 import {
-  formatTime,
-  ordinal,
-  weekdayName,
-  shortWeekdayNames,
-  joinList,
-} from "./schedule-format.ts";
-import {
-  cronToPreset,
   cronToOptions,
+  cronToPreset,
   type ScheduleOptions,
 } from "./schedule-cron-utils.ts";
+import {
+  formatTime,
+  joinList,
+  ordinal,
+  shortWeekdayNames,
+  weekdayName,
+} from "./schedule-format.ts";
+import type { SchedulePreset } from "./types";
 
 /** Generate a human-readable summary of a schedule preset */
 export function presetSummary(

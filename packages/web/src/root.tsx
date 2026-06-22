@@ -8,9 +8,9 @@
  * engine client bootstraps cleanly and EngineGate resolves immediately.
  */
 import { lazy, Suspense, useState } from "react";
-import { ConnectScreen } from "./components/connect-screen";
 import { BootSplash } from "./components/boot-splash";
-import { storeEngineConfig, type EngineConfig } from "./engine-config";
+import { ConnectScreen } from "./components/connect-screen";
+import { type EngineConfig, storeEngineConfig } from "./engine-config";
 
 const AppTree = lazy(() => import("./app-tree"));
 

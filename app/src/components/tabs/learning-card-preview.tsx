@@ -1,6 +1,6 @@
-import { useTranslation } from "react-i18next";
 import { cn } from "@houston-ai/core";
 import { ChevronDown, Pencil, Trash2 } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import { learningPreviewText } from "../../lib/learning-preview";
 
 export function LearningPreview({

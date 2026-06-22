@@ -10,9 +10,9 @@
 // remount of the chat view doesn't lose it. Entries are dropped once
 // the refetched server history contains a matching user_message.
 
-import { useEffect, useSyncExternalStore } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { topics } from "@houston-ai/engine-client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useSyncExternalStore } from "react";
 import { getEngine, getWs, useEngineReady } from "../lib/engine";
 import {
   dropPending,
@@ -22,6 +22,7 @@ import {
   snapshot,
   subscribe,
 } from "./chat-optimistic";
+
 export { autoTitleFromText, useCreateMission } from "./use-create-mission";
 
 interface ChatEntry {

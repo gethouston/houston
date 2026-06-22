@@ -17,9 +17,9 @@
  *
  * Run: node scripts/check-tauri-shims.mjs
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
-import { fileURLToPath } from "node:url";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
+import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const appSrc = join(root, "app", "src");

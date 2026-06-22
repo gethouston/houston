@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { decodeSkillMessage } from "../src/skill-message.ts";
 
 test("skill marker decodes uploaded attachment metadata", () => {

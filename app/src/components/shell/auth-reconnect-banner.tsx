@@ -1,10 +1,10 @@
-import { useState, useEffect, useCallback } from "react";
-import { useTranslation } from "react-i18next";
-import { AlertTriangle } from "lucide-react";
 import { AsyncButton, Spinner } from "@houston-ai/core";
-import { useUIStore } from "../../stores/ui";
-import { tauriProvider } from "../../lib/tauri";
+import { AlertTriangle } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { getProvider } from "../../lib/providers";
+import { tauriProvider } from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
 
 export function AuthReconnectBanner() {
   const { t } = useTranslation(["shell", "common"]);

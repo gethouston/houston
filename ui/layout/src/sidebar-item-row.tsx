@@ -1,12 +1,12 @@
-import { useState, type KeyboardEvent } from "react";
-import { MoreHorizontal } from "lucide-react";
 import {
   cn,
   DropdownMenu,
-  DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuTrigger,
 } from "@houston-ai/core";
+import { MoreHorizontal } from "lucide-react";
+import { type KeyboardEvent, useState } from "react";
 import type { SidebarItem } from "./sidebar";
 import { sidebarItemRowClasses } from "./sidebar-classes";
 

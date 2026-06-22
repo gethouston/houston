@@ -1,21 +1,20 @@
+import { AIBoard } from "@houston-ai/board";
 import { useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { AIBoard } from "@houston-ai/board";
-
-import { useUIStore } from "../../stores/ui";
 import { openAgentHref } from "../../lib/open-href";
-import { buildMissionBoardColumns } from "../mission-board-columns";
-import { useDetailPanelContainer } from "../shell/detail-panel-context";
-import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
-import { useQueuedMessageLabels } from "../use-queued-message-labels";
-import { useAgentChatPanel } from "../use-agent-chat-panel";
+import { useUIStore } from "../../stores/ui";
 import { useAttachmentRejectionDialog } from "../attachment-rejection-dialog";
+import { buildMissionBoardColumns } from "../mission-board-columns";
+import { AgentPanelAvatar } from "../shell/agent-panel-avatar";
+import { useDetailPanelContainer } from "../shell/detail-panel-context";
+import { useAgentChatPanel } from "../use-agent-chat-panel";
+import { useQueuedMessageLabels } from "../use-queued-message-labels";
+import type { BoardSource } from "./board-source";
+import { useBoardDrafts } from "./use-board-drafts";
+import { useBoardKeyboard } from "./use-board-keyboard";
+import { useBoardLabels } from "./use-board-labels";
 import { useBoardSelectionUI } from "./use-board-selection-ui";
 import { useBoardSendQueue } from "./use-board-send-queue";
-import { useBoardKeyboard } from "./use-board-keyboard";
-import { useBoardDrafts } from "./use-board-drafts";
-import { useBoardLabels } from "./use-board-labels";
-import type { BoardSource } from "./board-source";
 
 /**
  * The one board both views render. It owns every shared concern — columns,

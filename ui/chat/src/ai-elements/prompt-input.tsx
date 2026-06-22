@@ -8,32 +8,26 @@ import {
   CommandItem,
   CommandList,
   CommandSeparator,
-} from "@houston-ai/core";
-import {
+  cn,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from "@houston-ai/core";
-import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@houston-ai/core";
-import {
   type InputGroupAddon,
   InputGroupButton,
   type InputGroupTextarea,
-} from "@houston-ai/core";
-import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
 } from "@houston-ai/core";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@houston-ai/core";
-import { cn } from "@houston-ai/core";
 import type { ChatStatus, FileUIPart, SourceDocumentUIPart } from "ai";
 import {
   ArrowUpIcon,

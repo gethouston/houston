@@ -1,4 +1,4 @@
-import type { FeedItem, ChatMessage } from "@houston-ai/chat";
+import type { ChatMessage, FeedItem } from "@houston-ai/chat";
 
 export function hasToolRuntimeError(items: readonly FeedItem[]): boolean {
   return items.some((item) => item.feed_type === "tool_runtime_error");

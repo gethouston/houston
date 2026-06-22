@@ -1,5 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from "react";
 import { check } from "@tauri-apps/plugin-updater";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { analytics } from "../lib/analytics";
 import {
   osCurrentAppBundlePath,
@@ -155,6 +155,12 @@ export function useUpdateChecker() {
   }, []);
 
   useEffect(() => {
+    // The updater pings the production release feed and would offer the shipped
+    // build over a local dev build (e.g. `pnpm tauri dev`) — there's nothing
+    // sensible to install over a dev bundle, so it just nags. Only run in
+    // packaged production builds. (Matches App.tsx's `import.meta.env.PROD`
+    // gating idiom; on web the updater is shimmed to a no-op regardless.)
+    if (!import.meta.env.PROD) return;
     runCheck();
     intervalRef.current = setInterval(runCheck, CHECK_INTERVAL_MS);
     return () => {

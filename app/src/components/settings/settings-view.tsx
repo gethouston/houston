@@ -1,20 +1,20 @@
-import { useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
 import { Spinner } from "@houston-ai/core";
 import {
-  User,
-  Folder,
   Bot,
   Bug,
   FileText,
+  Folder,
   Keyboard,
+  User,
   UserCircle,
 } from "lucide-react";
-import { useWorkspaceStore } from "../../stores/workspaces";
+import { useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { useUIStore } from "../../stores/ui";
+import { useWorkspaceStore } from "../../stores/workspaces";
 import {
-  SidebarSectionNav,
   type SidebarSectionItem,
+  SidebarSectionNav,
 } from "../shared/sidebar-section-nav";
 
 type SettingsSectionId =
@@ -25,18 +25,19 @@ type SettingsSectionId =
   | "provider"
   | "shortcuts"
   | "reportBug";
+
 import { AccountSection, useAccountAvailable } from "./sections/account";
-import { WorkspaceSection } from "./sections/workspace";
-import {
-  WorkspaceContextSection,
-  UserContextSection,
-} from "./sections/workspace-context";
-import { ProviderSection } from "./sections/provider";
-import { LanguageSection } from "./sections/language";
 import { AppearanceSection } from "./sections/appearance";
 import { DangerSection } from "./sections/danger";
+import { LanguageSection } from "./sections/language";
+import { ProviderSection } from "./sections/provider";
 import { ReportBugSection } from "./sections/report-bug";
 import { ShortcutsSection } from "./sections/shortcuts";
+import { WorkspaceSection } from "./sections/workspace";
+import {
+  UserContextSection,
+  WorkspaceContextSection,
+} from "./sections/workspace-context";
 
 export function SettingsView() {
   const { t } = useTranslation(["settings", "common"]);

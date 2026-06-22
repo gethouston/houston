@@ -1,6 +1,6 @@
-import type { ReactNode } from "react";
-import { ArrowRight } from "lucide-react";
 import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { ArrowRight } from "lucide-react";
+import type { ReactNode } from "react";
 import { HoustonLogo } from "../shell/experience-card";
 
 interface MissionDoneScreenProps {

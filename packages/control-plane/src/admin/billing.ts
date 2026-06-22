@@ -1,5 +1,5 @@
-import { bytesToGiB } from "./quantity";
 import type { PodInfo, VolumeInfo } from "./cluster";
+import { bytesToGiB } from "./quantity";
 
 /**
  * Cost math for the operator dashboard. Two layers, deliberately distinct:

@@ -7,22 +7,22 @@
  */
 
 import "react-i18next";
-import type common from "../locales/en/common.json";
-import type setup from "../locales/en/setup.json";
-import type legal from "../locales/en/legal.json";
-import type shell from "../locales/en/shell.json";
-import type dashboard from "../locales/en/dashboard.json";
-import type settings from "../locales/en/settings.json";
-import type chat from "../locales/en/chat.json";
-import type board from "../locales/en/board.json";
 import type agents from "../locales/en/agents.json";
-import type skills from "../locales/en/skills.json";
-import type routines from "../locales/en/routines.json";
-import type providers from "../locales/en/providers.json";
+import type board from "../locales/en/board.json";
+import type chat from "../locales/en/chat.json";
+import type common from "../locales/en/common.json";
+import type context from "../locales/en/context.json";
+import type dashboard from "../locales/en/dashboard.json";
 import type errors from "../locales/en/errors.json";
 import type events from "../locales/en/events.json";
+import type legal from "../locales/en/legal.json";
 import type portable from "../locales/en/portable.json";
-import type context from "../locales/en/context.json";
+import type providers from "../locales/en/providers.json";
+import type routines from "../locales/en/routines.json";
+import type settings from "../locales/en/settings.json";
+import type setup from "../locales/en/setup.json";
+import type shell from "../locales/en/shell.json";
+import type skills from "../locales/en/skills.json";
 
 declare module "react-i18next" {
   interface CustomTypeOptions {

@@ -1,14 +1,14 @@
-import { test, expect } from "bun:test";
-import { MemoryVfs } from "../vfs";
-import type { WorkspacePaths } from "../paths";
+import { expect, test } from "bun:test";
 import type { Agent, Workspace } from "../domain/types";
-import { listWorkspace } from "./files";
+import type { WorkspacePaths } from "../paths";
+import { MemoryVfs } from "../vfs";
 import {
   AttachmentError,
   deleteAttachments,
   handleAttachments,
   saveAttachments,
 } from "./attachments";
+import { listWorkspace } from "./files";
 
 /**
  * Composer attachments over an agent's workspace root. The files land under a

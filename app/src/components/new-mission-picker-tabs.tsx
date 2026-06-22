@@ -1,3 +1,5 @@
+import { cn } from "@houston-ai/core";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -5,8 +7,6 @@ import {
   useRef,
   useState,
 } from "react";
-import { cn } from "@houston-ai/core";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { PickerTab } from "./new-mission-picker-tab-model";
 
 interface ScrollableTabsProps {

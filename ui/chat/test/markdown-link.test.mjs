@@ -1,5 +1,5 @@
-import test from "node:test";
 import assert from "node:assert/strict";
+import test from "node:test";
 import { classifyMarkdownLink } from "../src/markdown-link.ts";
 
 test("bare auto-linked URL is an autolink (issue #358 — must stay clickable)", () => {

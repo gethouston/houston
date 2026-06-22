@@ -1,12 +1,12 @@
-import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@houston-ai/core";
-import type { ProviderInfo } from "../lib/providers";
+import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
 import type { ProviderPickerState } from "../lib/model-picker";
+import type { ProviderInfo } from "../lib/providers";
 import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
 
 /**

@@ -1,17 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-
-import { useUIStore } from "../../stores/ui";
 import { resolvePendingActivitySelection } from "../../lib/notification-nav";
-import { useMissionSearch } from "../use-mission-search";
+import type { Agent, AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 import { MissionBoardEmptyState } from "../mission-board-empty-state";
 import { AgentCardAvatar } from "../shell/agent-card-avatar";
-import { useAgentBoardData } from "./use-agent-board-data";
-import { useAgentBoardSend } from "./use-agent-board-send";
-import { useAgentBoardSelection } from "./use-agent-board-selection";
-import { useAgentNewMission } from "./use-agent-new-mission";
+import { useMissionSearch } from "../use-mission-search";
 import type { BoardSource } from "./board-source";
-import type { Agent, AgentDefinition } from "../../lib/types";
+import { useAgentBoardData } from "./use-agent-board-data";
+import { useAgentBoardSelection } from "./use-agent-board-selection";
+import { useAgentBoardSend } from "./use-agent-board-send";
+import { useAgentNewMission } from "./use-agent-new-mission";
 
 /**
  * Builds the {@link BoardSource} for a single agent's board tab: per-agent

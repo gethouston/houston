@@ -1,10 +1,10 @@
-import { create } from "zustand";
-import { mergeFeedItem, reconcileUserMessageEcho } from "@houston-ai/chat";
 import type {
   FeedItem,
   MergeFeedOptions,
   PendingUserEcho,
 } from "@houston-ai/chat";
+import { mergeFeedItem, reconcileUserMessageEcho } from "@houston-ai/chat";
+import { create } from "zustand";
 
 /**
  * Feed store — nested by agent path, then by session key.

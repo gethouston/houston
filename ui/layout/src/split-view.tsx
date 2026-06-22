@@ -1,9 +1,9 @@
-import {
-  ResizablePanelGroup,
-  ResizablePanel,
-  ResizableHandle,
-} from "./resizable";
 import type { ReactNode } from "react";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "./resizable";
 
 export interface SplitViewProps {
   left: ReactNode;

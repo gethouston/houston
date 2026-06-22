@@ -1,6 +1,6 @@
-import { useMissionControlSource } from "./use-mission-control-source";
-import { MissionBoard } from "./mission-board";
 import type { Agent } from "../../lib/types";
+import { MissionBoard } from "./mission-board";
+import { useMissionControlSource } from "./use-mission-control-source";
 
 /**
  * Mission Control's active board. A thin wrapper so its source hooks (which

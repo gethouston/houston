@@ -1,19 +1,19 @@
-import { Component, useEffect, useState, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { I18nextProvider } from "react-i18next";
 import { TooltipProvider } from "@houston-ai/core";
-import { queryClient } from "./lib/query-client";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Component, type ReactNode, useEffect, useState } from "react";
+import { createRoot } from "react-dom/client";
+import { I18nextProvider } from "react-i18next";
 import App from "./App";
+import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
-import { initFrontendLogging, logger } from "./lib/logger";
-import { whenEngineReady, isEngineReady } from "./lib/engine";
-import i18n from "./lib/i18n";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
 import { LanguageGate } from "./components/shell/language-gate";
+import { analytics, classifyAnalyticsError } from "./lib/analytics";
+import { isEngineReady, whenEngineReady } from "./lib/engine";
 import { showErrorToast } from "./lib/error-toast";
 import { installGlobalErrorHandlers } from "./lib/global-error-handlers";
-import { analytics, classifyAnalyticsError } from "./lib/analytics";
+import i18n from "./lib/i18n";
+import { initFrontendLogging, logger } from "./lib/logger";
 import { initSentry } from "./lib/sentry";
 import { installSentrySmokeShortcuts } from "./lib/sentry-smoke";
 

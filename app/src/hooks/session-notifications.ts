@@ -1,14 +1,14 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { logger } from "../lib/logger";
-import { isMac } from "../lib/platform";
 import {
   activityIdForSessionKey,
+  type NotificationNav,
   shouldArmNotificationNav,
   shouldNavigateOnAppActivation,
-  type NotificationNav,
 } from "../lib/notification-nav";
 import { osShowSessionNotification } from "../lib/os-bridge";
+import { isMac } from "../lib/platform";
 import { queryClient } from "../lib/query-client";
 import { queryKeys } from "../lib/query-keys";
 import { tauriActivity } from "../lib/tauri";

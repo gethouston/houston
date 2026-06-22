@@ -11,19 +11,20 @@
  * h1, progress dots beside the eyebrow (close button owns the right
  * corner). Switches match the routine editor.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
+
 import { Button, cn, Dialog, DialogContent, Switch } from "@houston-ai/core";
-import { useUIStore } from "../../stores/ui";
-import { useAgentStore } from "../../stores/agents";
-import { getEngine } from "../../lib/engine";
-import { osRevealPath } from "../../lib/os-bridge";
-import { analytics } from "../../lib/analytics";
 import type {
   PortableAnonymizeResponse,
   PortableInventoryPreview,
 } from "@houston-ai/engine-client";
+import { invoke } from "@tauri-apps/api/core";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { analytics } from "../../lib/analytics";
+import { getEngine } from "../../lib/engine";
+import { osRevealPath } from "../../lib/os-bridge";
+import { useAgentStore } from "../../stores/agents";
+import { useUIStore } from "../../stores/ui";
 
 type Step = 1 | 2 | 3;
 

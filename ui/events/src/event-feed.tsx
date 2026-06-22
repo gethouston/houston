@@ -1,8 +1,8 @@
-import { useRef, useEffect, useCallback } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { EventItem } from "./event-item";
-import { EventFilter } from "./event-filter";
+import { useCallback, useEffect, useRef } from "react";
 import { EventEmpty } from "./event-empty";
+import { EventFilter } from "./event-filter";
+import { EventItem } from "./event-item";
 import type { EventEntry, EventType } from "./types";
 
 export interface EventFeedLabels {

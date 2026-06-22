@@ -2,11 +2,11 @@ import { useCallback } from "react";
 import { useTranslation } from "react-i18next";
 
 import type { Activity } from "../../data/activity";
-import type { AgentDefinition } from "../../lib/types";
 import { analytics } from "../../lib/analytics";
 import { buildAttachmentPrompt } from "../../lib/attachment-message";
 import { classifyFileKind } from "../../lib/file-kind";
 import { tauriAttachments, tauriChat } from "../../lib/tauri";
+import type { AgentDefinition } from "../../lib/types";
 import { useFeedStore } from "../../stores/feeds";
 import { useUIStore } from "../../stores/ui";
 

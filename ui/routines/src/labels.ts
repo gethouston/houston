@@ -19,8 +19,9 @@
  * The English default values live in `./labels-default` (re-exported below) to
  * keep this file focused on the type contracts.
  */
-import type { SchedulePreset } from "./types";
+
 import type { IntervalUnit } from "./schedule-interval-utils";
+import type { SchedulePreset } from "./types";
 
 /** Replace `{name}` tokens in `template` with `vars[name]`. Unknown tokens stay. */
 export function interp(
@@ -186,11 +187,11 @@ export interface RoutineRowLabels {
 
 // English default values, co-located in a sibling file to keep this one small.
 export {
-  DEFAULT_SCHEDULE_SUMMARY_LABELS,
-  DEFAULT_NEXT_FIRE_LABELS,
-  DEFAULT_RUN_HISTORY_LABELS,
-  DEFAULT_SCHEDULE_LABELS,
   DEFAULT_EDITOR_LABELS,
   DEFAULT_GRID_LABELS,
+  DEFAULT_NEXT_FIRE_LABELS,
   DEFAULT_ROW_LABELS,
+  DEFAULT_RUN_HISTORY_LABELS,
+  DEFAULT_SCHEDULE_LABELS,
+  DEFAULT_SCHEDULE_SUMMARY_LABELS,
 } from "./labels-default.ts";

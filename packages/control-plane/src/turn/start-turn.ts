@@ -1,8 +1,8 @@
 import type { ServerResponse } from "node:http";
+import { isExpiring } from "../credentials/refresh";
 import type { Agent, Workspace } from "../domain/types";
 import type { TurnPin, WorkspaceCredential } from "../ports";
-import { isExpiring } from "../credentials/refresh";
-import { json, prefixFor, PROVIDER, type TurnDeps } from "./deps";
+import { json, PROVIDER, prefixFor, type TurnDeps } from "./deps";
 import { TurnQuotaError } from "./quota";
 import { pumpSse } from "./sse";
 

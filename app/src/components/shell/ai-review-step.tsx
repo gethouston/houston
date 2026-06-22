@@ -1,15 +1,15 @@
-import { useEffect } from "react";
-import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
 import {
   AGENT_COLORS,
+  cn,
+  colorHex,
   DialogTitle,
   HoustonAvatar,
   Input,
-  cn,
-  colorHex,
   resolveAgentColor,
 } from "@houston-ai/core";
+import { Check } from "lucide-react";
+import { useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { AiStepFooter } from "./ai-step-footer";
 
 interface AiReviewStepProps {

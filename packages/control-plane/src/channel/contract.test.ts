@@ -1,19 +1,18 @@
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import type { Agent, Workspace } from "../domain/types";
-import type { ChannelCtx, RuntimeChannel } from "../ports";
 import { MemoryCredentialStore } from "../credentials/store";
-import { MemoryVfs } from "../vfs";
+import type { Agent, Workspace } from "../domain/types";
 import { FakeLauncher } from "../launcher/fake";
-import { ProxyChannel, type RuntimeProxy } from "./proxy";
-import { TurnChannel } from "./turn";
+import type { ChannelCtx, RuntimeChannel, WorkspaceCredential } from "../ports";
 import { forward } from "../proxy/route";
 import { ConnectManager } from "../turn/connect";
+import type { TurnDeps } from "../turn/deps";
 import { TurnQuota } from "../turn/quota";
 import { TurnRelay } from "../turn/relay";
-import type { TurnDeps } from "../turn/deps";
-import type { WorkspaceCredential } from "../ports";
+import { MemoryVfs } from "../vfs";
+import { ProxyChannel, type RuntimeProxy } from "./proxy";
+import { TurnChannel } from "./turn";
 
 /**
  * The RuntimeChannel CONTRACT — the COMMON surface both adapters MUST honor,

@@ -1,11 +1,11 @@
-import { useMemo } from "react";
 import { Input } from "@houston-ai/core";
 import { Gift, Search } from "lucide-react";
+import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import type { AgentDefinition } from "../../lib/types";
+import { useUIStore } from "../../stores/ui";
 import { SkillCard } from "../skill-card";
 import { AgentCard } from "./experience-card";
-import { useUIStore } from "../../stores/ui";
 
 interface AgentPickerStepProps {
   search: string;

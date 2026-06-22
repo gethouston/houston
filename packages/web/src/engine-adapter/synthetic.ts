@@ -1,4 +1,4 @@
-import type { Workspace, Agent } from "../../../../ui/engine-client/src/types";
+import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
 
 /**
  * The new engine is single-workspace / single-user with no agent concept, but

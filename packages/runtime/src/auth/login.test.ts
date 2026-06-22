@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,

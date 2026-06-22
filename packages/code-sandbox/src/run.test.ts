@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { runInSandbox, safeJoin, DEFAULT_LIMITS } from "./run";
 import type { Language } from "./run";
+import { DEFAULT_LIMITS, runInSandbox, safeJoin } from "./run";
 
 const b64 = (s: string) => Buffer.from(s, "utf8").toString("base64");
 const fromB64 = (s: string) => Buffer.from(s, "base64").toString("utf8");

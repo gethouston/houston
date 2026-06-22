@@ -1,6 +1,6 @@
 import { create } from "zustand";
-import { tauriWorkspaces, tauriPreferences } from "../lib/tauri";
 import { analytics } from "../lib/analytics";
+import { tauriPreferences, tauriWorkspaces } from "../lib/tauri";
 import type { Workspace } from "../lib/types";
 
 interface WorkspaceState {

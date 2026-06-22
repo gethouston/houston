@@ -1,12 +1,12 @@
 import { useUIStore } from "../stores/ui";
 import { analytics, classifyAnalyticsError } from "./analytics";
+import i18n from "./i18n";
 import {
   captureException as sentryCapture,
   sentrySuppressedInDev,
 } from "./sentry";
 import { devNoSendToastSpec } from "./sentry-dev";
 import { createSentryReportError } from "./sentry-report-error";
-import i18n from "./i18n";
 
 const GREEN_TOAST_DELAY_MS = 700;
 

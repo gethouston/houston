@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-
-import { tauriProvider, type ProviderStatus } from "../lib/tauri";
 import { PROVIDERS } from "../lib/providers";
 import { queryKeys } from "../lib/query-keys";
+import { type ProviderStatus, tauriProvider } from "../lib/tauri";
 
 export interface ProviderStatusesState {
   /** Status by provider id. Empty until the first fetch resolves. */

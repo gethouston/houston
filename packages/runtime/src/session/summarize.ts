@@ -1,15 +1,15 @@
 import {
-  createAgentSession,
-  DefaultResourceLoader,
-  SessionManager,
   type AgentSessionEvent,
   type AuthStorage,
+  createAgentSession,
+  DefaultResourceLoader,
   type ModelRegistry,
+  SessionManager,
 } from "@earendil-works/pi-coding-agent";
-import { config } from "../config";
-import { authStorage, modelRegistry } from "../auth/storage";
-import { resolveModel } from "../ai/providers";
 import type { ChatMessage } from "@houston/runtime-client";
+import { resolveModel } from "../ai/providers";
+import { authStorage, modelRegistry } from "../auth/storage";
+import { config } from "../config";
 import { getHistory, renameConversation } from "../store/conversations";
 
 const TITLE_PROMPT = [

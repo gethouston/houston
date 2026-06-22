@@ -1,20 +1,20 @@
-import { useState, useEffect, useCallback } from "react";
-import type { FormEvent } from "react";
-import { useTranslation } from "react-i18next";
 import {
   AGENT_COLORS,
   Button,
+  cn,
+  colorHex,
   DialogTitle,
   HoustonAvatar,
   Input,
-  cn,
-  colorHex,
   resolveAgentColor,
 } from "@houston-ai/core";
-import { ArrowLeft, Check, FolderOpen, ChevronDown } from "lucide-react";
+import { ArrowLeft, Check, ChevronDown, FolderOpen } from "lucide-react";
+import type { FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
+import { getModel, getProvider, PROVIDERS } from "../../lib/providers";
+import { type ProviderStatus, tauriProvider } from "../../lib/tauri";
 import type { AgentDefinition } from "../../lib/types";
-import { tauriProvider, type ProviderStatus } from "../../lib/tauri";
-import { PROVIDERS, getProvider, getModel } from "../../lib/providers";
 
 interface NamingStepProps {
   selectedAgent: AgentDefinition | undefined;

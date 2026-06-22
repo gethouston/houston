@@ -1,8 +1,5 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import type { RoutineUpdate } from "@houston/protocol";
-import type { TextStore } from "./store";
-import { loadJson } from "./store";
-import { docKey, schemaKey, seedSchemas } from "./layout";
 import {
   applyActivityUpdate,
   createActivity,
@@ -11,13 +8,16 @@ import {
   saveActivities,
   upsertById,
 } from "./activities";
+import { loadConfig, loadLearnings, saveConfig } from "./config";
+import { docKey, schemaKey, seedSchemas } from "./layout";
 import {
   applyRoutineUpdate,
   createRoutine,
   loadRoutines,
   saveRoutines,
 } from "./routines";
-import { loadConfig, loadLearnings, saveConfig } from "./config";
+import type { TextStore } from "./store";
+import { loadJson } from "./store";
 
 /** Tiny in-memory TextStore (the same shape the host's Vfs satisfies). */
 function memStore(): TextStore & { dump(): Map<string, string> } {

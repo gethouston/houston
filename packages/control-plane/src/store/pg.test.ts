@@ -1,6 +1,6 @@
-import { test, expect } from "bun:test";
-import { PgWorkspaceStore } from "./pg";
+import { expect, test } from "bun:test";
 import type { WorkspaceStore } from "../ports";
+import { PgWorkspaceStore } from "./pg";
 
 /**
  * Static shape / SQL-text test. No live Postgres: a fake Pool records every

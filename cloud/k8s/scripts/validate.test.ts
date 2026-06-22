@@ -1,10 +1,10 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   DUMMY_VALUES,
+  type ManifestDoc,
   render,
   stripComments,
   validateAll,
-  type ManifestDoc,
 } from "./validate";
 
 /** Find the first rendered doc of a given kind across all manifest files. */

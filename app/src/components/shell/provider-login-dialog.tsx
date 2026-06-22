@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { ExternalLink, Copy, Eye, EyeOff } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -10,11 +7,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
+import { Copy, ExternalLink, Eye, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
-import { providerLoginUrlHost } from "./provider-login-url";
 import { ProviderDeviceCode } from "./provider-device-code";
+import { providerLoginUrlHost } from "./provider-login-url";
 
 /**
  * Sign-in dialog for remote/headless Houston Engines, where the provider

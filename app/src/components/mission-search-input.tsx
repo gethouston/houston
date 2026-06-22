@@ -1,6 +1,6 @@
-import { useLayoutEffect, useRef, useState } from "react";
 import { Input } from "@houston-ai/core";
 import { Loader2, Search, X } from "lucide-react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 interface MissionSearchInputLabels {
   placeholder: string;
@@ -80,7 +80,7 @@ export function MissionSearchInput({
         placeholder={placeholder}
         aria-label={full}
         autoComplete="off"
-        className="rounded-full border-border bg-background pl-9 pr-16 text-sm focus:bg-background"
+        className="rounded-full border-border bg-transparent pl-9 pr-16 text-sm focus:bg-transparent"
       />
       {isSearchingText && (
         <Loader2

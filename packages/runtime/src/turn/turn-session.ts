@@ -1,28 +1,28 @@
+import { existsSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { getModel } from "@earendil-works/pi-ai";
 import {
   type AgentSessionEvent,
   AuthStorage,
+  createAgentSession,
   ModelRegistry,
   SessionManager,
-  createAgentSession,
 } from "@earendil-works/pi-coding-agent";
-import { getModel } from "@earendil-works/pi-ai";
-import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
 import type {
   TokenUsage,
   ToolCallRecord,
   WireEvent,
 } from "@houston/runtime-client";
-import { config } from "../config";
 import { toThinkingLevel } from "../ai/effort";
+import { config } from "../config";
 import { makeAgentLoader } from "../session/resource-loader";
-import { toWire } from "../session/wire";
 import {
   CLAMPED_FILE_TOOL_NAMES,
   makeClampedFileTools,
 } from "../session/tools/clamped-fs";
-import { makeRunCodeTool } from "../session/tools/run-code";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
+import { makeRunCodeTool } from "../session/tools/run-code";
+import { toWire } from "../session/wire";
 import {
   appendAssistantMessageAt,
   appendUserMessageAt,

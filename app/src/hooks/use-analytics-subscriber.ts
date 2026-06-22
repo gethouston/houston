@@ -1,7 +1,7 @@
-import { useEffect, useRef } from "react";
 import type { HoustonEvent } from "@houston-ai/core";
-import { subscribeHoustonEvents } from "../lib/events";
+import { useEffect, useRef } from "react";
 import { analytics, classifyAnalyticsError } from "../lib/analytics";
+import { subscribeHoustonEvents } from "../lib/events";
 
 /**
  * Subscribes to the HoustonEvent firehose and fires analytics for events

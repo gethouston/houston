@@ -1,12 +1,12 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import type { Learning, Routine } from "@houston/protocol";
-import { createRoutine } from "./routines";
 import {
+  type PortableContent,
   packAgent,
   portableInventory,
   unpackAgent,
-  type PortableContent,
 } from "./portable";
+import { createRoutine } from "./routines";
 
 /**
  * The `.houstonagent` round-trip: what you pack is what you unpack, and the

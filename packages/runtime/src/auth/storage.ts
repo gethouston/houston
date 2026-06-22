@@ -1,5 +1,5 @@
-import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { join } from "node:path";
+import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import { config } from "../config";
 
 /**

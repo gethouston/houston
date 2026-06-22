@@ -6,8 +6,8 @@
  */
 
 import schema from "@houston-ai/agent-schemas/activity.schema.json";
-import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
 import { applyBulkPatch, applyBulkRemove, applyRemove } from "./activity-bulk";
+import { newId, now, readAgentJson, writeAgentJson } from "./agent-file";
 
 /** Every status a mission can have. Mirrors the `status` enum in
  *  `activity.schema.json` (the on-disk source of truth). */

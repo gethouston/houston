@@ -1,4 +1,4 @@
-import { HoustonHelmet, cn } from "@houston-ai/core";
+import { cn, HoustonHelmet } from "@houston-ai/core";
 import { Shimmer } from "./ai-elements/shimmer";
 
 export interface ChatStatusLineProps {

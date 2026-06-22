@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { queryKeys } from "../../lib/query-keys";
-import { tauriConversations, tauriChat } from "../../lib/tauri";
+import { tauriChat, tauriConversations } from "../../lib/tauri";
 
 export function useConversations(agentPath: string | undefined) {
   return useQuery({

@@ -1,13 +1,13 @@
+import type {
+  NextFireLabels,
+  RoutineEditorLabels,
+  RoutineRowLabels,
+  RoutinesGridLabels,
+  RunHistoryLabels,
+  ScheduleLabels,
+} from "@houston-ai/routines";
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type {
-  RoutineEditorLabels,
-  RoutinesGridLabels,
-  RoutineRowLabels,
-  ScheduleLabels,
-  NextFireLabels,
-  RunHistoryLabels,
-} from "@houston-ai/routines";
 
 /**
  * Builds the localized label objects the `@houston-ai/routines` components take.
