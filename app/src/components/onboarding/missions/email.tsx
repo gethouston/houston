@@ -66,8 +66,6 @@ interface EmailMissionProps {
   /** Advance to the success screen once the email is sent. `sentTo` is the
    *  recipient label to show there (the address, or "you" for a self-test). */
   onContinue: (sentTo?: string) => void;
-  /** Escape gate if the agent stalls — lands the user in the app anyway. */
-  onSkip: () => void;
 }
 
 /**
@@ -86,7 +84,6 @@ export function EmailMission({
   model,
   onBack,
   onContinue,
-  onSkip,
 }: EmailMissionProps) {
   const { t } = useTranslation(["setup", "chat"]);
   const agentPath = agent.folderPath;
@@ -435,15 +432,6 @@ export function EmailMission({
       title={t("setup:tutorial.missions.email.title")}
       onBack={onBack}
       backLabel={t("setup:tutorial.nav.back")}
-      helper={
-        <button
-          type="button"
-          onClick={onSkip}
-          className="underline-offset-2 hover:text-foreground hover:underline"
-        >
-          {t("setup:tutorial.missions.email.skip")}
-        </button>
-      }
     >
       {error && (
         <p className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">

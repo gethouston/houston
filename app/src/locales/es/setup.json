@@ -77,7 +77,11 @@
       },
       "tools": {
         "title": "Conecta tus apps",
-        "body": "Con un solo inicio de sesión tu agente puede trabajar con apps como Gmail y tu calendario. Conecta cada app solo cuando la necesites, así no hay nada que configurar ahora.",
+        "body": "Tu agente trabaja con apps como Gmail y tu calendario a través de Composio, un proveedor de integraciones seguro. Una sola cuenta le permite conectar cualquier app, solo cuando la necesitas.",
+        "steps": {
+          "account": "Crea tu cuenta de Composio",
+          "authorize": "Autoriza a Houston para conectar"
+        },
         "allow": "Iniciar sesión",
         "waiting": "Esperándote en tu navegador...",
         "cancel": "Cancelar",
@@ -126,7 +130,6 @@
           "done": "{{provider}} conectado. Enviando tu correo..."
         },
         "chip": "Envía un correo por mí",
-        "skip": "Lo configuro más tarde",
         "placeholder": "Responde a tu agente..."
       },
       "done": {

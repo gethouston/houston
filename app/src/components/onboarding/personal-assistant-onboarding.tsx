@@ -255,7 +255,6 @@ export function PersonalAssistantOnboarding({
             setSentTo(to ?? null);
             setStep("done");
           }}
-          onSkip={finishOnboarding}
         />
       )}
       {step === "done" && (

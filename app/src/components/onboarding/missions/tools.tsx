@@ -95,7 +95,23 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex w-full max-w-sm flex-col items-center gap-4">
+            <ol className="flex w-full flex-col gap-2">
+              {[
+                t("tutorial.missions.tools.steps.account"),
+                t("tutorial.missions.tools.steps.authorize"),
+              ].map((label, i) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl bg-secondary px-4 py-3 text-left"
+                >
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold tabular-nums text-background">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-foreground">{label}</span>
+                </li>
+              ))}
+            </ol>
             <AsyncButton
               className="h-11 rounded-full px-5"
               spinner={false}

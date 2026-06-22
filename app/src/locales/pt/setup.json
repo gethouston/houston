@@ -77,7 +77,11 @@
       },
       "tools": {
         "title": "Conecte seus apps",
-        "body": "Com um único login seu agente pode trabalhar com apps como Gmail e sua agenda. Cada app é conectado só quando você realmente precisa, então não há nada para configurar agora.",
+        "body": "Seu agente trabalha com apps como Gmail e sua agenda através do Composio, um provedor de integrações seguro. Uma única conta permite conectar qualquer app, só quando você precisa.",
+        "steps": {
+          "account": "Crie sua conta no Composio",
+          "authorize": "Autorize o Houston a conectar"
+        },
         "allow": "Entrar",
         "waiting": "Esperando você no navegador...",
         "cancel": "Cancelar",
@@ -126,7 +130,6 @@
           "done": "{{provider}} conectado. Enviando seu e-mail..."
         },
         "chip": "Envie um e-mail por mim",
-        "skip": "Configuro isso mais tarde",
         "placeholder": "Responda ao seu agente..."
       },
       "done": {

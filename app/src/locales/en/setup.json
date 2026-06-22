@@ -77,7 +77,11 @@
       },
       "tools": {
         "title": "Connect your apps",
-        "body": "One sign-in lets your agent work with apps like Gmail and your calendar. It connects each app only when you actually need it, so there's nothing to set up now.",
+        "body": "Your agent works with apps like Gmail and your calendar through Composio, a secure integration provider. One account lets it connect any app, only when you actually need it.",
+        "steps": {
+          "account": "Create your Composio account",
+          "authorize": "Authorize Houston to connect"
+        },
         "allow": "Sign in",
         "waiting": "Waiting for you in your browser...",
         "cancel": "Cancel",
@@ -126,7 +130,6 @@
           "done": "{{provider}} connected. Sending your email..."
         },
         "chip": "Send an email for me",
-        "skip": "I'll set this up later",
         "placeholder": "Reply to your agent..."
       },
       "done": {
