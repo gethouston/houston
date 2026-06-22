@@ -1,0 +1,565 @@
+{% extends "base.njk" %}
+{% block title %}Join the waiting list | Houston{% endblock %}
+{% block meta %}
+<meta name="description" content="Join the Houston waiting list and get early access to AI agents that actually do the work.">
+{% endblock %}
+{% block inlineStyles %}
+<style>
+  /* ─── Houston design tokens (mirrored from the landing page) ─── */
+  :root {
+    --background: #ffffff;
+    --foreground: #0d0d0d;
+    --secondary: #f9f9f9;
+    --muted-foreground: #5d5d5d;
+    --border: #e5e5e5;
+    --gray-50: #f9f9f9;
+    --gray-100: #ececec;
+    --gray-200: #e3e3e3;
+    --gray-300: #cdcdcd;
+    --gray-400: #b4b4b4;
+    --gray-500: #9b9b9b;
+    --gray-600: #676767;
+    --gray-700: #424242;
+    --gray-950: #0d0d0d;
+    --success: #00a240;
+    --danger: #e02e2a;
+    --border-light: rgba(13,13,13,0.05);
+    --border-medium: rgba(0,0,0,0.15);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: ui-sans-serif, -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+    color: var(--foreground);
+    background: var(--background);
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  a { color: inherit; }
+
+  /* ─── Comet-border accent (signature Houston animation) ─── */
+  @keyframes comet-border { 0% { --angle: 0deg; } 100% { --angle: 360deg; } }
+  @property --angle { syntax: "<angle>"; initial-value: 0deg; inherits: false; }
+
+  .comet-card { position: relative; border-radius: 20px; overflow: hidden; background: white; }
+  .comet-card::before {
+    content: ""; position: absolute; inset: -2px; border-radius: 22px;
+    background: conic-gradient(from var(--angle), transparent 60%, #3b82f6 72%, #818cf8 80%, #f97316 88%, #eab308 92%, transparent 100%);
+    animation: comet-border 2.5s linear infinite; z-index: 0;
+  }
+  .comet-card::after { content: ""; position: absolute; inset: 2px; border-radius: 18px; background: white; z-index: 0; }
+  .comet-card > * { position: relative; z-index: 1; }
+
+  /* ─── Nav ─── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 16px 40px; display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(to right, rgba(59,130,246,0.06), rgba(255,255,255,0.88) 40%, rgba(255,255,255,0.88) 60%, rgba(249,115,22,0.05));
+    backdrop-filter: blur(20px);
+  }
+  .nav-logo { font-family: 'General Sans', sans-serif; font-size: 22px; font-weight: 500; letter-spacing: -0.02em; color: var(--gray-950); text-decoration: none; }
+  .nav-center { position: absolute; left: 50%; transform: translateX(-50%); display: flex; gap: 32px; align-items: center; }
+  .nav-center a { font-size: 14px; color: var(--gray-600); text-decoration: none; transition: color 0.2s; }
+  .nav-center a:hover { color: var(--gray-950); }
+  .nav-right { display: flex; gap: 16px; align-items: center; }
+  .nav-right a:not(.btn) { color: var(--gray-600); text-decoration: none; display: inline-flex; align-items: center; transition: color 0.2s; }
+  .nav-right a:not(.btn):hover { color: var(--gray-950); }
+
+  /* ─── Buttons ─── */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; height: 36px; padding: 0 16px;
+    border-radius: 9999px; font-size: 14px; font-weight: 500; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; gap: 8px;
+  }
+  .btn-primary { background: var(--gray-950); color: white; }
+  .btn-primary:hover { background: var(--gray-700); }
+  .btn-secondary { background: white; color: var(--gray-950); border: 1px solid var(--border-medium); }
+  .btn-secondary:hover { background: var(--gray-50); }
+  .btn-lg { height: 48px; padding: 0 24px; font-size: 16px; }
+  .btn[disabled], .btn.is-disabled { opacity: 0.4; cursor: not-allowed; pointer-events: none; }
+
+  /* ─── Page layout ─── */
+  .page-bg {
+    position: fixed; inset: 0; z-index: -1; pointer-events: none;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
+      radial-gradient(ellipse 60% 40% at 85% 30%, rgba(249,115,22,0.07), transparent),
+      radial-gradient(ellipse 60% 40% at 15% 70%, rgba(129,140,248,0.06), transparent);
+  }
+
+  .wrap {
+    max-width: 1080px; margin: 0 auto; padding: 92px 40px 40px;
+    min-height: 100vh;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 56px; align-items: center;
+  }
+
+  /* Left: value proposition */
+  .pitch .eyebrow { font-size: 13px; font-weight: 500; color: var(--gray-500); margin-bottom: 16px; display: inline-flex; align-items: center; gap: 8px; }
+  .pitch .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 3px rgba(0,162,64,0.15); }
+  .pitch h1 { font-family: 'General Sans', sans-serif; font-size: 52px; font-weight: 600; letter-spacing: -0.03em; line-height: 1.05; color: var(--gray-950); margin-bottom: 20px; }
+  .pitch h1 .grad { background: linear-gradient(90deg, #3b82f6, #818cf8 40%, #f97316 80%); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .pitch .lede { font-size: 19px; color: var(--muted-foreground); line-height: 1.55; max-width: 460px; margin-bottom: 32px; }
+  .benefits { list-style: none; display: flex; flex-direction: column; gap: 14px; }
+  .benefits li { display: flex; align-items: flex-start; gap: 12px; font-size: 15px; color: var(--gray-700); line-height: 1.45; }
+  .benefits .check { flex: 0 0 22px; width: 22px; height: 22px; border-radius: 50%; background: var(--gray-950); color: #fff; display: inline-flex; align-items: center; justify-content: center; margin-top: 1px; }
+  .benefits .check svg { width: 13px; height: 13px; }
+
+  /* Right: form card */
+  .form-card { padding: 30px; }
+  .form-card h2 { font-family: 'General Sans', sans-serif; font-size: 24px; font-weight: 600; letter-spacing: -0.02em; margin-bottom: 6px; }
+  .form-card .sub { font-size: 14px; color: var(--gray-600); line-height: 1.5; margin-bottom: 24px; }
+
+  .field { margin-bottom: 13px; }
+  .field label { display: block; font-size: 13px; font-weight: 500; color: var(--gray-700); margin-bottom: 7px; }
+  .field label .opt { color: var(--gray-400); font-weight: 400; }
+  .field input, .field select {
+    width: 100%; height: 46px; border: 1px solid var(--border-medium); border-radius: 12px; padding: 0 14px;
+    font-size: 15px; font-family: inherit; color: var(--gray-950); background: white; outline: none; transition: border-color 0.15s, box-shadow 0.15s; appearance: none;
+  }
+  .field select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239b9b9b' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat; background-position: right 14px center; padding-right: 40px; cursor: pointer; color: var(--gray-950);
+  }
+  .field input:focus, .field select:focus { border-color: var(--gray-950); box-shadow: 0 0 0 3px rgba(13,13,13,0.06); }
+  .field input::placeholder { color: var(--gray-400); }
+  .field.invalid input, .field.invalid select { border-color: var(--danger); }
+  .field .err { display: none; font-size: 12px; color: var(--danger); margin-top: 6px; }
+  .field.invalid .err { display: block; }
+
+  /* Phone field: country-code dropdown + number share one bordered box */
+  .phone-group {
+    display: flex; align-items: center; height: 46px; overflow: hidden;
+    border: 1px solid var(--border-medium); border-radius: 12px; background: white;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .phone-group:focus-within { border-color: var(--gray-950); box-shadow: 0 0 0 3px rgba(13,13,13,0.06); }
+  .field.invalid .phone-group { border-color: var(--danger); }
+  /* Custom country-code dropdown: collapsed shows flag + abbr + code, open shows full name */
+  .cc { position: relative; flex: 0 0 auto; height: 100%; }
+  .cc-toggle {
+    display: inline-flex; align-items: center; gap: 6px; height: 100%; border: none; background: transparent;
+    padding: 0 10px 0 12px; cursor: pointer; font-size: 15px; font-family: inherit; color: var(--gray-950); white-space: nowrap;
+  }
+  .cc-toggle .cc-flag { font-size: 17px; line-height: 1; }
+  .cc-toggle .cc-abbr { font-weight: 500; }
+  .cc-toggle .cc-dial { color: var(--gray-600); }
+  .cc-caret { width: 14px; height: 14px; color: var(--gray-500); transition: transform 0.15s; }
+  .cc.open .cc-caret { transform: rotate(180deg); }
+  .cc-menu {
+    position: fixed; z-index: 200; display: none; width: 290px; max-height: 300px; overflow-y: auto;
+    overscroll-behavior: contain; margin: 0; padding: 6px; list-style: none; background: white;
+    border: 1px solid var(--border); border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.14);
+  }
+  .cc.open .cc-menu { display: block; }
+  .cc-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-radius: 8px; cursor: pointer; font-size: 14px; }
+  .cc-item:hover, .cc-item.selected { background: var(--gray-50); }
+  .cc-item .cc-flag { font-size: 17px; line-height: 1; flex: 0 0 auto; }
+  .cc-item .cc-name { flex: 1; min-width: 0; color: var(--gray-950); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cc-item .cc-dial { flex: 0 0 auto; color: var(--gray-500); }
+  .phone-group .divider { flex: 0 0 1px; width: 1px; height: 24px; background: var(--border-medium); }
+  .phone-group input {
+    flex: 1; min-width: 0; width: auto; height: 100%; border: none; outline: none; box-shadow: none;
+    background: transparent; border-radius: 0; padding: 0 14px; margin: 0;
+    font-size: 15px; font-family: inherit; color: var(--gray-950);
+  }
+  .phone-group input:focus { box-shadow: none; border: none; }
+
+  .submit { width: 100%; margin-top: 8px; }
+  .legal { font-size: 11px; color: var(--gray-500); line-height: 1.5; margin-top: 14px; text-align: center; }
+  .legal a { color: var(--gray-600); text-decoration: underline; text-underline-offset: 2px; }
+
+  /* Success state */
+  .success { display: none; text-align: center; padding: 8px 4px; }
+  .form-card.done .form-body { display: none; }
+  .form-card.done .success { display: block; }
+  .success .badge { width: 56px; height: 56px; border-radius: 50%; background: rgba(0,162,64,0.10); color: var(--success); display: inline-flex; align-items: center; justify-content: center; margin-bottom: 18px; }
+  .success .badge svg { width: 28px; height: 28px; }
+  .success h2 { font-family: 'General Sans', sans-serif; font-size: 22px; font-weight: 600; margin-bottom: 8px; }
+  .success p { font-size: 14px; color: var(--gray-600); line-height: 1.55; max-width: 320px; margin: 0 auto; }
+  .success .redirect-note { font-size: 12px; color: var(--gray-400); margin-top: 14px; }
+
+  /* ─── Footer ─── */
+  footer { padding: 40px; border-top: 1px solid var(--border-light); text-align: center; font-size: 13px; color: var(--gray-500); }
+  footer a { color: var(--gray-500); text-decoration: none; transition: color 0.2s; }
+  footer a:hover { color: var(--gray-950); }
+  .footer-links { display: flex; gap: 16px; justify-content: center; margin-top: 8px; }
+
+  /* ─── Responsive ─── */
+  @media (max-width: 900px) {
+    nav { padding: 16px 20px; }
+    .nav-center { display: none; }
+    .wrap { grid-template-columns: 1fr; gap: 40px; padding: 120px 24px 64px; max-width: 520px; }
+    .pitch h1 { font-size: 38px; }
+    .pitch { text-align: center; }
+    .pitch .lede { margin-left: auto; margin-right: auto; }
+    .benefits { max-width: 360px; margin: 0 auto; text-align: left; }
+  }
+  @media (max-width: 600px) {
+    .pitch h1 { font-size: 32px; }
+    .form-card { padding: 28px 22px; }
+  }
+</style>
+{% endblock %}
+{% block body %}
+<div class="page-bg"></div>
+
+<!-- NAV (mirrors nav-landing.njk) -->
+<nav>
+  <a href="/" class="nav-logo">Houston</a>
+  <div class="nav-center">
+    <a href="/#agents">Agents</a>
+    <a href="/#features">Features</a>
+    <a href="/changelog/">Changelog</a>
+    <a href="/startups/">For Startups</a>
+  </div>
+  <div class="nav-right">
+    <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer" aria-label="GitHub">
+      <svg viewBox="0 0 24 24" fill="currentColor" width="20" height="20"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0024 12c0-6.63-5.37-12-12-12z"/></svg>
+    </a>
+    <a href="/" class="btn btn-secondary">Back to site</a>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="wrap">
+  <!-- Left: pitch -->
+  <section class="pitch">
+    <span class="eyebrow"><span class="dot"></span> Now in beta</span>
+    <h1>Join the <span class="grad">waiting list</span></h1>
+    <p class="lede">Real AI agents that get things done, not another chatbot. Houston runs your tasks end to end on your desktop. We're letting early adopters in first, so claim your spot and help shape what comes next.</p>
+    <ul class="benefits">
+      <li><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span> Early access to the desktop app, ahead of public launch.</li>
+      <li><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span> Priority onboarding and a direct line to the team.</li>
+      <li><span class="check"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span> A say in what we build next.</li>
+    </ul>
+  </section>
+
+  <!-- Right: form -->
+  <section class="comet-card form-card" id="formCard">
+    <div class="form-body">
+      <h2>Get early access</h2>
+      <p class="sub">Tell us where to reach you and we'll get you in early.</p>
+      <form id="waitlistForm" novalidate>
+        <div class="field" id="f-name">
+          <label for="name">Complete name</label>
+          <input type="text" id="name" name="name" placeholder="Jane Doe" autocomplete="name" required>
+          <span class="err">Please enter your full name to continue.</span>
+        </div>
+        <div class="field" id="f-email">
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" placeholder="jane@company.com" autocomplete="email" required>
+          <span class="err">Please enter a valid email to continue.</span>
+        </div>
+        <div class="field" id="f-phone">
+          <label for="phone">Phone number <span class="opt">(best to reach you on WhatsApp)</span></label>
+          <div class="phone-group">
+            <div class="cc" id="cc">
+              <button type="button" class="cc-toggle" id="ccToggle" aria-haspopup="listbox" aria-expanded="false">
+                <span class="cc-flag" id="ccFlag">🇺🇸</span>
+                <span class="cc-abbr" id="ccAbbr">US</span>
+                <span class="cc-dial" id="ccDial">+1</span>
+                <svg class="cc-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+              </button>
+              <ul class="cc-menu" id="ccMenu" role="listbox" aria-label="Country code"></ul>
+            </div>
+            <span class="divider"></span>
+            <input type="tel" id="phone" name="phone" placeholder="555 123 4567" autocomplete="tel">
+            <input type="hidden" id="phoneCode" name="phoneCode" value="+1">
+          </div>
+          <span class="err">Please enter your phone number to continue.</span>
+        </div>
+        <div class="field" id="f-linkedin">
+          <label for="linkedin">LinkedIn</label>
+          <input type="url" id="linkedin" name="linkedin" placeholder="https://www.linkedin.com/in/you" autocomplete="url" required>
+          <span class="err">Please enter a valid LinkedIn URL to continue.</span>
+        </div>
+        <div class="field" id="f-country">
+          <label for="country">Country</label>
+          <select id="country" name="country" required>
+            <option value="" selected disabled hidden>Select your country</option>
+          </select>
+          <span class="err">Please select your country to continue.</span>
+        </div>
+        <button type="submit" id="submitBtn" class="btn btn-primary btn-lg submit is-disabled" disabled>Join the waiting list</button>
+        <p class="legal">By joining you agree to receive product updates from Houston. Unsubscribe anytime. See our <a href="/privacy/">Privacy Policy</a>.</p>
+      </form>
+    </div>
+    <div class="success">
+      <span class="badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M20 6L9 17l-5-5"/></svg></span>
+      <h2>You're on the list</h2>
+      <p>Thanks for joining. We'll email you the moment your spot opens up.</p>
+      <p class="redirect-note">Taking you back to the homepage…</p>
+    </div>
+  </section>
+</main>
+
+<!-- FOOTER (mirrors footer-landing.njk) -->
+<footer>
+  <div>Houston. Free and open source.</div>
+  <div class="footer-links">
+    <a href="/privacy/">Privacy Policy</a>
+    <a href="/terms/">Terms of Service</a>
+    <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener noreferrer">GitHub</a>
+  </div>
+</footer>
+
+<script>
+  // ─── Form handling ───
+  // Validation + UX is done. The SUBMIT destination is the one decision left:
+  // Supabase table / Google Sheet / email / form tool. Wire it in `sendSignup()`.
+  function track(name, props) {
+    if (window.posthog && window.posthog.capture) { window.posthog.capture(name, props); }
+    if (typeof window.gtag === 'function') { window.gtag('event', name, props); }
+  }
+
+  var form = document.getElementById('waitlistForm');
+  var card = document.getElementById('formCard');
+  var submitBtn = document.getElementById('submitBtn');
+
+  // The Country field is populated further down from the same exhaustive COUNTRY_CODES list.
+
+  // Exhaustive country list for the phone field: [name, ISO2 code, dial code].
+  // Flag emoji is derived from the ISO2 code at runtime.
+  var COUNTRY_CODES = [
+    ["Afghanistan","AF","+93"],["Albania","AL","+355"],["Algeria","DZ","+213"],["Andorra","AD","+376"],
+    ["Angola","AO","+244"],["Antigua and Barbuda","AG","+1268"],["Argentina","AR","+54"],["Armenia","AM","+374"],
+    ["Australia","AU","+61"],["Austria","AT","+43"],["Azerbaijan","AZ","+994"],["Bahamas","BS","+1242"],
+    ["Bahrain","BH","+973"],["Bangladesh","BD","+880"],["Barbados","BB","+1246"],["Belarus","BY","+375"],
+    ["Belgium","BE","+32"],["Belize","BZ","+501"],["Benin","BJ","+229"],["Bhutan","BT","+975"],
+    ["Bolivia","BO","+591"],["Bosnia and Herzegovina","BA","+387"],["Botswana","BW","+267"],["Brazil","BR","+55"],
+    ["Brunei","BN","+673"],["Bulgaria","BG","+359"],["Burkina Faso","BF","+226"],["Burundi","BI","+257"],
+    ["Cambodia","KH","+855"],["Cameroon","CM","+237"],["Canada","CA","+1"],["Cape Verde","CV","+238"],
+    ["Central African Republic","CF","+236"],["Chad","TD","+235"],["Chile","CL","+56"],["China","CN","+86"],
+    ["Colombia","CO","+57"],["Comoros","KM","+269"],["Congo (Republic)","CG","+242"],["Congo (DRC)","CD","+243"],
+    ["Costa Rica","CR","+506"],["Croatia","HR","+385"],["Cuba","CU","+53"],["Cyprus","CY","+357"],
+    ["Czech Republic","CZ","+420"],["Denmark","DK","+45"],["Djibouti","DJ","+253"],["Dominica","DM","+1767"],
+    ["Dominican Republic","DO","+1809"],["Ecuador","EC","+593"],["Egypt","EG","+20"],["El Salvador","SV","+503"],
+    ["Equatorial Guinea","GQ","+240"],["Eritrea","ER","+291"],["Estonia","EE","+372"],["Eswatini","SZ","+268"],
+    ["Ethiopia","ET","+251"],["Fiji","FJ","+679"],["Finland","FI","+358"],["France","FR","+33"],
+    ["Gabon","GA","+241"],["Gambia","GM","+220"],["Georgia","GE","+995"],["Germany","DE","+49"],
+    ["Ghana","GH","+233"],["Greece","GR","+30"],["Grenada","GD","+1473"],["Guatemala","GT","+502"],
+    ["Guinea","GN","+224"],["Guinea-Bissau","GW","+245"],["Guyana","GY","+592"],["Haiti","HT","+509"],
+    ["Honduras","HN","+504"],["Hong Kong","HK","+852"],["Hungary","HU","+36"],["Iceland","IS","+354"],
+    ["India","IN","+91"],["Indonesia","ID","+62"],["Iran","IR","+98"],["Iraq","IQ","+964"],
+    ["Ireland","IE","+353"],["Israel","IL","+972"],["Italy","IT","+39"],["Ivory Coast","CI","+225"],
+    ["Jamaica","JM","+1876"],["Japan","JP","+81"],["Jordan","JO","+962"],["Kazakhstan","KZ","+7"],
+    ["Kenya","KE","+254"],["Kiribati","KI","+686"],["Kosovo","XK","+383"],["Kuwait","KW","+965"],
+    ["Kyrgyzstan","KG","+996"],["Laos","LA","+856"],["Latvia","LV","+371"],["Lebanon","LB","+961"],
+    ["Lesotho","LS","+266"],["Liberia","LR","+231"],["Libya","LY","+218"],["Liechtenstein","LI","+423"],
+    ["Lithuania","LT","+370"],["Luxembourg","LU","+352"],["Macau","MO","+853"],["Madagascar","MG","+261"],
+    ["Malawi","MW","+265"],["Malaysia","MY","+60"],["Maldives","MV","+960"],["Mali","ML","+223"],
+    ["Malta","MT","+356"],["Marshall Islands","MH","+692"],["Mauritania","MR","+222"],["Mauritius","MU","+230"],
+    ["Mexico","MX","+52"],["Micronesia","FM","+691"],["Moldova","MD","+373"],["Monaco","MC","+377"],
+    ["Mongolia","MN","+976"],["Montenegro","ME","+382"],["Morocco","MA","+212"],["Mozambique","MZ","+258"],
+    ["Myanmar","MM","+95"],["Namibia","NA","+264"],["Nauru","NR","+674"],["Nepal","NP","+977"],
+    ["Netherlands","NL","+31"],["New Zealand","NZ","+64"],["Nicaragua","NI","+505"],["Niger","NE","+227"],
+    ["Nigeria","NG","+234"],["North Korea","KP","+850"],["North Macedonia","MK","+389"],["Norway","NO","+47"],
+    ["Oman","OM","+968"],["Pakistan","PK","+92"],["Palau","PW","+680"],["Palestine","PS","+970"],
+    ["Panama","PA","+507"],["Papua New Guinea","PG","+675"],["Paraguay","PY","+595"],["Peru","PE","+51"],
+    ["Philippines","PH","+63"],["Poland","PL","+48"],["Portugal","PT","+351"],["Puerto Rico","PR","+1787"],
+    ["Qatar","QA","+974"],["Romania","RO","+40"],["Russia","RU","+7"],["Rwanda","RW","+250"],
+    ["Saint Kitts and Nevis","KN","+1869"],["Saint Lucia","LC","+1758"],["Saint Vincent and the Grenadines","VC","+1784"],["Samoa","WS","+685"],
+    ["San Marino","SM","+378"],["Sao Tome and Principe","ST","+239"],["Saudi Arabia","SA","+966"],["Senegal","SN","+221"],
+    ["Serbia","RS","+381"],["Seychelles","SC","+248"],["Sierra Leone","SL","+232"],["Singapore","SG","+65"],
+    ["Slovakia","SK","+421"],["Slovenia","SI","+386"],["Solomon Islands","SB","+677"],["Somalia","SO","+252"],
+    ["South Africa","ZA","+27"],["South Korea","KR","+82"],["South Sudan","SS","+211"],["Spain","ES","+34"],
+    ["Sri Lanka","LK","+94"],["Sudan","SD","+249"],["Suriname","SR","+597"],["Sweden","SE","+46"],
+    ["Switzerland","CH","+41"],["Syria","SY","+963"],["Taiwan","TW","+886"],["Tajikistan","TJ","+992"],
+    ["Tanzania","TZ","+255"],["Thailand","TH","+66"],["Timor-Leste","TL","+670"],["Togo","TG","+228"],
+    ["Tonga","TO","+676"],["Trinidad and Tobago","TT","+1868"],["Tunisia","TN","+216"],["Turkey","TR","+90"],
+    ["Turkmenistan","TM","+993"],["Tuvalu","TV","+688"],["Uganda","UG","+256"],["Ukraine","UA","+380"],
+    ["United Arab Emirates","AE","+971"],["United Kingdom","GB","+44"],["United States","US","+1"],["Uruguay","UY","+598"],
+    ["Uzbekistan","UZ","+998"],["Vanuatu","VU","+678"],["Vatican City","VA","+379"],["Venezuela","VE","+58"],
+    ["Vietnam","VN","+84"],["Yemen","YE","+967"],["Zambia","ZM","+260"],["Zimbabwe","ZW","+263"]
+  ];
+
+  // Flag emoji from an ISO2 country code (regional indicator letters).
+  function flagOf(iso) {
+    return iso.toUpperCase().replace(/./g, function (ch) {
+      return String.fromCodePoint(127397 + ch.charCodeAt(0));
+    });
+  }
+
+  // Sort alphabetically by name, then pin United States to the top.
+  var DIAL_CODES = COUNTRY_CODES.slice().sort(function (a, b) { return a[0].localeCompare(b[0]); });
+  var usIdx = DIAL_CODES.findIndex(function (c) { return c[1] === 'US'; });
+  if (usIdx > -1) { DIAL_CODES.unshift(DIAL_CODES.splice(usIdx, 1)[0]); }
+
+  // Populate the Country field from the same exhaustive list, alphabetical order.
+  var countrySel = document.getElementById('country');
+  COUNTRY_CODES.slice().sort(function (a, b) { return a[0].localeCompare(b[0]); }).forEach(function (c) {
+    var o = document.createElement('option');
+    o.value = c[0]; o.textContent = c[0]; countrySel.appendChild(o);
+  });
+
+  var ccBox = document.getElementById('cc');
+  var ccToggle = document.getElementById('ccToggle');
+  var ccMenu = document.getElementById('ccMenu');
+  var ccFlag = document.getElementById('ccFlag');
+  var ccAbbr = document.getElementById('ccAbbr');
+  var ccDial = document.getElementById('ccDial');
+  var phoneCodeInput = document.getElementById('phoneCode');
+
+  function selectCode(c) {
+    ccFlag.textContent = flagOf(c[1]);
+    ccAbbr.textContent = c[1];
+    ccDial.textContent = c[2];
+    phoneCodeInput.value = c[2];
+    Array.prototype.forEach.call(ccMenu.children, function (li) {
+      li.classList.toggle('selected', li.dataset.iso === c[1]);
+    });
+  }
+
+  DIAL_CODES.forEach(function (c) {
+    var li = document.createElement('li');
+    li.className = 'cc-item';
+    li.setAttribute('role', 'option');
+    li.dataset.iso = c[1];
+    li.title = c[0];
+    li.innerHTML = '<span class="cc-flag">' + flagOf(c[1]) + '</span><span class="cc-name">' + c[0] + '</span><span class="cc-dial">' + c[2] + '</span>';
+    li.addEventListener('click', function () { selectCode(c); closeCC(); });
+    ccMenu.appendChild(li);
+  });
+
+  function openCC() {
+    // Fixed positioning so the menu is never clipped by the card's overflow.
+    var r = ccToggle.getBoundingClientRect();
+    ccMenu.style.top = (r.bottom + 6) + 'px';
+    ccMenu.style.left = r.left + 'px';
+    ccMenu.scrollTop = 0;
+    ccBox.classList.add('open');
+    ccToggle.setAttribute('aria-expanded', 'true');
+  }
+  function closeCC() { ccBox.classList.remove('open'); ccToggle.setAttribute('aria-expanded', 'false'); }
+  ccToggle.addEventListener('click', function (e) { e.stopPropagation(); ccBox.classList.contains('open') ? closeCC() : openCC(); });
+  document.addEventListener('click', function (e) { if (!ccBox.contains(e.target)) closeCC(); });
+  document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeCC(); });
+  // Close on PAGE scroll/resize, but ignore scrolling INSIDE the menu so its own scrollbar works.
+  window.addEventListener('scroll', function (e) {
+    if (e.target && e.target.nodeType === 1 && ccMenu.contains(e.target)) return;
+    closeCC();
+  }, true);
+  window.addEventListener('resize', closeCC);
+
+  selectCode(DIAL_CODES[0]); // default to United States (pinned first)
+
+  function validEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+
+  // Every field is required. Each entry: wrapper id, input element, validity test.
+  var fields = [
+    { wrap: 'f-name',     el: document.getElementById('name'),     ok: function (v) { return v.trim().length > 0; } },
+    { wrap: 'f-email',    el: document.getElementById('email'),    ok: function (v) { return validEmail(v.trim()); } },
+    { wrap: 'f-phone',    el: document.getElementById('phone'),    ok: function (v) { return v.trim().length >= 5; } },
+    { wrap: 'f-linkedin', el: document.getElementById('linkedin'), ok: function (v) { return /^(https?:\/\/)?([\w-]+\.)?linkedin\.com\/.+/i.test(v.trim()); } },
+    { wrap: 'f-country',  el: document.getElementById('country'),  ok: function (v) { return v.length > 0; } }
+  ];
+
+  function fieldValid(f) { return f.ok(f.el.value); }
+  function formValid() { return fields.every(fieldValid); }
+
+  // Mark a field red, but only once the user has touched it (or on a forced check).
+  function paint(f, force) {
+    var wrap = document.getElementById(f.wrap);
+    if (force || wrap.dataset.touched === '1') {
+      wrap.classList.toggle('invalid', !fieldValid(f));
+    }
+  }
+
+  function refreshButton() {
+    var ok = formValid();
+    submitBtn.disabled = !ok;
+    submitBtn.classList.toggle('is-disabled', !ok);
+  }
+
+  fields.forEach(function (f) {
+    var ev = (f.el.tagName === 'SELECT') ? 'change' : 'input';
+    f.el.addEventListener(ev, function () { paint(f, false); refreshButton(); });
+    f.el.addEventListener('blur', function () {
+      document.getElementById(f.wrap).dataset.touched = '1';
+      paint(f, false);
+    });
+  });
+
+  refreshButton(); // start disabled until every field is valid
+
+  // ── Storage config ──
+  // Supabase = source of truth. Google Sheet = mirror (flip WRITE_TO_SHEET off once you trust Supabase).
+  var SUPABASE_URL = '{{ env.supabaseUrl }}';
+  var SUPABASE_ANON_KEY = '{{ env.supabaseAnonKey }}'; // public anon key, safe in client
+  var WRITE_TO_SUPABASE = true;
+  var SHEET_ENDPOINT = '{{ env.waitlistSheetEndpoint }}';
+  var WRITE_TO_SHEET = true;
+  var HOME_URL = '/';        // where to send the user after joining
+  var REDIRECT_MS = 10000;   // delay before redirect
+
+  async function sendSignup(payload) {
+    // 1) Supabase (authoritative). Any failure other than a duplicate email surfaces to the user.
+    if (WRITE_TO_SUPABASE) {
+      var res = await fetch(SUPABASE_URL + '/rest/v1/waitlist', {
+        method: 'POST',
+        headers: {
+          'apikey': SUPABASE_ANON_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_ANON_KEY,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({
+          full_name: payload.name,
+          email: payload.email,
+          phone: payload.phone,
+          phone_country_code: payload.phoneCode || null,
+          linkedin: payload.linkedin,
+          country: payload.country,
+          source: payload.source || 'waitlist_page'
+        })
+      });
+      // 409 = already on the list (duplicate email). Treat as success.
+      if (!res.ok && res.status !== 409) {
+        throw new Error('Supabase insert failed: ' + res.status + ' ' + (await res.text()));
+      }
+    }
+    // 2) Google Sheet mirror (best effort). Apps Script sends no CORS headers, so no-cors + fire and forget.
+    if (WRITE_TO_SHEET && SHEET_ENDPOINT) {
+      fetch(SHEET_ENDPOINT, {
+        method: 'POST',
+        mode: 'no-cors',
+        headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+        body: JSON.stringify(payload)
+      }).catch(function (err) { console.warn('Sheet mirror write failed:', err); });
+    }
+  }
+
+  form.addEventListener('submit', async function (e) {
+    e.preventDefault();
+    fields.forEach(function (f) {
+      document.getElementById(f.wrap).dataset.touched = '1';
+      paint(f, true);
+    });
+    if (!formValid()) return;
+
+    submitBtn.textContent = 'Joining…';
+    submitBtn.disabled = true;
+    submitBtn.classList.add('is-disabled');
+    try {
+      await sendSignup({
+        name: fields[0].el.value.trim(),
+        email: fields[1].el.value.trim(),
+        phone: document.getElementById('phoneCode').value + ' ' + fields[2].el.value.trim(),
+        phoneCode: document.getElementById('phoneCode').value,
+        linkedin: fields[3].el.value.trim(),
+        country: fields[4].el.value,
+        source: 'waitlist_page'
+      });
+      card.classList.add('done');
+      track('waitlist_submitted', { country: fields[4].el.value, source: 'waitlist_page' });
+      setTimeout(function () { window.location.href = HOME_URL; }, REDIRECT_MS);
+    } catch (err) {
+      submitBtn.textContent = 'Join the waiting list';
+      submitBtn.classList.remove('is-disabled');
+      submitBtn.disabled = false;
+      alert('Something went wrong. Please try again.');
+    }
+  });
+</script>
+{% endblock %}
