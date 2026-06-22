@@ -25,6 +25,7 @@ import {
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
   DEFAULT_WORKSPACE_ID,
+  configWriteToSettings,
   syntheticWorkspace,
   toNewProvider,
   toOldProvider,
@@ -367,9 +368,44 @@ export class HoustonClient {
     relPath: string,
     content: string,
   ): Promise<void> {
-    if (this.cp)
-      return controlPlane.writeAgentFile(this.cp, agentPath, relPath, content);
-    writeAgentFileStore(agentPath, relPath, content);
+    if (this.cp) {
+      await controlPlane.writeAgentFile(this.cp, agentPath, relPath, content);
+    } else {
+      writeAgentFileStore(agentPath, relPath, content);
+    }
+    // The runtime resolves the model from its OWN settings (activeProvider +
+    // models[provider]), NOT from this .houston/config doc — which is the only
+    // thing the model picker writes. Without mirroring, picking a different model
+    // (e.g. a non-default OpenCode Go model) updates the doc but every turn keeps
+    // running the provider's default. Bridge the config write into the engine.
+    await this.syncConfigToSettings(agentPath, relPath, content);
+  }
+
+  /**
+   * Mirror a per-agent `config.json` write (provider + model) into the engine's
+   * settings, so a model/provider pick in the chat picker actually changes what
+   * the next turn runs. Best-effort: the doc write already succeeded, and the
+   * picker only offers connected providers, so a failure here is logged (never a
+   * silent model swap) but doesn't fail the file write.
+   */
+  private async syncConfigToSettings(
+    agentPath: string,
+    relPath: string,
+    content: string,
+  ): Promise<void> {
+    const update = configWriteToSettings(relPath, content);
+    if (!update) return;
+    try {
+      const engine = this.cp
+        ? controlPlane.runtimeClientFor(this.cp, agentPath)
+        : this.engine;
+      await engine.setSettings(update);
+    } catch (err) {
+      console.error(
+        "[engine-adapter] failed to sync the model selection to the engine:",
+        err,
+      );
+    }
   }
   async seedAgentSchemas(): Promise<void> {}
   async migrateAgentFiles(): Promise<void> {}

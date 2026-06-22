@@ -65,3 +65,36 @@ export function toNewProvider(
 export function toOldProvider(id: string): string {
   return id === "openai-codex" ? "openai" : id;
 }
+
+/** The engine ProviderId values, narrowed from toNewProvider's union. */
+export type NewProviderId = NonNullable<ReturnType<typeof toNewProvider>>;
+
+/**
+ * Decide the engine-settings update a per-agent config-file write implies, or
+ * null to skip. The runtime resolves the model from its OWN settings
+ * (activeProvider + models[provider]), but the chat model picker only writes
+ * `.houston/config/config.json` — so a config write carrying provider+model
+ * must be mirrored into the runtime, or picking a non-default model (e.g. an
+ * OpenCode Go model other than the default) updates the doc the runtime never
+ * reads and every turn keeps running the provider default. Pure so the bridge
+ * decision is unit-tested without the HTTP client.
+ */
+export function configWriteToSettings(
+  relPath: string,
+  content: string,
+): { activeProvider: NewProviderId; model?: string } | null {
+  if (!relPath.endsWith(".houston/config/config.json")) return null;
+  let cfg: { provider?: unknown; model?: unknown };
+  try {
+    cfg = JSON.parse(content) as { provider?: unknown; model?: unknown };
+  } catch {
+    return null;
+  }
+  if (typeof cfg.provider !== "string") return null;
+  const pid = toNewProvider(cfg.provider);
+  if (!pid) return null;
+  return {
+    activeProvider: pid,
+    ...(typeof cfg.model === "string" && cfg.model ? { model: cfg.model } : {}),
+  };
+}
