@@ -82,7 +82,7 @@ export function appendAssistantMessageAt(
     role: "assistant",
     content,
     ts: Date.now(),
-    tools: tools && tools.length ? tools : undefined,
+    tools: tools?.length ? tools : undefined,
     usage: usage ?? undefined,
   });
   conv.updatedAt = Date.now();

@@ -65,6 +65,7 @@ function ToastItem({
         <p className="text-sm text-foreground">{toast.message}</p>
         {toast.action && (
           <button
+            type="button"
             onClick={toast.action.onClick}
             className="mt-1.5 rounded-full bg-foreground/10 px-3 py-1 text-xs font-medium text-foreground hover:bg-foreground/20 transition-colors"
           >
@@ -73,6 +74,7 @@ function ToastItem({
         )}
       </div>
       <button
+        type="button"
         onClick={() => onDismiss(toast.id)}
         className="text-muted-foreground hover:text-foreground shrink-0"
       >

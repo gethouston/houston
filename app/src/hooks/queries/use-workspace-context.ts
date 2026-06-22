@@ -8,7 +8,10 @@ const key = (workspaceId: string) =>
 export function useWorkspaceContext(workspaceId: string | undefined) {
   return useQuery({
     queryKey: key(workspaceId ?? ""),
-    queryFn: () => tauriWorkspaces.getContext(workspaceId!),
+    queryFn: () => {
+      if (!workspaceId) throw new Error("workspaceId is required");
+      return tauriWorkspaces.getContext(workspaceId);
+    },
     enabled: !!workspaceId,
   });
 }
@@ -16,8 +19,10 @@ export function useWorkspaceContext(workspaceId: string | undefined) {
 export function useSaveWorkspaceContext(workspaceId: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (body: WorkspaceContext) =>
-      tauriWorkspaces.setContext(workspaceId!, body),
+    mutationFn: (body: WorkspaceContext) => {
+      if (!workspaceId) throw new Error("workspaceId is required");
+      return tauriWorkspaces.setContext(workspaceId, body);
+    },
     onSuccess: (data) => {
       if (workspaceId) qc.setQueryData(key(workspaceId), data);
     },

@@ -64,7 +64,7 @@ export async function handle(req: IncomingMessage, res: ServerResponse) {
 
   if (method === "POST" && path === "/run") {
     if (!authorized(req)) return json(res, 401, { error: "unauthorized" });
-    let body: any;
+    let body: unknown;
     try {
       body = await readJson(req, config.maxBodyBytes);
     } catch (e) {
@@ -73,11 +73,12 @@ export async function handle(req: IncomingMessage, res: ServerResponse) {
       });
     }
     try {
+      const b = body as Record<string, unknown>;
       const request: RunRequest = {
-        language: body.language,
-        code: body.code,
-        files: body.files,
-        timeoutMs: body.timeoutMs,
+        language: b.language as RunRequest["language"],
+        code: b.code as RunRequest["code"],
+        files: b.files as RunRequest["files"],
+        timeoutMs: b.timeoutMs as RunRequest["timeoutMs"],
       };
       const result = await runInSandbox(request, DEFAULT_LIMITS);
       return json(res, 200, result);

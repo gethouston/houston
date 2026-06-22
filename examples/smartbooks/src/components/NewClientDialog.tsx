@@ -29,8 +29,22 @@ export function NewClientDialog({ agentPath, onClose, onCreated }: Props) {
   }
 
   return (
-    <div className="modal" role="dialog" aria-modal="true" onClick={onClose}>
-      <div className="modal__card" onClick={(e) => e.stopPropagation()}>
+    <div
+      className="modal"
+      role="dialog"
+      aria-modal="true"
+      onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
+    >
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: presentational container; handlers only stop backdrop event propagation, not user interaction */}
+      <div
+        className="modal__card"
+        role="presentation"
+        onClick={(e) => e.stopPropagation()}
+        onKeyDown={(e) => e.stopPropagation()}
+      >
         <h2 className="modal__title">New client</h2>
         <p className="muted modal__hint">
           We'll create a folder for their statements, receipts, and workbooks.
@@ -40,7 +54,6 @@ export function NewClientDialog({ agentPath, onClose, onCreated }: Props) {
           <label className="field">
             <span>Client name</span>
             <input
-              autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Acme Corp"

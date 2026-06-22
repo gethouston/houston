@@ -134,13 +134,13 @@ function runRuntimeChannelContract(
         let providers = (await (await fetch(`${base}/providers`)).json()) as {
           configured: boolean;
         }[];
-        expect(providers[0]!.configured).toBe(false);
+        expect(providers[0]?.configured).toBe(false);
 
         await connect();
         providers = (await (await fetch(`${base}/providers`)).json()) as {
           configured: boolean;
         }[];
-        expect(providers[0]!.configured).toBe(true);
+        expect(providers[0]?.configured).toBe(true);
       } finally {
         close();
       }

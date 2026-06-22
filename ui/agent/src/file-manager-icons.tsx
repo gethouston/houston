@@ -14,7 +14,7 @@ const FOLD = "M10 1L13 4H10.5C10.22 4 10 3.78 10 3.5V1Z";
 
 function DocBase({ children }: { children?: ReactNode }) {
   return (
-    <svg className={IC} viewBox="0 0 16 16" fill="none">
+    <svg className={IC} viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path d={BODY} fill="white" stroke="#BEBEBE" strokeWidth="0.6" />
       <path
         d={FOLD}
@@ -31,7 +31,7 @@ function DocBase({ children }: { children?: ReactNode }) {
 /** Blue macOS folder */
 export function FolderIcon() {
   return (
-    <svg className={IC} viewBox="0 0 16 16" fill="none">
+    <svg className={IC} viewBox="0 0 16 16" fill="none" aria-hidden="true">
       <path
         d="M1.5 3C1.5 2.45 1.95 2 2.5 2H6.29L7.79 3.5H13.5C14.05 3.5 14.5 3.95 14.5 4.5V13C14.5 13.55 14.05 14 13.5 14H2.5C1.95 14 1.5 13.55 1.5 13V3Z"
         fill="#A0D0F8"
@@ -183,6 +183,7 @@ export function DisclosureChevron({
       strokeWidth="1.5"
       strokeLinecap="round"
       strokeLinejoin="round"
+      aria-hidden="true"
     >
       <path d="M3.5 1.5L7 5L3.5 8.5" />
     </svg>

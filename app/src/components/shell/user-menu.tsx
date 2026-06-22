@@ -43,6 +43,7 @@ export function UserMenu() {
     <>
       <div className="relative mx-2 mb-2">
         <button
+          type="button"
           onClick={() => setOpen((v) => !v)}
           className="w-full flex items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-accent transition-colors"
         >
@@ -70,6 +71,7 @@ export function UserMenu() {
             />
             <div className="absolute bottom-full left-0 right-0 mb-1 rounded-lg border border-border bg-popover shadow-md z-20 overflow-hidden">
               <button
+                type="button"
                 onClick={() => {
                   setOpen(false);
                   setViewMode("settings");
@@ -80,6 +82,7 @@ export function UserMenu() {
                 Account settings
               </button>
               <button
+                type="button"
                 onClick={() => {
                   setOpen(false);
                   setFeedbackOpen(true);
@@ -90,6 +93,7 @@ export function UserMenu() {
                 {t("userMenu.sendFeedback")}
               </button>
               <button
+                type="button"
                 onClick={handleSignOut}
                 className="w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors flex items-center gap-2 text-destructive"
               >

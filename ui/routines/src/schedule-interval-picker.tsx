@@ -14,12 +14,14 @@ import { labelClass } from "./schedule-picker-fields";
 const UNIT_ORDER: IntervalUnit[] = ["minutes", "hours", "days", "months"];
 
 function NumberStepper({
+  id,
   value,
   onChange,
   invalid,
   decreaseLabel,
   increaseLabel,
 }: {
+  id: string;
   value: string;
   onChange: (value: string) => void;
   invalid?: boolean;
@@ -44,6 +46,7 @@ function NumberStepper({
         <Minus className="size-4" />
       </button>
       <input
+        id={id}
         type="text"
         inputMode="numeric"
         value={value}
@@ -88,11 +91,15 @@ export function IntervalPicker({
   onUnitChange: (unit: IntervalUnit) => void;
 }) {
   const plural = Number(every) > 1;
+  const inputId = "interval-picker-every";
   return (
     <div>
-      <label className={labelClass}>{label}</label>
+      <label htmlFor={inputId} className={labelClass}>
+        {label}
+      </label>
       <div className="flex flex-wrap items-center gap-2">
         <NumberStepper
+          id={inputId}
           value={every}
           onChange={onEveryChange}
           invalid={invalid}

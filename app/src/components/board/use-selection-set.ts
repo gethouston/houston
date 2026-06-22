@@ -12,6 +12,7 @@ import { selectAllIds } from "../../lib/mission-selection";
 export function useSelectionSet(resetKey: string) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey is a prop-derived reset trigger; the effect must re-run when it changes to clear stale selections across scope transitions
   useEffect(() => {
     setSelectedIds(new Set());
   }, [resetKey]);

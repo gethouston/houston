@@ -204,5 +204,11 @@ export async function redeemPairingCode(
       await new Promise((r) => setTimeout(r, BACKOFF_MS[attempt]));
     }
   }
-  throw lastErr!;
+  if (!lastErr)
+    throw new PairError(
+      "Unexpected: no error recorded after retry loop.",
+      0,
+      "internal",
+    );
+  throw lastErr;
 }

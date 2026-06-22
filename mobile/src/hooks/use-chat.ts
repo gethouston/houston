@@ -45,8 +45,12 @@ export function useChatHistory(
   const query = useQuery({
     queryKey: ["chat", sessionKey, agentPath],
     enabled: ready && !!agentPath && !!sessionKey,
-    queryFn: async () =>
-      await getEngine().loadChatHistory(agentPath!, sessionKey!),
+    queryFn: async () => {
+      if (!agentPath || !sessionKey) {
+        throw new Error("agentPath and sessionKey are required");
+      }
+      return await getEngine().loadChatHistory(agentPath, sessionKey);
+    },
     // Backstop polling: while a session is "running" (agent is
     // actively writing), refetch every 2s. The WS firehose is the
     // primary delivery mechanism and usually wins; this is the

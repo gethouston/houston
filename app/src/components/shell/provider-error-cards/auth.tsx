@@ -34,7 +34,6 @@ export function UnauthenticatedCard({
         return "providerError.unauthenticated.bodyInvalidApiKey";
       case "token_revoked":
         return "providerError.unauthenticated.bodyTokenRevoked";
-      case "unknown":
       default:
         return "providerError.unauthenticated.bodyUnknown";
     }

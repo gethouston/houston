@@ -87,6 +87,7 @@ export function MissionControl() {
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             className="h-9 w-9 flex items-center justify-center rounded-full hover:bg-accent"
             onClick={() => refetch()}
             aria-label="Refresh"
@@ -140,6 +141,7 @@ export function MissionControl() {
               Make sure Houston is still open on your Mac, then tap retry.
             </p>
             <button
+              type="button"
               className="touchable mt-4 inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-sm font-medium text-primary-foreground active:opacity-80"
               onClick={() => refetch()}
             >
@@ -227,6 +229,7 @@ function ConversationRow({
   return (
     <li>
       <button
+        type="button"
         className="touchable w-full px-4 py-3 flex items-center gap-3 text-left hover:bg-accent active:bg-accent/70"
         onClick={onSelect}
       >

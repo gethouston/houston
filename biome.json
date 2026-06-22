@@ -7,7 +7,14 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": ["**", "!**/*.css", "!**/gen/**", "!.houston/**"]
+    "includes": [
+      "**",
+      "!**/*.css",
+      "!**/*.svg",
+      "!**/*.html",
+      "!**/gen",
+      "!.houston"
+    ]
   },
   "formatter": {
     "enabled": true,

@@ -148,7 +148,8 @@ test("getOrCreatePersonalWorkspace returns the existing personal workspace witho
   const ws = await store.getOrCreatePersonalWorkspace("u-1");
 
   // The first query is a parameterized SELECT scoped to the user + personal kind.
-  const first = calls[0]!;
+  const first = calls[0];
+  if (!first) throw new Error("Expected at least one query call");
   expect(first.text).toMatch(/SELECT/i);
   expect(first.text).toMatch(/FROM workspaces/i);
   expect(first.text).toMatch(/owner_user_id = \$1/i);
@@ -192,8 +193,9 @@ test("getOrCreatePersonalWorkspace inserts a personal workspace upsert when none
 
   const ws = await store.getOrCreatePersonalWorkspace("u-2");
 
-  const insert = calls.find((c) => /INSERT INTO workspaces/i.test(c.text))!;
+  const insert = calls.find((c) => /INSERT INTO workspaces/i.test(c.text));
   expect(insert).toBeDefined();
+  if (!insert) throw new Error("Expected an INSERT INTO workspaces call");
   // Upsert guard: the partial unique index on the personal workspace.
   expect(insert.text).toMatch(
     /ON CONFLICT \(owner_user_id\) WHERE kind = 'personal'/i,
@@ -266,7 +268,7 @@ test("getWorkspace binds the id and maps snake_case → domain", async () => {
   );
   const store = new PgWorkspaceStore(pool);
   const ws = await store.getWorkspace("ws-1");
-  expect(calls[0]!.params).toEqual(["ws-1"]);
+  expect(calls[0]?.params).toEqual(["ws-1"]);
   expect(ws).toEqual({
     id: "ws-1",
     ownerUserId: "u-1",
@@ -282,7 +284,8 @@ test("listAgents filters by workspace_id and binds it", async () => {
   const { pool, calls } = fakePool(() => ({ rows: [] }));
   const store = new PgWorkspaceStore(pool);
   await store.listAgents("ws-456");
-  const q = calls[0]!;
+  const q = calls[0];
+  if (!q) throw new Error("Expected at least one query call");
   expect(q.text).toMatch(/SELECT/i);
   expect(q.text).toMatch(/FROM agents/i);
   expect(q.text).toMatch(/WHERE workspace_id = \$1/i);
@@ -293,7 +296,8 @@ test("listWorkspaces selects every workspace with no caller input", async () => 
   const { pool, calls } = fakePool(() => ({ rows: [] }));
   const store = new PgWorkspaceStore(pool);
   await store.listWorkspaces();
-  const q = calls[0]!;
+  const q = calls[0];
+  if (!q) throw new Error("Expected at least one query call");
   expect(q.text).toMatch(/SELECT/i);
   expect(q.text).toMatch(/FROM workspaces/i);
   expect(q.text).not.toMatch(/WHERE/i);
@@ -304,7 +308,8 @@ test("listAllAgents selects every agent with no caller input", async () => {
   const { pool, calls } = fakePool(() => ({ rows: [] }));
   const store = new PgWorkspaceStore(pool);
   await store.listAllAgents();
-  const q = calls[0]!;
+  const q = calls[0];
+  if (!q) throw new Error("Expected at least one query call");
   expect(q.text).toMatch(/SELECT/i);
   expect(q.text).toMatch(/FROM agents/i);
   expect(q.text).not.toMatch(/WHERE/i);
@@ -318,7 +323,8 @@ test("createAgent inserts id/workspace_id/name/created_at as bound params", asyn
     workspaceId: "ws-456",
     name: "Scout",
   });
-  const insert = calls[0]!;
+  const insert = calls[0];
+  if (!insert) throw new Error("Expected at least one query call");
   expect(insert.text).toMatch(/INSERT INTO agents/i);
   expect(insert.params).toEqual([agent.id, "ws-456", "Scout", agent.createdAt]);
   expect(agent.workspaceId).toBe("ws-456");
@@ -342,7 +348,8 @@ test("renameAgent updates by id and returns the updated row", async () => {
   );
   const store = new PgWorkspaceStore(pool);
   const agent = await store.renameAgent("a-1", "Renamed");
-  const update = calls[0]!;
+  const update = calls[0];
+  if (!update) throw new Error("Expected at least one query call");
   expect(update.text).toMatch(/UPDATE agents SET name = \$2 WHERE id = \$1/i);
   expect(update.text).toMatch(/RETURNING/i);
   expect(update.params).toEqual(["a-1", "Renamed"]);
@@ -366,7 +373,8 @@ test("deleteAgent deletes by bound id", async () => {
   const { pool, calls } = fakePool(() => ({ rowCount: 1 }));
   const store = new PgWorkspaceStore(pool);
   await store.deleteAgent("a-789");
-  const del = calls[0]!;
+  const del = calls[0];
+  if (!del) throw new Error("Expected at least one query call");
   expect(del.text).toMatch(/DELETE FROM agents WHERE id = \$1/i);
   expect(del.params).toEqual(["a-789"]);
 });

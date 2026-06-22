@@ -6,7 +6,9 @@ export function json(res: ServerResponse, status: number, body: unknown): void {
   res.end(buf);
 }
 
-export async function readJson(req: IncomingMessage): Promise<any> {
+export async function readJson(
+  req: IncomingMessage,
+): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
   const raw = Buffer.concat(chunks).toString("utf8");

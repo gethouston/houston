@@ -8,7 +8,14 @@
  * We render the derived slug below the title field so the user sees
  * exactly what their skill will be called inside Houston — no surprises.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  cloneElement,
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { Button, cn } from "@houston-ai/core";
 import { Loader2 } from "lucide-react";
 
@@ -82,6 +89,7 @@ export function ScratchView({
   const [submitting, setSubmitting] = useState(false);
   const titleRef = useRef<HTMLInputElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: resetKey is a prop whose changing value is the intentional trigger; Biome incorrectly classifies it as a non-reactive outer-scope value
   useEffect(() => {
     setTitle("");
     setDescription("");
@@ -220,17 +228,21 @@ function Field({
   label: string;
   hint?: string;
   suffix?: React.ReactNode;
-  children: React.ReactNode;
+  children: React.ReactElement<{ id?: string }>;
 }) {
+  const id = useId();
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 mb-1.5">
-        <label className="text-xs font-medium text-muted-foreground">
+        <label
+          htmlFor={id}
+          className="text-xs font-medium text-muted-foreground"
+        >
           {label}
         </label>
         {suffix}
       </div>
-      {children}
+      {cloneElement(children, { id })}
       {hint && (
         <p className="text-[11px] text-muted-foreground/70 mt-1">{hint}</p>
       )}

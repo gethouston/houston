@@ -83,7 +83,7 @@ function sumCpuRequestCores(pod: V1Pod): number {
   const containers = pod.spec?.containers ?? [];
   // In @kubernetes/client-node v0.22, requests is a plain { [k]: string } map.
   return containers.reduce(
-    (acc, c) => acc + parseCpuToCores(c.resources?.requests?.["cpu"]),
+    (acc, c) => acc + parseCpuToCores(c.resources?.requests?.cpu),
     0,
   );
 }
@@ -91,7 +91,7 @@ function sumCpuRequestCores(pod: V1Pod): number {
 function sumMemRequestBytes(pod: V1Pod): number {
   const containers = pod.spec?.containers ?? [];
   return containers.reduce(
-    (acc, c) => acc + parseMemToBytes(c.resources?.requests?.["memory"]),
+    (acc, c) => acc + parseMemToBytes(c.resources?.requests?.memory),
     0,
   );
 }
@@ -121,8 +121,7 @@ export function toVolumeInfo(pvc: V1PersistentVolumeClaim): VolumeInfo {
   const labels = pvc.metadata?.labels ?? {};
   // Prefer the bound capacity; fall back to the request (always present in our spec).
   const storage =
-    pvc.status?.capacity?.["storage"] ??
-    pvc.spec?.resources?.requests?.["storage"];
+    pvc.status?.capacity?.storage ?? pvc.spec?.resources?.requests?.storage;
   return {
     workspaceId: labels[WORKSPACE_LABEL] ?? null,
     agentId: labels[AGENT_LABEL] ?? null,

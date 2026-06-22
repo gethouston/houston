@@ -30,9 +30,10 @@ export function TimeColumn({
   selected: number;
   onSelect: (n: number) => void;
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLFieldSetElement>(null);
   const selectedRef = useRef<HTMLButtonElement>(null);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `selected` is a genuine dep — the effect must re-run whenever the selection changes to re-center the column. Refs are not deps.
   useEffect(() => {
     const c = containerRef.current;
     const el = selectedRef.current;
@@ -48,11 +49,10 @@ export function TimeColumn({
   }, [selected]);
 
   return (
-    <div
+    <fieldset
       ref={containerRef}
-      role="group"
       aria-label={ariaLabel}
-      className="relative flex h-28 w-14 flex-col gap-0.5 overflow-y-auto scroll-smooth"
+      className="relative flex h-28 w-14 flex-col gap-0.5 overflow-y-auto scroll-smooth border-0 p-0 m-0 min-w-0"
     >
       {options.map((n) => {
         const on = n === selected;
@@ -75,7 +75,7 @@ export function TimeColumn({
           </button>
         );
       })}
-    </div>
+    </fieldset>
   );
 }
 
@@ -96,10 +96,9 @@ export function PeriodColumn({
     { key: "pm", label: periods.pm },
   ];
   return (
-    <div
-      role="group"
+    <fieldset
       aria-label={ariaLabel}
-      className="flex w-14 flex-col justify-center gap-0.5"
+      className="flex w-14 flex-col justify-center gap-0.5 border-0 p-0 m-0 min-w-0"
     >
       {items.map((it) => {
         const on = it.key === selected;
@@ -120,6 +119,6 @@ export function PeriodColumn({
           </button>
         );
       })}
-    </div>
+    </fieldset>
   );
 }

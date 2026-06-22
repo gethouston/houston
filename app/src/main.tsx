@@ -164,7 +164,11 @@ function EngineGate({ children }: { children: ReactNode }) {
 // WKWebView that double-mount collides with portal DOM + Tauri event
 // listeners and throws NotFoundError on removeChild. Skipping it for now;
 // revisit once the underlying portal/listener churn is fixed.
-createRoot(document.getElementById("root")!).render(
+const rootElement = document.getElementById("root");
+if (!rootElement) {
+  throw new Error("Root element #root not found in DOM");
+}
+createRoot(rootElement).render(
   <QueryClientProvider client={queryClient}>
     <ErrorBoundary>
       <TooltipProvider>

@@ -107,7 +107,9 @@ async function firstEvent(
   });
   expect(res.status).toBe(200);
   expect(res.headers.get("content-type")).toContain("text/event-stream");
-  const reader = res.body!.getReader();
+  if (!res.body)
+    throw new Error("Expected a readable body from the SSE response");
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
 
   let connected = false;

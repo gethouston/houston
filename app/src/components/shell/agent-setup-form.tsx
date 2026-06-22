@@ -146,8 +146,8 @@ export function AgentSetupForm({
       </div>
 
       {/* Field 4 — Ask first */}
-      <label className="flex items-center justify-between gap-4 cursor-pointer">
-        <div>
+      <div className="flex items-center justify-between gap-4">
+        <div id="ask-first-label">
           <p className="text-sm font-medium">
             {t("aiAssist.form.askFirstLabel")}
           </p>
@@ -156,13 +156,14 @@ export function AgentSetupForm({
           </p>
         </div>
         <Switch
+          aria-labelledby="ask-first-label"
           checked={values.askFirst}
           onCheckedChange={(checked) =>
             onChange({ ...values, askFirst: checked })
           }
           disabled={disabled}
         />
-      </label>
+      </div>
 
       {/* Field 5 — Extra instructions */}
       <div className="space-y-3">

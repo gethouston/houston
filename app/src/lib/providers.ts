@@ -241,7 +241,7 @@ export function normalizeLegacyModel(
   if (!model) return null;
   // `hasOwnProperty` guard so a hand-edited config with a model like
   // "constructor"/"__proto__" resolves to itself, not an Object.prototype member.
-  return Object.prototype.hasOwnProperty.call(LEGACY_MODEL_ALIASES, model)
+  return Object.hasOwn(LEGACY_MODEL_ALIASES, model)
     ? LEGACY_MODEL_ALIASES[model]
     : model;
 }

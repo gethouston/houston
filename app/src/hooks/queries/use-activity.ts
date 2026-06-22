@@ -6,7 +6,10 @@ import { useDraftStore } from "../../stores/drafts";
 export function useActivity(agentPath: string | undefined) {
   return useQuery({
     queryKey: queryKeys.activity(agentPath ?? ""),
-    queryFn: () => tauriActivity.list(agentPath!),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriActivity.list(agentPath);
+    },
     enabled: !!agentPath,
     // No `initialData: []` here on purpose. With it, the query is in
     // "success with empty data" the instant a consumer mounts, so any
@@ -31,7 +34,10 @@ export function useCreateActivity(agentPath: string | undefined) {
       title: string;
       description?: string;
       agent?: string;
-    }) => tauriActivity.create(agentPath!, title, description, agent),
+    }) => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriActivity.create(agentPath, title, description, agent);
+    },
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
@@ -48,7 +54,10 @@ export function useUpdateActivity(agentPath: string | undefined) {
     }: {
       activityId: string;
       update: { status?: string; title?: string; description?: string };
-    }) => tauriActivity.update(agentPath!, activityId, update),
+    }) => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriActivity.update(agentPath, activityId, update);
+    },
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
@@ -60,7 +69,8 @@ export function useDeleteActivity(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (activityId: string) => {
-      await tauriActivity.delete(agentPath!, activityId);
+      if (!agentPath) throw new Error("agentPath required");
+      await tauriActivity.delete(agentPath, activityId);
       // Wipe any attachments associated with this conversation. Idempotent.
       await tauriAttachments.delete(`activity-${activityId}`).catch(() => {});
       // Clear any unsent draft for this conversation.
@@ -83,7 +93,10 @@ export function useBulkUpdateActivity(agentPath: string | undefined) {
     }: {
       ids: string[];
       update: { status?: string };
-    }) => tauriActivity.bulkUpdate(agentPath!, ids, update),
+    }) => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriActivity.bulkUpdate(agentPath, ids, update);
+    },
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
@@ -96,7 +109,8 @@ export function useBulkDeleteActivity(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (ids: string[]) => {
-      await tauriActivity.bulkDelete(agentPath!, ids);
+      if (!agentPath) throw new Error("agentPath required");
+      await tauriActivity.bulkDelete(agentPath, ids);
       for (const id of ids) {
         // Per-conversation cleanup is idempotent + best-effort; the bulk
         // delete above already succeeded, so a stray attachment/draft must

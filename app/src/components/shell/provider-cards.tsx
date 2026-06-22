@@ -84,8 +84,9 @@ export function ProviderCard({
           {provider.name}
           {connected && (
             <span
-              className="size-1.5 rounded-full bg-emerald-500 shrink-0"
+              role="img"
               aria-label={t("card.connected")}
+              className="size-1.5 rounded-full bg-emerald-500 shrink-0"
             />
           )}
         </p>

@@ -82,6 +82,7 @@ export function WorkspaceSetupFlow({ mode, onComplete }: Props) {
         {/* Header */}
         <div className={isPage ? "text-center mb-6" : "mb-4"}>
           <button
+            type="button"
             onClick={() => setStep(1)}
             className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors mb-3"
           >

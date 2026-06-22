@@ -18,10 +18,11 @@ export async function pumpSse(
     const { done, value } = await reader.read();
     if (done) break;
     buf += decoder.decode(value, { stream: true });
-    let sep: number;
-    while ((sep = buf.indexOf("\n\n")) >= 0) {
+    let sep = buf.indexOf("\n\n");
+    while (sep >= 0) {
       const frame = buf.slice(0, sep);
       buf = buf.slice(sep + 2);
+      sep = buf.indexOf("\n\n");
       for (const line of frame.split("\n")) {
         if (line.startsWith("data: ")) {
           await onEvent(JSON.parse(line.slice(6)) as WireEvent);

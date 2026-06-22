@@ -56,12 +56,17 @@ export async function handleAccount(
   // cloud (name is fixed, provider/model live on each agent's config).
   const wsPatch = path.match(/^\/v1\/workspaces\/([^/]+)$/);
   if (wsPatch && method === "PATCH") {
-    const wsId = wsPatch[1]!;
+    const wsId = wsPatch[1];
+    if (wsId === undefined) return false;
     const ws = await deps.store.getWorkspace(wsId);
-    if (!ws || ws.ownerUserId !== userId)
-      return reject(res, ws ? 403 : 404), true;
-    if (!deps.vfs)
-      return json(res, 503, { error: "preferences not configured" }), true;
+    if (!ws || ws.ownerUserId !== userId) {
+      reject(res, ws ? 403 : 404);
+      return true;
+    }
+    if (!deps.vfs) {
+      json(res, 503, { error: "preferences not configured" });
+      return true;
+    }
     const body = await readJson(req);
     if ("locale" in body) {
       await setPreference(
@@ -78,9 +83,13 @@ export async function handleAccount(
   // Preferences key-value (boot-path reads: locale, legal_acceptance, timezone).
   const pref = path.match(/^\/v1\/preferences\/([^/]+)$/);
   if (pref) {
-    const key = decodeURIComponent(pref[1]!);
-    if (!deps.vfs)
-      return json(res, 503, { error: "preferences not configured" }), true;
+    const rawKey = pref[1];
+    if (rawKey === undefined) return false;
+    const key = decodeURIComponent(rawKey);
+    if (!deps.vfs) {
+      json(res, 503, { error: "preferences not configured" });
+      return true;
+    }
     const ws = await deps.store.getOrCreatePersonalWorkspace(userId);
     if (method === "GET") {
       json(res, 200, {

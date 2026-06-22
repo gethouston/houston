@@ -23,7 +23,11 @@ import { handleAgents } from "./routes/agents";
 import { handleAccount } from "./routes/account";
 import { handlePortableAccount } from "./routes/portable";
 import { handleEventStream } from "./routes/events-stream";
-import { parseFeedbackPayload, type FeedbackSender } from "./feedback";
+import {
+  parseFeedbackPayload,
+  type FeedbackPayload,
+  type FeedbackSender,
+} from "./feedback";
 
 export type { AdminDeps } from "./routes/admin";
 export type { RuntimeProxy } from "./channel/proxy";
@@ -133,7 +137,7 @@ async function handle(
   if (path === "/feedback" && method === "POST") {
     if (!deps.feedback)
       return json(res, 503, { error: "feedback intake not configured" });
-    let payload;
+    let payload: FeedbackPayload;
     try {
       payload = parseFeedbackPayload(await readJson(req));
     } catch (err) {

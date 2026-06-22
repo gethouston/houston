@@ -20,7 +20,7 @@ describe("tunnel token HMAC", () => {
   it("rejects wrong-length tokens", async () => {
     expect(await verifyTunnelToken("tun-abc", "short", "shh")).toBe(false);
     const t = await tunnelTokenFor("tun-abc", "shh");
-    expect(await verifyTunnelToken("tun-abc", t + "xx", "shh")).toBe(false);
+    expect(await verifyTunnelToken("tun-abc", `${t}xx`, "shh")).toBe(false);
   });
 
   it("produces different tokens for different tunnels", async () => {

@@ -107,7 +107,7 @@ test("runTurn subscribes before sending and resolves on the done frame", async (
   expect(msgIdx).toBeGreaterThan(evIdx);
 
   const files = await listFiles(cp, agent.id);
-  expect(files[0]!.path).toBe("deck.pptx");
+  expect(files[0]?.path).toBe("deck.pptx");
   const bytes = await downloadFile(cp, agent.id, "deck.pptx");
   expect([...bytes]).toEqual([0x50, 0x4b, 0xff, 0x00]);
 

@@ -1,4 +1,10 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from "react";
 import { cn } from "@houston-ai/core";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type { PickerTab } from "./new-mission-picker-tab-model";
@@ -27,12 +33,12 @@ export function ScrollableTabs({
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
 
-  const measure = () => {
+  const measure = useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
     setCanLeft(el.scrollLeft > 1);
     setCanRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-  };
+  }, []);
 
   useLayoutEffect(() => {
     measure();
@@ -41,7 +47,7 @@ export function ScrollableTabs({
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [tabs.length]);
+  }, [measure]);
 
   const scrollBy = (dir: -1 | 1) => {
     const el = scrollRef.current;

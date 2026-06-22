@@ -31,7 +31,7 @@ function seed(rel: string, content: string) {
 // mutates the workspace, emits frames.
 const fakeTurn: typeof runPiTurn = async (
   root,
-  conversationId,
+  _conversationId,
   text,
   provider,
   emit,

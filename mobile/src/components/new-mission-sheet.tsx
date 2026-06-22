@@ -75,6 +75,7 @@ export function NewMissionSheet({ open, onClose, agents }: Props) {
                 {agents.map((a) => (
                   <li key={a.id}>
                     <button
+                      type="button"
                       className="touchable w-full flex items-center gap-3 py-3 text-left hover:bg-accent/60 rounded-lg px-2"
                       onClick={() => pickAgent(a)}
                     >

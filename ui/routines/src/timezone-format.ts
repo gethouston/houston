@@ -48,7 +48,7 @@ export function listTimezones(): string[] {
     const supported = (
       Intl as { supportedValuesOf?: (k: string) => string[] }
     ).supportedValuesOf?.("timeZone");
-    if (supported && supported.length) return supported;
+    if (supported?.length) return supported;
   } catch {
     // fall through to the curated list
   }

@@ -18,7 +18,8 @@ import {
   type EngineConfig,
 } from "./engine-config";
 
-const rootEl = document.getElementById("root")!;
+const rootEl = document.getElementById("root");
+if (!rootEl) throw new Error("Missing #root element");
 const env =
   (import.meta as { env?: Record<string, string | undefined> }).env ?? {};
 const controlPlaneUrl = env.VITE_CONTROL_PLANE_URL || "";

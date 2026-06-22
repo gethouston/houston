@@ -13,7 +13,7 @@ import { CURRENT_DISCLAIMER_VERSION } from "../lib/legal";
 const queryKey = ["legal-acceptance"] as const;
 
 function parseAcceptance(raw: string | null): LegalAcceptance | null {
-  if (!raw || !raw.trim()) return null;
+  if (!raw?.trim()) return null;
   try {
     const parsed = JSON.parse(raw) as unknown;
     if (

@@ -89,9 +89,9 @@ export function AttachMenu({ items, onClose, anchorRef }: AttachMenuProps) {
         }
         role="menu"
       >
-        {items.map((item, i) => (
+        {items.map((item) => (
           <button
-            key={i}
+            key={item.label}
             type="button"
             role="menuitem"
             onClick={() => {
