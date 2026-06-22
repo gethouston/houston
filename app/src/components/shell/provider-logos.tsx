@@ -32,6 +32,42 @@ export function OpenAILogo({
   );
 }
 
+export function GeminiLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  // The Gemini four-point spark.
+  return (
+    <svg viewBox="0 0 24 24" className={className} fill="currentColor">
+      <path d="M12 0c.45 6.46 5.54 11.55 12 12-6.46.45-11.55 5.54-12 12-.45-6.46-5.54-11.55-12-12C6.46 11.55 11.55 6.46 12 0z" />
+    </svg>
+  );
+}
+
+export function OpenRouterLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  // A simple routing mark: one input fanning out to two destinations.
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M3 12h4l5-5h9M7 12l5 5h9" />
+      <circle cx="20" cy="7" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="17" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function DeepSeekLogo() {
   return (
     <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">

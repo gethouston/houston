@@ -1,9 +1,9 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import {
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
 } from "@earendil-works/pi-ai/oauth";
-import { codexLoginMethod } from "./login";
+import { codexLoginMethod, setApiKey, startLogin } from "./login";
 
 test("codexLoginMethod: browser login only for a co-located client on a loopback runtime", () => {
   // The desktop app sends deviceAuth:false and the desktop runtime is non-headless:
@@ -30,4 +30,29 @@ test("codexLoginMethod: device code when a co-located client hits a headless run
   expect(codexLoginMethod({ deviceAuth: false, headless: true })).toBe(
     OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
   );
+});
+
+// --- setApiKey validation + the oauth/api-key separation ---
+// These all reject BEFORE touching the credential store, so they never write.
+
+test("setApiKey rejects an unknown provider", () => {
+  expect(() => setApiKey("nope", "sk-or-v1-abcdefgh")).toThrow(
+    /unknown provider/,
+  );
+});
+
+test("setApiKey rejects an OAuth provider — those connect via sign-in, not a key", () => {
+  expect(() => setApiKey("anthropic", "x".repeat(40))).toThrow(/OAuth/);
+  expect(() => setApiKey("openai-codex", "x".repeat(40))).toThrow(/OAuth/);
+});
+
+test("setApiKey rejects an empty, whitespace-laden, or too-short key", () => {
+  expect(() => setApiKey("openrouter", "   ")).toThrow(/empty/);
+  expect(() => setApiKey("openrouter", "ab cd ef gh")).toThrow(/whitespace/);
+  expect(() => setApiKey("google", "short")).toThrow(/length/);
+});
+
+test("startLogin rejects an api-key provider — it has no OAuth flow", async () => {
+  await expect(startLogin("openrouter")).rejects.toThrow(/API key/);
+  await expect(startLogin("google")).rejects.toThrow(/API key/);
 });

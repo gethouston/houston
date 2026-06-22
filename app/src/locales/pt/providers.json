@@ -18,9 +18,24 @@
     "installHint": "Instale a CLI {{cli}} no seu computador. Houston detecta sozinho.",
     "installGuide": "Guia de instalação",
     "signInWith": "Entrar com {{provider}}",
+    "addApiKey": "Adicionar sua chave de API da {{provider}}",
     "waiting": "Esperando você terminar o login no navegador...",
     "cancelWaiting": "Cancelar e tentar de novo",
     "installedCheckAgain": "Já está instalado? Verificar de novo"
+  },
+  "apiKey": {
+    "title": "Adicionar sua chave de API da {{name}}",
+    "description": "Cole sua chave de API abaixo. O Houston guarda ela no seu dispositivo e a usa para falar com o provedor.",
+    "label": "Chave de API",
+    "placeholder": "Cole sua chave de API",
+    "getKey": "Obter uma chave da {{name}}",
+    "show": "Mostrar a chave de API",
+    "hide": "Ocultar a chave de API",
+    "required": "Primeiro insira sua chave de API.",
+    "saved": "Conectado à {{provider}}",
+    "submit": "Salvar chave",
+    "submitting": "Salvando...",
+    "cancel": "Cancelar"
   },
   "signOutConfirm": {
     "title": "Sair de {{provider}}?",

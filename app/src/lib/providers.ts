@@ -57,6 +57,18 @@ export interface ProviderInfo {
   cost: string;
   models: readonly ModelOption[];
   defaultModel: string;
+  /**
+   * How the user connects. "oauth" (default) drives the sign-in dialog;
+   * "api-key" shows the paste-a-key card instead. Mirrors the engine's
+   * provider auth kind.
+   */
+  authKind?: "oauth" | "api-key";
+  /**
+   * The page where a user mints an API key (api-key providers only). The card's
+   * "Get a key" button opens it so a non-technical user can create one in a
+   * click instead of hunting for it.
+   */
+  createKeyUrl?: string;
 }
 
 export const PROVIDERS: readonly ProviderInfo[] = [
@@ -134,6 +146,85 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       },
     ],
     defaultModel: "claude-sonnet-4-6",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    subtitle: "Any model, one key",
+    cliName: "openrouter",
+    installUrl: "https://openrouter.ai",
+    loginCommand: "",
+    cost: "Pay-as-you-go on your OpenRouter account",
+    authKind: "api-key",
+    createKeyUrl: "https://openrouter.ai/settings/keys",
+    // A small curated set of strong models OpenRouter routes to (pi-ai
+    // `openrouter` ids). OpenRouter exposes hundreds; these are sensible
+    // defaults, not the full catalog.
+    models: [
+      {
+        id: "anthropic/claude-sonnet-4.6",
+        label: "Claude Sonnet 4.6",
+        description: "Anthropic's balanced model, via OpenRouter.",
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "anthropic/claude-opus-4.8",
+        label: "Claude Opus 4.8",
+        description: "Anthropic's flagship, via OpenRouter.",
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "google/gemini-3-flash-preview",
+        label: "Gemini 3 Flash",
+        description: "Google's fast model, via OpenRouter.",
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "deepseek/deepseek-v4-pro",
+        label: "DeepSeek V4 Pro",
+        description: "DeepSeek's flagship, via OpenRouter.",
+      },
+    ],
+    defaultModel: "anthropic/claude-sonnet-4.6",
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    subtitle: "Free key from AI Studio",
+    cliName: "google",
+    installUrl: "https://ai.google.dev",
+    loginCommand: "",
+    cost: "Free tier on your Google account",
+    authKind: "api-key",
+    createKeyUrl: "https://aistudio.google.com/apikey",
+    // pi-ai `google` model ids.
+    models: [
+      {
+        id: "gemini-3-flash-preview",
+        label: "Gemini 3 Flash",
+        description: "Fast and capable. Best default.",
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "gemini-3-pro-preview",
+        label: "Gemini 3 Pro",
+        description: "Google's most capable, slower.",
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "gemini-2.5-flash",
+        label: "Gemini 2.5 Flash",
+        description: "Previous fast model.",
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "gemini-2.5-pro",
+        label: "Gemini 2.5 Pro",
+        description: "Previous flagship.",
+        contextWindow: 1_000_000,
+      },
+    ],
+    defaultModel: "gemini-3-flash-preview",
   },
 ] as const;
 
@@ -241,7 +332,7 @@ export function normalizeLegacyModel(
   if (!model) return null;
   // `hasOwnProperty` guard so a hand-edited config with a model like
   // "constructor"/"__proto__" resolves to itself, not an Object.prototype member.
-  return Object.prototype.hasOwnProperty.call(LEGACY_MODEL_ALIASES, model)
+  return Object.hasOwn(LEGACY_MODEL_ALIASES, model)
     ? LEGACY_MODEL_ALIASES[model]
     : model;
 }

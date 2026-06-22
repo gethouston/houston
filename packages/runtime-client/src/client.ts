@@ -126,6 +126,18 @@ export class HoustonEngineClient {
       body: JSON.stringify({ code }),
     });
   }
+  /**
+   * Connect an API-key provider (openrouter, google): the user pasted a key, so
+   * there is no OAuth dance — the runtime stores it directly. Validates the key
+   * shape server-side; a bad key rejects here so the failure reaches the user.
+   */
+  setApiKey(provider: ProviderId, key: string) {
+    return this.json<{ ok: boolean }>(`/auth/${provider}/api-key`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
+    });
+  }
   logout(provider: ProviderId) {
     return this.json<{ ok: boolean }>(`/auth/${provider}/logout`, {
       method: "POST",

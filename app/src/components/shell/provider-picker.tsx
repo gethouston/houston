@@ -1,24 +1,25 @@
-import { useState, useEffect, useCallback, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
-import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import {
-  tauriProvider,
-  tauriSystem,
-  type ProviderStatus,
-} from "../../lib/tauri";
-import {
-  PROVIDERS,
-  COMING_SOON_PROVIDERS,
-  type ProviderInfo,
-} from "../../lib/providers";
-import { useUIStore } from "../../stores/ui";
+import { ConfirmDialog, Spinner } from "@houston-ai/core";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
+import {
+  COMING_SOON_PROVIDERS,
+  PROVIDERS,
+  type ProviderInfo,
+} from "../../lib/providers";
+import {
+  type ProviderStatus,
+  tauriProvider,
+  tauriSystem,
+} from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
+import { ProviderApiKeyCard } from "./provider-api-key-card";
+import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
-import { ProviderCard, ComingSoonCard } from "./provider-cards";
 
 interface Props {
   /** Current workspace provider id (used to push the new default after sign-in). */
@@ -45,6 +46,9 @@ export function ProviderPicker({ onSelect }: Props) {
     url: string;
     userCode: string | null;
   } | null>(null);
+  // API-key providers (OpenRouter, Gemini) open a paste-a-key card instead of
+  // the OAuth dialog.
+  const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
@@ -182,6 +186,11 @@ export function ProviderPicker({ onSelect }: Props) {
   }, [addToast, loadStatuses, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers don't sign in — they open the paste-a-key card.
+    if (provider.authKind === "api-key") {
+      setApiKeyDialog(provider);
+      return;
+    }
     setPendingId(provider.id);
     try {
       // launchLogin defaults deviceAuth from the platform — desktop catches the
@@ -310,6 +319,12 @@ export function ProviderPicker({ onSelect }: Props) {
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
         onClose={() => setLoginDialog(null)}
+      />
+
+      <ProviderApiKeyCard
+        provider={apiKeyDialog}
+        onClose={() => setApiKeyDialog(null)}
+        onConnected={() => loadStatuses()}
       />
     </>
   );

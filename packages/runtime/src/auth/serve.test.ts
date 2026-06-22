@@ -1,4 +1,4 @@
-import { test, expect } from "bun:test";
+import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -107,4 +107,53 @@ test("scrub is idempotent and a missing auth.json is a no-op", () => {
     }),
   );
   expect(scrubRefreshTokensAt(path)).toEqual([]); // already clean
+});
+
+// --- API-key providers (openrouter, google) ---
+
+test("a served api-key credential is written as pi's api_key shape", () => {
+  const path = freshAuthPath();
+  applyServedCredential(path, {
+    provider: "openrouter",
+    kind: "api_key",
+    access: "sk-or-v1-THEKEY",
+    expires: Number.MAX_SAFE_INTEGER,
+    accountId: null,
+  });
+  const auth = JSON.parse(readFileSync(path, "utf8")) as Record<
+    string,
+    unknown
+  >;
+  // pi reads `{ type: "api_key", key }` — no access/refresh/expires fields.
+  expect(auth["openrouter"]).toEqual({
+    type: "api_key",
+    key: "sk-or-v1-THEKEY",
+  });
+});
+
+test("scrub leaves api-key entries untouched (no refresh token to strip)", () => {
+  const path = freshAuthPath();
+  writeFileSync(
+    path,
+    JSON.stringify({
+      "openai-codex": {
+        type: "oauth",
+        access: "A1",
+        refresh: "RT-1",
+        expires: 1,
+      },
+      openrouter: { type: "api_key", key: "sk-or-v1-KEEP" },
+      google: { type: "api_key", key: "AIza-KEEP" },
+    }),
+  );
+  // Only the OAuth provider is scrubbed; the api-key entries are reported as
+  // unchanged and survive verbatim.
+  expect(scrubRefreshTokensAt(path)).toEqual(["openai-codex"]);
+  const auth = JSON.parse(readFileSync(path, "utf8")) as Record<
+    string,
+    { type?: string; key?: string; refresh?: string }
+  >;
+  expect(auth["openai-codex"]?.refresh).toBe("");
+  expect(auth["openrouter"]).toEqual({ type: "api_key", key: "sk-or-v1-KEEP" });
+  expect(auth["google"]).toEqual({ type: "api_key", key: "AIza-KEEP" });
 });

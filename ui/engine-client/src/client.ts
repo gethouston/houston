@@ -10,6 +10,7 @@
  * One method per REST route. DTOs mirror `engine/houston-engine-core`.
  */
 
+import { planAttachmentUploadBatches } from "./attachments";
 import type {
   Activity,
   ActivityUpdate,
@@ -32,20 +33,31 @@ import type {
   CreateWorkspace,
   CreateWorktreeRequest,
   ErrorBody,
+  GenerateInstructionsResult,
   HealthResponse,
   ImportedWorkspace,
   InstallAgent,
   InstallCommunityRequest,
+  InstalledConfig,
   InstallFromGithub,
   InstallFromRepoRequest,
-  InstalledConfig,
   ListWorktreesRequest,
   NewActivity,
   NewRoutine,
+  PairingCode,
+  PortableAnonymizeRequest,
+  PortableAnonymizeResponse,
+  PortableExportRequest,
+  PortableInstalledAgent,
+  PortableInstallRequest,
+  PortableInventoryPreview,
+  PortableScanResponse,
+  PortableUploadPreviewResponse,
   PreferenceValue,
   ProjectConfig,
   ProjectFile,
   ProviderStatus,
+  PushRegisterRequest,
   RemoveWorktreeRequest,
   RenameWorkspace,
   RepoSkill,
@@ -61,28 +73,16 @@ import type {
   SkillDetail,
   SkillSummary,
   StoreListing,
-  GenerateInstructionsResult,
   SummarizeOptions,
   SummarizeResult,
   TunnelStatus,
-  PairingCode,
-  PushRegisterRequest,
   UpdateAgent,
   UpdateProvider,
   VersionResponse,
   Workspace,
   WorkspaceContext,
   WorktreeInfo,
-  PortableInventoryPreview,
-  PortableExportRequest,
-  PortableAnonymizeRequest,
-  PortableAnonymizeResponse,
-  PortableUploadPreviewResponse,
-  PortableScanResponse,
-  PortableInstallRequest,
-  PortableInstalledAgent,
 } from "./types";
-import { planAttachmentUploadBatches } from "./attachments";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -648,24 +648,16 @@ export class HoustonClient {
     return this.request("POST", `/providers/${this.seg(name)}/login/cancel`);
   }
   /**
-   * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
-   * the key shape, writes atomically, and chmods 0600 on Unix. The
-   * next `providerStatus("gemini")` poll will return `Authenticated`
-   * without requiring a Houston restart.
-   *
-   * Gemini-specific: other providers use the CLI's own OAuth flow via
-   * `providerLogin`. Do NOT generalize this route until a second
-   * provider needs it.
+   * Persist a pasted API key for an API-key provider (openrouter, google).
+   * Unlike OAuth providers (which use `providerLogin`), these connect by the
+   * user pasting a key; the engine validates and stores it, and the next
+   * `providerStatus(name)` poll returns `Authenticated` with no restart.
    */
-  setGeminiApiKey(apiKey: string): Promise<void> {
-    return this.request("POST", "/providers/gemini/credentials", { apiKey });
+  setProviderApiKey(name: string, apiKey: string): Promise<void> {
+    return this.request("POST", `/providers/${this.seg(name)}/credentials`, {
+      apiKey,
+    });
   }
-  // "Sign in with Google" for Gemini goes through the standard
-  // `providerLogin("gemini")` call — the engine detects the gemini id
-  // and delegates to gemini-cli's own OAuth via the ACP `authenticate`
-  // JSON-RPC method. gemini-cli opens the browser with its own Google
-  // app identity and writes its own credential files. Same shape as
-  // `claude auth login --claudeai` and `codex login`.
 
   // ---------- store ----------
 

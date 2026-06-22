@@ -1,11 +1,13 @@
-import { useTranslation } from "react-i18next";
 import { Loader2, LogIn, LogOut } from "lucide-react";
-import type { ProviderInfo, ComingSoonProviderInfo } from "../../lib/providers";
+import { useTranslation } from "react-i18next";
+import type { ComingSoonProviderInfo, ProviderInfo } from "../../lib/providers";
 import {
   ClaudeLogo,
-  OpenAILogo,
   DeepSeekLogo,
+  GeminiLogo,
   MiniMaxLogo,
+  OpenAILogo,
+  OpenRouterLogo,
 } from "./provider-logos";
 
 /**
@@ -19,6 +21,10 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <ClaudeLogo />;
     case "openai":
       return <OpenAILogo />;
+    case "openrouter":
+      return <OpenRouterLogo />;
+    case "google":
+      return <GeminiLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">

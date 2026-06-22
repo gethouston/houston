@@ -3,23 +3,24 @@ import {
   type IncomingMessage,
   type ServerResponse,
 } from "node:http";
-import { config } from "../config";
-import {
-  getAuthStatus,
-  startLogin,
-  completeLogin,
-  logout,
-} from "../auth/login";
-import { exportCredential, scrubRefreshTokens } from "../auth/serve";
 import { listProviders, setSettings } from "../ai/providers";
 import {
-  runTurn,
-  ensureProviderForTurn,
+  completeLogin,
+  getAuthStatus,
+  logout,
+  setApiKey,
+  startLogin,
+} from "../auth/login";
+import { exportCredential, scrubRefreshTokens } from "../auth/serve";
+import { config } from "../config";
+import { snapshot, subscribe } from "../session/bus";
+import {
   cancelTurn,
   disposeConversation,
+  ensureProviderForTurn,
+  runTurn,
 } from "../session/chat";
 import { summarizeTitle, titleFromText } from "../session/summarize";
-import { snapshot, subscribe } from "../session/bus";
 import {
   deleteConversation,
   getHistory,
@@ -89,10 +90,13 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (method === "GET" && path === "/auth/status") {
     return json(res, 200, getAuthStatus());
   }
-  // Connect-once: the control plane reads this right after a device-code connect to
-  // capture the credential into the workspace's central store. {} when not connected.
+  // Connect-once: the control plane reads this right after a connect to capture
+  // the credential into the workspace's central store. An optional `?provider=`
+  // targets the just-connected provider; absent = the first connected. {} when
+  // not connected.
   if (method === "GET" && path === "/auth/export") {
-    return json(res, 200, exportCredential() ?? {});
+    const only = url.searchParams.get("provider") || undefined;
+    return json(res, 200, exportCredential(only) ?? {});
   }
   // Gate #2 (connect-once): the control plane calls this right after capture so
   // this sandbox stops holding the user's refresh token. Idempotent.
@@ -100,7 +104,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
   }
   const authMatch = path.match(
-    /^\/auth\/([^/]+)\/(login|login\/complete|logout)$/,
+    /^\/auth\/([^/]+)\/(login|login\/complete|logout|api-key)$/,
   );
   if (method === "POST" && authMatch) {
     const provider = authMatch[1];
@@ -116,6 +120,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       if (action === "login/complete") {
         const { code } = await readJson(req);
         completeLogin(provider, String(code || ""));
+        return json(res, 200, { ok: true });
+      }
+      // Connect an API-key provider (openrouter, google): store the pasted key.
+      if (action === "api-key") {
+        const { key } = await readJson(req);
+        setApiKey(provider, String(key || ""));
         return json(res, 200, { ok: true });
       }
       logout(provider);

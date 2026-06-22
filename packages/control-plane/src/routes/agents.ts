@@ -1,26 +1,26 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadRoutines, seedSchemas } from "@houston/domain";
 import type { HoustonEvent } from "@houston/protocol";
+import { canUseAgent } from "../domain/access";
 import type {
   Agent,
   UserId,
   Workspace,
   WorkspaceRuntime,
 } from "../domain/types";
-import type { RuntimeChannel, WorkspaceStore } from "../ports";
-import type { Vfs } from "../vfs";
 import type { EventHub } from "../events/hub";
 import { CloudPaths, type WorkspacePaths } from "../paths";
-import { canUseAgent } from "../domain/access";
-import { handleAgentData } from "./agent-data";
-import { handleAgentFile } from "./agent-file";
-import { handleSkills } from "./skills";
-import { handleFiles } from "../turn/files";
-import { handleAttachments } from "../turn/attachments";
-import { handlePortableExport } from "./portable";
+import type { RuntimeChannel, WorkspaceStore } from "../ports";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { fireRoutineRun } from "../schedule/run";
+import { handleAttachments } from "../turn/attachments";
+import { handleFiles } from "../turn/files";
+import type { Vfs } from "../vfs";
+import { handleAgentData } from "./agent-data";
+import { handleAgentFile } from "./agent-file";
 import { json, readJson } from "./http";
+import { handlePortableExport } from "./portable";
+import { handleSkills } from "./skills";
 
 export interface AgentRouteDeps {
   store: WorkspaceStore;
@@ -186,10 +186,15 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    const result = await channel.captureCredential({
-      workspace: authz.workspace,
-      agent: authz.agent,
-    });
+    // Optional: the just-connected provider, so capturing a pasted API key never
+    // picks up a different, already-connected OAuth provider.
+    const body = await readJson(req).catch(() => ({}));
+    const provider =
+      typeof body?.provider === "string" ? body.provider : undefined;
+    const result = await channel.captureCredential(
+      { workspace: authz.workspace, agent: authz.agent },
+      provider,
+    );
     if (result.ok) json(res, 200, { ok: true, provider: result.provider });
     else
       json(res, result.status, {

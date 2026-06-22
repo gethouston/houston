@@ -144,8 +144,13 @@ export interface RuntimeChannel {
   ): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
-  /** Connect-once: pull/confirm the workspace credential after the user connects. */
-  captureCredential(ctx: ChannelCtx): Promise<CaptureResult>;
+  /**
+   * Connect-once: pull/confirm the workspace credential after the user connects.
+   * `provider` targets the just-connected provider (so capturing an API key
+   * doesn't pick up a different, already-connected OAuth provider); absent =
+   * the first connected.
+   */
+  captureCredential(ctx: ChannelCtx, provider?: string): Promise<CaptureResult>;
   /**
    * Connect-once logout: forget the workspace's central credential for a provider
    * so no future turn can re-serve it. The inverse of captureCredential — clearing
@@ -161,11 +166,18 @@ export interface RuntimeChannel {
  */
 export interface WorkspaceCredential {
   workspaceId: WorkspaceId;
-  /** "openai-codex" | "anthropic". */
+  /** "openai-codex" | "anthropic" | "openrouter" | "google". */
   provider: string;
+  /**
+   * How this credential was obtained. "oauth" (default) = a refreshable
+   * subscription token; "api_key" = a user-pasted key (`accessToken` holds it,
+   * `refreshToken` is empty, never refreshed/expired).
+   */
+  kind?: "oauth" | "api_key";
+  /** The OAuth access token, OR — for an api-key provider — the API key itself. */
   accessToken: string;
   refreshToken: string;
-  /** Unix epoch ms the access token expires. */
+  /** Unix epoch ms the access token expires. (Far future for api-key.) */
   expiresAt: number;
   /** The ChatGPT account id (codex) — the backend needs it; preserved across refreshes. */
   accountId?: string;

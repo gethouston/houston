@@ -21,6 +21,15 @@ import type {
   UpdateAgent,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
+import * as activities from "./activities";
+import {
+  readAgentFile as readAgentFileStore,
+  writeAgentFile as writeAgentFileStore,
+} from "./agent-files";
+import * as agents from "./agents";
+import { bus, emitEvent } from "./bus";
+import type { ControlPlaneConfig } from "./control-plane";
+import * as controlPlane from "./control-plane";
 import {
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
@@ -29,16 +38,7 @@ import {
   toNewProvider,
   toOldProvider,
 } from "./synthetic";
-import * as agents from "./agents";
-import * as activities from "./activities";
-import {
-  readAgentFile as readAgentFileStore,
-  writeAgentFile as writeAgentFileStore,
-} from "./agent-files";
-import { streamTurn, historyToFeed } from "./translate";
-import * as controlPlane from "./control-plane";
-import type { ControlPlaneConfig } from "./control-plane";
-import { bus, emitEvent } from "./bus";
+import { historyToFeed, streamTurn } from "./translate";
 
 export interface HoustonClientOptions {
   baseUrl: string;
@@ -651,6 +651,45 @@ export class HoustonClient {
       : this.engine;
     await engine.completeLogin(pid, code);
   }
+  /**
+   * Connect an API-key provider (openrouter, google): the user pasted a key.
+   * No OAuth dance — store the key, make the provider active, and (cloud /
+   * desktop-host) capture it into the workspace's central store so every agent
+   * shares it. Resolves once stored; the caller refreshes provider status. A
+   * failure throws so the card shows the real reason (e.g. an invalid key).
+   */
+  async setProviderApiKey(name: string, key: string): Promise<void> {
+    const pid = toNewProvider(name);
+    if (!pid) throw new Error(`provider ${name} not supported`);
+
+    if (this.cp) {
+      const agentId = this.requireAgentId();
+      const engine = controlPlane.runtimeClientFor(this.cp, agentId);
+      await engine.setApiKey(pid, key);
+      // Make the just-connected provider this agent's active model so chat uses it.
+      try {
+        await engine.setSettings({ activeProvider: pid });
+      } catch {
+        /* non-fatal: the user can still pick the model in the chat header */
+      }
+      // Connect-once: store this key for the WHOLE workspace (this provider only,
+      // so a co-connected OAuth provider isn't captured by mistake).
+      try {
+        await controlPlane.captureCredential(this.cp, agentId, pid);
+      } catch (e) {
+        console.error("[connect] workspace credential capture failed", e);
+      }
+      return;
+    }
+
+    // Local single runtime.
+    await this.engine.setApiKey(pid, key);
+    try {
+      await this.engine.setSettings({ activeProvider: pid });
+    } catch {
+      /* non-fatal */
+    }
+  }
   async cancelProviderLogin(name?: string): Promise<void> {
     if (!name || !toNewProvider(name)) return;
     if (this.cp) {
@@ -675,10 +714,7 @@ export class HoustonClient {
    * Covers all three flows: loopback auto-catch, pasted headless code, and
    * device-code polling. Local mode only (cloud uses pollProviderConnect).
    */
-  private watchLoginCompletion(
-    pid: "anthropic" | "openai-codex",
-    name: string,
-  ): void {
+  private watchLoginCompletion(pid: ProviderId, name: string): void {
     this.stopLoginWatch(name);
     const startedAt = Date.now();
     const finish = (success: boolean, error: string | null) => {

@@ -9,8 +9,8 @@ import type {
   SkillSummary,
   Workspace,
 } from "../../../../ui/engine-client/src/types";
-import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 import { HoustonEngineError } from "./client";
+import { DEFAULT_AGENT_COLOR, DEFAULT_AGENT_CONFIG_ID } from "./synthetic";
 
 /**
  * Control-plane mode for the web adapter.
@@ -227,11 +227,15 @@ export async function deleteAgent(
 export async function captureCredential(
   cfg: ControlPlaneConfig,
   agentId: string,
+  provider?: string,
 ): Promise<void> {
   await cpFetch(
     cfg,
     `/agents/${encodeURIComponent(agentId)}/credential/capture`,
-    { method: "POST" },
+    {
+      method: "POST",
+      ...(provider ? { body: JSON.stringify({ provider }) } : {}),
+    },
   );
 }
 

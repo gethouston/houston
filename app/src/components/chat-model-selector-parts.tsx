@@ -1,13 +1,18 @@
-import { useTranslation } from "react-i18next";
-import { Check } from "lucide-react";
 import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@houston-ai/core";
-import { type ProviderInfo } from "../lib/providers";
-import { type ProviderPickerState } from "../lib/model-picker";
-import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
+import { Check } from "lucide-react";
+import { useTranslation } from "react-i18next";
+import type { ProviderPickerState } from "../lib/model-picker";
+import type { ProviderInfo } from "../lib/providers";
+import {
+  ClaudeLogo,
+  GeminiLogo,
+  OpenAILogo,
+  OpenRouterLogo,
+} from "./shell/provider-logos";
 
 /**
  * Presentational sub-parts for {@link ChatModelSelector}. Split out so the
@@ -104,6 +109,10 @@ function iconFor(providerId: string) {
       return <ClaudeLogo className="size-full" />;
     case "openai":
       return <OpenAILogo className="size-full" />;
+    case "openrouter":
+      return <OpenRouterLogo className="size-full" />;
+    case "google":
+      return <GeminiLogo className="size-full" />;
     default:
       return null;
   }

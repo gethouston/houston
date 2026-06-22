@@ -1,28 +1,67 @@
-import { getModel, getModels } from "@earendil-works/pi-ai";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { config } from "../config";
+import { getModel, getModels } from "@earendil-works/pi-ai";
 import { authStorage } from "../auth/storage";
+import { config } from "../config";
 
 /**
- * Supported subscription providers. The OAuth provider id and the pi-ai model
- * provider are the same string, so a stored credential under `id` authenticates
- * `getModel(id, ...)` directly.
+ * Supported providers. The provider id and the pi-ai model provider are the same
+ * string, so a stored credential under `id` authenticates `getModel(id, ...)`
+ * directly.
+ *
+ * - `oauth` providers (anthropic, openai-codex) connect through a subscription
+ *   OAuth flow (see auth/login.ts).
+ * - `api-key` providers (openrouter, google) connect by the user pasting an API
+ *   key — pi's AuthStorage stores it as `{ type: "api_key", key }` and serves it
+ *   to the matching pi-ai provider with no OAuth at all. `createKeyUrl` is the
+ *   page the UI opens so a non-technical user can mint a key in one click.
  */
-export type ProviderId = "anthropic" | "openai-codex";
+export type ProviderId = "anthropic" | "openai-codex" | "openrouter" | "google";
 
-export const PROVIDERS: {
+export type ProviderAuthKind = "oauth" | "api-key";
+
+export interface ProviderDef {
   id: ProviderId;
   name: string;
   defaultModel: string;
-}[] = [
-  { id: "anthropic", name: "Claude (Pro / Max)", defaultModel: config.model },
+  authKind: ProviderAuthKind;
+  /** Where the user mints an API key (api-key providers only). */
+  createKeyUrl?: string;
+}
+
+export const PROVIDERS: ProviderDef[] = [
+  {
+    id: "anthropic",
+    name: "Claude (Pro / Max)",
+    defaultModel: config.model,
+    authKind: "oauth",
+  },
   {
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     defaultModel: config.codexModel,
+    authKind: "oauth",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    defaultModel: config.openrouterModel,
+    authKind: "api-key",
+    createKeyUrl: "https://openrouter.ai/settings/keys",
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    defaultModel: config.geminiModel,
+    authKind: "api-key",
+    createKeyUrl: "https://aistudio.google.com/apikey",
   },
 ];
+
+/** The connection mechanism for a provider id (`oauth` for an unknown id). */
+export function providerAuthKind(id: string): ProviderAuthKind {
+  return PROVIDERS.find((p) => p.id === id)?.authKind ?? "oauth";
+}
 
 const isProvider = (s: string): s is ProviderId =>
   PROVIDERS.some((p) => p.id === s);

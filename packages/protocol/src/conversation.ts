@@ -4,8 +4,13 @@
  * Source of truth for these shapes; @houston/runtime-client re-exports them.
  */
 
-/** Subscription providers. "anthropic" = Claude Pro/Max, "openai-codex" = ChatGPT/Codex. */
-export type ProviderId = "anthropic" | "openai-codex";
+/**
+ * Connectable AI providers.
+ * - "anthropic" = Claude Pro/Max, "openai-codex" = ChatGPT/Codex: OAuth (subscription).
+ * - "openrouter" = OpenRouter, "google" = Google Gemini: API-key (the user pastes a
+ *   key; no OAuth). See `ProviderAuth.authKind`.
+ */
+export type ProviderId = "anthropic" | "openai-codex" | "openrouter" | "google";
 
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 

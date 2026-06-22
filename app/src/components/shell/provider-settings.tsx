@@ -1,20 +1,21 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import type { HoustonEvent } from "@houston-ai/core";
-import { Spinner, ConfirmDialog } from "@houston-ai/core";
-import {
-  tauriProvider,
-  tauriSystem,
-  type ProviderStatus,
-} from "../../lib/tauri";
-import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
-import { useUIStore } from "../../stores/ui";
+import { ConfirmDialog, Spinner } from "@houston-ai/core";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
+import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
+import {
+  type ProviderStatus,
+  tauriProvider,
+  tauriSystem,
+} from "../../lib/tauri";
+import { useUIStore } from "../../stores/ui";
+import { ProviderAccountRow } from "./provider-account-row";
+import { ProviderApiKeyCard } from "./provider-api-key-card";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
-import { ProviderAccountRow } from "./provider-account-row";
 import { providerAppearsConnected } from "./provider-reconnect-state";
 
 /**
@@ -47,6 +48,8 @@ export function ProviderSettings() {
     url: string;
     userCode: string | null;
   } | null>(null);
+  // API-key providers (OpenRouter, Gemini) connect via a paste-a-key card.
+  const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   // First scan is treated as the baseline so opening Settings while a
@@ -220,6 +223,11 @@ export function ProviderSettings() {
   }, [addToast, loadStatuses, patchAuthState, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers don't sign in — they open the paste-a-key card.
+    if (provider.authKind === "api-key") {
+      setApiKeyDialog(provider);
+      return;
+    }
     setPendingId(provider.id);
     try {
       // launchLogin defaults deviceAuth from the platform — desktop catches the
@@ -363,6 +371,15 @@ export function ProviderSettings() {
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
         onClose={() => setLoginDialog(null)}
+      />
+
+      <ProviderApiKeyCard
+        provider={apiKeyDialog}
+        onClose={() => setApiKeyDialog(null)}
+        onConnected={(prov) => {
+          patchAuthState(prov.id, true);
+          void loadStatuses();
+        }}
       />
     </>
   );

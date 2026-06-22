@@ -8,10 +8,15 @@ import type { Capabilities } from "@houston/protocol";
  *
  * The asymmetries are deliberate and contained here (the irreducible local↔cloud
  * differences from the convergence plan): local has the Tauri shell + the user's
- * own machine (reveal-in-OS, terminal, unconfined bash, Anthropic OAuth); cloud
- * is the egress-locked remote sandbox, Codex-only. Everything NOT listed here is
- * shared behavior served by the same handlers — that's what `dual-profile.test.ts`
- * pins.
+ * own machine (reveal-in-OS, terminal, unconfined bash, Anthropic OAuth, the
+ * bring-your-own-key providers); cloud is the egress-locked remote sandbox,
+ * Codex-only. Everything NOT listed here is shared behavior served by the same
+ * handlers — that's what `dual-profile.test.ts` pins.
+ *
+ * API-key providers (openrouter, google) are LOCAL-only for now: the key is a
+ * long-lived secret, and serving it into the egress-locked cloud sandbox per
+ * turn is a Gate #2 question we have not signed off on. Desktop + self-host get
+ * them today; cloud is a deliberate follow-up.
  */
 
 /** What a desktop deployment can do — the Tauri shell handles OS-native bits. */
@@ -22,7 +27,7 @@ export const LOCAL_CAPABILITIES: Capabilities = {
   // Mobile pairing is gone — phones use the web app now (no tunnel/relay).
   tunnel: false,
   codeExecution: "local-bash",
-  providers: ["anthropic", "openai-codex"],
+  providers: ["anthropic", "openai-codex", "openrouter", "google"],
 };
 
 /** What the cloud deployment can do (served at /v1/capabilities). */

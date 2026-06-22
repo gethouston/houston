@@ -18,9 +18,24 @@
     "installHint": "Install the {{cli}} CLI on your machine. Houston will pick it up automatically.",
     "installGuide": "Install guide",
     "signInWith": "Sign in with {{provider}}",
+    "addApiKey": "Add your {{provider}} API key",
     "waiting": "Waiting for the sign-in to finish in your browser...",
     "cancelWaiting": "Cancel and try again",
     "installedCheckAgain": "Already installed? Check again"
+  },
+  "apiKey": {
+    "title": "Add your {{name}} API key",
+    "description": "Paste your API key below. Houston keeps it on your device and uses it to talk to the provider.",
+    "label": "API key",
+    "placeholder": "Paste your API key",
+    "getKey": "Get a key from {{name}}",
+    "show": "Show API key",
+    "hide": "Hide API key",
+    "required": "Enter your API key first.",
+    "saved": "Connected to {{provider}}",
+    "submit": "Save key",
+    "submitting": "Saving...",
+    "cancel": "Cancel"
   },
   "signOutConfirm": {
     "title": "Sign out of {{provider}}?",

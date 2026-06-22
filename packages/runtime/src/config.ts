@@ -1,6 +1,6 @@
+import { mkdirSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import { mkdirSync } from "node:fs";
 
 const env = process.env;
 
@@ -45,6 +45,11 @@ export const config = {
   model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+  /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
+  geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3-flash-preview",
+  /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
+  openrouterModel:
+    env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",
 
   /**
    * Override for the skills directory. Default is <workspace>/.agents/skills —

@@ -1,6 +1,6 @@
-import { test, expect } from "bun:test";
-import { createServer } from "node:net";
+import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync } from "node:fs";
+import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Capabilities, Workspace } from "@houston/protocol";
@@ -64,7 +64,12 @@ test("capabilities report the local profile", async () => {
     expect(caps).toEqual(LOCAL_CAPABILITIES);
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
-    expect(caps.providers).toEqual(["anthropic", "openai-codex"]);
+    expect(caps.providers).toEqual([
+      "anthropic",
+      "openai-codex",
+      "openrouter",
+      "google",
+    ]);
   } finally {
     host.stop();
   }

@@ -1,4 +1,4 @@
-import type { Workspace, Agent } from "../../../../ui/engine-client/src/types";
+import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
 
 /**
  * The new engine is single-workspace / single-user with no agent concept, but
@@ -50,14 +50,17 @@ export function syntheticAgent(): Agent {
 /** Old desktop provider name -> new engine ProviderId. */
 export function toNewProvider(
   name: string,
-): "anthropic" | "openai-codex" | null {
+): "anthropic" | "openai-codex" | "openrouter" | "google" | null {
   if (name === "anthropic") return "anthropic";
   if (name === "openai" || name === "openai-codex" || name === "codex")
     return "openai-codex";
+  if (name === "openrouter") return "openrouter";
+  if (name === "google" || name === "gemini") return "google";
   return null;
 }
 
 /** New engine ProviderId -> old desktop provider name. */
 export function toOldProvider(id: string): string {
+  // openrouter/google share one id across frontend and engine; only codex differs.
   return id === "openai-codex" ? "openai" : id;
 }
