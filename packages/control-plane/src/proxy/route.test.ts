@@ -84,7 +84,9 @@ test("forward relays method + sub-path + query + body under the sandbox Bearer, 
   expect(seen.path).toBe("/conversations/c1/messages?foo=bar");
   expect(seen.auth).toBe("Bearer sbx-abc"); // the agent's token, never the caller's
   expect(seen.contentType).toBe("application/json");
-  expect(JSON.parse(seen.body!)).toEqual({ text: "hi", nonce: "n1" });
+  if (seen.body === undefined)
+    throw new Error("upstream did not receive a body");
+  expect(JSON.parse(seen.body)).toEqual({ text: "hi", nonce: "n1" });
   expect(r.status).toBe(202);
   expect(j).toEqual({ ok: true });
 });
@@ -183,7 +185,9 @@ test("forward aborts the upstream stream when the client disconnects (clean reso
 
   const ac = new AbortController();
   const res = await fetch(`${proxyUrl}/`, { signal: ac.signal });
-  const reader = res.body!.getReader();
+  if (res.body === null)
+    throw new Error("response body is null — cannot stream");
+  const reader = res.body.getReader();
   const first = await reader.read();
   expect(new TextDecoder().decode(first.value)).toContain(": hb");
   ac.abort();

@@ -75,7 +75,10 @@ test("parseFeedbackPayload requires command and bounds every field", () => {
 });
 
 test("LinearFeedbackSender resolves the label then files the issue", async () => {
-  const requests: { auth: string | undefined; body: any }[] = [];
+  const requests: {
+    auth: string | undefined;
+    body: { query: string; variables: Record<string, unknown> };
+  }[] = [];
   const stub: Server = createServer(async (req, res) => {
     const chunks: Buffer[] = [];
     for await (const c of req) chunks.push(c as Buffer);
@@ -120,7 +123,14 @@ test("LinearFeedbackSender resolves the label then files the issue", async () =>
   expect(id).toBe("BUG-42");
   expect(requests).toHaveLength(2);
   expect(requests.every((r) => r.auth === "lin_key")).toBe(true);
-  const input = requests[1]!.body.variables.input;
+  const req1 = requests[1];
+  if (!req1) throw new Error("expected requests[1] to exist");
+  const input = req1.body.variables.input as {
+    teamId: string;
+    labelIds: string[];
+    title: string;
+    description: string;
+  };
   expect(input.teamId).toBe("team-1");
   expect(input.labelIds).toEqual(["label-1"]);
   expect(input.title).toBe("Houston feedback: deck never downloaded");
@@ -270,8 +280,10 @@ test("POST /feedback requires auth, 503s unconfigured, files when wired", async 
   expect(ok.status).toBe(200);
   expect(await ok.json()).toEqual({ id: "BUG-7" });
   expect(sent).toHaveLength(1);
-  expect(sent[0]!.userId).toBe("alice");
-  expect(sent[0]!.payload.userMessage).toBe(
+  const sent0 = sent[0];
+  if (!sent0) throw new Error("expected sent[0] to exist");
+  expect(sent0.userId).toBe("alice");
+  expect(sent0.payload.userMessage).toBe(
     "love it, but my deck never downloaded",
   );
 

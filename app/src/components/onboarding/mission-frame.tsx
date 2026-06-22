@@ -68,6 +68,7 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
+          // biome-ignore lint/suspicious/noArrayIndexKey: dots are positional indicators with no stable id; order never changes
           key={i}
           className={cn(
             "size-2 rounded-full transition-colors",

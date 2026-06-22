@@ -61,7 +61,7 @@ export function SkillDetailPage({
 
   useEffect(() => {
     if (skill) setInstructions(skill.instructions);
-  }, [skill?.id]);
+  }, [skill]);
 
   const handleSave = useCallback(async () => {
     if (!skill) return;

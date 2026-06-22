@@ -40,7 +40,7 @@ export function parseSkillMd(
   if (!m) return { error: `SKILL.md for '${slug}' has no YAML frontmatter` };
   let fm: Record<string, unknown>;
   try {
-    const parsed = parseYaml(m[1]!) as unknown;
+    const parsed = parseYaml(m[1] ?? "") as unknown;
     if (typeof parsed !== "object" || parsed === null)
       return { error: `frontmatter of '${slug}' is not a map` };
     fm = parsed as Record<string, unknown>;
@@ -77,7 +77,7 @@ export async function loadSkills(
     ...new Set(
       keys
         .filter((k) => k.endsWith("/SKILL.md"))
-        .map((k) => k.slice(dir.length + 1).split("/")[0]!)
+        .map((k) => k.slice(dir.length + 1).split("/")[0] ?? "")
         .filter(Boolean),
     ),
   ].sort();

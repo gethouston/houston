@@ -96,7 +96,7 @@
     try {
       new RegExpCtor("(?<=a)b");
       return true;
-    } catch (e) {
+    } catch (_e) {
       return false;
     }
   }
@@ -184,7 +184,7 @@
       reloadBtn.addEventListener("click", () => {
         try {
           window.location.reload();
-        } catch (e) {
+        } catch (_e) {
           /* nothing better we can do from inside the crash screen */
         }
       });
@@ -194,23 +194,26 @@
         var done = () => {
           copyBtn.textContent = message.copied;
         };
+        var pre;
+        var range;
+        var sel;
         try {
           if (navigator.clipboard?.writeText) {
             navigator.clipboard.writeText(diagnostics).then(done, done);
             return;
           }
-        } catch (e) {
+        } catch (_e) {
           /* fall through to selection fallback */
         }
-        var pre = root.querySelector("#houston-gate-diagnostics");
+        pre = root.querySelector("#houston-gate-diagnostics");
         if (
           pre &&
           typeof getSelection === "function" &&
           typeof document.createRange === "function"
         ) {
-          var range = document.createRange();
+          range = document.createRange();
           range.selectNodeContents(pre);
-          var sel = getSelection();
+          sel = getSelection();
           sel.removeAllRanges();
           sel.addRange(range);
         }
@@ -281,8 +284,9 @@
   // 1) Monterey path — paint and stop. Skips the crash watchdog because #root
   //    is already painted (rootHasMounted would short-circuit anyway, but this
   //    also saves the listeners and timer).
+  var unsupportedRoot;
   if (!isModernEngineSupported(RegExp)) {
-    var unsupportedRoot = document.getElementById("root");
+    unsupportedRoot = document.getElementById("root");
     if (unsupportedRoot) {
       renderUnsupportedScreen(
         unsupportedRoot,

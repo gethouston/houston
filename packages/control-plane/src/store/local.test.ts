@@ -24,7 +24,7 @@ test("reads workspaces + agents off disk; ids are the on-disk paths", async () =
 
   const workspaces = await store.listWorkspaces();
   expect(workspaces.map((w) => w.id).sort()).toEqual(["Home", "Work"]);
-  expect(workspaces[0]!.runtime).toBe("local");
+  expect(workspaces[0]?.runtime).toBe("local");
 
   const agents = await store.listAgents("Work");
   expect(agents.map((a) => a.id).sort()).toEqual(["Work/HR", "Work/Sales"]);

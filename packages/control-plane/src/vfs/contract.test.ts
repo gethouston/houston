@@ -23,9 +23,9 @@ function runVfsContract(name: string, make: () => Vfs): void {
       await vfs.writeBytes(`${P}/workspace/deck.pptx`, Buffer.from([1, 2, 3]));
 
       expect(await vfs.readText(`${P}/data/settings.json`)).toBe(`{"a":1}`);
-      expect([...(await vfs.readBytes(`${P}/workspace/deck.pptx`))!]).toEqual([
-        1, 2, 3,
-      ]);
+      const pptxBytes = await vfs.readBytes(`${P}/workspace/deck.pptx`);
+      if (pptxBytes === null) throw new Error("expected bytes but got null");
+      expect([...pptxBytes]).toEqual([1, 2, 3]);
       expect(await vfs.readText(`${P}/nope.txt`)).toBeNull();
       expect(await vfs.readBytes(`${P}/nope.bin`)).toBeNull();
     });

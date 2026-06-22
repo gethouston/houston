@@ -52,7 +52,8 @@ function generateTunnelId(): string {
   crypto.getRandomValues(bytes);
   // base64url — 22 chars, no padding.
   let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
+  for (let i = 0; i < bytes.length; i++)
+    s += String.fromCharCode(bytes[i] as number);
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 

@@ -42,8 +42,8 @@ function RowKbd({ row }: { row: Row }) {
   const groups = row.action ? [shortcutParts(row.action)] : (row.parts ?? []);
   return (
     <div className="flex items-center gap-1">
-      {groups.map((parts, i) => (
-        <KbdGroup key={i}>
+      {groups.map((parts) => (
+        <KbdGroup key={parts.join("+")}>
           {parts.map((p) => (
             <Kbd key={p}>{p}</Kbd>
           ))}

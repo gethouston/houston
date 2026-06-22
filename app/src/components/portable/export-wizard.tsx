@@ -101,7 +101,7 @@ export function ExportAgentWizard() {
         setLoading(false);
       }
     })();
-  }, [agentId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [agentId, agent?.folderPath, addToast, setAgentId, t]);
 
   const counts = useMemo(
     () => ({
@@ -626,7 +626,8 @@ function ProgressDots({ index, total }: { index: number; total: number }) {
     <div className="flex items-center gap-1.5" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
         <span
-          key={i}
+          // biome-ignore lint/suspicious/noArrayIndexKey: dots are positional counters — no identity field exists; order is invariant
+          key={`dot-${i}`}
           className={cn(
             "size-2 rounded-full transition-colors",
             i < index && "bg-foreground/60",

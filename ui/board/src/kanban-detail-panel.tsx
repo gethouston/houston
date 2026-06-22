@@ -80,6 +80,7 @@ export const KanbanDetailPanel = forwardRef<
           )}
           {actions}
           <button
+            type="button"
             onClick={onClose}
             className="size-7 flex items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-accent/50 transition-colors shrink-0"
           >

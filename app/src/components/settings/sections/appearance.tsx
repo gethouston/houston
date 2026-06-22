@@ -27,6 +27,7 @@ export function AppearanceSection() {
       <h2 className="text-lg font-semibold mb-4">{t("appearance.title")}</h2>
       <div className="flex gap-2">
         <button
+          type="button"
           onClick={() => handleThemeToggle("light")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm transition-colors ${
             theme === "light"
@@ -38,6 +39,7 @@ export function AppearanceSection() {
           {t("appearance.light")}
         </button>
         <button
+          type="button"
           onClick={() => handleThemeToggle("dark")}
           className={`flex items-center gap-2 px-4 py-2.5 rounded-full text-sm transition-colors ${
             theme === "dark"

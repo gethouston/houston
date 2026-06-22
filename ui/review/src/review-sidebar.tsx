@@ -50,6 +50,7 @@ export function ReviewSidebar({
             {group.items.length > 0 ? (
               group.items.map((item) => (
                 <button
+                  type="button"
                   key={item.id}
                   onClick={() => onSelect(item.id)}
                   className={cn(

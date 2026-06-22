@@ -48,10 +48,11 @@ test("activities round-trip: create → save → load, pretty-printed on disk", 
   const { items, diagnostics } = await loadActivities(store, ROOT);
   expect(items).toEqual([a]);
   expect(diagnostics).toEqual([]);
-  expect(items[0]!.status).toBe("running");
+  expect(items[0]?.status).toBe("running");
 
   // files-first: the on-disk doc is human/agent-readable (pretty, trailing newline)
-  const raw = store.dump().get(docKey(ROOT, "activity"))!;
+  const raw = store.dump().get(docKey(ROOT, "activity"));
+  if (raw == null) throw new Error("expected activity doc in store");
   expect(raw.endsWith("\n")).toBe(true);
   expect(raw).toContain("\n  ");
 });
@@ -74,7 +75,7 @@ test("agent-written junk: malformed entries drop with diagnostics, good ones sur
   );
   const { items, diagnostics } = await loadActivities(store, ROOT);
   expect(items.map((a) => a.id)).toEqual(["ok-1", "ok-2"]);
-  expect(items[1]!.status).toBe("future_status"); // unknown status preserved, not dropped
+  expect(items[1]?.status).toBe("future_status"); // unknown status preserved, not dropped
   expect(diagnostics).toHaveLength(2);
 });
 
@@ -131,9 +132,9 @@ test("routines: schema defaults applied on create and on read of sparse entries"
     ]),
   );
   const { items } = await loadRoutines(store, ROOT);
-  expect(items[0]!.enabled).toBe(true);
-  expect(items[0]!.suppress_when_silent).toBe(false);
-  expect(items[0]!.chat_mode).toBe("shared");
+  expect(items[0]?.enabled).toBe(true);
+  expect(items[0]?.suppress_when_silent).toBe(false);
+  expect(items[0]?.chat_mode).toBe("shared");
 });
 
 test("routine update: defined fields overwrite, undefined leaves untouched", () => {
@@ -195,11 +196,15 @@ test("a stray on-disk per-routine timezone is dropped on read and not re-saved (
   );
   const { items } = await loadRoutines(store, ROOT);
   expect(items).toHaveLength(1);
-  expect(items[0]!.id).toBe("legacy-tz");
-  expect("timezone" in items[0]!).toBe(false);
+  expect(items[0]?.id).toBe("legacy-tz");
+  const item0 = items[0];
+  if (item0 == null) throw new Error("expected items[0] to exist");
+  expect("timezone" in item0).toBe(false);
 
   await saveRoutines(store, ROOT, items);
-  expect(store.dump().get(docKey(ROOT, "routines"))!).not.toContain("timezone");
+  const routinesRaw = store.dump().get(docKey(ROOT, "routines"));
+  if (routinesRaw == null) throw new Error("expected routines doc in store");
+  expect(routinesRaw).not.toContain("timezone");
 });
 
 test("routine provider/model/effort: pinned on create, cleared by null, left by undefined", () => {

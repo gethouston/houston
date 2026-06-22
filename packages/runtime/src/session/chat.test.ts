@@ -57,6 +57,6 @@ test("runTurn refuses with a clear error (never a hang) if the provider vanished
     (e): e is Extract<WireEvent, { type: "error" }> => e.type === "error",
   );
   expect(err).toBeDefined();
-  expect(err!.data.message).toContain("No provider connected");
+  expect(err?.data.message).toContain("No provider connected");
   expect(events.some((e) => e.type === "done")).toBe(false);
 });

@@ -62,12 +62,17 @@ export function TimePicker({
   const selectPeriod = (p: Period) =>
     onChange(buildTime(from12Hour(hour12, p), minute));
 
+  const triggerId = `time-picker-trigger-${label.toLowerCase().replace(/\s+/g, "-")}`;
+
   return (
     <div>
-      <label className={labelClass}>{label}</label>
+      <label htmlFor={triggerId} className={labelClass}>
+        {label}
+      </label>
       <Popover>
         <PopoverTrigger asChild>
           <button
+            id={triggerId}
             type="button"
             aria-label={`${label}: ${formatTime(value, locale)}`}
             className={cn(
@@ -82,7 +87,7 @@ export function TimePicker({
           </button>
         </PopoverTrigger>
         <PopoverContent align="start" className="w-auto rounded-2xl p-2">
-          <div className="flex gap-1" role="group" aria-label={label}>
+          <fieldset className="flex gap-1 border-0 p-0 m-0" aria-label={label}>
             <TimeColumn
               ariaLabel={labels.hour}
               options={hourOptions(twelveHour)}
@@ -103,7 +108,7 @@ export function TimePicker({
                 onSelect={selectPeriod}
               />
             )}
-          </div>
+          </fieldset>
         </PopoverContent>
       </Popover>
     </div>

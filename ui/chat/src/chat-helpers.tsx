@@ -49,13 +49,26 @@ export function ToolsAndCards({
   const allDone =
     isStreaming && tools.length > 0 && tools.every((t) => t.result);
 
+  // Build stable keys by tracking occurrence count per tool name.
+  // ToolEntry has no unique id; the same tool can be called multiple times,
+  // so we key by name + occurrence index (e.g. "bash-0", "bash-1").
+  const toolKeys = (() => {
+    const counts = new Map<string, number>();
+    return tools.map((tool) => {
+      const n = counts.get(tool.name) ?? 0;
+      counts.set(tool.name, n + 1);
+      return `${tool.name}-${n}`;
+    });
+  })();
+
   return (
     <div className="space-y-2 mb-4">
       {tools.map((tool, i) => {
+        const toolKey = toolKeys[i];
         // Special tools get custom rendering
         if (isSpecialTool?.(tool.name) && tool.result && renderToolResult) {
           return (
-            <div key={`special-${i}`} className="py-1">
+            <div key={`special-${toolKey}`} className="py-1">
               {renderToolResult(tool, i)}
             </div>
           );
@@ -66,7 +79,7 @@ export function ToolsAndCards({
 
         return (
           <ToolBlock
-            key={`tool-${i}`}
+            key={toolKey}
             tool={tool}
             isActive={isActive}
             toolLabels={toolLabels}

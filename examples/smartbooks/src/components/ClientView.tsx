@@ -160,6 +160,7 @@ export function ClientView({
             }}
           />
           <button
+            type="button"
             className="btn btn--primary"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
@@ -169,7 +170,8 @@ export function ClientView({
         </div>
       </header>
 
-      <div
+      <section
+        aria-label="Statement drop zone"
         className={`canvas${dragging ? " canvas--dragging" : ""}`}
         onDragOver={(e) => {
           e.preventDefault();
@@ -197,9 +199,9 @@ export function ClientView({
               onProcess={processStatement}
             />
           )
-        ) : (
+        ) : workbook ? (
           <Workpaper
-            workbook={workbook!}
+            workbook={workbook}
             statements={statements}
             workpaperFile={workpaperFile}
             agentPath={agent.agentPath}
@@ -207,14 +209,14 @@ export function ClientView({
             onOpenXlsx={openXlsx}
             onAskCustomize={onOpenCustomize}
           />
-        )}
+        ) : null}
 
         {dragging && (
           <div className="canvas__drop-overlay">
             <span>Drop to upload statement</span>
           </div>
         )}
-      </div>
+      </section>
 
       {hasData && busy && (
         <div className="canvas__footer muted">
@@ -274,6 +276,7 @@ function ProcessingPrompt({ statement, onProcess }: ProcessingPromptProps) {
         hasn't been generated. Try processing again?
       </p>
       <button
+        type="button"
         className="btn btn--primary"
         onClick={() => onProcess(statement.path)}
       >

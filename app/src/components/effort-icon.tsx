@@ -24,7 +24,7 @@ export function EffortIcon({ levels, active, className }: EffortIconProps) {
     >
       {bars.map((bar, i) => (
         <rect
-          key={i}
+          key={levels[i]}
           x={bar.x}
           y={bar.y}
           width={bar.width}

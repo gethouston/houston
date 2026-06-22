@@ -73,9 +73,12 @@ test("registerHeadlessAnthropicProvider overrides the built-in anthropic provide
 });
 
 test("login exchanges the pasted code for tokens via the headless flow", async () => {
-  let exchangeBody: any = null;
-  globalThis.fetch = (async (_url: any, init: any) => {
-    exchangeBody = JSON.parse(init.body as string);
+  let exchangeBody: Record<string, unknown> | null = null;
+  globalThis.fetch = (async (
+    _url: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    exchangeBody = JSON.parse(init?.body as string) as Record<string, unknown>;
     return new Response(
       JSON.stringify({
         access_token: "access-tok",

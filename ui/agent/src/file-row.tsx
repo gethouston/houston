@@ -64,9 +64,8 @@ export function FolderSection({
 
   return (
     <>
-      <div
-        role="button"
-        tabIndex={0}
+      <button
+        type="button"
         draggable={!!onMove}
         onDragStart={(e) => {
           e.dataTransfer.setData(INTERNAL_DRAG_TYPE, node.path);
@@ -77,7 +76,7 @@ export function FolderSection({
         onClick={() => setOpen(!open)}
         onKeyDown={(e) => e.key === "Enter" && setOpen(!open)}
         className={cn(
-          "h-[24px] select-none cursor-default items-center",
+          "h-[24px] select-none cursor-default items-center w-full text-left",
           isOver ? "!bg-[rgba(0,122,255,0.12)] !rounded-lg" : "",
           dragging && "opacity-40",
         )}
@@ -101,7 +100,7 @@ export function FolderSection({
         <span className="text-[11px] text-muted-foreground truncate px-2">
           Folder
         </span>
-      </div>
+      </button>
       {open &&
         node.children.map((child) =>
           child.kind === "folder" ? (
@@ -197,6 +196,7 @@ export function FileRow({
 
   return (
     <>
+      {/* biome-ignore lint/a11y/useSemanticElements: CSS grid layout — <tr> would break column sizing; role="row" is correct ARIA but the element must stay a div */}
       <div
         role="row"
         tabIndex={0}

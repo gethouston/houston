@@ -56,13 +56,20 @@ export async function handleSkills(
 
   if (method === "POST" && !slug) {
     const body = await readJson(req);
-    for (const field of ["name", "description", "content"]) {
-      if (!body[field] || typeof body[field] !== "string") {
+    const fields: Record<"name" | "description" | "content", string> = {
+      name: "",
+      description: "",
+      content: "",
+    };
+    for (const field of ["name", "description", "content"] as const) {
+      const value = body[field];
+      if (!value || typeof value !== "string") {
         json(res, 400, { error: `missing '${field}'` });
         return true;
       }
+      fields[field] = value;
     }
-    const newSlug = slugify(body.name);
+    const newSlug = slugify(fields.name);
     if (!newSlug) {
       json(res, 400, { error: "name does not produce a usable slug" });
       return true;
@@ -76,8 +83,8 @@ export async function handleSkills(
       skillKey(root, newSlug),
       composeSkillMd({
         name: newSlug,
-        description: body.description,
-        content: body.content,
+        description: fields.description,
+        content: fields.content,
         createdIsoDate: today,
       }),
     );

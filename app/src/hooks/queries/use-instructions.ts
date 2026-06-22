@@ -5,7 +5,10 @@ import { tauriAgent } from "../../lib/tauri";
 export function useInstructions(agentPath: string | undefined) {
   return useQuery({
     queryKey: queryKeys.instructions(agentPath ?? ""),
-    queryFn: () => tauriAgent.readFile(agentPath!, "CLAUDE.md").catch(() => ""),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriAgent.readFile(agentPath, "CLAUDE.md").catch(() => "");
+    },
     enabled: !!agentPath,
   });
 }
@@ -13,8 +16,10 @@ export function useInstructions(agentPath: string | undefined) {
 export function useSaveInstructions(agentPath: string | undefined) {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ name, content }: { name: string; content: string }) =>
-      tauriAgent.writeFile(agentPath!, name, content),
+    mutationFn: ({ name, content }: { name: string; content: string }) => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriAgent.writeFile(agentPath, name, content);
+    },
     onSuccess: () => {
       if (agentPath)
         qc.invalidateQueries({ queryKey: queryKeys.instructions(agentPath) });

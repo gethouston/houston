@@ -44,8 +44,7 @@ const specifiers = new Set();
 const specRe =
   /from\s+["'](@tauri-apps\/[^"']+)["']|import\(\s*["'](@tauri-apps\/[^"']+)["']\s*\)/g;
 for (const src of allSrc) {
-  let m;
-  while ((m = specRe.exec(src))) specifiers.add(m[1] ?? m[2]);
+  for (const m of src.matchAll(specRe)) specifiers.add(m[1] ?? m[2]);
 }
 
 const viteConfig = readFileSync(join(webDir, "vite.config.ts"), "utf8");
@@ -65,8 +64,7 @@ for (const spec of specifiers) {
 const commands = new Set();
 const cmdRe = /invoke(?:<[^>]*>)?\(\s*["']([a-z0-9_]+)["']/gi;
 for (const src of allSrc) {
-  let m;
-  while ((m = cmdRe.exec(src))) commands.add(m[1]);
+  for (const m of src.matchAll(cmdRe)) commands.add(m[1]);
 }
 
 const shim = readFileSync(

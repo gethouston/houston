@@ -75,9 +75,14 @@ function InstructionField({
     }
   };
 
+  const fieldId = `instruction-${file.name}`;
+
   return (
     <div className="space-y-1.5">
-      <label className="text-xs font-medium text-muted-foreground/50 px-1 flex items-center gap-2">
+      <label
+        htmlFor={fieldId}
+        className="text-xs font-medium text-muted-foreground/50 px-1 flex items-center gap-2"
+      >
         {file.label}
         {saving && (
           <span className="text-[10px] text-muted-foreground/30">
@@ -86,6 +91,7 @@ function InstructionField({
         )}
       </label>
       <textarea
+        id={fieldId}
         value={value}
         onChange={(e) => setValue(e.target.value)}
         onBlur={handleBlur}

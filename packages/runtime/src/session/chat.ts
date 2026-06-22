@@ -2,6 +2,7 @@ import {
   createAgentSession,
   SessionManager,
   type AgentSession,
+  type AgentSessionEvent,
 } from "@earendil-works/pi-coding-agent";
 import { rmSync } from "node:fs";
 import { join } from "node:path";
@@ -89,7 +90,7 @@ async function getConversation(id: string): Promise<Conversation> {
     authStorage,
     modelRegistry,
     sessionManager,
-    resourceLoader: loader as any,
+    resourceLoader: loader,
     tools: TOOLS,
     customTools: [...fileTools, ...(runCodeTool ? [runCodeTool] : [])],
   });
@@ -124,7 +125,7 @@ async function execTurn(
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
 
-  const unsub = conv.session.subscribe((e: any) => {
+  const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
     const wire = toWire(e);
     if (!wire) return;
     if (wire.type === "text") assistantText += wire.data;

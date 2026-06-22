@@ -106,7 +106,7 @@ export function useMissionControl(agents: Agent[]) {
           icon: createElement(AgentCardAvatar, {
             color: agentColorMap[c.agent_path],
           }),
-          status: c.status!,
+          status: c.status ?? "",
           updatedAt: c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags({
             agent: c.agent,

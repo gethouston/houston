@@ -70,6 +70,7 @@ export function EventFeed({
   }, [checkIsAtBottom]);
 
   // Auto-scroll when new events arrive (only if already at bottom)
+  // biome-ignore lint/correctness/useExhaustiveDependencies: events.length is the intentional trigger; the effect body uses scrollToBottom (stable ref) and isAtBottomRef (stable ref) — not events.length directly, but the dep drives re-run on new arrivals
   useEffect(() => {
     if (isAtBottomRef.current) {
       scrollToBottom();

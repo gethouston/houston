@@ -35,7 +35,7 @@ export function ChatInputAttachments({
         >
           {files.map((file, idx) => (
             <AttachmentChip
-              key={`${file.name}-${idx}`}
+              key={`${file.name}-${file.lastModified}`}
               name={file.name}
               onRemove={() => onRemoveFile(idx)}
             />

@@ -2,6 +2,7 @@ import {
   getOAuthProvider,
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
+  type OAuthDeviceCodeInfo,
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
 import { authStorage } from "./storage";
@@ -114,7 +115,7 @@ export async function startLogin(
         state.status = "awaiting_user";
         resolveInfo(state.info);
       },
-      onDeviceCode: (info: any) => {
+      onDeviceCode: (info: OAuthDeviceCodeInfo) => {
         state.info = {
           kind: "device_code",
           verificationUri: info.verificationUri,

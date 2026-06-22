@@ -19,6 +19,9 @@ export function useAgents(workspaceId: string | null) {
     queryKey: ["agents", workspaceId],
     enabled: isEngineReady() && !!workspaceId,
     refetchOnWindowFocus: true,
-    queryFn: async () => await getEngine().listAgents(workspaceId!),
+    queryFn: async () => {
+      if (!workspaceId) throw new Error("workspaceId required");
+      return getEngine().listAgents(workspaceId);
+    },
   });
 }

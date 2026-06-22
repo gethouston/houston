@@ -38,7 +38,7 @@ const TOOL_ICONS: Record<string, LucideIcon> = {
 };
 
 export function getToolIcon(name: string): LucideIcon {
-  const short = name.includes("__") ? name.split("__").pop()! : name;
+  const short = name.includes("__") ? (name.split("__").pop() ?? name) : name;
   return TOOL_ICONS[short] ?? WrenchIcon;
 }
 
@@ -49,7 +49,7 @@ export function getToolIcon(name: string): LucideIcon {
 export function getToolDetail(name: string, input: unknown): string | null {
   const inp = input as Record<string, unknown> | null | undefined;
   if (!inp) return null;
-  const short = name.includes("__") ? name.split("__").pop()! : name;
+  const short = name.includes("__") ? (name.split("__").pop() ?? name) : name;
 
   switch (short) {
     case "Bash": {

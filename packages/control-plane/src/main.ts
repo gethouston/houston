@@ -216,9 +216,12 @@ function main(): void {
     kubeConfig.loadFromDefault(); // in-cluster service account, or local kubeconfig
   }
 
+  if (!config.dev && !kubeConfig) {
+    throw new Error("kubeConfig must be initialized before building sandboxes");
+  }
   const launcher: RuntimeLauncher = config.dev
     ? new FakeLauncher()
-    : buildSandboxes(store, vault, kubeConfig!);
+    : buildSandboxes(store, vault, kubeConfig as KubeConfig);
   const vfs = buildVfs();
   const bus = buildBus();
   const turn = buildTurn(credentials, vfs, bus);

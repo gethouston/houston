@@ -12,7 +12,10 @@ import { tauriConfig } from "../../lib/tauri";
 export function useAgentConfig(agentPath: string | undefined) {
   return useQuery({
     queryKey: queryKeys.config(agentPath ?? ""),
-    queryFn: () => tauriConfig.read(agentPath!),
+    queryFn: () => {
+      if (!agentPath) throw new Error("agentPath required");
+      return tauriConfig.read(agentPath);
+    },
     enabled: !!agentPath,
   });
 }

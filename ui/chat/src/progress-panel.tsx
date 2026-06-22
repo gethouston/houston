@@ -40,8 +40,8 @@ export function ProgressPanel({
       {/* Step list */}
       <ScrollArea className="flex-1">
         <div className="px-5 py-4 space-y-1">
-          {steps.map((step, i) => (
-            <StepRow key={i} step={step} />
+          {steps.map((step) => (
+            <StepRow key={step.title} step={step} />
           ))}
         </div>
       </ScrollArea>

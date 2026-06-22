@@ -103,6 +103,7 @@ export function ConnectView({
         {providers.map((p) => (
           <button
             key={p.id}
+            type="button"
             style={{
               ...ui.button,
               ...(p.configured ? { background: "#2a2a2a" } : {}),
@@ -119,13 +120,13 @@ export function ConnectView({
               style={ui.composerInput}
               placeholder="code#state"
               value={code}
-              autoFocus
               onChange={(e) => setCode(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") submitCode();
               }}
             />
             <button
+              type="button"
               style={ui.sendBtn}
               disabled={!code.trim()}
               onClick={submitCode}

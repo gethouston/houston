@@ -905,11 +905,21 @@ export const PromptInput = ({
         ref={formRef}
         {...props}
       >
+        {/* biome-ignore lint/a11y/noStaticElementInteractions: focus-delegation surface; the real interactive widget is the <textarea> inside — role="presentation" is correct, no standalone widget role applies */}
         <div
           data-composer-surface="true"
           className="group/composer cursor-text overflow-clip rounded-[28px] border border-border/50 bg-card p-2.5 shadow-[0_1px_6px_rgba(0,0,0,0.06)] focus-within:shadow-[0_1px_10px_rgba(0,0,0,0.1)] dark:shadow-[0_1px_6px_rgba(0,0,0,0.2)] dark:focus-within:shadow-[0_1px_10px_rgba(0,0,0,0.3)] grid grid-cols-[auto_1fr_auto] [grid-template-areas:'header_header_header'_'leading_primary_trailing'_'._footer_.'] data-[expanded]:[grid-template-areas:'header_header_header'_'primary_primary_primary'_'leading_footer_trailing']"
+          role="presentation"
           onClick={(e) => {
             if (!(e.target as HTMLElement).closest("button")) {
+              formRef.current?.querySelector("textarea")?.focus();
+            }
+          }}
+          onKeyDown={(e) => {
+            if (
+              (e.key === "Enter" || e.key === " ") &&
+              !(e.target as HTMLElement).closest("button")
+            ) {
               formRef.current?.querySelector("textarea")?.focus();
             }
           }}

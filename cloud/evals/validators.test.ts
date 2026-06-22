@@ -35,14 +35,16 @@ test("validatePptx fails on too few slides and on non-zip bytes", async () => {
     "ppt/slides/slide1.xml": "<p:sld/>",
   });
   const checks = await validatePptx(few, { minSlides: 4 });
-  expect(checks.find((c) => c.name.includes("slides"))!.pass).toBe(false);
+  const slidesCheck = checks.find((c) => c.name.includes("slides"));
+  if (!slidesCheck) throw new Error("slides check not found");
+  expect(slidesCheck.pass).toBe(false);
 
   const garbage = await validatePptx(new TextEncoder().encode("not a zip"), {
     minSlides: 4,
   });
-  expect(garbage.find((c) => c.name === "valid zip container")!.pass).toBe(
-    false,
-  );
+  const zipCheck = garbage.find((c) => c.name === "valid zip container");
+  if (!zipCheck) throw new Error("valid zip container check not found");
+  expect(zipCheck.pass).toBe(false);
 });
 
 test("validateXlsx checks workbook skeleton and data rows", async () => {
@@ -60,9 +62,12 @@ test("validateXlsx checks workbook skeleton and data rows", async () => {
     "xl/worksheets/sheet1.xml": "<worksheet/>",
   });
   const checks = await validateXlsx(empty);
-  expect(checks.find((c) => c.name === "worksheet has data rows")!.pass).toBe(
-    false,
+  const dataRowsCheck = checks.find(
+    (c) => c.name === "worksheet has data rows",
   );
+  if (!dataRowsCheck)
+    throw new Error("worksheet has data rows check not found");
+  expect(dataRowsCheck.pass).toBe(false);
 });
 
 test("validatePng checks magic header and minimum size", async () => {
@@ -76,12 +81,14 @@ test("validatePng checks magic header and minimum size", async () => {
     0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2,
   ]);
   const checks = await validatePng(tiny, { minBytes: 5000 });
-  expect(checks.find((c) => c.name.includes("at least"))!.pass).toBe(false);
+  const sizeCheck = checks.find((c) => c.name.includes("at least"));
+  if (!sizeCheck) throw new Error("size check not found");
+  expect(sizeCheck.pass).toBe(false);
 
   const notPng = new TextEncoder().encode("JFIF....");
-  expect(
-    (await validatePng(notPng, { minBytes: 1 })).find(
-      (c) => c.name === "PNG magic header",
-    )!.pass,
-  ).toBe(false);
+  const magicCheck = (await validatePng(notPng, { minBytes: 1 })).find(
+    (c) => c.name === "PNG magic header",
+  );
+  if (!magicCheck) throw new Error("PNG magic header check not found");
+  expect(magicCheck.pass).toBe(false);
 });

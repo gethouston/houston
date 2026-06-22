@@ -336,6 +336,7 @@ export function CommunitySkillsSection({
 
       {hasMore && (
         <button
+          type="button"
           onClick={() => setShowAll(true)}
           className="text-sm text-muted-foreground hover:text-foreground transition-colors"
         >

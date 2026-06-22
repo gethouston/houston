@@ -61,14 +61,15 @@ async function route(
   if (url.pathname === "/health") return Response.json({ ok: true });
   if (url.pathname === "/allocate") return handleAllocate(request, env);
 
-  if (segments[0] === "pair" && segments[1]) {
+  const seg1 = segments[1];
+  if (segments[0] === "pair" && seg1) {
     if (request.method === "GET") {
-      return handlePairRedirect(request, segments[1]!);
+      return handlePairRedirect(request, seg1);
     }
-    return handlePairCode(request, env, segments[1]!);
+    return handlePairCode(request, env, seg1);
   }
-  if (segments[0] === "e" && segments[1]) {
-    return handleTunnel(request, env, segments[1]!);
+  if (segments[0] === "e" && seg1) {
+    return handleTunnel(request, env, seg1);
   }
 
   // Anything the Worker doesn't claim → static asset (the PWA bundle,

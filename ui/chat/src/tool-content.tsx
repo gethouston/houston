@@ -7,7 +7,7 @@ import { TruncatedCode, truncateStr } from "./tool-code";
 
 export const ToolContent = memo(({ tool }: { tool: ToolEntry }) => {
   const short = tool.name.includes("__")
-    ? tool.name.split("__").pop()!
+    ? (tool.name.split("__").at(-1) ?? tool.name)
     : tool.name;
   const inp = tool.input as Record<string, unknown> | null | undefined;
   const result = tool.result;

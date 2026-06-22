@@ -572,7 +572,10 @@ export class TunnelRoom implements DurableObject {
 
 function b64Encode(bytes: Uint8Array): string {
   let s = "";
-  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]!);
+  for (let i = 0; i < bytes.length; i++) {
+    const byte = bytes[i];
+    if (byte !== undefined) s += String.fromCharCode(byte);
+  }
   return btoa(s);
 }
 function b64Decode(s: string): Uint8Array {

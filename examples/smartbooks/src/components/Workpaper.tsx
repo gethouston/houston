@@ -55,7 +55,7 @@ export function Workpaper({
         onAskCustomize={onAskCustomize}
       />
 
-      <nav className="workpaper__tabs" role="tablist">
+      <div className="workpaper__tabs" role="tablist">
         <TabButton
           active={active === "transactions"}
           onClick={() => setActive("transactions")}
@@ -77,7 +77,7 @@ export function Workpaper({
           Source documents
           <span className="workpaper__count">{statements.length}</span>
         </TabButton>
-      </nav>
+      </div>
 
       <div className="workpaper__pane">
         {active === "transactions" ? (
@@ -143,10 +143,18 @@ function WorkpaperCard({
         </div>
       </div>
       <div className="wp-card__actions">
-        <button className="btn btn--ghost btn--small" onClick={onAskCustomize}>
+        <button
+          type="button"
+          className="btn btn--ghost btn--small"
+          onClick={onAskCustomize}
+        >
           ✎ Ask to change
         </button>
-        <button className="btn btn--primary btn--small" onClick={onOpen}>
+        <button
+          type="button"
+          className="btn btn--primary btn--small"
+          onClick={onOpen}
+        >
           ↗ Open in Excel
         </button>
       </div>
@@ -163,6 +171,7 @@ interface TabButtonProps {
 function TabButton({ active, onClick, children }: TabButtonProps) {
   return (
     <button
+      type="button"
       role="tab"
       aria-selected={active}
       className={`workpaper__tab${active ? " workpaper__tab--active" : ""}`}

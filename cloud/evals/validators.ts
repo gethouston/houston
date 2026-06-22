@@ -88,9 +88,12 @@ export async function validateXlsx(bytes: Uint8Array): Promise<Check[]> {
     ),
   );
   if (sheets[0]) {
-    const xml = await zip.file(sheets[0])!.async("string");
-    const rows = (xml.match(/<row[ >]/g) ?? []).length;
-    checks.push(check("worksheet has data rows", rows >= 2, `${rows} rows`));
+    const sheetFile = zip.file(sheets[0]);
+    if (sheetFile) {
+      const xml = await sheetFile.async("string");
+      const rows = (xml.match(/<row[ >]/g) ?? []).length;
+      checks.push(check("worksheet has data rows", rows >= 2, `${rows} rows`));
+    }
   }
   return checks;
 }

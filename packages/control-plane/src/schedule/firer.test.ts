@@ -87,7 +87,9 @@ test("ChannelRoutineFirer carries the routine's model/effort pins", async () => 
       routine: { ...job().routine, model: "claude-opus-4-8", effort: "max" },
     }),
   );
-  expect(cloudrun.calls[0]!.pin).toEqual({
+  const call0 = cloudrun.calls[0];
+  if (!call0) throw new Error("expected at least one fireTurn call");
+  expect(call0.pin).toEqual({
     model: "claude-opus-4-8",
     effort: "max",
   });
@@ -101,12 +103,16 @@ test("a missing channel for the workspace's runtime throws (→ errored run)", a
 });
 
 test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpoint", async () => {
-  let seen: { path: string; body: unknown; auth: string | null } | null = null;
+  // Held in an object so the fetch-closure write survives the outer
+  // control-flow analysis (a bare `let` would be narrowed to its `null` init).
+  const captured: {
+    seen: { path: string; body: unknown; auth: string | null } | null;
+  } = { seen: null };
   const runtime = Bun.serve({
     port: 0,
     fetch: async (req) => {
       const u = new URL(req.url);
-      seen = {
+      captured.seen = {
         path: u.pathname,
         body: await req.json(),
         auth: req.headers.get("authorization"),
@@ -138,9 +144,11 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
       "routine-r1",
       "Write the daily report",
     );
-    expect(seen!.path).toBe("/conversations/routine-r1/messages");
-    expect(seen!.body).toEqual({ text: "Write the daily report" });
-    expect(seen!.auth).toBe("Bearer sbx-token");
+    const seen = captured.seen;
+    if (!seen) throw new Error("expected runtime to receive a request");
+    expect(seen.path).toBe("/conversations/routine-r1/messages");
+    expect(seen.body).toEqual({ text: "Write the daily report" });
+    expect(seen.auth).toBe("Bearer sbx-token");
   } finally {
     runtime.stop(true);
   }

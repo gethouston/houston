@@ -81,7 +81,7 @@ test("GET /v1/workspaces returns the caller's personal workspace in wire shape",
   const list = (await r.json()) as Workspace[];
   expect(list).toHaveLength(1);
   expect(list[0]).toMatchObject({ isDefault: true, locale: null });
-  expect(typeof list[0]!.createdAt).toBe("string");
+  expect(typeof list[0]?.createdAt).toBe("string");
   // No tenancy internals leak to the wire.
   expect(JSON.stringify(list[0])).not.toContain("slug");
   expect(JSON.stringify(list[0])).not.toContain("runtime");
@@ -104,7 +104,7 @@ test("preferences round-trip per user, and locale shows up on the workspace", as
   const ws = (await (
     await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
   ).json()) as Workspace[];
-  expect(ws[0]!.locale).toBe("es");
+  expect(ws[0]?.locale).toBe("es");
 });
 
 test("one user's preferences never leak to another", async () => {
@@ -120,11 +120,11 @@ test("one user's preferences never leak to another", async () => {
 });
 
 test("PATCH /v1/workspaces/:id sets locale; a non-owner is walled off (403)", async () => {
-  const aliceWs = (
-    (await (
-      await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
-    ).json()) as Workspace[]
-  )[0]!;
+  const aliceWsList = (await (
+    await fetch(`${base}/v1/workspaces`, { headers: auth("alice") })
+  ).json()) as Workspace[];
+  const aliceWs = aliceWsList[0];
+  if (!aliceWs) throw new Error("expected alice to have a workspace");
 
   const patched = await fetch(`${base}/v1/workspaces/${aliceWs.id}`, {
     method: "PATCH",

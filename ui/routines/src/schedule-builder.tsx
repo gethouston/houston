@@ -72,6 +72,7 @@ export function ScheduleBuilder({
       <div className="flex flex-wrap gap-1.5">
         {presets.map((preset) => (
           <button
+            type="button"
             key={preset}
             onClick={() => selectPreset(preset)}
             className={cn(

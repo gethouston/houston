@@ -12,6 +12,7 @@ import {
   skillKey,
   unpackAgent,
   type PortableContent,
+  type PortablePackage,
 } from "@houston/domain";
 import type { Agent, UserId, Workspace } from "../domain/types";
 import type { WorkspaceStore } from "../ports";
@@ -51,7 +52,9 @@ export async function handlePortableExport(
   }
   const paths = deps.paths ?? new CloudPaths();
   const root = paths.agentRoot(ctx.workspace, ctx.agent);
-  const sel = (await readJson(req)) as PortableSelection;
+  // The body claims to be a PortableSelection; the reads below stay defensive
+  // (optional chaining) since it is untrusted input.
+  const sel = (await readJson(req)) as unknown as PortableSelection;
 
   const content: PortableContent = { skills: [], routines: [], learnings: [] };
   if (sel.includeClaudeMd) {
@@ -119,7 +122,7 @@ export async function handlePortableAccount(
 
   // Install carries JSON ({ archive: base64, agentName }); preview is raw bytes.
   if (path === "/v1/portable/preview") {
-    let pkg;
+    let pkg: PortablePackage;
     try {
       pkg = unpackAgent(new Uint8Array(await readBytes(req)));
     } catch (err) {
@@ -145,7 +148,7 @@ export async function handlePortableAccount(
     json(res, 400, { error: "missing 'agentName' or 'archive' (base64)" });
     return true;
   }
-  let pkg;
+  let pkg: PortablePackage;
   try {
     pkg = unpackAgent(new Uint8Array(Buffer.from(body.archive, "base64")));
   } catch (err) {

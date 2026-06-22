@@ -78,17 +78,20 @@ test("buildOverview joins agents to their pods and derives per-agent state", () 
     total: 1,
   });
 
-  const alice = ov.users.find((u) => u.userId === "alice")!;
+  const alice = ov.users.find((u) => u.userId === "alice");
+  if (!alice) throw new Error("alice not found in overview");
   const stateOf = (name: string) =>
-    alice.agents.find((a) => a.name === name)!.state;
+    alice.agents.find((a) => a.name === name)?.state;
   expect(stateOf("Sales")).toBe("running");
   expect(stateOf("HR")).toBe("asleep"); // PVC exists, no pod
-  const bob = ov.users.find((u) => u.userId === "bob")!;
-  expect(bob.agents.find((a) => a.name === "Scout")!.state).toBe("absent"); // nothing
+  const bob = ov.users.find((u) => u.userId === "bob");
+  if (!bob) throw new Error("bob not found in overview");
+  expect(bob.agents.find((a) => a.name === "Scout")?.state).toBe("absent"); // nothing
 
   // Alice has one running agent; its pod view carries the requests.
   expect(alice.runningAgents).toBe(1);
-  const sales = alice.agents.find((a) => a.name === "Sales")!;
+  const sales = alice.agents.find((a) => a.name === "Sales");
+  if (!sales) throw new Error("Sales agent not found in alice's agents");
   expect(sales.pod).toMatchObject({
     phase: "Running",
     cpuRequestCores: 0.25,
@@ -155,7 +158,7 @@ test("buildBillingReport maps actuals to users by namespace and flags status", (
   );
   expect(none.actuals).toBeNull();
   expect(none.actualsStatus).toBe("not-configured");
-  expect(none.estimate.byUser[0]!.actualUsd).toBeNull();
+  expect(none.estimate.byUser[0]?.actualUsd).toBeNull();
   expect(none.estimate.clusterFeeMonthUsd).toBeCloseTo(73, 0);
 
   // with actuals: alice's namespace cost is attached
@@ -176,7 +179,7 @@ test("buildBillingReport maps actuals to users by namespace and flags status", (
     5,
   );
   expect(withActuals.actualsStatus).toBe("ok");
-  expect(withActuals.estimate.byUser[0]!.actualUsd).toBe(9.99);
+  expect(withActuals.estimate.byUser[0]?.actualUsd).toBe(9.99);
 
   // error path carries the message
   const errored = buildBillingReport(
