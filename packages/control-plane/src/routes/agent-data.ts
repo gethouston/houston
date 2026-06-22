@@ -14,7 +14,7 @@ import {
   upsertById,
   validateSchedule,
 } from "@houston/domain";
-import type { HoustonEvent } from "@houston/protocol";
+import type { HoustonEvent, NewRoutine } from "@houston/protocol";
 import type { Agent, Workspace } from "../domain/types";
 import type { Vfs } from "../vfs";
 import type { WorkspacePaths } from "../paths";
@@ -59,7 +59,8 @@ export async function handleAgentData(
     /^(activities|routines|routine_runs|config|learnings)(?:\/([^/]+))?$/,
   );
   if (!m) return false;
-  const family = m[1]!;
+  const family = m[1];
+  if (!family) return false;
   const itemId = m[2] ? decodeURIComponent(m[2]) : null;
 
   if (!vfs) {
@@ -70,7 +71,10 @@ export async function handleAgentData(
   const nowIso = new Date().toISOString();
   // Fire this family's reactivity event AFTER a successful write. agentPath is
   // the agent's opaque id (the UI scopes query invalidation by it).
-  const fireChange = () => emit?.(FAMILY_EVENT[family]!(ctx.agent.id));
+  const fireChange = () => {
+    const event = FAMILY_EVENT[family]?.(ctx.agent.id);
+    if (event) emit?.(event);
+  };
 
   if (family === "activities") {
     await handleActivitiesData(
@@ -99,18 +103,20 @@ export async function handleAgentData(
           return true;
         }
       }
+      // The loop above proved name/prompt/schedule are non-empty strings.
+      const input = body as unknown as NewRoutine;
       // Reject a bad cron NOW — otherwise the routine saves and silently never
       // fires (the scheduler would skip it forever, with no signal to the user).
       // Validate against the single account-wide zone (HOU-470): there is no
       // per-routine timezone, so a stray body.timezone is not honored.
       const accountTz = await getPreference(vfs, ctx.workspace.id, "timezone");
-      const scheduleErr = validateSchedule(body.schedule, accountTz);
+      const scheduleErr = validateSchedule(input.schedule, accountTz);
       if (scheduleErr) {
         json(res, 400, { error: `invalid schedule: ${scheduleErr}` });
         return true;
       }
       const { items } = await loadRoutines(vfs, root);
-      const routine = createRoutine(body, crypto.randomUUID(), nowIso);
+      const routine = createRoutine(input, crypto.randomUUID(), nowIso);
       await saveRoutines(vfs, root, upsertById(items, routine));
       fireChange();
       json(res, 201, routine);

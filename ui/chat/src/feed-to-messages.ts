@@ -65,7 +65,7 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   };
 
   const ensureAssistant = (): ChatMessage => {
-    if (!cur || cur.from !== "assistant") {
+    if (cur?.from !== "assistant") {
       flush();
       cur = {
         key: `assistant-${messages.length}`,

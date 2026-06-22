@@ -8,7 +8,7 @@ import {
   upsertById,
   type TextStore,
 } from "@houston/domain";
-import type { HoustonEvent } from "@houston/protocol";
+import type { HoustonEvent, NewActivity } from "@houston/protocol";
 import { json, readJson } from "./http";
 
 export async function handleActivitiesData(
@@ -37,7 +37,11 @@ export async function handleActivitiesData(
       return;
     }
     const { items } = await loadActivities(store, root);
-    const activity = createActivity(body, crypto.randomUUID(), nowIso);
+    const activity = createActivity(
+      body as unknown as NewActivity,
+      crypto.randomUUID(),
+      nowIso,
+    );
     await saveActivities(store, root, upsertById(items, activity));
     fireChange();
     json(res, 201, activity);

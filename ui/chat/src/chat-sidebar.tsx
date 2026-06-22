@@ -83,6 +83,7 @@ function ProgressCard({
               <ScrollArea className="max-h-[300px]">
                 <div className="space-y-0.5">
                   {steps.map((step, i) => (
+                    // biome-ignore lint/suspicious/noArrayIndexKey: SidebarStep has no stable id; steps derive from tool-call order and are never reordered
                     <StepRow key={i} step={step} />
                   ))}
                 </div>
@@ -158,7 +159,7 @@ function useToolSteps(feedItems: FeedItem[]): SidebarStep[] {
   const steps: SidebarStep[] = [];
   for (const tool of allTools) {
     const name = tool.name.includes("__")
-      ? tool.name.split("__").pop()!
+      ? (tool.name.split("__").pop() ?? tool.name)
       : tool.name;
     const label = TOOL_LABELS[name] || name.replace(/_/g, " ");
     const last = steps[steps.length - 1];

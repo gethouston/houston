@@ -49,11 +49,14 @@ export function LanguageSection() {
         {t("language.description")}
       </p>
       <div>
-        <label className="text-xs text-muted-foreground block mb-1.5">
+        <label
+          htmlFor="language-select"
+          className="text-xs text-muted-foreground block mb-1.5"
+        >
           {t("language.label")}
         </label>
         <Select value={currentLocale} onValueChange={handleLocaleChange}>
-          <SelectTrigger className="w-full rounded-xl">
+          <SelectTrigger id="language-select" className="w-full rounded-xl">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>

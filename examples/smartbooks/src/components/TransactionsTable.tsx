@@ -45,7 +45,11 @@ export function TransactionsTable({ workbook, onDownload }: Props) {
           </strong>
           <span className="muted"> net</span>
         </div>
-        <button className="btn btn--ghost btn--small" onClick={onDownload}>
+        <button
+          type="button"
+          className="btn btn--ghost btn--small"
+          onClick={onDownload}
+        >
           ↓ Download CSV
         </button>
       </div>
@@ -61,6 +65,7 @@ export function TransactionsTable({ workbook, onDownload }: Props) {
           </thead>
           <tbody>
             {workbook.rows.map((row, i) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: Transaction has no id field; composite key risks false-uniqueness on duplicate rows; index is the safest stable key here
               <tr key={i}>
                 {workbook.columns.map((col) => (
                   <td key={col} className={cellClass(col, row[col])}>

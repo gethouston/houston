@@ -73,6 +73,7 @@ export default function FilesTab({ agent }: TabProps) {
         statusBarAction={
           desktop ? (
             <button
+              type="button"
               onClick={() => tauriFiles.revealAgent(path)}
               className="flex items-center gap-1 text-[11px] text-[#6d6d6d] hover:text-[#0d0d0d] transition-colors"
             >

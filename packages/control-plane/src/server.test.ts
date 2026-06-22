@@ -6,6 +6,7 @@ import {
   type AdminDeps,
   type ControlPlaneDeps,
 } from "./server";
+import type { Overview, BillingReport } from "./admin/overview";
 import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { SingleUserVerifier } from "./auth/verify";
 import { MemoryWorkspaceStore } from "./store/memory";
@@ -159,10 +160,13 @@ test("the owner can message their agent → forwarded 1:1 to the sandbox runtime
     },
   );
   expect(r.status).toBe(200);
-  const last = forwarded.at(-1)!;
+  const last = forwarded.at(-1);
+  if (!last) throw new Error("expected at least one forwarded request");
   expect(last.method).toBe("POST");
   expect(last.path).toBe("/conversations/c1/messages");
-  expect(JSON.parse(last.body!)).toEqual({
+  if (last.body === undefined)
+    throw new Error("expected a forwarded request body");
+  expect(JSON.parse(last.body)).toEqual({
     text: "what are this quarter's sales?",
   });
 });
@@ -482,16 +486,16 @@ test("admin overview: a non-admin is 403; an admin sees every user's pods", asyn
       headers: auth("alice"),
     });
     expect(r.status).toBe(200);
-    const ov = (await r.json()) as any;
+    const ov = (await r.json()) as Overview;
     expect(ov.totals.pods.running).toBe(1);
-    const aliceUser = ov.users.find((u: any) => u.userId === "alice");
+    const aliceUser = ov.users.find((u) => u.userId === "alice");
     expect(
-      aliceUser.agents.some(
-        (a: any) => a.agentId === aliceSalesId && a.state === "running",
+      aliceUser?.agents.some(
+        (a) => a.agentId === aliceSalesId && a.state === "running",
       ),
     ).toBe(true);
     // Bob shows up too (cross-tenant view), with no running pods.
-    expect(ov.users.some((u: any) => u.userId === "bob")).toBe(true);
+    expect(ov.users.some((u) => u.userId === "bob")).toBe(true);
   } finally {
     await close();
   }
@@ -508,7 +512,7 @@ test("admin billing: estimate renders, actuals report 'not-configured' without B
   try {
     const r = await fetch(`${abase}/admin/billing`, { headers: auth("alice") });
     expect(r.status).toBe(200);
-    const rep = (await r.json()) as any;
+    const rep = (await r.json()) as BillingReport;
     expect(rep.actualsStatus).toBe("not-configured");
     expect(rep.actuals).toBeNull();
     expect(rep.estimate.byUser).toBeArray();

@@ -43,7 +43,7 @@ const USER_FILE_EXTENSIONS = new Set([
 ]);
 
 function shortName(name: string): string {
-  return name.includes("__") ? name.split("__").pop()! : name;
+  return name.includes("__") ? (name.split("__").pop() ?? name) : name;
 }
 
 /**
@@ -114,11 +114,22 @@ function extractPathsFromBashOutput(output: string): string[] {
 
   const labeled =
     /(?:saved|created|wrote|written|output|file):\s*([^\r\n]+\.[a-zA-Z0-9]{1,10})/gi;
-  let match: RegExpExecArray | null;
-  while ((match = labeled.exec(output)) !== null) add(match[1]);
+  for (
+    let match = labeled.exec(output);
+    match !== null;
+    match = labeled.exec(output)
+  ) {
+    add(match[1]);
+  }
 
   const bare = /^(\/[^\r\n]+\.[a-zA-Z0-9]{1,10})\s*$/gm;
-  while ((match = bare.exec(output)) !== null) add(match[1]);
+  for (
+    let match = bare.exec(output);
+    match !== null;
+    match = bare.exec(output)
+  ) {
+    add(match[1]);
+  }
 
   return paths;
 }

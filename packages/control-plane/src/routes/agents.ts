@@ -188,9 +188,9 @@ export async function handleAgents(
     }
     // Optional: the just-connected provider, so capturing a pasted API key never
     // picks up a different, already-connected OAuth provider.
-    const body = await readJson(req).catch(() => ({}));
+    const body = await readJson(req).catch((): Record<string, unknown> => ({}));
     const provider =
-      typeof body?.provider === "string" ? body.provider : undefined;
+      typeof body.provider === "string" ? body.provider : undefined;
     const result = await channel.captureCredential(
       { workspace: authz.workspace, agent: authz.agent },
       provider,
@@ -322,7 +322,7 @@ export async function handleAgents(
     // Reactivity emits target the workspace owner (the only member, personal tier).
     const emit = deps.events
       ? (event: HoustonEvent) =>
-          deps.events!.emit(authz.workspace.ownerUserId, event)
+          deps.events?.emit(authz.workspace.ownerUserId, event)
       : undefined;
 
     // Typed .houston families + skills are served by the HOST off the workspace

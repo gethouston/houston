@@ -28,7 +28,8 @@ function replyAfter(
 ): string | null {
   if (!conversation) return null;
   for (let i = conversation.messages.length - 1; i >= 0; i--) {
-    const m = conversation.messages[i]!;
+    const m = conversation.messages[i];
+    if (!m) continue;
     if (m.role === "assistant" && m.ts >= startedAtMs) return m.content;
   }
   return null;
@@ -96,10 +97,11 @@ export async function reconcileAgentRuns(
       continue;
     }
 
+    if (!reply) continue; // narrowing: timedOut is false here, so reply must be set
     const done = completeRoutineRun(
       run,
       routine,
-      reply!,
+      reply,
       deps.now().toISOString(),
     );
     if (done.status === "surfaced") {

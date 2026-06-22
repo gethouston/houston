@@ -60,10 +60,14 @@ export function ReportBugSection() {
         {t("reportBug.toastEquivalence")}
       </p>
       <div>
-        <label className="text-xs text-muted-foreground block mb-1.5">
+        <label
+          htmlFor="report-bug-description"
+          className="text-xs text-muted-foreground block mb-1.5"
+        >
           {t("reportBug.label")}
         </label>
         <textarea
+          id="report-bug-description"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           placeholder={t("reportBug.placeholder")}

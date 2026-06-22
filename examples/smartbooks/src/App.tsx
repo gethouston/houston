@@ -30,9 +30,10 @@ export function App() {
     config: resolveEngineConfig(),
   }));
 
+  const connectingConfig = status.kind === "connecting" ? status.config : null;
   useEffect(() => {
-    if (status.kind !== "connecting") return;
-    const cfg = status.config;
+    if (connectingConfig === null) return;
+    const cfg = connectingConfig;
     let cancelled = false;
     (async () => {
       try {
@@ -53,7 +54,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [status.kind, status.kind === "connecting" ? status.config : null]);
+  }, [connectingConfig]);
 
   if (status.kind === "error") {
     return (
@@ -188,6 +189,7 @@ function Ready({ engine, agent, setStatus }: ReadyProps) {
           )}
           {hasUserOverride() && (
             <button
+              type="button"
               className="btn btn--ghost btn--small"
               onClick={() => {
                 if (
@@ -262,7 +264,7 @@ function EmptyWorkspace({ onNew }: { onNew: () => void }) {
         Add a client to get started. Drop a bank statement and SmartBooks will
         build the transaction table automatically.
       </p>
-      <button className="btn btn--primary" onClick={onNew}>
+      <button type="button" className="btn btn--primary" onClick={onNew}>
         + Add your first client
       </button>
     </div>
@@ -271,7 +273,14 @@ function EmptyWorkspace({ onNew }: { onNew: () => void }) {
 
 function Logo() {
   return (
-    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <title>SmartBooks logo</title>
       <rect x="3" y="3" width="18" height="18" rx="5" fill="#0f6b4f" />
       <path
         d="M7 15 L10 10 L13 13 L17 8"

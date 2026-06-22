@@ -1,4 +1,8 @@
-import { AppsV1Api, CoreV1Api, HttpError } from "@kubernetes/client-node";
+import {
+  type AppsV1Api,
+  type CoreV1Api,
+  HttpError,
+} from "@kubernetes/client-node";
 import type { Agent } from "../domain/types";
 import {
   buildDeployment,

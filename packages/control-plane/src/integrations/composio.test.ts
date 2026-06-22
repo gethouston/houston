@@ -56,8 +56,8 @@ test("verifyCredential maps session/info and sends the user key", async () => {
     accountId: "consumer-1",
     email: "a@b.com",
   });
-  expect(calls[0]!.headers["x-user-api-key"]).toBe("uak_test");
-  expect(calls[0]!.headers["x-org-id"]).toBe("ok_test");
+  expect(calls[0]?.headers["x-user-api-key"]).toBe("uak_test");
+  expect(calls[0]?.headers["x-org-id"]).toBe("ok_test");
 });
 
 test("verifyCredential returns null on 401 (bad key), throws on 500", async () => {
@@ -94,7 +94,7 @@ test("listToolkits maps the catalog", async () => {
       categories: [],
     },
   ]);
-  expect(calls[0]!.path).toContain("limit=1000");
+  expect(calls[0]?.path).toContain("limit=1000");
 });
 
 test("listConnections hits the consumer namespace with user_id (slug strings, verified live)", async () => {
@@ -108,7 +108,7 @@ test("listConnections hits the consumer namespace with user_id (slug strings, ve
     { toolkit: "gmail", connectionId: "", status: "active" },
     { toolkit: "github", connectionId: "", status: "active" },
   ]);
-  expect(calls[0]!.path).toContain("user_id=consumer-1");
+  expect(calls[0]?.path).toContain("user_id=consumer-1");
 });
 
 test("execute posts user_id + arguments to the action path and maps the result", async () => {
@@ -127,7 +127,7 @@ test("execute posts user_id + arguments to the action path and maps the result",
     data: { id: "msg1" },
     error: undefined,
   });
-  expect(calls[0]!.body).toEqual({
+  expect(calls[0]?.body).toEqual({
     user_id: "consumer-1",
     arguments: { to: "a@b.com", subject: "Hi" },
   });
@@ -175,7 +175,7 @@ test("search maps discovered actions to slugs + param schemas", async () => {
       inputParams: { type: "object" },
     },
   ]);
-  expect(calls[0]!.path).toContain("search=email");
+  expect(calls[0]?.path).toContain("search=email");
 });
 
 test("a credential for another provider, or missing apiKey, is rejected", async () => {

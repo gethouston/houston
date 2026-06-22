@@ -58,7 +58,7 @@ function safeRel(rel: string): string {
   }
   // Internal Houston state lives in top-level dot-dirs (.houston, .agents). The
   // Files tab must never read or write there.
-  if (norm.split("/")[0]!.startsWith(".")) throw new FilePathError(rel);
+  if (norm.split("/")[0]?.startsWith(".")) throw new FilePathError(rel);
   return norm;
 }
 
@@ -124,14 +124,14 @@ export async function listWorkspace(
     if (!rel) continue;
     const segments = rel.split("/");
     // Hide internal Houston state (top-level .houston / .agents) from the browser.
-    if (segments[0]!.startsWith(".")) continue;
+    if (segments[0]?.startsWith(".")) continue;
     // Record every ancestor directory (with the freshest mtime beneath it).
     for (let i = 1; i < segments.length; i++) {
       const dir = segments.slice(0, i).join("/");
       dirs.set(dir, Math.max(dirs.get(dir) ?? 0, s.updatedMs));
     }
     if (segments[segments.length - 1] === FOLDER_KEEP) continue; // hide the marker file itself
-    const name = segments[segments.length - 1]!;
+    const name = segments[segments.length - 1] ?? "";
     files.push({
       path: rel,
       name,
@@ -143,7 +143,7 @@ export async function listWorkspace(
   }
 
   for (const [dir, mtime] of dirs) {
-    const name = dir.split("/").pop()!;
+    const name = dir.split("/").pop() ?? "";
     files.push({
       path: dir,
       name,
@@ -251,9 +251,11 @@ export async function handleFiles(
     if (method === "GET" && rest === "files/download") {
       const rel = safeRel(query.get("path") ?? "");
       const buf = await vfs.readBytes(fileKey(root, rel));
-      if (buf === null)
-        return json(res, 404, { error: "file not found" }), true;
-      const name = rel.split("/").pop()!;
+      if (buf === null) {
+        json(res, 404, { error: "file not found" });
+        return true;
+      }
+      const name = rel.split("/").pop() ?? "";
       const kind =
         query.get("disposition") === "inline" ? "inline" : "attachment";
       res.writeHead(200, {
@@ -267,7 +269,10 @@ export async function handleFiles(
     }
     if (method === "GET" && rest === "files/read") {
       const got = await readWorkspaceFile(vfs, root, query.get("path") ?? "");
-      if (!got) return json(res, 404, { error: "file not found" }), true;
+      if (!got) {
+        json(res, 404, { error: "file not found" });
+        return true;
+      }
       await json(res, 200, got);
       return true;
     }
@@ -302,8 +307,10 @@ export async function handleFiles(
     json(res, 404, { error: "not found" });
     return true;
   } catch (err) {
-    if (err instanceof FilePathError)
-      return json(res, 400, { error: err.message }), true;
+    if (err instanceof FilePathError) {
+      json(res, 400, { error: err.message });
+      return true;
+    }
     throw err;
   }
 }

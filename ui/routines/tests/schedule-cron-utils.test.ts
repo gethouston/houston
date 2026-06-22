@@ -6,7 +6,7 @@ import {
   cronToOptions,
   type ScheduleOptions,
 } from "../src/schedule-cron-utils.ts";
-import { presetSummary, cronSummary } from "../src/schedule-summary.ts";
+import { cronSummary } from "../src/schedule-summary.ts";
 import {
   intervalToCron,
   cronToInterval,

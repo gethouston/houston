@@ -121,6 +121,7 @@ export function ChatPanel({
       {onBack && (
         <div className="max-w-3xl mx-auto w-full px-4 pt-3">
           <button
+            type="button"
             onClick={onBack}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1"
           >

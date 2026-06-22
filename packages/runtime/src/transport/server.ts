@@ -36,11 +36,13 @@ function json(res: ServerResponse, status: number, body: unknown) {
   res.end(buf);
 }
 
-async function readJson(req: IncomingMessage): Promise<any> {
+async function readJson(
+  req: IncomingMessage,
+): Promise<Record<string, unknown>> {
   const chunks: Buffer[] = [];
   for await (const c of req) chunks.push(c as Buffer);
   const raw = Buffer.concat(chunks).toString("utf8");
-  return raw ? JSON.parse(raw) : {};
+  return (raw ? JSON.parse(raw) : {}) as Record<string, unknown>;
 }
 
 /** Bearer-token check. Empty config.token => open (local dev). */

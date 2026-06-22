@@ -41,7 +41,9 @@ export async function handleAgentFile(
 ): Promise<boolean> {
   const m = rest.match(/^agentfile\/(.+)$/);
   if (!m) return false;
-  const rel = decodeURIComponent(m[1]!);
+  const captured = m[1];
+  if (captured === undefined) return false;
+  const rel = decodeURIComponent(captured);
 
   if (!vfs) {
     json(res, 503, { error: "agent data not configured" });

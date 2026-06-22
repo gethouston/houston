@@ -29,7 +29,10 @@ export function WorkspaceSwitcher({
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <button className="flex items-center gap-1 text-sm font-medium text-foreground hover:bg-accent rounded-lg py-1.5 px-2.5 transition-colors flex-1 min-w-0">
+          <button
+            type="button"
+            className="flex items-center gap-1 text-sm font-medium text-foreground hover:bg-accent rounded-lg py-1.5 px-2.5 transition-colors flex-1 min-w-0"
+          >
             <span className="truncate">{currentName}</span>
             <ChevronDown className="h-3.5 w-3.5 text-muted-foreground flex-shrink-0" />
           </button>

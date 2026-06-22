@@ -12,7 +12,7 @@ import {
 const FILE_TOOLS = new Set(["Write", "Edit", "MultiEdit"]);
 
 function shortName(name: string): string {
-  return name.includes("__") ? name.split("__").pop()! : name;
+  return name.includes("__") ? (name.split("__").pop() ?? name) : name;
 }
 
 /**

@@ -46,7 +46,13 @@ export function AttachmentIcon({ ext }: { ext: string }) {
   if (ext === "pdf") {
     return (
       <div className="size-8 rounded-md bg-[#E5252A] flex items-center justify-center shrink-0">
-        <svg className="size-4" viewBox="0 0 16 16" fill="none">
+        <svg
+          className="size-4"
+          viewBox="0 0 16 16"
+          fill="none"
+          role="img"
+          aria-label="PDF"
+        >
           <text
             x="8"
             y="11.5"

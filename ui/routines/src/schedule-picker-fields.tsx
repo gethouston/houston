@@ -30,15 +30,17 @@ export function DayOfMonthPicker({
 }) {
   return (
     <div>
-      <label className={labelClass}>{label}</label>
-      <input
-        type="number"
-        min={1}
-        max={31}
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className={cn(inputClass, "w-24")}
-      />
+      <label className={labelClass}>
+        {label}
+        <input
+          type="number"
+          min={1}
+          max={31}
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className={cn(inputClass, "w-24")}
+        />
+      </label>
     </div>
   );
 }
@@ -80,14 +82,17 @@ export function WeekdaysPicker({
         : [...value, d].sort((a, b) => a - b),
     );
   return (
-    <div>
-      <label className={labelClass}>{label}</label>
+    <fieldset className="contents">
+      <legend className={labelClass}>{label}</legend>
       <div className="flex gap-1.5">
         {narrow.map((glyph, d) => {
           const on = value.includes(d);
+          // `d` is the weekday number (0 = Sun … 6 = Sat), not a volatile list
+          // position, so it is a stable semantic key.
+          const weekdayKey = `weekday-${d}`;
           return (
             <button
-              key={d}
+              key={weekdayKey}
               type="button"
               aria-label={short[d]}
               aria-pressed={on}
@@ -116,6 +121,6 @@ export function WeekdaysPicker({
           </button>
         ))}
       </div>
-    </div>
+    </fieldset>
   );
 }

@@ -308,6 +308,7 @@ export function useAgentChatPanel({
   const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
   // Drop selected Skill when the agent / session changes so it doesn't
   // leak across contexts.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: path and selectedSessionKey are intentional change-triggers that reset activeSkill when the agent or session switches; they are reactive values derived from props and must remain in the dep list.
   useEffect(() => {
     setActiveSkill(null);
   }, [path, selectedSessionKey]);
@@ -430,7 +431,6 @@ export function useAgentChatPanel({
       effectiveEffort,
       pushFeedItem,
       queryClient,
-      t,
     ],
   );
 

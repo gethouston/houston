@@ -81,7 +81,7 @@ export function useMissionControlArchived(agents: Agent[]) {
           icon: createElement(AgentCardAvatar, {
             color: agentColorMap[c.agent_path],
           }),
-          status: c.status!,
+          status: c.status ?? "archived",
           updatedAt: c.updated_at ?? new Date().toISOString(),
           tags: missionCardTags({
             agent: c.agent,

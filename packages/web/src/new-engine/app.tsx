@@ -1,4 +1,11 @@
-import { lazy, Suspense, useEffect, useMemo, useState } from "react";
+import {
+  lazy,
+  Suspense,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import { HoustonEngineClient, type AuthStatus } from "@houston/runtime-client";
 import { ConnectView } from "./connect";
 import { ui } from "./styles";
@@ -33,20 +40,23 @@ export function WebApp({
   const [status, setStatus] = useState<AuthStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const refresh = () =>
-    client
-      .authStatus()
-      .then((s) => {
-        setStatus(s);
-        setError(null);
-      })
-      .catch((e) => setError(e instanceof Error ? e.message : String(e)));
+  const refresh = useCallback(
+    () =>
+      client
+        .authStatus()
+        .then((s) => {
+          setStatus(s);
+          setError(null);
+        })
+        .catch((e) => setError(e instanceof Error ? e.message : String(e))),
+    [client],
+  );
 
   // Cloud is keyless (Supabase auth + control-plane credentials): there is no
   // per-runtime OAuth gate, so skip the auth probe and mount the app directly.
   useEffect(() => {
     if (!cloud) void refresh();
-  }, [client, cloud]);
+  }, [cloud, refresh]);
 
   if (cloud) {
     return (
@@ -75,7 +85,7 @@ export function WebApp({
             <>
               <br />
               <br />
-              <button style={ui.button} onClick={onChangeEngine}>
+              <button type="button" style={ui.button} onClick={onChangeEngine}>
                 Use a different engine
               </button>
             </>

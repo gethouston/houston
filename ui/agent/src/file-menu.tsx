@@ -53,15 +53,19 @@ export function FileMenu({
   const l = { ...DEFAULT_LABELS, ...labels };
   return createPortal(
     <>
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: backdrop overlay for click-outside dismissal; adding an interactive role (button/link) here would confuse screen readers — the menu itself has role="menu" and handles keyboard dismissal */}
       <div
+        role="presentation"
         className="fixed inset-0 z-40"
         onClick={onClose}
+        onKeyDown={(e) => e.key === "Escape" && onClose()}
         onContextMenu={(e) => {
           e.preventDefault();
           onClose();
         }}
       />
       <div
+        role="menu"
         className="fixed z-50 min-w-[160px] rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
         style={{ left: position.x, top: position.y }}
         onKeyDown={(e) => e.key === "Escape" && onClose()}
@@ -139,6 +143,7 @@ function MenuItem({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
       className={`flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none select-none hover:bg-accent [&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-muted-foreground ${destructive ? "text-destructive [&_svg]:text-destructive" : ""}`}
     >

@@ -2,6 +2,7 @@ import {
   createAgentSession,
   DefaultResourceLoader,
   SessionManager,
+  type AgentSessionEvent,
   type AuthStorage,
   type ModelRegistry,
 } from "@earendil-works/pi-coding-agent";
@@ -63,7 +64,7 @@ export async function generateTitle(opts: {
   });
 
   let text = "";
-  const unsub = session.subscribe((e: any) => {
+  const unsub = session.subscribe((e: AgentSessionEvent) => {
     if (
       e.type === "message_update" &&
       e.assistantMessageEvent?.type === "text_delta"

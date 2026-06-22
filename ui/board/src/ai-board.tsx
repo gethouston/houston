@@ -351,9 +351,10 @@ export function AIBoard({
   );
 
   // Hydrate on mount if there's an initial controlled selection
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally mount-only — a second effect (below) handles subsequent selectedId changes; adding deps here would double-hydrate on every selection
   useEffect(() => {
     if (selectedId) hydrateSession(selectedId);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   // When the selection changes from OUTSIDE (e.g. arrow-key navigation
   // sets selectedId via the controlled prop, or session-notifications
@@ -480,16 +481,17 @@ export function AIBoard({
   // Notify parent when panel opens/closes
   useEffect(() => {
     onPanelOpenChange?.(!!showPanel);
-  }, [!!showPanel, onPanelOpenChange]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [showPanel, onPanelOpenChange]);
 
   // Ensure parent resets its "panel open" state when AIBoard unmounts
   // (e.g. tab switch). Without this, portal containers in the app layout
   // would remain visible but empty.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: intentionally empty deps — this cleanup must run only on unmount with the final onPanelOpenChange ref; re-registering on every render would cause spurious false notifications
   useEffect(() => {
     return () => {
       onPanelOpenChange?.(false);
     };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const closePanel = useCallback(() => {
     setNewPanelOpen(false);
@@ -699,7 +701,13 @@ export function AIBoard({
           attachMenu={
             typeof attachMenu === "function"
               ? ({ openFilePicker, close }) =>
-                  (attachMenu as Extract<typeof attachMenu, Function>)({
+                  (
+                    attachMenu as (ctx: {
+                      hasMessages: boolean;
+                      openFilePicker: () => void;
+                      close: () => void;
+                    }) => ReactNode
+                  )({
                     hasMessages: activeFeed.length > 0,
                     openFilePicker,
                     close,

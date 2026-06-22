@@ -41,9 +41,9 @@ test("clamped tools shadow pi builtins inside a real AgentSession", async () => 
   // The session's registered "read" is OURS: an absolute path outside the
   // workspace throws instead of returning file contents.
   const read = session.getToolDefinition("read");
-  expect(read).toBeDefined();
+  if (!read) throw new Error("read tool not registered in session");
   await expect(
-    read!.execute(
+    read.execute(
       "t1",
       { path: join(base, "auth.json") } as never,
       undefined,
@@ -53,7 +53,7 @@ test("clamped tools shadow pi builtins inside a real AgentSession", async () => 
   ).rejects.toThrow("outside the agent workspace");
 
   // ...while a normal workspace read still works end to end.
-  const ok = await read!.execute(
+  const ok = await read.execute(
     "t2",
     { path: "in.txt" } as never,
     undefined,
