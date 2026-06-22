@@ -70,5 +70,5 @@ export function reconcilePending(
 
 function notify(): void {
   version++;
-  listeners.forEach((l) => l());
+  for (const l of listeners) l();
 }

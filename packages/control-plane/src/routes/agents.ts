@@ -360,7 +360,7 @@ export async function handleAgents(
     // Reactivity emits target the workspace owner (the only member, personal tier).
     const emit = deps.events
       ? (event: HoustonEvent) =>
-          deps.events!.emit(authz.workspace.ownerUserId, event)
+          deps.events?.emit(authz.workspace.ownerUserId, event)
       : undefined;
 
     // Typed .houston families + skills are served by the HOST off the workspace

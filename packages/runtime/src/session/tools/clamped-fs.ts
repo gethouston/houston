@@ -7,6 +7,7 @@ import {
   createWriteToolDefinition,
   type ToolDefinition,
 } from "@earendil-works/pi-coding-agent";
+import type { TSchema } from "typebox";
 import { constants } from "node:fs";
 import {
   access as fsAccess,
@@ -52,7 +53,7 @@ export const CLAMPED_FILE_TOOL_NAMES = [
   "write",
 ] as const;
 
-type AnyToolDefinition = ToolDefinition<any, any, any>;
+type AnyToolDefinition = ToolDefinition<TSchema, unknown, unknown>;
 
 function withClampedPath(
   def: AnyToolDefinition,

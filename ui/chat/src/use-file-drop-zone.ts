@@ -68,27 +68,39 @@ export function useFileDropZone(
   const [isDraggingOver, setIsDraggingOver] = useState(false);
   const dragDepthRef = useRef(0);
 
-  const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes("Files");
+  const hasFiles = useCallback(
+    (e: DragEvent) => e.dataTransfer.types.includes("Files"),
+    [],
+  );
 
-  const onDragEnter = useCallback((e: DragEvent) => {
-    if (!hasFiles(e)) return;
-    e.preventDefault();
-    dragDepthRef.current += 1;
-    setIsDraggingOver(true);
-  }, []);
+  const onDragEnter = useCallback(
+    (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragDepthRef.current += 1;
+      setIsDraggingOver(true);
+    },
+    [hasFiles],
+  );
 
-  const onDragOver = useCallback((e: DragEvent) => {
-    if (!hasFiles(e)) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "copy";
-  }, []);
+  const onDragOver = useCallback(
+    (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = "copy";
+    },
+    [hasFiles],
+  );
 
-  const onDragLeave = useCallback((e: DragEvent) => {
-    if (!hasFiles(e)) return;
-    e.preventDefault();
-    dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
-    if (dragDepthRef.current === 0) setIsDraggingOver(false);
-  }, []);
+  const onDragLeave = useCallback(
+    (e: DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      dragDepthRef.current = Math.max(0, dragDepthRef.current - 1);
+      if (dragDepthRef.current === 0) setIsDraggingOver(false);
+    },
+    [hasFiles],
+  );
 
   const onDrop = useCallback(
     (e: DragEvent) => {
@@ -99,7 +111,7 @@ export function useFileDropZone(
       const dropped = Array.from(e.dataTransfer.files);
       if (dropped.length > 0) onFiles(dropped);
     },
-    [onFiles],
+    [hasFiles, onFiles],
   );
 
   return {

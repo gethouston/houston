@@ -106,7 +106,9 @@ export function StoreView({
       popularSkillsRef.current = null;
       searchAbortRef.current?.abort();
       popularAbortRef.current?.abort();
-      installAbortsRef.current.forEach((c) => c.abort());
+      installAbortsRef.current.forEach((c) => {
+        c.abort();
+      });
       installAbortsRef.current.clear();
       return;
     }
@@ -330,6 +332,7 @@ export function StoreView({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={l.searchPlaceholder}
+            // biome-ignore lint/a11y/noAutofocus: search input in a modal dialog; autofocus is intentional UX
             autoFocus
             className="w-full h-9 pl-9 pr-3 rounded-full border border-border bg-background text-sm
                        placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring transition-colors"

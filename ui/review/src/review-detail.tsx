@@ -77,6 +77,7 @@ export function ReviewDetail({
       <div className="shrink-0 px-4 py-3 border-b border-border">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
           <button
+            type="button"
             onClick={onBack}
             className="flex items-center justify-center size-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-200"
             aria-label="Back to Review"

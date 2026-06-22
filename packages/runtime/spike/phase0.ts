@@ -18,12 +18,15 @@ import {
   ModelRegistry,
   SessionManager,
   DefaultResourceLoader,
+  type AgentSessionEvent,
 } from "@earendil-works/pi-coding-agent";
 import {
   registerFauxProvider,
   fauxAssistantMessage,
   fauxToolCall,
   getModel,
+  type OAuthDeviceCodeInfo,
+  type FauxResponseStep,
 } from "@earendil-works/pi-ai";
 import { tmpdir } from "node:os";
 import { mkdtempSync } from "node:fs";
@@ -52,13 +55,13 @@ function makeHeadlessLoader(cwd: string, systemPrompt: string) {
     noThemes: true,
     noContextFiles: true,
     systemPrompt,
-  } as any);
+  });
   return loader;
 }
 
 async function runFauxTurn(opts: {
   label: string;
-  responses: any[];
+  responses: FauxResponseStep[];
   prompt: string;
   tools: string[];
 }) {
@@ -88,17 +91,17 @@ async function runFauxTurn(opts: {
   const { session } = await createAgentSession({
     cwd,
     agentDir: cwd,
-    model: faux.getModel() as any,
+    model: faux.getModel(),
     authStorage,
     modelRegistry,
     sessionManager,
-    resourceLoader: resourceLoader as any,
+    resourceLoader,
     tools: opts.tools,
   });
 
   const seen: string[] = [];
   let textOut = "";
-  const unsub = session.subscribe((event: any) => {
+  const unsub = session.subscribe((event: AgentSessionEvent) => {
     seen.push(event.type);
     if (
       event.type === "message_update" &&
@@ -142,7 +145,7 @@ async function probeCodexDeviceCode() {
   try {
     await loginOpenAICodexDeviceCode({
       signal: ac.signal,
-      onDeviceCode: (info: any) => {
+      onDeviceCode: (info: OAuthDeviceCodeInfo) => {
         log("  ✓ device code issued:");
         log("    verificationUri:", info.verificationUri);
         log("    userCode:", info.userCode);
@@ -150,10 +153,10 @@ async function probeCodexDeviceCode() {
         ac.abort();
       },
     });
-  } catch (e: any) {
+  } catch (e: unknown) {
     log(
       "  login ended:",
-      e?.message ?? String(e),
+      e instanceof Error ? e.message : String(e),
       "(expected: aborted after capturing code)",
     );
   }
@@ -173,13 +176,19 @@ async function liveTurnIfCreds() {
   const authStorage = AuthStorage.inMemory();
   const provider = hasAnthropic ? "anthropic" : "openai";
   const key = hasAnthropic
-    ? process.env.ANTHROPIC_API_KEY!
-    : process.env.OPENAI_API_KEY!;
+    ? process.env.ANTHROPIC_API_KEY
+    : process.env.OPENAI_API_KEY;
+  if (!key)
+    throw new Error(`Expected ${provider.toUpperCase()}_API_KEY to be set`);
   authStorage.setRuntimeApiKey(provider, key);
   const modelRegistry = ModelRegistry.inMemory(authStorage);
+  const getModelDynamic = getModel as (
+    provider: string,
+    modelId: string,
+  ) => ReturnType<typeof getModel>;
   const model = hasAnthropic
-    ? getModel("anthropic", "claude-opus-4-5" as any)
-    : getModel("openai", "gpt-5.1-codex" as any);
+    ? getModelDynamic("anthropic", "claude-opus-4-5")
+    : getModelDynamic("openai", "gpt-5.1-codex");
   const resourceLoader = makeHeadlessLoader(
     cwd,
     "You are Houston. Answer in one short sentence.",
@@ -188,15 +197,15 @@ async function liveTurnIfCreds() {
   const { session } = await createAgentSession({
     cwd,
     agentDir: cwd,
-    model: model as any,
+    model,
     authStorage,
     modelRegistry,
     sessionManager: SessionManager.inMemory(cwd),
-    resourceLoader: resourceLoader as any,
+    resourceLoader,
     tools: ["read", "ls", "bash"],
   });
   let text = "";
-  const unsub = session.subscribe((e: any) => {
+  const unsub = session.subscribe((e: AgentSessionEvent) => {
     if (
       e.type === "message_update" &&
       e.assistantMessageEvent?.type === "text_delta"

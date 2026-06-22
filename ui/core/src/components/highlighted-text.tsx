@@ -1,4 +1,4 @@
-import { type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { cn } from "../utils";
 
 export interface HighlightRange {
@@ -40,10 +40,10 @@ export function HighlightedText({
 
   const nodes: ReactNode[] = [];
   let cursor = 0;
-  normalized.forEach((range, index) => {
+  normalized.forEach((range) => {
     if (range.start > cursor) nodes.push(text.slice(cursor, range.start));
     nodes.push(
-      <mark key={index} className={cn(MARK_CLASS, markClassName)}>
+      <mark key={range.start} className={cn(MARK_CLASS, markClassName)}>
         {text.slice(range.start, range.end)}
       </mark>,
     );

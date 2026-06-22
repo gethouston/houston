@@ -137,9 +137,9 @@ function SectionCard({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+    <p className="text-xs font-medium text-muted-foreground mb-1.5 block">
       {children}
-    </label>
+    </p>
   );
 }
 
@@ -298,6 +298,7 @@ export function RoutineEditor({
                   "outline-none transition-shadow duration-200",
                   "focus:shadow-[0_1px_2px_rgba(0,0,0,0.04)]",
                 )}
+                // biome-ignore lint/a11y/noAutofocus: focuses the name field on new-routine creation — intentional UX, no navigation disruption since the editor is a dedicated screen
                 autoFocus={!isEdit}
               />
             </div>

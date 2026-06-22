@@ -88,6 +88,7 @@ export function ChatView() {
 
   // Scroll the message list to the bottom when the route changes —
   // so arriving at an existing session lands on the latest message.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: sessionKey is an intentional trigger — the effect body reads no React state, but must re-run on every route change to scroll the new session to the bottom.
   useEffect(() => {
     window.scrollTo({ top: document.body.scrollHeight });
   }, [sessionKey]);

@@ -23,17 +23,18 @@ export function QuotaExhaustedCard({
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
+  const upgradeUrl = error.upgrade_url;
   return (
     <ErrorCard
       icon={<XCircleIcon className="size-5" />}
       title={t("providerError.quotaExhausted.title")}
       body={t("providerError.quotaExhausted.body", { provider })}
     >
-      {error.upgrade_url && (
+      {upgradeUrl && (
         <Button
           size="sm"
           className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={() => void tauriSystem.openUrl(error.upgrade_url!)}
+          onClick={() => void tauriSystem.openUrl(upgradeUrl)}
         >
           {t("providerError.quotaExhausted.upgrade")}
         </Button>

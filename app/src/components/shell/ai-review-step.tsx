@@ -42,7 +42,7 @@ export function AiReviewStep({
 
   useEffect(() => {
     if (!color) onColorChange(AGENT_COLORS[0].id);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [color, onColorChange]);
   return (
     <div className="flex flex-col flex-1 min-h-0">
       <DialogTitle className="sr-only">{t("aiReview.stepTitle")}</DialogTitle>
@@ -79,10 +79,14 @@ export function AiReviewStep({
 
           {/* Name */}
           <div className="space-y-1.5">
-            <label className="block text-sm font-medium">
+            <label
+              htmlFor="ai-review-name"
+              className="block text-sm font-medium"
+            >
               {t("aiAssist.nameLabel")}
             </label>
             <Input
+              id="ai-review-name"
               autoFocus
               value={name}
               onChange={(e) => onNameChange(e.target.value)}

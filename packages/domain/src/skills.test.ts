@@ -72,7 +72,9 @@ test("loadSkills lists slugs, sorted; broken frontmatter surfaces as a diagnosti
     "weekly-report",
   ]);
   expect(diagnostics).toHaveLength(1);
-  expect(diagnostics[0]!.message).toContain("broken");
+  const diag = diagnostics[0];
+  if (!diag) throw new Error("expected a diagnostic at index 0");
+  expect(diag.message).toContain("broken");
 });
 
 test("compose → parse round-trip (create flow)", () => {
@@ -97,8 +99,9 @@ test("loadSkillDetail returns full content; unparseable file still readable (slu
     "just a body, no frontmatter",
   );
   const detail = await loadSkillDetail(store, ROOT, "broken");
-  expect(detail!.name).toBe("broken");
-  expect(detail!.content).toContain("just a body");
+  if (!detail) throw new Error("expected detail to be non-null for 'broken'");
+  expect(detail.name).toBe("broken");
+  expect(detail.content).toContain("just a body");
   expect(await loadSkillDetail(store, ROOT, "ghost")).toBeNull();
 });
 

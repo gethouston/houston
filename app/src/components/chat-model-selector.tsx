@@ -71,9 +71,11 @@ export function ChatModelSelector({
   return (
     // Stop pointer events from bubbling — prevents the board detail panel
     // from interpreting dropdown clicks as "click outside → close panel".
-    <div
+    <fieldset
+      className="contents border-0 p-0 m-0"
       onPointerDown={(e) => e.stopPropagation()}
       onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
     >
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
@@ -123,6 +125,6 @@ export function ChatModelSelector({
           })}
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+    </fieldset>
   );
 }

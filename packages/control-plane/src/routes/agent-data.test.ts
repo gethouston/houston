@@ -88,7 +88,8 @@ afterAll(async () => {
 
 test("agent creation seeds the .houston schemas into the workspace", async () => {
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id))[0]!;
+  const agent = (await store.listAgents(ws.id))[0];
+  if (!agent) throw new Error("Expected at least one agent in workspace");
   const root = workspaceRoot(ws, agent);
   const keys = await vfs.list(root);
   expect(keys).toContain(`${root}/.houston/activity/activity.schema.json`);
@@ -243,7 +244,8 @@ test("config: PUT replaces, GET reads back", async () => {
 
 test("agent-written junk in activity.json drops bad entries AND surfaces diagnostics", async () => {
   const ws = await store.getOrCreatePersonalWorkspace("alice");
-  const agent = (await store.listAgents(ws.id))[0]!;
+  const agent = (await store.listAgents(ws.id))[0];
+  if (!agent) throw new Error("Expected at least one agent in workspace");
   await vfs.writeText(
     docKey(workspaceRoot(ws, agent), "activity"),
     JSON.stringify([
@@ -260,7 +262,7 @@ test("agent-written junk in activity.json drops bad entries AND surfaces diagnos
   };
   expect(body.items.map((a) => a.id)).toEqual(["ok"]);
   expect(body.diagnostics).toHaveLength(1);
-  expect(body.diagnostics[0]!.message).toContain("malformed");
+  expect(body.diagnostics[0]?.message).toContain("malformed");
 });
 
 test("another user is walled off from the data families (403)", async () => {
@@ -300,7 +302,7 @@ test("raw agentfile read/write — what the desktop board actually uses", async 
     headers: auth("alice"),
   });
   expect(
-    ((await typed.json()) as { items: { id: string }[] }).items[0]!.id,
+    ((await typed.json()) as { items: { id: string }[] }).items[0]?.id,
   ).toBe("l1");
 });
 

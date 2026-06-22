@@ -62,8 +62,10 @@ test("a served credential overwrites a refresh-bearing entry from device-code lo
     accountId: null,
   });
   const auth = readAuth(path);
-  expect(auth["openai-codex"]!.refresh).toBe("");
-  expect(auth["openai-codex"]!.access).toBe("AT-new");
+  const codex = auth["openai-codex"];
+  if (!codex) throw new Error("expected openai-codex entry in auth file");
+  expect(codex.refresh).toBe("");
+  expect(codex.access).toBe("AT-new");
 });
 
 test("scrub rewrites every refresh-bearing entry and reports the providers", () => {
@@ -85,10 +87,14 @@ test("scrub rewrites every refresh-bearing entry and reports the providers", () 
     "openai-codex",
   ]);
   const auth = readAuth(path);
-  expect(auth["openai-codex"]!.refresh).toBe("");
-  expect(auth["anthropic"]!.refresh).toBe("");
+  const codex = auth["openai-codex"];
+  if (!codex) throw new Error("expected openai-codex entry in auth file");
+  const anthropic = auth.anthropic;
+  if (!anthropic) throw new Error("expected anthropic entry in auth file");
+  expect(codex.refresh).toBe("");
+  expect(anthropic.refresh).toBe("");
   // Access tokens survive the scrub — the agent keeps working this turn.
-  expect(auth["openai-codex"]!.access).toBe("A1");
+  expect(codex.access).toBe("A1");
 });
 
 test("an API-key served credential is written as pi's api_key variant (no refresh/expiry)", () => {

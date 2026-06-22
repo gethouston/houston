@@ -109,7 +109,9 @@ export async function runTurn(
   }, timeoutSec * 1000);
 
   void (async () => {
-    const reader = events.body!.getReader();
+    // events.body is guaranteed non-null: the `!events.body` guard above throws before here.
+    const body = events.body as ReadableStream<Uint8Array>;
+    const reader = body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
     try {
@@ -117,8 +119,8 @@ export async function runTurn(
         const { done, value } = await reader.read();
         if (done) break;
         buf += decoder.decode(value, { stream: true });
-        let sep: number;
-        while ((sep = buf.indexOf("\n\n")) >= 0) {
+        let sep = buf.indexOf("\n\n");
+        while (sep >= 0) {
           const frame = buf.slice(0, sep);
           buf = buf.slice(sep + 2);
           for (const line of frame.split("\n")) {
@@ -143,6 +145,7 @@ export async function runTurn(
               return;
             }
           }
+          sep = buf.indexOf("\n\n");
         }
       }
       clearTimeout(timer);

@@ -1,4 +1,4 @@
-import * as React from "react";
+import type * as React from "react";
 import { XIcon } from "lucide-react";
 import { Dialog as SheetPrimitive } from "radix-ui";
 

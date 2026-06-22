@@ -32,6 +32,7 @@ export function ChatHeader({
       style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 8px)" }}
     >
       <button
+        type="button"
         onClick={onBack}
         className="touchable h-9 w-9 flex items-center justify-center rounded-full hover:bg-accent -ml-1"
         aria-label="Back"

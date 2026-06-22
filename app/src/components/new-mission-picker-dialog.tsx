@@ -91,6 +91,7 @@ export function NewMissionPickerDialog({
   const firstTabId = tabs[0]?.id ?? "";
   const activeTabId = resolveActiveSkillPickerTab(tabs, activeTab);
 
+  // biome-ignore lint/correctness/useExhaustiveDependencies: activeAgentPath is an intentional trigger — switching agents should reset the tab to the first one even though it is not read inside the effect body
   useEffect(() => {
     if (open) setActiveTab(firstTabId);
   }, [open, activeAgentPath, firstTabId]);

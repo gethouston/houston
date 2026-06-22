@@ -1,4 +1,10 @@
-import { getModel, getModels } from "@earendil-works/pi-ai";
+import {
+  getModel,
+  getModels,
+  type KnownProvider,
+  type Model,
+  type Api,
+} from "@earendil-works/pi-ai";
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { config } from "../config";
@@ -68,7 +74,9 @@ function saveSettings(s: Settings) {
 }
 
 function defaultModel(provider: ProviderId): string {
-  return PROVIDERS.find((p) => p.id === provider)!.defaultModel;
+  const found = PROVIDERS.find((p) => p.id === provider);
+  if (!found) throw new Error(`unknown provider: ${provider}`);
+  return found.defaultModel;
 }
 
 export function modelFor(provider: ProviderId): string {
@@ -111,12 +119,18 @@ export function setSettings(input: {
 export function resolveModel(override?: string | null) {
   const provider = activeProvider();
   if (!provider) throw new Error("No provider connected. Connect an AI provider first.");
-  return getModel(provider as any, (override || modelFor(provider)) as any);
+  // ProviderId is a subset of KnownProvider; modelId is a runtime string the
+  // caller controls. Cast to getModel's declared model-id param type. getModel
+  // throws at runtime if the id is not offered by the provider.
+  return getModel(
+    provider as KnownProvider,
+    (override || modelFor(provider)) as Parameters<typeof getModel>[1],
+  );
 }
 
 function safeModelIds(provider: ProviderId): string[] {
   try {
-    return getModels(provider as any).map((m: any) => m.id);
+    return getModels(provider as KnownProvider).map((m: Model<Api>) => m.id);
   } catch {
     return [];
   }

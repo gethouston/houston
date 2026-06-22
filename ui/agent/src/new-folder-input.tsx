@@ -1,7 +1,7 @@
 /**
  * Inline new-folder input, styled as a selected folder row.
  */
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { FolderIcon, DisclosureChevron } from "./file-manager-icons";
 import { COL_GRID } from "./file-row";
 
@@ -14,6 +14,11 @@ export function NewFolderInput({
 }) {
   const [value, setValue] = useState("");
   const committed = useRef(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
   const commit = () => {
     if (committed.current) return;
@@ -35,7 +40,7 @@ export function NewFolderInput({
         <DisclosureChevron open={false} className="invisible" />
         <FolderIcon />
         <input
-          autoFocus
+          ref={inputRef}
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {

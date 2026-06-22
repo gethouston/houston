@@ -151,7 +151,8 @@ test("a turn: refreshes the expiring credential, sends access-only, pumps frames
       "text",
       "done",
     ]);
-    const sent = turnBodies[0]!;
+    const sent = turnBodies[0];
+    if (sent === undefined) throw new Error("expected turnBodies[0] to exist");
     expect(sent.gcsPrefix).toBe("ws/w1/agent-1");
     expect(sent.nonce).toBe("n-1");
     const cred = sent.credential as Record<string, unknown>;
@@ -186,7 +187,7 @@ test("conversation list + history read straight from object storage", async () =
       id: string;
     }[];
     expect(list).toHaveLength(1);
-    expect(list[0]!.id).toBe("c1");
+    expect(list[0]?.id).toBe("c1");
     const history = (await (
       await fetch(`${base}/conversations/c1/messages`)
     ).json()) as { title: string; messages: unknown[] };
@@ -207,7 +208,7 @@ test("providers + auth/status reflect the central credential; settings persist t
     let providers = (await (await fetch(`${base}/providers`)).json()) as {
       configured: boolean;
     }[];
-    expect(providers[0]!.configured).toBe(false);
+    expect(providers[0]?.configured).toBe(false);
 
     await credentials.put({
       workspaceId: "w1",
@@ -219,7 +220,7 @@ test("providers + auth/status reflect the central credential; settings persist t
     providers = (await (await fetch(`${base}/providers`)).json()) as {
       configured: boolean;
     }[];
-    expect(providers[0]!.configured).toBe(true);
+    expect(providers[0]?.configured).toBe(true);
 
     const status = (await (await fetch(`${base}/auth/status`)).json()) as {
       activeProvider: string;
@@ -245,7 +246,8 @@ test("the events SSE endpoint emits a sync frame, then live frames", async () =>
   try {
     const res = await fetch(`${base}/conversations/c9/events`);
     expect(res.headers.get("content-type")).toContain("text/event-stream");
-    const reader = res.body!.getReader();
+    if (res.body === null) throw new Error("expected res.body to be non-null");
+    const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buf = "";
     // First frame must be the sync catch-up.

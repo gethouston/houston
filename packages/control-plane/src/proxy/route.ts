@@ -68,7 +68,7 @@ export async function forward(
     };
     if (!bodyless && request.contentType)
       headers["Content-Type"] = request.contentType;
-    headers["Accept"] = request.path.endsWith("/events")
+    headers.Accept = request.path.endsWith("/events")
       ? "text/event-stream"
       : "application/json";
 

@@ -100,6 +100,7 @@ export class HoustonClient {
     if (typeof window !== "undefined") {
       (window as unknown as { __HOUSTON_NEW_ENGINE__?: boolean }).__HOUSTON_NEW_ENGINE__ = true;
     }
+    // biome-ignore lint/correctness/noConstructorReturn: Proxy provides transparent fallback stubs for unsupported HoustonClient methods; callers use `new HoustonClient()` directly so a static factory would require changes across many files outside this module.
     return new Proxy(this, {
       get(target, prop, recv) {
         if (prop in target || typeof prop === "symbol")
@@ -406,12 +407,15 @@ export class HoustonClient {
     path: string,
     init?: RequestInit,
   ): Promise<Response> {
+    if (!this.cp)
+      throw new Error("cpFilesFetch called without a control-plane config");
+    const cp = this.cp;
     const res = await fetch(
-      `${this.cp!.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`,
+      `${cp.baseUrl}/agents/${encodeURIComponent(agentId)}/${path}`,
       {
         ...init,
         headers: {
-          Authorization: `Bearer ${controlPlane.liveToken(this.cp!.token)}`,
+          Authorization: `Bearer ${controlPlane.liveToken(cp.token)}`,
           "Content-Type": "application/json",
           ...init?.headers,
         },

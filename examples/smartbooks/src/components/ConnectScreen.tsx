@@ -98,7 +98,13 @@ export function ConnectScreen({ error, defaults, onConnect }: Props) {
 
 function Logo() {
   return (
-    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" aria-hidden>
+    <svg
+      width="32"
+      height="32"
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden={true}
+    >
       <rect x="3" y="3" width="18" height="18" rx="5" fill="#0f6b4f" />
       <path
         d="M7 15 L10 10 L13 13 L17 8"

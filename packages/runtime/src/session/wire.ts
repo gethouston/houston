@@ -1,3 +1,4 @@
+import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, WireEvent } from "@houston/runtime-client";
 
 /**
@@ -27,15 +28,15 @@ export function normalizeUsage(u: unknown): TokenUsage | null {
  * Map a pi AgentSession event to our wire event (or null to drop it). Shared
  * by the long-lived server (chat.ts) and the per-turn cloud runtime — the two
  * MUST emit identical frames, since the web client and the control-plane relay
- * speak this one dialect.
+ * speak this one dialect. Typed against pi's own `AgentSessionEvent` union so
+ * the `switch` narrows each arm to the exact event shape.
  */
-export function toWire(e: any): WireEvent | null {
+export function toWire(e: AgentSessionEvent): WireEvent | null {
   switch (e.type) {
     case "message_update": {
       const a = e.assistantMessageEvent;
-      if (a?.type === "text_delta")
-        return { type: "text", data: a.delta ?? "" };
-      if (a?.type === "thinking_delta")
+      if (a.type === "text_delta") return { type: "text", data: a.delta ?? "" };
+      if (a.type === "thinking_delta")
         return { type: "thinking", data: a.delta ?? "" };
       return null;
     }
@@ -48,8 +49,10 @@ export function toWire(e: any): WireEvent | null {
       };
     case "turn_end": {
       // Fired once per turn with the final assistant message; its usage carries
-      // the latest request's context size = the current context fill.
-      const usage = normalizeUsage(e.message?.usage);
+      // the latest request's context size = the current context fill. Only an
+      // assistant message carries `usage`; other message kinds normalize to null.
+      const msg = e.message;
+      const usage = msg && "usage" in msg ? normalizeUsage(msg.usage) : null;
       return usage ? { type: "usage", data: usage } : null;
     }
     default:

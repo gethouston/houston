@@ -111,7 +111,16 @@ export function useScheduleBuilder(
       return;
     }
     onChangeRef.current(weeklyValid ? presetToCron(activePreset, options) : "");
-  }, [activePreset, options, intervalEvery, intervalUnit, touched]);
+  }, [
+    activePreset,
+    options,
+    everyNumber,
+    intervalUnit,
+    touched,
+    unrepresentable,
+    everyValid,
+    weeklyValid,
+  ]);
 
   const selectPreset = (preset: SchedulePreset) => {
     setActivePreset(preset);

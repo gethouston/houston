@@ -49,7 +49,9 @@ test("binary round-trips byte-for-byte through base64", async () => {
     { name: "deck.pptx", contentBase64: payload.toString("base64") },
   ]);
   const stored = await vfs.readBytes(`${ROOT}/${rel}`);
-  expect(Buffer.compare(stored!, payload)).toBe(0);
+  if (stored === null)
+    throw new Error("expected bytes to be stored but got null");
+  expect(Buffer.compare(stored, payload)).toBe(0);
 });
 
 test("duplicate filenames in one batch are disambiguated, never overwritten", async () => {

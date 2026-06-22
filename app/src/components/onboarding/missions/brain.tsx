@@ -277,16 +277,13 @@ function SetupHint({
   installed: boolean;
   loginLaunched: boolean;
   loginError: string | null;
-  onSignIn: () => void | Promise<void>;
+  onSignIn: () => Promise<void>;
   onRefresh: () => void;
   onCancelWaiting: () => void;
 }) {
   const { t } = useTranslation(["setup", "providers"]);
   return (
-    <div
-      className="rounded-lg bg-secondary/60 p-3"
-      onClick={(e) => e.stopPropagation()}
-    >
+    <div className="rounded-lg bg-secondary/60 p-3">
       {!installed && (
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <Terminal className="mt-0.5 size-3.5 shrink-0" />
@@ -296,6 +293,7 @@ function SetupHint({
               href={provider.installUrl}
               onClick={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 void tauriSystem.openUrl(provider.installUrl);
               }}
               className="text-foreground underline underline-offset-2"
@@ -307,7 +305,14 @@ function SetupHint({
         </div>
       )}
       {installed && !loginLaunched && (
-        <AsyncButton size="sm" className="rounded-full" onClick={onSignIn}>
+        <AsyncButton
+          size="sm"
+          className="rounded-full"
+          onClick={(e) => {
+            e.stopPropagation();
+            return onSignIn();
+          }}
+        >
           <ExternalLink className="size-3.5" />
           {t("providers:setup.signInWith", { provider: provider.name })}
         </AsyncButton>
@@ -325,7 +330,10 @@ function SetupHint({
            * Sign-in button reappears and they can re-launch the flow. */}
           <button
             type="button"
-            onClick={onCancelWaiting}
+            onClick={(e) => {
+              e.stopPropagation();
+              onCancelWaiting();
+            }}
             className="self-start text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           >
             {t("providers:setup.cancelWaiting")}
@@ -335,7 +343,10 @@ function SetupHint({
       {!installed && (
         <button
           type="button"
-          onClick={onRefresh}
+          onClick={(e) => {
+            e.stopPropagation();
+            onRefresh();
+          }}
           className="mt-2 inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
         >
           <RefreshCw className="size-3" />

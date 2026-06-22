@@ -28,10 +28,14 @@ export function WorkspaceSection() {
     <section>
       <h2 className="text-lg font-semibold mb-4">{t("workspace.title")}</h2>
       <div>
-        <label className="text-xs text-muted-foreground block mb-1.5">
+        <label
+          htmlFor="workspace-name"
+          className="text-xs text-muted-foreground block mb-1.5"
+        >
           {t("workspace.nameLabel")}
         </label>
         <input
+          id="workspace-name"
           type="text"
           value={wsName}
           onChange={(e) => setWsName(e.target.value)}

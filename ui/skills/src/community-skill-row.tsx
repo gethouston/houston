@@ -44,6 +44,7 @@ export function CommunitySkillRow({
         </p>
       </div>
       <button
+        type="button"
         onClick={onInstall}
         disabled={installing || installed}
         className={cn(

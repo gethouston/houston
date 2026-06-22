@@ -81,8 +81,7 @@ export function findHighlightRanges(
   const { folded, map } = foldWithMap(text);
   const re = new RegExp(pattern, "g");
   const ranges: HighlightRange[] = [];
-  let match: RegExpExecArray | null;
-  while ((match = re.exec(folded)) !== null) {
+  for (let match = re.exec(folded); match !== null; match = re.exec(folded)) {
     if (match[0].length === 0) {
       re.lastIndex += 1;
       continue;

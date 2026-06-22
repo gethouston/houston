@@ -1,4 +1,5 @@
 import {
+  type AgentSessionEvent,
   AuthStorage,
   ModelRegistry,
   SessionManager,
@@ -147,7 +148,7 @@ export async function runPiTurn(
       ],
     });
 
-    const unsub = session.subscribe((e: unknown) => {
+    const unsub = session.subscribe((e: AgentSessionEvent) => {
       const wire = toWire(e);
       if (!wire) return;
       if (wire.type === "text") assistantText += wire.data;

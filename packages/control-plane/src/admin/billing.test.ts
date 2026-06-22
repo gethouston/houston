@@ -68,12 +68,28 @@ test("estimate of nothing is zero", () => {
   expect(estimate([], [], RATES)).toEqual({ perHourUsd: 0, perMonthUsd: 0 });
 });
 
+interface BqRequestBody {
+  parameterMode: string;
+  query: string;
+  queryParameters: {
+    name: string;
+    parameterType: { type: string };
+    parameterValue: { value: string };
+  }[];
+  [key: string]: unknown;
+}
+
 test("BigQueryBillingReader builds a parameterized query and parses net cost per namespace", async () => {
-  const calls: { url: string; body: any }[] = [];
-  const fetchImpl = (async (url: any, init: any) => {
+  const calls: { url: string; body: BqRequestBody | null }[] = [];
+  const fetchImpl = (async (
+    url: string | URL | Request,
+    init?: RequestInit,
+  ) => {
     calls.push({
       url: String(url),
-      body: init?.body ? JSON.parse(init.body) : null,
+      body: init?.body
+        ? (JSON.parse(init.body as string) as BqRequestBody)
+        : null,
     });
     return {
       ok: true,
@@ -88,7 +104,7 @@ test("BigQueryBillingReader builds a parameterized query and parses net cost per
       async text() {
         return "";
       },
-    } as any;
+    } as unknown as Response;
   }) as unknown as typeof fetch;
 
   const reader = new BigQueryBillingReader({
@@ -102,11 +118,13 @@ test("BigQueryBillingReader builds a parameterized query and parses net cost per
   const result = await reader.query(30);
 
   // The job ran against the right project, with NAMED params (no value interpolation).
-  expect(calls[0]!.url).toContain("/projects/gethouston/queries");
-  expect(calls[0]!.body.parameterMode).toBe("NAMED");
-  expect(calls[0]!.body.query).toContain("k8s-namespace");
-  expect(calls[0]!.body.query).toContain("@project_id");
-  const names = calls[0]!.body.queryParameters.map((p: any) => p.name).sort();
+  const firstCall = calls[0];
+  if (!firstCall) throw new Error("Expected at least one fetch call");
+  expect(firstCall.url).toContain("/projects/gethouston/queries");
+  expect(firstCall.body?.parameterMode).toBe("NAMED");
+  expect(firstCall.body?.query).toContain("k8s-namespace");
+  expect(firstCall.body?.query).toContain("@project_id");
+  const names = firstCall.body?.queryParameters.map((p) => p.name).sort();
   expect(names).toEqual(["end_date", "project_id", "start_date"]);
 
   expect(result.source).toBe("bigquery");
@@ -127,7 +145,7 @@ test("BigQueryBillingReader surfaces a query error (never swallows)", async () =
       async text() {
         return "permission denied";
       },
-    }) as any) as unknown as typeof fetch;
+    }) as unknown as Response) as unknown as typeof fetch;
   const reader = new BigQueryBillingReader({
     project: "p",
     table: "p.d.t",
@@ -149,7 +167,7 @@ test("BigQueryBillingReader throws on an incomplete job rather than reporting $0
       async text() {
         return "";
       },
-    }) as any) as unknown as typeof fetch;
+    }) as unknown as Response) as unknown as typeof fetch;
   const reader = new BigQueryBillingReader({
     project: "p",
     table: "p.d.t",

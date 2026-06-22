@@ -32,12 +32,10 @@ declare global {
  * path below is completely untouched, so the default build stays releasable and
  * a downgrade is just "don't set the flag".
  */
-const HOST_URL: string | undefined =
-  (import.meta as any).env?.VITE_NEW_ENGINE_URL || undefined;
+const _env = import.meta.env as Record<string, string | undefined>;
+const HOST_URL: string | undefined = _env.VITE_NEW_ENGINE_URL || undefined;
 const HOST_TOKEN: string =
-  (import.meta as any).env?.VITE_NEW_ENGINE_TOKEN ??
-  (import.meta as any).env?.VITE_HOUSTON_ENGINE_TOKEN ??
-  "";
+  _env.VITE_NEW_ENGINE_TOKEN ?? _env.VITE_HOUSTON_ENGINE_TOKEN ?? "";
 
 // In host mode the engine-client is aliased to the new-engine adapter (see
 // app/vite.config.ts); flip it into control-plane mode against the host.
@@ -53,8 +51,8 @@ function resolveConfig(): { baseUrl: string; token: string } | null {
     return window.__HOUSTON_ENGINE__;
   }
   // Dev fallback — if HOUSTON_ENGINE_BASE / TOKEN present on Vite env, use them.
-  const baseUrl = (import.meta as any).env?.VITE_HOUSTON_ENGINE_BASE ?? null;
-  const token = (import.meta as any).env?.VITE_HOUSTON_ENGINE_TOKEN ?? null;
+  const baseUrl = _env.VITE_HOUSTON_ENGINE_BASE ?? null;
+  const token = _env.VITE_HOUSTON_ENGINE_TOKEN ?? null;
   if (baseUrl && token) return { baseUrl, token };
   return null;
 }

@@ -17,7 +17,10 @@ export function groupIdsByAgent(
   for (const id of ids) {
     const agentPath = agentPathForId(id);
     if (!agentPath) continue;
-    (groups[agentPath] ??= []).push(id);
+    if (groups[agentPath] === undefined) {
+      groups[agentPath] = [];
+    }
+    groups[agentPath].push(id);
   }
   return groups;
 }

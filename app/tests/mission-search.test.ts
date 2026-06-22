@@ -49,10 +49,10 @@ describe("mission search", () => {
     const result = searchMissions(missions, "budget");
     deepStrictEqual(result.items.map((m) => m.id).sort(), ["one", "two"]);
     // one matched by title -> no snippet; two matched by body -> snippet.
-    strictEqual(result.snippets["one"], undefined);
-    strictEqual(result.snippets["two"] !== undefined, true);
+    strictEqual(result.snippets.one, undefined);
+    strictEqual(result.snippets.two !== undefined, true);
     strictEqual(
-      result.snippets["two"].text.toLowerCase().includes("budget"),
+      result.snippets.two.text.toLowerCase().includes("budget"),
       true,
     );
   });
@@ -77,7 +77,7 @@ describe("mission search", () => {
       ["three"],
     );
     strictEqual(
-      result.snippets["three"].text.toLowerCase().includes("vendor contract"),
+      result.snippets.three.text.toLowerCase().includes("vendor contract"),
       true,
     );
   });
