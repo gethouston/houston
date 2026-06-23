@@ -1,3 +1,4 @@
+import { migrateProviderModel } from "@houston/domain";
 import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
 
 /**
@@ -97,11 +98,22 @@ export function configWriteToSettings(
     return null;
   }
   if (typeof cfg.provider !== "string") return null;
-  const pid = toNewProvider(cfg.provider);
-  if (!pid) return null;
+  // Migrate legacy provider+model ids to ones pi-ai accepts BEFORE seeding the
+  // runtime's settings. The runtime's getModel(provider, id) throws for an id it
+  // doesn't offer (the legacy "openai" provider, bare "opus"/"sonnet", CLI-era
+  // model ids), which would hard-fail the agent's first turn. migrateProviderModel
+  // is pure + fail-soft: an unknown value lands on the provider/model default and
+  // records a diagnostic rather than letting a bad id reach the runtime.
+  const { provider, model, diagnostics } = migrateProviderModel(
+    cfg.provider,
+    typeof cfg.model === "string" ? cfg.model : undefined,
+    relPath,
+  );
+  for (const d of diagnostics)
+    console.warn(`[engine-adapter] migrated agent model: ${d.message}`);
   return {
-    activeProvider: pid,
-    ...(typeof cfg.model === "string" && cfg.model ? { model: cfg.model } : {}),
+    activeProvider: provider,
+    model,
     ...(typeof cfg.effort === "string" && cfg.effort
       ? { effort: cfg.effort }
       : {}),

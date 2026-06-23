@@ -21,6 +21,7 @@
     "@houston-ai/engine-client": "workspace:*",
     "@houston-ai/events": "workspace:*",
     "@houston-ai/layout": "workspace:*",
+    "@houston/domain": "workspace:*",
     "@houston/runtime-client": "workspace:*",
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",

@@ -140,22 +140,50 @@ export function setSettings(input: {
 }
 
 /**
+ * getModel for a provider+model, but read-time-safe against a LEGACY/stale id.
+ *
+ * A bare `getModel(provider, id)` THROWS for an id the provider doesn't offer.
+ * The desktop's stored config could carry a legacy id (the migration runs on
+ * the write/seed path — see packages/domain migrateProviderModel — but a
+ * settings.json written before that fix, or hand-edited, can still hold one).
+ * Rather than hard-fail the turn, fall back to the provider's catalog default
+ * and emit a diagnostic (beta no-silent-failure: the user still gets a turn AND
+ * the swap is logged for the bug tail). A pinned `override` (routine model) is
+ * the one exception kept verbatim — a bad pin SHOULD surface as the turn error.
+ */
+export function safeGetModel(
+  provider: string,
+  modelId: string,
+  pinned: boolean,
+) {
+  const pp = provider as KnownProvider;
+  const mp = modelId as Parameters<typeof getModel>[1];
+  if (pinned) return getModel(pp, mp);
+  const offered = safeModelIds(provider as ProviderId);
+  // Open-catalog gateways (opencode/opencode-go) return [] from getModels but
+  // accept arbitrary ids — only guard when we actually have a catalog to check.
+  if (offered.length > 0 && !offered.includes(modelId)) {
+    const fallback = providerDefaultModel(provider);
+    console.warn(
+      `[providers] ${provider} model "${modelId}" is not offered; ` +
+        `falling back to "${fallback}"`,
+    );
+    return getModel(pp, fallback as Parameters<typeof getModel>[1]);
+  }
+  return getModel(pp, mp);
+}
+
+/**
  * Resolve the pi-ai model for the active provider (used when starting a turn).
  * An optional `override` (a routine's pinned model) wins over the saved model;
- * `getModel` throws for an id the provider doesn't offer, so a bad pin surfaces
- * as the turn's error rather than silently falling back.
+ * a bad pin surfaces as the turn's error, while a stale SAVED id falls back to
+ * the provider default (see safeGetModel) rather than hard-failing the turn.
  */
 export function resolveModel(override?: string | null) {
   const provider = activeProvider();
   if (!provider)
     throw new Error("No provider connected. Connect an AI provider first.");
-  // ProviderId is a subset of KnownProvider; modelId is a runtime string the
-  // caller controls. Cast to getModel's declared model-id param type. getModel
-  // throws at runtime if the id is not offered by the provider.
-  return getModel(
-    provider as KnownProvider,
-    (override || modelFor(provider)) as Parameters<typeof getModel>[1],
-  );
+  return safeGetModel(provider, override || modelFor(provider), !!override);
 }
 
 function safeModelIds(provider: ProviderId): string[] {

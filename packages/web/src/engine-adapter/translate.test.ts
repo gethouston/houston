@@ -31,6 +31,7 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
   const CONFIG = ".houston/config/config.json";
 
   test("carries the reasoning effort through to the settings update", () => {
+    // opencode is an open-catalog gateway — its arbitrary model passes through.
     expect(
       configWriteToSettings(
         CONFIG,
@@ -45,10 +46,11 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
       model: "deepseek-v4-pro",
       effort: "high",
     });
-    // Provider-only write (no effort) omits effort.
+    // Provider-only write (no effort) omits effort; the model defaults to the
+    // provider's default (the runtime needs a concrete settings.models entry).
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
-    ).toEqual({ activeProvider: "opencode" });
+    ).toEqual({ activeProvider: "opencode", model: "claude-sonnet-4-6" });
   });
 
   test("maps a config write with provider+model to a settings update", () => {
@@ -65,24 +67,29 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         JSON.stringify({ provider: "openai", model: "gpt-5.5" }),
       ),
     ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
-  });
-
-  test("sets activeProvider even when no model is given (provider switch)", () => {
+    // A bare legacy tier name is migrated to a real pi id at the same tier.
     expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
-    ).toEqual({
-      activeProvider: "opencode",
-    });
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "anthropic", model: "opus" }),
+      ),
+    ).toEqual({ activeProvider: "anthropic", model: "claude-opus-4-8" });
   });
 
-  test("skips non-config files, unknown providers, and bad JSON", () => {
+  test("migrates an unknown provider to the default instead of dropping it", () => {
+    // Gemini was dropped — a stored gemini agent must NOT silently no-op (every
+    // turn would then run the active provider's default with no record). It
+    // migrates to the default provider + model so the turn still runs.
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
+    ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
+  });
+
+  test("skips non-config files, missing provider, and bad JSON", () => {
     expect(
       configWriteToSettings(".houston/learnings/learnings.json", "{}"),
     ).toBeNull();
     expect(configWriteToSettings("CLAUDE.md", "# hi")).toBeNull();
-    expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
-    ).toBeNull();
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ model: "x" })),
     ).toBeNull(); // no provider

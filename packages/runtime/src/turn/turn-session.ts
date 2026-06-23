@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { getModel } from "@earendil-works/pi-ai";
 import {
   type AgentSessionEvent,
   AuthStorage,
@@ -14,7 +13,7 @@ import type {
   WireEvent,
 } from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
-import { providerDefaultModel } from "../ai/providers";
+import { providerDefaultModel, safeGetModel } from "../ai/providers";
 import { config } from "../config";
 import { makeAgentLoader } from "../session/resource-loader";
 import {
@@ -45,8 +44,10 @@ type Settings = { activeProvider?: string; models?: Record<string, string> };
 /**
  * Model for this turn. Precedence: an explicit per-turn override (a routine's
  * pinned model) beats the agent's settings.json, which beats the env default.
- * `getModel` throws for a model id the provider doesn't offer — we let it
- * propagate so a bad pin surfaces as the turn's error, never a silent fallback.
+ * A bad PIN surfaces as the turn's error; a stale SAVED model id (a legacy id
+ * the migration didn't reach, e.g. a hand-edited settings.json) falls back to
+ * the provider's default with a logged diagnostic (safeGetModel) instead of
+ * hard-failing the turn.
  */
 function resolveTurnModel(
   dataDir: string,
@@ -64,7 +65,7 @@ function resolveTurnModel(
   }
   const modelId =
     override || settings.models?.[provider] || providerDefaultModel(provider);
-  return getModel(provider as never, modelId as never);
+  return safeGetModel(provider, modelId, !!override);
 }
 
 export interface TurnOutcome {
