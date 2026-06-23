@@ -1,0 +1,693 @@
+# Houston HOST-SIDECAR Release Workflow (experimental, convergence target)
+#
+# Builds the desktop app with the Bun-compiled Houston HOST as the Tauri sidecar
+# (`--features host-sidecar`) instead of the legacy Rust engine. This is the
+# convergence target: ONE deployment-agnostic TypeScript host (packages/control-plane,
+# entry packages/control-plane/src/sidecar-entry.ts, compiled by
+# scripts/build-host-sidecar.sh) spawned by the Tauri shell, with pi runtimes
+# self-spawned in-process — no provider CLIs, no Rust engine.
+#
+# OFF THE CRITICAL PATH — a SEPARATE workflow from `release.yml` so it can never
+# perturb the releasable Rust-engine pipeline. It does NOT run on a `v*` tag.
+# Trigger it explicitly:
+#   * `workflow_dispatch` (Actions → "Host-sidecar Release" → Run workflow), or
+#   * pushing a `host-v*` tag (e.g. `git tag host-v0.4.19 && git push --tags`).
+# Both produce a DRAFT GitHub Release tagged `host-v<version>` (distinct from the
+# Rust `v<version>` releases) so the two artifact sets never collide.
+#
+# Signing chain is IDENTICAL to release.yml's Rust path (same secrets, same
+# action pins, same notarization + verification steps) — only the sidecar binary
+# differs. The host carries NO bundled CLIs (pi runs providers in-process), so
+# all the codex/composio/git-bash staging + pre-signing that release.yml does is
+# absent here by design.
+#
+# Required secrets — the SAME set release.yml uses (no new secret names):
+#   TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+#   APPLE_CERTIFICATE / APPLE_CERTIFICATE_PASSWORD / APPLE_SIGNING_IDENTITY
+#   APPLE_API_ISSUER / APPLE_API_KEY / APPLE_API_KEY_CONTENT
+#   POSTHOG_KEY / POSTHOG_HOST / SUPABASE_URL / SUPABASE_ANON_KEY
+#   LINEAR_API_KEY / LINEAR_TEAM_ID / SENTRY_DSN
+#
+# Bun is pinned to the same minor the PR CI gate uses (.github/workflows/ci.yml)
+# so the compiled host is byte-reproducible against what the contract tests ran.
+
+name: Host-sidecar Release
+
+on:
+  push:
+    tags:
+      - "host-v*"
+  workflow_dispatch:
+    inputs:
+      sign_macos:
+        description: "Sign + notarize the macOS build (needs the Apple secrets; off → unsigned build-only)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+# Pin Bun to the version the PR CI gate compiles + tests the host with, so the
+# shipped sidecar matches what passed contract tests. One source of truth.
+env:
+  BUN_VERSION: "1.3.14"
+
+jobs:
+  # --------------------------------------------------------------------------
+  # Create the draft release the per-platform jobs upload into, in parallel.
+  # Tag namespace is `host-v*` so these artifacts never mix with the Rust
+  # `v*` releases. Notes are intentionally minimal — this is an experimental
+  # build channel, not the user-facing changelog.
+  # --------------------------------------------------------------------------
+  prep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # The version drives the release tag + title. On a `host-v*` tag push it
+      # comes from the tag; on a manual dispatch (no tag) it comes from
+      # app/package.json so the draft is still named coherently.
+      - name: Resolve version + release tag
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            VERSION="${GITHUB_REF_NAME#host-v}"
+            TAG="${GITHUB_REF_NAME}"
+          else
+            VERSION="$(jq -r .version app/package.json)"
+            TAG="host-v${VERSION}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "Resolved version=$VERSION tag=$TAG"
+
+      - name: Create empty draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ steps.version.outputs.tag }}"
+          VERSION="${{ steps.version.outputs.version }}"
+          # Idempotent: skip if a draft for this tag already exists (re-runs).
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "::notice::draft $TAG already exists — reusing it"
+          else
+            gh release create "$TAG" \
+              --title "Houston v$VERSION (host-sidecar, experimental)" \
+              --notes "Experimental host-sidecar build (Bun-compiled Houston host as the Tauri sidecar instead of the Rust engine). Not for general distribution — convergence-target QA only." \
+              --draft
+            echo "::notice::draft release $TAG created"
+          fi
+
+  # ==========================================================================
+  # macOS — universal (arm64 + x86_64), signed + notarized + stapled, full
+  # verification, uploaded. Mirrors release.yml::build-macos exactly except:
+  #   * the sidecar is the Bun host (lipo'd from two per-arch bun-compile runs)
+  #     not the Rust engine, and
+  #   * there are NO bundled CLIs to stage / pre-sign (pi is CLI-free).
+  # The frontend is driven onto the control-plane adapter at build time with
+  # VITE_NEW_ENGINE=1; the Rust supervisor injects the live host URL+token at
+  # runtime (see app/src-tauri/src/lib.rs::spawn_host_sidecar).
+  # ==========================================================================
+  build-macos-host-sidecar:
+    needs: prep
+    runs-on: macos-latest
+    timeout-minutes: 75
+    env:
+      SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+      # Whether to run the Apple signing/notarization chain. Always on for a
+      # `host-v*` tag push; honors the dispatch input otherwise. A step's `if:`
+      # can't read its own `env:`, so resolve the gate here at job scope.
+      SIGN_MACOS: ${{ github.event_name != 'workflow_dispatch' || inputs.sign_macos }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Rust (universal macOS targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/src-tauri/target
+          key: ${{ runner.os }}-cargo-host-sidecar-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-host-sidecar-
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      # The compiled sidecar (sidecar-entry.ts) bundles the host AND the pi
+      # runtime it self-spawns, so both their deps (and the file: siblings) must
+      # resolve before `bun build --compile`. `pnpm install` above already put
+      # the pnpm-managed siblings (protocol / runtime-client / domain /
+      # agent-schemas) on disk; runtime + control-plane are OUTSIDE the pnpm
+      # workspace and need their own bun install. Order matches the proven
+      # selfhost/Dockerfile chain (each package's file: siblings present first).
+      - name: Install host (Bun service) deps
+        run: |
+          set -euo pipefail
+          for pkg in protocol runtime-client domain runtime control-plane; do
+            echo "::group::bun install — packages/$pkg"
+            (cd "packages/$pkg" && bun install --frozen-lockfile)
+            echo "::endgroup::"
+          done
+
+      - name: Write Apple API key to disk
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        run: |
+          mkdir -p ~/.appstoreconnect/private_keys
+          echo "${{ secrets.APPLE_API_KEY_CONTENT }}" | base64 --decode > ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+
+      # Compile the host for BOTH macOS arches with the ONE parameterized script
+      # (Bun links its own libc, so same-OS cross-arch builds fine on one
+      # runner), then lipo into the single universal externalBin name Tauri's
+      # universal bundler expects. This mirrors release.yml's
+      # "Build houston-engine sidecar … + lipo universal" step; build.rs's
+      # stage_host_sidecar reads the per-triple outputs during each per-arch
+      # cargo invocation, and the lipo'd fat binary covers the universal target.
+      - name: Compile Houston host sidecar (aarch64 + x86_64) + lipo universal
+        run: |
+          set -euo pipefail
+          scripts/build-host-sidecar.sh aarch64-apple-darwin
+          scripts/build-host-sidecar.sh x86_64-apple-darwin
+
+          echo "=== Lipo universal host sidecar ==="
+          mkdir -p app/src-tauri/binaries
+          lipo -create \
+            target/host-sidecar/houston-host-aarch64-apple-darwin \
+            target/host-sidecar/houston-host-x86_64-apple-darwin \
+            -output app/src-tauri/binaries/houston-engine-universal-apple-darwin
+          chmod +x app/src-tauri/binaries/houston-engine-universal-apple-darwin
+          lipo -info app/src-tauri/binaries/houston-engine-universal-apple-darwin
+
+      # Signed + notarized build. tauri-action imports the cert, code-signs the
+      # .app + the staged host sidecar, notarizes + staples the .app, and signs
+      # the .dmg. Same env contract as release.yml::build-macos, plus
+      # VITE_NEW_ENGINE=1 (control-plane adapter) and --features host-sidecar.
+      - name: Build Tauri app (universal, host-sidecar, signed)
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          args: --target universal-apple-darwin --features host-sidecar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_NEW_ENGINE: "1"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_KEY_PATH: ~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      # Unsigned fallback for dispatch runs that opt out of signing (e.g. a fork
+      # with no Apple secrets). Proves the bundle BUILDS; no notarization/upload.
+      - name: Build Tauri app (universal, host-sidecar, unsigned)
+        if: ${{ env.SIGN_MACOS != 'true' }}
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          args: --target universal-apple-darwin --features host-sidecar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_NEW_ENGINE: "1"
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Locate build artifacts
+        id: artifacts
+        run: |
+          set -euo pipefail
+          BUNDLE="target/universal-apple-darwin/release/bundle"
+          APP=$(ls -d "$BUNDLE/macos/"*.app 2>/dev/null | head -1 || true)
+          DMG=$(ls -t "$BUNDLE/dmg/"*.dmg 2>/dev/null | head -1 || true)
+          TAR=$(ls -t "$BUNDLE/macos/"*.app.tar.gz 2>/dev/null | head -1 || true)
+          SIG=$(ls -t "$BUNDLE/macos/"*.app.tar.gz.sig 2>/dev/null | head -1 || true)
+
+          missing=()
+          [ -e "$APP" ] || missing+=(".app")
+          [ -f "$DMG" ] || missing+=(".dmg")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Missing host-sidecar build artifacts: ${missing[*]}"
+            ls -laR "$BUNDLE" || true
+            exit 1
+          fi
+
+          echo "app=$APP" >> "$GITHUB_OUTPUT"
+          echo "dmg=$DMG" >> "$GITHUB_OUTPUT"
+          echo "tar=$TAR" >> "$GITHUB_OUTPUT"
+          echo "sig=$SIG" >> "$GITHUB_OUTPUT"
+          echo "Artifacts: app=$APP dmg=$DMG tar=$TAR sig=$SIG"
+
+      # Confirm the staged sidecar is the Bun host (fat Mach-O), signed with
+      # Developer ID + hardened runtime so Gatekeeper won't quarantine-kill it.
+      # Same invariants release.yml asserts on the engine sidecar.
+      - name: Verify host sidecar inside the .app
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        run: |
+          set -euo pipefail
+          APP="${{ steps.artifacts.outputs.app }}"
+          SIDECAR=$(find "$APP/Contents" -type f -name 'houston-engine*' ! -name '*.dSYM*' | head -1)
+          if [ -z "$SIDECAR" ] || [ ! -x "$SIDECAR" ]; then
+            echo "::error::host sidecar missing or not executable inside .app"
+            find "$APP/Contents" -type f | head -50
+            exit 1
+          fi
+          echo "Sidecar: $SIDECAR"
+
+          echo "=== Universal (fat) — arm64 + x86_64 ==="
+          LIPO=$(lipo -info "$SIDECAR" 2>&1 || true)
+          echo "$LIPO"
+          echo "$LIPO" | grep -q 'arm64'  || { echo "::error::host sidecar missing arm64 slice"; exit 1; }
+          echo "$LIPO" | grep -q 'x86_64' || { echo "::error::host sidecar missing x86_64 slice"; exit 1; }
+
+          echo "=== Signed with Developer ID + hardened runtime ==="
+          codesign -vvv "$SIDECAR"
+          AUTH=$(codesign -dvv "$SIDECAR" 2>&1 | grep '^Authority=' | head -1)
+          echo "$AUTH"
+          echo "$AUTH" | grep -q 'Developer ID Application' \
+            || { echo "::error::host sidecar not signed with Developer ID"; exit 1; }
+          FLAGS=$(codesign -dv "$SIDECAR" 2>&1 | grep -E '^CodeDirectory.*flags=' | head -1)
+          echo "$FLAGS"
+          echo "$FLAGS" | grep -q 'runtime' \
+            || { echo "::error::host sidecar missing hardened runtime flag"; exit 1; }
+          echo "=== Host sidecar checks passed ==="
+
+      - name: Verify .app signing and notarization
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        run: |
+          set -euo pipefail
+          echo "=== Code signature ==="
+          codesign -vvv --deep --strict "${{ steps.artifacts.outputs.app }}"
+          echo "=== Notarization staple ==="
+          xcrun stapler validate "${{ steps.artifacts.outputs.app }}"
+
+      # Rename the DMG volume label, re-sign (the rebuild strips the signature),
+      # notarize + staple the DMG, then verify the full chain — identical to
+      # release.yml's DMG steps so the host-sidecar DMG ships exactly as polished.
+      - name: Rename DMG volume to "Houston Installer"
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        run: ./scripts/rename-dmg-volume.sh "${{ steps.artifacts.outputs.dmg }}" "Houston Installer"
+
+      - name: Re-sign DMG after volume rename
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+        run: |
+          set -euo pipefail
+          DMG="${{ steps.artifacts.outputs.dmg }}"
+          codesign --force --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$DMG"
+          codesign -vvv "$DMG"
+
+      - name: Notarize DMG
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        timeout-minutes: 25
+        run: |
+          set -euo pipefail
+          DMG="${{ steps.artifacts.outputs.dmg }}"
+          KEY=~/.appstoreconnect/private_keys/AuthKey_${{ secrets.APPLE_API_KEY }}.p8
+          for attempt in 1 2 3; do
+            echo "=== Attempt $attempt/3 ==="
+            if xcrun notarytool submit "$DMG" \
+                --key-id "${{ secrets.APPLE_API_KEY }}" \
+                --key "$KEY" \
+                --issuer "${{ secrets.APPLE_API_ISSUER }}" \
+                --wait; then
+              echo "Notarization succeeded"
+              xcrun stapler staple "$DMG"
+              exit 0
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              echo "::error::DMG notarization failed after 3 attempts"
+              exit 1
+            fi
+            echo "Retrying in 30s..."
+            sleep 30
+          done
+
+      - name: Verify complete signing chain
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        run: |
+          set -euo pipefail
+          DMG="${{ steps.artifacts.outputs.dmg }}"
+          echo "=== 1. DMG code signature ==="
+          codesign -vvv "$DMG"
+          echo "=== 2. DMG notarization staple ==="
+          xcrun stapler validate "$DMG"
+          echo "=== 3. .app inside DMG ==="
+          MOUNT=$(mktemp -d)
+          hdiutil attach "$DMG" -mountpoint "$MOUNT" -nobrowse -quiet
+          INNER_APP=$(ls -d "$MOUNT/"*.app 2>/dev/null | head -1)
+          if [ -z "$INNER_APP" ]; then
+            echo "::error::No .app found inside DMG"
+            hdiutil detach "$MOUNT" -quiet || true
+            exit 1
+          fi
+          codesign -vvv --deep --strict "$INNER_APP"
+          xcrun stapler validate "$INNER_APP"
+          hdiutil detach "$MOUNT" -quiet
+          echo "=== All checks passed ==="
+
+      - name: Generate checksums
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        run: |
+          set -euo pipefail
+          shasum -a 256 \
+            "${{ steps.artifacts.outputs.dmg }}" \
+            "${{ steps.artifacts.outputs.tar }}" \
+            > checksums-macos-sha256.txt
+          cat checksums-macos-sha256.txt
+
+      - name: Upload macOS artifacts to draft release
+        if: ${{ env.SIGN_MACOS == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release upload "${{ needs.prep.outputs.tag }}" \
+            "${{ steps.artifacts.outputs.dmg }}" \
+            "${{ steps.artifacts.outputs.tar }}" \
+            "${{ steps.artifacts.outputs.sig }}" \
+            checksums-macos-sha256.txt \
+            --clobber
+          echo "::notice::host-sidecar macOS artifacts uploaded"
+
+  # ==========================================================================
+  # Windows — MSI per arch (x86_64 + aarch64). Mirrors release.yml::build-windows
+  # MINUS all the CLI staging (codex / composio / git-bash / zstd): the host
+  # sidecar carries NO CLIs (pi runs providers in-process), so the only payload
+  # is the bun-compiled host. The Tauri updater key still signs the MSI so the
+  # .sig is produced (parity with the Rust path).
+  # ==========================================================================
+  build-windows-host-sidecar:
+    needs: prep
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 75
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-pc-windows-msvc
+            runner: windows-latest
+          - target: aarch64-pc-windows-msvc
+            runner: windows-11-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Rust (windows-msvc target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache Rust artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/src-tauri/target
+            target
+          key: ${{ runner.os }}-cargo-host-sidecar-${{ matrix.target }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-host-sidecar-${{ matrix.target }}-
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      # Same dependency-ordered bun install as the macOS job. Git-bash on the
+      # Windows runner provides `bash` for `shell: bash` steps.
+      - name: Install host (Bun service) deps
+        shell: bash
+        run: |
+          set -euo pipefail
+          for pkg in protocol runtime-client domain runtime control-plane; do
+            echo "::group::bun install — packages/$pkg"
+            (cd "packages/$pkg" && bun install --frozen-lockfile)
+            echo "::endgroup::"
+          done
+
+      # Bun-compile the host for this arch. The explicit triple makes the script
+      # emit houston-host-<triple>.exe exactly where build.rs::stage_host_sidecar
+      # reads it for this cargo TARGET (Windows has no universal binary).
+      - name: Compile Houston host sidecar (${{ matrix.target }})
+        shell: bash
+        run: scripts/build-host-sidecar.sh ${{ matrix.target }}
+
+      - name: Build Tauri app (Windows MSI, host-sidecar)
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          args: --target ${{ matrix.target }} --features host-sidecar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_NEW_ENGINE: "1"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          LINEAR_API_KEY: ${{ secrets.LINEAR_API_KEY }}
+          LINEAR_TEAM_ID: ${{ secrets.LINEAR_TEAM_ID }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Locate MSI + updater signature
+        id: artifacts-windows
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE="target/${{ matrix.target }}/release/bundle"
+          MSI=$(ls -t "$BUNDLE/msi/"*.msi 2>/dev/null | head -1 || true)
+          SIG=$(ls -t "$BUNDLE/msi/"*.msi.sig 2>/dev/null | head -1 || true)
+          missing=()
+          [ -f "$MSI" ] || missing+=("MSI")
+          [ -f "$SIG" ] || missing+=("MSI .sig")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Windows host-sidecar artifacts missing: ${missing[*]}"
+            ls -laR "$BUNDLE" 2>&1 | head -50 || true
+            exit 1
+          fi
+          echo "msi=$MSI" >> "$GITHUB_OUTPUT"
+          echo "sig=$SIG" >> "$GITHUB_OUTPUT"
+          echo "Artifacts: msi=$MSI ($(du -sh "$MSI" | cut -f1)) sig=$SIG"
+
+      - name: Upload Windows MSI + updater signature to draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.prep.outputs.tag }}"
+          gh release upload "$TAG" \
+            "${{ steps.artifacts-windows.outputs.msi }}" \
+            "${{ steps.artifacts-windows.outputs.sig }}" \
+            --clobber
+          echo "::notice::host-sidecar Windows MSI + .sig uploaded (${{ matrix.target }})"
+          echo "::warning::This MSI is UNSIGNED (OS code-signing). Windows SmartScreen warns on first install — acceptable for the experimental channel."
+
+  # ==========================================================================
+  # Linux — the platform the Rust release.yml NEVER builds (tauri.conf.json's
+  # bundle.targets are app/dmg/msi only). The host sidecar makes a Linux DESKTOP
+  # build viable for the first time: pi runs providers in-process so there's no
+  # per-arch CLI to bundle. We build x86_64 AppImage + .deb via tauri-action with
+  # an explicit --bundles list (NOT by editing tauri.conf.json — that would
+  # change the default Rust path's config). We ALSO boot the bare host binary
+  # (--verify) since the same binary is what the selfhost/ server runs.
+  # ==========================================================================
+  build-linux-host-sidecar:
+    needs: prep
+    runs-on: ubuntu-22.04
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      # Tauri's Linux WebKitGTK + AppImage/deb tooling system deps. Pinned to
+      # ubuntu-22.04 (webkit2gtk-4.1) — the Tauri 2 Linux prerequisite set.
+      - name: Install Tauri Linux system dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            libwebkit2gtk-4.1-dev \
+            libgtk-3-dev \
+            librsvg2-dev \
+            libayatana-appindicator3-dev \
+            patchelf \
+            file \
+            libssl-dev \
+            build-essential \
+            curl \
+            wget
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Setup Rust (linux target)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+
+      - name: Cache Rust artifacts
+        uses: actions/cache@v5
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            app/src-tauri/target
+            target
+          key: ${{ runner.os }}-cargo-host-sidecar-linux-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-host-sidecar-linux-
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install host (Bun service) deps
+        run: |
+          set -euo pipefail
+          for pkg in protocol runtime-client domain runtime control-plane; do
+            echo "::group::bun install — packages/$pkg"
+            (cd "packages/$pkg" && bun install --frozen-lockfile)
+            echo "::endgroup::"
+          done
+
+      # Compile AND boot-verify the host binary — this same binary is what the
+      # selfhost/ image runs, so a boot+serve self-check here protects that path
+      # too. --verify boots it and curls /v1/capabilities (asserts profile=local).
+      - name: Compile + verify Houston host sidecar (x86_64-unknown-linux-gnu)
+        run: scripts/build-host-sidecar.sh x86_64-unknown-linux-gnu --verify
+
+      # Build the Linux DESKTOP bundles. --bundles deb,appimage is passed on the
+      # CLI so the default tauri.conf.json (app/dmg/msi) stays untouched — the
+      # Rust release path is unaffected. --features host-sidecar makes build.rs
+      # stage the compiled host (already at target/host-sidecar/houston-host-<triple>).
+      - name: Build Tauri app (Linux AppImage + deb, host-sidecar)
+        uses: tauri-apps/tauri-action@v0
+        with:
+          projectPath: app
+          args: --target x86_64-unknown-linux-gnu --bundles deb,appimage --features host-sidecar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VITE_NEW_ENGINE: "1"
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          POSTHOG_KEY: ${{ secrets.POSTHOG_KEY }}
+          POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
+
+      - name: Locate Linux artifacts
+        id: artifacts-linux
+        run: |
+          set -euo pipefail
+          BUNDLE="target/x86_64-unknown-linux-gnu/release/bundle"
+          APPIMAGE=$(ls -t "$BUNDLE/appimage/"*.AppImage 2>/dev/null | head -1 || true)
+          DEB=$(ls -t "$BUNDLE/deb/"*.deb 2>/dev/null | head -1 || true)
+          missing=()
+          [ -f "$APPIMAGE" ] || missing+=("AppImage")
+          [ -f "$DEB" ] || missing+=(".deb")
+          if [ ${#missing[@]} -gt 0 ]; then
+            echo "::error::Linux host-sidecar artifacts missing: ${missing[*]}"
+            ls -laR "$BUNDLE" 2>&1 | head -80 || true
+            exit 1
+          fi
+          echo "appimage=$APPIMAGE" >> "$GITHUB_OUTPUT"
+          echo "deb=$DEB" >> "$GITHUB_OUTPUT"
+          echo "Artifacts: appimage=$APPIMAGE ($(du -sh "$APPIMAGE" | cut -f1)) deb=$DEB ($(du -sh "$DEB" | cut -f1))"
+
+      - name: Generate checksums
+        run: |
+          set -euo pipefail
+          sha256sum \
+            "${{ steps.artifacts-linux.outputs.appimage }}" \
+            "${{ steps.artifacts-linux.outputs.deb }}" \
+            > checksums-linux-sha256.txt
+          cat checksums-linux-sha256.txt
+
+      - name: Upload Linux artifacts to draft release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ needs.prep.outputs.tag }}"
+          gh release upload "$TAG" \
+            "${{ steps.artifacts-linux.outputs.appimage }}" \
+            "${{ steps.artifacts-linux.outputs.deb }}" \
+            checksums-linux-sha256.txt \
+            --clobber
+          echo "::notice::host-sidecar Linux AppImage + .deb uploaded"
