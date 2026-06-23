@@ -38,6 +38,7 @@ export function PersonalAssistantOnboarding({
   const { t } = useTranslation(["setup", "common"]);
   const setTutorialActive = useUIStore((s) => s.setTutorialActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
+  const setViewMode = useUIStore((s) => s.setViewMode);
   const addToast = useUIStore((s) => s.addToast);
   const [step, setStep] = useState<OnboardingStep>("intro");
   const [agent, setAgent] = useState<Agent | null>(null);
@@ -138,14 +139,16 @@ export function PersonalAssistantOnboarding({
 
   // Terminal hand-off. Arm the UI tour BEFORE clearing `tutorialActive` so the
   // workspace shell mounts with the tour overlay already up — no flicker.
-  const finishOnboarding = (withTour: boolean) => {
+  const finishOnboarding = (next: "tour" | "integrations") => {
     analytics.track("onboarding_completed", {
       mission: TUTORIAL_MISSION.id,
       integrations_skipped: false,
       tutorial_run: true,
-      source: withTour ? "tour" : "connect_more",
+      source: next === "tour" ? "tour" : "connect_more",
     });
-    if (withTour) setUiTourActive(true);
+    if (next === "tour") setUiTourActive(true);
+    // "Connect more apps" lands the user in the Integrations browser.
+    else setViewMode("connections");
     setTutorialActive(false);
   };
 
@@ -341,8 +344,8 @@ export function PersonalAssistantOnboarding({
 
       {step === "finished" && (
         <FinishedMission
-          onTour={() => finishOnboarding(true)}
-          onConnectMore={() => finishOnboarding(false)}
+          onTour={() => finishOnboarding("tour")}
+          onConnectMore={() => finishOnboarding("integrations")}
         />
       )}
 

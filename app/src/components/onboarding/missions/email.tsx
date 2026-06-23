@@ -66,7 +66,6 @@ export function EmailMission({
   const agentPath = agent.folderPath;
 
   const [started, setStarted] = useState(false);
-  const [fakeFeed, setFakeFeed] = useState<FeedItem[]>([]);
   const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
     null,
   );
@@ -127,12 +126,6 @@ export function EmailMission({
     setStarted(true);
     setError(null);
     analytics.track("first_message_sent");
-    setFakeFeed([
-      {
-        feed_type: "user_message",
-        data: t("setup:tutorial.missions.email.offer.option"),
-      },
-    ]);
     // Pre-feed the agent (send to self via the already-connected toolkit).
     try {
       const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
@@ -148,6 +141,9 @@ export function EmailMission({
       logger.warn(`[email-setup] could not append setup section: ${e}`);
     }
     try {
+      // The kickoff IS the user-visible message (the session echoes it into the
+      // feed), so use the button's text — the directive in CLAUDE.md tells the
+      // agent to send to self.
       const result = await createMission(
         {
           id: agent.id,
@@ -155,7 +151,7 @@ export function EmailMission({
           color: agent.color,
           folderPath: agent.folderPath,
         },
-        "Send the email now.",
+        t("setup:tutorial.missions.email.offer.option"),
         {
           title: emailToolkitLabel,
           providerOverride: provider,
@@ -245,7 +241,7 @@ export function EmailMission({
     return withComposioWaitingFooter({ content: stripped });
   }, []);
 
-  const feedItems = [...fakeFeed, ...((realFeed ?? []) as FeedItem[])];
+  const feedItems = (realFeed ?? []) as FeedItem[];
   const isLoading = started && isActive;
 
   return (
