@@ -51,3 +51,45 @@ test("isExpiring is true for an already-expired oauth token", () => {
     }),
   ).toBe(true);
 });
+
+test("refreshCredential mints a fresh GitHub Copilot token from the stored GitHub token", async () => {
+  // Copilot's refresh is NOT a standard `grant_type=refresh_token` POST: pi-ai
+  // GETs GitHub's Copilot token endpoint with the long-lived GitHub OAuth token
+  // (stored as `refreshToken`) and gets a short-lived Copilot token back. Stub
+  // that single call so the test stays offline. Without the provider branch this
+  // would throw "no OAuth refresh config" and every Copilot turn would 401.
+  const realFetch = globalThis.fetch;
+  const expiresAtSec = Math.floor(Date.now() / 1000) + 1500; // ~25 min out
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    const u = String(url);
+    if (u.includes("copilot_internal/v2/token")) {
+      return new Response(
+        JSON.stringify({
+          token: "tid=fresh-copilot-token",
+          expires_at: expiresAtSec,
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    throw new Error(`unexpected fetch in test: ${u}`);
+  }) as typeof fetch;
+  try {
+    const fresh = await refreshCredential({
+      workspaceId: "ws_1",
+      provider: "github-copilot",
+      accessToken: "tid=stale",
+      refreshToken: "gho_github_token", // the long-lived GitHub token
+      expiresAt: 1, // expired -> must refresh
+      kind: "oauth",
+    });
+    expect(fresh.accessToken).toBe("tid=fresh-copilot-token");
+    // The GitHub token is long-lived and comes back unchanged.
+    expect(fresh.refreshToken).toBe("gho_github_token");
+    // pi-ai applies a 5-min safety skew to the Copilot token's expires_at.
+    expect(fresh.expiresAt).toBe(expiresAtSec * 1000 - 5 * 60 * 1000);
+    // Still OAuth (not an API key) so isExpiring/refresh keep driving it.
+    expect(isApiKeyCredential(fresh)).toBe(false);
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});
