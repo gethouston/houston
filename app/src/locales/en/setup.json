@@ -15,6 +15,12 @@
     "finishPage": "Get started",
     "finishDialog": "Create workspace"
   },
+  "migrationReconnect": {
+    "title": "Welcome back",
+    "body": "Your assistants and everything you've worked on are right here. Just reconnect your AI to pick up where you left off.",
+    "skip": "I'll do this later",
+    "dismissError": "We couldn't save that. Please try again."
+  },
   "tutorial": {
     "brand": "Houston",
     "counter": "Mission {{current}} of {{total}}",

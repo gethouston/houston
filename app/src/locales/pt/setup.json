@@ -15,6 +15,12 @@
     "finishPage": "Começar",
     "finishDialog": "Criar espaço de trabalho"
   },
+  "migrationReconnect": {
+    "title": "Bem-vindo de volta",
+    "body": "Seus assistentes e tudo em que você trabalhou estão aqui. Basta reconectar sua IA para continuar de onde parou.",
+    "skip": "Faço isso depois",
+    "dismissError": "Não conseguimos salvar. Tente novamente."
+  },
   "tutorial": {
     "brand": "Houston",
     "counter": "Missão {{current}} de {{total}}",

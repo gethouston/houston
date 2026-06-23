@@ -34,6 +34,8 @@ export type AnalyticsEventName =
   // Onboarding
   | "onboarding_started"
   | "onboarding_completed"
+  // One-time "reconnect your AI" moment after upgrading from the legacy build.
+  | "migration_reconnect_completed"
   // Activation funnel
   | "workspace_created"
   | "provider_configured"

@@ -58,6 +58,14 @@ export interface ControlPlaneDeps {
   events?: EventHub;
   /** What this deployment can do; served at /v1/capabilities for the UI to gate on. */
   capabilities: Capabilities;
+  /**
+   * True when this install carried over a legacy Rust-desktop chat-history db —
+   * i.e. the user is migrating from the old desktop build. Surfaced on
+   * `/v1/version` so the desktop UI can show its one-time "reconnect your AI"
+   * moment (the migrated provider credentials are not portable). Absent/false on
+   * a fresh install and on the cloud profile.
+   */
+  chatHistoryMigrated?: boolean;
   /** Operator dashboard wiring; omit to disable the `/admin/*` API entirely. */
   admin?: AdminDeps;
   /** "Send feedback" intake (web build → Linear); omit and POST /feedback answers 503. */
@@ -114,6 +122,7 @@ async function handle(
       engine: "houston-host",
       protocol: PROTOCOL_VERSION,
       build: null,
+      chatHistoryMigrated: deps.chatHistoryMigrated ?? false,
     });
   }
   if (method === "GET" && path === "/v1/capabilities") {

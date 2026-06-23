@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync } from "node:fs";
+import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -31,7 +31,7 @@ const fakeSpawner: RuntimeSpawner = {
   spawn: () => ({ port: 0, kill: () => {} }),
 };
 
-async function setup() {
+async function setup(opts?: { chatHistoryDbPath?: string }) {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "houston-localhost-"));
   mkdirSync(join(workspacesRoot, "Work", "Sales"), { recursive: true });
   const port = await freePort();
@@ -45,6 +45,7 @@ async function setup() {
     token: "boot-secret",
     runtimeCommand: ["true"],
     spawner: fakeSpawner,
+    chatHistoryDbPath: opts?.chatHistoryDbPath,
   });
   await host.start();
   return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
@@ -65,6 +66,41 @@ test("capabilities report the local profile", async () => {
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
     expect(caps.providers).toEqual(["anthropic", "openai-codex"]);
+  } finally {
+    host.stop();
+  }
+});
+
+test("/v1/version reports chatHistoryMigrated=false on a fresh install", async () => {
+  const { host, base } = await setup();
+  try {
+    const v = (await (await fetch(`${base}/v1/version`)).json()) as {
+      chatHistoryMigrated: boolean;
+    };
+    // No legacy db path → not a migrating install; the reconnect moment must
+    // never fire for fresh users.
+    expect(v.chatHistoryMigrated).toBe(false);
+  } finally {
+    host.stop();
+  }
+});
+
+test("/v1/version reports chatHistoryMigrated=true when a legacy db is present", async () => {
+  // The flag keys on the db FILE existing (the durable "came from the legacy
+  // desktop build" signal), independent of whether the migration parse runs —
+  // an unreadable/empty file still marks the user as migrating, and start()
+  // swallows the parse failure. We point at a real, present file.
+  const dbPath = join(
+    mkdtempSync(join(tmpdir(), "houston-legacydb-")),
+    "houston.db",
+  );
+  writeFileSync(dbPath, "");
+  const { host, base } = await setup({ chatHistoryDbPath: dbPath });
+  try {
+    const v = (await (await fetch(`${base}/v1/version`)).json()) as {
+      chatHistoryMigrated: boolean;
+    };
+    expect(v.chatHistoryMigrated).toBe(true);
   } finally {
     host.stop();
   }

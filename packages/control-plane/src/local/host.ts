@@ -141,6 +141,18 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     ),
   };
 
+  // Did this install carry over a Rust-desktop chat-history db? Its mere
+  // presence means the user is migrating from the legacy desktop build — their
+  // agents + history came across but their provider credentials did NOT (a
+  // different OAuth client), so the UI must guide them to reconnect once. A
+  // synchronous existence check (the same gate `start()` uses before running
+  // the migration) is enough; surfaced on `/v1/version` for the frontend to
+  // read. Stays true across re-boots (the db file lingers), but the UI persists
+  // its own "already shown" flag, so the reconnect moment still fires only once.
+  const chatHistoryMigrated = !!(
+    opts.chatHistoryDbPath && existsSync(opts.chatHistoryDbPath)
+  );
+
   const deps: ControlPlaneDeps = {
     verifier: new SingleUserVerifier({ token: opts.token, userId: LOCAL_USER }),
     store,
@@ -151,6 +163,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     events,
     channels: { local: channel },
     capabilities: LOCAL_CAPABILITIES,
+    chatHistoryMigrated,
     integrations,
     corsOrigin: "*",
   };

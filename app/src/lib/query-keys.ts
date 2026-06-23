@@ -34,6 +34,15 @@ export const queryKeys = {
    */
   providerStatuses: () => ["provider-statuses"] as const,
 
+  /**
+   * The one-time post-migration "reconnect your AI" gate. `migrationReconnect`
+   * holds the host's `chatHistoryMigrated` flag (does this install come from the
+   * legacy desktop build); `migrationReconnectDismissed` holds the persisted
+   * "already seen" flag. Both rarely change, so they are app-scoped.
+   */
+  migrationReconnect: () => ["migration-reconnect"] as const,
+  migrationReconnectDismissed: () => ["migration-reconnect-dismissed"] as const,
+
   // Integrations are user-level (shared across the user's agents), so they are
   // NOT keyed by agentPath even though they surface in a per-agent tab.
   integrationStatus: () => ["integration-status"] as const,

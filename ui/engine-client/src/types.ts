@@ -56,6 +56,14 @@ export interface VersionResponse {
   engine: string;
   protocol: number;
   build: string | null;
+  /**
+   * True when this install carried over a legacy Rust-desktop chat-history db,
+   * i.e. the user is migrating from the old desktop build. The desktop UI uses
+   * this to show its one-time "reconnect your AI" moment, because the migrated
+   * provider credentials are not portable. Absent on engines that predate the
+   * field (treat as `false`).
+   */
+  chatHistoryMigrated?: boolean;
 }
 
 // ---------- Workspaces ----------
@@ -416,7 +424,11 @@ export interface PreferenceValue {
  *
  * Keep in sync with `houston-engine-core::preferences` constants.
  */
-export type KnownPreferenceKey = "timezone" | "locale" | "legal_acceptance";
+export type KnownPreferenceKey =
+  | "timezone"
+  | "locale"
+  | "legal_acceptance"
+  | "migration_reconnect_dismissed";
 
 /**
  * Persisted record that the user has accepted a given version of the
@@ -432,6 +444,15 @@ export interface LegalAcceptance {
 
 /** Preference key for the JSON-encoded [`LegalAcceptance`]. */
 export const LEGAL_ACCEPTANCE_KEY = "legal_acceptance";
+
+/**
+ * Preference key marking that the user has seen (and dismissed/completed) the
+ * one-time "reconnect your AI" moment shown after migrating from the legacy
+ * desktop build. Value is the literal `"1"` once set; absent means not yet
+ * shown. Lives in engine preferences so it survives reinstall-in-place.
+ */
+export const MIGRATION_RECONNECT_DISMISSED_KEY =
+  "migration_reconnect_dismissed";
 
 // ---------- Store ----------
 
