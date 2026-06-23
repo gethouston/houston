@@ -220,8 +220,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
 
     if (method === "POST" && action === "cancel") {
-      await cancelTurn(id);
-      return json(res, 200, { ok: true });
+      // `cancelled` is the honest answer to "was there a live turn to stop?".
+      // A `false` (no cached conversation — e.g. after a restart) tells the
+      // client the turn is orphaned, so it can settle a stuck "running" card
+      // itself rather than waiting on a terminal event that will never come.
+      const cancelled = await cancelTurn(id);
+      return json(res, 200, { ok: true, cancelled });
     }
 
     // Generate + persist a short LLM title for the conversation.

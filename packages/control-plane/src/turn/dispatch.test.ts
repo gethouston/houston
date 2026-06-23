@@ -269,3 +269,40 @@ test("the events SSE endpoint emits a sync frame, then live frames", async () =>
     close();
   }
 });
+
+test("cancel reports whether a turn was actually in flight (so the client can settle an orphaned card)", async () => {
+  const { deps } = makeDeps();
+  const { base, close } = await serve(deps);
+  try {
+    // No turn in flight → nothing to abort. `cancelled:false` is the signal the
+    // client uses to settle a card stuck "running" after the turn died (e.g. an
+    // app restart dropped the in-memory turn). Previously this was always {ok:true}.
+    const orphan = await fetch(`${base}/conversations/c-orphan/cancel`, {
+      method: "POST",
+    });
+    expect(orphan.status).toBe(200);
+    expect(await orphan.json()).toEqual({ ok: true, cancelled: false });
+
+    // A live turn IS in flight → cancel aborts it and reports cancelled:true, so
+    // the client leaves the status to the turn's own terminal frame (no race).
+    let release: (() => void) | undefined;
+    const claimed = await deps.relay.start(
+      "agent-1",
+      "agent-1/c-live",
+      (_publish, signal) =>
+        new Promise<void>((resolve) => {
+          if (signal.aborted) return resolve();
+          signal.addEventListener("abort", () => resolve());
+          release = resolve;
+        }),
+    );
+    expect(claimed).toBe(true);
+    const live = await fetch(`${base}/conversations/c-live/cancel`, {
+      method: "POST",
+    });
+    expect(await live.json()).toEqual({ ok: true, cancelled: true });
+    release?.();
+  } finally {
+    close();
+  }
+});

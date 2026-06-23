@@ -23,6 +23,7 @@
   },
   "errors": {
     "sessionStart": "Failed to start session: {{error}}",
+    "stopSession": "Couldn't stop the mission: {{error}}",
     "modelPersistFailed": "Failed to save model preference"
   },
   "toolRuntimeError": {

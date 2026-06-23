@@ -896,15 +896,22 @@ export class HoustonClient {
     return { sessionKey: req.sessionKey };
   }
   async cancelSession(agentPath: string, sessionKey: string) {
-    try {
-      const engine = this.cp
-        ? controlPlane.runtimeClientFor(this.cp, agentPath)
-        : this.engine;
-      await engine.cancel(sessionKey);
-    } catch {
-      /* already done */
+    const engine = this.cp
+      ? controlPlane.runtimeClientFor(this.cp, agentPath)
+      : this.engine;
+    // Abort the agent's in-flight turn. The engine reports whether a turn was
+    // ACTUALLY in flight. `false` means there was nothing to abort: the turn is
+    // orphaned — its board card is stuck "running" because the turn died without
+    // settling (an error that never reached a terminal frame, or an app restart
+    // that dropped the in-memory turn). Stop is the user's escape hatch, so in
+    // that case settle the card ourselves. A genuinely live turn (`true`) is
+    // settled by its own `streamTurn` when the abort lands, so we leave its
+    // status alone — writing it here too would race that terminal write.
+    const { cancelled } = await engine.cancel(sessionKey);
+    if (cancelled !== true) {
+      await this.setActivityStatus(agentPath, sessionKey, "needs_you");
     }
-    return { cancelled: true };
+    return { cancelled: cancelled === true };
   }
   async startOnboarding(
     _agentPath: string,

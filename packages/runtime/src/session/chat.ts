@@ -351,10 +351,18 @@ export async function runTurn(
   await run;
 }
 
-/** Abort the in-flight turn for a conversation (if any). */
-export async function cancelTurn(id: string): Promise<void> {
+/**
+ * Abort the in-flight turn for a conversation. Returns whether a live turn was
+ * actually aborted: `false` means nothing was in flight — the conversation isn't
+ * cached (e.g. the runtime restarted), so there is no turn to stop and no
+ * terminal event will follow. The caller uses this to settle a card that's stuck
+ * "running" because its owning turn died without ever settling it.
+ */
+export async function cancelTurn(id: string): Promise<boolean> {
   const conv = conversations.get(id);
-  if (conv) await conv.session.abort();
+  if (!conv) return false;
+  await conv.session.abort();
+  return true;
 }
 
 /**
