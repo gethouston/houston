@@ -5,6 +5,8 @@ import { join } from "node:path";
 import type { WorkspaceStore } from "../ports";
 import { LocalWorkspaceStore } from "./local";
 import { MemoryWorkspaceStore } from "./memory";
+import { PgWorkspaceStore } from "./pg";
+import { newWorkspacePool } from "./pg-mem-harness";
 
 /**
  * The WorkspaceStore CONTRACT, run verbatim against every locally-testable
@@ -29,14 +31,17 @@ import { MemoryWorkspaceStore } from "./memory";
  *   - createdAt / slug values. Memory mints real timestamps + slugify(userId);
  *     Local pins createdAt=0 and slug=name. Not load-bearing for the host.
  *
- * NOT CONTRACT-TESTED LOCALLY:
- *   - PgWorkspaceStore (store/pg.ts) needs a live Postgres with the
- *     cloud_workspaces migration. Its SQL shape + snake_case↔domain mapping are
- *     unit-asserted against a fake Pool in store/pg.test.ts; running it through
- *     THIS behavioral suite is integration territory (a real DB). Marked with a
- *     test.todo below so the gap is explicit, never silent.
+ * PgWorkspaceStore (store/pg.ts) IS now run through this suite, backed by an
+ * in-process Postgres (pg-mem) preloaded with the real cloud schema — see
+ * store/pg-mem-harness.ts. It executes REAL SQL (round-trips, snake_case↔domain
+ * mapping, RETURNING-driven unknown-id throws, DELETE rowCount). The one
+ * concurrent-INSERT race re-read branch of getOrCreatePersonalWorkspace is NOT
+ * exercised here (pg-mem's ON CONFLICT DO NOTHING RETURNING semantics diverge and
+ * the contract never triggers a true race); that branch stays covered
+ * deterministically by the fake-Pool unit test in store/pg.test.ts. The harness
+ * header documents exactly what the pg-mem shim bridges and why.
  */
-function runWorkspaceStoreContract(
+export function runWorkspaceStoreContract(
   name: string,
   make: () => WorkspaceStore,
 ): void {
@@ -183,11 +188,15 @@ runWorkspaceStoreContract(
     ),
 );
 
-// PgWorkspaceStore: behavioral contract needs a live Postgres + the
-// cloud_workspaces migration — out of scope for `bun test`. Its query shape /
-// parameterization / row mapping are covered in store/pg.test.ts against a fake
-// Pool. This marker keeps the missing behavioral coverage explicit, not silent.
-test.todo("WorkspaceStore contract: PgWorkspaceStore (needs a live Postgres — integration pass)", () => {});
+// PgWorkspaceStore: the SAME behavioral contract, against the REAL adapter backed
+// by an in-process Postgres (pg-mem) with the cloud schema. Real SQL, byte-for-
+// byte the assertions Memory/Local pass. See store/pg-mem-harness.ts for the
+// single documented dialect shim (a partial-index conflict target pg-mem can't
+// parse) and the one branch this can't reach (covered in store/pg.test.ts).
+runWorkspaceStoreContract(
+  "PgWorkspaceStore (pg-mem)",
+  () => new PgWorkspaceStore(newWorkspacePool()),
+);
 
 describe("WorkspaceStore divergences (asserted per-impl, NOT in the shared contract)", () => {
   test("Memory flips the workspace runtime; Local refuses (always 'local')", async () => {

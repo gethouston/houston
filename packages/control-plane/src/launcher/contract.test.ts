@@ -52,7 +52,7 @@ const agent = (id: string): Agent => ({
   createdAt: 0,
 });
 
-function runRuntimeLauncherContract(
+export function runRuntimeLauncherContract(
   name: string,
   make: () => RuntimeLauncher,
 ): void {
@@ -123,11 +123,14 @@ function makeProcessLauncher(): ProcessLauncher {
 runRuntimeLauncherContract("FakeLauncher", () => new FakeLauncher());
 runRuntimeLauncherContract("ProcessLauncher", () => makeProcessLauncher());
 
-// GkeLauncher: behavioral contract needs a live Kubernetes apiserver — out of
-// scope for `bun test`. Its reconcile steps surface every apiserver error except
-// deliberate 404/409 idempotency control flow (launcher/reconcile.ts). Exercised
-// by a cluster integration run.
-test.todo("RuntimeLauncher contract: GkeLauncher (needs a live Kubernetes apiserver — integration pass)", () => {});
+// GkeLauncher: behavioral contract genuinely needs a live Kubernetes apiserver
+// (one Deployment + Service + PVC per agent). It CANNOT run in this sandbox — no
+// cluster, no docker. It is NOT faked: the real GkeLauncher runs this same
+// contract + an apiserver-object reconcile/idempotency suite in
+// launcher/gke.integration.test.ts, gated on HOUSTON_GKE_TEST and pointed at a
+// real or `kind` cluster (one command in launcher/README-testing.md). This
+// marker stays so the boundary is explicit here in the local contract file.
+test.todo("RuntimeLauncher contract: GkeLauncher → launcher/gke.integration.test.ts (HOUSTON_GKE_TEST + a cluster)", () => {});
 // CloudRun: per-turn runtimes have NO launcher (nothing stands between turns);
 // the TurnChannel + dispatchTurn path replaces it. Recorded so the absence is
 // an explicit design fact, not an overlooked adapter.

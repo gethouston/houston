@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { FsVfs } from "./fs";
+import { GcsVfs } from "./gcs";
 import { MemoryVfs } from "./memory";
 import type { Vfs } from "./vfs";
 
@@ -10,10 +11,13 @@ import type { Vfs } from "./vfs";
  * The Vfs CONTRACT, run verbatim against every adapter — the anti-drift
  * mechanism for this port: an adapter that passes here is interchangeable, so
  * local (FsVfs) and cloud (GcsVfs/MemoryVfs) cannot quietly diverge in file
- * semantics. GcsVfs needs live credentials and runs in the cloud integration
- * pass, not here; it implements the same suite-visible behavior.
+ * semantics. GcsVfs needs a real object store (a live GCS bucket or a local
+ * fake-gcs-server emulator) — both external infra — so it runs through this SAME
+ * suite only when HOUSTON_GCS_TEST_BUCKET is set; otherwise an explicit skip
+ * records the gap with the one-command recipe (vfs/README-testing.md). It is
+ * never faked green.
  */
-function runVfsContract(name: string, make: () => Vfs): void {
+export function runVfsContract(name: string, make: () => Vfs): void {
   describe(`Vfs contract: ${name}`, () => {
     const P = "ws/w1/agent-1";
 
@@ -99,3 +103,63 @@ runVfsContract(
   "FsVfs",
   () => new FsVfs(mkdtempSync(join(tmpdir(), "houston-vfs-"))),
 );
+
+/**
+ * GcsVfs against a REAL object store. The @google-cloud/storage client speaks the
+ * JSON API to either a live GCS bucket or a local emulator (fsouza/fake-gcs-server
+ * via Testcontainers / docker run) — both are external infra, so this run is
+ * env-gated rather than always-on. With HOUSTON_GCS_TEST_BUCKET set, the EXACT
+ * same runVfsContract assertions (Memory/Fs already pass) run against the real
+ * GcsVfs adapter; otherwise a single explicit skip records the gap with the
+ * one-command recipe to close it. See vfs/README-testing.md.
+ *
+ * Each contract `make()` needs an isolated namespace inside the shared bucket so
+ * cross-prefix assertions hold; we prefix every key with a per-make run id by
+ * wrapping the adapter (no adapter change — the prefix lives entirely in the test
+ * key space, mirroring the workspace/agent prefixes the contract already uses).
+ */
+const gcsBucket = process.env.HOUSTON_GCS_TEST_BUCKET;
+if (gcsBucket) {
+  const endpoint = process.env.HOUSTON_GCS_TEST_ENDPOINT; // e.g. fake-gcs-server
+  let runSeq = 0;
+  runVfsContract("GcsVfs (live bucket)", () => {
+    const { Storage } = require("@google-cloud/storage");
+    // An emulator endpoint short-circuits ADC + uses path-style addressing; a
+    // real bucket relies on ambient ADC (gcloud auth / a mounted SA key).
+    const storage = endpoint
+      ? new Storage({ apiEndpoint: endpoint, projectId: "houston-test" })
+      : new Storage();
+    const base = new GcsVfs(gcsBucket, storage);
+    // Namespace each contract instance under a fresh prefix in the shared bucket
+    // so independent `make()`s never see each other's objects.
+    const ns = `vfs-contract-run-${process.pid}-${runSeq++}`;
+    return prefixed(base, ns);
+  });
+} else {
+  test.skip("Vfs contract: GcsVfs (set HOUSTON_GCS_TEST_BUCKET — see vfs/README-testing.md)", () => {});
+}
+
+/**
+ * Wrap a Vfs so every key is transparently scoped under `ns/…`. Keeps each
+ * contract instance isolated inside one shared test bucket. Pure key-space
+ * rewriting in the test — the adapter under test is untouched.
+ */
+function prefixed(inner: Vfs, ns: string): Vfs {
+  const k = (key: string) => `${ns}/${key}`;
+  const unk = (key: string) => key.slice(ns.length + 1);
+  return {
+    writeText: (key, c) => inner.writeText(k(key), c),
+    writeBytes: (key, c) => inner.writeBytes(k(key), c),
+    readText: (key) => inner.readText(k(key)),
+    readBytes: (key) => inner.readBytes(k(key)),
+    list: async (prefix) => (await inner.list(k(prefix))).map(unk),
+    listDetailed: async (prefix) =>
+      (await inner.listDetailed(k(prefix))).map((s) => ({
+        ...s,
+        key: unk(s.key),
+      })),
+    move: (from, to) => inner.move(k(from), k(to)),
+    deleteKey: (key) => inner.deleteKey(k(key)),
+    deletePrefix: (prefix) => inner.deletePrefix(k(prefix)),
+  };
+}

@@ -61,6 +61,7 @@ them.
 | File                                          | Cloud coupling           |
 | --------------------------------------------- | ------------------------ |
 | `packages/control-plane/src/store/pg.ts`      | `pg` (Postgres)          |
+| `packages/control-plane/src/integrations/credential-store-pg.ts` | `pg` (Postgres) — cloud integration-credential store |
 | `packages/control-plane/src/vfs/gcs.ts`       | `@google-cloud/storage`  |
 | `packages/control-plane/src/launcher/gke.ts`  | `@kubernetes/client-node`|
 | `packages/control-plane/src/launcher/reconcile.ts` | `@kubernetes/client-node` (apiserver reconcile used by GkeLauncher) |
@@ -85,8 +86,8 @@ The wiring points, the closed surface itself, and the admin surface:
 
 - `packages/control-plane/src/main.ts` — the host wiring point; constructs every
   cloud adapter (`PgWorkspaceStore`, `GcsVfs`, `GkeLauncher`, `RedisTurnBus`,
-  `BigQueryBillingReader`, `GkeClusterReader`, `PgCredentialStore`) and injects
-  them behind ports.
+  `BigQueryBillingReader`, `GkeClusterReader`, `PgCredentialStore`,
+  `PgIntegrationCredentialStore`) and injects them behind ports.
 - `packages/control-plane/src/routes/admin.ts` — the operator-dashboard route;
   part of the closed admin surface, imports only `admin/**`.
 - `packages/control-plane/src/admin/**` — intra-admin imports + k8s/BigQuery.
@@ -129,6 +130,12 @@ the full one-way rule automatically.
 
 `scripts/check-boundaries.mjs` walks every non-test `.ts`/`.tsx` under the open
 packages and the host, extracts import/export/dynamic-import specifiers, and:
+
+> **Test scaffolding is exempt.** `*.test.ts`, plus test-only helpers by
+> convention (`*-harness.ts`, `*.test-helper.ts`, `*.fixture.ts`, `*.mock.ts`),
+> may import a closed adapter or cloud lib directly — they exercise the cloud
+> adapters in unit tests and are never shipped. Production code may not.
+
 
 - **Rule A** — no file in `packages/{protocol,domain,runtime,runtime-client}` or
   `ui/**` imports a cloud lib (`pg`, `ioredis`, `redis`, `@google-cloud/*`,

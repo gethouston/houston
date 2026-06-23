@@ -80,6 +80,7 @@ const CLOUD_LIBS = [
 const CLOSED_FILES = new Set([
   // control-plane cloud adapters
   "packages/control-plane/src/store/pg",
+  "packages/control-plane/src/integrations/credential-store-pg",
   "packages/control-plane/src/vfs/gcs",
   "packages/control-plane/src/launcher/gke",
   "packages/control-plane/src/launcher/reconcile",
@@ -158,6 +159,10 @@ function walk(dir) {
     } else if (
       /\.(ts|tsx)$/.test(entry) &&
       !/\.test\./.test(entry) &&
+      // Test scaffolding (never shipped) may drive a closed adapter directly,
+      // exactly like a *.test.ts file. Convention: *-harness, *.test-helper,
+      // *.fixture, *.mock. Documented in BOUNDARY.md.
+      !/[.-](harness|test-helper|fixture|mock)\.[jt]sx?$/.test(entry) &&
       !/\.d\.ts$/.test(entry)
     ) {
       out.push(full);

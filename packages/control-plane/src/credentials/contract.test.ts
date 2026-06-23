@@ -2,9 +2,14 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import type { CredentialStore, WorkspaceCredential } from "../ports";
+import {
+  type CredentialStore,
+  isApiKeyCredential,
+  type WorkspaceCredential,
+} from "../ports";
+import { newCredentialPool } from "../store/pg-mem-harness";
 import { FileCredentialStore } from "./file-store";
-import { MemoryCredentialStore } from "./store";
+import { MemoryCredentialStore, PgCredentialStore } from "./store";
 
 /**
  * The CredentialStore CONTRACT, run verbatim against every locally-testable
@@ -17,12 +22,19 @@ import { MemoryCredentialStore } from "./store";
  * `get` must return every field that was put (a refresh persists access AND
  * refresh tokens, accountId, and expiry — the cloud refresh loop depends on it).
  *
- * NOT CONTRACT-TESTED LOCALLY:
- *   - PgCredentialStore (credentials/store.ts) needs a live Postgres with the
- *     workspace_credentials migration (the ON CONFLICT upsert + bigint expiry).
- *     No fake-Pool unit test exists for it today; running it through THIS suite
- *     is integration territory. Marked with a test.todo below so the gap is
- *     explicit, never silent.
+ * The ONE field the contract normalizes is the optional `kind`: it is never
+ * load-bearing on a fetched credential — every consumer (re-)derives api_key vs
+ * oauth from `isApiKeyCredential` (the expiresAt=0 sentinel), so an adapter may
+ * store-and-return it absent (Memory/File preserve the put shape) or synthesize
+ * the explicit value (Pg derives `kind` in `get`). The round-trip assertion
+ * pins that documented equivalence — every other field must match exactly.
+ *
+ * PgCredentialStore (credentials/store.ts) IS now run through this suite, backed
+ * by an in-process Postgres (pg-mem) preloaded with the workspace_credentials
+ * schema (store/pg-mem-harness.ts). It executes REAL SQL — the ON CONFLICT
+ * (workspace_id, provider) DO UPDATE upsert-in-place, the bigint expiry
+ * round-trip, the expiresAt=0 → kind:"api_key" derivation, and PK-scoped
+ * isolation/removal.
  */
 const cred = (
   over: Partial<WorkspaceCredential> = {},
@@ -35,7 +47,25 @@ const cred = (
   ...over,
 });
 
-function runCredentialStoreContract(
+/**
+ * Round-trip equality up to the documented `kind` normalization: every field
+ * must match exactly, and the api_key-ness (the only semantics consumers read)
+ * must agree, regardless of whether the adapter returned `kind` absent or
+ * explicit.
+ */
+function expectRoundTrip(
+  got: WorkspaceCredential | null,
+  put: WorkspaceCredential,
+): void {
+  expect(got).not.toBeNull();
+  if (!got) return;
+  const { kind: _g, ...gotRest } = got;
+  const { kind: _p, ...putRest } = put;
+  expect(gotRest).toEqual(putRest);
+  expect(isApiKeyCredential(got)).toBe(isApiKeyCredential(put));
+}
+
+export function runCredentialStoreContract(
   name: string,
   make: () => CredentialStore,
 ): void {
@@ -49,8 +79,7 @@ function runCredentialStoreContract(
       const s = make();
       const c = cred({ accountId: "acct-9", expiresAt: 1_888_000_000_000 });
       await s.put(c);
-      const got = await s.get("ws_1", "openai-codex");
-      expect(got).toEqual(c);
+      expectRoundTrip(await s.get("ws_1", "openai-codex"), c);
     });
 
     test("an api-key credential round-trips with kind and no refresh/expiry", async () => {
@@ -63,7 +92,7 @@ function runCredentialStoreContract(
         kind: "api_key" as const,
       });
       await s.put(apiKey);
-      expect(await s.get("ws_1", "opencode")).toEqual(apiKey);
+      expectRoundTrip(await s.get("ws_1", "opencode"), apiKey);
     });
 
     test("put on the same (workspace, provider) overwrites in place (refresh)", async () => {
@@ -129,11 +158,15 @@ runCredentialStoreContract(
     ),
 );
 
-// PgCredentialStore: behavioral contract needs a live Postgres + the
-// workspace_credentials migration (ON CONFLICT upsert, bigint expiry). No
-// fake-Pool unit covers it today and it cannot run under `bun test`. This marker
-// keeps the missing behavioral coverage explicit.
-test.todo("CredentialStore contract: PgCredentialStore (needs a live Postgres — integration pass)", () => {});
+// PgCredentialStore: the SAME behavioral contract, against the REAL adapter
+// backed by an in-process Postgres (pg-mem) with the workspace_credentials
+// schema. Real SQL exercises the ON CONFLICT upsert-in-place, bigint expiry
+// round-trip, the expiresAt=0 → kind:"api_key" derivation, and per-(workspace,
+// provider) PK isolation. See store/pg-mem-harness.ts.
+runCredentialStoreContract(
+  "PgCredentialStore (pg-mem)",
+  () => new PgCredentialStore(newCredentialPool()),
+);
 
 // FileCredentialStore-specific behavior beyond the shared contract: a connect
 // survives an app restart because the JSON file is the source of truth. Asserted

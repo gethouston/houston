@@ -15,6 +15,7 @@ import { BusEventHub } from "./events/hub";
 import { type FeedbackSender, LinearFeedbackSender } from "./feedback";
 import { ComposioProvider } from "./integrations/composio";
 import { MemoryIntegrationCredentialStore } from "./integrations/credential-store";
+import { PgIntegrationCredentialStore } from "./integrations/credential-store-pg";
 import { IntegrationRegistry } from "./integrations/registry";
 import { FakeLauncher } from "./launcher/fake";
 import { type AgentResolver, GkeLauncher } from "./launcher/gke";
@@ -57,16 +58,22 @@ import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
  * Postgres store and the live GKE RuntimeLauncher — same interfaces.
  */
 
-/** Workspace store + the connect-once credential store, sharing one Pool in prod. */
+/**
+ * Workspace store + the connect-once credential store, sharing one Pool in prod.
+ * The Pool is returned too (null in dev) so the same connection backs the
+ * integration credential store wired in main() — one pool per process.
+ */
 function buildStores(): {
   store: WorkspaceStore;
   credentials: CredentialStore;
+  pool: Pool | null;
 } {
   const runtime = { defaultRuntime: config.defaultRuntime };
   if (config.dev) {
     return {
       store: new MemoryWorkspaceStore(runtime),
       credentials: new MemoryCredentialStore(),
+      pool: null,
     };
   }
   if (!config.databaseUrl) {
@@ -76,6 +83,7 @@ function buildStores(): {
   return {
     store: new PgWorkspaceStore(pool, runtime),
     credentials: new PgCredentialStore(pool),
+    pool,
   };
 }
 
@@ -208,7 +216,7 @@ function buildFeedback(): FeedbackSender | undefined {
 }
 
 function main(): void {
-  const { store, credentials } = buildStores();
+  const { store, credentials, pool } = buildStores();
   const vault = new EnvCredentialVault();
   const verifier = makeTokenVerifier();
 
@@ -240,14 +248,15 @@ function main(): void {
   };
 
   // Integrations: Composio "for you" (each user's own free account). The adapter
-  // is the same in every deployment; only the credential store differs.
-  // TODO(cloud-prod): swap MemoryIntegrationCredentialStore for a Pg-backed one
-  // (mirror PgCredentialStore) so a user's connected account survives a replica
-  // restart — needs a live DB to test, like the other Pg stores. The LOCAL
-  // profile already persists to a file.
+  // is the same in every deployment; only the credential store differs. With a
+  // live Pool (prod) the user's connected account persists in Postgres so it
+  // survives a replica restart; dev mode (no Pool) uses the in-memory store. The
+  // LOCAL profile persists to a file (see local/host.ts).
   const integrations: IntegrationDeps = {
     registry: new IntegrationRegistry([new ComposioProvider()]),
-    credentials: new MemoryIntegrationCredentialStore(),
+    credentials: pool
+      ? new PgIntegrationCredentialStore(pool)
+      : new MemoryIntegrationCredentialStore(),
   };
 
   const deps: ControlPlaneDeps = {
