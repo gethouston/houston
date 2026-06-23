@@ -95,6 +95,7 @@ export function exportCredential(): {
   refresh: string;
   expires: number;
   accountId?: string;
+  enterpriseUrl?: string;
 } | null {
   for (const [provider, c] of Object.entries(readAuthFile(authPathFor()))) {
     // Only OAuth credentials are captured centrally via export; an API key is
@@ -106,6 +107,9 @@ export function exportCredential(): {
         refresh: c.refresh,
         expires: c.expires,
         accountId: c.accountId,
+        // Copilot Enterprise domain, so the central store can refresh against
+        // the company's `api.<domain>/copilot_internal/v2/token` endpoint.
+        enterpriseUrl: c.enterpriseUrl,
       };
     }
   }

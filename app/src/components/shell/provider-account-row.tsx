@@ -17,6 +17,7 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
     case "openai":
       return <OpenAILogo />;
     case "github-copilot":
+    case "github-copilot-enterprise":
       return <GitHubCopilotLogo />;
     case "openrouter":
       return <OpenRouterLogo />;

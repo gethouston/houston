@@ -70,5 +70,14 @@
     "save": "Conectar",
     "saving": "Conectando...",
     "cancel": "Cancelar"
+  },
+  "enterprise": {
+    "title": "Conectar GitHub Copilot Enterprise",
+    "description": "Entre com a assinatura do Copilot que sua empresa oferece pelo GitHub Enterprise.",
+    "label": "Domínio do GitHub da sua empresa",
+    "placeholder": "empresa.ghe.com",
+    "hint": "Pergunte ao seu time de TI se não tiver certeza. Usa o Copilot pessoal? Use a outra opção.",
+    "cancel": "Cancelar",
+    "continue": "Continuar"
   }
 }

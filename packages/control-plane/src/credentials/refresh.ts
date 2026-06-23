@@ -50,7 +50,14 @@ export async function refreshCredential(
   // reopened app can't re-mint, so the workspace reads as disconnected. Reuse
   // pi-ai's exact exchange so the headers/skew never drift from the runtime's.
   if (cred.provider === "github-copilot") {
-    const r = await refreshGitHubCopilotToken(cred.refreshToken);
+    // `enterpriseUrl` (set only for GitHub Copilot Enterprise) routes the refresh
+    // at the company's GitHub: pi-ai hits `api.<domain>/copilot_internal/v2/token`
+    // instead of github.com. Absent => individual Copilot. Preserve it on the
+    // refreshed credential so the next refresh keeps targeting the same GHE.
+    const r = await refreshGitHubCopilotToken(
+      cred.refreshToken,
+      cred.enterpriseUrl,
+    );
     return {
       workspaceId: cred.workspaceId,
       provider: cred.provider,
@@ -58,6 +65,7 @@ export async function refreshCredential(
       refreshToken: r.refresh, // the GitHub token is long-lived (returned as-is)
       accountId: cred.accountId,
       expiresAt: r.expires,
+      enterpriseUrl: cred.enterpriseUrl,
     };
   }
 

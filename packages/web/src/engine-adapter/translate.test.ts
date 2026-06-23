@@ -1,12 +1,47 @@
 import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
-import { configWriteToSettings } from "./synthetic";
+import {
+  configWriteToSettings,
+  copilotCardConnected,
+  toNewProvider,
+} from "./synthetic";
 import {
   historyToFeed,
   isNotConnectedError,
   isStoppedByUser,
   turnErrorMessage,
 } from "./translate";
+
+describe("GitHub Copilot Enterprise card ↔ engine provider mapping", () => {
+  test("both Copilot cards map to the single `github-copilot` engine provider", () => {
+    // The Enterprise card is a connect-UI construct; pi has ONE github-copilot
+    // provider, so both cards drive it (they differ only by the company domain).
+    expect(toNewProvider("github-copilot")).toBe("github-copilot");
+    expect(toNewProvider("github-copilot-enterprise")).toBe("github-copilot");
+  });
+
+  test("copilotCardConnected routes one engine credential to the right card", () => {
+    // A connected ENTERPRISE credential (enterprise=true): only the Enterprise
+    // card is connected; the individual card is not (they're mutually exclusive).
+    expect(copilotCardConnected("github-copilot-enterprise", true, true)).toBe(
+      true,
+    );
+    expect(copilotCardConnected("github-copilot", true, true)).toBe(false);
+    // A connected INDIVIDUAL credential (enterprise=false): the reverse.
+    expect(copilotCardConnected("github-copilot", true, false)).toBe(true);
+    expect(copilotCardConnected("github-copilot-enterprise", true, false)).toBe(
+      false,
+    );
+    // Nothing connected: neither card.
+    expect(copilotCardConnected("github-copilot", false, false)).toBe(false);
+    expect(
+      copilotCardConnected("github-copilot-enterprise", false, false),
+    ).toBe(false);
+    // Non-Copilot cards: connected iff configured, regardless of `enterprise`.
+    expect(copilotCardConnected("anthropic", true, false)).toBe(true);
+    expect(copilotCardConnected("anthropic", false, false)).toBe(false);
+  });
+});
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must

@@ -128,7 +128,15 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         // selects Codex's browser/loopback login; default true keeps the
         // device-code path for remote webapp clients.
         const deviceAuth = url.searchParams.get("deviceAuth") !== "false";
-        return json(res, 200, await startLogin(provider, deviceAuth));
+        // GitHub Copilot Enterprise: the company GitHub domain the user typed on
+        // the Enterprise connect card. Empty/absent = individual Copilot.
+        const enterpriseDomain =
+          url.searchParams.get("enterpriseDomain") || undefined;
+        return json(
+          res,
+          200,
+          await startLogin(provider, deviceAuth, enterpriseDomain),
+        );
       }
       if (action === "login/complete") {
         const { code } = await readJson(req);

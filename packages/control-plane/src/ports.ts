@@ -189,6 +189,13 @@ export interface WorkspaceCredential {
   accountId?: string;
   /** Credential kind. Absent is read as "oauth" (every legacy credential). */
   kind?: "oauth" | "api_key";
+  /**
+   * GitHub Copilot Enterprise (GHE): the company GitHub domain (e.g.
+   * `acme.ghe.com`) this credential was issued for. Absent = individual Copilot
+   * (github.com). The central refresh hits `api.<domain>/copilot_internal/v2/token`,
+   * and it's served back so the runtime points the model at the enterprise API.
+   */
+  enterpriseUrl?: string;
 }
 
 /** A credential is an API key when explicitly tagged, or by the expiresAt=0 sentinel. */

@@ -80,7 +80,69 @@ export interface ProviderInfo {
   auth?: "oauth" | "apiKey";
   /** For `auth: "apiKey"`: the dashboard URL where the user creates/copies the key. */
   apiKeyUrl?: string;
+  /**
+   * GitHub Copilot Enterprise card: connecting it first asks for the company
+   * GitHub domain, then runs the same `github-copilot` engine login against that
+   * GitHub. The two Copilot cards are mutually exclusive (one engine credential);
+   * see the control-plane adapter's `providerStatus`/`providerLogin`.
+   */
+  enterprise?: boolean;
 }
+
+/**
+ * GitHub Copilot's curated models, shared by the individual and Enterprise cards
+ * (both drive the single `github-copilot` engine provider). pi-ai
+ * `github-copilot` ids — note the DOTTED form (claude-sonnet-4.6), distinct from
+ * the native Anthropic provider's dashed claude-sonnet-4-6. `contextWindow`s are
+ * the FIXED windows the Copilot gateway serves per model (from pi-ai) — not
+ * plan/credit-gated like a direct Claude/Codex subscription, so no snap-up
+ * `contextWindowMax`. `effortLevels` mirror the same underlying model's native
+ * catalog entry (pi-ai clamps per model); Haiku has no effort row by convention.
+ */
+const COPILOT_MODELS: readonly ModelOption[] = [
+  {
+    id: "claude-sonnet-4.6",
+    label: "Claude Sonnet 4.6",
+    description: "Best balance of speed and quality.",
+    effortLevels: ["low", "medium", "high", "max"],
+    contextWindow: 1_000_000,
+  },
+  {
+    id: "claude-opus-4.8",
+    label: "Claude Opus 4.8",
+    description: "Anthropic's flagship. Most capable, slower.",
+    effortLevels: ["low", "medium", "high", "xhigh", "max"],
+    // Copilot's gateway caps Opus at 200k (smaller than a direct Max plan).
+    contextWindow: 200_000,
+  },
+  {
+    id: "claude-haiku-4.5",
+    label: "Claude Haiku 4.5",
+    description: "Anthropic's fastest, for quick tasks.",
+    contextWindow: 200_000,
+  },
+  {
+    id: "gpt-5.5",
+    label: "GPT-5.5",
+    description: "OpenAI's frontier model.",
+    effortLevels: ["low", "medium", "high", "xhigh"],
+    contextWindow: 400_000,
+  },
+  {
+    id: "gpt-5-mini",
+    label: "GPT-5 Mini",
+    description: "OpenAI's fast, lightweight model.",
+    effortLevels: ["low", "medium", "high"],
+    contextWindow: 264_000,
+  },
+  {
+    id: "gemini-3-flash-preview",
+    label: "Gemini 3 Flash",
+    description: "Google's fast model.",
+    effortLevels: ["low", "medium", "high"],
+    contextWindow: 128_000,
+  },
+];
 
 export const PROVIDERS: readonly ProviderInfo[] = [
   {
@@ -166,58 +228,24 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     installUrl: "https://github.com/features/copilot",
     loginCommand: "",
     cost: "Your GitHub Copilot subscription",
-    // Copilot proxies Claude, GPT and Gemini under one subscription. These are
-    // pi-ai `github-copilot` model ids — note the DOTTED form (claude-sonnet-4.6),
-    // distinct from the native Anthropic provider's dashed claude-sonnet-4-6.
-    // `contextWindow`s are the FIXED windows the Copilot gateway serves per model
-    // (from pi-ai) — not plan/credit-gated like a direct Claude/Codex
-    // subscription, so no snap-up `contextWindowMax`. `effortLevels` mirror the
-    // same underlying model's native catalog entry (pi-ai clamps per model).
-    models: [
-      {
-        id: "claude-sonnet-4.6",
-        label: "Claude Sonnet 4.6",
-        description: "Best balance of speed and quality.",
-        effortLevels: ["low", "medium", "high", "max"],
-        contextWindow: 1_000_000,
-      },
-      {
-        id: "claude-opus-4.8",
-        label: "Claude Opus 4.8",
-        description: "Anthropic's flagship. Most capable, slower.",
-        effortLevels: ["low", "medium", "high", "xhigh", "max"],
-        // Copilot's gateway caps Opus at 200k (smaller than a direct Max plan).
-        contextWindow: 200_000,
-      },
-      {
-        id: "claude-haiku-4.5",
-        label: "Claude Haiku 4.5",
-        description: "Anthropic's fastest, for quick tasks.",
-        // No effort row, matching how Houston catalogs Haiku elsewhere.
-        contextWindow: 200_000,
-      },
-      {
-        id: "gpt-5.5",
-        label: "GPT-5.5",
-        description: "OpenAI's frontier model.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
-        contextWindow: 400_000,
-      },
-      {
-        id: "gpt-5-mini",
-        label: "GPT-5 Mini",
-        description: "OpenAI's fast, lightweight model.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 264_000,
-      },
-      {
-        id: "gemini-3-flash-preview",
-        label: "Gemini 3 Flash",
-        description: "Google's fast model.",
-        effortLevels: ["low", "medium", "high"],
-        contextWindow: 128_000,
-      },
-    ],
+    models: COPILOT_MODELS,
+    defaultModel: "claude-sonnet-4.6",
+  },
+  {
+    // Copilot provided by the user's company (GitHub Enterprise). Same engine
+    // provider + models as individual Copilot; the connect flow first collects
+    // the company GitHub domain (see the provider picker's enterprise dialog),
+    // then logs in against that GitHub. Mutually exclusive with the individual
+    // card — a person has personal OR company Copilot, one engine credential.
+    id: "github-copilot-enterprise",
+    name: "GitHub Copilot Enterprise",
+    subtitle: "Copilot from your company's GitHub",
+    cliName: "github-copilot",
+    installUrl: "https://github.com/features/copilot",
+    loginCommand: "",
+    cost: "Your company's GitHub Copilot",
+    enterprise: true,
+    models: COPILOT_MODELS,
     defaultModel: "claude-sonnet-4.6",
   },
   {

@@ -35,9 +35,20 @@ test("codexLoginMethod: device code when a co-located client hits a headless run
 test("autoPromptAnswer: github-copilot auto-answers the enterprise-domain prompt", () => {
   // pi-ai's Copilot login OPENS with an optional "GitHub Enterprise URL/domain"
   // question before emitting the device code; leaving it unanswered deadlocks
-  // the flow. Houston serves individual Copilot, so it auto-answers "" =>
-  // github.com (and never surfaces enterprise jargon to a non-technical user).
+  // the flow. With no domain (individual Copilot) we answer "" => github.com
+  // (and never surface enterprise jargon to a non-technical user).
   expect(autoPromptAnswer("github-copilot")).toBe("");
+});
+
+test("autoPromptAnswer: github-copilot forwards the Enterprise company domain", () => {
+  // Copilot Enterprise: the domain the user typed on the Enterprise card becomes
+  // the prompt answer, so pi-ai runs the device-code flow against the company's
+  // GitHub instead of github.com. The empty answer above is the individual case.
+  expect(autoPromptAnswer("github-copilot", "acme.ghe.com")).toBe(
+    "acme.ghe.com",
+  );
+  // A domain is meaningless for any other provider (their onPrompt is the paste).
+  expect(autoPromptAnswer("anthropic", "acme.ghe.com")).toBeNull();
 });
 
 test("autoPromptAnswer: other providers defer to the user (null => paste promise)", () => {

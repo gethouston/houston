@@ -20,6 +20,7 @@ import {
 import { useUIStore } from "../../stores/ui";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
+import { ProviderEnterpriseDialog } from "./provider-enterprise-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 
@@ -50,6 +51,11 @@ export function ProviderPicker({ onSelect }: Props) {
   } | null>(null);
   // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
+  // The GitHub Copilot Enterprise card collects the company GitHub domain here
+  // before starting login (the device-code flow is domain-specific).
+  const [enterpriseDialog, setEnterpriseDialog] = useState<ProviderInfo | null>(
+    null,
+  );
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers (OpenCode) run only on the new TS engine; hide them on the
@@ -193,12 +199,12 @@ export function ProviderPicker({ onSelect }: Props) {
     return off;
   }, [addToast, loadStatuses, t]);
 
-  const handleConnect = async (provider: ProviderInfo) => {
-    // API-key providers (OpenCode) connect by pasting a key, not OAuth.
-    if (provider.auth === "apiKey") {
-      setApiKeyDialog(provider);
-      return;
-    }
+  // Start the OAuth device/loopback login for a provider. `enterpriseDomain` is
+  // set only when connecting GitHub Copilot Enterprise (from the domain dialog).
+  const startOAuthLogin = async (
+    provider: ProviderInfo,
+    enterpriseDomain?: string,
+  ) => {
     setPendingId(provider.id);
     try {
       // launchLogin defaults deviceAuth from the platform — desktop catches the
@@ -207,7 +213,10 @@ export function ProviderPicker({ onSelect }: Props) {
       // headless mode regardless.
       // `toast: false`: the catch below renders the provider-specific failure
       // toast, so `call` must not also toast the same message (it showed twice).
-      await tauriProvider.launchLogin(provider.id, { toast: false });
+      await tauriProvider.launchLogin(provider.id, {
+        toast: false,
+        enterpriseDomain,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
@@ -221,6 +230,22 @@ export function ProviderPicker({ onSelect }: Props) {
       });
       setPendingId(null);
     }
+  };
+
+  const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers (OpenCode) connect by pasting a key, not OAuth.
+    if (provider.auth === "apiKey") {
+      setApiKeyDialog(provider);
+      return;
+    }
+    // GitHub Copilot Enterprise: collect the company GitHub domain first (the
+    // device-code flow is domain-specific), then run the same OAuth login with
+    // it. Individual Copilot and every other OAuth provider connect straight away.
+    if (provider.enterprise) {
+      setEnterpriseDialog(provider);
+      return;
+    }
+    await startOAuthLogin(provider);
   };
 
   const handleCancel = async (provider: ProviderInfo) => {
@@ -334,6 +359,14 @@ export function ProviderPicker({ onSelect }: Props) {
       <ProviderApiKeyDialog
         provider={apiKeyDialog}
         onClose={() => setApiKeyDialog(null)}
+      />
+
+      <ProviderEnterpriseDialog
+        provider={enterpriseDialog}
+        onClose={() => setEnterpriseDialog(null)}
+        onConnect={(domain) => {
+          if (enterpriseDialog) void startOAuthLogin(enterpriseDialog, domain);
+        }}
       />
     </>
   );

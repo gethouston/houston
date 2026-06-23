@@ -32,6 +32,7 @@ import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
   configWriteToSettings,
+  copilotCardConnected,
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
   DEFAULT_WORKSPACE_ID,
@@ -624,22 +625,32 @@ export class HoustonClient {
   async providerStatus(name: string): Promise<ProviderStatus> {
     const pid = toNewProvider(name);
     let configured = false;
+    let enterprise = false;
     if (pid) {
       try {
         const engine = this.providerEngine();
         if (engine) {
           const s = await engine.authStatus();
-          configured =
-            s.providers.find((p) => p.provider === pid)?.configured ?? false;
+          const pr = s.providers.find((p) => p.provider === pid);
+          configured = pr?.configured ?? false;
+          // A connected Copilot credential carries the company GitHub domain iff
+          // it's an Enterprise login; that's what tells the two cards apart.
+          enterprise = !!pr?.enterpriseUrl;
         }
       } catch {
         /* sandbox unreachable / no agent selected → report not-connected */
       }
     }
+    // The individual and Enterprise GitHub Copilot cards share ONE engine
+    // provider (`github-copilot`); the connected credential's enterpriseUrl
+    // decides which card owns it. Report "authenticated" for the matching card
+    // only, so the picker flips exactly one (they're mutually exclusive — a
+    // person has personal OR company Copilot).
+    const connected = copilotCardConnected(name, configured, enterprise);
     return {
       provider: name,
       cliInstalled: true,
-      authState: configured ? "authenticated" : "unauthenticated",
+      authState: connected ? "authenticated" : "unauthenticated",
       cliName: name,
       installSource: "managed",
       cliPath: null,
@@ -652,18 +663,26 @@ export class HoustonClient {
   // omits it never asks a remote runtime for an unreachable loopback.
   async providerLogin(
     name: string,
-    opts?: { deviceAuth?: boolean },
+    opts?: { deviceAuth?: boolean; enterpriseDomain?: string },
   ): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     const deviceAuth = opts?.deviceAuth ?? true;
+    // GitHub Copilot Enterprise: the company GitHub domain the user typed on the
+    // Enterprise card. The runtime runs the device-code flow against that GitHub
+    // instead of github.com. Undefined for every other connect (individual too).
+    const enterpriseDomain = opts?.enterpriseDomain;
 
     if (!this.cp) {
       // Local single runtime. Drive the legacy login dialog: `device_code`
       // carries the code to display; `url` (loopback) and `auth_code`
       // (headless Claude) leave `user_code` null so the dialog shows a paste
       // field. The runtime emits no completion event, so poll and synthesize.
-      const info = await this.engine.startLogin(pid, deviceAuth);
+      const info = await this.engine.startLogin(
+        pid,
+        deviceAuth,
+        enterpriseDomain,
+      );
       const url = info.kind === "device_code" ? info.verificationUri : info.url;
       const userCode = info.kind === "device_code" ? info.userCode : null;
       emitEvent("ProviderLoginUrl", {
@@ -681,25 +700,28 @@ export class HoustonClient {
     // handler consumes. A remote runtime returns a device_code (we pass its
     // `user_code`, which opens the code panel); a co-located desktop client gets
     // a loopback `url` (user_code null) that the handler opens straight in the
-    // browser. `provider` MUST be the old id (the dialog's contract).
+    // browser. The event `provider` MUST be the FRONTEND card id so the picker
+    // flips the right card — for Copilot Enterprise that's `name` (toOldProvider
+    // would collapse it back to plain `github-copilot`); all others round-trip.
     const agentId = this.requireAgentId();
-    const old = toOldProvider(pid);
+    const eventProvider =
+      name === "github-copilot-enterprise" ? name : toOldProvider(pid);
     const engine = controlPlane.runtimeClientFor(this.cp, agentId);
-    const info = await engine.startLogin(pid, deviceAuth);
+    const info = await engine.startLogin(pid, deviceAuth, enterpriseDomain);
     if (info.kind === "device_code") {
       emitEvent("ProviderLoginUrl", {
-        provider: old,
+        provider: eventProvider,
         url: info.verificationUri,
         user_code: info.userCode,
       });
     } else {
       emitEvent("ProviderLoginUrl", {
-        provider: old,
+        provider: eventProvider,
         url: info.url,
         user_code: null,
       });
     }
-    void this.pollProviderConnect(agentId, pid, old);
+    void this.pollProviderConnect(agentId, pid, eventProvider);
   }
   async submitProviderLoginCode(name: string, code: string): Promise<void> {
     const pid = toNewProvider(name);
