@@ -19,6 +19,7 @@ import { LanguageGate } from "@houston/app/components/shell/language-gate";
 import { analytics, classifyAnalyticsError } from "@houston/app/lib/analytics";
 import { isEngineReady, whenEngineReady } from "@houston/app/lib/engine";
 import { showErrorToast } from "@houston/app/lib/error-toast";
+import { installGlobalErrorHandlers } from "@houston/app/lib/global-error-handlers";
 import i18n from "@houston/app/lib/i18n";
 import { initFrontendLogging, logger } from "@houston/app/lib/logger";
 import { queryClient } from "@houston/app/lib/query-client";
@@ -37,26 +38,11 @@ initSentry();
 // write_frontend_log is a no-op shim, so this is harmless (console only).
 initFrontendLogging();
 
-window.onerror = (_event, _source, _line, _col, error) => {
-  const message = error?.message ?? String(_event);
-  console.error("[global:error]", message, error);
-  const err = error ?? new Error(message);
-  analytics.captureException(err, {
-    source: "uncaught_error",
-    error_kind: classifyAnalyticsError(message),
-  });
-  showErrorToast("uncaught_error", message, err);
-};
-
-window.onunhandledrejection = (event: PromiseRejectionEvent) => {
-  const message = event.reason?.message ?? String(event.reason);
-  console.error("[global:unhandledrejection]", message, event.reason);
-  analytics.captureException(event.reason, {
-    source: "unhandled_rejection",
-    error_kind: classifyAnalyticsError(message),
-  });
-  showErrorToast("unhandled_rejection", message, event.reason);
-};
+// Global error handlers — shared with the desktop entry (app/src/main.tsx) so
+// the two trees report identically and can't drift. Swallows benign background
+// noise (Supabase Web Locks steal, HOU-435). Must run AFTER initFrontendLogging()
+// so the console.error → log file patch is already in place.
+installGlobalErrorHandlers();
 
 class ErrorBoundary extends Component<
   { children: ReactNode },
