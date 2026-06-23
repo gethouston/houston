@@ -3,19 +3,41 @@ import { describe, it } from "node:test";
 import { resolveEffectiveProvider } from "../src/components/chat-effective-provider.ts";
 
 describe("resolveEffectiveProvider", () => {
-  it("honors an explicit activity provider as-is, even when logged out", () => {
-    // Chat must NOT auto-switch: a Claude-configured chat stays on Claude even
-    // when only OpenAI is connected (the send then surfaces the reconnect card).
+  it("uses an explicit (activity/agent) provider for a fresh chat when it is connected", () => {
     strictEqual(
-      resolveEffectiveProvider("anthropic", null, "openai", ["openai"], false),
+      resolveEffectiveProvider(
+        "anthropic",
+        null,
+        "openai",
+        ["anthropic", "openai"],
+        false,
+      ),
+      "anthropic",
+    );
+    strictEqual(
+      resolveEffectiveProvider(
+        null,
+        "anthropic",
+        null,
+        ["anthropic", "openai"],
+        false,
+      ),
       "anthropic",
     );
   });
 
-  it("honors an explicit agent provider as-is, even when logged out", () => {
+  it("does NOT default a fresh chat onto a configured-but-logged-out provider", () => {
+    // The reported bug: an agent configured for OpenAI opens a NEW chat while
+    // OpenAI is logged out — it must land on a connected provider (OpenRouter),
+    // not show a disconnected GPT-5.5 as the selected model. (Switching is safe
+    // here: no turn has run yet. An in-progress chat still freezes — see below.)
     strictEqual(
-      resolveEffectiveProvider(null, "anthropic", null, ["openai"], false),
-      "anthropic",
+      resolveEffectiveProvider("openai", null, null, ["openrouter"], false),
+      "openrouter",
+    );
+    strictEqual(
+      resolveEffectiveProvider(null, "openai", "openai", ["openrouter"], false),
+      "openrouter",
     );
   });
 

@@ -3,29 +3,28 @@
  * the provider forwarded to the engine on send. Mirrors the engine's
  * `ResolveMode::Interactive`.
  *
- * 1. An explicit per-chat (activity) or per-agent provider is honored **as-is**,
- *    even when it's logged out. Chat must never silently switch the user to a
- *    different model mid-conversation; a logged-out configured provider instead
- *    surfaces the reconnect card (the send fails auth and `afterMessages` renders
- *    `ProviderReconnectCard`). The dropdown is also locked once the chat has
- *    messages.
- * 2. With no explicit provider AND no messages yet (a fresh composer / a
- *    never-configured agent), pick an **authenticated** provider — the preferred
- *    one (last-used, else `"anthropic"`) if logged in, otherwise whichever the
- *    user IS logged into — so an OpenAI-only user never lands on Claude and
- *    fails auth (#483). This is initial selection, not a mid-chat switch, so the
- *    auth-driven pick is safe here.
- * 3. Once the conversation HAS messages, the provider is frozen to the preferred
- *    one even if it's logged out: the auth-driven pick from (2) is suppressed so
- *    a provider that logs out mid-conversation surfaces the reconnect card
- *    instead of silently handing the turn to another connected provider
- *    (answering — and billing — under a model the user never chose).
- * 4. When nothing is authenticated (or statuses haven't loaded yet), fall back
- *    to the preferred provider so the value is never empty.
+ * The preferred provider is the explicit per-chat (activity) or per-agent one,
+ * else the last-used, else `"anthropic"`. How it's used depends on whether the
+ * conversation has started:
+ *
+ * 1. Once the conversation HAS messages, the provider is FROZEN to `preferred`
+ *    even if it's logged out: never auth-switch a turn the user already started
+ *    onto a different connected provider (that would answer — and bill — under a
+ *    model they never chose). A logged-out provider instead surfaces the
+ *    reconnect card (`afterMessages` renders `ProviderReconnectCard`). The
+ *    dropdown is locked in this state too.
+ * 2. For a fresh, message-less composer (initial selection), use `preferred`
+ *    when it's authenticated, otherwise fall back to a provider the user IS
+ *    logged into. This both keeps an OpenAI-only user off Claude (#483) AND
+ *    never defaults a brand-new chat onto a disconnected provider — even the
+ *    agent's own configured default is auth-gated here, so an agent set to a
+ *    logged-out provider opens new chats on a connected one (the picker still
+ *    lets the user switch). Switching is safe because no turn has run yet.
+ * 3. When nothing is authenticated (or statuses haven't loaded yet), fall back
+ *    to `preferred` so the value is never empty.
  *
  * NOTE: routines/onboarding/summaries are the unattended counterpart and DO
- * auth-switch an explicit provider — that lives in the engine
- * (`ResolveMode::Unattended`), not here.
+ * auth-switch an explicit provider — that lives in the engine, not here.
  *
  * @param authenticatedProviders provider ids the user is currently logged into,
  *   in registry order (anthropic, openai).
@@ -40,17 +39,15 @@ export function resolveEffectiveProvider(
   authenticatedProviders: string[],
   hasMessages: boolean,
 ): string {
-  const explicit = activityProvider ?? agentProvider;
-  if (explicit) return explicit;
+  const preferred =
+    activityProvider ?? agentProvider ?? lastUsedProvider ?? "anthropic";
 
-  const preferred = lastUsedProvider ?? "anthropic";
-  // Freeze an in-progress conversation: never auth-switch it to a different
-  // connected provider just because the one it has been using logged out. A
-  // silent switch answers (and bills) under a model the user never chose; the
-  // logged-out provider must surface the reconnect card instead. The auth-pick
-  // below is for INITIAL selection of a fresh, message-less composer only (#483).
+  // Mid-conversation: freeze. Honor `preferred` as-is even when logged out so a
+  // logout surfaces the reconnect card instead of silently switching providers.
   if (hasMessages) return preferred;
 
+  // Fresh composer (initial selection): never default onto a disconnected
+  // provider — use `preferred` when connected, else any connected provider.
   if (authenticatedProviders.includes(preferred)) return preferred;
   return authenticatedProviders[0] ?? preferred;
 }

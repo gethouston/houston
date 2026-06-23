@@ -1,7 +1,11 @@
 import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
 import { configWriteToSettings } from "./synthetic";
-import { historyToFeed, turnErrorMessage } from "./translate";
+import {
+  historyToFeed,
+  isNotConnectedError,
+  turnErrorMessage,
+} from "./translate";
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must
@@ -25,6 +29,23 @@ test("turnErrorMessage falls back to the raw message for a non-JSON engine body"
 test("turnErrorMessage handles plain errors and non-errors", () => {
   expect(turnErrorMessage(new Error("boom"))).toBe("boom");
   expect(turnErrorMessage("just a string")).toBe("just a string");
+});
+
+test("isNotConnectedError matches every runtime 'no provider connected' variant", () => {
+  // Both verbatim messages the runtime raises when the provider is logged out.
+  expect(
+    isNotConnectedError(
+      "No provider connected. Log in with Claude or Codex first.",
+    ),
+  ).toBe(true);
+  expect(
+    isNotConnectedError(
+      "No provider connected. Connect your subscription first.",
+    ),
+  ).toBe(true);
+  // A real turn failure is NOT treated as the handled reconnect state.
+  expect(isNotConnectedError("upstream exploded")).toBe(false);
+  expect(isNotConnectedError("rate limit exceeded")).toBe(false);
 });
 
 describe("configWriteToSettings (model-pick → engine settings bridge)", () => {
