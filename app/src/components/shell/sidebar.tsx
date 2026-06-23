@@ -5,6 +5,7 @@ import { type ReactNode, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { DEFAULT_TAB_ID } from "../../agents/standard-tabs";
 import { orderAgents } from "../../lib/agent-order";
+import { resolveAutoCollapse } from "../../lib/sidebar-auto-collapse";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -42,22 +43,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
   // is otherwise respected; auto-expands again when it widens back across it.
   const prevWidth = useRef<number | null>(null);
   useEffect(() => {
-    const AUTO_COLLAPSE_WIDTH = 1000;
     const apply = () => {
       const w = window.innerWidth;
-      const prev = prevWidth.current;
-      if (
-        (prev === null || prev >= AUTO_COLLAPSE_WIDTH) &&
-        w < AUTO_COLLAPSE_WIDTH
-      ) {
-        setSidebarCollapsed(true);
-      } else if (
-        prev !== null &&
-        prev < AUTO_COLLAPSE_WIDTH &&
-        w >= AUTO_COLLAPSE_WIDTH
-      ) {
-        setSidebarCollapsed(false);
-      }
+      const decision = resolveAutoCollapse(prevWidth.current, w);
+      if (decision !== null) setSidebarCollapsed(decision);
       prevWidth.current = w;
     };
     apply();

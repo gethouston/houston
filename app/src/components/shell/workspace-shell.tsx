@@ -23,6 +23,8 @@ import {
 import { useActivity } from "../../hooks/queries";
 import { useKeyboardShortcuts } from "../../hooks/use-keyboard-shortcuts";
 import { analytics } from "../../lib/analytics";
+import { osIsTauri } from "../../lib/os-bridge";
+import { isMac } from "../../lib/platform";
 import { shortcutLabel } from "../../lib/shortcuts";
 import { useAgentCatalogStore } from "../../stores/agent-catalog";
 import { useAgentStore } from "../../stores/agents";
@@ -133,8 +135,13 @@ export function WorkspaceShell({
         {/* Seamless title bar (macOS titleBarStyle: Overlay). The strip is
             transparent, so it's the window-background colour in both themes —
             the traffic lights float over the app's own background with no
-            separate native bar. Draggable so the window still moves by it. */}
-        <div data-tauri-drag-region className="h-7 shrink-0" />
+            separate native bar. Draggable so the window still moves by it.
+            Only the macOS desktop build uses the overlay title bar, so the
+            strip is gated to that — on web and other platforms it would just
+            be a dead gap. */}
+        {osIsTauri() && isMac && (
+          <div data-tauri-drag-region className="h-7 shrink-0" />
+        )}
         <div className="flex min-h-0 flex-1">
           <Sidebar>
             {/* Transparent row: the window gutter shows in the gap-2 between
