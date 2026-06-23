@@ -180,4 +180,37 @@ describe("historyToFeed (persisted history → feed replay)", () => {
     ]);
     expect(feed.some((f) => f.feed_type === "provider_switched")).toBe(false);
   });
+
+  test("replays a persisted provider_error card, mapping the runtime id to the app id", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "do a thing", ts: 1 },
+      {
+        role: "assistant",
+        content: "",
+        ts: 2,
+        providerError: {
+          kind: "unauthenticated",
+          provider: "openai-codex",
+          cause: "token_revoked",
+          message: "Your session has ended. Please log in again.",
+        },
+      },
+    ]);
+    const card = feed.find((f) => f.feed_type === "provider_error");
+    expect(card?.data).toEqual({
+      kind: "unauthenticated",
+      // openai-codex → openai so the card resolves the provider name.
+      provider: "openai",
+      cause: "token_revoked",
+      message: "Your session has ended. Please log in again.",
+    });
+  });
+
+  test("a normal assistant turn replays no provider_error card", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "hi", ts: 1 },
+      { role: "assistant", content: "hello", ts: 2 },
+    ]);
+    expect(feed.some((f) => f.feed_type === "provider_error")).toBe(false);
+  });
 });

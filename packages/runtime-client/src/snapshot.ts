@@ -39,6 +39,11 @@ export function reduceSnapshot(
       // A mid-session provider switch is a boundary marker, not turn progress —
       // it's published while a turn is live, so leave running/partial untouched.
       return prev;
+    case "provider_error":
+      // A typed provider failure is a card marker, not turn progress. The turn's
+      // own terminal frame (`done`) clears the snapshot right after, so leave
+      // running/partial untouched here.
+      return prev;
     case "sync":
       return prev; // sync is a read-out, never published back in
   }

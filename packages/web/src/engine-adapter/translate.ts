@@ -239,6 +239,17 @@ export async function streamTurn(
           },
         });
         break;
+      case "provider_error":
+        // The turn's model request failed with a typed error: render the
+        // matching inline card (reconnect / rate-limit / 5xx / network). Map the
+        // runtime provider id to the app id the cards resolve names against (same
+        // mapping as provider_switched). The turn still ends with `done`, so do
+        // NOT settle or abort here — let the terminal frame finalize it.
+        feed(agentPath, sessionKey, {
+          feed_type: "provider_error",
+          data: { ...ev.data, provider: toOldProvider(ev.data.provider) },
+        });
+        break;
       case "error":
         finishErr(ev.data.message);
         ac.abort();
@@ -305,6 +316,18 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
             provider: toOldProvider(m.providerSwitch.provider),
             summarized: m.providerSwitch.summarized,
             pre_tokens: m.providerSwitch.pre_tokens,
+          },
+        });
+      }
+      // A persisted provider failure: replay the typed card so the inline
+      // reconnect / rate-limit surface survives a reload (the dedup in
+      // feedItemsToMessages keeps one card per (kind, provider) per turn).
+      if (m.providerError) {
+        out.push({
+          feed_type: "provider_error",
+          data: {
+            ...m.providerError,
+            provider: toOldProvider(m.providerError.provider),
           },
         });
       }

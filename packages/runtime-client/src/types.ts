@@ -6,6 +6,7 @@
  */
 
 export type {
+  AuthFailureCause,
   AuthStatus,
   ChatMessage,
   ChatRole,
@@ -15,6 +16,7 @@ export type {
   LoginState,
   LoginStatus,
   ProviderAuth,
+  ProviderError,
   ProviderId,
   ProviderInfo,
   Settings,

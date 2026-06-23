@@ -8,6 +8,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type {
   ChatMessage,
+  ProviderError,
   TokenUsage,
   ToolCallRecord,
 } from "@houston/runtime-client";
@@ -191,6 +192,10 @@ async function execTurn(
   let assistantText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
+  // A typed provider failure for this turn (pi resolves the turn rather than
+  // throwing, so this arrives on the stream, not via the catch). Captured here
+  // and persisted on the assistant message so the inline card survives a reload.
+  let providerError: ProviderError | undefined;
 
   const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
     const wire = toWire(e);
@@ -201,7 +206,7 @@ async function execTurn(
     else if (wire.type === "tool_end") {
       const t = tools[tools.length - 1];
       if (t) t.isError = wire.data.isError;
-    }
+    } else if (wire.type === "provider_error") providerError = wire.data;
     publish(id, wire);
   });
 
@@ -263,11 +268,29 @@ async function execTurn(
       if (level) conv.session.setThinkingLevel(level);
     }
     await conv.session.prompt(text);
-    appendAssistantMessage(id, assistantText, tools, usage);
+    // Persist the switch marker AND any typed provider error on this turn's
+    // assistant message so both the boundary divider and the reconnect /
+    // rate-limit card survive a history reload. A provider failure lands HERE
+    // (pi resolves the turn) with empty text, not in the catch below.
+    appendAssistantMessage(
+      id,
+      assistantText,
+      tools,
+      usage,
+      providerSwitch,
+      providerError,
+    );
     publish(id, { type: "done", data: null });
   } catch (err) {
     if (assistantText)
-      appendAssistantMessage(id, assistantText, tools, usage, providerSwitch);
+      appendAssistantMessage(
+        id,
+        assistantText,
+        tools,
+        usage,
+        providerSwitch,
+        providerError,
+      );
     publish(id, { type: "error", data: { message: errMessage(err) } });
   } finally {
     unsub();
