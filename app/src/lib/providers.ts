@@ -157,15 +157,18 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     // Context windows are the FIXED windows the OpenCode Zen gateway serves per
     // model (from pi-ai) — unlike a Claude/Codex subscription, they are not
     // plan/credit-gated, so no snap-up `contextWindowMax` is needed.
-    // `effortLevels` are the reasoning levels pi actually accepts for THIS
-    // gateway model (pi's getSupportedThinkingLevels, mapped to Houston's vocab);
-    // pi clamps anything else, so we only offer what the model honors.
+    // `effortLevels` come from models.dev's `reasoning_options.effort.values`
+    // (the source OpenCode itself uses), intersected with what the installed
+    // pi-ai actually maps to the gateway. Most open models expose only a
+    // reasoning on/off toggle (not discrete levels), so they omit effortLevels.
     models: [
       {
         id: "claude-sonnet-4-6",
         label: "Sonnet 4.6",
         description: "Best balance of speed and quality.",
         contextWindow: 1_000_000,
+        // models.dev: low/medium/high/max; pi-ai can't reach this gateway's
+        // "max" yet, so cap at high.
         effortLevels: ["low", "medium", "high"],
       },
       {
@@ -187,7 +190,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         label: "Gemini 3.5 Flash",
         description: "Fast and capable.",
         contextWindow: 1_048_576,
-        effortLevels: ["low", "medium", "high"],
+        // No discrete effort on this gateway model (models.dev lists none).
       },
       // Free trial models (OpenCode Zen) — test the provider without spending credits.
       {
@@ -195,29 +198,27 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         label: "DeepSeek V4 Flash (Free)",
         description: "Fast. Free to try.",
         contextWindow: 200_000,
-        // Only reasons at high+; lower levels would clamp up, so don't offer them.
-        effortLevels: ["high", "xhigh"],
+        // models.dev effort = [high, max] (plus a reasoning on/off toggle).
+        effortLevels: ["high", "max"],
       },
       {
         id: "minimax-m3-free",
         label: "MiniMax M3 (Free)",
         description: "Capable. Free to try.",
         contextWindow: 200_000,
-        effortLevels: ["low", "medium", "high"],
+        // Reasoning toggle only (no discrete effort) per models.dev.
       },
       {
         id: "mimo-v2.5-free",
         label: "MiMo V2.5 (Free)",
         description: "Free to try.",
         contextWindow: 200_000,
-        effortLevels: ["low", "medium", "high"],
       },
       {
         id: "nemotron-3-ultra-free",
         label: "Nemotron 3 Ultra (Free)",
         description: "NVIDIA. Free to try.",
         contextWindow: 1_000_000,
-        effortLevels: ["low", "medium", "high"],
       },
     ],
     defaultModel: "claude-sonnet-4-6",
@@ -233,43 +234,40 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     auth: "apiKey",
     apiKeyUrl: "https://opencode.ai/auth",
     // Fixed per-model context windows the OpenCode Go gateway serves (from pi-ai).
-    // effortLevels = the reasoning levels pi accepts for each model (clamped).
+    // effortLevels come from models.dev's reasoning_options; the open models here
+    // expose only a reasoning toggle (no discrete effort), so they omit it.
     models: [
       {
         id: "glm-5.1",
         label: "GLM-5.1",
         description: "Strong open coding model.",
         contextWindow: 202_752,
-        effortLevels: ["low", "medium", "high"],
       },
       {
         id: "kimi-k2.6",
         label: "Kimi K2.6",
         description: "Fast, capable open model.",
         contextWindow: 262_144,
-        // pi exposes only a single reasoning level here, so there's no effort
-        // choice to offer — the picker hides the effort row.
       },
       {
         id: "minimax-m3",
         label: "MiniMax M3",
         description: "Capable open model.",
         contextWindow: 512_000,
-        effortLevels: ["low", "medium", "high"],
       },
       {
         id: "qwen3.7-max",
         label: "Qwen3.7 Max",
         description: "Large open model.",
         contextWindow: 1_000_000,
-        effortLevels: ["low", "medium", "high"],
       },
       {
         id: "deepseek-v4-pro",
         label: "DeepSeek V4 Pro",
         description: "Strong reasoning.",
         contextWindow: 1_000_000,
-        effortLevels: ["high", "xhigh"],
+        // models.dev effort = [high, max].
+        effortLevels: ["high", "max"],
       },
     ],
     defaultModel: "glm-5.1",

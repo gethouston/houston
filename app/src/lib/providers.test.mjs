@@ -178,6 +178,46 @@ test("OpenCode Zen + Go are api-key providers with a dashboard URL", () => {
   assert.notEqual(getProvider("openai").auth, "apiKey");
 });
 
+test("OpenCode effort levels match models.dev reasoning_options", () => {
+  const effortOf = (prov, id) =>
+    getProvider(prov).models.find((m) => m.id === id)?.effortLevels;
+  // Models with discrete effort (models.dev reasoning_options.effort.values).
+  assert.deepEqual(effortOf("opencode", "claude-opus-4-8"), [
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+  ]);
+  assert.deepEqual(effortOf("opencode", "gpt-5.5"), [
+    "low",
+    "medium",
+    "high",
+    "xhigh",
+  ]);
+  assert.deepEqual(effortOf("opencode", "deepseek-v4-flash-free"), [
+    "high",
+    "max",
+  ]);
+  assert.deepEqual(effortOf("opencode-go", "deepseek-v4-pro"), ["high", "max"]);
+  // Open models expose only a reasoning toggle (no discrete effort) → omitted.
+  for (const [prov, id] of [
+    ["opencode", "gemini-3.5-flash"],
+    ["opencode", "minimax-m3-free"],
+    ["opencode", "mimo-v2.5-free"],
+    ["opencode", "nemotron-3-ultra-free"],
+    ["opencode-go", "glm-5.1"],
+    ["opencode-go", "kimi-k2.6"],
+    ["opencode-go", "minimax-m3"],
+    ["opencode-go", "qwen3.7-max"],
+  ]) {
+    assert.equal(
+      effortOf(prov, id),
+      undefined,
+      `${prov}/${id} has no effort levels`,
+    );
+  }
+});
+
 test("getVisibleProviders hides api-key providers off the new engine, shows them on it", () => {
   const onNewEngine = getVisibleProviders({ newEngine: true });
   const onRustEngine = getVisibleProviders({ newEngine: false });
