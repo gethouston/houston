@@ -1,7 +1,6 @@
 packages:
   - "ui/*"
   - "app"
-  - "mobile"
   - "packages/*"
   # packages/runtime is intentionally NOT a pnpm member — it is a self-contained
   # Bun project (see packages/runtime/README.md). Everything else under packages/*
@@ -11,8 +10,6 @@ packages:
   - "!packages/control-plane"
   # packages/code-sandbox is the per-task code-execution box (Cloud Run); also a self-contained Bun service.
   - "!packages/code-sandbox"
-  - "houston-relay"
-  - "examples/*"
 
 # Approve native build scripts (pnpm 10 blocks dependency postinstall by
 # default). @sentry/cli's postinstall downloads the platform `sentry-cli`

@@ -48,11 +48,8 @@ cargo test --workspace
 - `ui/` — React packages (@houston-ai/*)
 - `engine/` — Rust crates (houston-*) — frontend-agnostic backend
 - `app/` — Houston App (Tauri desktop)
-- `mobile/` — Houston Mobile companion
-- `desktop-mobile-bridge/` — Cloudflare Worker pairing App + Mobile
-- `store/` — Houston Store (agent registry)
-- `website/` — gethouston.ai landing
-- `always-on/` · `teams/` · `cloud/` — future hosted products (placeholders)
+- `packages/` — TypeScript engine convergence (runtime, control-plane, domain, protocol)
+- `cloud/` — Houston Cloud (hosted control plane)
 
 ## Pull Requests
 
