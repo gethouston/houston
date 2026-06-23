@@ -8,12 +8,14 @@
  * Connectable AI providers.
  * - `anthropic` = Claude Pro/Max (subscription OAuth)
  * - `openai-codex` = ChatGPT/Codex (subscription OAuth)
+ * - `github-copilot` = GitHub Copilot (subscription OAuth, GitHub device-code flow)
  * - `openrouter` = OpenRouter, `google` = Google Gemini, `opencode` = OpenCode Zen,
  *   `opencode-go` = OpenCode Go: API-key (a pasted key, no OAuth). See `ProviderAuth.authKind`.
  */
 export type ProviderId =
   | "anthropic"
   | "openai-codex"
+  | "github-copilot"
   | "openrouter"
   | "google"
   | "opencode"

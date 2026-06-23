@@ -18,7 +18,16 @@ test("every api-key provider the UI offers is accepted by the submit route", () 
 test("OAuth + unknown providers are NOT api-key providers", () => {
   expect(isApiKeyProvider("anthropic")).toBe(false);
   expect(isApiKeyProvider("openai-codex")).toBe(false);
+  expect(isApiKeyProvider("github-copilot")).toBe(false);
   expect(isApiKeyProvider("nope")).toBe(false);
+});
+
+test("github-copilot is a registered OAuth provider, LOCAL-only (not cloud)", () => {
+  // Registered (so the OAuth login relays through, and the api-key submit route
+  // correctly 400s a Copilot key attempt) but kept off the cloud per-turn
+  // runtime: the egress-locked sandbox doesn't allowlist githubcopilot.com.
+  expect(hostProvider("github-copilot")?.auth).toBe("oauth");
+  expect(isCloudProvider("github-copilot")).toBe(false);
 });
 
 test("OpenRouter + Gemini are registered but LOCAL-only (cloud egress not allowlisted)", () => {

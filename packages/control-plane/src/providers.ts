@@ -35,6 +35,12 @@ export const PROVIDERS: readonly HostProvider[] = [
     auth: "oauth",
     cloud: true,
   },
+  // GitHub Copilot subscription (OAuth, GitHub device-code flow). LOCAL/desktop
+  // only: the cloud per-turn sandbox is egress-locked and
+  // api.individual.githubcopilot.com isn't on its allowlist. The runtime serves
+  // Copilot's full model list via the standing-runtime /providers relay, so no
+  // curated `models` here (same as the other OAuth providers).
+  { id: "github-copilot", name: "GitHub Copilot", auth: "oauth", cloud: false },
   {
     id: "opencode",
     name: "OpenCode Zen",

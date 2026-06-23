@@ -65,6 +65,18 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         JSON.stringify({ provider: "openai", model: "gpt-5.5" }),
       ),
     ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
+    // GitHub Copilot shares one id across frontend and engine: a picked
+    // (non-default) Copilot model must mirror to the runtime, or every turn runs
+    // the provider default. Copilot uses DOTTED model ids (claude-opus-4.8).
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({
+          provider: "github-copilot",
+          model: "claude-opus-4.8",
+        }),
+      ),
+    ).toEqual({ activeProvider: "github-copilot", model: "claude-opus-4.8" });
   });
 
   test("sets activeProvider even when no model is given (provider switch)", () => {

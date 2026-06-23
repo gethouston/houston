@@ -45,6 +45,12 @@ export const config = {
   model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+  /**
+   * Default GitHub Copilot model (subscription OAuth). A pi-ai `github-copilot`
+   * model id — note Copilot's ids use dots (`claude-sonnet-4.6`), unlike the
+   * native Anthropic provider's dashes (`claude-sonnet-4-6`).
+   */
+  githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "claude-sonnet-4.6",
   /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
   geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3-flash-preview",
   /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
