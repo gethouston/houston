@@ -1,6 +1,6 @@
 # Open / Closed Boundary
 
-Houston is converging to ONE host (`packages/control-plane`, soon `packages/host`)
+Houston is converging to ONE host (`packages/host`)
 with two adapter profiles: **local** (desktop) and **cloud**. After convergence
 the repo splits into two:
 
@@ -35,7 +35,7 @@ Pure / local / deployment-agnostic. Must contain **zero** cloud-library imports
 | `packages/runtime-client`  | typed client for the runtime                                  |
 | `ui/**`                    | `@houston-ai/*` React packages (props-only)                   |
 
-Inside the **host** (`packages/control-plane`), these are OPEN too — they import
+Inside the **host** (`packages/host`), these are OPEN too — they import
 ports, never cloud adapters:
 
 `routes/**`, `domain/**`, `schedule/**`, `channel/**`, `events/**`, `watch/**`,
@@ -60,17 +60,17 @@ them.
 
 | File                                          | Cloud coupling           |
 | --------------------------------------------- | ------------------------ |
-| `packages/control-plane/src/store/pg.ts`      | `pg` (Postgres)          |
-| `packages/control-plane/src/integrations/credential-store-pg.ts` | `pg` (Postgres) — cloud integration-credential store |
-| `packages/control-plane/src/vfs/gcs.ts`       | `@google-cloud/storage`  |
-| `packages/control-plane/src/launcher/gke.ts`  | `@kubernetes/client-node`|
-| `packages/control-plane/src/launcher/reconcile.ts` | `@kubernetes/client-node` (apiserver reconcile used by GkeLauncher) |
-| `packages/control-plane/src/launcher/manifest.ts`  | `@kubernetes/client-node` (k8s object builders) |
-| `packages/control-plane/src/turn/bus-redis.ts`| `ioredis`                |
-| `packages/control-plane/src/admin/cluster.ts` | `@kubernetes/client-node`|
-| `packages/control-plane/src/admin/billing.ts` | BigQuery (googleapis)    |
-| `packages/control-plane/src/admin/overview.ts`| operator dashboard       |
-| `packages/control-plane/src/admin/quantity.ts`| operator dashboard helpers |
+| `packages/host/src/store/pg.ts`      | `pg` (Postgres)          |
+| `packages/host/src/integrations/credential-store-pg.ts` | `pg` (Postgres) — cloud integration-credential store |
+| `packages/host/src/vfs/gcs.ts`       | `@google-cloud/storage`  |
+| `packages/host/src/launcher/gke.ts`  | `@kubernetes/client-node`|
+| `packages/host/src/launcher/reconcile.ts` | `@kubernetes/client-node` (apiserver reconcile used by GkeLauncher) |
+| `packages/host/src/launcher/manifest.ts`  | `@kubernetes/client-node` (k8s object builders) |
+| `packages/host/src/turn/bus-redis.ts`| `ioredis`                |
+| `packages/host/src/admin/cluster.ts` | `@kubernetes/client-node`|
+| `packages/host/src/admin/billing.ts` | BigQuery (googleapis)    |
+| `packages/host/src/admin/overview.ts`| operator dashboard       |
+| `packages/host/src/admin/quantity.ts`| operator dashboard helpers |
 | `packages/runtime/src/turn/gcs-store.ts`      | `@google-cloud/storage` — the runtime's own cloud adapter (the pi engine ships to cloud too) |
 
 > **Note on paths from the original brief.** There is **no** `launcher/cloudrun.ts`
@@ -84,13 +84,13 @@ them.
 
 The wiring points, the closed surface itself, and the admin surface:
 
-- `packages/control-plane/src/main.ts` — the host wiring point; constructs every
+- `packages/host/src/main.ts` — the host wiring point; constructs every
   cloud adapter (`PgWorkspaceStore`, `GcsVfs`, `GkeLauncher`, `RedisTurnBus`,
   `BigQueryBillingReader`, `GkeClusterReader`, `PgCredentialStore`,
   `PgIntegrationCredentialStore`) and injects them behind ports.
-- `packages/control-plane/src/routes/admin.ts` — the operator-dashboard route;
+- `packages/host/src/routes/admin.ts` — the operator-dashboard route;
   part of the closed admin surface, imports only `admin/**`.
-- `packages/control-plane/src/admin/**` — intra-admin imports + k8s/BigQuery.
+- `packages/host/src/admin/**` — intra-admin imports + k8s/BigQuery.
 - the closed files themselves — `gke.ts → reconcile.ts → manifest.ts`, etc.
 - `packages/runtime/src/main.ts` — the runtime wiring point; constructs
   `GcsStore` (cloud) or `LocalDirStore` (local) behind the `ObjectStore` port via
@@ -103,16 +103,16 @@ the seam yet. They are tolerated by the check today (listed in `MIXED_FILES`)
 and surfaced in its success line. When `packages/host-cloud` is extracted, each
 must be cleanly split and removed from `MIXED_FILES`:
 
-- [ ] **`packages/control-plane/src/credentials/store.ts`**
+- [ ] **`packages/host/src/credentials/store.ts`**
       — `MemoryCredentialStore` (OPEN) + `PgCredentialStore` (CLOSED,
       `import type { Pool } from "pg"`).
       Split: keep `MemoryCredentialStore` open (e.g. `store-memory.ts`); move
       `PgCredentialStore` to the closed side (e.g. `store-pg.ts`).
-- [ ] **`packages/control-plane/src/vfs/index.ts`**
+- [ ] **`packages/host/src/vfs/index.ts`**
       — barrel re-exporting `FsVfs`/`MemoryVfs` (OPEN) + `GcsVfs` (CLOSED).
       Split: an open barrel (`fs` + `memory` + `vfs` port) and a closed export
       of `GcsVfs`; `main.ts` imports `GcsVfs` from the closed file directly.
-- [ ] **`packages/control-plane/src/auth/verify.ts`**
+- [ ] **`packages/host/src/auth/verify.ts`**
       — `DevTokenVerifier` / `SingleUserVerifier` / `ServiceTokenVerifier` +
       `makeTokenVerifier`/`parseServiceTokens` (OPEN; `local/host.ts` imports
       `SingleUserVerifier`) + `SupabaseTokenVerifier` (CLOSED, Supabase/JWKS).
@@ -142,7 +142,7 @@ packages and the host, extracts import/export/dynamic-import specifiers, and:
   `@kubernetes/*`, `googleapis`, `bigquery`) or a closed-destined file. The one
   allowlisted exception is the runtime's own adapter
   (`runtime/src/turn/gcs-store.ts`), reachable only from `runtime/src/main.ts`.
-- **Rule B** — inside `packages/control-plane`, only the import allowlist above
+- **Rule B** — inside `packages/host`, only the import allowlist above
   may import a closed-destined adapter file (or a cloud lib directly). Every
   other host file doing so is a violation.
 

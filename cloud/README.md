@@ -5,7 +5,7 @@
 > workspaces (the default for new ones) run agents as PER-TURN Cloud Run
 > requests over GCS-prefix workspaces — no standing pod, no PVC, idle = $0 —
 > dispatched by the control plane behind the SAME `/agents/:id/*` surface
-> (`packages/control-plane/src/turn/*`, `packages/runtime/src/turn/*`).
+> (`packages/host/src/turn/*`, `packages/runtime/src/turn/*`).
 > `gke` workspaces keep the pod path below until their PVC migrates
 > (`cloud/scripts/07-migrate-pvc-to-gcs.sh`). The keyless org-key proxy was
 > REMOVED: the one credential model is connect-once user subscriptions
@@ -32,28 +32,28 @@ The control plane and supporting artifacts are **built and tested** here. What r
 
 | Area | State | Where |
 |---|---|---|
-| Control plane foundation — domain, `authorize()`, ports, in-memory store | ✅ built · tested | `packages/control-plane/src/{domain,ports.ts,store/memory.ts}` |
-| Control plane auth — Supabase JWT verifier (+ dev) | ✅ tested | `packages/control-plane/src/auth/verify.ts` |
-| Control plane RBAC store — Postgres + migration | ✅ built · integration-noted | `packages/control-plane/src/store/pg.ts`, `cloud/migrations/0001_rbac.sql` |
-|  Control plane GkeLauncher — GKE lifecycle + fake | ✅ built · GKE integration-noted | `packages/control-plane/src/launcher/*` |
-| Control plane routing + 1:1 SSE pass-through proxy | ✅ tested | `packages/control-plane/src/proxy/route.ts` |
-| Control plane keyless credential proxy + vault | ✅ tested | `packages/control-plane/src/proxy/credentials.ts`, `src/credentials/vault.ts` |
-| Control plane HTTP server + authz boundary + `main` | ✅ tested (John's scenario) | `packages/control-plane/src/{server.ts,main.ts}` |
-| Operator dashboard — pods-per-user + GCP spend (estimate + BigQuery actuals) | ✅ built · tested | `packages/control-plane/src/admin/*`, `packages/web/src/admin/*`, `cloud/billing.md` |
+| Control plane foundation — domain, `authorize()`, ports, in-memory store | ✅ built · tested | `packages/host/src/{domain,ports.ts,store/memory.ts}` |
+| Control plane auth — Supabase JWT verifier (+ dev) | ✅ tested | `packages/host/src/auth/verify.ts` |
+| Control plane RBAC store — Postgres + migration | ✅ built · integration-noted | `packages/host/src/store/pg.ts`, `cloud/migrations/0001_rbac.sql` |
+|  Control plane GkeLauncher — GKE lifecycle + fake | ✅ built · GKE integration-noted | `packages/host/src/launcher/*` |
+| Control plane routing + 1:1 SSE pass-through proxy | ✅ tested | `packages/host/src/proxy/route.ts` |
+| Control plane keyless credential proxy + vault | ✅ tested | `packages/host/src/proxy/credentials.ts`, `src/credentials/vault.ts` |
+| Control plane HTTP server + authz boundary + `main` | ✅ tested (John's scenario) | `packages/host/src/{server.ts,main.ts}` |
+| Operator dashboard — pods-per-user + GCP spend (estimate + BigQuery actuals) | ✅ built · tested | `packages/host/src/admin/*`, `packages/web/src/admin/*`, `cloud/billing.md` |
 | Runtime cloud-mode — keyless, `baseUrl`→proxy | ✅ tested | `packages/runtime/src/{config,ai/providers,auth/login}.ts` |
 | Session-resume fix (sleep/wake hinge) | ✅ tested | `packages/runtime/src/session/chat.ts` |
 | Agent container image | ✅ built · CI-build-noted | `packages/runtime/Dockerfile`, root `.dockerignore` |
 | K8s / Agent-Sandbox manifests | ✅ validated | `cloud/k8s/*` |
 | gcloud provisioning (P0/P1) | ✅ scripts · confirm-before-billing | `cloud/scripts/*` |
 | **Frontend un-faking (web → control plane)** | ⏳ remaining in-repo work | `packages/web/src/engine-adapter/*` |
-| Files download/preview (GCS workspace → browser) | ✅ built · tested | `packages/control-plane/src/turn/files.ts` (`files/download`), web Files tab Preview/Download |
-| "Send feedback" intake (web → Linear) | ✅ built · tested (set `CP_LINEAR_API_KEY`/`CP_LINEAR_TEAM_ID`) | `packages/control-plane/src/feedback.ts`, `POST /feedback`, web shim `report_bug` |
-| Shared turn-state bus (2+ CP replicas) | ✅ built · tested (Memory default; Redis via `CP_REDIS_URL` — run `09-redis.sh`, then bump replicas) | `packages/control-plane/src/turn/{bus,bus-redis,relay,quota,connect}.ts` |
+| Files download/preview (GCS workspace → browser) | ✅ built · tested | `packages/host/src/turn/files.ts` (`files/download`), web Files tab Preview/Download |
+| "Send feedback" intake (web → Linear) | ✅ built · tested (set `CP_LINEAR_API_KEY`/`CP_LINEAR_TEAM_ID`) | `packages/host/src/feedback.ts`, `POST /feedback`, web shim `report_bug` |
+| Shared turn-state bus (2+ CP replicas) | ✅ built · tested (Memory default; Redis via `CP_REDIS_URL` — run `09-redis.sh`, then bump replicas) | `packages/host/src/turn/{bus,bus-redis,relay,quota,connect}.ts` |
 | Turn-quality evals (deck/xlsx/chart, nightly) | ✅ harness + CI workflow (needs `EVAL_*` secrets + eval user) | `cloud/evals/*`, `.github/workflows/evals.yml`, `CP_SERVICE_TOKENS` |
 | Custom domain (app.gethouston.ai) | ⏳ script ready; needs DNS + Supabase allow-list | `cloud/scripts/08-custom-domain.sh` |
 | Live provisioning · pen-test · load-test | ⏳ needs your accounts | run `cloud/scripts/*` |
 
-Run the control plane locally (all fakes, one local runtime): `cd packages/control-plane && CP_DEV=1 bun run dev`. Tests: `bun test` in `packages/control-plane` and `packages/runtime` (91 passing).
+Run the control plane locally (all fakes, one local runtime): `cd packages/host && CP_DEV=1 bun run dev`. Tests: `bun test` in `packages/host` and `packages/runtime` (91 passing).
 
 ---
 
@@ -200,7 +200,7 @@ Ordering puts the two unproven unknowns (session-resume, keyless proxy) *before*
 - **P7 — Networking lockdown.** default-deny, egress allowlist, block internal + metadata, Workload Identity. Pen-test agent↔agent reachability.
 - **P8 — Credentials.** Secret Manager per org + the proxy carrying real keys + metering.
 - **P9 — Sleep/wake.** Idle detect → snapshot → delete; restore on next message; warm window. (Depends on P3a.)
-- **P10 — Observability.** Per-org audit + billing + live counts + dashboard; Cloud Logging/Monitoring; Sentry. *(Dashboard ✅: operator `/admin` view — pods-per-user + live cost estimate + BigQuery billed actuals. `packages/control-plane/src/admin/*` + `packages/web/src/admin/*`; setup in `cloud/billing.md`. Audit log + Cloud Logging/Monitoring + Sentry remain.)*
+- **P10 — Observability.** Per-org audit + billing + live counts + dashboard; Cloud Logging/Monitoring; Sentry. *(Dashboard ✅: operator `/admin` view — pods-per-user + live cost estimate + BigQuery billed actuals. `packages/host/src/admin/*` + `packages/web/src/admin/*`; setup in `cloud/billing.md`. Audit log + Cloud Logging/Monitoring + Sentry remain.)*
 - **P11 — Frontend.** Un-fake the agent/workspace/routine/skill domains against the control plane; ship the web app.
 - **P12 — v2 hardening.** Kata (if the flip is real), load-test concurrency, tune warm windows + node sizing.
 

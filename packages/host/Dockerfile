@@ -4,7 +4,7 @@
 #
 # BUILD CONTEXT MUST BE THE MONOREPO ROOT — it depends on the sibling package
 # `@houston/runtime-client` via the lockfile entry `file:../runtime-client`:
-#   docker build -t houston/control-plane -f packages/control-plane/Dockerfile .
+#   docker build -t houston/control-plane -f packages/host/Dockerfile .
 
 # ---------- Install stage ----------
 FROM oven/bun:1-slim AS deps
@@ -15,8 +15,8 @@ COPY packages/runtime-client/package.json ./packages/runtime-client/package.json
 COPY packages/runtime-client/src ./packages/runtime-client/src
 
 # Manifest + lockfile first so this layer caches on deps alone.
-COPY packages/control-plane/package.json packages/control-plane/bun.lock ./packages/control-plane/
-WORKDIR /app/packages/control-plane
+COPY packages/host/package.json packages/host/bun.lock ./packages/host/
+WORKDIR /app/packages/host
 RUN bun install --frozen-lockfile
 
 # ---------- Runtime stage ----------
@@ -28,11 +28,11 @@ ENV CP_HOST=0.0.0.0 \
     CP_PROXY_PORT=8081 \
     NODE_ENV=production
 
-WORKDIR /app/packages/control-plane
-COPY --from=deps /app/packages/control-plane/node_modules ./node_modules
+WORKDIR /app/packages/host
+COPY --from=deps /app/packages/host/node_modules ./node_modules
 COPY --from=deps /app/packages/runtime-client /app/packages/runtime-client
-COPY packages/control-plane/package.json packages/control-plane/bun.lock ./
-COPY packages/control-plane/src ./src
+COPY packages/host/package.json packages/host/bun.lock ./
+COPY packages/host/src ./src
 
 # Run as the image's built-in non-root `bun` user (uid 1000).
 USER bun

@@ -8,7 +8,7 @@ steps:
     args:
       - build
       - -f
-      - packages/control-plane/Dockerfile
+      - packages/host/Dockerfile
       - -t
       - us-east1-docker.pkg.dev/gethouston/houston/control-plane:v8
       - .

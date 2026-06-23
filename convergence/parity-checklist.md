@@ -20,7 +20,7 @@ into both deployments; they differ ONLY in which adapters `main()` wires
 capabilities). Drift = a second copy of any handler, or a handler that branches
 on the deployment instead of on a port. There must be none.
 
-Run the whole automated gate: `cd packages/control-plane && bun test`.
+Run the whole automated gate: `cd packages/host && bun test`.
 
 ---
 

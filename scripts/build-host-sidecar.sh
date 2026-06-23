@@ -42,7 +42,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # The dual-role dispatch entry (host by default, runtime via HOUSTON_SIDECAR_ROLE).
-ENTRY="$REPO_ROOT/packages/control-plane/src/sidecar-entry.ts"
+ENTRY="$REPO_ROOT/packages/host/src/sidecar-entry.ts"
 OUT_DIR="$REPO_ROOT/target/host-sidecar"
 
 command -v bun >/dev/null 2>&1 || { echo "ERROR: bun not found on PATH" >&2; exit 1; }

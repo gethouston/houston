@@ -1,4 +1,4 @@
-# @houston/control-plane — cloud control plane
+# @houston/host — the Houston host (cloud control plane + local desktop supervisor)
 
 The control plane is the only thing the frontend talks to in Houston Cloud. It authenticates
 users, enforces RBAC, spawns/wakes/sleeps each agent's isolated GKE sandbox, holds
@@ -50,7 +50,7 @@ src/
 ## Run (dev, all fakes)
 
 ```bash
-cd packages/control-plane
+cd packages/host
 bun install
 CP_DEV=1 bun run dev
 ```
@@ -58,5 +58,5 @@ CP_DEV=1 bun run dev
 ## Test
 
 ```bash
-cd packages/control-plane && bun test
+cd packages/host && bun test
 ```

@@ -35,7 +35,7 @@ docker build -f Dockerfile.stub -t houston-agent-stub:test .
 kind load docker-image houston-agent-stub:test --name houston-gke-test
 
 # 3. Run the integration suite against the cluster.
-cd packages/control-plane
+cd packages/host
 HOUSTON_GKE_TEST=1 \
 CP_AGENT_IMAGE=houston-agent-stub:test \
 CP_NAMESPACE_PREFIX=ws- \

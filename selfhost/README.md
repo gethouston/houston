@@ -6,7 +6,7 @@ One machine, one user, your data on your disk. No Postgres, Redis, GCS, or
 Kubernetes — those are the cloud profile's machinery and none of it is needed
 here.
 
-> How this works: the **host** (`packages/control-plane/src/local/main.ts`) is
+> How this works: the **host** (`packages/host/src/local/main.ts`) is
 > already a server — the desktop just spawns it as a loopback sidecar. Self-host
 > is the same binary with `HOUSTON_HOST_BIND=0.0.0.0`, a persistent volume, and a
 > TLS reverse proxy in front. It lazily spawns one `pi` runtime per agent **inside

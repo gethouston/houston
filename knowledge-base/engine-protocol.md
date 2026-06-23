@@ -1,6 +1,6 @@
 # Houston Engine — Wire Protocol
 
-> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/control-plane`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**.
+> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/host`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**.
 
 Source of truth for the HTTP + WebSocket contract spoken by `houston-engine`
 and every client (desktop, mobile, CLI, third-party). Rust types live in

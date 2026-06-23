@@ -2,8 +2,8 @@
 #
 # Builds the desktop app with the Bun-compiled Houston HOST as the Tauri sidecar
 # (`--features host-sidecar`) instead of the legacy Rust engine. This is the
-# convergence target: ONE deployment-agnostic TypeScript host (packages/control-plane,
-# entry packages/control-plane/src/sidecar-entry.ts, compiled by
+# convergence target: ONE deployment-agnostic TypeScript host (packages/host,
+# entry packages/host/src/sidecar-entry.ts, compiled by
 # scripts/build-host-sidecar.sh) spawned by the Tauri shell, with pi runtimes
 # self-spawned in-process — no provider CLIs, no Rust engine.
 #
@@ -171,13 +171,13 @@ jobs:
       # runtime it self-spawns, so both their deps (and the file: siblings) must
       # resolve before `bun build --compile`. `pnpm install` above already put
       # the pnpm-managed siblings (protocol / runtime-client / domain /
-      # agent-schemas) on disk; runtime + control-plane are OUTSIDE the pnpm
+      # agent-schemas) on disk; runtime + host are OUTSIDE the pnpm
       # workspace and need their own bun install. Order matches the proven
       # selfhost/Dockerfile chain (each package's file: siblings present first).
       - name: Install host (Bun service) deps
         run: |
           set -euo pipefail
-          for pkg in protocol runtime-client domain runtime control-plane; do
+          for pkg in protocol runtime-client domain runtime host; do
             echo "::group::bun install — packages/$pkg"
             (cd "packages/$pkg" && bun install --frozen-lockfile)
             echo "::endgroup::"
@@ -480,7 +480,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for pkg in protocol runtime-client domain runtime control-plane; do
+          for pkg in protocol runtime-client domain runtime host; do
             echo "::group::bun install — packages/$pkg"
             (cd "packages/$pkg" && bun install --frozen-lockfile)
             echo "::endgroup::"
@@ -619,7 +619,7 @@ jobs:
       - name: Install host (Bun service) deps
         run: |
           set -euo pipefail
-          for pkg in protocol runtime-client domain runtime control-plane; do
+          for pkg in protocol runtime-client domain runtime host; do
             echo "::group::bun install — packages/$pkg"
             (cd "packages/$pkg" && bun install --frozen-lockfile)
             echo "::endgroup::"

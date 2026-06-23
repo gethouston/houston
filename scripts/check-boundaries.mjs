@@ -23,7 +23,7 @@
  *     runtime's wiring point (packages/runtime/src/main.ts) — the same
  *     port+adapter+wiring shape one level down.
  *
- *   Rule B — within packages/control-plane (the host), only an allowlist may
+ *   Rule B — within packages/host, only an allowlist may
  *     import a closed-destined adapter file. Allowlist = src/main.ts (the
  *     wiring point), the closed files themselves (intra-closed imports), the
  *     admin surface (admin/**), and routes/admin.ts (the admin route). Every
@@ -55,7 +55,7 @@ const OPEN_PACKAGES = [
 ];
 
 /** The host package that Rule B governs internally. */
-const HOST = "packages/control-plane";
+const HOST = "packages/host";
 
 /**
  * Bare specifiers that are cloud-only. A `from "<lib>"` or `from "<lib>/..."`
@@ -78,19 +78,19 @@ const CLOUD_LIBS = [
  * may. Each is a single-purpose cloud adapter or part of the admin surface.
  */
 const CLOSED_FILES = new Set([
-  // control-plane cloud adapters
-  "packages/control-plane/src/store/pg",
-  "packages/control-plane/src/integrations/credential-store-pg",
-  "packages/control-plane/src/vfs/gcs",
-  "packages/control-plane/src/launcher/gke",
-  "packages/control-plane/src/launcher/reconcile",
-  "packages/control-plane/src/launcher/manifest",
-  "packages/control-plane/src/turn/bus-redis",
-  // control-plane operator-admin surface (closed)
-  "packages/control-plane/src/admin/billing",
-  "packages/control-plane/src/admin/cluster",
-  "packages/control-plane/src/admin/overview",
-  "packages/control-plane/src/admin/quantity",
+  // host cloud adapters
+  "packages/host/src/store/pg",
+  "packages/host/src/integrations/credential-store-pg",
+  "packages/host/src/vfs/gcs",
+  "packages/host/src/launcher/gke",
+  "packages/host/src/launcher/reconcile",
+  "packages/host/src/launcher/manifest",
+  "packages/host/src/turn/bus-redis",
+  // host operator-admin surface (closed)
+  "packages/host/src/admin/billing",
+  "packages/host/src/admin/cluster",
+  "packages/host/src/admin/overview",
+  "packages/host/src/admin/quantity",
   // runtime's own cloud adapter (closed within the open package)
   "packages/runtime/src/turn/gcs-store",
 ]);
@@ -109,8 +109,8 @@ const CLOSED_FILES = new Set([
  *                          (closed).
  */
 const MIXED_FILES = new Set([
-  "packages/control-plane/src/credentials/store",
-  "packages/control-plane/src/vfs/index",
+  "packages/host/src/credentials/store",
+  "packages/host/src/vfs/index",
 ]);
 
 /**
@@ -120,9 +120,9 @@ const MIXED_FILES = new Set([
  */
 const IMPORT_ALLOWLIST = new Set([
   // host wiring point — the one legitimate place cloud adapters are constructed
-  "packages/control-plane/src/main",
+  "packages/host/src/main",
   // the admin route is part of the closed admin surface
-  "packages/control-plane/src/routes/admin",
+  "packages/host/src/routes/admin",
   // runtime wiring point — constructs GcsStore behind a dynamic import
   "packages/runtime/src/main",
 ]);
@@ -135,7 +135,7 @@ function isAllowlisted(repoRelNoExt) {
   // a mixed file IS the closed half pre-split; it carries its own cloud import.
   if (MIXED_FILES.has(repoRelNoExt)) return true;
   // the whole admin surface is closed; admin/** may import admin/** + adapters.
-  if (repoRelNoExt.startsWith("packages/control-plane/src/admin/")) return true;
+  if (repoRelNoExt.startsWith("packages/host/src/admin/")) return true;
   return false;
 }
 

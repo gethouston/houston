@@ -153,7 +153,7 @@ houston/
 │
 ├── packages/               THE CONVERGENCE — the single TypeScript engine (see convergence/README.md)
 │   ├── runtime/             pi runtime — the only agent loop
-│   ├── control-plane/       the host (cloud + local desktop, adapter profiles); becomes packages/host
+│   ├── host/                the host (cloud + local desktop, adapter profiles)
 │   ├── domain/              shared domain logic (.houston layout, schemas, cron, portable)
 │   ├── protocol/            v3 wire types + zod
 │   ├── web/                 the full desktop UI in a browser tab

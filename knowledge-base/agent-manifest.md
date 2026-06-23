@@ -234,7 +234,7 @@ Notes:
   credential. The frontend catalog gates them behind `newEngineActive()` so the
   Rust build never shows them. Full design: `convergence/README.md` standing
   decisions. Runtime registry: `packages/runtime/src/ai/providers.ts`; host
-  catalog: `packages/control-plane/src/providers.ts`.
+  catalog: `packages/host/src/providers.ts`.
 
 ### Reasoning effort
 

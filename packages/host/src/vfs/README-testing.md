@@ -25,7 +25,7 @@ curl -s -X POST 'http://localhost:4443/storage/v1/b?project=houston-test' \
   -d '{"name":"houston-vfs-test"}'
 
 # 2. Run the vfs contract against GcsVfs.
-cd packages/control-plane
+cd packages/host
 HOUSTON_GCS_TEST_BUCKET=houston-vfs-test \
 HOUSTON_GCS_TEST_ENDPOINT=http://localhost:4443 \
 STORAGE_EMULATOR_HOST=http://localhost:4443 \
@@ -47,7 +47,7 @@ Needs `gcloud` auth (ADC) with `roles/storage.objectAdmin` on the bucket.
 gcloud auth application-default login
 gcloud storage buckets create gs://houston-vfs-test-$USER --location=us
 
-cd packages/control-plane
+cd packages/host
 HOUSTON_GCS_TEST_BUCKET=houston-vfs-test-$USER \
   bun test src/vfs/contract.test.ts
 

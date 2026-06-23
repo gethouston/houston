@@ -31,7 +31,7 @@ tracking). This is surfaced in the migration log, not swallowed.
 # copy real data to scratch (db is WAL-mode — copy the -wal/-shm sidecars too)
 cp -R ~/.houston/workspaces /tmp/mig/workspaces
 cp ~/.houston/db/houston.db* /tmp/mig/db/
-# from packages/control-plane, call migrateChatHistory({ workspacesRoot, dbPath })
+# from packages/host, call migrateChatHistory({ workspacesRoot, dbPath })
 # (the same call local/host.ts makes at boot). Inspect .houston/runtime/{conversations,sessions}.
 ```
 

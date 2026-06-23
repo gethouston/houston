@@ -6,8 +6,8 @@ packages:
   # Bun project (see packages/runtime/README.md). Everything else under packages/*
   # (web, engine-client) is pnpm-managed.
   - "!packages/runtime"
-  # packages/control-plane is likewise a self-contained Bun service (the cloud control plane).
-  - "!packages/control-plane"
+  # packages/host is likewise a self-contained Bun service (the Houston host / cloud control plane).
+  - "!packages/host"
   # packages/code-sandbox is the per-task code-execution box (Cloud Run); also a self-contained Bun service.
   - "!packages/code-sandbox"
 

@@ -4,14 +4,14 @@
 
 ## Current architecture (the convergence target)
 
-ONE deployment-agnostic server — the **host** (`packages/control-plane`, becoming `packages/host`) — with ONE router, ONE `authorize()` seam, ONE domain layer, and **two adapter profiles** (local desktop vs cloud multi-tenant) wired in `main()`. The only agent loop is the **pi runtime** (`packages/runtime`, TS/Bun) — single-workspace, single-credential, tenancy-free. Domain logic lives once in `packages/domain`; wire types + zod in `packages/protocol` (**protocol v3**). The frontend (`app/src`, also `packages/web`) talks ONLY to the host via `@houston-ai/engine-client`, every deployment.
+ONE deployment-agnostic server — the **host** (`packages/host`) — with ONE router, ONE `authorize()` seam, ONE domain layer, and **two adapter profiles** (local desktop vs cloud multi-tenant) wired in `main()`. The only agent loop is the **pi runtime** (`packages/runtime`, TS/Bun) — single-workspace, single-credential, tenancy-free. Domain logic lives once in `packages/domain`; wire types + zod in `packages/protocol` (**protocol v3**). The frontend (`app/src`, also `packages/web`) talks ONLY to the host via `@houston-ai/engine-client`, every deployment.
 
 - **Desktop** = the host booted with local adapters (FS store/vfs, subprocess pi launcher, single-user identity, FS watcher → events), spawned by the Tauri shell as a Bun-compiled sidecar (`--features host-sidecar`).
 - **Cloud** = the same host with cloud adapters (Postgres, GCS, GKE/Cloud-Run launcher, Supabase identity, Redis bus). Per-turn Cloud Run: hydrate → run one pi turn → sync → wipe.
 - **Self-host** = the local host in Docker behind Caddy TLS (`selfhost/`).
 - **Providers** are in-process in pi (Anthropic + OpenAI/Codex OAuth). **No provider CLIs.** Gemini dropped.
-- **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/control-plane/src/integrations/`), each user's own free account, no CLI.
-- **Drift prevention** = port contract suites + the dual-profile parity test (`packages/control-plane/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`.
+- **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/host/src/integrations/`), each user's own free account, no CLI.
+- **Drift prevention** = port contract suites + the dual-profile parity test (`packages/host/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`.
 - **Cut:** mobile/tunnel/relay, worktrees, store/marketplace, claude-CLI install. Single personal workspace (teams later).
 
 Everything from here down is the legacy/transitional detail (Rust engine crates, bundled CLIs, the original product map). Accurate for the default build until P6, but `convergence/README.md` is canonical for the direction.

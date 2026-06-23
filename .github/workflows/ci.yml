@@ -15,7 +15,7 @@
 #   - pnpm owns the root workspace (ui/*, app, packages/domain, packages/web, …).
 #   - Bun owns the self-contained services that are INTENTIONALLY excluded from
 #     the pnpm workspace (see pnpm-workspace.yaml): packages/runtime and
-#     packages/control-plane. They carry their own bun.lock and must be
+#     packages/host. They carry their own bun.lock and must be
 #     installed + typechecked + tested directly with Bun. `pnpm -r` never
 #     reaches them, so they get explicit steps below.
 
@@ -68,7 +68,7 @@ jobs:
       - name: Install (Bun services)
         run: |
           set -euo pipefail
-          for dir in packages/runtime packages/control-plane; do
+          for dir in packages/runtime packages/host; do
             echo "::group::bun install — $dir"
             (cd "$dir" && bun install --frozen-lockfile)
             echo "::endgroup::"
@@ -93,12 +93,12 @@ jobs:
       - name: Typecheck (pnpm workspace)
         run: pnpm -r typecheck
 
-      # runtime + control-plane are outside the pnpm workspace — typecheck them
+      # runtime + host are outside the pnpm workspace — typecheck them
       # directly with their own tsgo.
       - name: Typecheck (Bun services)
         run: |
           set -euo pipefail
-          for dir in packages/runtime packages/control-plane; do
+          for dir in packages/runtime packages/host; do
             echo "::group::typecheck — $dir"
             (cd "$dir" && bun run typecheck)
             echo "::endgroup::"
@@ -114,7 +114,7 @@ jobs:
         run: |
           set -euo pipefail
           (cd packages/domain && bun install --frozen-lockfile)
-          for dir in packages/domain packages/control-plane packages/runtime; do
+          for dir in packages/domain packages/host packages/runtime; do
             echo "::group::bun test — $dir"
             (cd "$dir" && bun test)
             echo "::endgroup::"

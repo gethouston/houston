@@ -1,6 +1,6 @@
 # Platform Matrix — Rust (engine/) layer
 
-> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/control-plane`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**. TS host platform support is tracked in `convergence/README.md`; the UTM loop in `windows-testing.md` applies to the Bun host sidecar too.
+> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/host`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**. TS host platform support is tracked in `convergence/README.md`; the UTM loop in `windows-testing.md` applies to the Bun host sidecar too.
 
 Status of Windows support at the engine's Rust surface as of this
 commit. CI wiring (matrix build, artifact naming, updater targets)

@@ -3,7 +3,7 @@
   "configVersion": 1,
   "workspaces": {
     "": {
-      "name": "@houston/control-plane",
+      "name": "@houston/host",
       "dependencies": {
         "@composio/client": "^0.1.0-alpha.73",
         "@earendil-works/pi-coding-agent": "0.78.1",

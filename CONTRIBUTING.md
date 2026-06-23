@@ -48,7 +48,7 @@ cargo test --workspace
 - `ui/` — React packages (@houston-ai/*)
 - `engine/` — Rust crates (houston-*) — frontend-agnostic backend
 - `app/` — Houston App (Tauri desktop)
-- `packages/` — TypeScript engine convergence (runtime, control-plane, domain, protocol)
+- `packages/` — TypeScript engine convergence (runtime, host, domain, protocol)
 - `cloud/` — Houston Cloud (hosted control plane)
 
 ## Pull Requests

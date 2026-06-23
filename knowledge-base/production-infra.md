@@ -94,7 +94,7 @@ PostHog → BigQuery plugin → target GCP project (burns credits). SQL-queryabl
 
 ## Houston Cloud (GCP project `gethouston`, us-east1)
 
-_The cloud control-plane is now the v3 TypeScript host (`packages/control-plane`), not the Rust engine; per-turn Cloud Run. See `convergence/README.md` + `cloud/code-execution.md`._
+_The cloud control-plane is now the v3 TypeScript host (`packages/host`), not the Rust engine; per-turn Cloud Run. See `convergence/README.md` + `cloud/code-execution.md`._
 
 Live beta. Four deployables; agent compute scales to zero (see
 `cloud/unit-economics.md` for the cost model, `cloud/code-execution.md` for the
@@ -112,14 +112,14 @@ Rules learned in production:
   (`CP_TURN_RUNTIME_URL`, `CP_GCS_BUCKET`, `CP_DEFAULT_RUNTIME`), agent image.
   Never let it drift: a stale `kubectl apply` silently wipes live config.
 - **Zero-downtime deploys**: the CP drains on SIGTERM
-  (`packages/control-plane/src/shutdown.ts`) and the Deployment rolls with
+  (`packages/host/src/shutdown.ts`) and the Deployment rolls with
   `maxUnavailable: 0` + preStop sleep + a PDB. Single replica is deliberate
   (in-memory turn relay); multi-replica HA needs that state on a shared bus.
 - **Secrets**: app-layer tokens are Secret Manager `houston-code-sandbox-token`
   / `houston-turn-token`. Create values with `printf '%s' "$(openssl rand -hex 32)"`
   — `openssl | gcloud` appends a newline that desyncs both sides.
 - **DB migrations**: additive only (745 real users); apply with
-  `CP_DATABASE_URL=… bun packages/control-plane/scripts/run-migration.ts <file>`
+  `CP_DATABASE_URL=… bun packages/host/scripts/run-migration.ts <file>`
   (no psql needed).
 - **gcloud auth**: org policy re-prompts ~hourly; non-interactive shells then
   fail with "Reauthentication failed" — rerun `gcloud auth login`. The account
