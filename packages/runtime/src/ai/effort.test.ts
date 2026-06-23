@@ -1,5 +1,5 @@
 import { expect, test } from "bun:test";
-import { toThinkingLevel } from "./effort";
+import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "./effort";
 
 /**
  * Houston's effort vocabulary → pi's thinkingLevel. The only non-identity case
@@ -23,4 +23,13 @@ test("absent or unknown effort → undefined (omit the override)", () => {
   expect(toThinkingLevel(undefined)).toBeUndefined();
   expect(toThinkingLevel("")).toBeUndefined();
   expect(toThinkingLevel("turbo")).toBeUndefined();
+});
+
+test("the reasoning default produces a real thinking level (not OFF)", () => {
+  // A reasoning-capable model with no chosen effort defaults to
+  // DEFAULT_REASONING_EFFORT. pi enables reasoning only when a level is set
+  // (enable_thinking = !!reasoningEffort), so the default MUST map to a defined
+  // level or "thinking" models (e.g. an OpenCode toggle model) silently run with
+  // reasoning OFF — the exact bug this default exists to prevent.
+  expect(toThinkingLevel(DEFAULT_REASONING_EFFORT)).toBeDefined();
 });

@@ -7,7 +7,7 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, ToolCallRecord } from "@houston/runtime-client";
-import { toThinkingLevel } from "../ai/effort";
+import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { activeEffort, activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredential } from "../auth/serve";
 import { authStorage, modelRegistry } from "../auth/storage";
@@ -163,11 +163,18 @@ async function execTurn(
     // A routine can pin a model/effort for its run. Re-point the (possibly
     // shared) session before prompting; pi clamps the thinking level to the
     // model. A bad model id throws here → surfaces as the turn's error event.
-    if (pin?.model) await conv.session.setModel(resolveModel(pin.model));
-    // Effort: the routine's pin wins, else the agent's saved setting. Applied on
-    // EVERY turn (not just session creation) so changing it in the picker takes
-    // effect on the next message. pi clamps the level to the active model.
-    const effort = pin?.effort ?? activeEffort();
+    const model = resolveModel(pin?.model);
+    if (pin?.model) await conv.session.setModel(model);
+    // Effort: the routine's pin wins, else the agent's saved setting; if neither
+    // is set and the model can reason, default to medium so a reasoning model
+    // (e.g. an OpenCode toggle model) actually thinks — pi only enables reasoning
+    // when a level is set. Applied EVERY turn so picker changes take effect on the
+    // next message. pi clamps the level to the active model.
+    const reasons = (model as { reasoning?: boolean }).reasoning === true;
+    const effort =
+      pin?.effort ??
+      activeEffort() ??
+      (reasons ? DEFAULT_REASONING_EFFORT : undefined);
     if (effort) {
       const level = toThinkingLevel(effort);
       if (level) conv.session.setThinkingLevel(level);

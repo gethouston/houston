@@ -1,6 +1,10 @@
 import { useTranslation } from "react-i18next";
 import { nextEffort } from "../lib/effort-cycle";
-import { type EffortLevel, getEffortLevels } from "../lib/providers";
+import {
+  EFFORT_ORDER,
+  type EffortLevel,
+  getEffortLevels,
+} from "../lib/providers";
 import { EffortIcon } from "./effort-icon";
 
 interface ChatEffortSelectorProps {
@@ -79,7 +83,11 @@ export function ChatEffortSelector({
       }}
       className="flex items-center gap-1.5 h-7 px-2 rounded-lg text-xs text-muted-foreground hover:text-foreground hover:bg-accent transition-colors outline-none focus-visible:ring-1 focus-visible:ring-ring"
     >
-      <EffortIcon levels={levels} active={effort} className="size-3.5" />
+      {/* Always render the full effort spectrum (filled to the active level)
+          so the gauge looks identical across models — a 2-level model no longer
+          renders as a lone short + tall bar. Cycling still uses the model's own
+          `levels` above. */}
+      <EffortIcon levels={EFFORT_ORDER} active={effort} className="size-3.5" />
       <span>{activeLabel}</span>
     </button>
   );

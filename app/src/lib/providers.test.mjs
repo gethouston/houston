@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  EFFORT_ORDER,
   getEffortLevels,
   getProvider,
   getVisibleProviders,
@@ -215,6 +216,38 @@ test("OpenCode effort levels match models.dev reasoning_options", () => {
       undefined,
       `${prov}/${id} has no effort levels`,
     );
+  }
+});
+
+test("EFFORT_ORDER is the full ascending spectrum and a superset of every model's levels", () => {
+  // The composer renders the gauge against EFFORT_ORDER (not the model's own
+  // levels) so every model shows the SAME number of bars. That only reads right
+  // if EFFORT_ORDER is the canonical low->high spectrum...
+  assert.deepEqual(EFFORT_ORDER, ["low", "medium", "high", "xhigh", "max"]);
+  // ...and a superset of every model's effortLevels, so any active level a model
+  // can hold has a position on the shared gauge (else a bar would never fill).
+  const order = new Set(EFFORT_ORDER);
+  for (const p of PROVIDERS) {
+    for (const m of p.models) {
+      for (const e of m.effortLevels ?? []) {
+        assert.ok(
+          order.has(e),
+          `${p.id}/${m.id} effort "${e}" is in EFFORT_ORDER`,
+        );
+      }
+      // A model's own levels must stay in ascending EFFORT_ORDER position, so a
+      // subset still renders as a left-anchored prefix of the gauge.
+      const positions = (m.effortLevels ?? []).map((e) =>
+        EFFORT_ORDER.indexOf(e),
+      );
+      const ascending = positions.every(
+        (pos, i) => i === 0 || pos > positions[i - 1],
+      );
+      assert.ok(
+        ascending,
+        `${p.id}/${m.id} effortLevels ascend by EFFORT_ORDER`,
+      );
+    }
   }
 });
 

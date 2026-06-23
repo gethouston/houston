@@ -8,6 +8,20 @@
  */
 export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
 
+/**
+ * The full effort vocabulary, ascending. Drives the composer's effort-gauge so
+ * the icon always shows the SAME number of bars (filled to the active level's
+ * position), regardless of how many levels a given model offers — a model with
+ * only `high`/`max` reads as a full gauge filled high, not two lone bars.
+ */
+export const EFFORT_ORDER: readonly EffortLevel[] = [
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
+
 /** Effort applied when nothing else is configured. Mirrors the engine. */
 export const DEFAULT_EFFORT: EffortLevel = "medium";
 
