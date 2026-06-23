@@ -1,7 +1,7 @@
+import type { UserId } from "@houston/host/src/domain/types";
+import type { IntegrationCredentialStore } from "@houston/host/src/integrations/credential-store";
+import type { ProviderCredential } from "@houston/host/src/integrations/types";
 import type { Pool } from "pg";
-import type { UserId } from "../domain/types";
-import type { IntegrationCredentialStore } from "./credential-store";
-import type { ProviderCredential } from "./types";
 
 /**
  * Postgres-backed integration credential store — the CLOUD profile's home for a

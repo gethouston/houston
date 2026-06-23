@@ -1,4 +1,7 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { UserId } from "@houston/host/src/domain/types";
+import type { WorkspaceStore } from "@houston/host/src/ports";
+import { json, readJson } from "@houston/host/src/routes/http";
 import type { AutopilotRates, BillingActualsReader } from "../admin/billing";
 import type { ClusterReader } from "../admin/cluster";
 import {
@@ -6,9 +9,6 @@ import {
   buildBillingReport,
   buildOverview,
 } from "../admin/overview";
-import type { UserId } from "../domain/types";
-import type { WorkspaceStore } from "../ports";
-import { json, readJson } from "./http";
 
 /**
  * Wiring for the operator dashboard (`/admin/*`). Absent → the admin API does

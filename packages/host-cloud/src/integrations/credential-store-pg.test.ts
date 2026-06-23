@@ -1,12 +1,12 @@
 import { expect, test } from "bun:test";
-import type { Pool } from "pg";
-import { newDb } from "pg-mem";
 import {
   type IntegrationCredentialStore,
   MemoryIntegrationCredentialStore,
-} from "./credential-store";
+} from "@houston/host/src/integrations/credential-store";
+import type { ProviderCredential } from "@houston/host/src/integrations/types";
+import type { Pool } from "pg";
+import { newDb } from "pg-mem";
 import { PgIntegrationCredentialStore } from "./credential-store-pg";
-import type { ProviderCredential } from "./types";
 
 const cred = (apiKey: string): ProviderCredential => ({
   provider: "composio",

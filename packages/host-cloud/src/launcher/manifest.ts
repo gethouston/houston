@@ -1,11 +1,5 @@
-import type {
-  V1Deployment,
-  V1Namespace,
-  V1PersistentVolumeClaim,
-  V1Service,
-} from "@kubernetes/client-node";
-import { config } from "../config";
-import type { Agent } from "../domain/types";
+import { config } from "@houston/host/src/config";
+import type { Agent } from "@houston/host/src/domain/types";
 import {
   agentLabels,
   deploymentName,
@@ -15,7 +9,13 @@ import {
   namespaceFor,
   pvcName,
   serviceName,
-} from "./names";
+} from "@houston/host/src/launcher/names";
+import type {
+  V1Deployment,
+  V1Namespace,
+  V1PersistentVolumeClaim,
+  V1Service,
+} from "@kubernetes/client-node";
 
 /**
  * Pure builders for the K8s objects backing one agent sandbox. All typed

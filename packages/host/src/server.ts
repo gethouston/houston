@@ -21,7 +21,6 @@ import type {
   WorkspaceStore,
 } from "./ports";
 import { handleAccount } from "./routes/account";
-import { type AdminDeps, handleAdmin } from "./routes/admin";
 import { handleAgents } from "./routes/agents";
 import { handleSandboxCredential } from "./routes/credential";
 import { handleEventStream } from "./routes/events-stream";
@@ -35,7 +34,26 @@ import { handlePortableAccount } from "./routes/portable";
 import type { Vfs } from "./vfs";
 
 export type { RuntimeProxy } from "./channel/proxy";
-export type { AdminDeps } from "./routes/admin";
+
+/**
+ * The operator-admin surface is CLOSED (it ships in `@houston/host-cloud`). The
+ * open server never imports the admin route; instead it accepts an INJECTED
+ * request hook here and calls it after the events stream. The cloud entry point
+ * builds the hook (binding `handleAdmin` + its `AdminDeps` + the store) and passes
+ * it in; the local profile passes nothing, so `/admin/*` simply 404s — exactly as
+ * a request to any unmounted route would.
+ *
+ * Returns true when it handled the request (the server then stops routing), false
+ * to fall through. Mirrors every other `handle*` route's contract.
+ */
+export type MountAdmin = (
+  userId: UserId,
+  method: string,
+  path: string,
+  url: URL,
+  req: IncomingMessage,
+  res: ServerResponse,
+) => Promise<boolean>;
 
 export interface ControlPlaneDeps {
   verifier: TokenVerifier;
@@ -66,8 +84,12 @@ export interface ControlPlaneDeps {
    * a fresh install and on the cloud profile.
    */
   chatHistoryMigrated?: boolean;
-  /** Operator dashboard wiring; omit to disable the `/admin/*` API entirely. */
-  admin?: AdminDeps;
+  /**
+   * Operator-dashboard request hook (CLOSED surface, injected by the cloud entry
+   * point). Omit to disable the `/admin/*` API entirely — the local profile never
+   * sets it, so `/admin/*` 404s there.
+   */
+  mountAdmin?: MountAdmin;
   /** "Send feedback" intake (web build → Linear); omit and POST /feedback answers 503. */
   feedback?: FeedbackSender;
   /** Third-party integrations (Composio "for you"); absent → integration routes 503. */
@@ -148,7 +170,11 @@ async function handle(
     );
   }
 
-  if (await handleAdmin(deps, userId, method, path, url, req, res)) return;
+  if (
+    deps.mountAdmin &&
+    (await deps.mountAdmin(userId, method, path, url, req, res))
+  )
+    return;
 
   // "Send feedback" from the web build: same payload the desktop files to Linear
   // via Tauri, fronted here so the browser never holds the Linear key. Errors

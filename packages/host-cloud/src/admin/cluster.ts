@@ -1,15 +1,15 @@
 import {
+  AGENT_LABEL,
+  MANAGED_BY_LABEL,
+  MANAGED_BY_VALUE,
+  WORKSPACE_LABEL,
+} from "@houston/host/src/launcher/names";
+import {
   CoreV1Api,
   type KubeConfig,
   type V1PersistentVolumeClaim,
   type V1Pod,
 } from "@kubernetes/client-node";
-import {
-  AGENT_LABEL,
-  MANAGED_BY_LABEL,
-  MANAGED_BY_VALUE,
-  WORKSPACE_LABEL,
-} from "../launcher/names";
 import { parseCpuToCores, parseMemToBytes } from "./quantity";
 
 /**

@@ -1,10 +1,15 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import type { Agent } from "@houston/host/src/domain/types";
+import {
+  deploymentName,
+  namespaceFor,
+  pvcName,
+  serviceName,
+} from "@houston/host/src/launcher/names";
+import type { CredentialVault, RuntimeLauncher } from "@houston/host/src/ports";
+import { runRuntimeLauncherContract } from "@houston/host/src/testing/launcher-contract";
 import { CoreV1Api, KubeConfig } from "@kubernetes/client-node";
-import type { Agent } from "../domain/types";
-import type { CredentialVault, RuntimeLauncher } from "../ports";
-import { runRuntimeLauncherContract } from "./contract.test";
 import { GkeLauncher } from "./gke";
-import { deploymentName, namespaceFor, pvcName, serviceName } from "./names";
 import {
   ensureDeployment,
   ensureNamespace,

@@ -1,5 +1,9 @@
 import { Storage } from "@google-cloud/storage";
-import { assertSafeKey, type ObjectStat, type Vfs } from "./vfs";
+import {
+  assertSafeKey,
+  type ObjectStat,
+  type Vfs,
+} from "@houston/host/src/vfs/vfs";
 
 /** GCS Vfs (ADC auth; the host's SA holds objectAdmin on this bucket only). */
 export class GcsVfs implements Vfs {

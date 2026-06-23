@@ -1,31 +1,34 @@
 # Open / Closed Boundary
 
-Houston is converging to ONE host (`packages/host`)
-with two adapter profiles: **local** (desktop) and **cloud**. After convergence
-the repo splits into two:
+Houston runs ONE host with two adapter profiles: **local** (desktop) and
+**cloud**. The closed cloud adapters have been **extracted** into a separate
+package so the eventual OSS split is a clean directory move:
 
-| Repo               | Visibility | Holds                                                                 |
-| ------------------ | ---------- | --------------------------------------------------------------------- |
-| **Houston**        | OPEN       | the pure/local stack + the host's router, ports, handlers, local profile |
-| **Houston Cloud**  | CLOSED     | the cloud adapters (Postgres / GCS / GKE / Redis / BigQuery), the operator-admin surface, and deploy/infra |
+| Package                | Visibility | Holds                                                                                       |
+| ---------------------- | ---------- | ------------------------------------------------------------------------------------------- |
+| **`packages/host`**    | OPEN       | the server builder, ports, ALL domain route handlers, the open adapters, the LOCAL entry    |
+| **`packages/host-cloud`** | CLOSED  | the concrete cloud adapters (Postgres / GCS / GKE / Redis / BigQuery), the operator-admin surface, and the CLOUD `main.ts` |
 
-The seam is the **hexagonal ports boundary**. This document is the manifest;
-`scripts/check-boundaries.mjs` enforces it (`pnpm check:boundaries`, exit 1 on a
-leak). No files move yet — extraction is a later wave. We lock the seam now so it
-can't drift before the split.
+`packages/host-cloud` depends on `@houston/host` (`file:../host`). The dependency
+direction is **ONE-WAY**: `host-cloud → host`, never the reverse.
+
+`scripts/check-boundaries.mjs` enforces this (`pnpm check:boundaries`, exit 1 on a
+leak).
 
 ## The one-way rule
 
 > **CLOSED may import OPEN. OPEN must NEVER import CLOSED.**
 
-Open code depends only on ports (interfaces). The concrete cloud adapter is
-constructed in exactly one place — the wiring point (`main.ts`) — and injected.
-Any open file reaching for a cloud library or a concrete adapter is a leak.
+Open code (`packages/host` included) depends only on ports (interfaces). The
+concrete cloud adapter is constructed in exactly one place — the cloud wiring
+point (`packages/host-cloud/src/main.ts`) — and injected behind a port. Any open
+file reaching for a cloud library or `@houston/host-cloud` is a leak.
 
 ## Open (future "Houston")
 
 Pure / local / deployment-agnostic. Must contain **zero** cloud-library imports
-(except the one documented runtime adapter below).
+and **zero** imports of `@houston/host-cloud` (except the one documented runtime
+adapter below).
 
 | Path                       | Role                                                            |
 | -------------------------- | -------------------------------------------------------------- |
@@ -33,120 +36,98 @@ Pure / local / deployment-agnostic. Must contain **zero** cloud-library imports
 | `packages/domain`          | `.houston` layout, schemas, cron, portable logic              |
 | `packages/runtime`         | the **pi** engine (the only agent loop) — runs desktop AND cloud |
 | `packages/runtime-client`  | typed client for the runtime                                  |
+| `packages/host`            | the OPEN host: server builder, ports, route handlers, open adapters, LOCAL entry |
 | `ui/**`                    | `@houston-ai/*` React packages (props-only)                   |
 
-Inside the **host** (`packages/host`), these are OPEN too — they import
-ports, never cloud adapters:
-
-`routes/**`, `domain/**`, `schedule/**`, `channel/**`, `events/**`, `watch/**`,
-`local/**`, `proxy/**`, `migrate/**`, `integrations/**`, `ports.ts`,
-`config.ts`, `server.ts`, `capabilities.ts`, `paths.ts`, `houston-prompt.ts`,
-`providers.ts`, `feedback.ts`, `sidecar-entry.ts`, `shutdown.ts`, and the
-shared adapter ports (`vfs/vfs.ts`, `vfs/fs.ts`, `vfs/memory.ts`,
-`store/local.ts`, `store/memory.ts`, `turn/bus.ts` [`MemoryTurnBus`],
-`credentials/refresh.ts` [shared OAuth refresh logic], `launcher/process.ts`,
-`launcher/fake.ts`, `launcher/bun-spawner.ts`, `launcher/names.ts`,
-`launcher/manifest.ts` builders consumed only via `gke.ts`).
+Inside **`packages/host`**, every file is OPEN. It exposes its internals to
+`host-cloud` through the `"./src/*"` subpath in its `package.json` `exports`, so
+the closed package imports e.g. `@houston/host/src/ports`,
+`@houston/host/src/server`, `@houston/host/src/launcher/names`. The shared
+adapter-contract suites (`@houston/host/src/testing/*-contract.ts`) live here too
+and are imported by BOTH the open adapter tests and the closed adapter tests.
 
 > `credentials/refresh.ts` is **open shared host logic** (pure OAuth token
-> refresh via `fetch`, zero cloud libs). It was previously assumed cloud — it is
-> not. `turn/start-turn.ts` and `routes/credential.ts` import it legitimately.
+> refresh via `fetch`, zero cloud libs). `turn/start-turn.ts` and
+> `routes/credential.ts` import it legitimately.
 
-## Closed-destined (future "Houston Cloud")
+## Closed (future "Houston Cloud") — `packages/host-cloud`
 
-Concrete cloud adapters + the operator-admin surface. The check forbids OPEN
-code from importing these, and forbids non-allowlisted HOST code from importing
-them.
+The concrete cloud adapters + the operator-admin surface + the cloud wiring
+point. The whole package is closed; it may import cloud libs and `@houston/host`
+freely.
 
-| File                                          | Cloud coupling           |
-| --------------------------------------------- | ------------------------ |
-| `packages/host/src/store/pg.ts`      | `pg` (Postgres)          |
-| `packages/host/src/integrations/credential-store-pg.ts` | `pg` (Postgres) — cloud integration-credential store |
-| `packages/host/src/vfs/gcs.ts`       | `@google-cloud/storage`  |
-| `packages/host/src/launcher/gke.ts`  | `@kubernetes/client-node`|
-| `packages/host/src/launcher/reconcile.ts` | `@kubernetes/client-node` (apiserver reconcile used by GkeLauncher) |
-| `packages/host/src/launcher/manifest.ts`  | `@kubernetes/client-node` (k8s object builders) |
-| `packages/host/src/turn/bus-redis.ts`| `ioredis`                |
-| `packages/host/src/admin/cluster.ts` | `@kubernetes/client-node`|
-| `packages/host/src/admin/billing.ts` | BigQuery (googleapis)    |
-| `packages/host/src/admin/overview.ts`| operator dashboard       |
-| `packages/host/src/admin/quantity.ts`| operator dashboard helpers |
-| `packages/runtime/src/turn/gcs-store.ts`      | `@google-cloud/storage` — the runtime's own cloud adapter (the pi engine ships to cloud too) |
+| File                                              | Cloud coupling           |
+| ------------------------------------------------- | ------------------------ |
+| `packages/host-cloud/src/store/pg.ts`             | `pg` (Postgres)          |
+| `packages/host-cloud/src/credentials/store-pg.ts` | `pg` (Postgres) — connect-once credential store |
+| `packages/host-cloud/src/integrations/credential-store-pg.ts` | `pg` (Postgres) — integration-credential store |
+| `packages/host-cloud/src/vfs/gcs.ts`              | `@google-cloud/storage`  |
+| `packages/host-cloud/src/launcher/gke.ts`         | `@kubernetes/client-node`|
+| `packages/host-cloud/src/launcher/reconcile.ts`   | `@kubernetes/client-node` |
+| `packages/host-cloud/src/launcher/manifest.ts`    | `@kubernetes/client-node` (k8s object builders) |
+| `packages/host-cloud/src/turn/bus-redis.ts`       | `ioredis`                |
+| `packages/host-cloud/src/admin/cluster.ts`        | `@kubernetes/client-node`|
+| `packages/host-cloud/src/admin/billing.ts`        | BigQuery (googleapis)    |
+| `packages/host-cloud/src/admin/overview.ts`       | operator dashboard       |
+| `packages/host-cloud/src/admin/quantity.ts`       | operator dashboard helpers |
+| `packages/host-cloud/src/auth/verify-supabase.ts` | `jose` (Supabase JWT/JWKS) + `makeTokenVerifier` |
+| `packages/host-cloud/src/routes/admin.ts`         | the operator route (`handleAdmin`) |
+| `packages/host-cloud/src/main.ts`                 | the CLOUD wiring point (constructs every cloud adapter, injects admin) |
+| `packages/host-cloud/scripts/run-migration.ts`    | `pg` — the cloud-ops Postgres migration runner |
+| `packages/runtime/src/turn/gcs-store.ts`          | `@google-cloud/storage` — the runtime's own cloud adapter (the pi engine ships to cloud too) |
 
-> **Note on paths from the original brief.** There is **no** `launcher/cloudrun.ts`
-> — "cloudrun" is a runtime *string value* in `config.ts`; per-turn Cloud Run
-> hosting lives in `turn/**`. There is **no** `auth/supabase.ts` — the Supabase
-> verifier is `SupabaseTokenVerifier` inside the MIXED file `auth/verify.ts`
-> (see below). Two extra closed `@kubernetes` files (`launcher/reconcile.ts`,
-> `launcher/manifest.ts`) were discovered and added.
+### The admin-injection seam
 
-### Import allowlist (who may import a closed file)
+The open server builder (`createControlPlaneServer`) does NOT import the admin
+route. `ControlPlaneDeps` carries an optional `mountAdmin?` request hook; the
+open server calls it after the events stream and 404s `/admin/*` when it is
+absent (the LOCAL default). The cloud `main.ts` binds `handleAdmin` (closing over
+the closed `AdminDeps` + the workspace store) and passes it as `mountAdmin`. Route
+logic lives once, in the closed `routes/admin.ts` — no duplication.
 
-The wiring points, the closed surface itself, and the admin surface:
+### Mixed files were split (was Wave-5 TODO, now DONE)
 
-- `packages/host/src/main.ts` — the host wiring point; constructs every
-  cloud adapter (`PgWorkspaceStore`, `GcsVfs`, `GkeLauncher`, `RedisTurnBus`,
-  `BigQueryBillingReader`, `GkeClusterReader`, `PgCredentialStore`,
-  `PgIntegrationCredentialStore`) and injects them behind ports.
-- `packages/host/src/routes/admin.ts` — the operator-dashboard route;
-  part of the closed admin surface, imports only `admin/**`.
-- `packages/host/src/admin/**` — intra-admin imports + k8s/BigQuery.
-- the closed files themselves — `gke.ts → reconcile.ts → manifest.ts`, etc.
-- `packages/runtime/src/main.ts` — the runtime wiring point; constructs
-  `GcsStore` (cloud) or `LocalDirStore` (local) behind the `ObjectStore` port via
-  a dynamic `import()`.
+The three formerly-mixed modules are split across the seam:
 
-## Wave-5 split TODO (mixed files)
+- **`credentials/store.ts`** → `MemoryCredentialStore` stays OPEN
+  (`packages/host`); `PgCredentialStore` moved to
+  `packages/host-cloud/src/credentials/store-pg.ts`.
+- **`vfs/index.ts`** → the open barrel (`FsVfs`/`MemoryVfs`/`Vfs` port) stays in
+  `packages/host`; `GcsVfs` moved to `packages/host-cloud/src/vfs/gcs.ts` (its
+  consumers import it from there).
+- **`auth/verify.ts`** → `DevTokenVerifier`/`SingleUserVerifier`/
+  `ServiceTokenVerifier` + `stripBearer`/`parseServiceTokens` stay OPEN;
+  `SupabaseTokenVerifier` + `makeTokenVerifier` moved to
+  `packages/host-cloud/src/auth/verify-supabase.ts`.
 
-These export BOTH an open and a closed symbol, so they can't sit on one side of
-the seam yet. They are tolerated by the check today (listed in `MIXED_FILES`)
-and surfaced in its success line. When `packages/host-cloud` is extracted, each
-must be cleanly split and removed from `MIXED_FILES`:
-
-- [ ] **`packages/host/src/credentials/store.ts`**
-      — `MemoryCredentialStore` (OPEN) + `PgCredentialStore` (CLOSED,
-      `import type { Pool } from "pg"`).
-      Split: keep `MemoryCredentialStore` open (e.g. `store-memory.ts`); move
-      `PgCredentialStore` to the closed side (e.g. `store-pg.ts`).
-- [ ] **`packages/host/src/vfs/index.ts`**
-      — barrel re-exporting `FsVfs`/`MemoryVfs` (OPEN) + `GcsVfs` (CLOSED).
-      Split: an open barrel (`fs` + `memory` + `vfs` port) and a closed export
-      of `GcsVfs`; `main.ts` imports `GcsVfs` from the closed file directly.
-- [ ] **`packages/host/src/auth/verify.ts`**
-      — `DevTokenVerifier` / `SingleUserVerifier` / `ServiceTokenVerifier` +
-      `makeTokenVerifier`/`parseServiceTokens` (OPEN; `local/host.ts` imports
-      `SingleUserVerifier`) + `SupabaseTokenVerifier` (CLOSED, Supabase/JWKS).
-      Split: move `SupabaseTokenVerifier` (and the `makeTokenVerifier` cloud
-      branch) to the closed side; keep the local/dev/service verifiers open.
-      `makeTokenVerifier` becomes a wiring concern in `main.ts`.
-
-Because these are mixed (not pure-closed), the check does **not** yet flag the
-open code that imports their open exports (`local/host.ts → SingleUserVerifier`,
-the Memory stores in tests, the `vfs` barrel from `main.ts`). After the split,
-remove them from `MIXED_FILES` and the check will hold the new, clean files to
-the full one-way rule automatically.
+The shared adapter CONTRACT functions were extracted to
+`packages/host/src/testing/*-contract.ts` (OPEN) and are imported by both the open
+adapter tests (Memory/Fs/Local/Process) and the closed adapter tests
+(Pg/Gcs/Redis/Gke, in `packages/host-cloud`).
 
 ## What the check enforces
 
 `scripts/check-boundaries.mjs` walks every non-test `.ts`/`.tsx` under the open
-packages and the host, extracts import/export/dynamic-import specifiers, and:
+packages (including `packages/host`) and the closed package, extracts
+import/export/dynamic-import specifiers, and:
 
 > **Test scaffolding is exempt.** `*.test.ts`, plus test-only helpers by
 > convention (`*-harness.ts`, `*.test-helper.ts`, `*.fixture.ts`, `*.mock.ts`),
 > may import a closed adapter or cloud lib directly — they exercise the cloud
 > adapters in unit tests and are never shipped. Production code may not.
 
-
-- **Rule A** — no file in `packages/{protocol,domain,runtime,runtime-client}` or
-  `ui/**` imports a cloud lib (`pg`, `ioredis`, `redis`, `@google-cloud/*`,
-  `@kubernetes/*`, `googleapis`, `bigquery`) or a closed-destined file. The one
-  allowlisted exception is the runtime's own adapter
-  (`runtime/src/turn/gcs-store.ts`), reachable only from `runtime/src/main.ts`.
-- **Rule B** — inside `packages/host`, only the import allowlist above
-  may import a closed-destined adapter file (or a cloud lib directly). Every
-  other host file doing so is a violation.
+- **Rule A** — no file in `packages/{protocol,domain,runtime,runtime-client,host}`
+  or `ui/**` imports a cloud lib (`pg`, `ioredis`, `redis`, `@google-cloud/*`,
+  `@kubernetes/*`, `googleapis`, `bigquery`) or the closed package
+  (`@houston/host-cloud`, bare or subpath). The one allowlisted exception is the
+  runtime's own adapter (`runtime/src/turn/gcs-store.ts`), reachable only from
+  `runtime/src/main.ts`.
+- **Rule B** — `packages/host-cloud/**` is wholesale CLOSED: it may import cloud
+  libs and `@houston/host`. The check walks it only to confirm it carries the
+  extracted adapters (a stray empty package can't pass as "extracted").
 
 Violations print as `file -> imported closed module` and exit 1. On success it
-prints a one-line OK with file/adapter/crossing/mixed counts.
+prints a one-line OK with open/closed file counts + the allowlisted-crossing
+count.
 
 Run: `pnpm check:boundaries` (or `node scripts/check-boundaries.mjs`).

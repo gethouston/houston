@@ -1,9 +1,15 @@
+import type { Agent } from "@houston/host/src/domain/types";
+import {
+  deploymentName,
+  namespaceFor,
+  pvcName,
+  serviceName,
+} from "@houston/host/src/launcher/names";
 import {
   type AppsV1Api,
   type CoreV1Api,
   HttpError,
 } from "@kubernetes/client-node";
-import type { Agent } from "../domain/types";
 import {
   buildDeployment,
   buildNamespace,
@@ -11,7 +17,6 @@ import {
   buildScale,
   buildService,
 } from "./manifest";
-import { deploymentName, namespaceFor, pvcName, serviceName } from "./names";
 
 /**
  * Low-level, idempotent apiserver reconcile steps used by GkeLauncher.

@@ -1,4 +1,3 @@
-import type { Pool } from "pg";
 import type {
   Agent,
   AgentId,
@@ -6,8 +5,9 @@ import type {
   Workspace,
   WorkspaceId,
   WorkspaceRuntime,
-} from "../domain/types";
-import type { WorkspaceStore } from "../ports";
+} from "@houston/host/src/domain/types";
+import type { WorkspaceStore } from "@houston/host/src/ports";
+import type { Pool } from "pg";
 
 /** DNS-safe slug for a workspace (used for the K8s namespace). Matches MemoryWorkspaceStore. */
 function slugify(name: string): string {

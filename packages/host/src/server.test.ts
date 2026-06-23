@@ -1,9 +1,6 @@
 import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities } from "@houston/protocol";
-import type { AutopilotRates } from "./admin/billing";
-import { FakeClusterReader } from "./admin/cluster";
-import type { BillingReport, Overview } from "./admin/overview";
 import { SingleUserVerifier } from "./auth/verify";
 import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { MemoryCredentialStore } from "./credentials/store";
@@ -14,11 +11,7 @@ import type {
   RuntimeLauncher,
   TokenVerifier,
 } from "./ports";
-import {
-  type AdminDeps,
-  type ControlPlaneDeps,
-  createControlPlaneServer,
-} from "./server";
+import { type ControlPlaneDeps, createControlPlaneServer } from "./server";
 import { MemoryWorkspaceStore } from "./store/memory";
 
 /**
@@ -417,14 +410,12 @@ test("a different user CANNOT forget someone else's credential → 403", async (
   expect(await credentials.get(aliceWs.id, "openai-codex")).not.toBeNull(); // untouched
 });
 
-// --- Operator dashboard (/admin/*) ------------------------------------------
-
-const RATES: AutopilotRates = {
-  vcpuHourUsd: 0.0445,
-  memGiBHourUsd: 0.0049,
-  pdGiBMonthUsd: 0.1,
-  clusterHourUsd: 0.1,
-};
+// The operator dashboard (`/admin/*`) is the CLOSED admin surface, injected via
+// the `mountAdmin` seam. Its end-to-end tests (404 when unmounted, the
+// non-admin/admin 403/200 split, billing days, the 405s) live in
+// `@houston/host-cloud` (routes/admin.test.ts), which wires `handleAdmin` into
+// this same server through `mountAdmin`. The open server only proves the seam is
+// absent by default — see the "unmounted → 404" case below.
 
 const baseDeps = () => ({
   verifier,
@@ -445,132 +436,12 @@ async function startServer(
   return { base: b, close: () => new Promise<void>((r) => s.close(() => r())) };
 }
 
-test("the admin API does not exist (404) when no admin deps are wired", async () => {
-  // The module-level server was built without `admin`.
+test("/admin/* 404s when no admin surface is injected (the local-profile default)", async () => {
+  // The module-level server was built without `mountAdmin` — exactly the local
+  // profile. The full admin behavior (403/200, billing, 405s) is exercised in
+  // @houston/host-cloud's routes/admin.test.ts, which injects `handleAdmin`.
   const r = await fetch(`${base}/admin/overview`, { headers: auth("alice") });
   expect(r.status).toBe(404);
-});
-
-test("admin overview: a non-admin is 403; an admin sees every user's pods", async () => {
-  const aliceWs = await store.getOrCreatePersonalWorkspace("alice");
-  const cluster = new FakeClusterReader({
-    pods: [
-      {
-        workspaceId: aliceWs.id,
-        agentId: aliceSalesId,
-        namespace: "ws-alice",
-        podName: "agent-sales",
-        phase: "Running",
-        ready: true,
-        nodeName: "gke-node-1",
-        startedAt: "2026-06-08T00:00:00.000Z",
-        restarts: 0,
-        cpuRequestCores: 0.25,
-        memRequestBytes: 512 * 1024 * 1024,
-      },
-    ],
-    volumes: [],
-  });
-  const admin: AdminDeps = {
-    adminUserIds: ["alice"],
-    cluster,
-    billing: null,
-    rates: RATES,
-  };
-  const { base: abase, close } = await startServer({ ...baseDeps(), admin });
-  try {
-    expect(
-      (await fetch(`${abase}/admin/overview`, { headers: auth("bob") })).status,
-    ).toBe(403);
-
-    const r = await fetch(`${abase}/admin/overview`, {
-      headers: auth("alice"),
-    });
-    expect(r.status).toBe(200);
-    const ov = (await r.json()) as Overview;
-    expect(ov.totals.pods.running).toBe(1);
-    const aliceUser = ov.users.find((u) => u.userId === "alice");
-    expect(
-      aliceUser?.agents.some(
-        (a) => a.agentId === aliceSalesId && a.state === "running",
-      ),
-    ).toBe(true);
-    // Bob shows up too (cross-tenant view), with no running pods.
-    expect(ov.users.some((u) => u.userId === "bob")).toBe(true);
-  } finally {
-    await close();
-  }
-});
-
-test("admin billing: estimate renders, actuals report 'not-configured' without BigQuery", async () => {
-  const admin: AdminDeps = {
-    adminUserIds: ["alice"],
-    cluster: new FakeClusterReader(),
-    billing: null,
-    rates: RATES,
-  };
-  const { base: abase, close } = await startServer({ ...baseDeps(), admin });
-  try {
-    const r = await fetch(`${abase}/admin/billing`, { headers: auth("alice") });
-    expect(r.status).toBe(200);
-    const rep = (await r.json()) as BillingReport;
-    expect(rep.actualsStatus).toBe("not-configured");
-    expect(rep.actuals).toBeNull();
-    expect(rep.estimate.byUser).toBeArray();
-  } finally {
-    await close();
-  }
-});
-
-test("admin billing: ?days defaults to 30 when absent, and is honored when given", async () => {
-  const seen: number[] = [];
-  const recordingBilling = {
-    async query(days: number) {
-      seen.push(days);
-      return {
-        source: "bigquery" as const,
-        rangeDays: days,
-        startDate: "2026-05-09",
-        endDate: "2026-06-08",
-        currency: "USD",
-        totalUsd: 0,
-        byNamespace: [],
-      };
-    },
-  };
-  const admin: AdminDeps = {
-    adminUserIds: ["alice"],
-    cluster: new FakeClusterReader(),
-    billing: recordingBilling,
-    rates: RATES,
-  };
-  const { base: abase, close } = await startServer({ ...baseDeps(), admin });
-  try {
-    await fetch(`${abase}/admin/billing`, { headers: auth("alice") }); // no ?days
-    await fetch(`${abase}/admin/billing?days=7`, { headers: auth("alice") });
-    expect(seen).toEqual([30, 7]);
-  } finally {
-    await close();
-  }
-});
-
-test("admin routes reject non-GET with 405", async () => {
-  const admin: AdminDeps = {
-    adminUserIds: ["alice"],
-    cluster: new FakeClusterReader(),
-    billing: null,
-    rates: RATES,
-  };
-  const { base: abase, close } = await startServer({ ...baseDeps(), admin });
-  try {
-    const r = await fetch(`${abase}/admin/overview`, {
-      method: "POST",
-      headers: auth("alice"),
-    });
-    expect(r.status).toBe(405);
-  } finally {
-    await close();
-  }
 });
 
 // --- v3 meta surface + the local-profile identity adapter ---------------------

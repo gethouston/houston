@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import type { Agent } from "../domain/types";
-import type { RuntimeLauncher } from "../ports";
+import {
+  launcherAgent as agent,
+  runRuntimeLauncherContract,
+} from "../testing/launcher-contract";
 import { FakeLauncher } from "./fake";
 import {
   ProcessLauncher,
@@ -10,94 +13,32 @@ import {
 } from "./process";
 
 /**
- * The RuntimeLauncher CONTRACT, run verbatim against every locally-testable
- * adapter — the anti-drift net for the standing-runtime lifecycle port. Every
- * impl must agree on the lifecycle the ProxyChannel drives: ensureAwake returns
- * a reachable endpoint and marks the agent running, ensureAwake is idempotent
- * (a warm runtime is reused, not respawned), sleep then ensureAwake re-wakes,
- * and independent agents track state separately.
+ * The OPEN RuntimeLauncher adapters run through the shared contract
+ * (../testing/launcher-contract.ts → runRuntimeLauncherContract):
+ *   - FakeLauncher (the cloud 3-state model used in tests), and
+ *   - ProcessLauncher, driven through INJECTED doubles (a recording spawner + an
+ *     instant health probe) so the contract is a pure unit test. No real
+ *     subprocess is spawned here.
  *
- * ProcessLauncher is driven through INJECTED doubles (a recording spawner + an
- * instant health probe) so the contract is a pure unit test — the same doubles
- * its own process.test.ts uses. No real subprocess is spawned here.
+ * The CLOSED GkeLauncher needs a live Kubernetes apiserver (one Deployment +
+ * Service + PVC per agent); it runs the SAME contract + an apiserver-object
+ * reconcile/idempotency suite in `@houston/host-cloud`
+ * (launcher/gke.integration.test.ts), gated on HOUSTON_GKE_TEST and pointed at a
+ * real or `kind` cluster. The contract function lives on the open side of the
+ * seam; only the adapters differ.
  *
  * INTENTIONAL DIVERGENCES (NOT part of the shared contract — pinned per-impl in
- * fake.test.ts / process.test.ts and in the divergence block below):
- *   - status's "absent" state. FakeLauncher models the full cloud 3-state
- *     machine (running → asleep → absent) so destroy reports "absent" and
- *     sleeping an unknown agent THROWS. ProcessLauncher has no "absent": a
- *     laptop process is either up ("running") or not ("asleep"); sleeping an
- *     unknown agent is a silent no-op (pi's continueRecent restores on the next
- *     wake) and destroy == sleep (the user owns the files; there's no volume to
- *     drop). The contract therefore only asserts the running/asleep transitions
- *     both share, never the post-destroy state.
+ * fake.test.ts / process.test.ts and the divergence block below):
+ *   - status's "absent" state. FakeLauncher models running → asleep → absent so
+ *     destroy reports "absent" and sleeping an unknown agent THROWS.
+ *     ProcessLauncher has no "absent": a laptop process is either up ("running")
+ *     or not ("asleep"); sleeping an unknown agent is a silent no-op and destroy
+ *     == sleep. The contract only asserts the running/asleep transitions both
+ *     share, never the post-destroy state.
  *   - endpoint VALUE. Fake hands back one configurable URL; Process allocates a
  *     loopback port per spawn. The contract only requires a non-empty baseUrl +
  *     token, never a specific value.
- *
- * NOT CONTRACT-TESTED LOCALLY:
- *   - GkeLauncher (launcher/gke.ts) needs a live Kubernetes apiserver (one
- *     Deployment + Service + PVC per agent). Exercised by a cluster integration
- *     run, not unit-faked.
- *   - There is NO CloudRun launcher: per-turn runtimes have no standing instance
- *     to launch (the TurnChannel + dispatchTurn path replaces it). Nothing to
- *     contract-test — recorded here so the absence is intentional, not an
- *     overlooked port.
- *   Both are marked with a test.todo below so the boundary is explicit.
  */
-const agent = (id: string): Agent => ({
-  id,
-  workspaceId: "w1",
-  name: id,
-  createdAt: 0,
-});
-
-export function runRuntimeLauncherContract(
-  name: string,
-  make: () => RuntimeLauncher,
-): void {
-  describe(`RuntimeLauncher contract: ${name}`, () => {
-    test("ensureAwake returns a reachable endpoint and marks the agent running", async () => {
-      const l = make();
-      const a = agent("a1");
-      const ep = await l.ensureAwake(a);
-      expect(ep.baseUrl).toBeTruthy();
-      expect(ep.token).toBeTruthy();
-      expect(await l.status(a.id)).toBe("running");
-    });
-
-    test("ensureAwake is idempotent — a warm runtime is reused, not respawned", async () => {
-      const l = make();
-      const a = agent("a2");
-      const first = await l.ensureAwake(a);
-      const second = await l.ensureAwake(a);
-      expect(second).toEqual(first);
-      expect(await l.status(a.id)).toBe("running");
-    });
-
-    test("sleep stops it; ensureAwake afterwards re-wakes it", async () => {
-      const l = make();
-      const a = agent("a3");
-      await l.ensureAwake(a);
-      await l.sleep(a.id);
-      expect(await l.status(a.id)).toBe("asleep");
-
-      await l.ensureAwake(a);
-      expect(await l.status(a.id)).toBe("running");
-    });
-
-    test("independent agents track state separately", async () => {
-      const l = make();
-      const a = agent("a4");
-      const b = agent("b4");
-      await l.ensureAwake(a);
-      await l.ensureAwake(b);
-      await l.sleep(a.id);
-      expect(await l.status(a.id)).toBe("asleep");
-      expect(await l.status(b.id)).toBe("running");
-    });
-  });
-}
 
 /** A recording spawner + instant health probe so ProcessLauncher runs as a
  *  pure unit (no real subprocess). Mirrors process.test.ts's doubles. */
@@ -127,10 +68,10 @@ runRuntimeLauncherContract("ProcessLauncher", () => makeProcessLauncher());
 // (one Deployment + Service + PVC per agent). It CANNOT run in this sandbox — no
 // cluster, no docker. It is NOT faked: the real GkeLauncher runs this same
 // contract + an apiserver-object reconcile/idempotency suite in
-// launcher/gke.integration.test.ts, gated on HOUSTON_GKE_TEST and pointed at a
-// real or `kind` cluster (one command in launcher/README-testing.md). This
-// marker stays so the boundary is explicit here in the local contract file.
-test.todo("RuntimeLauncher contract: GkeLauncher → launcher/gke.integration.test.ts (HOUSTON_GKE_TEST + a cluster)", () => {});
+// @houston/host-cloud's launcher/gke.integration.test.ts, gated on
+// HOUSTON_GKE_TEST and pointed at a real or `kind` cluster. This marker stays so
+// the boundary is explicit here in the open contract file.
+test.todo("RuntimeLauncher contract: GkeLauncher → @houston/host-cloud launcher/gke.integration.test.ts (HOUSTON_GKE_TEST + a cluster)", () => {});
 // CloudRun: per-turn runtimes have NO launcher (nothing stands between turns);
 // the TurnChannel + dispatchTurn path replaces it. Recorded so the absence is
 // an explicit design fact, not an overlooked adapter.

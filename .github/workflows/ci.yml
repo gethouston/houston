@@ -68,7 +68,8 @@ jobs:
       - name: Install (Bun services)
         run: |
           set -euo pipefail
-          for dir in packages/runtime packages/host; do
+          # host before host-cloud: host-cloud links @houston/host via file:.
+          for dir in packages/runtime packages/host packages/host-cloud; do
             echo "::group::bun install — $dir"
             (cd "$dir" && bun install --frozen-lockfile)
             echo "::endgroup::"
@@ -93,12 +94,12 @@ jobs:
       - name: Typecheck (pnpm workspace)
         run: pnpm -r typecheck
 
-      # runtime + host are outside the pnpm workspace — typecheck them
-      # directly with their own tsgo.
+      # runtime + host + host-cloud are outside the pnpm workspace — typecheck
+      # them directly with their own tsgo.
       - name: Typecheck (Bun services)
         run: |
           set -euo pipefail
-          for dir in packages/runtime packages/host; do
+          for dir in packages/runtime packages/host packages/host-cloud; do
             echo "::group::typecheck — $dir"
             (cd "$dir" && bun run typecheck)
             echo "::endgroup::"
@@ -106,15 +107,17 @@ jobs:
 
       # ---- Contract / unit tests (bun:test) ----
       # The convergence dual-profile + per-port contract suites live in these
-      # three packages. domain is a pnpm member but uses bun:test, so it runs
-      # under Bun too. Each has its own bun.lock; domain resolves its file:
-      # links from the pnpm install above, but we install it explicitly to keep
-      # the test run hermetic.
+      # packages. The open adapters run their shared contract in packages/host;
+      # the CLOSED cloud adapters (pg/gcs/redis/gke) run the SAME contract in
+      # packages/host-cloud (it imports the contract fns from @houston/host).
+      # domain is a pnpm member but uses bun:test, so it runs under Bun too. Each
+      # has its own bun.lock; domain resolves its file: links from the pnpm
+      # install above, but we install it explicitly to keep the test run hermetic.
       - name: Test (bun:test)
         run: |
           set -euo pipefail
           (cd packages/domain && bun install --frozen-lockfile)
-          for dir in packages/domain packages/host packages/runtime; do
+          for dir in packages/domain packages/host packages/host-cloud packages/runtime; do
             echo "::group::bun test — $dir"
             (cd "$dir" && bun test)
             echo "::endgroup::"

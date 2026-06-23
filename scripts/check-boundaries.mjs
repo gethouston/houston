@@ -1,42 +1,45 @@
 #!/usr/bin/env node
 /**
- * Locks the open/closed seam between the future "Houston" (open, local stack)
- * and "Houston Cloud" (closed, cloud adapters + admin) repos. See BOUNDARY.md
+ * Locks the open/closed seam between "Houston" (open) and "Houston Cloud"
+ * (closed) so the eventual OSS split is a clean directory move. See BOUNDARY.md
  * for the manifest this script enforces.
  *
- * The seam is the hexagonal ports boundary. The one-way rule:
+ * The seam is now a PACKAGE boundary (the in-host CLOSED_FILES/MIXED_FILES
+ * machinery is gone — host-cloud was extracted):
  *
- *   CLOSED may import OPEN.   OPEN must NEVER import CLOSED.
+ *   - `packages/host-cloud/**` is the CLOSED package (the concrete cloud adapters
+ *     pg / GCS / GKE / Redis / BigQuery, the operator-admin surface, and the
+ *     cloud `main.ts`). It MAY import `@houston/host` and cloud libs freely.
+ *   - `packages/host/**` is OPEN (the server builder, ports, every domain route
+ *     handler, the open adapters, and the LOCAL entry). It must NEVER import a
+ *     cloud lib or `@houston/host-cloud`.
+ *   - The other open packages (protocol/domain/runtime/runtime-client, ui) must
+ *     NEVER import a cloud lib or `@houston/host-cloud`.
  *
- * "Closed" = a concrete cloud adapter (pg / GCS / GKE / Redis / BigQuery) or
- * the operator-admin surface. "Open" = the pure/local stack (protocol, domain,
- * runtime, runtime-client, ui) plus the host's router, ports, domain handlers,
- * and local profile. Every legitimate crossing happens at a single wiring point
- * (`main.ts`) which is allowlisted; anything else is a leak.
+ * The one-way rule: CLOSED may import OPEN; OPEN must NEVER import CLOSED.
  *
  * Two rules, both fail the build (exit 1):
  *
- *   Rule A — no OPEN-package file imports a cloud lib or a closed-destined file.
- *     Open packages: packages/{protocol,domain,runtime,runtime-client}, ui/**.
+ *   Rule A — no OPEN-package file imports a cloud lib or `@houston/host-cloud`.
+ *     Open packages: packages/{protocol,domain,runtime,runtime-client,host}, ui/**.
  *     The ONE documented exception is the runtime's own cloud adapter
- *     (packages/runtime/src/turn/gcs-store.ts), reachable only from the
- *     runtime's wiring point (packages/runtime/src/main.ts) — the same
- *     port+adapter+wiring shape one level down.
+ *     (packages/runtime/src/turn/gcs-store.ts), reachable only from the runtime's
+ *     wiring point (packages/runtime/src/main.ts) — the same port+adapter+wiring
+ *     shape one level down.
  *
- *   Rule B — within packages/host, only an allowlist may
- *     import a closed-destined adapter file. Allowlist = src/main.ts (the
- *     wiring point), the closed files themselves (intra-closed imports), the
- *     admin surface (admin/**), and routes/admin.ts (the admin route). Every
- *     other host file (routes/**, domain/**, schedule/**, ports.ts, channel/**,
- *     events/**, watch/**, local/**) importing a concrete cloud adapter is a
- *     violation.
+ *   Rule B — `packages/host-cloud/**` is wholesale CLOSED. It may import cloud
+ *     libs and `@houston/host` (the one-way dependency). Nothing to forbid here;
+ *     it is walked only to assert it never reaches BACK across a forbidden edge
+ *     would be a future concern, but the host-cloud package is closed by
+ *     definition, so Rule B is a no-op presence check (it must exist + contain
+ *     the cloud adapters). The teeth are entirely in Rule A.
  *
  * No new npm deps: a regex import extractor over .ts/.tsx + node:fs.
  *
  * Run: node scripts/check-boundaries.mjs   (root script: pnpm check:boundaries)
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -45,17 +48,22 @@ const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 // The manifest (must stay in sync with BOUNDARY.md).
 // ---------------------------------------------------------------------------
 
-/** Packages whose every file must be free of cloud (Rule A). Repo-relative. */
+/**
+ * Open packages whose every file must be free of cloud (Rule A). Repo-relative.
+ * `packages/host` is OPEN now — the closed cloud adapters live in the separate
+ * `packages/host-cloud` package, which is NOT in this list.
+ */
 const OPEN_PACKAGES = [
   "packages/protocol",
   "packages/domain",
   "packages/runtime",
   "packages/runtime-client",
+  "packages/host",
   "ui",
 ];
 
-/** The host package that Rule B governs internally. */
-const HOST = "packages/host";
+/** The closed package. Walked only to assert it exists + holds the adapters. */
+const CLOSED_PACKAGE = "packages/host-cloud";
 
 /**
  * Bare specifiers that are cloud-only. A `from "<lib>"` or `from "<lib>/..."`
@@ -72,72 +80,20 @@ const CLOUD_LIBS = [
   "bigquery",
 ];
 
+/** The closed package's import specifier — OPEN code may never import it. */
+const CLOSED_PACKAGE_SPEC = "@houston/host-cloud";
+
 /**
- * Closed-destined files (repo-relative, no extension). These ship to Houston
- * Cloud. OPEN code may never import them; inside the host only the allowlist
- * may. Each is a single-purpose cloud adapter or part of the admin surface.
+ * Files allowed to import a cloud lib from WITHIN an open package. The only one
+ * left is the runtime's own cloud adapter + its wiring point: the runtime ships
+ * to cloud too, so it carries a single GcsStore adapter behind the ObjectStore
+ * port, constructed via a dynamic import() in the runtime's main.ts.
+ * Repo-relative, no extension.
  */
-const CLOSED_FILES = new Set([
-  // host cloud adapters
-  "packages/host/src/store/pg",
-  "packages/host/src/integrations/credential-store-pg",
-  "packages/host/src/vfs/gcs",
-  "packages/host/src/launcher/gke",
-  "packages/host/src/launcher/reconcile",
-  "packages/host/src/launcher/manifest",
-  "packages/host/src/turn/bus-redis",
-  // host operator-admin surface (closed)
-  "packages/host/src/admin/billing",
-  "packages/host/src/admin/cluster",
-  "packages/host/src/admin/overview",
-  "packages/host/src/admin/quantity",
-  // runtime's own cloud adapter (closed within the open package)
+const RUNTIME_CLOUD_ALLOWLIST = new Set([
   "packages/runtime/src/turn/gcs-store",
-]);
-
-/**
- * MIXED files: a single module that exports BOTH an open and a closed symbol,
- * so it can't be cleanly placed on one side yet. Tolerated for now, tracked in
- * BOUNDARY.md "Wave-5 split TODO", and REMOVED from this set when host-cloud is
- * extracted (each splits into an open file + a closed file). They are NOT
- * closed (open code may import their open exports) and NOT violations — but the
- * check still surfaces them in the success line so they stay visible.
- *
- *   credentials/store.ts — MemoryCredentialStore (open) + PgCredentialStore
- *                          (closed, `import type { Pool } from "pg"`).
- *   vfs/index.ts         — barrel re-exporting FsVfs/MemoryVfs (open) + GcsVfs
- *                          (closed).
- */
-const MIXED_FILES = new Set([
-  "packages/host/src/credentials/store",
-  "packages/host/src/vfs/index",
-]);
-
-/**
- * Files allowed to import a closed-destined file. The wiring points plus the
- * closed surface itself (intra-closed imports are fine; they all move
- * together). Repo-relative, no extension.
- */
-const IMPORT_ALLOWLIST = new Set([
-  // host wiring point — the one legitimate place cloud adapters are constructed
-  "packages/host/src/main",
-  // the admin route is part of the closed admin surface
-  "packages/host/src/routes/admin",
-  // runtime wiring point — constructs GcsStore behind a dynamic import
   "packages/runtime/src/main",
 ]);
-
-/** True if `repoRelNoExt` is allowed to import a closed file (Rule B/A allow). */
-function isAllowlisted(repoRelNoExt) {
-  if (IMPORT_ALLOWLIST.has(repoRelNoExt)) return true;
-  // intra-closed: a closed file importing another closed file is fine.
-  if (CLOSED_FILES.has(repoRelNoExt)) return true;
-  // a mixed file IS the closed half pre-split; it carries its own cloud import.
-  if (MIXED_FILES.has(repoRelNoExt)) return true;
-  // the whole admin surface is closed; admin/** may import admin/** + adapters.
-  if (repoRelNoExt.startsWith("packages/host/src/admin/")) return true;
-  return false;
-}
 
 // ---------------------------------------------------------------------------
 // File walk + import extraction.
@@ -195,14 +151,11 @@ function isCloudLib(spec) {
   );
 }
 
-/**
- * Resolve a relative import to a repo-relative path (no extension) so we can
- * test it against CLOSED_FILES. Returns null for bare/package specifiers.
- */
-function resolveRelative(fromAbs, spec) {
-  if (!spec.startsWith(".")) return null;
-  const abs = resolve(dirname(fromAbs), spec);
-  return noExt(repoRel(abs));
+/** Is `spec` an import of the closed host-cloud package (bare or subpath)? */
+function isClosedPackage(spec) {
+  return (
+    spec === CLOSED_PACKAGE_SPEC || spec.startsWith(`${CLOSED_PACKAGE_SPEC}/`)
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -211,21 +164,20 @@ function resolveRelative(fromAbs, spec) {
 
 const violations = [];
 let openFilesChecked = 0;
-let hostFilesChecked = 0;
+let closedFilesChecked = 0;
 let crossingsAllowed = 0;
 
-// Rule A — open packages: no cloud lib, no closed file (except the allowlisted
-// runtime adapter wiring).
+// Rule A — open packages (incl. packages/host): no cloud lib, no @houston/host-cloud.
+// The ONE exception is the runtime's own cloud adapter wiring.
 for (const pkg of OPEN_PACKAGES) {
   for (const abs of walk(join(root, pkg))) {
     openFilesChecked++;
     const self = noExt(repoRel(abs));
-    const allowed = isAllowlisted(self);
+    const runtimeAllowed = RUNTIME_CLOUD_ALLOWLIST.has(self);
     const src = readFileSync(abs, "utf8");
     for (const spec of importsOf(src)) {
-      // cloud lib
       if (isCloudLib(spec)) {
-        if (allowed) {
+        if (runtimeAllowed) {
           crossingsAllowed++;
           continue;
         }
@@ -234,51 +186,32 @@ for (const pkg of OPEN_PACKAGES) {
         );
         continue;
       }
-      // closed-destined file (relative import)
-      const target = resolveRelative(abs, spec);
-      if (target && CLOSED_FILES.has(target)) {
-        if (allowed) {
-          crossingsAllowed++;
-          continue;
-        }
+      if (isClosedPackage(spec)) {
+        // OPEN code may NEVER import the closed package — no allowlist.
         violations.push(
-          `[A] ${repoRel(abs)} -> closed file "${target}" (open package must not import a cloud adapter)`,
+          `[A] ${repoRel(abs)} -> closed package "${spec}" (open code must never import @houston/host-cloud)`,
         );
       }
     }
   }
 }
 
-// Rule B — host package: only the allowlist may import a closed adapter file or
-// a cloud lib directly.
-for (const abs of walk(join(root, HOST, "src"))) {
-  hostFilesChecked++;
-  const self = noExt(repoRel(abs));
-  if (isAllowlisted(self)) {
-    // allowlisted host file: its cloud crossings are legitimate, count them.
-    const src = readFileSync(abs, "utf8");
-    for (const spec of importsOf(src)) {
-      if (isCloudLib(spec)) crossingsAllowed++;
-      const target = resolveRelative(abs, spec);
-      if (target && CLOSED_FILES.has(target)) crossingsAllowed++;
-    }
-    continue;
-  }
+// Rule B — the closed package is wholesale CLOSED: it may import cloud libs and
+// @houston/host (the one-way dependency). We walk it only to count its files and
+// confirm it carries the cloud adapters (so a stray empty dir can't pass as
+// "extracted"). Its cloud imports are all legitimate crossings.
+for (const abs of walk(join(root, CLOSED_PACKAGE, "src"))) {
+  closedFilesChecked++;
   const src = readFileSync(abs, "utf8");
   for (const spec of importsOf(src)) {
-    if (isCloudLib(spec)) {
-      violations.push(
-        `[B] ${repoRel(abs)} -> cloud lib "${spec}" (only the main.ts wiring point + admin surface may import cloud)`,
-      );
-      continue;
-    }
-    const target = resolveRelative(abs, spec);
-    if (target && CLOSED_FILES.has(target)) {
-      violations.push(
-        `[B] ${repoRel(abs)} -> closed file "${target}" (not on the closed-adapter import allowlist)`,
-      );
-    }
+    if (isCloudLib(spec)) crossingsAllowed++;
   }
+}
+
+if (closedFilesChecked === 0) {
+  violations.push(
+    `[B] ${CLOSED_PACKAGE}/src has no source files — the closed package must hold the extracted cloud adapters`,
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -290,13 +223,13 @@ if (violations.length > 0) {
   for (const v of violations.sort()) console.error(`  ${v}`);
   console.error(
     `\n${violations.length} violation(s). See BOUNDARY.md for the manifest.\n` +
-      "Open code must never import a cloud adapter; route the dependency through a port.",
+      "Open code must never import a cloud lib or @houston/host-cloud; route the dependency through a port.",
   );
   process.exit(1);
 }
 
 console.log(
-  `Boundary OK — ${openFilesChecked} open + ${hostFilesChecked} host files clean; ` +
-    `${CLOSED_FILES.size} closed adapters, ${crossingsAllowed} allowlisted crossing(s), ` +
-    `${MIXED_FILES.size} mixed file(s) pending Wave-5 split (see BOUNDARY.md).`,
+  `Boundary OK — ${openFilesChecked} open file(s) clean (incl. packages/host); ` +
+    `${closedFilesChecked} closed file(s) in ${CLOSED_PACKAGE}; ` +
+    `${crossingsAllowed} allowlisted cloud crossing(s).`,
 );

@@ -1,5 +1,5 @@
-import type { Agent, Workspace } from "../domain/types";
-import { namespaceFor } from "../launcher/names";
+import type { Agent, Workspace } from "@houston/host/src/domain/types";
+import { namespaceFor } from "@houston/host/src/launcher/names";
 import {
   type AutopilotRates,
   type BillingActuals,

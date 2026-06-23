@@ -1,57 +1,66 @@
-import { KubeConfig } from "@kubernetes/client-node";
-import { Pool } from "pg";
-import { type AutopilotRates, BigQueryBillingReader } from "./admin/billing";
-import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
-import { makeTokenVerifier } from "./auth/verify";
-import { CLOUD_CAPABILITIES } from "./capabilities";
-import { ProxyChannel } from "./channel/proxy";
-import { TurnChannel } from "./channel/turn";
-import { config } from "./config";
-import { refreshCredential } from "./credentials/refresh";
-import { MemoryCredentialStore, PgCredentialStore } from "./credentials/store";
-import { EnvCredentialVault } from "./credentials/vault";
-import type { Agent } from "./domain/types";
-import { BusEventHub } from "./events/hub";
-import { type FeedbackSender, LinearFeedbackSender } from "./feedback";
-import { ComposioProvider } from "./integrations/composio";
-import { MemoryIntegrationCredentialStore } from "./integrations/credential-store";
-import { PgIntegrationCredentialStore } from "./integrations/credential-store-pg";
-import { IntegrationRegistry } from "./integrations/registry";
-import { FakeLauncher } from "./launcher/fake";
-import { type AgentResolver, GkeLauncher } from "./launcher/gke";
-import { CloudPaths } from "./paths";
+import { CLOUD_CAPABILITIES } from "@houston/host/src/capabilities";
+import { ProxyChannel } from "@houston/host/src/channel/proxy";
+import { TurnChannel } from "@houston/host/src/channel/turn";
+import { config } from "@houston/host/src/config";
+import { refreshCredential } from "@houston/host/src/credentials/refresh";
+import { MemoryCredentialStore } from "@houston/host/src/credentials/store";
+import { EnvCredentialVault } from "@houston/host/src/credentials/vault";
+import type { Agent } from "@houston/host/src/domain/types";
+import { BusEventHub } from "@houston/host/src/events/hub";
+import {
+  type FeedbackSender,
+  LinearFeedbackSender,
+} from "@houston/host/src/feedback";
+import { ComposioProvider } from "@houston/host/src/integrations/composio";
+import { MemoryIntegrationCredentialStore } from "@houston/host/src/integrations/credential-store";
+import { IntegrationRegistry } from "@houston/host/src/integrations/registry";
+import { FakeLauncher } from "@houston/host/src/launcher/fake";
+import { CloudPaths } from "@houston/host/src/paths";
 import type {
   CredentialStore,
   CredentialVault,
   RuntimeLauncher,
   WorkspaceStore,
-} from "./ports";
-import { forward } from "./proxy/route";
-import type { IntegrationDeps } from "./routes/integrations";
-import { ChannelRoutineFirer } from "./schedule/firer";
-import { Scheduler } from "./schedule/scheduler";
+} from "@houston/host/src/ports";
+import { forward } from "@houston/host/src/proxy/route";
+import type { IntegrationDeps } from "@houston/host/src/routes/integrations";
+import { ChannelRoutineFirer } from "@houston/host/src/schedule/firer";
+import { Scheduler } from "@houston/host/src/schedule/scheduler";
 import {
-  type AdminDeps,
   type ControlPlaneDeps,
   createControlPlaneServer,
-} from "./server";
-import { installGracefulShutdown } from "./shutdown";
-import { MemoryWorkspaceStore } from "./store/memory";
+} from "@houston/host/src/server";
+import { installGracefulShutdown } from "@houston/host/src/shutdown";
+import { MemoryWorkspaceStore } from "@houston/host/src/store/memory";
+import { MemoryTurnBus, type TurnBus } from "@houston/host/src/turn/bus";
+import { ConnectManager } from "@houston/host/src/turn/connect";
+import type { TurnDeps } from "@houston/host/src/turn/deps";
+import { makeIdTokenProvider } from "@houston/host/src/turn/id-token";
+import { TurnQuota } from "@houston/host/src/turn/quota";
+import { TurnRelay } from "@houston/host/src/turn/relay";
+import { MemoryVfs, type Vfs } from "@houston/host/src/vfs";
+import { KubeConfig } from "@kubernetes/client-node";
+import { Pool } from "pg";
+import { type AutopilotRates, BigQueryBillingReader } from "./admin/billing";
+import { FakeClusterReader, GkeClusterReader } from "./admin/cluster";
+import { makeTokenVerifier } from "./auth/verify-supabase";
+import { PgCredentialStore } from "./credentials/store-pg";
+import { PgIntegrationCredentialStore } from "./integrations/credential-store-pg";
+import { type AgentResolver, GkeLauncher } from "./launcher/gke";
+import { type AdminDeps, handleAdmin } from "./routes/admin";
 import { PgWorkspaceStore } from "./store/pg";
-import { MemoryTurnBus, type TurnBus } from "./turn/bus";
 import { RedisTurnBus } from "./turn/bus-redis";
-import { ConnectManager } from "./turn/connect";
-import type { TurnDeps } from "./turn/deps";
-import { makeIdTokenProvider } from "./turn/id-token";
-import { TurnQuota } from "./turn/quota";
-import { TurnRelay } from "./turn/relay";
-import { GcsVfs, MemoryVfs, type Vfs } from "./vfs";
+import { GcsVfs } from "./vfs/gcs";
 
 /**
- * Boot the control plane: one frontend-facing API listener (auth + access +
- * routing/SSE + per-turn dispatch) on :CP_PORT. Credentials are connect-once
- * subscriptions (user's own OpenAI/Codex plan) served access-token-only —
- * there is no keyless proxy and no org API key.
+ * The CLOUD wiring point (CLOSED) — Houston Cloud. Boots the host
+ * (`createControlPlaneServer` from `@houston/host`) with the cloud adapter
+ * profile: Postgres stores, GCS workspace files, GKE sandbox lifecycle, Redis
+ * shared-state, BigQuery billing, the Supabase verifier, and the operator-admin
+ * surface (injected behind the `mountAdmin` seam). One frontend-facing API
+ * listener on :CP_PORT. Credentials are connect-once subscriptions (user's own
+ * OpenAI/Codex plan) served access-token-only — there is no keyless proxy and no
+ * org API key.
  *
  * `dev` mode wires in-memory fakes (no Postgres, no cluster) so it boots and is
  * exercisable end-to-end with a single local runtime. Production swaps in the
@@ -251,13 +260,28 @@ function main(): void {
   // is the same in every deployment; only the credential store differs. With a
   // live Pool (prod) the user's connected account persists in Postgres so it
   // survives a replica restart; dev mode (no Pool) uses the in-memory store. The
-  // LOCAL profile persists to a file (see local/host.ts).
+  // LOCAL profile persists to a file (see @houston/host local/host.ts).
   const integrations: IntegrationDeps = {
     registry: new IntegrationRegistry([new ComposioProvider()]),
     credentials: pool
       ? new PgIntegrationCredentialStore(pool)
       : new MemoryIntegrationCredentialStore(),
   };
+
+  // The operator-admin surface is CLOSED: bind it here and inject it behind the
+  // host's `mountAdmin` seam. The bound `handleAdmin` closes over the admin deps
+  // AND the workspace store (it reads cross-tenant pods/spend + flips a
+  // workspace's hosting model). The local profile injects nothing → `/admin/*`
+  // 404s there.
+  const admin = buildAdmin(kubeConfig);
+  const mountAdmin: ControlPlaneDeps["mountAdmin"] = (
+    userId,
+    method,
+    path,
+    url,
+    req,
+    res,
+  ) => handleAdmin({ admin, store }, userId, method, path, url, req, res);
 
   const deps: ControlPlaneDeps = {
     verifier,
@@ -269,7 +293,7 @@ function main(): void {
     events,
     channels,
     capabilities: CLOUD_CAPABILITIES,
-    admin: buildAdmin(kubeConfig),
+    mountAdmin,
     feedback: buildFeedback(),
     integrations,
     corsOrigin: config.corsOrigin,

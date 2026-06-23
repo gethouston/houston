@@ -1,5 +1,5 @@
+import type { TurnBus } from "@houston/host/src/turn/bus";
 import { Redis } from "ioredis";
-import type { TurnBus } from "./bus";
 
 /**
  * Redis-backed TurnBus (CP_REDIS_URL) — the piece that unlocks `replicas: 2+`

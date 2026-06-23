@@ -1,18 +1,18 @@
-import { AppsV1Api, CoreV1Api, type KubeConfig } from "@kubernetes/client-node";
-import type { Agent, AgentId } from "../domain/types";
-import type {
-  CredentialVault,
-  RuntimeEndpoint,
-  RuntimeLauncher,
-  RuntimeState,
-} from "../ports";
+import type { Agent, AgentId } from "@houston/host/src/domain/types";
 import {
   deploymentName,
   namespaceFor,
   pvcName,
   serviceBaseUrl,
   serviceName,
-} from "./names";
+} from "@houston/host/src/launcher/names";
+import type {
+  CredentialVault,
+  RuntimeEndpoint,
+  RuntimeLauncher,
+  RuntimeState,
+} from "@houston/host/src/ports";
+import { AppsV1Api, CoreV1Api, type KubeConfig } from "@kubernetes/client-node";
 import {
   deleteIgnoringMissing,
   ensureDeployment,
