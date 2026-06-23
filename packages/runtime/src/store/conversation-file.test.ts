@@ -97,3 +97,41 @@ test("assistant message without usage stores no usage field (degrades cleanly)",
   if (!msg) throw new Error("no assistant message found in history");
   expect(msg.usage ?? null).toBeNull();
 });
+
+test("assistant message persists the provider-switch marker so the divider survives a reload", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hi");
+  appendAssistantMessageAt(
+    dir,
+    "c1",
+    "now on the new provider",
+    undefined,
+    null,
+    {
+      provider: "openai-codex",
+      summarized: true,
+      pre_tokens: 280_000,
+    },
+  );
+
+  const history = getHistoryAt(dir, "c1");
+  if (!history) throw new Error("getHistoryAt returned null after append");
+  const msg = history.messages.find((m) => m.role === "assistant");
+  if (!msg) throw new Error("no assistant message found in history");
+  expect(msg.providerSwitch).toEqual({
+    provider: "openai-codex",
+    summarized: true,
+    pre_tokens: 280_000,
+  });
+});
+
+test("assistant message with no switch stores no providerSwitch field", () => {
+  const dir = freshDir();
+  appendUserMessageAt(dir, "c1", "hi");
+  appendAssistantMessageAt(dir, "c1", "hello!");
+
+  const msg = getHistoryAt(dir, "c1")?.messages.find(
+    (m) => m.role === "assistant",
+  );
+  expect(msg?.providerSwitch ?? null).toBeNull();
+});

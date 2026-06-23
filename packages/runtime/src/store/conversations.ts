@@ -1,6 +1,7 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
 import type {
+  ChatMessage,
   ConversationHistory,
   ConversationSummary,
   TokenUsage,
@@ -37,8 +38,9 @@ export function appendAssistantMessage(
   content: string,
   tools?: ToolCallRecord[],
   usage?: TokenUsage | null,
+  providerSwitch?: ChatMessage["providerSwitch"],
 ) {
-  appendAssistantMessageAt(dir, id, content, tools, usage);
+  appendAssistantMessageAt(dir, id, content, tools, usage, providerSwitch);
 }
 
 export function getHistory(id: string): ConversationHistory | null {

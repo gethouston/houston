@@ -105,6 +105,17 @@ export interface ChatMessage {
   /** Normalized usage for the turn this assistant message completed, when the
    *  provider reported it. Persisted so the context indicator survives a reload. */
   usage?: TokenUsage | null;
+  /**
+   * Set on the first assistant message produced after a mid-session provider
+   * switch, so the boundary divider and the context-usage window reset survive a
+   * history reload. `provider` is the pi provider id switched TO; `summarized` is
+   * whether prior context was compacted to fit the new model's window.
+   */
+  providerSwitch?: {
+    provider: string;
+    summarized: boolean;
+    pre_tokens?: number | null;
+  };
 }
 
 export interface ConversationSummary {
@@ -131,6 +142,8 @@ export interface ConversationHistory {
  * - `tool_start` / `tool_end` — tool activity within the turn.
  * - `usage` — normalized token usage for the turn (when the provider reports it),
  *   emitted before `done`. Drives the context-usage indicator.
+ * - `provider_switched` — the conversation moved to a different provider
+ *   mid-session; renders a boundary divider and resets the context-usage window.
  * - `done` / `error` — the turn ended.
  */
 export type WireEvent =
@@ -141,6 +154,23 @@ export type WireEvent =
   | { type: "tool_start"; data: { name: string; args: unknown } }
   | { type: "tool_end"; data: { name: string; isError: boolean } }
   | { type: "usage"; data: TokenUsage }
+  | {
+      /**
+       * The conversation moved to a different provider mid-session. The runtime
+       * re-pointed the live session to the new provider, carrying the full prior
+       * history verbatim when it fit (`summarized: false`) or compacting it to
+       * fit a smaller window first (`summarized: true`). `provider` is the pi
+       * provider id switched TO; `pre_tokens` is the leaving provider's last
+       * context fill. Drives the chat's boundary divider + the context-usage
+       * window reset.
+       */
+      type: "provider_switched";
+      data: {
+        provider: string;
+        summarized: boolean;
+        pre_tokens?: number | null;
+      };
+    }
   | { type: "done"; data: null }
   | { type: "error"; data: { message: string } };
 

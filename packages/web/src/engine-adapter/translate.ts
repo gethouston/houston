@@ -7,6 +7,7 @@ import type {
 import { EngineError } from "@houston/runtime-client";
 import type { ChatHistoryEntry } from "../../../../ui/engine-client/src/types";
 import { emitEvent } from "./bus";
+import { toOldProvider } from "./synthetic";
 
 /**
  * A turn that fails on the SEND (e.g. no provider connected → the runtime answers
@@ -171,6 +172,19 @@ export async function streamTurn(
         // Stash the turn's usage; finishOk attaches it to the final_result.
         usage = ev.data;
         break;
+      case "provider_switched":
+        // The conversation moved to a different provider mid-turn: draw the
+        // boundary divider + reset the context-usage window. Map the runtime
+        // provider id to the app id the divider resolves names against.
+        feed(agentPath, sessionKey, {
+          feed_type: "provider_switched",
+          data: {
+            provider: toOldProvider(ev.data.provider),
+            summarized: ev.data.summarized,
+            pre_tokens: ev.data.pre_tokens,
+          },
+        });
+        break;
       case "error":
         finishErr(ev.data.message);
         ac.abort();
@@ -221,6 +235,18 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
     if (m.role === "user") {
       out.push({ feed_type: "user_message", data: m.content });
     } else {
+      // A persisted provider switch: replay the boundary divider before this
+      // turn's content so it survives a reload (and the window estimate resets).
+      if (m.providerSwitch) {
+        out.push({
+          feed_type: "provider_switched",
+          data: {
+            provider: toOldProvider(m.providerSwitch.provider),
+            summarized: m.providerSwitch.summarized,
+            pre_tokens: m.providerSwitch.pre_tokens,
+          },
+        });
+      }
       for (const t of m.tools ?? []) {
         out.push({ feed_type: "tool_call", data: { name: t.name, input: {} } });
         out.push({

@@ -1,5 +1,4 @@
 // === Types ===
-
 export type {
   ConversationContentProps,
   ConversationDownloadProps,
@@ -196,6 +195,7 @@ export {
   reconcileUserMessageEcho,
 } from "./feed-merge";
 export type {
+  ChatCompactionInfo,
   ChatMessage,
   FileChangeEntry,
   ToolEntry,
