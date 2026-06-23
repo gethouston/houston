@@ -20,9 +20,9 @@ import {
 import { useUIStore } from "../../stores/ui";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
-import { ProviderEnterpriseDialog } from "./provider-enterprise-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
+import { useEnterpriseConnect } from "./use-enterprise-connect";
 
 interface Props {
   /** Current workspace provider id (used to push the new default after sign-in). */
@@ -51,11 +51,9 @@ export function ProviderPicker({ onSelect }: Props) {
   } | null>(null);
   // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
-  // The GitHub Copilot Enterprise card collects the company GitHub domain here
-  // before starting login (the device-code flow is domain-specific).
-  const [enterpriseDialog, setEnterpriseDialog] = useState<ProviderInfo | null>(
-    null,
-  );
+  // GitHub Copilot Enterprise collects the company GitHub domain before login.
+  const { begin: beginEnterprise, dialog: enterpriseDialog } =
+    useEnterpriseConnect();
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers (OpenCode) run only on the new TS engine; hide them on the
@@ -241,10 +239,13 @@ export function ProviderPicker({ onSelect }: Props) {
     // GitHub Copilot Enterprise: collect the company GitHub domain first (the
     // device-code flow is domain-specific), then run the same OAuth login with
     // it. Individual Copilot and every other OAuth provider connect straight away.
-    if (provider.enterprise) {
-      setEnterpriseDialog(provider);
+    if (
+      beginEnterprise(
+        provider,
+        (domain) => void startOAuthLogin(provider, domain),
+      )
+    )
       return;
-    }
     await startOAuthLogin(provider);
   };
 
@@ -361,13 +362,7 @@ export function ProviderPicker({ onSelect }: Props) {
         onClose={() => setApiKeyDialog(null)}
       />
 
-      <ProviderEnterpriseDialog
-        provider={enterpriseDialog}
-        onClose={() => setEnterpriseDialog(null)}
-        onConnect={(domain) => {
-          if (enterpriseDialog) void startOAuthLogin(enterpriseDialog, domain);
-        }}
-      />
+      {enterpriseDialog}
     </>
   );
 }

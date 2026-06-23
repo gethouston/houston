@@ -101,6 +101,23 @@ export function copilotCardConnected(
   return configured;
 }
 
+/**
+ * Whether an in-flight connect has LANDED, from its `/auth/status` entry. For the
+ * two Copilot cards (one shared `github-copilot` slot) we additionally require the
+ * credential's enterprise-ness to match what THIS login is for — otherwise a
+ * pre-existing individual credential would make an Enterprise connect report
+ * success instantly (and vice versa). `expectEnterprise` is undefined for every
+ * other provider, where any configured credential completes the connect.
+ */
+export function copilotLoginLanded(
+  entry: { configured?: boolean; enterpriseUrl?: string | null } | undefined,
+  expectEnterprise?: boolean,
+): boolean {
+  if (!entry?.configured) return false;
+  if (expectEnterprise === undefined) return true;
+  return !!entry.enterpriseUrl === expectEnterprise;
+}
+
 /** The engine ProviderId values, narrowed from toNewProvider's union. */
 export type NewProviderId = NonNullable<ReturnType<typeof toNewProvider>>;
 

@@ -27,7 +27,12 @@ import {
  * doesn't fit this mission's inline install/sign-in hint — the user connects
  * them in Settings or the chat provider picker instead.
  */
-const ONBOARDING_PROVIDERS = PROVIDERS.filter((p) => p.auth !== "apiKey");
+// GitHub Copilot Enterprise needs a company-domain dialog before login, which
+// only the picker/settings connect flows drive — so keep it out of the quick
+// first-run onboarding. Enterprise users connect it later from Settings.
+const ONBOARDING_PROVIDERS = PROVIDERS.filter(
+  (p) => p.auth !== "apiKey" && !p.enterprise,
+);
 
 interface BrainMissionProps {
   provider: string | null;
