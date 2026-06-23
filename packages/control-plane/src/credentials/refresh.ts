@@ -1,3 +1,4 @@
+import { refreshGitHubCopilotToken } from "@earendil-works/pi-ai/oauth";
 import {
   type CredentialStore,
   isApiKeyCredential,
@@ -39,6 +40,27 @@ export async function refreshCredential(
   cred: WorkspaceCredential,
 ): Promise<WorkspaceCredential> {
   if (isApiKeyCredential(cred)) return cred;
+
+  // GitHub Copilot does NOT use a standard refresh-token grant. Its short-lived
+  // (~25 min) Copilot token is minted from the long-lived GitHub OAuth token via
+  // GitHub's own Copilot token endpoint (a GET to copilot_internal/v2/token,
+  // Bearer + Copilot editor headers) — `cred.refreshToken` holds that GitHub
+  // token. Without this, the central serve can't refresh Copilot: every turn
+  // past the ~25 min mark serves a stale token (401, no response), and a
+  // reopened app can't re-mint, so the workspace reads as disconnected. Reuse
+  // pi-ai's exact exchange so the headers/skew never drift from the runtime's.
+  if (cred.provider === "github-copilot") {
+    const r = await refreshGitHubCopilotToken(cred.refreshToken);
+    return {
+      workspaceId: cred.workspaceId,
+      provider: cred.provider,
+      accessToken: r.access,
+      refreshToken: r.refresh, // the GitHub token is long-lived (returned as-is)
+      accountId: cred.accountId,
+      expiresAt: r.expires,
+    };
+  }
+
   const cfg = OAUTH[cred.provider];
   if (!cfg)
     throw new Error(`no OAuth refresh config for provider ${cred.provider}`);

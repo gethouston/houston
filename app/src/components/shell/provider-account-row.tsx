@@ -4,6 +4,7 @@ import type { ProviderInfo } from "../../lib/providers";
 import {
   ClaudeLogo,
   GeminiLogo,
+  GitHubCopilotLogo,
   OpenAILogo,
   OpenCodeLogo,
   OpenRouterLogo,
@@ -15,6 +16,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <ClaudeLogo />;
     case "openai":
       return <OpenAILogo />;
+    case "github-copilot":
+      return <GitHubCopilotLogo />;
     case "openrouter":
       return <OpenRouterLogo />;
     case "google":

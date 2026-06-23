@@ -10,6 +10,7 @@ import type { ProviderInfo } from "../lib/providers";
 import {
   ClaudeLogo,
   GeminiLogo,
+  GitHubCopilotLogo,
   OpenAILogo,
   OpenCodeLogo,
   OpenRouterLogo,
@@ -110,6 +111,8 @@ function iconFor(providerId: string) {
       return <ClaudeLogo className="size-full" />;
     case "openai":
       return <OpenAILogo className="size-full" />;
+    case "github-copilot":
+      return <GitHubCopilotLogo className="size-full" />;
     case "openrouter":
       return <OpenRouterLogo className="size-full" />;
     case "google":

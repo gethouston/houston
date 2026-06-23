@@ -20,6 +20,7 @@ import { config } from "../config";
 export type ProviderId =
   | "anthropic"
   | "openai-codex"
+  | "github-copilot"
   | "opencode"
   | "opencode-go"
   | "openrouter"
@@ -44,6 +45,12 @@ export const PROVIDERS: {
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     defaultModel: config.codexModel,
+    auth: "oauth",
+  },
+  {
+    id: "github-copilot",
+    name: "GitHub Copilot",
+    defaultModel: config.githubCopilotModel,
     auth: "oauth",
   },
   {

@@ -235,6 +235,15 @@ Notes:
   Rust build never shows them. Full design: `convergence/README.md` standing
   decisions. Runtime registry: `packages/runtime/src/ai/providers.ts`; host
   catalog: `packages/control-plane/src/providers.ts`.
+- _[NEW ENGINE only]_ The TS engine also adds **GitHub Copilot**
+  (`github-copilot`) as a **subscription OAuth** provider — pi-ai ships it
+  built-in (no adapter, no CLI), so it's registry entries only across the same
+  runtime + host catalogs. Login is a GitHub **device-code** flow; its pi-ai
+  login opens with an optional "GitHub Enterprise URL/domain" prompt that
+  `login.ts` `autoPromptAnswer()` auto-answers `""` (⇒ github.com, individual
+  Copilot) to avoid a deadlock. Curated models proxy Claude/GPT/Gemini under one
+  subscription, using pi-ai's DOTTED Copilot ids (`claude-sonnet-4.6`, not the
+  native `claude-sonnet-4-6`). LOCAL-only (cloud egress isn't allowlisted).
 
 ### Reasoning effort
 

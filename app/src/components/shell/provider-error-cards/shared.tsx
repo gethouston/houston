@@ -174,6 +174,8 @@ export function statusPageUrl(provider: string): string | null {
       return "https://status.anthropic.com/";
     case "openai":
       return "https://status.openai.com/";
+    case "github-copilot":
+      return "https://www.githubstatus.com/";
     default:
       return null;
   }

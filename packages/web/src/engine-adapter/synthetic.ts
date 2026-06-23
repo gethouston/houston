@@ -53,6 +53,7 @@ export function toNewProvider(
 ):
   | "anthropic"
   | "openai-codex"
+  | "github-copilot"
   | "openrouter"
   | "google"
   | "opencode"
@@ -61,6 +62,7 @@ export function toNewProvider(
   if (name === "anthropic") return "anthropic";
   if (name === "openai" || name === "openai-codex" || name === "codex")
     return "openai-codex";
+  if (name === "github-copilot") return "github-copilot";
   if (name === "openrouter") return "openrouter";
   if (name === "google") return "google";
   if (name === "opencode") return "opencode";

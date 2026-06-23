@@ -5,6 +5,7 @@ import {
   ClaudeLogo,
   DeepSeekLogo,
   GeminiLogo,
+  GitHubCopilotLogo,
   MiniMaxLogo,
   OpenAILogo,
   OpenCodeLogo,
@@ -22,6 +23,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <ClaudeLogo />;
     case "openai":
       return <OpenAILogo />;
+    case "github-copilot":
+      return <GitHubCopilotLogo />;
     case "openrouter":
       return <OpenRouterLogo />;
     case "google":

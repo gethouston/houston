@@ -58,6 +58,20 @@ export function codexLoginMethod(opts: {
     : OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
 }
 
+/**
+ * Auto-answer for a provider's interactive text prompt (`onPrompt`), or null to
+ * defer to the user. GitHub Copilot's pi-ai login OPENS with an optional
+ * "GitHub Enterprise URL/domain" question before it emits the device code;
+ * leaving it unanswered deadlocks the flow (the device code never appears).
+ * Houston serves individual Copilot accounts and the product voice forbids
+ * surfacing enterprise jargon, so auto-answer "" (=> github.com). Every other
+ * provider's `onPrompt` is the Anthropic headless code-paste, which MUST wait
+ * for the user — those return null so the caller hands back the paste promise.
+ */
+export function autoPromptAnswer(provider: string): string | null {
+  return provider === "github-copilot" ? "" : null;
+}
+
 const known = (id: string): id is ProviderId =>
   PROVIDERS.some((p) => p.id === id);
 
@@ -138,7 +152,10 @@ export async function startLogin(
       // remote webapp clients type a code (see codexLoginMethod).
       onSelect: async () =>
         codexLoginMethod({ deviceAuth, headless: config.headless }),
-      onPrompt: () => pastePromise,
+      onPrompt: () => {
+        const auto = autoPromptAnswer(provider);
+        return auto === null ? pastePromise : Promise.resolve(auto);
+      },
       onManualCodeInput: () => pastePromise,
       onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
     })

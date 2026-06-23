@@ -31,3 +31,14 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   // Unknown falls back to the Codex default (never throws / undefined).
   expect(providerDefaultModel("nope")).toBe("gpt-5.5");
 });
+
+test("github-copilot is a registered OAuth provider with a dotted Copilot model id", () => {
+  const ids = PROVIDERS.map((p) => p.id);
+  expect(ids).toContain("github-copilot");
+  // Subscription OAuth (GitHub device-code flow), not a pasted API key.
+  expect(providerAuthMethod("github-copilot")).toBe("oauth");
+  // Copilot's gateway uses DOTTED model ids (claude-sonnet-4.6), distinct from
+  // the native Anthropic provider's dashed claude-sonnet-4-6 — getModel() throws
+  // on the wrong form, so the default must be the dotted Copilot id.
+  expect(providerDefaultModel("github-copilot")).toBe("claude-sonnet-4.6");
+});
