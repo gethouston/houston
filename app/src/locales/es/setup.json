@@ -103,7 +103,9 @@
         },
         "chip": "Envía un correo por mí",
         "placeholder": "Responde a tu agente...",
-        "body": "Tu agente te enviará un correo real, para que lo veas funcionar."
+        "body": "Tu agente te enviará un correo real, para que lo veas funcionar.",
+        "skip": "Omitir por ahora",
+        "skipHint": "Tu agente terminó pero no confirmó. Puedes omitir y empezar a usar Houston."
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",

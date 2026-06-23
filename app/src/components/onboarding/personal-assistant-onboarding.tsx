@@ -176,6 +176,22 @@ export function PersonalAssistantOnboarding({
   const missionProvider = provider ?? "anthropic";
   const missionModel = model ?? getDefaultModel(missionProvider);
 
+  // Escape hatch (HOU-555): the final email step auto-advances on a marker the
+  // agent must emit, but some models send the email and never emit it, stranding
+  // the user with no way forward. Let them bail into the app. This is NOT a
+  // completion: it fires `onboarding_skipped` (not `onboarding_completed`) with
+  // the model, so analytics can separate "stuck and skipped" from a normal
+  // finish and surface which models strand users.
+  const skipOnboarding = (fromStep: OnboardingStep) => {
+    analytics.track("onboarding_skipped", {
+      step: fromStep,
+      provider: missionProvider,
+      model: missionModel,
+      source: "stuck",
+    });
+    setTutorialActive(false);
+  };
+
   // Section-aware eyebrow: "Setup · 1 of 2", "Onboarding · 2 of 3". Empty for
   // screens that aren't numbered steps (never rendered on those).
   const stepEyebrow = (screen: string): string => {
@@ -328,6 +344,7 @@ export function PersonalAssistantOnboarding({
           emailToolkitLabel={emailTool.label}
           onBack={() => setStep("connectEmail")}
           onContinue={() => setStep("emailSent")}
+          onSkip={() => skipOnboarding("emailChat")}
         />
       )}
       {step === "emailSent" && (
