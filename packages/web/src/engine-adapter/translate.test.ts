@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
 import { configWriteToSettings } from "./synthetic";
-import { turnErrorMessage } from "./translate";
+import { historyToFeed, turnErrorMessage } from "./translate";
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must
@@ -87,5 +87,55 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
       configWriteToSettings(CONFIG, JSON.stringify({ model: "x" })),
     ).toBeNull(); // no provider
     expect(configWriteToSettings(CONFIG, "not json")).toBeNull();
+  });
+});
+
+describe("historyToFeed (persisted history → feed replay)", () => {
+  test("replays a provider-switch marker as a divider before the turn, mapping the runtime id to the app id", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "hi", ts: 1 },
+      {
+        role: "assistant",
+        content: "on anthropic",
+        ts: 2,
+        usage: { context_tokens: 300_000, output_tokens: 1, cached_tokens: 0 },
+      },
+      { role: "user", content: "keep going", ts: 3 },
+      {
+        role: "assistant",
+        content: "now on codex",
+        ts: 4,
+        providerSwitch: {
+          provider: "openai-codex",
+          summarized: true,
+          pre_tokens: 300_000,
+        },
+      },
+    ]);
+
+    const idx = feed.findIndex((f) => f.feed_type === "provider_switched");
+    expect(idx).toBeGreaterThan(-1);
+    // openai-codex → openai so the divider resolves the provider NAME.
+    expect(feed[idx]?.data).toEqual({
+      provider: "openai",
+      summarized: true,
+      pre_tokens: 300_000,
+    });
+    // The divider precedes that turn's assistant text (it marks the boundary).
+    const textIdx = feed.findIndex(
+      (f, i) =>
+        i > idx &&
+        f.feed_type === "assistant_text" &&
+        f.data === "now on codex",
+    );
+    expect(textIdx).toBeGreaterThan(idx);
+  });
+
+  test("a normal assistant turn replays no divider", () => {
+    const feed = historyToFeed([
+      { role: "user", content: "hi", ts: 1 },
+      { role: "assistant", content: "hello", ts: 2 },
+    ]);
+    expect(feed.some((f) => f.feed_type === "provider_switched")).toBe(false);
   });
 });

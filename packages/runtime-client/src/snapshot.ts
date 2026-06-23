@@ -35,6 +35,10 @@ export function reduceSnapshot(
     case "done":
     case "error":
       return EMPTY_SNAPSHOT;
+    case "provider_switched":
+      // A mid-session provider switch is a boundary marker, not turn progress —
+      // it's published while a turn is live, so leave running/partial untouched.
+      return prev;
     case "sync":
       return prev; // sync is a read-out, never published back in
   }

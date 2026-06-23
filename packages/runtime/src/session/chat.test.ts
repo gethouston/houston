@@ -18,7 +18,13 @@ process.env.HOUSTON_WORKSPACE_DIR = mkdtempSync(
 // the state. resolveModel keeps its real throw so the createAgentSession fallback
 // produces the same user-facing error if it is ever reached.
 let connectedProvider: string | null = null;
+// Spread the real module so every export the chat graph imports (PROVIDERS for
+// auth/serve, activeEffort, etc.) stays available; override only the
+// auth-sensitive reads so the connected/logged-out state stays hermetic (the
+// module-level authStorage is shared across suites and would be order-dependent).
+const realProviders = await import("../ai/providers");
 mock.module("../ai/providers", () => ({
+  ...realProviders,
   activeProvider: () => connectedProvider,
   resolveModel: () => {
     throw new Error(
@@ -27,7 +33,9 @@ mock.module("../ai/providers", () => ({
   },
 }));
 
-const { runTurn, ensureProviderForTurn } = await import("./chat");
+const { runTurn, ensureProviderForTurn, switchNeedsCompaction } = await import(
+  "./chat"
+);
 const { subscribe } = await import("./bus");
 
 afterAll(() => mock.restore());
@@ -59,4 +67,14 @@ test("runTurn refuses with a clear error (never a hang) if the provider vanished
   expect(err).toBeDefined();
   expect(err?.data.message).toContain("No provider connected");
   expect(events.some((e) => e.type === "done")).toBe(false);
+});
+
+test("switchNeedsCompaction: replays under the fit fraction, compacts over it, replays when unknown", () => {
+  // A 258_400-token window has a 206_720 cutoff (0.8).
+  expect(switchNeedsCompaction(10_000, 258_400)).toBe(false);
+  expect(switchNeedsCompaction(206_720, 258_400)).toBe(false); // exactly at the cutoff still fits
+  expect(switchNeedsCompaction(206_721, 258_400)).toBe(true); // just over -> compact
+  expect(switchNeedsCompaction(300_000, 258_400)).toBe(true);
+  // Unknown prior fill: no proof it won't fit -> replay (don't spend a summarizer).
+  expect(switchNeedsCompaction(null, 1_000)).toBe(false);
 });

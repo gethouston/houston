@@ -49,9 +49,15 @@ import {
 import { createMission } from "../lib/create-mission";
 import { humanizeSkillName } from "../lib/humanize-skill-name";
 import {
+  decideHandoffMode,
+  estimateConversationTokens,
+  type ProviderHandoffMode,
+} from "../lib/provider-switch";
+import {
   type EffortLevel,
   getContextWindowConfig,
   getDefaultModel,
+  getProvider,
   normalizeLegacyModel,
   validEffortOrDefault,
   validModelOrNull,
@@ -79,6 +85,7 @@ import { ChatModelSelector } from "./chat-model-selector";
 import { ContextCompactedDivider } from "./context-compacted-divider";
 import { ContextIndicator } from "./context-indicator";
 import { NewMissionPickerDialog } from "./new-mission-picker-dialog";
+import { ProviderSwitchDialog } from "./provider-switch-dialog";
 import { SelectedSkillChip } from "./selected-skill-chip";
 import { ProviderReconnectCard } from "./shell/provider-reconnect-card";
 import { ToolRuntimeErrorCard } from "./shell/tool-runtime-error-card";
@@ -272,9 +279,33 @@ export function useAgentChatPanel({
     };
   }, [sessionFeedItems, effectiveProvider, effectiveModel]);
 
-  const handleModelSelect = useCallback(
+  // A provider switch awaiting the user's consent (it spends tokens). Held here
+  // and applied only on confirm.
+  const [switchDialog, setSwitchDialog] = useState<{
+    toProvider: string;
+    toModel: string;
+    mode: ProviderHandoffMode;
+  } | null>(null);
+
+  // Whether this conversation has produced provider output already, so a switch
+  // crosses a LIVE conversation (vs. just setting the default before the first
+  // turn). Consent is only needed once output exists.
+  const conversationStarted = useMemo(
+    () =>
+      (sessionFeedItems ?? []).some(
+        (i) =>
+          i.feed_type === "final_result" ||
+          i.feed_type === "assistant_text" ||
+          i.feed_type === "assistant_text_streaming",
+      ),
+    [sessionFeedItems],
+  );
+
+  // Persist a provider/model choice (agent config, the per-mission activity
+  // override, and the last-used preference) with an optimistic picker flip.
+  // Shared by the plain pick and the post-consent switch path.
+  const applyProviderModel = useCallback(
     async (prov: string, mod: string) => {
-      // Optimistic UI: the picker flips instantly while the writes fan out.
       setAgentProvider(prov);
       setAgentModel(mod);
       try {
@@ -303,6 +334,51 @@ export function useAgentChatPanel({
     },
     [path, selectedActivityId, addToast, t],
   );
+
+  // Picking a provider/model from the dropdown. Switching to a DIFFERENT provider
+  // mid-conversation brings the whole conversation over to it (the runtime
+  // re-points its session, carrying or summarizing prior context), which spends
+  // tokens — so ask first via the consent dialog. The size only decides which
+  // copy the dialog shows; the runtime makes the real replay/summarize call. A
+  // model change within the same provider, or any pick before the first turn,
+  // just persists.
+  const handleModelSelect = useCallback(
+    async (prov: string, mod: string) => {
+      const isProviderSwitch =
+        conversationStarted &&
+        !!selectedSessionKey &&
+        prov !== effectiveProvider;
+      if (!isProviderSwitch) {
+        await applyProviderModel(prov, mod);
+        return;
+      }
+      const mode = decideHandoffMode({
+        currentContextTokens: contextUsage?.context_tokens ?? null,
+        estimatedTokens: estimateConversationTokens(sessionFeedItems),
+        // The new provider hasn't been observed yet, so use its catalogued
+        // DEFAULT window, not a snapped-up estimate.
+        targetWindowTokens: getContextWindowConfig(prov, mod)?.default ?? null,
+      });
+      setSwitchDialog({ toProvider: prov, toModel: mod, mode });
+    },
+    [
+      conversationStarted,
+      selectedSessionKey,
+      effectiveProvider,
+      contextUsage,
+      sessionFeedItems,
+      applyProviderModel,
+    ],
+  );
+
+  // The user confirmed the switch dialog: persist the new provider/model. The
+  // runtime applies the actual handoff (and emits the divider) on the next send.
+  const confirmProviderSwitch = useCallback(async () => {
+    const pending = switchDialog;
+    setSwitchDialog(null);
+    if (!pending) return;
+    await applyProviderModel(pending.toProvider, pending.toModel);
+  }, [switchDialog, applyProviderModel]);
   const handleEffortSelect = useCallback(
     async (effort: EffortLevel) => {
       // Effort is per-agent (not per-activity): persist to the agent config
@@ -711,16 +787,30 @@ export function useAgentChatPanel({
   ]);
 
   const pickerDialog = agent ? (
-    <NewMissionPickerDialog
-      open={pickerOpen}
-      onOpenChange={setPickerOpen}
-      lockedAgent={agent}
-      hideBlank
-      onSkill={(_agentPath, skillName) => {
-        const skill = (allSkills ?? []).find((s) => s.name === skillName);
-        if (skill) applySkill(skill);
-      }}
-    />
+    <>
+      <NewMissionPickerDialog
+        open={pickerOpen}
+        onOpenChange={setPickerOpen}
+        lockedAgent={agent}
+        hideBlank
+        onSkill={(_agentPath, skillName) => {
+          const skill = (allSkills ?? []).find((s) => s.name === skillName);
+          if (skill) applySkill(skill);
+        }}
+      />
+      <ProviderSwitchDialog
+        open={switchDialog !== null}
+        providerName={
+          switchDialog
+            ? (getProvider(switchDialog.toProvider)?.name ??
+              switchDialog.toProvider)
+            : ""
+        }
+        mode={switchDialog?.mode ?? "replay"}
+        onConfirm={confirmProviderSwitch}
+        onCancel={() => setSwitchDialog(null)}
+      />
+    </>
   ) : null;
 
   return {
