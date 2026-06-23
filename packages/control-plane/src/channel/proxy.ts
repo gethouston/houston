@@ -188,7 +188,11 @@ export class ProxyChannel implements RuntimeChannel {
    * A push failure surfaces (the user retries; re-pushing is idempotent), but the
    * credential is already safely stored.
    */
-  async saveApiKeyCredential(ctx: ChannelCtx, provider: string, apiKey: string): Promise<void> {
+  async saveApiKeyCredential(
+    ctx: ChannelCtx,
+    provider: string,
+    apiKey: string,
+  ): Promise<void> {
     await this.opts.credentials.put({
       workspaceId: ctx.agent.workspaceId,
       provider,
@@ -198,11 +202,17 @@ export class ProxyChannel implements RuntimeChannel {
       kind: "api_key",
     });
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
-    const res = await fetch(`${endpoint.baseUrl}/auth/${encodeURIComponent(provider)}/api-key`, {
-      method: "POST",
-      headers: { "content-type": "application/json", Authorization: `Bearer ${endpoint.token}` },
-      body: JSON.stringify({ key: apiKey }),
-    });
+    const res = await fetch(
+      `${endpoint.baseUrl}/auth/${encodeURIComponent(provider)}/api-key`,
+      {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          Authorization: `Bearer ${endpoint.token}`,
+        },
+        body: JSON.stringify({ key: apiKey }),
+      },
+    );
     if (!res.ok) {
       throw new Error(
         `key stored, but the agent runtime did not accept it (${res.status}) — try connecting again`,

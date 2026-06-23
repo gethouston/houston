@@ -1,5 +1,9 @@
-import { test, expect } from "bun:test";
-import { PROVIDERS, providerAuthMethod, providerDefaultModel } from "./providers";
+import { expect, test } from "bun:test";
+import {
+  PROVIDERS,
+  providerAuthMethod,
+  providerDefaultModel,
+} from "./providers";
 
 /**
  * OpenCode Zen / Go are pi-native OpenAI-compatible gateways authenticated by a

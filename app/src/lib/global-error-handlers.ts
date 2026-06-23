@@ -1,6 +1,6 @@
-import { showErrorToast } from "./error-toast";
 import { analytics, classifyAnalyticsError } from "./analytics";
 import { isBenignLockRejection } from "./benign-rejections";
+import { showErrorToast } from "./error-toast";
 
 /**
  * Install the process-wide `window.onerror` / `window.onunhandledrejection`

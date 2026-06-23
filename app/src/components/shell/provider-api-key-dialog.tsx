@@ -1,6 +1,3 @@
-import { useEffect, useState } from "react";
-import { useTranslation } from "react-i18next";
-import { ExternalLink, Eye, EyeOff } from "lucide-react";
 import {
   Button,
   Dialog,
@@ -10,6 +7,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@houston-ai/core";
+import { ExternalLink, Eye, EyeOff } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 
@@ -78,8 +78,12 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
     >
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{t("apiKey.title", { name: provider.name })}</DialogTitle>
-          <DialogDescription>{t("apiKey.description", { name: provider.name })}</DialogDescription>
+          <DialogTitle>
+            {t("apiKey.title", { name: provider.name })}
+          </DialogTitle>
+          <DialogDescription>
+            {t("apiKey.description", { name: provider.name })}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -97,7 +101,10 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
           )}
 
           <div className="space-y-1.5">
-            <label htmlFor="provider-api-key" className="text-[13px] font-medium">
+            <label
+              htmlFor="provider-api-key"
+              className="text-[13px] font-medium"
+            >
               {t("apiKey.label")}
             </label>
             <div className="relative">
@@ -118,7 +125,11 @@ export function ProviderApiKeyDialog({ provider, onClose }: Props) {
                 aria-label={show ? t("apiKey.hide") : t("apiKey.show")}
                 className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               >
-                {show ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {show ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
               </button>
             </div>
           </div>
