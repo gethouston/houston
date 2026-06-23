@@ -88,16 +88,21 @@ export async function generateTitle(opts: {
  * which has the message text but no conversation id — so a board mission gets a
  * real LLM title instead of a client-side truncation. Returns "" for empty
  * input or when the model emits nothing (the caller falls back to truncation).
+ *
+ * The model is resolved LAZILY (only once we know there is text to title), so
+ * empty input returns "" even when no provider is connected — resolving it in a
+ * default-param argument would throw "No provider connected" before the
+ * empty-input short-circuit could run.
  */
 export async function titleFromText(
   text: string,
-  model = resolveModel(),
+  model?: unknown,
 ): Promise<string> {
   const excerpt = text.trim().slice(0, 2400);
   if (!excerpt) return "";
   return generateTitle({
     cwd: config.workspaceDir,
-    model,
+    model: model ?? resolveModel(),
     authStorage,
     modelRegistry,
     excerpt,
@@ -106,18 +111,20 @@ export async function titleFromText(
 
 /**
  * Summarize a conversation into a short title and persist it. Returns the new
- * title, or null when the conversation does not exist or is empty.
+ * title, or null when the conversation does not exist or is empty. The model is
+ * resolved LAZILY (after the existence check) so a missing/empty conversation
+ * returns null even when no provider is connected.
  */
 export async function summarizeTitle(
   id: string,
-  model = resolveModel(),
+  model?: unknown,
 ): Promise<string | null> {
   const history = getHistory(id);
   if (!history || history.messages.length === 0) return null;
 
   const title = await generateTitle({
     cwd: config.workspaceDir,
-    model,
+    model: model ?? resolveModel(),
     authStorage,
     modelRegistry,
     excerpt: buildExcerpt(history.messages),

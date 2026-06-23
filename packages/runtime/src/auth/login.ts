@@ -12,7 +12,7 @@ import {
   providerAuthMethod,
 } from "../ai/providers";
 import { config } from "../config";
-import { authStorage } from "./storage";
+import { authStorage, providerConnected } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
@@ -82,7 +82,7 @@ export function getAuthStatus() {
       return {
         provider: p.id,
         name: p.name,
-        configured: authStorage.hasAuth(p.id),
+        configured: providerConnected(authStorage, p.id),
         login: st
           ? { status: st.status, info: st.info, error: st.error }
           : null,
