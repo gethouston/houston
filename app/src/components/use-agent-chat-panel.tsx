@@ -231,11 +231,22 @@ export function useAgentChatPanel({
     [providerStatuses],
   );
 
+  // Whether the open conversation already has turns. Once it does, the chat's
+  // provider is frozen (see resolveEffectiveProvider): a provider that logs out
+  // mid-conversation must surface the reconnect card, never silently hand the
+  // turn to another connected provider.
+  const hasMessages = useFeedStore((s) =>
+    path && selectedSessionKey
+      ? (s.items[path]?.[selectedSessionKey]?.length ?? 0) > 0
+      : false,
+  );
+
   const effectiveProvider = resolveEffectiveProvider(
     activityProvider,
     agentProvider,
     lastUsedProvider,
     authedProviders,
+    hasMessages,
   );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??
