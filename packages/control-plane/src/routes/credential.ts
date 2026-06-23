@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { isExpiring, refreshCredential } from "../credentials/refresh";
-import type { CredentialStore, CredentialVault } from "../ports";
+import {
+  type CredentialStore,
+  type CredentialVault,
+  isApiKeyCredential,
+} from "../ports";
 import { bearer, json } from "./http";
 
 /**
@@ -33,22 +37,34 @@ export async function handleSandboxCredential(
     json(res, 404, { error: "workspace not connected" });
     return true;
   }
-  // OAuth tokens are refreshed centrally near expiry; an API key never expires
-  // and has no refresh path, so it is served verbatim.
-  if (cred.kind !== "api_key" && isExpiring(cred)) {
-    cred = await refreshCredential(cred);
-    await deps.credentials.put(cred);
+  if (isExpiring(cred)) {
+    try {
+      cred = await refreshCredential(cred);
+      await deps.credentials.put(cred);
+    } catch (err) {
+      // No refresh path for this provider (e.g. anthropic has no refresh config
+      // yet) or the refresh was rejected. Serve the existing token best-effort
+      // instead of 500-ing every turn: it may still be valid, and a genuinely
+      // expired one surfaces as a clear auth error on the real API call. This
+      // also stops the runtime's multi-provider serve loop from spamming serve
+      // 500s for a stale, unused credential (e.g. a leftover Claude login while
+      // the agent runs OpenCode).
+      console.error(
+        `[sandbox/credential] refresh failed for ${cred.provider}, serving existing token:`,
+        err instanceof Error ? err.message : err,
+      );
+    }
   }
   // Access token ONLY (Gate #2): the refresh token never leaves this process.
   // A stolen sandbox credential is then worth minutes, not an account. The
   // ChatGPT backend needs accountId, so that still ships. `kind` tells the
-  // sandbox which auth.json shape to write (api-key vs OAuth).
+  // runtime to write an api_key entry (no refresh/expiry) vs an oauth one.
   json(res, 200, {
     provider: cred.provider,
-    kind: cred.kind ?? "oauth",
     access: cred.accessToken,
     expires: cred.expiresAt,
     accountId: cred.accountId ?? null,
+    kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
   });
   return true;
 }

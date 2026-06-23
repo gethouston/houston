@@ -8,6 +8,16 @@
 export type PiThinkingLevel = "minimal" | "low" | "medium" | "high" | "xhigh";
 
 /**
+ * The effort applied to a reasoning-capable model when the user has chosen none.
+ * pi enables a model's reasoning ONLY when a thinking level is set (it sends
+ * `enable_thinking = !!reasoningEffort`), so without this a "thinking" model
+ * (e.g. an OpenCode model with a reasoning toggle but no effort levels) would
+ * silently run with reasoning OFF. "medium" matches the picker's default; pi
+ * clamps it to whatever the model actually supports.
+ */
+export const DEFAULT_REASONING_EFFORT = "medium";
+
+/**
  * Map a Houston effort value to pi's `thinkingLevel`.
  *
  * Houston's effort vocabulary (agent config + routine pin) is

@@ -43,93 +43,71 @@ export function scrubRefreshTokens(): string[] {
   return scrubbed;
 }
 
-/** Pull one provider's central credential into auth.json. Null when not connected. */
-async function syncOne(provider: string): Promise<string | null> {
-  const res = await fetch(
-    `${config.controlPlaneUrl}/sandbox/credential?provider=${encodeURIComponent(provider)}`,
-    { headers: { Authorization: `Bearer ${config.sandboxToken}` } },
-  );
-  if (res.status === 404) return null; // this provider isn't connected for the workspace
-  if (!res.ok) {
-    throw new Error(
-      `serve credential failed (${res.status}): ${await res.text().catch(() => "")}`,
-    );
-  }
-  const c = (await res.json()) as ServedCredential;
-  applyServedCredential(authPathFor(), c);
-  return c.provider;
-}
-
 /**
- * Pull the workspace's central credentials from the control plane and write them
- * to auth.json (access token only for OAuth; the key for api-key providers). All
- * connectable providers are synced — a workspace may have several connected
- * (e.g. Claude + an OpenRouter key) and any agent can use any of them. Returns
- * the providers actually served, or [] when nothing is connected (caller falls
- * back to whatever is already in auth.json).
+ * Pull the workspace's central credentials from the control plane into auth.json
+ * (access token / API key only). A workspace can have one credential per provider
+ * (e.g. Codex AND OpenCode), so this syncs EVERY known provider and applies each
+ * that the host serves — hydrating a fresh or just-woken runtime no matter which
+ * provider the next turn uses. Returns the providers that were applied; an empty
+ * result means the workspace hasn't connected anything yet.
  */
 export async function syncServedCredential(): Promise<string[]> {
   if (!serveModeOn()) return [];
-  const served = await Promise.all(PROVIDERS.map((p) => syncOne(p.id)));
-  const ok = served.filter((p): p is string => p !== null);
+  const applied: string[] = [];
+  for (const p of PROVIDERS) {
+    const res = await fetch(
+      `${config.controlPlaneUrl}/sandbox/credential?provider=${p.id}`,
+      {
+        headers: { Authorization: `Bearer ${config.sandboxToken}` },
+      },
+    );
+    if (res.status === 404) continue; // this provider isn't connected
+    if (!res.ok) {
+      // Internal serve hiccup for ONE provider must not strand the others; the
+      // turn still surfaces "No provider connected" downstream if nothing applied.
+      console.error(
+        `[serve] credential ${p.id} (${res.status}): ${await res.text().catch(() => "")}`,
+      );
+      continue;
+    }
+    applyServedCredential(
+      authPathFor(),
+      (await res.json()) as ServedCredential,
+    );
+    applied.push(p.id);
+  }
   // pi's AuthStorage caches auth.json in memory at startup; a direct write is
   // invisible to hasAuth()/resolveModel() until we re-read it. This is the line
   // that makes a never-connected agent actually see the served credential.
-  if (ok.length) authStorage.reload();
-  return ok;
+  if (applied.length) authStorage.reload();
+  return applied;
 }
 
 /**
- * A credential the runtime hands the control plane to capture into the
- * workspace's central store right after a connect. OAuth carries the refreshable
- * token; api-key carries the raw key.
+ * Export the locally-held credential so the control plane can capture it into
+ * the workspace's central store right after a device-code connect. Returns the
+ * first connected provider's tokens, or null if nothing is connected (which is
+ * also the post-scrub state — capture must run before scrub).
  */
-export type ExportedCredential =
-  | {
-      provider: string;
-      kind: "oauth";
-      access: string;
-      refresh: string;
-      expires: number;
-      accountId?: string;
-    }
-  | { provider: string; kind: "api_key"; key: string };
-
-/** True once a credential is connected and capturable (not a scrubbed shell). */
-function capturable(c: import("./auth-file").PiCred): boolean {
-  return c.type === "api_key" ? !!c.key : !!c.access && !!c.refresh;
-}
-
-function toExported(
-  provider: string,
-  c: import("./auth-file").PiCred,
-): ExportedCredential {
-  return c.type === "api_key"
-    ? { provider, kind: "api_key", key: c.key }
-    : {
+export function exportCredential(): {
+  provider: string;
+  access: string;
+  refresh: string;
+  expires: number;
+  accountId?: string;
+} | null {
+  for (const [provider, c] of Object.entries(readAuthFile(authPathFor()))) {
+    // Only OAuth credentials are captured centrally via export; an API key is
+    // submitted straight to the host, never round-tripped through the runtime.
+    if (c?.type === "oauth" && c.access && c.refresh) {
+      return {
         provider,
-        kind: "oauth",
         access: c.access,
         refresh: c.refresh,
         expires: c.expires,
         accountId: c.accountId,
       };
-}
-
-/**
- * Export the locally-held credential so the control plane can capture it. With
- * `only` set, exports exactly that provider (used right after connecting it);
- * otherwise the first connected provider. Returns null when nothing matching is
- * connected (also the post-scrub state — capture must run before scrub).
- */
-export function exportCredential(only?: string): ExportedCredential | null {
-  const auth = readAuthFile(authPathFor());
-  if (only) {
-    const c = auth[only];
-    return c && capturable(c) ? toExported(only, c) : null;
-  }
-  for (const [provider, c] of Object.entries(auth)) {
-    if (capturable(c)) return toExported(provider, c);
+    }
   }
   return null;
 }

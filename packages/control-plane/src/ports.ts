@@ -144,13 +144,19 @@ export interface RuntimeChannel {
   ): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
+  /** Connect-once: pull/confirm the workspace credential after the user connects. */
+  captureCredential(ctx: ChannelCtx): Promise<CaptureResult>;
   /**
-   * Connect-once: pull/confirm the workspace credential after the user connects.
-   * `provider` targets the just-connected provider (so capturing an API key
-   * doesn't pick up a different, already-connected OAuth provider); absent =
-   * the first connected.
+   * Connect-once for an API-key provider (OpenCode Zen / Go): store the pasted
+   * key centrally for the workspace. No OAuth dance, nothing to refresh or scrub.
+   * A standing-runtime channel also pushes it to the live runtime so the provider
+   * reads as connected immediately; the per-turn channel just stores it centrally.
    */
-  captureCredential(ctx: ChannelCtx, provider?: string): Promise<CaptureResult>;
+  saveApiKeyCredential(
+    ctx: ChannelCtx,
+    provider: string,
+    apiKey: string,
+  ): Promise<void>;
   /**
    * Connect-once logout: forget the workspace's central credential for a provider
    * so no future turn can re-serve it. The inverse of captureCredential — clearing
@@ -160,27 +166,34 @@ export interface RuntimeChannel {
 }
 
 /**
- * The user's OWN AI subscription credential for a workspace (connect-once): the
- * OAuth tokens obtained when they connect, held centrally so every agent in the
- * workspace shares one connection and the control plane is the single refresher.
+ * The user's OWN AI credential for a workspace (connect-once), held centrally so
+ * every agent in the workspace shares one connection and the control plane is the
+ * single owner. Two kinds:
+ *  - `oauth` (Claude / Codex subscriptions): an access token + refresh token the
+ *    control plane rotates centrally.
+ *  - `api_key` (OpenCode Zen / Go): a pasted, static key. It never expires and
+ *    has no refresh token, so `refreshToken` is "" and `expiresAt` is 0 — the
+ *    sentinel every serve/refresh path treats as "never refresh".
  */
 export interface WorkspaceCredential {
   workspaceId: WorkspaceId;
-  /** "openai-codex" | "anthropic" | "openrouter" | "google". */
+  /** "openai-codex" | "anthropic" | "opencode" | "opencode-go". */
   provider: string;
-  /**
-   * How this credential was obtained. "oauth" (default) = a refreshable
-   * subscription token; "api_key" = a user-pasted key (`accessToken` holds it,
-   * `refreshToken` is empty, never refreshed/expired).
-   */
-  kind?: "oauth" | "api_key";
-  /** The OAuth access token, OR — for an api-key provider — the API key itself. */
+  /** OAuth access token, or — for an api_key credential — the API key itself. */
   accessToken: string;
+  /** OAuth refresh token; "" for an api_key credential. */
   refreshToken: string;
-  /** Unix epoch ms the access token expires. (Far future for api-key.) */
+  /** Unix epoch ms the access token expires; 0 for an api_key credential (never). */
   expiresAt: number;
   /** The ChatGPT account id (codex) — the backend needs it; preserved across refreshes. */
   accountId?: string;
+  /** Credential kind. Absent is read as "oauth" (every legacy credential). */
+  kind?: "oauth" | "api_key";
+}
+
+/** A credential is an API key when explicitly tagged, or by the expiresAt=0 sentinel. */
+export function isApiKeyCredential(cred: WorkspaceCredential): boolean {
+  return cred.kind === "api_key" || cred.expiresAt === 0;
 }
 
 /** Stores + serves the one connect-once credential per (workspace, provider). */

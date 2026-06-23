@@ -9,7 +9,7 @@ import {
   activeProvider,
   PROVIDERS,
   type ProviderId,
-  providerAuthKind,
+  providerAuthMethod,
 } from "../ai/providers";
 import { config } from "../config";
 import { authStorage } from "./storage";
@@ -87,11 +87,10 @@ export async function startLogin(
   deviceAuth = true,
 ): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
-  if (providerAuthKind(providerId) === "api-key") {
+  if (providerAuthMethod(providerId) === "apiKey")
     throw new Error(
-      `${providerId} connects with an API key — call /auth/${providerId}/api-key`,
+      `${providerId} connects with an API key, not OAuth sign-in`,
     );
-  }
   const provider = providerId;
 
   // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).
@@ -164,36 +163,29 @@ export async function startLogin(
   ]);
 }
 
+/**
+ * Store a pasted API key for an api-key provider (OpenCode Zen / Go). pi's
+ * AuthStorage persists it as the `api_key` credential variant; `getApiKey`
+ * then returns it for any `getModel(provider, ...)` call against the provider's
+ * built-in OpenAI-compatible gateway. There is no OAuth dance and nothing to
+ * refresh or scrub.
+ */
+export function setApiKey(providerId: string, key: string): void {
+  if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
+  if (providerAuthMethod(providerId) !== "apiKey")
+    throw new Error(`${providerId} signs in with OAuth, not an API key`);
+  const trimmed = key.trim();
+  if (!trimmed) throw new Error("missing API key");
+  authStorage.set(providerId, { type: "api_key", key: trimmed });
+  active.delete(providerId as ProviderId);
+}
+
 /** Paste-code completion (Anthropic remote path). */
 export function completeLogin(providerId: string, code: string): void {
   const state = active.get(providerId as ProviderId);
   if (!state?.resolvePaste)
     throw new Error(`no active login for ${providerId}`);
   state.resolvePaste(code);
-}
-
-/**
- * Connect an API-key provider (openrouter, google): the user pasted a key, so
- * there is no OAuth dance. We store it as pi's first-class api_key credential —
- * `AuthStorage.getApiKey` returns it directly and the matching pi-ai provider
- * uses it, no token refresh. Throws on a bad provider or an obviously malformed
- * key so the failure reaches the user instead of silently "connecting".
- */
-export function setApiKey(providerId: string, key: string): void {
-  if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
-  if (providerAuthKind(providerId) !== "api-key") {
-    throw new Error(`${providerId} connects with OAuth, not an API key`);
-  }
-  const trimmed = key.trim();
-  // Keys are opaque secrets; reject only the clearly-invalid (empty, whitespace
-  // in the middle, absurd length) so a fat-fingered paste surfaces here.
-  if (!trimmed) throw new Error("API key is empty");
-  if (/\s/.test(trimmed)) throw new Error("API key contains whitespace");
-  if (trimmed.length < 8 || trimmed.length > 400)
-    throw new Error("API key length looks wrong");
-  authStorage.set(providerId, { type: "api_key", key: trimmed });
-  authStorage.reload(); // pick the new credential up for hasAuth/getApiKey at once
-  active.delete(providerId as ProviderId); // clear any stale login state
 }
 
 export function logout(providerId: string): void {

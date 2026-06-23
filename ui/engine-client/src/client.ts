@@ -648,16 +648,34 @@ export class HoustonClient {
     return this.request("POST", `/providers/${this.seg(name)}/login/cancel`);
   }
   /**
-   * Persist a pasted API key for an API-key provider (openrouter, google).
-   * Unlike OAuth providers (which use `providerLogin`), these connect by the
-   * user pasting a key; the engine validates and stores it, and the next
-   * `providerStatus(name)` poll returns `Authenticated` with no restart.
+   * Persist a Gemini API key to `~/.gemini/.env`. The engine validates
+   * the key shape, writes atomically, and chmods 0600 on Unix. The
+   * next `providerStatus("gemini")` poll will return `Authenticated`
+   * without requiring a Houston restart.
+   *
+   * Gemini-specific: other providers use the CLI's own OAuth flow via
+   * `providerLogin`. Do NOT generalize this route until a second
+   * provider needs it.
+   */
+  setGeminiApiKey(apiKey: string): Promise<void> {
+    return this.request("POST", "/providers/gemini/credentials", { apiKey });
+  }
+  /**
+   * Connect an API-key provider (OpenCode Zen / Go) by submitting a pasted key.
+   * Only the new TS engine serves these providers; the UI gates the call behind
+   * `newEngineActive()`, so on the legacy Rust engine this route is never hit.
    */
   setProviderApiKey(name: string, apiKey: string): Promise<void> {
-    return this.request("POST", `/providers/${this.seg(name)}/credentials`, {
+    return this.request("POST", `/providers/${this.seg(name)}/api-key`, {
       apiKey,
     });
   }
+  // "Sign in with Google" for Gemini goes through the standard
+  // `providerLogin("gemini")` call — the engine detects the gemini id
+  // and delegates to gemini-cli's own OAuth via the ACP `authenticate`
+  // JSON-RPC method. gemini-cli opens the browser with its own Google
+  // app identity and writes its own credential files. Same shape as
+  // `claude auth login --claudeai` and `codex login`.
 
   // ---------- store ----------
 

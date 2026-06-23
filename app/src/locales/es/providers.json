@@ -18,24 +18,9 @@
     "installHint": "Instala la CLI de {{cli}} en tu computador. Houston la detecta sola.",
     "installGuide": "Guía de instalación",
     "signInWith": "Iniciar sesión con {{provider}}",
-    "addApiKey": "Agregar tu clave de API de {{provider}}",
     "waiting": "Esperando a que termines de iniciar sesión en tu navegador...",
     "cancelWaiting": "Cancelar e intentar de nuevo",
     "installedCheckAgain": "¿Ya la instalaste? Reintentar"
-  },
-  "apiKey": {
-    "title": "Agregar tu clave de API de {{name}}",
-    "description": "Pega tu clave de API abajo. Houston la guarda en tu dispositivo y la usa para hablar con el proveedor.",
-    "label": "Clave de API",
-    "placeholder": "Pega tu clave de API",
-    "getKey": "Obtener una clave de {{name}}",
-    "show": "Mostrar la clave de API",
-    "hide": "Ocultar la clave de API",
-    "required": "Primero ingresa tu clave de API.",
-    "saved": "Conectado a {{provider}}",
-    "submit": "Guardar clave",
-    "submitting": "Guardando...",
-    "cancel": "Cancelar"
   },
   "signOutConfirm": {
     "title": "¿Cerrar sesión de {{provider}}?",
@@ -71,6 +56,19 @@
     "copyCode": "Copiar código",
     "codeCopied": "¡Código copiado!",
     "codeCopyFailed": "No se pudo copiar el código",
+    "cancel": "Cancelar"
+  },
+  "apiKey": {
+    "title": "Conectar {{name}}",
+    "description": "Pega tu clave de API de {{name}}. Houston la guarda de forma segura y la usa para tus chats.",
+    "getKey": "Obtén tu clave de API",
+    "label": "Clave de API",
+    "placeholder": "Pega tu clave de API",
+    "required": "Primero ingresa tu clave de API.",
+    "show": "Mostrar clave",
+    "hide": "Ocultar clave",
+    "save": "Conectar",
+    "saving": "Conectando...",
     "cancel": "Cancelar"
   }
 }

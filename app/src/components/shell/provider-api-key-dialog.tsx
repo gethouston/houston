@@ -12,48 +12,42 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
-import { useUIStore } from "../../stores/ui";
 
 /**
- * Connect dialog for API-key providers (OpenRouter, Google Gemini). Unlike the
- * OAuth providers, these have no sign-in flow — the user pastes a key. To keep
- * that easy for a non-technical user, a "Get a key" button opens the provider's
- * key page in their browser so they can mint one in a click.
+ * Connect dialog for API-key providers (OpenCode Zen / Go). Unlike the OAuth
+ * providers, these have no browser sign-in: the user pastes a key. A prominent
+ * "Get your API key" button opens the provider's dashboard (`apiKeyUrl`) so a
+ * non-technical user can create or copy a key in one click, then paste it here.
  *
- * Self-contained: it stores the key (which also makes the provider active and,
- * on the cloud / desktop-host path, captures it for the workspace), toasts, and
- * calls `onConnected` so the parent refreshes provider status. A bad key throws
- * and is shown inline rather than swallowed.
+ * On success the new engine stores the key for the workspace and the adapter
+ * fires `ProviderLoginComplete`, which the parent (settings / picker) already
+ * handles: the card flips to connected and a success toast shows. A failure is
+ * surfaced inline (never swallowed).
  */
 interface Props {
   provider: ProviderInfo | null;
   onClose: () => void;
-  /** Called after the key is stored so the parent can refresh provider status. */
-  onConnected: (provider: ProviderInfo) => void;
 }
 
-export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
+export function ProviderApiKeyDialog({ provider, onClose }: Props) {
   const { t } = useTranslation("providers");
-  const addToast = useUIStore((s) => s.addToast);
   const [key, setKey] = useState("");
-  const [reveal, setReveal] = useState(false);
+  const [show, setShow] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Reset per-open state so a key (or error) from a prior attempt never leaks
-  // into the next provider's dialog.
+  // Reset per-open state so a stale key / error / reveal never leaks across opens.
   useEffect(() => {
     if (provider) {
       setKey("");
-      setReveal(false);
-      setSubmitting(false);
+      setShow(false);
       setError(null);
+      setSubmitting(false);
     }
   }, [provider]);
 
   if (!provider) return null;
-  // Narrow once so the "Get a key" button doesn't need a non-null assertion.
-  const createKeyUrl = provider.createKeyUrl;
+  const url = provider.apiKeyUrl;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -66,11 +60,8 @@ export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
     setError(null);
     try {
       await tauriProvider.setApiKey(provider.id, trimmed);
-      addToast({
-        title: t("apiKey.saved", { provider: provider.name }),
-        variant: "success",
-      });
-      onConnected(provider);
+      // Success: the parent's ProviderLoginComplete handler flips the card and
+      // toasts. Close here so the dialog doesn't linger over the connected state.
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -90,20 +81,22 @@ export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
           <DialogTitle>
             {t("apiKey.title", { name: provider.name })}
           </DialogTitle>
-          <DialogDescription>{t("apiKey.description")}</DialogDescription>
+          <DialogDescription>
+            {t("apiKey.description", { name: provider.name })}
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          {createKeyUrl && (
+          {url && (
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="gap-1.5"
-              onClick={() => void tauriSystem.openUrl(createKeyUrl)}
+              onClick={() => void tauriSystem.openUrl(url)}
             >
               <ExternalLink className="size-3.5" />
-              {t("apiKey.getKey", { name: provider.name })}
+              {t("apiKey.getKey")}
             </Button>
           )}
 
@@ -117,7 +110,7 @@ export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
             <div className="relative">
               <input
                 id="provider-api-key"
-                type={reveal ? "text" : "password"}
+                type={show ? "text" : "password"}
                 autoComplete="off"
                 autoFocus
                 value={key}
@@ -128,14 +121,14 @@ export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
               />
               <button
                 type="button"
-                onClick={() => setReveal((v) => !v)}
-                className="absolute inset-y-0 right-0 flex items-center px-3 text-muted-foreground hover:text-foreground"
-                aria-label={reveal ? t("apiKey.hide") : t("apiKey.show")}
+                onClick={() => setShow((v) => !v)}
+                aria-label={show ? t("apiKey.hide") : t("apiKey.show")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
               >
-                {reveal ? (
-                  <EyeOff className="size-3.5" />
+                {show ? (
+                  <EyeOff className="size-4" />
                 ) : (
-                  <Eye className="size-3.5" />
+                  <Eye className="size-4" />
                 )}
               </button>
             </div>
@@ -152,7 +145,7 @@ export function ProviderApiKeyCard({ provider, onClose, onConnected }: Props) {
               {t("apiKey.cancel")}
             </Button>
             <Button type="submit" disabled={submitting || !key.trim()}>
-              {submitting ? t("apiKey.submitting") : t("apiKey.submit")}
+              {submitting ? t("apiKey.saving") : t("apiKey.save")}
             </Button>
           </DialogFooter>
         </form>

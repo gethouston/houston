@@ -65,8 +65,6 @@ export async function streamTurn(
   sessionKey: string,
   prompt: string,
   setActivityStatus: (status: string) => Promise<void>,
-  /** Reasoning-effort pin for this turn (the composer's effort selection). */
-  effort?: string,
 ): Promise<void> {
   // Persist a board-card status through the SAME (cloud-aware) seam the board
   // READS from. In cloud mode the board reads activities off the host, so this
@@ -193,7 +191,7 @@ export async function streamTurn(
       signal: ac.signal,
       onEvent,
     });
-    await engine.sendMessage(sessionKey, prompt, effort ? { effort } : {});
+    await engine.sendMessage(sessionKey, prompt);
     await streaming;
     // The stream closed without our abort (engine closed it) — finalize from
     // what we have so the UI never hangs in "running".

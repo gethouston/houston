@@ -11,6 +11,7 @@ import type {
 import type { EventHub } from "../events/hub";
 import { CloudPaths, type WorkspacePaths } from "../paths";
 import type { RuntimeChannel, WorkspaceStore } from "../ports";
+import { isApiKeyProvider } from "../providers";
 import { ChannelRoutineFirer } from "../schedule/firer";
 import { fireRoutineRun } from "../schedule/run";
 import { handleAttachments } from "../turn/attachments";
@@ -186,15 +187,10 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    // Optional: the just-connected provider, so capturing a pasted API key never
-    // picks up a different, already-connected OAuth provider.
-    const body = await readJson(req).catch((): Record<string, unknown> => ({}));
-    const provider =
-      typeof body.provider === "string" ? body.provider : undefined;
-    const result = await channel.captureCredential(
-      { workspace: authz.workspace, agent: authz.agent },
-      provider,
-    );
+    const result = await channel.captureCredential({
+      workspace: authz.workspace,
+      agent: authz.agent,
+    });
     if (result.ok) json(res, 200, { ok: true, provider: result.provider });
     else
       json(res, result.status, {
@@ -235,6 +231,54 @@ export async function handleAgents(
       provider,
     );
     json(res, 200, { ok: true });
+    return true;
+  }
+
+  // Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
+  // OAuth dance. Stored centrally for the whole workspace (and pushed into the
+  // standing runtime so it reads as connected at once). Must precede dispatch.
+  const apiKey = path.match(/^\/agents\/([^/]+)\/credential\/api-key$/);
+  if (apiKey && method === "POST") {
+    const agentId = apiKey[1] ? decodeURIComponent(apiKey[1]) : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    const { provider, apiKey: key } = await readJson(req);
+    if (
+      !provider ||
+      typeof provider !== "string" ||
+      !isApiKeyProvider(provider)
+    ) {
+      json(res, 400, { error: "unknown API-key provider" });
+      return true;
+    }
+    if (!key || typeof key !== "string" || !key.trim()) {
+      json(res, 400, { error: "missing 'apiKey'" });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    try {
+      await channel.saveApiKeyCredential(
+        { workspace: authz.workspace, agent: authz.agent },
+        provider,
+        key.trim(),
+      );
+      json(res, 200, { ok: true, provider });
+    } catch (err) {
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
     return true;
   }
 

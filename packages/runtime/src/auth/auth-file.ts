@@ -8,8 +8,9 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
  */
 
 /**
- * The pi auth.json entry shape per provider — pi's own on-disk format. OAuth
- * providers store a (refreshable) token; api-key providers store the raw key.
+ * The pi auth.json entry shape per provider. Two variants, matching pi's own
+ * `AuthCredential` union: an OAuth token (Claude / Codex subscriptions) or a
+ * plain API key (OpenCode Zen / Go — pasted, never expires, no refresh).
  */
 export type PiCred =
   | {
@@ -22,17 +23,17 @@ export type PiCred =
   | { type: "api_key"; key: string };
 
 /**
- * What the control plane serves per turn. OAuth: an access token ONLY (no
- * refresh — Gate #2). API-key: the key itself in `access` (a key is the whole
- * secret; there is nothing shorter-lived to serve). `kind` tells the sandbox
- * which auth.json shape to write.
+ * What the control plane serves per turn — note: NO refresh token. `kind`
+ * distinguishes an OAuth access token from a static API key; absent means
+ * OAuth (every legacy served credential). For an API key, `access` carries the
+ * key and `expires` is 0 (it never expires).
  */
 export type ServedCredential = {
   provider: string;
-  kind?: "oauth" | "api_key";
   access: string;
   expires: number;
   accountId: string | null;
+  kind?: "oauth" | "api_key";
 };
 
 /** The auth.json contents at `path`, or {} when absent/corrupt. */
@@ -52,9 +53,9 @@ function writeAuthFile(path: string, contents: Record<string, PiCred>): void {
 }
 
 /**
- * Write a served credential into auth.json. OAuth entries land with an empty
- * refresh field (Gate #2); api-key entries land as pi's `{ type: "api_key" }`
- * shape with the served key.
+ * Write a served credential into auth.json. An OAuth token is always written
+ * with an empty refresh field (Gate #2); an API key is written as pi's
+ * `api_key` variant (no refresh, no expiry — there is nothing to scrub).
  */
 export function applyServedCredential(path: string, c: ServedCredential): void {
   const entry: PiCred =
@@ -74,8 +75,8 @@ export function applyServedCredential(path: string, c: ServedCredential): void {
 
 /**
  * Rewrite every OAuth auth.json entry at `path` with refresh="". Idempotent.
- * Api-key entries hold no refresh token, so they are left untouched. Returns the
- * providers that were actually scrubbed.
+ * API-key entries carry no refresh token, so they are left untouched. Returns
+ * the providers that were actually scrubbed.
  */
 export function scrubRefreshTokensAt(path: string): string[] {
   const auth = readAuthFile(path);

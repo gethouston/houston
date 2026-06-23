@@ -6,11 +6,18 @@
 
 /**
  * Connectable AI providers.
- * - "anthropic" = Claude Pro/Max, "openai-codex" = ChatGPT/Codex: OAuth (subscription).
- * - "openrouter" = OpenRouter, "google" = Google Gemini: API-key (the user pastes a
- *   key; no OAuth). See `ProviderAuth.authKind`.
+ * - `anthropic` = Claude Pro/Max (subscription OAuth)
+ * - `openai-codex` = ChatGPT/Codex (subscription OAuth)
+ * - `openrouter` = OpenRouter, `google` = Google Gemini, `opencode` = OpenCode Zen,
+ *   `opencode-go` = OpenCode Go: API-key (a pasted key, no OAuth). See `ProviderAuth.authKind`.
  */
-export type ProviderId = "anthropic" | "openai-codex" | "openrouter" | "google";
+export type ProviderId =
+  | "anthropic"
+  | "openai-codex"
+  | "openrouter"
+  | "google"
+  | "opencode"
+  | "opencode-go";
 
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 
@@ -58,6 +65,12 @@ export interface ProviderInfo {
 export interface Settings {
   activeProvider?: ProviderId;
   models?: Partial<Record<ProviderId, string>>;
+  /**
+   * The agent's reasoning-effort setting, applied to each turn (the runtime maps
+   * it to pi's thinking level and clamps to the active model). Absent = the
+   * model's own default.
+   */
+  effort?: string;
 }
 
 export type ChatRole = "user" | "assistant";

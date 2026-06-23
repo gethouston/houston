@@ -1,24 +1,7 @@
-import { expect, test } from "bun:test";
-import { EngineError, type HoustonEngineClient } from "@houston/runtime-client";
-import { streamTurn, turnErrorMessage } from "./translate";
-
-/** A minimal engine that settles a turn at once and records the send opts. */
-function stubEngine(sent: Array<Record<string, unknown> | undefined>) {
-  return {
-    streamEvents(_sessionKey: string, opts: { onEvent: (e: unknown) => void }) {
-      opts.onEvent({ type: "done", data: null });
-      return Promise.resolve();
-    },
-    sendMessage(
-      _sessionKey: string,
-      _prompt: string,
-      opts?: Record<string, unknown>,
-    ) {
-      sent.push(opts);
-      return Promise.resolve();
-    },
-  } as unknown as HoustonEngineClient;
-}
+import { describe, expect, test } from "bun:test";
+import { EngineError } from "@houston/runtime-client";
+import { configWriteToSettings } from "./synthetic";
+import { turnErrorMessage } from "./translate";
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must
@@ -44,23 +27,65 @@ test("turnErrorMessage handles plain errors and non-errors", () => {
   expect(turnErrorMessage("just a string")).toBe("just a string");
 });
 
-test("streamTurn forwards the effort pin to the engine send", async () => {
-  // Without this, the composer's effort selector is cosmetic — the runtime never
-  // sees it. The pin must reach `sendMessage` so the turn's reasoning level is set.
-  const sent: Array<Record<string, unknown> | undefined> = [];
-  await streamTurn(
-    stubEngine(sent),
-    "agent/x",
-    "sess1",
-    "hi",
-    async () => {},
-    "high",
-  );
-  expect(sent).toEqual([{ effort: "high" }]);
-});
+describe("configWriteToSettings (model-pick → engine settings bridge)", () => {
+  const CONFIG = ".houston/config/config.json";
 
-test("streamTurn omits the effort key when none is selected", async () => {
-  const sent: Array<Record<string, unknown> | undefined> = [];
-  await streamTurn(stubEngine(sent), "agent/x", "sess1", "hi", async () => {});
-  expect(sent).toEqual([{}]);
+  test("carries the reasoning effort through to the settings update", () => {
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({
+          provider: "opencode",
+          model: "deepseek-v4-pro",
+          effort: "high",
+        }),
+      ),
+    ).toEqual({
+      activeProvider: "opencode",
+      model: "deepseek-v4-pro",
+      effort: "high",
+    });
+    // Provider-only write (no effort) omits effort.
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
+    ).toEqual({ activeProvider: "opencode" });
+  });
+
+  test("maps a config write with provider+model to a settings update", () => {
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "opencode-go", model: "deepseek-v4-pro" }),
+      ),
+    ).toEqual({ activeProvider: "opencode-go", model: "deepseek-v4-pro" });
+    // The old desktop "openai" id is remapped to the engine's "openai-codex".
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "openai", model: "gpt-5.5" }),
+      ),
+    ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
+  });
+
+  test("sets activeProvider even when no model is given (provider switch)", () => {
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
+    ).toEqual({
+      activeProvider: "opencode",
+    });
+  });
+
+  test("skips non-config files, unknown providers, and bad JSON", () => {
+    expect(
+      configWriteToSettings(".houston/learnings/learnings.json", "{}"),
+    ).toBeNull();
+    expect(configWriteToSettings("CLAUDE.md", "# hi")).toBeNull();
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
+    ).toBeNull();
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ model: "x" })),
+    ).toBeNull(); // no provider
+    expect(configWriteToSettings(CONFIG, "not json")).toBeNull();
+  });
 });

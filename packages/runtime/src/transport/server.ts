@@ -92,21 +92,32 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (method === "GET" && path === "/auth/status") {
     return json(res, 200, getAuthStatus());
   }
-  // Connect-once: the control plane reads this right after a connect to capture
-  // the credential into the workspace's central store. An optional `?provider=`
-  // targets the just-connected provider; absent = the first connected. {} when
-  // not connected.
+  // Connect-once: the control plane reads this right after a device-code connect to
+  // capture the credential into the workspace's central store. {} when not connected.
   if (method === "GET" && path === "/auth/export") {
-    const only = url.searchParams.get("provider") || undefined;
-    return json(res, 200, exportCredential(only) ?? {});
+    return json(res, 200, exportCredential() ?? {});
   }
   // Gate #2 (connect-once): the control plane calls this right after capture so
   // this sandbox stops holding the user's refresh token. Idempotent.
   if (method === "POST" && path === "/auth/scrub-refresh") {
     return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
   }
+  // API-key connect (OpenCode Zen / Go): the user pastes a key, no OAuth dance.
+  const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
+  if (method === "POST" && apiKeyMatch) {
+    const provider = apiKeyMatch[1];
+    try {
+      const { key } = await readJson(req);
+      setApiKey(provider, String(key || ""));
+      return json(res, 200, { ok: true });
+    } catch (e) {
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
   const authMatch = path.match(
-    /^\/auth\/([^/]+)\/(login|login\/complete|logout|api-key)$/,
+    /^\/auth\/([^/]+)\/(login|login\/complete|logout)$/,
   );
   if (method === "POST" && authMatch) {
     const provider = authMatch[1];
@@ -122,12 +133,6 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       if (action === "login/complete") {
         const { code } = await readJson(req);
         completeLogin(provider, String(code || ""));
-        return json(res, 200, { ok: true });
-      }
-      // Connect an API-key provider (openrouter, google): store the pasted key.
-      if (action === "api-key") {
-        const { key } = await readJson(req);
-        setApiKey(provider, String(key || ""));
         return json(res, 200, { ok: true });
       }
       logout(provider);
@@ -247,12 +252,11 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       // be lost — which left the chat spinning forever after logout.
       if (!(await ensureProviderForTurn())) {
         return json(res, 409, {
-          error: "No provider connected. Log in with Claude or Codex first.",
+          error: "No provider connected. Connect an AI provider first.",
         });
       }
-      // model/effort ride on a message as a per-turn pin: routines pin both; the
-      // composer pins `effort` (its effort selector). An omitted field leaves the
-      // session's current value untouched.
+      // model/effort ride on a routine-fired message (a routine's pin); a normal
+      // user message omits them, leaving the session's current model/effort.
       const pin = {
         model: typeof model === "string" ? model : undefined,
         effort: typeof effort === "string" ? effort : undefined,

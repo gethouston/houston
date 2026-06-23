@@ -20,7 +20,14 @@ import {
   tauriProvider,
   tauriSystem,
 } from "../../../lib/tauri";
-import { ProviderApiKeyCard } from "../../shell/provider-api-key-card";
+
+/**
+ * The first-run tutorial connects an OAuth subscription provider (Claude /
+ * Codex). API-key providers (OpenCode Zen / Go) connect by pasting a key, which
+ * doesn't fit this mission's inline install/sign-in hint — the user connects
+ * them in Settings or the chat provider picker instead.
+ */
+const ONBOARDING_PROVIDERS = PROVIDERS.filter((p) => p.auth !== "apiKey");
 
 interface BrainMissionProps {
   provider: string | null;
@@ -40,7 +47,7 @@ export function BrainMission({
 
   const refresh = useCallback(async () => {
     const entries = await Promise.all(
-      PROVIDERS.map(
+      ONBOARDING_PROVIDERS.map(
         async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
       ),
     );
@@ -81,7 +88,7 @@ export function BrainMission({
   return (
     <div className="flex flex-1 flex-col gap-6">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {PROVIDERS.map((prov) => (
+        {ONBOARDING_PROVIDERS.map((prov) => (
           <ProviderCard
             key={prov.id}
             provider={prov}
@@ -139,22 +146,14 @@ function ProviderCard({
   const installed = status?.cli_installed ?? false;
   const authenticated = status?.authenticated ?? false;
   const connected = installed && authenticated;
-  const isApiKey = provider.authKind === "api-key";
   const [loginLaunched, setLoginLaunched] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
-  const [apiKeyOpen, setApiKeyOpen] = useState(false);
 
   const handlePick = () => onSelect(provider.defaultModel);
 
   const handleSignIn = async () => {
     setLoginError(null);
     handlePick();
-    // API-key providers (OpenRouter, Gemini) open the paste-a-key card; there
-    // is no OAuth sign-in to launch.
-    if (isApiKey) {
-      setApiKeyOpen(true);
-      return;
-    }
     try {
       await tauriProvider.launchLogin(provider.id);
       setLoginLaunched(true);
@@ -180,51 +179,40 @@ function ProviderCard({
   };
 
   return (
-    <>
-      <button
-        type="button"
-        onClick={handlePick}
-        className={cn(
-          "group flex w-full flex-col gap-3 rounded-xl border bg-background p-4 text-left transition-all",
-          "border-black/5 hover:border-black/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-          selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
-        )}
-      >
-        <div className="flex items-center justify-between gap-2">
-          <div>
-            <p className="text-sm font-medium text-foreground">
-              {provider.name}
-            </p>
-            <p className="text-xs text-muted-foreground">{provider.subtitle}</p>
-          </div>
-          <ProviderStatusPill loading={loading} connected={connected} />
+    <button
+      type="button"
+      onClick={handlePick}
+      className={cn(
+        "group flex w-full flex-col gap-3 rounded-xl border bg-background p-4 text-left transition-all",
+        "border-black/5 hover:border-black/15 hover:shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+        selected && "border-foreground shadow-[0_1px_0_rgba(0,0,0,0.05)]",
+      )}
+    >
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium text-foreground">{provider.name}</p>
+          <p className="text-xs text-muted-foreground">{provider.subtitle}</p>
         </div>
-        <p className="text-xs text-muted-foreground">{costLabel}</p>
-        {selected && !connected && (
-          <SetupHint
-            provider={provider}
-            installed={installed}
-            isApiKey={isApiKey}
-            loginLaunched={loginLaunched}
-            loginError={loginError}
-            onSignIn={handleSignIn}
-            onRefresh={() => void onRefresh()}
-            onCancelWaiting={() => void handleCancelWaiting()}
-          />
-        )}
-        {selected && connected && (
-          <p className="text-xs text-[#00a240]">
-            {t("providers:card.connected")}
-          </p>
-        )}
-      </button>
-
-      <ProviderApiKeyCard
-        provider={apiKeyOpen ? provider : null}
-        onClose={() => setApiKeyOpen(false)}
-        onConnected={() => void onRefresh()}
-      />
-    </>
+        <ProviderStatusPill loading={loading} connected={connected} />
+      </div>
+      <p className="text-xs text-muted-foreground">{costLabel}</p>
+      {selected && !connected && (
+        <SetupHint
+          provider={provider}
+          installed={installed}
+          loginLaunched={loginLaunched}
+          loginError={loginError}
+          onSignIn={handleSignIn}
+          onRefresh={() => void onRefresh()}
+          onCancelWaiting={() => void handleCancelWaiting()}
+        />
+      )}
+      {selected && connected && (
+        <p className="text-xs text-[#00a240]">
+          {t("providers:card.connected")}
+        </p>
+      )}
+    </button>
   );
 }
 
@@ -281,7 +269,6 @@ function ProviderStatusPill({
 function SetupHint({
   provider,
   installed,
-  isApiKey,
   loginLaunched,
   loginError,
   onSignIn,
@@ -290,7 +277,6 @@ function SetupHint({
 }: {
   provider: ProviderInfo;
   installed: boolean;
-  isApiKey: boolean;
   loginLaunched: boolean;
   loginError: string | null;
   onSignIn: () => Promise<void>;
@@ -300,7 +286,7 @@ function SetupHint({
   const { t } = useTranslation(["setup", "providers"]);
   return (
     <div className="rounded-lg bg-secondary/60 p-3">
-      {!installed && !isApiKey && (
+      {!installed && (
         <div className="flex items-start gap-2 text-xs text-muted-foreground">
           <Terminal className="mt-0.5 size-3.5 shrink-0" />
           <span>
@@ -320,22 +306,7 @@ function SetupHint({
           </span>
         </div>
       )}
-      {/* API-key providers always show the "Add API key" button (no CLI to
-          install, no OAuth to launch). */}
-      {isApiKey && (
-        <AsyncButton
-          size="sm"
-          className="rounded-full"
-          onClick={(e) => {
-            e.stopPropagation();
-            return onSignIn();
-          }}
-        >
-          <ExternalLink className="size-3.5" />
-          {t("providers:setup.addApiKey", { provider: provider.name })}
-        </AsyncButton>
-      )}
-      {!isApiKey && installed && !loginLaunched && (
+      {installed && !loginLaunched && (
         <AsyncButton
           size="sm"
           className="rounded-full"

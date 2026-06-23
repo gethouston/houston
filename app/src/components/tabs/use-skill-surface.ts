@@ -1,5 +1,7 @@
 import type { Skill } from "@houston-ai/skills";
-import { useCallback, useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   useCreateSkill,
   useDeleteSkill,
@@ -7,9 +9,15 @@ import {
   useSkillDetail,
   useSkills,
 } from "../../hooks/queries";
+import { isMissingSkillError } from "../../lib/missing-skill";
+import { queryKeys } from "../../lib/query-keys";
+import { useUIStore } from "../../stores/ui";
 import { useSkillSurfaceLabels } from "./use-skill-surface-labels";
 
 export function useSkillSurface(agentPath: string) {
+  const { t } = useTranslation("skills");
+  const queryClient = useQueryClient();
+  const addToast = useUIStore((s) => s.addToast);
   const { skillDetailLabels } = useSkillSurfaceLabels();
   const { data: summaries, isLoading: skillsLoading } = useSkills(agentPath);
   const [selectedSkillName, setSelectedSkillName] = useState<string | null>(
@@ -22,10 +30,33 @@ export function useSkillSurface(agentPath: string) {
     setPrevAgentPath(agentPath);
     setSelectedSkillName(null);
   }
-  const { data: skillDetail } = useSkillDetail(
+  const { data: skillDetail, error: skillDetailError } = useSkillDetail(
     agentPath,
     selectedSkillName ?? undefined,
   );
+
+  // A selected skill that no longer resolves (renamed, deleted, or never
+  // installed) makes the host answer 404. `tauriSkills.load` keeps that off the
+  // red bug-toast / Sentry path, so surface it plainly here: a friendly note,
+  // drop the stale selection, and refetch the list so the dead card vanishes.
+  // (HOU-515 / HOU-441)
+  useEffect(() => {
+    if (!selectedSkillName || !isMissingSkillError(skillDetailError)) return;
+    addToast({
+      title: t("detail.unavailableToast.title"),
+      description: t("detail.unavailableToast.description"),
+      variant: "info",
+    });
+    setSelectedSkillName(null);
+    queryClient.invalidateQueries({ queryKey: queryKeys.skills(agentPath) });
+  }, [
+    skillDetailError,
+    selectedSkillName,
+    agentPath,
+    addToast,
+    queryClient,
+    t,
+  ]);
   const saveSkill = useSaveSkill(agentPath);
   const deleteSkill = useDeleteSkill(agentPath);
   const createSkill = useCreateSkill(agentPath);

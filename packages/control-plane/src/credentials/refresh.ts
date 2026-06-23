@@ -1,4 +1,8 @@
-import type { CredentialStore, WorkspaceCredential } from "../ports";
+import {
+  type CredentialStore,
+  isApiKeyCredential,
+  type WorkspaceCredential,
+} from "../ports";
 
 /**
  * Central OAuth refresh — the control plane is the SINGLE refresher of each
@@ -14,21 +18,27 @@ const OAUTH: Record<string, { tokenUrl: string; clientId: string }> = {
   // anthropic uses a different (PKCE) refresh; added when Claude connect lands.
 };
 
-/** True if the access token is within `skewMs` of expiry (or already expired). */
+/**
+ * True if the access token is within `skewMs` of expiry (or already expired). An
+ * API-key credential never expires, so it is never "expiring".
+ */
 export function isExpiring(
   cred: WorkspaceCredential,
   skewMs = 120_000,
 ): boolean {
+  if (isApiKeyCredential(cred)) return false;
   return Date.now() >= cred.expiresAt - skewMs;
 }
 
 /**
  * Exchange the refresh token for a new access (+ rotated refresh) token. Throws
- * on any failure — a stale token is never returned silently.
+ * on any failure — a stale token is never returned silently. An API-key
+ * credential has nothing to refresh and is returned unchanged.
  */
 export async function refreshCredential(
   cred: WorkspaceCredential,
 ): Promise<WorkspaceCredential> {
+  if (isApiKeyCredential(cred)) return cred;
   const cfg = OAUTH[cred.provider];
   if (!cfg)
     throw new Error(`no OAuth refresh config for provider ${cred.provider}`);

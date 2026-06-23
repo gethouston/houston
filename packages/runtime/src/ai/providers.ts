@@ -11,62 +11,75 @@ import { authStorage } from "../auth/storage";
 import { config } from "../config";
 
 /**
- * Supported providers. The provider id and the pi-ai model provider are the same
- * string, so a stored credential under `id` authenticates `getModel(id, ...)`
- * directly.
- *
- * - `oauth` providers (anthropic, openai-codex) connect through a subscription
- *   OAuth flow (see auth/login.ts).
- * - `api-key` providers (openrouter, google) connect by the user pasting an API
- *   key — pi's AuthStorage stores it as `{ type: "api_key", key }` and serves it
- *   to the matching pi-ai provider with no OAuth at all. `createKeyUrl` is the
- *   page the UI opens so a non-technical user can mint a key in one click.
+ * Supported providers. The provider id is the SAME string pi-ai uses for its
+ * model provider, so a stored credential under `id` authenticates
+ * `getModel(id, ...)` directly — whether that credential is an OAuth token
+ * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go, which
+ * pi exposes as built-in OpenAI-compatible gateways).
  */
-export type ProviderId = "anthropic" | "openai-codex" | "openrouter" | "google";
+export type ProviderId =
+  | "anthropic"
+  | "openai-codex"
+  | "opencode"
+  | "opencode-go"
+  | "openrouter"
+  | "google";
 
-export type ProviderAuthKind = "oauth" | "api-key";
+/** How a provider authenticates: a subscription OAuth flow, or a pasted API key. */
+export type ProviderAuthMethod = "oauth" | "apiKey";
 
-export interface ProviderDef {
+export const PROVIDERS: {
   id: ProviderId;
   name: string;
   defaultModel: string;
-  authKind: ProviderAuthKind;
-  /** Where the user mints an API key (api-key providers only). */
-  createKeyUrl?: string;
-}
-
-export const PROVIDERS: ProviderDef[] = [
+  auth: ProviderAuthMethod;
+}[] = [
   {
     id: "anthropic",
     name: "Claude (Pro / Max)",
     defaultModel: config.model,
-    authKind: "oauth",
+    auth: "oauth",
   },
   {
     id: "openai-codex",
     name: "ChatGPT / Codex (Plus / Pro)",
     defaultModel: config.codexModel,
-    authKind: "oauth",
+    auth: "oauth",
+  },
+  {
+    id: "opencode",
+    name: "OpenCode Zen",
+    defaultModel: config.opencodeModel,
+    auth: "apiKey",
+  },
+  {
+    id: "opencode-go",
+    name: "OpenCode Go",
+    defaultModel: config.opencodeGoModel,
+    auth: "apiKey",
   },
   {
     id: "openrouter",
     name: "OpenRouter",
     defaultModel: config.openrouterModel,
-    authKind: "api-key",
-    createKeyUrl: "https://openrouter.ai/settings/keys",
+    auth: "apiKey",
   },
   {
     id: "google",
     name: "Google Gemini",
     defaultModel: config.geminiModel,
-    authKind: "api-key",
-    createKeyUrl: "https://aistudio.google.com/apikey",
+    auth: "apiKey",
   },
 ];
 
-/** The connection mechanism for a provider id (`oauth` for an unknown id). */
-export function providerAuthKind(id: string): ProviderAuthKind {
-  return PROVIDERS.find((p) => p.id === id)?.authKind ?? "oauth";
+/** A provider's auth method (defaults to OAuth for an unknown id). */
+export function providerAuthMethod(id: string): ProviderAuthMethod {
+  return PROVIDERS.find((p) => p.id === id)?.auth ?? "oauth";
+}
+
+/** A provider's default model id (its catalog default, or the Codex default). */
+export function providerDefaultModel(id: string): string {
+  return PROVIDERS.find((p) => p.id === id)?.defaultModel ?? config.codexModel;
 }
 
 const isProvider = (s: string): s is ProviderId =>
@@ -75,6 +88,8 @@ const isProvider = (s: string): s is ProviderId =>
 type Settings = {
   activeProvider?: ProviderId;
   models?: Partial<Record<ProviderId, string>>;
+  /** Reasoning effort applied to each turn (mapped to pi's thinking level). */
+  effort?: string;
 };
 
 const settingsFile = join(config.dataDir, "settings.json");
@@ -104,6 +119,11 @@ export function modelFor(provider: ProviderId): string {
   return loadSettings().models?.[provider] ?? defaultModel(provider);
 }
 
+/** The agent's saved reasoning effort for new turns, or null (model default). */
+export function activeEffort(): string | null {
+  return loadSettings().effort ?? null;
+}
+
 /** The provider used for new chats: the saved active one if still authed, else the first authed. */
 export function activeProvider(): ProviderId | null {
   const saved = loadSettings().activeProvider;
@@ -115,6 +135,7 @@ export function activeProvider(): ProviderId | null {
 export function setSettings(input: {
   activeProvider?: string;
   model?: string;
+  effort?: string;
 }): Settings {
   const s = loadSettings();
   if (input.activeProvider) {
@@ -127,6 +148,7 @@ export function setSettings(input: {
     if (!prov) throw new Error("set a provider before choosing a model");
     s.models = { ...s.models, [prov]: input.model };
   }
+  if (input.effort) s.effort = input.effort;
   saveSettings(s);
   return s;
 }
@@ -140,9 +162,7 @@ export function setSettings(input: {
 export function resolveModel(override?: string | null) {
   const provider = activeProvider();
   if (!provider)
-    throw new Error(
-      "No provider connected. Log in with Claude or Codex first.",
-    );
+    throw new Error("No provider connected. Connect an AI provider first.");
   // ProviderId is a subset of KnownProvider; modelId is a runtime string the
   // caller controls. Cast to getModel's declared model-id param type. getModel
   // throws at runtime if the id is not offered by the provider.

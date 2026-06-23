@@ -44,7 +44,8 @@
     "description": "Se eliminará el agente y todos sus datos de forma permanente. Esta acción no se puede deshacer."
   },
   "workspaceDialog": {
-    "title": "Nuevo espacio de trabajo"
+    "title": "Nuevo espacio de trabajo",
+    "createFailed": "No pudimos crear el espacio de trabajo. Inténtalo de nuevo."
   },
   "uiTour": {
     "counter": "Tour {{current}} de {{total}}",

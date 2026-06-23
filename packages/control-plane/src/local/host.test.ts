@@ -64,12 +64,7 @@ test("capabilities report the local profile", async () => {
     expect(caps).toEqual(LOCAL_CAPABILITIES);
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
-    expect(caps.providers).toEqual([
-      "anthropic",
-      "openai-codex",
-      "openrouter",
-      "google",
-    ]);
+    expect(caps.providers).toEqual(["anthropic", "openai-codex"]);
   } finally {
     host.stop();
   }

@@ -11,6 +11,7 @@ import {
   ClaudeLogo,
   GeminiLogo,
   OpenAILogo,
+  OpenCodeLogo,
   OpenRouterLogo,
 } from "./shell/provider-logos";
 
@@ -113,6 +114,9 @@ function iconFor(providerId: string) {
       return <OpenRouterLogo className="size-full" />;
     case "google":
       return <GeminiLogo className="size-full" />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo className="size-full" />;
     default:
       return null;
   }

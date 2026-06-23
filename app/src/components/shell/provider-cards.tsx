@@ -7,6 +7,7 @@ import {
   GeminiLogo,
   MiniMaxLogo,
   OpenAILogo,
+  OpenCodeLogo,
   OpenRouterLogo,
 } from "./provider-logos";
 
@@ -25,6 +26,9 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <OpenRouterLogo />;
     case "google":
       return <GeminiLogo />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">

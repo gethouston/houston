@@ -20,6 +20,7 @@ import { shouldAutocompactForSession } from "./autocompact";
 import { getEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
 import { logger } from "./logger";
+import { isMissingSkillError } from "./missing-skill";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
 import { normalizeLegacyModel } from "./providers";
 import type {
@@ -40,6 +41,13 @@ interface EngineCallOptions {
    *  user-initiated failures always reach crash reporting; set false only for
    *  genuinely fire-and-forget calls or ones with their own report path. */
   capture?: boolean;
+  /** Classifier for errors that are expected + explainable (not Houston bugs).
+   *  A matching error is logged but gets NO red bug toast and NO Sentry report;
+   *  the caller surfaces it inline. Use sparingly, only for failures a user can
+   *  understand and act on (e.g. a skill that was renamed or removed). The TS
+   *  host emits bare-string errors with no typed `kind`, so silencing keys on a
+   *  predicate over the thrown error rather than a kind string. */
+  silence?: (err: unknown) => boolean;
 }
 
 /** Wrap an engine call and surface errors as toasts unless caller handles them inline. */
@@ -73,6 +81,11 @@ async function surfaceError(
     `[engine:${label}] ${message}`,
     context ? JSON.stringify(context) : undefined,
   );
+
+  // Expected, explainable errors the caller surfaces inline. Logged above for
+  // the local log tail, but no red bug toast and no Sentry report. Checked here
+  // (not in `engineCallSurface`) because the predicate needs the full error.
+  if (options?.silence?.(err)) return;
 
   // Aborted requests are expected; `toast: false` callers render their own
   // failure UI but the error is still captured. See `engineCallSurface`.
@@ -325,8 +338,15 @@ export const tauriSkills = {
       })),
     ),
   load: (agentPath: string, name: string) =>
-    call<SkillDetail>("load_skill", () =>
-      getEngine().loadSkill(agentPath, name),
+    call<SkillDetail>(
+      "load_skill",
+      () => getEngine().loadSkill(agentPath, name),
+      undefined,
+      // The skill the user opened may have been renamed, deleted, or never
+      // installed (the host answers 404). That's expected — the Skills view
+      // surfaces it inline and refreshes the list — so don't fire the red bug
+      // toast or report it.
+      { silence: isMissingSkillError },
     ),
   create: (
     agentPath: string,
@@ -679,9 +699,11 @@ export const tauriProvider = {
       getEngine().cancelProviderLogin(provider),
     ),
   /**
-   * Connect an API-key provider (OpenRouter, Google Gemini): the user pasted a
-   * key into the API-key card. No OAuth — the engine stores the key, makes the
-   * provider active, and (cloud/desktop-host) captures it for the workspace.
+   * Connect an API-key provider (OpenRouter, Google Gemini, OpenCode Zen / Go):
+   * submit the pasted key. The new engine stores it for the workspace and the
+   * provider reads as connected (the adapter fires `ProviderLoginComplete`).
+   * New-engine only — the connect UI shows these providers only when
+   * `newEngineActive()`.
    */
   setApiKey: (provider: string, apiKey: string) =>
     call<void>("set_provider_api_key", () =>

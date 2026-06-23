@@ -33,12 +33,6 @@ export interface SendOptions {
   /** Echoed back on the `user` event so the sender can dedupe its own message. */
   nonce?: string;
   signal?: AbortSignal;
-  /**
-   * Reasoning-effort pin for THIS turn (low/medium/high/xhigh). The runtime maps
-   * it to pi's thinking level and clamps per model; omit to keep the session's
-   * current level. This is how the composer's effort selector takes effect.
-   */
-  effort?: string;
 }
 
 /**
@@ -100,7 +94,11 @@ export class HoustonEngineClient {
   listProviders() {
     return this.json<ProviderInfo[]>("/providers");
   }
-  setSettings(input: { activeProvider?: ProviderId; model?: string }) {
+  setSettings(input: {
+    activeProvider?: ProviderId;
+    model?: string;
+    effort?: string;
+  }) {
     return this.json<Settings>("/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -133,9 +131,9 @@ export class HoustonEngineClient {
     });
   }
   /**
-   * Connect an API-key provider (openrouter, google): the user pasted a key, so
-   * there is no OAuth dance — the runtime stores it directly. Validates the key
-   * shape server-side; a bad key rejects here so the failure reaches the user.
+   * Store a pasted API key for an api-key provider (OpenCode Zen / Go). No OAuth
+   * dance: the key is persisted and used directly for the provider's built-in
+   * OpenAI-compatible gateway.
    */
   setApiKey(provider: ProviderId, key: string) {
     return this.json<{ ok: boolean }>(`/auth/${provider}/api-key`, {
@@ -216,11 +214,7 @@ export class HoustonEngineClient {
     await this.request(`/conversations/${encodeURIComponent(id)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        text,
-        nonce: opts.nonce,
-        ...(opts.effort ? { effort: opts.effort } : {}),
-      }),
+      body: JSON.stringify({ text, nonce: opts.nonce }),
       signal: opts.signal,
     });
   }

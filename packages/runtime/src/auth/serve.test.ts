@@ -17,10 +17,11 @@ type AuthFile = Record<
   string,
   {
     type: string;
-    access: string;
-    refresh: string;
-    expires: number;
+    access?: string;
+    refresh?: string;
+    expires?: number;
     accountId?: string;
+    key?: string;
   }
 >;
 
@@ -101,6 +102,43 @@ test("scrub rewrites every refresh-bearing entry and reports the providers", () 
   expect(anthropic.refresh).toBe("");
   // Access tokens survive the scrub — the agent keeps working this turn.
   expect(codex.access).toBe("A1");
+});
+
+test("an API-key served credential is written as pi's api_key variant (no refresh/expiry)", () => {
+  const path = freshAuthPath();
+  applyServedCredential(path, {
+    provider: "opencode",
+    access: "sk-opencode-zen-key",
+    expires: 0,
+    accountId: null,
+    kind: "api_key",
+  });
+  const auth = readAuth(path);
+  expect(auth.opencode).toEqual({
+    type: "api_key",
+    key: "sk-opencode-zen-key",
+  });
+  // No oauth fields leak in for an API key.
+  expect(JSON.stringify(auth)).not.toContain("refresh");
+});
+
+test("scrub leaves api_key entries untouched (nothing to scrub)", () => {
+  const path = freshAuthPath();
+  writeFileSync(
+    path,
+    JSON.stringify({
+      "openai-codex": {
+        type: "oauth",
+        access: "A1",
+        refresh: "RT-1",
+        expires: 1,
+      },
+      opencode: { type: "api_key", key: "sk-opencode" },
+    }),
+  );
+  expect(scrubRefreshTokensAt(path)).toEqual(["openai-codex"]);
+  const auth = readAuth(path);
+  expect(auth.opencode).toEqual({ type: "api_key", key: "sk-opencode" });
 });
 
 test("scrub is idempotent and a missing auth.json is a no-op", () => {

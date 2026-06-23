@@ -61,6 +61,7 @@ export function parseTurnRequest(body: unknown): TurnRequest {
       access: c.access,
       expires: c.expires,
       accountId: typeof c.accountId === "string" ? c.accountId : null,
+      kind: c.kind === "api_key" ? "api_key" : "oauth",
     };
   }
   return {

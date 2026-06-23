@@ -1,14 +1,15 @@
 import { type Toast, ToastContainer } from "@houston-ai/core";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
 import { getDefaultModel } from "../../lib/providers";
-import { tauriProvider, tauriWorkspaces } from "../../lib/tauri";
+import { tauriAgents, tauriProvider, tauriWorkspaces } from "../../lib/tauri";
 import type { Agent } from "../../lib/types";
 import { useAgentStore } from "../../stores/agents";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
+import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
 import { MissionFrame } from "./mission-frame";
 import { BrainMission } from "./missions/brain";
 import { MeetMission } from "./missions/meet";
@@ -41,6 +42,7 @@ export function PersonalAssistantOnboarding({
   const { t } = useTranslation(["setup", "common"]);
   const setTutorialActive = useUIStore((s) => s.setTutorialActive);
   const setUiTourActive = useUIStore((s) => s.setUiTourActive);
+  const addToast = useUIStore((s) => s.addToast);
   const [step, setStep] = useState<OnboardingStep>("welcome");
   const [agent, setAgent] = useState<Agent | null>(null);
   const [provider, setProvider] = useState<string | null>(null);
@@ -58,6 +60,10 @@ export function PersonalAssistantOnboarding({
     t("setup:tutorial.defaults.assistantName"),
   );
   const [assistantColor, setAssistantColor] = useState("navy");
+  // Collapses concurrent / repeated default-workspace creation onto a single
+  // in-flight operation so first-run can never fire `createWorkspace` twice
+  // (a double-clicked Continue, Skip racing a mission) — HOU-444.
+  const creationRef = useRef<Promise<Agent> | null>(null);
 
   const missionTitle = t("setup:tutorial.missions.try.skill.title");
 
@@ -76,42 +82,76 @@ export function PersonalAssistantOnboarding({
     setStep("meet");
   };
 
-  const createWorkspaceAndAssistant = async (
+  const createWorkspaceAndAssistant = (
     pickedProvider: string,
     pickedModel: string,
   ): Promise<Agent> => {
-    const setup = defaultAssistantSetup({
-      workspaceName: t("setup:tutorial.defaults.workspaceName"),
-      assistantName:
-        assistantName.trim() || t("setup:tutorial.defaults.assistantName"),
-      focus: t("setup:tutorial.defaults.focus"),
-      approvalRule: t("setup:tutorial.defaults.approvalRule"),
+    // Reuse an in-flight creation rather than starting a second one, so a
+    // double-clicked Continue (or a Skip racing a mission) can't fire two
+    // `createWorkspace("Personal")` calls and trip the engine's dup-name
+    // conflict (HOU-444).
+    if (creationRef.current) return creationRef.current;
+
+    const op = (async (): Promise<Agent> => {
+      const setup = defaultAssistantSetup({
+        workspaceName: t("setup:tutorial.defaults.workspaceName"),
+        assistantName:
+          assistantName.trim() || t("setup:tutorial.defaults.assistantName"),
+        focus: t("setup:tutorial.defaults.focus"),
+        approvalRule: t("setup:tutorial.defaults.approvalRule"),
+      });
+      setup.color = assistantColor;
+
+      // Get-or-create: a prior partial run (or an orchestrator remount) may
+      // have already created "Personal" and/or its assistant. Reuse them
+      // instead of re-creating, which the engine rejects as a duplicate.
+      const {
+        workspace: ws,
+        assistant: created,
+        createdWorkspace,
+      } = await ensureWorkspaceWithAssistant(setup.workspaceName, {
+        listWorkspaces: () => tauriWorkspaces.list(),
+        createWorkspace: (name) => tauriWorkspaces.create(name),
+        listAgents: (workspaceId) => tauriAgents.list(workspaceId),
+        createAssistant: (workspaceId) =>
+          createPersonalAssistantForWorkspace(workspaceId, {
+            name: setup.assistantName.trim(),
+            instructions: buildAssistantInstructions(setup, missionTitle),
+            color: setup.color,
+            provider: pickedProvider,
+            model: pickedModel,
+          }),
+      });
+
+      // Persist the picked pair as the new global default so the next new
+      // agent starts from the same place the user just chose during onboarding.
+      await tauriProvider.setLastUsed(pickedProvider, pickedModel);
+      // Count activation only for a genuinely new workspace — a reused one
+      // (retry / remount) must not double-fire the event.
+      if (createdWorkspace) {
+        analytics.track("workspace_created", {
+          provider: pickedProvider,
+          source: "onboarding",
+        });
+      }
+      await useWorkspaceStore.getState().loadWorkspaces();
+      useWorkspaceStore.getState().setCurrent(ws);
+      await useAgentStore.getState().loadAgents(ws.id);
+      const refreshed =
+        useAgentStore.getState().agents.find((a) => a.id === created.id) ??
+        created;
+      useAgentStore.getState().setCurrent(refreshed);
+      setAgent(refreshed);
+      return refreshed;
+    })();
+
+    creationRef.current = op;
+    // If it fails partway, drop the memo so a retry re-runs the (now
+    // idempotent) get-or-create instead of being stuck on a rejected promise.
+    op.catch(() => {
+      creationRef.current = null;
     });
-    setup.color = assistantColor;
-    const ws = await tauriWorkspaces.create(setup.workspaceName.trim());
-    // Persist the picked pair as the new global default so the next new agent
-    // starts from the same place the user just chose during onboarding.
-    await tauriProvider.setLastUsed(pickedProvider, pickedModel);
-    analytics.track("workspace_created", {
-      provider: pickedProvider,
-      source: "onboarding",
-    });
-    const created = await createPersonalAssistantForWorkspace(ws.id, {
-      name: setup.assistantName.trim(),
-      instructions: buildAssistantInstructions(setup, missionTitle),
-      color: setup.color,
-      provider: pickedProvider,
-      model: pickedModel,
-    });
-    await useWorkspaceStore.getState().loadWorkspaces();
-    useWorkspaceStore.getState().setCurrent(ws);
-    await useAgentStore.getState().loadAgents(ws.id);
-    const refreshed =
-      useAgentStore.getState().agents.find((a) => a.id === created.id) ??
-      created;
-    useAgentStore.getState().setCurrent(refreshed);
-    setAgent(refreshed);
-    return refreshed;
+    return op;
   };
 
   const handleSkip = async () => {
@@ -127,6 +167,15 @@ export function PersonalAssistantOnboarding({
         mission: TUTORIAL_MISSION.id,
         integrations_skipped: true,
         tutorial_run: false,
+      });
+    } catch (err) {
+      // No silent failures: surface why setup failed (and drop back to the
+      // welcome screen via the finally) so the user can retry instead of
+      // crashing to an unhandled rejection — HOU-444.
+      addToast({
+        title: t("setup:tutorial.errors.setupFailed"),
+        description: String(err),
+        variant: "error",
       });
     } finally {
       setTutorialActive(false);
@@ -206,8 +255,18 @@ export function PersonalAssistantOnboarding({
             }}
             onContinue={async () => {
               if (!provider || !model) return;
-              await createWorkspaceAndAssistant(provider, model);
-              setStep("try");
+              try {
+                await createWorkspaceAndAssistant(provider, model);
+                setStep("try");
+              } catch (err) {
+                // Surface the failure as a toast and stay on this step so the
+                // user can retry — never an unhandled rejection (HOU-444).
+                addToast({
+                  title: t("setup:tutorial.errors.setupFailed"),
+                  description: String(err),
+                  variant: "error",
+                });
+              }
             }}
           />
         </MissionFrame>

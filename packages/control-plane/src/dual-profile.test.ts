@@ -443,15 +443,7 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     expect([cc.revealInOs, cc.terminal]).toEqual([false, false]);
     expect(lc.codeExecution).toBe("local-bash");
     expect(cc.codeExecution).toBe("remote-sandbox");
-    // Local adds the bring-your-own-key providers (OpenRouter, Gemini); cloud
-    // stays Codex-only until serving a long-lived key into the sandbox is signed
-    // off (see capabilities.ts).
-    expect(lc.providers).toEqual([
-      "anthropic",
-      "openai-codex",
-      "openrouter",
-      "google",
-    ]);
+    expect(lc.providers).toEqual(["anthropic", "openai-codex"]);
     expect(cc.providers).toEqual(["openai-codex"]);
 
     // Shared invariants: mobile/tunnel is gone everywhere; one protocol version.

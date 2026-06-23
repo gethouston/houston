@@ -147,6 +147,20 @@ export function isEngineReady(): boolean {
   return _client !== null;
 }
 
+/**
+ * True when the active backend is the new TS engine. Set by the engine-adapter
+ * (the only client that talks to the host); the legacy Rust engine never sets
+ * it. Gates new-engine-only capabilities in the UI — notably API-key providers
+ * (OpenCode Zen / Go), which the Rust engine can't serve.
+ */
+export function newEngineActive(): boolean {
+  return (
+    typeof window !== "undefined" &&
+    !!(window as unknown as { __HOUSTON_NEW_ENGINE__?: boolean })
+      .__HOUSTON_NEW_ENGINE__
+  );
+}
+
 export function getEngine(): HoustonClient {
   if (!_client) {
     throw new Error(
