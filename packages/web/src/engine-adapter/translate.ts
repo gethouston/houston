@@ -28,6 +28,18 @@ export function turnErrorMessage(e: unknown): string {
   return e instanceof Error ? e.message : String(e);
 }
 
+/**
+ * Whether a turn failure is the runtime's "no provider connected" refusal — the
+ * verbatim message it raises when the chat's provider is logged out (runtime
+ * `ai/providers.ts`, `transport/server.ts`, `turn/server.ts`; all prefixed
+ * "No provider connected."). This is a HANDLED, recoverable state surfaced by
+ * the in-chat reconnect card, not a turn failure, so the UI settles it cleanly
+ * rather than rendering it as an error.
+ */
+export function isNotConnectedError(message: string): boolean {
+  return message.toLowerCase().includes("no provider connected");
+}
+
 function feed(agentPath: string, sessionKey: string, item: unknown): void {
   emitEvent("FeedItem", {
     agent_path: agentPath,
@@ -119,7 +131,24 @@ export async function streamTurn(
   const finishErr = (msg: string): void => {
     if (settled) return;
     settled = true;
+    // The message is the auth signal that drives the in-chat reconnect card
+    // (and is hidden from the transcript by the auth-feed filter).
     feed(agentPath, sessionKey, { feed_type: "system_message", data: msg });
+    if (isNotConnectedError(msg)) {
+      // A logged-out provider is handled + recoverable, not a failed turn.
+      // Settle it cleanly: emit an invisible final_result so the "Mission in
+      // progress" status line stops (the hidden auth message would otherwise
+      // leave the last visible item as the user's message and hang the
+      // indicator), and land the board card on needs_you, NOT the red error
+      // state. The error session-status only clears the loading flag.
+      feed(agentPath, sessionKey, {
+        feed_type: "final_result",
+        data: { result: "", cost_usd: null, duration_ms: null, usage: null },
+      });
+      sessionStatus(agentPath, sessionKey, "error", msg);
+      terminal = "needs_you";
+      return;
+    }
     sessionStatus(agentPath, sessionKey, "error", msg);
     terminal = "error";
   };
@@ -205,6 +234,13 @@ export async function streamTurn(
       signal: ac.signal,
       onEvent,
     });
+    // Always observe `streaming`'s settlement. On the early-exit path — e.g.
+    // sendMessage rejects 409 ("No provider connected") before we reach
+    // `await streaming` — the `finally` aborts the SSE, which rejects this
+    // promise with an AbortError. Without this `.catch` that rejection is
+    // unhandled and the global handler shows a stray error toast on top of the
+    // (handled) reconnect card.
+    streaming.catch(() => {});
     await engine.sendMessage(sessionKey, prompt);
     await streaming;
     // The stream closed without our abort (engine closed it) — finalize from

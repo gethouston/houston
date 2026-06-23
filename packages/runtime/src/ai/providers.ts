@@ -131,12 +131,39 @@ export function activeEffort(): string | null {
   return loadSettings().effort ?? null;
 }
 
-/** The provider used for new chats: the saved active one if still authed, else the first authed. */
+/**
+ * Pure provider-selection policy (the IO wrapper is `activeProvider`).
+ *
+ * A SAVED provider is sticky: use it when connected, and return `null` when it
+ * is logged out — NEVER another connected provider. Silently switching an agent
+ * that is configured for one provider onto a different connected one (e.g.
+ * answering an OpenAI chat with OpenRouter after the OpenAI logout) bills and
+ * answers under a model the user never chose; the logged-out provider must
+ * instead surface the reconnect card. The "first connected" fallback applies
+ * ONLY when nothing is saved yet (a fresh agent's very first chat) so an initial
+ * turn can start without a manual pick (#483).
+ *
+ * @param authedIds connected providers, in registry order.
+ */
+export function pickActiveProvider(
+  saved: ProviderId | undefined,
+  authedIds: ProviderId[],
+): ProviderId | null {
+  if (saved) return authedIds.includes(saved) ? saved : null;
+  return authedIds[0] ?? null;
+}
+
+/**
+ * The provider this agent's turns run on: the saved pick when connected, else —
+ * only when nothing is saved — the first connected provider. `null` => no
+ * provider connected for the saved pick, so the turn must surface the reconnect
+ * card rather than silently switching.
+ */
 export function activeProvider(): ProviderId | null {
-  const saved = loadSettings().activeProvider;
-  if (saved && authStorage.hasAuth(saved)) return saved;
-  for (const p of PROVIDERS) if (authStorage.hasAuth(p.id)) return p.id;
-  return null;
+  const authed = PROVIDERS.filter((p) => authStorage.hasAuth(p.id)).map(
+    (p) => p.id,
+  );
+  return pickActiveProvider(loadSettings().activeProvider, authed);
 }
 
 export function setSettings(input: {

@@ -231,11 +231,22 @@ export function useAgentChatPanel({
     [providerStatuses],
   );
 
+  // Whether the open conversation already has turns. Once it does, the chat's
+  // provider is frozen (see resolveEffectiveProvider): a provider that logs out
+  // mid-conversation must surface the reconnect card, never silently hand the
+  // turn to another connected provider.
+  const hasMessages = useFeedStore((s) =>
+    path && selectedSessionKey
+      ? (s.items[path]?.[selectedSessionKey]?.length ?? 0) > 0
+      : false,
+  );
+
   const effectiveProvider = resolveEffectiveProvider(
     activityProvider,
     agentProvider,
     lastUsedProvider,
     authedProviders,
+    hasMessages,
   );
   const effectiveModel =
     validModelOrNull(effectiveProvider, activityModel) ??
@@ -631,9 +642,13 @@ export function useAgentChatPanel({
   const afterMessages = useCallback(
     ({ feedItems }: { sessionKey: string; feedItems: FeedItem[] }) => {
       const signalKey = providerAuthSignalKey(feedItems);
+      // Always hand the card THIS chat's provider so it can match the global
+      // `authRequired` flag against the provider this chat actually uses — a
+      // Claude logout must never surface a reconnect button in an OpenAI chat
+      // (HOU-410). The card stays hidden unless that provider truly needs auth.
       return (
         <ProviderReconnectCard
-          providerId={signalKey ? effectiveProvider : undefined}
+          providerId={effectiveProvider}
           signalKey={signalKey ?? undefined}
         />
       );

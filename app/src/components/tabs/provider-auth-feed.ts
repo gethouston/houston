@@ -15,6 +15,14 @@ const AUTH_PATTERNS = [
   "please login",
   "please log in",
   "please run /login",
+  // The new (TypeScript) engine refuses a turn whose provider has no
+  // credential with a verbatim "No provider connected. Log in with Claude or
+  // Codex first." / "...Connect your subscription first." (runtime
+  // `ai/providers.ts`, `transport/server.ts`, `turn/server.ts`). Unlike the
+  // Rust engine it emits NO `AuthRequired` event, so this feed message is the
+  // ONLY signal that the chat's provider was logged out — recognizing it here
+  // is what surfaces the in-chat reconnect card on the new stack.
+  "no provider connected",
 ] as const;
 
 export function isProviderAuthMessage(message: string): boolean {
