@@ -20,6 +20,12 @@ export {
 } from "./use-files";
 export { useInstructions, useSaveInstructions } from "./use-instructions";
 export {
+  useDisconnectIntegration,
+  useIntegrationConnections,
+  useIntegrationStatus,
+  useLogoutIntegration,
+} from "./use-integrations";
+export {
   useAddLearning,
   useLearnings,
   useRemoveLearning,

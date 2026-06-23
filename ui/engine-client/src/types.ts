@@ -906,3 +906,27 @@ export interface PortableInstalledAgent {
   workspaceName: string;
   requiredIntegrations: string[];
 }
+
+// ── integrations (Composio "for you") ────────────────────────────────────────
+// User-level: each user's own connected account, surfaced per-agent in the UI.
+
+export interface IntegrationProviderStatus {
+  provider: string;
+  connected: boolean;
+  account?: { accountId: string; email?: string };
+}
+export interface IntegrationToolkit {
+  slug: string;
+  name: string;
+  description?: string;
+  logoUrl?: string;
+  categories?: string[];
+}
+export interface IntegrationConnection {
+  toolkit: string;
+  connectionId: string;
+  status: "active" | "pending" | "error";
+}
+export type IntegrationLoginResult =
+  | { status: "pending" }
+  | { status: "linked"; account?: { accountId: string; email?: string } };

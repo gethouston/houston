@@ -2,6 +2,7 @@ import type { ComponentType } from "react";
 import ArchivedTab from "../components/tabs/archived-tab";
 import BoardTab from "../components/tabs/board-tab";
 import FilesTab from "../components/tabs/files-tab";
+import IntegrationsTab from "../components/tabs/integrations-tab";
 import JobDescriptionTab from "../components/tabs/job-description-tab";
 import RoutinesTab from "../components/tabs/routines-tab";
 import type { TabProps } from "../lib/types";
@@ -11,6 +12,7 @@ const BUILTIN_TABS: Record<string, ComponentType<TabProps>> = {
   board: BoardTab,
   archived: ArchivedTab,
   files: FilesTab,
+  integrations: IntegrationsTab,
   "job-description": JobDescriptionTab,
   routines: RoutinesTab,
 };

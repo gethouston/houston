@@ -33,4 +33,12 @@ export const queryKeys = {
    * of waiting for the next mount (issue #342).
    */
   providerStatuses: () => ["provider-statuses"] as const,
+
+  // Integrations are user-level (shared across the user's agents), so they are
+  // NOT keyed by agentPath even though they surface in a per-agent tab.
+  integrationStatus: () => ["integration-status"] as const,
+  integrationConnections: (provider: string) =>
+    ["integration-connections", provider] as const,
+  integrationToolkits: (provider: string) =>
+    ["integration-toolkits", provider] as const,
 };

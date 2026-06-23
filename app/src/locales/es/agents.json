@@ -62,7 +62,8 @@
     "events": "Eventos",
     "learnings": "Aprendizajes",
     "configure": "Configurar",
-    "settings": "Configuración"
+    "settings": "Configuración",
+    "integrations": "Integraciones"
   },
   "configure": {
     "projectContext": {
@@ -117,5 +118,20 @@
       "close": "Cerrar",
       "errorTitle": "No se pudo cargar el archivo"
     }
+  },
+  "integrations": {
+    "title": "Integraciones",
+    "description": "Conecta tus aplicaciones para que este agente pueda usarlas.",
+    "loading": "Cargando...",
+    "composio": "Composio",
+    "connectBlurb": "Inicia sesión para conectar tus aplicaciones. Tu cuenta sigue siendo tuya; el agente la usa en tu nombre.",
+    "connect": "Conectar Composio",
+    "connecting": "Esperando el inicio de sesión...",
+    "connectedAs": "Conectado como {{email}}",
+    "signOut": "Cerrar sesión",
+    "connectedApps": "Aplicaciones conectadas",
+    "noApps": "Aún no hay aplicaciones conectadas.",
+    "disconnect": "Desconectar",
+    "addApps": "Agregar aplicaciones"
   }
 }

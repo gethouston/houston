@@ -41,6 +41,10 @@ import type {
   InstalledConfig,
   InstallFromGithub,
   InstallFromRepoRequest,
+  IntegrationConnection,
+  IntegrationLoginResult,
+  IntegrationProviderStatus,
+  IntegrationToolkit,
   ListWorktreesRequest,
   NewActivity,
   NewRoutine,
@@ -382,6 +386,81 @@ export class HoustonClient {
     return this.request("GET", "/agents/activities", undefined, {
       agent_path: agentPath,
     });
+  }
+
+  // ---- integrations (Composio "for you") — v3 host only ----
+  // The Rust engine has no /v1/integrations routes; the UI gates these on the
+  // control-plane build (engine-mode), so on the legacy wire they never run.
+  // Kept here so the shared app typechecks against both clients (shim parity).
+  async integrationStatus(): Promise<IntegrationProviderStatus[]> {
+    return (
+      await this.request<{ items: IntegrationProviderStatus[] }>(
+        "GET",
+        "/integrations",
+      )
+    ).items;
+  }
+  startIntegrationLogin(
+    provider: string,
+  ): Promise<{ loginUrl: string; pollKey: string }> {
+    return this.request(
+      "POST",
+      `/integrations/${encodeURIComponent(provider)}/login/start`,
+    );
+  }
+  pollIntegrationLogin(
+    provider: string,
+    pollKey: string,
+  ): Promise<IntegrationLoginResult> {
+    return this.request(
+      "POST",
+      `/integrations/${encodeURIComponent(provider)}/login/poll`,
+      { pollKey },
+    );
+  }
+  async integrationToolkits(provider: string): Promise<IntegrationToolkit[]> {
+    return (
+      await this.request<{ items: IntegrationToolkit[] }>(
+        "GET",
+        `/integrations/${encodeURIComponent(provider)}/toolkits`,
+      )
+    ).items;
+  }
+  async integrationConnections(
+    provider: string,
+  ): Promise<IntegrationConnection[]> {
+    return (
+      await this.request<{ items: IntegrationConnection[] }>(
+        "GET",
+        `/integrations/${encodeURIComponent(provider)}/connections`,
+      )
+    ).items;
+  }
+  connectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<{ redirectUrl: string }> {
+    return this.request(
+      "POST",
+      `/integrations/${encodeURIComponent(provider)}/connect`,
+      { toolkit },
+    );
+  }
+  async disconnectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<void> {
+    await this.request(
+      "POST",
+      `/integrations/${encodeURIComponent(provider)}/disconnect`,
+      { toolkit },
+    );
+  }
+  async logoutIntegration(provider: string): Promise<void> {
+    await this.request(
+      "POST",
+      `/integrations/${encodeURIComponent(provider)}/logout`,
+    );
   }
   createActivity(agentPath: string, input: NewActivity): Promise<Activity> {
     return this.request("POST", "/agents/activities", input, {

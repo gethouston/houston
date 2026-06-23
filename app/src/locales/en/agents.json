@@ -62,7 +62,8 @@
     "events": "Events",
     "learnings": "Learnings",
     "configure": "Configure",
-    "settings": "Settings"
+    "settings": "Settings",
+    "integrations": "Integrations"
   },
   "configure": {
     "projectContext": {
@@ -117,5 +118,20 @@
       "close": "Close",
       "errorTitle": "Couldn't load the file"
     }
+  },
+  "integrations": {
+    "title": "Integrations",
+    "description": "Connect your apps so this agent can act on them.",
+    "loading": "Loading...",
+    "composio": "Composio",
+    "connectBlurb": "Sign in to connect your apps. Your account stays yours; the agent uses it on your behalf.",
+    "connect": "Connect Composio",
+    "connecting": "Waiting for sign-in...",
+    "connectedAs": "Connected as {{email}}",
+    "signOut": "Sign out",
+    "connectedApps": "Connected apps",
+    "noApps": "No apps connected yet.",
+    "disconnect": "Disconnect",
+    "addApps": "Add apps"
   }
 }

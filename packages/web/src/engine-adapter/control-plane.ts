@@ -640,27 +640,22 @@ export function subscribeEvents(
 
 // ── integrations (Composio "for you") ────────────────────────────────────────
 // User-level (each user's own connected account); surfaced per-agent in the UI.
+// Types live once in the shared engine-client types (re-exported here so callers
+// importing from the adapter keep one import site, and the v1 client agrees).
 
-export interface IntegrationProviderStatus {
-  provider: string;
-  connected: boolean;
-  account?: { accountId: string; email?: string };
-}
-export interface IntegrationToolkit {
-  slug: string;
-  name: string;
-  description?: string;
-  logoUrl?: string;
-  categories?: string[];
-}
-export interface IntegrationConnection {
-  toolkit: string;
-  connectionId: string;
-  status: "active" | "pending" | "error";
-}
-export type IntegrationLoginResult =
-  | { status: "pending" }
-  | { status: "linked"; account?: { accountId: string; email?: string } };
+export type {
+  IntegrationConnection,
+  IntegrationLoginResult,
+  IntegrationProviderStatus,
+  IntegrationToolkit,
+} from "../../../../ui/engine-client/src/types";
+
+import type {
+  IntegrationConnection,
+  IntegrationLoginResult,
+  IntegrationProviderStatus,
+  IntegrationToolkit,
+} from "../../../../ui/engine-client/src/types";
 
 const integrationPath = (provider: string) =>
   `/v1/integrations/${encodeURIComponent(provider)}`;

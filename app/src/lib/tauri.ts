@@ -727,3 +727,40 @@ export const tauriWatcher = {
   stop: () =>
     call<void>("stop_agent_watcher", () => getEngine().stopAgentWatcher()),
 };
+
+/**
+ * Integrations (Composio "for you"). User-level (the user's own connected
+ * account); surfaced per-agent in the Integrations tab. Host-only — these reach
+ * the v3 host's /v1/integrations routes; the tab is gated to the control-plane
+ * build so they never run on the legacy Rust wire. Types flow by inference.
+ */
+export const tauriIntegrations = {
+  status: () =>
+    call("integration_status", () => getEngine().integrationStatus()),
+  startLogin: (provider: string) =>
+    call("integration_login_start", () =>
+      getEngine().startIntegrationLogin(provider),
+    ),
+  pollLogin: (provider: string, pollKey: string) =>
+    call("integration_login_poll", () =>
+      getEngine().pollIntegrationLogin(provider, pollKey),
+    ),
+  toolkits: (provider: string) =>
+    call("integration_toolkits", () =>
+      getEngine().integrationToolkits(provider),
+    ),
+  connections: (provider: string) =>
+    call("integration_connections", () =>
+      getEngine().integrationConnections(provider),
+    ),
+  connect: (provider: string, toolkit: string) =>
+    call("integration_connect", () =>
+      getEngine().connectIntegration(provider, toolkit),
+    ),
+  disconnect: (provider: string, toolkit: string) =>
+    call("integration_disconnect", () =>
+      getEngine().disconnectIntegration(provider, toolkit),
+    ),
+  logout: (provider: string) =>
+    call("integration_logout", () => getEngine().logoutIntegration(provider)),
+};
