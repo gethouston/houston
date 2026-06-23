@@ -1,6 +1,7 @@
 import { expect, test } from "bun:test";
 import {
   PROVIDERS,
+  pickActiveProvider,
   providerAuthMethod,
   providerDefaultModel,
 } from "./providers";
@@ -30,6 +31,31 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode-go")).toBe("glm-5.1");
   // Unknown falls back to the Codex default (never throws / undefined).
   expect(providerDefaultModel("nope")).toBe("gpt-5.5");
+});
+
+test("pickActiveProvider keeps a logged-out saved provider sticky (no silent switch)", () => {
+  // THE BUG: an OpenAI-configured agent whose OpenAI logged out must NOT fall
+  // through to a still-connected provider (OpenRouter) and answer there — it
+  // returns null so the turn fails with "No provider connected" (→ reconnect
+  // card) instead of silently billing/answering under a model never chosen.
+  expect(pickActiveProvider("openai-codex", ["openrouter"])).toBeNull();
+  // Saved provider, nothing connected at all → also null.
+  expect(pickActiveProvider("anthropic", [])).toBeNull();
+});
+
+test("pickActiveProvider uses the saved provider when it is connected", () => {
+  expect(
+    pickActiveProvider("openai-codex", ["openai-codex", "openrouter"]),
+  ).toBe("openai-codex");
+});
+
+test("pickActiveProvider falls back to the first connected ONLY when nothing is saved", () => {
+  // A fresh agent (no saved pick) may start its first chat on a connected
+  // provider; once a provider is saved, the case above keeps it sticky.
+  expect(pickActiveProvider(undefined, ["openrouter", "google"])).toBe(
+    "openrouter",
+  );
+  expect(pickActiveProvider(undefined, [])).toBeNull();
 });
 
 test("github-copilot is a registered OAuth provider with a dotted Copilot model id", () => {
