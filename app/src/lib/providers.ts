@@ -154,47 +154,58 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "Pay as you go",
     auth: "apiKey",
     apiKeyUrl: "https://opencode.ai/auth",
+    // Context windows are the FIXED windows the OpenCode Zen gateway serves per
+    // model (from pi-ai) — unlike a Claude/Codex subscription, they are not
+    // plan/credit-gated, so no snap-up `contextWindowMax` is needed.
     models: [
       {
         id: "claude-sonnet-4-6",
         label: "Sonnet 4.6",
         description: "Best balance of speed and quality.",
+        contextWindow: 1_000_000,
       },
       {
         id: "claude-opus-4-8",
         label: "Opus 4.8",
         description: "Most capable Claude, slower.",
+        contextWindow: 1_000_000,
       },
       {
         id: "gpt-5.5",
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
+        contextWindow: 1_050_000,
       },
       {
         id: "gemini-3.5-flash",
         label: "Gemini 3.5 Flash",
         description: "Fast and capable.",
+        contextWindow: 1_048_576,
       },
       // Free trial models (OpenCode Zen) — test the provider without spending credits.
       {
         id: "deepseek-v4-flash-free",
         label: "DeepSeek V4 Flash (Free)",
         description: "Fast. Free to try.",
+        contextWindow: 200_000,
       },
       {
         id: "minimax-m3-free",
         label: "MiniMax M3 (Free)",
         description: "Capable. Free to try.",
+        contextWindow: 200_000,
       },
       {
         id: "mimo-v2.5-free",
         label: "MiMo V2.5 (Free)",
         description: "Free to try.",
+        contextWindow: 200_000,
       },
       {
         id: "nemotron-3-ultra-free",
         label: "Nemotron 3 Ultra (Free)",
         description: "NVIDIA. Free to try.",
+        contextWindow: 1_000_000,
       },
     ],
     defaultModel: "claude-sonnet-4-6",
@@ -209,31 +220,37 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "$10 / month",
     auth: "apiKey",
     apiKeyUrl: "https://opencode.ai/auth",
+    // Fixed per-model context windows the OpenCode Go gateway serves (from pi-ai).
     models: [
       {
         id: "glm-5.1",
         label: "GLM-5.1",
         description: "Strong open coding model.",
+        contextWindow: 202_752,
       },
       {
         id: "kimi-k2.6",
         label: "Kimi K2.6",
         description: "Fast, capable open model.",
+        contextWindow: 262_144,
       },
       {
         id: "minimax-m3",
         label: "MiniMax M3",
         description: "Capable open model.",
+        contextWindow: 512_000,
       },
       {
         id: "qwen3.7-max",
         label: "Qwen3.7 Max",
         description: "Large open model.",
+        contextWindow: 1_000_000,
       },
       {
         id: "deepseek-v4-pro",
         label: "DeepSeek V4 Pro",
         description: "Strong reasoning.",
+        contextWindow: 1_000_000,
       },
     ],
     defaultModel: "glm-5.1",

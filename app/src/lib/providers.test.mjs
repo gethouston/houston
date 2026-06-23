@@ -142,6 +142,15 @@ test("OpenCode Zen + Go are api-key providers with a dashboard URL", () => {
       p.models.some((m) => m.id === p.defaultModel),
       `${id} default model is in its model list`,
     );
+    // Every model needs a contextWindow so the composer's usage indicator shows
+    // a % (not a raw token count / empty ring). The OpenCode gateway serves a
+    // fixed window per model.
+    for (const m of p.models) {
+      assert.ok(
+        typeof m.contextWindow === "number" && m.contextWindow > 0,
+        `${id}/${m.id} has a contextWindow`,
+      );
+    }
   }
   // OpenCode Zen exposes free trial models so the provider can be tested
   // without spending credits.
