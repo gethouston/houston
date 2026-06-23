@@ -304,6 +304,13 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     // expose up to `xhigh`, while Gemini's thinking caps at `high`.
     models: [
       {
+        id: "openrouter/free",
+        label: "Free (auto-routed)",
+        description: "OpenRouter's free tier. Good for testing, no cost.",
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 200_000,
+      },
+      {
         id: "anthropic/claude-sonnet-4.6",
         label: "Claude Sonnet 4.6",
         description: "Anthropic's balanced model, via OpenRouter.",
