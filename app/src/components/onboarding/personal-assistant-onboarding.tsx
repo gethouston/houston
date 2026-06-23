@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ToastContainer, type Toast } from "@houston-ai/core";
-import { Send } from "lucide-react";
 import { analytics } from "../../lib/analytics";
 import { useUIStore } from "../../stores/ui";
 import { useWorkspaceStore } from "../../stores/workspaces";
@@ -17,7 +16,6 @@ import { ConnectEmailMission } from "./missions/connect-email";
 import { EmailMission } from "./missions/email";
 import { FinishedMission } from "./missions/finished";
 import { SetupProgress } from "./setup-progress";
-import { SetupCard } from "./setup-card";
 import { createPersonalAssistantForWorkspace } from "./create-personal-assistant";
 import { ensureWorkspaceWithAssistant } from "./ensure-default-assistant";
 import {
@@ -296,26 +294,10 @@ export function PersonalAssistantOnboarding({
           done={["agent", "email"]}
           justCompleted="email"
           ctaLabel={t("setup:tutorial.missions.emailConnected.cta")}
-          onContinue={() => setStep("emailIntro")}
+          onContinue={() => setStep("emailChat")}
         />
       )}
 
-      {step === "emailIntro" && (
-        <SetupCard
-          title={t("setup:tutorial.missions.emailIntro.title")}
-          subtitle={t("setup:tutorial.missions.emailIntro.body")}
-          onBack={() => setStep("connectEmail")}
-          backLabel={t("setup:tutorial.nav.back")}
-          onNext={() => setStep("emailChat")}
-          nextLabel={t("setup:tutorial.missions.emailIntro.cta")}
-        >
-          <div className="flex flex-1 items-center justify-center">
-            <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary text-foreground">
-              <Send className="size-7" />
-            </span>
-          </div>
-        </SetupCard>
-      )}
       {step === "emailChat" && agent && emailTool && (
         <EmailMission
           eyebrow={stepEyebrow("emailChat")}
@@ -325,7 +307,7 @@ export function PersonalAssistantOnboarding({
           model={missionModel}
           emailToolkit={emailTool.toolkit}
           emailToolkitLabel={emailTool.label}
-          onBack={() => setStep("emailIntro")}
+          onBack={() => setStep("connectEmail")}
           onContinue={() => setStep("emailSent")}
         />
       )}

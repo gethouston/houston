@@ -97,12 +97,13 @@
         "creating": "Creating..."
       },
       "email": {
-        "title": "Send your first email",
+        "title": "See your agent in action",
         "offer": {
           "option": "Send an email to myself"
         },
         "chip": "Send an email for me",
-        "placeholder": "Reply to your agent..."
+        "placeholder": "Reply to your agent...",
+        "body": "Your agent will send a real email to you, so you can watch it work."
       },
       "aiConnected": {
         "title": "Your AI is connected!",
@@ -131,11 +132,6 @@
         "title": "Email connected!",
         "body": "That's how easy connecting an app is, and your agent can reach 1000+ this way.",
         "cta": "Continue"
-      },
-      "emailIntro": {
-        "title": "See your agent in action",
-        "body": "Your agent will send a real email to you, so you can watch it work.",
-        "cta": "Show me"
       },
       "emailSent": {
         "title": "Email sent!",

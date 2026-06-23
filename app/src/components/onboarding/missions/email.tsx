@@ -252,6 +252,7 @@ export function EmailMission({
     <SetupCard
       eyebrow={eyebrow}
       title={t("setup:tutorial.missions.email.title")}
+      subtitle={started ? undefined : t("setup:tutorial.missions.email.body")}
       onBack={onBack}
       backLabel={t("setup:tutorial.nav.back")}
     >

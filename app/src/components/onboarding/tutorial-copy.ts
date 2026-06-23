@@ -28,7 +28,6 @@ export type OnboardingStep =
   | "agentCreated"
   | "connectEmail"
   | "emailConnected"
-  | "emailIntro"
   | "emailChat"
   | "emailSent"
   | "finished";

@@ -143,9 +143,28 @@ body {
 .success-ring {
   animation: success-ring 1s ease-out 0.1s both;
 }
+
+/* A looping "click me" pulse — an expanding ring that fades out, repeated.
+   Used on the send button in the first-email step so it's obvious to tap. */
+@keyframes attention-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.28);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(0, 0, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0);
+  }
+}
+.attention-pulse {
+  animation: attention-pulse 1.8s ease-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .success-pop,
-  .success-ring {
+  .success-ring,
+  .attention-pulse {
     animation: none;
   }
 }

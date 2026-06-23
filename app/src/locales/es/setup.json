@@ -97,12 +97,13 @@
         "creating": "Creando..."
       },
       "email": {
-        "title": "Envía tu primer correo",
+        "title": "Mira a tu agente en acción",
         "offer": {
           "option": "Enviar un correo a mí mismo"
         },
         "chip": "Envía un correo por mí",
-        "placeholder": "Responde a tu agente..."
+        "placeholder": "Responde a tu agente...",
+        "body": "Tu agente te enviará un correo real, para que lo veas funcionar."
       },
       "aiConnected": {
         "title": "¡Tu IA está conectada!",
@@ -131,11 +132,6 @@
         "title": "¡Correo conectado!",
         "body": "Así de fácil es conectar una app, y tu agente puede acceder a más de 1000 así.",
         "cta": "Continuar"
-      },
-      "emailIntro": {
-        "title": "Mira a tu agente en acción",
-        "body": "Tu agente te enviará un correo real, para que lo veas funcionar.",
-        "cta": "Muéstrame"
       },
       "emailSent": {
         "title": "¡Correo enviado!",

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { useTranslation } from "react-i18next";
 import { ArrowUp, Loader2 } from "lucide-react";
+import { cn } from "@houston-ai/core";
 
 import { OptionCard } from "../setup-card";
 
@@ -10,12 +11,15 @@ import { OptionCard } from "../setup-card";
  * round send button — so it reads as part of the conversation.
  */
 
-/** The chat composer's send button, replicated exactly (see chat-input). */
+/** The chat composer's send button, replicated exactly (see chat-input). The
+ *  `pulse` ring nudges the user to click it. */
 function SendButton({
   loading,
+  pulse,
   onClick,
 }: {
   loading?: boolean;
+  pulse?: boolean;
   onClick: () => void;
 }) {
   return (
@@ -23,7 +27,10 @@ function SendButton({
       type="button"
       disabled={loading}
       onClick={onClick}
-      className="flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30"
+      className={cn(
+        "flex size-9 items-center justify-center rounded-full bg-primary text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-30",
+        pulse && !loading && "attention-pulse",
+      )}
     >
       {loading ? (
         <Loader2 className="size-4 animate-spin" />
@@ -39,22 +46,25 @@ function WizardCard({
   children,
   onSend,
   sendLoading,
+  pulse,
 }: {
   children: ReactNode;
   onSend: () => void;
   sendLoading?: boolean;
+  pulse?: boolean;
 }) {
   return (
     <div className="rounded-[28px] border border-border/50 bg-card p-2.5 shadow-[0_1px_6px_rgba(0,0,0,0.06)]">
       <div className="flex flex-col gap-1.5 px-1 pb-1.5 pt-0.5">{children}</div>
       <div className="flex justify-end">
-        <SendButton loading={sendLoading} onClick={onSend} />
+        <SendButton loading={sendLoading} pulse={pulse} onClick={onSend} />
       </div>
     </div>
   );
 }
 
-/** One preselected option ("Send an email to myself"); the user just hits send. */
+/** One preselected option ("Send an email to myself"); the user just hits send.
+ *  The send button pulses to make it obvious that's the action. */
 export function OfferCard({
   onSend,
   sending,
@@ -64,7 +74,7 @@ export function OfferCard({
 }) {
   const { t } = useTranslation("setup");
   return (
-    <WizardCard onSend={onSend} sendLoading={sending}>
+    <WizardCard onSend={onSend} sendLoading={sending} pulse={!sending}>
       <OptionCard label={t("tutorial.missions.email.offer.option")} selected />
     </WizardCard>
   );
