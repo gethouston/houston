@@ -190,11 +190,25 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         contextWindow: 200_000,
       },
       {
+        id: "claude-haiku-4.5",
+        label: "Claude Haiku 4.5",
+        description: "Anthropic's fastest, for quick tasks.",
+        // No effort row, matching how Houston catalogs Haiku elsewhere.
+        contextWindow: 200_000,
+      },
+      {
         id: "gpt-5.5",
         label: "GPT-5.5",
         description: "OpenAI's frontier model.",
         effortLevels: ["low", "medium", "high", "xhigh"],
         contextWindow: 400_000,
+      },
+      {
+        id: "gpt-5-mini",
+        label: "GPT-5 Mini",
+        description: "OpenAI's fast, lightweight model.",
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 264_000,
       },
       {
         id: "gemini-3-flash-preview",
