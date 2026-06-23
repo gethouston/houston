@@ -1,8 +1,12 @@
 import { useTranslation } from "react-i18next";
-import { Compass, LayoutGrid } from "lucide-react";
+import { ChevronRight, Compass, LayoutGrid } from "lucide-react";
 
 import { SetupCard, OptionCard } from "../setup-card";
 import { SuccessCheck } from "../success-check";
+
+// These are actions, not a single-select — a chevron reads as "go", where the
+// default radio dot would read as a checkbox/option.
+const goChevron = <ChevronRight className="size-4 text-muted-foreground" />;
 
 interface FinishedMissionProps {
   /** Enter the app with the guided tour armed. */
@@ -35,6 +39,7 @@ export function FinishedMission({ onTour, onConnectMore }: FinishedMissionProps)
             label={t("tutorial.missions.finished.tour")}
             description={t("tutorial.missions.finished.tourBody")}
             selected={false}
+            trailing={goChevron}
             onSelect={onTour}
           />
           <OptionCard
@@ -42,6 +47,7 @@ export function FinishedMission({ onTour, onConnectMore }: FinishedMissionProps)
             label={t("tutorial.missions.finished.connectMore")}
             description={t("tutorial.missions.finished.connectMoreBody")}
             selected={false}
+            trailing={goChevron}
             onSelect={onConnectMore}
           />
         </div>

@@ -48,6 +48,9 @@ export type AnalyticsEventName =
   | "tools_provider_connected"
   | "first_message_sent"
   | "first_email_sent"
+  // Fires once per onboarding screen reached (carries `step`), so a single
+  // funnel shows exactly where people drop off in the redesigned flow.
+  | "onboarding_step_viewed"
   // Activation funnel
   | "workspace_created"
   | "provider_configured"
@@ -98,7 +101,8 @@ type AnalyticsProperty =
   | "from_version"
   | "to_version"
   // Onboarding funnel
-  | "locale";
+  | "locale"
+  | "step";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
 type UserProfile = {
@@ -128,6 +132,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "from_version",
   "to_version",
   "locale",
+  "step",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors

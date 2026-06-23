@@ -70,6 +70,16 @@ export function PersonalAssistantOnboarding({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Fire one step-viewed event per screen reached so a single funnel shows
+  // exactly where people drop off. Guarded so re-renders / Back don't refire.
+  const viewedSteps = useRef(new Set<string>());
+  useEffect(() => {
+    if (!viewedSteps.current.has(step)) {
+      viewedSteps.current.add(step);
+      analytics.track("onboarding_step_viewed", { step });
+    }
+  }, [step]);
+
   const createWorkspaceAndAssistant = (
     pickedProvider: string,
     pickedModel: string,
@@ -133,6 +143,7 @@ export function PersonalAssistantOnboarding({
       mission: TUTORIAL_MISSION.id,
       integrations_skipped: false,
       tutorial_run: true,
+      source: withTour ? "tour" : "connect_more",
     });
     if (withTour) setUiTourActive(true);
     setTutorialActive(false);
