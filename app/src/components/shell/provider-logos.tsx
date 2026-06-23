@@ -51,24 +51,23 @@ export function OpenCodeLogo({
 }: {
   className?: string;
 } = {}) {
-  // OpenCode's brand mark (opencode.ai/brand): a square frame with an inner
-  // block. Rendered monochrome via currentColor to match the sibling provider
-  // logos; the inner block is dimmed to keep the brand's two-tone read. Shared
-  // by OpenCode Zen and OpenCode Go.
+  // OpenCode's brand mark — the exact paths from opencode.ai/brand's logo
+  // exports. The two-tone fills follow the theme via `.opencode-logo-*` in
+  // globals.css (light export on the light tile, dark export on the dark tile),
+  // so this single SVG renders both provided variants. Shared by Zen and Go.
   return (
     <svg
-      viewBox="0 0 512 512"
+      viewBox="0 0 240 300"
       className={className}
-      fill="currentColor"
+      fill="none"
       role="img"
       aria-label="OpenCode logo"
     >
       <title>OpenCode logo</title>
-      <path opacity={0.55} d="M320 224V352H192V224H320Z" />
+      <path className="opencode-logo-block" d="M180 240H60V120H180V240Z" />
       <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z"
+        className="opencode-logo-frame"
+        d="M180 60H60V240H180V60ZM240 300H0V0H240V300Z"
       />
     </svg>
   );
