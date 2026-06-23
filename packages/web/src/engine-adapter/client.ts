@@ -954,6 +954,55 @@ export class HoustonClient {
     return { title: truncated, description: "" };
   }
 
+  // ---- integrations (Composio "for you") — host only ----
+  async integrationStatus(): Promise<controlPlane.IntegrationProviderStatus[]> {
+    if (!this.cp) return [];
+    return controlPlane.integrationStatus(this.cp);
+  }
+  async startIntegrationLogin(
+    provider: string,
+  ): Promise<{ loginUrl: string; pollKey: string }> {
+    if (!this.cp) throw new Error("Integrations require a connected host");
+    return controlPlane.startIntegrationLogin(this.cp, provider);
+  }
+  async pollIntegrationLogin(
+    provider: string,
+    pollKey: string,
+  ): Promise<controlPlane.IntegrationLoginResult> {
+    if (!this.cp) throw new Error("Integrations require a connected host");
+    return controlPlane.pollIntegrationLogin(this.cp, provider, pollKey);
+  }
+  async integrationToolkits(
+    provider: string,
+  ): Promise<controlPlane.IntegrationToolkit[]> {
+    if (!this.cp) return [];
+    return controlPlane.integrationToolkits(this.cp, provider);
+  }
+  async integrationConnections(
+    provider: string,
+  ): Promise<controlPlane.IntegrationConnection[]> {
+    if (!this.cp) return [];
+    return controlPlane.integrationConnections(this.cp, provider);
+  }
+  async connectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<{ redirectUrl: string }> {
+    if (!this.cp) throw new Error("Integrations require a connected host");
+    return controlPlane.connectIntegration(this.cp, provider, toolkit);
+  }
+  async disconnectIntegration(
+    provider: string,
+    toolkit: string,
+  ): Promise<void> {
+    if (!this.cp) return;
+    return controlPlane.disconnectIntegration(this.cp, provider, toolkit);
+  }
+  async logoutIntegration(provider: string): Promise<void> {
+    if (!this.cp) return;
+    return controlPlane.logoutIntegration(this.cp, provider);
+  }
+
   // ---- lifecycle no-ops the shell calls ----
   async startAgentWatcher(): Promise<void> {}
   async stopAgentWatcher(): Promise<void> {}

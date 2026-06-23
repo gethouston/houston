@@ -637,3 +637,105 @@ export function subscribeEvents(
   })();
   return () => ac.abort();
 }
+
+// ── integrations (Composio "for you") ────────────────────────────────────────
+// User-level (each user's own connected account); surfaced per-agent in the UI.
+
+export interface IntegrationProviderStatus {
+  provider: string;
+  connected: boolean;
+  account?: { accountId: string; email?: string };
+}
+export interface IntegrationToolkit {
+  slug: string;
+  name: string;
+  description?: string;
+  logoUrl?: string;
+  categories?: string[];
+}
+export interface IntegrationConnection {
+  toolkit: string;
+  connectionId: string;
+  status: "active" | "pending" | "error";
+}
+export type IntegrationLoginResult =
+  | { status: "pending" }
+  | { status: "linked"; account?: { accountId: string; email?: string } };
+
+const integrationPath = (provider: string) =>
+  `/v1/integrations/${encodeURIComponent(provider)}`;
+
+export async function integrationStatus(
+  cfg: ControlPlaneConfig,
+): Promise<IntegrationProviderStatus[]> {
+  const res = await cpFetch(cfg, "/v1/integrations");
+  return ((await res.json()) as { items: IntegrationProviderStatus[] }).items;
+}
+
+export async function startIntegrationLogin(
+  cfg: ControlPlaneConfig,
+  provider: string,
+): Promise<{ loginUrl: string; pollKey: string }> {
+  const res = await cpFetch(cfg, `${integrationPath(provider)}/login/start`, {
+    method: "POST",
+  });
+  return (await res.json()) as { loginUrl: string; pollKey: string };
+}
+
+export async function pollIntegrationLogin(
+  cfg: ControlPlaneConfig,
+  provider: string,
+  pollKey: string,
+): Promise<IntegrationLoginResult> {
+  const res = await cpFetch(cfg, `${integrationPath(provider)}/login/poll`, {
+    method: "POST",
+    body: JSON.stringify({ pollKey }),
+  });
+  return (await res.json()) as IntegrationLoginResult;
+}
+
+export async function integrationToolkits(
+  cfg: ControlPlaneConfig,
+  provider: string,
+): Promise<IntegrationToolkit[]> {
+  const res = await cpFetch(cfg, `${integrationPath(provider)}/toolkits`);
+  return ((await res.json()) as { items: IntegrationToolkit[] }).items;
+}
+
+export async function integrationConnections(
+  cfg: ControlPlaneConfig,
+  provider: string,
+): Promise<IntegrationConnection[]> {
+  const res = await cpFetch(cfg, `${integrationPath(provider)}/connections`);
+  return ((await res.json()) as { items: IntegrationConnection[] }).items;
+}
+
+export async function connectIntegration(
+  cfg: ControlPlaneConfig,
+  provider: string,
+  toolkit: string,
+): Promise<{ redirectUrl: string }> {
+  const res = await cpFetch(cfg, `${integrationPath(provider)}/connect`, {
+    method: "POST",
+    body: JSON.stringify({ toolkit }),
+  });
+  return (await res.json()) as { redirectUrl: string };
+}
+
+export async function disconnectIntegration(
+  cfg: ControlPlaneConfig,
+  provider: string,
+  toolkit: string,
+): Promise<void> {
+  await cpFetch(cfg, `${integrationPath(provider)}/disconnect`, {
+    method: "POST",
+    body: JSON.stringify({ toolkit }),
+  });
+}
+
+export async function logoutIntegration(
+  cfg: ControlPlaneConfig,
+  provider: string,
+): Promise<void> {
+  await cpFetch(cfg, `${integrationPath(provider)}/logout`, { method: "POST" });
+}
