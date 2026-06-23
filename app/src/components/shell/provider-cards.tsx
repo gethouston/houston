@@ -6,6 +6,7 @@ import {
   DeepSeekLogo,
   MiniMaxLogo,
   OpenAILogo,
+  OpenCodeLogo,
 } from "./provider-logos";
 
 /**
@@ -19,6 +20,9 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <ClaudeLogo />;
     case "openai":
       return <OpenAILogo />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">

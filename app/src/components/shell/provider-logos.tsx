@@ -46,6 +46,33 @@ export function OpenAILogo({
   );
 }
 
+export function OpenCodeLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  // OpenCode's brand mark — the exact paths from opencode.ai/brand's logo
+  // exports. The two-tone fills follow the theme via `.opencode-logo-*` in
+  // globals.css (light export on the light tile, dark export on the dark tile),
+  // so this single SVG renders both provided variants. Shared by Zen and Go.
+  return (
+    <svg
+      viewBox="0 0 240 300"
+      className={className}
+      fill="none"
+      role="img"
+      aria-label="OpenCode logo"
+    >
+      <title>OpenCode logo</title>
+      <path className="opencode-logo-block" d="M180 240H60V120H180V240Z" />
+      <path
+        className="opencode-logo-frame"
+        d="M180 60H60V240H180V60ZM240 300H0V0H240V300Z"
+      />
+    </svg>
+  );
+}
+
 export function DeepSeekLogo() {
   return (
     <svg

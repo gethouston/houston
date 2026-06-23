@@ -13,7 +13,8 @@ import type {
   ToolCallRecord,
   WireEvent,
 } from "@houston/runtime-client";
-import { toThinkingLevel } from "../ai/effort";
+import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { providerDefaultModel } from "../ai/providers";
 import { config } from "../config";
 import { makeAgentLoader } from "../session/resource-loader";
 import {
@@ -61,8 +62,8 @@ function resolveTurnModel(
       settings = {};
     }
   }
-  const fallback = provider === "anthropic" ? config.model : config.codexModel;
-  const modelId = override || settings.models?.[provider] || fallback;
+  const modelId =
+    override || settings.models?.[provider] || providerDefaultModel(provider);
   return getModel(provider as never, modelId as never);
 }
 
@@ -118,14 +119,30 @@ export async function runPiTurn(
         })
       : null;
 
-    // A routine can pin a reasoning effort; map it to pi's thinking level
-    // (absent → omitted, so pi keeps its own default). pi clamps the level to
-    // what the resolved model actually supports.
-    const thinkingLevel = toThinkingLevel(pin?.effort);
+    const model = resolveTurnModel(dataDir, provider, pin?.model);
+    // Ground-truth diagnostic: provider + model + the model's actual API base URL
+    // (opencode.ai/zen/go/v1 = OpenCode Go, openai/chatgpt = Codex). Unambiguous,
+    // unlike asking the model itself.
+    const m = model as unknown as {
+      id?: string;
+      baseUrl?: string;
+      reasoning?: boolean;
+    };
+    console.log(
+      `[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`,
+    );
+    // Effort → pi's thinking level. The turn's pin (the host bakes the agent's
+    // saved effort into it) wins; if none and the model can reason, default to
+    // medium so a "thinking" model actually reasons (pi enables reasoning only
+    // when a level is set). pi clamps to what the model supports.
+    const effort =
+      pin?.effort ??
+      (m.reasoning === true ? DEFAULT_REASONING_EFFORT : undefined);
+    const thinkingLevel = toThinkingLevel(effort);
     const { session } = await createAgentSession({
       cwd: workspaceDir,
       agentDir: dataDir,
-      model: resolveTurnModel(dataDir, provider, pin?.model),
+      model,
       ...(thinkingLevel ? { thinkingLevel } : {}),
       authStorage,
       modelRegistry,

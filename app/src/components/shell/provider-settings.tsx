@@ -3,9 +3,14 @@ import { ConfirmDialog, Spinner } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
+import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
-import { PROVIDERS, type ProviderInfo } from "../../lib/providers";
+import {
+  getVisibleProviders,
+  PROVIDERS,
+  type ProviderInfo,
+} from "../../lib/providers";
 import {
   type ProviderStatus,
   tauriProvider,
@@ -13,6 +18,7 @@ import {
 } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { ProviderAccountRow } from "./provider-account-row";
+import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { providerAppearsConnected } from "./provider-reconnect-state";
@@ -47,7 +53,17 @@ export function ProviderSettings() {
     url: string;
     userCode: string | null;
   } | null>(null);
+  // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
+  const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
+
+  // API-key providers run only on the new TS engine; hide them on the Rust
+  // engine where they can't connect. Computed once — the engine doesn't change
+  // mid-session.
+  const visibleProviders = useMemo(
+    () => getVisibleProviders({ newEngine: newEngineActive() }),
+    [],
+  );
 
   // First scan is treated as the baseline so opening Settings while a
   // provider is already connected doesn't fire a fake "X connected" toast.
@@ -56,7 +72,7 @@ export function ProviderSettings() {
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
   const loadStatuses = useCallback(async () => {
     const results = await Promise.all(
-      PROVIDERS.map(async (p) => {
+      visibleProviders.map(async (p) => {
         const status = await tauriProvider.checkStatus(p.id);
         // Paint each card the moment ITS probe resolves instead of blocking
         // every card on the slowest provider — each CLI shell-out can take
@@ -71,7 +87,7 @@ export function ProviderSettings() {
       next[id] = status;
     }
     if (hasBaseline.current) {
-      for (const prov of PROVIDERS) {
+      for (const prov of visibleProviders) {
         const prev = prevStatuses.current[prov.id];
         const cur = next[prov.id];
         const wasConnected = prev ? providerAppearsConnected(prev) : false;
@@ -84,7 +100,7 @@ export function ProviderSettings() {
     prevStatuses.current = next;
     hasBaseline.current = true;
     setLoading(false);
-  }, []);
+  }, [visibleProviders]);
 
   // Optimistically reflect an auth outcome we already know succeeded (a
   // completed connect or sign-out) so the card flips immediately instead of
@@ -220,6 +236,12 @@ export function ProviderSettings() {
   }, [addToast, loadStatuses, patchAuthState, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers (OpenCode) connect by pasting a key, not OAuth — open
+    // the key dialog instead of launching a browser sign-in.
+    if (provider.auth === "apiKey") {
+      setApiKeyDialog(provider);
+      return;
+    }
     setPendingId(provider.id);
     try {
       // launchLogin defaults deviceAuth from the platform — desktop catches the
@@ -303,13 +325,13 @@ export function ProviderSettings() {
   const orderedProviders = useMemo(() => {
     const connected: ProviderInfo[] = [];
     const disconnected: ProviderInfo[] = [];
-    for (const p of PROVIDERS) {
+    for (const p of visibleProviders) {
       const s = statuses[p.id];
       if (s && providerAppearsConnected(s)) connected.push(p);
       else disconnected.push(p);
     }
     return [...connected, ...disconnected];
-  }, [statuses]);
+  }, [statuses, visibleProviders]);
 
   if (loading) {
     return (
@@ -365,6 +387,11 @@ export function ProviderSettings() {
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
         onClose={() => setLoginDialog(null)}
+      />
+
+      <ProviderApiKeyDialog
+        provider={apiKeyDialog}
+        onClose={() => setApiKeyDialog(null)}
       />
     </>
   );

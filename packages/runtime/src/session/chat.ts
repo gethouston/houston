@@ -7,8 +7,8 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, ToolCallRecord } from "@houston/runtime-client";
-import { toThinkingLevel } from "../ai/effort";
-import { activeProvider, resolveModel } from "../ai/providers";
+import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
+import { activeEffort, activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredential } from "../auth/serve";
 import { authStorage, modelRegistry } from "../auth/storage";
 import { config } from "../config";
@@ -163,9 +163,20 @@ async function execTurn(
     // A routine can pin a model/effort for its run. Re-point the (possibly
     // shared) session before prompting; pi clamps the thinking level to the
     // model. A bad model id throws here → surfaces as the turn's error event.
-    if (pin?.model) await conv.session.setModel(resolveModel(pin.model));
-    if (pin?.effort) {
-      const level = toThinkingLevel(pin.effort);
+    const model = resolveModel(pin?.model);
+    if (pin?.model) await conv.session.setModel(model);
+    // Effort: the routine's pin wins, else the agent's saved setting; if neither
+    // is set and the model can reason, default to medium so a reasoning model
+    // (e.g. an OpenCode toggle model) actually thinks — pi only enables reasoning
+    // when a level is set. Applied EVERY turn so picker changes take effect on the
+    // next message. pi clamps the level to the active model.
+    const reasons = (model as { reasoning?: boolean }).reasoning === true;
+    const effort =
+      pin?.effort ??
+      activeEffort() ??
+      (reasons ? DEFAULT_REASONING_EFFORT : undefined);
+    if (effort) {
+      const level = toThinkingLevel(effort);
       if (level) conv.session.setThinkingLevel(level);
     }
     await conv.session.prompt(text);
@@ -202,7 +213,22 @@ export async function ensureProviderForTurn(): Promise<string | null> {
   } catch (err) {
     console.error("[serve] credential sync failed:", errMessage(err));
   }
-  return activeProvider();
+  const provider = activeProvider();
+  // Ground-truth diagnostic: the provider + model + the model's actual API base
+  // URL this turn will run against. baseUrl is unambiguous — opencode.ai/zen/go/v1
+  // is OpenCode Go, openai/chatgpt is Codex — unlike asking the model itself,
+  // which open models (GLM/Kimi/…) routinely get wrong.
+  if (provider) {
+    try {
+      const m = resolveModel() as { id?: string; baseUrl?: string };
+      console.log(
+        `[turn] provider=${provider} model=${m.id} baseUrl=${m.baseUrl}`,
+      );
+    } catch {
+      /* resolveModel can throw on a bad pin; the turn surfaces it as an error */
+    }
+  }
+  return provider;
 }
 
 export async function runTurn(
@@ -220,9 +246,7 @@ export async function runTurn(
   if (!activeProvider()) {
     publish(id, {
       type: "error",
-      data: {
-        message: "No provider connected. Log in with Claude or Codex first.",
-      },
+      data: { message: "No provider connected. Connect an AI provider first." },
     });
     return;
   }

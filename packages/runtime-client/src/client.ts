@@ -94,7 +94,11 @@ export class HoustonEngineClient {
   listProviders() {
     return this.json<ProviderInfo[]>("/providers");
   }
-  setSettings(input: { activeProvider?: ProviderId; model?: string }) {
+  setSettings(input: {
+    activeProvider?: ProviderId;
+    model?: string;
+    effort?: string;
+  }) {
     return this.json<Settings>("/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
@@ -124,6 +128,18 @@ export class HoustonEngineClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ code }),
+    });
+  }
+  /**
+   * Store a pasted API key for an api-key provider (OpenCode Zen / Go). No OAuth
+   * dance: the key is persisted and used directly for the provider's built-in
+   * OpenAI-compatible gateway.
+   */
+  setApiKey(provider: ProviderId, key: string) {
+    return this.json<{ ok: boolean }>(`/auth/${provider}/api-key`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ key }),
     });
   }
   logout(provider: ProviderId) {

@@ -5,7 +5,12 @@ import {
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
-import { activeProvider, PROVIDERS, type ProviderId } from "../ai/providers";
+import {
+  activeProvider,
+  PROVIDERS,
+  type ProviderId,
+  providerAuthMethod,
+} from "../ai/providers";
 import { config } from "../config";
 import { authStorage } from "./storage";
 
@@ -82,6 +87,10 @@ export async function startLogin(
   deviceAuth = true,
 ): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
+  if (providerAuthMethod(providerId) === "apiKey")
+    throw new Error(
+      `${providerId} connects with an API key, not OAuth sign-in`,
+    );
   const provider = providerId;
 
   // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).
@@ -152,6 +161,23 @@ export async function startLogin(
       ),
     ),
   ]);
+}
+
+/**
+ * Store a pasted API key for an api-key provider (OpenCode Zen / Go). pi's
+ * AuthStorage persists it as the `api_key` credential variant; `getApiKey`
+ * then returns it for any `getModel(provider, ...)` call against the provider's
+ * built-in OpenAI-compatible gateway. There is no OAuth dance and nothing to
+ * refresh or scrub.
+ */
+export function setApiKey(providerId: string, key: string): void {
+  if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
+  if (providerAuthMethod(providerId) !== "apiKey")
+    throw new Error(`${providerId} signs in with OAuth, not an API key`);
+  const trimmed = key.trim();
+  if (!trimmed) throw new Error("missing API key");
+  authStorage.set(providerId, { type: "api_key", key: trimmed });
+  active.delete(providerId as ProviderId);
 }
 
 /** Paste-code completion (Anthropic remote path). */

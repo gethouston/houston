@@ -8,6 +8,20 @@
  */
 export type EffortLevel = "low" | "medium" | "high" | "xhigh" | "max";
 
+/**
+ * The full effort vocabulary, ascending. Drives the composer's effort-gauge so
+ * the icon always shows the SAME number of bars (filled to the active level's
+ * position), regardless of how many levels a given model offers — a model with
+ * only `high`/`max` reads as a full gauge filled high, not two lone bars.
+ */
+export const EFFORT_ORDER: readonly EffortLevel[] = [
+  "low",
+  "medium",
+  "high",
+  "xhigh",
+  "max",
+];
+
 /** Effort applied when nothing else is configured. Mirrors the engine. */
 export const DEFAULT_EFFORT: EffortLevel = "medium";
 
@@ -57,6 +71,15 @@ export interface ProviderInfo {
   cost: string;
   models: readonly ModelOption[];
   defaultModel: string;
+  /**
+   * How the user connects this provider. Default (absent) is subscription OAuth
+   * (Claude / Codex). `"apiKey"` providers (OpenCode Zen / Go) ask the user to
+   * paste a key instead — Houston opens `apiKeyUrl` for them to grab one. API-key
+   * providers run only on the new TS engine (see `getVisibleProviders`).
+   */
+  auth?: "oauth" | "apiKey";
+  /** For `auth: "apiKey"`: the dashboard URL where the user creates/copies the key. */
+  apiKeyUrl?: string;
 }
 
 export const PROVIDERS: readonly ProviderInfo[] = [
@@ -135,11 +158,151 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     ],
     defaultModel: "claude-sonnet-4-6",
   },
+  {
+    id: "opencode",
+    name: "OpenCode Zen",
+    subtitle: "Curated frontier models",
+    cliName: "opencode",
+    installUrl: "https://opencode.ai/auth",
+    loginCommand: "",
+    cost: "Pay as you go",
+    auth: "apiKey",
+    apiKeyUrl: "https://opencode.ai/auth",
+    // Context windows are the FIXED windows the OpenCode Zen gateway serves per
+    // model (from pi-ai) — unlike a Claude/Codex subscription, they are not
+    // plan/credit-gated, so no snap-up `contextWindowMax` is needed.
+    // `effortLevels` come from models.dev's `reasoning_options.effort.values`
+    // (the source OpenCode itself uses), intersected with what the installed
+    // pi-ai actually maps to the gateway. Most open models expose only a
+    // reasoning on/off toggle (not discrete levels), so they omit effortLevels.
+    models: [
+      {
+        id: "claude-sonnet-4-6",
+        label: "Sonnet 4.6",
+        description: "Best balance of speed and quality.",
+        contextWindow: 1_000_000,
+        // models.dev: low/medium/high/max; pi-ai can't reach this gateway's
+        // "max" yet, so cap at high.
+        effortLevels: ["low", "medium", "high"],
+      },
+      {
+        id: "claude-opus-4-8",
+        label: "Opus 4.8",
+        description: "Most capable Claude, slower.",
+        contextWindow: 1_000_000,
+        effortLevels: ["low", "medium", "high", "xhigh"],
+      },
+      {
+        id: "gpt-5.5",
+        label: "GPT-5.5",
+        description: "OpenAI's frontier model.",
+        contextWindow: 1_050_000,
+        effortLevels: ["low", "medium", "high", "xhigh"],
+      },
+      {
+        id: "gemini-3.5-flash",
+        label: "Gemini 3.5 Flash",
+        description: "Fast and capable.",
+        contextWindow: 1_048_576,
+        // No discrete effort on this gateway model (models.dev lists none).
+      },
+      // Free trial models (OpenCode Zen) — test the provider without spending credits.
+      {
+        id: "deepseek-v4-flash-free",
+        label: "DeepSeek V4 Flash (Free)",
+        description: "Fast. Free to try.",
+        contextWindow: 200_000,
+        // models.dev effort = [high, max] (plus a reasoning on/off toggle).
+        effortLevels: ["high", "max"],
+      },
+      {
+        id: "minimax-m3-free",
+        label: "MiniMax M3 (Free)",
+        description: "Capable. Free to try.",
+        contextWindow: 200_000,
+        // Reasoning toggle only (no discrete effort) per models.dev.
+      },
+      {
+        id: "mimo-v2.5-free",
+        label: "MiMo V2.5 (Free)",
+        description: "Free to try.",
+        contextWindow: 200_000,
+      },
+      {
+        id: "nemotron-3-ultra-free",
+        label: "Nemotron 3 Ultra (Free)",
+        description: "NVIDIA. Free to try.",
+        contextWindow: 1_000_000,
+      },
+    ],
+    defaultModel: "claude-sonnet-4-6",
+  },
+  {
+    id: "opencode-go",
+    name: "OpenCode Go",
+    subtitle: "Open coding models",
+    cliName: "opencode-go",
+    installUrl: "https://opencode.ai/auth",
+    loginCommand: "",
+    cost: "$10 / month",
+    auth: "apiKey",
+    apiKeyUrl: "https://opencode.ai/auth",
+    // Fixed per-model context windows the OpenCode Go gateway serves (from pi-ai).
+    // effortLevels come from models.dev's reasoning_options; the open models here
+    // expose only a reasoning toggle (no discrete effort), so they omit it.
+    models: [
+      {
+        id: "glm-5.1",
+        label: "GLM-5.1",
+        description: "Strong open coding model.",
+        contextWindow: 202_752,
+      },
+      {
+        id: "kimi-k2.6",
+        label: "Kimi K2.6",
+        description: "Fast, capable open model.",
+        contextWindow: 262_144,
+      },
+      {
+        id: "minimax-m3",
+        label: "MiniMax M3",
+        description: "Capable open model.",
+        contextWindow: 512_000,
+      },
+      {
+        id: "qwen3.7-max",
+        label: "Qwen3.7 Max",
+        description: "Large open model.",
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "deepseek-v4-pro",
+        label: "DeepSeek V4 Pro",
+        description: "Strong reasoning.",
+        contextWindow: 1_000_000,
+        // models.dev effort = [high, max].
+        effortLevels: ["high", "max"],
+      },
+    ],
+    defaultModel: "glm-5.1",
+  },
 ] as const;
 
 /** Find a provider by id. */
 export function getProvider(id: string): ProviderInfo | undefined {
   return PROVIDERS.find((p) => p.id === id);
+}
+
+/**
+ * Providers to show in connect UIs. API-key providers (OpenCode Zen / Go) run
+ * only on the new TS engine — they paste a key Houston serves through the host —
+ * so they're hidden when the legacy Rust engine is active. Pass
+ * `newEngineActive()` from `lib/engine`.
+ */
+export function getVisibleProviders(opts: {
+  newEngine: boolean;
+}): readonly ProviderInfo[] {
+  return PROVIDERS.filter((p) => p.auth !== "apiKey" || opts.newEngine);
 }
 
 /** Find the model object for a provider + model id. */

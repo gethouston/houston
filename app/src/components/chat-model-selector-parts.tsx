@@ -7,7 +7,7 @@ import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProviderPickerState } from "../lib/model-picker";
 import type { ProviderInfo } from "../lib/providers";
-import { ClaudeLogo, OpenAILogo } from "./shell/provider-logos";
+import { ClaudeLogo, OpenAILogo, OpenCodeLogo } from "./shell/provider-logos";
 
 /**
  * Presentational sub-parts for {@link ChatModelSelector}. Split out so the
@@ -104,6 +104,9 @@ function iconFor(providerId: string) {
       return <ClaudeLogo className="size-full" />;
     case "openai":
       return <OpenAILogo className="size-full" />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo className="size-full" />;
     default:
       return null;
   }

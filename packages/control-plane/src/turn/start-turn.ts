@@ -1,8 +1,13 @@
 import type { ServerResponse } from "node:http";
 import { isExpiring } from "../credentials/refresh";
 import type { Agent, Workspace } from "../domain/types";
-import type { TurnPin, WorkspaceCredential } from "../ports";
-import { json, PROVIDER, prefixFor, type TurnDeps } from "./deps";
+import {
+  isApiKeyCredential,
+  type TurnPin,
+  type WorkspaceCredential,
+} from "../ports";
+import { isCloudProvider } from "../providers";
+import { json, PROVIDER, prefixFor, readSettings, type TurnDeps } from "./deps";
 import { TurnQuotaError } from "./quota";
 import { pumpSse } from "./sse";
 
@@ -13,18 +18,38 @@ import { pumpSse } from "./sse";
  * relay where this conversation's subscribers receive them.
  */
 
-/** The workspace's credential, refreshed centrally when expiring. Null = not connected. */
+/**
+ * The workspace's credential for `provider`, refreshed centrally when expiring
+ * (an API-key credential never expires, so it's served as-is). Null = the
+ * workspace hasn't connected that provider.
+ */
 export async function freshCredential(
   deps: TurnDeps,
   wsId: string,
+  provider: string,
 ): Promise<WorkspaceCredential | null> {
-  let cred = await deps.credentials.get(wsId, PROVIDER);
+  let cred = await deps.credentials.get(wsId, provider);
   if (!cred) return null;
   if (isExpiring(cred)) {
     cred = await deps.refresh(cred);
     await deps.credentials.put(cred);
   }
   return cred;
+}
+
+/**
+ * The provider a cloud turn should run: the agent's saved active provider when
+ * it's one the cloud runtime offers, else Codex (the cloud default). Anthropic
+ * is never served in cloud (ToS), so a stale anthropic setting falls back too.
+ */
+async function activeCloudSettings(
+  deps: TurnDeps,
+  prefix: string,
+): Promise<{ provider: string; effort?: string }> {
+  const settings = await readSettings(deps, prefix);
+  const saved = settings.activeProvider;
+  const provider = saved && isCloudProvider(saved) ? saved : PROVIDER;
+  return { provider, effort: settings.effort };
 }
 
 /** Outcome of asking the per-turn runtime to start a turn. */
@@ -57,12 +82,19 @@ export async function dispatchTurn(
     throw err;
   }
   const prefix = prefixFor(ws, agent);
+  const { provider, effort: savedEffort } = await activeCloudSettings(
+    deps,
+    prefix,
+  );
+  // The routine's pinned effort wins; otherwise the agent's saved effort is
+  // baked into the turn so a normal cloud message honors the picker selection.
+  const effort = pin?.effort ?? savedEffort;
   const started = await deps.relay.start(
     agent.id,
     `${agent.id}/${cid}`,
     async (publish, signal) => {
       try {
-        const cred = await freshCredential(deps, ws.id);
+        const cred = await freshCredential(deps, ws.id, provider);
         const idToken = await deps.idToken();
         const upstream = await fetch(
           `${deps.runtimeUrl.replace(/\/$/, "")}/turn`,
@@ -79,9 +111,9 @@ export async function dispatchTurn(
               conversationId: cid,
               text,
               nonce,
-              // Routine model/effort pins (omitted when absent → runtime inherits).
+              // Model/effort for this turn (omitted when absent → runtime inherits).
               ...(pin?.model ? { model: pin.model } : {}),
-              ...(pin?.effort ? { effort: pin.effort } : {}),
+              ...(effort ? { effort } : {}),
               gcsPrefix: prefix,
               credential: cred
                 ? {
@@ -89,6 +121,7 @@ export async function dispatchTurn(
                     access: cred.accessToken,
                     expires: cred.expiresAt,
                     accountId: cred.accountId ?? null,
+                    kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
                   }
                 : null,
             }),

@@ -8,6 +8,7 @@ import {
   completeLogin,
   getAuthStatus,
   logout,
+  setApiKey,
   startLogin,
 } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
@@ -100,6 +101,20 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // this sandbox stops holding the user's refresh token. Idempotent.
   if (method === "POST" && path === "/auth/scrub-refresh") {
     return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
+  }
+  // API-key connect (OpenCode Zen / Go): the user pastes a key, no OAuth dance.
+  const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
+  if (method === "POST" && apiKeyMatch) {
+    const provider = apiKeyMatch[1];
+    try {
+      const { key } = await readJson(req);
+      setApiKey(provider, String(key || ""));
+      return json(res, 200, { ok: true });
+    } catch (e) {
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
   }
   const authMatch = path.match(
     /^\/auth\/([^/]+)\/(login|login\/complete|logout)$/,
@@ -237,7 +252,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
       // be lost — which left the chat spinning forever after logout.
       if (!(await ensureProviderForTurn())) {
         return json(res, 409, {
-          error: "No provider connected. Log in with Claude or Codex first.",
+          error: "No provider connected. Connect an AI provider first.",
         });
       }
       // model/effort ride on a routine-fired message (a routine's pin); a normal

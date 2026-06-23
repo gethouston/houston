@@ -1,12 +1,14 @@
 import type { HoustonEvent } from "@houston-ai/core";
 import { ConfirmDialog, Spinner } from "@houston-ai/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { analytics } from "../../lib/analytics";
+import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
   COMING_SOON_PROVIDERS,
+  getVisibleProviders,
   PROVIDERS,
   type ProviderInfo,
 } from "../../lib/providers";
@@ -16,6 +18,7 @@ import {
   tauriSystem,
 } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
+import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
@@ -45,14 +48,23 @@ export function ProviderPicker({ onSelect }: Props) {
     url: string;
     userCode: string | null;
   } | null>(null);
+  // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
+  const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
+
+  // API-key providers (OpenCode) run only on the new TS engine; hide them on the
+  // Rust engine. Computed once — the engine doesn't change mid-session.
+  const visibleProviders = useMemo(
+    () => getVisibleProviders({ newEngine: newEngineActive() }),
+    [],
+  );
 
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});
   const loadStatuses = useCallback(async () => {
-    // Probe every active provider in parallel. New providers added to the
-    // PROVIDERS list are picked up automatically; never hardcode ids here.
+    // Probe every visible provider in parallel. New providers added to the
+    // catalog are picked up automatically; never hardcode ids here.
     const results = await Promise.all(
-      PROVIDERS.map(
+      visibleProviders.map(
         async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
       ),
     );
@@ -60,7 +72,7 @@ export function ProviderPicker({ onSelect }: Props) {
     for (const [id, status] of results) {
       next[id] = status;
     }
-    for (const prov of PROVIDERS) {
+    for (const prov of visibleProviders) {
       const wasConnected =
         prevStatuses.current[prov.id]?.cli_installed &&
         prevStatuses.current[prov.id]?.authenticated;
@@ -74,7 +86,7 @@ export function ProviderPicker({ onSelect }: Props) {
     prevStatuses.current = next;
     setStatuses(next);
     setLoading(false);
-  }, [onSelect]);
+  }, [onSelect, visibleProviders]);
 
   useEffect(() => {
     loadStatuses();
@@ -182,6 +194,11 @@ export function ProviderPicker({ onSelect }: Props) {
   }, [addToast, loadStatuses, t]);
 
   const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers (OpenCode) connect by pasting a key, not OAuth.
+    if (provider.auth === "apiKey") {
+      setApiKeyDialog(provider);
+      return;
+    }
     setPendingId(provider.id);
     try {
       // launchLogin defaults deviceAuth from the platform — desktop catches the
@@ -264,7 +281,7 @@ export function ProviderPicker({ onSelect }: Props) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {PROVIDERS.map((prov) => {
+        {visibleProviders.map((prov) => {
           const status = statuses[prov.id];
           const connected =
             (status?.cli_installed && status?.authenticated) ?? false;
@@ -312,6 +329,11 @@ export function ProviderPicker({ onSelect }: Props) {
         url={loginDialog?.url ?? null}
         userCode={loginDialog?.userCode ?? null}
         onClose={() => setLoginDialog(null)}
+      />
+
+      <ProviderApiKeyDialog
+        provider={apiKeyDialog}
+        onClose={() => setApiKeyDialog(null)}
       />
     </>
   );

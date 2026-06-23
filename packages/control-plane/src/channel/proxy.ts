@@ -179,4 +179,34 @@ export class ProxyChannel implements RuntimeChannel {
   async forgetCredential(ctx: ChannelCtx, provider: string): Promise<void> {
     await this.opts.credentials.remove(ctx.agent.workspaceId, provider);
   }
+
+  /**
+   * Store a pasted API key (OpenCode Zen / Go) centrally for the whole workspace,
+   * then push it into the standing runtime's auth.json so the provider reads as
+   * connected immediately (instead of only after the next turn's serve sync). The
+   * central store is the source of truth — the push is what makes status instant.
+   * A push failure surfaces (the user retries; re-pushing is idempotent), but the
+   * credential is already safely stored.
+   */
+  async saveApiKeyCredential(ctx: ChannelCtx, provider: string, apiKey: string): Promise<void> {
+    await this.opts.credentials.put({
+      workspaceId: ctx.agent.workspaceId,
+      provider,
+      accessToken: apiKey,
+      refreshToken: "",
+      expiresAt: 0,
+      kind: "api_key",
+    });
+    const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(`${endpoint.baseUrl}/auth/${encodeURIComponent(provider)}/api-key`, {
+      method: "POST",
+      headers: { "content-type": "application/json", Authorization: `Bearer ${endpoint.token}` },
+      body: JSON.stringify({ key: apiKey }),
+    });
+    if (!res.ok) {
+      throw new Error(
+        `key stored, but the agent runtime did not accept it (${res.status}) — try connecting again`,
+      );
+    }
+  }
 }

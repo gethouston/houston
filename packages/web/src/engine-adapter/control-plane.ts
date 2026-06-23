@@ -257,6 +257,27 @@ export async function forgetCredential(
 }
 
 /**
+ * Connect an API-key provider (OpenCode Zen / Go): submit the pasted key, which
+ * the host stores centrally for the workspace and pushes into the agent runtime.
+ * No OAuth dance, no polling — it returns once the key is accepted.
+ */
+export async function setApiKey(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  provider: string,
+  apiKey: string,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/credential/api-key`,
+    {
+      method: "POST",
+      body: JSON.stringify({ provider, apiKey }),
+    },
+  );
+}
+
+/**
  * A runtime client scoped to ONE agent, via the control plane's transparent proxy.
  * Its `/conversations/:id/*` calls land on `${baseUrl}/agents/${agentId}/conversations/:id/*`.
  */

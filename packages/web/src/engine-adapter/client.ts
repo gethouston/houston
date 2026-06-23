@@ -31,6 +31,7 @@ import { bus, emitEvent } from "./bus";
 import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
+  configWriteToSettings,
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
   DEFAULT_WORKSPACE_ID,
@@ -93,6 +94,15 @@ export class HoustonClient {
       baseUrl: opts.baseUrl,
       token: opts.token || undefined,
     });
+    // Mark the new TS engine as the active backend so the frontend can surface
+    // new-engine-only capabilities (e.g. API-key providers like OpenCode). The
+    // Rust engine uses the real `@houston-ai/engine-client`, never this adapter,
+    // so the flag stays unset there.
+    if (typeof window !== "undefined") {
+      (
+        window as unknown as { __HOUSTON_NEW_ENGINE__?: boolean }
+      ).__HOUSTON_NEW_ENGINE__ = true;
+    }
     // biome-ignore lint/correctness/noConstructorReturn: Proxy provides transparent fallback stubs for unsupported HoustonClient methods; callers use `new HoustonClient()` directly so a static factory would require changes across many files outside this module.
     return new Proxy(this, {
       get(target, prop, recv) {
@@ -271,16 +281,25 @@ export class HoustonClient {
     return { name: "Houston", provider, model, effort: "medium" };
   }
   async setAgentConfig(
-    _agentPath: string,
+    agentPath: string,
     config: ProjectConfig,
   ): Promise<ProjectConfig> {
     if (config.provider) {
       const pid = toNewProvider(config.provider);
-      if (pid)
-        await this.engine.setSettings({
-          activeProvider: pid,
-          model: config.model,
-        });
+      if (pid) {
+        // Settings are PER-AGENT on the host (`/agents/:id/settings`); the host
+        // root has no `/settings` route. In cloud / desktop-new-engine mode this
+        // MUST go through the agent's runtime client (the same one activeOld()
+        // READS from) — writing via the root client silently 404s, so a model
+        // pick never persists and every turn falls back to the active provider.
+        const engine = this.cp
+          ? controlPlane.runtimeClientFor(
+              this.cp,
+              agentPath || this.requireAgentId(),
+            )
+          : this.engine;
+        await engine.setSettings({ activeProvider: pid, model: config.model });
+      }
     }
     return config;
   }
@@ -354,9 +373,44 @@ export class HoustonClient {
     relPath: string,
     content: string,
   ): Promise<void> {
-    if (this.cp)
-      return controlPlane.writeAgentFile(this.cp, agentPath, relPath, content);
-    writeAgentFileStore(agentPath, relPath, content);
+    if (this.cp) {
+      await controlPlane.writeAgentFile(this.cp, agentPath, relPath, content);
+    } else {
+      writeAgentFileStore(agentPath, relPath, content);
+    }
+    // The runtime resolves the model from its OWN settings (activeProvider +
+    // models[provider]), NOT from this .houston/config doc — which is the only
+    // thing the model picker writes. Without mirroring, picking a different model
+    // (e.g. a non-default OpenCode Go model) updates the doc but every turn keeps
+    // running the provider's default. Bridge the config write into the engine.
+    await this.syncConfigToSettings(agentPath, relPath, content);
+  }
+
+  /**
+   * Mirror a per-agent `config.json` write (provider + model) into the engine's
+   * settings, so a model/provider pick in the chat picker actually changes what
+   * the next turn runs. Best-effort: the doc write already succeeded, and the
+   * picker only offers connected providers, so a failure here is logged (never a
+   * silent model swap) but doesn't fail the file write.
+   */
+  private async syncConfigToSettings(
+    agentPath: string,
+    relPath: string,
+    content: string,
+  ): Promise<void> {
+    const update = configWriteToSettings(relPath, content);
+    if (!update) return;
+    try {
+      const engine = this.cp
+        ? controlPlane.runtimeClientFor(this.cp, agentPath)
+        : this.engine;
+      await engine.setSettings(update);
+    } catch (err) {
+      console.error(
+        "[engine-adapter] failed to sync the model selection to the engine:",
+        err,
+      );
+    }
   }
   async seedAgentSchemas(): Promise<void> {}
   async migrateAgentFiles(): Promise<void> {}
@@ -679,10 +733,7 @@ export class HoustonClient {
    * Covers all three flows: loopback auto-catch, pasted headless code, and
    * device-code polling. Local mode only (cloud uses pollProviderConnect).
    */
-  private watchLoginCompletion(
-    pid: "anthropic" | "openai-codex",
-    name: string,
-  ): void {
+  private watchLoginCompletion(pid: ProviderId, name: string): void {
     this.stopLoginWatch(name);
     const startedAt = Date.now();
     const finish = (success: boolean, error: string | null) => {
@@ -730,6 +781,39 @@ export class HoustonClient {
       return;
     }
     await this.engine.logout(pid);
+  }
+
+  /**
+   * Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
+   * OAuth dance. Cloud stores it centrally (and pushes it into the agent runtime)
+   * via the control plane; local writes it straight to the single runtime. On
+   * success we fire `ProviderLoginComplete` so the connect dialog closes and the
+   * provider card flips to connected — the same signal the OAuth flow emits. A
+   * failure rejects so the caller surfaces the real reason (never swallowed).
+   */
+  async setProviderApiKey(name: string, apiKey: string): Promise<void> {
+    const pid = toNewProvider(name);
+    if (!pid) throw new Error(`provider ${name} not supported`);
+    if (this.cp) {
+      const agentId = this.requireAgentId();
+      await controlPlane.setApiKey(this.cp, agentId, pid, apiKey);
+      // Make the just-connected provider active so chats use it immediately,
+      // exactly as the OAuth connect path does (pollProviderConnect). Without
+      // this the engine keeps whatever was active (e.g. a still-connected Codex),
+      // and every turn silently runs that model instead of OpenCode. Settings are
+      // PER-AGENT on the host, so this MUST go through the agent's runtime client.
+      await controlPlane
+        .runtimeClientFor(this.cp, agentId)
+        .setSettings({ activeProvider: pid });
+    } else {
+      await this.engine.setApiKey(pid, apiKey);
+      await this.engine.setSettings({ activeProvider: pid });
+    }
+    emitEvent("ProviderLoginComplete", {
+      provider: name,
+      success: true,
+      error: null,
+    });
   }
 
   /**

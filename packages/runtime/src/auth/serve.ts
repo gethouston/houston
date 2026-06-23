@@ -1,4 +1,5 @@
 import { join } from "node:path";
+import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
 import {
   applyServedCredential,
@@ -43,32 +44,43 @@ export function scrubRefreshTokens(): string[] {
 }
 
 /**
- * Pull the workspace's central credential from the control plane and write it
- * to auth.json (access token only). Returns the provider on success, or null
- * when the workspace isn't connected yet (caller falls back to whatever is
- * already in auth.json).
+ * Pull the workspace's central credentials from the control plane into auth.json
+ * (access token / API key only). A workspace can have one credential per provider
+ * (e.g. Codex AND OpenCode), so this syncs EVERY known provider and applies each
+ * that the host serves — hydrating a fresh or just-woken runtime no matter which
+ * provider the next turn uses. Returns the providers that were applied; an empty
+ * result means the workspace hasn't connected anything yet.
  */
-export async function syncServedCredential(): Promise<string | null> {
-  if (!serveModeOn()) return null;
-  const res = await fetch(
-    `${config.controlPlaneUrl}/sandbox/credential?provider=openai-codex`,
-    {
-      headers: { Authorization: `Bearer ${config.sandboxToken}` },
-    },
-  );
-  if (res.status === 404) return null; // workspace not connected yet
-  if (!res.ok) {
-    throw new Error(
-      `serve credential failed (${res.status}): ${await res.text().catch(() => "")}`,
+export async function syncServedCredential(): Promise<string[]> {
+  if (!serveModeOn()) return [];
+  const applied: string[] = [];
+  for (const p of PROVIDERS) {
+    const res = await fetch(
+      `${config.controlPlaneUrl}/sandbox/credential?provider=${p.id}`,
+      {
+        headers: { Authorization: `Bearer ${config.sandboxToken}` },
+      },
     );
+    if (res.status === 404) continue; // this provider isn't connected
+    if (!res.ok) {
+      // Internal serve hiccup for ONE provider must not strand the others; the
+      // turn still surfaces "No provider connected" downstream if nothing applied.
+      console.error(
+        `[serve] credential ${p.id} (${res.status}): ${await res.text().catch(() => "")}`,
+      );
+      continue;
+    }
+    applyServedCredential(
+      authPathFor(),
+      (await res.json()) as ServedCredential,
+    );
+    applied.push(p.id);
   }
-  const c = (await res.json()) as ServedCredential;
-  applyServedCredential(authPathFor(), c);
   // pi's AuthStorage caches auth.json in memory at startup; a direct write is
   // invisible to hasAuth()/resolveModel() until we re-read it. This is the line
   // that makes a never-connected agent actually see the served credential.
-  authStorage.reload();
-  return c.provider;
+  if (applied.length) authStorage.reload();
+  return applied;
 }
 
 /**
@@ -85,7 +97,9 @@ export function exportCredential(): {
   accountId?: string;
 } | null {
   for (const [provider, c] of Object.entries(readAuthFile(authPathFor()))) {
-    if (c?.access && c?.refresh) {
+    // Only OAuth credentials are captured centrally via export; an API key is
+    // submitted straight to the host, never round-tripped through the runtime.
+    if (c?.type === "oauth" && c.access && c.refresh) {
       return {
         provider,
         access: c.access,

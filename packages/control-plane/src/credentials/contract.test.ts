@@ -53,6 +53,19 @@ function runCredentialStoreContract(
       expect(got).toEqual(c);
     });
 
+    test("an api-key credential round-trips with kind and no refresh/expiry", async () => {
+      const s = make();
+      const apiKey = cred({
+        provider: "opencode",
+        accessToken: "sk-opencode-zen",
+        refreshToken: "",
+        expiresAt: 0,
+        kind: "api_key" as const,
+      });
+      await s.put(apiKey);
+      expect(await s.get("ws_1", "opencode")).toEqual(apiKey);
+    });
+
     test("put on the same (workspace, provider) overwrites in place (refresh)", async () => {
       const s = make();
       await s.put(cred());

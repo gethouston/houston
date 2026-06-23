@@ -71,4 +71,24 @@ export class TurnChannel implements RuntimeChannel {
   async forgetCredential(ctx: ChannelCtx, provider: string): Promise<void> {
     await this.deps.credentials.remove(ctx.workspace.id, provider);
   }
+
+  /**
+   * Store a pasted API key centrally. There is no standing runtime to push to —
+   * the per-turn runtime receives it baked into the next POST /turn (start-turn),
+   * and auth status reads it straight from the central store (dispatchCloudrun).
+   */
+  async saveApiKeyCredential(
+    ctx: ChannelCtx,
+    provider: string,
+    apiKey: string,
+  ): Promise<void> {
+    await this.deps.credentials.put({
+      workspaceId: ctx.workspace.id,
+      provider,
+      accessToken: apiKey,
+      refreshToken: "",
+      expiresAt: 0,
+      kind: "api_key",
+    });
+  }
 }

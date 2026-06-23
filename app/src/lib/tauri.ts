@@ -678,6 +678,16 @@ export const tauriProvider = {
     call<void>("cancel_provider_login", () =>
       getEngine().cancelProviderLogin(provider),
     ),
+  /**
+   * Connect an API-key provider (OpenCode Zen / Go): submit the pasted key. The
+   * new engine stores it for the workspace and the provider reads as connected
+   * (the adapter fires `ProviderLoginComplete`). New-engine only — the connect UI
+   * shows these providers only when `newEngineActive()`.
+   */
+  setApiKey: (provider: string, apiKey: string) =>
+    call<void>("set_provider_api_key", () =>
+      getEngine().setProviderApiKey(provider, apiKey),
+    ),
 };
 
 // ─── System (OS-native helpers, preserved for back-compat) ────────────
