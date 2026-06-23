@@ -69,6 +69,10 @@ export class BunRuntimeSpawner implements RuntimeSpawner {
           /* already gone */
         }
       },
+      // Fires once when the child exits — whether we killed it or it crashed on
+      // its own. The launcher uses this to drop a dead runtime from its live-set
+      // so a crash doesn't leave a phantom "running" entry behind.
+      onExit: (cb) => child.once("exit", cb),
     };
   }
 }

@@ -10,6 +10,14 @@ import type { RuntimeEndpoint, RuntimeLauncher, RuntimeState } from "../ports";
 export interface RuntimeHandle {
   port: number;
   kill(): void;
+  /**
+   * Register a one-shot callback fired when the underlying process exits on its
+   * own (crash, OOM, the runtime's own SIGTERM handler). Lets the launcher reap
+   * a dead child from its live-set so a phantom "running" entry never hands a
+   * dead endpoint to the next turn. A handle whose process cannot crash (a test
+   * stub) may leave this undefined.
+   */
+  onExit?(cb: () => void): void;
 }
 
 export interface SpawnSpec {
@@ -131,7 +139,15 @@ export class ProcessLauncher implements RuntimeLauncher {
           }
         : {}),
     });
-    this.running.set(agent.id, { handle, token });
+    const entry: Running = { handle, token };
+    this.running.set(agent.id, entry);
+    // Reap a crashed runtime from the live-set: without this a process that
+    // dies on its own (OOM, panic) lingers as a phantom "running" entry and
+    // ensureAwake keeps handing its dead port to every turn. Only evict if the
+    // map still points at THIS handle — a sleep()+respawn must not be clobbered.
+    handle.onExit?.(() => {
+      if (this.running.get(agent.id) === entry) this.running.delete(agent.id);
+    });
     try {
       await this.waitHealthy(handle.port, token);
     } catch (err) {

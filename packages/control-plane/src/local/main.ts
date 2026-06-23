@@ -2,6 +2,7 @@ import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import { houstonSystemPrompt } from "../houston-prompt";
+import { installParentWatchdog } from "../parent-watchdog";
 import { buildLocalHost } from "./host";
 
 /**
@@ -86,7 +87,14 @@ await host.start();
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
-    host.stop();
+    host.stop(); // kills every child runtime before we exit
     process.exit(0);
   });
 }
+
+// Unix orphan-prevention: when the Tauri app is FORCE-QUIT or crashes it sends
+// no signal, but the OS closes the write-end of our piped stdin. Watch for that
+// EOF and tear down (killing every runtime) so a hard app exit never orphans the
+// host + its runtimes. No-op under a TTY (plain `bun run`, self-host, tests);
+// Windows force-quit is covered by the supervisor's kill-on-close Job Object.
+installParentWatchdog({ onParentExit: () => host.stop() });
