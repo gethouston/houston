@@ -292,6 +292,11 @@ export function PersonalAssistantOnboarding({
           eyebrow={stepEyebrow("connectEmail")}
           onBack={() => setStep("meet")}
           onConnected={(toolkit, label) => {
+            // Capture which email the user connected (connectApp doesn't route
+            // through the AI card, so the global tracker wouldn't see it).
+            analytics.track("integration_connected", {
+              integration_slug: toolkit,
+            });
             setEmailTool({ toolkit, label });
             setStep("emailConnected");
           }}
