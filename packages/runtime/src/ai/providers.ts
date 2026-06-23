@@ -21,7 +21,9 @@ export type ProviderId =
   | "anthropic"
   | "openai-codex"
   | "opencode"
-  | "opencode-go";
+  | "opencode-go"
+  | "openrouter"
+  | "google";
 
 /** How a provider authenticates: a subscription OAuth flow, or a pasted API key. */
 export type ProviderAuthMethod = "oauth" | "apiKey";
@@ -54,6 +56,18 @@ export const PROVIDERS: {
     id: "opencode-go",
     name: "OpenCode Go",
     defaultModel: config.opencodeGoModel,
+    auth: "apiKey",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    defaultModel: config.openrouterModel,
+    auth: "apiKey",
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    defaultModel: config.geminiModel,
     auth: "apiKey",
   },
 ];

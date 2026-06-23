@@ -50,10 +50,19 @@ export function syntheticAgent(): Agent {
 /** Old desktop provider name -> new engine ProviderId. */
 export function toNewProvider(
   name: string,
-): "anthropic" | "openai-codex" | "opencode" | "opencode-go" | null {
+):
+  | "anthropic"
+  | "openai-codex"
+  | "openrouter"
+  | "google"
+  | "opencode"
+  | "opencode-go"
+  | null {
   if (name === "anthropic") return "anthropic";
   if (name === "openai" || name === "openai-codex" || name === "codex")
     return "openai-codex";
+  if (name === "openrouter") return "openrouter";
+  if (name === "google") return "google";
   if (name === "opencode") return "opencode";
   if (name === "opencode-go") return "opencode-go";
   return null;
@@ -64,6 +73,7 @@ export function toNewProvider(
  * (openai-codex -> openai); the OpenCode ids are the same on both sides.
  */
 export function toOldProvider(id: string): string {
+  // openrouter/google share one id across frontend and engine; only codex differs.
   return id === "openai-codex" ? "openai" : id;
 }
 

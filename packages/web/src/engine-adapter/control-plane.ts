@@ -227,11 +227,15 @@ export async function deleteAgent(
 export async function captureCredential(
   cfg: ControlPlaneConfig,
   agentId: string,
+  provider?: string,
 ): Promise<void> {
   await cpFetch(
     cfg,
     `/agents/${encodeURIComponent(agentId)}/credential/capture`,
-    { method: "POST" },
+    {
+      method: "POST",
+      ...(provider ? { body: JSON.stringify({ provider }) } : {}),
+    },
   );
 }
 

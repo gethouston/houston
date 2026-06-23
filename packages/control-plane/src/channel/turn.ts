@@ -61,8 +61,16 @@ export class TurnChannel implements RuntimeChannel {
     await this.deps.vfs.deletePrefix(prefixFor(ctx.workspace, ctx.agent));
   }
 
-  async captureCredential(ctx: ChannelCtx): Promise<CaptureResult> {
-    const cred = await this.deps.credentials.get(ctx.workspace.id, PROVIDER);
+  async captureCredential(
+    ctx: ChannelCtx,
+    provider?: string,
+  ): Promise<CaptureResult> {
+    // Cloud connect-once already lands the credential centrally (turn/connect.ts);
+    // capture just confirms it. Cloud serves only the subscription provider.
+    const cred = await this.deps.credentials.get(
+      ctx.workspace.id,
+      provider || PROVIDER,
+    );
     return cred
       ? { ok: true, provider: cred.provider }
       : { ok: false, status: 400, error: "agent is not connected yet" };

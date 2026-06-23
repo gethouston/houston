@@ -1,6 +1,6 @@
-import { test, expect } from "bun:test";
-import { isExpiring, refreshCredential } from "./refresh";
+import { expect, test } from "bun:test";
 import { isApiKeyCredential, type WorkspaceCredential } from "../ports";
+import { isExpiring, refreshCredential } from "./refresh";
 
 /**
  * The connect-once refresher is OAuth-only. An API-key credential (OpenCode Zen /

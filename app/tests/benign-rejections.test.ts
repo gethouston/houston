@@ -30,7 +30,9 @@ describe("isBenignLockRejection", () => {
   it("matches auth-js's wrapped 'another request stole it' message", () => {
     strictEqual(
       isBenignLockRejection(
-        new Error('Lock "sb-auth-token" was released because another request stole it'),
+        new Error(
+          'Lock "sb-auth-token" was released because another request stole it',
+        ),
       ),
       true,
     );
@@ -38,7 +40,9 @@ describe("isBenignLockRejection", () => {
 
   it("matches any auth-js error flagged isAcquireTimeout, regardless of message", () => {
     strictEqual(
-      isBenignLockRejection(acquireTimeoutError("Acquiring an exclusive lock timed out")),
+      isBenignLockRejection(
+        acquireTimeoutError("Acquiring an exclusive lock timed out"),
+      ),
       true,
     );
   });
@@ -66,7 +70,9 @@ describe("isBenignLockRejection", () => {
 
   it("does NOT match isAcquireTimeout when it is not strictly true", () => {
     strictEqual(
-      isBenignLockRejection(Object.assign(new Error("x"), { isAcquireTimeout: "yes" })),
+      isBenignLockRejection(
+        Object.assign(new Error("x"), { isAcquireTimeout: "yes" }),
+      ),
       false,
     );
   });
@@ -74,7 +80,10 @@ describe("isBenignLockRejection", () => {
   it("handles non-object reasons safely", () => {
     strictEqual(isBenignLockRejection(null), false);
     strictEqual(isBenignLockRejection(undefined), false);
-    strictEqual(isBenignLockRejection("Lock was stolen by another request"), false);
+    strictEqual(
+      isBenignLockRejection("Lock was stolen by another request"),
+      false,
+    );
     strictEqual(isBenignLockRejection(42), false);
   });
 

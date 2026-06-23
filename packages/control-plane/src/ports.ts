@@ -152,7 +152,11 @@ export interface RuntimeChannel {
    * A standing-runtime channel also pushes it to the live runtime so the provider
    * reads as connected immediately; the per-turn channel just stores it centrally.
    */
-  saveApiKeyCredential(ctx: ChannelCtx, provider: string, apiKey: string): Promise<void>;
+  saveApiKeyCredential(
+    ctx: ChannelCtx,
+    provider: string,
+    apiKey: string,
+  ): Promise<void>;
   /**
    * Connect-once logout: forget the workspace's central credential for a provider
    * so no future turn can re-serve it. The inverse of captureCredential — clearing

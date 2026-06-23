@@ -4,9 +4,11 @@ import type { ComingSoonProviderInfo, ProviderInfo } from "../../lib/providers";
 import {
   ClaudeLogo,
   DeepSeekLogo,
+  GeminiLogo,
   MiniMaxLogo,
   OpenAILogo,
   OpenCodeLogo,
+  OpenRouterLogo,
 } from "./provider-logos";
 
 /**
@@ -20,6 +22,10 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <ClaudeLogo />;
     case "openai":
       return <OpenAILogo />;
+    case "openrouter":
+      return <OpenRouterLogo />;
+    case "google":
+      return <GeminiLogo />;
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo />;

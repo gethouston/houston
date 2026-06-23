@@ -1,4 +1,8 @@
-import { isApiKeyCredential, type CredentialStore, type WorkspaceCredential } from "../ports";
+import {
+  type CredentialStore,
+  isApiKeyCredential,
+  type WorkspaceCredential,
+} from "../ports";
 
 /**
  * Central OAuth refresh — the control plane is the SINGLE refresher of each
@@ -18,7 +22,10 @@ const OAUTH: Record<string, { tokenUrl: string; clientId: string }> = {
  * True if the access token is within `skewMs` of expiry (or already expired). An
  * API-key credential never expires, so it is never "expiring".
  */
-export function isExpiring(cred: WorkspaceCredential, skewMs = 120_000): boolean {
+export function isExpiring(
+  cred: WorkspaceCredential,
+  skewMs = 120_000,
+): boolean {
   if (isApiKeyCredential(cred)) return false;
   return Date.now() >= cred.expiresAt - skewMs;
 }
@@ -28,7 +35,9 @@ export function isExpiring(cred: WorkspaceCredential, skewMs = 120_000): boolean
  * on any failure — a stale token is never returned silently. An API-key
  * credential has nothing to refresh and is returned unchanged.
  */
-export async function refreshCredential(cred: WorkspaceCredential): Promise<WorkspaceCredential> {
+export async function refreshCredential(
+  cred: WorkspaceCredential,
+): Promise<WorkspaceCredential> {
   if (isApiKeyCredential(cred)) return cred;
   const cfg = OAUTH[cred.provider];
   if (!cfg)

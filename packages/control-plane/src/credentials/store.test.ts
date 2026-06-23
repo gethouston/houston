@@ -45,3 +45,22 @@ test("isExpiring: fresh → false; within skew or past expiry → true", () => {
   expect(isExpiring(cred({ expiresAt: Date.now() + 30_000 }))).toBe(true); // within 2-min skew
   expect(isExpiring(cred({ expiresAt: Date.now() - 1_000 }))).toBe(true); // already expired
 });
+
+test("an api-key credential round-trips with its kind and never looks expiring", async () => {
+  const s = new MemoryCredentialStore();
+  const apiKeyCred = cred({
+    provider: "openrouter",
+    kind: "api_key",
+    accessToken: "sk-or-v1-THEKEY",
+    refreshToken: "",
+    expiresAt: Number.MAX_SAFE_INTEGER,
+  });
+  await s.put(apiKeyCred);
+  const got = await s.get("ws_1", "openrouter");
+  if (!got) throw new Error("expected the stored openrouter credential");
+  expect(got.kind).toBe("api_key");
+  expect(got.accessToken).toBe("sk-or-v1-THEKEY");
+  // Far-future expiry → /sandbox/credential never tries to refresh it (which
+  // would throw — there is no OAuth refresh config for openrouter).
+  expect(isExpiring(got)).toBe(false);
+});

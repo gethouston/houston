@@ -45,6 +45,11 @@ export const config = {
   model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+  /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
+  geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3-flash-preview",
+  /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
+  openrouterModel:
+    env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",
   /** Default OpenCode Zen model (pay-as-you-go curated gateway, API key). */
   opencodeModel: env.HOUSTON_OPENCODE_MODEL || "claude-sonnet-4-6",
   /** Default OpenCode Go model ($10/mo open-model gateway, API key). */
