@@ -94,7 +94,9 @@ export function SkillDetailPage({
   }
 
   const isDirty = instructions !== skill.instructions;
-  const displayName = humanizeSkillName(skill.name);
+  // Fall back to the id (the directory slug — the canonical skill identity)
+  // when a detail response carries no name, so the header stays meaningful.
+  const displayName = humanizeSkillName(skill.name || skill.id);
 
   return (
     <div className="flex-1 flex flex-col min-h-0 bg-background">
@@ -186,6 +188,9 @@ export function SkillDetailPage({
 }
 
 function humanizeSkillName(slug: string): string {
+  // Tolerate a missing/empty identity: a display helper must never crash the
+  // whole view. Degrade gracefully rather than throw on `undefined`.
+  if (!slug) return "";
   const spaced = slug.replace(/[-_]+/g, " ").trim();
   if (spaced.length === 0) return slug;
   return spaced.charAt(0).toUpperCase() + spaced.slice(1);
