@@ -1,14 +1,33 @@
 /**
- * Onboarding step types. The unified "Step N of N" numbering (including the
- * language + agreement gates and the email step) lives in `lib/setup-steps.ts`;
- * the orchestrator only owns these mission steps. Welcome is a hero in the
- * first-run gate and isn't a TutorialStep.
+ * Every screen the onboarding orchestrator can render, in flow order. The
+ * numbered steps (their section + position) live in `lib/setup-steps.ts`; the
+ * rest are unnumbered framing/celebration screens.
+ *
+ *  intro (overview of all steps)
+ *  ── Setup ──────────────────────────────────────────
+ *  brain → providerLogin → aiConnected ✓
+ *  tools → appsConnected ✓
+ *  ── Onboarding ─────────────────────────────────────
+ *  meet (name) → agentCreated ✓
+ *  connectEmail (Gmail/Outlook) → emailConnected ✓
+ *  emailIntro (it'll email you) → emailChat (send to myself) → emailSent ✓
+ *  finished (tour or connect more)
+ *
+ * `numbered` steps that drive the "Setup · N of M" eyebrow: brain,
+ * providerLogin, tools, meet, connectEmail, emailChat.
  */
-export type OnboardingStep = TutorialStep;
-
-export type TutorialStep =
-  | "meet"
+export type OnboardingStep =
+  | "intro"
   | "brain"
   | "providerLogin"
+  | "aiConnected"
   | "tools"
-  | "email";
+  | "appsConnected"
+  | "onboardingIntro"
+  | "meet"
+  | "agentCreated"
+  | "connectEmail"
+  | "emailConnected"
+  | "emailChat"
+  | "emailSent"
+  | "finished";

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, LayoutGrid, Loader2 } from "lucide-react";
+import { LayoutGrid, Loader2 } from "lucide-react";
 import { AsyncButton } from "@houston-ai/core";
 import { analytics } from "../../../lib/analytics";
 import {
@@ -9,6 +9,7 @@ import {
 } from "../../../hooks/queries";
 import { useComposioAuth } from "../../../hooks/use-composio-auth";
 import { SetupCard } from "../setup-card";
+import { SuccessCheck } from "../success-check";
 
 interface ToolsMissionProps {
   eyebrow: string;
@@ -37,15 +38,16 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
   const connected = justConnected || status?.status === "ok";
   const waiting = auth.state.phase === "waiting";
 
-  // Funnel step 9 (action): the user connected their apps account. `connected`
-  // is derived from a polled query, so guard with a ref to fire exactly once.
+  // The apps account connected. Fire the funnel event once, then advance
+  // straight to the success screen instead of lingering on the inline state.
   const toolsConnectedFired = useRef(false);
   useEffect(() => {
     if (connected && !toolsConnectedFired.current) {
       toolsConnectedFired.current = true;
       analytics.track("tools_provider_connected");
+      onContinue();
     }
-  }, [connected]);
+  }, [connected, onContinue]);
 
   const handleSignIn = useCallback(() => auth.startAuth(), [auth]);
 
@@ -61,19 +63,23 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
       nextDisabled={!connected}
     >
       <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
-        <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
-          <LayoutGrid className="size-7 text-foreground" />
-        </span>
+        {!connected && (
+          <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
+            <LayoutGrid className="size-7 text-foreground" />
+          </span>
+        )}
 
         {connected ? (
-          <div className="flex flex-col items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <Check className="size-4" />
-              {t("tutorial.missions.tools.connected.title")}
-            </span>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {t("tutorial.missions.tools.connected.body")}
-            </p>
+          <div className="flex flex-col items-center gap-3">
+            <SuccessCheck />
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-sm font-medium text-foreground">
+                {t("tutorial.missions.tools.connected.title")}
+              </span>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                {t("tutorial.missions.tools.connected.body")}
+              </p>
+            </div>
           </div>
         ) : waiting ? (
           <div className="flex flex-col items-center gap-2">
@@ -90,7 +96,23 @@ export function ToolsMission({ eyebrow, onBack, onContinue }: ToolsMissionProps)
             </button>
           </div>
         ) : (
-          <div className="flex flex-col items-center gap-2">
+          <div className="flex w-full max-w-sm flex-col items-center gap-4">
+            <ol className="flex w-full flex-col gap-2">
+              {[
+                t("tutorial.missions.tools.steps.account"),
+                t("tutorial.missions.tools.steps.authorize"),
+              ].map((label, i) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl bg-secondary px-4 py-3 text-left"
+                >
+                  <span className="flex size-7 shrink-0 items-center justify-center rounded-full bg-foreground text-xs font-semibold tabular-nums text-background">
+                    {i + 1}
+                  </span>
+                  <span className="text-sm text-foreground">{label}</span>
+                </li>
+              ))}
+            </ol>
             <AsyncButton
               className="h-11 rounded-full px-5"
               spinner={false}

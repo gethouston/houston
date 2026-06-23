@@ -6,7 +6,6 @@ import { HoustonLogo } from "./experience-card";
 import { analytics } from "../../lib/analytics";
 import { useLocalePreference } from "../../hooks/use-locale-preference";
 import { SUPPORTED_LOCALES, type SupportedLocale } from "../../lib/i18n";
-import { setupStepNumber } from "../../lib/setup-steps";
 import { SetupCard, OptionCard } from "../onboarding/setup-card";
 
 /**
@@ -97,11 +96,8 @@ function LanguageIntro({
     }
   };
 
-  const { current, total } = setupStepNumber("language");
-
   return (
     <SetupCard
-      eyebrow={`Step ${current} of ${total}`}
       title="Choose your language"
       subtitle="English · Español · Português"
       onBack={() => setStage("welcome")}
@@ -137,10 +133,7 @@ function RotatingWelcome({ onContinue }: { onContinue: () => void }) {
   const greeting = GREETINGS[i];
 
   return (
-    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-background px-6 text-foreground">
-      {/* The exact "Always On" card glow: blue bottom-left, orange top-right. */}
-      <div className="houston-glow pointer-events-none absolute inset-0" />
-
+    <div className="relative flex h-screen w-screen flex-col items-center justify-center overflow-hidden bg-secondary/60 px-6 text-foreground">
       <div className="relative z-10 flex flex-col items-center gap-12 text-center">
         <HoustonLogo size={72} />
         {/* Fixed height so greetings of different lengths don't shift the logo
