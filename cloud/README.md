@@ -127,7 +127,7 @@ Language: TS/Node is the natural choice now that the runtime and frontend are TS
 **SSE is the fragile seam.** The client streams events over a long-lived `fetch`+`getReader()` GET with header auth and no resume (`packages/runtime-client/src/client.ts`). The control plane must be a **1:1 streaming reverse proxy**: forward the `Authorization` header on the stream, do **zero** buffering/gzip/transform, set no idle timeout shorter than a turn, and pass heartbeat comment frames verbatim. Do **not** try to multiplex many runtimes onto one socket — that forces you to reimplement the runtime's per-conversation event bus.
 
 ### Agent sandbox — pi runtime, one per agent
-- **Image:** containerize `packages/runtime` (Bun/Node). This is **new** — the old `always-on/Dockerfile` builds the *Rust* engine and does not apply.
+- **Image:** containerize `packages/runtime` (Bun/Node). This is **new** — the old `always-on/Dockerfile` (now deleted) built the *Rust* engine and never applied here.
 - One sandbox per agent, its own `workspaceDir` on its own PVC, **keyless** (creds via the control plane proxy).
 - Push to Artifact Registry.
 

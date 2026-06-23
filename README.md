@@ -148,26 +148,28 @@ houston/
 │   └── houston-tauri/       Tauri adapter (applies the legacy Rust engine to desktop)
 ├── store/                   Houston Store — agent registry (UI cut in the convergence)
 ├── website/                 Houston Website — gethouston.ai
-├── always-on/               Houston Always On — legacy Rust-engine VPS container (the TS-engine self-host is selfhost/)
 ├── teams/                   Houston Teams (TBD — hosted multi-tenant)
 │
 ├── packages/               THE CONVERGENCE — the single TypeScript engine (see convergence/README.md)
 │   ├── runtime/             pi runtime — the only agent loop
-│   ├── host/                the host (cloud + local desktop, adapter profiles)
+│   ├── host/                the host (cloud + local desktop, adapter profiles) — OPEN
+│   ├── host-cloud/          CLOSED cloud adapters (Pg/Gcs/Gke/Redis + admin + cloud main)
 │   ├── domain/              shared domain logic (.houston layout, schemas, cron, portable)
 │   ├── protocol/            v3 wire types + zod
 │   ├── web/                 the full desktop UI in a browser tab
 │   └── code-sandbox/        egress-locked code-execution sandbox (cloud)
+├── BOUNDARY.md             The open/closed seam (enforced by scripts/check-boundaries.mjs)
 ├── selfhost/               Self-host the TS engine on a VPS (Docker + Caddy TLS)
 ├── convergence/            The single-engine convergence plan + status (SOURCE OF TRUTH)
 │
 ├── ui/                      Houston UI — @houston-ai/* React packages
-├── engine/                  LEGACY Rust engine — current default build, deleted at P6
-├── cloud/                   Houston Cloud — deploy + admin for the hosted multi-tenant host
-│
-└── examples/                Reference consumers of the engine
-    └── smartbooks/            Bookkeeping app built on a custom React frontend
+├── engine/                  LEGACY Rust engine — current default build, deleted at the final cutover
+└── cloud/                   Houston Cloud — deploy + admin for the hosted multi-tenant host
 ```
+
+> Removed in the convergence: `mobile/` + `houston-relay/` (mobile PWA + tunnel),
+> `examples/smartbooks/` (custom-frontend reference), `always-on/` (the legacy
+> Rust-engine VPS image — the TS-engine self-host is `selfhost/`).
 
 See `knowledge-base/architecture.md` for crate-level detail + current gaps.
 
@@ -179,22 +181,10 @@ The engine is frontend-agnostic. You don't have to ship inside the
 Houston App — any web or native runtime can drive it over HTTP +
 WebSocket using [`@houston-ai/engine-client`](ui/engine-client/).
 
-**Working example: [SmartBooks](examples/smartbooks/)** — a
-bookkeeping product with its own brand, its own UX, and zero
-`@houston-ai/*` UI deps. ~400 lines of TSX, one npm package, renders
-a live transactions table + a multi-sheet Excel workpaper. Soft
-workflow: the user asks for a new column, Claude edits the Python
-script, every future upload picks up the change. Clone it, rename
-things, ship your own AI-native product.
-
-```bash
-cd examples/smartbooks
-pnpm install
-pnpm dev
-```
-
-Full walkthrough + architecture diagram + custom-frontend gotchas in
-[examples/smartbooks/README.md](examples/smartbooks/README.md).
+> The standalone `examples/smartbooks/` custom-frontend reference was
+> REMOVED in the convergence sweep. The frontend-agnostic contract still
+> holds; the canonical non-Tauri consumer is now `packages/web` (the full
+> desktop UI in a plain browser tab over the host's protocol v3).
 
 ---
 

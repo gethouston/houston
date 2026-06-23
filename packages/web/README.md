@@ -109,5 +109,6 @@ never silently drift. Run directly with `pnpm --filter houston-web check-shims`.
 ## Relationship to the other frontends
 
 - `app/` — the Tauri desktop app (the engine-co-located build).
-- `mobile/` — a separate, lean PWA (chat + mission control) over the relay.
 - `packages/web` — the **full** desktop UI, in the browser, against any engine.
+
+(The `mobile/` lean PWA over the relay was removed in the convergence.)
