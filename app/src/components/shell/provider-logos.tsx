@@ -46,21 +46,30 @@ export function OpenAILogo({
   );
 }
 
-export function OpenCodeLogo({ className = "h-5 w-5" }: { className?: string } = {}) {
-  // A terminal prompt glyph (chevron + caret line) — OpenCode's coding-agent
-  // brand. Shared by OpenCode Zen and OpenCode Go.
+export function OpenCodeLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  // OpenCode's brand mark (opencode.ai/brand): a square frame with an inner
+  // block. Rendered monochrome via currentColor to match the sibling provider
+  // logos; the inner block is dimmed to keep the brand's two-tone read. Shared
+  // by OpenCode Zen and OpenCode Go.
   return (
     <svg
-      viewBox="0 0 24 24"
+      viewBox="0 0 512 512"
       className={className}
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
+      fill="currentColor"
+      role="img"
+      aria-label="OpenCode logo"
     >
-      <path d="m7 8 4 4-4 4" />
-      <path d="M13 16h4" />
+      <title>OpenCode logo</title>
+      <path opacity={0.55} d="M320 224V352H192V224H320Z" />
+      <path
+        fillRule="evenodd"
+        clipRule="evenodd"
+        d="M384 416H128V96H384V416ZM320 160H192V352H320V160Z"
+      />
     </svg>
   );
 }

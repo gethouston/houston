@@ -143,6 +143,12 @@ test("OpenCode Zen + Go are api-key providers with a dashboard URL", () => {
       `${id} default model is in its model list`,
     );
   }
+  // OpenCode Zen exposes free trial models so the provider can be tested
+  // without spending credits.
+  assert.ok(
+    getProvider("opencode").models.some((m) => m.id.endsWith("-free")),
+    "OpenCode Zen offers at least one free trial model",
+  );
   // The OAuth providers are unchanged (no auth field or "oauth").
   assert.notEqual(getProvider("anthropic").auth, "apiKey");
   assert.notEqual(getProvider("openai").auth, "apiKey");

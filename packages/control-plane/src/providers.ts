@@ -29,13 +29,28 @@ export interface HostProvider {
 
 export const PROVIDERS: readonly HostProvider[] = [
   { id: "anthropic", name: "Claude (Pro / Max)", auth: "oauth", cloud: false },
-  { id: "openai-codex", name: "ChatGPT / Codex (Plus / Pro)", auth: "oauth", cloud: true },
+  {
+    id: "openai-codex",
+    name: "ChatGPT / Codex (Plus / Pro)",
+    auth: "oauth",
+    cloud: true,
+  },
   {
     id: "opencode",
     name: "OpenCode Zen",
     auth: "apiKey",
     cloud: true,
-    models: ["claude-sonnet-4-6", "claude-opus-4-8", "gpt-5.5", "gemini-3.5-flash"],
+    models: [
+      "claude-sonnet-4-6",
+      "claude-opus-4-8",
+      "gpt-5.5",
+      "gemini-3.5-flash",
+      // Free trial models — test the provider without spending credits.
+      "deepseek-v4-flash-free",
+      "minimax-m3-free",
+      "mimo-v2.5-free",
+      "nemotron-3-ultra-free",
+    ],
     defaultModel: "claude-sonnet-4-6",
   },
   {
@@ -43,7 +58,13 @@ export const PROVIDERS: readonly HostProvider[] = [
     name: "OpenCode Go",
     auth: "apiKey",
     cloud: true,
-    models: ["glm-5.1", "kimi-k2.6", "minimax-m3", "qwen3.7-max", "deepseek-v4-pro"],
+    models: [
+      "glm-5.1",
+      "kimi-k2.6",
+      "minimax-m3",
+      "qwen3.7-max",
+      "deepseek-v4-pro",
+    ],
     defaultModel: "glm-5.1",
   },
 ];
@@ -51,7 +72,9 @@ export const PROVIDERS: readonly HostProvider[] = [
 const byId = new Map(PROVIDERS.map((p) => [p.id as string, p]));
 
 /** A provider the cloud per-turn runtime serves. */
-export const CLOUD_PROVIDERS: readonly HostProvider[] = PROVIDERS.filter((p) => p.cloud);
+export const CLOUD_PROVIDERS: readonly HostProvider[] = PROVIDERS.filter(
+  (p) => p.cloud,
+);
 
 /** True when `id` names a known API-key provider (OpenCode Zen / Go). */
 export function isApiKeyProvider(id: string): boolean {

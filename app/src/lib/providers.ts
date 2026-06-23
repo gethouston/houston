@@ -160,9 +160,42 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         label: "Sonnet 4.6",
         description: "Best balance of speed and quality.",
       },
-      { id: "claude-opus-4-8", label: "Opus 4.8", description: "Most capable Claude, slower." },
-      { id: "gpt-5.5", label: "GPT-5.5", description: "OpenAI's frontier model." },
-      { id: "gemini-3.5-flash", label: "Gemini 3.5 Flash", description: "Fast and capable." },
+      {
+        id: "claude-opus-4-8",
+        label: "Opus 4.8",
+        description: "Most capable Claude, slower.",
+      },
+      {
+        id: "gpt-5.5",
+        label: "GPT-5.5",
+        description: "OpenAI's frontier model.",
+      },
+      {
+        id: "gemini-3.5-flash",
+        label: "Gemini 3.5 Flash",
+        description: "Fast and capable.",
+      },
+      // Free trial models (OpenCode Zen) — test the provider without spending credits.
+      {
+        id: "deepseek-v4-flash-free",
+        label: "DeepSeek V4 Flash (Free)",
+        description: "Fast. Free to try.",
+      },
+      {
+        id: "minimax-m3-free",
+        label: "MiniMax M3 (Free)",
+        description: "Capable. Free to try.",
+      },
+      {
+        id: "mimo-v2.5-free",
+        label: "MiMo V2.5 (Free)",
+        description: "Free to try.",
+      },
+      {
+        id: "nemotron-3-ultra-free",
+        label: "Nemotron 3 Ultra (Free)",
+        description: "NVIDIA. Free to try.",
+      },
     ],
     defaultModel: "claude-sonnet-4-6",
   },
@@ -177,11 +210,31 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     auth: "apiKey",
     apiKeyUrl: "https://opencode.ai/auth",
     models: [
-      { id: "glm-5.1", label: "GLM-5.1", description: "Strong open coding model." },
-      { id: "kimi-k2.6", label: "Kimi K2.6", description: "Fast, capable open model." },
-      { id: "minimax-m3", label: "MiniMax M3", description: "Capable open model." },
-      { id: "qwen3.7-max", label: "Qwen3.7 Max", description: "Large open model." },
-      { id: "deepseek-v4-pro", label: "DeepSeek V4 Pro", description: "Strong reasoning." },
+      {
+        id: "glm-5.1",
+        label: "GLM-5.1",
+        description: "Strong open coding model.",
+      },
+      {
+        id: "kimi-k2.6",
+        label: "Kimi K2.6",
+        description: "Fast, capable open model.",
+      },
+      {
+        id: "minimax-m3",
+        label: "MiniMax M3",
+        description: "Capable open model.",
+      },
+      {
+        id: "qwen3.7-max",
+        label: "Qwen3.7 Max",
+        description: "Large open model.",
+      },
+      {
+        id: "deepseek-v4-pro",
+        label: "DeepSeek V4 Pro",
+        description: "Strong reasoning.",
+      },
     ],
     defaultModel: "glm-5.1",
   },
@@ -198,7 +251,9 @@ export function getProvider(id: string): ProviderInfo | undefined {
  * so they're hidden when the legacy Rust engine is active. Pass
  * `newEngineActive()` from `lib/engine`.
  */
-export function getVisibleProviders(opts: { newEngine: boolean }): readonly ProviderInfo[] {
+export function getVisibleProviders(opts: {
+  newEngine: boolean;
+}): readonly ProviderInfo[] {
   return PROVIDERS.filter((p) => p.auth !== "apiKey" || opts.newEngine);
 }
 
