@@ -50,7 +50,14 @@ export function parseSkillMd(
     };
   }
   const summary: SkillSummary = {
-    name: str(fm.name) ?? slug,
+    // Identity = the on-disk directory slug, NOT the frontmatter `name:`.
+    // `loadSkillDetail` and the host's GET /skills/<slug> route resolve by
+    // directory, so the name surfaced to the UI (list -> click -> load) MUST be
+    // that slug. Agent-authored SKILL.md files sometimes drift a display phrase
+    // into `name:` (dir `redactar-outreach-esg`, `name: Redactar Outreach ESG`);
+    // trusting the frontmatter there made the list hand the UI a phrase that
+    // `load_skill` then 404'd on. Trust the directory. (HOU-515 / HOU-441)
+    name: slug,
     description: str(fm.description) ?? "",
     version: typeof fm.version === "number" ? fm.version : 1,
     tags: Array.isArray(fm.tags) ? fm.tags.map(String) : [],
