@@ -33,6 +33,12 @@ export interface SendOptions {
   /** Echoed back on the `user` event so the sender can dedupe its own message. */
   nonce?: string;
   signal?: AbortSignal;
+  /**
+   * Reasoning-effort pin for THIS turn (low/medium/high/xhigh). The runtime maps
+   * it to pi's thinking level and clamps per model; omit to keep the session's
+   * current level. This is how the composer's effort selector takes effect.
+   */
+  effort?: string;
 }
 
 /**
@@ -210,7 +216,11 @@ export class HoustonEngineClient {
     await this.request(`/conversations/${encodeURIComponent(id)}/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ text, nonce: opts.nonce }),
+      body: JSON.stringify({
+        text,
+        nonce: opts.nonce,
+        ...(opts.effort ? { effort: opts.effort } : {}),
+      }),
       signal: opts.signal,
     });
   }

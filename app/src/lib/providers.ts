@@ -159,30 +159,38 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     createKeyUrl: "https://openrouter.ai/settings/keys",
     // A small curated set of strong models OpenRouter routes to (pi-ai
     // `openrouter` ids). OpenRouter exposes hundreds; these are sensible
-    // defaults, not the full catalog.
+    // defaults, not the full catalog. Effort levels and context windows match
+    // pi-ai's catalog (cross-checked against models.dev): all are reasoning
+    // models; OpenRouter passes `reasoningEffort` through, so Claude/DeepSeek
+    // expose up to `xhigh`, while Gemini's thinking caps at `high`.
     models: [
       {
         id: "anthropic/claude-sonnet-4.6",
         label: "Claude Sonnet 4.6",
         description: "Anthropic's balanced model, via OpenRouter.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
         contextWindow: 1_000_000,
       },
       {
         id: "anthropic/claude-opus-4.8",
         label: "Claude Opus 4.8",
         description: "Anthropic's flagship, via OpenRouter.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
         contextWindow: 1_000_000,
       },
       {
         id: "google/gemini-3-flash-preview",
         label: "Gemini 3 Flash",
         description: "Google's fast model, via OpenRouter.",
-        contextWindow: 1_000_000,
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 1_048_576,
       },
       {
         id: "deepseek/deepseek-v4-pro",
         label: "DeepSeek V4 Pro",
         description: "DeepSeek's flagship, via OpenRouter.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        contextWindow: 1_048_576,
       },
     ],
     defaultModel: "anthropic/claude-sonnet-4.6",
@@ -197,31 +205,37 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "Free tier on your Google account",
     authKind: "api-key",
     createKeyUrl: "https://aistudio.google.com/apikey",
-    // pi-ai `google` model ids.
+    // pi-ai `google` model ids. All are reasoning models; Gemini's native
+    // thinking levels cap at `high` (pi's GoogleThinkingLevel = MINIMAL/LOW/
+    // MEDIUM/HIGH), so the effort row is low/medium/high. Windows = 1 MiB.
     models: [
       {
         id: "gemini-3-flash-preview",
         label: "Gemini 3 Flash",
         description: "Fast and capable. Best default.",
-        contextWindow: 1_000_000,
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 1_048_576,
       },
       {
         id: "gemini-3-pro-preview",
         label: "Gemini 3 Pro",
         description: "Google's most capable, slower.",
-        contextWindow: 1_000_000,
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 1_048_576,
       },
       {
         id: "gemini-2.5-flash",
         label: "Gemini 2.5 Flash",
         description: "Previous fast model.",
-        contextWindow: 1_000_000,
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 1_048_576,
       },
       {
         id: "gemini-2.5-pro",
         label: "Gemini 2.5 Pro",
         description: "Previous flagship.",
-        contextWindow: 1_000_000,
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 1_048_576,
       },
     ],
     defaultModel: "gemini-3-flash-preview",

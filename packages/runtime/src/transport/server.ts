@@ -250,8 +250,9 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
           error: "No provider connected. Log in with Claude or Codex first.",
         });
       }
-      // model/effort ride on a routine-fired message (a routine's pin); a normal
-      // user message omits them, leaving the session's current model/effort.
+      // model/effort ride on a message as a per-turn pin: routines pin both; the
+      // composer pins `effort` (its effort selector). An omitted field leaves the
+      // session's current value untouched.
       const pin = {
         model: typeof model === "string" ? model : undefined,
         effort: typeof effort === "string" ? effort : undefined,
