@@ -94,7 +94,11 @@ export class HoustonEngineClient {
   listProviders() {
     return this.json<ProviderInfo[]>("/providers");
   }
-  setSettings(input: { activeProvider?: ProviderId; model?: string }) {
+  setSettings(input: {
+    activeProvider?: ProviderId;
+    model?: string;
+    effort?: string;
+  }) {
     return this.json<Settings>("/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },

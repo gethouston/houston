@@ -8,7 +8,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, ToolCallRecord } from "@houston/runtime-client";
 import { toThinkingLevel } from "../ai/effort";
-import { activeProvider, resolveModel } from "../ai/providers";
+import { activeEffort, activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredential } from "../auth/serve";
 import { authStorage, modelRegistry } from "../auth/storage";
 import { config } from "../config";
@@ -164,8 +164,12 @@ async function execTurn(
     // shared) session before prompting; pi clamps the thinking level to the
     // model. A bad model id throws here → surfaces as the turn's error event.
     if (pin?.model) await conv.session.setModel(resolveModel(pin.model));
-    if (pin?.effort) {
-      const level = toThinkingLevel(pin.effort);
+    // Effort: the routine's pin wins, else the agent's saved setting. Applied on
+    // EVERY turn (not just session creation) so changing it in the picker takes
+    // effect on the next message. pi clamps the level to the active model.
+    const effort = pin?.effort ?? activeEffort();
+    if (effort) {
+      const level = toThinkingLevel(effort);
       if (level) conv.session.setThinkingLevel(level);
     }
     await conv.session.prompt(text);

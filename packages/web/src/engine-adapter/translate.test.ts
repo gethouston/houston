@@ -30,6 +30,27 @@ test("turnErrorMessage handles plain errors and non-errors", () => {
 describe("configWriteToSettings (model-pick → engine settings bridge)", () => {
   const CONFIG = ".houston/config/config.json";
 
+  test("carries the reasoning effort through to the settings update", () => {
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({
+          provider: "opencode",
+          model: "deepseek-v4-pro",
+          effort: "high",
+        }),
+      ),
+    ).toEqual({
+      activeProvider: "opencode",
+      model: "deepseek-v4-pro",
+      effort: "high",
+    });
+    // Provider-only write (no effort) omits effort.
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
+    ).toEqual({ activeProvider: "opencode" });
+  });
+
   test("maps a config write with provider+model to a settings update", () => {
     expect(
       configWriteToSettings(

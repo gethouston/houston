@@ -11,7 +11,11 @@
  * - `opencode` = OpenCode Zen (pasted API key; OpenAI-compatible gateway)
  * - `opencode-go` = OpenCode Go (pasted API key; OpenAI-compatible gateway)
  */
-export type ProviderId = "anthropic" | "openai-codex" | "opencode" | "opencode-go";
+export type ProviderId =
+  | "anthropic"
+  | "openai-codex"
+  | "opencode"
+  | "opencode-go";
 
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 
@@ -59,6 +63,12 @@ export interface ProviderInfo {
 export interface Settings {
   activeProvider?: ProviderId;
   models?: Partial<Record<ProviderId, string>>;
+  /**
+   * The agent's reasoning-effort setting, applied to each turn (the runtime maps
+   * it to pi's thinking level and clamps to the active model). Absent = the
+   * model's own default.
+   */
+  effort?: string;
 }
 
 export type ChatRole = "user" | "assistant";

@@ -75,19 +75,24 @@ export type NewProviderId = NonNullable<ReturnType<typeof toNewProvider>>;
  * null to skip. The runtime resolves the model from its OWN settings
  * (activeProvider + models[provider]), but the chat model picker only writes
  * `.houston/config/config.json` — so a config write carrying provider+model
- * must be mirrored into the runtime, or picking a non-default model (e.g. an
- * OpenCode Go model other than the default) updates the doc the runtime never
- * reads and every turn keeps running the provider default. Pure so the bridge
- * decision is unit-tested without the HTTP client.
+ * (+effort) must be mirrored into the runtime, or picking a non-default model
+ * (e.g. an OpenCode Go model other than the default) or a reasoning effort
+ * updates the doc the runtime never reads and every turn keeps running the
+ * provider default. Pure so the bridge decision is unit-tested without the
+ * HTTP client.
  */
 export function configWriteToSettings(
   relPath: string,
   content: string,
-): { activeProvider: NewProviderId; model?: string } | null {
+): { activeProvider: NewProviderId; model?: string; effort?: string } | null {
   if (!relPath.endsWith(".houston/config/config.json")) return null;
-  let cfg: { provider?: unknown; model?: unknown };
+  let cfg: { provider?: unknown; model?: unknown; effort?: unknown };
   try {
-    cfg = JSON.parse(content) as { provider?: unknown; model?: unknown };
+    cfg = JSON.parse(content) as {
+      provider?: unknown;
+      model?: unknown;
+      effort?: unknown;
+    };
   } catch {
     return null;
   }
@@ -97,5 +102,8 @@ export function configWriteToSettings(
   return {
     activeProvider: pid,
     ...(typeof cfg.model === "string" && cfg.model ? { model: cfg.model } : {}),
+    ...(typeof cfg.effort === "string" && cfg.effort
+      ? { effort: cfg.effort }
+      : {}),
   };
 }

@@ -42,13 +42,14 @@ export async function freshCredential(
  * it's one the cloud runtime offers, else Codex (the cloud default). Anthropic
  * is never served in cloud (ToS), so a stale anthropic setting falls back too.
  */
-async function activeCloudProvider(
+async function activeCloudSettings(
   deps: TurnDeps,
   prefix: string,
-): Promise<string> {
+): Promise<{ provider: string; effort?: string }> {
   const settings = await readSettings(deps, prefix);
   const saved = settings.activeProvider;
-  return saved && isCloudProvider(saved) ? saved : PROVIDER;
+  const provider = saved && isCloudProvider(saved) ? saved : PROVIDER;
+  return { provider, effort: settings.effort };
 }
 
 /** Outcome of asking the per-turn runtime to start a turn. */
@@ -81,7 +82,13 @@ export async function dispatchTurn(
     throw err;
   }
   const prefix = prefixFor(ws, agent);
-  const provider = await activeCloudProvider(deps, prefix);
+  const { provider, effort: savedEffort } = await activeCloudSettings(
+    deps,
+    prefix,
+  );
+  // The routine's pinned effort wins; otherwise the agent's saved effort is
+  // baked into the turn so a normal cloud message honors the picker selection.
+  const effort = pin?.effort ?? savedEffort;
   const started = await deps.relay.start(
     agent.id,
     `${agent.id}/${cid}`,
@@ -104,9 +111,9 @@ export async function dispatchTurn(
               conversationId: cid,
               text,
               nonce,
-              // Routine model/effort pins (omitted when absent → runtime inherits).
+              // Model/effort for this turn (omitted when absent → runtime inherits).
               ...(pin?.model ? { model: pin.model } : {}),
-              ...(pin?.effort ? { effort: pin.effort } : {}),
+              ...(effort ? { effort } : {}),
               gcsPrefix: prefix,
               credential: cred
                 ? {

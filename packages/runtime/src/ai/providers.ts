@@ -74,6 +74,8 @@ const isProvider = (s: string): s is ProviderId =>
 type Settings = {
   activeProvider?: ProviderId;
   models?: Partial<Record<ProviderId, string>>;
+  /** Reasoning effort applied to each turn (mapped to pi's thinking level). */
+  effort?: string;
 };
 
 const settingsFile = join(config.dataDir, "settings.json");
@@ -103,6 +105,11 @@ export function modelFor(provider: ProviderId): string {
   return loadSettings().models?.[provider] ?? defaultModel(provider);
 }
 
+/** The agent's saved reasoning effort for new turns, or null (model default). */
+export function activeEffort(): string | null {
+  return loadSettings().effort ?? null;
+}
+
 /** The provider used for new chats: the saved active one if still authed, else the first authed. */
 export function activeProvider(): ProviderId | null {
   const saved = loadSettings().activeProvider;
@@ -114,6 +121,7 @@ export function activeProvider(): ProviderId | null {
 export function setSettings(input: {
   activeProvider?: string;
   model?: string;
+  effort?: string;
 }): Settings {
   const s = loadSettings();
   if (input.activeProvider) {
@@ -126,6 +134,7 @@ export function setSettings(input: {
     if (!prov) throw new Error("set a provider before choosing a model");
     s.models = { ...s.models, [prov]: input.model };
   }
+  if (input.effort) s.effort = input.effort;
   saveSettings(s);
   return s;
 }

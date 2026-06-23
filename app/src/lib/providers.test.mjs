@@ -145,11 +145,26 @@ test("OpenCode Zen + Go are api-key providers with a dashboard URL", () => {
     // Every model needs a contextWindow so the composer's usage indicator shows
     // a % (not a raw token count / empty ring). The OpenCode gateway serves a
     // fixed window per model.
+    const VALID_EFFORT = new Set(["low", "medium", "high", "xhigh", "max"]);
     for (const m of p.models) {
       assert.ok(
         typeof m.contextWindow === "number" && m.contextWindow > 0,
         `${id}/${m.id} has a contextWindow`,
       );
+      // effortLevels, where present, must be a non-empty subset of the effort
+      // vocabulary — the picker + validEffortOrDefault depend on it.
+      if (m.effortLevels !== undefined) {
+        assert.ok(
+          m.effortLevels.length > 0,
+          `${id}/${m.id} effortLevels non-empty`,
+        );
+        for (const e of m.effortLevels) {
+          assert.ok(
+            VALID_EFFORT.has(e),
+            `${id}/${m.id} effort "${e}" is valid`,
+          );
+        }
+      }
     }
   }
   // OpenCode Zen exposes free trial models so the provider can be tested

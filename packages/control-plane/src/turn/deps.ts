@@ -31,6 +31,8 @@ export const PROVIDER_NAME = "ChatGPT / Codex (Plus / Pro)";
 export type Settings = {
   activeProvider?: string;
   models?: Record<string, string>;
+  /** Reasoning effort baked into each turn (mapped to pi's thinking level). */
+  effort?: string;
 };
 
 export function json(res: ServerResponse, status: number, body: unknown) {

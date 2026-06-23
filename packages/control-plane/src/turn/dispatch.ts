@@ -206,6 +206,7 @@ export async function dispatchCloudrun(
           : settings.activeProvider) ?? PROVIDER;
       settings.models = { ...settings.models, [prov]: body.model };
     }
+    if (typeof body.effort === "string") settings.effort = body.effort;
     await deps.vfs.writeText(
       `${prefix}/data/settings.json`,
       JSON.stringify(settings),
