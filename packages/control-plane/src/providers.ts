@@ -67,6 +67,35 @@ export const PROVIDERS: readonly HostProvider[] = [
     ],
     defaultModel: "glm-5.1",
   },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    auth: "apiKey",
+    // LOCAL/desktop only for now: the cloud per-turn sandbox is egress-locked
+    // and openrouter.ai isn't on its allowlist (unlike OpenCode's gateway).
+    cloud: false,
+    models: [
+      "anthropic/claude-sonnet-4.6",
+      "anthropic/claude-opus-4.8",
+      "google/gemini-3-flash-preview",
+      "deepseek/deepseek-v4-pro",
+    ],
+    defaultModel: "anthropic/claude-sonnet-4.6",
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    auth: "apiKey",
+    // LOCAL/desktop only: cloud egress doesn't allowlist generativelanguage.
+    cloud: false,
+    models: [
+      "gemini-3-flash-preview",
+      "gemini-3-pro-preview",
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+    ],
+    defaultModel: "gemini-3-flash-preview",
+  },
 ];
 
 const byId = new Map(PROVIDERS.map((p) => [p.id as string, p]));
