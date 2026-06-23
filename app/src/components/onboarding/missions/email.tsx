@@ -15,6 +15,7 @@ import {
   isActiveSessionStatus,
 } from "../../../stores/session-status";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
+import { useFileToolRenderer } from "../../../hooks/use-file-tool-renderer";
 import { ComposioLinkCard } from "../../composio-link-card";
 import { parseComposioToolkitFromHref } from "../../composio-card-state";
 import { withComposioWaitingFooter } from "../../composio-waiting-footer";
@@ -73,7 +74,13 @@ export function EmailMission({
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const { processLabels, getThinkingMessage } = useChatDisplayLabels();
+  // Same chat-rendering hooks the real agent chat uses, so the onboarding chat
+  // shows the agent's actual tool calls/results + a proper thinking + end-of-
+  // turn indicator, not just a bare "thinking".
+  const { processLabels, getThinkingMessage, thinkingIndicator, endOfTurnIndicator } =
+    useChatDisplayLabels();
+  const { isSpecialTool, renderToolResult, renderTurnSummary } =
+    useFileToolRenderer(agentPath);
   const queuedLabels = useQueuedMessageLabels();
 
   // Strip the setup directive from CLAUDE.md on unmount (idempotent).
@@ -278,6 +285,11 @@ export function EmailMission({
             placeholder={t("setup:tutorial.missions.email.placeholder")}
             processLabels={processLabels}
             getThinkingMessage={getThinkingMessage}
+            thinkingIndicator={thinkingIndicator}
+            endOfTurnIndicator={endOfTurnIndicator}
+            isSpecialTool={isSpecialTool}
+            renderToolResult={renderToolResult}
+            renderTurnSummary={renderTurnSummary}
             renderLink={renderLink}
             onOpenLink={handleOpenLink}
             transformContent={transformContent}
