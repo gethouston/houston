@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { ChatPanel, type FeedItem } from "@houston-ai/chat";
-import { HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
+import { Button, HoustonAvatar, resolveAgentColor } from "@houston-ai/core";
 import { analytics } from "../../../lib/analytics";
 import { tauriAgent, tauriChat, tauriSystem } from "../../../lib/tauri";
 import { logger } from "../../../lib/logger";
@@ -26,6 +26,7 @@ import {
 import type { Agent } from "../../../lib/types";
 import { SetupCard } from "../setup-card";
 import { OfferCard } from "./email-cards";
+import { shouldOfferSkip } from "./email-skip";
 
 /** The agent emits this once the email actually sent. */
 const SETUP_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
@@ -44,6 +45,9 @@ interface EmailMissionProps {
   onBack: () => void;
   /** Advance to the success screen once the email is sent. */
   onContinue: () => void;
+  /** Escape hatch: leave onboarding and go straight into the app. Shown only
+   *  once the agent ran but never confirmed completion (HOU-555). */
+  onSkip: () => void;
 }
 
 /**
@@ -62,6 +66,7 @@ export function EmailMission({
   emailToolkitLabel,
   onBack,
   onContinue,
+  onSkip,
 }: EmailMissionProps) {
   const { t } = useTranslation(["setup", "chat"]);
   const agentPath = agent.folderPath;
@@ -106,6 +111,13 @@ export function EmailMission({
   const sessionStatus = useSessionStatus(agentPath, sessionKeyForHooks);
   const isActive = isActiveSessionStatus(sessionStatus);
 
+  // The mission session has gone active at least once (the agent actually ran).
+  // Gates the skip escape hatch so we only offer it after a real attempt.
+  const [hasRun, setHasRun] = useState(false);
+  useEffect(() => {
+    if (isActive) setHasRun(true);
+  }, [isActive]);
+
   const setupDone = useMemo(() => {
     const items = realFeed ?? [];
     for (let i = items.length - 1; i >= 0; i--) {
@@ -117,6 +129,10 @@ export function EmailMission({
     }
     return false;
   }, [realFeed]);
+
+  // Offer the skip escape hatch only when the agent ran, went idle, and never
+  // emitted the completion marker — the "stuck" state from HOU-555.
+  const showSkip = shouldOfferSkip({ hasRun, isActive, setupDone });
 
   // Conversion + auto-advance to the success screen the moment it sends.
   const doneFired = useRef(false);
@@ -305,6 +321,22 @@ export function EmailMission({
             }
           />
         </div>
+        {showSkip && (
+          <div className="flex shrink-0 items-center justify-between gap-3 pt-3">
+            <p className="min-w-0 text-xs text-muted-foreground">
+              {t("setup:tutorial.missions.email.skipHint")}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={onSkip}
+            >
+              {t("setup:tutorial.missions.email.skip")}
+            </Button>
+          </div>
+        )}
       </div>
     </SetupCard>
   );

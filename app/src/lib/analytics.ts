@@ -51,6 +51,10 @@ export type AnalyticsEventName =
   // Fires once per onboarding screen reached (carries `step`), so a single
   // funnel shows exactly where people drop off in the redesigned flow.
   | "onboarding_step_viewed"
+  // Escape hatch: the user bailed out of a stuck onboarding step (HOU-555).
+  // Carries `step`, `provider`, `model` so skip-rate can be broken down by
+  // model — some models send the email but never emit the completion marker.
+  | "onboarding_skipped"
   // Activation funnel
   | "workspace_created"
   | "provider_configured"
@@ -82,6 +86,7 @@ export type AnalyticsEventName =
 
 type AnalyticsProperty =
   | "provider"
+  | "model"
   | "config_id"
   | "agent_mode"
   | "mission"
@@ -114,6 +119,7 @@ type PersonProps = {
 
 const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "provider",
+  "model",
   "config_id",
   "agent_mode",
   "mission",

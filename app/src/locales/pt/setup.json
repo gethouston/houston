@@ -103,7 +103,9 @@
         },
         "chip": "Envie um e-mail por mim",
         "placeholder": "Responda ao seu agente...",
-        "body": "Seu agente vai enviar um e-mail de verdade para você, para você vê-lo funcionar."
+        "body": "Seu agente vai enviar um e-mail de verdade para você, para você vê-lo funcionar.",
+        "skip": "Pular por enquanto",
+        "skipHint": "Seu agente terminou, mas não confirmou. Você pode pular e começar a usar o Houston."
       },
       "aiConnected": {
         "title": "Sua IA está conectada!",

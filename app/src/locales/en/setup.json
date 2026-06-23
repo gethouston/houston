@@ -103,7 +103,9 @@
         },
         "chip": "Send an email for me",
         "placeholder": "Reply to your agent...",
-        "body": "Your agent will send a real email to you, so you can watch it work."
+        "body": "Your agent will send a real email to you, so you can watch it work.",
+        "skip": "Skip for now",
+        "skipHint": "Your agent finished but didn't confirm. You can skip and start using Houston."
       },
       "aiConnected": {
         "title": "Your AI is connected!",
