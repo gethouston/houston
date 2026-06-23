@@ -298,30 +298,30 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     apiKeyUrl: "https://openrouter.ai/settings/keys",
     // A small curated set of strong models OpenRouter routes to (pi-ai
     // `openrouter` ids). OpenRouter exposes hundreds; these are sensible
-    // defaults, not the full catalog. effortLevels + context windows match
-    // pi-ai's catalog (cross-checked against models.dev): all are reasoning
-    // models; OpenRouter passes `reasoningEffort` through, so Claude/DeepSeek
-    // expose up to `xhigh`, while Gemini's thinking caps at `high`.
+    // defaults, not the full catalog. `effortLevels` come from models.dev's
+    // per-model `reasoning_options.effort.values` (the same source OpenCode
+    // uses), intersected with what pi-ai actually maps; `minimal` is dropped
+    // (Houston's effort scale starts at `low`). Context windows are pi-ai's.
     models: [
       {
         id: "openrouter/free",
         label: "Free (auto-routed)",
         description: "OpenRouter's free tier. Good for testing, no cost.",
-        effortLevels: ["low", "medium", "high"],
+        // models.dev lists no discrete effort for this meta-router, so no row.
         contextWindow: 200_000,
       },
       {
         id: "anthropic/claude-sonnet-4.6",
         label: "Claude Sonnet 4.6",
         description: "Anthropic's balanced model, via OpenRouter.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
+        effortLevels: ["low", "medium", "high", "max"],
         contextWindow: 1_000_000,
       },
       {
         id: "anthropic/claude-opus-4.8",
         label: "Claude Opus 4.8",
         description: "Anthropic's flagship, via OpenRouter.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
         contextWindow: 1_000_000,
       },
       {
@@ -335,7 +335,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         id: "deepseek/deepseek-v4-pro",
         label: "DeepSeek V4 Pro",
         description: "DeepSeek's flagship, via OpenRouter.",
-        effortLevels: ["low", "medium", "high", "xhigh"],
+        effortLevels: ["high", "xhigh"],
         contextWindow: 1_048_576,
       },
     ],
@@ -351,9 +351,10 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "Free tier on your Google account",
     auth: "apiKey",
     apiKeyUrl: "https://aistudio.google.com/apikey",
-    // pi-ai `google` model ids. All are reasoning models; Gemini's native
-    // thinking levels cap at `high` (pi's GoogleThinkingLevel = MINIMAL/LOW/
-    // MEDIUM/HIGH), so the effort row is low/medium/high. Windows = 1 MiB.
+    // pi-ai `google` model ids. `effortLevels` from models.dev's
+    // `reasoning_options.effort.values` (minus `minimal`): Gemini 3 Flash =
+    // low/medium/high, Gemini 3 Pro = low/high (its only two), and the 2.5
+    // models expose budget-mapped low/medium/high via pi-ai. Windows = 1 MiB.
     models: [
       {
         id: "gemini-3-flash-preview",
@@ -366,7 +367,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         id: "gemini-3-pro-preview",
         label: "Gemini 3 Pro",
         description: "Google's most capable, slower.",
-        effortLevels: ["low", "medium", "high"],
+        effortLevels: ["low", "high"],
         contextWindow: 1_048_576,
       },
       {
