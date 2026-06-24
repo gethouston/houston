@@ -41,12 +41,44 @@ Houston is converging onto a single TypeScript engine — see `convergence/READM
 
 ### Run the Houston app
 
+**Prerequisites:** [Node 22+](https://nodejs.org), [pnpm 10](https://pnpm.io) (`corepack enable`), [Bun](https://bun.sh) (the engine and runtime are Bun services), and — for the desktop app only — the [Rust toolchain](https://rustup.rs) (Tauri builds a native shell). The browser path needs no Rust.
+
+**1. Clone and install.** The frontend is a pnpm workspace; the engine and runtime are standalone Bun projects (not pnpm members), so they install on their own:
+
 ```bash
-git clone https://github.com/gethouston/houston.git
-cd houston
-pnpm install
-cd app && pnpm tauri dev
+git clone https://github.com/gethouston/houston-web.git
+cd houston-web
+
+pnpm install                                # frontend: app, packages/web, ui/*, domain, protocol
+(cd packages/runtime && bun install)        # the agent runtime (the pi loop)
+(cd packages/control-plane && bun install)  # the host (the TypeScript engine)
 ```
+
+**2. Configure once.** Copy the shared dev env. The defaults work as-is (host on `127.0.0.1:4318`, dev token `devtoken`):
+
+```bash
+cp .env.example .env.local
+```
+
+**3. Run.** One terminal for the engine, one for a frontend:
+
+```bash
+# Terminal 1 — the TypeScript engine (host on :4318; it auto-spawns the agent runtime)
+cd packages/control-plane && pnpm dev
+
+# Terminal 2 — the desktop app (Tauri), wired to that engine
+cd app && pnpm start
+```
+
+Prefer a browser tab? Use this instead of Terminal 2:
+
+```bash
+cd packages/web && pnpm dev:host            # http://localhost:1430
+```
+
+On first launch, sign in with Claude (the **Reconnect your AI** card). Your workspaces live in `~/.houston/workspaces`.
+
+> The shared `.env.local` holds the host token plus each frontend's engine URL and token, so the commands above need no flags. See [`convergence/README.md`](convergence/README.md) for the full local dev loop (hot reload, watch mode, the `dev:cloud` profile).
 
 ### Build your first agent
 
