@@ -187,10 +187,17 @@ export async function handleAgents(
       noChannel(res, authz.workspace.runtime);
       return true;
     }
-    const result = await channel.captureCredential({
-      workspace: authz.workspace,
-      agent: authz.agent,
-    });
+    // The just-connected provider id, so capture exports THAT credential rather
+    // than whichever OAuth credential comes first in the runtime's auth.json.
+    const body = (await readJson(req).catch(() => ({}))) as {
+      provider?: unknown;
+    };
+    const provider =
+      typeof body.provider === "string" ? body.provider : undefined;
+    const result = await channel.captureCredential(
+      { workspace: authz.workspace, agent: authz.agent },
+      provider,
+    );
     if (result.ok) json(res, 200, { ok: true, provider: result.provider });
     else
       json(res, result.status, {

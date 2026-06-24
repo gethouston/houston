@@ -95,7 +95,10 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // Connect-once: the control plane reads this right after a device-code connect to
   // capture the credential into the workspace's central store. {} when not connected.
   if (method === "GET" && path === "/auth/export") {
-    return json(res, 200, exportCredential() ?? {});
+    // Provider-specific: capture asks for the just-connected provider so it never
+    // exports a different OAuth credential that happens to come first in auth.json.
+    const provider = url.searchParams.get("provider") || undefined;
+    return json(res, 200, exportCredential(provider) ?? {});
   }
   // Gate #2 (connect-once): the control plane calls this right after capture so
   // this sandbox stops holding the user's refresh token. Idempotent.

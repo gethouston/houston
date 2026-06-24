@@ -863,7 +863,7 @@ export class HoustonClient {
           // Connect-once: store this credential for the WHOLE workspace, so every
           // agent (existing + new) shares this one connection.
           try {
-            await controlPlane.captureCredential(this.cp, agentId);
+            await controlPlane.captureCredential(this.cp, agentId, pid);
           } catch (e) {
             console.error("[connect] workspace credential capture failed", e);
           }

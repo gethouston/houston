@@ -144,8 +144,13 @@ export interface RuntimeChannel {
   ): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
-  /** Connect-once: pull/confirm the workspace credential after the user connects. */
-  captureCredential(ctx: ChannelCtx): Promise<CaptureResult>;
+  /**
+   * Connect-once: pull/confirm the workspace credential after the user connects.
+   * `provider` (the just-connected provider id) makes capture provider-specific —
+   * without it the runtime exports whichever OAuth credential comes first, which
+   * can store the wrong provider and leave the intended one un-served per turn.
+   */
+  captureCredential(ctx: ChannelCtx, provider?: string): Promise<CaptureResult>;
   /**
    * Connect-once for an API-key provider (OpenCode Zen / Go): store the pasted
    * key centrally for the workspace. No OAuth dance, nothing to refresh or scrub.
