@@ -157,8 +157,14 @@ export class HoustonEngineClient {
       `/conversations/${encodeURIComponent(id)}/messages`,
     );
   }
+  /**
+   * Abort a conversation's in-flight turn. `cancelled` reports whether a live
+   * turn was actually stopped: `false` means there was nothing in flight (the
+   * turn is orphaned — e.g. the runtime restarted), so no terminal event will
+   * follow and the caller must settle any stuck "running" UI itself.
+   */
   cancel(id: string) {
-    return this.json<{ ok: boolean }>(
+    return this.json<{ ok: boolean; cancelled: boolean }>(
       `/conversations/${encodeURIComponent(id)}/cancel`,
       { method: "POST" },
     );

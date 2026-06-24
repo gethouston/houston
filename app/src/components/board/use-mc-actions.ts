@@ -85,14 +85,25 @@ export function useMcActions({
     (sessionKey: string) => {
       const agentPath = missionControlAgentPathForSession(mc.items, sessionKey);
       if (!agentPath) return;
-      tauriChat.stop(agentPath, sessionKey).catch((err) => {
-        addToast({
-          title: t("dashboard:errors.stopSession", { error: String(err) }),
-          variant: "error",
+      // Refetch on success so a card the engine settled off "running" (an
+      // orphaned turn with no live turn to abort) actually leaves the spinner;
+      // a failed stop still surfaces as a toast.
+      tauriChat
+        .stop(agentPath, sessionKey)
+        .then(() => {
+          qc.invalidateQueries({ queryKey: queryKeys.activity(agentPath) });
+          qc.invalidateQueries({
+            queryKey: queryKeys.allConversations(paths),
+          });
+        })
+        .catch((err) => {
+          addToast({
+            title: t("dashboard:errors.stopSession", { error: String(err) }),
+            variant: "error",
+          });
         });
-      });
     },
-    [mc.items, addToast, t],
+    [mc.items, qc, paths, addToast, t],
   );
 
   const sessionKeyFor = useCallback(

@@ -4,6 +4,7 @@ import { configWriteToSettings } from "./synthetic";
 import {
   historyToFeed,
   isNotConnectedError,
+  isStoppedByUser,
   turnErrorMessage,
 } from "./translate";
 
@@ -46,6 +47,14 @@ test("isNotConnectedError matches every runtime 'no provider connected' variant"
   // A real turn failure is NOT treated as the handled reconnect state.
   expect(isNotConnectedError("upstream exploded")).toBe(false);
   expect(isNotConnectedError("rate limit exceeded")).toBe(false);
+});
+
+test("isStoppedByUser matches the verbatim stop message from the runtime + relay", () => {
+  // The exact string the runtime's cancelTurn and the relay's abort path emit.
+  expect(isStoppedByUser("Stopped by user")).toBe(true);
+  // A real failure is never mistaken for an intentional stop.
+  expect(isStoppedByUser("upstream exploded")).toBe(false);
+  expect(isStoppedByUser("rate limit exceeded")).toBe(false);
 });
 
 describe("configWriteToSettings (model-pick → engine settings bridge)", () => {
