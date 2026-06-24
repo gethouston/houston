@@ -311,27 +311,29 @@ export const analytics = {
   },
 
   /**
-   * Stamp the signed-in user's Supabase identity onto the current person.
-   * Call on sign-in.
+   * Tie the signed-in user's Supabase identity to their PostHog person.
+   * Call on sign-in. Does two complementary things:
    *
-   * We deliberately KEEP the install_id as PostHog's distinct_id — it is the
-   * spine the website `/welcome` UTM bridge and the sequential onboarding
-   * funnel both depend on. (PostHog ignores a second `identify()` with a new
-   * distinct_id once a person is identified, so re-pointing it is a silent
-   * no-op anyway.) Instead we attach `supabase_user_id` — plus email and signup
-   * date — as PERSON PROPERTIES, so every authenticated person carries a
-   * reliable, queryable join key to Supabase with pre-login attribution
-   * untouched. Email is a person property for lookup/filtering, never an event
-   * prop. Flips `auth_status` so every event going forward is authenticated.
+   * 1. `alias(userId)` — adds the Supabase user id as an alias of the current
+   *    install_id person. The distinct_id STAYS install_id (so the website
+   *    `/welcome` UTM bridge and the sequential onboarding funnel are untouched),
+   *    but because every device/reinstall aliases the SAME supabase id, PostHog
+   *    stitches a human's separate per-device persons into ONE. alias is the call
+   *    that merges; a second `identify()` with a new distinct_id is ignored once
+   *    a person is identified, so identify is NOT a substitute here.
+   * 2. `setPersonProperties` — also stamps `supabase_user_id` (plus email `$set`,
+   *    signup_date `$set_once`) so the id is a queryable join key to Supabase,
+   *    not only an internal alias. Email is a person property for
+   *    lookup/filtering, never an event prop.
    *
-   * NOTE: join user-level metrics on `supabase_user_id` (not distinct_id) so a
-   * user signing in on two devices — two install_ids, one supabase_user_id —
-   * dedupes correctly.
+   * Finally flips the `auth_status` super property so every event going forward
+   * is tagged authenticated.
    */
   identifyUser: (userId: string, identity?: UserIdentity) => {
     if (!KEY) return;
     try {
       const email = cleanEmail(identity?.email);
+      posthog.alias(userId);
       posthog.setPersonProperties(
         {
           supabase_user_id: userId,
