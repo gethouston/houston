@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "bun --env-file=../.env.local x tauri dev",
+    "start": "node --env-file-if-exists=../.env.local node_modules/@tauri-apps/cli/tauri.js dev",
     "build": "tsgo --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
