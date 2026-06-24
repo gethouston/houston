@@ -6,6 +6,7 @@
   "description": "Houston as a standalone web app. Composes the desktop UI (app/src) and runs it in a plain browser against a remote houston-engine, with @tauri-apps/* aliased to web shims.",
   "scripts": {
     "dev": "vite",
+    "dev:host": "vite --mode host",
     "build": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit",
