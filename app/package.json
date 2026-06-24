@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "dotenv -e ../.env.local -- tauri dev",
     "build": "tsgo --noEmit && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
@@ -51,6 +52,7 @@
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^4.5.2",
+    "dotenv-cli": "^11.0.0",
     "tailwindcss": "^4.1.8",
     "typescript": "^6.0.2",
     "vite": "^6.3.5"

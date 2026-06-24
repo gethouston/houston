@@ -21,6 +21,26 @@ Drift prevention: domain logic exists once in the host; adapters pass shared **c
 
 **Protocol v3** = v2 conversation core verbatim, nested under `/v1/agents/:id/conversations/*`, + domain families (workspaces, agents, files, skills, routines, activities, config, providers, preferences, portable, store) + global `/v1/events` channel carrying the existing HoustonEvent vocabulary (keeps `use-agent-invalidation.ts`). Types in `packages/protocol`. Frontend talks ONLY to the host, every deployment. `@houston-ai/engine-client` keeps its function surface, transport rewritten. `packages/web/src/engine-adapter/` (the v1-faking synthesizer) gets deleted.
 
+## Local dev loop (desktop / web on the host)
+
+The host is the backend; attach whichever frontend(s) you are working on. One shared, gitignored `.env.local` holds the host token plus the frontends' engine URL/token, so nothing is passed on the command line per run.
+
+**One-time:** at the repo root, `cp .env.example .env.local`. Then `pnpm install` (root), `cd packages/runtime && bun install`, `cd packages/control-plane && bun install` (runtime + control-plane are self-contained Bun projects, not pnpm members).
+
+**Run** — one terminal each, no flags:
+
+| Terminal | Command | Starts |
+|---|---|---|
+| host | `cd packages/control-plane && pnpm dev` | the TS engine (local profile) on `:4318`; auto-spawns the per-agent runtime. Logs stream to stdout/stderr |
+| desktop | `cd app && pnpm start` | the Tauri desktop app against that host. `VITE_NEW_ENGINE_URL` makes `app/src-tauri/src/lib.rs` skip the bundled Rust engine sidecar, so no `cargo build -p houston-engine-server` is needed |
+| web | `cd packages/web && pnpm dev:host` | the browser app on `localhost:1430` against that host (control-plane mode) |
+
+Other scripts: `pnpm dev` in `app` / `packages/web` is still the plain Vite frontend (old-engine connect screen); `CP_DEV=1 pnpm dev:cloud` in `packages/control-plane` is the cloud control-plane profile (Postgres/GKE fakes).
+
+Notes:
+- Frontend edits (`app/src`, `ui/*`) hot-reload in both web and desktop with no restart. After editing the host / runtime / domain, restart the host terminal — or run it with `--watch`: `bun --env-file=../../.env.local --watch run src/local/main.ts`. The pinned token lets both frontends reconnect without a frontend restart.
+- Web must use `VITE_CONTROL_PLANE_URL` (control-plane mode), **not** `VITE_NEW_ENGINE_URL` — the latter routes the browser through the bare-runtime gate (`/auth/status`, `/providers`) and 404s against the multi-agent host. Desktop is the opposite: `VITE_NEW_ENGINE_URL` is correct there. The shared `.env.local` sets both, and each frontend reads only the one it needs.
+
 ## Phases
 
 - **P0 — Spikes + decisions.** ✅ done — see `phase0-findings.md`.

@@ -53,7 +53,7 @@ The control plane and supporting artifacts are **built and tested** here. What r
 | Custom domain (app.gethouston.ai) | ⏳ script ready; needs DNS + Supabase allow-list | `cloud/scripts/08-custom-domain.sh` |
 | Live provisioning · pen-test · load-test | ⏳ needs your accounts | run `cloud/scripts/*` |
 
-Run the control plane locally (all fakes, one local runtime): `cd packages/control-plane && CP_DEV=1 bun run dev`. Tests: `bun test` in `packages/control-plane` and `packages/runtime` (91 passing).
+Run the control plane locally (all fakes, one local runtime): `cd packages/control-plane && CP_DEV=1 bun run dev:cloud`. Tests: `bun test` in `packages/control-plane` and `packages/runtime` (91 passing).
 
 ---
 

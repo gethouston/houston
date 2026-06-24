@@ -47,13 +47,21 @@ src/
   is the per-agent GKE sandbox (one volume, default-deny networking).
 - **Every outward dependency is a port** with a tested fake and a live adapter.
 
-## Run (dev, all fakes)
+## Run
 
 ```bash
 cd packages/control-plane
 bun install
-CP_DEV=1 bun run dev
+
+# Cloud control plane (this package's primary role), all fakes:
+CP_DEV=1 bun run dev:cloud
+
+# Local desktop/web host (the local adapter profile, src/local/main.ts) — what
+# the app + packages/web talk to in dev. Loads ../../.env.local, serves :4318.
+bun run dev
 ```
+
+See `convergence/README.md` ("Local dev loop") for the full desktop/web + host workflow.
 
 ## Test
 
