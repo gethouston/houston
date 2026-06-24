@@ -17,6 +17,7 @@ import {
   tauriSystem,
 } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
+import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
 import { ProviderAccountRow } from "./provider-account-row";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
@@ -58,13 +59,20 @@ export function ProviderSettings() {
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
   // GitHub Copilot's connect opens a Personal vs Company plan dialog.
   const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
+  // The base-URL + model dialog for an OpenAI-compatible (local) server.
+  const [customEndpointDialog, setCustomEndpointDialog] =
+    useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers run only on the new TS engine; hide them on the Rust
   // engine where they can't connect. Computed once — the engine doesn't change
   // mid-session.
   const visibleProviders = useMemo(
-    () => getVisibleProviders({ newEngine: newEngineActive() }),
+    () =>
+      getVisibleProviders({
+        newEngine: newEngineActive(),
+        desktop: osIsTauri(),
+      }),
     [],
   );
 
@@ -278,6 +286,11 @@ export function ProviderSettings() {
       setApiKeyDialog(provider);
       return;
     }
+    // OpenAI-compatible (local) servers connect by base URL + model.
+    if (provider.auth === "openaiCompatible") {
+      setCustomEndpointDialog(provider);
+      return;
+    }
     // GitHub Copilot: open the Personal vs Company plan dialog first; the chosen
     // plan resumes the login with the right domain (Company) or none (Personal).
     if (
@@ -416,6 +429,11 @@ export function ProviderSettings() {
       />
 
       {copilotDialog}
+
+      <OpenAiCompatibleDialog
+        provider={customEndpointDialog}
+        onClose={() => setCustomEndpointDialog(null)}
+      />
     </>
   );
 }

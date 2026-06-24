@@ -1,4 +1,13 @@
 import { expect, test } from "bun:test";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import {
+  buildOpenAiCompatibleModel,
+  OPENAI_COMPATIBLE,
+  setCustomEndpointConfig,
+} from "./openai-compatible";
 import {
   PROVIDERS,
   pickActiveProvider,
@@ -67,4 +76,89 @@ test("github-copilot is a registered OAuth provider with a dotted Copilot model 
   // the native Anthropic provider's dashed claude-sonnet-4-6 — getModel() throws
   // on the wrong form, so the default must be the dotted Copilot id.
   expect(providerDefaultModel("github-copilot")).toBe("claude-sonnet-4.6");
+});
+
+/**
+ * The OpenAI-compatible provider connects to a user-run local server (Ollama /
+ * vLLM / LM Studio) by base URL + model id — neither in any pi catalog — so it
+ * uses its own `openaiCompatible` auth method and a hand-built pi-ai model.
+ */
+test("openai-compatible is registered with the openaiCompatible auth method", () => {
+  expect(PROVIDERS.map((p) => p.id)).toContain("openai-compatible");
+  expect(providerAuthMethod("openai-compatible")).toBe("openaiCompatible");
+});
+
+test("buildOpenAiCompatibleModel maps an endpoint to a pi openai-completions model", () => {
+  const m = buildOpenAiCompatibleModel({
+    baseUrl: "http://localhost:11434/v1",
+    model: "llama3.1",
+  });
+  expect(m.provider).toBe("openai-compatible");
+  expect(m.api).toBe("openai-completions");
+  expect(m.id).toBe("llama3.1");
+  // Name defaults to the model id when none is given.
+  expect(m.name).toBe("llama3.1");
+  expect(m.baseUrl).toBe("http://localhost:11434/v1");
+  // Local inference is free.
+  expect(m.cost).toEqual({ input: 0, output: 0, cacheRead: 0, cacheWrite: 0 });
+  // Reasoning + its compat flag are off by default (most local chat models).
+  expect(m.reasoning).toBe(false);
+  expect(m.compat?.supportsReasoningEffort).toBe(false);
+  expect(m.compat?.supportsDeveloperRole).toBe(false);
+});
+
+test("buildOpenAiCompatibleModel honors name, contextWindow, and reasoning", () => {
+  const m = buildOpenAiCompatibleModel({
+    baseUrl: "http://localhost:1234/v1",
+    model: "qwen2.5-coder",
+    name: "Qwen Coder",
+    contextWindow: 65_536,
+    reasoning: true,
+  });
+  expect(m.name).toBe("Qwen Coder");
+  expect(m.contextWindow).toBe(65_536);
+  expect(m.reasoning).toBe(true);
+  // A reasoning model opts back into reasoning_effort.
+  expect(m.compat?.supportsReasoningEffort).toBe(true);
+});
+
+test("the built local model's provider matches the auth-store key, so pi resolves its key", async () => {
+  // The whole keyless-server design rests on a string match: setCustomEndpoint
+  // stores the key under OPENAI_COMPATIBLE, and the hand-built model carries
+  // provider=OPENAI_COMPATIBLE. pi resolves a request's key via
+  // ModelRegistry.getApiKeyAndHeaders -> authStorage.getApiKey(model.provider).
+  // Drive that exact path with an isolated AuthStorage/ModelRegistry (no shared
+  // singleton, no real ~/.houston) to prove the placeholder key actually resolves.
+  const dir = mkdtempSync(join(tmpdir(), "houston-oac-"));
+  const authStorage = AuthStorage.create(join(dir, "auth.json"));
+  const registry = ModelRegistry.create(authStorage, join(dir, "models.json"));
+  authStorage.set(OPENAI_COMPATIBLE, {
+    type: "api_key",
+    key: "houston-local",
+  });
+  const model = buildOpenAiCompatibleModel({
+    baseUrl: "http://localhost:11434/v1",
+    model: "llama3.1",
+  });
+  const auth = await registry.getApiKeyAndHeaders(model);
+  expect(auth.ok).toBe(true);
+  if (auth.ok) expect(auth.apiKey).toBe("houston-local");
+});
+
+test("setCustomEndpointConfig rejects bad input before persisting", () => {
+  // Missing pieces throw before any file is written.
+  expect(() => setCustomEndpointConfig({ baseUrl: "", model: "m" })).toThrow(
+    /base URL/,
+  );
+  expect(() =>
+    setCustomEndpointConfig({ baseUrl: "http://x/v1", model: "" }),
+  ).toThrow(/model/);
+  // Not a URL.
+  expect(() =>
+    setCustomEndpointConfig({ baseUrl: "not a url", model: "m" }),
+  ).toThrow(/valid URL/);
+  // Wrong scheme (must be http(s) so a typo doesn't reach the agent loop).
+  expect(() =>
+    setCustomEndpointConfig({ baseUrl: "ftp://localhost/v1", model: "m" }),
+  ).toThrow(/http/);
 });

@@ -1,6 +1,10 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { loadRoutines, seedSchemas } from "@houston/domain";
-import type { HoustonEvent } from "@houston/protocol";
+import type {
+  Capabilities,
+  CustomEndpoint,
+  HoustonEvent,
+} from "@houston/protocol";
 import { canUseAgent } from "../domain/access";
 import type {
   Agent,
@@ -33,6 +37,8 @@ export interface AgentRouteDeps {
   paths?: WorkspacePaths;
   /** Global reactivity fan-out; absent → mutations succeed but emit nothing. */
   events?: EventHub;
+  /** Deployment capabilities; gates local-only routes (OpenAI-compatible connect). */
+  capabilities?: Capabilities;
 }
 
 const DEFAULT_PATHS = new CloudPaths();
@@ -281,6 +287,88 @@ export async function handleAgents(
         key.trim(),
       );
       json(res, 200, { ok: true, provider });
+    } catch (err) {
+      json(res, 502, {
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    return true;
+  }
+
+  // Connect an OpenAI-compatible (local) server: a base URL + model the user runs
+  // on their own machine (Ollama / vLLM / LM Studio). LOCAL profile ONLY — a
+  // cloud runtime (or a cloud pod behind the proxy channel) can't reach the
+  // user's localhost, so refuse on the deployment capability regardless of
+  // hosting model. Must precede the generic dispatch.
+  const customEndpoint = path.match(
+    /^\/agents\/([^/]+)\/provider\/openai-compatible$/,
+  );
+  if (customEndpoint && method === "POST") {
+    const agentId = customEndpoint[1]
+      ? decodeURIComponent(customEndpoint[1])
+      : undefined;
+    if (!agentId) {
+      json(res, 404, { error: "not found" });
+      return true;
+    }
+    if (!deps.capabilities?.openaiCompatible) {
+      json(res, 400, {
+        error:
+          "Local models aren't available on this deployment — connect one from the desktop app.",
+      });
+      return true;
+    }
+    const authz = await authorizeAgent(deps, userId, agentId);
+    if (!authz.ok) {
+      json(res, authz.status, { error: authz.reason });
+      return true;
+    }
+    const body = await readJson(req);
+    const baseUrl = typeof body.baseUrl === "string" ? body.baseUrl.trim() : "";
+    const model = typeof body.model === "string" ? body.model.trim() : "";
+    if (!baseUrl) {
+      json(res, 400, { error: "missing 'baseUrl'" });
+      return true;
+    }
+    if (!model) {
+      json(res, 400, { error: "missing 'model'" });
+      return true;
+    }
+    // Validate the scheme at the boundary (mirrors the runtime's check) so a bad
+    // URL is a clean 400 here rather than a 502 bounced off the runtime, and a
+    // non-http(s) scheme never reaches the agent's egress.
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(baseUrl);
+    } catch {
+      json(res, 400, { error: "baseUrl is not a valid URL" });
+      return true;
+    }
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      json(res, 400, { error: "baseUrl must start with http:// or https://" });
+      return true;
+    }
+    const channel = channelFor(deps, authz.workspace);
+    if (!channel) {
+      noChannel(res, authz.workspace.runtime);
+      return true;
+    }
+    const endpoint: CustomEndpoint = {
+      baseUrl,
+      model,
+      name: typeof body.name === "string" ? body.name : undefined,
+      contextWindow:
+        typeof body.contextWindow === "number" ? body.contextWindow : undefined,
+      reasoning:
+        typeof body.reasoning === "boolean" ? body.reasoning : undefined,
+      apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
+    };
+    try {
+      await channel.saveCustomEndpoint(
+        { workspace: authz.workspace, agent: authz.agent },
+        endpoint,
+      );
+      json(res, 200, { ok: true });
     } catch (err) {
       json(res, 502, {
         error: err instanceof Error ? err.message : String(err),

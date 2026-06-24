@@ -26,6 +26,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  openaiCompatible: false,
   integrations: ["composio"],
 };
 

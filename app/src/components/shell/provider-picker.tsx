@@ -18,6 +18,7 @@ import {
   tauriSystem,
 } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
+import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
@@ -53,12 +54,19 @@ export function ProviderPicker({ onSelect }: Props) {
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
   // GitHub Copilot's connect opens a Personal vs Company plan dialog.
   const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
+  // The base-URL + model dialog for an OpenAI-compatible (local) server.
+  const [customEndpointDialog, setCustomEndpointDialog] =
+    useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers (OpenCode) run only on the new TS engine; hide them on the
   // Rust engine. Computed once — the engine doesn't change mid-session.
   const visibleProviders = useMemo(
-    () => getVisibleProviders({ newEngine: newEngineActive() }),
+    () =>
+      getVisibleProviders({
+        newEngine: newEngineActive(),
+        desktop: osIsTauri(),
+      }),
     [],
   );
 
@@ -83,7 +91,10 @@ export function ProviderPicker({ onSelect }: Props) {
         next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
       if (!wasConnected && isConnected) {
         analytics.track("provider_configured", { provider: prov.id });
-        onSelect(prov.id, prov.defaultModel);
+        // Skip the auto-select when the catalog has no default model — the local
+        // OpenAI-compatible provider's model id is user-supplied, delivered by
+        // the connect dialog's onConnected callback, not a static default.
+        if (prov.defaultModel) onSelect(prov.id, prov.defaultModel);
       }
     }
     prevStatuses.current = next;
@@ -235,6 +246,11 @@ export function ProviderPicker({ onSelect }: Props) {
       setApiKeyDialog(provider);
       return;
     }
+    // OpenAI-compatible (local) servers connect by base URL + model.
+    if (provider.auth === "openaiCompatible") {
+      setCustomEndpointDialog(provider);
+      return;
+    }
     // GitHub Copilot: open the Personal vs Company plan dialog first (Company
     // collects the domain the device-code flow needs); the chosen plan resumes
     // the login with the right domain. Every other OAuth provider connects
@@ -360,6 +376,12 @@ export function ProviderPicker({ onSelect }: Props) {
       />
 
       {copilotDialog}
+
+      <OpenAiCompatibleDialog
+        provider={customEndpointDialog}
+        onConnected={(m) => onSelect("openai-compatible", m)}
+        onClose={() => setCustomEndpointDialog(null)}
+      />
     </>
   );
 }

@@ -99,4 +99,16 @@ export class TurnChannel implements RuntimeChannel {
       kind: "api_key",
     });
   }
+
+  /**
+   * OpenAI-compatible (local) servers are unreachable from the cloud per-turn
+   * runtime — its egress sandbox can't dial the user's localhost. The host route
+   * already refuses this on the `openaiCompatible` capability; this is the
+   * defense-in-depth backstop so a cloud channel never silently accepts one.
+   */
+  async saveCustomEndpoint(): Promise<void> {
+    throw new Error(
+      "Local models aren't available in the cloud — they run on your own machine. Use the desktop app.",
+    );
+  }
 }

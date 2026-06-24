@@ -930,3 +930,16 @@ export interface IntegrationConnection {
 export type IntegrationLoginResult =
   | { status: "pending" }
   | { status: "linked"; account?: { accountId: string; email?: string } };
+
+// ── OpenAI-compatible (local) provider ───────────────────────────────────────
+// A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by
+// base URL + model id. New-engine + desktop only (the URL is the user's own
+// machine). The key is optional — keyless local servers ignore it.
+export interface CustomEndpoint {
+  baseUrl: string;
+  model: string;
+  name?: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  apiKey?: string;
+}

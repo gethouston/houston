@@ -1,4 +1,8 @@
-import { HoustonEngineClient, type ProviderId } from "@houston/runtime-client";
+import {
+  type CustomEndpoint,
+  HoustonEngineClient,
+  type ProviderId,
+} from "@houston/runtime-client";
 import type {
   Activity,
   ActivityUpdate,
@@ -819,6 +823,32 @@ export class HoustonClient {
     }
     emitEvent("ProviderLoginComplete", {
       provider: name,
+      success: true,
+      error: null,
+    });
+  }
+
+  /**
+   * Connect an OpenAI-compatible (local) server: persist the base URL + model
+   * and make it active, then fire `ProviderLoginComplete` like the other connect
+   * paths. LOCAL/desktop only — in cloud the host refuses (the openaiCompatible
+   * capability is off), so the error surfaces to the dialog. Settings are
+   * PER-AGENT on the host, so activation MUST go through the agent's runtime
+   * client (mirrors setProviderApiKey).
+   */
+  async setProviderCustomEndpoint(endpoint: CustomEndpoint): Promise<void> {
+    if (this.cp) {
+      const agentId = this.requireAgentId();
+      await controlPlane.setCustomEndpoint(this.cp, agentId, endpoint);
+      await controlPlane
+        .runtimeClientFor(this.cp, agentId)
+        .setSettings({ activeProvider: "openai-compatible" });
+    } else {
+      await this.engine.setCustomEndpoint(endpoint);
+      await this.engine.setSettings({ activeProvider: "openai-compatible" });
+    }
+    emitEvent("ProviderLoginComplete", {
+      provider: "openai-compatible",
       success: true,
       error: null,
     });

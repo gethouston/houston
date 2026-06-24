@@ -83,5 +83,28 @@
     "domainHint": "Pregunta a tu equipo de TI si no estás seguro.",
     "cancel": "Cancelar",
     "continue": "Continuar"
+  },
+  "openaiCompatible": {
+    "title": "Conecta un modelo local",
+    "description": "Apunta Houston a un modelo que corre en tu computador, como Ollama, LM Studio o vLLM.",
+    "baseUrlLabel": "Dirección del servidor",
+    "baseUrlPlaceholder": "http://localhost:11434/v1",
+    "baseUrlHelp": "La dirección donde escucha tu servidor local. Para Ollama suele ser http://localhost:11434/v1.",
+    "modelLabel": "Modelo",
+    "modelPlaceholder": "llama3.1",
+    "modelHelp": "El nombre exacto del modelo que sirve tu servidor.",
+    "nameLabel": "Nombre para mostrar (opcional)",
+    "namePlaceholder": "Mi modelo local",
+    "nameHelp": "Una etiqueta amigable para el selector. Por defecto usa el nombre del modelo.",
+    "keyLabel": "Clave de API (opcional)",
+    "keyPlaceholder": "Déjalo vacío si tu servidor no usa clave",
+    "keyHelp": "La mayoría de los servidores locales no necesitan una. Agrega una clave solo si el tuyo la requiere.",
+    "show": "Mostrar clave",
+    "hide": "Ocultar clave",
+    "baseUrlRequired": "Primero ingresa la dirección del servidor.",
+    "modelRequired": "Primero ingresa un nombre de modelo.",
+    "save": "Conectar",
+    "saving": "Conectando...",
+    "cancel": "Cancelar"
   }
 }

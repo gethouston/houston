@@ -9,6 +9,7 @@ import {
   getAuthStatus,
   logout,
   setApiKey,
+  setCustomEndpoint,
   startLogin,
 } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
@@ -105,6 +106,33 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   if (method === "POST" && path === "/auth/scrub-refresh") {
     return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
   }
+  // OpenAI-compatible (local) connect: base URL + model + optional key. Persists
+  // the endpoint to settings and the (placeholder if blank) key to auth.json.
+  // LOCAL profile only — the host gates this route on its capability before it
+  // ever reaches a cloud runtime.
+  if (method === "POST" && path === "/providers/openai-compatible") {
+    try {
+      const body = await readJson(req);
+      setCustomEndpoint({
+        baseUrl: String(body.baseUrl || ""),
+        model: String(body.model || ""),
+        name: typeof body.name === "string" ? body.name : undefined,
+        contextWindow:
+          typeof body.contextWindow === "number"
+            ? body.contextWindow
+            : undefined,
+        reasoning:
+          typeof body.reasoning === "boolean" ? body.reasoning : undefined,
+        apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
+      });
+      return json(res, 200, { ok: true });
+    } catch (e) {
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   // API-key connect (OpenCode Zen / Go): the user pastes a key, no OAuth dance.
   const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
   if (method === "POST" && apiKeyMatch) {

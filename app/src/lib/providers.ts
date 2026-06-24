@@ -74,10 +74,13 @@ export interface ProviderInfo {
   /**
    * How the user connects this provider. Default (absent) is subscription OAuth
    * (Claude / Codex). `"apiKey"` providers (OpenCode Zen / Go) ask the user to
-   * paste a key instead — Houston opens `apiKeyUrl` for them to grab one. API-key
-   * providers run only on the new TS engine (see `getVisibleProviders`).
+   * paste a key instead — Houston opens `apiKeyUrl` for them to grab one.
+   * `"openaiCompatible"` providers (a local server: Ollama / vLLM / LM Studio)
+   * ask for a base URL + model id. Both run only on the new TS engine, and
+   * `openaiCompatible` is desktop-only (the URL is the user's own machine) — see
+   * `getVisibleProviders`.
    */
-  auth?: "oauth" | "apiKey";
+  auth?: "oauth" | "apiKey" | "openaiCompatible";
   /** For `auth: "apiKey"`: the dashboard URL where the user creates/copies the key. */
   apiKeyUrl?: string;
   /**
@@ -467,6 +470,22 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     ],
     defaultModel: "gemini-3-flash-preview",
   },
+  {
+    id: "openai-compatible",
+    name: "Local model",
+    subtitle: "Ollama, LM Studio, vLLM…",
+    cliName: "openai-compatible",
+    installUrl: "https://ollama.com",
+    loginCommand: "",
+    cost: "Runs on your computer, free",
+    // Connects by base URL + model id (no pasted gateway key). Desktop-only and
+    // new-engine-only (see getVisibleProviders). The model list is whatever the
+    // user's server serves, so there's no static catalog here — the runtime
+    // reports the one configured model.
+    auth: "openaiCompatible",
+    models: [],
+    defaultModel: "",
+  },
 ] as const;
 
 /** Find a provider by id. */
@@ -477,13 +496,21 @@ export function getProvider(id: string): ProviderInfo | undefined {
 /**
  * Providers to show in connect UIs. API-key providers (OpenCode Zen / Go) run
  * only on the new TS engine — they paste a key Houston serves through the host —
- * so they're hidden when the legacy Rust engine is active. Pass
- * `newEngineActive()` from `lib/engine`.
+ * so they're hidden when the legacy Rust engine is active. The OpenAI-compatible
+ * (local) provider is additionally desktop-only: its base URL points at the
+ * user's own machine, unreachable from a browser/cloud deployment (the host
+ * enforces the same via its `openaiCompatible` capability). Pass
+ * `newEngineActive()` and `osIsTauri()` from the caller.
  */
 export function getVisibleProviders(opts: {
   newEngine: boolean;
+  desktop?: boolean;
 }): readonly ProviderInfo[] {
-  return PROVIDERS.filter((p) => p.auth !== "apiKey" || opts.newEngine);
+  return PROVIDERS.filter((p) => {
+    if (p.auth === "openaiCompatible") return opts.newEngine && !!opts.desktop;
+    if (p.auth === "apiKey") return opts.newEngine;
+    return true;
+  });
 }
 
 /** Find the model object for a provider + model id. */

@@ -55,6 +55,12 @@ export interface Capabilities {
   /** Providers this deployment offers for connect-once login. */
   providers: string[];
   /**
+   * Whether the user can connect an OpenAI-compatible (local) server — Ollama /
+   * vLLM / LM Studio, by base URL + model. LOCAL profile only: the URL is the
+   * user's own machine, unreachable from a cloud runtime, so cloud sets false.
+   */
+  openaiCompatible: boolean;
+  /**
    * Third-party integration providers available (e.g. "composio"). Each lets a
    * user connect their OWN account and gives agents tools over those apps.
    * Empty = integrations off for this deployment.

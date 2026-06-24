@@ -12,6 +12,7 @@
  */
 
 import type {
+  CustomEndpoint,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
   ProviderAuthState,
@@ -711,6 +712,15 @@ export const tauriProvider = {
   setApiKey: (provider: string, apiKey: string) =>
     call<void>("set_provider_api_key", () =>
       getEngine().setProviderApiKey(provider, apiKey),
+    ),
+  /**
+   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
+   * runs themselves (Ollama / vLLM / LM Studio). Desktop + new-engine only — the
+   * connect UI shows it only then (see `getVisibleProviders`).
+   */
+  setCustomEndpoint: (endpoint: CustomEndpoint) =>
+    call<void>("set_provider_custom_endpoint", () =>
+      getEngine().setProviderCustomEndpoint(endpoint),
     ),
 };
 

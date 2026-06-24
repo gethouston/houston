@@ -58,6 +58,7 @@ export function toNewProvider(
   | "google"
   | "opencode"
   | "opencode-go"
+  | "openai-compatible"
   | null {
   if (name === "anthropic") return "anthropic";
   if (name === "openai" || name === "openai-codex" || name === "codex")
@@ -67,6 +68,8 @@ export function toNewProvider(
   if (name === "google") return "google";
   if (name === "opencode") return "opencode";
   if (name === "opencode-go") return "opencode-go";
+  // Local OpenAI-compatible server — same id on both sides.
+  if (name === "openai-compatible") return "openai-compatible";
   return null;
 }
 

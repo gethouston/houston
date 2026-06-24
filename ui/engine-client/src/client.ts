@@ -32,6 +32,7 @@ import type {
   CreateSkillRequest,
   CreateWorkspace,
   CreateWorktreeRequest,
+  CustomEndpoint,
   ErrorBody,
   GenerateInstructionsResult,
   HealthResponse,
@@ -757,6 +758,15 @@ export class HoustonClient {
     return this.request("POST", `/providers/${this.seg(name)}/api-key`, {
       apiKey,
     });
+  }
+  /**
+   * Connect an OpenAI-compatible (local) server by base URL + model. The legacy
+   * Rust engine has no such provider — it's new-engine + desktop only, and the
+   * connect UI is gated on `newEngineActive()` + desktop, so this is never hit
+   * here. Reject loudly rather than pretend to succeed (no silent failure).
+   */
+  setProviderCustomEndpoint(_endpoint: CustomEndpoint): Promise<void> {
+    return Promise.reject(new Error("Local models require the new engine."));
   }
   // "Sign in with Google" for Gemini goes through the standard
   // `providerLogin("gemini")` call — the engine detects the gemini id

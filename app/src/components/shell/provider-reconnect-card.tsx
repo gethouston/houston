@@ -5,6 +5,7 @@ import { tauriProvider } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
 import { RowCard } from "../cards/row-card";
 import { RowCardButton } from "../cards/row-card-button";
+import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
 import { ProviderGlyph } from "./provider-logos";
 import {
   providerIsAuthenticated,
@@ -26,6 +27,7 @@ export function ProviderReconnectCard({
   const setAuthRequired = useUIStore((s) => s.setAuthRequired);
   const [loginLaunched, setLoginLaunched] = useState(false);
   const [loginError, setLoginError] = useState(false);
+  const [showCustomDialog, setShowCustomDialog] = useState(false);
   const [resolvedSignal, setResolvedSignal] = useState<string | null>(null);
   const [signalNeedsAuth, setSignalNeedsAuth] = useState(false);
 
@@ -104,6 +106,13 @@ export function ProviderReconnectCard({
 
   const handleSignIn = useCallback(async () => {
     if (!activeProviderId) return;
+    // A local OpenAI-compatible server has no OAuth flow — reconnect by
+    // re-entering its base URL + model in the dialog, not launchLogin (which
+    // would throw "does not use OAuth sign-in" and dead-end the card).
+    if (activeProviderId === "openai-compatible") {
+      setShowCustomDialog(true);
+      return;
+    }
     try {
       await tauriProvider.launchLogin(activeProviderId);
       setLoginError(false);
@@ -139,6 +148,11 @@ export function ProviderReconnectCard({
             variant={loginLaunched ? "outline" : "default"}
           />
         }
+      />
+
+      <OpenAiCompatibleDialog
+        provider={showCustomDialog ? provider : null}
+        onClose={() => setShowCustomDialog(false)}
       />
     </div>
   );

@@ -6,6 +6,12 @@ import {
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
 import {
+  type CustomEndpointInput,
+  clearCustomEndpointConfig,
+  OPENAI_COMPATIBLE,
+  setCustomEndpointConfig,
+} from "../ai/openai-compatible";
+import {
   activeProvider,
   PROVIDERS,
   type ProviderId,
@@ -113,10 +119,8 @@ export async function startLogin(
   enterpriseDomain?: string,
 ): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
-  if (providerAuthMethod(providerId) === "apiKey")
-    throw new Error(
-      `${providerId} connects with an API key, not OAuth sign-in`,
-    );
+  if (providerAuthMethod(providerId) !== "oauth")
+    throw new Error(`${providerId} does not use OAuth sign-in`);
   const provider = providerId;
 
   // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).
@@ -202,11 +206,33 @@ export async function startLogin(
 export function setApiKey(providerId: string, key: string): void {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   if (providerAuthMethod(providerId) !== "apiKey")
-    throw new Error(`${providerId} signs in with OAuth, not an API key`);
+    throw new Error(`${providerId} does not connect with a pasted API key`);
   const trimmed = key.trim();
   if (!trimmed) throw new Error("missing API key");
   authStorage.set(providerId, { type: "api_key", key: trimmed });
   active.delete(providerId as ProviderId);
+}
+
+/**
+ * Placeholder key for keyless local servers. Ollama / LM Studio / vLLM ignore
+ * the Authorization header, but pi requires SOME key to resolve a request (it
+ * throws "No API key for provider" otherwise), so a blank key becomes this.
+ */
+export const LOCAL_PLACEHOLDER_KEY = "houston-local";
+
+/**
+ * Connect an OpenAI-compatible (local) server: persist its base URL + model (and
+ * display options) and store the optional key in auth.json — a placeholder when
+ * the server is keyless. LOCAL profile only; the host gates this on its
+ * capability, never serving it from a cloud runtime that can't reach localhost.
+ */
+export function setCustomEndpoint(
+  input: CustomEndpointInput & { apiKey?: string },
+): void {
+  // Validate + persist the endpoint FIRST so a bad URL never leaves a stale key.
+  setCustomEndpointConfig(input);
+  const key = input.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY;
+  authStorage.set(OPENAI_COMPATIBLE, { type: "api_key", key });
 }
 
 /** Paste-code completion (Anthropic remote path). */
@@ -221,4 +247,7 @@ export function logout(providerId: string): void {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   authStorage.logout(providerId);
   active.delete(providerId);
+  // Disconnecting the local provider also forgets its endpoint, else the next
+  // turn would re-resolve a base URL with no (real) key behind it.
+  if (providerId === OPENAI_COMPATIBLE) clearCustomEndpointConfig();
 }

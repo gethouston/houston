@@ -2,6 +2,7 @@ import type {
   AuthStatus,
   ConversationHistory,
   ConversationSummary,
+  CustomEndpoint,
   EngineClientConfig,
   HealthResponse,
   LoginInfo,
@@ -150,6 +151,18 @@ export class HoustonEngineClient {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ key }),
+    });
+  }
+  /**
+   * Connect an OpenAI-compatible (local) server: a base URL + model id, plus an
+   * optional name/context window and an optional key (blank for keyless servers
+   * like Ollama). LOCAL profile only.
+   */
+  setCustomEndpoint(endpoint: CustomEndpoint) {
+    return this.json<{ ok: boolean }>("/providers/openai-compatible", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(endpoint),
     });
   }
   logout(provider: ProviderId) {

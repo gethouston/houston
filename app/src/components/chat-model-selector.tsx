@@ -39,6 +39,9 @@ export function ChatModelSelector({
   const currentModel = getModel(provider, model);
   const displayLabel =
     currentModel?.label ??
+    // A local OpenAI-compatible model isn't in the static catalog, so show its
+    // raw id rather than falling through to the provider subtitle.
+    (model || undefined) ??
     currentProvider?.subtitle ??
     t("modelSelector.selectModel");
 

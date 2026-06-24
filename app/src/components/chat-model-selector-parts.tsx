@@ -11,6 +11,7 @@ import {
   ClaudeLogo,
   GeminiLogo,
   GitHubCopilotLogo,
+  LocalModelLogo,
   OpenAILogo,
   OpenCodeLogo,
   OpenRouterLogo,
@@ -39,6 +40,24 @@ export function ProviderModelGroup({
 }) {
   const { t } = useTranslation("chat");
   const connected = state === "connected";
+  // The local OpenAI-compatible provider has no static catalog — its single
+  // model id lives in the runtime. When it's the active provider, synthesize a
+  // one-item list from the active model so it shows (and stays checked) instead
+  // of rendering an empty group. When it isn't active we don't know the model,
+  // so skip the group rather than show a dangling header.
+  const displayModels =
+    provider.models.length > 0
+      ? provider.models
+      : isActiveProvider && activeModel
+        ? [
+            {
+              id: activeModel,
+              label: activeModel,
+              description: provider.subtitle,
+            },
+          ]
+        : [];
+  if (displayModels.length === 0) return null;
   return (
     <>
       {showSeparator && <DropdownMenuSeparator />}
@@ -56,7 +75,7 @@ export function ProviderModelGroup({
           </span>
         )}
       </DropdownMenuLabel>
-      {provider.models.map((m) => {
+      {displayModels.map((m) => {
         const isActive = isActiveProvider && m.id === activeModel;
         return (
           <DropdownMenuItem
@@ -120,6 +139,8 @@ function iconFor(providerId: string) {
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo className="size-full" />;
+    case "openai-compatible":
+      return <LocalModelLogo className="size-full" />;
     default:
       return null;
   }
