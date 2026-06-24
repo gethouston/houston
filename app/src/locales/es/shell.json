@@ -120,7 +120,7 @@
   },
   "providerReconnect": {
     "title": "Sesión expirada",
-    "body": "Tu conexión con {{provider}} se terminó, pasa de vez en cuando. Inicia sesión otra vez y listo.",
+    "body": "Tu sesión de {{provider}} expiró. Inicia sesión de nuevo para continuar.",
     "reconnect": "Reconectar a {{provider}}",
     "waiting": "Esperando el inicio de sesión en el navegador...",
     "tryAgain": "Intentar de nuevo",
