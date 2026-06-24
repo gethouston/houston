@@ -133,9 +133,7 @@ export function ProviderReconnectCard({
             label={
               loginLaunched
                 ? t("common:actions.tryAgain")
-                : t("shell:authReconnect.signInWith", {
-                    provider: provider.name,
-                  })
+                : t("shell:authReconnect.signInWith")
             }
             onClick={handleSignIn}
             variant={loginLaunched ? "outline" : "default"}

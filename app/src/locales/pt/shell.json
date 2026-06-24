@@ -116,7 +116,7 @@
     "heading": "Houston, temos um problema",
     "body": "Sua sessão no {{provider}} expirou. Entre de novo para manter seus agentes funcionando.",
     "waiting": "Aguardando o login no navegador...",
-    "signInWith": "Entrar com {{provider}}"
+    "signInWith": "Entrar"
   },
   "providerReconnect": {
     "title": "Sessão expirada",

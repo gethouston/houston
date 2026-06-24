@@ -316,7 +316,7 @@ function SetupHint({
           }}
         >
           <ExternalLink className="size-3.5" />
-          {t("providers:setup.signInWith", { provider: provider.name })}
+          {t("providers:setup.signInWith")}
         </AsyncButton>
       )}
       {installed && loginLaunched && (
