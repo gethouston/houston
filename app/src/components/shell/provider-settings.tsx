@@ -22,7 +22,7 @@ import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { providerAppearsConnected } from "./provider-reconnect-state";
-import { useEnterpriseConnect } from "./use-enterprise-connect";
+import { useCopilotConnect } from "./use-copilot-connect";
 
 /**
  * Settings-screen variant of the AI provider UI: accounts only.
@@ -56,9 +56,8 @@ export function ProviderSettings() {
   } | null>(null);
   // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
-  // GitHub Copilot Enterprise collects the company GitHub domain before login.
-  const { begin: beginEnterprise, dialog: enterpriseDialog } =
-    useEnterpriseConnect();
+  // GitHub Copilot's connect opens a Personal vs Company plan dialog.
+  const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers run only on the new TS engine; hide them on the Rust
@@ -279,13 +278,10 @@ export function ProviderSettings() {
       setApiKeyDialog(provider);
       return;
     }
-    // GitHub Copilot Enterprise: collect the company GitHub domain first, then
-    // run the same OAuth login with it.
+    // GitHub Copilot: open the Personal vs Company plan dialog first; the chosen
+    // plan resumes the login with the right domain (Company) or none (Personal).
     if (
-      beginEnterprise(
-        provider,
-        (domain) => void startOAuthLogin(provider, domain),
-      )
+      beginCopilot(provider, (domain) => void startOAuthLogin(provider, domain))
     )
       return;
     await startOAuthLogin(provider);
@@ -419,7 +415,7 @@ export function ProviderSettings() {
         onClose={() => setApiKeyDialog(null)}
       />
 
-      {enterpriseDialog}
+      {copilotDialog}
     </>
   );
 }

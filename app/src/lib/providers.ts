@@ -81,12 +81,14 @@ export interface ProviderInfo {
   /** For `auth: "apiKey"`: the dashboard URL where the user creates/copies the key. */
   apiKeyUrl?: string;
   /**
-   * GitHub Copilot Enterprise card: connecting it first asks for the company
-   * GitHub domain, then runs the same `github-copilot` engine login against that
-   * GitHub. The two Copilot cards are mutually exclusive (one engine credential);
-   * see the control-plane adapter's `providerStatus`/`providerLogin`.
+   * GitHub Copilot: connecting opens a small dialog to choose Personal
+   * (github.com) vs Company / GitHub Enterprise (which collects the company
+   * GitHub domain). Both drive the single `github-copilot` engine provider — the
+   * only difference is the domain passed at login (stored as the credential's
+   * `enterpriseUrl`, which routes the device-code flow + central token refresh at
+   * the company's GitHub). See `useCopilotConnect`.
    */
-  enterprise?: boolean;
+  copilotConnect?: boolean;
 }
 
 /**
@@ -221,30 +223,18 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     defaultModel: "claude-sonnet-4-6",
   },
   {
+    // ONE Copilot card. Connecting opens a dialog to choose Personal (github.com)
+    // or Company / GitHub Enterprise (which collects the company GitHub domain) —
+    // both drive this single `github-copilot` engine provider. See
+    // `useCopilotConnect` + `provider-copilot-connect-dialog`.
     id: "github-copilot",
     name: "GitHub Copilot",
-    subtitle: "Frontier models, one subscription",
+    subtitle: "Personal or your company's plan",
     cliName: "github-copilot",
     installUrl: "https://github.com/features/copilot",
     loginCommand: "",
     cost: "Your GitHub Copilot subscription",
-    models: COPILOT_MODELS,
-    defaultModel: "claude-sonnet-4.6",
-  },
-  {
-    // Copilot provided by the user's company (GitHub Enterprise). Same engine
-    // provider + models as individual Copilot; the connect flow first collects
-    // the company GitHub domain (see the provider picker's enterprise dialog),
-    // then logs in against that GitHub. Mutually exclusive with the individual
-    // card — a person has personal OR company Copilot, one engine credential.
-    id: "github-copilot-enterprise",
-    name: "GitHub Copilot Enterprise",
-    subtitle: "Copilot from your company's GitHub",
-    cliName: "github-copilot",
-    installUrl: "https://github.com/features/copilot",
-    loginCommand: "",
-    cost: "Your company's GitHub Copilot",
-    enterprise: true,
+    copilotConnect: true,
     models: COPILOT_MODELS,
     defaultModel: "claude-sonnet-4.6",
   },

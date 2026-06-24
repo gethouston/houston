@@ -245,14 +245,15 @@ Notes:
   avoid a deadlock. Curated models proxy Claude/GPT/Gemini under one
   subscription, using pi-ai's DOTTED Copilot ids (`claude-sonnet-4.6`, not the
   native `claude-sonnet-4-6`). LOCAL-only (cloud egress isn't allowlisted).
-- _[NEW ENGINE only]_ **GitHub Copilot Enterprise** (company-provided Copilot)
-  is a second connect CARD (`github-copilot-enterprise`, frontend-only) over the
-  same single `github-copilot` engine provider — pi has one Copilot
-  provider/slot. The card collects the company GitHub domain first, threads it as
-  a non-secret `enterpriseUrl` through the credential path + central refresh (so
-  refresh hits `api.<domain>/copilot_internal/v2/token`); the control-plane
-  adapter's `providerStatus` routes the one credential to the right card. The two
-  are mutually exclusive (one slot). Full design: `convergence/README.md`.
+- _[NEW ENGINE only]_ **GitHub Copilot Enterprise** (company-provided Copilot) is
+  NOT a separate card — pi has one Copilot provider/slot, so the SINGLE
+  `github-copilot` card's connect opens a **Personal vs Company** dialog
+  (`provider-copilot-connect-dialog.tsx` via `useCopilotConnect`). Company collects
+  the firm's GitHub domain and threads it as a non-secret `enterpriseUrl` through
+  the credential path + central refresh (so refresh hits
+  `api.<domain>/copilot_internal/v2/token`); Personal passes no domain (github.com).
+  One card + one slot means no per-card status disambiguation. Full design:
+  `convergence/README.md`.
 
 ### Reasoning effort
 

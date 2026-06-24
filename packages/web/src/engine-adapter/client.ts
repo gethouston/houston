@@ -32,8 +32,6 @@ import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
   configWriteToSettings,
-  copilotCardConnected,
-  copilotLoginLanded,
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
   DEFAULT_WORKSPACE_ID,
@@ -626,32 +624,22 @@ export class HoustonClient {
   async providerStatus(name: string): Promise<ProviderStatus> {
     const pid = toNewProvider(name);
     let configured = false;
-    let enterprise = false;
     if (pid) {
       try {
         const engine = this.providerEngine();
         if (engine) {
           const s = await engine.authStatus();
-          const pr = s.providers.find((p) => p.provider === pid);
-          configured = pr?.configured ?? false;
-          // A connected Copilot credential carries the company GitHub domain iff
-          // it's an Enterprise login; that's what tells the two cards apart.
-          enterprise = !!pr?.enterpriseUrl;
+          configured =
+            s.providers.find((p) => p.provider === pid)?.configured ?? false;
         }
       } catch {
         /* sandbox unreachable / no agent selected → report not-connected */
       }
     }
-    // The individual and Enterprise GitHub Copilot cards share ONE engine
-    // provider (`github-copilot`); the connected credential's enterpriseUrl
-    // decides which card owns it. Report "authenticated" for the matching card
-    // only, so the picker flips exactly one (they're mutually exclusive — a
-    // person has personal OR company Copilot).
-    const connected = copilotCardConnected(name, configured, enterprise);
     return {
       provider: name,
       cliInstalled: true,
-      authState: connected ? "authenticated" : "unauthenticated",
+      authState: configured ? "authenticated" : "unauthenticated",
       cliName: name,
       installSource: "managed",
       cliPath: null,
@@ -669,19 +657,10 @@ export class HoustonClient {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     const deviceAuth = opts?.deviceAuth ?? true;
-    // GitHub Copilot Enterprise: the company GitHub domain the user typed on the
-    // Enterprise card. The runtime runs the device-code flow against that GitHub
-    // instead of github.com. Undefined for every other connect (individual too).
+    // GitHub Copilot: the company GitHub domain when the user chose the Company
+    // plan in the connect dialog. Undefined => Personal/github.com (and every
+    // other provider). The runtime runs the device-code flow against that GitHub.
     const enterpriseDomain = opts?.enterpriseDomain;
-    // Which Copilot card this is, so the connect poll waits for the matching
-    // credential (Enterprise vs individual) rather than completing on a
-    // pre-existing one. Undefined for every non-Copilot provider.
-    const expectEnterprise =
-      name === "github-copilot-enterprise"
-        ? true
-        : name === "github-copilot"
-          ? false
-          : undefined;
 
     if (!this.cp) {
       // Local single runtime. Drive the legacy login dialog: `device_code`
@@ -701,7 +680,7 @@ export class HoustonClient {
         user_code: userCode,
       });
       if (typeof window !== "undefined") window.open(url, "_blank", "noopener");
-      this.watchLoginCompletion(pid, name, expectEnterprise);
+      this.watchLoginCompletion(pid, name);
       return;
     }
 
@@ -710,33 +689,25 @@ export class HoustonClient {
     // handler consumes. A remote runtime returns a device_code (we pass its
     // `user_code`, which opens the code panel); a co-located desktop client gets
     // a loopback `url` (user_code null) that the handler opens straight in the
-    // browser. The event `provider` MUST be the FRONTEND card id so the picker
-    // flips the right card — for Copilot Enterprise that's `name` (toOldProvider
-    // would collapse it back to plain `github-copilot`); all others round-trip.
+    // browser. `provider` MUST be the old/frontend id (the dialog's contract).
     const agentId = this.requireAgentId();
-    const eventProvider =
-      name === "github-copilot-enterprise" ? name : toOldProvider(pid);
+    const old = toOldProvider(pid);
     const engine = controlPlane.runtimeClientFor(this.cp, agentId);
     const info = await engine.startLogin(pid, deviceAuth, enterpriseDomain);
     if (info.kind === "device_code") {
       emitEvent("ProviderLoginUrl", {
-        provider: eventProvider,
+        provider: old,
         url: info.verificationUri,
         user_code: info.userCode,
       });
     } else {
       emitEvent("ProviderLoginUrl", {
-        provider: eventProvider,
+        provider: old,
         url: info.url,
         user_code: null,
       });
     }
-    void this.pollProviderConnect(
-      agentId,
-      pid,
-      eventProvider,
-      expectEnterprise,
-    );
+    void this.pollProviderConnect(agentId, pid, old);
   }
   async submitProviderLoginCode(name: string, code: string): Promise<void> {
     const pid = toNewProvider(name);
@@ -770,14 +741,7 @@ export class HoustonClient {
    * Covers all three flows: loopback auto-catch, pasted headless code, and
    * device-code polling. Local mode only (cloud uses pollProviderConnect).
    */
-  private watchLoginCompletion(
-    pid: ProviderId,
-    name: string,
-    // Copilot only: require the landed credential to match the expected
-    // enterprise-ness (so a pre-existing individual cred doesn't complete an
-    // Enterprise connect). Undefined for everything else — any configured cred.
-    expectEnterprise?: boolean,
-  ): void {
+  private watchLoginCompletion(pid: ProviderId, name: string): void {
     this.stopLoginWatch(name);
     const startedAt = Date.now();
     const finish = (success: boolean, error: string | null) => {
@@ -789,8 +753,7 @@ export class HoustonClient {
         try {
           const status = await this.engine.authStatus();
           const pr = status.providers.find((p) => p.provider === pid);
-          const landed = copilotLoginLanded(pr, expectEnterprise);
-          if (landed) finish(true, null);
+          if (pr?.configured) finish(true, null);
           else if (pr?.login?.status === "error")
             finish(false, pr?.login?.error ?? "Login failed");
           else if (Date.now() - startedAt > 10 * 60 * 1000)
@@ -872,12 +835,6 @@ export class HoustonClient {
     agentId: string,
     pid: ProviderId,
     oldProvider: string,
-    // For the two Copilot cards (which share the one `github-copilot` slot):
-    // whether THIS login should land an Enterprise credential. We wait until the
-    // slot's enterprise-ness matches, so a pre-existing individual credential
-    // doesn't make an Enterprise connect report success instantly (and vice
-    // versa). Undefined for every other provider — any configured cred completes.
-    expectEnterprise?: boolean,
   ): Promise<void> {
     if (!this.cp) return;
     const key = `${agentId}:${pid}`;
@@ -888,15 +845,15 @@ export class HoustonClient {
       while (Date.now() < deadline) {
         await new Promise((r) => setTimeout(r, 4000));
         if (!this.activeLogins.has(key)) return; // cancelled
-        let done = false;
+        let configured = false;
         try {
           const s = await engine.authStatus();
-          const pr = s.providers.find((p) => p.provider === pid);
-          done = copilotLoginLanded(pr, expectEnterprise);
+          configured =
+            s.providers.find((p) => p.provider === pid)?.configured ?? false;
         } catch {
           /* transient — keep polling */
         }
-        if (done) {
+        if (configured) {
           // Make the just-connected provider this agent's active model so chat uses it.
           try {
             await engine.setSettings({ activeProvider: pid });

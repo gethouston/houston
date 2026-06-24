@@ -1,67 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
-import {
-  configWriteToSettings,
-  copilotCardConnected,
-  copilotLoginLanded,
-  toNewProvider,
-} from "./synthetic";
+import { configWriteToSettings } from "./synthetic";
 import {
   historyToFeed,
   isNotConnectedError,
   isStoppedByUser,
   turnErrorMessage,
 } from "./translate";
-
-describe("GitHub Copilot Enterprise card ↔ engine provider mapping", () => {
-  test("both Copilot cards map to the single `github-copilot` engine provider", () => {
-    // The Enterprise card is a connect-UI construct; pi has ONE github-copilot
-    // provider, so both cards drive it (they differ only by the company domain).
-    expect(toNewProvider("github-copilot")).toBe("github-copilot");
-    expect(toNewProvider("github-copilot-enterprise")).toBe("github-copilot");
-  });
-
-  test("copilotCardConnected routes one engine credential to the right card", () => {
-    // A connected ENTERPRISE credential (enterprise=true): only the Enterprise
-    // card is connected; the individual card is not (they're mutually exclusive).
-    expect(copilotCardConnected("github-copilot-enterprise", true, true)).toBe(
-      true,
-    );
-    expect(copilotCardConnected("github-copilot", true, true)).toBe(false);
-    // A connected INDIVIDUAL credential (enterprise=false): the reverse.
-    expect(copilotCardConnected("github-copilot", true, false)).toBe(true);
-    expect(copilotCardConnected("github-copilot-enterprise", true, false)).toBe(
-      false,
-    );
-    // Nothing connected: neither card.
-    expect(copilotCardConnected("github-copilot", false, false)).toBe(false);
-    expect(
-      copilotCardConnected("github-copilot-enterprise", false, false),
-    ).toBe(false);
-    // Non-Copilot cards: connected iff configured, regardless of `enterprise`.
-    expect(copilotCardConnected("anthropic", true, false)).toBe(true);
-    expect(copilotCardConnected("anthropic", false, false)).toBe(false);
-  });
-
-  test("copilotLoginLanded waits for the matching credential (no false success on a pre-existing cred)", () => {
-    // THE BUG: an Enterprise connect must NOT complete on a pre-existing
-    // individual credential. With expectEnterprise=true, an individual cred
-    // (no enterpriseUrl) is NOT landed; only an enterprise one is.
-    const individual = { configured: true, enterpriseUrl: null };
-    const enterprise = { configured: true, enterpriseUrl: "acme.ghe.com" };
-    expect(copilotLoginLanded(individual, true)).toBe(false); // the reported bug
-    expect(copilotLoginLanded(enterprise, true)).toBe(true);
-    // Individual connect: the reverse — only a non-enterprise cred lands it.
-    expect(copilotLoginLanded(enterprise, false)).toBe(false);
-    expect(copilotLoginLanded(individual, false)).toBe(true);
-    // Not configured yet: never landed.
-    expect(copilotLoginLanded({ configured: false }, true)).toBe(false);
-    expect(copilotLoginLanded(undefined, false)).toBe(false);
-    // Non-Copilot (expectEnterprise undefined): any configured cred lands it.
-    expect(copilotLoginLanded({ configured: true }, undefined)).toBe(true);
-    expect(copilotLoginLanded({ configured: false }, undefined)).toBe(false);
-  });
-});
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must

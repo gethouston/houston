@@ -62,11 +62,7 @@ export function toNewProvider(
   if (name === "anthropic") return "anthropic";
   if (name === "openai" || name === "openai-codex" || name === "codex")
     return "openai-codex";
-  // Both Copilot connect cards drive the single `github-copilot` engine provider;
-  // the Enterprise card differs only by the company domain it collects at login
-  // (stored as the credential's enterpriseUrl), not by a separate engine id.
-  if (name === "github-copilot" || name === "github-copilot-enterprise")
-    return "github-copilot";
+  if (name === "github-copilot") return "github-copilot";
   if (name === "openrouter") return "openrouter";
   if (name === "google") return "google";
   if (name === "opencode") return "opencode";
@@ -81,41 +77,6 @@ export function toNewProvider(
 export function toOldProvider(id: string): string {
   // openrouter/google share one id across frontend and engine; only codex differs.
   return id === "openai-codex" ? "openai" : id;
-}
-
-/**
- * Whether a Copilot connect CARD should report "connected", given the single
- * `github-copilot` engine credential's state. The individual and Enterprise
- * cards share that one credential; its enterprise-ness (the company domain it
- * was issued for) decides which card owns it — never both. Non-Copilot cards are
- * connected iff their own credential is configured. Pure so the picker's
- * two-card disambiguation is unit-tested without an engine.
- */
-export function copilotCardConnected(
-  cardId: string,
-  configured: boolean,
-  enterprise: boolean,
-): boolean {
-  if (cardId === "github-copilot") return configured && !enterprise;
-  if (cardId === "github-copilot-enterprise") return configured && enterprise;
-  return configured;
-}
-
-/**
- * Whether an in-flight connect has LANDED, from its `/auth/status` entry. For the
- * two Copilot cards (one shared `github-copilot` slot) we additionally require the
- * credential's enterprise-ness to match what THIS login is for — otherwise a
- * pre-existing individual credential would make an Enterprise connect report
- * success instantly (and vice versa). `expectEnterprise` is undefined for every
- * other provider, where any configured credential completes the connect.
- */
-export function copilotLoginLanded(
-  entry: { configured?: boolean; enterpriseUrl?: string | null } | undefined,
-  expectEnterprise?: boolean,
-): boolean {
-  if (!entry?.configured) return false;
-  if (expectEnterprise === undefined) return true;
-  return !!entry.enterpriseUrl === expectEnterprise;
 }
 
 /** The engine ProviderId values, narrowed from toNewProvider's union. */

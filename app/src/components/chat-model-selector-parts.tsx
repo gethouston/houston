@@ -112,7 +112,6 @@ function iconFor(providerId: string) {
     case "openai":
       return <OpenAILogo className="size-full" />;
     case "github-copilot":
-    case "github-copilot-enterprise":
       return <GitHubCopilotLogo className="size-full" />;
     case "openrouter":
       return <OpenRouterLogo className="size-full" />;

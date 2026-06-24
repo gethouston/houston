@@ -71,12 +71,16 @@
     "saving": "Conectando...",
     "cancel": "Cancelar"
   },
-  "enterprise": {
-    "title": "Conectar GitHub Copilot Enterprise",
-    "description": "Inicia sesión con la suscripción de Copilot que tu empresa ofrece a través de GitHub Enterprise.",
-    "label": "Dominio de GitHub de tu empresa",
-    "placeholder": "empresa.ghe.com",
-    "hint": "Pregunta a tu equipo de TI si no estás seguro. ¿Usas Copilot personal? Usa la otra opción.",
+  "copilot": {
+    "title": "Conectar GitHub Copilot",
+    "description": "Elige cómo usas Copilot.",
+    "personalTitle": "Personal",
+    "personalDesc": "Tu propio Copilot en github.com.",
+    "companyTitle": "Empresa (GitHub Enterprise)",
+    "companyDesc": "El Copilot que ofrece tu empresa.",
+    "domainLabel": "Dominio de GitHub de tu empresa",
+    "domainPlaceholder": "empresa.ghe.com",
+    "domainHint": "Pregunta a tu equipo de TI si no estás seguro.",
     "cancel": "Cancelar",
     "continue": "Continuar"
   }

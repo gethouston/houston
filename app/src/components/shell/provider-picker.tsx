@@ -22,7 +22,7 @@ import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
-import { useEnterpriseConnect } from "./use-enterprise-connect";
+import { useCopilotConnect } from "./use-copilot-connect";
 
 interface Props {
   /** Current workspace provider id (used to push the new default after sign-in). */
@@ -51,9 +51,8 @@ export function ProviderPicker({ onSelect }: Props) {
   } | null>(null);
   // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
-  // GitHub Copilot Enterprise collects the company GitHub domain before login.
-  const { begin: beginEnterprise, dialog: enterpriseDialog } =
-    useEnterpriseConnect();
+  // GitHub Copilot's connect opens a Personal vs Company plan dialog.
+  const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers (OpenCode) run only on the new TS engine; hide them on the
@@ -236,14 +235,12 @@ export function ProviderPicker({ onSelect }: Props) {
       setApiKeyDialog(provider);
       return;
     }
-    // GitHub Copilot Enterprise: collect the company GitHub domain first (the
-    // device-code flow is domain-specific), then run the same OAuth login with
-    // it. Individual Copilot and every other OAuth provider connect straight away.
+    // GitHub Copilot: open the Personal vs Company plan dialog first (Company
+    // collects the domain the device-code flow needs); the chosen plan resumes
+    // the login with the right domain. Every other OAuth provider connects
+    // straight away.
     if (
-      beginEnterprise(
-        provider,
-        (domain) => void startOAuthLogin(provider, domain),
-      )
+      beginCopilot(provider, (domain) => void startOAuthLogin(provider, domain))
     )
       return;
     await startOAuthLogin(provider);
@@ -362,7 +359,7 @@ export function ProviderPicker({ onSelect }: Props) {
         onClose={() => setApiKeyDialog(null)}
       />
 
-      {enterpriseDialog}
+      {copilotDialog}
     </>
   );
 }
