@@ -361,9 +361,22 @@ export async function runTurn(
 export async function cancelTurn(id: string): Promise<boolean> {
   const conv = conversations.get(id);
   if (!conv) return false;
+  // Surface a clear stop confirmation in the chat. Published BEFORE the abort so
+  // it settles the turn first; pi's own abort rejection (if any) then arrives at
+  // the already-settled stream and is ignored, so the user sees this one friendly
+  // message instead of a raw abort error. STOPPED_BY_USER is matched verbatim by
+  // the web adapter to render it as a neutral "you stopped it", not a failure.
+  publish(id, { type: "error", data: { message: STOPPED_BY_USER } });
   await conv.session.abort();
   return true;
 }
+
+/**
+ * The verbatim message a user-initiated stop surfaces. The control plane's relay
+ * emits the same string on abort, and the web adapter matches it (isStoppedByUser)
+ * to settle the chat as an intentional stop — back to the user, never a red error.
+ */
+export const STOPPED_BY_USER = "Stopped by you.";
 
 /**
  * Drop a conversation's live session (aborting any in-flight turn) and, when

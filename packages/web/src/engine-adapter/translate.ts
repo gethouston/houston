@@ -40,6 +40,16 @@ export function isNotConnectedError(message: string): boolean {
   return message.toLowerCase().includes("no provider connected");
 }
 
+/**
+ * Whether a turn's terminal error is the user pressing Stop — the verbatim
+ * message the runtime (and the control plane's relay) emit on a cancel. This is
+ * an intentional, handled stop, not a turn failure, so the UI shows the message
+ * but settles the card back to the user (needs_you), never the red error state.
+ */
+export function isStoppedByUser(message: string): boolean {
+  return message.includes("Stopped by you");
+}
+
 function feed(agentPath: string, sessionKey: string, item: unknown): void {
   emitEvent("FeedItem", {
     agent_path: agentPath,
@@ -134,6 +144,21 @@ export async function streamTurn(
     // The message is the auth signal that drives the in-chat reconnect card
     // (and is hidden from the transcript by the auth-feed filter).
     feed(agentPath, sessionKey, { feed_type: "system_message", data: msg });
+    if (isStoppedByUser(msg)) {
+      // The user pressed Stop. Show the confirmation (pushed above), then settle
+      // cleanly: an invisible final_result stops the "Mission in progress" line,
+      // an `error` session-status (with NO error text) only clears the loading
+      // flag — it neither prints a second "Session error" line nor fires the
+      // "mission complete" notification — and the card lands on needs_you (back
+      // in the user's court), never the red error state.
+      feed(agentPath, sessionKey, {
+        feed_type: "final_result",
+        data: { result: "", cost_usd: null, duration_ms: null, usage: null },
+      });
+      sessionStatus(agentPath, sessionKey, "error");
+      terminal = "needs_you";
+      return;
+    }
     if (isNotConnectedError(msg)) {
       // A logged-out provider is handled + recoverable, not a failed turn.
       // Settle it cleanly: emit an invisible final_result so the "Mission in
