@@ -97,6 +97,12 @@ export async function runPiTurn(
   let assistantText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
+  // Set when pi surfaces a model/provider failure as a terminal `error` frame
+  // (see toWire) instead of throwing — prompt() still resolves. The per-turn
+  // server emits the terminal frame from this function's RETURN value
+  // (`outcome.error`), so we capture the reason here and return it rather than
+  // streaming it, then skip the silent `done`.
+  let turnError: string | null = null;
   try {
     const authStorage = AuthStorage.create(join(dataDir, "auth.json"));
     const modelRegistry = ModelRegistry.create(
@@ -168,6 +174,12 @@ export async function runPiTurn(
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
         if (t) t.isError = wire.data.isError;
+      } else if (wire.type === "error") {
+        // The per-turn server emits the terminal frame from `outcome.error`, so
+        // capture pi's stream-surfaced failure and let runPiTurn return it —
+        // emitting here too would double the error frame the client receives.
+        turnError = wire.data.message;
+        return;
       }
       emit(wire);
     });
@@ -178,6 +190,20 @@ export async function runPiTurn(
     } finally {
       signal?.removeEventListener("abort", onAbort);
       unsub();
+    }
+    if (turnError) {
+      // pi surfaced a model/provider failure as a terminal `error` frame, not a
+      // thrown exception. Persist any partial text (as the catch path does) and
+      // report an errored run to the host — never a silent success.
+      if (assistantText)
+        appendAssistantMessageAt(
+          conversationsDir,
+          conversationId,
+          assistantText,
+          tools,
+          usage,
+        );
+      return { error: turnError };
     }
     appendAssistantMessageAt(
       conversationsDir,

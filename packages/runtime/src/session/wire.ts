@@ -48,10 +48,30 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         data: { name: e.toolName, isError: !!e.isError },
       };
     case "turn_end": {
-      // Fired once per turn with the final assistant message; its usage carries
-      // the latest request's context size = the current context fill. Only an
-      // assistant message carries `usage`; other message kinds normalize to null.
+      // Fired once per turn with the final assistant message.
+      //
+      // A model/provider failure pi could NOT complete (an expired or rejected
+      // Copilot token, a rate limit, a 4xx from the gateway) does NOT throw from
+      // prompt() — pi catches it internally and delivers the turn here as an
+      // assistant message with stopReason "error" and the real reason in
+      // `errorMessage`. Surface that as the turn's terminal `error` frame, or the
+      // turn streams nothing and settles as a silent, empty success ("no
+      // response, no error" — the bug that made Copilot look dead). "aborted" is
+      // the user's own Stop, already surfaced verbatim by cancelTurn ("Stopped by
+      // user"), so it is deliberately left to drop here, not double-reported.
       const msg = e.message;
+      if (
+        msg &&
+        "stopReason" in msg &&
+        msg.stopReason === "error" &&
+        "errorMessage" in msg &&
+        msg.errorMessage
+      ) {
+        return { type: "error", data: { message: msg.errorMessage } };
+      }
+      // Otherwise its usage carries the latest request's context size = the
+      // current context fill. Only an assistant message carries `usage`; other
+      // message kinds normalize to null.
       const usage = msg && "usage" in msg ? normalizeUsage(msg.usage) : null;
       return usage ? { type: "usage", data: usage } : null;
     }

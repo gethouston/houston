@@ -34,6 +34,30 @@ function assistantMessage(u: Usage): AssistantMessage {
   };
 }
 
+/**
+ * An assistant message that ended in failure — pi's `handleRunFailure` shape: a
+ * model/provider error (or the user's abort) is caught internally and delivered
+ * as the final message with stopReason "error"/"aborted" and the reason in
+ * `errorMessage`, NOT thrown from prompt().
+ */
+function failedAssistantMessage(
+  stopReason: "error" | "aborted",
+  errorMessage: string | undefined,
+  u: Usage = usage({}),
+): AssistantMessage {
+  return {
+    role: "assistant",
+    content: [],
+    api: "anthropic",
+    provider: "anthropic",
+    model: "test",
+    usage: u,
+    stopReason,
+    ...(errorMessage !== undefined ? { errorMessage } : {}),
+    timestamp: 0,
+  };
+}
+
 /** A user message — has no `usage` field, like a turn that ended without one. */
 const userMessage: UserMessage = { role: "user", content: "", timestamp: 0 };
 
@@ -97,4 +121,64 @@ test("toWire maps turn_end (with usage) to a usage frame", () => {
 test("toWire drops a turn_end whose final message has no usage", () => {
   // A user message carries no `usage` field, so there is nothing to report.
   expect(toWire(turnEnd(userMessage))).toBeNull();
+});
+
+test("toWire surfaces a stopReason 'error' turn_end as an error frame (the real failure reason)", () => {
+  // The regression that made Copilot look dead: pi catches a model/provider
+  // failure (an expired/rejected token, a rate limit, a 4xx) and delivers it
+  // here instead of throwing. Dropping it left the turn an empty, silent
+  // success ("no response, no error"). The reason MUST reach the user.
+  expect(
+    toWire(
+      turnEnd(
+        failedAssistantMessage(
+          "error",
+          "401 Unauthorized: Copilot token expired",
+        ),
+      ),
+    ),
+  ).toEqual({
+    type: "error",
+    data: { message: "401 Unauthorized: Copilot token expired" },
+  });
+});
+
+test("toWire does NOT surface an 'aborted' turn_end as an error (the user's Stop)", () => {
+  // Pressing Stop aborts the session -> pi emits an aborted failure message with
+  // errorMessage "Request aborted by user". cancelTurn already published
+  // "Stopped by user", so surfacing this too would double-report the stop as a
+  // red error. It falls through to the usage path, never an error frame.
+  expect(
+    toWire(
+      turnEnd(
+        failedAssistantMessage(
+          "aborted",
+          "Request aborted by user",
+          usage({ totalTokens: 10, output: 4 }),
+        ),
+      ),
+    ),
+  ).toEqual({
+    type: "usage",
+    data: { context_tokens: 6, output_tokens: 4, cached_tokens: 0 },
+  });
+});
+
+test("toWire ignores a stopReason 'error' with no errorMessage (no empty error frame)", () => {
+  // Defensive: only surface when there is an actual reason to show; otherwise
+  // fall through to usage so the turn still settles rather than emitting a blank.
+  expect(
+    toWire(
+      turnEnd(
+        failedAssistantMessage(
+          "error",
+          undefined,
+          usage({ totalTokens: 8, output: 3 }),
+        ),
+      ),
+    ),
+  ).toEqual({
+    type: "usage",
+    data: { context_tokens: 5, output_tokens: 3, cached_tokens: 0 },
+  });
 });
