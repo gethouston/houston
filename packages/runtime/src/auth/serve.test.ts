@@ -2,7 +2,63 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { applyServedCredential, scrubRefreshTokensAt } from "./auth-file";
+import {
+  applyServedCredential,
+  type PiCred,
+  scrubRefreshTokensAt,
+} from "./auth-file";
+import { selectExportCredential } from "./serve";
+
+/**
+ * Connect-once capture must be PROVIDER-SPECIFIC. The runtime exports the
+ * just-connected provider's credential; exporting "whichever OAuth credential
+ * comes first" stored the wrong provider centrally when more than one OAuth
+ * provider was present, leaving the intended one (e.g. github-copilot)
+ * un-persisted so every per-turn serve 404'd it — Copilot got no response while
+ * the wrongly-captured provider worked.
+ */
+const oauth = (access: string, refresh: string): PiCred => ({
+  type: "oauth",
+  access,
+  refresh,
+  expires: 1_900_000_000_000,
+});
+
+test("selectExportCredential(provider) returns THAT provider, not the first in the record", () => {
+  const auth: Record<string, PiCred> = {
+    // codex comes first AND has a live refresh — the old code would export it.
+    "openai-codex": oauth("AT-codex", "RT-codex"),
+    "github-copilot": oauth("tid=copilot", "gho_github_token"),
+  };
+  expect(selectExportCredential(auth, "github-copilot")?.provider).toBe(
+    "github-copilot",
+  );
+  expect(selectExportCredential(auth, "github-copilot")?.access).toBe(
+    "tid=copilot",
+  );
+  // And it can still pick codex when codex is the one being connected.
+  expect(selectExportCredential(auth, "openai-codex")?.provider).toBe(
+    "openai-codex",
+  );
+});
+
+test("selectExportCredential without a provider falls back to the first OAuth credential", () => {
+  const auth: Record<string, PiCred> = {
+    "openai-codex": oauth("AT-codex", "RT-codex"),
+    "github-copilot": oauth("tid=copilot", "gho_github_token"),
+  };
+  expect(selectExportCredential(auth)?.provider).toBe("openai-codex");
+});
+
+test("selectExportCredential returns null when the requested provider is absent or scrubbed", () => {
+  const auth: Record<string, PiCred> = {
+    "openai-codex": oauth("AT-codex", "RT-codex"),
+    // scrubbed: refresh="" => not exportable.
+    "github-copilot": oauth("tid=copilot", ""),
+  };
+  expect(selectExportCredential(auth, "anthropic")).toBeNull();
+  expect(selectExportCredential(auth, "github-copilot")).toBeNull();
+});
 
 /**
  * Gate #2 invariant: the agent sandbox NEVER persists a refresh token.

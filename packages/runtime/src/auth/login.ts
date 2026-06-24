@@ -62,14 +62,17 @@ export function codexLoginMethod(opts: {
  * Auto-answer for a provider's interactive text prompt (`onPrompt`), or null to
  * defer to the user. GitHub Copilot's pi-ai login OPENS with an optional
  * "GitHub Enterprise URL/domain" question before it emits the device code;
- * leaving it unanswered deadlocks the flow (the device code never appears).
- * Houston serves individual Copilot accounts and the product voice forbids
- * surfacing enterprise jargon, so auto-answer "" (=> github.com). Every other
- * provider's `onPrompt` is the Anthropic headless code-paste, which MUST wait
- * for the user — those return null so the caller hands back the paste promise.
+ * leaving it unanswered deadlocks the flow (the device code never appears). We
+ * answer it programmatically: the company domain for an Enterprise connect, or
+ * "" (=> github.com) for individual Copilot. Every other provider's `onPrompt`
+ * is the Anthropic headless code-paste, which MUST wait for the user — those
+ * return null so the caller hands back the paste promise.
  */
-export function autoPromptAnswer(provider: string): string | null {
-  return provider === "github-copilot" ? "" : null;
+export function autoPromptAnswer(
+  provider: string,
+  enterpriseDomain?: string,
+): string | null {
+  return provider === "github-copilot" ? (enterpriseDomain ?? "") : null;
 }
 
 const known = (id: string): id is ProviderId =>
@@ -79,10 +82,18 @@ export function getAuthStatus() {
   return {
     providers: PROVIDERS.map((p) => {
       const st = active.get(p.id);
+      // Copilot Enterprise: surface the connected credential's company domain so
+      // the connect UI can tell the Enterprise card apart from individual Copilot
+      // (both are the same engine provider; the domain is the only difference).
+      // `get` is in-memory (pi caches auth.json), so this stays cheap per poll.
+      const cred = authStorage.get(p.id) as
+        | { enterpriseUrl?: string }
+        | undefined;
       return {
         provider: p.id,
         name: p.name,
         configured: providerConnected(authStorage, p.id),
+        enterpriseUrl: cred?.enterpriseUrl ?? null,
         login: st
           ? { status: st.status, info: st.info, error: st.error }
           : null,
@@ -99,6 +110,7 @@ export function getAuthStatus() {
 export async function startLogin(
   providerId: string,
   deviceAuth = true,
+  enterpriseDomain?: string,
 ): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   if (providerAuthMethod(providerId) === "apiKey")
@@ -153,7 +165,7 @@ export async function startLogin(
       onSelect: async () =>
         codexLoginMethod({ deviceAuth, headless: config.headless }),
       onPrompt: () => {
-        const auto = autoPromptAnswer(provider);
+        const auto = autoPromptAnswer(provider, enterpriseDomain);
         return auto === null ? pastePromise : Promise.resolve(auto);
       },
       onManualCodeInput: () => pastePromise,

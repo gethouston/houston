@@ -93,3 +93,40 @@ test("refreshCredential mints a fresh GitHub Copilot token from the stored GitHu
     globalThis.fetch = realFetch;
   }
 });
+
+test("refreshCredential refreshes Copilot Enterprise against the company GitHub and preserves the domain", async () => {
+  // For GitHub Copilot Enterprise, `enterpriseUrl` (the company GitHub domain)
+  // must route the refresh at `api.<domain>/copilot_internal/v2/token` — NOT
+  // github.com — or the company's short-lived Copilot token can never be minted.
+  const realFetch = globalThis.fetch;
+  const expiresAtSec = Math.floor(Date.now() / 1000) + 1500;
+  let hitUrl = "";
+  globalThis.fetch = (async (url: string | URL | Request) => {
+    hitUrl = String(url);
+    if (hitUrl.includes("copilot_internal/v2/token")) {
+      return new Response(
+        JSON.stringify({ token: "tid=ghe-token", expires_at: expiresAtSec }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    }
+    throw new Error(`unexpected fetch in test: ${hitUrl}`);
+  }) as typeof fetch;
+  try {
+    const fresh = await refreshCredential({
+      workspaceId: "ws_1",
+      provider: "github-copilot",
+      accessToken: "tid=stale",
+      refreshToken: "gho_company_token",
+      expiresAt: 1,
+      kind: "oauth",
+      enterpriseUrl: "acme.ghe.com",
+    });
+    // The refresh targeted the COMPANY's GitHub API, not github.com.
+    expect(hitUrl).toContain("api.acme.ghe.com/copilot_internal/v2/token");
+    expect(fresh.accessToken).toBe("tid=ghe-token");
+    // The domain rides along so the NEXT refresh keeps targeting the same GHE.
+    expect(fresh.enterpriseUrl).toBe("acme.ghe.com");
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+});

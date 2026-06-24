@@ -648,18 +648,21 @@ export const tauriProvider = {
     }),
   launchLogin: (
     provider: string,
-    opts?: { deviceAuth?: boolean; toast?: boolean },
+    opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },
   ) =>
     // `deviceAuth` declares whether the client can catch a loopback OAuth
     // callback. Default it from the platform: the co-located desktop CAN
     // (false → Codex browser/loopback login), a remote webapp can't (true →
     // device code). Callers may still override. Centralized here so every
     // entry point (picker, settings, reconnect card, banner) agrees.
+    // `enterpriseDomain` (GitHub Copilot Enterprise) carries the company GitHub
+    // domain the user typed on the Enterprise card; absent for every other login.
     call<void>(
       "launch_provider_login",
       () =>
         getEngine().providerLogin(provider, {
           deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
+          enterpriseDomain: opts?.enterpriseDomain,
         }),
       undefined,
       // Callers that render their OWN failure toast (the picker, settings) pass

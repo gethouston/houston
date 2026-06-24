@@ -652,18 +652,26 @@ export class HoustonClient {
   // omits it never asks a remote runtime for an unreachable loopback.
   async providerLogin(
     name: string,
-    opts?: { deviceAuth?: boolean },
+    opts?: { deviceAuth?: boolean; enterpriseDomain?: string },
   ): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     const deviceAuth = opts?.deviceAuth ?? true;
+    // GitHub Copilot: the company GitHub domain when the user chose the Company
+    // plan in the connect dialog. Undefined => Personal/github.com (and every
+    // other provider). The runtime runs the device-code flow against that GitHub.
+    const enterpriseDomain = opts?.enterpriseDomain;
 
     if (!this.cp) {
       // Local single runtime. Drive the legacy login dialog: `device_code`
       // carries the code to display; `url` (loopback) and `auth_code`
       // (headless Claude) leave `user_code` null so the dialog shows a paste
       // field. The runtime emits no completion event, so poll and synthesize.
-      const info = await this.engine.startLogin(pid, deviceAuth);
+      const info = await this.engine.startLogin(
+        pid,
+        deviceAuth,
+        enterpriseDomain,
+      );
       const url = info.kind === "device_code" ? info.verificationUri : info.url;
       const userCode = info.kind === "device_code" ? info.userCode : null;
       emitEvent("ProviderLoginUrl", {
@@ -681,11 +689,11 @@ export class HoustonClient {
     // handler consumes. A remote runtime returns a device_code (we pass its
     // `user_code`, which opens the code panel); a co-located desktop client gets
     // a loopback `url` (user_code null) that the handler opens straight in the
-    // browser. `provider` MUST be the old id (the dialog's contract).
+    // browser. `provider` MUST be the old/frontend id (the dialog's contract).
     const agentId = this.requireAgentId();
     const old = toOldProvider(pid);
     const engine = controlPlane.runtimeClientFor(this.cp, agentId);
-    const info = await engine.startLogin(pid, deviceAuth);
+    const info = await engine.startLogin(pid, deviceAuth, enterpriseDomain);
     if (info.kind === "device_code") {
       emitEvent("ProviderLoginUrl", {
         provider: old,
@@ -855,7 +863,7 @@ export class HoustonClient {
           // Connect-once: store this credential for the WHOLE workspace, so every
           // agent (existing + new) shares this one connection.
           try {
-            await controlPlane.captureCredential(this.cp, agentId);
+            await controlPlane.captureCredential(this.cp, agentId, pid);
           } catch (e) {
             console.error("[connect] workspace credential capture failed", e);
           }

@@ -143,6 +143,7 @@ export class ProxyChannel implements RuntimeChannel {
       expires?: number;
       key?: string;
       accountId?: string;
+      enterpriseUrl?: string;
     };
 
     // API-key provider: store the key as a non-refreshing, non-expiring
@@ -178,6 +179,9 @@ export class ProxyChannel implements RuntimeChannel {
       refreshToken: c.refresh,
       accountId: c.accountId,
       expiresAt: c.expires,
+      // Copilot Enterprise domain, so the central refresh targets the company's
+      // GitHub. Absent for every other OAuth provider (and individual Copilot).
+      enterpriseUrl: c.enterpriseUrl,
     });
     const scrub = await fetch(`${endpoint.baseUrl}/auth/scrub-refresh`, {
       method: "POST",

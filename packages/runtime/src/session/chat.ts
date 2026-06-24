@@ -192,9 +192,11 @@ async function execTurn(
   let assistantText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
-  // A typed provider failure for this turn (pi resolves the turn rather than
-  // throwing, so this arrives on the stream, not via the catch). Captured here
-  // and persisted on the assistant message so the inline card survives a reload.
+  // A typed provider failure for this turn. pi resolves the turn rather than
+  // throwing, so this arrives on the stream (a provider_error frame), not via the
+  // catch. Its presence is also the "the turn failed" signal: persist it on the
+  // assistant message (so the inline card survives a reload) AND skip the clean
+  // `done` that would settle the chat as a success on top of the error.
   let providerError: ProviderError | undefined;
 
   const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
@@ -271,7 +273,7 @@ async function execTurn(
     // Persist the switch marker AND any typed provider error on this turn's
     // assistant message so both the boundary divider and the reconnect /
     // rate-limit card survive a history reload. A provider failure lands HERE
-    // (pi resolves the turn) with empty text, not in the catch below.
+    // (pi resolves the turn, it does not throw) with empty text, not in the catch.
     appendAssistantMessage(
       id,
       assistantText,
@@ -280,7 +282,11 @@ async function execTurn(
       providerSwitch,
       providerError,
     );
-    publish(id, { type: "done", data: null });
+    // Skip the clean `done` when the turn failed: the provider_error frame is the
+    // turn's terminal surface (the web adapter settles on it), and a `done` would
+    // settle the chat as a clean success — firing the "mission complete"
+    // notification on top of the error.
+    if (!providerError) publish(id, { type: "done", data: null });
   } catch (err) {
     if (assistantText)
       appendAssistantMessage(

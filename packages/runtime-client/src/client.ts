@@ -115,12 +115,22 @@ export class HoustonEngineClient {
    * Codex). `deviceAuth: false` (sent only by the co-located desktop client)
    * asks Codex for the browser/loopback login instead of the device code;
    * default true keeps the device-code path for remote webapp clients.
+   * `enterpriseDomain` (GitHub Copilot Enterprise only) runs the device-code flow
+   * against the company's GitHub (e.g. `acme.ghe.com`) instead of github.com.
    */
-  startLogin(provider: ProviderId, deviceAuth = true) {
-    const suffix = deviceAuth ? "" : "?deviceAuth=false";
-    return this.json<LoginInfo>(`/auth/${provider}/login${suffix}`, {
-      method: "POST",
-    });
+  startLogin(
+    provider: ProviderId,
+    deviceAuth = true,
+    enterpriseDomain?: string,
+  ) {
+    const params = new URLSearchParams();
+    if (!deviceAuth) params.set("deviceAuth", "false");
+    if (enterpriseDomain) params.set("enterpriseDomain", enterpriseDomain);
+    const qs = params.toString();
+    return this.json<LoginInfo>(
+      `/auth/${provider}/login${qs ? `?${qs}` : ""}`,
+      { method: "POST" },
+    );
   }
   /** Submit a pasted code (the `auth_code` headless Claude path). */
   completeLogin(provider: ProviderId, code: string) {

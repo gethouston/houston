@@ -22,6 +22,7 @@ import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
 import { providerAppearsConnected } from "./provider-reconnect-state";
+import { useCopilotConnect } from "./use-copilot-connect";
 
 /**
  * Settings-screen variant of the AI provider UI: accounts only.
@@ -55,6 +56,8 @@ export function ProviderSettings() {
   } | null>(null);
   // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
+  // GitHub Copilot's connect opens a Personal vs Company plan dialog.
+  const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers run only on the new TS engine; hide them on the Rust
@@ -235,13 +238,12 @@ export function ProviderSettings() {
     return off;
   }, [addToast, loadStatuses, patchAuthState, t]);
 
-  const handleConnect = async (provider: ProviderInfo) => {
-    // API-key providers (OpenCode) connect by pasting a key, not OAuth — open
-    // the key dialog instead of launching a browser sign-in.
-    if (provider.auth === "apiKey") {
-      setApiKeyDialog(provider);
-      return;
-    }
+  // Start the OAuth login. `enterpriseDomain` is set only for GitHub Copilot
+  // Enterprise (collected by the dialog the hook drives).
+  const startOAuthLogin = async (
+    provider: ProviderInfo,
+    enterpriseDomain?: string,
+  ) => {
     setPendingId(provider.id);
     try {
       // launchLogin defaults deviceAuth from the platform — desktop catches the
@@ -250,7 +252,10 @@ export function ProviderSettings() {
       // headless mode regardless.
       // `toast: false`: the catch below renders the provider-specific failure
       // toast, so `call` must not also toast the same message (it showed twice).
-      await tauriProvider.launchLogin(provider.id, { toast: false });
+      await tauriProvider.launchLogin(provider.id, {
+        toast: false,
+        enterpriseDomain,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
@@ -264,6 +269,22 @@ export function ProviderSettings() {
       });
       setPendingId(null);
     }
+  };
+
+  const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers (OpenCode) connect by pasting a key, not OAuth — open
+    // the key dialog instead of launching a browser sign-in.
+    if (provider.auth === "apiKey") {
+      setApiKeyDialog(provider);
+      return;
+    }
+    // GitHub Copilot: open the Personal vs Company plan dialog first; the chosen
+    // plan resumes the login with the right domain (Company) or none (Personal).
+    if (
+      beginCopilot(provider, (domain) => void startOAuthLogin(provider, domain))
+    )
+      return;
+    await startOAuthLogin(provider);
   };
 
   const handleCancel = async (provider: ProviderInfo) => {
@@ -393,6 +414,8 @@ export function ProviderSettings() {
         provider={apiKeyDialog}
         onClose={() => setApiKeyDialog(null)}
       />
+
+      {copilotDialog}
     </>
   );
 }

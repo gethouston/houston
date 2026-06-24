@@ -50,12 +50,18 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         data: { name: e.toolName, isError: !!e.isError },
       };
     case "turn_end": {
-      // Fired once per turn with the final assistant message. pi resolves a
-      // failed model request rather than throwing — the message comes back with
-      // `stopReason: "error"` + an `errorMessage`. Classify that into a typed
-      // provider_error so the chat renders the matching reconnect / rate-limit
-      // card. ("aborted" is a user cancel, not a provider failure — the cancel
-      // path handles teardown, so it falls through to no frame.)
+      // Fired once per turn with the final assistant message.
+      //
+      // A model/provider failure pi could NOT complete (an expired or rejected
+      // token, a rate limit, a 4xx/5xx from the gateway) does NOT throw from
+      // prompt() — pi catches it internally and delivers the turn here as an
+      // assistant message with stopReason "error" and the real reason in
+      // `errorMessage`. Classify that into a TYPED provider_error so the chat
+      // renders the matching reconnect / rate-limit card; dropping it left the
+      // turn a silent, empty success ("no response, no error" — the bug that made
+      // Copilot look dead). "aborted" is the user's own Stop (already surfaced
+      // verbatim by cancelTurn as "Stopped by user"), so it falls through here to
+      // the usage path, never double-reported.
       const msg = e.message;
       if (
         msg &&

@@ -3,11 +3,50 @@ import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
 import {
   applyServedCredential,
+  type PiCred,
   readAuthFile,
   type ServedCredential,
   scrubRefreshTokensAt,
 } from "./auth-file";
 import { authStorage } from "./storage";
+
+export type ExportedCredential = {
+  provider: string;
+  access: string;
+  refresh: string;
+  expires: number;
+  accountId?: string;
+  enterpriseUrl?: string;
+};
+
+/**
+ * Pure: choose the OAuth credential to export from an auth.json record. When
+ * `provider` is given, returns EXACTLY that provider (connect-once capture is
+ * provider-specific — capturing a github-copilot connect must never grab a
+ * different OAuth provider that comes first in the record). Without a provider,
+ * returns the first connected OAuth provider. Only OAuth credentials with both
+ * access + refresh are exportable (an API key is submitted to the host directly,
+ * and a scrubbed entry has refresh=""). Testable without the dataDir singleton.
+ */
+export function selectExportCredential(
+  auth: Record<string, PiCred>,
+  provider?: string,
+): ExportedCredential | null {
+  for (const [p, c] of Object.entries(auth)) {
+    if (provider && p !== provider) continue;
+    if (c?.type === "oauth" && c.access && c.refresh) {
+      return {
+        provider: p,
+        access: c.access,
+        refresh: c.refresh,
+        expires: c.expires,
+        accountId: c.accountId,
+        enterpriseUrl: c.enterpriseUrl,
+      };
+    }
+  }
+  return null;
+}
 
 /**
  * Connect-once serve mode (security Gate #2: access-token-only).
@@ -80,34 +119,26 @@ export async function syncServedCredential(): Promise<string[]> {
   // invisible to hasAuth()/resolveModel() until we re-read it. This is the line
   // that makes a never-connected agent actually see the served credential.
   if (applied.length) authStorage.reload();
+  // One-line per-turn diagnostic: which central credentials this serve applied.
+  // If a connected provider is absent here (its serve 404'd), its token can't be
+  // refreshed centrally — the silent-404 path that left Copilot un-served.
+  console.log(
+    `[serve] applied central credentials: ${applied.join(", ") || "(none)"}`,
+  );
   return applied;
 }
 
 /**
  * Export the locally-held credential so the control plane can capture it into
- * the workspace's central store right after a device-code connect. Returns the
- * first connected provider's tokens, or null if nothing is connected (which is
- * also the post-scrub state — capture must run before scrub).
+ * the workspace's central store right after a device-code connect. When
+ * `provider` is given, exports EXACTLY that provider — connect-once capture is
+ * provider-specific, so capturing a github-copilot connect must never grab a
+ * different OAuth provider that happens to come first in auth.json (which would
+ * leave Copilot un-persisted centrally and 404 every per-turn serve). Without a
+ * provider, falls back to the first connected OAuth provider. Returns null when
+ * the (requested) provider isn't connected — also the post-scrub state, so
+ * capture must run before scrub.
  */
-export function exportCredential(): {
-  provider: string;
-  access: string;
-  refresh: string;
-  expires: number;
-  accountId?: string;
-} | null {
-  for (const [provider, c] of Object.entries(readAuthFile(authPathFor()))) {
-    // Only OAuth credentials are captured centrally via export; an API key is
-    // submitted straight to the host, never round-tripped through the runtime.
-    if (c?.type === "oauth" && c.access && c.refresh) {
-      return {
-        provider,
-        access: c.access,
-        refresh: c.refresh,
-        expires: c.expires,
-        accountId: c.accountId,
-      };
-    }
-  }
-  return null;
+export function exportCredential(provider?: string): ExportedCredential | null {
+  return selectExportCredential(readAuthFile(authPathFor()), provider);
 }

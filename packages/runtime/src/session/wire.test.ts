@@ -34,20 +34,26 @@ function assistantMessage(u: Usage): AssistantMessage {
   };
 }
 
-/** An assistant message that FAILED: pi resolves the turn with stopReason "error". */
-function erroredMessage(
-  errorMessage: string,
+/**
+ * An assistant message that ended in failure — pi's shape: a model/provider error
+ * (or the user's abort) is caught internally and delivered as the final message
+ * with stopReason "error"/"aborted" and the reason in `errorMessage`, NOT thrown
+ * from prompt(). `over` sets provider/model/usage for a specific provider's shape.
+ */
+function failedAssistantMessage(
+  stopReason: "error" | "aborted",
+  errorMessage: string | undefined,
   over: Partial<AssistantMessage> = {},
 ): AssistantMessage {
   return {
     role: "assistant",
     content: [],
-    api: "openai-codex",
-    provider: "openai-codex",
-    model: "gpt-5.1-codex",
+    api: "anthropic",
+    provider: "anthropic",
+    model: "test",
     usage: usage({}),
-    stopReason: "error",
-    errorMessage,
+    stopReason,
+    ...(errorMessage !== undefined ? { errorMessage } : {}),
     timestamp: 0,
     ...over,
   };
@@ -124,8 +130,10 @@ test("toWire maps an errored turn_end to a typed provider_error frame", () => {
   expect(
     toWire(
       turnEnd(
-        erroredMessage(
+        failedAssistantMessage(
+          "error",
           "OpenAI API error (401): Your session has ended. Please log in again. (app_session_terminated)",
+          { provider: "openai-codex", model: "gpt-5.1-codex" },
         ),
       ),
     ),
@@ -141,19 +149,62 @@ test("toWire maps an errored turn_end to a typed provider_error frame", () => {
   });
 });
 
-test("toWire does NOT emit provider_error for an aborted turn (user cancel)", () => {
-  // Cancellation is not a provider failure; the cancel path handles teardown.
-  const aborted = erroredMessage("Request was aborted", {
-    stopReason: "aborted",
+test("toWire surfaces a pi-internal turn error (the Copilot no-response bug) as a typed provider_error", () => {
+  // The regression that made Copilot look dead: pi catches a model/provider
+  // failure (an expired/rejected token, a rate limit, a 4xx) and delivers it here
+  // instead of throwing. Dropping it left the turn an empty, silent success ("no
+  // response, no error"). The reason MUST reach the user — now as a typed card.
+  expect(
+    toWire(
+      turnEnd(
+        failedAssistantMessage(
+          "error",
+          "401 Unauthorized: Copilot token expired",
+          { provider: "github-copilot", model: "claude-opus-4.8" },
+        ),
+      ),
+    ),
+  ).toEqual({
+    type: "provider_error",
+    data: {
+      kind: "unauthenticated",
+      provider: "github-copilot",
+      cause: "token_expired",
+      message: "401 Unauthorized: Copilot token expired",
+    },
   });
-  expect(toWire(turnEnd(aborted))?.type).not.toBe("provider_error");
 });
 
-test("toWire ignores an error stopReason with no errorMessage (falls back to usage)", () => {
-  const noText = erroredMessage("", {
-    usage: usage({ output: 5, totalTokens: 25 }),
+test("toWire does NOT surface an aborted turn (the user's Stop) as a provider_error", () => {
+  // Pressing Stop aborts the session -> pi emits an aborted failure message.
+  // cancelTurn already published "Stopped by user", so surfacing this too would
+  // double-report the stop. It falls through to the usage path, never an error.
+  expect(
+    toWire(
+      turnEnd(
+        failedAssistantMessage("aborted", "Request aborted by user", {
+          usage: usage({ totalTokens: 10, output: 4 }),
+        }),
+      ),
+    ),
+  ).toEqual({
+    type: "usage",
+    data: { context_tokens: 6, output_tokens: 4, cached_tokens: 0 },
   });
-  expect(toWire(turnEnd(noText))).toEqual({
+});
+
+test("toWire ignores a stopReason 'error' with no errorMessage (falls back to usage)", () => {
+  // Defensive: only surface when there is an actual reason to show; otherwise
+  // fall through to usage so the turn still settles rather than emitting a blank.
+  expect(
+    toWire(
+      turnEnd(
+        failedAssistantMessage("error", undefined, {
+          usage: usage({ totalTokens: 25, output: 5 }),
+        }),
+      ),
+    ),
+  ).toEqual({
     type: "usage",
     data: { context_tokens: 20, output_tokens: 5, cached_tokens: 0 },
   });

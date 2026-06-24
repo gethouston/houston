@@ -34,15 +34,15 @@ export function reduceSnapshot(
       return prev.running ? prev : { running: true, partial: prev.partial };
     case "done":
     case "error":
+    case "provider_error":
+      // `provider_error` is terminal: pi ends the run on a failed turn and the
+      // runtime does NOT emit a clean `done` after it, so this frame is what
+      // clears the in-flight snapshot — otherwise a late subscriber's `sync`
+      // would report the turn as still running forever.
       return EMPTY_SNAPSHOT;
     case "provider_switched":
       // A mid-session provider switch is a boundary marker, not turn progress —
       // it's published while a turn is live, so leave running/partial untouched.
-      return prev;
-    case "provider_error":
-      // A typed provider failure is a card marker, not turn progress. The turn's
-      // own terminal frame (`done`) clears the snapshot right after, so leave
-      // running/partial untouched here.
       return prev;
     case "sync":
       return prev; // sync is a read-out, never published back in
