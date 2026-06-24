@@ -39,8 +39,10 @@ export function ChatModelSelector({
   const currentModel = getModel(provider, model);
   const displayLabel =
     currentModel?.label ??
-    // A local OpenAI-compatible model isn't in the static catalog, so show its
-    // raw id rather than falling through to the provider subtitle.
+    // A local OpenAI-compatible model isn't in the static catalog, so show the
+    // engine-reported configured model id (then the raw selection) rather than
+    // falling through to the provider subtitle.
+    statuses[provider]?.active_model ??
     (model || undefined) ??
     currentProvider?.subtitle ??
     t("modelSelector.selectModel");
@@ -94,6 +96,7 @@ export function ChatModelSelector({
                 state={state}
                 isActiveProvider={isActiveProvider}
                 activeModel={isActiveProvider ? model : null}
+                runtimeModelId={statuses[prov.id]?.active_model}
                 onSelect={onSelect}
                 showSeparator={idx > 0}
               />

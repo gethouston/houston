@@ -628,13 +628,19 @@ export class HoustonClient {
   async providerStatus(name: string): Promise<ProviderStatus> {
     const pid = toNewProvider(name);
     let configured = false;
+    let activeModel: string | undefined;
     if (pid) {
       try {
         const engine = this.providerEngine();
         if (engine) {
-          const s = await engine.authStatus();
-          configured =
-            s.providers.find((p) => p.provider === pid)?.configured ?? false;
+          // listProviders (not authStatus) so we also learn the configured
+          // model id — the OpenAI-compatible provider's model is dynamic and
+          // absent from the static catalog, so the picker has no other source.
+          // `configured` here matches authStatus for credential providers and
+          // is endpoint-aware for the local one.
+          const p = (await engine.listProviders()).find((x) => x.id === pid);
+          configured = p?.configured ?? false;
+          activeModel = p?.activeModel || undefined;
         }
       } catch {
         /* sandbox unreachable / no agent selected → report not-connected */
@@ -647,6 +653,7 @@ export class HoustonClient {
       cliName: name,
       installSource: "managed",
       cliPath: null,
+      activeModel,
     } as ProviderStatus;
   }
   // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the

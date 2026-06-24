@@ -581,6 +581,12 @@ export interface ProviderStatus {
   auth_state: ProviderAuthState;
   authenticated: boolean;
   cli_name: string;
+  /**
+   * The provider's configured model id, when the engine reports one — carries
+   * the OpenAI-compatible (local) provider's dynamic, catalog-less model so the
+   * chat model picker can show + select it. Absent for catalog-backed providers.
+   */
+  active_model?: string;
 }
 
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
@@ -597,6 +603,7 @@ export const tauriProvider = {
         auth_state: p.authState,
         authenticated: p.authState === "authenticated",
         cli_name: p.cliName,
+        active_model: p.activeModel,
       };
     }),
   getDefault: () =>

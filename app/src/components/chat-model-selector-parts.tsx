@@ -5,7 +5,7 @@ import {
 } from "@houston-ai/core";
 import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
-import type { ProviderPickerState } from "../lib/model-picker";
+import { type ProviderPickerState, pickerModelRows } from "../lib/model-picker";
 import type { ProviderInfo } from "../lib/providers";
 import {
   ClaudeLogo,
@@ -28,6 +28,7 @@ export function ProviderModelGroup({
   state,
   isActiveProvider,
   activeModel,
+  runtimeModelId,
   onSelect,
   showSeparator,
 }: {
@@ -35,28 +36,24 @@ export function ProviderModelGroup({
   state: ProviderPickerState;
   isActiveProvider: boolean;
   activeModel: string | null;
+  /** Engine-reported configured model for a catalog-less provider (the local one). */
+  runtimeModelId?: string;
   onSelect: (provider: string, model: string) => void;
   showSeparator: boolean;
 }) {
   const { t } = useTranslation("chat");
   const connected = state === "connected";
   // The local OpenAI-compatible provider has no static catalog — its single
-  // model id lives in the runtime. When it's the active provider, synthesize a
-  // one-item list from the active model so it shows (and stays checked) instead
-  // of rendering an empty group. When it isn't active we don't know the model,
-  // so skip the group rather than show a dangling header.
-  const displayModels =
-    provider.models.length > 0
-      ? provider.models
-      : isActiveProvider && activeModel
-        ? [
-            {
-              id: activeModel,
-              label: activeModel,
-              description: provider.subtitle,
-            },
-          ]
-        : [];
+  // model id is whatever the user's server serves, reported by the engine
+  // (`runtimeModelId`). `pickerModelRows` surfaces it as a one-item list so it
+  // shows and is selectable whenever connected, even before it's the active
+  // provider; the group is skipped when there's nothing to show.
+  const catalogless = provider.models.length === 0;
+  const displayModels = pickerModelRows(
+    provider.models,
+    runtimeModelId,
+    provider.subtitle,
+  );
   if (displayModels.length === 0) return null;
   return (
     <>
@@ -76,7 +73,10 @@ export function ProviderModelGroup({
         )}
       </DropdownMenuLabel>
       {displayModels.map((m) => {
-        const isActive = isActiveProvider && m.id === activeModel;
+        // A catalog-less provider has one model, so it's "active" whenever that
+        // provider is active (the chat's stored model id may be empty for it).
+        const isActive =
+          isActiveProvider && (catalogless || m.id === activeModel);
         return (
           <DropdownMenuItem
             key={m.id}

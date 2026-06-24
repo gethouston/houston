@@ -404,6 +404,13 @@ export interface ProviderStatus {
   /** Absolute path to the CLI binary that will be spawned, or `null`
    *  when `installSource === "missing"`. Useful for diagnostics UI. */
   cliPath: string | null;
+  /**
+   * The provider's currently-configured model id, when the engine reports one.
+   * Carries the OpenAI-compatible (local) provider's user-supplied model — which
+   * is dynamic and absent from the static frontend catalog — so the model picker
+   * can show + select it. Absent for providers whose models live in the catalog.
+   */
+  activeModel?: string;
 }
 
 export interface PreferenceValue {

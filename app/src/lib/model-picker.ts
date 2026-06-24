@@ -72,3 +72,31 @@ export function shouldShowProviderInPicker(opts: {
   if (state === "checking") return true;
   return state === "connected";
 }
+
+/** A model row rendered under a provider in the chat picker. */
+export interface PickerModelRow {
+  id: string;
+  label: string;
+  description: string;
+}
+
+/**
+ * The model rows to render under a provider in the chat picker.
+ *
+ * A catalogued provider shows its static catalog. A catalog-less provider — the
+ * local OpenAI-compatible one, whose model is user-supplied and reported by the
+ * engine, not the static catalog — shows that single `runtimeModelId`, or
+ * nothing when the engine hasn't reported one yet (so the caller skips the group
+ * rather than render a dangling, empty header). This is what makes a local model
+ * connected from Settings appear + be selectable in the chat picker.
+ */
+export function pickerModelRows(
+  catalogModels: readonly PickerModelRow[],
+  runtimeModelId: string | undefined,
+  subtitle: string,
+): PickerModelRow[] {
+  if (catalogModels.length > 0) return [...catalogModels];
+  return runtimeModelId
+    ? [{ id: runtimeModelId, label: runtimeModelId, description: subtitle }]
+    : [];
+}
