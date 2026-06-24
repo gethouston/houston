@@ -7,7 +7,7 @@ import {
   type KnownProvider,
   type Model,
 } from "@earendil-works/pi-ai";
-import { authStorage } from "../auth/storage";
+import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
 
 /**
@@ -160,9 +160,9 @@ export function pickActiveProvider(
  * card rather than silently switching.
  */
 export function activeProvider(): ProviderId | null {
-  const authed = PROVIDERS.filter((p) => authStorage.hasAuth(p.id)).map(
-    (p) => p.id,
-  );
+  const authed = PROVIDERS.filter((p) =>
+    providerConnected(authStorage, p.id),
+  ).map((p) => p.id);
   return pickActiveProvider(loadSettings().activeProvider, authed);
 }
 
@@ -219,7 +219,7 @@ export function listProviders() {
   return PROVIDERS.map((p) => ({
     id: p.id,
     name: p.name,
-    configured: authStorage.hasAuth(p.id),
+    configured: providerConnected(authStorage, p.id),
     isActive: p.id === active,
     activeModel: modelFor(p.id),
     models: safeModelIds(p.id),
