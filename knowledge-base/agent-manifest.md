@@ -240,10 +240,20 @@ Notes:
   built-in (no adapter, no CLI), so it's registry entries only across the same
   runtime + host catalogs. Login is a GitHub **device-code** flow; its pi-ai
   login opens with an optional "GitHub Enterprise URL/domain" prompt that
-  `login.ts` `autoPromptAnswer()` auto-answers `""` (⇒ github.com, individual
-  Copilot) to avoid a deadlock. Curated models proxy Claude/GPT/Gemini under one
+  `login.ts` `autoPromptAnswer(provider, domain?)` answers programmatically
+  (`""` ⇒ github.com for individual, or the company domain for Enterprise) to
+  avoid a deadlock. Curated models proxy Claude/GPT/Gemini under one
   subscription, using pi-ai's DOTTED Copilot ids (`claude-sonnet-4.6`, not the
   native `claude-sonnet-4-6`). LOCAL-only (cloud egress isn't allowlisted).
+- _[NEW ENGINE only]_ **GitHub Copilot Enterprise** (company-provided Copilot) is
+  NOT a separate card — pi has one Copilot provider/slot, so the SINGLE
+  `github-copilot` card's connect opens a **Personal vs Company** dialog
+  (`provider-copilot-connect-dialog.tsx` via `useCopilotConnect`). Company collects
+  the firm's GitHub domain and threads it as a non-secret `enterpriseUrl` through
+  the credential path + central refresh (so refresh hits
+  `api.<domain>/copilot_internal/v2/token`); Personal passes no domain (github.com).
+  One card + one slot means no per-card status disambiguation. Full design:
+  `convergence/README.md`.
 
 ### Reasoning effort
 

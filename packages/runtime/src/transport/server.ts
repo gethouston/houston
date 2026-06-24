@@ -95,7 +95,10 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // Connect-once: the control plane reads this right after a device-code connect to
   // capture the credential into the workspace's central store. {} when not connected.
   if (method === "GET" && path === "/auth/export") {
-    return json(res, 200, exportCredential() ?? {});
+    // Provider-specific: capture asks for the just-connected provider so it never
+    // exports a different OAuth credential that happens to come first in auth.json.
+    const provider = url.searchParams.get("provider") || undefined;
+    return json(res, 200, exportCredential(provider) ?? {});
   }
   // Gate #2 (connect-once): the control plane calls this right after capture so
   // this sandbox stops holding the user's refresh token. Idempotent.
@@ -128,7 +131,15 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         // selects Codex's browser/loopback login; default true keeps the
         // device-code path for remote webapp clients.
         const deviceAuth = url.searchParams.get("deviceAuth") !== "false";
-        return json(res, 200, await startLogin(provider, deviceAuth));
+        // GitHub Copilot Enterprise: the company GitHub domain the user typed on
+        // the Enterprise connect card. Empty/absent = individual Copilot.
+        const enterpriseDomain =
+          url.searchParams.get("enterpriseDomain") || undefined;
+        return json(
+          res,
+          200,
+          await startLogin(provider, deviceAuth, enterpriseDomain),
+        );
       }
       if (action === "login/complete") {
         const { code } = await readJson(req);

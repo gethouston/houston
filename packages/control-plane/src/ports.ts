@@ -144,8 +144,13 @@ export interface RuntimeChannel {
   ): Promise<void>;
   /** Tear down the agent's runtime-side state (volume / object prefix) before record deletion. */
   teardown(ctx: ChannelCtx): Promise<void>;
-  /** Connect-once: pull/confirm the workspace credential after the user connects. */
-  captureCredential(ctx: ChannelCtx): Promise<CaptureResult>;
+  /**
+   * Connect-once: pull/confirm the workspace credential after the user connects.
+   * `provider` (the just-connected provider id) makes capture provider-specific —
+   * without it the runtime exports whichever OAuth credential comes first, which
+   * can store the wrong provider and leave the intended one un-served per turn.
+   */
+  captureCredential(ctx: ChannelCtx, provider?: string): Promise<CaptureResult>;
   /**
    * Connect-once for an API-key provider (OpenCode Zen / Go): store the pasted
    * key centrally for the workspace. No OAuth dance, nothing to refresh or scrub.
@@ -189,6 +194,13 @@ export interface WorkspaceCredential {
   accountId?: string;
   /** Credential kind. Absent is read as "oauth" (every legacy credential). */
   kind?: "oauth" | "api_key";
+  /**
+   * GitHub Copilot Enterprise (GHE): the company GitHub domain (e.g.
+   * `acme.ghe.com`) this credential was issued for. Absent = individual Copilot
+   * (github.com). The central refresh hits `api.<domain>/copilot_internal/v2/token`,
+   * and it's served back so the runtime points the model at the enterprise API.
+   */
+  enterpriseUrl?: string;
 }
 
 /** A credential is an API key when explicitly tagged, or by the expiresAt=0 sentinel. */

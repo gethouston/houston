@@ -191,6 +191,10 @@ async function execTurn(
   let assistantText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
+  // Set when pi surfaces a model/provider failure as a terminal `error` frame
+  // (see toWire) instead of throwing — prompt() still resolves, so the turn must
+  // NOT also emit a clean `done` on top of the already-published error.
+  let turnError = false;
 
   const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
     const wire = toWire(e);
@@ -201,7 +205,7 @@ async function execTurn(
     else if (wire.type === "tool_end") {
       const t = tools[tools.length - 1];
       if (t) t.isError = wire.data.isError;
-    }
+    } else if (wire.type === "error") turnError = true;
     publish(id, wire);
   });
 
@@ -263,8 +267,18 @@ async function execTurn(
       if (level) conv.session.setThinkingLevel(level);
     }
     await conv.session.prompt(text);
-    appendAssistantMessage(id, assistantText, tools, usage);
-    publish(id, { type: "done", data: null });
+    if (turnError) {
+      // pi reported a model/provider failure through the stream (already
+      // published as an `error` frame by the subscriber above), NOT a thrown
+      // exception. Persist any partial assistant text — exactly as the catch
+      // path does — and skip `done`, which would settle the chat as a clean
+      // success on top of the error.
+      if (assistantText)
+        appendAssistantMessage(id, assistantText, tools, usage, providerSwitch);
+    } else {
+      appendAssistantMessage(id, assistantText, tools, usage);
+      publish(id, { type: "done", data: null });
+    }
   } catch (err) {
     if (assistantText)
       appendAssistantMessage(id, assistantText, tools, usage, providerSwitch);

@@ -47,6 +47,14 @@ export interface ProviderAuth {
   name: string;
   configured: boolean;
   login: LoginState | null;
+  /**
+   * For a connected `github-copilot` credential, the GitHub Copilot Enterprise
+   * domain it was issued for (e.g. `acme.ghe.com`), or null for individual
+   * Copilot. Lets the connect UI tell the "GitHub Copilot Enterprise" card apart
+   * from the individual one — both are the same engine provider, distinguished
+   * only by this domain. Absent/null for every other provider.
+   */
+  enterpriseUrl?: string | null;
 }
 
 export interface AuthStatus {
