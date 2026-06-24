@@ -116,11 +116,11 @@
     "heading": "Houston, we have a problem",
     "body": "Your {{provider}} session expired. Sign in again to keep your agents running.",
     "waiting": "Waiting for browser sign-in...",
-    "signInWith": "Sign in with {{provider}}"
+    "signInWith": "Sign in"
   },
   "providerReconnect": {
     "title": "Session expired",
-    "body": "Your {{provider}} connection ended, this happens from time to time. Sign back in and you're good to go.",
+    "body": "Your {{provider}} session expired. Sign in again to continue.",
     "reconnect": "Reconnect to {{provider}}",
     "waiting": "Waiting for browser sign-in...",
     "tryAgain": "Try again",

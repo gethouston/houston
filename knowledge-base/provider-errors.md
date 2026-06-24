@@ -96,6 +96,10 @@ Resist if `Unknown` covers it. If you must:
 3. Add a renderer file under
    `app/src/components/shell/provider-error-cards/<group>.tsx`. Pick
    the group by recovery shape (transient, auth, quota, terminal).
+   Single-action / provider-branded variants (e.g. `UnauthenticatedCard`,
+   `RateLimitedCard`) render via the shared `RowCard` (logo-left; see
+   design-system.md); multi-button variants stay on `ErrorCard`
+   (icon-bubble) in `shared.tsx`.
 4. Add a `case` in `provider-error-card.tsx`'s dispatcher.
 5. Update this doc's table.
 6. Add the classifier(s) that produce the new variant.

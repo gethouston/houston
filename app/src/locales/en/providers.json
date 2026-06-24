@@ -17,7 +17,7 @@
   "setup": {
     "installHint": "Install the {{cli}} CLI on your machine. Houston will pick it up automatically.",
     "installGuide": "Install guide",
-    "signInWith": "Sign in with {{provider}}",
+    "signInWith": "Sign in",
     "waiting": "Waiting for the sign-in to finish in your browser...",
     "cancelWaiting": "Cancel and try again",
     "installedCheckAgain": "Already installed? Check again"

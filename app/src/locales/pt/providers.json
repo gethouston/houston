@@ -17,7 +17,7 @@
   "setup": {
     "installHint": "Instale a CLI {{cli}} no seu computador. Houston detecta sozinho.",
     "installGuide": "Guia de instalação",
-    "signInWith": "Entrar com {{provider}}",
+    "signInWith": "Entrar",
     "waiting": "Esperando você terminar o login no navegador...",
     "cancelWaiting": "Cancelar e tentar de novo",
     "installedCheckAgain": "Já está instalado? Verificar de novo"
