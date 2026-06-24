@@ -120,7 +120,7 @@ export function ProviderReconnectCard({
     ? t("shell:providerReconnect.launchError")
     : loginLaunched
       ? t("shell:providerReconnect.waiting")
-      : t("shell:providerReconnect.body", { provider: provider.subtitle });
+      : t("shell:providerReconnect.body", { provider: provider.name });
 
   return (
     <div className="w-full px-1 py-2">
