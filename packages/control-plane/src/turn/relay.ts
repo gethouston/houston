@@ -110,7 +110,7 @@ export class TurnRelay {
         // Same verbatim string the runtime emits on a user stop, so the web
         // adapter renders both as a neutral "you stopped it" (not a red error).
         const message = ctrl.signal.aborted
-          ? "Stopped by you."
+          ? "Stopped by user"
           : err instanceof Error
             ? err.message
             : String(err);

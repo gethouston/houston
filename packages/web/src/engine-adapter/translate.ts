@@ -47,7 +47,7 @@ export function isNotConnectedError(message: string): boolean {
  * but settles the card back to the user (needs_you), never the red error state.
  */
 export function isStoppedByUser(message: string): boolean {
-  return message.includes("Stopped by you");
+  return message.includes("Stopped by user");
 }
 
 function feed(agentPath: string, sessionKey: string, item: unknown): void {

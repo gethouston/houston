@@ -51,7 +51,7 @@ test("isNotConnectedError matches every runtime 'no provider connected' variant"
 
 test("isStoppedByUser matches the verbatim stop message from the runtime + relay", () => {
   // The exact string the runtime's cancelTurn and the relay's abort path emit.
-  expect(isStoppedByUser("Stopped by you.")).toBe(true);
+  expect(isStoppedByUser("Stopped by user")).toBe(true);
   // A real failure is never mistaken for an intentional stop.
   expect(isStoppedByUser("upstream exploded")).toBe(false);
   expect(isStoppedByUser("rate limit exceeded")).toBe(false);

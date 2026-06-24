@@ -376,7 +376,7 @@ export async function cancelTurn(id: string): Promise<boolean> {
  * emits the same string on abort, and the web adapter matches it (isStoppedByUser)
  * to settle the chat as an intentional stop — back to the user, never a red error.
  */
-export const STOPPED_BY_USER = "Stopped by you.";
+export const STOPPED_BY_USER = "Stopped by user";
 
 /**
  * Drop a conversation's live session (aborting any in-flight turn) and, when
