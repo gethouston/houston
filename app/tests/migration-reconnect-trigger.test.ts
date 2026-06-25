@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { shouldShowMigrationReconnect } from "./migration-reconnect-trigger.ts";
+import { shouldShowMigrationReconnect } from "../src/hooks/migration-reconnect-trigger.ts";
 
 // The "show" case: a migrated user, on the new engine, with no provider and no
 // prior dismissal, once every signal has resolved.

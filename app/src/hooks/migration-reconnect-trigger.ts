@@ -1,7 +1,7 @@
 /**
  * Pure trigger logic for the one-time post-migration "reconnect your AI"
  * moment, kept free of React + engine imports so it is unit-testable directly
- * (see `use-migration-reconnect.test.mjs`). The hook in
+ * (see `app/tests/migration-reconnect-trigger.test.ts`). The hook in
  * `use-migration-reconnect.ts` gathers the signals and delegates the decision
  * here.
  */
