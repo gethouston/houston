@@ -10,6 +10,7 @@ import { buildLocalHost } from "./host";
  * banner for {port, token}, exactly as it parses the runtime's today.
  *
  * Config (env, all optional):
+ *   HOUSTON_HOME              ~/.houston (base for the three paths below)
  *   HOUSTON_WORKSPACES_ROOT   ~/.houston/workspaces
  *   HOUSTON_CREDENTIALS_PATH  ~/.houston/credentials.json
  *   HOUSTON_CHAT_HISTORY_DB   ~/.houston/db/houston.db (Rust-era chat to migrate)
@@ -49,7 +50,7 @@ function runtimeCommand(): string[] {
   return ["bun", "run", runtimeMain];
 }
 
-const houstonHome = join(homedir(), ".houston");
+const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
 const host = buildLocalHost({
   workspacesRoot:
     process.env.HOUSTON_WORKSPACES_ROOT || join(houstonHome, "workspaces"),

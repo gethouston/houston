@@ -1,9 +1,6 @@
-# The per-agent pi-runtime image (packages/runtime/Dockerfile) builds with the repo
-# ROOT as its context, because the runtime declares @houston/runtime-client via
-# `file:../runtime-client` and the frozen install needs that sibling on disk.
-# This trims the context tar to roughly what the Dockerfile actually COPYs.
-# (Every other Docker build in the repo uses the .dockerignore at ITS OWN context
-# root; this file only applies to root-context builds.)
+# Root-context Docker builds (selfhost/Dockerfile, packages/runtime/Dockerfile,
+# packages/control-plane/Dockerfile) need sibling packages on disk for `file:`
+# deps. Keep dev artifacts out of the context while preserving source trees.
 **/node_modules
 .git
 **/target

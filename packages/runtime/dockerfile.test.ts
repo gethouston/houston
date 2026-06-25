@@ -1,13 +1,13 @@
 import { expect, test } from "bun:test";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 /**
  * Contract test for the per-agent pi-runtime container image
- * (packages/runtime/Dockerfile + .dockerignore).
+ * (packages/runtime/Dockerfile + Dockerfile.dockerignore + docker-compose.yml).
  *
  * We cannot run `docker build` here (no daemon), so instead we assert the
- * Dockerfile encodes the SAME contract the engine source actually depends on:
+ * Dockerfile encodes the SAME contract the runtime source actually depends on:
  * the port it binds, the env vars config.ts reads, the entrypoint, the health
  * route the server serves, and the sibling `file:` dependency. If the engine
  * drifts (e.g. someone renames HOUSTON_WORKSPACE_DIR or moves /health), these
@@ -18,7 +18,11 @@ import { join } from "node:path";
 const ENGINE = import.meta.dir;
 
 const dockerfile = readFileSync(join(ENGINE, "Dockerfile"), "utf8");
-const dockerignore = readFileSync(join(ENGINE, ".dockerignore"), "utf8");
+const dockerignore = readFileSync(
+  join(ENGINE, "Dockerfile.dockerignore"),
+  "utf8",
+);
+const compose = readFileSync(join(ENGINE, "docker-compose.yml"), "utf8");
 const engineConfig = readFileSync(join(ENGINE, "src", "config.ts"), "utf8");
 const engineServer = readFileSync(
   join(ENGINE, "src", "transport", "server.ts"),
@@ -28,8 +32,9 @@ const enginePkg = JSON.parse(
   readFileSync(join(ENGINE, "package.json"), "utf8"),
 ) as { dependencies?: Record<string, string> };
 
-test("uses a slim Bun base image", () => {
-  expect(dockerfile).toMatch(/^FROM oven\/bun:[^\s]+slim/m);
+test("uses the pinned Bun Debian base image", () => {
+  expect(dockerfile).toMatch(/^FROM oven\/bun:1\.3-debian AS deps/m);
+  expect(dockerfile).toMatch(/^FROM oven\/bun:1\.3-debian AS runtime/m);
 });
 
 test("binds 0.0.0.0 on the engine port 4317", () => {
@@ -44,11 +49,16 @@ test("binds 0.0.0.0 on the engine port 4317", () => {
 
 test("sets the data + workspace mount env vars config.ts reads", () => {
   // Whatever env names config.ts consumes, the Dockerfile must set the same.
-  expect(engineConfig).toContain("HOUSTON_HOME");
+  expect(engineConfig).toContain("HOUSTON_DATA_DIR");
   expect(engineConfig).toContain("HOUSTON_WORKSPACE_DIR");
 
-  expect(dockerfile).toContain("HOUSTON_HOME=/data");
+  expect(dockerfile).toContain("HOUSTON_DATA_DIR=/data");
   expect(dockerfile).toContain("HOUSTON_WORKSPACE_DIR=/data/workspace");
+});
+
+test("installs common shell tools for the agent", () => {
+  expect(dockerfile).toContain("apt-get install -y --no-install-recommends");
+  expect(dockerfile).toContain("git python3 ca-certificates");
 });
 
 test("installs deps from the frozen lockfile", () => {
@@ -69,6 +79,19 @@ test("runs the engine entrypoint via bun", () => {
   expect(dockerfile).toMatch(/CMD \["bun", "run", "src\/main\.ts"\]/);
 });
 
+test("compose builds the canonical runtime image from the repo root", () => {
+  expect(compose).toContain("context: ../..");
+  expect(compose).toContain("dockerfile: packages/runtime/Dockerfile");
+  expect(compose).toContain("image: houston/pi-runtime:local");
+  expect(compose).not.toContain("Dockerfile.standalone");
+  expect(compose).not.toContain("Dockerfile.compiled");
+});
+
+test("does not keep alternate runtime Docker images", () => {
+  expect(existsSync(join(ENGINE, "Dockerfile.standalone"))).toBe(false);
+  expect(existsSync(join(ENGINE, "Dockerfile.compiled"))).toBe(false);
+});
+
 test("HEALTHCHECK targets the /health route the server serves", () => {
   // The server only treats /health as a public, unauthenticated liveness route.
   expect(engineServer).toContain('path === "/health"');
@@ -87,9 +110,10 @@ test("runs as a non-root user", () => {
 });
 
 test(".dockerignore excludes the heavy / non-shipping paths", () => {
-  for (const pat of ["node_modules/", ".git/", "spike/", "*.md", "*.log"]) {
+  for (const pat of ["**/node_modules", ".git", "**/target", "*.log"]) {
     expect(dockerignore).toContain(pat);
   }
-  // Tests are never run in the image.
-  expect(dockerignore).toMatch(/\*\.test\.ts/);
+  expect(dockerignore).toContain("engine/");
+  expect(dockerignore).toContain("selfhost/");
+  expect(dockerignore).toContain("packages/control-plane/");
 });

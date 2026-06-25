@@ -45,8 +45,8 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-The first build compiles the host + runtime (a few minutes). Caddy then gets a
-Let's Encrypt cert for `HOUSTON_DOMAIN`. When it's up:
+The first build installs the host + runtime dependencies (a few minutes). Caddy
+then gets a Let's Encrypt cert for `HOUSTON_DOMAIN`. When it's up:
 
 ```sh
 curl https://$HOUSTON_DOMAIN/engine/health        # → {"status":"ok"}  (public, no token)
@@ -63,14 +63,14 @@ The engine is the backend; you point a Houston frontend at it.
 **Option A — the desktop app.** In a flag-gated desktop build, set the engine URL
 to `https://$HOUSTON_DOMAIN/engine` and the token to your `HOUSTON_HOST_TOKEN`.
 
-**Option B — serve the web app from the same domain (turnkey).** Build the SPA
-and drop it next to the proxy; Caddy serves it at `/` and proxies the engine at
-`/engine` (one origin, so no CORS, no mixed content):
+**Option B — serve the web app from the same domain.** Build the SPA and drop it
+next to the proxy; Caddy serves it at `/` and proxies the engine at `/engine`
+(one origin, so no CORS, no mixed content):
 
 ```sh
 # from the repo root
 VITE_NEW_ENGINE=1 pnpm --filter houston-web build
-cp -r packages/web/dist/* selfhost/web/
+mkdir -p selfhost/web && cp -R packages/web/dist/. selfhost/web/
 docker compose restart caddy
 ```
 

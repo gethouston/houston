@@ -103,7 +103,8 @@ It adds three `host_sidecar`-gated jobs (macOS universal, Windows x64+arm64,
 Linux x86_64) that all bun-compile the host via the one parameterized
 `scripts/build-host-sidecar.sh <triple>` — no second compile path to drift. The
 Linux job is binary-only (`--verify` boots it) since there's no Linux desktop
-build; it validates the binary the `selfhost/` server runs.
+build; it validates the Linux host-sidecar artifact. The Docker `selfhost/` image
+remains the Bun-runtime source path, not this compiled sidecar.
 
 ## Standing decisions
 
