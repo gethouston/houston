@@ -11,7 +11,11 @@ import {
   setApiKey,
   startLogin,
 } from "../auth/login";
-import { exportCredential, scrubRefreshTokens } from "../auth/serve";
+import {
+  exportCredential,
+  scrubRefreshTokens,
+  syncServedCredential,
+} from "../auth/serve";
 import { config } from "../config";
 import { snapshot, subscribe } from "../session/bus";
 import {
@@ -90,6 +94,18 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
 
   // --- Auth (subscription OAuth: anthropic = Claude, openai-codex = Codex) ---
   if (method === "GET" && path === "/auth/status") {
+    // Connect-once: in serve mode the workspace's connected providers live in the
+    // control plane's central store, not yet in a freshly-woken sandbox's
+    // auth.json. Reporting from auth.json alone showed a brand-new agent's model
+    // picker as all "Not connected" until its first turn ran the per-turn sync
+    // (HOU-573). Hydrate here too so the picker reflects connect-once immediately.
+    // Best-effort: a transient control-plane blip leaves the last-synced auth.json
+    // in place, and a genuinely-unconnected workspace still reports not-connected.
+    try {
+      await syncServedCredential();
+    } catch (e) {
+      console.error("[auth] status credential sync failed:", e);
+    }
     return json(res, 200, getAuthStatus());
   }
   // Connect-once: the control plane reads this right after a device-code connect to
