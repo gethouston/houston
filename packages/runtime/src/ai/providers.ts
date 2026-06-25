@@ -241,7 +241,10 @@ export function setSettings(input: {
  * Rather than hard-fail the turn, fall back to the provider's catalog default
  * and emit a diagnostic (beta no-silent-failure: the user still gets a turn AND
  * the swap is logged for the bug tail). A pinned `override` (routine model) is
- * the one exception kept verbatim — a bad pin SHOULD surface as the turn error.
+ * the one exception NOT auto-corrected, but it IS validated: an unavailable pin
+ * throws a clean "model not available" Error (pi-ai's getModel returns
+ * `undefined` rather than throwing) so the turn fails with a readable reason
+ * instead of a downstream TypeError.
  */
 export function safeGetModel(
   provider: string,
@@ -250,7 +253,15 @@ export function safeGetModel(
 ) {
   const pp = provider as KnownProvider;
   const mp = modelId as Parameters<typeof getModel>[1];
-  if (pinned) return getModel(pp, mp);
+  if (pinned) {
+    // pi-ai's getModel returns `undefined` (it never throws) for an id the
+    // provider doesn't offer. A pinned id is NOT auto-corrected, but it must
+    // still be validated here: returning undefined would crash the turn
+    // downstream with a raw `Cannot read properties of undefined` TypeError.
+    const m = getModel(pp, mp);
+    if (!m) throw new Error(`${provider} model "${modelId}" is not available`);
+    return m;
+  }
   const offered = safeModelIds(provider as ProviderId);
   // Open-catalog gateways (opencode/opencode-go) return [] from getModels but
   // accept arbitrary ids — only guard when we actually have a catalog to check.
@@ -279,8 +290,8 @@ export function resolveModel(override?: string | null): Model<Api> {
     throw new Error("No provider connected. Connect an AI provider first.");
   // The OpenAI-compatible (local) provider isn't a pi KnownProvider, so its
   // model is hand-built rather than fetched from a catalog. Every other provider
-  // goes through safeGetModel, which keeps a pinned id verbatim (a bad pin
-  // surfaces as the turn's error) but falls a stale SAVED id back to the
+  // goes through safeGetModel, which validates a pinned id (a bad pin throws a
+  // clean "model not available" error) but falls a stale SAVED id back to the
   // provider default rather than hard-failing the turn.
   if (provider === OPENAI_COMPATIBLE)
     return buildActiveCustomModel(override || undefined);
