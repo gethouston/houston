@@ -13,14 +13,22 @@
  *
  * The Rust engine has the equivalent `spawn_parent_watchdog`; this is its host
  * counterpart. Windows does NOT get EOF on `TerminateProcess`, so there the
- * supervisor binds the host to a kill-on-close Job Object instead — this
- * watchdog is a no-op when stdin is a TTY (a plain `bun run`, self-host, tests).
+ * supervisor binds the host to a kill-on-close Job Object instead. The watchdog
+ * arms ONLY when the supervisor sets `HOUSTON_SUPERVISED=1`; a plain `bun run`,
+ * the self-host Docker image, and tests leave it unset, so they never arm.
  */
 export interface ParentWatchdogOptions {
   /** Stdin-like stream to watch. Default `process.stdin`. Injectable for tests. */
   stdin?: NodeJS.ReadStream;
-  /** Whether stdin is a TTY (interactive) — then we do NOT watch. */
-  isTty?: boolean;
+  /**
+   * Whether we were spawned by the desktop supervisor that holds our stdin pipe
+   * open until the app dies. Default: the `HOUSTON_SUPERVISED=1` marker the
+   * supervisor injects (`app/src-tauri/src/engine_supervisor.rs`). Injectable for
+   * tests. Only when this is set is there a real parent pipe whose EOF means
+   * "app gone"; everything else (self-host Docker, `bun run`, tests) leaves it
+   * unset and the watchdog stays inert.
+   */
+  supervised?: boolean;
   /** Run on parent-death (EOF). Should kill child runtimes, then resolve. */
   onParentExit: () => void | Promise<void>;
   /** Process exit. Injectable for tests; defaults to process.exit. */
@@ -30,18 +38,24 @@ export interface ParentWatchdogOptions {
 
 /**
  * Watch stdin for EOF and tear the host down when the supervising parent dies.
- * No-op (returns without arming) when stdin is a TTY — there is no supervisor to
- * watch and reading would steal interactive input. Returns whether it armed, so
- * the caller / tests can assert.
+ * No-op (returns without arming) unless `HOUSTON_SUPERVISED=1` — only the desktop
+ * supervisor holds a pipe whose EOF means "app gone". Returns whether it armed,
+ * so the caller / tests can assert.
  */
 export function installParentWatchdog(opts: ParentWatchdogOptions): boolean {
   const stdin = opts.stdin ?? process.stdin;
-  const isTty = opts.isTty ?? stdin.isTTY === true;
+  const supervised = opts.supervised ?? process.env.HOUSTON_SUPERVISED === "1";
   const exit = opts.exit ?? ((code: number) => process.exit(code));
   const log = opts.log ?? console.error;
 
-  // Interactive shell (or no real stdin) → no supervisor pipe to watch.
-  if (isTty) return false;
+  // Arm ONLY on the supervisor's positive marker. A bare `!isTTY` heuristic (the
+  // original) could not tell an open supervisor pipe (desktop — must arm) from a
+  // closed/`/dev/null` stdin (self-host Docker `bun run` without `-i` — must NOT
+  // arm). The latter delivers EOF immediately, so arming there fired teardown +
+  // exit(0) at boot and `restart: unless-stopped` crash-looped the container,
+  // never serving a request (HOU-582). Self-host, plain `bun run`, and tests
+  // leave HOUSTON_SUPERVISED unset, so they never arm.
+  if (!supervised) return false;
 
   let fired = false;
   const teardown = async () => {

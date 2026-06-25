@@ -96,6 +96,8 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
 // Unix orphan-prevention: when the Tauri app is FORCE-QUIT or crashes it sends
 // no signal, but the OS closes the write-end of our piped stdin. Watch for that
 // EOF and tear down (killing every runtime) so a hard app exit never orphans the
-// host + its runtimes. No-op under a TTY (plain `bun run`, self-host, tests);
-// Windows force-quit is covered by the supervisor's kill-on-close Job Object.
+// host + its runtimes. Arms ONLY when the supervisor set `HOUSTON_SUPERVISED=1`
+// (its default signal); self-host Docker, plain `bun run`, and tests leave it
+// unset and stay inert. Windows force-quit is covered by the supervisor's
+// kill-on-close Job Object.
 installParentWatchdog({ onParentExit: () => host.stop() });
