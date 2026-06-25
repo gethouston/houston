@@ -168,6 +168,30 @@ Every agent shows the same five tabs. The list lives in `app/src/agents/standard
 
 ---
 
+## Run With Docker
+
+Use `selfhost/` to run Houston behind HTTPS on a VPS. Docker builds one
+Bun-based host image that spawns the pi runtime in-container, plus Caddy for TLS.
+The web UI is a static build served by Caddy from `selfhost/web`.
+
+```bash
+git clone https://github.com/gethouston/houston-web
+cd houston-web
+pnpm install
+VITE_NEW_ENGINE=1 pnpm --filter houston-web build
+mkdir -p selfhost/web && cp -R packages/web/dist/. selfhost/web/
+cd selfhost
+cp .env.example .env          # set HOUSTON_DOMAIN and HOUSTON_HOST_TOKEN
+docker compose up -d --build
+docker compose logs -f
+```
+
+Full guide, including desktop and web clients for local or remote Docker engines:
+[`selfhost/README.md`](selfhost/README.md). The lower-level runtime image lives
+at `packages/runtime/Dockerfile`; it is not the full app.
+
+---
+
 ## Monorepo layout
 
 Organized as **5 end-user products + the code libraries**.
