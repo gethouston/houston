@@ -10,7 +10,7 @@ import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 /**
  * The pi auth.json entry shape per provider. Two variants, matching pi's own
  * `AuthCredential` union: an OAuth token (Claude / Codex subscriptions) or a
- * plain API key (OpenCode Zen / Go — pasted, never expires, no refresh).
+ * plain API key (pasted, never expires, no refresh).
  */
 export type PiCred =
   | {

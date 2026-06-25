@@ -209,7 +209,7 @@ test("scrub is idempotent and a missing auth.json is a no-op", () => {
   expect(scrubRefreshTokensAt(path)).toEqual([]); // already clean
 });
 
-// --- API-key providers (openrouter, google) ---
+// --- API-key providers (openrouter, google, amazon-bedrock) ---
 
 test("a served api-key credential is written as pi's api_key shape", () => {
   const path = freshAuthPath();
@@ -244,6 +244,7 @@ test("scrub leaves api-key entries untouched (no refresh token to strip)", () =>
       },
       openrouter: { type: "api_key", key: "sk-or-v1-KEEP" },
       google: { type: "api_key", key: "AIza-KEEP" },
+      "amazon-bedrock": { type: "api_key", key: "bedrock-KEEP" },
     }),
   );
   // Only the OAuth provider is scrubbed; the api-key entries are reported as
@@ -256,4 +257,8 @@ test("scrub leaves api-key entries untouched (no refresh token to strip)", () =>
   expect(auth["openai-codex"]?.refresh).toBe("");
   expect(auth.openrouter).toEqual({ type: "api_key", key: "sk-or-v1-KEEP" });
   expect(auth.google).toEqual({ type: "api_key", key: "AIza-KEEP" });
+  expect(auth["amazon-bedrock"]).toEqual({
+    type: "api_key",
+    key: "bedrock-KEEP",
+  });
 });

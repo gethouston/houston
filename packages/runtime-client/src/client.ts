@@ -142,7 +142,7 @@ export class HoustonEngineClient {
     });
   }
   /**
-   * Store a pasted API key for an api-key provider (OpenCode Zen / Go). No OAuth
+   * Store a pasted API key for an api-key provider. No OAuth
    * dance: the key is persisted and used directly for the provider's built-in
    * OpenAI-compatible gateway.
    */

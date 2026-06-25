@@ -10,7 +10,13 @@ import { hostProvider, isApiKeyProvider, isCloudProvider } from "./providers";
  */
 
 test("every api-key provider the UI offers is accepted by the submit route", () => {
-  for (const id of ["opencode", "opencode-go", "openrouter", "google"]) {
+  for (const id of [
+    "opencode",
+    "opencode-go",
+    "openrouter",
+    "google",
+    "amazon-bedrock",
+  ]) {
     expect(isApiKeyProvider(id)).toBe(true);
   }
 });
@@ -30,11 +36,13 @@ test("github-copilot is a registered OAuth provider, LOCAL-only (not cloud)", ()
   expect(isCloudProvider("github-copilot")).toBe(false);
 });
 
-test("OpenRouter + Gemini are registered but LOCAL-only (cloud egress not allowlisted)", () => {
+test("OpenRouter, Gemini, and Bedrock are registered but LOCAL-only", () => {
   expect(hostProvider("openrouter")?.auth).toBe("apiKey");
   expect(hostProvider("google")?.auth).toBe("apiKey");
+  expect(hostProvider("amazon-bedrock")?.auth).toBe("apiKey");
   expect(isCloudProvider("openrouter")).toBe(false);
   expect(isCloudProvider("google")).toBe(false);
+  expect(isCloudProvider("amazon-bedrock")).toBe(false);
 });
 
 test("openai-compatible is registered, NOT api-key, and LOCAL-only", () => {

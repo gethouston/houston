@@ -247,7 +247,7 @@ export async function handleAgents(
     return true;
   }
 
-  // Connect an API-key provider (OpenCode Zen / Go): the user pastes a key, no
+  // Connect an API-key provider: the user pastes a key, no
   // OAuth dance. Stored centrally for the whole workspace (and pushed into the
   // standing runtime so it reads as connected at once). Must precede dispatch.
   const apiKey = path.match(/^\/agents\/([^/]+)\/credential\/api-key$/);

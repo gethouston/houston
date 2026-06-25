@@ -107,6 +107,18 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         }),
       ),
     ).toEqual({ activeProvider: "github-copilot", model: "claude-opus-4.8" });
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({
+          provider: "amazon-bedrock",
+          model: "amazon.nova-pro-v1:0",
+        }),
+      ),
+    ).toEqual({
+      activeProvider: "amazon-bedrock",
+      model: "amazon.nova-pro-v1:0",
+    });
   });
 
   test("sets activeProvider even when no model is given (provider switch)", () => {

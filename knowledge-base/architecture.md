@@ -9,7 +9,7 @@ ONE deployment-agnostic server — the **host** (`packages/control-plane`, becom
 - **Desktop** = the host booted with local adapters (FS store/vfs, subprocess pi launcher, single-user identity, FS watcher → events), spawned by the Tauri shell as a Bun-compiled sidecar (`--features host-sidecar`).
 - **Cloud** = the same host with cloud adapters (Postgres, GCS, GKE/Cloud-Run launcher, Supabase identity, Redis bus). Per-turn Cloud Run: hydrate → run one pi turn → sync → wipe.
 - **Self-host** = the local host in Docker behind Caddy TLS (`selfhost/`).
-- **Providers** are in-process in pi (Anthropic + OpenAI/Codex OAuth). **No provider CLIs.** Gemini dropped.
+- **Providers** are in-process in pi: Anthropic + OpenAI/Codex + GitHub Copilot OAuth, plus API-key providers OpenCode Zen/Go, OpenRouter, Google Gemini, and Amazon Bedrock. **No provider CLIs.** Bedrock uses pi-ai's native `amazon-bedrock` provider; Houston maps the stored key to Bedrock's `bearerToken` request option in `packages/runtime/src/ai/bedrock.ts`.
 - **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/control-plane/src/integrations/`), each user's own free account, no CLI.
 - **Drift prevention** = port contract suites + the dual-profile parity test (`packages/control-plane/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`.
 - **Cut:** mobile/tunnel/relay, worktrees, store/marketplace, claude-CLI install. Single personal workspace (teams later).

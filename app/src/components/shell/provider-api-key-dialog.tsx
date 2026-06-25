@@ -14,7 +14,7 @@ import type { ProviderInfo } from "../../lib/providers";
 import { tauriProvider, tauriSystem } from "../../lib/tauri";
 
 /**
- * Connect dialog for API-key providers (OpenCode Zen / Go). Unlike the OAuth
+ * Connect dialog for API-key providers. Unlike the OAuth
  * providers, these have no browser sign-in: the user pastes a key. A prominent
  * "Get your API key" button opens the provider's dashboard (`apiKeyUrl`) so a
  * non-technical user can create or copy a key in one click, then paste it here.

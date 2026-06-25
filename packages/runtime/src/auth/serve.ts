@@ -85,7 +85,7 @@ export function scrubRefreshTokens(): string[] {
 /**
  * Pull the workspace's central credentials from the control plane into auth.json
  * (access token / API key only). A workspace can have one credential per provider
- * (e.g. Codex AND OpenCode), so this syncs EVERY known provider and applies each
+ * (e.g. Codex AND Bedrock), so this syncs EVERY known provider and applies each
  * that the host serves — hydrating a fresh or just-woken runtime no matter which
  * provider the next turn uses. Returns the providers that were applied; an empty
  * result means the workspace hasn't connected anything yet.

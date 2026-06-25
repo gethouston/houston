@@ -1,6 +1,7 @@
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
+import { AmazonBedrockLogo } from "./amazon-bedrock-logo";
 import {
   ClaudeLogo,
   GeminiLogo,
@@ -23,6 +24,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <OpenRouterLogo />;
     case "google":
       return <GeminiLogo />;
+    case "amazon-bedrock":
+      return <AmazonBedrockLogo />;
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo />;
