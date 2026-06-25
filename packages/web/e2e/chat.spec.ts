@@ -28,3 +28,36 @@ test("sends a message and renders the streamed reply", async ({ page }) => {
     timeout: 15_000,
   });
 });
+
+/** Sending with the composer's Submit button, not the Enter key. */
+test("sends a message with the Submit button", async ({ page }) => {
+  await page.goto("/");
+  await page.locator('[data-tour-target="newMission"]').click();
+
+  await page
+    .getByPlaceholder("What should the agent work on?")
+    .fill("water the plants");
+  await page.getByRole("button", { name: "Submit" }).click();
+
+  await expect(page.getByText("water the plants").first()).toBeVisible();
+  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
+    timeout: 15_000,
+  });
+});
+
+/** Replying inside an EXISTING mission (the follow-up composer), not a new one. */
+test("sends a follow-up inside an existing mission", async ({ page }) => {
+  await page.goto("/");
+
+  await page.getByText("Plan a trip to Tokyo").click();
+  const composer = page.getByPlaceholder("Send a follow-up...");
+  await expect(composer).toBeVisible();
+
+  await composer.fill("what about the budget?");
+  await composer.press("Enter");
+
+  await expect(page.getByText("what about the budget?").first()).toBeVisible();
+  await expect(page.getByText(/Roger that\. You said:/)).toBeVisible({
+    timeout: 15_000,
+  });
+});
