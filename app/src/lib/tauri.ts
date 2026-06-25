@@ -12,6 +12,7 @@
  */
 
 import type {
+  CustomEndpoint,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
   ProviderAuthState,
@@ -580,6 +581,12 @@ export interface ProviderStatus {
   auth_state: ProviderAuthState;
   authenticated: boolean;
   cli_name: string;
+  /**
+   * The provider's configured model id, when the engine reports one — carries
+   * the OpenAI-compatible (local) provider's dynamic, catalog-less model so the
+   * chat model picker can show + select it. Absent for catalog-backed providers.
+   */
+  active_model?: string;
 }
 
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
@@ -596,6 +603,7 @@ export const tauriProvider = {
         auth_state: p.authState,
         authenticated: p.authState === "authenticated",
         cli_name: p.cliName,
+        active_model: p.activeModel,
       };
     }),
   getDefault: () =>
@@ -711,6 +719,15 @@ export const tauriProvider = {
   setApiKey: (provider: string, apiKey: string) =>
     call<void>("set_provider_api_key", () =>
       getEngine().setProviderApiKey(provider, apiKey),
+    ),
+  /**
+   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
+   * runs themselves (Ollama / vLLM / LM Studio). Desktop + new-engine only — the
+   * connect UI shows it only then (see `getVisibleProviders`).
+   */
+  setCustomEndpoint: (endpoint: CustomEndpoint) =>
+    call<void>("set_provider_custom_endpoint", () =>
+      getEngine().setProviderCustomEndpoint(endpoint),
     ),
 };
 

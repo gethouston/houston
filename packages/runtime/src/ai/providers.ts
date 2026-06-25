@@ -9,13 +9,22 @@ import {
 } from "@earendil-works/pi-ai";
 import { authStorage, providerConnected } from "../auth/storage";
 import { config } from "../config";
+import {
+  buildActiveCustomModel,
+  customEndpointConfigured,
+  customModelId,
+  OPENAI_COMPATIBLE,
+  setCustomModelId,
+} from "./openai-compatible";
 
 /**
  * Supported providers. The provider id is the SAME string pi-ai uses for its
  * model provider, so a stored credential under `id` authenticates
  * `getModel(id, ...)` directly — whether that credential is an OAuth token
  * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go, which
- * pi exposes as built-in OpenAI-compatible gateways).
+ * pi exposes as built-in OpenAI-compatible gateways). The OpenAI-compatible
+ * (local) provider is the exception — its model is hand-built (see
+ * `./openai-compatible`), not fetched from a pi catalog.
  */
 export type ProviderId =
   | "anthropic"
@@ -24,10 +33,18 @@ export type ProviderId =
   | "opencode"
   | "opencode-go"
   | "openrouter"
-  | "google";
+  | "google"
+  | "openai-compatible";
 
-/** How a provider authenticates: a subscription OAuth flow, or a pasted API key. */
-export type ProviderAuthMethod = "oauth" | "apiKey";
+/**
+ * How a provider authenticates:
+ * - `oauth` — subscription sign-in (Claude / Codex / Copilot).
+ * - `apiKey` — a pasted key for a built-in pi gateway (OpenCode / OpenRouter / Gemini).
+ * - `openaiCompatible` — a user-supplied base URL + model id (+ optional key) for a
+ *   local OpenAI-compatible server (Ollama / vLLM / LM Studio). LOCAL profile only:
+ *   the URL is the user's own machine, unreachable from a cloud runtime.
+ */
+export type ProviderAuthMethod = "oauth" | "apiKey" | "openaiCompatible";
 
 export const PROVIDERS: {
   id: ProviderId;
@@ -77,6 +94,14 @@ export const PROVIDERS: {
     defaultModel: config.geminiModel,
     auth: "apiKey",
   },
+  {
+    id: "openai-compatible",
+    name: "Local model (OpenAI-compatible)",
+    // No catalog default — the model id is whatever the user's server serves,
+    // stored on the endpoint config (settings.customModel), read by modelFor().
+    defaultModel: "",
+    auth: "openaiCompatible",
+  },
 ];
 
 /** A provider's auth method (defaults to OAuth for an unknown id). */
@@ -123,7 +148,20 @@ function defaultModel(provider: ProviderId): string {
 }
 
 export function modelFor(provider: ProviderId): string {
+  if (provider === OPENAI_COMPATIBLE) return customModelId();
   return loadSettings().models?.[provider] ?? defaultModel(provider);
+}
+
+/**
+ * Whether a provider is connected. For the OpenAI-compatible provider that means
+ * the endpoint (base URL + model) is configured — NOT merely that a key exists,
+ * since keyless local servers store only a placeholder key. Every other provider
+ * is "connected" iff it has a STORED credential (`providerConnected`, the HOU-557
+ * stored-only rule — env vars / overrides don't count and aren't logout-clearable).
+ */
+function providerConfigured(id: ProviderId): boolean {
+  if (id === OPENAI_COMPATIBLE) return customEndpointConfigured();
+  return providerConnected(authStorage, id);
 }
 
 /** The agent's saved reasoning effort for new turns, or null (model default). */
@@ -160,9 +198,11 @@ export function pickActiveProvider(
  * card rather than silently switching.
  */
 export function activeProvider(): ProviderId | null {
-  const authed = PROVIDERS.filter((p) =>
-    providerConnected(authStorage, p.id),
-  ).map((p) => p.id);
+  // `providerConfigured` over `providerConnected` so the OpenAI-compatible
+  // provider counts when its endpoint is set (it has only a placeholder key).
+  const authed = PROVIDERS.filter((p) => providerConfigured(p.id)).map(
+    (p) => p.id,
+  );
   return pickActiveProvider(loadSettings().activeProvider, authed);
 }
 
@@ -180,7 +220,11 @@ export function setSettings(input: {
   if (input.model) {
     const prov = (input.activeProvider as ProviderId) ?? s.activeProvider;
     if (!prov) throw new Error("set a provider before choosing a model");
-    s.models = { ...s.models, [prov]: input.model };
+    // The OpenAI-compatible model id lives on the endpoint config, not the
+    // per-provider model map — keep one source of truth so modelFor + the
+    // built model agree.
+    if (prov === OPENAI_COMPATIBLE) setCustomModelId(input.model);
+    else s.models = { ...s.models, [prov]: input.model };
   }
   if (input.effort) s.effort = input.effort;
   saveSettings(s);
@@ -191,22 +235,31 @@ export function setSettings(input: {
  * Resolve the pi-ai model for the active provider (used when starting a turn).
  * An optional `override` (a routine's pinned model) wins over the saved model;
  * `getModel` throws for an id the provider doesn't offer, so a bad pin surfaces
- * as the turn's error rather than silently falling back.
+ * as the turn's error rather than silently falling back. The OpenAI-compatible
+ * provider isn't a pi KnownProvider, so it builds its model by hand instead.
  */
-export function resolveModel(override?: string | null) {
+export function resolveModel(override?: string | null): Model<Api> {
   const provider = activeProvider();
   if (!provider)
     throw new Error("No provider connected. Connect an AI provider first.");
+  if (provider === OPENAI_COMPATIBLE)
+    return buildActiveCustomModel(override || undefined);
   // ProviderId is a subset of KnownProvider; modelId is a runtime string the
   // caller controls. Cast to getModel's declared model-id param type. getModel
   // throws at runtime if the id is not offered by the provider.
   return getModel(
     provider as KnownProvider,
     (override || modelFor(provider)) as Parameters<typeof getModel>[1],
-  );
+  ) as Model<Api>;
 }
 
 function safeModelIds(provider: ProviderId): string[] {
+  // The OpenAI-compatible provider has no pi catalog; its only "model" is the
+  // single one the user configured on the endpoint.
+  if (provider === OPENAI_COMPATIBLE) {
+    const m = customModelId();
+    return m ? [m] : [];
+  }
   try {
     return getModels(provider as KnownProvider).map((m: Model<Api>) => m.id);
   } catch {
@@ -219,7 +272,7 @@ export function listProviders() {
   return PROVIDERS.map((p) => ({
     id: p.id,
     name: p.name,
-    configured: providerConnected(authStorage, p.id),
+    configured: providerConfigured(p.id),
     isActive: p.id === active,
     activeModel: modelFor(p.id),
     models: safeModelIds(p.id),

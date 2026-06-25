@@ -42,6 +42,7 @@ class SpyChannel implements RuntimeChannel {
   }
   async forgetCredential() {}
   async saveApiKeyCredential() {}
+  async saveCustomEndpoint() {}
 }
 
 const CAPS: Capabilities = {
@@ -51,6 +52,7 @@ const CAPS: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  openaiCompatible: false,
   integrations: [],
 };
 

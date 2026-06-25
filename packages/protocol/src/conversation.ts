@@ -11,6 +11,9 @@
  * - `github-copilot` = GitHub Copilot (subscription OAuth, GitHub device-code flow)
  * - `openrouter` = OpenRouter, `google` = Google Gemini, `opencode` = OpenCode Zen,
  *   `opencode-go` = OpenCode Go: API-key (a pasted key, no OAuth). See `ProviderAuth.authKind`.
+ * - `openai-compatible` = any OpenAI-compatible server the user runs (Ollama, vLLM,
+ *   LM Studio, LiteLLM…): a user-supplied base URL + model id, optional key. LOCAL
+ *   profile only — the URL is the user's own machine, unreachable from the cloud.
  */
 export type ProviderId =
   | "anthropic"
@@ -19,7 +22,8 @@ export type ProviderId =
   | "openrouter"
   | "google"
   | "opencode"
-  | "opencode-go";
+  | "opencode-go"
+  | "openai-compatible";
 
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 
@@ -70,6 +74,24 @@ export interface ProviderInfo {
   isActive: boolean;
   activeModel: string;
   models: string[];
+}
+
+/**
+ * The OpenAI-compatible (local) endpoint a user connects: a base URL pointing at
+ * their own server (Ollama / vLLM / LM Studio) plus the model id it serves. The
+ * key is optional — keyless local servers ignore it. LOCAL profile only.
+ */
+export interface CustomEndpoint {
+  baseUrl: string;
+  model: string;
+  /** Friendly label for the picker; defaults to the model id. */
+  name?: string;
+  /** Assumed context window (tokens); defaults to the runtime's configured value. */
+  contextWindow?: number;
+  /** Whether to send `reasoning_effort` (only set for a reasoning-capable model). */
+  reasoning?: boolean;
+  /** Optional API key; blank for keyless servers. */
+  apiKey?: string;
 }
 
 export interface Settings {

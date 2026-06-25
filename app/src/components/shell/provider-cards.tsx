@@ -6,6 +6,7 @@ import {
   DeepSeekLogo,
   GeminiLogo,
   GitHubCopilotLogo,
+  LocalModelLogo,
   MiniMaxLogo,
   OpenAILogo,
   OpenCodeLogo,
@@ -32,6 +33,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo />;
+    case "openai-compatible":
+      return <LocalModelLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">

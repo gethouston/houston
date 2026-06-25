@@ -60,6 +60,15 @@ export const config = {
   opencodeModel: env.HOUSTON_OPENCODE_MODEL || "claude-sonnet-4-6",
   /** Default OpenCode Go model ($10/mo open-model gateway, API key). */
   opencodeGoModel: env.HOUSTON_OPENCODE_GO_MODEL || "glm-5.1",
+  /**
+   * Assumed context window (tokens) for an OpenAI-compatible (local) model when
+   * the user doesn't specify one. Local servers (Ollama/vLLM/LM Studio) don't
+   * advertise a window pi can read, so this is the denominator the context
+   * indicator starts with; the user can override it per endpoint.
+   */
+  openaiCompatibleContextWindow: Number(
+    env.HOUSTON_OPENAI_COMPATIBLE_CONTEXT_WINDOW || 32768,
+  ),
 
   /**
    * Override for the skills directory. Default is <workspace>/.agents/skills —

@@ -251,22 +251,40 @@ test("EFFORT_ORDER is the full ascending spectrum and a superset of every model'
   }
 });
 
-test("getVisibleProviders hides api-key providers off the new engine, shows them on it", () => {
-  const onNewEngine = getVisibleProviders({ newEngine: true });
+test("getVisibleProviders gates api-key (new engine) and local (desktop) providers", () => {
+  const onNewEngineDesktop = getVisibleProviders({
+    newEngine: true,
+    desktop: true,
+  });
+  const onNewEngineWeb = getVisibleProviders({ newEngine: true });
   const onRustEngine = getVisibleProviders({ newEngine: false });
 
-  // New engine: every catalog provider is visible.
-  assert.equal(onNewEngine.length, PROVIDERS.length);
-  assert.ok(onNewEngine.some((p) => p.id === "opencode"));
-  assert.ok(onNewEngine.some((p) => p.id === "opencode-go"));
+  // New engine + desktop: every catalog provider is visible.
+  assert.equal(onNewEngineDesktop.length, PROVIDERS.length);
+  assert.ok(onNewEngineDesktop.some((p) => p.id === "opencode"));
+  assert.ok(onNewEngineDesktop.some((p) => p.id === "opencode-go"));
+  assert.ok(onNewEngineDesktop.some((p) => p.id === "openai-compatible"));
 
-  // Rust engine: api-key providers are filtered out, OAuth ones stay.
+  // New engine in the browser (no desktop): the api-key gateways show, but the
+  // local OpenAI-compatible provider is hidden — its base URL is the user's own
+  // machine, unreachable from a browser/cloud deployment.
+  assert.ok(onNewEngineWeb.some((p) => p.auth === "apiKey"));
+  assert.ok(!onNewEngineWeb.some((p) => p.id === "openai-compatible"));
+  assert.equal(
+    onNewEngineWeb.length,
+    PROVIDERS.filter((p) => p.auth !== "openaiCompatible").length,
+  );
+
+  // Rust engine: api-key AND local providers are filtered out, OAuth ones stay.
   assert.ok(!onRustEngine.some((p) => p.auth === "apiKey"));
+  assert.ok(!onRustEngine.some((p) => p.auth === "openaiCompatible"));
   assert.ok(onRustEngine.some((p) => p.id === "anthropic"));
   assert.ok(onRustEngine.some((p) => p.id === "openai"));
   assert.equal(
     onRustEngine.length,
-    PROVIDERS.filter((p) => p.auth !== "apiKey").length,
+    PROVIDERS.filter(
+      (p) => p.auth !== "apiKey" && p.auth !== "openaiCompatible",
+    ).length,
   );
 });
 

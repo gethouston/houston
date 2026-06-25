@@ -1,4 +1,8 @@
-import { HoustonEngineClient, type ProviderId } from "@houston/runtime-client";
+import {
+  type CustomEndpoint,
+  HoustonEngineClient,
+  type ProviderId,
+} from "@houston/runtime-client";
 import type {
   Activity,
   ActivityUpdate,
@@ -624,13 +628,19 @@ export class HoustonClient {
   async providerStatus(name: string): Promise<ProviderStatus> {
     const pid = toNewProvider(name);
     let configured = false;
+    let activeModel: string | undefined;
     if (pid) {
       try {
         const engine = this.providerEngine();
         if (engine) {
-          const s = await engine.authStatus();
-          configured =
-            s.providers.find((p) => p.provider === pid)?.configured ?? false;
+          // listProviders (not authStatus) so we also learn the configured
+          // model id — the OpenAI-compatible provider's model is dynamic and
+          // absent from the static catalog, so the picker has no other source.
+          // `configured` here matches authStatus for credential providers and
+          // is endpoint-aware for the local one.
+          const p = (await engine.listProviders()).find((x) => x.id === pid);
+          configured = p?.configured ?? false;
+          activeModel = p?.activeModel || undefined;
         }
       } catch {
         /* sandbox unreachable / no agent selected → report not-connected */
@@ -643,6 +653,7 @@ export class HoustonClient {
       cliName: name,
       installSource: "managed",
       cliPath: null,
+      activeModel,
     } as ProviderStatus;
   }
   // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
@@ -819,6 +830,32 @@ export class HoustonClient {
     }
     emitEvent("ProviderLoginComplete", {
       provider: name,
+      success: true,
+      error: null,
+    });
+  }
+
+  /**
+   * Connect an OpenAI-compatible (local) server: persist the base URL + model
+   * and make it active, then fire `ProviderLoginComplete` like the other connect
+   * paths. LOCAL/desktop only — in cloud the host refuses (the openaiCompatible
+   * capability is off), so the error surfaces to the dialog. Settings are
+   * PER-AGENT on the host, so activation MUST go through the agent's runtime
+   * client (mirrors setProviderApiKey).
+   */
+  async setProviderCustomEndpoint(endpoint: CustomEndpoint): Promise<void> {
+    if (this.cp) {
+      const agentId = this.requireAgentId();
+      await controlPlane.setCustomEndpoint(this.cp, agentId, endpoint);
+      await controlPlane
+        .runtimeClientFor(this.cp, agentId)
+        .setSettings({ activeProvider: "openai-compatible" });
+    } else {
+      await this.engine.setCustomEndpoint(endpoint);
+      await this.engine.setSettings({ activeProvider: "openai-compatible" });
+    }
+    emitEvent("ProviderLoginComplete", {
+      provider: "openai-compatible",
       success: true,
       error: null,
     });

@@ -36,3 +36,13 @@ test("OpenRouter + Gemini are registered but LOCAL-only (cloud egress not allowl
   expect(isCloudProvider("openrouter")).toBe(false);
   expect(isCloudProvider("google")).toBe(false);
 });
+
+test("openai-compatible is registered, NOT api-key, and LOCAL-only", () => {
+  // Its own auth method (base URL + model, not a pasted gateway key), so the
+  // api-key submit route must NOT accept it — it has a dedicated route gated on
+  // the deployment's openaiCompatible capability.
+  expect(hostProvider("openai-compatible")?.auth).toBe("openaiCompatible");
+  expect(isApiKeyProvider("openai-compatible")).toBe(false);
+  // Never offered by a cloud runtime: localhost is unreachable from the cloud.
+  expect(isCloudProvider("openai-compatible")).toBe(false);
+});

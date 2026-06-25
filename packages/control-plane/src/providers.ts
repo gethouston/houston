@@ -8,7 +8,7 @@ import type { ProviderId } from "@houston/protocol";
  * path doesn't use this: it relays the runtime's own /providers + /auth/* surface.
  */
 
-export type ProviderAuthMethod = "oauth" | "apiKey";
+export type ProviderAuthMethod = "oauth" | "apiKey" | "openaiCompatible";
 
 export interface HostProvider {
   id: ProviderId;
@@ -101,6 +101,16 @@ export const PROVIDERS: readonly HostProvider[] = [
       "gemini-2.5-pro",
     ],
     defaultModel: "gemini-3-flash-preview",
+  },
+  {
+    id: "openai-compatible",
+    name: "Local model (OpenAI-compatible)",
+    auth: "openaiCompatible",
+    // LOCAL profile ONLY: the base URL is the user's own machine (Ollama / vLLM
+    // / LM Studio), unreachable from a cloud runtime or pod. The host route gates
+    // it on the deployment's `openaiCompatible` capability. The runtime owns the
+    // full endpoint config (base URL + model); nothing is curated here.
+    cloud: false,
   },
 ];
 

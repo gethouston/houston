@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { CustomEndpoint } from "@houston/protocol";
 import type {
   Agent,
   AgentId,
@@ -162,6 +163,14 @@ export interface RuntimeChannel {
     provider: string,
     apiKey: string,
   ): Promise<void>;
+  /**
+   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
+   * runs themselves (Ollama / vLLM / LM Studio). Unlike the credential providers
+   * this is NOT stored centrally — the URL points at the user's own machine, so
+   * a standing-runtime channel just persists the endpoint in the runtime it
+   * supervises. A per-turn / cloud channel rejects it (local profile only).
+   */
+  saveCustomEndpoint(ctx: ChannelCtx, endpoint: CustomEndpoint): Promise<void>;
   /**
    * Connect-once logout: forget the workspace's central credential for a provider
    * so no future turn can re-serve it. The inverse of captureCredential — clearing

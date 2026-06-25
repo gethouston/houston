@@ -12,6 +12,7 @@ export type {
   ChatRole,
   ConversationHistory,
   ConversationSummary,
+  CustomEndpoint,
   LoginInfo,
   LoginState,
   LoginStatus,

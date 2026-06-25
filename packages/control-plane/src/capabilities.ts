@@ -23,6 +23,8 @@ export const LOCAL_CAPABILITIES: Capabilities = {
   tunnel: false,
   codeExecution: "local-bash",
   providers: ["anthropic", "openai-codex"],
+  // The user's own machine can reach a local LLM server (Ollama/vLLM/LM Studio).
+  openaiCompatible: true,
   // Composio ("for you" — each user's own free account) works in every
   // deployment; the same host code, gated on this flag, not a fork.
   integrations: ["composio"],
@@ -36,5 +38,7 @@ export const CLOUD_CAPABILITIES: Capabilities = {
   tunnel: false,
   codeExecution: "remote-sandbox",
   providers: ["openai-codex"],
+  // A cloud runtime can't reach a server on the user's own machine.
+  openaiCompatible: false,
   integrations: ["composio"],
 };

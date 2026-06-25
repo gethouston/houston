@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { CustomEndpoint } from "@houston/protocol";
 import type {
   CaptureResult,
   ChannelCtx,
@@ -245,6 +246,35 @@ export class ProxyChannel implements RuntimeChannel {
     if (!res.ok) {
       throw new Error(
         `key stored, but the agent runtime did not accept it (${res.status}) — try connecting again`,
+      );
+    }
+  }
+
+  /**
+   * Persist an OpenAI-compatible (local) endpoint in the standing runtime. The
+   * base URL is the user's own machine, so there's nothing to store centrally —
+   * the runtime owns it (settings.json + a key in auth.json). On the desktop this
+   * proxy reaches the local subprocess; the runtime persists it across restarts.
+   */
+  async saveCustomEndpoint(
+    ctx: ChannelCtx,
+    endpoint: CustomEndpoint,
+  ): Promise<void> {
+    const rt = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(`${rt.baseUrl}/providers/openai-compatible`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${rt.token}`,
+      },
+      body: JSON.stringify(endpoint),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(
+        `the local model could not be connected (${res.status})${
+          detail ? `: ${detail}` : ""
+        }`,
       );
     }
   }

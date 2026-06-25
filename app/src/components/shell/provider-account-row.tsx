@@ -5,6 +5,7 @@ import {
   ClaudeLogo,
   GeminiLogo,
   GitHubCopilotLogo,
+  LocalModelLogo,
   OpenAILogo,
   OpenCodeLogo,
   OpenRouterLogo,
@@ -25,6 +26,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo />;
+    case "openai-compatible":
+      return <LocalModelLogo />;
     default:
       return (
         <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
