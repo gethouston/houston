@@ -12,6 +12,7 @@
  */
 
 import type {
+  CustomEndpoint,
   ProviderStatus as EngineProviderStatus,
   GenerateInstructionsResult,
   ProviderAuthState,
@@ -580,6 +581,12 @@ export interface ProviderStatus {
   auth_state: ProviderAuthState;
   authenticated: boolean;
   cli_name: string;
+  /**
+   * The provider's configured model id, when the engine reports one — carries
+   * the OpenAI-compatible (local) provider's dynamic, catalog-less model so the
+   * chat model picker can show + select it. Absent for catalog-backed providers.
+   */
+  active_model?: string;
 }
 
 const DEFAULT_PROVIDER_PREF_KEY = "default_provider";
@@ -596,6 +603,7 @@ export const tauriProvider = {
         auth_state: p.authState,
         authenticated: p.authState === "authenticated",
         cli_name: p.cliName,
+        active_model: p.activeModel,
       };
     }),
   getDefault: () =>
@@ -648,18 +656,21 @@ export const tauriProvider = {
     }),
   launchLogin: (
     provider: string,
-    opts?: { deviceAuth?: boolean; toast?: boolean },
+    opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },
   ) =>
     // `deviceAuth` declares whether the client can catch a loopback OAuth
     // callback. Default it from the platform: the co-located desktop CAN
     // (false → Codex browser/loopback login), a remote webapp can't (true →
     // device code). Callers may still override. Centralized here so every
     // entry point (picker, settings, reconnect card, banner) agrees.
+    // `enterpriseDomain` (GitHub Copilot Enterprise) carries the company GitHub
+    // domain the user typed on the Enterprise card; absent for every other login.
     call<void>(
       "launch_provider_login",
       () =>
         getEngine().providerLogin(provider, {
           deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
+          enterpriseDomain: opts?.enterpriseDomain,
         }),
       undefined,
       // Callers that render their OWN failure toast (the picker, settings) pass
@@ -699,14 +710,24 @@ export const tauriProvider = {
       getEngine().cancelProviderLogin(provider),
     ),
   /**
-   * Connect an API-key provider (OpenCode Zen / Go): submit the pasted key. The
-   * new engine stores it for the workspace and the provider reads as connected
-   * (the adapter fires `ProviderLoginComplete`). New-engine only — the connect UI
-   * shows these providers only when `newEngineActive()`.
+   * Connect an API-key provider (OpenRouter, Google Gemini, OpenCode Zen / Go):
+   * submit the pasted key. The new engine stores it for the workspace and the
+   * provider reads as connected (the adapter fires `ProviderLoginComplete`).
+   * New-engine only — the connect UI shows these providers only when
+   * `newEngineActive()`.
    */
   setApiKey: (provider: string, apiKey: string) =>
     call<void>("set_provider_api_key", () =>
       getEngine().setProviderApiKey(provider, apiKey),
+    ),
+  /**
+   * Connect an OpenAI-compatible (local) server: a base URL + model id the user
+   * runs themselves (Ollama / vLLM / LM Studio). Desktop + new-engine only — the
+   * connect UI shows it only then (see `getVisibleProviders`).
+   */
+  setCustomEndpoint: (endpoint: CustomEndpoint) =>
+    call<void>("set_provider_custom_endpoint", () =>
+      getEngine().setProviderCustomEndpoint(endpoint),
     ),
 };
 

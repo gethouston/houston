@@ -85,7 +85,7 @@ test("cancel aborts the pump and reads as a cancelled-turn error", async () => {
   await drainTick();
   await drainTick();
   expect(seen).toEqual([
-    { type: "error", data: { message: "Turn cancelled" } },
+    { type: "error", data: { message: "Stopped by user" } },
   ]);
   expect(await relay.cancel("a1")).toBe(false); // nothing in flight anymore
 });
@@ -170,6 +170,6 @@ test("cancel from replica B aborts a turn owned by replica A", async () => {
   await drainTick();
   await drainTick();
   expect(seen).toEqual([
-    { type: "error", data: { message: "Turn cancelled" } },
+    { type: "error", data: { message: "Stopped by user" } },
   ]);
 });

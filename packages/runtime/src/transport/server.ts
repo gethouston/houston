@@ -9,6 +9,7 @@ import {
   getAuthStatus,
   logout,
   setApiKey,
+  setCustomEndpoint,
   startLogin,
 } from "../auth/login";
 import { exportCredential, scrubRefreshTokens } from "../auth/serve";
@@ -95,13 +96,43 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
   // Connect-once: the control plane reads this right after a device-code connect to
   // capture the credential into the workspace's central store. {} when not connected.
   if (method === "GET" && path === "/auth/export") {
-    return json(res, 200, exportCredential() ?? {});
+    // Provider-specific: capture asks for the just-connected provider so it never
+    // exports a different OAuth credential that happens to come first in auth.json.
+    const provider = url.searchParams.get("provider") || undefined;
+    return json(res, 200, exportCredential(provider) ?? {});
   }
   // Gate #2 (connect-once): the control plane calls this right after capture so
   // this sandbox stops holding the user's refresh token. Idempotent.
   if (method === "POST" && path === "/auth/scrub-refresh") {
     return json(res, 200, { ok: true, scrubbed: scrubRefreshTokens() });
   }
+  // OpenAI-compatible (local) connect: base URL + model + optional key. Persists
+  // the endpoint to settings and the (placeholder if blank) key to auth.json.
+  // LOCAL profile only — the host gates this route on its capability before it
+  // ever reaches a cloud runtime.
+  if (method === "POST" && path === "/providers/openai-compatible") {
+    try {
+      const body = await readJson(req);
+      setCustomEndpoint({
+        baseUrl: String(body.baseUrl || ""),
+        model: String(body.model || ""),
+        name: typeof body.name === "string" ? body.name : undefined,
+        contextWindow:
+          typeof body.contextWindow === "number"
+            ? body.contextWindow
+            : undefined,
+        reasoning:
+          typeof body.reasoning === "boolean" ? body.reasoning : undefined,
+        apiKey: typeof body.apiKey === "string" ? body.apiKey : undefined,
+      });
+      return json(res, 200, { ok: true });
+    } catch (e) {
+      return json(res, 400, {
+        error: e instanceof Error ? e.message : String(e),
+      });
+    }
+  }
+
   // API-key connect (OpenCode Zen / Go): the user pastes a key, no OAuth dance.
   const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
   if (method === "POST" && apiKeyMatch) {
@@ -128,7 +159,15 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
         // selects Codex's browser/loopback login; default true keeps the
         // device-code path for remote webapp clients.
         const deviceAuth = url.searchParams.get("deviceAuth") !== "false";
-        return json(res, 200, await startLogin(provider, deviceAuth));
+        // GitHub Copilot Enterprise: the company GitHub domain the user typed on
+        // the Enterprise connect card. Empty/absent = individual Copilot.
+        const enterpriseDomain =
+          url.searchParams.get("enterpriseDomain") || undefined;
+        return json(
+          res,
+          200,
+          await startLogin(provider, deviceAuth, enterpriseDomain),
+        );
       }
       if (action === "login/complete") {
         const { code } = await readJson(req);
@@ -220,8 +259,12 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
 
     if (method === "POST" && action === "cancel") {
-      await cancelTurn(id);
-      return json(res, 200, { ok: true });
+      // `cancelled` is the honest answer to "was there a live turn to stop?".
+      // A `false` (no cached conversation — e.g. after a restart) tells the
+      // client the turn is orphaned, so it can settle a stuck "running" card
+      // itself rather than waiting on a terminal event that will never come.
+      const cancelled = await cancelTurn(id);
+      return json(res, 200, { ok: true, cancelled });
     }
 
     // Generate + persist a short LLM title for the conversation.

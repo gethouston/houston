@@ -3,6 +3,7 @@ import type {
   Activity,
   ActivityUpdate,
   Agent,
+  CustomEndpoint,
   NewActivity,
   Routine,
   RoutineRun,
@@ -227,11 +228,15 @@ export async function deleteAgent(
 export async function captureCredential(
   cfg: ControlPlaneConfig,
   agentId: string,
+  provider?: string,
 ): Promise<void> {
   await cpFetch(
     cfg,
     `/agents/${encodeURIComponent(agentId)}/credential/capture`,
-    { method: "POST" },
+    {
+      method: "POST",
+      ...(provider ? { body: JSON.stringify({ provider }) } : {}),
+    },
   );
 }
 
@@ -273,6 +278,27 @@ export async function setApiKey(
     {
       method: "POST",
       body: JSON.stringify({ provider, apiKey }),
+    },
+  );
+}
+
+/**
+ * Connect an OpenAI-compatible (local) server: the host forwards the endpoint
+ * (base URL + model + optional key) to the agent's standing runtime, which
+ * persists it. LOCAL-only — a non-local deployment 400s on the openaiCompatible
+ * capability, and cpFetch throws the host's error message.
+ */
+export async function setCustomEndpoint(
+  cfg: ControlPlaneConfig,
+  agentId: string,
+  endpoint: CustomEndpoint,
+): Promise<void> {
+  await cpFetch(
+    cfg,
+    `/agents/${encodeURIComponent(agentId)}/provider/openai-compatible`,
+    {
+      method: "POST",
+      body: JSON.stringify(endpoint),
     },
   );
 }

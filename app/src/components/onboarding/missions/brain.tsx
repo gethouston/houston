@@ -27,6 +27,9 @@ import {
  * doesn't fit this mission's inline install/sign-in hint — the user connects
  * them in Settings or the chat provider picker instead.
  */
+// Onboarding connects the single Copilot card as Personal (github.com) — the
+// company / GitHub Enterprise plan choice lives in the picker/settings connect
+// dialog, not this quick first-run hint. Company Copilot is set up from Settings.
 const ONBOARDING_PROVIDERS = PROVIDERS.filter((p) => p.auth !== "apiKey");
 
 interface BrainMissionProps {
@@ -316,7 +319,7 @@ function SetupHint({
           }}
         >
           <ExternalLink className="size-3.5" />
-          {t("providers:setup.signInWith", { provider: provider.name })}
+          {t("providers:setup.signInWith")}
         </AsyncButton>
       )}
       {installed && loginLaunched && (

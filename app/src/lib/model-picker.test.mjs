@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  pickerModelRows,
   providerPickerState,
   shouldShowProviderInPicker,
 } from "./model-picker.ts";
@@ -34,7 +35,6 @@ test("shouldShowProviderInPicker: 'checking' keeps every provider visible (#342)
       providerId: "openai",
       state: "checking",
       isActiveProvider: false,
-      effectiveLock: null,
     }),
     true,
   );
@@ -46,7 +46,6 @@ test("shouldShowProviderInPicker: known-disconnected non-active providers are hi
       providerId: "openai",
       state: "disconnected",
       isActiveProvider: false,
-      effectiveLock: null,
     }),
     false,
   );
@@ -58,7 +57,6 @@ test("shouldShowProviderInPicker: connected non-active providers are shown", () 
       providerId: "openai",
       state: "connected",
       isActiveProvider: false,
-      effectiveLock: null,
     }),
     true,
   );
@@ -71,7 +69,6 @@ test("shouldShowProviderInPicker: the active provider is always shown", () => {
         providerId: "anthropic",
         state,
         isActiveProvider: true,
-        effectiveLock: null,
       }),
       true,
       `active provider should show while ${state}`,
@@ -79,35 +76,40 @@ test("shouldShowProviderInPicker: the active provider is always shown", () => {
   }
 });
 
-test("shouldShowProviderInPicker: a lock hides every other provider", () => {
-  // Non-locked provider hidden even when connected.
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "openai",
-      state: "connected",
-      isActiveProvider: false,
-      effectiveLock: "anthropic",
-    }),
-    false,
-  );
-  // The locked provider shows.
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "anthropic",
-      state: "connected",
-      isActiveProvider: true,
-      effectiveLock: "anthropic",
-    }),
-    true,
-  );
-  // A still-checking locked provider shows too (only it).
-  assert.equal(
-    shouldShowProviderInPicker({
-      providerId: "anthropic",
-      state: "checking",
-      isActiveProvider: true,
-      effectiveLock: "anthropic",
-    }),
-    true,
-  );
+test("shouldShowProviderInPicker: every connected provider stays selectable (no mid-conversation lock)", () => {
+  // The provider is never locked once a conversation starts: switching
+  // providers mid-stream is supported (the runtime continues the same
+  // conversation across providers).
+  for (const providerId of ["openai", "anthropic"]) {
+    assert.equal(
+      shouldShowProviderInPicker({
+        providerId,
+        state: "connected",
+        isActiveProvider: false,
+      }),
+      true,
+    );
+  }
+});
+
+test("pickerModelRows: a catalogued provider shows its catalog, ignoring the runtime model", () => {
+  const catalog = [
+    { id: "claude-sonnet-4-6", label: "Sonnet 4.6", description: "Balanced." },
+  ];
+  // A normal provider keeps its static catalog even if a runtime model is passed.
+  assert.deepEqual(pickerModelRows(catalog, "ignored", "sub"), catalog);
+});
+
+test("pickerModelRows: a catalog-less provider surfaces its engine-reported model", () => {
+  // The local OpenAI-compatible provider (empty catalog) shows the single model
+  // the engine reports — this is what makes it appear + be selectable in the
+  // chat picker after connecting from Settings.
+  assert.deepEqual(pickerModelRows([], "llama3.1", "Ollama, LM Studio…"), [
+    { id: "llama3.1", label: "llama3.1", description: "Ollama, LM Studio…" },
+  ]);
+});
+
+test("pickerModelRows: a catalog-less provider with no engine model shows nothing", () => {
+  // Nothing to show yet → empty, so the caller skips the group (no dangling header).
+  assert.deepEqual(pickerModelRows([], undefined, "sub"), []);
 });

@@ -18,10 +18,12 @@ import {
   tauriSystem,
 } from "../../lib/tauri";
 import { useUIStore } from "../../stores/ui";
+import { OpenAiCompatibleDialog } from "./openai-compatible-dialog";
 import { ProviderApiKeyDialog } from "./provider-api-key-dialog";
 import { ComingSoonCard, ProviderCard } from "./provider-cards";
 import { ProviderLoginDialog } from "./provider-login-dialog";
 import { shouldOpenLoginUrlDirectly } from "./provider-login-url";
+import { useCopilotConnect } from "./use-copilot-connect";
 
 interface Props {
   /** Current workspace provider id (used to push the new default after sign-in). */
@@ -50,12 +52,21 @@ export function ProviderPicker({ onSelect }: Props) {
   } | null>(null);
   // The paste-a-key dialog for API-key providers (OpenCode Zen / Go).
   const [apiKeyDialog, setApiKeyDialog] = useState<ProviderInfo | null>(null);
+  // GitHub Copilot's connect opens a Personal vs Company plan dialog.
+  const { begin: beginCopilot, dialog: copilotDialog } = useCopilotConnect();
+  // The base-URL + model dialog for an OpenAI-compatible (local) server.
+  const [customEndpointDialog, setCustomEndpointDialog] =
+    useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
 
   // API-key providers (OpenCode) run only on the new TS engine; hide them on the
   // Rust engine. Computed once — the engine doesn't change mid-session.
   const visibleProviders = useMemo(
-    () => getVisibleProviders({ newEngine: newEngineActive() }),
+    () =>
+      getVisibleProviders({
+        newEngine: newEngineActive(),
+        desktop: osIsTauri(),
+      }),
     [],
   );
 
@@ -80,7 +91,10 @@ export function ProviderPicker({ onSelect }: Props) {
         next[prov.id]?.cli_installed && next[prov.id]?.authenticated;
       if (!wasConnected && isConnected) {
         analytics.track("provider_configured", { provider: prov.id });
-        onSelect(prov.id, prov.defaultModel);
+        // Skip the auto-select when the catalog has no default model — the local
+        // OpenAI-compatible provider's model id is user-supplied, delivered by
+        // the connect dialog's onConnected callback, not a static default.
+        if (prov.defaultModel) onSelect(prov.id, prov.defaultModel);
       }
     }
     prevStatuses.current = next;
@@ -193,12 +207,12 @@ export function ProviderPicker({ onSelect }: Props) {
     return off;
   }, [addToast, loadStatuses, t]);
 
-  const handleConnect = async (provider: ProviderInfo) => {
-    // API-key providers (OpenCode) connect by pasting a key, not OAuth.
-    if (provider.auth === "apiKey") {
-      setApiKeyDialog(provider);
-      return;
-    }
+  // Start the OAuth device/loopback login for a provider. `enterpriseDomain` is
+  // set only when connecting GitHub Copilot Enterprise (from the domain dialog).
+  const startOAuthLogin = async (
+    provider: ProviderInfo,
+    enterpriseDomain?: string,
+  ) => {
     setPendingId(provider.id);
     try {
       // launchLogin defaults deviceAuth from the platform — desktop catches the
@@ -207,7 +221,10 @@ export function ProviderPicker({ onSelect }: Props) {
       // headless mode regardless.
       // `toast: false`: the catch below renders the provider-specific failure
       // toast, so `call` must not also toast the same message (it showed twice).
-      await tauriProvider.launchLogin(provider.id, { toast: false });
+      await tauriProvider.launchLogin(provider.id, {
+        toast: false,
+        enterpriseDomain,
+      });
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
@@ -221,6 +238,28 @@ export function ProviderPicker({ onSelect }: Props) {
       });
       setPendingId(null);
     }
+  };
+
+  const handleConnect = async (provider: ProviderInfo) => {
+    // API-key providers (OpenCode) connect by pasting a key, not OAuth.
+    if (provider.auth === "apiKey") {
+      setApiKeyDialog(provider);
+      return;
+    }
+    // OpenAI-compatible (local) servers connect by base URL + model.
+    if (provider.auth === "openaiCompatible") {
+      setCustomEndpointDialog(provider);
+      return;
+    }
+    // GitHub Copilot: open the Personal vs Company plan dialog first (Company
+    // collects the domain the device-code flow needs); the chosen plan resumes
+    // the login with the right domain. Every other OAuth provider connects
+    // straight away.
+    if (
+      beginCopilot(provider, (domain) => void startOAuthLogin(provider, domain))
+    )
+      return;
+    await startOAuthLogin(provider);
   };
 
   const handleCancel = async (provider: ProviderInfo) => {
@@ -334,6 +373,14 @@ export function ProviderPicker({ onSelect }: Props) {
       <ProviderApiKeyDialog
         provider={apiKeyDialog}
         onClose={() => setApiKeyDialog(null)}
+      />
+
+      {copilotDialog}
+
+      <OpenAiCompatibleDialog
+        provider={customEndpointDialog}
+        onConnected={(m) => onSelect("openai-compatible", m)}
+        onClose={() => setCustomEndpointDialog(null)}
       />
     </>
   );

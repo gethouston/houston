@@ -412,6 +412,13 @@ export interface ProviderStatus {
   /** Absolute path to the CLI binary that will be spawned, or `null`
    *  when `installSource === "missing"`. Useful for diagnostics UI. */
   cliPath: string | null;
+  /**
+   * The provider's currently-configured model id, when the engine reports one.
+   * Carries the OpenAI-compatible (local) provider's user-supplied model — which
+   * is dynamic and absent from the static frontend catalog — so the model picker
+   * can show + select it. Absent for providers whose models live in the catalog.
+   */
+  activeModel?: string;
 }
 
 export interface PreferenceValue {
@@ -951,3 +958,16 @@ export interface IntegrationConnection {
 export type IntegrationLoginResult =
   | { status: "pending" }
   | { status: "linked"; account?: { accountId: string; email?: string } };
+
+// ── OpenAI-compatible (local) provider ───────────────────────────────────────
+// A local LLM server the user runs (Ollama / vLLM / LM Studio), connected by
+// base URL + model id. New-engine + desktop only (the URL is the user's own
+// machine). The key is optional — keyless local servers ignore it.
+export interface CustomEndpoint {
+  baseUrl: string;
+  model: string;
+  name?: string;
+  contextWindow?: number;
+  reasoning?: boolean;
+  apiKey?: string;
+}

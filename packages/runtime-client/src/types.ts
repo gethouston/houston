@@ -6,15 +6,18 @@
  */
 
 export type {
+  AuthFailureCause,
   AuthStatus,
   ChatMessage,
   ChatRole,
   ConversationHistory,
   ConversationSummary,
+  CustomEndpoint,
   LoginInfo,
   LoginState,
   LoginStatus,
   ProviderAuth,
+  ProviderError,
   ProviderId,
   ProviderInfo,
   Settings,

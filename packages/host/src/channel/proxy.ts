@@ -1,4 +1,5 @@
 import type { IncomingMessage, ServerResponse } from "node:http";
+import type { CustomEndpoint } from "@houston/protocol";
 import type {
   CaptureResult,
   ChannelCtx,
@@ -118,9 +119,13 @@ export class ProxyChannel implements RuntimeChannel {
    * A scrub failure is security-relevant and surfaces — the connection itself
    * succeeded; reconnecting retries capture + scrub.
    */
-  async captureCredential(ctx: ChannelCtx): Promise<CaptureResult> {
+  async captureCredential(
+    ctx: ChannelCtx,
+    provider?: string,
+  ): Promise<CaptureResult> {
     const endpoint = await this.opts.launcher.ensureAwake(ctx.agent);
-    const exp = await fetch(`${endpoint.baseUrl}/auth/export`, {
+    const q = provider ? `?provider=${encodeURIComponent(provider)}` : "";
+    const exp = await fetch(`${endpoint.baseUrl}/auth/export${q}`, {
       headers: { Authorization: `Bearer ${endpoint.token}` },
     });
     if (!exp.ok) {
@@ -133,11 +138,32 @@ export class ProxyChannel implements RuntimeChannel {
     }
     const c = (await exp.json()) as {
       provider?: string;
+      kind?: "oauth" | "api_key";
       access?: string;
       refresh?: string;
       expires?: number;
+      key?: string;
       accountId?: string;
+      enterpriseUrl?: string;
     };
+
+    // API-key provider: store the key as a non-refreshing, non-expiring
+    // credential. Nothing to scrub (no refresh token ever sat in the sandbox).
+    if (c.kind === "api_key") {
+      if (!c.provider || !c.key) {
+        return { ok: false, status: 400, error: "agent is not connected yet" };
+      }
+      await this.opts.credentials.put({
+        workspaceId: ctx.agent.workspaceId,
+        provider: c.provider,
+        kind: "api_key",
+        accessToken: c.key,
+        refreshToken: "",
+        expiresAt: Number.MAX_SAFE_INTEGER,
+      });
+      return { ok: true, provider: c.provider };
+    }
+
     if (
       !c.provider ||
       !c.access ||
@@ -149,10 +175,14 @@ export class ProxyChannel implements RuntimeChannel {
     await this.opts.credentials.put({
       workspaceId: ctx.agent.workspaceId,
       provider: c.provider,
+      kind: "oauth",
       accessToken: c.access,
       refreshToken: c.refresh,
       accountId: c.accountId,
       expiresAt: c.expires,
+      // Copilot Enterprise domain, so the central refresh targets the company's
+      // GitHub. Absent for every other OAuth provider (and individual Copilot).
+      enterpriseUrl: c.enterpriseUrl,
     });
     const scrub = await fetch(`${endpoint.baseUrl}/auth/scrub-refresh`, {
       method: "POST",
@@ -216,6 +246,35 @@ export class ProxyChannel implements RuntimeChannel {
     if (!res.ok) {
       throw new Error(
         `key stored, but the agent runtime did not accept it (${res.status}) — try connecting again`,
+      );
+    }
+  }
+
+  /**
+   * Persist an OpenAI-compatible (local) endpoint in the standing runtime. The
+   * base URL is the user's own machine, so there's nothing to store centrally —
+   * the runtime owns it (settings.json + a key in auth.json). On the desktop this
+   * proxy reaches the local subprocess; the runtime persists it across restarts.
+   */
+  async saveCustomEndpoint(
+    ctx: ChannelCtx,
+    endpoint: CustomEndpoint,
+  ): Promise<void> {
+    const rt = await this.opts.launcher.ensureAwake(ctx.agent);
+    const res = await fetch(`${rt.baseUrl}/providers/openai-compatible`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        Authorization: `Bearer ${rt.token}`,
+      },
+      body: JSON.stringify(endpoint),
+    });
+    if (!res.ok) {
+      const detail = await res.text().catch(() => "");
+      throw new Error(
+        `the local model could not be connected (${res.status})${
+          detail ? `: ${detail}` : ""
+        }`,
       );
     }
   }

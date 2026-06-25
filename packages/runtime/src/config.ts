@@ -45,10 +45,30 @@ export const config = {
   model: env.HOUSTON_MODEL || "claude-sonnet-4-6",
   /** Default Codex model (ChatGPT subscription — the cloud's only provider). */
   codexModel: env.HOUSTON_CODEX_MODEL || "gpt-5.5",
+  /**
+   * Default GitHub Copilot model (subscription OAuth). A pi-ai `github-copilot`
+   * model id — note Copilot's ids use dots (`claude-sonnet-4.6`), unlike the
+   * native Anthropic provider's dashes (`claude-sonnet-4-6`).
+   */
+  githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "claude-sonnet-4.6",
+  /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
+  geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3-flash-preview",
+  /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
+  openrouterModel:
+    env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",
   /** Default OpenCode Zen model (pay-as-you-go curated gateway, API key). */
   opencodeModel: env.HOUSTON_OPENCODE_MODEL || "claude-sonnet-4-6",
   /** Default OpenCode Go model ($10/mo open-model gateway, API key). */
   opencodeGoModel: env.HOUSTON_OPENCODE_GO_MODEL || "glm-5.1",
+  /**
+   * Assumed context window (tokens) for an OpenAI-compatible (local) model when
+   * the user doesn't specify one. Local servers (Ollama/vLLM/LM Studio) don't
+   * advertise a window pi can read, so this is the denominator the context
+   * indicator starts with; the user can override it per endpoint.
+   */
+  openaiCompatibleContextWindow: Number(
+    env.HOUSTON_OPENAI_COMPATIBLE_CONTEXT_WINDOW || 32768,
+  ),
 
   /**
    * Override for the skills directory. Default is <workspace>/.agents/skills —

@@ -61,8 +61,16 @@ export class TurnChannel implements RuntimeChannel {
     await this.deps.vfs.deletePrefix(prefixFor(ctx.workspace, ctx.agent));
   }
 
-  async captureCredential(ctx: ChannelCtx): Promise<CaptureResult> {
-    const cred = await this.deps.credentials.get(ctx.workspace.id, PROVIDER);
+  async captureCredential(
+    ctx: ChannelCtx,
+    provider?: string,
+  ): Promise<CaptureResult> {
+    // Cloud connect-once already lands the credential centrally (turn/connect.ts);
+    // capture just confirms it. Cloud serves only the subscription provider.
+    const cred = await this.deps.credentials.get(
+      ctx.workspace.id,
+      provider || PROVIDER,
+    );
     return cred
       ? { ok: true, provider: cred.provider }
       : { ok: false, status: 400, error: "agent is not connected yet" };
@@ -90,5 +98,17 @@ export class TurnChannel implements RuntimeChannel {
       expiresAt: 0,
       kind: "api_key",
     });
+  }
+
+  /**
+   * OpenAI-compatible (local) servers are unreachable from the cloud per-turn
+   * runtime — its egress sandbox can't dial the user's localhost. The host route
+   * already refuses this on the `openaiCompatible` capability; this is the
+   * defense-in-depth backstop so a cloud channel never silently accepts one.
+   */
+  async saveCustomEndpoint(): Promise<void> {
+    throw new Error(
+      "Local models aren't available in the cloud — they run on your own machine. Use the desktop app.",
+    );
   }
 }

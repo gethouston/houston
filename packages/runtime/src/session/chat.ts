@@ -6,7 +6,12 @@ import {
   createAgentSession,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
-import type { TokenUsage, ToolCallRecord } from "@houston/runtime-client";
+import type {
+  ChatMessage,
+  ProviderError,
+  TokenUsage,
+  ToolCallRecord,
+} from "@houston/runtime-client";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { activeEffort, activeProvider, resolveModel } from "../ai/providers";
 import { syncServedCredential } from "../auth/serve";
@@ -76,7 +81,41 @@ const TOOLS = [
   ...(integrationTools.length ? INTEGRATION_TOOL_NAMES : []),
 ];
 
-type Conversation = { session: AgentSession; queue: Promise<unknown> };
+/**
+ * Headroom kept free when deciding whether the prior conversation can be carried
+ * VERBATIM into the new provider on a mid-session switch. If the leaving
+ * provider's last context fill is under this fraction of the new model's window,
+ * replay it as-is; at/above, compact it to fit first. Mirrors the frontend's
+ * REPLAY_FIT_FRACTION in `app/src/lib/provider-switch.ts`.
+ */
+const REPLAY_FIT_FRACTION = 0.8;
+
+/**
+ * Whether a mid-session PROVIDER switch must compact prior context to fit the
+ * new model's window before continuing. `preTokens` is the leaving provider's
+ * last context fill; `null` (never reported) is treated as "no proof it won't
+ * fit", so we replay rather than spend a summarizer call. At/under the fit
+ * fraction -> replay; over it -> compact. Pure, so the threshold is unit-tested
+ * without a live pi session.
+ */
+export function switchNeedsCompaction(
+  preTokens: number | null,
+  targetWindow: number,
+): boolean {
+  return preTokens != null && preTokens > targetWindow * REPLAY_FIT_FRACTION;
+}
+
+type Conversation = {
+  session: AgentSession;
+  queue: Promise<unknown>;
+  /**
+   * The provider/model the live session is currently pointed at. Tracked so a
+   * real mid-conversation switch can be detected — on the web the picker applies
+   * a switch via `setSettings`, which alone does NOT move the cached session.
+   */
+  provider: string;
+  model: string;
+};
 const conversations = new Map<string, Conversation>();
 
 const errMessage = (err: unknown) =>
@@ -100,10 +139,13 @@ async function getConversation(id: string): Promise<Conversation> {
     join(config.dataDir, "sessions", id),
   );
 
+  // The model the session is built with — recorded on the Conversation so a
+  // later turn can detect when the active provider/model changed under it.
+  const builtModel = resolveModel();
   const { session } = await createAgentSession({
     cwd: config.workspaceDir,
     agentDir: config.dataDir,
-    model: resolveModel(), // active provider's model (Claude or Codex)
+    model: builtModel, // active provider's model (Claude or Codex)
     authStorage,
     modelRegistry,
     sessionManager,
@@ -116,7 +158,12 @@ async function getConversation(id: string): Promise<Conversation> {
     ],
   });
 
-  const conv: Conversation = { session, queue: Promise.resolve() };
+  const conv: Conversation = {
+    session,
+    queue: Promise.resolve(),
+    provider: builtModel.provider,
+    model: builtModel.id,
+  };
   conversations.set(id, conv);
   return conv;
 }
@@ -145,6 +192,12 @@ async function execTurn(
   let assistantText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
+  // A typed provider failure for this turn. pi resolves the turn rather than
+  // throwing, so this arrives on the stream (a provider_error frame), not via the
+  // catch. Its presence is also the "the turn failed" signal: persist it on the
+  // assistant message (so the inline card survives a reload) AND skip the clean
+  // `done` that would settle the chat as a success on top of the error.
+  let providerError: ProviderError | undefined;
 
   const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
     const wire = toWire(e);
@@ -155,16 +208,53 @@ async function execTurn(
     else if (wire.type === "tool_end") {
       const t = tools[tools.length - 1];
       if (t) t.isError = wire.data.isError;
-    }
+    } else if (wire.type === "provider_error") providerError = wire.data;
     publish(id, wire);
   });
 
+  // Set inside the try when this turn crosses a provider boundary; declared out
+  // here so the error path can still persist the marker on the partial message.
+  let providerSwitch: ChatMessage["providerSwitch"];
   try {
-    // A routine can pin a model/effort for its run. Re-point the (possibly
-    // shared) session before prompting; pi clamps the thinking level to the
-    // model. A bad model id throws here → surfaces as the turn's error event.
+    // Resolve the model for THIS turn from current settings (a routine pin wins,
+    // else the workspace's active provider/model). Re-resolved every turn so a
+    // mid-conversation provider/model switch — which the web picker applies via
+    // setSettings, NOT a per-turn field — actually takes effect on the cached
+    // session instead of silently continuing on the model it was built with.
+    // A bad model id throws here → surfaces as the turn's error event.
     const model = resolveModel(pin?.model);
-    if (pin?.model) await conv.session.setModel(model);
+    const providerChanged = model.provider !== conv.provider;
+    const modelChanged = model.id !== conv.model;
+    if (providerChanged || modelChanged) {
+      // The leaving provider's last context fill, captured BEFORE the switch so
+      // a PROVIDER change can be sized against the new model's window.
+      const preTokens = providerChanged
+        ? (conv.session.getContextUsage()?.tokens ?? null)
+        : null;
+      // Re-point the live session; pi keeps the full message history and swaps
+      // only the model (cross-provider works — the Model carries its provider).
+      await conv.session.setModel(model);
+      if (providerChanged) {
+        // Mid-session PROVIDER switch. Carry the conversation verbatim when it
+        // comfortably fits the new model's window (replay); otherwise compact it
+        // first so it fits — pi summarizes with the now-active target model.
+        let summarized = false;
+        if (switchNeedsCompaction(preTokens, model.contextWindow)) {
+          await conv.session.compact();
+          summarized = true;
+        }
+        providerSwitch = {
+          provider: model.provider,
+          summarized,
+          pre_tokens: preTokens,
+        };
+        // Stream the boundary so the chat draws a divider + resets its window
+        // estimate; persisted on the assistant message below for reload replay.
+        publish(id, { type: "provider_switched", data: providerSwitch });
+      }
+      conv.provider = model.provider;
+      conv.model = model.id;
+    }
     // Effort: the routine's pin wins, else the agent's saved setting; if neither
     // is set and the model can reason, default to medium so a reasoning model
     // (e.g. an OpenCode toggle model) actually thinks — pi only enables reasoning
@@ -180,10 +270,33 @@ async function execTurn(
       if (level) conv.session.setThinkingLevel(level);
     }
     await conv.session.prompt(text);
-    appendAssistantMessage(id, assistantText, tools, usage);
-    publish(id, { type: "done", data: null });
+    // Persist the switch marker AND any typed provider error on this turn's
+    // assistant message so both the boundary divider and the reconnect /
+    // rate-limit card survive a history reload. A provider failure lands HERE
+    // (pi resolves the turn, it does not throw) with empty text, not in the catch.
+    appendAssistantMessage(
+      id,
+      assistantText,
+      tools,
+      usage,
+      providerSwitch,
+      providerError,
+    );
+    // Skip the clean `done` when the turn failed: the provider_error frame is the
+    // turn's terminal surface (the web adapter settles on it), and a `done` would
+    // settle the chat as a clean success — firing the "mission complete"
+    // notification on top of the error.
+    if (!providerError) publish(id, { type: "done", data: null });
   } catch (err) {
-    if (assistantText) appendAssistantMessage(id, assistantText, tools, usage);
+    if (assistantText)
+      appendAssistantMessage(
+        id,
+        assistantText,
+        tools,
+        usage,
+        providerSwitch,
+        providerError,
+      );
     publish(id, { type: "error", data: { message: errMessage(err) } });
   } finally {
     unsub();
@@ -267,11 +380,32 @@ export async function runTurn(
   await run;
 }
 
-/** Abort the in-flight turn for a conversation (if any). */
-export async function cancelTurn(id: string): Promise<void> {
+/**
+ * Abort the in-flight turn for a conversation. Returns whether a live turn was
+ * actually aborted: `false` means nothing was in flight — the conversation isn't
+ * cached (e.g. the runtime restarted), so there is no turn to stop and no
+ * terminal event will follow. The caller uses this to settle a card that's stuck
+ * "running" because its owning turn died without ever settling it.
+ */
+export async function cancelTurn(id: string): Promise<boolean> {
   const conv = conversations.get(id);
-  if (conv) await conv.session.abort();
+  if (!conv) return false;
+  // Surface a clear stop confirmation in the chat. Published BEFORE the abort so
+  // it settles the turn first; pi's own abort rejection (if any) then arrives at
+  // the already-settled stream and is ignored, so the user sees this one friendly
+  // message instead of a raw abort error. STOPPED_BY_USER is matched verbatim by
+  // the web adapter to render it as a neutral "you stopped it", not a failure.
+  publish(id, { type: "error", data: { message: STOPPED_BY_USER } });
+  await conv.session.abort();
+  return true;
 }
+
+/**
+ * The verbatim message a user-initiated stop surfaces. The control plane's relay
+ * emits the same string on abort, and the web adapter matches it (isStoppedByUser)
+ * to settle the chat as an intentional stop — back to the user, never a red error.
+ */
+export const STOPPED_BY_USER = "Stopped by user";
 
 /**
  * Drop a conversation's live session (aborting any in-flight turn) and, when

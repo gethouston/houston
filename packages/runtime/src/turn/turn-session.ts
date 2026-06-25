@@ -8,6 +8,7 @@ import {
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
 import type {
+  ProviderError,
   TokenUsage,
   ToolCallRecord,
   WireEvent,
@@ -98,6 +99,11 @@ export async function runPiTurn(
   let assistantText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
+  // A typed provider failure for this turn. pi resolves the turn rather than
+  // throwing, so this arrives on the stream (a provider_error frame, emitted to
+  // the client like any other) and is persisted on the assistant message so the
+  // inline card survives a reload of this cloud conversation.
+  let providerError: ProviderError | undefined;
   try {
     const authStorage = AuthStorage.create(join(dataDir, "auth.json"));
     const modelRegistry = ModelRegistry.create(
@@ -169,7 +175,7 @@ export async function runPiTurn(
       else if (wire.type === "tool_end") {
         const t = tools[tools.length - 1];
         if (t) t.isError = wire.data.isError;
-      }
+      } else if (wire.type === "provider_error") providerError = wire.data;
       emit(wire);
     });
     const onAbort = () => void session.abort();
@@ -180,22 +186,32 @@ export async function runPiTurn(
       signal?.removeEventListener("abort", onAbort);
       unsub();
     }
+    // Persist the turn's assistant message with any typed provider error so the
+    // inline card survives a reload of this cloud conversation. The provider_error
+    // frame was already streamed to the client (which settles on it), so this
+    // returns no `outcome.error` — the per-turn server's trailing terminal is a
+    // no-op for the already-settled client, and reporting an error here would make
+    // it send a SECOND, generic error frame on top of the typed card.
     appendAssistantMessageAt(
       conversationsDir,
       conversationId,
       assistantText,
       tools,
       usage,
+      undefined,
+      providerError,
     );
     return {};
   } catch (err) {
-    if (assistantText)
+    if (assistantText || providerError)
       appendAssistantMessageAt(
         conversationsDir,
         conversationId,
         assistantText,
         tools,
         usage,
+        undefined,
+        providerError,
       );
     return { error: err instanceof Error ? err.message : String(err) };
   }

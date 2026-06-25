@@ -103,7 +103,7 @@
 
     "@houston/domain": ["@houston/domain@file:../domain", { "dependencies": { "@houston-ai/agent-schemas": "file:../../ui/agent-schemas", "@houston/protocol": "file:../protocol", "croner": "^10.0.1", "fflate": "^0.8.3", "yaml": "^2.9.0" }, "devDependencies": { "@types/bun": "^1.3.14", "@types/node": "^22", "@typescript/native-preview": "7.0.0-dev.20260607.1", "typescript": "^6.0.2" } }],
 
-    "@houston/host": ["@houston/host@file:../host", { "dependencies": { "@composio/client": "^0.1.0-alpha.73", "@earendil-works/pi-coding-agent": "0.78.1", "@houston/domain": "file:../domain", "@houston/protocol": "file:../protocol", "@houston/runtime-client": "file:../runtime-client" }, "devDependencies": { "@types/bun": "^1.3.14", "@types/node": "^22", "@typescript/native-preview": "7.0.0-dev.20260607.1" } }],
+    "@houston/host": ["@houston/host@file:../host", { "dependencies": { "@composio/client": "^0.1.0-alpha.73", "@earendil-works/pi-ai": "0.78.1", "@earendil-works/pi-coding-agent": "0.78.1", "@houston/domain": "file:../domain", "@houston/protocol": "file:../protocol", "@houston/runtime-client": "file:../runtime-client" }, "devDependencies": { "@types/bun": "^1.3.14", "@types/node": "^22", "@typescript/native-preview": "7.0.0-dev.20260607.1" } }],
 
     "@houston/protocol": ["@houston/protocol@file:../protocol", { "devDependencies": { "@typescript/native-preview": "7.0.0-dev.20260607.1", "typescript": "^6.0.2" } }],
 
@@ -609,7 +609,7 @@
 
     "stubs": ["stubs@3.0.0", "", {}, "sha512-PdHt7hHUJKxvTCgbKX9C1V/ftOcjJQgz8BZwNfV5c4B6dcGqlpelTbJ999jBGZ2jYiPAwcX5dP6oBwVlBlUbxw=="],
 
-    "tar": ["tar@7.5.16", "", { "dependencies": { "@isaacs/fs-minipass": "^4.0.0", "chownr": "^3.0.0", "minipass": "^7.1.2", "minizlib": "^3.1.0", "yallist": "^5.0.0" } }, "sha512-56adEpPMouktRlBLXiaYFFzZ/3+JXa8P9n7WbR+ibIjtviN55mEaOkiysCnPnWm+7kkui1Dn8J9l+g6zV8731w=="],
+    "tar": ["tar@7.5.17", "", { "dependencies": { "@isaacs/fs-minipass": "^4.0.0", "chownr": "^3.0.0", "minipass": "^7.1.2", "minizlib": "^3.1.0", "yallist": "^5.0.0" } }, "sha512-wPEBwzapC+2PaTYPH6e2L+cNOEE227S47wUYFqlegcs8zlLLmeb9Fcff1HVZY4Fwku/1Eyv38n7GYwB2aaS71g=="],
 
     "teeny-request": ["teeny-request@9.0.0", "", { "dependencies": { "http-proxy-agent": "^5.0.0", "https-proxy-agent": "^5.0.0", "node-fetch": "^2.6.9", "stream-events": "^1.0.5", "uuid": "^9.0.0" } }, "sha512-resvxdc6Mgb7YEThw6G6bExlXKkv6+YbuzGg9xuXxSgxJF7Ozs+o8Y9+2R3sArdWdW8nOokoQb1yrpFB0pQK2g=="],
 
@@ -677,7 +677,7 @@
 
     "@earendil-works/pi-ai/http-proxy-agent": ["http-proxy-agent@7.0.2", "", { "dependencies": { "agent-base": "^7.1.0", "debug": "^4.3.4" } }, "sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig=="],
 
-    "@google/genai/google-auth-library": ["google-auth-library@10.7.0", "", { "dependencies": { "base64-js": "^1.3.0", "ecdsa-sig-formatter": "^1.0.11", "gaxios": "^7.1.4", "gcp-metadata": "8.1.2", "google-logging-utils": "1.1.3", "jws": "^4.0.0" } }, "sha512-QpTAbNJ36TliZLx3TTtahR8HG0hN9RllL1e3FymOvQSIKK8JmgV58H924ub2wa2DsS3ANjjP1Aw1N+Ramc8hqQ=="],
+    "@google/genai/google-auth-library": ["google-auth-library@10.9.0", "", { "dependencies": { "base64-js": "^1.3.0", "ecdsa-sig-formatter": "^1.0.11", "gaxios": "^7.1.4", "gcp-metadata": "8.1.2", "google-logging-utils": "1.1.3", "jws": "^4.0.0" } }, "sha512-xtvUqvINPhTaBm7nXqlYPcrMHJPm1lCNdSovxnKKhTm+4JsvQ+KGVYJViLoH9Yxu8w+T0Qv5HubzYT9BLrppJg=="],
 
     "@houston/domain/@houston-ai/agent-schemas": ["@houston-ai/agent-schemas@file:../../ui/agent-schemas", {}],
 

@@ -14,14 +14,22 @@
 export type ProviderId =
   | "anthropic"
   | "openai-codex"
+  | "github-copilot"
   | "opencode"
-  | "opencode-go";
+  | "opencode-go"
+  | "openrouter"
+  | "google"
+  | "openai-compatible";
 
 const PROVIDER_IDS: readonly ProviderId[] = [
   "anthropic",
   "openai-codex",
+  "github-copilot",
   "opencode",
   "opencode-go",
+  "openrouter",
+  "google",
+  "openai-compatible",
 ];
 
 export const isProviderId = (s: string): s is ProviderId =>
@@ -42,18 +50,27 @@ export const DEFAULT_PROVIDER: ProviderId = "openai-codex";
 export const DEFAULT_MODEL: Record<ProviderId, string> = {
   anthropic: "claude-sonnet-4-6",
   "openai-codex": "gpt-5.5",
+  // Copilot uses DOTTED model ids (claude-sonnet-4.6), unlike native Anthropic.
+  "github-copilot": "claude-sonnet-4.6",
   opencode: "claude-sonnet-4-6",
   "opencode-go": "glm-5.1",
+  openrouter: "anthropic/claude-sonnet-4.6",
+  google: "gemini-3-flash-preview",
+  // No catalog default — the model is whatever the user's local server serves.
+  "openai-compatible": "",
 };
 
 /**
  * pi's REAL model catalog per provider (captured from `getModels(...)`).
  *
- * Only the two OAuth providers are enumerated: `getModel` returns undefined for
- * an unlisted id on these, so a stored model MUST be checked against this set.
- * The api-key gateways (opencode / opencode-go) are OPEN catalogs — pi forwards
- * an arbitrary model id to the gateway — so they are intentionally absent here
- * and their stored models always pass through untouched.
+ * Only the native subscription providers (anthropic / openai-codex) are
+ * enumerated: `getModel` returns undefined for an unlisted id on these, so a
+ * stored model MUST be checked against this set. Every other provider is left
+ * absent on purpose and its stored model passes through untouched —
+ * opencode / opencode-go / openrouter / google forward an arbitrary id to the
+ * gateway, openai-compatible has no catalog at all, and github-copilot is left
+ * open here (its dotted ids change with the gateway) with the runtime's
+ * read-time `safeGetModel` guard as the backstop for a stale id.
  */
 export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
   anthropic: new Set([

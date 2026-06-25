@@ -6,13 +6,19 @@ import {
 } from "@earendil-works/pi-ai/oauth";
 import type { LoginInfo } from "@houston/runtime-client";
 import {
+  type CustomEndpointInput,
+  clearCustomEndpointConfig,
+  OPENAI_COMPATIBLE,
+  setCustomEndpointConfig,
+} from "../ai/openai-compatible";
+import {
   activeProvider,
   PROVIDERS,
   type ProviderId,
   providerAuthMethod,
 } from "../ai/providers";
 import { config } from "../config";
-import { authStorage } from "./storage";
+import { authStorage, providerConnected } from "./storage";
 
 /**
  * Multi-provider OAuth login, driven server-side and relayed to the webapp.
@@ -58,6 +64,23 @@ export function codexLoginMethod(opts: {
     : OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD;
 }
 
+/**
+ * Auto-answer for a provider's interactive text prompt (`onPrompt`), or null to
+ * defer to the user. GitHub Copilot's pi-ai login OPENS with an optional
+ * "GitHub Enterprise URL/domain" question before it emits the device code;
+ * leaving it unanswered deadlocks the flow (the device code never appears). We
+ * answer it programmatically: the company domain for an Enterprise connect, or
+ * "" (=> github.com) for individual Copilot. Every other provider's `onPrompt`
+ * is the Anthropic headless code-paste, which MUST wait for the user — those
+ * return null so the caller hands back the paste promise.
+ */
+export function autoPromptAnswer(
+  provider: string,
+  enterpriseDomain?: string,
+): string | null {
+  return provider === "github-copilot" ? (enterpriseDomain ?? "") : null;
+}
+
 const known = (id: string): id is ProviderId =>
   PROVIDERS.some((p) => p.id === id);
 
@@ -65,10 +88,18 @@ export function getAuthStatus() {
   return {
     providers: PROVIDERS.map((p) => {
       const st = active.get(p.id);
+      // Copilot Enterprise: surface the connected credential's company domain so
+      // the connect UI can tell the Enterprise card apart from individual Copilot
+      // (both are the same engine provider; the domain is the only difference).
+      // `get` is in-memory (pi caches auth.json), so this stays cheap per poll.
+      const cred = authStorage.get(p.id) as
+        | { enterpriseUrl?: string }
+        | undefined;
       return {
         provider: p.id,
         name: p.name,
-        configured: authStorage.hasAuth(p.id),
+        configured: providerConnected(authStorage, p.id),
+        enterpriseUrl: cred?.enterpriseUrl ?? null,
         login: st
           ? { status: st.status, info: st.info, error: st.error }
           : null,
@@ -85,12 +116,11 @@ export function getAuthStatus() {
 export async function startLogin(
   providerId: string,
   deviceAuth = true,
+  enterpriseDomain?: string,
 ): Promise<LoginInfo> {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
-  if (providerAuthMethod(providerId) === "apiKey")
-    throw new Error(
-      `${providerId} connects with an API key, not OAuth sign-in`,
-    );
+  if (providerAuthMethod(providerId) !== "oauth")
+    throw new Error(`${providerId} does not use OAuth sign-in`);
   const provider = providerId;
 
   // Idempotent: reuse an in-flight login (Anthropic's loopback only binds once).
@@ -138,7 +168,10 @@ export async function startLogin(
       // remote webapp clients type a code (see codexLoginMethod).
       onSelect: async () =>
         codexLoginMethod({ deviceAuth, headless: config.headless }),
-      onPrompt: () => pastePromise,
+      onPrompt: () => {
+        const auto = autoPromptAnswer(provider, enterpriseDomain);
+        return auto === null ? pastePromise : Promise.resolve(auto);
+      },
       onManualCodeInput: () => pastePromise,
       onProgress: (m: string) => console.log(`[oauth:${provider}]`, m),
     })
@@ -173,11 +206,33 @@ export async function startLogin(
 export function setApiKey(providerId: string, key: string): void {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   if (providerAuthMethod(providerId) !== "apiKey")
-    throw new Error(`${providerId} signs in with OAuth, not an API key`);
+    throw new Error(`${providerId} does not connect with a pasted API key`);
   const trimmed = key.trim();
   if (!trimmed) throw new Error("missing API key");
   authStorage.set(providerId, { type: "api_key", key: trimmed });
   active.delete(providerId as ProviderId);
+}
+
+/**
+ * Placeholder key for keyless local servers. Ollama / LM Studio / vLLM ignore
+ * the Authorization header, but pi requires SOME key to resolve a request (it
+ * throws "No API key for provider" otherwise), so a blank key becomes this.
+ */
+export const LOCAL_PLACEHOLDER_KEY = "houston-local";
+
+/**
+ * Connect an OpenAI-compatible (local) server: persist its base URL + model (and
+ * display options) and store the optional key in auth.json — a placeholder when
+ * the server is keyless. LOCAL profile only; the host gates this on its
+ * capability, never serving it from a cloud runtime that can't reach localhost.
+ */
+export function setCustomEndpoint(
+  input: CustomEndpointInput & { apiKey?: string },
+): void {
+  // Validate + persist the endpoint FIRST so a bad URL never leaves a stale key.
+  setCustomEndpointConfig(input);
+  const key = input.apiKey?.trim() || LOCAL_PLACEHOLDER_KEY;
+  authStorage.set(OPENAI_COMPATIBLE, { type: "api_key", key });
 }
 
 /** Paste-code completion (Anthropic remote path). */
@@ -192,4 +247,7 @@ export function logout(providerId: string): void {
   if (!known(providerId)) throw new Error(`unknown provider: ${providerId}`);
   authStorage.logout(providerId);
   active.delete(providerId);
+  // Disconnecting the local provider also forgets its endpoint, else the next
+  // turn would re-resolve a base URL with no (real) key behind it.
+  if (providerId === OPENAI_COMPATIBLE) clearCustomEndpointConfig();
 }

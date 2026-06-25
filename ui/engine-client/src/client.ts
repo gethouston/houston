@@ -32,6 +32,7 @@ import type {
   CreateSkillRequest,
   CreateWorkspace,
   CreateWorktreeRequest,
+  CustomEndpoint,
   ErrorBody,
   GenerateInstructionsResult,
   HealthResponse,
@@ -686,12 +687,21 @@ export class HoustonClient {
    * callback. It's ignored by providers without a device flow, and the
    * co-located desktop app omits it to keep the browser-loopback login.
    */
-  providerLogin(name: string, opts?: { deviceAuth?: boolean }): Promise<void> {
+  providerLogin(
+    name: string,
+    opts?: { deviceAuth?: boolean; enterpriseDomain?: string },
+  ): Promise<void> {
+    // `enterpriseDomain` (GitHub Copilot Enterprise) only matters on the new TS
+    // engine, where the control-plane adapter overrides this method; the legacy
+    // Rust path has no Copilot provider, so it's passed through harmlessly.
+    const query: Record<string, string> = {};
+    if (opts?.deviceAuth) query.deviceAuth = "true";
+    if (opts?.enterpriseDomain) query.enterpriseDomain = opts.enterpriseDomain;
     return this.request(
       "POST",
       `/providers/${this.seg(name)}/login`,
       undefined,
-      opts?.deviceAuth ? { deviceAuth: "true" } : undefined,
+      Object.keys(query).length ? query : undefined,
     );
   }
   providerLogout(name: string): Promise<void> {
@@ -748,6 +758,15 @@ export class HoustonClient {
     return this.request("POST", `/providers/${this.seg(name)}/api-key`, {
       apiKey,
     });
+  }
+  /**
+   * Connect an OpenAI-compatible (local) server by base URL + model. The legacy
+   * Rust engine has no such provider — it's new-engine + desktop only, and the
+   * connect UI is gated on `newEngineActive()` + desktop, so this is never hit
+   * here. Reject loudly rather than pretend to succeed (no silent failure).
+   */
+  setProviderCustomEndpoint(_endpoint: CustomEndpoint): Promise<void> {
+    return Promise.reject(new Error("Local models require the new engine."));
   }
   // "Sign in with Google" for Gemini goes through the standard
   // `providerLogin("gemini")` call — the engine detects the gemini id

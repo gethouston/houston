@@ -19,6 +19,14 @@ export type PiCred =
       refresh: string;
       expires: number;
       accountId?: string;
+      /**
+       * GitHub Copilot Enterprise (GHE): the company GitHub domain this
+       * credential was issued for (e.g. `acme.ghe.com`). Absent = individual
+       * Copilot (github.com). pi's `modifyModels` reads it to derive the
+       * enterprise API base URL, and the central refresh hits the matching
+       * `api.<domain>/copilot_internal/v2/token`.
+       */
+      enterpriseUrl?: string;
     }
   | { type: "api_key"; key: string };
 
@@ -34,6 +42,9 @@ export type ServedCredential = {
   expires: number;
   accountId: string | null;
   kind?: "oauth" | "api_key";
+  /** GitHub Copilot Enterprise domain, served so the runtime can set the right
+   *  API base URL; null/absent = individual Copilot. See `PiCred.enterpriseUrl`. */
+  enterpriseUrl?: string | null;
 };
 
 /** The auth.json contents at `path`, or {} when absent/corrupt. */
@@ -67,6 +78,10 @@ export function applyServedCredential(path: string, c: ServedCredential): void {
           refresh: "",
           expires: c.expires,
           ...(c.accountId ? { accountId: c.accountId } : {}),
+          // Carry the Copilot Enterprise domain so pi's modifyModels points the
+          // model at the enterprise API base URL (Gate #2 still holds — this is
+          // not a secret, and refresh="" stays scrubbed).
+          ...(c.enterpriseUrl ? { enterpriseUrl: c.enterpriseUrl } : {}),
         };
   const merged = readAuthFile(path);
   merged[c.provider] = entry;

@@ -8,7 +8,7 @@ import type { ProviderId } from "@houston/protocol";
  * path doesn't use this: it relays the runtime's own /providers + /auth/* surface.
  */
 
-export type ProviderAuthMethod = "oauth" | "apiKey";
+export type ProviderAuthMethod = "oauth" | "apiKey" | "openaiCompatible";
 
 export interface HostProvider {
   id: ProviderId;
@@ -35,6 +35,12 @@ export const PROVIDERS: readonly HostProvider[] = [
     auth: "oauth",
     cloud: true,
   },
+  // GitHub Copilot subscription (OAuth, GitHub device-code flow). LOCAL/desktop
+  // only: the cloud per-turn sandbox is egress-locked and
+  // api.individual.githubcopilot.com isn't on its allowlist. The runtime serves
+  // Copilot's full model list via the standing-runtime /providers relay, so no
+  // curated `models` here (same as the other OAuth providers).
+  { id: "github-copilot", name: "GitHub Copilot", auth: "oauth", cloud: false },
   {
     id: "opencode",
     name: "OpenCode Zen",
@@ -66,6 +72,45 @@ export const PROVIDERS: readonly HostProvider[] = [
       "deepseek-v4-pro",
     ],
     defaultModel: "glm-5.1",
+  },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    auth: "apiKey",
+    // LOCAL/desktop only for now: the cloud per-turn sandbox is egress-locked
+    // and openrouter.ai isn't on its allowlist (unlike OpenCode's gateway).
+    cloud: false,
+    models: [
+      "anthropic/claude-sonnet-4.6",
+      "anthropic/claude-opus-4.8",
+      "google/gemini-3-flash-preview",
+      "deepseek/deepseek-v4-pro",
+    ],
+    defaultModel: "anthropic/claude-sonnet-4.6",
+  },
+  {
+    id: "google",
+    name: "Google Gemini",
+    auth: "apiKey",
+    // LOCAL/desktop only: cloud egress doesn't allowlist generativelanguage.
+    cloud: false,
+    models: [
+      "gemini-3-flash-preview",
+      "gemini-3-pro-preview",
+      "gemini-2.5-flash",
+      "gemini-2.5-pro",
+    ],
+    defaultModel: "gemini-3-flash-preview",
+  },
+  {
+    id: "openai-compatible",
+    name: "Local model (OpenAI-compatible)",
+    auth: "openaiCompatible",
+    // LOCAL profile ONLY: the base URL is the user's own machine (Ollama / vLLM
+    // / LM Studio), unreachable from a cloud runtime or pod. The host route gates
+    // it on the deployment's `openaiCompatible` capability. The runtime owns the
+    // full endpoint config (base URL + model); nothing is curated here.
+    cloud: false,
   },
 ];
 

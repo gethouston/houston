@@ -116,11 +116,11 @@
     "heading": "Houston, tenemos un problema",
     "body": "Tu sesión de {{provider}} expiró. Inicia sesión de nuevo para mantener tus agentes funcionando.",
     "waiting": "Esperando el inicio de sesión en el navegador...",
-    "signInWith": "Iniciar sesión con {{provider}}"
+    "signInWith": "Iniciar sesión"
   },
   "providerReconnect": {
     "title": "Sesión expirada",
-    "body": "Tu conexión con {{provider}} se terminó, pasa de vez en cuando. Inicia sesión otra vez y listo.",
+    "body": "Tu sesión de {{provider}} expiró. Inicia sesión de nuevo para continuar.",
     "reconnect": "Reconectar a {{provider}}",
     "waiting": "Esperando el inicio de sesión en el navegador...",
     "tryAgain": "Intentar de nuevo",
@@ -285,7 +285,12 @@
       "bodyInvalidApiKey": "La clave de API de {{provider}} que tiene Houston ya no es válida. Actualízala y vuelve a intentar.",
       "bodyTokenRevoked": "Se revocó tu acceso a {{provider}}. Inicia sesión de nuevo para continuar.",
       "bodyUnknown": "Houston no pudo autenticarse con {{provider}}. Vuelve a conectarte e inténtalo de nuevo.",
-      "reconnect": "Reconectar"
+      "reconnect": "Reconectar",
+      "waiting": "Termina de iniciar sesión en tu navegador",
+      "reconnectedTitle": "Reconectado a {{provider}}",
+      "reconnectedBody": "Ya iniciaste sesión de nuevo. Continúa donde quedaste.",
+      "sendAgain": "Intentar de nuevo",
+      "failedBody": "El inicio de sesión de {{provider}} no se completó. Inténtalo de nuevo. {{detail}}"
     },
     "networkUnreachable": {
       "title": "No se puede conectar con {{provider}}",

@@ -19,9 +19,18 @@ export interface FileChangeEntry {
   status: "created" | "modified";
 }
 
-/** Marks a `from: "system"` message as a context-compaction divider. */
+/** Marks a `from: "system"` message as a boundary divider — either a
+ *  context compaction or a mid-session provider switch. */
 export interface ChatCompactionInfo {
-  trigger: "native" | "proactive";
+  /** What produced this divider. */
+  kind: "compacted" | "provider_switch";
+  /** Compaction trigger. Set only when `kind === "compacted"`. */
+  trigger?: "native" | "proactive";
+  /** Provider switched TO. Set only when `kind === "provider_switch"`. */
+  provider?: string;
+  /** Whether a switch summarized prior context (`true`) or carried the full
+   *  conversation verbatim (`false`). Set only when `kind === "provider_switch"`. */
+  summarized?: boolean;
   preTokens?: number;
 }
 
@@ -52,6 +61,14 @@ export interface ChatMessage {
 export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
   const messages: ChatMessage[] = [];
   let cur: ChatMessage | null = null;
+  // One provider-error card per (kind, provider) PER TURN. The engine can
+  // surface the same failure on two channels — e.g. codex auth lands on both
+  // the stdout parser (persisted) and the transient stderr classifier — and a
+  // backoff loop should never stack identical reconnect cards. Keep the
+  // first. The set resets at every user_message: a NEW turn that fails the
+  // same way (e.g. the session dies again after a successful reconnect) must
+  // show a fresh card, not be swallowed by the previous turn's.
+  let seenProviderErrors = new Set<string>();
 
   function getCur(): ChatMessage | null {
     return cur;
@@ -98,6 +115,8 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
     switch (item.feed_type) {
       case "user_message": {
         flush();
+        // New turn — provider-error dedup is per turn (see declaration).
+        seenProviderErrors = new Set<string>();
         const { source, text } = extractSource(item.data);
         messages.push({
           key: `user-${messages.length}`,
@@ -219,6 +238,10 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
         // SessionStatus::Cancelled via a separate channel, and a card
         // here would feel like a real error. Drop it.
         if (item.data.kind === "cancelled") break;
+        // Collapse duplicates (same kind + provider) to a single card.
+        const providerErrorKey = `${item.data.kind}:${item.data.provider}`;
+        if (seenProviderErrors.has(providerErrorKey)) break;
+        seenProviderErrors.add(providerErrorKey);
         flush();
         messages.push({
           key: `provider-error-${messages.length}-${item.data.kind}`,
@@ -260,7 +283,29 @@ export function feedItemsToMessages(items: FeedItem[]): ChatMessage[] {
           tools: [],
           fileChanges: [],
           compaction: {
+            kind: "compacted",
             trigger: item.data.trigger,
+            preTokens: item.data.pre_tokens ?? undefined,
+          },
+        });
+        break;
+      }
+
+      case "provider_switched": {
+        flush();
+        messages.push({
+          key: `provider-switched-${messages.length}`,
+          from: "system",
+          // Empty content — the renderer shows a localized divider keyed off
+          // `compaction`, not this string.
+          content: "",
+          isStreaming: false,
+          tools: [],
+          fileChanges: [],
+          compaction: {
+            kind: "provider_switch",
+            provider: item.data.provider,
+            summarized: item.data.summarized,
             preTokens: item.data.pre_tokens ?? undefined,
           },
         });

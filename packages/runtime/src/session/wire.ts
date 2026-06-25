@@ -1,5 +1,7 @@
+import type { AssistantMessage } from "@earendil-works/pi-ai";
 import type { AgentSessionEvent } from "@earendil-works/pi-coding-agent";
 import type { TokenUsage, WireEvent } from "@houston/runtime-client";
+import { classifyProviderError } from "../ai/provider-error";
 
 /**
  * Normalize pi's per-message `Usage` into our provider-agnostic `TokenUsage`.
@@ -48,14 +50,67 @@ export function toWire(e: AgentSessionEvent): WireEvent | null {
         data: { name: e.toolName, isError: !!e.isError },
       };
     case "turn_end": {
-      // Fired once per turn with the final assistant message; its usage carries
-      // the latest request's context size = the current context fill. Only an
-      // assistant message carries `usage`; other message kinds normalize to null.
+      // Fired once per turn with the final assistant message.
+      //
+      // A model/provider failure pi could NOT complete (an expired or rejected
+      // token, a rate limit, a 4xx/5xx from the gateway) does NOT throw from
+      // prompt() — pi catches it internally and delivers the turn here as an
+      // assistant message with stopReason "error" and the real reason in
+      // `errorMessage`. Classify that into a TYPED provider_error so the chat
+      // renders the matching reconnect / rate-limit card; dropping it left the
+      // turn a silent, empty success ("no response, no error" — the bug that made
+      // Copilot look dead). "aborted" is the user's own Stop (already surfaced
+      // verbatim by cancelTurn as "Stopped by user"), so it falls through here to
+      // the usage path, never double-reported.
       const msg = e.message;
+      if (
+        msg &&
+        msg.role === "assistant" &&
+        msg.stopReason === "error" &&
+        msg.errorMessage
+      ) {
+        return {
+          type: "provider_error",
+          data: classifyProviderError({
+            provider: msg.provider,
+            model: msg.model ?? null,
+            message: msg.errorMessage,
+            status: diagnosticStatus(msg.diagnostics),
+          }),
+        };
+      }
+      // Otherwise its usage carries the latest request's context size = the
+      // current context fill. Only an assistant message carries `usage`; other
+      // message kinds normalize to null.
       const usage = msg && "usage" in msg ? normalizeUsage(msg.usage) : null;
       return usage ? { type: "usage", data: usage } : null;
     }
     default:
       return null;
   }
+}
+
+/**
+ * Read an HTTP status off pi's structured diagnostics when it attached one
+ * (`error.code` or `details.status`). pi often only sets a string `errorMessage`
+ * with no diagnostic, so this is a best-effort hint; the classifier still parses
+ * the message text when this returns null.
+ */
+function diagnosticStatus(
+  diagnostics: AssistantMessage["diagnostics"],
+): number | null {
+  if (!diagnostics) return null;
+  for (const d of diagnostics) {
+    const code = d.error?.code;
+    if (typeof code === "number" && code >= 100 && code <= 599) return code;
+    if (typeof code === "string") {
+      const n = Number(code);
+      if (Number.isFinite(n) && n >= 100 && n <= 599) return n;
+    }
+    const status = d.details?.status ?? d.details?.httpStatus;
+    if (typeof status === "number" && status >= 100 && status <= 599) {
+      return status;
+    }
+  }
+  return null;
 }

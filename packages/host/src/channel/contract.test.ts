@@ -181,6 +181,8 @@ function runRuntimeChannelContract(
 let proxyRuntime: Server;
 let proxyRuntimeUrl = "";
 let proxyConnected = false; // flips when connect() succeeds (export exposes a cred)
+/** Last body the fake runtime received on POST /providers/openai-compatible. */
+let proxyCustomEndpointBody: unknown = null;
 
 beforeAll(async () => {
   proxyRuntime = createServer((req, res) => {
@@ -190,6 +192,20 @@ beforeAll(async () => {
       res.writeHead(status, { "Content-Type": "application/json" });
       res.end(JSON.stringify(body));
     };
+
+    // OpenAI-compatible (local) connect: capture the body so the test can assert
+    // the channel forwarded the endpoint verbatim.
+    if (path === "/providers/openai-compatible") {
+      const chunks: Buffer[] = [];
+      req.on("data", (c) => chunks.push(c as Buffer));
+      req.on("end", () => {
+        proxyCustomEndpointBody = JSON.parse(
+          Buffer.concat(chunks).toString("utf8") || "{}",
+        );
+        reply(200, { ok: true });
+      });
+      return;
+    }
 
     if (path === "/auth/export") {
       // Before connect the runtime has no usable credential; after, it exports one.
@@ -308,3 +324,33 @@ function makeTurnFixture(): ChannelFixture {
 
 runRuntimeChannelContract("ProxyChannel", makeProxyFixture);
 runRuntimeChannelContract("TurnChannel", makeTurnFixture);
+
+// saveCustomEndpoint is the ONE asymmetric channel op (not part of the shared
+// contract): the standing runtime persists the local endpoint; the per-turn /
+// cloud channel rejects it (a cloud runtime can't reach the user's localhost).
+describe("saveCustomEndpoint (local-only, asymmetric)", () => {
+  test("ProxyChannel forwards the endpoint to the standing runtime", async () => {
+    proxyCustomEndpointBody = null;
+    const { channel } = makeProxyFixture();
+    await channel.saveCustomEndpoint(ctx, {
+      baseUrl: "http://localhost:11434/v1",
+      model: "llama3.1",
+      name: "Llama",
+    });
+    expect(proxyCustomEndpointBody).toEqual({
+      baseUrl: "http://localhost:11434/v1",
+      model: "llama3.1",
+      name: "Llama",
+    });
+  });
+
+  test("TurnChannel (cloud per-turn) refuses a local endpoint", async () => {
+    const { channel } = makeTurnFixture();
+    await expect(
+      channel.saveCustomEndpoint(ctx, {
+        baseUrl: "http://localhost:11434/v1",
+        model: "llama3.1",
+      }),
+    ).rejects.toThrow(/cloud|local|own machine/i);
+  });
+});

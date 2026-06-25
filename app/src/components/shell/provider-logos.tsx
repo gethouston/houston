@@ -46,6 +46,52 @@ export function OpenAILogo({
   );
 }
 
+export function GeminiLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  // The Gemini four-point spark.
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      role="img"
+      aria-label="Gemini logo"
+    >
+      <title>Gemini logo</title>
+      <path d="M12 0c.45 6.46 5.54 11.55 12 12-6.46.45-11.55 5.54-12 12-.45-6.46-5.54-11.55-12-12C6.46 11.55 11.55 6.46 12 0z" />
+    </svg>
+  );
+}
+
+export function OpenRouterLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  // A simple routing mark: one input fanning out to two destinations.
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label="OpenRouter logo"
+    >
+      <title>OpenRouter logo</title>
+      <path d="M3 12h4l5-5h9M7 12l5 5h9" />
+      <circle cx="20" cy="7" r="1.6" fill="currentColor" stroke="none" />
+      <circle cx="20" cy="17" r="1.6" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
 export function OpenCodeLogo({
   className = "h-5 w-5",
 }: {
@@ -69,6 +115,26 @@ export function OpenCodeLogo({
         className="opencode-logo-frame"
         d="M180 60H60V240H180V60ZM240 300H0V0H240V300Z"
       />
+    </svg>
+  );
+}
+
+export function GitHubCopilotLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  // The GitHub Copilot mark (simple-icons `githubcopilot`).
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="currentColor"
+      role="img"
+      aria-label="GitHub Copilot logo"
+    >
+      <title>GitHub Copilot logo</title>
+      <path d="M23.922 16.997C23.061 18.492 18.063 22.02 12 22.02 5.937 22.02.939 18.492.078 16.997A.641.641 0 0 1 0 16.741v-2.869a.883.883 0 0 1 .053-.22c.372-.935 1.347-2.292 2.605-2.656.167-.429.414-1.055.644-1.517a10.098 10.098 0 0 1-.052-1.086c0-1.331.282-2.499 1.132-3.368.397-.406.89-.717 1.474-.952C7.255 2.937 9.248 1.98 11.978 1.98c2.731 0 4.767.957 6.166 2.093.584.235 1.077.546 1.474.952.85.869 1.132 2.037 1.132 3.368 0 .368-.014.733-.052 1.086.23.462.477 1.088.644 1.517 1.258.364 2.233 1.721 2.605 2.656a.841.841 0 0 1 .053.22v2.869a.641.641 0 0 1-.078.256Zm-11.75-5.992h-.344a4.359 4.359 0 0 1-.355.508c-.77.947-1.918 1.492-3.508 1.492-1.725 0-2.989-.359-3.782-1.259a2.137 2.137 0 0 1-.085-.104L4 11.746v6.585c1.435.779 4.514 2.179 8 2.179 3.486 0 6.565-1.4 8-2.179v-6.585l-.098-.104s-.033.045-.085.104c-.793.9-2.057 1.259-3.782 1.259-1.59 0-2.738-.545-3.508-1.492a4.359 4.359 0 0 1-.355-.508Zm2.328 3.25c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm-5 0c.549 0 1 .451 1 1v2c0 .549-.451 1-1 1-.549 0-1-.451-1-1v-2c0-.549.451-1 1-1Zm3.313-6.185c.136 1.057.403 1.913.878 2.497.442.544 1.134.938 2.344.938 1.573 0 2.292-.337 2.657-.751.384-.435.558-1.15.558-2.361 0-1.14-.243-1.847-.705-2.319-.477-.488-1.319-.862-2.824-1.025-1.487-.161-2.192.138-2.533.529-.269.307-.437.808-.438 1.578v.021c0 .265.021.562.063.893Zm-1.626 0c.042-.331.063-.628.063-.894v-.02c-.001-.77-.169-1.271-.438-1.578-.341-.391-1.046-.69-2.533-.529-1.505.163-2.347.537-2.824 1.025-.462.472-.705 1.179-.705 2.319 0 1.211.175 1.926.558 2.361.365.414 1.084.751 2.657.751 1.21 0 1.902-.394 2.344-.938.475-.584.742-1.44.878-2.497Z" />
     </svg>
   );
 }
@@ -101,4 +167,72 @@ export function MiniMaxLogo() {
       <path d="M11.43 3.92a.86.86 0 1 0-1.718 0v14.236a1.999 1.999 0 0 1-3.997 0V9.022a.86.86 0 1 0-1.718 0v3.87a1.999 1.999 0 0 1-3.997 0V11.49a.57.57 0 0 1 1.139 0v1.404a.86.86 0 0 0 1.719 0V9.022a1.999 1.999 0 0 1 3.997 0v9.134a.86.86 0 0 0 1.719 0V3.92a1.998 1.998 0 1 1 3.996 0v11.788a.57.57 0 1 1-1.139 0zm10.572 3.105a2 2 0 0 0-1.999 1.997v7.63a.86.86 0 0 1-1.718 0V3.923a1.999 1.999 0 0 0-3.997 0v16.16a.86.86 0 0 1-1.719 0V18.08a.57.57 0 1 0-1.138 0v2a1.998 1.998 0 0 0 3.996 0V3.92a.86.86 0 0 1 1.719 0v12.73a1.999 1.999 0 0 0 3.996 0V9.023a.86.86 0 1 1 1.72 0v6.686a.57.57 0 0 0 1.138 0V9.022a2 2 0 0 0-1.998-1.997" />
     </svg>
   );
+}
+
+/**
+ * A generic "runs on your machine" mark for the OpenAI-compatible (local)
+ * provider — a small server/computer outline (no vendor branding, since the
+ * user picks their own runtime: Ollama, LM Studio, vLLM…).
+ */
+export function LocalModelLogo({
+  className = "h-5 w-5",
+}: {
+  className?: string;
+} = {}) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      role="img"
+      aria-label="Local model"
+    >
+      <title>Local model</title>
+      <rect x="3" y="4" width="18" height="11" rx="2" />
+      <path d="M8 20h8M12 15v5M8 9h.01M11 9h2" />
+    </svg>
+  );
+}
+
+/**
+ * Monochrome provider logo by provider id — the single source the cards use
+ * for the "which AI provider" mark (reconnect, sign-in, rate-limit). Maps each
+ * provider Houston has a logo for (active + coming-soon) to its own mark and
+ * falls back to the provider's first initial for anything unknown, so a new
+ * provider can never silently borrow the wrong brand's logo (the old
+ * `anthropic ? Claude : OpenAI` ternary did exactly that for every
+ * non-Anthropic provider).
+ */
+export function ProviderGlyph({ providerId }: { providerId: string }) {
+  switch (providerId) {
+    case "anthropic":
+      return <ClaudeLogo />;
+    case "openai":
+      return <OpenAILogo />;
+    case "google":
+      return <GeminiLogo />;
+    case "github-copilot":
+      return <GitHubCopilotLogo />;
+    case "openrouter":
+      return <OpenRouterLogo />;
+    case "opencode":
+    case "opencode-go":
+      return <OpenCodeLogo />;
+    case "openai-compatible":
+      return <LocalModelLogo />;
+    case "deepseek":
+      return <DeepSeekLogo />;
+    case "minimax":
+      return <MiniMaxLogo />;
+    default:
+      return (
+        <span className="text-[10px] font-semibold tracking-tight text-muted-foreground">
+          {providerId.slice(0, 1).toUpperCase()}
+        </span>
+      );
+  }
 }

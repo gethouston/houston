@@ -8,14 +8,22 @@
  * Connectable AI providers.
  * - `anthropic` = Claude Pro/Max (subscription OAuth)
  * - `openai-codex` = ChatGPT/Codex (subscription OAuth)
- * - `opencode` = OpenCode Zen (pasted API key; OpenAI-compatible gateway)
- * - `opencode-go` = OpenCode Go (pasted API key; OpenAI-compatible gateway)
+ * - `github-copilot` = GitHub Copilot (subscription OAuth, GitHub device-code flow)
+ * - `openrouter` = OpenRouter, `google` = Google Gemini, `opencode` = OpenCode Zen,
+ *   `opencode-go` = OpenCode Go: API-key (a pasted key, no OAuth). See `ProviderAuth.authKind`.
+ * - `openai-compatible` = any OpenAI-compatible server the user runs (Ollama, vLLM,
+ *   LM Studio, LiteLLM…): a user-supplied base URL + model id, optional key. LOCAL
+ *   profile only — the URL is the user's own machine, unreachable from the cloud.
  */
 export type ProviderId =
   | "anthropic"
   | "openai-codex"
+  | "github-copilot"
+  | "openrouter"
+  | "google"
   | "opencode"
-  | "opencode-go";
+  | "opencode-go"
+  | "openai-compatible";
 
 export type LoginStatus = "starting" | "awaiting_user" | "complete" | "error";
 
@@ -43,6 +51,14 @@ export interface ProviderAuth {
   name: string;
   configured: boolean;
   login: LoginState | null;
+  /**
+   * For a connected `github-copilot` credential, the GitHub Copilot Enterprise
+   * domain it was issued for (e.g. `acme.ghe.com`), or null for individual
+   * Copilot. Lets the connect UI tell the "GitHub Copilot Enterprise" card apart
+   * from the individual one — both are the same engine provider, distinguished
+   * only by this domain. Absent/null for every other provider.
+   */
+  enterpriseUrl?: string | null;
 }
 
 export interface AuthStatus {
@@ -58,6 +74,24 @@ export interface ProviderInfo {
   isActive: boolean;
   activeModel: string;
   models: string[];
+}
+
+/**
+ * The OpenAI-compatible (local) endpoint a user connects: a base URL pointing at
+ * their own server (Ollama / vLLM / LM Studio) plus the model id it serves. The
+ * key is optional — keyless local servers ignore it. LOCAL profile only.
+ */
+export interface CustomEndpoint {
+  baseUrl: string;
+  model: string;
+  /** Friendly label for the picker; defaults to the model id. */
+  name?: string;
+  /** Assumed context window (tokens); defaults to the runtime's configured value. */
+  contextWindow?: number;
+  /** Whether to send `reasoning_effort` (only set for a reasoning-capable model). */
+  reasoning?: boolean;
+  /** Optional API key; blank for keyless servers. */
+  apiKey?: string;
 }
 
 export interface Settings {
@@ -94,6 +128,57 @@ export interface TokenUsage {
   cached_tokens: number;
 }
 
+/**
+ * Why an `unauthenticated` provider error happened. Mirrors the frontend
+ * `AuthFailureCause` (`@houston-ai/chat`) so the typed reconnect card reads it
+ * straight off the wire and picks the right body copy + reconnect lifecycle.
+ *
+ * - `no_credentials` — never connected (surfaced separately at send time, not
+ *   from a live turn).
+ * - `token_expired` — the credential lapsed; logging in again recovers it.
+ * - `token_revoked` — the provider ended the session server-side (the terminal
+ *   session-kill, e.g. Codex `app_session_terminated` / "your session has ended").
+ * - `invalid_api_key` — a pasted key the provider rejected.
+ */
+export type AuthFailureCause =
+  | "no_credentials"
+  | "token_expired"
+  | "token_revoked"
+  | "invalid_api_key"
+  | "unknown";
+
+/**
+ * A typed provider/auth/model failure for a turn's model request. Mirrors the
+ * relevant subset of the frontend `ProviderError` union (`@houston-ai/chat`) so
+ * it renders as the matching inline card (UnauthenticatedCard / RateLimitedCard /
+ * ProviderInternalCard / NetworkUnreachableCard / UnknownErrorCard). The runtime
+ * classifies pi's errored `AssistantMessage` (provider + model + errorMessage)
+ * into one of these — see runtime `ai/provider-error.ts`. `provider` is the pi
+ * provider id; the frontend maps it to its own id when rendering.
+ */
+export type ProviderError =
+  | {
+      kind: "unauthenticated";
+      provider: string;
+      cause: AuthFailureCause;
+      message: string;
+    }
+  | {
+      kind: "rate_limited";
+      provider: string;
+      model: string | null;
+      retry_after_seconds: number | null;
+      message: string;
+    }
+  | {
+      kind: "provider_internal";
+      provider: string;
+      http_status: number | null;
+      message: string;
+    }
+  | { kind: "network_unreachable"; provider: string; message: string }
+  | { kind: "unknown"; provider: string; raw_excerpt: string };
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
@@ -103,6 +188,24 @@ export interface ChatMessage {
   /** Normalized usage for the turn this assistant message completed, when the
    *  provider reported it. Persisted so the context indicator survives a reload. */
   usage?: TokenUsage | null;
+  /**
+   * Set on the first assistant message produced after a mid-session provider
+   * switch, so the boundary divider and the context-usage window reset survive a
+   * history reload. `provider` is the pi provider id switched TO; `summarized` is
+   * whether prior context was compacted to fit the new model's window.
+   */
+  providerSwitch?: {
+    provider: string;
+    summarized: boolean;
+    pre_tokens?: number | null;
+  };
+  /**
+   * Set when this turn's model request failed with a typed provider error
+   * (auth / rate-limit / 5xx / network). Persisted so the inline reconnect /
+   * rate-limit card survives a history reload, mirroring `providerSwitch`. The
+   * carried `provider` is the pi provider id; the frontend maps it.
+   */
+  providerError?: ProviderError;
 }
 
 export interface ConversationSummary {
@@ -129,6 +232,12 @@ export interface ConversationHistory {
  * - `tool_start` / `tool_end` — tool activity within the turn.
  * - `usage` — normalized token usage for the turn (when the provider reports it),
  *   emitted before `done`. Drives the context-usage indicator.
+ * - `provider_switched` — the conversation moved to a different provider
+ *   mid-session; renders a boundary divider and resets the context-usage window.
+ * - `provider_error` — the turn's model request failed with a typed provider /
+ *   auth / rate-limit / 5xx / network error; renders the matching inline card.
+ *   The turn still ends with a normal terminal frame (pi resolves the turn — it
+ *   does NOT throw on a provider error), so this never replaces `done`.
  * - `done` / `error` — the turn ended.
  */
 export type WireEvent =
@@ -139,6 +248,37 @@ export type WireEvent =
   | { type: "tool_start"; data: { name: string; args: unknown } }
   | { type: "tool_end"; data: { name: string; isError: boolean } }
   | { type: "usage"; data: TokenUsage }
+  | {
+      /**
+       * The conversation moved to a different provider mid-session. The runtime
+       * re-pointed the live session to the new provider, carrying the full prior
+       * history verbatim when it fit (`summarized: false`) or compacting it to
+       * fit a smaller window first (`summarized: true`). `provider` is the pi
+       * provider id switched TO; `pre_tokens` is the leaving provider's last
+       * context fill. Drives the chat's boundary divider + the context-usage
+       * window reset.
+       */
+      type: "provider_switched";
+      data: {
+        provider: string;
+        summarized: boolean;
+        pre_tokens?: number | null;
+      };
+    }
+  | {
+      /**
+       * The turn's model request failed with a typed provider error
+       * (401/403/session-ended → unauthenticated, 429 → rate_limited, 5xx →
+       * provider_internal, network → network_unreachable, else unknown).
+       * Published live so the chat renders the matching reconnect / rate-limit
+       * card, and persisted on the turn's assistant message
+       * (`ChatMessage.providerError`) so the card survives a reload. pi resolves
+       * the turn rather than throwing, so a normal terminal frame (`done`) still
+       * follows — this is NOT a substitute for it.
+       */
+      type: "provider_error";
+      data: ProviderError;
+    }
   | { type: "done"; data: null }
   | { type: "error"; data: { message: string } };
 

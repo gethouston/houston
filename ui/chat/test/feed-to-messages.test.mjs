@@ -26,6 +26,79 @@ test("attaches file changes to the previous assistant message after final result
   ]);
 });
 
+test("collapses duplicate provider-error cards to one per kind+provider", () => {
+  // codex surfaces a terminal auth failure on two channels: the transient
+  // stderr classifier and the persisted stdout parser. The chat must show a
+  // single reconnect card, not a stack.
+  const auth = {
+    feed_type: "provider_error",
+    data: {
+      kind: "unauthenticated",
+      provider: "openai",
+      cause: "unknown",
+      message: "Your session has ended.",
+    },
+  };
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "hi" },
+    auth,
+    { feed_type: "thinking", data: "" },
+    auth,
+  ]);
+  const cards = messages.filter((m) => m.providerError);
+  assert.equal(cards.length, 1, "exactly one reconnect card");
+  assert.equal(cards[0].providerError.kind, "unauthenticated");
+  assert.equal(cards[0].providerError.provider, "openai");
+});
+
+test("provider-error dedup resets at each user message (per turn)", () => {
+  // Re-failure in a LATER turn must show a fresh card: after a successful
+  // reconnect, the session can die again, and the new turn's error must not
+  // be swallowed by the previous turn's dedup entry.
+  const auth = {
+    feed_type: "provider_error",
+    data: {
+      kind: "unauthenticated",
+      provider: "openai",
+      cause: "unknown",
+      message: "ended",
+    },
+  };
+  const messages = feedItemsToMessages([
+    { feed_type: "user_message", data: "first" },
+    auth,
+    auth, // same turn → deduped
+    { feed_type: "user_message", data: "second" },
+    auth, // new turn → fresh card
+  ]);
+  assert.equal(messages.filter((m) => m.providerError).length, 2);
+});
+
+test("keeps provider-error cards of different kinds", () => {
+  const messages = feedItemsToMessages([
+    {
+      feed_type: "provider_error",
+      data: {
+        kind: "rate_limited",
+        provider: "anthropic",
+        model: null,
+        retry_after_seconds: null,
+        message: "429",
+      },
+    },
+    {
+      feed_type: "provider_error",
+      data: {
+        kind: "unauthenticated",
+        provider: "anthropic",
+        cause: "unknown",
+        message: "401",
+      },
+    },
+  ]);
+  assert.equal(messages.filter((m) => m.providerError).length, 2);
+});
+
 test("context_compacted becomes a system divider carrying compaction info", () => {
   const messages = feedItemsToMessages([
     { feed_type: "user_message", data: "keep going" },

@@ -16,6 +16,7 @@ import {
   isActiveSessionStatus,
   useSessionStatusStore,
 } from "../../stores/session-status";
+import { useUIStore } from "../../stores/ui";
 import type { SendOverrides } from "./board-source";
 
 /**
@@ -45,6 +46,7 @@ export function useAgentBoardSend({
   const path = agent.folderPath;
   const agentModes = agentDef.config.agents;
   const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
+  const addToast = useUIStore((s) => s.addToast);
   const queryClient = useQueryClient();
   const sessionStatuses = useSessionStatusStore((s) => s.statuses);
   const [loadingState, setLoading] = useState<Record<string, boolean>>({});
@@ -186,9 +188,24 @@ export function useAgentBoardSend({
 
   const stopSession = useCallback(
     (sessionKey: string) => {
-      tauriChat.stop(path, sessionKey).catch(console.error);
+      // Stop must clear the card even when the runtime has no live turn to abort
+      // (orphaned after an app restart, or a turn that errored without settling):
+      // the engine settles the stuck activity off "running", so refetch the board
+      // and the spinner — driven by `activity.status` — actually clears. A failed
+      // stop surfaces as a toast; never swallow it (beta no-silent-failures rule).
+      tauriChat
+        .stop(path, sessionKey)
+        .then(() => {
+          queryClient.invalidateQueries({ queryKey: queryKeys.activity(path) });
+        })
+        .catch((err) => {
+          addToast({
+            title: t("chat:errors.stopSession", { error: String(err) }),
+            variant: "error",
+          });
+        });
     },
-    [path],
+    [path, queryClient, addToast, t],
   );
 
   return { effectiveLoading, createConversation, sendMessageNow, stopSession };

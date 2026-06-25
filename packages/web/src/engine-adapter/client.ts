@@ -1,5 +1,9 @@
 import { migrateProviderModel } from "@houston/domain";
-import { HoustonEngineClient, type ProviderId } from "@houston/runtime-client";
+import {
+  type CustomEndpoint,
+  HoustonEngineClient,
+  type ProviderId,
+} from "@houston/runtime-client";
 import type {
   Activity,
   ActivityUpdate,
@@ -631,13 +635,19 @@ export class HoustonClient {
   async providerStatus(name: string): Promise<ProviderStatus> {
     const pid = toNewProvider(name);
     let configured = false;
+    let activeModel: string | undefined;
     if (pid) {
       try {
         const engine = this.providerEngine();
         if (engine) {
-          const s = await engine.authStatus();
-          configured =
-            s.providers.find((p) => p.provider === pid)?.configured ?? false;
+          // listProviders (not authStatus) so we also learn the configured
+          // model id — the OpenAI-compatible provider's model is dynamic and
+          // absent from the static catalog, so the picker has no other source.
+          // `configured` here matches authStatus for credential providers and
+          // is endpoint-aware for the local one.
+          const p = (await engine.listProviders()).find((x) => x.id === pid);
+          configured = p?.configured ?? false;
+          activeModel = p?.activeModel || undefined;
         }
       } catch {
         /* sandbox unreachable / no agent selected → report not-connected */
@@ -650,6 +660,7 @@ export class HoustonClient {
       cliName: name,
       installSource: "managed",
       cliPath: null,
+      activeModel,
     } as ProviderStatus;
   }
   // `deviceAuth` is the client's "I can't catch a loopback callback" flag — the
@@ -659,18 +670,26 @@ export class HoustonClient {
   // omits it never asks a remote runtime for an unreachable loopback.
   async providerLogin(
     name: string,
-    opts?: { deviceAuth?: boolean },
+    opts?: { deviceAuth?: boolean; enterpriseDomain?: string },
   ): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
     const deviceAuth = opts?.deviceAuth ?? true;
+    // GitHub Copilot: the company GitHub domain when the user chose the Company
+    // plan in the connect dialog. Undefined => Personal/github.com (and every
+    // other provider). The runtime runs the device-code flow against that GitHub.
+    const enterpriseDomain = opts?.enterpriseDomain;
 
     if (!this.cp) {
       // Local single runtime. Drive the legacy login dialog: `device_code`
       // carries the code to display; `url` (loopback) and `auth_code`
       // (headless Claude) leave `user_code` null so the dialog shows a paste
       // field. The runtime emits no completion event, so poll and synthesize.
-      const info = await this.engine.startLogin(pid, deviceAuth);
+      const info = await this.engine.startLogin(
+        pid,
+        deviceAuth,
+        enterpriseDomain,
+      );
       const url = info.kind === "device_code" ? info.verificationUri : info.url;
       const userCode = info.kind === "device_code" ? info.userCode : null;
       emitEvent("ProviderLoginUrl", {
@@ -688,11 +707,11 @@ export class HoustonClient {
     // handler consumes. A remote runtime returns a device_code (we pass its
     // `user_code`, which opens the code panel); a co-located desktop client gets
     // a loopback `url` (user_code null) that the handler opens straight in the
-    // browser. `provider` MUST be the old id (the dialog's contract).
+    // browser. `provider` MUST be the old/frontend id (the dialog's contract).
     const agentId = this.requireAgentId();
     const old = toOldProvider(pid);
     const engine = controlPlane.runtimeClientFor(this.cp, agentId);
-    const info = await engine.startLogin(pid, deviceAuth);
+    const info = await engine.startLogin(pid, deviceAuth, enterpriseDomain);
     if (info.kind === "device_code") {
       emitEvent("ProviderLoginUrl", {
         provider: old,
@@ -824,6 +843,32 @@ export class HoustonClient {
   }
 
   /**
+   * Connect an OpenAI-compatible (local) server: persist the base URL + model
+   * and make it active, then fire `ProviderLoginComplete` like the other connect
+   * paths. LOCAL/desktop only — in cloud the host refuses (the openaiCompatible
+   * capability is off), so the error surfaces to the dialog. Settings are
+   * PER-AGENT on the host, so activation MUST go through the agent's runtime
+   * client (mirrors setProviderApiKey).
+   */
+  async setProviderCustomEndpoint(endpoint: CustomEndpoint): Promise<void> {
+    if (this.cp) {
+      const agentId = this.requireAgentId();
+      await controlPlane.setCustomEndpoint(this.cp, agentId, endpoint);
+      await controlPlane
+        .runtimeClientFor(this.cp, agentId)
+        .setSettings({ activeProvider: "openai-compatible" });
+    } else {
+      await this.engine.setCustomEndpoint(endpoint);
+      await this.engine.setSettings({ activeProvider: "openai-compatible" });
+    }
+    emitEvent("ProviderLoginComplete", {
+      provider: "openai-compatible",
+      success: true,
+      error: null,
+    });
+  }
+
+  /**
    * Poll the agent's sandbox until the device-code login lands (the runtime
    * polls OpenAI in-process and writes auth.json to the PVC), then make the new
    * provider this agent's active one and signal completion — which closes the
@@ -862,7 +907,7 @@ export class HoustonClient {
           // Connect-once: store this credential for the WHOLE workspace, so every
           // agent (existing + new) shares this one connection.
           try {
-            await controlPlane.captureCredential(this.cp, agentId);
+            await controlPlane.captureCredential(this.cp, agentId, pid);
           } catch (e) {
             console.error("[connect] workspace credential capture failed", e);
           }
@@ -903,15 +948,22 @@ export class HoustonClient {
     return { sessionKey: req.sessionKey };
   }
   async cancelSession(agentPath: string, sessionKey: string) {
-    try {
-      const engine = this.cp
-        ? controlPlane.runtimeClientFor(this.cp, agentPath)
-        : this.engine;
-      await engine.cancel(sessionKey);
-    } catch {
-      /* already done */
+    const engine = this.cp
+      ? controlPlane.runtimeClientFor(this.cp, agentPath)
+      : this.engine;
+    // Abort the agent's in-flight turn. The engine reports whether a turn was
+    // ACTUALLY in flight. `false` means there was nothing to abort: the turn is
+    // orphaned — its board card is stuck "running" because the turn died without
+    // settling (an error that never reached a terminal frame, or an app restart
+    // that dropped the in-memory turn). Stop is the user's escape hatch, so in
+    // that case settle the card ourselves. A genuinely live turn (`true`) is
+    // settled by its own `streamTurn` when the abort lands, so we leave its
+    // status alone — writing it here too would race that terminal write.
+    const { cancelled } = await engine.cancel(sessionKey);
+    if (cancelled !== true) {
+      await this.setActivityStatus(agentPath, sessionKey, "needs_you");
     }
-    return { cancelled: true };
+    return { cancelled: cancelled === true };
   }
   async startOnboarding(
     _agentPath: string,

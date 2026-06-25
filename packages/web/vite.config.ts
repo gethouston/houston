@@ -16,7 +16,13 @@ const appSrc = path.resolve(__dirname, "../../app/src");
 const shim = (file: string) => path.resolve(__dirname, "src/shims", file);
 
 export default defineConfig(({ mode }) => {
-  const env = { ...loadEnv(mode, process.cwd(), ""), ...process.env };
+  // `pnpm dev:host` runs `vite --mode host`: load the shared repo-root .env.local
+  // (host token + the frontend's control-plane URL/token) instead of a
+  // package-local .env, so the browser dev server points at the local host with
+  // no flags. Plain `pnpm dev` (mode=development) keeps the default package
+  // envDir, so it stays the old-engine connect screen.
+  const envDir = mode === "host" ? repoRoot : process.cwd();
+  const env = { ...loadEnv(mode, envDir, ""), ...process.env };
   // Target the new TS engine (packages/engine) when VITE_NEW_ENGINE is truthy,
   // or when a URL is baked via VITE_NEW_ENGINE_URL. In that mode we swap the
   // engine client for the new-engine adapter so the entire desktop UI (app/src)
@@ -26,6 +32,7 @@ export default defineConfig(({ mode }) => {
     env.VITE_NEW_ENGINE === "true" ||
     Boolean(env.VITE_NEW_ENGINE_URL);
   return {
+    envDir,
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [

@@ -134,8 +134,12 @@ export async function dispatchCloudrun(
     }
 
     if (method === "POST" && action === "cancel") {
-      await deps.relay.cancel(agent.id);
-      return json(res, 200, { ok: true });
+      // `relay.cancel` already knows whether a turn was in flight on any replica;
+      // surface that as `cancelled` so the client can settle a stuck "running"
+      // card when there was nothing to abort (orphaned after a restart / a turn
+      // that died without a terminal frame). Previously this boolean was dropped.
+      const cancelled = await deps.relay.cancel(agent.id);
+      return json(res, 200, { ok: true, cancelled });
     }
 
     if (method === "POST" && action === "messages") {

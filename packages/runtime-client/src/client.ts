@@ -2,6 +2,7 @@ import type {
   AuthStatus,
   ConversationHistory,
   ConversationSummary,
+  CustomEndpoint,
   EngineClientConfig,
   HealthResponse,
   LoginInfo,
@@ -115,12 +116,22 @@ export class HoustonEngineClient {
    * Codex). `deviceAuth: false` (sent only by the co-located desktop client)
    * asks Codex for the browser/loopback login instead of the device code;
    * default true keeps the device-code path for remote webapp clients.
+   * `enterpriseDomain` (GitHub Copilot Enterprise only) runs the device-code flow
+   * against the company's GitHub (e.g. `acme.ghe.com`) instead of github.com.
    */
-  startLogin(provider: ProviderId, deviceAuth = true) {
-    const suffix = deviceAuth ? "" : "?deviceAuth=false";
-    return this.json<LoginInfo>(`/auth/${provider}/login${suffix}`, {
-      method: "POST",
-    });
+  startLogin(
+    provider: ProviderId,
+    deviceAuth = true,
+    enterpriseDomain?: string,
+  ) {
+    const params = new URLSearchParams();
+    if (!deviceAuth) params.set("deviceAuth", "false");
+    if (enterpriseDomain) params.set("enterpriseDomain", enterpriseDomain);
+    const qs = params.toString();
+    return this.json<LoginInfo>(
+      `/auth/${provider}/login${qs ? `?${qs}` : ""}`,
+      { method: "POST" },
+    );
   }
   /** Submit a pasted code (the `auth_code` headless Claude path). */
   completeLogin(provider: ProviderId, code: string) {
@@ -142,6 +153,18 @@ export class HoustonEngineClient {
       body: JSON.stringify({ key }),
     });
   }
+  /**
+   * Connect an OpenAI-compatible (local) server: a base URL + model id, plus an
+   * optional name/context window and an optional key (blank for keyless servers
+   * like Ollama). LOCAL profile only.
+   */
+  setCustomEndpoint(endpoint: CustomEndpoint) {
+    return this.json<{ ok: boolean }>("/providers/openai-compatible", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(endpoint),
+    });
+  }
   logout(provider: ProviderId) {
     return this.json<{ ok: boolean }>(`/auth/${provider}/logout`, {
       method: "POST",
@@ -157,8 +180,14 @@ export class HoustonEngineClient {
       `/conversations/${encodeURIComponent(id)}/messages`,
     );
   }
+  /**
+   * Abort a conversation's in-flight turn. `cancelled` reports whether a live
+   * turn was actually stopped: `false` means there was nothing in flight (the
+   * turn is orphaned — e.g. the runtime restarted), so no terminal event will
+   * follow and the caller must settle any stuck "running" UI itself.
+   */
   cancel(id: string) {
-    return this.json<{ ok: boolean }>(
+    return this.json<{ ok: boolean; cancelled: boolean }>(
       `/conversations/${encodeURIComponent(id)}/cancel`,
       { method: "POST" },
     );

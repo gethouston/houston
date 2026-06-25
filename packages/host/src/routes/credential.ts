@@ -65,6 +65,9 @@ export async function handleSandboxCredential(
     expires: cred.expiresAt,
     accountId: cred.accountId ?? null,
     kind: isApiKeyCredential(cred) ? "api_key" : "oauth",
+    // Copilot Enterprise domain (not a secret) so the runtime sets the right API
+    // base URL; null for individual Copilot and every other provider.
+    enterpriseUrl: cred.enterpriseUrl ?? null,
   });
   return true;
 }
