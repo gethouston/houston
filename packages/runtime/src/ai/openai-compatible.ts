@@ -114,16 +114,34 @@ export function buildOpenAiCompatibleModel(
  * (a routine's pinned model) wins over the saved model id; throws when nothing
  * is configured so a never-connected turn surfaces a clear error.
  */
+/**
+ * The local endpoint serves exactly its one configured model. Returns an error
+ * message when a per-turn override names a DIFFERENT model (e.g. a routine pin
+ * carrying ANOTHER provider's model id while this provider is active) — such an
+ * id must NOT be shipped to the local base URL, since the local server would
+ * answer with a confusing upstream `model_not_supported`. Returns null when the
+ * override is absent or matches. Pure, so the guard is unit-testable.
+ */
+export function localOverrideError(
+  configured: string,
+  override: string | undefined,
+): string | null {
+  return override && override !== configured
+    ? `The local endpoint serves "${configured}", not "${override}". Pick the local model (or switch the active provider) before this turn.`
+    : null;
+}
+
 export function buildActiveCustomModel(override?: string): Model<Api> {
   const e = load();
-  const model = override || e.model;
-  if (!e.baseUrl || !model)
+  if (!e.baseUrl || !e.model)
     throw new Error(
       "No local model configured. Set a base URL and model for the OpenAI-compatible provider.",
     );
+  const mismatch = localOverrideError(e.model, override);
+  if (mismatch) throw new Error(mismatch);
   return buildOpenAiCompatibleModel({
     baseUrl: e.baseUrl,
-    model,
+    model: e.model,
     name: e.name,
     contextWindow: e.contextWindow,
     reasoning: e.reasoning,

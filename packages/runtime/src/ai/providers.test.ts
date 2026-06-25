@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
 import {
   buildOpenAiCompatibleModel,
+  localOverrideError,
   OPENAI_COMPATIBLE,
   setCustomEndpointConfig,
 } from "./openai-compatible";
@@ -143,6 +144,17 @@ test("the built local model's provider matches the auth-store key, so pi resolve
   const auth = await registry.getApiKeyAndHeaders(model);
   expect(auth.ok).toBe(true);
   if (auth.ok) expect(auth.apiKey).toBe("houston-local");
+});
+
+test("localOverrideError refuses a foreign per-turn model on the local endpoint", () => {
+  // No override, or an override matching the configured local model → allowed.
+  expect(localOverrideError("qwen2.5", undefined)).toBeNull();
+  expect(localOverrideError("qwen2.5", "qwen2.5")).toBeNull();
+  // A different provider's model id (e.g. a routine pin) must NOT be built
+  // against the local base URL — surface it instead of mis-routing to localhost.
+  expect(localOverrideError("qwen2.5", "claude-haiku-4.5")).toMatch(
+    /local endpoint serves/,
+  );
 });
 
 test("setCustomEndpointConfig rejects bad input before persisting", () => {
