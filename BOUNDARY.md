@@ -108,8 +108,10 @@ adapter tests (Memory/Fs/Local/Process) and the closed adapter tests
 ## What the check enforces
 
 `scripts/check-boundaries.mjs` walks every non-test `.ts`/`.tsx` under the open
-packages (including `packages/host`) and the closed package, extracts
-import/export/dynamic-import specifiers, and:
+packages (including `packages/host`) and the closed package, **strips comments**
+(so a commented-out import is never mistaken for a real one), extracts every
+`import` / `export ... from` / dynamic `import()` / `require()` specifier, and
+also reads the open packages' `package.json` files. It then enforces:
 
 > **Test scaffolding is exempt.** `*.test.ts`, plus test-only helpers by
 > convention (`*-harness.ts`, `*.test-helper.ts`, `*.fixture.ts`, `*.mock.ts`),
@@ -117,17 +119,39 @@ import/export/dynamic-import specifiers, and:
 > adapters in unit tests and are never shipped. Production code may not.
 
 - **Rule A** — no file in `packages/{protocol,domain,runtime,runtime-client,host}`
-  or `ui/**` imports a cloud lib (`pg`, `ioredis`, `redis`, `@google-cloud/*`,
-  `@kubernetes/*`, `googleapis`, `bigquery`) or the closed package
-  (`@houston/host-cloud`, bare or subpath). The one allowlisted exception is the
-  runtime's own adapter (`runtime/src/turn/gcs-store.ts`), reachable only from
-  `runtime/src/main.ts`.
+  or `ui/**` may _reach_ the closed package or a cloud lib. A reach is ANY of:
+  - a bare `@houston/host-cloud` (or subpath) specifier;
+  - a **relative or absolute path** that, resolved on disk, lands inside
+    `packages/host-cloud/` — host and host-cloud are on-disk siblings and
+    host-cloud has no `exports` field, so `../../host-cloud/src/launcher/gke`
+    resolves and must be caught even though the bare spec never appears;
+  - a known **cloud lib**: `pg`, `postgres` (postgres.js), `ioredis`, `redis`,
+    `mongodb`, `@google-cloud/*`, `@kubernetes/*`, `@aws-sdk/*`, `@azure/*`,
+    `googleapis`, `bigquery`;
+  - an **undeclared bare import** — any non-builtin specifier that is not a
+    dependency of the importing file's own `package.json`. This is the allowlist
+    half: a future cloud dep the denylist has never heard of cannot be imported
+    without first being declared, where Rule C then sees it.
+
+  The one allowlisted exception is the runtime's own adapter
+  (`runtime/src/turn/gcs-store.ts`), reachable only from `runtime/src/main.ts`;
+  those two files may import `@google-cloud/storage`.
 - **Rule B** — `packages/host-cloud/**` is wholesale CLOSED: it may import cloud
   libs and `@houston/host`. The check walks it only to confirm it carries the
   extracted adapters (a stray empty package can't pass as "extracted").
+- **Rule C (manifest)** — no open `package.json` may **declare** the closed
+  package or a cloud lib as a dependency (any bucket: `dependencies`,
+  `devDependencies`, `peerDependencies`, `optionalDependencies`). This is the
+  allowlist direction: a denylist of import specifiers lets a new cloud dep leak
+  green by default, but a dependency must be declared to resolve, and a
+  declaration is a small, reviewable surface. The runtime's `@google-cloud/storage`
+  is the one documented exception.
 
-Violations print as `file -> imported closed module` and exit 1. On success it
-prints a one-line OK with open/closed file counts + the allowlisted-crossing
-count.
+Violations print as `[A|B|C] file -> reason` and exit 1. On success it prints a
+one-line OK with open/closed file counts, the allowlisted-crossing count, and the
+number of clean open manifests.
+
+The check is regression-tested by `scripts/test/check-boundaries.test.sh` (a
+fixture tree exercising every leak vector above).
 
 Run: `pnpm check:boundaries` (or `node scripts/check-boundaries.mjs`).
