@@ -14,7 +14,6 @@
   },
   "dependencies": {
     "@google-cloud/storage": "^7.14.0",
-    "@houston/domain": "file:../domain",
     "@houston/host": "file:../host",
     "@houston/protocol": "file:../protocol",
     "@houston/runtime-client": "file:../runtime-client",
