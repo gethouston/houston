@@ -42,7 +42,7 @@ The control plane and supporting artifacts are **built and tested** here. What r
 | Operator dashboard — pods-per-user + GCP spend (estimate + BigQuery actuals) | ✅ built · tested | `packages/host/src/admin/*`, `packages/web/src/admin/*`, `cloud/billing.md` |
 | Runtime cloud-mode — keyless, `baseUrl`→proxy | ✅ tested | `packages/runtime/src/{config,ai/providers,auth/login}.ts` |
 | Session-resume fix (sleep/wake hinge) | ✅ tested | `packages/runtime/src/session/chat.ts` |
-| Agent container image | ✅ built · CI-build-noted | `packages/runtime/Dockerfile`, root `.dockerignore` |
+| Agent container image | ✅ built · CI-build-noted | `packages/runtime/Dockerfile`, `packages/runtime/Dockerfile.dockerignore` |
 | K8s / Agent-Sandbox manifests | ✅ validated | `cloud/k8s/*` |
 | gcloud provisioning (P0/P1) | ✅ scripts · confirm-before-billing | `cloud/scripts/*` |
 | **Frontend un-faking (web → control plane)** | ⏳ remaining in-repo work | `packages/web/src/engine-adapter/*` |

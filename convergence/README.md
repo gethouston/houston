@@ -111,7 +111,8 @@ Three platform jobs, all bun-compiling the host via the one parameterized
 compiled host at the SAME `binaries/houston-engine-<triple>` externalBin name the
 Rust engine uses, so `tauri.conf.json` needs no per-feature branch. End-to-end
 packaged-`.app` run verification is the one manual step — see
-`convergence/packaged-app-launch.md`.
+`convergence/packaged-app-launch.md`. The Docker `selfhost/` image is a separate
+path — it runs the host from Bun-runtime source, not this compiled sidecar.
 
 ## Standing decisions
 

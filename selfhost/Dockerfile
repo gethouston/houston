@@ -59,11 +59,9 @@ RUN cd /app/packages/host && bun install --frozen-lockfile \
 RUN mkdir -p /data/workspaces /data/db && chown -R bun:bun /app /data
 
 ENV NODE_ENV=production \
+    HOUSTON_HOME=/data \
     HOUSTON_HOST_BIND=0.0.0.0 \
     HOUSTON_HOST_PORT=4318 \
-    HOUSTON_WORKSPACES_ROOT=/data/workspaces \
-    HOUSTON_CREDENTIALS_PATH=/data/credentials.json \
-    HOUSTON_CHAT_HISTORY_DB=/data/db/houston.db \
     HOUSTON_RUNTIME_COMMAND="bun run /app/packages/runtime/src/main.ts"
 # HOUSTON_HOST_TOKEN is deliberately NOT defaulted: an unset token would leave the
 # host open to anyone who can reach the port. docker-compose.yml requires it.

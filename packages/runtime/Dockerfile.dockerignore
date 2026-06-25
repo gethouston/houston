@@ -1,21 +1,36 @@
-# Build context is the `packages/` directory (see Dockerfile header). Keep only
-# what the engine image needs: engine/ source + runtime-client/ source.
-# Paths are relative to that context root.
+# Dockerfile-specific ignores for packages/runtime/Dockerfile. Build context is
+# the repo root (`docker build -f packages/runtime/Dockerfile .`) because the
+# runtime resolves @houston/runtime-client via file:../runtime-client.
+# Paths are relative to the repo root.
 
 **/node_modules
-**/.git
+.git
+**/target
 **/*.log
 **/.DS_Store
 **/.env
 **/dist
+.context
 
-# The webapp package is not part of the engine image.
-web/
+# Large product trees not copied by this Dockerfile.
+app/
+always-on/
+cloud/
+convergence/
+engine/
+examples/
+selfhost/
+store/
+teams/
+ui/
+website/
+packages/code-sandbox/
+packages/control-plane/
+packages/domain/
+packages/protocol/
+packages/web/
 
-# Local dev artifacts that must never leak into the image.
-engine/data/
-engine/.env
-runtime/Dockerfile.standalone
-runtime/Dockerfile.standalone.dockerignore
-engine/docker-compose.yml
-engine/.env.example
+# Runtime-local dev artifacts that must never leak into the image.
+packages/runtime/data/
+packages/runtime/.env
+packages/runtime/docker-compose.yml
