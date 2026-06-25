@@ -56,16 +56,80 @@ curl -H "Authorization: Bearer $HOUSTON_HOST_TOKEN" \
 
 The engine is now live at **`https://$HOUSTON_DOMAIN/engine`**.
 
-## 3. Connect a client
+## Local container smoke test (no Caddy)
+
+Use this for local testing on your laptop. It runs the engine container directly,
+without TLS and without the web app:
+
+```sh
+docker build -f Dockerfile -t houston/self-host:local ..
+docker run --rm -d --name houston-selfhost -p 4318:4318 -e HOUSTON_HOST_TOKEN=test -v houston-data:/data houston/self-host:local
+curl http://127.0.0.1:4318/health
+curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
+```
+
+For this direct-container mode, the engine URL is `http://127.0.0.1:4318` and
+the token is `test`. Stop it with:
+
+```sh
+docker stop houston-selfhost
+```
+
+## 3. Connect clients
 
 The engine is the backend; you point a Houston frontend at it.
 
-**Option A — the desktop app.** In a flag-gated desktop build, set the engine URL
-to `https://$HOUSTON_DOMAIN/engine` and the token to your `HOUSTON_HOST_TOKEN`.
+### Desktop app as client
 
-**Option B — serve the web app from the same domain.** Build the SPA and drop it
-next to the proxy; Caddy serves it at `/` and proxies the engine at `/engine`
-(one origin, so no CORS, no mixed content):
+For remote compose, the desktop engine URL is:
+
+```text
+https://$HOUSTON_DOMAIN/engine
+```
+
+For direct-container local testing, the desktop engine URL is:
+
+```text
+http://127.0.0.1:4318
+```
+
+In development, set attach vars in repo-root `.env.local` (not `app/.env.local`).
+`cd app && pnpm start` loads `../.env.local`, and the Tauri Rust shell needs the
+same vars as Vite so it skips the bundled Rust engine:
+
+```env
+VITE_NEW_ENGINE_URL=https://your-domain.example/engine
+VITE_NEW_ENGINE_TOKEN=your-token
+```
+
+```sh
+cd app
+pnpm start
+```
+
+For local direct-container testing, use this instead:
+
+```env
+VITE_NEW_ENGINE_URL=http://127.0.0.1:4318
+VITE_NEW_ENGINE_TOKEN=test
+```
+
+You can also run without a file:
+
+```sh
+cd app
+VITE_NEW_ENGINE_URL=https://your-domain.example/engine \
+VITE_NEW_ENGINE_TOKEN=your-token \
+pnpm start
+```
+
+Restart the desktop app after changing vars. On boot, the terminal should say it
+is in `VITE_NEW_ENGINE_URL` host mode and is skipping the Rust sidecar.
+
+### Web app as client, served from the VPS
+
+Build the SPA and drop it next to the proxy; Caddy serves it at `/` and proxies
+the engine at `/engine` (one origin, so no CORS, no mixed content):
 
 ```sh
 # from the repo root
@@ -78,6 +142,21 @@ Open `https://$HOUSTON_DOMAIN`. On first visit the app asks for the engine URL
 and token — enter `https://$HOUSTON_DOMAIN/engine` and your `HOUSTON_HOST_TOKEN`
 (stored in the browser, asked once). Building with `VITE_NEW_ENGINE=1` and no
 baked URL keeps the token out of the JS bundle — you type it in instead.
+
+### Web app as local dev client
+
+To run the browser UI on your laptop against a local or remote Docker engine:
+
+```sh
+cd packages/web
+VITE_NEW_ENGINE=1 \
+VITE_NEW_ENGINE_URL=https://your-domain.example/engine \
+VITE_NEW_ENGINE_TOKEN=your-token \
+pnpm dev
+```
+
+Open the Vite URL it prints. For local direct-container testing, replace the URL
+with `http://127.0.0.1:4318` and token with `test`.
 
 ## 4. Sign in to your AI provider
 
@@ -95,37 +174,26 @@ never sits in a runtime's environment.
 | Update | `git pull && docker compose up -d --build` |
 | Back up | snapshot the `houston-data` volume (`docker run --rm -v selfhost_houston-data:/d -v "$PWD":/b alpine tar czf /b/houston-backup.tgz -C /d .`) |
 | Stop | `docker compose down` (keeps volumes) |
+| Delete containers + images | `docker compose down && docker rmi houston/self-host:local` |
 
-Your entire state — workspaces, agents, skills, routines, the connect-once
-credential — lives in the `houston-data` volume. Back that up and you can move
-the whole instance to another box.
+All state lives in the `houston-data` volume. Back that up and you can move the
+whole instance to another box.
 
 ## Migrating from the desktop app
 
-Copy your desktop `~/.houston` into the `houston-data` volume before first boot
-(`workspaces/` and, if you want your old chats, `db/houston.db`). The host runs
-the same idempotent, **copy-never-move** chat-history migration on boot, so the
-originals are never touched and you can always go back to the desktop build.
+Copy desktop `~/.houston` into the `houston-data` volume before first boot
+(`workspaces/` and optionally `db/houston.db`). The host runs the same
+idempotent, copy-never-move chat migration on boot.
 
 ## Security notes (read before exposing it)
 
 - **The token gates everything.** Every route except `/engine/health` requires
   `Authorization: Bearer <HOUSTON_HOST_TOKEN>`. There is no second user, no
   sign-up — one token, one owner.
-- **TLS is terminated by Caddy**, never in the engine. Don't publish the engine's
-  4318 port directly; the compose file deliberately doesn't.
+- **TLS is terminated by Caddy**, never in the engine. Don't publish port 4318
+  directly; the compose file deliberately doesn't.
 - **The agent's `bash` runs with the container's authority** inside the
   `houston-data` volume — the container is the trust boundary, same as the
   desktop's is your user account. Don't bind-mount sensitive host paths in.
-- The pi runtime children stay on `127.0.0.1` inside the container; only Caddy's
-  80/443 reach the outside.
-
-## Layout
-
-| File | What |
-|---|---|
-| `Dockerfile` | The self-host engine image (host + the runtime it spawns, one container). Build context is the repo root. |
-| `docker-compose.yml` | `host` (engine, internal-only) + `caddy` (TLS + reverse proxy). |
-| `Caddyfile` | Automatic HTTPS; `/engine/*` → host, `/*` → the web build in `web/`. |
-| `.env.example` | `HOUSTON_DOMAIN` + `HOUSTON_HOST_TOKEN`. |
-| `web/` | Optional docroot — drop a web build here to serve the app from the same domain. |
+- Runtime children stay on `127.0.0.1` inside the container; only Caddy's 80/443
+  reach the outside.

@@ -186,8 +186,9 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-Full guide: [`selfhost/README.md`](selfhost/README.md). The lower-level runtime
-image lives at `packages/runtime/Dockerfile`; it is not the full app.
+Full guide, including desktop and web clients for local or remote Docker engines:
+[`selfhost/README.md`](selfhost/README.md). The lower-level runtime image lives
+at `packages/runtime/Dockerfile`; it is not the full app.
 
 ---
 
