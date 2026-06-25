@@ -26,3 +26,10 @@ app/src-tauri/binaries/
 
 # local MCP config (may hold tokens)
 .mcp.json
+
+# Playwright UI tests (packages/web/e2e) — generated artifacts
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+.last-run.json

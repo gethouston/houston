@@ -10,7 +10,12 @@
     "build": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit",
-    "test": "bun test",
+    "typecheck:e2e": "tsgo --noEmit -p e2e/tsconfig.json",
+    "test": "bun test ./tests",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report",
+    "fake-host": "bun run e2e/fake-host/server.ts",
     "check-shims": "node ../../scripts/check-tauri-shims.mjs"
   },
   "dependencies": {
@@ -22,10 +27,10 @@
     "@houston-ai/engine-client": "workspace:*",
     "@houston-ai/events": "workspace:*",
     "@houston-ai/layout": "workspace:*",
-    "@houston/runtime-client": "workspace:*",
     "@houston-ai/review": "workspace:*",
     "@houston-ai/routines": "workspace:*",
     "@houston-ai/skills": "workspace:*",
+    "@houston/runtime-client": "workspace:*",
     "@sentry/browser": "^10.54.0",
     "@supabase/supabase-js": "^2.45.0",
     "@tanstack/react-query": "^5.96.2",
@@ -41,11 +46,13 @@
     "zustand": "^5.0.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.49.1",
     "@tailwindcss/vite": "^4.1.8",
-    "@typescript/native-preview": "7.0.0-dev.20260607.1",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
+    "@typescript/native-preview": "7.0.0-dev.20260607.1",
     "@vitejs/plugin-react": "^4.5.2",
+    "bun-types": "^1.3.14",
     "tailwindcss": "^4.1.8",
     "typescript": "^6.0.2",
     "vite": "^6.3.5"

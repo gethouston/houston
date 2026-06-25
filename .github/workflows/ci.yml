@@ -1,0 +1,59 @@
+name: CI
+
+# The repo's other workflows fire on tags (release) or deploy. This is the
+# pull-request gate: it runs the Houston Web checks — typecheck, unit tests, and
+# the Playwright UI tests (the full desktop UI driven in a browser on the new TS
+# engine, against an in-memory fake host). See packages/web/e2e/README.md.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  web:
+    name: Web (typecheck + unit + UI tests)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      # The fake host (packages/web/e2e/fake-host) runs under Bun.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Playwright Chromium
+        run: pnpm --filter houston-web exec playwright install --with-deps chromium
+
+      - name: Typecheck (web)
+        run: pnpm --filter houston-web typecheck
+
+      - name: Typecheck (e2e harness)
+        run: pnpm --filter houston-web typecheck:e2e
+
+      - name: Unit tests (web)
+        run: pnpm --filter houston-web test
+
+      - name: UI tests (Playwright)
+        run: pnpm --filter houston-web test:e2e
+
+      - name: Upload Playwright report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: packages/web/playwright-report/
+          retention-days: 14
