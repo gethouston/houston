@@ -39,8 +39,17 @@ export function appendAssistantMessage(
   tools?: ToolCallRecord[],
   usage?: TokenUsage | null,
   providerSwitch?: ChatMessage["providerSwitch"],
+  providerError?: ChatMessage["providerError"],
 ) {
-  appendAssistantMessageAt(dir, id, content, tools, usage, providerSwitch);
+  appendAssistantMessageAt(
+    dir,
+    id,
+    content,
+    tools,
+    usage,
+    providerSwitch,
+    providerError,
+  );
 }
 
 export function getHistory(id: string): ConversationHistory | null {

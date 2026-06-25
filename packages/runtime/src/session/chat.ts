@@ -8,6 +8,7 @@ import {
 } from "@earendil-works/pi-coding-agent";
 import type {
   ChatMessage,
+  ProviderError,
   TokenUsage,
   ToolCallRecord,
 } from "@houston/runtime-client";
@@ -191,10 +192,12 @@ async function execTurn(
   let assistantText = "";
   let usage: TokenUsage | null = null;
   const tools: ToolCallRecord[] = [];
-  // Set when pi surfaces a model/provider failure as a terminal `error` frame
-  // (see toWire) instead of throwing — prompt() still resolves, so the turn must
-  // NOT also emit a clean `done` on top of the already-published error.
-  let turnError = false;
+  // A typed provider failure for this turn. pi resolves the turn rather than
+  // throwing, so this arrives on the stream (a provider_error frame), not via the
+  // catch. Its presence is also the "the turn failed" signal: persist it on the
+  // assistant message (so the inline card survives a reload) AND skip the clean
+  // `done` that would settle the chat as a success on top of the error.
+  let providerError: ProviderError | undefined;
 
   const unsub = conv.session.subscribe((e: AgentSessionEvent) => {
     const wire = toWire(e);
@@ -205,7 +208,7 @@ async function execTurn(
     else if (wire.type === "tool_end") {
       const t = tools[tools.length - 1];
       if (t) t.isError = wire.data.isError;
-    } else if (wire.type === "error") turnError = true;
+    } else if (wire.type === "provider_error") providerError = wire.data;
     publish(id, wire);
   });
 
@@ -267,21 +270,33 @@ async function execTurn(
       if (level) conv.session.setThinkingLevel(level);
     }
     await conv.session.prompt(text);
-    if (turnError) {
-      // pi reported a model/provider failure through the stream (already
-      // published as an `error` frame by the subscriber above), NOT a thrown
-      // exception. Persist any partial assistant text — exactly as the catch
-      // path does — and skip `done`, which would settle the chat as a clean
-      // success on top of the error.
-      if (assistantText)
-        appendAssistantMessage(id, assistantText, tools, usage, providerSwitch);
-    } else {
-      appendAssistantMessage(id, assistantText, tools, usage);
-      publish(id, { type: "done", data: null });
-    }
+    // Persist the switch marker AND any typed provider error on this turn's
+    // assistant message so both the boundary divider and the reconnect /
+    // rate-limit card survive a history reload. A provider failure lands HERE
+    // (pi resolves the turn, it does not throw) with empty text, not in the catch.
+    appendAssistantMessage(
+      id,
+      assistantText,
+      tools,
+      usage,
+      providerSwitch,
+      providerError,
+    );
+    // Skip the clean `done` when the turn failed: the provider_error frame is the
+    // turn's terminal surface (the web adapter settles on it), and a `done` would
+    // settle the chat as a clean success — firing the "mission complete"
+    // notification on top of the error.
+    if (!providerError) publish(id, { type: "done", data: null });
   } catch (err) {
     if (assistantText)
-      appendAssistantMessage(id, assistantText, tools, usage, providerSwitch);
+      appendAssistantMessage(
+        id,
+        assistantText,
+        tools,
+        usage,
+        providerSwitch,
+        providerError,
+      );
     publish(id, { type: "error", data: { message: errMessage(err) } });
   } finally {
     unsub();

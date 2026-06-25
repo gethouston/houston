@@ -106,6 +106,57 @@ export interface TokenUsage {
   cached_tokens: number;
 }
 
+/**
+ * Why an `unauthenticated` provider error happened. Mirrors the frontend
+ * `AuthFailureCause` (`@houston-ai/chat`) so the typed reconnect card reads it
+ * straight off the wire and picks the right body copy + reconnect lifecycle.
+ *
+ * - `no_credentials` — never connected (surfaced separately at send time, not
+ *   from a live turn).
+ * - `token_expired` — the credential lapsed; logging in again recovers it.
+ * - `token_revoked` — the provider ended the session server-side (the terminal
+ *   session-kill, e.g. Codex `app_session_terminated` / "your session has ended").
+ * - `invalid_api_key` — a pasted key the provider rejected.
+ */
+export type AuthFailureCause =
+  | "no_credentials"
+  | "token_expired"
+  | "token_revoked"
+  | "invalid_api_key"
+  | "unknown";
+
+/**
+ * A typed provider/auth/model failure for a turn's model request. Mirrors the
+ * relevant subset of the frontend `ProviderError` union (`@houston-ai/chat`) so
+ * it renders as the matching inline card (UnauthenticatedCard / RateLimitedCard /
+ * ProviderInternalCard / NetworkUnreachableCard / UnknownErrorCard). The runtime
+ * classifies pi's errored `AssistantMessage` (provider + model + errorMessage)
+ * into one of these — see runtime `ai/provider-error.ts`. `provider` is the pi
+ * provider id; the frontend maps it to its own id when rendering.
+ */
+export type ProviderError =
+  | {
+      kind: "unauthenticated";
+      provider: string;
+      cause: AuthFailureCause;
+      message: string;
+    }
+  | {
+      kind: "rate_limited";
+      provider: string;
+      model: string | null;
+      retry_after_seconds: number | null;
+      message: string;
+    }
+  | {
+      kind: "provider_internal";
+      provider: string;
+      http_status: number | null;
+      message: string;
+    }
+  | { kind: "network_unreachable"; provider: string; message: string }
+  | { kind: "unknown"; provider: string; raw_excerpt: string };
+
 export interface ChatMessage {
   role: ChatRole;
   content: string;
@@ -126,6 +177,13 @@ export interface ChatMessage {
     summarized: boolean;
     pre_tokens?: number | null;
   };
+  /**
+   * Set when this turn's model request failed with a typed provider error
+   * (auth / rate-limit / 5xx / network). Persisted so the inline reconnect /
+   * rate-limit card survives a history reload, mirroring `providerSwitch`. The
+   * carried `provider` is the pi provider id; the frontend maps it.
+   */
+  providerError?: ProviderError;
 }
 
 export interface ConversationSummary {
@@ -154,6 +212,10 @@ export interface ConversationHistory {
  *   emitted before `done`. Drives the context-usage indicator.
  * - `provider_switched` — the conversation moved to a different provider
  *   mid-session; renders a boundary divider and resets the context-usage window.
+ * - `provider_error` — the turn's model request failed with a typed provider /
+ *   auth / rate-limit / 5xx / network error; renders the matching inline card.
+ *   The turn still ends with a normal terminal frame (pi resolves the turn — it
+ *   does NOT throw on a provider error), so this never replaces `done`.
  * - `done` / `error` — the turn ended.
  */
 export type WireEvent =
@@ -180,6 +242,20 @@ export type WireEvent =
         summarized: boolean;
         pre_tokens?: number | null;
       };
+    }
+  | {
+      /**
+       * The turn's model request failed with a typed provider error
+       * (401/403/session-ended → unauthenticated, 429 → rate_limited, 5xx →
+       * provider_internal, network → network_unreachable, else unknown).
+       * Published live so the chat renders the matching reconnect / rate-limit
+       * card, and persisted on the turn's assistant message
+       * (`ChatMessage.providerError`) so the card survives a reload. pi resolves
+       * the turn rather than throwing, so a normal terminal frame (`done`) still
+       * follows — this is NOT a substitute for it.
+       */
+      type: "provider_error";
+      data: ProviderError;
     }
   | { type: "done"; data: null }
   | { type: "error"; data: { message: string } };

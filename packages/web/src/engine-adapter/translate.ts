@@ -239,6 +239,40 @@ export async function streamTurn(
           },
         });
         break;
+      case "provider_error":
+        // The turn's model request failed with a typed error: render the matching
+        // inline card (reconnect / rate-limit / 5xx / network). Map the runtime
+        // provider id to the app id the cards resolve names against (same mapping
+        // as provider_switched).
+        feed(agentPath, sessionKey, {
+          feed_type: "provider_error",
+          data: { ...ev.data, provider: toOldProvider(ev.data.provider) },
+        });
+        // This frame is the turn's terminal surface: the runtime does NOT emit a
+        // clean `done` after a provider failure (that would settle it as a success
+        // and fire the "mission complete" notification). Settle it ourselves like
+        // the not-connected path — the typed card IS the message, so no
+        // system_message; an invisible final_result stops the progress line; an
+        // `error` session-status with NO text only clears the loading flag (no
+        // second error line, no notification); the card lands on needs_you, never
+        // the red error state. Any trailing terminal the cloud relay still sends
+        // is a no-op once `settled`.
+        if (!settled) {
+          settled = true;
+          feed(agentPath, sessionKey, {
+            feed_type: "final_result",
+            data: {
+              result: "",
+              cost_usd: null,
+              duration_ms: null,
+              usage: null,
+            },
+          });
+          sessionStatus(agentPath, sessionKey, "error");
+          terminal = "needs_you";
+        }
+        ac.abort();
+        break;
       case "error":
         finishErr(ev.data.message);
         ac.abort();
@@ -305,6 +339,18 @@ export function historyToFeed(messages: ChatMessage[]): ChatHistoryEntry[] {
             provider: toOldProvider(m.providerSwitch.provider),
             summarized: m.providerSwitch.summarized,
             pre_tokens: m.providerSwitch.pre_tokens,
+          },
+        });
+      }
+      // A persisted provider failure: replay the typed card so the inline
+      // reconnect / rate-limit surface survives a reload (the dedup in
+      // feedItemsToMessages keeps one card per (kind, provider) per turn).
+      if (m.providerError) {
+        out.push({
+          feed_type: "provider_error",
+          data: {
+            ...m.providerError,
+            provider: toOldProvider(m.providerError.provider),
           },
         });
       }

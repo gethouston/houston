@@ -76,6 +76,7 @@ export function appendAssistantMessageAt(
   tools?: ToolCallRecord[],
   usage?: TokenUsage | null,
   providerSwitch?: ChatMessage["providerSwitch"],
+  providerError?: ChatMessage["providerError"],
 ) {
   const conv = loadConversation(dir, id);
   if (!conv) return;
@@ -86,6 +87,7 @@ export function appendAssistantMessageAt(
     tools: tools?.length ? tools : undefined,
     usage: usage ?? undefined,
     providerSwitch,
+    providerError,
   });
   conv.updatedAt = Date.now();
   save(dir, conv);
