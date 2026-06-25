@@ -235,6 +235,20 @@ Notes:
   Rust build never shows them. Full design: `convergence/README.md` standing
   decisions. Runtime registry: `packages/runtime/src/ai/providers.ts`; host
   catalog: `packages/control-plane/src/providers.ts`.
+- _[NEW ENGINE only]_ **One connect card for both OpenCode gateways** (HOU-577).
+  Zen and Go are two distinct pi gateways (`opencode.ai/zen/v1` vs
+  `opencode.ai/zen/go/v1`, disjoint model catalogs) but authenticate with the
+  SAME opencode.ai key — pi reads `OPENCODE_API_KEY` for both. So the connect
+  surfaces (settings + onboarding picker) show ONE "OpenCode" account card
+  (`getConnectProviders` collapses the two catalog entries; `gatewayIds` lists
+  both), and the adapter fans the pasted key out to both gateway ids
+  (`credentialSiblings` in `synthetic.ts`; `setProviderApiKey`/`providerLogout` in
+  `client.ts` loop over it — ONE `ProviderLoginComplete`, one active provider).
+  Status is OR'd across the gateways (`tauriProvider.checkMergedStatus`). The
+  chat **model picker keeps Zen and Go as separate sections** (it maps `PROVIDERS`
+  directly) — the model picked selects the gateway; opencode.ai enforces
+  Go-subscription vs Zen-credit entitlement per request (surfaced as a
+  provider-error card), so Houston never has to detect the plan from the key.
 - _[NEW ENGINE only]_ The TS engine also adds **GitHub Copilot**
   (`github-copilot`) as a **subscription OAuth** provider — pi-ai ships it
   built-in (no adapter, no CLI), so it's registry entries only across the same

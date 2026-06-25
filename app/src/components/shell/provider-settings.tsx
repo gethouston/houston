@@ -7,9 +7,10 @@ import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
-  getVisibleProviders,
+  getConnectProviders,
   PROVIDERS,
   type ProviderInfo,
+  providerGatewayIds,
 } from "../../lib/providers";
 import {
   type ProviderStatus,
@@ -69,7 +70,7 @@ export function ProviderSettings() {
   // mid-session.
   const visibleProviders = useMemo(
     () =>
-      getVisibleProviders({
+      getConnectProviders({
         newEngine: newEngineActive(),
         desktop: osIsTauri(),
       }),
@@ -84,7 +85,12 @@ export function ProviderSettings() {
   const loadStatuses = useCallback(async () => {
     const results = await Promise.all(
       visibleProviders.map(async (p) => {
-        const status = await tauriProvider.checkStatus(p.id);
+        // A connect card may front several engine gateways (OpenCode's Zen + Go
+        // share one key) — probe them together so the merged card is connected
+        // when either is. `providerGatewayIds` is just `[p.id]` for everything else.
+        const status = await tauriProvider.checkMergedStatus(
+          providerGatewayIds(p),
+        );
         // Paint each card the moment ITS probe resolves instead of blocking
         // every card on the slowest provider — each CLI shell-out can take
         // up to its 5s timeout, and gating the whole batch made the section
@@ -172,7 +178,12 @@ export function ProviderSettings() {
   useEffect(() => {
     const off = subscribeHoustonEvents((ev: HoustonEvent) => {
       if (ev.type === "ProviderLoginUrl") {
-        const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        // Resolve the display name from the connect list first so the merged
+        // OpenCode account toasts as "OpenCode", not its primary gateway's
+        // catalog name; fall back to the full catalog for any non-connect id.
+        const prov =
+          visibleProviders.find((p) => p.id === ev.data.provider) ??
+          PROVIDERS.find((p) => p.id === ev.data.provider);
         if (
           shouldOpenLoginUrlDirectly({
             isDesktop: osIsTauri(),
@@ -209,7 +220,12 @@ export function ProviderSettings() {
           }));
         }
       } else if (ev.type === "ProviderLoginComplete") {
-        const prov = PROVIDERS.find((p) => p.id === ev.data.provider);
+        // Resolve the display name from the connect list first so the merged
+        // OpenCode account toasts as "OpenCode", not its primary gateway's
+        // catalog name; fall back to the full catalog for any non-connect id.
+        const prov =
+          visibleProviders.find((p) => p.id === ev.data.provider) ??
+          PROVIDERS.find((p) => p.id === ev.data.provider);
         if (ev.data.success) {
           addToast({
             title: t("toast.signInSucceeded", {
@@ -244,7 +260,7 @@ export function ProviderSettings() {
       }
     });
     return off;
-  }, [addToast, loadStatuses, patchAuthState, t]);
+  }, [addToast, loadStatuses, patchAuthState, t, visibleProviders]);
 
   // Start the OAuth login. `enterpriseDomain` is set only for GitHub Copilot
   // Enterprise (collected by the dialog the hook drives).

@@ -92,6 +92,14 @@ export interface ProviderInfo {
    * the company's GitHub). See `useCopilotConnect`.
    */
   copilotConnect?: boolean;
+  /**
+   * The engine gateway ids a single connect card stands in for. Only the merged
+   * "OpenCode" account sets it (`["opencode", "opencode-go"]`); absent on every
+   * other provider, which is its own single gateway. A pasted key is written to
+   * (and sign-out clears) every id in this set. See `getConnectProviders` and
+   * `providerGatewayIds`.
+   */
+  gatewayIds?: readonly string[];
 }
 
 /**
@@ -511,6 +519,73 @@ export function getVisibleProviders(opts: {
     if (p.auth === "apiKey") return opts.newEngine;
     return true;
   });
+}
+
+/**
+ * The two OpenCode gateways — `opencode` (Zen, pay-as-you-go) and `opencode-go`
+ * (Go, $10/mo subscription) — authenticate with the SAME opencode.ai key (pi
+ * reads `OPENCODE_API_KEY` for both). Houston therefore presents ONE connectable
+ * "OpenCode" account on the connect surfaces: the pasted key is stored under both
+ * gateways (the adapter fans it out — see `credentialSiblings`), so a single
+ * connect lights up both, and sign-out clears both. There is no way to tell a Go
+ * subscription apart from Zen credits at connect time, and no need to — the model
+ * the user picks selects the gateway, and opencode.ai enforces entitlement per
+ * request (surfaced as a provider-error card).
+ *
+ * The chat model picker does NOT use this card: it maps `PROVIDERS` directly, so
+ * Zen and Go stay separate, clearly-labelled model sections (HOU-577).
+ */
+const OPENCODE_ACCOUNT: ProviderInfo = {
+  id: "opencode",
+  name: "OpenCode",
+  subtitle: "Zen models or the Go subscription, one key",
+  cliName: "opencode",
+  installUrl: "https://opencode.ai/auth",
+  loginCommand: "",
+  cost: "Pay as you go, or $10 / month with Go",
+  auth: "apiKey",
+  apiKeyUrl: "https://opencode.ai/auth",
+  gatewayIds: ["opencode", "opencode-go"],
+  // Connect surfaces never render a model list; the chat picker reads the two
+  // real catalog entries (opencode / opencode-go) for its Zen + Go sections.
+  models: [],
+  defaultModel: "claude-sonnet-4-6",
+};
+
+/**
+ * Providers for the CONNECT surfaces (settings account list + onboarding
+ * picker), where the two OpenCode gateways collapse into one "OpenCode" account
+ * card. Otherwise identical to `getVisibleProviders` (same new-engine / desktop
+ * gating), preserving catalog order — the merged card takes OpenCode's slot.
+ */
+export function getConnectProviders(opts: {
+  newEngine: boolean;
+  desktop?: boolean;
+}): readonly ProviderInfo[] {
+  const out: ProviderInfo[] = [];
+  let mergedOpenCode = false;
+  for (const p of getVisibleProviders(opts)) {
+    if (p.id === "opencode" || p.id === "opencode-go") {
+      // Replace the first OpenCode gateway with the merged account, drop the
+      // second — both are represented by the one card.
+      if (!mergedOpenCode) {
+        out.push(OPENCODE_ACCOUNT);
+        mergedOpenCode = true;
+      }
+      continue;
+    }
+    out.push(p);
+  }
+  return out;
+}
+
+/**
+ * The engine gateway ids a connect card maps to: its `gatewayIds` when set (the
+ * merged OpenCode account → both gateways), else just its own id. Connect
+ * surfaces fan their status probe / sign-out across this set.
+ */
+export function providerGatewayIds(p: ProviderInfo): readonly string[] {
+  return p.gatewayIds ?? [p.id];
 }
 
 /** Find the model object for a provider + model id. */
