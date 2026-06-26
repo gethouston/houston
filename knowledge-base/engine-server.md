@@ -1,6 +1,6 @@
 # Houston Engine Server — Operator Guide
 
-> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/control-plane`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**.
+> **⚠️ LEGACY — Rust engine, retired at P6.** Documents the Rust `engine/` (the current *default* desktop build), being replaced by the single TypeScript engine — the **pi runtime** (`packages/runtime`) behind the **host** (`packages/host`), protocol **v3** (`packages/protocol`). Accurate for the legacy build while it ships. New architecture: **`convergence/README.md`**.
 
 `houston-engine` is the binary that speaks `knowledge-base/engine-protocol.md`.
 Everything Houston can do on a laptop it can do on a VPS — the desktop app

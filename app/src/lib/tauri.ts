@@ -606,6 +606,22 @@ export const tauriProvider = {
         active_model: p.activeModel,
       };
     }),
+  /**
+   * Combined connect status for a card that spans several engine gateway ids —
+   * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
+   * connected when EITHER gateway is. Probes each in parallel (one probe for a
+   * normal single-id provider) and returns the first authenticated status, else
+   * the first probe. The adapter writes / clears both gateways together, so this
+   * also reconciles a credential left under a single gateway by an older build.
+   */
+  checkMergedStatus: async (
+    ids: readonly string[],
+  ): Promise<ProviderStatus> => {
+    const probes = await Promise.all(
+      ids.map((id) => tauriProvider.checkStatus(id)),
+    );
+    return probes.find((s) => s.cli_installed && s.authenticated) ?? probes[0];
+  },
   getDefault: () =>
     call<string>(
       "get_default_provider",
@@ -737,6 +753,22 @@ export const tauriProvider = {
 import { osOpenUrl } from "./os-bridge";
 export const tauriSystem = {
   openUrl: (url: string) => osOpenUrl(url),
+  /**
+   * Whether THIS install carried over a legacy Rust-desktop chat-history db —
+   * the signal that the user is migrating from the old desktop build (agents +
+   * history came across, provider credentials did NOT). Read from the host's
+   * `/v1/version`; the legacy Rust engine and older hosts omit the field, so a
+   * missing value reads as `false` (never show the reconnect moment there).
+   */
+  chatHistoryMigrated: () =>
+    call<boolean>(
+      "chat_history_migrated",
+      async () => (await getEngine().version()).chatHistoryMigrated ?? false,
+      undefined,
+      // A meta probe, not a user-initiated action: a transient failure should
+      // not toast. The hook treats a throw as "unknown → don't show".
+      { toast: false, capture: false },
+    ),
 };
 
 // ─── Agent file watcher ───────────────────────────────────────────────

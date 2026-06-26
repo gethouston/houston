@@ -56,11 +56,17 @@ Codex is headless either way (device code). See `src/auth/anthropic-headless.ts`
 The agent also reads the workspace-root context file (`AGENTS.md` else
 `CLAUDE.md`, root only — never ancestor directories) as its role/instructions.
 
-## Deploy (Docker / VPS)
+## Deploy The Runtime (Docker / VPS)
 
-A `Dockerfile` + `docker-compose.yml` live in this directory. The image runs the
-engine on Bun (`oven/bun`), with `git` + `python3` available for the agent's
-shell tools.
+`Dockerfile` is the only supported pi-runtime image. It runs the TypeScript
+runtime on Bun (`oven/bun`), with `git` + `python3` available for the agent's
+shell tools. Keep this as the supported path rather than a compiled-binary image:
+cloud turn mode, standalone server mode, stack traces, and dependency resolution
+all share one deploy contract.
+
+This image is the lower-level single-workspace runtime used by cloud and by the
+host. To run the full Houston app behind HTTPS with the host + web app, use
+[`../../selfhost`](../../selfhost) instead.
 
 ```bash
 cd packages/runtime
@@ -76,16 +82,16 @@ runs as the non-root `bun` user (uid 1000) — named volumes inherit that
 ownership automatically, but a bind mount keeps its host ownership, so make it
 writable by uid 1000 first (e.g. `chown -R 1000:1000 /srv/my-project`).
 
-**Build context note.** The build context is the parent `packages/` directory,
-not `packages/runtime` — the engine links its sibling `@houston/runtime-client`
-via `file:../runtime-client`. Compose handles this; for a raw build run it from
-the repo root:
+**Build context note.** The build context is the repo root, not
+`packages/runtime` — the runtime links its sibling `@houston/runtime-client` via
+`file:../runtime-client`. Compose handles this; for a raw build run it from the
+repo root:
 
 ```bash
-docker build -f packages/runtime/Dockerfile -t houston/ts-engine ./packages
+docker build -f packages/runtime/Dockerfile -t houston/pi-runtime .
 ```
 
-**Security (read before exposing it).** With no token the engine is fully open,
+**Security (read before exposing it).** With no token the runtime is fully open,
 and a caller can make the agent run shell commands in the workspace and spend
 your Claude subscription. On a VPS:
 

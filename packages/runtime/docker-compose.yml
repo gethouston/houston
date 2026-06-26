@@ -1,19 +1,19 @@
-# Houston TS engine — VPS deployment via Docker Compose.
+# Houston pi-runtime — standalone runtime via Docker Compose.
 #
 #   cp .env.example .env        # then set HOUSTON_RUNTIME_TOKEN
 #   docker compose up -d --build
 #   docker compose logs -f
 #
-# The build context is the parent `packages/` dir so the image can pull in the
-# sibling @houston/runtime-client package (see Dockerfile). The image's
-# HEALTHCHECK and graceful-shutdown handling are inherited as-is.
+# The build context is the repo root so the image can pull in the sibling
+# @houston/runtime-client package (see Dockerfile). The image's HEALTHCHECK and
+# graceful-shutdown handling are inherited as-is.
 
 services:
   engine:
     build:
-      context: ..
-      dockerfile: runtime/Dockerfile.standalone
-    image: houston/ts-engine:local
+      context: ../..
+      dockerfile: packages/runtime/Dockerfile
+    image: houston/pi-runtime:local
     restart: unless-stopped
     ports:
       # host:container — the container always listens on 4317 internally.

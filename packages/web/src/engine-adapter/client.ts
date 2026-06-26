@@ -1,3 +1,4 @@
+import { migrateProviderModel } from "@houston/domain";
 import {
   type CustomEndpoint,
   HoustonEngineClient,
@@ -36,6 +37,7 @@ import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
   configWriteToSettings,
+  credentialSiblings,
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
   DEFAULT_WORKSPACE_ID,
@@ -289,21 +291,27 @@ export class HoustonClient {
     config: ProjectConfig,
   ): Promise<ProjectConfig> {
     if (config.provider) {
-      const pid = toNewProvider(config.provider);
-      if (pid) {
-        // Settings are PER-AGENT on the host (`/agents/:id/settings`); the host
-        // root has no `/settings` route. In cloud / desktop-new-engine mode this
-        // MUST go through the agent's runtime client (the same one activeOld()
-        // READS from) — writing via the root client silently 404s, so a model
-        // pick never persists and every turn falls back to the active provider.
-        const engine = this.cp
-          ? controlPlane.runtimeClientFor(
-              this.cp,
-              agentPath || this.requireAgentId(),
-            )
-          : this.engine;
-        await engine.setSettings({ activeProvider: pid, model: config.model });
-      }
+      // Migrate legacy provider+model ids to ones pi-ai accepts (the runtime's
+      // getModel throws on an unknown id → a hard-failed turn). Fail-soft: an
+      // unknown value lands on the default + records a diagnostic, never a throw.
+      const { provider, model, diagnostics } = migrateProviderModel(
+        config.provider,
+        config.model,
+      );
+      for (const d of diagnostics)
+        console.warn(`[engine-adapter] migrated agent model: ${d.message}`);
+      // Settings are PER-AGENT on the host (`/agents/:id/settings`); the host
+      // root has no `/settings` route. In cloud / desktop-new-engine mode this
+      // MUST go through the agent's runtime client (the same one activeOld()
+      // READS from) — writing via the root client silently 404s, so a model
+      // pick never persists and every turn falls back to the active provider.
+      const engine = this.cp
+        ? controlPlane.runtimeClientFor(
+            this.cp,
+            agentPath || this.requireAgentId(),
+          )
+        : this.engine;
+      await engine.setSettings({ activeProvider: provider, model });
     }
     return config;
   }
@@ -787,6 +795,10 @@ export class HoustonClient {
   async providerLogout(name: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) return;
+    // Sign-out clears every gateway the connect card represents — for OpenCode
+    // that's both Zen and Go, since one key connected both. Clearing a gateway
+    // that was never connected is a benign no-op.
+    const targets = credentialSiblings(pid);
     if (this.cp) {
       // Connect-once logout. Clearing only the runtime's local auth.json (what
       // engine.logout does) is NOT enough: the credential also lives in the
@@ -795,11 +807,15 @@ export class HoustonClient {
       // provider showed connected again. Forget the central credential FIRST so
       // no in-flight turn can re-serve it, then clear the runtime's local copy.
       const agentId = this.requireAgentId();
-      await controlPlane.forgetCredential(this.cp, agentId, pid);
-      await controlPlane.runtimeClientFor(this.cp, agentId).logout(pid);
+      for (const target of targets) {
+        await controlPlane.forgetCredential(this.cp, agentId, target);
+        await controlPlane.runtimeClientFor(this.cp, agentId).logout(target);
+      }
       return;
     }
-    await this.engine.logout(pid);
+    for (const target of targets) {
+      await this.engine.logout(target);
+    }
   }
 
   /**
@@ -813,9 +829,16 @@ export class HoustonClient {
   async setProviderApiKey(name: string, apiKey: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
+    // OpenCode's Zen + Go gateways share one opencode.ai key (pi reads
+    // OPENCODE_API_KEY for both), so store the pasted key under every sibling
+    // gateway — one connect lights up both. `pid` (the connected id) is the one
+    // that becomes active; the order of the writes doesn't affect that.
+    const targets = credentialSiblings(pid);
     if (this.cp) {
       const agentId = this.requireAgentId();
-      await controlPlane.setApiKey(this.cp, agentId, pid, apiKey);
+      for (const target of targets) {
+        await controlPlane.setApiKey(this.cp, agentId, target, apiKey);
+      }
       // Make the just-connected provider active so chats use it immediately,
       // exactly as the OAuth connect path does (pollProviderConnect). Without
       // this the engine keeps whatever was active (e.g. a still-connected Codex),
@@ -825,9 +848,13 @@ export class HoustonClient {
         .runtimeClientFor(this.cp, agentId)
         .setSettings({ activeProvider: pid });
     } else {
-      await this.engine.setApiKey(pid, apiKey);
+      for (const target of targets) {
+        await this.engine.setApiKey(target, apiKey);
+      }
       await this.engine.setSettings({ activeProvider: pid });
     }
+    // One completion event for the single account the user connected (never one
+    // per gateway), so the connect dialog closes and exactly one card flips.
     emitEvent("ProviderLoginComplete", {
       provider: name,
       success: true,

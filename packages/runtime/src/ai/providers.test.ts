@@ -15,6 +15,7 @@ import {
   pickActiveProvider,
   providerAuthMethod,
   providerDefaultModel,
+  safeGetModel,
 } from "./providers";
 
 /**
@@ -60,6 +61,27 @@ test("bedrockOptionsWithBearerToken maps Houston's stored key to Bedrock bearer 
   ).toEqual({ apiKey: "stored", bearerToken: "direct" });
 });
 
+test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {
+  // A valid id resolves to that exact model.
+  expect(
+    (safeGetModel("anthropic", "claude-opus-4-8", false) as { id?: string }).id,
+  ).toBe("claude-opus-4-8");
+  // A stale/legacy id the provider no longer offers falls back to the default
+  // so the turn runs a REAL model. (pi-ai's getModel returns `undefined` for an
+  // unknown id — which would crash the turn downstream — so the guard catches
+  // it against the live catalog and substitutes the provider default.)
+  expect(
+    (safeGetModel("anthropic", "claude-2.1", false) as { id?: string }).id,
+  ).toBe(providerDefaultModel("anthropic"));
+  // A PINNED id (a routine's model) is NOT auto-corrected, but it IS validated:
+  // a deliberately bad pin throws a clean "model not available" Error rather
+  // than being silently swapped OR returning undefined (which crashed the turn
+  // downstream with a raw `Cannot read properties of undefined` TypeError).
+  expect(() => safeGetModel("anthropic", "claude-2.1", true)).toThrow(
+    'anthropic model "claude-2.1" is not available',
+  );
+});
+
 test("pickActiveProvider keeps a logged-out saved provider sticky (no silent switch)", () => {
   // THE BUG: an OpenAI-configured agent whose OpenAI logged out must NOT fall
   // through to a still-connected provider (OpenRouter) and answer there — it
@@ -85,15 +107,17 @@ test("pickActiveProvider falls back to the first connected ONLY when nothing is 
   expect(pickActiveProvider(undefined, [])).toBeNull();
 });
 
-test("github-copilot is a registered OAuth provider with a dotted Copilot model id", () => {
+test("github-copilot is a registered OAuth provider defaulting to a base model (HOU-578)", () => {
   const ids = PROVIDERS.map((p) => p.id);
   expect(ids).toContain("github-copilot");
   // Subscription OAuth (GitHub device-code flow), not a pasted API key.
   expect(providerAuthMethod("github-copilot")).toBe("oauth");
-  // Copilot's gateway uses DOTTED model ids (claude-sonnet-4.6), distinct from
-  // the native Anthropic provider's dashed claude-sonnet-4-6 — getModel() throws
-  // on the wrong form, so the default must be the dotted Copilot id.
-  expect(providerDefaultModel("github-copilot")).toBe("claude-sonnet-4.6");
+  // gpt-4.1 is a BASE model every Copilot plan (incl. Copilot Free) serves, so a
+  // fresh Copilot connect works out of the box; a premium default (claude-*,
+  // gpt-5.x) answers model_not_supported on Free. It also exercises the dotted id
+  // form Copilot's gateway expects (distinct from the native Anthropic provider's
+  // dashed claude-sonnet-4-6).
+  expect(providerDefaultModel("github-copilot")).toBe("gpt-4.1");
 });
 
 /**

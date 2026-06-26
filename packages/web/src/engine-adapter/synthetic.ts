@@ -1,3 +1,4 @@
+import { migrateProviderModel } from "@houston/domain";
 import type { Agent, Workspace } from "../../../../ui/engine-client/src/types";
 
 /**
@@ -89,6 +90,24 @@ export function toOldProvider(id: string): string {
 export type NewProviderId = NonNullable<ReturnType<typeof toNewProvider>>;
 
 /**
+ * OpenCode's two gateways — `opencode` (Zen, pay-as-you-go) and `opencode-go`
+ * (Go, $10/mo subscription) — share ONE opencode.ai key: pi reads
+ * `OPENCODE_API_KEY` for both. Houston connects them as a single "OpenCode"
+ * account, so a credential write or clear must fan out to both ids. Keep in sync
+ * with the frontend's merged connect card (`getConnectProviders` gatewayIds).
+ */
+const OPENCODE_GATEWAYS: readonly NewProviderId[] = ["opencode", "opencode-go"];
+
+/**
+ * Every gateway id a credential write / clear for `pid` must touch. Just `[pid]`
+ * for every provider except the two OpenCode gateways, which share a key — so
+ * connecting (or signing out of) either writes (or clears) both.
+ */
+export function credentialSiblings(pid: NewProviderId): NewProviderId[] {
+  return OPENCODE_GATEWAYS.includes(pid) ? [...OPENCODE_GATEWAYS] : [pid];
+}
+
+/**
  * Decide the engine-settings update a per-agent config-file write implies, or
  * null to skip. The runtime resolves the model from its OWN settings
  * (activeProvider + models[provider]), but the chat model picker only writes
@@ -115,11 +134,22 @@ export function configWriteToSettings(
     return null;
   }
   if (typeof cfg.provider !== "string") return null;
-  const pid = toNewProvider(cfg.provider);
-  if (!pid) return null;
+  // Migrate legacy provider+model ids to ones pi-ai accepts BEFORE seeding the
+  // runtime's settings. The runtime's getModel(provider, id) throws for an id it
+  // doesn't offer (the legacy "openai" provider, bare "opus"/"sonnet", CLI-era
+  // model ids), which would hard-fail the agent's first turn. migrateProviderModel
+  // is pure + fail-soft: an unknown value lands on the provider/model default and
+  // records a diagnostic rather than letting a bad id reach the runtime.
+  const { provider, model, diagnostics } = migrateProviderModel(
+    cfg.provider,
+    typeof cfg.model === "string" ? cfg.model : undefined,
+    relPath,
+  );
+  for (const d of diagnostics)
+    console.warn(`[engine-adapter] migrated agent model: ${d.message}`);
   return {
-    activeProvider: pid,
-    ...(typeof cfg.model === "string" && cfg.model ? { model: cfg.model } : {}),
+    activeProvider: provider,
+    model,
     ...(typeof cfg.effort === "string" && cfg.effort
       ? { effort: cfg.effort }
       : {}),

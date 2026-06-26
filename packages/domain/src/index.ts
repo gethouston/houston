@@ -3,6 +3,7 @@ export * from "./config";
 export * from "./layout";
 export * from "./portable";
 export * from "./preferences";
+export * from "./provider-model";
 export * from "./routines";
 export * from "./schedule";
 export * from "./skills";

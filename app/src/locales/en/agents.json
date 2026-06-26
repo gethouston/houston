@@ -127,6 +127,7 @@
     "connectBlurb": "Sign in to connect your apps. Your account stays yours; the agent uses it on your behalf.",
     "connect": "Connect Composio",
     "connecting": "Waiting for sign-in...",
+    "loginTimeout": "Sign-in timed out. Please try connecting again.",
     "connectedAs": "Connected as {{email}}",
     "signOut": "Sign out",
     "connectedApps": "Connected apps",

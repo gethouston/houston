@@ -89,8 +89,25 @@ export function scrubRefreshTokens(): string[] {
  * that the host serves — hydrating a fresh or just-woken runtime no matter which
  * provider the next turn uses. Returns the providers that were applied; an empty
  * result means the workspace hasn't connected anything yet.
+ *
+ * Concurrent callers SHARE one in-flight sync. GET /auth/status now hydrates too
+ * (so a brand-new agent's model picker shows the workspace's connected providers
+ * before its first turn — HOU-573), and the picker fires one status request PER
+ * provider in parallel. Without sharing, those N requests would run N syncs that
+ * each rewrite auth.json at once — a write race. A turn and a status poll can also
+ * overlap. One sync, one auth.json write, every caller gets the same result.
  */
-export async function syncServedCredential(): Promise<string[]> {
+let serveSyncInFlight: Promise<string[]> | null = null;
+
+export function syncServedCredential(): Promise<string[]> {
+  if (serveSyncInFlight) return serveSyncInFlight;
+  serveSyncInFlight = runServedSync().finally(() => {
+    serveSyncInFlight = null;
+  });
+  return serveSyncInFlight;
+}
+
+async function runServedSync(): Promise<string[]> {
   if (!serveModeOn()) return [];
   const applied: string[] = [];
   for (const p of PROVIDERS) {

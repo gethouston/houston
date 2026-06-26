@@ -127,6 +127,7 @@
     "connectBlurb": "Inicia sesión para conectar tus aplicaciones. Tu cuenta sigue siendo tuya; el agente la usa en tu nombre.",
     "connect": "Conectar Composio",
     "connecting": "Esperando el inicio de sesión...",
+    "loginTimeout": "Se agotó el tiempo de inicio de sesión. Intenta conectarte de nuevo.",
     "connectedAs": "Conectado como {{email}}",
     "signOut": "Cerrar sesión",
     "connectedApps": "Aplicaciones conectadas",

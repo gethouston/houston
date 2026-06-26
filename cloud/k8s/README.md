@@ -23,7 +23,7 @@ then applies via the GKE API.
 
 ## How the `SandboxManager` templates them
 
-The `SandboxManager` port (`packages/control-plane/src/ports.ts`) drives the lifecycle.
+The `SandboxManager` port (`packages/host/src/ports.ts`) drives the lifecycle.
 Each method maps to operations on these manifests:
 
 - **`ensureAwake(agent)`** — ensure the workspace namespace + agent objects exist

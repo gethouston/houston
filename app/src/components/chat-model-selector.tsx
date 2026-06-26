@@ -25,12 +25,21 @@ interface ChatModelSelectorProps {
    * conversation).
    */
   onSelect: (provider: string, model: string) => void;
+  /**
+   * Optional controlled open state so another surface can pop the picker open —
+   * e.g. a `model_unavailable` error card's "Pick another model" CTA. Omit both
+   * to leave the dropdown uncontrolled (its default trigger-click behavior).
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ChatModelSelector({
   provider,
   model,
   onSelect,
+  open,
+  onOpenChange,
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
@@ -56,7 +65,7 @@ export function ChatModelSelector({
       onClick={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
-      <DropdownMenu>
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger asChild>
           <button
             type="button"

@@ -1,8 +1,8 @@
 import { Loader2 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import type { ProviderInfo } from "../../lib/providers";
-import { AmazonBedrockLogo } from "./amazon-bedrock-logo";
 import {
+  AmazonBedrockLogo,
   ClaudeLogo,
   GeminiLogo,
   GitHubCopilotLogo,

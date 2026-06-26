@@ -189,7 +189,7 @@ Keep the spine (cheap agent + credential-less rented exec; keys out of both). Th
    cross-tenant wall is kernel-hard.
 2. **Credentials in cloud:** keyless-proxy-only (delete the connect-once refresh-token write) vs
    short-TTL access token to the agent. Reconcile with the keyless proxy already built at
-   `packages/runtime/spike/keyless-proxy.ts` + `packages/control-plane/src/proxy/credentials.ts`.
+   `packages/runtime/spike/keyless-proxy.ts` + `packages/host/src/proxy/credentials.ts`.
 3. **File-tool isolation:** clamp at the app layer (shadow pi's tools) vs rely on an FS jail vs
    both. For mutually-hostile tenants, app-clamp alone is not acceptable.
 4. **Stateful vs stateless exec:** per-session warm box (recommended) vs stateless per call.
@@ -210,7 +210,7 @@ Keep the spine (cheap agent + credential-less rented exec; keys out of both). Th
 - `packages/code-sandbox/**` — the built sandbox service (your strongest existing component).
 - `packages/runtime/src/session/tools/run-code.ts`, `…/session/chat.ts`, `…/config.ts`,
   `…/auth/serve.ts` — the agent-side wiring + the credential path (§5.2).
-- `packages/control-plane/**` — auth, RBAC (`domain/access.ts`), the SSE proxy (`proxy/route.ts`),
+- `packages/host/**` — auth, RBAC (`domain/access.ts`), the SSE proxy (`proxy/route.ts`),
   the keyless credential proxy (`proxy/credentials.ts`), the GKE sandbox manager (`sandbox/*`).
 - `cloud/k8s/agent-deployment.yaml` — the agent-as-GKE-pod manifest (disproves the per-agent
   Cloud Run strawman; relevant to the hosting decision).

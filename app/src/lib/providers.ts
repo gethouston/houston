@@ -92,6 +92,14 @@ export interface ProviderInfo {
    * the company's GitHub). See `useCopilotConnect`.
    */
   copilotConnect?: boolean;
+  /**
+   * The engine gateway ids a single connect card stands in for. Only the merged
+   * "OpenCode" account sets it (`["opencode", "opencode-go"]`); absent on every
+   * other provider, which is its own single gateway. A pasted key is written to
+   * (and sign-out clears) every id in this set. See `getConnectProviders` and
+   * `providerGatewayIds`.
+   */
+  gatewayIds?: readonly string[];
 }
 
 /**
@@ -106,16 +114,28 @@ export interface ProviderInfo {
  */
 const COPILOT_MODELS: readonly ModelOption[] = [
   {
+    id: "gpt-4.1",
+    label: "GPT-4.1",
+    // The one BASE model every Copilot plan serves, INCLUDING Copilot Free —
+    // the premium models below (Claude / GPT-5.x / Gemini) need Copilot Pro and
+    // answer `model_not_supported` on Free (HOU-578). Listed first as the safe,
+    // always-works default. gpt-4o is also base but isn't in pi-ai's catalog, so
+    // the engine can't resolve it — gpt-4.1 is the only selectable base model.
+    description: "Available on every plan, including Copilot Free.",
+    contextWindow: 200_000,
+  },
+  {
     id: "claude-sonnet-4.6",
     label: "Claude Sonnet 4.6",
-    description: "Best balance of speed and quality.",
+    description: "Best balance of speed and quality. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high", "max"],
     contextWindow: 1_000_000,
   },
   {
     id: "claude-opus-4.8",
     label: "Claude Opus 4.8",
-    description: "Anthropic's flagship. Most capable, slower.",
+    description:
+      "Anthropic's flagship. Most capable, slower. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high", "xhigh", "max"],
     // Copilot's gateway caps Opus at 200k (smaller than a direct Max plan).
     contextWindow: 200_000,
@@ -123,27 +143,27 @@ const COPILOT_MODELS: readonly ModelOption[] = [
   {
     id: "claude-haiku-4.5",
     label: "Claude Haiku 4.5",
-    description: "Anthropic's fastest, for quick tasks.",
+    description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
     contextWindow: 200_000,
   },
   {
     id: "gpt-5.5",
     label: "GPT-5.5",
-    description: "OpenAI's frontier model.",
+    description: "OpenAI's frontier model. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high", "xhigh"],
     contextWindow: 400_000,
   },
   {
     id: "gpt-5-mini",
     label: "GPT-5 Mini",
-    description: "OpenAI's fast, lightweight model.",
+    description: "OpenAI's fast, lightweight model. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high"],
     contextWindow: 264_000,
   },
   {
     id: "gemini-3-flash-preview",
     label: "Gemini 3 Flash",
-    description: "Google's fast model.",
+    description: "Google's fast model. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high"],
     contextWindow: 128_000,
   },
@@ -239,7 +259,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "Your GitHub Copilot subscription",
     copilotConnect: true,
     models: COPILOT_MODELS,
-    defaultModel: "claude-sonnet-4.6",
+    // Base model that works on EVERY Copilot plan incl. Free (HOU-578); premium
+    // models 404 on Free. Mirrors the engine's `config.githubCopilotModel`.
+    defaultModel: "gpt-4.1",
   },
   {
     id: "opencode",
@@ -554,6 +576,73 @@ export function getVisibleProviders(opts: {
     if (p.auth === "apiKey") return opts.newEngine;
     return true;
   });
+}
+
+/**
+ * The two OpenCode gateways — `opencode` (Zen, pay-as-you-go) and `opencode-go`
+ * (Go, $10/mo subscription) — authenticate with the SAME opencode.ai key (pi
+ * reads `OPENCODE_API_KEY` for both). Houston therefore presents ONE connectable
+ * "OpenCode" account on the connect surfaces: the pasted key is stored under both
+ * gateways (the adapter fans it out — see `credentialSiblings`), so a single
+ * connect lights up both, and sign-out clears both. There is no way to tell a Go
+ * subscription apart from Zen credits at connect time, and no need to — the model
+ * the user picks selects the gateway, and opencode.ai enforces entitlement per
+ * request (surfaced as a provider-error card).
+ *
+ * The chat model picker does NOT use this card: it maps `PROVIDERS` directly, so
+ * Zen and Go stay separate, clearly-labelled model sections (HOU-577).
+ */
+const OPENCODE_ACCOUNT: ProviderInfo = {
+  id: "opencode",
+  name: "OpenCode",
+  subtitle: "Zen models or the Go subscription, one key",
+  cliName: "opencode",
+  installUrl: "https://opencode.ai/auth",
+  loginCommand: "",
+  cost: "Pay as you go, or $10 / month with Go",
+  auth: "apiKey",
+  apiKeyUrl: "https://opencode.ai/auth",
+  gatewayIds: ["opencode", "opencode-go"],
+  // Connect surfaces never render a model list; the chat picker reads the two
+  // real catalog entries (opencode / opencode-go) for its Zen + Go sections.
+  models: [],
+  defaultModel: "claude-sonnet-4-6",
+};
+
+/**
+ * Providers for the CONNECT surfaces (settings account list + onboarding
+ * picker), where the two OpenCode gateways collapse into one "OpenCode" account
+ * card. Otherwise identical to `getVisibleProviders` (same new-engine / desktop
+ * gating), preserving catalog order — the merged card takes OpenCode's slot.
+ */
+export function getConnectProviders(opts: {
+  newEngine: boolean;
+  desktop?: boolean;
+}): readonly ProviderInfo[] {
+  const out: ProviderInfo[] = [];
+  let mergedOpenCode = false;
+  for (const p of getVisibleProviders(opts)) {
+    if (p.id === "opencode" || p.id === "opencode-go") {
+      // Replace the first OpenCode gateway with the merged account, drop the
+      // second — both are represented by the one card.
+      if (!mergedOpenCode) {
+        out.push(OPENCODE_ACCOUNT);
+        mergedOpenCode = true;
+      }
+      continue;
+    }
+    out.push(p);
+  }
+  return out;
+}
+
+/**
+ * The engine gateway ids a connect card maps to: its `gatewayIds` when set (the
+ * merged OpenCode account → both gateways), else just its own id. Connect
+ * surfaces fan their status probe / sign-out across this set.
+ */
+export function providerGatewayIds(p: ProviderInfo): readonly string[] {
+  return p.gatewayIds ?? [p.id];
 }
 
 /** Find the model object for a provider + model id. */

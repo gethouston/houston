@@ -10,7 +10,7 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 [features]
 # Off by default — the default build stays on the Rust-engine sidecar path and
 # remains releasable. Enable with `--features host-sidecar` to spawn the
-# Bun-compiled Houston host (packages/control-plane/src/local/main.ts) as the
+# Bun-compiled Houston host (packages/host/src/local/main.ts) as the
 # sidecar instead, talking to it in control-plane mode. build.rs keys off
 # `CARGO_FEATURE_HOST_SIDECAR` to stage the compiled host; lib.rs + the
 # supervisor branch on `cfg!(feature = "host-sidecar")` at spawn time.

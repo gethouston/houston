@@ -2,11 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import {
   EFFORT_ORDER,
+  getConnectProviders,
   getEffortLevels,
   getProvider,
   getVisibleProviders,
   normalizeLegacyModel,
   PROVIDERS,
+  providerGatewayIds,
   validEffortOrDefault,
   validModelOrNull,
 } from "./providers.ts";
@@ -286,6 +288,57 @@ test("getVisibleProviders gates api-key (new engine) and local (desktop) provide
       (p) => p.auth !== "apiKey" && p.auth !== "openaiCompatible",
     ).length,
   );
+});
+
+test("getConnectProviders merges the two OpenCode gateways into one account card", () => {
+  const connect = getConnectProviders({ newEngine: true, desktop: true });
+  // Exactly one OpenCode card on the connect surfaces, standing for both
+  // gateways — the chat picker keeps them separate via PROVIDERS directly.
+  const opencode = connect.filter(
+    (p) => p.id === "opencode" || p.id === "opencode-go",
+  );
+  assert.equal(opencode.length, 1, "one OpenCode connect card");
+  assert.equal(opencode[0].id, "opencode");
+  assert.equal(opencode[0].name, "OpenCode");
+  assert.equal(opencode[0].auth, "apiKey");
+  assert.deepEqual(opencode[0].gatewayIds, ["opencode", "opencode-go"]);
+  // It collapses two visible providers into one: the connect list is exactly
+  // one shorter than the visible list, and opencode-go is no longer its own card.
+  const visible = getVisibleProviders({ newEngine: true, desktop: true });
+  assert.equal(connect.length, visible.length - 1);
+  assert.ok(!connect.some((p) => p.id === "opencode-go"));
+  // Every non-OpenCode provider passes through untouched.
+  for (const id of [
+    "anthropic",
+    "openai",
+    "github-copilot",
+    "openrouter",
+    "google",
+    "openai-compatible",
+  ]) {
+    assert.ok(
+      connect.some((p) => p.id === id),
+      `${id} still present`,
+    );
+  }
+});
+
+test("getConnectProviders hides api-key cards on the Rust engine, like getVisibleProviders", () => {
+  const connect = getConnectProviders({ newEngine: false });
+  assert.ok(!connect.some((p) => p.id === "opencode"));
+  assert.ok(!connect.some((p) => p.auth === "apiKey"));
+  assert.ok(connect.some((p) => p.id === "anthropic"));
+});
+
+test("providerGatewayIds returns the gateway set, or the provider's own id", () => {
+  const opencode = getConnectProviders({
+    newEngine: true,
+    desktop: true,
+  }).find((p) => p.id === "opencode");
+  // The merged OpenCode card fans out to both gateways...
+  assert.deepEqual(providerGatewayIds(opencode), ["opencode", "opencode-go"]);
+  // ...while a normal provider stands for just itself.
+  assert.deepEqual(providerGatewayIds(getProvider("anthropic")), ["anthropic"]);
 });
 
 test("normalized legacy model resolves through validModelOrNull (no Opus->Sonnet downgrade)", () => {

@@ -252,7 +252,7 @@ pub fn run() {
                 app.manage(EngineHandshakeState::default());
             } else {
                 // `host-sidecar` feature: spawn the Bun-compiled Houston host
-                // (packages/control-plane/src/local/main.ts) as the sidecar and
+                // (packages/host/src/local/main.ts) as the sidecar and
                 // drive the frontend into control-plane mode against it. Default
                 // (feature off): the Rust engine — unchanged, so main stays
                 // releasable. Both spawners are `#[cfg]`-gated (not a runtime
@@ -507,7 +507,7 @@ fn spawn_rust_engine(
 ///   - hands the host its OWN env contract: `HOUSTON_WORKSPACES_ROOT`,
 ///     `HOUSTON_CREDENTIALS_PATH`, a reserved `HOUSTON_HOST_PORT`, and the
 ///     product voice via `HOUSTON_APP_SYSTEM_PROMPT` (read by
-///     packages/control-plane/src/local/main.ts). The host mints its OWN
+///     packages/host/src/local/main.ts). The host mints its OWN
 ///     crypto-strong per-boot token (`randomBytes(32)`) and echoes it in the
 ///     `HOUSTON_HOST_LISTENING` banner — we read it back rather than minting a
 ///     weaker one in Rust, so the handshake token is still random per boot.

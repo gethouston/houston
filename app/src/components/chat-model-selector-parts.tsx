@@ -7,8 +7,8 @@ import { Check } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { type ProviderPickerState, pickerModelRows } from "../lib/model-picker";
 import type { ProviderInfo } from "../lib/providers";
-import { AmazonBedrockLogo } from "./shell/amazon-bedrock-logo";
 import {
+  AmazonBedrockLogo,
   ClaudeLogo,
   GeminiLogo,
   GitHubCopilotLogo,

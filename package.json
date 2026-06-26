@@ -12,6 +12,7 @@
     "lint:fix": "biome lint --write --error-on-warnings",
     "check": "biome check --error-on-warnings",
     "check:fix": "biome check --write --error-on-warnings",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
     "prepare": "husky"
   },
   "devDependencies": {

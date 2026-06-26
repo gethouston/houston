@@ -1,12 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
-import { configWriteToSettings } from "./synthetic";
+import { configWriteToSettings, credentialSiblings } from "./synthetic";
 import {
   historyToFeed,
   isNotConnectedError,
   isStoppedByUser,
   turnErrorMessage,
 } from "./translate";
+
+test("credentialSiblings fans an OpenCode key out to both gateways, others stay single", () => {
+  // OpenCode Zen + Go share one opencode.ai key (pi reads OPENCODE_API_KEY for
+  // both), so connecting or signing out of either id must touch both — that is
+  // what lets one "OpenCode" connect card light up (and clear) the whole account.
+  expect(credentialSiblings("opencode")).toEqual(["opencode", "opencode-go"]);
+  expect(credentialSiblings("opencode-go")).toEqual([
+    "opencode",
+    "opencode-go",
+  ]);
+  // Every other provider stands for just itself — no fan-out.
+  expect(credentialSiblings("anthropic")).toEqual(["anthropic"]);
+  expect(credentialSiblings("openai-codex")).toEqual(["openai-codex"]);
+  expect(credentialSiblings("openai-compatible")).toEqual([
+    "openai-compatible",
+  ]);
+});
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must
@@ -61,6 +78,7 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
   const CONFIG = ".houston/config/config.json";
 
   test("carries the reasoning effort through to the settings update", () => {
+    // opencode is an open-catalog gateway — its arbitrary model passes through.
     expect(
       configWriteToSettings(
         CONFIG,
@@ -75,10 +93,11 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
       model: "deepseek-v4-pro",
       effort: "high",
     });
-    // Provider-only write (no effort) omits effort.
+    // Provider-only write (no effort) omits effort; the model defaults to the
+    // provider's default (the runtime needs a concrete settings.models entry).
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
-    ).toEqual({ activeProvider: "opencode" });
+    ).toEqual({ activeProvider: "opencode", model: "claude-sonnet-4-6" });
   });
 
   test("maps a config write with provider+model to a settings update", () => {
@@ -119,24 +138,29 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
       activeProvider: "amazon-bedrock",
       model: "amazon.nova-pro-v1:0",
     });
-  });
-
-  test("sets activeProvider even when no model is given (provider switch)", () => {
+    // A bare legacy tier name is migrated to a real pi id at the same tier.
     expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "opencode" })),
-    ).toEqual({
-      activeProvider: "opencode",
-    });
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "anthropic", model: "opus" }),
+      ),
+    ).toEqual({ activeProvider: "anthropic", model: "claude-opus-4-8" });
   });
 
-  test("skips non-config files, unknown providers, and bad JSON", () => {
+  test("migrates an unknown provider to the default instead of dropping it", () => {
+    // Gemini was dropped — a stored gemini agent must NOT silently no-op (every
+    // turn would then run the active provider's default with no record). It
+    // migrates to the default provider + model so the turn still runs.
+    expect(
+      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
+    ).toEqual({ activeProvider: "openai-codex", model: "gpt-5.5" });
+  });
+
+  test("skips non-config files, missing provider, and bad JSON", () => {
     expect(
       configWriteToSettings(".houston/learnings/learnings.json", "{}"),
     ).toBeNull();
     expect(configWriteToSettings("CLAUDE.md", "# hi")).toBeNull();
-    expect(
-      configWriteToSettings(CONFIG, JSON.stringify({ provider: "gemini" })),
-    ).toBeNull();
     expect(
       configWriteToSettings(CONFIG, JSON.stringify({ model: "x" })),
     ).toBeNull(); // no provider
