@@ -48,6 +48,30 @@ const INVALID_KEY_PATTERNS = [
   "no auth credentials",
 ];
 
+/**
+ * The gateway rejected the REQUESTED MODEL itself (not the credential): GitHub
+ * Copilot answers a premium model its plan doesn't include with
+ * `code: "model_not_supported"`; OpenAI uses `model_not_found` ("does not exist
+ * or you do not have access to it"). High-confidence, explicit signals — kept
+ * narrow so a generic permission/quota body never trips this.
+ */
+const MODEL_UNAVAILABLE_PATTERNS = [
+  "model_not_supported",
+  "model is not supported",
+  "model not supported",
+  "model_not_found",
+  "does not exist or you do not have access",
+];
+
+/**
+ * A GitHub Copilot model EVERY Copilot plan (incl. Copilot Free) serves, offered
+ * as the concrete switch target on a `model_unavailable` card. Copilot's premium
+ * models (Claude, GPT-5.x) require Copilot Pro; its base models (gpt-4.1 / gpt-4o)
+ * are always available. Kept in sync with `config.githubCopilotModel`'s default
+ * (duplicated, not imported, so this classifier stays pure + unit-testable).
+ */
+const COPILOT_BASE_FALLBACK = "gpt-4.1";
+
 /** Longest excerpt we keep for the `unknown` card / bug report. */
 const EXCERPT_MAX = 300;
 
@@ -96,6 +120,25 @@ export function classifyProviderError(
   }
   if (isNetwork(lower)) {
     return { kind: "network_unreachable", provider, message };
+  }
+  // The credential is fine; the chosen MODEL just isn't available on this plan
+  // (Copilot premium model on Copilot Free, etc.). Needs a known model id to
+  // render the "switch model" card — without one it can't name what to switch
+  // away from, so it falls through to `unknown`.
+  if (model && isModelUnavailable(lower)) {
+    return {
+      kind: "model_unavailable",
+      provider,
+      model,
+      reason: "unknown",
+      // Offer a concrete switch target only when we know one AND it isn't the
+      // failing model itself (a base Copilot model never reports unavailable).
+      suggested_fallback:
+        provider === "github-copilot" && model !== COPILOT_BASE_FALLBACK
+          ? COPILOT_BASE_FALLBACK
+          : null,
+      message,
+    };
   }
   return { kind: "unknown", provider, raw_excerpt: excerpt(message) };
 }
@@ -173,6 +216,10 @@ function isNetwork(lower: string): boolean {
     lower.includes("connection refused") ||
     lower.includes("connection reset")
   );
+}
+
+function isModelUnavailable(lower: string): boolean {
+  return MODEL_UNAVAILABLE_PATTERNS.some((p) => lower.includes(p));
 }
 
 /**

@@ -245,6 +245,15 @@ Notes:
   avoid a deadlock. Curated models proxy Claude/GPT/Gemini under one
   subscription, using pi-ai's DOTTED Copilot ids (`claude-sonnet-4.6`, not the
   native `claude-sonnet-4-6`). LOCAL-only (cloud egress isn't allowlisted).
+  **Plan gating (HOU-578):** Copilot's premium models (Claude, GPT-5.x) require
+  Copilot **Pro** — on **Copilot Free** (`sku=free_limited_copilot`) the editor
+  API serves only BASE models (gpt-4.1 / gpt-4o) and answers any premium model
+  with `400 model_not_supported` (independent of the API host / endpoint / the
+  per-model `policy` accept — all verified). So the default Copilot model is
+  **`gpt-4.1`** (a base model every plan serves; `config.githubCopilotModel`),
+  and the runtime classifies `model_not_supported` → a typed `model_unavailable`
+  provider error (`ai/provider-error.ts`) that renders the switch-model card with
+  `gpt-4.1` as the suggested fallback. Pro users switch up to Claude in the picker.
 - _[NEW ENGINE only]_ **GitHub Copilot Enterprise** (company-provided Copilot) is
   NOT a separate card — pi has one Copilot provider/slot, so the SINGLE
   `github-copilot` card's connect opens a **Personal vs Company** dialog
