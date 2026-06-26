@@ -25,7 +25,7 @@ test("formatLogEntry writes structured key-value logs", () => {
 
   const line = formatLogEntry({
     timestamp: ts.toISOString(),
-    level: "Info",
+    level: "INFO",
     run: "run-1",
     message: [
       "Session started",
@@ -40,23 +40,23 @@ test("formatLogEntry writes structured key-value logs", () => {
   });
 
   expect(line).toBe(
-    'timestamp=2026-01-02T03:04:05.006Z level=Info run=run-1 message="Session started" request.id=req-1 spaced="needs quotes" equals="a=b" circular.id=user-1 circular.self=[Circular] provider=openai retryCount=3',
+    'timestamp=2026-01-02T03:04:05.006Z level=INFO run=run-1 message="Session started" request.id=req-1 spaced="needs quotes" equals="a=b" circular.id=user-1 circular.self=[Circular] provider=openai retryCount=3',
   );
 });
 
-test("minimumLogLevel defaults to Info and accepts standard levels", () => {
-  expect(minimumLogLevel()).toBe("Info");
-  expect(minimumLogLevel("debug")).toBe("Debug");
-  expect(minimumLogLevel("INFO")).toBe("Info");
-  expect(minimumLogLevel("warn")).toBe("Warn");
-  expect(minimumLogLevel("ERROR")).toBe("Error");
-  expect(minimumLogLevel("trace")).toBe("Info");
+test("minimumLogLevel defaults to INFO and accepts standard levels", () => {
+  expect(minimumLogLevel()).toBe("INFO");
+  expect(minimumLogLevel("debug")).toBe("DEBUG");
+  expect(minimumLogLevel("INFO")).toBe("INFO");
+  expect(minimumLogLevel("warn")).toBe("WARN");
+  expect(minimumLogLevel("ERROR")).toBe("ERROR");
+  expect(minimumLogLevel("trace")).toBe("INFO");
 });
 
 test("logger filters below the configured level", () => {
   const lines: string[] = [];
   const logger = createRuntimeLogger({
-    level: "Warn",
+    level: "WARN",
     now: () => ts,
     runId: "run-2",
     sinks: [{ write: (line) => lines.push(line) }],
@@ -68,10 +68,10 @@ test("logger filters below the configured level", () => {
   logger.error("error");
 
   expect(lines).toHaveLength(2);
-  expect(lines[0]).toContain("level=Warn");
-  expect(lines[1]).toContain("level=Error");
-  expect(shouldLog("Debug", "Info")).toBe(false);
-  expect(shouldLog("Error", "Info")).toBe(true);
+  expect(lines[0]).toContain("level=WARN");
+  expect(lines[1]).toContain("level=ERROR");
+  expect(shouldLog("DEBUG", "INFO")).toBe(false);
+  expect(shouldLog("ERROR", "INFO")).toBe(true);
 });
 
 test("logger appends to the runtime log file", async () => {
@@ -80,7 +80,7 @@ test("logger appends to the runtime log file", async () => {
   try {
     const logger = createRuntimeLogger({
       file,
-      level: "Debug",
+      level: "DEBUG",
       now: () => ts,
       printLogs: false,
       runId: "file-run",
@@ -98,10 +98,10 @@ test("logger appends to the runtime log file", async () => {
 
     const text = await readFile(file, "utf8");
     expect(text).toContain(
-      'level=Debug run=file-run message="Processing request" endpoint=/api/v1/session requestId=req-xyz789',
+      'level=DEBUG run=file-run message="Processing request" endpoint=/api/v1/session requestId=req-xyz789',
     );
     expect(text).toContain(
-      'level=Error run=file-run message="Failed to connect" provider=openai retryCount=3',
+      'level=ERROR run=file-run message="Failed to connect" provider=openai retryCount=3',
     );
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -123,7 +123,7 @@ test("logger prints to stderr when requested", async () => {
 
   try {
     const logger = createRuntimeLogger({
-      level: "Info",
+      level: "INFO",
       now: () => ts,
       printLogs: true,
       runId: "stderr-run",
@@ -135,14 +135,14 @@ test("logger prints to stderr when requested", async () => {
   }
 
   expect(printed).toContain(
-    'level=Info run=stderr-run message="terminal visible"',
+    'level=INFO run=stderr-run message="terminal visible"',
   );
 });
 
 test("installRuntimeLogging bridges console methods", async () => {
   const lines: string[] = [];
   const installed = installRuntimeLogging({
-    level: "Debug",
+    level: "DEBUG",
     now: () => ts,
     runId: "console-run",
     sinks: [{ write: (line) => lines.push(line) }],
@@ -157,13 +157,13 @@ test("installRuntimeLogging bridges console methods", async () => {
     await installed.restore();
   }
 
-  expect(lines[0]).toContain('level=Debug run=console-run message="debug 7"');
+  expect(lines[0]).toContain('level=DEBUG run=console-run message="debug 7"');
   expect(lines[1]).toContain(
-    'level=Info run=console-run message="plain info" route=/health',
+    'level=INFO run=console-run message="plain info" route=/health',
   );
-  expect(lines[2]).toContain("level=Warn");
+  expect(lines[2]).toContain("level=WARN");
   expect(lines[2]).toContain("ms=45");
-  expect(lines[3]).toContain("level=Error");
+  expect(lines[3]).toContain("level=ERROR");
   expect(lines[3]).toContain("message=boom");
   expect(lines[3]).toContain("failed");
 });

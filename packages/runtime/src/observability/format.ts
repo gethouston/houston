@@ -1,6 +1,6 @@
 import { inspect } from "node:util";
 
-export type LogLevel = "Debug" | "Info" | "Warn" | "Error";
+export type LogLevel = "DEBUG" | "INFO" | "WARN" | "ERROR";
 
 export interface LogEntry {
   timestamp: string;

@@ -64,7 +64,7 @@ The agent also reads the workspace-root context file (`AGENTS.md` else
 Runtime logs are dependency-free structured key-value lines:
 
 ```text
-timestamp=2026-01-02T03:04:05.006Z level=Info run=... message="Session started" requestId=req-1
+timestamp=2026-01-02T03:04:05.006Z level=INFO run=... message="Session started" requestId=req-1
 ```
 
 The runtime always appends to the local log file. To see the same structured

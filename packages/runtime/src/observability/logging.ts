@@ -32,17 +32,17 @@ export interface RuntimeLogger {
 }
 
 const levels = {
-  Debug: 10,
-  Info: 20,
-  Warn: 30,
-  Error: 40,
+  DEBUG: 10,
+  INFO: 20,
+  WARN: 30,
+  ERROR: 40,
 } as const;
 
 const envLevels = {
-  DEBUG: "Debug",
-  INFO: "Info",
-  WARN: "Warn",
-  ERROR: "Error",
+  DEBUG: "DEBUG",
+  INFO: "INFO",
+  WARN: "WARN",
+  ERROR: "ERROR",
 } as const satisfies Record<string, LogLevel>;
 
 const originalConsole = {
@@ -66,7 +66,7 @@ export function minimumLogLevel(value = process.env.HOUSTON_RUNTIME_LOG_LEVEL) {
   const key = value?.toUpperCase();
   return key && key in envLevels
     ? envLevels[key as keyof typeof envLevels]
-    : "Info";
+    : "INFO";
 }
 
 export function runtimeLogFile(dataDir: string): string {
@@ -103,10 +103,10 @@ export function createRuntimeLogger(opts: LoggerOptions = {}): RuntimeLogger {
   }
 
   return {
-    debug: (...values) => write("Debug", values),
-    info: (...values) => write("Info", values),
-    warn: (...values) => write("Warn", values),
-    error: (...values) => write("Error", values),
+    debug: (...values) => write("DEBUG", values),
+    info: (...values) => write("INFO", values),
+    warn: (...values) => write("WARN", values),
+    error: (...values) => write("ERROR", values),
     async close() {
       await Promise.all(sinks.map((sink) => sink.close?.()));
     },
