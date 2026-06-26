@@ -12,7 +12,7 @@
     "typecheck": "node ../../scripts/check-tauri-shims.mjs && tsgo --noEmit",
     "typecheck:e2e": "tsgo --noEmit -p e2e/tsconfig.json",
     "test": "bun test ./tests",
-    "test:e2e": "playwright test",
+    "test:e2e": "playwright test --fail-on-flaky-tests",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report",
     "fake-host": "bun run e2e/fake-host/server.ts",
