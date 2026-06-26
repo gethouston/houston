@@ -52,9 +52,27 @@ Codex is headless either way (device code). See `src/auth/anthropic-headless.ts`
 | `HOUSTON_CORS_ORIGIN` | `*` | Allowed CORS origin for the webapp |
 | `HOUSTON_SKILLS_DIR` | `<workspace>/.agents/skills` | SKILL.md skills dir (Agent Skills standard); absent dir = no skills |
 | `HOUSTON_SYSTEM_PROMPT` | _(built-in)_ | Product system prompt injected by the host/app |
+| `HOUSTON_RUNTIME_LOG_FILE` | `<HOUSTON_DATA_DIR>/runtime.log` | Structured local log file, append-only |
+| `HOUSTON_RUNTIME_LOG_LEVEL` | `INFO` | Minimum level: `DEBUG`, `INFO`, `WARN`, or `ERROR` |
+| `HOUSTON_RUNTIME_PRINT_LOGS` | _(unset)_ | Set `1` to also print structured logs to stderr |
 
 The agent also reads the workspace-root context file (`AGENTS.md` else
 `CLAUDE.md`, root only — never ancestor directories) as its role/instructions.
+
+### Local logging
+
+Runtime logs are dependency-free structured key-value lines:
+
+```text
+timestamp=2026-01-02T03:04:05.006Z level=INFO run=... message="Session started" requestId=req-1
+```
+
+The runtime always appends to the local log file. To see the same structured
+lines in a terminal while running the engine:
+
+```bash
+HOUSTON_RUNTIME_PRINT_LOGS=1 HOUSTON_RUNTIME_LOG_LEVEL=DEBUG bun run dev
+```
 
 ## Deploy The Runtime (Docker / VPS)
 
