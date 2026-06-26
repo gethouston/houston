@@ -86,6 +86,24 @@ export function toOldProvider(id: string): string {
 export type NewProviderId = NonNullable<ReturnType<typeof toNewProvider>>;
 
 /**
+ * OpenCode's two gateways — `opencode` (Zen, pay-as-you-go) and `opencode-go`
+ * (Go, $10/mo subscription) — share ONE opencode.ai key: pi reads
+ * `OPENCODE_API_KEY` for both. Houston connects them as a single "OpenCode"
+ * account, so a credential write or clear must fan out to both ids. Keep in sync
+ * with the frontend's merged connect card (`getConnectProviders` gatewayIds).
+ */
+const OPENCODE_GATEWAYS: readonly NewProviderId[] = ["opencode", "opencode-go"];
+
+/**
+ * Every gateway id a credential write / clear for `pid` must touch. Just `[pid]`
+ * for every provider except the two OpenCode gateways, which share a key — so
+ * connecting (or signing out of) either writes (or clears) both.
+ */
+export function credentialSiblings(pid: NewProviderId): NewProviderId[] {
+  return OPENCODE_GATEWAYS.includes(pid) ? [...OPENCODE_GATEWAYS] : [pid];
+}
+
+/**
  * Decide the engine-settings update a per-agent config-file write implies, or
  * null to skip. The runtime resolves the model from its OWN settings
  * (activeProvider + models[provider]), but the chat model picker only writes

@@ -606,6 +606,22 @@ export const tauriProvider = {
         active_model: p.activeModel,
       };
     }),
+  /**
+   * Combined connect status for a card that spans several engine gateway ids —
+   * OpenCode's Zen + Go share one key, so the merged "OpenCode" account reads as
+   * connected when EITHER gateway is. Probes each in parallel (one probe for a
+   * normal single-id provider) and returns the first authenticated status, else
+   * the first probe. The adapter writes / clears both gateways together, so this
+   * also reconciles a credential left under a single gateway by an older build.
+   */
+  checkMergedStatus: async (
+    ids: readonly string[],
+  ): Promise<ProviderStatus> => {
+    const probes = await Promise.all(
+      ids.map((id) => tauriProvider.checkStatus(id)),
+    );
+    return probes.find((s) => s.cli_installed && s.authenticated) ?? probes[0];
+  },
   getDefault: () =>
     call<string>(
       "get_default_provider",

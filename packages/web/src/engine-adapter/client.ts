@@ -36,6 +36,7 @@ import type { ControlPlaneConfig } from "./control-plane";
 import * as controlPlane from "./control-plane";
 import {
   configWriteToSettings,
+  credentialSiblings,
   DEFAULT_AGENT_ID,
   DEFAULT_AGENT_PATH,
   DEFAULT_WORKSPACE_ID,
@@ -787,6 +788,10 @@ export class HoustonClient {
   async providerLogout(name: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) return;
+    // Sign-out clears every gateway the connect card represents — for OpenCode
+    // that's both Zen and Go, since one key connected both. Clearing a gateway
+    // that was never connected is a benign no-op.
+    const targets = credentialSiblings(pid);
     if (this.cp) {
       // Connect-once logout. Clearing only the runtime's local auth.json (what
       // engine.logout does) is NOT enough: the credential also lives in the
@@ -795,11 +800,15 @@ export class HoustonClient {
       // provider showed connected again. Forget the central credential FIRST so
       // no in-flight turn can re-serve it, then clear the runtime's local copy.
       const agentId = this.requireAgentId();
-      await controlPlane.forgetCredential(this.cp, agentId, pid);
-      await controlPlane.runtimeClientFor(this.cp, agentId).logout(pid);
+      for (const target of targets) {
+        await controlPlane.forgetCredential(this.cp, agentId, target);
+        await controlPlane.runtimeClientFor(this.cp, agentId).logout(target);
+      }
       return;
     }
-    await this.engine.logout(pid);
+    for (const target of targets) {
+      await this.engine.logout(target);
+    }
   }
 
   /**
@@ -813,9 +822,16 @@ export class HoustonClient {
   async setProviderApiKey(name: string, apiKey: string): Promise<void> {
     const pid = toNewProvider(name);
     if (!pid) throw new Error(`provider ${name} not supported`);
+    // OpenCode's Zen + Go gateways share one opencode.ai key (pi reads
+    // OPENCODE_API_KEY for both), so store the pasted key under every sibling
+    // gateway — one connect lights up both. `pid` (the connected id) is the one
+    // that becomes active; the order of the writes doesn't affect that.
+    const targets = credentialSiblings(pid);
     if (this.cp) {
       const agentId = this.requireAgentId();
-      await controlPlane.setApiKey(this.cp, agentId, pid, apiKey);
+      for (const target of targets) {
+        await controlPlane.setApiKey(this.cp, agentId, target, apiKey);
+      }
       // Make the just-connected provider active so chats use it immediately,
       // exactly as the OAuth connect path does (pollProviderConnect). Without
       // this the engine keeps whatever was active (e.g. a still-connected Codex),
@@ -825,9 +841,13 @@ export class HoustonClient {
         .runtimeClientFor(this.cp, agentId)
         .setSettings({ activeProvider: pid });
     } else {
-      await this.engine.setApiKey(pid, apiKey);
+      for (const target of targets) {
+        await this.engine.setApiKey(target, apiKey);
+      }
       await this.engine.setSettings({ activeProvider: pid });
     }
+    // One completion event for the single account the user connected (never one
+    // per gateway), so the connect dialog closes and exactly one card flips.
     emitEvent("ProviderLoginComplete", {
       provider: name,
       success: true,
