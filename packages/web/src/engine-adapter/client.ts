@@ -1,3 +1,4 @@
+import { migrateProviderModel } from "@houston/domain";
 import {
   type CustomEndpoint,
   HoustonEngineClient,
@@ -290,21 +291,27 @@ export class HoustonClient {
     config: ProjectConfig,
   ): Promise<ProjectConfig> {
     if (config.provider) {
-      const pid = toNewProvider(config.provider);
-      if (pid) {
-        // Settings are PER-AGENT on the host (`/agents/:id/settings`); the host
-        // root has no `/settings` route. In cloud / desktop-new-engine mode this
-        // MUST go through the agent's runtime client (the same one activeOld()
-        // READS from) — writing via the root client silently 404s, so a model
-        // pick never persists and every turn falls back to the active provider.
-        const engine = this.cp
-          ? controlPlane.runtimeClientFor(
-              this.cp,
-              agentPath || this.requireAgentId(),
-            )
-          : this.engine;
-        await engine.setSettings({ activeProvider: pid, model: config.model });
-      }
+      // Migrate legacy provider+model ids to ones pi-ai accepts (the runtime's
+      // getModel throws on an unknown id → a hard-failed turn). Fail-soft: an
+      // unknown value lands on the default + records a diagnostic, never a throw.
+      const { provider, model, diagnostics } = migrateProviderModel(
+        config.provider,
+        config.model,
+      );
+      for (const d of diagnostics)
+        console.warn(`[engine-adapter] migrated agent model: ${d.message}`);
+      // Settings are PER-AGENT on the host (`/agents/:id/settings`); the host
+      // root has no `/settings` route. In cloud / desktop-new-engine mode this
+      // MUST go through the agent's runtime client (the same one activeOld()
+      // READS from) — writing via the root client silently 404s, so a model
+      // pick never persists and every turn falls back to the active provider.
+      const engine = this.cp
+        ? controlPlane.runtimeClientFor(
+            this.cp,
+            agentPath || this.requireAgentId(),
+          )
+        : this.engine;
+      await engine.setSettings({ activeProvider: provider, model });
     }
     return config;
   }

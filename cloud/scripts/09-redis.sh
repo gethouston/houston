@@ -3,7 +3,7 @@
 # 09-redis.sh — provision the Memorystore (Redis) instance behind the control
 # plane's shared turn-state bus, unlocking `replicas: 2+`.
 #
-# What rides this bus (packages/control-plane/src/turn/bus.ts):
+# What rides this bus (packages/host/src/turn/bus.ts):
 #   - relay event fan-out + snapshots (SSE on replica B sees a turn on A)
 #   - the one-turn-per-agent mutex (lease + cross-replica cancel)
 #   - per-workspace turn-quota counters

@@ -3,11 +3,13 @@ import type { Toast } from "@houston-ai/core";
 import { useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { SignInScreen } from "./components/auth/sign-in-screen";
+import { MigrationReconnectScreen } from "./components/onboarding/migration-reconnect-screen";
 import { PersonalAssistantOnboarding } from "./components/onboarding/personal-assistant-onboarding";
 import { WorkspaceShell } from "./components/shell/workspace-shell";
 import { useAgentInvalidation } from "./hooks/use-agent-invalidation";
 import { useAnalyticsSubscriber } from "./hooks/use-analytics-subscriber";
 import { useHoustonInit } from "./hooks/use-houston-init";
+import { useMigrationReconnect } from "./hooks/use-migration-reconnect";
 import { useSession } from "./hooks/use-session";
 import { useSessionEvents } from "./hooks/use-session-events";
 import { analytics } from "./lib/analytics";
@@ -156,6 +158,12 @@ export default function App() {
   const dismissToast = useUIStore((s) => s.dismissToast);
   const tutorialActive = useUIStore((s) => s.tutorialActive);
 
+  // One-time "reconnect your AI" moment for users upgrading from the legacy
+  // desktop build: their agents + history migrated, but their AI sign-in did
+  // not. Shows only when (migrated AND no provider connected AND not yet
+  // dismissed) — never on a fresh install, never once a provider is connected.
+  const migrationReconnect = useMigrationReconnect();
+
   const mappedToasts: Toast[] = toasts.map((t) => ({
     id: t.id,
     message: t.description ? `${t.title} ${t.description}` : t.title,
@@ -212,6 +220,14 @@ export default function App() {
         onDismissToast={dismissToast}
       />
     );
+  }
+
+  // Migrated user with workspaces but no connected provider: welcome them back
+  // and walk them through reconnecting once, before the shell (which is unusable
+  // without a provider anyway). Falls through the instant a provider connects or
+  // the user dismisses — see useMigrationReconnect for the full trigger.
+  if (migrationReconnect.show) {
+    return <MigrationReconnectScreen onDone={migrationReconnect.dismiss} />;
   }
 
   return <WorkspaceShell toasts={mappedToasts} onDismissToast={dismissToast} />;

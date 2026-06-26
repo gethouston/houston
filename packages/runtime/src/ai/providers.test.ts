@@ -14,6 +14,7 @@ import {
   pickActiveProvider,
   providerAuthMethod,
   providerDefaultModel,
+  safeGetModel,
 } from "./providers";
 
 /**
@@ -41,6 +42,27 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode-go")).toBe("glm-5.1");
   // Unknown falls back to the Codex default (never throws / undefined).
   expect(providerDefaultModel("nope")).toBe("gpt-5.5");
+});
+
+test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {
+  // A valid id resolves to that exact model.
+  expect(
+    (safeGetModel("anthropic", "claude-opus-4-8", false) as { id?: string }).id,
+  ).toBe("claude-opus-4-8");
+  // A stale/legacy id the provider no longer offers falls back to the default
+  // so the turn runs a REAL model. (pi-ai's getModel returns `undefined` for an
+  // unknown id — which would crash the turn downstream — so the guard catches
+  // it against the live catalog and substitutes the provider default.)
+  expect(
+    (safeGetModel("anthropic", "claude-2.1", false) as { id?: string }).id,
+  ).toBe(providerDefaultModel("anthropic"));
+  // A PINNED id (a routine's model) is NOT auto-corrected, but it IS validated:
+  // a deliberately bad pin throws a clean "model not available" Error rather
+  // than being silently swapped OR returning undefined (which crashed the turn
+  // downstream with a raw `Cannot read properties of undefined` TypeError).
+  expect(() => safeGetModel("anthropic", "claude-2.1", true)).toThrow(
+    'anthropic model "claude-2.1" is not available',
+  );
 });
 
 test("pickActiveProvider keeps a logged-out saved provider sticky (no silent switch)", () => {

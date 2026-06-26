@@ -6,7 +6,7 @@ control-plane URL). Runtimes are internal components behind the host; their
 conversation core (`/version` → `protocol: 2`) is re-served by the host
 verbatim under `/v1/agents/:id/conversations/*`.
 
-Consumers: the host (`packages/control-plane` → host), `@houston/runtime-client`
+Consumers: the host (`packages/host`), `@houston/runtime-client`
 (re-exports the conversation subset), `@houston-ai/engine-client` (the UI's
 client, rewritten onto this in convergence P2/P6). See `convergence/README.md`.
 

@@ -20,6 +20,15 @@ export function useIntegrationConnections(provider: string, enabled: boolean) {
   });
 }
 
+/**
+ * The mutations below intentionally carry no `onError`: their `mutationFn`
+ * routes through `tauriIntegrations.*`, every one of which is wrapped by the
+ * `call()` adapter in `lib/tauri.ts`. `call()` already shows the real error as a
+ * red toast AND captures it to Sentry (the "Report bug" path) before re-throwing,
+ * so the failure is surfaced once. React Query catches the re-throw internally,
+ * so `.mutate()` never leaks an unhandled rejection. Adding an `onError` here
+ * would double-toast (a second, more generic message on top of the engine's).
+ */
 export function useDisconnectIntegration(provider: string) {
   const qc = useQueryClient();
   return useMutation({

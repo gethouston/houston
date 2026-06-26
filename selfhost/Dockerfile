@@ -3,7 +3,7 @@
 # Houston SELF-HOST image — the whole single-user product in ONE container.
 #
 # This runs the Houston HOST in its local adapter profile (the same server the
-# desktop app spawns as its sidecar: packages/control-plane/src/local/main.ts).
+# desktop app spawns as its sidecar: packages/host/src/local/main.ts).
 # The host serves the v3 API + SSE and lazily spawns pi-runtime subprocesses
 # IN THIS CONTAINER over loopback, one per agent — exactly like the desktop, so
 # "local = the cloud shrunk to one machine" holds literally here too. No
@@ -49,8 +49,8 @@ RUN cd /app/packages/protocol       && bun install --frozen-lockfile \
 # The runtime the host spawns per agent, and the host itself.
 COPY packages/runtime/ /app/packages/runtime/
 RUN cd /app/packages/runtime && bun install --frozen-lockfile
-COPY packages/control-plane/ /app/packages/control-plane/
-RUN cd /app/packages/control-plane && bun install --frozen-lockfile \
+COPY packages/host/ /app/packages/host/
+RUN cd /app/packages/host && bun install --frozen-lockfile \
  && rm -rf /root/.bun/install/cache
 
 # The whole ~/.houston equivalent (workspaces + credentials + db) lives here so a
@@ -67,7 +67,7 @@ ENV NODE_ENV=production \
 # host open to anyone who can reach the port. docker-compose.yml requires it.
 
 USER bun
-WORKDIR /app/packages/control-plane
+WORKDIR /app/packages/host
 EXPOSE 4318
 
 # /health is public (no token). Uses bun so the image needs no curl.

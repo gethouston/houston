@@ -93,9 +93,9 @@ Notes:
 ## Reuse map — keep / modify / replace / new
 
 **KEEP (reuse ~verbatim — it's already workspace- or agent-scoped):**
-- `packages/control-plane/src/auth/*` (Supabase JWT verify), `domain/*` (workspaces/agents + `canUseAgent`), `store/*` (Pg/Memory workspace store).
-- `packages/control-plane/src/credentials/*` (connect-once store + central refresh + vault) — **already workspace-scoped; reused verbatim.**
-- `packages/control-plane/src/proxy/route.ts` (the SSE-safe `forward()` with retry/abort) — reused **and lifted into the runtime manager** for the in-VM fan-out.
+- `packages/host/src/auth/*` (Supabase JWT verify), `domain/*` (workspaces/agents + `canUseAgent`), `store/*` (Pg/Memory workspace store).
+- `packages/host/src/credentials/*` (connect-once store + central refresh + vault) — **already workspace-scoped; reused verbatim.**
+- `packages/host/src/proxy/route.ts` (the SSE-safe `forward()` with retry/abort) — reused **and lifted into the runtime manager** for the in-VM fan-out.
 - `packages/web/*` (frontend + engine-adapter + cloud-login + profile + admin) — UI is unchanged (agents are still per-agent to the user).
 - `packages/runtime/src/{session/chat,session/bus,session/sse,store/conversations,ai/providers,auth/login,auth/storage,session/resource-loader}` — this **is** the per-agent worker logic; runs inside the bwrapped worker, paths resolved per-agent.
 - `supabase/migrations/*`.

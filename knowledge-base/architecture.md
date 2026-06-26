@@ -4,15 +4,16 @@
 
 ## Current architecture (the convergence target)
 
-ONE deployment-agnostic server — the **host** (`packages/control-plane`, becoming `packages/host`) — with ONE router, ONE `authorize()` seam, ONE domain layer, and **two adapter profiles** (local desktop vs cloud multi-tenant) wired in `main()`. The only agent loop is the **pi runtime** (`packages/runtime`, TS/Bun) — single-workspace, single-credential, tenancy-free. Domain logic lives once in `packages/domain`; wire types + zod in `packages/protocol` (**protocol v3**). The frontend (`app/src`, also `packages/web`) talks ONLY to the host via `@houston-ai/engine-client`, every deployment.
+ONE deployment-agnostic server — the **host** (`packages/host`) — with ONE router, ONE `authorize()` seam, ONE domain layer, and **two adapter profiles** (local desktop vs cloud multi-tenant) wired in `main()`. The only agent loop is the **pi runtime** (`packages/runtime`, TS/Bun) — single-workspace, single-credential, tenancy-free. Domain logic lives once in `packages/domain`; wire types + zod in `packages/protocol` (**protocol v3**). The frontend (`app/src`, also `packages/web`) talks ONLY to the host via `@houston-ai/engine-client`, every deployment.
 
 - **Desktop** = the host booted with local adapters (FS store/vfs, subprocess pi launcher, single-user identity, FS watcher → events), spawned by the Tauri shell as a Bun-compiled sidecar (`--features host-sidecar`).
-- **Cloud** = the same host with cloud adapters (Postgres, GCS, GKE/Cloud-Run launcher, Supabase identity, Redis bus). Per-turn Cloud Run: hydrate → run one pi turn → sync → wipe.
+- **Cloud** = the same host with cloud adapters (Postgres, GCS, GKE/Cloud-Run launcher, Supabase identity, Redis bus). Per-turn Cloud Run: hydrate → run one pi turn → sync → wipe. Those cloud adapters + operator-admin + the cloud `main.ts` live in the CLOSED `packages/host-cloud` (`@houston/host-cloud`), extracted from the open host.
+- **Open/closed seam** = the open local stack (`protocol`/`domain`/`runtime`/`ui`/`host` + local adapters + `app`) may never import a cloud adapter; inside the host only `main.ts`/`admin/**` touch a concrete cloud adapter, everything else goes through ports. Documented in `BOUNDARY.md` (repo root), machine-enforced by `scripts/check-boundaries.mjs` (`pnpm check:boundaries`, wired into the PR CI gate).
 - **Self-host** = the local host in Docker behind Caddy TLS (`selfhost/`).
 - **Providers** are in-process in pi (Anthropic + OpenAI/Codex OAuth). **No provider CLIs.** Gemini dropped.
-- **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/control-plane/src/integrations/`), each user's own free account, no CLI.
-- **Drift prevention** = port contract suites + the dual-profile parity test (`packages/control-plane/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`.
-- **Cut:** mobile/tunnel/relay, worktrees, store/marketplace, claude-CLI install. Single personal workspace (teams later).
+- **Composio** (and future integrations) = an in-process REST tool behind the `IntegrationProvider` port (`packages/host/src/integrations/`), each user's own free account, no CLI.
+- **Drift prevention** = port contract suites + the dual-profile parity test (`packages/host/src/dual-profile.test.ts`) + `/v1/capabilities` (no "am I web/desktop" branches). Gate spec: `convergence/parity-checklist.md`. PR CI gate: `.github/workflows/ci.yml`.
+- **Removed (deleted, not just planned):** `mobile/` + `houston-relay/` (mobile PWA + tunnel), `examples/smartbooks/` (custom-frontend reference), `always-on/` (the legacy Rust-engine VPS image — superseded by `selfhost/`), worktrees, store/marketplace, claude-CLI install. Single personal workspace (teams later).
 
 Everything from here down is the legacy/transitional detail (Rust engine crates, bundled CLIs, the original product map). Accurate for the default build until P6, but `convergence/README.md` is canonical for the direction.
 
@@ -26,10 +27,10 @@ Houston = open platform. Organized as **7 products + 3 code libraries**.
 |---------|-----|------|
 | Houston App | `app/` | Desktop app (Tauri 2). Non-technical users create agents, run parallel terminal sessions. |
 | Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims. Two modes: connect to any remote `houston-engine` (URL+token), or **cloud mode** (`VITE_CONTROL_PLANE_URL`) — Supabase sign-in via the app's NATIVE auth (same `SignInScreen`/sidebar `UserMenu` as desktop), agents served by the control plane. No fork, no `app/` changes. See `packages/web/README.md`. |
-| Houston Mobile | `mobile/` | React PWA served from `tunnel.gethouston.ai`. No native app — pure web, same origin as the relay. A lean chat/mission-control client (distinct from Houston Web's full shell). |
+| Houston Mobile | ~~`mobile/`~~ **REMOVED** | Was a React PWA served from `tunnel.gethouston.ai` over the relay. The mobile/tunnel feature was cut in the convergence; `mobile/` + `houston-relay/` are deleted. |
 | Houston Store | `store/` | Release-bundled registry of pre-built Houston agents. One-click install. |
 | Houston Website | `website/` | gethouston.ai landing. |
-| Houston Always On | `always-on/` | One-click deploy Engine to VPS/microVM. Agents 24/7. **TBD.** |
+| Houston Always On | ~~`always-on/`~~ **REMOVED** | Was a one-click VPS/microVM deploy of the Rust engine. Superseded by `selfhost/` (the TS host in Docker behind Caddy); `always-on/` is deleted. |
 | Houston Teams | `teams/` | Hosted multi-tenant agent pool w/ perms. **TBD.** |
 
 ## The 3 code libraries
@@ -38,7 +39,7 @@ Houston = open platform. Organized as **7 products + 3 code libraries**.
 |---------|-----|------|-----------|
 | Houston UI | `ui/` | `@houston-ai/*` React components | App, Mobile, future hosted products' frontends |
 | Houston Engine | `engine/` | Rust crates. **Frontend-agnostic backend.** Open source. Anyone self-hosts or uses as desktop-app backend. | App (via `app/houston-tauri` adapter), Always On, Teams, Cloud customers |
-| Houston Cloud | `cloud/` + `packages/{control-plane,runtime,code-sandbox,web}` | **LIVE (beta).** Hosted multi-tenant agents on GCP: agent = a DB row + a GCS prefix; a turn = ONE Cloud Run request (hydrate → run pi → sync → wipe, scale-to-zero); untrusted code runs in a separate egress-locked Cloud Run microVM sandbox. Credentials = connect-once user subscriptions (OpenAI/Codex), served access-token-only. Workspaces carry a `runtime` flag (`cloudrun` default; `gke` legacy pods until PVC→GCS migration). Start at `cloud/code-execution.md` + `cloud/README.md`. | Houston Web (cloud mode) users |
+| Houston Cloud | `cloud/` + `packages/{host,host-cloud,runtime,code-sandbox,web}` | **LIVE (beta).** Hosted multi-tenant agents on GCP: agent = a DB row + a GCS prefix; a turn = ONE Cloud Run request (hydrate → run pi → sync → wipe, scale-to-zero); untrusted code runs in a separate egress-locked Cloud Run microVM sandbox. Credentials = connect-once user subscriptions (OpenAI/Codex), served access-token-only. Workspaces carry a `runtime` flag (`cloudrun` default; `gke` legacy pods until PVC→GCS migration). Start at `cloud/code-execution.md` + `cloud/README.md`. | Houston Web (cloud mode) users |
 
 ## Key distinction: Engine is standalone
 
@@ -52,8 +53,8 @@ Houston = open platform. Organized as **7 products + 3 code libraries**.
 
 | Dir | What |
 |-----|------|
-| `houston-relay/` | Cloudflare Worker + Durable Object at `tunnel.gethouston.ai`. Reverse-tunnel proxy (desktop engine dials outbound; mobile traffic multiplexes over that link) AND static host for the mobile PWA. One origin for both so Safari sees first-party traffic. Deploys separately. |
-| `examples/` | Reference consumers of `houston-engine` for third-party devs. First entry: `examples/smartbooks/` — a custom React frontend, own brand, zero `@houston-ai/*` UI deps. Lives in the monorepo (not a separate repo) so it stays in sync with protocol changes. |
+| ~~`houston-relay/`~~ **REMOVED** | Was the Cloudflare Worker + Durable Object at `tunnel.gethouston.ai` (reverse-tunnel proxy + static host for the mobile PWA). Deleted with the mobile/tunnel cut. |
+| ~~`examples/smartbooks/`~~ **REMOVED** | Was the reference custom-frontend consumer of `houston-engine` (own brand, zero `@houston-ai/*` UI deps). Deleted in the convergence sweep. |
 | `knowledge-base/` | These caveman docs. Loaded on demand. |
 | `scripts/` | Version bump, release, CLI binary fetch. |
 
@@ -180,8 +181,8 @@ the typed `.houston/<type>/<type>.json` layout.
 | UI standalone | ✅ |
 | Full desktop UI in the browser | ✅ `packages/web` composes `app/src` with `@tauri-apps/*` shimmed; typecheck + build green, parity guard in CI. Live engine click-through + web OAuth are the open follow-ups (see `packages/web/README.md`) |
 | Engine reusable by non-Tauri frontends | ✅ binary ships as Tauri sidecar + standalone; desktop app consumes it over HTTP/WS, no in-process coupling |
-| Reference custom-frontend integration | ✅ `examples/smartbooks/` — Vite + React, own brand, ~400 LOC TSX, proven end-to-end |
-| Always On | ✅ Dockerfile + compose + systemd unit + README all shipped |
+| Reference custom-frontend integration | ➖ `examples/smartbooks/` was shipped, then REMOVED in the convergence sweep |
+| Always On | ➖ `always-on/` was shipped, then REMOVED; the TS-host self-host path is `selfhost/` |
 | Teams / Cloud | 🟢 Cloud is LIVE (beta): per-turn Cloud Run hosting + locked-down code sandbox + GCS workspaces + connect-once subscriptions, behind the control plane on GKE (`cloud/code-execution.md`). Teams (org workspaces, per-seat) modeled but not built. |
 | Store populated | 🟡 release-bundled MVP: `store/catalog.json` + `store/agents/*`; community sharing TBD |
 | Binary file read route (xlsx, pdf download through HTTP) | ✅ `GET /v1/agents/files/download` (engine) + `GET /agents/:id/files/download` (cloud control plane); web Files tab gets Preview + Download, desktop keeps OS open/reveal |

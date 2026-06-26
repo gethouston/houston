@@ -68,10 +68,10 @@ spec:
   replicas: 1
   # Zero-downtime deploys: bring the replacement up and Ready BEFORE the old
   # pod drains (the pod itself drains gracefully on SIGTERM — see
-  # packages/control-plane/src/shutdown.ts).
+  # packages/host/src/shutdown.ts).
   #
   # Multi-replica HA: the turn relay/quota/connect state rides the TurnBus
-  # (packages/control-plane/src/turn/bus.ts). With CP_REDIS_URL unset the bus
+  # (packages/host/src/turn/bus.ts). With CP_REDIS_URL unset the bus
   # is in-process and replicas MUST stay 1. To go to 2+: provision Memorystore
   # (cloud/scripts/09-redis.sh), add the `redis-url` key to
   # control-plane-secrets, then bump replicas here.

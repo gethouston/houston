@@ -15,6 +15,12 @@
     "finishPage": "Empezar",
     "finishDialog": "Crear espacio de trabajo"
   },
+  "migrationReconnect": {
+    "title": "Bienvenido de nuevo",
+    "body": "Tus asistentes y todo lo que has trabajado están aquí. Solo vuelve a conectar tu IA para continuar donde lo dejaste.",
+    "skip": "Lo haré más tarde",
+    "dismissError": "No pudimos guardar eso. Inténtalo de nuevo."
+  },
   "tutorial": {
     "brand": "Houston",
     "counter": "Misión {{current}} de {{total}}",

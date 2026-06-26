@@ -232,25 +232,70 @@ export function setSettings(input: {
 }
 
 /**
+ * getModel for a provider+model, but read-time-safe against a LEGACY/stale id.
+ *
+ * A bare `getModel(provider, id)` THROWS for an id the provider doesn't offer.
+ * The desktop's stored config could carry a legacy id (the migration runs on
+ * the write/seed path — see packages/domain migrateProviderModel — but a
+ * settings.json written before that fix, or hand-edited, can still hold one).
+ * Rather than hard-fail the turn, fall back to the provider's catalog default
+ * and emit a diagnostic (beta no-silent-failure: the user still gets a turn AND
+ * the swap is logged for the bug tail). A pinned `override` (routine model) is
+ * the one exception NOT auto-corrected, but it IS validated: an unavailable pin
+ * throws a clean "model not available" Error (pi-ai's getModel returns
+ * `undefined` rather than throwing) so the turn fails with a readable reason
+ * instead of a downstream TypeError.
+ */
+export function safeGetModel(
+  provider: string,
+  modelId: string,
+  pinned: boolean,
+) {
+  const pp = provider as KnownProvider;
+  const mp = modelId as Parameters<typeof getModel>[1];
+  if (pinned) {
+    // pi-ai's getModel returns `undefined` (it never throws) for an id the
+    // provider doesn't offer. A pinned id is NOT auto-corrected, but it must
+    // still be validated here: returning undefined would crash the turn
+    // downstream with a raw `Cannot read properties of undefined` TypeError.
+    const m = getModel(pp, mp);
+    if (!m) throw new Error(`${provider} model "${modelId}" is not available`);
+    return m;
+  }
+  const offered = safeModelIds(provider as ProviderId);
+  // Open-catalog gateways (opencode/opencode-go) return [] from getModels but
+  // accept arbitrary ids — only guard when we actually have a catalog to check.
+  if (offered.length > 0 && !offered.includes(modelId)) {
+    const fallback = providerDefaultModel(provider);
+    console.warn(
+      `[providers] ${provider} model "${modelId}" is not offered; ` +
+        `falling back to "${fallback}"`,
+    );
+    return getModel(pp, fallback as Parameters<typeof getModel>[1]);
+  }
+  return getModel(pp, mp);
+}
+
+/**
  * Resolve the pi-ai model for the active provider (used when starting a turn).
  * An optional `override` (a routine's pinned model) wins over the saved model;
- * `getModel` throws for an id the provider doesn't offer, so a bad pin surfaces
- * as the turn's error rather than silently falling back. The OpenAI-compatible
- * provider isn't a pi KnownProvider, so it builds its model by hand instead.
+ * a bad pin surfaces as the turn's error, while a stale SAVED id falls back to
+ * the provider default (see safeGetModel) rather than hard-failing the turn. The
+ * OpenAI-compatible provider isn't a pi KnownProvider, so it builds its model by
+ * hand instead.
  */
 export function resolveModel(override?: string | null): Model<Api> {
   const provider = activeProvider();
   if (!provider)
     throw new Error("No provider connected. Connect an AI provider first.");
+  // The OpenAI-compatible (local) provider isn't a pi KnownProvider, so its
+  // model is hand-built rather than fetched from a catalog. Every other provider
+  // goes through safeGetModel, which validates a pinned id (a bad pin throws a
+  // clean "model not available" error) but falls a stale SAVED id back to the
+  // provider default rather than hard-failing the turn.
   if (provider === OPENAI_COMPATIBLE)
     return buildActiveCustomModel(override || undefined);
-  // ProviderId is a subset of KnownProvider; modelId is a runtime string the
-  // caller controls. Cast to getModel's declared model-id param type. getModel
-  // throws at runtime if the id is not offered by the provider.
-  return getModel(
-    provider as KnownProvider,
-    (override || modelFor(provider)) as Parameters<typeof getModel>[1],
-  ) as Model<Api>;
+  return safeGetModel(provider, override || modelFor(provider), !!override);
 }
 
 function safeModelIds(provider: ProviderId): string[] {

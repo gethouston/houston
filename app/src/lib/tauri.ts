@@ -752,6 +752,22 @@ export const tauriProvider = {
 import { osOpenUrl } from "./os-bridge";
 export const tauriSystem = {
   openUrl: (url: string) => osOpenUrl(url),
+  /**
+   * Whether THIS install carried over a legacy Rust-desktop chat-history db —
+   * the signal that the user is migrating from the old desktop build (agents +
+   * history came across, provider credentials did NOT). Read from the host's
+   * `/v1/version`; the legacy Rust engine and older hosts omit the field, so a
+   * missing value reads as `false` (never show the reconnect moment there).
+   */
+  chatHistoryMigrated: () =>
+    call<boolean>(
+      "chat_history_migrated",
+      async () => (await getEngine().version()).chatHistoryMigrated ?? false,
+      undefined,
+      // A meta probe, not a user-initiated action: a transient failure should
+      // not toast. The hook treats a throw as "unknown → don't show".
+      { toast: false, capture: false },
+    ),
 };
 
 // ─── Agent file watcher ───────────────────────────────────────────────

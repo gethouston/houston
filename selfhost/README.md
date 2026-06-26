@@ -8,6 +8,13 @@ the same container. Use it two ways:
 | Local Docker on your machine | `http://127.0.0.1:4318` | whatever you pass as `HOUSTON_HOST_TOKEN` |
 | Remote VPS with Caddy TLS | `https://your-domain.example/engine` | `HOUSTON_HOST_TOKEN` from `selfhost/.env` |
 
+> How this works: the **host** (`packages/host/src/local/main.ts`) is
+> already a server — the desktop just spawns it as a loopback sidecar. Self-host
+> is the same binary with `HOUSTON_HOST_BIND=0.0.0.0`, a persistent volume, and a
+> TLS reverse proxy in front. It lazily spawns one `pi` runtime per agent **inside
+> the container** over loopback, exactly like the desktop. That's the convergence
+> paying off: "local = the cloud shrunk to one machine" is literally the same code.
+
 Do not publish port `4318` on a remote VPS. The compose setup keeps it private
 and exposes only Caddy on ports `80` and `443`.
 
