@@ -1,5 +1,8 @@
 import type { Server } from "node:http";
 import { config } from "./config";
+import { installRuntimeLogging } from "./observability/logging";
+
+const { logger } = installRuntimeLogging({ dataDir: config.dataDir });
 
 /**
  * Two modes, one binary:
@@ -23,15 +26,14 @@ async function start(): Promise<Server> {
       : new LocalDirStore(config.localStoreDir);
     const server = createTurnServer({ store, token: config.turnToken });
     server.listen(config.port, config.host, () => {
-      console.log(
-        `houston-runtime (turn mode) listening on http://${config.host}:${config.port}`,
-      );
-      console.log(
-        `  store: ${config.gcsBucket ? `gs://${config.gcsBucket}` : config.localStoreDir}`,
-      );
-      console.log(
-        `  auth: ${config.turnToken ? "X-Internal-Token required" : "open (local dev)"}`,
-      );
+      console.info("runtime listening", {
+        auth: config.turnToken ? "x_internal_token_required" : "open_local_dev",
+        mode: "turn",
+        store: config.gcsBucket
+          ? `gs://${config.gcsBucket}`
+          : config.localStoreDir,
+        url: `http://${config.host}:${config.port}`,
+      });
     });
     return server;
   }
@@ -48,10 +50,23 @@ async function start(): Promise<Server> {
 
 const server = await start();
 
+let shuttingDown = false;
+
+async function exitNow() {
+  await logger.close();
+  process.exit(0);
+}
+
 function shutdown(signal: string) {
-  console.log(`\n[runtime] ${signal} received, shutting down...`);
-  server.close(() => process.exit(0));
-  setTimeout(() => process.exit(0), 3000).unref();
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info("runtime shutdown requested", { signal });
+  server.close(() => {
+    void exitNow();
+  });
+  setTimeout(() => {
+    void exitNow();
+  }, 3000).unref();
 }
 process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("SIGTERM", () => shutdown("SIGTERM"));
