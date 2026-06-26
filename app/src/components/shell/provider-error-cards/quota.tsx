@@ -56,11 +56,15 @@ export function QuotaExhaustedCard({
 export function ModelUnavailableCard({
   error,
   onSwitchModel,
+  onApplyModel,
 }: BaseProps & {
   error: Extract<ProviderError, { kind: "model_unavailable" }>;
+  /** Apply the suggested fallback model directly (one click, no picker). */
+  onApplyModel?: (model: string) => void;
 }) {
   const { t } = useTranslation("shell");
   const provider = providerLabel(error.provider);
+  const fallback = error.suggested_fallback;
   return (
     <ErrorCard
       icon={<AlertTriangleIcon className="size-5" />}
@@ -70,14 +74,14 @@ export function ModelUnavailableCard({
         model: error.model,
       })}
     >
-      {error.suggested_fallback && onSwitchModel && (
+      {fallback && onApplyModel && (
         <Button
           size="sm"
           className="h-8 gap-2 rounded-full px-3 text-xs"
-          onClick={onSwitchModel}
+          onClick={() => onApplyModel(fallback)}
         >
           {t("providerError.modelUnavailable.switchToFallback", {
-            model: error.suggested_fallback,
+            model: fallback,
           })}
         </Button>
       )}

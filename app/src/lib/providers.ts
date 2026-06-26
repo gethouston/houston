@@ -106,16 +106,28 @@ export interface ProviderInfo {
  */
 const COPILOT_MODELS: readonly ModelOption[] = [
   {
+    id: "gpt-4.1",
+    label: "GPT-4.1",
+    // The one BASE model every Copilot plan serves, INCLUDING Copilot Free —
+    // the premium models below (Claude / GPT-5.x / Gemini) need Copilot Pro and
+    // answer `model_not_supported` on Free (HOU-578). Listed first as the safe,
+    // always-works default. gpt-4o is also base but isn't in pi-ai's catalog, so
+    // the engine can't resolve it — gpt-4.1 is the only selectable base model.
+    description: "Available on every plan, including Copilot Free.",
+    contextWindow: 200_000,
+  },
+  {
     id: "claude-sonnet-4.6",
     label: "Claude Sonnet 4.6",
-    description: "Best balance of speed and quality.",
+    description: "Best balance of speed and quality. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high", "max"],
     contextWindow: 1_000_000,
   },
   {
     id: "claude-opus-4.8",
     label: "Claude Opus 4.8",
-    description: "Anthropic's flagship. Most capable, slower.",
+    description:
+      "Anthropic's flagship. Most capable, slower. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high", "xhigh", "max"],
     // Copilot's gateway caps Opus at 200k (smaller than a direct Max plan).
     contextWindow: 200_000,
@@ -123,27 +135,27 @@ const COPILOT_MODELS: readonly ModelOption[] = [
   {
     id: "claude-haiku-4.5",
     label: "Claude Haiku 4.5",
-    description: "Anthropic's fastest, for quick tasks.",
+    description: "Anthropic's fastest, for quick tasks. Needs Copilot Pro.",
     contextWindow: 200_000,
   },
   {
     id: "gpt-5.5",
     label: "GPT-5.5",
-    description: "OpenAI's frontier model.",
+    description: "OpenAI's frontier model. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high", "xhigh"],
     contextWindow: 400_000,
   },
   {
     id: "gpt-5-mini",
     label: "GPT-5 Mini",
-    description: "OpenAI's fast, lightweight model.",
+    description: "OpenAI's fast, lightweight model. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high"],
     contextWindow: 264_000,
   },
   {
     id: "gemini-3-flash-preview",
     label: "Gemini 3 Flash",
-    description: "Google's fast model.",
+    description: "Google's fast model. Needs Copilot Pro.",
     effortLevels: ["low", "medium", "high"],
     contextWindow: 128_000,
   },
@@ -239,7 +251,9 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "Your GitHub Copilot subscription",
     copilotConnect: true,
     models: COPILOT_MODELS,
-    defaultModel: "claude-sonnet-4.6",
+    // Base model that works on EVERY Copilot plan incl. Free (HOU-578); premium
+    // models 404 on Free. Mirrors the engine's `config.githubCopilotModel`.
+    defaultModel: "gpt-4.1",
   },
   {
     id: "opencode",
