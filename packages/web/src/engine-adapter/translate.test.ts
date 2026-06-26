@@ -1,12 +1,29 @@
 import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
-import { configWriteToSettings } from "./synthetic";
+import { configWriteToSettings, credentialSiblings } from "./synthetic";
 import {
   historyToFeed,
   isNotConnectedError,
   isStoppedByUser,
   turnErrorMessage,
 } from "./translate";
+
+test("credentialSiblings fans an OpenCode key out to both gateways, others stay single", () => {
+  // OpenCode Zen + Go share one opencode.ai key (pi reads OPENCODE_API_KEY for
+  // both), so connecting or signing out of either id must touch both — that is
+  // what lets one "OpenCode" connect card light up (and clear) the whole account.
+  expect(credentialSiblings("opencode")).toEqual(["opencode", "opencode-go"]);
+  expect(credentialSiblings("opencode-go")).toEqual([
+    "opencode",
+    "opencode-go",
+  ]);
+  // Every other provider stands for just itself — no fan-out.
+  expect(credentialSiblings("anthropic")).toEqual(["anthropic"]);
+  expect(credentialSiblings("openai-codex")).toEqual(["openai-codex"]);
+  expect(credentialSiblings("openai-compatible")).toEqual([
+    "openai-compatible",
+  ]);
+});
 
 test("turnErrorMessage unwraps the engine's plain message from a rejected send", () => {
   // The runtime refuses a not-connected turn with 409 + a JSON body; the user must

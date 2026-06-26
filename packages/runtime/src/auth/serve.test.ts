@@ -2,12 +2,14 @@ import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { PROVIDERS } from "../ai/providers";
+import { config } from "../config";
 import {
   applyServedCredential,
   type PiCred,
   scrubRefreshTokensAt,
 } from "./auth-file";
-import { selectExportCredential } from "./serve";
+import { selectExportCredential, syncServedCredential } from "./serve";
 
 /**
  * Connect-once capture must be PROVIDER-SPECIFIC. The runtime exports the
@@ -40,6 +42,76 @@ test("selectExportCredential(provider) returns THAT provider, not the first in t
   expect(selectExportCredential(auth, "openai-codex")?.provider).toBe(
     "openai-codex",
   );
+});
+
+/**
+ * HOU-573: GET /auth/status now hydrates the served credential so a brand-new
+ * agent's model picker reflects the workspace's connect-once providers before its
+ * first turn. The picker fires one status request PER provider in parallel, so the
+ * hydration MUST share one in-flight sync — N concurrent syncs would each rewrite
+ * auth.json at once (a write race) and pointlessly hammer the control plane.
+ */
+async function withServeMode(
+  fetchImpl: typeof globalThis.fetch,
+  body: () => Promise<void>,
+): Promise<void> {
+  const prevUrl = config.controlPlaneUrl;
+  const prevTok = config.sandboxToken;
+  const prevFetch = globalThis.fetch;
+  config.controlPlaneUrl = "http://control-plane.test";
+  config.sandboxToken = "sbx-token";
+  globalThis.fetch = fetchImpl;
+  try {
+    await body();
+  } finally {
+    globalThis.fetch = prevFetch;
+    config.controlPlaneUrl = prevUrl;
+    config.sandboxToken = prevTok;
+  }
+}
+
+test("concurrent syncServedCredential calls share one in-flight sync (no auth.json write race)", async () => {
+  let calls = 0;
+  // 404 = "this provider isn't connected": no auth.json write, so the test stays
+  // pure while still exercising one full per-provider probe sweep.
+  const fetchImpl = (async () => {
+    calls++;
+    return new Response(null, { status: 404 });
+  }) as unknown as typeof globalThis.fetch;
+  await withServeMode(fetchImpl, async () => {
+    const [a, b, c] = await Promise.all([
+      syncServedCredential(),
+      syncServedCredential(),
+      syncServedCredential(),
+    ]);
+    expect(a).toEqual([]);
+    expect(b).toEqual([]);
+    expect(c).toEqual([]);
+    // Three concurrent callers, but only ONE batch of per-provider probes ran.
+    expect(calls).toBe(PROVIDERS.length);
+  });
+});
+
+test("syncServedCredential is a no-op when serve mode is off (local desktop)", async () => {
+  let calls = 0;
+  const fetchImpl = (async () => {
+    calls++;
+    return new Response(null, { status: 404 });
+  }) as unknown as typeof globalThis.fetch;
+  const prevUrl = config.controlPlaneUrl;
+  const prevTok = config.sandboxToken;
+  const prevFetch = globalThis.fetch;
+  config.controlPlaneUrl = "";
+  config.sandboxToken = "";
+  globalThis.fetch = fetchImpl;
+  try {
+    expect(await syncServedCredential()).toEqual([]);
+    expect(calls).toBe(0); // never reaches for the control plane locally
+  } finally {
+    globalThis.fetch = prevFetch;
+    config.controlPlaneUrl = prevUrl;
+    config.sandboxToken = prevTok;
+  }
 });
 
 test("selectExportCredential without a provider falls back to the first OAuth credential", () => {

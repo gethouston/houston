@@ -13,6 +13,10 @@ import { FAKE_HOST_PORT, WEB_PORT, WEB_URL } from "./e2e/fake-host/ports";
 export default defineConfig({
   testDir: "./e2e",
   testMatch: "**/*.spec.ts",
+  // Warm the vite dev server before the timed suite so the first test doesn't
+  // pay vite's cold on-demand compile inside its assertion budget (see
+  // e2e/support/global-setup.ts).
+  globalSetup: "./e2e/support/global-setup.ts",
   fullyParallel: false,
   workers: 1,
   forbidOnly: !!process.env.CI,

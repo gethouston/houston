@@ -90,15 +90,17 @@ test("pickActiveProvider falls back to the first connected ONLY when nothing is 
   expect(pickActiveProvider(undefined, [])).toBeNull();
 });
 
-test("github-copilot is a registered OAuth provider with a dotted Copilot model id", () => {
+test("github-copilot is a registered OAuth provider defaulting to a base model (HOU-578)", () => {
   const ids = PROVIDERS.map((p) => p.id);
   expect(ids).toContain("github-copilot");
   // Subscription OAuth (GitHub device-code flow), not a pasted API key.
   expect(providerAuthMethod("github-copilot")).toBe("oauth");
-  // Copilot's gateway uses DOTTED model ids (claude-sonnet-4.6), distinct from
-  // the native Anthropic provider's dashed claude-sonnet-4-6 — getModel() throws
-  // on the wrong form, so the default must be the dotted Copilot id.
-  expect(providerDefaultModel("github-copilot")).toBe("claude-sonnet-4.6");
+  // gpt-4.1 is a BASE model every Copilot plan (incl. Copilot Free) serves, so a
+  // fresh Copilot connect works out of the box; a premium default (claude-*,
+  // gpt-5.x) answers model_not_supported on Free. It also exercises the dotted id
+  // form Copilot's gateway expects (distinct from the native Anthropic provider's
+  // dashed claude-sonnet-4-6).
+  expect(providerDefaultModel("github-copilot")).toBe("gpt-4.1");
 });
 
 /**

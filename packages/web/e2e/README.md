@@ -37,6 +37,7 @@ e2e/
   support/
     seed.ts         # localStorage + window.__HOUSTON_CP__ primed before any app script
     fixtures.ts     # the `test`/`expect` used by specs (resets the host per test)
+    global-setup.ts # warms the vite dev server once before the suite (see CI below)
   *.spec.ts         # the tests
 ```
 
@@ -62,6 +63,15 @@ turn flipping a card's status shows up on the board.
 **Isolation.** One fake-host process serves the whole run, so the suite is serial
 (`workers: 1`) and `support/fixtures.ts` resets the host (`POST /__test__/reset`)
 before each test.
+
+**CI.** vite dev compiles modules on demand, and Playwright only waits for the dev
+server's port to open, not for it to compile. `support/global-setup.ts` boots the
+shell once before the timed suite so the first test doesn't eat vite's cold
+compile inside its 10s assertion budget — that cold start used to time out the
+first test, which then passed on retry: a "flaky" green that silently hid a real
+failure. `test:e2e` also runs with `--fail-on-flaky-tests`, so a test that only
+passes on retry now fails the run (non-zero exit) instead of going green. Locally
+`retries: 0`, so a failure is just a failure and the flag is a no-op.
 
 ## Adding a spec
 

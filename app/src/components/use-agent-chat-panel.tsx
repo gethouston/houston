@@ -429,6 +429,9 @@ export function useAgentChatPanel({
   );
 
   const [pickerOpen, setPickerOpen] = useState(false);
+  // Controlled open for the footer model dropdown, so an error card's "Pick
+  // another model" CTA pops the SAME picker (the Skills picker above is separate).
+  const [modelPickerOpen, setModelPickerOpen] = useState(false);
   const [activeSkill, setActiveSkill] = useState<SkillSummary | null>(null);
   // Drop selected Skill when the agent / session changes so it doesn't
   // leak across contexts.
@@ -645,7 +648,12 @@ export function useAgentChatPanel({
                 data: text,
               });
             }}
-            onSwitchModel={() => setPickerOpen(true)}
+            // "Pick another model" pops the MODEL picker (not the Skills picker);
+            // "Switch to <fallback>" applies it directly on the same provider.
+            onSwitchModel={() => setModelPickerOpen(true)}
+            onApplyModel={(model) =>
+              handleModelSelect(effectiveProvider, model)
+            }
           />
         );
       }
@@ -764,6 +772,8 @@ export function useAgentChatPanel({
           provider={effectiveProvider}
           model={effectiveModel}
           onSelect={handleModelSelect}
+          open={modelPickerOpen}
+          onOpenChange={setModelPickerOpen}
         />
         <ChatEffortSelector
           provider={effectiveProvider}
@@ -789,6 +799,7 @@ export function useAgentChatPanel({
     handleEffortSelect,
     contextUsage,
     contextWindow,
+    modelPickerOpen,
   ]);
 
   const attachMenu = useMemo<AIBoardProps["attachMenu"]>(() => {

@@ -40,13 +40,17 @@ import {
 interface ProviderErrorCardProps {
   error: ProviderError;
   onRetry?: () => Promise<void> | void;
+  /** Open the model picker so the user can choose a different model. */
   onSwitchModel?: () => void;
+  /** Apply a specific model directly (the `model_unavailable` suggested fallback). */
+  onApplyModel?: (model: string) => void;
 }
 
 export function ProviderErrorCard({
   error,
   onRetry,
   onSwitchModel,
+  onApplyModel,
 }: ProviderErrorCardProps) {
   // Cancellation has no UI surface; feed-to-messages should drop it
   // before we get here, but guard defensively in case it ever sneaks
@@ -66,7 +70,11 @@ export function ProviderErrorCard({
       return <QuotaExhaustedCard error={error} onSwitchModel={onSwitchModel} />;
     case "model_unavailable":
       return (
-        <ModelUnavailableCard error={error} onSwitchModel={onSwitchModel} />
+        <ModelUnavailableCard
+          error={error}
+          onSwitchModel={onSwitchModel}
+          onApplyModel={onApplyModel}
+        />
       );
     case "unauthenticated":
       return <UnauthenticatedCard error={error} onRetry={onRetry} />;

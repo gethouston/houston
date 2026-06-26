@@ -148,6 +148,20 @@ export type AuthFailureCause =
   | "unknown";
 
 /**
+ * Why a `model_unavailable` provider error happened. Mirrors the frontend
+ * `ModelUnavailableReason` (`@houston-ai/chat`) so the wire shape stays
+ * assignable to the card's union. The runtime can't always tell the precise
+ * sub-reason from the gateway's flat string (GitHub Copilot just says
+ * `model_not_supported`), so `unknown` is the common case; the actionable detail
+ * is the `suggested_fallback`, not this tag.
+ */
+export type ModelUnavailableReason =
+  | "preview_gated"
+  | "deprecated"
+  | "region_restricted"
+  | "unknown";
+
+/**
  * A typed provider/auth/model failure for a turn's model request. Mirrors the
  * relevant subset of the frontend `ProviderError` union (`@houston-ai/chat`) so
  * it renders as the matching inline card (UnauthenticatedCard / RateLimitedCard /
@@ -168,6 +182,22 @@ export type ProviderError =
       provider: string;
       model: string | null;
       retry_after_seconds: number | null;
+      message: string;
+    }
+  | {
+      /**
+       * The model the turn ran on isn't available to this credential's plan —
+       * e.g. GitHub Copilot Free answers a premium model (Claude / GPT-5.x) it
+       * doesn't include with `400 model_not_supported`. Distinct from auth (the
+       * credential is fine) and rate/quota (nothing to wait out): the fix is to
+       * pick a different model, so `suggested_fallback` names a known-good one
+       * (a Copilot base model every plan serves) when we have one.
+       */
+      kind: "model_unavailable";
+      provider: string;
+      model: string;
+      reason: ModelUnavailableReason;
+      suggested_fallback: string | null;
       message: string;
     }
   | {
