@@ -192,6 +192,67 @@ test("unclassifiable error → unknown, preserving the raw text", () => {
   });
 });
 
+test("GitHub Copilot model_not_supported → model_unavailable + gpt-4.1 fallback (HOU-578)", () => {
+  // The verbatim 400 a Copilot Free account answers a premium model with: the
+  // model exists in the catalog but the plan doesn't serve it. Must NOT read as
+  // auth (credential is fine) or rate/quota (nothing to wait out) — the fix is a
+  // model switch, so it carries a known-good base model to offer.
+  const message =
+    '400 {"error":{"message":"The requested model is not supported.","code":"model_not_supported","param":"model","type":"invalid_request_error"}}';
+  const err = classifyProviderError({
+    provider: "github-copilot",
+    model: "claude-sonnet-4.6",
+    message,
+  });
+  expect(err).toEqual({
+    kind: "model_unavailable",
+    provider: "github-copilot",
+    model: "claude-sonnet-4.6",
+    reason: "unknown",
+    suggested_fallback: "gpt-4.1",
+    message,
+  });
+});
+
+test("OpenAI model_not_found → model_unavailable, no fallback for a non-Copilot provider", () => {
+  const err = classifyProviderError({
+    provider: "openai-codex",
+    model: "gpt-9",
+    message:
+      "OpenAI API error (404): The model `gpt-9` does not exist or you do not have access to it. (model_not_found)",
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable") {
+    expect(err.model).toBe("gpt-9");
+    // We only know a safe fallback for Copilot; elsewhere offer none.
+    expect(err.suggested_fallback).toBeNull();
+  }
+});
+
+test("Copilot's own base model never self-suggests as the fallback", () => {
+  // gpt-4.1 is the fallback target; if it were ever the failing model, offering
+  // it back would be a no-op loop — suppress it.
+  const err = classifyProviderError({
+    provider: "github-copilot",
+    model: "gpt-4.1",
+    message: '400 {"error":{"code":"model_not_supported"}}',
+  });
+  expect(err.kind).toBe("model_unavailable");
+  if (err.kind === "model_unavailable")
+    expect(err.suggested_fallback).toBeNull();
+});
+
+test("model_not_supported with no known model id falls through to unknown", () => {
+  // model_unavailable must name what to switch away from; without a model id
+  // there is nothing to render, so it degrades to the raw `unknown` card.
+  const err = classifyProviderError({
+    provider: "github-copilot",
+    model: null,
+    message: '400 {"error":{"code":"model_not_supported"}}',
+  });
+  expect(err.kind).toBe("unknown");
+});
+
 test("empty error text degrades to a stable unknown, never throws", () => {
   const err = classifyProviderError({
     provider: "anthropic",
