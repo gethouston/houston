@@ -1,6 +1,9 @@
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { registerHoustonBedrockProvider } from "../ai/bedrock";
 import { config } from "../config";
+
+registerHoustonBedrockProvider();
 
 /**
  * Single-user credential store, persisted to dataDir/auth.json (mode 0600).

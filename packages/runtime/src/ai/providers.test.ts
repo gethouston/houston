@@ -3,6 +3,7 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { AuthStorage, ModelRegistry } from "@earendil-works/pi-coding-agent";
+import { bedrockOptionsWithBearerToken } from "./bedrock";
 import {
   buildOpenAiCompatibleModel,
   localOverrideError,
@@ -18,19 +19,21 @@ import {
 } from "./providers";
 
 /**
- * OpenCode Zen / Go are pi-native OpenAI-compatible gateways authenticated by a
- * pasted API key (no OAuth). The registry must mark them as such so the auth
+ * OpenCode Zen / Go and Amazon Bedrock are pi-native providers authenticated by
+ * pasted keys (no OAuth). The registry must mark them as such so the auth
  * routes route a paste-a-key submission instead of an OAuth login, and so the
  * cloud per-turn fallback resolves the right default model per provider.
  */
 
-test("opencode + opencode-go are registered as api-key providers", () => {
+test("opencode, opencode-go, and amazon-bedrock are registered as api-key providers", () => {
   const ids = PROVIDERS.map((p) => p.id);
   expect(ids).toContain("opencode");
   expect(ids).toContain("opencode-go");
+  expect(ids).toContain("amazon-bedrock");
 
   expect(providerAuthMethod("opencode")).toBe("apiKey");
   expect(providerAuthMethod("opencode-go")).toBe("apiKey");
+  expect(providerAuthMethod("amazon-bedrock")).toBe("apiKey");
   expect(providerAuthMethod("anthropic")).toBe("oauth");
   expect(providerAuthMethod("openai-codex")).toBe("oauth");
   // Unknown providers default to OAuth.
@@ -40,8 +43,22 @@ test("opencode + opencode-go are registered as api-key providers", () => {
 test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode")).toBe("claude-sonnet-4-6");
   expect(providerDefaultModel("opencode-go")).toBe("glm-5.1");
+  expect(providerDefaultModel("amazon-bedrock")).toBe(
+    "anthropic.claude-sonnet-4-6",
+  );
   // Unknown falls back to the Codex default (never throws / undefined).
   expect(providerDefaultModel("nope")).toBe("gpt-5.5");
+});
+
+test("bedrockOptionsWithBearerToken maps Houston's stored key to Bedrock bearer auth", () => {
+  expect(bedrockOptionsWithBearerToken(undefined)).toBeUndefined();
+  expect(bedrockOptionsWithBearerToken({ apiKey: "br_test" })).toEqual({
+    apiKey: "br_test",
+    bearerToken: "br_test",
+  });
+  expect(
+    bedrockOptionsWithBearerToken({ apiKey: "stored", bearerToken: "direct" }),
+  ).toEqual({ apiKey: "stored", bearerToken: "direct" });
 });
 
 test("safeGetModel keeps a valid saved id but falls back on a stale one", () => {

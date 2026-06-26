@@ -149,7 +149,7 @@ async function handle(req: IncomingMessage, res: ServerResponse) {
     }
   }
 
-  // API-key connect (OpenCode Zen / Go): the user pastes a key, no OAuth dance.
+  // API-key connect: the user pastes a key, no OAuth dance.
   const apiKeyMatch = path.match(/^\/auth\/([^/]+)\/api-key$/);
   if (method === "POST" && apiKeyMatch) {
     const provider = apiKeyMatch[1];

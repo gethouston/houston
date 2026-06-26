@@ -73,8 +73,8 @@ export interface ProviderInfo {
   defaultModel: string;
   /**
    * How the user connects this provider. Default (absent) is subscription OAuth
-   * (Claude / Codex). `"apiKey"` providers (OpenCode Zen / Go) ask the user to
-   * paste a key instead — Houston opens `apiKeyUrl` for them to grab one.
+   * (Claude / Codex). `"apiKey"` providers ask the user to
+   * paste a key instead. Houston opens `apiKeyUrl` for them to grab one.
    * `"openaiCompatible"` providers (a local server: Ollama / vLLM / LM Studio)
    * ask for a base URL + model id. Both run only on the new TS engine, and
    * `openaiCompatible` is desktop-only (the URL is the user's own machine) — see
@@ -493,6 +493,49 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     defaultModel: "gemini-3-flash-preview",
   },
   {
+    id: "amazon-bedrock",
+    name: "Amazon Bedrock",
+    subtitle: "Use Bedrock with your AWS account",
+    cliName: "amazon-bedrock",
+    installUrl: "https://aws.amazon.com/bedrock/",
+    loginCommand: "",
+    cost: "Pay-as-you-go on your AWS account",
+    auth: "apiKey",
+    apiKeyUrl: "https://console.aws.amazon.com/bedrock/home#/api-keys",
+    // pi-ai `amazon-bedrock` model ids. Houston's paste-a-key flow stores a
+    // Bedrock API key, which the runtime maps to pi's provider-specific
+    // `bearerToken` option before each request.
+    models: [
+      {
+        id: "anthropic.claude-sonnet-4-6",
+        label: "Claude Sonnet 4.6",
+        description: "Anthropic's balanced model, via Bedrock.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "anthropic.claude-opus-4-8",
+        label: "Claude Opus 4.8",
+        description: "Anthropic's flagship, via Bedrock.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "amazon.nova-pro-v1:0",
+        label: "Nova Pro",
+        description: "Amazon's capable general-purpose model.",
+        contextWindow: 300_000,
+      },
+      {
+        id: "amazon.nova-lite-v1:0",
+        label: "Nova Lite",
+        description: "Amazon's fast, lower-cost model.",
+        contextWindow: 300_000,
+      },
+    ],
+    defaultModel: "anthropic.claude-sonnet-4-6",
+  },
+  {
     id: "openai-compatible",
     name: "Local model",
     subtitle: "Ollama, LM Studio, vLLM…",
@@ -516,7 +559,7 @@ export function getProvider(id: string): ProviderInfo | undefined {
 }
 
 /**
- * Providers to show in connect UIs. API-key providers (OpenCode Zen / Go) run
+ * Providers to show in connect UIs. API-key providers run
  * only on the new TS engine — they paste a key Houston serves through the host —
  * so they're hidden when the legacy Rust engine is active. The OpenAI-compatible
  * (local) provider is additionally desktop-only: its base URL points at the

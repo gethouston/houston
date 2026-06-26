@@ -211,7 +211,7 @@ export class ProxyChannel implements RuntimeChannel {
   }
 
   /**
-   * Store a pasted API key (OpenCode Zen / Go) centrally for the whole workspace,
+   * Store a pasted API key centrally for the whole workspace,
    * then push it into the standing runtime's auth.json so the provider reads as
    * connected immediately (instead of only after the next turn's serve sync). The
    * central store is the source of truth — the push is what makes status instant.

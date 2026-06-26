@@ -103,6 +103,21 @@ export const PROVIDERS: readonly HostProvider[] = [
     defaultModel: "gemini-3-flash-preview",
   },
   {
+    id: "amazon-bedrock",
+    name: "Amazon Bedrock",
+    auth: "apiKey",
+    // LOCAL/desktop only for now: the cloud per-turn sandbox egress is not
+    // allowlisted for Bedrock runtime endpoints.
+    cloud: false,
+    models: [
+      "anthropic.claude-sonnet-4-6",
+      "anthropic.claude-opus-4-8",
+      "amazon.nova-pro-v1:0",
+      "amazon.nova-lite-v1:0",
+    ],
+    defaultModel: "anthropic.claude-sonnet-4-6",
+  },
+  {
     id: "openai-compatible",
     name: "Local model (OpenAI-compatible)",
     auth: "openaiCompatible",

@@ -19,6 +19,7 @@ export type ProviderId =
   | "opencode-go"
   | "openrouter"
   | "google"
+  | "amazon-bedrock"
   | "openai-compatible";
 
 const PROVIDER_IDS: readonly ProviderId[] = [
@@ -29,6 +30,7 @@ const PROVIDER_IDS: readonly ProviderId[] = [
   "opencode-go",
   "openrouter",
   "google",
+  "amazon-bedrock",
   "openai-compatible",
 ];
 
@@ -56,6 +58,7 @@ export const DEFAULT_MODEL: Record<ProviderId, string> = {
   "opencode-go": "glm-5.1",
   openrouter: "anthropic/claude-sonnet-4.6",
   google: "gemini-3-flash-preview",
+  "amazon-bedrock": "anthropic.claude-sonnet-4-6",
   // No catalog default — the model is whatever the user's local server serves.
   "openai-compatible": "",
 };
@@ -67,8 +70,9 @@ export const DEFAULT_MODEL: Record<ProviderId, string> = {
  * enumerated: `getModel` returns undefined for an unlisted id on these, so a
  * stored model MUST be checked against this set. Every other provider is left
  * absent on purpose and its stored model passes through untouched —
- * opencode / opencode-go / openrouter / google forward an arbitrary id to the
- * gateway, openai-compatible has no catalog at all, and github-copilot is left
+ * opencode / opencode-go / openrouter / google / amazon-bedrock forward an
+ * arbitrary id to the gateway (the runtime's read-time `safeGetModel` guard is
+ * the backstop), openai-compatible has no catalog at all, and github-copilot is left
  * open here (its dotted ids change with the gateway) with the runtime's
  * read-time `safeGetModel` guard as the backstop for a stale id.
  */

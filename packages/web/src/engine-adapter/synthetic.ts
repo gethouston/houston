@@ -57,6 +57,7 @@ export function toNewProvider(
   | "github-copilot"
   | "openrouter"
   | "google"
+  | "amazon-bedrock"
   | "opencode"
   | "opencode-go"
   | "openai-compatible"
@@ -67,6 +68,7 @@ export function toNewProvider(
   if (name === "github-copilot") return "github-copilot";
   if (name === "openrouter") return "openrouter";
   if (name === "google") return "google";
+  if (name === "amazon-bedrock") return "amazon-bedrock";
   if (name === "opencode") return "opencode";
   if (name === "opencode-go") return "opencode-go";
   // Local OpenAI-compatible server — same id on both sides.
@@ -79,7 +81,8 @@ export function toNewProvider(
  * (openai-codex -> openai); the OpenCode ids are the same on both sides.
  */
 export function toOldProvider(id: string): string {
-  // openrouter/google share one id across frontend and engine; only codex differs.
+  // openrouter/google/amazon-bedrock share one id across frontend and engine;
+  // only codex differs.
   return id === "openai-codex" ? "openai" : id;
 }
 

@@ -197,7 +197,7 @@ export async function startLogin(
 }
 
 /**
- * Store a pasted API key for an api-key provider (OpenCode Zen / Go). pi's
+ * Store a pasted API key for an api-key provider. pi's
  * AuthStorage persists it as the `api_key` credential variant; `getApiKey`
  * then returns it for any `getModel(provider, ...)` call against the provider's
  * built-in OpenAI-compatible gateway. There is no OAuth dance and nothing to

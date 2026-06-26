@@ -726,7 +726,8 @@ export const tauriProvider = {
       getEngine().cancelProviderLogin(provider),
     ),
   /**
-   * Connect an API-key provider (OpenRouter, Google Gemini, OpenCode Zen / Go):
+   * Connect an API-key provider (OpenRouter, Google Gemini, Amazon Bedrock,
+   * OpenCode Zen / Go):
    * submit the pasted key. The new engine stores it for the workspace and the
    * provider reads as connected (the adapter fires `ProviderLoginComplete`).
    * New-engine only — the connect UI shows these providers only when

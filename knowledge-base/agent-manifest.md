@@ -227,14 +227,18 @@ Notes:
   three dispatch arms (runner, parser, summarizer). See "Engine boundary"
   in `CLAUDE.md`.
 - _[NEW ENGINE only]_ The TS engine (pi runtime) adds **OpenCode Zen**
-  (`opencode`) and **OpenCode Go** (`opencode-go`) as **API-key** providers —
-  pi ships both as built-in OpenAI-compatible gateways, so there is no adapter
-  file and no CLI. The user pastes a key (dialog has a "Get your API key" button
-  → `opencode.ai/auth`); it's stored as a connect-once `kind:"api_key"` workspace
-  credential. The frontend catalog gates them behind `newEngineActive()` so the
-  Rust build never shows them. Full design: `convergence/README.md` standing
-  decisions. Runtime registry: `packages/runtime/src/ai/providers.ts`; host
-  catalog: `packages/control-plane/src/providers.ts`.
+  (`opencode`), **OpenCode Go** (`opencode-go`), **OpenRouter** (`openrouter`),
+  **Google Gemini** (`google`), and **Amazon Bedrock** (`amazon-bedrock`) as
+  **API-key** providers. pi ships them as built-ins, so there is no Rust adapter
+  file and no CLI. The user pastes a key (dialog has a "Get your API key" button);
+  it's stored as a connect-once `kind:"api_key"` workspace credential. Bedrock is
+  special only at the runtime edge: the stored key is mirrored from pi-coding-agent's
+  generic `apiKey` option to pi-ai's Bedrock-specific `bearerToken` option in
+  `packages/runtime/src/ai/bedrock.ts`. The frontend catalog gates these behind
+  `newEngineActive()` so the Rust build never shows them. Full design:
+  `convergence/README.md` standing decisions. Runtime registry:
+  `packages/runtime/src/ai/providers.ts`; host catalog:
+  `packages/host/src/providers.ts`.
 - _[NEW ENGINE only]_ **One connect card for both OpenCode gateways** (HOU-577).
   Zen and Go are two distinct pi gateways (`opencode.ai/zen/v1` vs
   `opencode.ai/zen/go/v1`, disjoint model catalogs) but authenticate with the

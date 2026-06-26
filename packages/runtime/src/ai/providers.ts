@@ -21,8 +21,8 @@ import {
  * Supported providers. The provider id is the SAME string pi-ai uses for its
  * model provider, so a stored credential under `id` authenticates
  * `getModel(id, ...)` directly — whether that credential is an OAuth token
- * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go, which
- * pi exposes as built-in OpenAI-compatible gateways). The OpenAI-compatible
+ * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go,
+ * OpenRouter, Gemini, Amazon Bedrock). The OpenAI-compatible
  * (local) provider is the exception — its model is hand-built (see
  * `./openai-compatible`), not fetched from a pi catalog.
  */
@@ -34,12 +34,13 @@ export type ProviderId =
   | "opencode-go"
   | "openrouter"
   | "google"
+  | "amazon-bedrock"
   | "openai-compatible";
 
 /**
  * How a provider authenticates:
  * - `oauth` — subscription sign-in (Claude / Codex / Copilot).
- * - `apiKey` — a pasted key for a built-in pi gateway (OpenCode / OpenRouter / Gemini).
+ * - `apiKey` — a pasted key for a built-in pi gateway (OpenCode / OpenRouter / Gemini / Bedrock).
  * - `openaiCompatible` — a user-supplied base URL + model id (+ optional key) for a
  *   local OpenAI-compatible server (Ollama / vLLM / LM Studio). LOCAL profile only:
  *   the URL is the user's own machine, unreachable from a cloud runtime.
@@ -92,6 +93,12 @@ export const PROVIDERS: {
     id: "google",
     name: "Google Gemini",
     defaultModel: config.geminiModel,
+    auth: "apiKey",
+  },
+  {
+    id: "amazon-bedrock",
+    name: "Amazon Bedrock",
+    defaultModel: config.bedrockModel,
     auth: "apiKey",
   },
   {

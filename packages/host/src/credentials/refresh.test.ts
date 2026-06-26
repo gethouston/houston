@@ -3,8 +3,8 @@ import { isApiKeyCredential, type WorkspaceCredential } from "../ports";
 import { isExpiring, refreshCredential } from "./refresh";
 
 /**
- * The connect-once refresher is OAuth-only. An API-key credential (OpenCode Zen /
- * Go) never expires and has nothing to rotate, so it must be treated as a no-op
+ * The connect-once refresher is OAuth-only. An API-key credential never expires
+ * and has nothing to rotate, so it must be treated as a no-op
  * by both the expiry check and the refresh — a stray OAuth token call against a
  * pasted key would 4xx and break every turn.
  */

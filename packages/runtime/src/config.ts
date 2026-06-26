@@ -59,6 +59,8 @@ export const config = {
   githubCopilotModel: env.HOUSTON_GITHUB_COPILOT_MODEL || "gpt-4.1",
   /** Default Google Gemini model (API-key provider). A pi-ai `google` model id. */
   geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3-flash-preview",
+  /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock` model id. */
+  bedrockModel: env.HOUSTON_BEDROCK_MODEL || "anthropic.claude-sonnet-4-6",
   /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
   openrouterModel:
     env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",

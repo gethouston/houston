@@ -126,6 +126,18 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         }),
       ),
     ).toEqual({ activeProvider: "github-copilot", model: "claude-opus-4.8" });
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({
+          provider: "amazon-bedrock",
+          model: "amazon.nova-pro-v1:0",
+        }),
+      ),
+    ).toEqual({
+      activeProvider: "amazon-bedrock",
+      model: "amazon.nova-pro-v1:0",
+    });
     // A bare legacy tier name is migrated to a real pi id at the same tier.
     expect(
       configWriteToSettings(

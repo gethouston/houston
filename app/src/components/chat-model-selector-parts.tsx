@@ -8,6 +8,7 @@ import { useTranslation } from "react-i18next";
 import { type ProviderPickerState, pickerModelRows } from "../lib/model-picker";
 import type { ProviderInfo } from "../lib/providers";
 import {
+  AmazonBedrockLogo,
   ClaudeLogo,
   GeminiLogo,
   GitHubCopilotLogo,
@@ -136,6 +137,8 @@ function iconFor(providerId: string) {
       return <OpenRouterLogo className="size-full" />;
     case "google":
       return <GeminiLogo className="size-full" />;
+    case "amazon-bedrock":
+      return <AmazonBedrockLogo className="size-full" />;
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo className="size-full" />;
