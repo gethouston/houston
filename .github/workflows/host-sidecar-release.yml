@@ -28,8 +28,8 @@
 #   POSTHOG_KEY / POSTHOG_HOST / SUPABASE_URL / SUPABASE_ANON_KEY
 #   LINEAR_API_KEY / LINEAR_TEAM_ID / SENTRY_DSN
 #
-# Bun is pinned to the same minor the PR CI gate uses (.github/workflows/ci.yml)
-# so the compiled host is byte-reproducible against what the contract tests ran.
+# Bun is pinned only for the compile step. pnpm/Node run installs, typechecks,
+# and tests; `scripts/build-host-sidecar.sh` is the one remaining Bun path.
 
 name: Host-sidecar Release
 
@@ -47,8 +47,7 @@ on:
 permissions:
   contents: write
 
-# Pin Bun to the version the PR CI gate compiles + tests the host with, so the
-# shipped sidecar matches what passed contract tests. One source of truth.
+# Pin Bun for the binary compiler. Runtime/install/test paths use pnpm + Node.
 env:
   BUN_VERSION: "1.3.14"
 
@@ -141,7 +140,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -168,20 +167,8 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       # The compiled sidecar (sidecar-entry.ts) bundles the host AND the pi
-      # runtime it self-spawns, so both their deps (and the file: siblings) must
-      # resolve before `bun build --compile`. `pnpm install` above already put
-      # the pnpm-managed siblings (protocol / runtime-client / domain /
-      # agent-schemas) on disk; runtime + host are OUTSIDE the pnpm
-      # workspace and need their own bun install. Order matches the proven
-      # selfhost/Dockerfile chain (each package's file: siblings present first).
-      - name: Install host (Bun service) deps
-        run: |
-          set -euo pipefail
-          for pkg in protocol runtime-client domain runtime host; do
-            echo "::group::bun install — packages/$pkg"
-            (cd "packages/$pkg" && bun install --frozen-lockfile)
-            echo "::endgroup::"
-          done
+      # runtime it self-spawns. `pnpm install` above now installs every workspace
+      # package (including runtime + host); Bun is used only by the compile step.
 
       - name: Write Apple API key to disk
         if: ${{ env.SIGN_MACOS == 'true' }}
@@ -447,7 +434,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -474,17 +461,9 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
-      # Same dependency-ordered bun install as the macOS job. Git-bash on the
-      # Windows runner provides `bash` for `shell: bash` steps.
-      - name: Install host (Bun service) deps
-        shell: bash
-        run: |
-          set -euo pipefail
-          for pkg in protocol runtime-client domain runtime host; do
-            echo "::group::bun install — packages/$pkg"
-            (cd "packages/$pkg" && bun install --frozen-lockfile)
-            echo "::endgroup::"
-          done
+      # `pnpm install` above installs runtime + host workspace deps; Bun is used
+      # only by the compile step. Git-bash on the Windows runner provides `bash`
+      # for `shell: bash` steps.
 
       # Bun-compile the host for this arch. The explicit triple makes the script
       # emit houston-host-<triple>.exe exactly where build.rs::stage_host_sidecar
@@ -589,7 +568,7 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: pnpm
 
       - name: Install dependencies
@@ -616,14 +595,8 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
-      - name: Install host (Bun service) deps
-        run: |
-          set -euo pipefail
-          for pkg in protocol runtime-client domain runtime host; do
-            echo "::group::bun install — packages/$pkg"
-            (cd "packages/$pkg" && bun install --frozen-lockfile)
-            echo "::endgroup::"
-          done
+      # `pnpm install` above installs runtime + host workspace deps; Bun is used
+      # only by the compile step.
 
       # Compile AND boot-verify the host binary — this same binary is what the
       # selfhost/ image runs, so a boot+serve self-check here protects that path

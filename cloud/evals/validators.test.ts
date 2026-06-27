@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import JSZip from "jszip";
+import { expect, test } from "vitest";
 import { validatePng, validatePptx, validateXlsx } from "./validators";
 
 /**

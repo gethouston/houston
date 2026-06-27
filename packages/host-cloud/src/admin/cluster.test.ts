@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import type { V1PersistentVolumeClaim, V1Pod } from "@kubernetes/client-node";
+import { expect, test } from "vitest";
 import { FakeClusterReader, toPodInfo, toVolumeInfo } from "./cluster";
 
 test("toPodInfo reads tenancy labels, phase, requests, restarts and normalises startTime", () => {

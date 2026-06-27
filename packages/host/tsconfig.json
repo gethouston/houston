@@ -3,7 +3,7 @@
     "target": "ESNext",
     "module": "Preserve",
     "moduleResolution": "bundler",
-    "types": ["node", "bun"],
+    "types": ["node"],
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noEmit": true,

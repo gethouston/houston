@@ -1,8 +1,8 @@
-import { expect, test } from "bun:test";
 import {
   OPENAI_CODEX_BROWSER_LOGIN_METHOD,
   OPENAI_CODEX_DEVICE_CODE_LOGIN_METHOD,
 } from "@earendil-works/pi-ai/oauth";
+import { expect, test } from "vitest";
 import {
   autoPromptAnswer,
   codexLoginMethod,

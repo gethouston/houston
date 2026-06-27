@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { Agent } from "../domain/types";
 import {
   ProcessLauncher,
@@ -12,7 +12,7 @@ import {
  * The local launcher's lifecycle: lazily spawn one runtime per agent, reuse a
  * warm one, kill on sleep, surface a never-healthy spawn instead of caching a
  * zombie. The spawner + health probe are injected so this is a pure unit test
- * (the real BunRuntimeSpawner is exercised by an integration run, not here).
+ * (the real RuntimeProcessSpawner is exercised by an integration run, not here).
  */
 
 const agent = (id: string): Agent => ({

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { FakeIntegrationProvider } from "./fake";
 import { IntegrationRegistry } from "./registry";
 

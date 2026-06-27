@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { RunCodeLimitError, RunCodeLimiter } from "./run-code-limiter";
 
 test("concurrency cap: the (N+1)th simultaneous run is rejected, release frees the slot", () => {

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { WorkspaceCredential } from "../ports";
 import { isExpiring } from "./refresh";
 import { MemoryCredentialStore } from "./store";

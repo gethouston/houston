@@ -1,6 +1,6 @@
-import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities, HoustonEvent } from "@houston/protocol";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { ProxyChannel } from "../channel/proxy";
 import { MemoryCredentialStore } from "../credentials/store";
 import { BusEventHub } from "../events/hub";

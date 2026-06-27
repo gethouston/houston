@@ -1,4 +1,3 @@
-import { expect, test } from "bun:test";
 import {
   type IntegrationCredentialStore,
   MemoryIntegrationCredentialStore,
@@ -6,6 +5,7 @@ import {
 import type { ProviderCredential } from "@houston/host/src/integrations/types";
 import type { Pool } from "pg";
 import { newDb } from "pg-mem";
+import { expect, test } from "vitest";
 import { PgIntegrationCredentialStore } from "./credential-store-pg";
 
 const cred = (apiKey: string): ProviderCredential => ({

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { DEFAULT_PROVIDER, migrateProviderModel } from "./provider-model";
 
 const VALID_PROVIDERS = [

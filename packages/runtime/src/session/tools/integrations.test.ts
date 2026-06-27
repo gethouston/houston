@@ -1,5 +1,5 @@
-import { afterEach, expect, test } from "bun:test";
 import type { ExtensionContext } from "@earendil-works/pi-coding-agent";
+import { afterEach, expect, test } from "vitest";
 import { makeIntegrationTools } from "./integrations";
 
 /**

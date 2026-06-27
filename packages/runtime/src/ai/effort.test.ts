@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "./effort";
 
 /**

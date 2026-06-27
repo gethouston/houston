@@ -122,7 +122,7 @@ spec:
           volumeMounts:
             - name: data
               mountPath: /data
-            # readOnlyRootFilesystem is true (below), so pi/Bun need writable
+            # readOnlyRootFilesystem is true (below), so pi/Node need writable
             # scratch. /tmp is an ephemeral emptyDir; all durable state goes to
             # /data (the PVC). Nothing of value lives on the root fs.
             - name: tmp

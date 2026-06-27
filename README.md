@@ -41,17 +41,15 @@ Houston is converging onto a single TypeScript engine — see `convergence/READM
 
 ### Run the Houston app
 
-**Prerequisites:** [Node 22+](https://nodejs.org), [pnpm 10](https://pnpm.io) (`corepack enable`), [Bun](https://bun.sh) (the engine and runtime are Bun services), and — for the desktop app only — the [Rust toolchain](https://rustup.rs) (Tauri builds a native shell). The browser path needs no Rust.
+**Prerequisites:** [Node 22+](https://nodejs.org), [pnpm 10](https://pnpm.io) (`corepack enable`), and — for the desktop app only — the [Rust toolchain](https://rustup.rs) (Tauri builds a native shell). The browser path needs no Rust. Bun is only needed when compiling the host sidecar binary (`scripts/build-host-sidecar.sh`).
 
-**1. Clone and install.** The frontend is a pnpm workspace; the engine and runtime are standalone Bun projects (not pnpm members), so they install on their own:
+**1. Clone and install.** pnpm owns the whole JS/TS workspace: app, web, UI packages, host, runtime, cloud adapters, and evals.
 
 ```bash
 git clone https://github.com/gethouston/houston-web.git
 cd houston-web
 
-pnpm install                                # frontend: app, packages/web, ui/*, domain, protocol
-(cd packages/runtime && bun install)        # the agent runtime (the pi loop)
-(cd packages/control-plane && bun install)  # the host (the TypeScript engine)
+pnpm install
 ```
 
 **2. Configure once.** Copy the shared dev env. The defaults work as-is (host on `127.0.0.1:4318`, dev token `devtoken`):
@@ -64,7 +62,7 @@ cp .env.example .env.local
 
 ```bash
 # Terminal 1 — the TypeScript engine (host on :4318; it auto-spawns the agent runtime)
-cd packages/control-plane && pnpm dev
+cd packages/host && pnpm dev
 
 # Terminal 2 — the desktop app (Tauri), wired to that engine
 cd app && pnpm start
@@ -171,7 +169,7 @@ Every agent shows the same five tabs. The list lives in `app/src/agents/standard
 ## Run With Docker
 
 Use `selfhost/` to run Houston behind HTTPS on a VPS. Docker builds one
-Bun-based host image that spawns the pi runtime in-container, plus Caddy for TLS.
+Node-based host image that spawns the pi runtime in-container, plus Caddy for TLS.
 The web UI is a static build served by Caddy from `selfhost/web`.
 
 ```bash

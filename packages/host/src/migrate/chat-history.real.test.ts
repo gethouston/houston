@@ -1,9 +1,9 @@
-import { expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { cpSync, existsSync, mkdirSync, readFileSync, rmSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { migrateChatHistory } from "./chat-history";
 
 /**
@@ -13,13 +13,17 @@ import { migrateChatHistory } from "./chat-history";
  * orphans, prove the REAL ~/.houston is byte-identical (untouched), then clean
  * up /tmp/hmig. The migration is NEVER pointed at the real ~/.houston.
  *
- * Skips itself (passes) when the reference dataset is absent (CI / a clean box),
- * so it is safe to run anywhere.
+ * Skips itself unless HOUSTON_RUN_REAL_MIGRATION_TEST=1 and the reference
+ * dataset exists (CI / a clean box / a small personal dataset should not fail
+ * the hermetic unit suite).
  */
 
 const REAL_DB = join(homedir(), ".houston", "db", "houston.db");
 const REAL_WS = join(homedir(), ".houston", "workspaces");
-const haveDataset = existsSync(REAL_DB) && existsSync(REAL_WS);
+const runRealMigrationTest =
+  process.env.HOUSTON_RUN_REAL_MIGRATION_TEST === "1";
+const haveDataset =
+  runRealMigrationTest && existsSync(REAL_DB) && existsSync(REAL_WS);
 
 function sha(path: string): string {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
@@ -45,7 +49,7 @@ function realTreeFingerprint(): string {
   return out.trim();
 }
 
-test.if(haveDataset)(
+(haveDataset ? test : test.skip)(
   "real-data migration on a /tmp COPY; real ~/.houston untouched",
   () => {
     const scratch = "/tmp/hmig";
@@ -118,8 +122,8 @@ test.if(haveDataset)(
   },
 );
 
-test("real-data test is a deliberate no-op when the reference dataset is absent", () => {
-  // A trivially-green assertion so the suite reports the guard ran. The .if()
-  // test above is the real coverage when the dataset exists.
+test("real-data test is a deliberate no-op unless explicitly enabled", () => {
+  // A trivially-green assertion so the suite reports the guard ran. The guarded
+  // test above is the real coverage when explicitly enabled.
   expect(typeof haveDataset).toBe("boolean");
 });

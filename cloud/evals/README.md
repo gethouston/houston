@@ -17,10 +17,11 @@ sequentially; one failure does not stop the rest.
 ## Run
 
 ```sh
-cd cloud/evals && bun install
-EVAL_CP_URL=https://app.gethouston.ai/api EVAL_TOKEN=<bearer> bun run run.ts
-# subset:           EVAL_ONLY=deck,chart bun run run.ts
-# results file:     EVAL_OUT=/tmp/results.json bun run run.ts
+pnpm install
+cd cloud/evals
+EVAL_CP_URL=https://app.gethouston.ai/api EVAL_TOKEN=<bearer> pnpm evals
+# subset:           EVAL_ONLY=deck,chart pnpm evals
+# results file:     EVAL_OUT=/tmp/results.json pnpm evals
 ```
 
 `EVAL_TOKEN` is any bearer the control plane accepts:
@@ -55,6 +56,6 @@ case fails — wire alerting off the workflow status.
 
 ## Tests
 
-`bun test` exercises the validators (real zip fixtures) and the driver
+`pnpm test` exercises the validators (real zip fixtures) and the driver
 (subscribe-then-send, terminal-frame detection, timeout) against a stub
 control plane. No network, no credentials.

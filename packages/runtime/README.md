@@ -5,16 +5,16 @@ The new Houston engine — a single-workspace, single-user agent runtime built o
 in-process (no provider CLIs) and talks to providers directly via `pi-ai`.
 
 **MVP status:** log in with your Claude Code (Anthropic) subscription via OAuth,
-then chat with the agent. Streaming over SSE. Node-native; runs on Bun.
+then chat with the agent. Streaming over SSE. Runs on Node via pnpm/tsx in dev and Docker.
 
 ## Run it
 
 ```bash
+pnpm install
 cd packages/runtime
-bun install            # first time only
 
 # Point it at a working directory the agent may read/edit, then start:
-HOUSTON_WORKSPACE_DIR="$HOME/some/project" bun run dev
+HOUSTON_WORKSPACE_DIR="$HOME/some/project" pnpm dev
 ```
 
 The engine is API-only (REST + SSE) with no built-in UI. Drive it with the webapp
@@ -71,16 +71,16 @@ The runtime always appends to the local log file. To see the same structured
 lines in a terminal while running the engine:
 
 ```bash
-HOUSTON_RUNTIME_PRINT_LOGS=1 HOUSTON_RUNTIME_LOG_LEVEL=DEBUG bun run dev
+HOUSTON_RUNTIME_PRINT_LOGS=1 HOUSTON_RUNTIME_LOG_LEVEL=DEBUG pnpm dev
 ```
 
 ## Deploy The Runtime (Docker / VPS)
 
 `Dockerfile` is the only supported pi-runtime image. It runs the TypeScript
-runtime on Bun (`oven/bun`), with `git` + `python3` available for the agent's
-shell tools. Keep this as the supported path rather than a compiled-binary image:
-cloud turn mode, standalone server mode, stack traces, and dependency resolution
-all share one deploy contract.
+runtime on Node with pnpm-installed dependencies, with `git` + `python3`
+available for the agent's shell tools. Keep this as the supported path rather
+than a compiled-binary image: cloud turn mode, standalone server mode, stack
+traces, and dependency resolution all share one deploy contract.
 
 This image is the lower-level single-workspace runtime used by cloud and by the
 host. To run the full Houston app behind HTTPS with the host + web app, use
@@ -96,13 +96,13 @@ docker compose logs -f
 The agent's working directory is the `houston-workspace` volume (`/workspace`);
 swap it for a bind mount in `docker-compose.yml` to point at a real project.
 Auth + transcripts persist in the `houston-data` volume (`/data`). The container
-runs as the non-root `bun` user (uid 1000) — named volumes inherit that
+runs as the non-root `node` user (uid 1000) — named volumes inherit that
 ownership automatically, but a bind mount keeps its host ownership, so make it
 writable by uid 1000 first (e.g. `chown -R 1000:1000 /srv/my-project`).
 
 **Build context note.** The build context is the repo root, not
-`packages/runtime` — the runtime links its sibling `@houston/runtime-client` via
-`file:../runtime-client`. Compose handles this; for a raw build run it from the
+`packages/runtime` — the runtime links sibling workspace packages through pnpm.
+Compose handles this; for a raw build run it from the
 repo root:
 
 ```bash

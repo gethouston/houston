@@ -21,11 +21,11 @@ pnpm --filter houston-web typecheck:e2e   # typecheck harness
 ```
 
 Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapter +
-`NewEngineRoot`) and the fake host `:4399` (`bun run e2e/fake-host/server.ts`).
+`NewEngineRoot`) and the fake host `:4399` (`pnpm fake-host`).
 
 ## Architecture
 
-- **Fake host** (`e2e/fake-host/`) — Bun HTTP server. Models control plane
+- **Fake host** (`e2e/fake-host/`) — Node HTTP server. Models control plane
   (`/agents/*`, `/v1/events`) + per-agent runtime proxy (`/agents/:id/
   conversations/:cid/*`, auth, providers). In-memory, seeded, resettable.
 - **Boot seed** (`e2e/support/seed.ts`) — `addInitScript` primes `localStorage`
@@ -49,7 +49,7 @@ Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapte
 ## CI
 
 `.github/workflows/ci.yml` (the repo's only PR gate — others fire on tags). Runs:
-web typecheck + `typecheck:e2e` + unit (`bun test ./tests`) + `test:e2e`. Uploads
+web typecheck + `typecheck:e2e` + unit (`vitest run ./tests`) + `test:e2e`. Uploads
 the Playwright HTML report as an artifact.
 
 ## Add a spec

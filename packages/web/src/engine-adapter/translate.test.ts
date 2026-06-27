@@ -1,5 +1,5 @@
-import { describe, expect, test } from "bun:test";
 import { EngineError } from "@houston/runtime-client";
+import { describe, expect, test } from "vitest";
 import { configWriteToSettings, credentialSiblings } from "./synthetic";
 import {
   historyToFeed,

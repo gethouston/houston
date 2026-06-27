@@ -1,8 +1,8 @@
-import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
+import { expect, test } from "vitest";
 
 /**
  * De-risks cloud sleep/wake (Phase 9): when a sandbox is killed on idle and a

@@ -1,7 +1,7 @@
-import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, symlinkSync, writeFileSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { expect, test } from "vitest";
 import { PathEscapeError, WorkspaceGuard } from "./fs-guard";
 
 /**

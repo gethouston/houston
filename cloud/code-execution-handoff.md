@@ -69,7 +69,7 @@ SIGKILL of the whole **process group** (an orphaned `sleep &` grandchild is prov
 symlinks skipped during artifact collection; byte caps on actual bytes (no TOCTOU); constant-time
 bearer compare; early-abort body cap. The `run_code` path-clamps input + artifact paths
 (`safeJoin`). Verified end-to-end locally: real Python wrote `deck.txt`, tool saved it into the
-workspace. Run tests: `bun test` in each of `packages/code-sandbox` and `packages/runtime`.
+workspace. Run tests: `pnpm test` in each of `packages/code-sandbox` and `packages/runtime`.
 
 ---
 
@@ -232,7 +232,7 @@ grep -n "refresh\|writeFileSync\|auth.json" packages/runtime/src/auth/serve.ts
 # Claim: the deploy ships one SA, no VPC egress lock (only a WARN):
 grep -n "service-account\|vpc\|egress\|169.254\|WARN\|warn" cloud/scripts/05-code-sandbox.sh
 # Then run the suites:
-( cd packages/code-sandbox && bun test ) ; ( cd packages/runtime && bun test )
+( cd packages/code-sandbox && pnpm test ) ; ( cd packages/runtime && pnpm test )
 ```
 
 If any claim here does not match the code, **trust the code and say so** — this document is a

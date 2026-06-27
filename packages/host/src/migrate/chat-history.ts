@@ -1,4 +1,3 @@
-import { Database } from "bun:sqlite";
 import {
   existsSync,
   mkdirSync,
@@ -11,6 +10,7 @@ import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
 import { sessionGroupsForAgent } from "./linkage";
 import { messageFor, reconstruct, rowTs, titleFor } from "./reconstruct";
+import { Database } from "./sqlite";
 import type { ChatFeedRow, SessionPair, StoredConversation } from "./types";
 
 /**

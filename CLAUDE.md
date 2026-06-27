@@ -50,7 +50,7 @@ Off only if user says "stop caveman" or "normal mode".
 
 The pieces:
 - **`app/`** — Tauri 2 desktop. `app/src` is the shared React frontend (also runs verbatim as `packages/web`). `app/src-tauri` is the Rust shell that spawns the engine sidecar (the Rust `houston-engine` today; the Bun-compiled TS host under `--features host-sidecar`) and talks HTTP/WS+SSE. OS-native glue only.
-- **`packages/runtime`** — the **pi engine** (TS/Bun). Single-workspace, single-credential, tenancy-free. The ONLY agent loop in the target.
+- **`packages/runtime`** — the **pi engine** (TS/Node in dev/test/Docker; Bun only inside the compiled desktop sidecar). Single-workspace, single-credential, tenancy-free. The ONLY agent loop in the target.
 - **`packages/host`** — the **host** (cloud control plane AND local desktop supervisor: the SAME server, different adapter profiles). Serves protocol v3. OPEN package.
 - **`packages/host-cloud`** — the **CLOSED** cloud-adapter package (`@houston/host-cloud`): Pg/Gcs/Gke/Redis adapters + operator-admin + cloud `main.ts`. The open/closed seam (open code never imports a cloud adapter; only host `main.ts`/`admin/**` touch concretes) is documented in `BOUNDARY.md` and enforced by `scripts/check-boundaries.mjs` (`pnpm check:boundaries`, wired into the PR CI gate `.github/workflows/ci.yml`).
 - **`packages/domain` / `packages/protocol`** — shared domain logic (`.houston` layout, schemas, cron, portable) + v3 wire types/zod.
@@ -78,7 +78,7 @@ Need specific knowledge? Load on demand:
 - Agent manifest, tiers, sidebar, workspaces → `knowledge-base/agent-manifest.md`
 - _[LEGACY, Rust engine]_ Engine wire protocol (REST + WS) → `knowledge-base/engine-protocol.md` · the v3 contract is `packages/protocol/`
 - _[LEGACY, Rust engine]_ Provider error taxonomy + classifier contract → `knowledge-base/provider-errors.md`
-- _[LEGACY, Rust engine]_ `houston-engine` binary ops → `knowledge-base/engine-server.md` · the TS host is `packages/host` (run: `bun run src/local/main.ts`)
+- _[LEGACY, Rust engine]_ `houston-engine` binary ops → `knowledge-base/engine-server.md` · the TS host is `packages/host` (run: `pnpm --filter @houston/host dev`)
 - _[LEGACY, being retired]_ Bundled provider CLIs (codex, claude installer) → `knowledge-base/cli-bundling.md`. **Composio is NO LONGER a bundled CLI** — it's an in-process REST tool (`packages/host/src/integrations/`); pi has no provider CLIs.
 - Self-host the TS engine on a VPS (Docker + Caddy TLS) → `selfhost/README.md`
 - Windows testing loop from a Mac (UTM VM, SSH bridge, cross-compile, log fetch) → `knowledge-base/windows-testing.md`

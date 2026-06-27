@@ -1,9 +1,9 @@
-import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { readFile, writeFile } from "node:fs/promises";
 import type { Server } from "node:http";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { LocalDirStore, type ObjectStore } from "./object-store";
 import { createTurnServer } from "./server";
 import type { runPiTurn } from "./turn-session";

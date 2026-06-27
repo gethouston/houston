@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test } from "vitest";
 import type { Language } from "./run";
 import { DEFAULT_LIMITS, runInSandbox, safeJoin } from "./run";
 

@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import type { Agent, Workspace } from "./domain/types";
 import { CloudPaths, conversationKey, LocalPaths, settingsKey } from "./paths";
 import {
