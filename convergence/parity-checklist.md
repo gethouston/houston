@@ -20,13 +20,13 @@ into both deployments; they differ ONLY in which adapters `main()` wires
 capabilities). Drift = a second copy of any handler, or a handler that branches
 on the deployment instead of on a port. There must be none.
 
-Run the whole automated gate: `cd packages/host && pnpm test`.
+Run the whole automated gate: `cd packages/host && bun test`.
 
 ---
 
 ## Section 1 — Automated (runs in CI on every PR) ✅
 
-Everything below is machine-checked by `pnpm test` in
+Everything below is machine-checked by `bun test` in
 `.github/workflows/ci.yml` on every pull request. No human needed.
 
 ### 1a — Port contract suites
@@ -46,7 +46,7 @@ from the contract fails loudly.
 
 The `test.todo` entries are the honest gaps: they need a live Postgres / Redis /
 Kubernetes apiserver to run and are exercised by the cloud deploy's own
-integration pass, not by `pnpm test`. **Do not mark them done by deleting them.**
+integration pass, not by `bun test`. **Do not mark them done by deleting them.**
 
 ### 1b — Assembled dual-profile parity test
 

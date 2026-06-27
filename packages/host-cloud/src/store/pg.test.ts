@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import type { WorkspaceStore } from "@houston/host/src/ports";
-import { expect, test } from "vitest";
 import { PgWorkspaceStore } from "./pg";
 
 /**

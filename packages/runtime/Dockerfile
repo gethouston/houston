@@ -1,4 +1,4 @@
-# Houston pi-runtime — the only supported runtime image, two modes from one Node app:
+# Houston pi-runtime — the only supported runtime image, two modes from one Bun app:
 #   server (default) — the legacy long-lived per-agent pod (GKE), connect-once
 #                      serve mode: pulls a short-TTL ACCESS token per turn from
 #                      the control plane; never holds a refresh token.
@@ -6,32 +6,43 @@
 #                      POST /turn = hydrate GCS prefix → run pi → sync → wipe.
 #
 # BUILD CONTEXT MUST BE THE MONOREPO ROOT (not packages/runtime), because the
-# runtime depends on sibling pnpm workspace packages.
+# runtime depends on the sibling package `@houston/runtime-client` via the
+# lockfile entry `file:../runtime-client`. `bun install --frozen-lockfile` has to
+# see that sibling on disk to resolve the dep:
 #
 #   docker build -t houston/pi-runtime:dev -f packages/runtime/Dockerfile .
 #   docker run -p 4317:4317 -v agent-data:/data houston/pi-runtime:dev
 #
-# Keep this as a source-run image, not a compiled-binary image. The final stage
-# carries Node + source + node_modules so cloud turn mode, standalone server
-# mode, stack traces, and dependency resolution all share the same deploy
-# contract.
+# Keep this as a Bun-runtime image, not a compiled-binary image. The final stage
+# carries Bun + source + node_modules so cloud turn mode, standalone server mode,
+# stack traces, and dependency resolution all share the same deploy contract.
 
 # ---------- Install stage ----------
-FROM node:22-bookworm-slim AS deps
-ENV PNPM_HOME=/pnpm \
-    PATH=/pnpm:$PATH
-RUN corepack enable
+# Resolve dependencies in a throwaway layer so the runtime stage carries only
+# the runtime + its installed node_modules, not bun's global cache or build cruft.
+FROM oven/bun:1.3-debian AS deps
 WORKDIR /app
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY packages/protocol/ ./packages/protocol/
-COPY packages/runtime-client/ ./packages/runtime-client/
-COPY packages/runtime/ ./packages/runtime/
+# @houston/runtime-client is a `file:` sibling dep. Its package.json + src must
+# exist for the frozen-lockfile install to resolve. At runtime the engine only
+# ever does `import type` from it (fully erased by Bun), so no `dist` build is
+# needed — the package just has to be resolvable here.
+COPY packages/runtime-client/package.json ./packages/runtime-client/package.json
+COPY packages/runtime-client/src ./packages/runtime-client/src
 
-RUN pnpm install --frozen-lockfile --prod --filter @houston/runtime...
+# Copy the runtime manifest + lockfile first so this layer caches on deps alone:
+# it only re-runs when package.json / bun.lock change, not on every src edit.
+COPY packages/runtime/package.json packages/runtime/bun.lock ./packages/runtime/
+
+# --frozen-lockfile: fail loudly if package.json and bun.lock have drifted,
+# instead of silently resolving a different tree (no silent failures).
+WORKDIR /app/packages/runtime
+RUN bun install --frozen-lockfile
 
 # ---------- Runtime stage ----------
-FROM node:22-bookworm-slim AS runtime
+# Debian Bun base. The official oven/bun image already ships a non-root `bun`
+# user (uid 1000); we run as it rather than minting our own.
+FROM oven/bun:1.3-debian AS runtime
 
 # Tools the agent commonly reaches for through its bash tool; ca-certificates is
 # for outbound HTTPS to model providers and object storage.
@@ -48,21 +59,33 @@ ENV HOUSTON_HOST=0.0.0.0 \
     HOUSTON_WORKSPACE_DIR=/data/workspace \
     NODE_ENV=production
 
-WORKDIR /app
-COPY --from=deps /app /app
-
-# /data is volume-mounted at runtime; pre-create + own it so the non-root node
-# user can write there even before the volume's first mount populates it.
-RUN mkdir -p /data/workspace && chown -R node:node /data /app
-USER node
 WORKDIR /app/packages/runtime
+
+# Bring in the resolved dependency trees from the install stage. The sibling
+# runtime-client tree is referenced by the runtime's node_modules `file:` symlink,
+# so it has to be present at the same relative path it was installed against.
+COPY --from=deps /app/packages/runtime/node_modules ./node_modules
+COPY --from=deps /app/packages/runtime-client /app/packages/runtime-client
+
+# Application source. Copied after node_modules so a code change doesn't bust
+# the (heavier) dependency layer.
+COPY packages/runtime/package.json packages/runtime/bun.lock ./
+COPY packages/runtime/src ./src
+
+# /data is volume-mounted at runtime; pre-create + own it so the non-root `bun`
+# user can write there even before the volume's first mount populates it.
+USER root
+RUN mkdir -p /data/workspace && chown -R bun:bun /data /app
+USER bun
 
 # The runtime binds HOUSTON_HOST:HOUSTON_PORT (0.0.0.0:4317 here).
 EXPOSE 4317
 
-# Liveness: hit the public /health route (no auth) and let Node's fetch decide.
+# Liveness: hit the public /health route (no auth) and let bun's fetch decide.
+# `bun --eval` exits non-zero on a non-2xx or a thrown fetch error, so an
+# unhealthy engine is reported as such instead of being swallowed.
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-    CMD node -e "fetch('http://127.0.0.1:4317/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
+    CMD bun --eval "const r = await fetch('http://127.0.0.1:4317/health'); if (!r.ok) process.exit(1);"
 
 # main.ts loads config (mkdirs data dirs) then starts the node:http server.
-CMD ["node", "--import", "tsx", "src/main.ts"]
+CMD ["bun", "run", "src/main.ts"]

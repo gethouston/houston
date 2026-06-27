@@ -14,7 +14,7 @@
  * The Rust engine has the equivalent `spawn_parent_watchdog`; this is its host
  * counterpart. Windows does NOT get EOF on `TerminateProcess`, so there the
  * supervisor binds the host to a kill-on-close Job Object instead. The watchdog
- * arms ONLY when the supervisor sets `HOUSTON_SUPERVISED=1`; a plain `tsx`,
+ * arms ONLY when the supervisor sets `HOUSTON_SUPERVISED=1`; a plain `bun run`,
  * the self-host Docker image, and tests leave it unset, so they never arm.
  */
 export interface ParentWatchdogOptions {
@@ -25,7 +25,7 @@ export interface ParentWatchdogOptions {
    * open until the app dies. Default: the `HOUSTON_SUPERVISED=1` marker the
    * supervisor injects (`app/src-tauri/src/engine_supervisor.rs`). Injectable for
    * tests. Only when this is set is there a real parent pipe whose EOF means
-   * "app gone"; everything else (self-host Docker, `tsx`, tests) leaves it
+   * "app gone"; everything else (self-host Docker, `bun run`, tests) leaves it
    * unset and the watchdog stays inert.
    */
   supervised?: boolean;
@@ -50,10 +50,10 @@ export function installParentWatchdog(opts: ParentWatchdogOptions): boolean {
 
   // Arm ONLY on the supervisor's positive marker. A bare `!isTTY` heuristic (the
   // original) could not tell an open supervisor pipe (desktop — must arm) from a
-  // closed/`/dev/null` stdin (self-host Docker `tsx` — must NOT
+  // closed/`/dev/null` stdin (self-host Docker `bun run` without `-i` — must NOT
   // arm). The latter delivers EOF immediately, so arming there fired teardown +
   // exit(0) at boot and `restart: unless-stopped` crash-looped the container,
-  // never serving a request (HOU-582). Self-host, plain `tsx`, and tests
+  // never serving a request (HOU-582). Self-host, plain `bun run`, and tests
   // leave HOUSTON_SUPERVISED unset, so they never arm.
   if (!supervised) return false;
 

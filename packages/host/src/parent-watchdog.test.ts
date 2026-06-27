@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
-import { expect, test } from "vitest";
 import { installParentWatchdog } from "./parent-watchdog";
 
 /**
@@ -7,7 +7,7 @@ import { installParentWatchdog } from "./parent-watchdog";
  * sends no signal, only closes our stdin pipe (EOF). The host must catch that
  * and tear down (killing every runtime), then exit. It must arm ONLY when the
  * supervisor flagged us with `HOUSTON_SUPERVISED=1`; everything else (self-host
- * Docker, plain `tsx`, tests) leaves it unset, so a closed/`/dev/null` stdin
+ * Docker, plain `bun run`, tests) leaves it unset, so a closed/`/dev/null` stdin
  * never trips it (HOU-582).
  */
 
@@ -46,7 +46,7 @@ test("arms when supervised: stdin EOF tears down and exits 0", async () => {
 });
 
 test("HOU-582: does NOT arm when unsupervised (self-host Docker /dev/null stdin)", () => {
-  // The regression. Docker `tsx` gives a non-TTY, immediately
+  // The regression. Docker `bun run` without `-i` gives a non-TTY, immediately
   // closed stdin and never sets HOUSTON_SUPERVISED. The old `!isTTY` gate armed
   // here and crash-looped at boot; the supervised gate must stay inert.
   const stdin = fakeStdin();

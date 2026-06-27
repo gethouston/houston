@@ -119,7 +119,7 @@ Rules learned in production:
   / `houston-turn-token`. Create values with `printf '%s' "$(openssl rand -hex 32)"`
   — `openssl | gcloud` appends a newline that desyncs both sides.
 - **DB migrations**: additive only (745 real users); apply with
-  `CP_DATABASE_URL=… pnpm --filter @houston/host-cloud exec tsx scripts/run-migration.ts <file>`
+  `CP_DATABASE_URL=… bun packages/host-cloud/scripts/run-migration.ts <file>`
   (no psql needed; the Postgres runner is a closed cloud-ops tool, hence
   `host-cloud`).
 - **gcloud auth**: org policy re-prompts ~hourly; non-interactive shells then

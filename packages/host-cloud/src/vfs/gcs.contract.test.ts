@@ -1,8 +1,8 @@
+import { test } from "bun:test";
 import {
   prefixed,
   runVfsContract,
 } from "@houston/host/src/testing/vfs-contract";
-import { test } from "vitest";
 import { GcsVfs } from "./gcs";
 
 /**

@@ -1,6 +1,6 @@
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import { FakeLauncher } from "../launcher/fake";

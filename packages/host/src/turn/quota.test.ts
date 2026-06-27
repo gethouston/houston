@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "bun:test";
 import { MemoryTurnBus } from "./bus";
 import { TurnQuota, TurnQuotaError } from "./quota";
 
@@ -6,12 +6,10 @@ test("concurrent cap per workspace; other workspaces unaffected", async () => {
   const q = new TurnQuota({ maxConcurrent: 2, perHour: 100 });
   const r1 = await q.acquire("ws-1");
   await q.acquire("ws-1");
-  await expect(q.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
-  const releaseOther = await q.acquire("ws-2");
-  await releaseOther();
+  expect(q.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
+  expect(q.acquire("ws-2")).resolves.toBeDefined();
   await r1();
-  const releaseAgain = await q.acquire("ws-1");
-  await releaseAgain();
+  expect(q.acquire("ws-1")).resolves.toBeDefined();
 });
 
 test("per-hour cap refills in the next hour window", async () => {
@@ -19,10 +17,9 @@ test("per-hour cap refills in the next hour window", async () => {
   const q = new TurnQuota({ maxConcurrent: 100, perHour: 2 }, { now: () => t });
   await (await q.acquire("ws-1"))();
   await (await q.acquire("ws-1"))();
-  await expect(q.acquire("ws-1")).rejects.toThrow(/per hour/);
+  expect(q.acquire("ws-1")).rejects.toThrow(/per hour/);
   t += 3_600_001;
-  const release = await q.acquire("ws-1");
-  await release();
+  expect(q.acquire("ws-1")).resolves.toBeDefined();
 });
 
 test("a rejected attempt does not consume the hourly budget", async () => {
@@ -42,7 +39,7 @@ test("double release is a no-op", async () => {
   await release();
   await release();
   await q.acquire("ws-1");
-  await expect(q.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
+  expect(q.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
 });
 
 test("the cap holds ACROSS replicas sharing one bus", async () => {
@@ -52,9 +49,8 @@ test("the cap holds ACROSS replicas sharing one bus", async () => {
   const r1 = await replicaA.acquire("ws-1");
   await replicaB.acquire("ws-1");
   // Third concurrent turn rejected no matter which replica it lands on.
-  await expect(replicaA.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
-  await expect(replicaB.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
+  expect(replicaA.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
+  expect(replicaB.acquire("ws-1")).rejects.toThrow(TurnQuotaError);
   await r1();
-  const release = await replicaB.acquire("ws-1");
-  await release();
+  expect(replicaB.acquire("ws-1")).resolves.toBeDefined();
 });

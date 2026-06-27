@@ -41,9 +41,9 @@ Agent = a row + a GCS prefix. A turn = ONE Cloud Run request (per-turn runtime):
 | Cloud Run deploy (gen2, concurrency=1, scale-to-zero, secret token) | `cloud/scripts/05-code-sandbox.sh` | ✅ staged · confirm-before-billing |
 | Live deploy · egress lockdown · load-test | — | ⏳ needs the GCP account |
 
-Run it locally: `cd packages/code-sandbox && pnpm dev`, then
-`HOUSTON_CODE_SANDBOX_URL=http://127.0.0.1:8080 pnpm dev` in `packages/runtime`.
-Tests: `pnpm test` in each package.
+Run it locally: `cd packages/code-sandbox && bun run dev`, then
+`HOUSTON_CODE_SANDBOX_URL=http://127.0.0.1:8080 bun run dev` in `packages/runtime`.
+Tests: `bun test` in each package.
 
 ## The sandbox contract
 

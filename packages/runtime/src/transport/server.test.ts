@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import type { Server } from "node:http";
-import { expect, test } from "vitest";
 import { config } from "../config";
 import { createRuntimeServer } from "./server";
 

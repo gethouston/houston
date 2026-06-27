@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import { AuthStorage } from "@earendil-works/pi-coding-agent";
-import { expect, test } from "vitest";
 import { providerConnected } from "./storage";
 
 test("providerConnected: only a STORED credential counts; connect then logout flips it", () => {

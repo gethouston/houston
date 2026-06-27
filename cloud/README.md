@@ -53,7 +53,7 @@ The control plane and supporting artifacts are **built and tested** here. What r
 | Custom domain (app.gethouston.ai) | ⏳ script ready; needs DNS + Supabase allow-list | `cloud/scripts/08-custom-domain.sh` |
 | Live provisioning · pen-test · load-test | ⏳ needs your accounts | run `cloud/scripts/*` |
 
-Run the host locally (all fakes, one local runtime): `cd packages/host && pnpm dev`. Tests: `pnpm test` in `packages/host` and `packages/runtime`.
+Run the control plane locally (all fakes, one local runtime): `cd packages/host && CP_DEV=1 bun run dev`. Tests: `bun test` in `packages/host` and `packages/runtime` (91 passing).
 
 ---
 
@@ -127,7 +127,7 @@ Language: TS/Node is the natural choice now that the runtime and frontend are TS
 **SSE is the fragile seam.** The client streams events over a long-lived `fetch`+`getReader()` GET with header auth and no resume (`packages/runtime-client/src/client.ts`). The control plane must be a **1:1 streaming reverse proxy**: forward the `Authorization` header on the stream, do **zero** buffering/gzip/transform, set no idle timeout shorter than a turn, and pass heartbeat comment frames verbatim. Do **not** try to multiplex many runtimes onto one socket — that forces you to reimplement the runtime's per-conversation event bus.
 
 ### Agent sandbox — pi runtime, one per agent
-- **Image:** containerize `packages/runtime` (Node/pnpm). This is **new** — the old `always-on/Dockerfile` (now deleted) built the *Rust* engine and never applied here.
+- **Image:** containerize `packages/runtime` (Bun/Node). This is **new** — the old `always-on/Dockerfile` (now deleted) built the *Rust* engine and never applied here.
 - One sandbox per agent, its own `workspaceDir` on its own PVC, **keyless** (creds via the control plane proxy).
 - Push to Artifact Registry.
 
@@ -192,7 +192,7 @@ Ordering puts the two unproven unknowns (session-resume, keyless proxy) *before*
 
 - **P0 — Project setup.** GCP project, billing, IAM, enable APIs (GKE, Artifact Registry, Secret Manager, Cloud Storage). Pick a region.
 - **P1 — Cluster + isolation foundation.** GKE Autopilot on a supported version; enable Agent Sandbox; verify a hello-world box with `runtimeClassName: gvisor` + default-deny.
-- **P2 — Agent image.** Containerize `packages/runtime` (Node/pnpm). The Worker = the runtime server. Push to Artifact Registry. (Net-new; the Rust `always-on/Dockerfile` does not apply.)
+- **P2 — Agent image.** Containerize `packages/runtime` (Bun/Node). The Worker = the runtime server. Push to Artifact Registry. (Net-new; the Rust `always-on/Dockerfile` does not apply.)
 - **P3 — De-risk the two unknowns. ✅ (mechanisms proven; one live-credential gate left).** (a) pi **session-resume** — fixed in `src/session/chat.ts` + proven by `src/session/resume.test.ts`; remaining: one fidelity test across a real provider turn. (b) **keyless proxy** — built at `spike/keyless-proxy.ts` + proven by `spike/keyless-proxy.test.ts` (pi-ai runs keyless against a chosen `baseUrl`; the proxy injects the real key).
 - **P4 — Control plane v0.** Auth + route to one agent + **SSE pass-through**. Single tenant, single agent, end to end.
 - **P5 — RBAC.** Org / user / agent / grant schema + enforcement on every request.

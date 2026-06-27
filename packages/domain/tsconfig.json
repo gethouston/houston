@@ -14,7 +14,7 @@
     "verbatimModuleSyntax": true,
     "noEmit": false,
     "resolveJsonModule": true,
-    "types": ["node"]
+    "types": ["node", "bun"]
   },
   "include": ["src"]
 }

@@ -1,14 +1,13 @@
+import { afterEach, expect, test } from "bun:test";
 import { type ChildProcess, spawn } from "node:child_process";
 import { mkdtempSync, rmSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
-import { afterEach, expect, test } from "vitest";
+import { join } from "node:path";
 
 /**
  * The parent-watchdog wiring proven end-to-end against the REAL `local/main.ts`
- * entrypoint — the exact `tsx src/local/main.ts` the self-host Dockerfile and
+ * entrypoint — the exact `bun run src/local/main.ts` the self-host Dockerfile and
  * the desktop supervisor both launch. The unit test (parent-watchdog.test.ts)
  * proves the arming logic with an injected stdin; this proves the env-var wiring
  * actually reaches it through a real process boot:
@@ -24,7 +23,7 @@ import { afterEach, expect, test } from "vitest";
  * runtime are needed (or spawned) here.
  */
 
-const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const PACKAGE_ROOT = join(import.meta.dir, "..");
 
 /** A free TCP port, picked by binding :0 then releasing it. */
 function freePort(): Promise<number> {
@@ -88,7 +87,7 @@ afterEach(() => {
  * Spawn the real `local/main.ts` and resolve once it prints its listening banner.
  * `supervised` toggles the HOUSTON_SUPERVISED marker AND the stdin shape: an
  * open pipe (supervised, like the desktop supervisor) vs `/dev/null` (the Docker
- * `tsx` case). Captures stderr so a boot failure is legible.
+ * `bun run` case). Captures stderr so a boot failure is legible.
  */
 async function spawnHost(
   supervised: boolean,
@@ -106,17 +105,13 @@ async function spawnHost(
   if (supervised) env.HOUSTON_SUPERVISED = "1";
   else delete env.HOUSTON_SUPERVISED; // never inherit a stray marker (HOU-582)
 
-  const child = spawn(
-    process.execPath,
-    ["--import", "tsx", "src/local/main.ts"],
-    {
-      cwd: PACKAGE_ROOT,
-      env,
-      // Supervised → an open pipe we control the EOF of. Unsupervised → /dev/null,
-      // exactly what Docker `tsx` hands the process.
-      stdio: [supervised ? "pipe" : "ignore", "pipe", "pipe"],
-    },
-  );
+  const child = spawn(process.execPath, ["run", "src/local/main.ts"], {
+    cwd: PACKAGE_ROOT,
+    env,
+    // Supervised → an open pipe we control the EOF of. Unsupervised → /dev/null,
+    // exactly what Docker `bun run` (no `-i`) hands the process.
+    stdio: [supervised ? "pipe" : "ignore", "pipe", "pipe"],
+  });
   active = child;
 
   let stderr = "";

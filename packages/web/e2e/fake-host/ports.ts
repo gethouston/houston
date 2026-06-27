@@ -1,7 +1,7 @@
 /**
  * Shared constants for the Playwright UI-test harness.
  *
- * The web dev server (vite) and the fake Houston host (a Node process) both run
+ * The web dev server (vite) and the fake Houston host (a Bun process) both run
  * during an e2e run; the browser is pointed at the fake host as its engine. Keep
  * these in one place so the Playwright config, the seed, and the server agree.
  */

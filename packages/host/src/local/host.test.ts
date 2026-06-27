@@ -1,9 +1,9 @@
+import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Capabilities, Workspace } from "@houston/protocol";
-import { expect, test } from "vitest";
 import type { Agent } from "../domain/types";
 import type { RuntimeSpawner } from "../launcher/process";
 import { buildLocalHost, LOCAL_CAPABILITIES } from "./host";

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "bun:test";
 import {
   DUMMY_VALUES,
   type ManifestDoc,
@@ -172,18 +172,9 @@ test("NetworkPolicy is default-deny and blocks metadata + internal ranges on egr
 });
 
 test("ServiceAccount carries the Workload Identity annotation", () => {
-  const sa = validateAll()
-    .flatMap((m) => m.docs)
-    .find(
-      (d) =>
-        d.kind === "ServiceAccount" &&
-        deep(d, [
-          "metadata",
-          "annotations",
-          "iam.gke.io/gcp-service-account",
-        ]) === DUMMY_VALUES.GCP_SA,
-    );
-  expect(sa).toBeDefined();
+  const sa = docOfKind("ServiceAccount");
+  const ann = deep(sa, ["metadata", "annotations"]) as Record<string, unknown>;
+  expect(ann["iam.gke.io/gcp-service-account"]).toBe(DUMMY_VALUES.GCP_SA);
 });
 
 test("PVC is ReadWriteOnce (single writer = isolation)", () => {
@@ -192,16 +183,7 @@ test("PVC is ReadWriteOnce (single writer = isolation)", () => {
 });
 
 test("Namespace enforces the restricted Pod Security profile", () => {
-  const ns = validateAll()
-    .flatMap((m) => m.docs)
-    .find(
-      (d) =>
-        d.kind === "Namespace" &&
-        deep(d, [
-          "metadata",
-          "labels",
-          "pod-security.kubernetes.io/enforce",
-        ]) === "restricted",
-    );
-  expect(ns).toBeDefined();
+  const ns = docOfKind("Namespace");
+  const labels = deep(ns, ["metadata", "labels"]) as Record<string, unknown>;
+  expect(labels["pod-security.kubernetes.io/enforce"]).toBe("restricted");
 });

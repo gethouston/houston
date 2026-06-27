@@ -1,5 +1,5 @@
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { createServer, type Server } from "node:http";
-import { afterAll, beforeAll, describe, expect, test } from "vitest";
 import { handle } from "./server";
 
 // Drive the real router over a real socket. config.token is empty in tests

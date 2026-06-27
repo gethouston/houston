@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import type { WireEvent } from "@houston/runtime-client";
-import { expect, test } from "vitest";
 import {
   publish,
   reduceSnapshot,

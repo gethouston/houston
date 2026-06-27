@@ -1,3 +1,5 @@
+import { Database } from "bun:sqlite";
+import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
 import {
   mkdirSync,
@@ -10,9 +12,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { SessionManager } from "@earendil-works/pi-coding-agent";
-import { expect, test } from "vitest";
 import { migrateChatHistory } from "./chat-history";
-import { Database } from "./sqlite";
 
 /**
  * Synthetic-fixture tests for the Rust-era chat-history migration. We build a

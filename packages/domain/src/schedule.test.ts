@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import type { Routine } from "@houston/protocol";
-import { expect, test } from "vitest";
 import { createRoutine } from "./routines";
 import {
   completeRoutineRun,

@@ -1,4 +1,4 @@
-import { expect, test } from "vitest";
+import { expect, test } from "bun:test";
 import { FakeIntegrationProvider } from "./fake";
 import type { IntegrationProvider } from "./provider";
 import type { ProviderCredential } from "./types";

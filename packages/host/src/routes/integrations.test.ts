@@ -1,6 +1,6 @@
+import { expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities } from "@houston/protocol";
-import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import { EnvCredentialVault } from "../credentials/vault";
 import { MemoryIntegrationCredentialStore } from "../integrations/credential-store";

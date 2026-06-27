@@ -1,12 +1,11 @@
 import { spawn } from "node:child_process";
 import type { RuntimeHandle, RuntimeSpawner, SpawnSpec } from "./process";
 
-export interface RuntimeSpawnerOptions {
+export interface BunSpawnerOptions {
   /**
    * argv that launches ONE pi-runtime in server mode — e.g.
-   * `["node", "--import", "tsx", "<repo>/packages/runtime/src/main.ts"]`
-   * in dev, or `["<resourceDir>/houston-runtime"]` for the compiled sidecar
-   * in the .app.
+   * `["bun", "run", "<repo>/packages/runtime/src/main.ts"]` in dev, or
+   * `["<resourceDir>/houston-runtime"]` for the compiled sidecar in the .app.
    */
   command: string[];
   /** Extra env for every runtime (e.g. HOUSTON_SYSTEM_PROMPT from the app). */
@@ -20,16 +19,16 @@ export interface RuntimeSpawnerOptions {
  * agent gets its own process bound to its own workspace dir + loopback port,
  * carrying the per-process bearer the host presents back when proxying.
  */
-export class RuntimeProcessSpawner implements RuntimeSpawner {
-  constructor(private readonly opts: RuntimeSpawnerOptions) {
+export class BunRuntimeSpawner implements RuntimeSpawner {
+  constructor(private readonly opts: BunSpawnerOptions) {
     if (opts.command.length === 0)
-      throw new Error("RuntimeProcessSpawner needs a non-empty command");
+      throw new Error("BunRuntimeSpawner needs a non-empty command");
   }
 
   spawn(spec: SpawnSpec): RuntimeHandle {
     const [cmd, ...args] = this.opts.command;
     if (cmd === undefined)
-      throw new Error("RuntimeProcessSpawner: command is empty");
+      throw new Error("BunRuntimeSpawner: command is empty");
     const child = spawn(cmd, args, {
       env: {
         ...process.env,

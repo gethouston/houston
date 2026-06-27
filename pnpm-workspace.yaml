@@ -2,7 +2,16 @@ packages:
   - "ui/*"
   - "app"
   - "packages/*"
-  - "cloud/evals"
+  # packages/runtime is intentionally NOT a pnpm member — it is a self-contained
+  # Bun project (see packages/runtime/README.md). Everything else under packages/*
+  # (web, engine-client) is pnpm-managed.
+  - "!packages/runtime"
+  # packages/host is likewise a self-contained Bun service (the open Houston host: local desktop supervisor + cloud server builder).
+  - "!packages/host"
+  # packages/host-cloud is the CLOSED Houston Cloud service (the concrete cloud adapters + operator-admin + the cloud main.ts); also a self-contained Bun service, depends on @houston/host.
+  - "!packages/host-cloud"
+  # packages/code-sandbox is the per-task code-execution box (Cloud Run); also a self-contained Bun service.
+  - "!packages/code-sandbox"
 
 # Approve native build scripts (pnpm 10 blocks dependency postinstall by
 # default). @sentry/cli's postinstall downloads the platform `sentry-cli`

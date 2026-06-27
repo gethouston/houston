@@ -17,20 +17,20 @@
   ],
   "scripts": {
     "build": "tsgo -p tsconfig.json",
-    "test": "vitest run --testTimeout=30000",
+    "test": "bun test",
     "typecheck": "tsgo -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@houston-ai/agent-schemas": "workspace:*",
-    "@houston/protocol": "workspace:*",
+    "@houston-ai/agent-schemas": "file:../../ui/agent-schemas",
+    "@houston/protocol": "file:../protocol",
     "croner": "^10.0.1",
     "fflate": "^0.8.3",
     "yaml": "^2.9.0"
   },
   "devDependencies": {
+    "@types/bun": "^1.3.14",
     "@types/node": "^22",
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
-    "typescript": "^6.0.2",
-    "vitest": "^3.2.4"
+    "typescript": "^6.0.2"
   }
 }

@@ -30,7 +30,7 @@
     }
   },
   "include": ["src"],
-  // Test files run under Vitest/Node. The app typecheck/build is DOM-typed, so
-  // skip tests here and typecheck them through the package test/typecheck scripts.
+  // Test files run under `bun test` (which supplies bun:test + bun globals). The
+  // app typecheck/build is DOM-typed and would clash with bun-types, so skip them.
   "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

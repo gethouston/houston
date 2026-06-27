@@ -10,8 +10,8 @@ import { BusEventHub } from "../events/hub";
 import { ComposioProvider } from "../integrations/composio";
 import { FileIntegrationCredentialStore } from "../integrations/credential-store";
 import { IntegrationRegistry } from "../integrations/registry";
+import { BunRuntimeSpawner } from "../launcher/bun-spawner";
 import { ProcessLauncher, type RuntimeSpawner } from "../launcher/process";
-import { RuntimeProcessSpawner } from "../launcher/runtime-spawner";
 import { migrateChatHistory } from "../migrate/chat-history";
 import { LocalPaths } from "../paths";
 import { forward } from "../proxy/route";
@@ -48,7 +48,7 @@ export interface LocalHostOptions {
   bind?: string;
   /** Random per-boot token the shell presents on every request (SingleUserVerifier). */
   token: string;
-  /** argv to launch a pi-runtime: dev `node --import tsx .../runtime/src/main.ts`, prod the sidecar. */
+  /** argv to launch a pi-runtime: dev `["bun","run",".../runtime/src/main.ts"]`, prod the sidecar. */
   runtimeCommand: string[];
   /** Product system prompt the app injects into every runtime (voice rules). */
   systemPrompt?: string;
@@ -92,7 +92,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
 
   const spawner =
     opts.spawner ??
-    new RuntimeProcessSpawner({
+    new BunRuntimeSpawner({
       command: opts.runtimeCommand,
       env: {
         ...(opts.systemPrompt
@@ -102,7 +102,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
         // child must dispatch into RUNTIME role (sidecar-entry.ts reads this).
         // Additive to the per-runtime env the ProcessLauncher sets (workspace
         // dir, data dir, port, token). Only set when we ARE the compiled sidecar;
-        // the dev `tsx <source>` command ignores it harmlessly anyway.
+        // the dev `bun run <source>` command ignores it harmlessly anyway.
         ...(process.env.HOUSTON_SIDECAR_BINARY
           ? { HOUSTON_SIDECAR_ROLE: "runtime" }
           : {}),

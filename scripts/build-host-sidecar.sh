@@ -8,8 +8,8 @@
 # by default, or as a pi RUNTIME when HOUSTON_SIDECAR_ROLE=runtime. The host
 # spawns ITSELF (same binary) in runtime mode, so the packaged .app needs no
 # `bun` and no repo source to launch a runtime — fixing the packaging gap where
-# a source-run default (`node --import tsx <repo>/packages/runtime/src/main.ts`)
-# could never resolve inside the .app.
+# the host's `bun run <repo>/packages/runtime/src/main.ts` default could never
+# resolve inside the .app.
 #
 # This is the host-sidecar analogue of the release workflow's
 # `cargo build -p houston-engine-server` step: the desktop's default build

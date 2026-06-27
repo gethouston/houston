@@ -1,3 +1,4 @@
+import { expect, test } from "bun:test";
 import type { CredentialVault, TokenVerifier } from "@houston/host/src/ports";
 import {
   type ControlPlaneDeps,
@@ -5,7 +6,6 @@ import {
 } from "@houston/host/src/server";
 import { MemoryWorkspaceStore } from "@houston/host/src/store/memory";
 import type { Capabilities } from "@houston/protocol";
-import { expect, test } from "vitest";
 import type { AutopilotRates } from "../admin/billing";
 import { FakeClusterReader } from "../admin/cluster";
 import type { BillingReport, Overview } from "../admin/overview";
@@ -162,7 +162,7 @@ test("admin billing: estimate renders, actuals report 'not-configured' without B
     const rep = (await r.json()) as BillingReport;
     expect(rep.actualsStatus).toBe("not-configured");
     expect(rep.actuals).toBeNull();
-    expect(Array.isArray(rep.estimate.byUser)).toBe(true);
+    expect(rep.estimate.byUser).toBeArray();
   } finally {
     await close();
   }

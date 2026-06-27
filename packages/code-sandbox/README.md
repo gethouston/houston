@@ -29,8 +29,8 @@ artifact caps. The service holds no secrets and no persistent state.
 ## Run / test locally
 
 ```sh
-pnpm dev             # listens on :8080 (or $PORT)
-pnpm test            # real python/bash/node execution + HTTP routing
+bun run dev          # listens on :8080 (or $PORT)
+bun test             # real python/bash/node execution + HTTP routing
 ```
 
 ## Config (env)

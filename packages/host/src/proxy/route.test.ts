@@ -1,3 +1,4 @@
+import { expect, test } from "bun:test";
 import {
   createServer,
   type IncomingMessage,
@@ -5,7 +6,6 @@ import {
   type ServerResponse,
 } from "node:http";
 import type { AddressInfo } from "node:net";
-import { expect, test } from "vitest";
 import type { RuntimeEndpoint } from "../ports";
 import { forward } from "./route";
 

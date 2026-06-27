@@ -1,6 +1,6 @@
+import { afterEach, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities, CustomEndpoint } from "@houston/protocol";
-import { afterEach, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { ChannelCtx, RuntimeChannel, TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";

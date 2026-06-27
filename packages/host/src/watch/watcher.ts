@@ -23,7 +23,7 @@ export class FsWatcher {
 
   start(): void {
     if (this.fsWatcher) return;
-    // Recursive watch (supported on macOS + Windows + Node on Linux). A missing
+    // Recursive watch (supported on macOS + Windows + Bun on Linux). A missing
     // root simply yields no events until the supervisor creates it.
     this.fsWatcher = watch(
       this.root,

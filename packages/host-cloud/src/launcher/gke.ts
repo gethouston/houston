@@ -58,7 +58,7 @@ export class GkeLauncher implements RuntimeLauncher {
   constructor(private readonly deps: GkeDeps) {
     this.core = deps.kubeConfig.makeApiClient(CoreV1Api);
     this.apps = deps.kubeConfig.makeApiClient(AppsV1Api);
-    // Cold start on Autopilot = node scale-up + image pull + Node boot,
+    // Cold start on Autopilot = node scale-up + a ~120MB image pull + Bun boot,
     // which can exceed two minutes for the first-ever sandbox. Be generous.
     this.readyTimeoutMs = deps.readyTimeoutMs ?? 300_000;
     this.pollIntervalMs = deps.pollIntervalMs ?? 1_000;

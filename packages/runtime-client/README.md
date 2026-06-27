@@ -28,6 +28,6 @@ Full protocol: [`packages/runtime/docs/engine-api.md`](../engine/docs/engine-api
 ## Usage
 
 Consumed as TypeScript source, no build step: `main`/`types`/`exports` all
-resolve to `src/index.ts`, so Vite (webapp) and Node/tsx (runtime) run it
+resolve to `src/index.ts`, so Vite (webapp) and Bun (engine) bundle/run it
 directly. Type-check it in isolation with
 `pnpm --filter @houston/runtime-client typecheck`.

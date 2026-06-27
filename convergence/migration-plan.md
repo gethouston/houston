@@ -36,7 +36,7 @@ The host-sidecar desktop sets `HOUSTON_WORKSPACES_ROOT = ~/.houston/workspaces` 
 - **Provider resume IDs** (`.houston/sessions/<provider>/*.sid`) — CLI-internal, meaningless to pi. Not migrated; pi manages its own session snapshots.
 
 ## Where + when it runs
-**Recommendation: the local host migrates on startup, per-agent, idempotently.** The host is TS (has `SessionManager`/pi) and already walks the workspace tree; it can read the Rust SQLite via the host's tiny SQLite compatibility wrapper (`node:sqlite` under Node, `bun:sqlite` inside the compiled sidecar). On boot, for each agent: if a `.houston/runtime/.migrated` marker is absent AND `chat_feed` has rows for its activities → migrate, then write the marker. Idempotent (marker + per-conversation existence check), so re-runs are no-ops.
+**Recommendation: the local host migrates on startup, per-agent, idempotently.** The host is TS (has `SessionManager`/pi) and already walks the workspace tree; it can read the Rust SQLite via `bun:sqlite`. On boot, for each agent: if a `.houston/runtime/.migrated` marker is absent AND `chat_feed` has rows for its activities → migrate, then write the marker. Idempotent (marker + per-conversation existence check), so re-runs are no-ops.
 
 ## Copy-never-move + downgrade (must hold)
 - **Strictly additive**: we only WRITE new files under `.houston/runtime/`. We never modify or delete `houston.db` or any existing tree file.

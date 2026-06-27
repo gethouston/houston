@@ -1,3 +1,4 @@
+import { expect, test } from "bun:test";
 import {
   createRoutine,
   loadRoutineRuns,
@@ -5,7 +6,6 @@ import {
   setPreference,
 } from "@houston/domain";
 import type { Routine, RoutineRun } from "@houston/protocol";
-import { expect, test } from "vitest";
 import { CloudPaths } from "../paths";
 import { workspaceRoot } from "../routes/agent-data";
 import { MemoryWorkspaceStore } from "../store/memory";
@@ -37,7 +37,6 @@ async function setup(routines: Routine[]) {
   const vfs = new MemoryVfs();
   const ws = await store.getOrCreatePersonalWorkspace("alice");
   const agent = await store.createAgent({ workspaceId: ws.id, name: "A" });
-  await setPreference(vfs, ws.id, "timezone", "UTC");
   await saveRoutines(vfs, workspaceRoot(ws, agent), routines);
   return { store, vfs, ws, agent };
 }

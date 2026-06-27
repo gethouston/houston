@@ -56,7 +56,7 @@ Only after Steps 1–2 and a green build:
 
 ## Step 4 — verify + ship
 
-- `pnpm -r typecheck`, `pnpm check`, `pnpm check:boundaries`, Vitest suites in
+- `pnpm -r typecheck`, `pnpm check`, `pnpm check:boundaries`, `bun test` in
   `packages/{host,host-cloud,runtime,domain}` — all green.
 - `cd app/src-tauri && cargo check` (now host-sidecar-default) — compiles.
 - Build + notarize the packaged app; smoke-test one real turn.

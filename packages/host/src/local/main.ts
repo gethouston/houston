@@ -1,7 +1,6 @@
 import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { join } from "node:path";
 import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
 import { buildLocalHost } from "./host";
@@ -24,7 +23,7 @@ import { buildLocalHost } from "./host";
  *                             explicit override (highest priority). Otherwise:
  *                             the compiled sidecar spawns ITSELF (in runtime
  *                             role via HOUSTON_SIDECAR_ROLE — see host.ts); the
- *                             dev fallback is `node --import tsx <repo>/packages/runtime/src/main.ts`.
+ *                             dev fallback is `bun run <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
  */
 function runtimeCommand(): string[] {
@@ -41,7 +40,7 @@ function runtimeCommand(): string[] {
   // 3. Dev fallback: run the runtime from source, resolved relative to this file
   // (src/local/main.ts → ../../../runtime/src/main.ts).
   const runtimeMain = join(
-    dirname(fileURLToPath(import.meta.url)),
+    import.meta.dir,
     "..",
     "..",
     "..",
@@ -49,7 +48,7 @@ function runtimeCommand(): string[] {
     "src",
     "main.ts",
   );
-  return [process.execPath, "--import", "tsx", runtimeMain];
+  return ["bun", "run", runtimeMain];
 }
 
 const houstonHome = process.env.HOUSTON_HOME || join(homedir(), ".houston");
@@ -98,7 +97,7 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
 // no signal, but the OS closes the write-end of our piped stdin. Watch for that
 // EOF and tear down (killing every runtime) so a hard app exit never orphans the
 // host + its runtimes. Arms ONLY when the supervisor set `HOUSTON_SUPERVISED=1`
-// (its default signal); self-host Docker, plain `tsx`, and tests leave it
+// (its default signal); self-host Docker, plain `bun run`, and tests leave it
 // unset and stay inert. Windows force-quit is covered by the supervisor's
 // kill-on-close Job Object.
 installParentWatchdog({ onParentExit: () => host.stop() });

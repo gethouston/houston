@@ -7,16 +7,11 @@
     "node": ">=22.19.0"
   },
   "scripts": {
-    "dev": "tsx src/main.ts",
-    "test": "vitest run --testTimeout=30000",
-    "typecheck": "tsgo -p tsconfig.json"
+    "dev": "bun run src/main.ts",
+    "test": "bun test"
   },
   "devDependencies": {
-    "@types/node": "^22",
-    "vitest": "^3.2.4",
-    "@typescript/native-preview": "7.0.0-dev.20260607.1"
-  },
-  "dependencies": {
-    "tsx": "^4.21.0"
+    "@types/bun": "^1.3.14",
+    "@types/node": "^22"
   }
 }

@@ -13,9 +13,7 @@
     "check": "biome check --error-on-warnings",
     "check:fix": "biome check --write --error-on-warnings",
     "check:boundaries": "node scripts/check-boundaries.mjs",
-    "prepare": "husky",
-    "test": "pnpm --filter @houston/domain test && pnpm --filter @houston/host test && pnpm --filter @houston/host-cloud test && pnpm --filter @houston/runtime test && pnpm --filter @houston/code-sandbox test && pnpm --filter houston-web test && pnpm --filter houston-evals test && pnpm --filter houston-app test && pnpm test:cloud-k8s",
-    "test:cloud-k8s": "vitest run cloud/k8s/scripts/*.test.ts --testTimeout=30000"
+    "prepare": "husky"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.0",
@@ -24,11 +22,7 @@
     "@typescript/native-preview": "7.0.0-dev.20260607.1",
     "husky": "^9.1.7",
     "lint-staged": "^17.0.8",
-    "typescript": "^6.0.2",
-    "@types/node": "^22",
-    "tsx": "^4.21.0",
-    "vitest": "^3.2.4",
-    "yaml": "^2.9.0"
+    "typescript": "^6.0.2"
   },
   "lint-staged": {
     "*.{ts,tsx,js,jsx,mjs,cjs,json,jsonc}": "biome check --write --no-errors-on-unmatched --error-on-warnings"

@@ -1,9 +1,8 @@
-import { expect, test } from "vitest";
+import { expect, test } from "bun:test";
 import { ProxyChannel } from "../channel/proxy";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { Agent, Workspace } from "../domain/types";
 import type { ChannelCtx, RuntimeChannel, TurnPin } from "../ports";
-import { startTestFetchServer } from "../testing/fetch-server";
 import { ChannelRoutineFirer } from "./firer";
 import type { FiringJob } from "./scheduler";
 
@@ -111,19 +110,22 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
   const captured: {
     seen: { path: string; body: unknown; auth: string | null } | null;
   } = { seen: null };
-  const runtime = await startTestFetchServer(async (req) => {
-    const u = new URL(req.url);
-    captured.seen = {
-      path: u.pathname,
-      body: await req.json(),
-      auth: req.headers.get("authorization"),
-    };
-    return Response.json({ ok: true, id: "routine-r1" }, { status: 202 });
+  const runtime = Bun.serve({
+    port: 0,
+    fetch: async (req) => {
+      const u = new URL(req.url);
+      captured.seen = {
+        path: u.pathname,
+        body: await req.json(),
+        auth: req.headers.get("authorization"),
+      };
+      return Response.json({ ok: true, id: "routine-r1" }, { status: 202 });
+    },
   });
   const launcher = {
     async ensureAwake() {
       return {
-        baseUrl: runtime.baseUrl,
+        baseUrl: `http://127.0.0.1:${runtime.port}`,
         token: "sbx-token",
       };
     },
@@ -150,19 +152,22 @@ test("ProxyChannel.fireTurn posts the prompt to the runtime's conversation endpo
     expect(seen.body).toEqual({ text: "Write the daily report" });
     expect(seen.auth).toBe("Bearer sbx-token");
   } finally {
-    await runtime.stop();
+    runtime.stop(true);
   }
 });
 
 test("ProxyChannel.fireTurn includes the routine's model/effort pins in the message body", async () => {
   let body: unknown = null;
-  const runtime = await startTestFetchServer(async (req) => {
-    body = await req.json();
-    return Response.json({ ok: true, id: "routine-r1" }, { status: 202 });
+  const runtime = Bun.serve({
+    port: 0,
+    fetch: async (req) => {
+      body = await req.json();
+      return Response.json({ ok: true, id: "routine-r1" }, { status: 202 });
+    },
   });
   const launcher = {
     async ensureAwake() {
-      return { baseUrl: runtime.baseUrl, token: "t" };
+      return { baseUrl: `http://127.0.0.1:${runtime.port}`, token: "t" };
     },
     async sleep() {},
     async destroy() {},
@@ -187,17 +192,18 @@ test("ProxyChannel.fireTurn includes the routine's model/effort pins in the mess
     );
     expect(body).toEqual({ text: "go", model: "gpt-5.5", effort: "high" });
   } finally {
-    await runtime.stop();
+    runtime.stop(true);
   }
 });
 
 test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", async () => {
-  const runtime = await startTestFetchServer(
-    () => new Response("boom", { status: 500 }),
-  );
+  const runtime = Bun.serve({
+    port: 0,
+    fetch: () => new Response("boom", { status: 500 }),
+  });
   const launcher = {
     async ensureAwake() {
-      return { baseUrl: runtime.baseUrl, token: "t" };
+      return { baseUrl: `http://127.0.0.1:${runtime.port}`, token: "t" };
     },
     async sleep() {},
     async destroy() {},
@@ -215,6 +221,6 @@ test("ProxyChannel.fireTurn throws when the runtime rejects (→ errored run)", 
       channel.fireTurn({ workspace: ws("gke"), agent }, "c1", "hi"),
     ).rejects.toThrow("runtime 500");
   } finally {
-    await runtime.stop();
+    runtime.stop(true);
   }
 });

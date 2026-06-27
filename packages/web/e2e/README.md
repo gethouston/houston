@@ -22,13 +22,13 @@ Playwright boots two servers automatically (see `playwright.config.ts`):
 
 1. **vite** with `VITE_NEW_ENGINE=1` on `:1430` — aliases `@houston-ai/engine-client`
    to the new-engine adapter and mounts `NewEngineRoot` (`packages/web/src/main.tsx`).
-2. the **fake host** (`pnpm fake-host`) on `:4399`.
+2. the **fake host** (`bun run e2e/fake-host/server.ts`) on `:4399`.
 
 ## How it works
 
 ```
 e2e/
-  fake-host/        # a Node HTTP server: control plane + per-agent runtime, in-memory
+  fake-host/        # a Bun HTTP server: control plane + per-agent runtime, in-memory
     server.ts       #   entry: CORS, /v1/*, /agents/*, test-control routes
     routes.ts       #   per-agent dispatch + the chat SSE stream (the interesting bit)
     state.ts        #   seed + mutations; .houston/** files-first store (the board)

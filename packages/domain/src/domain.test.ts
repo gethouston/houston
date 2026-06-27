@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import type { RoutineUpdate } from "@houston/protocol";
-import { expect, test } from "vitest";
 import {
   applyActivityUpdate,
   createActivity,

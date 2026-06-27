@@ -1,5 +1,5 @@
+import { expect, test } from "bun:test";
 import { createServer, type Server } from "node:http";
-import { expect, test } from "vitest";
 import {
   type FeedbackPayload,
   formatIssueDescription,

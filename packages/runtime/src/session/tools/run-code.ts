@@ -32,7 +32,7 @@ import { RunCodeLimiter, type RunCodeLimits } from "./run-code-limiter";
 
 // Keep this language set in sync with the sandbox's authoritative list in
 // packages/code-sandbox/src/types.ts (LANGUAGES). The two packages are
-// intentionally independent services, so the list is duplicated by design.
+// intentionally independent Bun services, so the list is duplicated by design.
 const Params = Type.Object({
   language: Type.Union(
     [Type.Literal("python"), Type.Literal("bash"), Type.Literal("node")],

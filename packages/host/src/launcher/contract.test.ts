@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test } from "bun:test";
 import type { Agent } from "../domain/types";
 import {
   launcherAgent as agent,

@@ -5,11 +5,11 @@
 // no repo source to launch a runtime.
 //
 // Build-only: this file does a cross-package dynamic import (../../runtime), so
-// it is excluded from the host's tsgo typecheck (see tsconfig.json
+// it is excluded from control-plane's tsgo typecheck (see tsconfig.json
 // `exclude`). bun's bundler — not tsgo — resolves the import at compile time.
 
 // Record our own path so the host's runtimeCommand() can spawn this same binary
-// (and so it knows it is the compiled sidecar, not `tsx <source>`).
+// (and so it knows it is the compiled sidecar, not `bun run <source>`).
 process.env.HOUSTON_SIDECAR_BINARY = process.execPath;
 
 if (process.env.HOUSTON_SIDECAR_ROLE === "runtime") {

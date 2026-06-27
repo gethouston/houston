@@ -1,7 +1,7 @@
+import { beforeEach, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import { loadRoutineRuns } from "@houston/domain";
 import type { Capabilities, Routine, RoutineRun } from "@houston/protocol";
-import { beforeEach, expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { ChannelCtx, RuntimeChannel, TokenVerifier } from "../ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "../server";

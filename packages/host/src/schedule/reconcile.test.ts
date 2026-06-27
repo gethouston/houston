@@ -1,3 +1,4 @@
+import { expect, test } from "bun:test";
 import {
   createRoutine,
   createRoutineRun,
@@ -7,7 +8,6 @@ import {
   saveRoutines,
 } from "@houston/domain";
 import type { Activity, Routine, RoutineRun } from "@houston/protocol";
-import { expect, test } from "vitest";
 import { CloudPaths } from "../paths";
 import { workspaceRoot } from "../routes/agent-data";
 import { MemoryWorkspaceStore } from "../store/memory";

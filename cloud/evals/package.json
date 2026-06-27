@@ -5,15 +5,10 @@
   "type": "module",
   "description": "Turn-quality evals: drive the canonical agent tasks (deck, spreadsheet, chart) against a Houston control plane and score the artifacts.",
   "scripts": {
-    "evals": "tsx run.ts",
-    "test": "vitest run --testTimeout=30000"
+    "evals": "bun run run.ts",
+    "test": "bun test"
   },
   "dependencies": {
-    "jszip": "^3.10.1",
-    "tsx": "^4.21.0"
-  },
-  "devDependencies": {
-    "vitest": "^3.2.4",
-    "@types/node": "^22"
+    "jszip": "^3.10.1"
   }
 }

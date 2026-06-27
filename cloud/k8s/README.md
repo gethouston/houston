@@ -131,5 +131,5 @@ cloud/k8s/scripts/validate.sh
 It checks: every `*.yaml` parses as YAML, that the agent-scoped templates render
 (placeholders -> dummy values) into valid YAML, and that no `{{` survives a
 render, so a malformed template is caught before it reaches a cluster. It uses
-Node/tsx plus the `yaml` package from the pnpm workspace, so it needs no cluster
-and no `kustomize`/`kubectl` install.
+`bun` (already in the repo) for YAML parsing, so it needs no cluster and no
+`kustomize`/`kubectl` install.

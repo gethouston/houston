@@ -90,7 +90,7 @@ export function buildDeployment(
           // is an invalid runtimeClassName and would block scheduling.
           runtimeClassName: config.runtimeClass || undefined,
           automountServiceAccountToken: false,
-          // Run as the image's non-root node user (uid 1000) and fsGroup-own the
+          // Run as the image's non-root bun user (uid 1000) and fsGroup-own the
           // volume, so the freshly-provisioned /data PVC is writable on first
           // mount (otherwise the runtime's mkdir at startup crash-loops). Also
           // satisfies GKE Autopilot's restricted PodSecurity.
@@ -134,7 +134,7 @@ export function buildDeployment(
                 },
               ],
               volumeMounts: [{ name: "data", mountPath: DATA_MOUNT }],
-              // Cold Node start on Autopilot bundles node scale-up + image
+              // Cold Bun start on Autopilot bundles node scale-up + a ~120MB image
               // pull, so give readiness real headroom before it counts failures.
               readinessProbe: {
                 httpGet: { path: "/health", port: enginePort },

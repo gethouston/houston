@@ -1,7 +1,7 @@
 /**
  * Fake Houston host for the Playwright UI tests.
  *
- * A single Node process that answers just enough of the control plane + per-agent
+ * A single Bun process that answers just enough of the control plane + per-agent
  * runtime for the desktop UI (app/src) to boot and run on the new-engine adapter
  * in control-plane mode — with NO real backend, no AI provider, no credentials.
  * Deterministic and hermetic: the same click always produces the same pixels.
@@ -10,8 +10,6 @@
  * config starts it automatically as a `webServer`.
  */
 
-import { createServer } from "node:http";
-import { Readable } from "node:stream";
 import { clearChatStreams } from "./chat";
 import { CORS, json, noContent } from "./http";
 import { FAKE_HOST_PORT } from "./ports";
@@ -102,55 +100,10 @@ async function handle(req: Request): Promise<Response> {
   return json({ error: { message: `no fake route for ${path}` } }, 404);
 }
 
-function requestBodyAllowed(method: string | undefined): boolean {
-  return method !== "GET" && method !== "HEAD";
-}
-
-async function readBody(req: AsyncIterable<unknown>): Promise<Buffer> {
-  const chunks: Buffer[] = [];
-  for await (const chunk of req) {
-    chunks.push(
-      Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk as Uint8Array),
-    );
-  }
-  return Buffer.concat(chunks);
-}
-
-const server = createServer(async (req, res) => {
-  const abort = new AbortController();
-  req.on("close", () => abort.abort());
-  try {
-    const host = req.headers.host ?? `127.0.0.1:${FAKE_HOST_PORT}`;
-    const body = requestBodyAllowed(req.method)
-      ? await readBody(req)
-      : undefined;
-    const response = await handle(
-      new Request(`http://${host}${req.url ?? "/"}`, {
-        method: req.method,
-        headers: req.headers as HeadersInit,
-        body: body ? new Uint8Array(body) : undefined,
-        signal: abort.signal,
-      }),
-    );
-    res.writeHead(response.status, Object.fromEntries(response.headers));
-    if (response.body) {
-      Readable.fromWeb(
-        response.body as Parameters<typeof Readable.fromWeb>[0],
-      ).pipe(res);
-    } else {
-      res.end();
-    }
-  } catch (err) {
-    if (abort.signal.aborted) return;
-    const message = err instanceof Error ? err.message : String(err);
-    if (!res.headersSent) {
-      res.writeHead(500, { "content-type": "text/plain; charset=utf-8" });
-    }
-    res.end(message);
-  }
+const server = Bun.serve({
+  port: FAKE_HOST_PORT,
+  idleTimeout: 0, // never time out the long-lived SSE streams
+  fetch: handle,
 });
-server.keepAliveTimeout = 0;
-server.headersTimeout = 0;
-server.listen(FAKE_HOST_PORT, () => {
-  console.log(`[fake-host] listening on http://localhost:${FAKE_HOST_PORT}`);
-});
+
+console.log(`[fake-host] listening on http://localhost:${server.port}`);

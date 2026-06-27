@@ -23,14 +23,14 @@ kind create cluster --name houston-gke-test
 
 # 2. Build + load a tiny always-ready stub the agent Deployment can run. The
 #    launcher waits for GET /health → 200 on port 4317, so any image that serves
-#    that works. Example using a 10-line Node health server baked into an image,
+#    that works. Example using a 10-line Bun health server baked into an image,
 #    or reuse the real agent image if you have it locally:
 #
 #    Minimal stub (save as Dockerfile.stub):
-#      FROM node:22-alpine
-#      RUN printf 'require("node:http").createServer((_,r)=>r.end("ok")).listen(4317);' > /s.js
+#      FROM oven/bun:1-alpine
+#      RUN printf 'Bun.serve({port:4317,fetch:()=>new Response("ok")});' > /s.js
 #      USER 1000
-#      CMD ["node","/s.js"]
+#      CMD ["bun","/s.js"]
 docker build -f Dockerfile.stub -t houston-agent-stub:test .
 kind load docker-image houston-agent-stub:test --name houston-gke-test
 
@@ -39,7 +39,7 @@ cd packages/host
 HOUSTON_GKE_TEST=1 \
 CP_AGENT_IMAGE=houston-agent-stub:test \
 CP_NAMESPACE_PREFIX=ws- \
-  pnpm exec vitest run src/launcher/gke.integration.test.ts
+  bun test src/launcher/gke.integration.test.ts
 
 # 4. Tear down.
 kind delete cluster --name houston-gke-test
@@ -72,4 +72,4 @@ Notes:
 Wire this into a cluster-bearing CI job (a `kind`-in-CI step or a scratch GKE
 namespace) that exports `HOUSTON_GKE_TEST=1` + `CP_AGENT_IMAGE`. On the default
 unit-test runner (no cluster) the file self-skips, so it is safe to keep in the
-normal `pnpm test` glob.
+normal `bun test` glob.
