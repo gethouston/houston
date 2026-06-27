@@ -4,6 +4,7 @@ import type { ProviderInfo } from "../../lib/providers";
 import {
   AmazonBedrockLogo,
   ClaudeLogo,
+  DeepSeekLogo,
   GeminiLogo,
   GitHubCopilotLogo,
   LocalModelLogo,
@@ -22,6 +23,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <GitHubCopilotLogo />;
     case "openrouter":
       return <OpenRouterLogo />;
+    case "deepseek":
+      return <DeepSeekLogo />;
     case "google":
       return <GeminiLogo />;
     case "amazon-bedrock":

@@ -19,20 +19,22 @@ import {
 } from "./providers";
 
 /**
- * OpenCode Zen / Go and Amazon Bedrock are pi-native providers authenticated by
- * pasted keys (no OAuth). The registry must mark them as such so the auth
+ * OpenCode Zen / Go, DeepSeek, and Amazon Bedrock are pi-native providers
+ * authenticated by pasted keys (no OAuth). The registry must mark them as such so the auth
  * routes route a paste-a-key submission instead of an OAuth login, and so the
  * cloud per-turn fallback resolves the right default model per provider.
  */
 
-test("opencode, opencode-go, and amazon-bedrock are registered as api-key providers", () => {
+test("api-key providers are registered as api-key providers", () => {
   const ids = PROVIDERS.map((p) => p.id);
   expect(ids).toContain("opencode");
   expect(ids).toContain("opencode-go");
+  expect(ids).toContain("deepseek");
   expect(ids).toContain("amazon-bedrock");
 
   expect(providerAuthMethod("opencode")).toBe("apiKey");
   expect(providerAuthMethod("opencode-go")).toBe("apiKey");
+  expect(providerAuthMethod("deepseek")).toBe("apiKey");
   expect(providerAuthMethod("amazon-bedrock")).toBe("apiKey");
   expect(providerAuthMethod("anthropic")).toBe("oauth");
   expect(providerAuthMethod("openai-codex")).toBe("oauth");
@@ -43,6 +45,7 @@ test("opencode, opencode-go, and amazon-bedrock are registered as api-key provid
 test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("opencode")).toBe("claude-sonnet-4-6");
   expect(providerDefaultModel("opencode-go")).toBe("glm-5.1");
+  expect(providerDefaultModel("deepseek")).toBe("deepseek-v4-flash");
   expect(providerDefaultModel("amazon-bedrock")).toBe(
     "anthropic.claude-sonnet-4-6",
   );

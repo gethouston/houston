@@ -89,6 +89,16 @@ export const PROVIDERS: readonly HostProvider[] = [
     defaultModel: "anthropic/claude-sonnet-4.6",
   },
   {
+    id: "deepseek",
+    name: "DeepSeek",
+    auth: "apiKey",
+    // LOCAL/desktop only for now: the cloud per-turn sandbox is egress-locked
+    // and api.deepseek.com isn't on its allowlist.
+    cloud: false,
+    models: ["deepseek-v4-flash", "deepseek-v4-pro"],
+    defaultModel: "deepseek-v4-flash",
+  },
+  {
     id: "google",
     name: "Google Gemini",
     auth: "apiKey",

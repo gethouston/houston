@@ -10,6 +10,7 @@ import type { ProviderInfo } from "../lib/providers";
 import {
   AmazonBedrockLogo,
   ClaudeLogo,
+  DeepSeekLogo,
   GeminiLogo,
   GitHubCopilotLogo,
   LocalModelLogo,
@@ -135,6 +136,8 @@ function iconFor(providerId: string) {
       return <GitHubCopilotLogo className="size-full" />;
     case "openrouter":
       return <OpenRouterLogo className="size-full" />;
+    case "deepseek":
+      return <DeepSeekLogo className="size-full" />;
     case "google":
       return <GeminiLogo className="size-full" />;
     case "amazon-bedrock":

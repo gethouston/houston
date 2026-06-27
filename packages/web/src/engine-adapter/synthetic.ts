@@ -56,6 +56,7 @@ export function toNewProvider(
   | "openai-codex"
   | "github-copilot"
   | "openrouter"
+  | "deepseek"
   | "google"
   | "amazon-bedrock"
   | "opencode"
@@ -67,6 +68,7 @@ export function toNewProvider(
     return "openai-codex";
   if (name === "github-copilot") return "github-copilot";
   if (name === "openrouter") return "openrouter";
+  if (name === "deepseek") return "deepseek";
   if (name === "google") return "google";
   if (name === "amazon-bedrock") return "amazon-bedrock";
   if (name === "opencode") return "opencode";
@@ -81,7 +83,7 @@ export function toNewProvider(
  * (openai-codex -> openai); the OpenCode ids are the same on both sides.
  */
 export function toOldProvider(id: string): string {
-  // openrouter/google/amazon-bedrock share one id across frontend and engine;
+  // openrouter/deepseek/google/amazon-bedrock share one id across frontend and engine;
   // only codex differs.
   return id === "openai-codex" ? "openai" : id;
 }

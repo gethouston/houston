@@ -18,6 +18,7 @@ export type ProviderId =
   | "opencode"
   | "opencode-go"
   | "openrouter"
+  | "deepseek"
   | "google"
   | "amazon-bedrock"
   | "openai-compatible";
@@ -29,6 +30,7 @@ const PROVIDER_IDS: readonly ProviderId[] = [
   "opencode",
   "opencode-go",
   "openrouter",
+  "deepseek",
   "google",
   "amazon-bedrock",
   "openai-compatible",
@@ -57,6 +59,7 @@ export const DEFAULT_MODEL: Record<ProviderId, string> = {
   opencode: "claude-sonnet-4-6",
   "opencode-go": "glm-5.1",
   openrouter: "anthropic/claude-sonnet-4.6",
+  deepseek: "deepseek-v4-flash",
   google: "gemini-3-flash-preview",
   "amazon-bedrock": "anthropic.claude-sonnet-4-6",
   // No catalog default — the model is whatever the user's local server serves.
@@ -66,15 +69,13 @@ export const DEFAULT_MODEL: Record<ProviderId, string> = {
 /**
  * pi's REAL model catalog per provider (captured from `getModels(...)`).
  *
- * Only the native subscription providers (anthropic / openai-codex) are
- * enumerated: `getModel` returns undefined for an unlisted id on these, so a
- * stored model MUST be checked against this set. Every other provider is left
- * absent on purpose and its stored model passes through untouched —
- * opencode / opencode-go / openrouter / google / amazon-bedrock forward an
- * arbitrary id to the gateway (the runtime's read-time `safeGetModel` guard is
- * the backstop), openai-compatible has no catalog at all, and github-copilot is left
- * open here (its dotted ids change with the gateway) with the runtime's
- * read-time `safeGetModel` guard as the backstop for a stale id.
+ * Providers with finite catalogs are enumerated: `getModel` returns undefined
+ * for an unlisted id on these, so a stored model MUST be checked against this
+ * set. Providers whose catalogs move too often for this domain table are left
+ * absent on purpose and their stored model passes through untouched — the
+ * runtime's read-time `safeGetModel` guard is the backstop for stale ids.
+ * openai-compatible has no catalog at all, and github-copilot is left open here
+ * because its dotted ids change with the gateway.
  */
 export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
   anthropic: new Set([
@@ -109,6 +110,7 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "gpt-5.4-mini",
     "gpt-5.5",
   ]),
+  deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
 };
 
 /**

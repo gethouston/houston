@@ -20,6 +20,7 @@ test("credentialSiblings fans an OpenCode key out to both gateways, others stay 
   // Every other provider stands for just itself — no fan-out.
   expect(credentialSiblings("anthropic")).toEqual(["anthropic"]);
   expect(credentialSiblings("openai-codex")).toEqual(["openai-codex"]);
+  expect(credentialSiblings("deepseek")).toEqual(["deepseek"]);
   expect(credentialSiblings("openai-compatible")).toEqual([
     "openai-compatible",
   ]);
@@ -107,6 +108,12 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
         JSON.stringify({ provider: "opencode-go", model: "deepseek-v4-pro" }),
       ),
     ).toEqual({ activeProvider: "opencode-go", model: "deepseek-v4-pro" });
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "deepseek", model: "deepseek-v4-pro" }),
+      ),
+    ).toEqual({ activeProvider: "deepseek", model: "deepseek-v4-pro" });
     // The old desktop "openai" id is remapped to the engine's "openai-codex".
     expect(
       configWriteToSettings(

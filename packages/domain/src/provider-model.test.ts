@@ -6,6 +6,7 @@ const VALID_PROVIDERS = [
   "openai-codex",
   "opencode",
   "opencode-go",
+  "deepseek",
 ];
 
 // pi's OAuth-provider catalogs (the ones getModel throws on for an unknown id),
@@ -44,6 +45,7 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-5.4-mini",
     "gpt-5.5",
   ]),
+  deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
 };
 
 /** Every migration result must name a real provider, and (for the OAuth
@@ -149,6 +151,24 @@ test("api-key gateway models pass through (open catalog, no throw on getModel)",
     model: "deepseek-v4-pro",
   });
   expect(r.diagnostics).toEqual([]);
+});
+
+test("deepseek provider models migrate against its finite pi catalog", () => {
+  const valid = migrateProviderModel("deepseek", "deepseek-v4-pro");
+  expect(valid).toMatchObject({
+    provider: "deepseek",
+    model: "deepseek-v4-pro",
+  });
+  expect(valid.diagnostics).toEqual([]);
+  assertValid(valid, "deepseek valid model");
+
+  const stale = migrateProviderModel("deepseek", "deepseek-coder-old");
+  expect(stale).toMatchObject({
+    provider: "deepseek",
+    model: "deepseek-v4-flash",
+  });
+  expect(stale.diagnostics[0]?.message).toContain("deepseek-coder-old");
+  assertValid(stale, "deepseek stale model");
 });
 
 test("the diagnostic key defaults to the config doc path and is overridable", () => {

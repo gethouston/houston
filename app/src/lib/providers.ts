@@ -447,6 +447,36 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     defaultModel: "anthropic/claude-sonnet-4.6",
   },
   {
+    id: "deepseek",
+    name: "DeepSeek",
+    subtitle: "Official DeepSeek API",
+    cliName: "deepseek",
+    installUrl: "https://platform.deepseek.com",
+    loginCommand: "",
+    cost: "Pay-as-you-go on your DeepSeek account",
+    auth: "apiKey",
+    apiKeyUrl: "https://platform.deepseek.com/api_keys",
+    // pi-ai `deepseek` model ids. Direct DeepSeek supports reasoning at high
+    // and max; pi maps Houston's xhigh to DeepSeek's max.
+    models: [
+      {
+        id: "deepseek-v4-flash",
+        label: "DeepSeek V4 Flash",
+        description: "Fast, low-cost DeepSeek model.",
+        effortLevels: ["high", "xhigh"],
+        contextWindow: 1_000_000,
+      },
+      {
+        id: "deepseek-v4-pro",
+        label: "DeepSeek V4 Pro",
+        description: "DeepSeek's most capable model.",
+        effortLevels: ["high", "xhigh"],
+        contextWindow: 1_000_000,
+      },
+    ],
+    defaultModel: "deepseek-v4-flash",
+  },
+  {
     id: "google",
     name: "Google Gemini",
     subtitle: "Free key from AI Studio",
@@ -786,6 +816,5 @@ export interface ComingSoonProviderInfo {
 
 export const COMING_SOON_PROVIDERS: readonly ComingSoonProviderInfo[] = [
   { id: "subq", name: "SubQ", subtitle: "SubQ Code", mark: "SQ" },
-  { id: "deepseek", name: "DeepSeek", subtitle: "DeepSeek Coder", mark: "DS" },
   { id: "minimax", name: "MiniMax", subtitle: "M2", mark: "MM" },
 ] as const;

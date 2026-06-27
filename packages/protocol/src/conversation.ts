@@ -9,7 +9,7 @@
  * - `anthropic` = Claude Pro/Max (subscription OAuth)
  * - `openai-codex` = ChatGPT/Codex (subscription OAuth)
  * - `github-copilot` = GitHub Copilot (subscription OAuth, GitHub device-code flow)
- * - `openrouter` = OpenRouter, `google` = Google Gemini,
+ * - `openrouter` = OpenRouter, `deepseek` = DeepSeek, `google` = Google Gemini,
  *   `amazon-bedrock` = Amazon Bedrock, `opencode` = OpenCode Zen,
  *   `opencode-go` = OpenCode Go: API-key (a pasted key, no OAuth). See `ProviderAuth.authKind`.
  * - `openai-compatible` = any OpenAI-compatible server the user runs (Ollama, vLLM,
@@ -21,6 +21,7 @@ export type ProviderId =
   | "openai-codex"
   | "github-copilot"
   | "openrouter"
+  | "deepseek"
   | "google"
   | "amazon-bedrock"
   | "opencode"

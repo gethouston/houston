@@ -64,6 +64,8 @@ export const config = {
   /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
   openrouterModel:
     env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",
+  /** Default DeepSeek model (API-key provider). A pi-ai `deepseek` model id. */
+  deepseekModel: env.HOUSTON_DEEPSEEK_MODEL || "deepseek-v4-flash",
   /** Default OpenCode Zen model (pay-as-you-go curated gateway, API key). */
   opencodeModel: env.HOUSTON_OPENCODE_MODEL || "claude-sonnet-4-6",
   /** Default OpenCode Go model ($10/mo open-model gateway, API key). */
