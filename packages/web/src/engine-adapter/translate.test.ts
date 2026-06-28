@@ -145,6 +145,12 @@ describe("configWriteToSettings (model-pick → engine settings bridge)", () => 
       activeProvider: "amazon-bedrock",
       model: "amazon.nova-pro-v1:0",
     });
+    expect(
+      configWriteToSettings(
+        CONFIG,
+        JSON.stringify({ provider: "minimax", model: "MiniMax-M2.7" }),
+      ),
+    ).toEqual({ activeProvider: "minimax", model: "MiniMax-M2.7" });
     // A bare legacy tier name is migrated to a real pi id at the same tier.
     expect(
       configWriteToSettings(

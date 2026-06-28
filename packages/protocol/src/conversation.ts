@@ -10,8 +10,9 @@
  * - `openai-codex` = ChatGPT/Codex (subscription OAuth)
  * - `github-copilot` = GitHub Copilot (subscription OAuth, GitHub device-code flow)
  * - `openrouter` = OpenRouter, `deepseek` = DeepSeek, `google` = Google Gemini,
- *   `amazon-bedrock` = Amazon Bedrock, `opencode` = OpenCode Zen,
- *   `opencode-go` = OpenCode Go: API-key (a pasted key, no OAuth). See `ProviderAuth.authKind`.
+ *   `amazon-bedrock` = Amazon Bedrock, `minimax` = MiniMax global,
+ *   `opencode` = OpenCode Zen, `opencode-go` = OpenCode Go: API-key
+ *   (a pasted key, no OAuth). See `ProviderAuth.authKind`.
  * - `openai-compatible` = any OpenAI-compatible server the user runs (Ollama, vLLM,
  *   LM Studio, LiteLLM…): a user-supplied base URL + model id, optional key. LOCAL
  *   profile only — the URL is the user's own machine, unreachable from the cloud.
@@ -24,6 +25,7 @@ export type ProviderId =
   | "deepseek"
   | "google"
   | "amazon-bedrock"
+  | "minimax"
   | "opencode"
   | "opencode-go"
   | "openai-compatible";

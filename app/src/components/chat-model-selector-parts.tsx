@@ -14,6 +14,7 @@ import {
   GeminiLogo,
   GitHubCopilotLogo,
   LocalModelLogo,
+  MiniMaxLogo,
   OpenAILogo,
   OpenCodeLogo,
   OpenRouterLogo,
@@ -142,6 +143,8 @@ function iconFor(providerId: string) {
       return <GeminiLogo className="size-full" />;
     case "amazon-bedrock":
       return <AmazonBedrockLogo className="size-full" />;
+    case "minimax":
+      return <MiniMaxLogo className="size-full" />;
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo className="size-full" />;

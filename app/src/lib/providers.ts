@@ -566,6 +566,43 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     defaultModel: "anthropic.claude-sonnet-4-6",
   },
   {
+    id: "minimax",
+    name: "MiniMax",
+    subtitle: "Global API",
+    cliName: "minimax",
+    installUrl: "https://platform.minimax.io",
+    loginCommand: "",
+    cost: "Pay-as-you-go on your MiniMax account",
+    auth: "apiKey",
+    apiKeyUrl: "https://platform.minimax.io",
+    // pi-ai `minimax` model ids from the global endpoint (api.minimax.io), NOT
+    // the separate `minimax-cn` provider (api.minimaxi.com).
+    models: [
+      {
+        id: "MiniMax-M3",
+        label: "MiniMax M3",
+        description: "Best default. Long-context multimodal model.",
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 512_000,
+      },
+      {
+        id: "MiniMax-M2.7",
+        label: "MiniMax M2.7",
+        description: "Lower cost. Text-only reasoning model.",
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 204_800,
+      },
+      {
+        id: "MiniMax-M2.7-highspeed",
+        label: "MiniMax M2.7 Highspeed",
+        description: "Faster M2.7 tier for latency-sensitive chats.",
+        effortLevels: ["low", "medium", "high"],
+        contextWindow: 204_800,
+      },
+    ],
+    defaultModel: "MiniMax-M3",
+  },
+  {
     id: "openai-compatible",
     name: "Local model",
     subtitle: "Ollama, LM Studio, vLLM…",
@@ -816,5 +853,4 @@ export interface ComingSoonProviderInfo {
 
 export const COMING_SOON_PROVIDERS: readonly ComingSoonProviderInfo[] = [
   { id: "subq", name: "SubQ", subtitle: "SubQ Code", mark: "SQ" },
-  { id: "minimax", name: "MiniMax", subtitle: "M2", mark: "MM" },
 ] as const;

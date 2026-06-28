@@ -17,6 +17,7 @@ test("every api-key provider the UI offers is accepted by the submit route", () 
     "deepseek",
     "google",
     "amazon-bedrock",
+    "minimax",
   ]) {
     expect(isApiKeyProvider(id)).toBe(true);
   }
@@ -37,15 +38,22 @@ test("github-copilot is a registered OAuth provider, LOCAL-only (not cloud)", ()
   expect(isCloudProvider("github-copilot")).toBe(false);
 });
 
-test("OpenRouter, DeepSeek, Gemini, and Bedrock are registered but LOCAL-only", () => {
+test("OpenRouter, DeepSeek, Gemini, Bedrock, and MiniMax are registered but LOCAL-only", () => {
   expect(hostProvider("openrouter")?.auth).toBe("apiKey");
   expect(hostProvider("deepseek")?.auth).toBe("apiKey");
   expect(hostProvider("google")?.auth).toBe("apiKey");
   expect(hostProvider("amazon-bedrock")?.auth).toBe("apiKey");
+  expect(hostProvider("minimax")?.auth).toBe("apiKey");
   expect(isCloudProvider("openrouter")).toBe(false);
   expect(isCloudProvider("deepseek")).toBe(false);
   expect(isCloudProvider("google")).toBe(false);
   expect(isCloudProvider("amazon-bedrock")).toBe(false);
+  expect(isCloudProvider("minimax")).toBe(false);
+  expect(hostProvider("minimax")?.models).toEqual([
+    "MiniMax-M2.7",
+    "MiniMax-M2.7-highspeed",
+    "MiniMax-M3",
+  ]);
 });
 
 test("openai-compatible is registered, NOT api-key, and LOCAL-only", () => {

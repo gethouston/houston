@@ -185,13 +185,14 @@ export interface RuntimeChannel {
  * single owner. Two kinds:
  *  - `oauth` (Claude / Codex subscriptions): an access token + refresh token the
  *    control plane rotates centrally.
- *  - `api_key` (OpenCode Zen / Go): a pasted, static key. It never expires and
- *    has no refresh token, so `refreshToken` is "" and `expiresAt` is 0 — the
- *    sentinel every serve/refresh path treats as "never refresh".
+ *  - `api_key` (OpenCode Zen / Go, OpenRouter, Gemini, Bedrock, MiniMax): a
+ *    pasted, static key. It never expires and has no refresh token, so
+ *    `refreshToken` is "" and `expiresAt` is 0 — the sentinel every serve/refresh
+ *    path treats as "never refresh".
  */
 export interface WorkspaceCredential {
   workspaceId: WorkspaceId;
-  /** "openai-codex" | "anthropic" | "opencode" | "opencode-go". */
+  /** Provider id, e.g. "openai-codex", "anthropic", "opencode", "minimax". */
   provider: string;
   /** OAuth access token, or — for an api_key credential — the API key itself. */
   accessToken: string;

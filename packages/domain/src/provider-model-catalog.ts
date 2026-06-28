@@ -21,6 +21,7 @@ export type ProviderId =
   | "deepseek"
   | "google"
   | "amazon-bedrock"
+  | "minimax"
   | "openai-compatible";
 
 const PROVIDER_IDS: readonly ProviderId[] = [
@@ -33,6 +34,7 @@ const PROVIDER_IDS: readonly ProviderId[] = [
   "deepseek",
   "google",
   "amazon-bedrock",
+  "minimax",
   "openai-compatible",
 ];
 
@@ -62,6 +64,7 @@ export const DEFAULT_MODEL: Record<ProviderId, string> = {
   deepseek: "deepseek-v4-flash",
   google: "gemini-3-flash-preview",
   "amazon-bedrock": "anthropic.claude-sonnet-4-6",
+  minimax: "MiniMax-M3",
   // No catalog default — the model is whatever the user's local server serves.
   "openai-compatible": "",
 };
@@ -110,6 +113,7 @@ export const VALID_MODELS: Partial<Record<ProviderId, ReadonlySet<string>>> = {
     "gpt-5.4-mini",
     "gpt-5.5",
   ]),
+  minimax: new Set(["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"]),
   deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
 };
 

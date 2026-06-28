@@ -59,6 +59,7 @@ export function toNewProvider(
   | "deepseek"
   | "google"
   | "amazon-bedrock"
+  | "minimax"
   | "opencode"
   | "opencode-go"
   | "openai-compatible"
@@ -71,6 +72,7 @@ export function toNewProvider(
   if (name === "deepseek") return "deepseek";
   if (name === "google") return "google";
   if (name === "amazon-bedrock") return "amazon-bedrock";
+  if (name === "minimax") return "minimax";
   if (name === "opencode") return "opencode";
   if (name === "opencode-go") return "opencode-go";
   // Local OpenAI-compatible server — same id on both sides.
@@ -83,7 +85,7 @@ export function toNewProvider(
  * (openai-codex -> openai); the OpenCode ids are the same on both sides.
  */
 export function toOldProvider(id: string): string {
-  // openrouter/deepseek/google/amazon-bedrock share one id across frontend and engine;
+  // openrouter/deepseek/google/amazon-bedrock/minimax share one id across frontend and engine;
   // only codex differs.
   return id === "openai-codex" ? "openai" : id;
 }

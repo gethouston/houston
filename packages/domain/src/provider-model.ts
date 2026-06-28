@@ -62,8 +62,8 @@ function mapModel(
   key: string,
 ): string {
   const valid = VALID_MODELS[provider];
-  // Open-catalog provider (opencode / opencode-go): pi forwards any id to the
-  // gateway, so keep whatever was stored (or its default when absent).
+  // Open-catalog gateways: pi forwards any id to the gateway, so keep whatever
+  // was stored (or its default when absent).
   if (!valid) return raw || DEFAULT_MODEL[provider];
   if (!raw) return DEFAULT_MODEL[provider];
   if (valid.has(raw)) return raw;

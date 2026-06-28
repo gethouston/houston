@@ -6,7 +6,12 @@ const VALID_PROVIDERS = [
   "openai-codex",
   "opencode",
   "opencode-go",
+  "openrouter",
   "deepseek",
+  "google",
+  "amazon-bedrock",
+  "minimax",
+  "openai-compatible",
 ];
 
 // pi's OAuth-provider catalogs (the ones getModel throws on for an unknown id),
@@ -45,6 +50,7 @@ const PI_MODELS: Record<string, Set<string>> = {
     "gpt-5.4-mini",
     "gpt-5.5",
   ]),
+  minimax: new Set(["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"]),
   deepseek: new Set(["deepseek-v4-flash", "deepseek-v4-pro"]),
 };
 
@@ -151,6 +157,19 @@ test("api-key gateway models pass through (open catalog, no throw on getModel)",
     model: "deepseek-v4-pro",
   });
   expect(r.diagnostics).toEqual([]);
+});
+
+test("MiniMax global provider uses the pi-ai catalog, not minimax-cn", () => {
+  const r = migrateProviderModel("minimax", "MiniMax-M2.7");
+  expect(r).toMatchObject({ provider: "minimax", model: "MiniMax-M2.7" });
+  expect(r.diagnostics).toEqual([]);
+  assertValid(r, "minimax/MiniMax-M2.7");
+
+  const fallback = migrateProviderModel("minimax", "MiniMax-M1");
+  expect(fallback.provider).toBe("minimax");
+  expect(fallback.model).toBe("MiniMax-M3");
+  expect(fallback.diagnostics[0]?.message).toContain("MiniMax-M1");
+  assertValid(fallback, "minimax fallback");
 });
 
 test("deepseek provider models migrate against its finite pi catalog", () => {

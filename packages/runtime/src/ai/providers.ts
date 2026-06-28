@@ -22,7 +22,7 @@ import {
  * model provider, so a stored credential under `id` authenticates
  * `getModel(id, ...)` directly — whether that credential is an OAuth token
  * (Claude / Codex subscriptions) or a pasted API key (OpenCode Zen / Go,
- * OpenRouter, DeepSeek, Gemini, Amazon Bedrock). The OpenAI-compatible
+ * OpenRouter, DeepSeek, Gemini, Amazon Bedrock, MiniMax global). The OpenAI-compatible
  * (local) provider is the exception — its model is hand-built (see
  * `./openai-compatible`), not fetched from a pi catalog.
  */
@@ -36,12 +36,13 @@ export type ProviderId =
   | "deepseek"
   | "google"
   | "amazon-bedrock"
+  | "minimax"
   | "openai-compatible";
 
 /**
  * How a provider authenticates:
  * - `oauth` — subscription sign-in (Claude / Codex / Copilot).
- * - `apiKey` — a pasted key for a built-in pi provider (OpenCode / OpenRouter / DeepSeek / Gemini / Bedrock).
+ * - `apiKey` — a pasted key for a built-in pi provider (OpenCode / OpenRouter / DeepSeek / Gemini / Bedrock / MiniMax).
  * - `openaiCompatible` — a user-supplied base URL + model id (+ optional key) for a
  *   local OpenAI-compatible server (Ollama / vLLM / LM Studio). LOCAL profile only:
  *   the URL is the user's own machine, unreachable from a cloud runtime.
@@ -106,6 +107,12 @@ export const PROVIDERS: {
     id: "amazon-bedrock",
     name: "Amazon Bedrock",
     defaultModel: config.bedrockModel,
+    auth: "apiKey",
+  },
+  {
+    id: "minimax",
+    name: "MiniMax",
+    defaultModel: config.minimaxModel,
     auth: "apiKey",
   },
   {

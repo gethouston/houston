@@ -8,6 +8,7 @@ import {
   GeminiLogo,
   GitHubCopilotLogo,
   LocalModelLogo,
+  MiniMaxLogo,
   OpenAILogo,
   OpenCodeLogo,
   OpenRouterLogo,
@@ -29,6 +30,8 @@ function ProviderLogo({ provider }: { provider: ProviderInfo }) {
       return <GeminiLogo />;
     case "amazon-bedrock":
       return <AmazonBedrockLogo />;
+    case "minimax":
+      return <MiniMaxLogo />;
     case "opencode":
     case "opencode-go":
       return <OpenCodeLogo />;

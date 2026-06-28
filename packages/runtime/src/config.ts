@@ -61,6 +61,8 @@ export const config = {
   geminiModel: env.HOUSTON_GEMINI_MODEL || "gemini-3-flash-preview",
   /** Default Amazon Bedrock model (API-key provider). A pi-ai `amazon-bedrock` model id. */
   bedrockModel: env.HOUSTON_BEDROCK_MODEL || "anthropic.claude-sonnet-4-6",
+  /** Default MiniMax global model (API-key provider). A pi-ai `minimax` model id. */
+  minimaxModel: env.HOUSTON_MINIMAX_MODEL || "MiniMax-M3",
   /** Default OpenRouter model (API-key provider). A pi-ai `openrouter` model id. */
   openrouterModel:
     env.HOUSTON_OPENROUTER_MODEL || "anthropic/claude-sonnet-4.6",

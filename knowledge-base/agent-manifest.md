@@ -228,8 +228,9 @@ Notes:
   in `CLAUDE.md`.
 - _[NEW ENGINE only]_ The TS engine (pi runtime) adds **OpenCode Zen**
   (`opencode`), **OpenCode Go** (`opencode-go`), **OpenRouter** (`openrouter`),
-  **Google Gemini** (`google`), and **Amazon Bedrock** (`amazon-bedrock`) as
-  **API-key** providers. pi ships them as built-ins, so there is no Rust adapter
+  **Google Gemini** (`google`), **Amazon Bedrock** (`amazon-bedrock`), and
+  **MiniMax global** (`minimax`, not `minimax-cn`) as **API-key** providers. pi
+  ships them as built-ins, so there is no Rust adapter
   file and no CLI. The user pastes a key (dialog has a "Get your API key" button);
   it's stored as a connect-once `kind:"api_key"` workspace credential. Bedrock is
   special only at the runtime edge: the stored key is mirrored from pi-coding-agent's

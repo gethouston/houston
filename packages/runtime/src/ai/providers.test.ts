@@ -19,10 +19,11 @@ import {
 } from "./providers";
 
 /**
- * OpenCode Zen / Go, DeepSeek, and Amazon Bedrock are pi-native providers
- * authenticated by pasted keys (no OAuth). The registry must mark them as such so the auth
- * routes route a paste-a-key submission instead of an OAuth login, and so the
- * cloud per-turn fallback resolves the right default model per provider.
+ * OpenCode Zen / Go, DeepSeek, Amazon Bedrock, and MiniMax are pi-native
+ * providers authenticated by pasted keys (no OAuth). The registry must mark them
+ * as such so the auth routes route a paste-a-key submission instead of an OAuth
+ * login, and so the cloud per-turn fallback resolves the right default model per
+ * provider.
  */
 
 test("api-key providers are registered as api-key providers", () => {
@@ -31,11 +32,13 @@ test("api-key providers are registered as api-key providers", () => {
   expect(ids).toContain("opencode-go");
   expect(ids).toContain("deepseek");
   expect(ids).toContain("amazon-bedrock");
+  expect(ids).toContain("minimax");
 
   expect(providerAuthMethod("opencode")).toBe("apiKey");
   expect(providerAuthMethod("opencode-go")).toBe("apiKey");
   expect(providerAuthMethod("deepseek")).toBe("apiKey");
   expect(providerAuthMethod("amazon-bedrock")).toBe("apiKey");
+  expect(providerAuthMethod("minimax")).toBe("apiKey");
   expect(providerAuthMethod("anthropic")).toBe("oauth");
   expect(providerAuthMethod("openai-codex")).toBe("oauth");
   // Unknown providers default to OAuth.
@@ -49,8 +52,23 @@ test("providerDefaultModel returns each provider's catalog default", () => {
   expect(providerDefaultModel("amazon-bedrock")).toBe(
     "anthropic.claude-sonnet-4-6",
   );
+  expect(providerDefaultModel("minimax")).toBe("MiniMax-M3");
   // Unknown falls back to the Codex default (never throws / undefined).
   expect(providerDefaultModel("nope")).toBe("gpt-5.5");
+});
+
+test("MiniMax uses pi-ai's global minimax provider and model catalog", () => {
+  const ids = PROVIDERS.map((p) => p.id);
+  expect(ids).toContain("minimax");
+  expect(ids).not.toContain("minimax-cn");
+
+  expect(
+    (safeGetModel("minimax", "MiniMax-M3", false) as { provider?: string })
+      .provider,
+  ).toBe("minimax");
+  expect(
+    (safeGetModel("minimax", "MiniMax-M3", false) as { id?: string }).id,
+  ).toBe("MiniMax-M3");
 });
 
 test("bedrockOptionsWithBearerToken maps Houston's stored key to Bedrock bearer auth", () => {

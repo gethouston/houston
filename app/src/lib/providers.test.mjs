@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import {
+  COMING_SOON_PROVIDERS,
   EFFORT_ORDER,
   getConnectProviders,
   getEffortLevels,
@@ -221,6 +222,30 @@ test("OpenCode effort levels match models.dev reasoning_options", () => {
   }
 });
 
+test("MiniMax is an active api-key provider backed by pi-ai's global provider", () => {
+  const p = getProvider("minimax");
+  assert.ok(p, "minimax is in the active catalog");
+  assert.equal(p.name, "MiniMax");
+  assert.equal(p.auth, "apiKey");
+  assert.equal(p.defaultModel, "MiniMax-M3");
+  assert.equal(p.apiKeyUrl, "https://platform.minimax.io");
+  assert.deepEqual(
+    p.models.map((m) => m.id),
+    ["MiniMax-M3", "MiniMax-M2.7", "MiniMax-M2.7-highspeed"],
+  );
+  for (const m of p.models) {
+    assert.ok(
+      typeof m.contextWindow === "number" && m.contextWindow > 0,
+      `${m.id} has a contextWindow`,
+    );
+    assert.deepEqual(m.effortLevels, ["low", "medium", "high"]);
+  }
+  assert.ok(
+    !COMING_SOON_PROVIDERS.some((provider) => provider.id === "minimax"),
+    "MiniMax is no longer coming soon",
+  );
+});
+
 test("EFFORT_ORDER is the full ascending spectrum and a superset of every model's levels", () => {
   // The composer renders the gauge against EFFORT_ORDER (not the model's own
   // levels) so every model shows the SAME number of bars. That only reads right
@@ -265,6 +290,7 @@ test("getVisibleProviders gates api-key (new engine) and local (desktop) provide
   assert.equal(onNewEngineDesktop.length, PROVIDERS.length);
   assert.ok(onNewEngineDesktop.some((p) => p.id === "opencode"));
   assert.ok(onNewEngineDesktop.some((p) => p.id === "opencode-go"));
+  assert.ok(onNewEngineDesktop.some((p) => p.id === "minimax"));
   assert.ok(onNewEngineDesktop.some((p) => p.id === "openai-compatible"));
 
   // New engine in the browser (no desktop): the api-key gateways show, but the
@@ -314,6 +340,7 @@ test("getConnectProviders merges the two OpenCode gateways into one account card
     "github-copilot",
     "openrouter",
     "google",
+    "minimax",
     "openai-compatible",
   ]) {
     assert.ok(

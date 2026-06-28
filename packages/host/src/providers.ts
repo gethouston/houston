@@ -128,6 +128,16 @@ export const PROVIDERS: readonly HostProvider[] = [
     defaultModel: "anthropic.claude-sonnet-4-6",
   },
   {
+    id: "minimax",
+    name: "MiniMax",
+    auth: "apiKey",
+    // LOCAL/desktop only for now: the cloud per-turn sandbox egress is not
+    // allowlisted for api.minimax.io.
+    cloud: false,
+    models: ["MiniMax-M2.7", "MiniMax-M2.7-highspeed", "MiniMax-M3"],
+    defaultModel: "MiniMax-M3",
+  },
+  {
     id: "openai-compatible",
     name: "Local model (OpenAI-compatible)",
     auth: "openaiCompatible",
