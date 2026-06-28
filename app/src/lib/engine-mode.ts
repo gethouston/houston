@@ -1,10 +1,10 @@
 /**
- * Whether this build talks to the v3 Houston host (control-plane mode) instead
+ * Whether this build talks to the v3 Houston host (host mode) instead
  * of the Tauri-spawned Rust engine.
  *
  * This MUST mirror `useHost` in `app/vite.config.ts`, which aliases
- * `@houston-ai/engine-client` to the control-plane adapter exactly when one of
- * these flags is set. The adapter decides its protocol (v3 control-plane vs the
+ * `@houston-ai/engine-client` to the host adapter exactly when one of
+ * these flags is set. The adapter decides its protocol (v3 host vs the
  * Rust wire) from `window.__HOUSTON_CP__` at HoustonClient *construction* time,
  * so the flag has to be a deterministic build constant set before any client is
  * built — NOT a value injected by the Tauri host handshake, which can lose the

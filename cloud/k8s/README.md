@@ -6,24 +6,23 @@ model in [`cloud/README.md`](../README.md): **one agent = one sandbox = one
 volume + default-deny networking**.
 
 These files are **not** directly `kubectl apply`-able. They carry `{{...}}`
-placeholders that the **control plane's `SandboxManager`** (the `GkeSandboxManager`
-impl of the `SandboxManager` port) substitutes per workspace/agent at spawn time,
-then applies via the GKE API.
+placeholders that the host cloud profile's `GkeLauncher` substitutes per
+workspace/agent at spawn time, then applies via the GKE API.
 
 ## How they map to the plan
 
 | File | Plan section | Role |
 |---|---|---|
 | `namespace.yaml` | §6 (tenancy), §8 (Workload Identity) | Per-workspace namespace `<namespacePrefix><workspace-slug>`. The unit network policy + quotas scope to. Enforces the `restricted` Pod Security profile. |
-| `agent-deployment.yaml` | §1, §3 (one runtime = one sandbox), §5 (keyless), §8 (gVisor) | Per-agent `Deployment` (1 replica) + `Service`. Runs the pi runtime under `runtimeClassName: gvisor`, mounts the agent's PVC at `/data`, wires the keyless proxy env, non-root hardened, `/health` probes. |
+| `agent-deployment.yaml` | §1, §3 (one runtime = one sandbox), §5 (credentials), §8 (gVisor) | Per-agent `Deployment` (1 replica) + `Service`. Runs the pi runtime under `runtimeClassName: gvisor`, mounts the agent's PVC at `/data`, wires host credential-serve env, non-root hardened, `/health` probes. |
 | `pvc.yaml` | §2.1, §6 (one agent = one volume), §7 (sleep keeps the disk) | Per-agent `ReadWriteOnce` PVC. SalesAgent's disk; HR's files do not exist in it. |
 | `networkpolicy.yaml` | §2.3, §8 (default-deny + metadata block) | The third wall: default-deny ingress+egress, allow only DNS, outbound 443 to the public internet (minus internal + metadata), and the control plane. |
 | `serviceaccount.yaml` | §3 (stable identity), §8 (Workload Identity) | Per-agent KSA bound to a least-privilege GCP SA. |
 | `kustomization.yaml` | — | Bundles the set for linting + documents apply order. |
 
-## How the `SandboxManager` templates them
+## How the `GkeLauncher` templates them
 
-The `SandboxManager` port (`packages/host/src/ports.ts`) drives the lifecycle.
+The `RuntimeLauncher` port (`packages/host/src/ports.ts`) drives the lifecycle.
 Each method maps to operations on these manifests:
 
 - **`ensureAwake(agent)`** — ensure the workspace namespace + agent objects exist
@@ -44,7 +43,7 @@ Each method maps to operations on these manifests:
 - **`status(agentId)`** — `running` if the Deployment has a ready replica,
   `asleep` if it exists at 0 replicas, `absent` if no Deployment.
 
-### Placeholders the `SandboxManager` fills
+### Placeholders the `GkeLauncher` fills
 
 Workspace-scoped:
 
@@ -52,7 +51,7 @@ Workspace-scoped:
 |---|---|
 | `{{WORKSPACE_NS}}` | `config.namespacePrefix + workspace.slug` |
 | `{{WORKSPACE_ID}}` / `{{WORKSPACE_SLUG}}` | the `Workspace` record |
-| `{{CP_NS}}` | the namespace the control plane runs in (deploy-time constant) |
+| `{{CP_NS}}` | the namespace the host cloud profile runs in (deploy-time constant) |
 | `{{POD_CIDR}}` / `{{SERVICE_CIDR}}` | the cluster's Pod/Service CIDRs (cluster facts) |
 
 Agent-scoped:
@@ -62,7 +61,7 @@ Agent-scoped:
 | `{{AGENT_ID}}` / `{{AGENT_NAME}}` | the `Agent` record |
 | `{{IMAGE}}` | `config.agentImage` |
 | `{{RUNTIME_CLASS}}` | `config.runtimeClass` (`gvisor` v1) |
-| `{{PROXY_BASE_URL}}` | the control plane keyless-proxy base URL (deploy-time constant) |
+| `{{CONTROL_PLANE_URL}}` | the in-cluster host URL for `/sandbox/credential` (deploy-time constant) |
 | `{{GCP_SA}}` | the per-agent GCP service account email |
 | `{{VOLUME_SIZE}}` / `{{STORAGE_CLASS}}` | sizing policy + GKE storage class |
 | `{{CPU_REQUEST}}` `{{CPU_LIMIT}}` `{{MEM_REQUEST}}` `{{MEM_LIMIT}}` | sizing policy |
@@ -76,32 +75,29 @@ scaling the Deployment up:
 
 | Secret name | Key | Value | Source |
 |---|---|---|---|
-| `agent-<id>-sandbox-token` | `token` | the **non-secret** control-plane-issued sandbox token | `CredentialVault.sandboxToken(workspaceId, agentId)` |
+| `agent-<id>-sandbox-token` | `token` | the **non-secret** host-issued sandbox token | `CredentialVault.sandboxToken(workspaceId, agentId)` |
 | `agent-<id>-engine-token` | `token` | the bearer the runtime requires inbound; becomes `SandboxEndpoint.token` | minted by the control plane per agent |
 
-The sandbox token is what the agent's pi-ai sends to the keyless proxy (§5); the
-proxy validates it (`CredentialVault.validateSandboxToken`) and swaps in the real
-provider key on the way upstream. **No real provider key ever enters the
-sandbox** — confirmed by the spike at `packages/runtime/spike/keyless-proxy.ts`.
+The sandbox token is what the runtime presents to `/sandbox/credential` (§5); the
+host validates it (`CredentialVault.validateSandboxToken`) and serves the current
+provider credential material. Refresh tokens stay host-side.
 
-## Keyless-proxy env wiring (the §5 seam)
+## Credential-serve env wiring (the §5 seam)
 
 `agent-deployment.yaml` sets, on the runtime container:
 
-- `HOUSTON_CLOUD=1` — flips the runtime into cloud/keyless mode.
-- `HOUSTON_PROXY_BASE_URL={{PROXY_BASE_URL}}` — what pi-ai's `model.baseUrl`
-  points at instead of the provider.
+- `HOUSTON_CONTROL_PLANE_URL={{CONTROL_PLANE_URL}}` — host URL used for
+  `/sandbox/credential`.
 - `HOUSTON_SANDBOX_TOKEN` — from the `agent-<id>-sandbox-token` Secret; the
-  credential the sandbox carries to the proxy.
+  credential the sandbox carries to the host.
 
 It also sets the runtime-server vars (`HOUSTON_HOST=0.0.0.0`, `HOUSTON_PORT=4317`,
 `HOUSTON_RUNTIME_TOKEN` from Secret, `HOUSTON_WORKSPACE_DIR=/data`,
 `HOUSTON_DATA_DIR=/data/.houston`).
 
-> The cloud-mode env names (`HOUSTON_CLOUD`, `HOUSTON_PROXY_BASE_URL`,
+> The cloud-mode env names (`HOUSTON_CONTROL_PLANE_URL`,
 > `HOUSTON_SANDBOX_TOKEN`) are the contract this manifest expects the runtime to
-> read. The runtime cloud-mode work (control plane task #7) must consume exactly
-> these. The runtime-server vars
+> read. The runtime-server vars
 > (`HOUSTON_HOST/PORT/RUNTIME_TOKEN/WORKSPACE_DIR/DATA_DIR`) already exist in
 > `packages/runtime/src/config.ts`.
 

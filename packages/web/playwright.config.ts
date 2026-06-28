@@ -3,7 +3,7 @@ import { FAKE_HOST_PORT, WEB_PORT, WEB_URL } from "./e2e/fake-host/ports";
 
 /**
  * Playwright drives the FULL desktop UI (app/src) as it runs in the browser
- * (packages/web), on the new TS engine adapter in control-plane mode, against an
+ * (packages/web), on the host adapter in host mode, against an
  * in-memory fake host (e2e/fake-host) — no real backend, no AI provider.
  *
  * Two web servers boot for a run: the fake host (Node) and vite with

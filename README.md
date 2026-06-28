@@ -58,7 +58,7 @@ pnpm install
 cp .env.example .env.local
 ```
 
-**3. Run.** One terminal for the engine, one for a frontend:
+**3. Run.** One terminal for the host, one for a frontend:
 
 ```bash
 # Terminal 1 — the TypeScript engine (host on :4318; it auto-spawns the agent runtime)
@@ -76,7 +76,7 @@ cd packages/web && pnpm dev:host            # http://localhost:1430
 
 On first launch, sign in with Claude (the **Reconnect your AI** card). Your workspaces live in `~/.houston/workspaces`.
 
-> The shared `.env.local` holds the host token plus each frontend's engine URL and token, so the commands above need no flags. See [`convergence/README.md`](convergence/README.md) for the full local dev loop (hot reload, watch mode, the `dev:cloud` profile).
+> The shared `.env.local` holds the host token plus each frontend's host URL and token, so the commands above need no flags. See [`convergence/README.md`](convergence/README.md) for the full local dev loop (hot reload, watch mode, the `dev:cloud` profile).
 
 ### Build your first agent
 
@@ -184,7 +184,7 @@ docker compose up -d --build
 docker compose logs -f
 ```
 
-Full guide, including desktop and web clients for local or remote Docker engines:
+Full guide, including desktop and web clients for local or remote Docker hosts:
 [`selfhost/README.md`](selfhost/README.md). The lower-level runtime image lives
 at `packages/runtime/Dockerfile`; it is not the full app.
 
@@ -192,7 +192,8 @@ at `packages/runtime/Dockerfile`; it is not the full app.
 
 ## Monorepo layout
 
-Organized as **5 end-user products + the code libraries**.
+Organized around the desktop app, the browser app, the converged TypeScript
+engine, and the supporting product surfaces.
 
 ```
 houston/
@@ -200,9 +201,9 @@ houston/
 │   ├── src/                 React frontend (also runs as packages/web)
 │   ├── src-tauri/           Tauri binary (spawns the engine sidecar)
 │   └── houston-tauri/       Tauri adapter (applies the legacy Rust engine to desktop)
-├── store/                   Houston Store — agent registry (UI cut in the convergence)
 ├── website/                 Houston Website — gethouston.ai
 ├── teams/                   Houston Teams (TBD — hosted multi-tenant)
+├── store/                   Legacy bundled agent catalog data; store UI cut in convergence
 │
 ├── packages/               THE CONVERGENCE — the single TypeScript engine (see convergence/README.md)
 │   ├── runtime/             pi runtime — the only agent loop
@@ -223,17 +224,21 @@ houston/
 
 > Removed in the convergence: `mobile/` + `houston-relay/` (mobile PWA + tunnel),
 > `examples/smartbooks/` (custom-frontend reference), `always-on/` (the legacy
-> Rust-engine VPS image — the TS-engine self-host is `selfhost/`).
+> Rust-engine VPS image — the TS-engine self-host is `selfhost/`), marketplace
+> UI, worktrees UI, Claude-CLI install, and bundled provider CLIs.
+
+> `packages/control-plane` was renamed to `packages/host`. The host still owns
+> the cloud-control-plane role, but the package and path are now host-first.
 
 See `knowledge-base/architecture.md` for crate-level detail + current gaps.
 
 ---
 
-## Build on Houston Engine (custom frontends)
+## Build on Houston Host (custom frontends)
 
-The engine is frontend-agnostic. You don't have to ship inside the
-Houston App — any web or native runtime can drive it over HTTP +
-WebSocket using [`@houston-ai/engine-client`](ui/engine-client/).
+The host is frontend-agnostic. You don't have to ship inside the Houston App,
+any web or native runtime can drive it over protocol v3 HTTP + SSE using
+[`@houston-ai/engine-client`](ui/engine-client/).
 
 > The standalone `examples/smartbooks/` custom-frontend reference was
 > REMOVED in the convergence sweep. The frontend-agnostic contract still

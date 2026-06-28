@@ -1,9 +1,9 @@
 /**
  * Web entry point. The engine target is chosen at build time:
  *
- *  - **New TS engine** (`VITE_NEW_ENGINE` truthy, or a URL baked via
+ *  - **New TS engine host** (`VITE_NEW_ENGINE` truthy, or a URL baked via
  *    `VITE_NEW_ENGINE_URL`): boots the FULL desktop UI (app/src) against the new
- *    houston-engine. vite.config aliases `@houston-ai/engine-client` to the
+ *    Houston host. vite.config aliases `@houston-ai/engine-client` to the
  *    new-engine adapter, so app/src runs unchanged. The engine URL + token are
  *    entered at runtime via the new-engine Connect screen (`<NewEngineRoot>`),
  *    or pre-seeded from `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN`.
@@ -39,8 +39,8 @@ if (controlPlaneUrl && window.location.pathname.startsWith("/admin")) {
     ),
   );
 } else if (controlPlaneUrl) {
-  // Cloud mode: the app's own Supabase auth gates sign-in, then the desktop UI
-  // boots in control-plane mode. app/src/lib/engine.ts reads these globals at
+  // Cloud host mode: the app's own Supabase auth gates sign-in, then the desktop UI
+  // boots in host mode. app/src/lib/engine.ts reads these globals at
   // module-eval (which fires as soon as cloud-login statically imports the app
   // tree), so they MUST be set before that import — otherwise EngineGate hangs
   // on "Starting Houston engine". CloudApp keeps the token in sync with the

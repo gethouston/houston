@@ -29,7 +29,7 @@ export const DUMMY_VALUES: Record<string, string> = {
   AGENT_NAME: "Sales Agent",
   IMAGE: "us-docker.pkg.dev/houston/houston/agent-engine:abc123",
   RUNTIME_CLASS: "gvisor",
-  PROXY_BASE_URL: "https://cp.houston.ai/proxy",
+  CONTROL_PLANE_URL: "https://cp.houston.ai",
   GCP_SA: "agent-456@houston.iam.gserviceaccount.com",
   VOLUME_SIZE: "10Gi",
   STORAGE_CLASS: "standard-rwo",

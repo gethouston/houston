@@ -13,17 +13,17 @@
 #   {{IMAGE}}           the pi-engine image ref (config.agentImage), e.g.
 #                       "us-docker.pkg.dev/<proj>/houston/agent-engine:<tag>"
 #   {{RUNTIME_CLASS}}   config.runtimeClass — "gvisor" v1 (Plan §8), "kata" v2
-#   {{PROXY_BASE_URL}}  the control plane keyless-proxy base URL the sandbox's pi-ai points
-#                       baseUrl at (§5), e.g. "https://cp.houston.ai/proxy"
+#   {{CONTROL_PLANE_URL}}  the in-cluster host URL used for /sandbox/credential
+#                          (§5), e.g. "https://cp.houston.ai"
 #   {{CPU_REQUEST}} {{CPU_LIMIT}} {{MEM_REQUEST}} {{MEM_LIMIT}}  resource sizing
 #
-# Two Secrets must already exist in {{WORKSPACE_NS}} (created by the SandboxManager, NOT
+# Two Secrets must already exist in {{WORKSPACE_NS}} (created by the GkeLauncher, NOT
 # templated here because they carry sensitive values):
-#   agent-{{AGENT_ID}}-sandbox-token  key "token"  -> the control plane-issued, NON-secret
-#       sandbox token (CredentialVault.sandboxToken). pi-ai sends it to the proxy;
-#       the proxy swaps in the real key. It never holds a real provider key.
+#   agent-{{AGENT_ID}}-sandbox-token  key "token"  -> the host-issued, NON-secret
+#       sandbox token (CredentialVault.sandboxToken). The runtime presents it to
+#       /sandbox/credential; refresh tokens stay host-side.
 #   agent-{{AGENT_ID}}-engine-token   key "token"  -> the bearer the engine itself
-#       requires on inbound requests (HOUSTON_RUNTIME_TOKEN); the control plane presents it
+#       requires on inbound requests (HOUSTON_RUNTIME_TOKEN); the host presents it
 #       when routing. This is what SandboxEndpoint.token carries.
 apiVersion: apps/v1
 kind: Deployment
@@ -83,18 +83,13 @@ spec:
               # The pi engine's HTTP/SSE port (engine config.ts default 4317).
               containerPort: 4317
           env:
-            # --- Cloud mode + keyless proxy wiring (Plan §5) ------------------
-            # Flips the engine into cloud/keyless mode (consumed by the engine's
-            # cloud-mode work; see lead note). Without it the engine would expect
-            # local OAuth (auth.json), which cannot ship to cloud.
-            - name: HOUSTON_CLOUD
-              value: "1"
-            # pi-ai's model.baseUrl points here. The sandbox sends only the
-            # sandbox token; the control plane proxy injects the real workspace key upstream.
-            - name: HOUSTON_PROXY_BASE_URL
-              value: "{{PROXY_BASE_URL}}"
-            # The NON-secret, control plane-issued sandbox token (CredentialVault). Sourced
-            # from a Secret, never a real provider key. Validated by the proxy.
+            # --- Connect-once credential serving (Plan §5) --------------------
+            # Runtime calls this host URL for /sandbox/credential when it needs
+            # the workspace's current provider credential.
+            - name: HOUSTON_CONTROL_PLANE_URL
+              value: "{{CONTROL_PLANE_URL}}"
+            # The NON-secret, host-issued sandbox token (CredentialVault). Sourced
+            # from a Secret, never a refresh token. Validated by /sandbox/credential.
             - name: HOUSTON_SANDBOX_TOKEN
               valueFrom:
                 secretKeyRef:

@@ -6,7 +6,7 @@
  * (Playwright `addInitScript` runs before page scripts on every navigation).
  * That makes the app:
  *   - skip the engine Connect screen (engine config is already stored),
- *   - run the adapter in control-plane mode (`__HOUSTON_CP__`), matching the
+ *   - run the adapter in host mode (`__HOUSTON_CP__`), matching the
  *     real cloud/desktop-host deployment,
  *   - skip the first-run language picker (locale pref set to `en` → stable,
  *     English text in assertions), and

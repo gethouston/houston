@@ -26,9 +26,9 @@ Houston = open platform. Organized as **7 products + 3 code libraries**.
 | Product | Dir | What |
 |---------|-----|------|
 | Houston App | `app/` | Desktop app (Tauri 2). Non-technical users create agents, run parallel terminal sessions. |
-| Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims. Two modes: connect to any remote `houston-engine` (URL+token), or **cloud mode** (`VITE_CONTROL_PLANE_URL`) — Supabase sign-in via the app's NATIVE auth (same `SignInScreen`/sidebar `UserMenu` as desktop), agents served by the control plane. No fork, no `app/` changes. See `packages/web/README.md`. |
+| Houston Web | `packages/web/` | The **full** desktop UI running in a plain browser tab. Composes `app/src` verbatim; `@tauri-apps/*` aliased to browser shims. Current path is **host mode** (`VITE_CONTROL_PLANE_URL`, legacy env name) against `packages/host`; external new-engine mode uses `VITE_NEW_ENGINE` / `VITE_NEW_ENGINE_URL`. The old Rust-engine connect screen remains only until final cutover. See `packages/web/README.md`. |
 | Houston Mobile | ~~`mobile/`~~ **REMOVED** | Was a React PWA served from `tunnel.gethouston.ai` over the relay. The mobile/tunnel feature was cut in the convergence; `mobile/` + `houston-relay/` are deleted. |
-| Houston Store | `store/` | Release-bundled registry of pre-built Houston agents. One-click install. |
+| Houston Store | ~~`store/`~~ **REMOVED UI** | The store/marketplace product surface was cut in convergence. `store/` remains as legacy bundled catalog data only. |
 | Houston Website | `website/` | gethouston.ai landing. |
 | Houston Always On | ~~`always-on/`~~ **REMOVED** | Was a one-click VPS/microVM deploy of the Rust engine. Superseded by `selfhost/` (the TS host in Docker behind Caddy); `always-on/` is deleted. |
 | Houston Teams | `teams/` | Hosted multi-tenant agent pool w/ perms. **TBD.** |
@@ -183,9 +183,9 @@ the typed `.houston/<type>/<type>.json` layout.
 | Engine reusable by non-Tauri frontends | ✅ binary ships as Tauri sidecar + standalone; desktop app consumes it over HTTP/WS, no in-process coupling |
 | Reference custom-frontend integration | ➖ `examples/smartbooks/` was shipped, then REMOVED in the convergence sweep |
 | Always On | ➖ `always-on/` was shipped, then REMOVED; the TS-host self-host path is `selfhost/` |
-| Teams / Cloud | 🟢 Cloud is LIVE (beta): per-turn Cloud Run hosting + locked-down code sandbox + GCS workspaces + connect-once subscriptions, behind the control plane on GKE (`cloud/code-execution.md`). Teams (org workspaces, per-seat) modeled but not built. |
+| Teams / Cloud | 🟢 Cloud is LIVE (beta): per-turn Cloud Run hosting + locked-down code sandbox + GCS workspaces + connect-once subscriptions, behind the host cloud profile (`packages/host` + closed `packages/host-cloud`). Teams (org workspaces, per-seat) modeled but not built. |
 | Store populated | 🟡 release-bundled MVP: `store/catalog.json` + `store/agents/*`; community sharing TBD |
-| Binary file read route (xlsx, pdf download through HTTP) | ✅ `GET /v1/agents/files/download` (engine) + `GET /agents/:id/files/download` (cloud control plane); web Files tab gets Preview + Download, desktop keeps OS open/reveal |
+| Binary file read route (xlsx, pdf download through HTTP) | ✅ Host file routes serve preview/download for web; desktop keeps OS open/reveal affordances. |
 | Windows support (Rust engine layer) | ✅ `cargo check --target x86_64-pc-windows-gnu` clean across the workspace; platform-specific branches (taskkill vs kill, PATH separator, symlink_dir) covered. See `knowledge-base/platform-matrix.md`. |
 
 ## Direction of work

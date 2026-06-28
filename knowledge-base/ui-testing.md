@@ -1,8 +1,8 @@
 # UI Testing (Playwright)
 
 Automated UI tests. Drive **full desktop UI** (`app/src`) in browser
-(`packages/web`), on **new TS engine** adapter, **control-plane mode**, vs
-**in-memory fake host**. No real backend, no AI, no creds. Deterministic.
+(`packages/web`), on the **host** adapter in **host mode**, vs **in-memory fake
+host**. No real backend, no AI, no creds. Deterministic.
 
 Lives in `packages/web/e2e/`. Full guide: `packages/web/e2e/README.md`.
 
@@ -25,7 +25,7 @@ Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapte
 
 ## Architecture
 
-- **Fake host** (`e2e/fake-host/`) — Node HTTP server. Models control plane
+- **Fake host** (`e2e/fake-host/`) — Node HTTP server. Models the host
   (`/agents/*`, `/v1/events`) + per-agent runtime proxy (`/agents/:id/
   conversations/:cid/*`, auth, providers). In-memory, seeded, resettable.
 - **Boot seed** (`e2e/support/seed.ts`) — `addInitScript` primes `localStorage`
@@ -43,7 +43,7 @@ Playwright auto-starts two servers: vite `:1430` (`VITE_NEW_ENGINE=1` → adapte
   `engine-adapter/translate.ts`.
 - **Board = files-first.** Reads/writes `.houston/activity/activity.json` via
   `/agents/:id/agentfile/*` (NOT just `/activities`). Fake host backs it with a
-  real store, unified with `/activities` (same data, as in real control plane),
+  real store, unified with `/activities` (same data, as in the real host),
   so a turn's status flip shows on the board.
 
 ## CI

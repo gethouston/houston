@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Houston as a standalone web app. Composes the desktop UI (app/src) and runs it in a plain browser against a remote houston-engine, with @tauri-apps/* aliased to web shims.",
+  "description": "Houston as a standalone web app. Composes the desktop UI (app/src) and runs it in a plain browser against the Houston host, with @tauri-apps/* aliased to web shims.",
   "scripts": {
     "dev": "vite",
     "dev:host": "vite --mode host",

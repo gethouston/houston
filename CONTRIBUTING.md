@@ -18,8 +18,8 @@ If you're unsure whether something fits, open an issue and ask. Cheaper than a c
 ## Getting Started
 
 ```bash
-git clone https://github.com/gethouston/houston.git
-cd houston
+git clone https://github.com/gethouston/houston-web.git
+cd houston-web
 pnpm install
 cargo check --workspace
 ```
@@ -30,8 +30,8 @@ cargo check --workspace
 # Run the Houston app
 cd app && pnpm tauri dev
 
-# Run the showcase
-cd showcase && pnpm dev
+# Run the TypeScript host local profile
+cd packages/host && pnpm dev
 
 # TypeScript check
 pnpm typecheck
@@ -48,8 +48,8 @@ cargo test --workspace
 - `ui/` — React packages (@houston-ai/*)
 - `engine/` — Rust crates (houston-*) — frontend-agnostic backend
 - `app/` — Houston App (Tauri desktop)
-- `packages/` — TypeScript engine convergence (runtime, host, domain, protocol)
-- `cloud/` — Houston Cloud (hosted control plane)
+- `packages/` — TypeScript engine convergence (runtime, host, host-cloud, domain, protocol)
+- `cloud/` — Houston Cloud docs and operations
 
 ## Pull Requests
 

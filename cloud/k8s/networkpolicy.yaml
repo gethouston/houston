@@ -90,9 +90,9 @@ spec:
         - protocol: TCP
           port: 443
 
-    # ALLOW EGRESS (3/3) — return path to the control plane. The keyless LLM proxy (§5)
-    # and any control plane-side callbacks live in the control plane namespace; the agent's pi-ai
-    # baseUrl points at the proxy, so the sandbox MUST be able to reach the control plane
+    # ALLOW EGRESS (3/3) — return path to the control plane. Credential serving (§5)
+    # and any control plane-side callbacks live in the control plane namespace, so
+    # the sandbox MUST be able to reach the control plane
     # even though the rest of the cluster is blocked above. Scoped to the control plane
     # namespace only.
     - to:

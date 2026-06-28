@@ -1,8 +1,8 @@
 # UI tests (Playwright)
 
 Automated UI tests for Houston. They drive the **full desktop UI** (`app/src`) as
-it runs in a browser (`packages/web`), on the **new TS engine** adapter in
-**control-plane mode**, against an **in-memory fake host** — no real backend, no
+it runs in a browser (`packages/web`), on the **host** adapter in
+**host mode**, against an **in-memory fake host** — no real backend, no
 AI provider, no credentials. Deterministic and hermetic.
 
 Because `packages/web` composes `app/src` verbatim, these tests cover the desktop
@@ -28,7 +28,7 @@ Playwright boots two servers automatically (see `playwright.config.ts`):
 
 ```
 e2e/
-  fake-host/        # a Node HTTP server: control plane + per-agent runtime, in-memory
+  fake-host/        # a Node HTTP server: host + per-agent runtime, in-memory
     server.ts       #   entry: CORS, /v1/*, /agents/*, test-control routes
     routes.ts       #   per-agent dispatch + the chat SSE stream (the interesting bit)
     state.ts        #   seed + mutations; .houston/** files-first store (the board)
@@ -45,7 +45,7 @@ e2e/
 `localStorage` (engine config + `houston.pref.*`) and sets `window.__HOUSTON_CP__`
 via `page.addInitScript` — before any app script runs. That skips the engine
 Connect screen, forces `en` (stable text assertions), accepts the disclaimer, and
-runs the adapter in control-plane mode (matching the real cloud/desktop-host
+runs the adapter in host mode (matching the real cloud/desktop-host
 deployment).
 
 **Chat.** The new engine has no WebSocket — a turn streams over SSE. The client
@@ -57,7 +57,7 @@ like the real runtime (`packages/runtime-client` + `engine-adapter/translate.ts`
 **Board.** The mission board is files-first: it reads/writes
 `.houston/activity/activity.json` through `/agents/:id/agentfile/*`. The fake host
 backs that with a real in-memory store, seeded with two missions, and unified with
-the `/agents/:id/activities` route (same data, as in the real control plane) so a
+the `/agents/:id/activities` route (same data, as in the real host) so a
 turn flipping a card's status shows up on the board.
 
 **Isolation.** One fake-host process serves the whole run, so the suite is serial

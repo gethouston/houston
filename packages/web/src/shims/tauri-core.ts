@@ -2,7 +2,7 @@
  * Web shim for `@tauri-apps/api/core`.
  *
  * packages/web composes the desktop app's React tree (app/src) but runs in a
- * plain browser tab against a remote houston-engine. There is no Tauri runtime,
+ * plain browser tab against the Houston host or legacy engine. There is no Tauri runtime,
  * so `invoke` can't reach native commands. Vite + tsconfig alias
  * `@tauri-apps/api/core` to this module (see vite.config.ts / tsconfig.json).
  *

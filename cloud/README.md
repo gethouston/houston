@@ -1,10 +1,16 @@
-# Houston Cloud — Implementation Plan
+# Houston Cloud — Architecture And Operations
 
-> **Architecture update (2026-06-10).** The hosting layer evolved past §"one
+> **Architecture update (2026-06-26).** The cloud control-plane role now runs as
+> the Houston **host** cloud profile: shared routes/ports live in `packages/host`,
+> concrete cloud adapters and cloud `main.ts` live in closed `packages/host-cloud`.
+> Older sections below still use "control plane" as the cloud role name, not as a
+> package path.
+>
+> The hosting layer evolved past §"one
 > agent = one GKE pod": workspaces now carry a `runtime` flag. `cloudrun`
 > workspaces (the default for new ones) run agents as PER-TURN Cloud Run
 > requests over GCS-prefix workspaces — no standing pod, no PVC, idle = $0 —
-> dispatched by the control plane behind the SAME `/agents/:id/*` surface
+> dispatched by the host behind the SAME `/agents/:id/*` surface
 > (`packages/host/src/turn/*`, `packages/runtime/src/turn/*`).
 > `gke` workspaces keep the pod path below until their PVC migrates
 > (`cloud/scripts/07-migrate-pvc-to-gcs.sh`). The keyless org-key proxy was
@@ -12,7 +18,7 @@
 > (OpenAI/Codex), served access-token-only. Code execution is the locked-down
 > Cloud Run sandbox (`cloud/code-execution.md` — start there).
 
-Multi-tenant cloud platform. Each customer **org** has **users** who chat with **agents**. Every agent runs **fully isolated** from every other agent, on its own machine, on **GKE Agent Sandbox**. The agent runtime is **pi** (`@earendil-works/pi-coding-agent`) wrapped by the Houston TS runtime (`packages/runtime`). A central **control plane** guards access, spawns agents, holds credentials, and tracks what's running.
+Multi-tenant cloud platform. Each customer **org** has **users** who chat with **agents**. Every agent runs **fully isolated** from every other agent, on its own machine, on **GKE Agent Sandbox**. The agent runtime is **pi** (`@earendil-works/pi-coding-agent`) wrapped by the Houston TS runtime (`packages/runtime`). The host cloud profile guards access, spawns agents, holds credentials, and tracks what's running.
 
 > **This doc supersedes the two earlier design attempts** (`cloud-design/` and `engine-design/`, now deleted). Both were written for the old Rust `houston-engine` that shelled out to Claude/Codex CLIs. We have since committed to **pi**, which is in-process and has no CLI subprocesses — that pivot invalidated the load-bearing mechanisms of both old plans (see [What we drop](#what-we-drop-from-the-old-plans)). This is the single source of truth.
 
@@ -28,32 +34,32 @@ Multi-tenant cloud platform. Each customer **org** has **users** who chat with *
 
 ## Build status (in-repo)
 
-The control plane and supporting artifacts are **built and tested** here. What remains needs your live accounts (GKE / Supabase / provider keys) and is staged as runnable scripts, not faked as done.
+The host and supporting cloud artifacts are **built and tested** here. What remains needs your live accounts (GKE / Supabase / provider keys) and is staged as runnable scripts, not faked as done.
 
 | Area | State | Where |
 |---|---|---|
-| Control plane foundation — domain, `authorize()`, ports, in-memory store | ✅ built · tested | `packages/host/src/{domain,ports.ts,store/memory.ts}` |
-| Control plane auth — Supabase JWT verifier (+ dev) | ✅ tested | `packages/host/src/auth/verify.ts` |
-| Control plane RBAC store — Postgres + migration | ✅ built · integration-noted | `packages/host/src/store/pg.ts`, `cloud/migrations/0001_rbac.sql` |
-|  Control plane GkeLauncher — GKE lifecycle + fake | ✅ built · GKE integration-noted | `packages/host/src/launcher/*` |
-| Control plane routing + 1:1 SSE pass-through proxy | ✅ tested | `packages/host/src/proxy/route.ts` |
-| Control plane keyless credential proxy + vault | ✅ tested | `packages/host/src/proxy/credentials.ts`, `src/credentials/vault.ts` |
-| Control plane HTTP server + authz boundary + `main` | ✅ tested (John's scenario) | `packages/host/src/{server.ts,main.ts}` |
-| Operator dashboard — pods-per-user + GCP spend (estimate + BigQuery actuals) | ✅ built · tested | `packages/host/src/admin/*`, `packages/web/src/admin/*`, `cloud/billing.md` |
-| Runtime cloud-mode — keyless, `baseUrl`→proxy | ✅ tested | `packages/runtime/src/{config,ai/providers,auth/login}.ts` |
+| Host foundation — domain, `authorize()`, ports, in-memory/local stores | ✅ built · tested | `packages/host/src/{domain,ports.ts,store/*}` |
+| Host auth — open verifiers + closed Supabase verifier | ✅ tested | `packages/host/src/auth/verify.ts`, `packages/host-cloud/src/auth/verify-supabase.ts` |
+| Cloud RBAC store — Postgres + migration | ✅ built · integration-noted | `packages/host-cloud/src/store/pg.ts`, `cloud/migrations/0001_rbac.sql` |
+| Cloud GkeLauncher — GKE lifecycle | ✅ built · GKE integration-noted | `packages/host-cloud/src/launcher/*` |
+| Host routing + 1:1 SSE pass-through proxy | ✅ tested | `packages/host/src/proxy/route.ts`, `packages/host/src/server.ts` |
+| Connect-once credential serve + sandbox vault | ✅ tested | `packages/host/src/credentials/*`, `packages/host/src/routes/credential.ts` |
+| Host HTTP server + authz boundary | ✅ tested (John's scenario) | `packages/host/src/server.ts` |
+| Operator dashboard — pods-per-user + GCP spend (estimate + BigQuery actuals) | ✅ built · tested | `packages/host-cloud/src/admin/*`, `packages/web/src/admin/*`, `cloud/billing.md` |
+| Runtime cloud-mode — served credentials + per-turn execution | ✅ tested | `packages/runtime/src/{config,ai/providers,auth/login}.ts`, `packages/runtime/src/turn/*` |
 | Session-resume fix (sleep/wake hinge) | ✅ tested | `packages/runtime/src/session/chat.ts` |
 | Agent container image | ✅ built · CI-build-noted | `packages/runtime/Dockerfile`, `packages/runtime/Dockerfile.dockerignore` |
 | K8s / Agent-Sandbox manifests | ✅ validated | `cloud/k8s/*` |
 | gcloud provisioning (P0/P1) | ✅ scripts · confirm-before-billing | `cloud/scripts/*` |
-| **Frontend un-faking (web → control plane)** | ⏳ remaining in-repo work | `packages/web/src/engine-adapter/*` |
+| **Frontend un-faking (web → host)** | ✅ merged · live-tested | `packages/web/src/engine-adapter/*` |
 | Files download/preview (GCS workspace → browser) | ✅ built · tested | `packages/host/src/turn/files.ts` (`files/download`), web Files tab Preview/Download |
 | "Send feedback" intake (web → Linear) | ✅ built · tested (set `CP_LINEAR_API_KEY`/`CP_LINEAR_TEAM_ID`) | `packages/host/src/feedback.ts`, `POST /feedback`, web shim `report_bug` |
-| Shared turn-state bus (2+ CP replicas) | ✅ built · tested (Memory default; Redis via `CP_REDIS_URL` — run `09-redis.sh`, then bump replicas) | `packages/host/src/turn/{bus,bus-redis,relay,quota,connect}.ts` |
+| Shared turn-state bus (2+ host replicas) | ✅ built · tested (Memory default; Redis via `CP_REDIS_URL` — run `09-redis.sh`, then bump replicas) | `packages/host/src/turn/{bus,relay,quota,connect}.ts`, `packages/host-cloud/src/turn/bus-redis.ts` |
 | Turn-quality evals (deck/xlsx/chart, nightly) | ✅ harness + CI workflow (needs `EVAL_*` secrets + eval user) | `cloud/evals/*`, `.github/workflows/evals.yml`, `CP_SERVICE_TOKENS` |
 | Custom domain (app.gethouston.ai) | ⏳ script ready; needs DNS + Supabase allow-list | `cloud/scripts/08-custom-domain.sh` |
 | Live provisioning · pen-test · load-test | ⏳ needs your accounts | run `cloud/scripts/*` |
 
-Run the host locally (all fakes, one local runtime): `cd packages/host && pnpm dev`. Tests: `pnpm test` in `packages/host` and `packages/runtime`.
+Run the local host profile: `cd packages/host && pnpm dev`. Run the cloud profile from the closed adapters package: `cd packages/host-cloud && CP_DEV=1 pnpm dev`. Tests: `pnpm test` in `packages/host`, `packages/host-cloud`, and `packages/runtime`.
 
 ---
 
@@ -95,7 +101,7 @@ Browser (web frontend)
  GKE Agent Sandbox  ──────────────  one per agent
    ┌──────────────────────────┐
    │  Worker = pi runtime       │   receives message → drives pi → streams answer
-   │  pi (SDK, in-process)      │   thinks (AI call via control plane proxy) + runs tools, sealed in the box
+   │  pi (SDK, in-process)      │   thinks (AI call via served credential) + runs tools, sealed in the box
    │  Volume (PVC)              │   this agent's files only
    └──────────────────────────┘
 ```
@@ -108,17 +114,18 @@ GKE Agent Sandbox provides the managed isolation (gVisor → Kata), default-deny
 
 ## 4. Components
 
-### Frontend — `packages/web` (exists, needs work)
-Already the full Houston UI as a standalone web app. Two changes:
-- **Repoint** its single runtime base URL at the control plane (one-line: `window.__HOUSTON_ENGINE__`).
-- **Un-fake the domains.** Today the "agents / workspaces / routines / skills" surfaces are faked client-side in `packages/web/src/engine-adapter/**` (localStorage / empty stubs) and `agentPath` is discarded before the runtime call. These must become real, control-plane-backed resources. Chat itself already works against a remote runtime; these other domains are theater and are the sleeper work item.
+### Frontend — `packages/web`
+Already the full Houston UI as a standalone web app. Host mode now points at the
+host (`VITE_CONTROL_PLANE_URL`, legacy env name) and the formerly fake
+workspaces/agents/routines/skills/board/config/learnings/files surfaces are real
+host-backed resources.
 
-### Control plane (100% new)
+### Host cloud profile
 Stateless, replicated, the only thing the frontend talks to. Responsibilities:
 - **Auth** — Supabase (already in the repo: Google SSO, `profiles`). Verify the user's JWT.
 - **RBAC** — org / user / agent / grant (§6). Enforced on every request.
 - **Lifecycle** — create / wake / sleep / kill an agent's sandbox via the GKE API.
-- **Credential proxy** — agents are keyless; the control plane adds the org's API key to outbound AI calls (§5).
+- **Credential serve** — agents fetch only the provider credential material they need through `/sandbox/credential`; refresh tokens stay host-side (§5).
 - **Routing** — forward each message to the right sandbox and **proxy the long-lived SSE stream** as a strict 1:1 pass-through (see the SSE note below).
 - **Observability** — audit log, per-org metering/billing, live sandbox counts.
 
@@ -128,24 +135,25 @@ Language: TS/Node is the natural choice now that the runtime and frontend are TS
 
 ### Agent sandbox — pi runtime, one per agent
 - **Image:** containerize `packages/runtime` (Node/pnpm). This is **new** — the old `always-on/Dockerfile` (now deleted) built the *Rust* engine and never applied here.
-- One sandbox per agent, its own `workspaceDir` on its own PVC, **keyless** (creds via the control plane proxy).
+- One sandbox per agent, its own `workspaceDir` on its own PVC. Provider credentials are served by the host, never baked into the image.
 - Push to Artifact Registry.
 
 ---
 
-## 5. Credentials — keyless proxy from day one
+## 5. Credentials — connect-once user subscriptions
 
-Today the runtime is **subscription-OAuth-only** (`packages/runtime/src/auth/providers.ts` hardcodes `anthropic` Claude-Max + `openai-codex`; one `auth.json` per process). That model **cannot ship to cloud**:
-- Reselling one person's Claude Max / ChatGPT Plus seat to N paying orgs **violates consumer-subscription ToS** and has no per-tenant accounting.
-- pi-ai **does** support commercial API keys + a custom `baseUrl` (`setRuntimeApiKey`, `AuthStorage.inMemory()`, per-model `baseUrl`). "OAuth-only" is a Houston wrapper choice, not a pi limit.
+Current decision: users connect their own provider account or API key once. The
+host stores that credential centrally per workspace/provider, refreshes OAuth
+tokens centrally, and serves runtimes through `/sandbox/credential` after they
+present a host-minted HMAC sandbox token.
 
-**Decision: the keyless LLM proxy is v1, not v2.** Rationale: the agent's bash can trivially read its own environment (`env | grep -i key`), so injecting an org's real API key into the sandbox env hands the key to any prompt-injection. Instead:
-- Per-org commercial API keys live in **Secret Manager**, known only to the control plane.
-- Each sandbox points pi-ai's `baseUrl` at the control plane proxy and sends **no real key**. The control plane attaches the org's key, meters usage, and can cut a tenant off instantly.
+The runtime never owns a long-lived refresh token. A standing runtime receives the
+current access token or API key material it needs; a per-turn runtime receives it
+for that turn, then the sandbox is wiped. Cloud availability is controlled by the
+host's provider catalog and egress allowlist.
 
-Runtime work: rewrite `auth/storage.ts` and `providers.ts`; delete most of `login.ts` (the OAuth paste-code flow is dead weight in cloud).
-
-> **De-risked ✅.** A working keyless proxy and a proof that pi-ai runs against an arbitrary `baseUrl` carrying only a control-plane-issued token (no real key in the sandbox) live in `packages/runtime/spike/keyless-proxy.ts` + `spike/keyless-proxy.test.ts`. The proxy injects the real key on the way upstream; the sandbox token never reaches the provider. Graduates into the control plane.
+This replaced the earlier per-org Secret Manager + keyless LLM proxy design. The
+old spike proved an option, but it is not the current architecture.
 
 ---
 
@@ -179,7 +187,7 @@ Idle agents should cost ~$0 (storage only). After N minutes idle: persist the wo
 | Per-agent storage | PVC on Persistent Disk | same |
 | Cold storage (idle) | Cloud Storage (GCS) | same |
 | Networking | Default-deny + allow outbound internet; block internal + metadata; Workload Identity | same |
-| AI credentials | **Keyless proxy through the control plane** (org keys in Secret Manager) | same, + per-tenant metering/cutoff |
+| AI credentials | **Connect-once user credentials** served by the host; refresh tokens stay host-side | same, + per-tenant metering/cutoff |
 | Agent runtime | pi SDK inside the Worker (the TS runtime) | same |
 
 **Hard requirements (verify before depending on any):** GKE **1.35.2-gke.1269000+**, **N2** machine types, Agent Sandbox is GA but some sub-features (e.g. Pod snapshots) may be preview.
@@ -188,19 +196,19 @@ Idle agents should cost ~$0 (storage only). After N minutes idle: persist the wo
 
 ## 9. Phased build
 
-Ordering puts the two unproven unknowns (session-resume, keyless proxy) *before* the architecture hardens around them.
+Ordering puts the two unproven unknowns (session-resume, credential serving) *before* the architecture hardens around them.
 
 - **P0 — Project setup.** GCP project, billing, IAM, enable APIs (GKE, Artifact Registry, Secret Manager, Cloud Storage). Pick a region.
 - **P1 — Cluster + isolation foundation.** GKE Autopilot on a supported version; enable Agent Sandbox; verify a hello-world box with `runtimeClassName: gvisor` + default-deny.
 - **P2 — Agent image.** Containerize `packages/runtime` (Node/pnpm). The Worker = the runtime server. Push to Artifact Registry. (Net-new; the Rust `always-on/Dockerfile` does not apply.)
-- **P3 — De-risk the two unknowns. ✅ (mechanisms proven; one live-credential gate left).** (a) pi **session-resume** — fixed in `src/session/chat.ts` + proven by `src/session/resume.test.ts`; remaining: one fidelity test across a real provider turn. (b) **keyless proxy** — built at `spike/keyless-proxy.ts` + proven by `spike/keyless-proxy.test.ts` (pi-ai runs keyless against a chosen `baseUrl`; the proxy injects the real key).
+- **P3 — De-risk the two unknowns. ✅ (mechanisms proven; one live-credential gate left).** (a) pi **session-resume** — fixed in `src/session/chat.ts` + proven by `src/session/resume.test.ts`; remaining: one fidelity test across a real provider turn. (b) **credential serve** — host-owned connect-once credentials served to runtimes through `/sandbox/credential`.
 - **P4 — Control plane v0.** Auth + route to one agent + **SSE pass-through**. Single tenant, single agent, end to end.
 - **P5 — RBAC.** Org / user / agent / grant schema + enforcement on every request.
 - **P6 — Per-agent storage.** PVC per agent, mounted only into that sandbox. + GCS for cold/large + a backup/restore drill. Verify nothing shared is mounted.
 - **P7 — Networking lockdown.** default-deny, egress allowlist, block internal + metadata, Workload Identity. Pen-test agent↔agent reachability.
-- **P8 — Credentials.** Secret Manager per org + the proxy carrying real keys + metering.
+- **P8 — Credentials.** Central connect-once credential store + host refresh/serve + metering.
 - **P9 — Sleep/wake.** Idle detect → snapshot → delete; restore on next message; warm window. (Depends on P3a.)
-- **P10 — Observability.** Per-org audit + billing + live counts + dashboard; Cloud Logging/Monitoring; Sentry. *(Dashboard ✅: operator `/admin` view — pods-per-user + live cost estimate + BigQuery billed actuals. `packages/host/src/admin/*` + `packages/web/src/admin/*`; setup in `cloud/billing.md`. Audit log + Cloud Logging/Monitoring + Sentry remain.)*
+- **P10 — Observability.** Per-org audit + billing + live counts + dashboard; Cloud Logging/Monitoring; Sentry. *(Dashboard ✅: operator `/admin` view — pods-per-user + live cost estimate + BigQuery billed actuals. `packages/host-cloud/src/admin/*` + `packages/web/src/admin/*`; setup in `cloud/billing.md`. Audit log + Cloud Logging/Monitoring + Sentry remain.)*
 - **P11 — Frontend.** Un-fake the agent/workspace/routine/skill domains against the control plane; ship the web app.
 - **P12 — v2 hardening.** Kata (if the flip is real), load-test concurrency, tune warm windows + node sizing.
 
@@ -213,7 +221,7 @@ Recorded so we don't relitigate:
 - **Per-agent Linux user / `HOME`-override / setuid walls** (old `engine-design/07`). These assumed a CLI subprocess to confine. pi has none — the whole process is the agent, so "one process per sandbox" replaces the entire three-walls design.
 - **Kata-from-day-one.** We ship gVisor-first (managed, lower risk) and treat Kata as v2 hardening. This inverts the old plan's most-argued decision; it is acceptable **only while the hostile-community-agent marketplace is deferred** (see open questions).
 - **Knative for scale-to-zero.** Replaced by Agent Sandbox lifecycle + control-plane-driven sleep/wake. Note this is a trade: we lose a battle-tested primitive and own the wake logic.
-- **The doorman-only control plane** that "never talks to any LLM." Our control plane deliberately **does** sit in the inference path (the keyless proxy). Conscious reversal, for credential safety + metering.
+- **The org-key keyless LLM proxy.** Replaced by connect-once user subscriptions. The host still owns credential serving and metering seams, but it no longer attaches a shared org API key on every inference request.
 
 ---
 
@@ -222,7 +230,7 @@ Recorded so we don't relitigate:
 1. **Agent-marketplace launch date.** It decides gVisor-first vs. Kata-first. Near-term hostile community code → we need the hardware wall sooner. Deferred → gVisor-first is fine. **Pin this date before hardening the architecture.**
 2. **Is the gVisor → Kata "flip" real on Agent Sandbox?** It may not be a toggle but a different runtime that drops us out of the managed path. Verify before promising v2.
 3. **Isolation unit: per-agent or per-org?** Per-agent = strongest, but N× the cold-start / PVC / scale-to-zero cost. Must match the one-key-per-org billing unit.
-4. **Credentials per org or per user?** Default: per org (matches Secret Manager + metering).
+4. **Credentials per org or per user?** Resolved for the current path: per-user connect-once credentials, shared across that user's workspace agents. Per-org commercial billing/metering remains a later cloud product decision.
 5. **Durable turns before public ingress.** The pi runtime has no durable turn replay (the event snapshot is in-process memory); a sandbox killed mid-turn loses the turn. Decide whether that's acceptable for v1 or needs a durable store first.
 6. **Session-resume — mechanism proven ✅, fidelity gate open.** The hinge of the cost story (P9) now works at the API level (`resume.test.ts`). The one open item: confirm full replay fidelity (tool results, thinking blocks) across a real provider turn with a live key.
 

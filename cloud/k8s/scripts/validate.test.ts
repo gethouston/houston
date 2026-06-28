@@ -7,13 +7,16 @@ import {
   validateAll,
 } from "./validate";
 
-/** Find the first rendered doc of a given kind across all manifest files. */
-function docOfKind(kind: string): ManifestDoc {
+/** Find the first rendered doc of a given kind, optionally inside one file. */
+function docOfKind(kind: string, file?: string): ManifestDoc {
   for (const m of validateAll()) {
+    if (file && m.file !== file) continue;
     const found = m.docs.find((d) => (d as ManifestDoc).kind === kind);
     if (found) return found;
   }
-  throw new Error(`no rendered doc of kind ${kind}`);
+  throw new Error(
+    `no rendered doc of kind ${kind}${file ? ` in ${file}` : ""}`,
+  );
 }
 
 function deep(obj: unknown, path: string[]): unknown {
@@ -66,8 +69,8 @@ test("stripComments drops comment text but keeps quoted '#' and real values", ()
   expect(stripComments("url: http://x#frag")).toBe("url: http://x#frag");
 });
 
-test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env", () => {
-  const deploy = docOfKind("Deployment");
+test("agent Deployment runs under gVisor, non-root, with credential-serve env", () => {
+  const deploy = docOfKind("Deployment", "agent-deployment.yaml");
   const podSpec = deep(deploy, ["spec", "template", "spec"]) as Record<
     string,
     unknown
@@ -107,17 +110,16 @@ test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env",
   expect(deep(c, ["readinessProbe", "httpGet", "path"])).toBe("/health");
   expect(deep(c, ["livenessProbe", "httpGet", "path"])).toBe("/health");
 
-  // Keyless-proxy + engine env wiring.
+  // Credential-serve + engine env wiring.
   const env = c.env as Array<Record<string, unknown>>;
   const byName = new Map(env.map((e) => [e.name as string, e]));
-  expect(byName.get("HOUSTON_CLOUD")?.value).toBe("1");
-  expect(byName.get("HOUSTON_PROXY_BASE_URL")?.value).toBe(
-    DUMMY_VALUES.PROXY_BASE_URL,
+  expect(byName.get("HOUSTON_CONTROL_PLANE_URL")?.value).toBe(
+    DUMMY_VALUES.CONTROL_PLANE_URL,
   );
   expect(byName.get("HOUSTON_HOST")?.value).toBe("0.0.0.0");
   expect(byName.get("HOUSTON_WORKSPACE_DIR")?.value).toBe("/data");
 
-  // The sandbox token comes from a Secret, NEVER an inline real key.
+  // The sandbox token comes from a Secret, NEVER an inline refresh token.
   const tokenEnv = byName.get("HOUSTON_SANDBOX_TOKEN");
   if (tokenEnv === undefined)
     throw new Error("HOUSTON_SANDBOX_TOKEN env not found");
@@ -136,7 +138,7 @@ test("agent Deployment runs under gVisor, non-root, with the keyless-proxy env",
 });
 
 test("NetworkPolicy is default-deny and blocks metadata + internal ranges on egress", () => {
-  const np = docOfKind("NetworkPolicy");
+  const np = docOfKind("NetworkPolicy", "networkpolicy.yaml");
   const spec = np.spec as Record<string, unknown>;
 
   // Default-deny: both policy types selected.
@@ -160,7 +162,7 @@ test("NetworkPolicy is default-deny and blocks metadata + internal ranges on egr
   expect(except).toContain(DUMMY_VALUES.SERVICE_CIDR); // no internal Services
   expect(except).toContain("10.0.0.0/8"); // RFC-1918
 
-  // Ingress is allowed only from the control plane control-plane namespace.
+  // Ingress is allowed only from the control-plane namespace.
   const ingress = spec.ingress as Array<Record<string, unknown>>;
   const fromControlPlane = deep(ingress[0], [
     "from",
@@ -172,36 +174,18 @@ test("NetworkPolicy is default-deny and blocks metadata + internal ranges on egr
 });
 
 test("ServiceAccount carries the Workload Identity annotation", () => {
-  const sa = validateAll()
-    .flatMap((m) => m.docs)
-    .find(
-      (d) =>
-        d.kind === "ServiceAccount" &&
-        deep(d, [
-          "metadata",
-          "annotations",
-          "iam.gke.io/gcp-service-account",
-        ]) === DUMMY_VALUES.GCP_SA,
-    );
-  expect(sa).toBeDefined();
+  const sa = docOfKind("ServiceAccount", "serviceaccount.yaml");
+  const ann = deep(sa, ["metadata", "annotations"]) as Record<string, unknown>;
+  expect(ann["iam.gke.io/gcp-service-account"]).toBe(DUMMY_VALUES.GCP_SA);
 });
 
 test("PVC is ReadWriteOnce (single writer = isolation)", () => {
-  const pvc = docOfKind("PersistentVolumeClaim");
+  const pvc = docOfKind("PersistentVolumeClaim", "pvc.yaml");
   expect(deep(pvc, ["spec", "accessModes"])).toEqual(["ReadWriteOnce"]);
 });
 
 test("Namespace enforces the restricted Pod Security profile", () => {
-  const ns = validateAll()
-    .flatMap((m) => m.docs)
-    .find(
-      (d) =>
-        d.kind === "Namespace" &&
-        deep(d, [
-          "metadata",
-          "labels",
-          "pod-security.kubernetes.io/enforce",
-        ]) === "restricted",
-    );
-  expect(ns).toBeDefined();
+  const ns = docOfKind("Namespace", "namespace.yaml");
+  const labels = deep(ns, ["metadata", "labels"]) as Record<string, unknown>;
+  expect(labels["pod-security.kubernetes.io/enforce"]).toBe("restricted");
 });

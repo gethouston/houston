@@ -8,7 +8,7 @@
 
 /** Vite dev server (packages/web). Matches `server.port` in vite.config.ts. */
 export const WEB_PORT = 1430;
-/** The in-memory fake host the app talks to instead of a real control plane. */
+/** The in-memory fake host the app talks to instead of a real host. */
 export const FAKE_HOST_PORT = 4399;
 
 export const WEB_URL = `http://localhost:${WEB_PORT}`;

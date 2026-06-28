@@ -2,7 +2,7 @@ import { expect, test } from "./support/fixtures";
 
 /**
  * The whole harness in one spec: the full desktop UI boots in the browser, on
- * the new-engine adapter (control-plane mode), against the fake host — past the
+ * the host adapter (host mode), against the fake host — past the
  * engine Connect screen, the language picker, and the legal disclaimer — and the
  * files-first board data (`.houston/activity/activity.json`) flows through.
  */

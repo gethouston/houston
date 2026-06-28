@@ -2,7 +2,7 @@
 
 The ONE protocol for the Houston host, every deployment. The frontend talks
 ONLY to the host (local profile on 127.0.0.1, cloud profile behind the
-control-plane URL). Runtimes are internal components behind the host; their
+host URL). Runtimes are internal components behind the host; their
 conversation core (`/version` → `protocol: 2`) is re-served by the host
 verbatim under `/v1/agents/:id/conversations/*`.
 
@@ -29,8 +29,10 @@ client, rewritten onto this in convergence P2/P6). See `convergence/README.md`.
 /v1/agents/:id/activities                     CRUD
 /v1/agents/:id/config                         GET/PUT
 /v1/providers                                 connect-once: status/login/complete/logout
+/v1/integrations                              Composio + future integration providers
 /v1/preferences /attachments /portable /store
 /sandbox/credential                           runtime-facing (HMAC sandbox token)
+/sandbox/integrations                         runtime-facing integration proxy
 ```
 
 Typed-family list GETs (`activities`, `routines`, `routine_runs`, `learnings`,
@@ -42,10 +44,10 @@ Activity delete is idempotent. `DELETE /v1/agents/:id/activities/:activityId`
 returns `200 { ok: true, deleted: boolean }`; a repeated delete of the same
 activity is `deleted: false`, not a 404.
 
-Families not yet typed here (added with their P3 slice): attachments, portable
-agents, store listings. Rust-CLI-era DTOs (Composio, Claude-installer,
-CLI install sources, worktree/shell) die with the Rust engine and are
-deliberately absent.
+Store listings are retained only as a cut/empty surface during convergence.
+Rust-CLI-era DTOs (Claude-installer, CLI install sources, worktree/shell) die
+with the Rust engine and are deliberately absent. Composio is not a CLI DTO in
+v3; it is exposed through the host integration routes above.
 
 ## Rules
 

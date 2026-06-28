@@ -27,7 +27,7 @@ declare global {
 
 /**
  * Cutover switch. When `VITE_NEW_ENGINE_URL` is set, the desktop frontend talks
- * to the v3 Houston host (control-plane mode) instead of the Tauri-spawned Rust
+ * to the v3 Houston host (host mode) instead of the Tauri-spawned Rust
  * engine — mirroring packages/web's same flag. The host URL + token come from
  * the env (the host runs as the sidecar, or by hand in dev). Unset → the Rust
  * path below is completely untouched, so the default build stays releasable and
@@ -40,7 +40,7 @@ const HOST_TOKEN: string =
 
 // When the new-engine adapter is aliased in (VITE_NEW_ENGINE or
 // VITE_NEW_ENGINE_URL — see app/vite.config.ts `useHost`), the desktop ALWAYS
-// talks to a v3 host, so flip the adapter into control-plane mode. This must be
+// talks to a v3 host, so flip the adapter into host mode. This must be
 // set HERE, at module load, before any HoustonClient is constructed: the
 // adapter reads window.__HOUSTON_CP__ in its constructor, and the handshake can
 // arrive via the get_engine_handshake poll or the houston-engine-ready event —

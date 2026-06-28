@@ -5,7 +5,8 @@ import { defineConfig, loadEnv } from "vite";
 import { version } from "./package.json";
 
 // packages/web composes the desktop app's React tree (app/src) and runs it in a
-// plain browser tab pointed at a remote houston-engine. The ONLY platform
+// plain browser tab pointed at the Houston host (or the legacy Rust engine until
+// final cutover). The ONLY platform
 // coupling app/src has is a handful of `@tauri-apps/*` imports; we redirect each
 // specifier to a browser shim under ./src/shims. `@houston/app/*` aliases into
 // app/src so we can reuse it verbatim — no fork, no app/ changes.
@@ -17,13 +18,13 @@ const shim = (file: string) => path.resolve(__dirname, "src/shims", file);
 
 export default defineConfig(({ mode }) => {
   // `pnpm dev:host` runs `vite --mode host`: load the shared repo-root .env.local
-  // (host token + the frontend's control-plane URL/token) instead of a
+  // (host token + the frontend's host URL/token) instead of a
   // package-local .env, so the browser dev server points at the local host with
   // no flags. Plain `pnpm dev` (mode=development) keeps the default package
   // envDir, so it stays the old-engine connect screen.
   const envDir = mode === "host" ? repoRoot : process.cwd();
   const env = { ...loadEnv(mode, envDir, ""), ...process.env };
-  // Target the new TS engine (packages/engine) when VITE_NEW_ENGINE is truthy,
+  // Target the new TS engine host (packages/host) when VITE_NEW_ENGINE is truthy,
   // or when a URL is baked via VITE_NEW_ENGINE_URL. In that mode we swap the
   // engine client for the new-engine adapter so the entire desktop UI (app/src)
   // runs on the new engine. Otherwise the old-engine path is untouched.
@@ -36,8 +37,8 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
-        // New-engine mode (see `useNewEngine` above) and cloud mode
-        // (VITE_CONTROL_PLANE_URL) both route @houston-ai/engine-client through
+        // New-engine mode (see `useNewEngine` above) and host/cloud mode
+        // (VITE_CONTROL_PLANE_URL, legacy env name) both route @houston-ai/engine-client through
         // the new-engine adapter so the whole desktop UI runs on the new TS
         // runtime / the control plane.
         ...(useNewEngine || env.VITE_CONTROL_PLANE_URL

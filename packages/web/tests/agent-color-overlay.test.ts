@@ -5,7 +5,7 @@ import {
 } from "../src/engine-adapter/control-plane";
 
 /**
- * In control-plane mode an agent's color lives in a client-side overlay keyed by
+ * In host mode an agent's color lives in a client-side overlay keyed by
  * agent id. The local store derives an agent's id from its on-disk path
  * (`<Workspace>/<Name>`), so renaming an agent changes its id — the overlay must
  * follow, or the avatar reverts to the default color (the reported bug).

@@ -4,7 +4,7 @@
 >
 > **Two corrections that matter even today:**
 > - **Composio is NO LONGER a bundled CLI.** The earlier "cut" was reversed and Composio was **re-wired as an in-process REST tool** (each user's own free "Composio for you" account, no binary) behind the `IntegrationProvider` port — `packages/host/src/integrations/`. Ignore every "bundle the composio CLI" instruction below; that path is gone. `houston-composio` (Rust) + the per-arch composio binary fetch are deleted with `engine/`.
-> - **Gemini is dropped** (no Google OAuth in pi; non-technical users don't paste keys). Ignore the gemini rows/sections.
+> - **Gemini CLI is dropped, not Google Gemini as a provider.** The TS engine keeps Google Gemini as an API-key pi provider. Ignore the legacy gemini CLI bundle rows/sections below.
 
 Houston (legacy Rust build) ships upstream CLIs inside the signed/notarized desktop
 bundle (`.app` on macOS, `.msi` on Windows) and runtime-downloads

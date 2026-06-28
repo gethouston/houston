@@ -1,9 +1,9 @@
 /**
  * Fake Houston host for the Playwright UI tests.
  *
- * A single Node process that answers just enough of the control plane + per-agent
+ * A single Node process that answers just enough of the host + per-agent
  * runtime for the desktop UI (app/src) to boot and run on the new-engine adapter
- * in control-plane mode — with NO real backend, no AI provider, no credentials.
+ * in host mode — with NO real backend, no AI provider, no credentials.
  * Deterministic and hermetic: the same click always produces the same pixels.
  *
  * Run standalone with `pnpm --filter houston-web fake-host`; the Playwright

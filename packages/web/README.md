@@ -1,114 +1,86 @@
 # Houston Web (`packages/web`)
 
-Houston as a standalone **web app**. It runs the exact same UI as the desktop
-app in a plain browser tab, talking to a remote `houston-engine` over HTTP+WS.
+Standalone browser build of the Houston desktop UI. It composes `app/src`
+verbatim and swaps Tauri/OS imports for browser shims at build time.
 
-No fork: this package **composes** the desktop frontend (`app/src`) verbatim and
-swaps the handful of Tauri/OS couplings for browser shims at build time. The
-desktop app is untouched.
+The current target backend is the Houston host (`packages/host`) over protocol
+v3. The legacy Rust-engine connect flow still exists as the default path until
+final cutover, but normal convergence work uses host mode.
 
-## How it works
+## Modes
 
-The desktop app is already engine-agnostic — every domain call goes through
-`@houston-ai/engine-client` (HTTP+WS), not Tauri IPC. The only platform coupling
-in `app/src` is a small set of `@tauri-apps/*` imports. This package:
+- **Host mode**: `VITE_CONTROL_PLANE_URL` is set. `@houston-ai/engine-client` is
+  aliased to `src/engine-adapter`, the app signs in if Supabase env is present,
+  and all domain calls go to the host.
+- **External new-engine mode**: `VITE_NEW_ENGINE=1` or `VITE_NEW_ENGINE_URL` is
+  set. The browser shows the new-engine connect screen unless URL/token are
+  pre-seeded.
+- **Legacy mode**: no host/new-engine env. The old connect screen points at a
+  Rust `houston-engine` URL + token. Kept only until final cutover.
 
-1. **Aliases** each `@tauri-apps/*` specifier to a browser shim under
-   `src/shims/` (see `vite.config.ts` + `tsconfig.json`). `isTauri()` returns
-   `false`, so the app's existing `osIsTauri()` branches (e.g. provider
-   device-code sign-in) automatically take the web path.
-2. **Aliases** `@houston/app/*` → `../../app/src/*` and reuses the real React
-   tree (`src/app-tree.tsx` mirrors `app/src/main.tsx`'s provider/gate nesting).
-3. Adds a web **boot entry** (`src/main.tsx` → `src/root.tsx`): a **Connect
-   screen** captures the engine URL + token (persisted to `localStorage`) and
-   sets `window.__HOUSTON_ENGINE__` *before* the app graph loads, so
-   `app/src/lib/engine.ts` bootstraps cleanly.
+## Local Host Loop
+
+From the repo root:
+
+```bash
+cp .env.example .env.local
+(cd packages/host && pnpm dev)
+pnpm --filter houston-web dev:host     # http://localhost:1430
+```
+
+`dev:host` loads the repo-root `.env.local`, so the browser uses
+`VITE_CONTROL_PLANE_URL` + `VITE_CP_DEV_TOKEN` without flags.
+
+## How It Works
 
 ```
 src/
-  main.tsx          # entry: sets engine global from localStorage, mounts <Root>
-  root.tsx          # Connect screen  ↔  lazy-loaded app tree
-  app-tree.tsx      # composes app/src: providers + EngineGate + gates + <App/>
-  engine-config.ts  # localStorage read/write of { baseUrl, token }
-  components/        # connect-screen, boot-splash
-  shims/             # @tauri-apps/* → browser equivalents
+  main.tsx          chooses host/new-engine/legacy mode from env
+  cloud-login.tsx   host-mode auth wrapper
+  app-tree.tsx      app/src providers + gates + <App />
+  engine-adapter/   v3 host adapter for @houston-ai/engine-client
+  new-engine/       external-host connect screen + app wrapper
+  shims/            @tauri-apps/* browser equivalents
+  admin/            cloud operator dashboard mounted at /admin
 ```
 
-## Run it
+Host mode covers workspaces, agents, chat, board, skills, routines, files,
+providers, preferences, attachments, portable agents, integrations, and global
+`/v1/events` reactivity. The store/marketplace UI was cut; store calls in the
+adapter return empty data or a harmless warning.
 
-You need a running `houston-engine` reachable from the browser (it prints its
-URL + token on startup: `HOUSTON_ENGINE_LISTENING port=… token=…`). The engine
-already sends permissive CORS and accepts the WS token as a query param, so a
-browser can talk to it directly.
+## Optional Env
 
-```bash
-pnpm --filter houston-web dev      # http://localhost:1430
-```
-
-Open the page, paste the engine URL (`http://127.0.0.1:<port>`) and token into
-the Connect screen. Build for production with `pnpm --filter houston-web build`.
-
-### Optional env (`packages/web/.env.local`)
-
-All optional — absent values no-op gracefully:
-
-- `SUPABASE_URL` / `SUPABASE_ANON_KEY` — enable account sign-in. **See "Auth"
-  below** — web OAuth is not wired yet, so leave these empty for now (the app
-  runs auth-less, which is the intended mode for self-hosted engines).
+- `VITE_CONTROL_PLANE_URL` / `VITE_CP_DEV_TOKEN` — host-mode endpoint + dev token.
+- `VITE_NEW_ENGINE` / `VITE_NEW_ENGINE_URL` / `VITE_NEW_ENGINE_TOKEN` — external
+  new-engine mode.
+- `SUPABASE_URL` / `SUPABASE_ANON_KEY` — account sign-in for cloud host mode.
 - `POSTHOG_KEY` / `POSTHOG_HOST` — analytics.
 - `SENTRY_DSN` — error reporting.
 
-Auth storage mode is **forced to `browser`** (localStorage) — a browser tab has
-no OS keychain.
+Auth storage mode is forced to `browser`; a browser tab has no OS keychain.
 
-## What's identical vs degraded on web
+## Browser Equivalents And Limits
 
-**Identical** (pure engine wire): workspaces, agents, chat, the board, skills,
-store, routines, files, providers, preferences, worktrees, shell, and all
-reactivity (engine WS firehose). Provider sign-in uses the headless device-code
-flow automatically (`!osIsTauri()`).
+Browser shims implement external-link open, desktop notifications, and portable
+agent import/export via Blob download and file input.
 
-**Browser-native equivalents** (implemented in the shims): open external links
-(`window.open`), desktop notifications (web Notification API), portable agent
-export/import (Blob download / `<input type=file>`).
+Desktop-only actions surface a clear error if triggered: reveal in Finder, open
+file or terminal, pick local directory, native app update, and local log files.
 
-**Desktop-only — surfaced as a clear error if triggered** (they target the
-user's local machine, which a remote engine can't reach): reveal-in-Finder,
-open-file/terminal, pick local directory, app self-update, native bug-report,
-local log files.
+`Report Bug` works in cloud host mode by posting the desktop payload to the
+host's `POST /feedback` route, which files Linear server-side. Outside cloud host
+mode it stays desktop-only.
 
-**Known follow-ups** (all graceful — caught + toasted, never a crash):
+## Parity Guard
 
-- **Auth (OAuth):** the desktop flow uses a `houston://` deep link forwarded by
-  Rust, which has no browser equivalent. A web flow (same-origin redirect +
-  `detectSessionInUrl` / code exchange on load) is the remaining piece. Until
-  then, ship with empty Supabase env (sign-in is skipped). Note: needs a Supabase
-  dashboard redirect-URL allowlist entry too, so it's infra + code.
-- **Report Bug / Send feedback** works in CLOUD mode: the shim posts the same
-  payload to the control plane's `POST /feedback` (→ Linear; set
-  `CP_LINEAR_API_KEY`/`CP_LINEAR_TEAM_ID`). Outside cloud mode it still throws
-  the "desktop-only" toast (nowhere to send it).
-- **"Reveal in folder"** on a portable-agent export throws a graceful
-  "desktop-only" toast (the export download itself works). Hiding the button
-  needs a one-line `osIsTauri()` guard in `app/src/components/portable` —
-  deliberately not done here to keep `app/` untouched (approach A).
-- **Disclaimer "Decline"** can't close a top-level browser tab (a browser
-  limitation, not ours); Accept works normally, and the user can close the tab.
+`scripts/check-tauri-shims.mjs` runs during `typecheck` and `build`. It fails if
+`app/src` imports a new Tauri module or invokes a new native command that this
+package has not shimmed.
 
-The last two (and a future web OAuth) are the only places a tiny `osIsTauri()`
-branch in `app/src` would improve web UX without affecting desktop — a clean
-opt-in if we later relax the zero-`app/`-changes rule.
+## Relationship To Other Frontends
 
-## Parity guard
+- `app/` — Tauri desktop app, same React tree plus native shell.
+- `packages/web` — same UI in a browser tab, backed by the host.
 
-`scripts/check-tauri-shims.mjs` (run by this package's `typecheck`/`build`)
-fails if `app/src` ever imports a **new** `@tauri-apps/*` module or invokes a
-**new** native command that this package hasn't shimmed — so web parity can
-never silently drift. Run directly with `pnpm --filter houston-web check-shims`.
-
-## Relationship to the other frontends
-
-- `app/` — the Tauri desktop app (the engine-co-located build).
-- `packages/web` — the **full** desktop UI, in the browser, against any engine.
-
-(The `mobile/` lean PWA over the relay was removed in the convergence.)
+`mobile/` and `houston-relay/` were removed in the convergence.
