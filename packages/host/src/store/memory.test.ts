@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { MemoryWorkspaceStore } from "./memory";
 
 test("getOrCreatePersonalWorkspace is idempotent (same user => same workspace id)", async () => {

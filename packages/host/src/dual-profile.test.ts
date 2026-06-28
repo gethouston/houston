@@ -1,9 +1,9 @@
-import { expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { createServer as netCreateServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { type Capabilities, PROTOCOL_VERSION } from "@houston/protocol";
+import { expect, test } from "vitest";
 import { CLOUD_CAPABILITIES, LOCAL_CAPABILITIES } from "./capabilities";
 import { ProxyChannel } from "./channel/proxy";
 import { MemoryCredentialStore } from "./credentials/store";

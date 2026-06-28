@@ -162,5 +162,5 @@ consumed as TypeScript source, no build step. From the webapp:
 pnpm add @houston/runtime-client@workspace:*
 ```
 
-`main`/`types`/`exports` all resolve to `src/index.ts`, so Vite (webapp) and Bun
-(engine) bundle/run it directly.
+`main`/`types`/`exports` all resolve to `src/index.ts`, so Vite (webapp) and Node/tsx
+(runtime) run it directly.

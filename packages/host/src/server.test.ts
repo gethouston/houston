@@ -1,6 +1,6 @@
-import { afterAll, beforeAll, expect, test } from "bun:test";
 import type { Server } from "node:http";
 import type { Capabilities } from "@houston/protocol";
+import { afterAll, beforeAll, expect, test } from "vitest";
 import { SingleUserVerifier } from "./auth/verify";
 import { ProxyChannel, type RuntimeProxy } from "./channel/proxy";
 import { MemoryCredentialStore } from "./credentials/store";
@@ -13,6 +13,7 @@ import type {
 } from "./ports";
 import { type ControlPlaneDeps, createControlPlaneServer } from "./server";
 import { MemoryWorkspaceStore } from "./store/memory";
+import { startTestFetchServer } from "./testing/fetch-server";
 
 /**
  * Personal-tier access boundary at the HTTP layer:
@@ -278,25 +279,22 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
   // A real fake runtime: serves /auth/export like a freshly-connected pod and
   // records the scrub call that must follow.
   let scrubCalls = 0;
-  const fakeRuntime = Bun.serve({
-    port: 0,
-    fetch(req) {
-      const u = new URL(req.url);
-      if (u.pathname === "/auth/export") {
-        return Response.json({
-          provider: "openai-codex",
-          access: "AT-cap",
-          refresh: "RT-cap",
-          expires: 1750000000000,
-          accountId: "acct-cap",
-        });
-      }
-      if (u.pathname === "/auth/scrub-refresh" && req.method === "POST") {
-        scrubCalls++;
-        return Response.json({ ok: true, scrubbed: ["openai-codex"] });
-      }
-      return new Response("not found", { status: 404 });
-    },
+  const fakeRuntime = await startTestFetchServer((req) => {
+    const u = new URL(req.url);
+    if (u.pathname === "/auth/export") {
+      return Response.json({
+        provider: "openai-codex",
+        access: "AT-cap",
+        refresh: "RT-cap",
+        expires: 1750000000000,
+        accountId: "acct-cap",
+      });
+    }
+    if (u.pathname === "/auth/scrub-refresh" && req.method === "POST") {
+      scrubCalls++;
+      return Response.json({ ok: true, scrubbed: ["openai-codex"] });
+    }
+    return new Response("not found", { status: 404 });
   });
   const deps: ControlPlaneDeps = {
     ...baseDeps(),
@@ -304,7 +302,7 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
       ...sandboxes,
       async ensureAwake(): Promise<RuntimeEndpoint> {
         return {
-          baseUrl: `http://127.0.0.1:${fakeRuntime.port}`,
+          baseUrl: fakeRuntime.baseUrl,
           token: "runtime-token",
         };
       },
@@ -324,25 +322,22 @@ test("capture stores the credential centrally, then scrubs the sandbox's refresh
     expect(stored?.accessToken).toBe("AT-cap");
   } finally {
     await close();
-    fakeRuntime.stop(true);
+    await fakeRuntime.stop();
   }
 });
 
 test("a failed scrub surfaces as an error (credential still stored)", async () => {
-  const fakeRuntime = Bun.serve({
-    port: 0,
-    fetch(req) {
-      const u = new URL(req.url);
-      if (u.pathname === "/auth/export") {
-        return Response.json({
-          provider: "openai-codex",
-          access: "AT2",
-          refresh: "RT2",
-          expires: 1750000000000,
-        });
-      }
-      return new Response("scrub exploded", { status: 500 });
-    },
+  const fakeRuntime = await startTestFetchServer((req) => {
+    const u = new URL(req.url);
+    if (u.pathname === "/auth/export") {
+      return Response.json({
+        provider: "openai-codex",
+        access: "AT2",
+        refresh: "RT2",
+        expires: 1750000000000,
+      });
+    }
+    return new Response("scrub exploded", { status: 500 });
   });
   const deps: ControlPlaneDeps = {
     ...baseDeps(),
@@ -350,7 +345,7 @@ test("a failed scrub surfaces as an error (credential still stored)", async () =
       ...sandboxes,
       async ensureAwake(): Promise<RuntimeEndpoint> {
         return {
-          baseUrl: `http://127.0.0.1:${fakeRuntime.port}`,
+          baseUrl: fakeRuntime.baseUrl,
           token: "runtime-token",
         };
       },
@@ -367,7 +362,7 @@ test("a failed scrub surfaces as an error (credential still stored)", async () =
     expect(body.error).toContain("refresh token");
   } finally {
     await close();
-    fakeRuntime.stop(true);
+    await fakeRuntime.stop();
   }
 });
 

@@ -1,12 +1,16 @@
-import { afterAll, describe, expect, mock, test } from "bun:test";
+import { EventEmitter } from "node:events";
 import type { TurnBus } from "@houston/host/src/turn/bus";
+import { afterAll, describe, expect, test, vi } from "vitest";
 
 // Replace `ioredis` with the in-process `ioredis-mock` BEFORE bus-redis.ts is
 // imported, so the REAL RedisTurnBus runs against a faithful in-memory Redis
 // (cross-instance pub/sub + native EX/NX/INCR/EXPIRE) with no docker. The mock
 // is a documented drop-in for ioredis's `Redis` class; every instance shares one
 // in-memory server, which is exactly the cross-replica fan-out we want to prove.
-mock.module("ioredis", () => ({ Redis: require("ioredis-mock") }));
+vi.mock("ioredis", async () => {
+  const mod = await import("ioredis-mock");
+  return { Redis: mod.default };
+});
 const { RedisTurnBus } = await import("./bus-redis");
 
 // ioredis-mock keeps ONE shared in-memory server whose pub/sub emitter gathers a
@@ -14,7 +18,6 @@ const { RedisTurnBus } = await import("./bus-redis");
 // two connections) so it crosses Node's default 10-listener warn threshold.
 // That ceiling is meaningful for a real long-lived process, not for a short test
 // that deliberately fans out connections — raise it so the suite stays quiet.
-const { EventEmitter } = require("node:events");
 EventEmitter.defaultMaxListeners = 100;
 
 /**

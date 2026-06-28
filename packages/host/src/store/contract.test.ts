@@ -1,7 +1,7 @@
-import { describe, expect, test } from "bun:test";
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { describe, expect, test } from "vitest";
 import { runWorkspaceStoreContract } from "../testing/store-contract";
 import { LocalWorkspaceStore } from "./local";
 import { MemoryWorkspaceStore } from "./memory";

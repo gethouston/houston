@@ -6,7 +6,7 @@ import { Client } from "pg";
  * transaction. Used for the additive workspaces.runtime column on the live
  * Supabase DB (no psql in the deploy environment). Idempotent SQL only.
  *
- *   CP_DATABASE_URL=... bun scripts/run-migration.ts <path-to.sql>
+ *   CP_DATABASE_URL=... pnpm exec tsx scripts/run-migration.ts <path-to.sql>
  */
 const url = process.env.CP_DATABASE_URL;
 const file = process.argv[2];

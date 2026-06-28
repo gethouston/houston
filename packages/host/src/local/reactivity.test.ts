@@ -1,9 +1,9 @@
-import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer as netCreateServer } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { HoustonEvent } from "@houston/protocol";
+import { expect, test } from "vitest";
 import type { RuntimeSpawner } from "../launcher/process";
 import { buildLocalHost, type LocalHost } from "./host";
 
@@ -136,13 +136,17 @@ test("a skill created via the API lands at the exact on-disk path pi loads", asy
 });
 
 /**
- * Open the local host's SSE stream and resolve with the FIRST HoustonEvent that
- * arrives after `onConnected` (the comment preamble) fires the FS write. Aborts
- * on settle so the watcher + server unsubscribe; returns "timeout" past budget.
+ * Open the local host's SSE stream and resolve with the first matching
+ * HoustonEvent after `onConnected` (the comment preamble) fires the FS write.
+ * The watcher may legitimately emit a broad FilesChanged before the specific
+ * ActivityChanged, so ignore non-matching events instead of racing event order.
+ * Aborts on settle so the watcher + server unsubscribe; returns "timeout" past
+ * budget.
  */
-async function firstEvent(
+async function waitForEvent(
   base: string,
   onConnected: () => void,
+  matches: (event: HoustonEvent) => boolean,
   timeoutMs = 4000,
 ): Promise<HoustonEvent | "timeout"> {
   const ac = new AbortController();
@@ -167,10 +171,13 @@ async function firstEvent(
         connected = true;
         onConnected();
       }
-      for (const frame of buffer.split("\n\n")) {
+      const frames = buffer.split("\n\n");
+      buffer = frames.pop() ?? "";
+      for (const frame of frames) {
         const line = frame.split("\n").find((l) => l.startsWith("data: "));
-        if (line)
-          return JSON.parse(line.slice("data: ".length)) as HoustonEvent;
+        if (!line) continue;
+        const event = JSON.parse(line.slice("data: ".length)) as HoustonEvent;
+        if (matches(event)) return event;
       }
     }
   } catch {
@@ -195,16 +202,22 @@ test("a direct .houston file write surfaces on /v1/events (FsWatcher → SSE)", 
     "activity",
   );
   try {
-    const event = await firstEvent(base, () => {
-      // Give the recursive fs.watch a beat to arm after the SSE preamble, then
-      // write — the watcher debounces, so a single write is one event.
-      setTimeout(() => {
-        writeFileSync(
-          join(activityDir, "activity.json"),
-          JSON.stringify([{ id: "a1", title: "from the agent" }]),
-        );
-      }, 150);
-    });
+    const event = await waitForEvent(
+      base,
+      () => {
+        // Give the recursive fs.watch a beat to arm after the SSE preamble, then
+        // write — the watcher debounces, so a single write is one event.
+        setTimeout(() => {
+          writeFileSync(
+            join(activityDir, "activity.json"),
+            JSON.stringify([{ id: "a1", title: "from the agent" }]),
+          );
+        }, 150);
+      },
+      (candidate) =>
+        candidate.type === "ActivityChanged" &&
+        candidate.agentPath === "Work/Sales",
+    );
     expect(event).toEqual({
       type: "ActivityChanged",
       agentPath: "Work/Sales",

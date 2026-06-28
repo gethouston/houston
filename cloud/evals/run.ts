@@ -6,7 +6,7 @@
  *   structural validation → delete the agent.
  *
  * Usage:
- *   EVAL_CP_URL=https://app.gethouston.ai/api EVAL_TOKEN=<bearer> bun run run.ts
+ *   EVAL_CP_URL=https://app.gethouston.ai/api EVAL_TOKEN=<bearer> pnpm evals
  *
  * EVAL_TOKEN is any bearer the control plane accepts: a Supabase access token,
  * dev:<userId> against CP_DEV=1, or a CP_SERVICE_TOKENS entry (nightly CI).
@@ -16,6 +16,7 @@
  * Output: human-readable summary to stdout, machine-readable JSON to
  * eval-results.json (override with EVAL_OUT). Exit 1 if any case fails.
  */
+import { writeFile } from "node:fs/promises";
 import { CASES } from "./cases";
 import {
   type CpClient,
@@ -154,6 +155,6 @@ const summary = {
   total: results.length,
   results,
 };
-await Bun.write(outPath, JSON.stringify(summary, null, 2));
+await writeFile(outPath, JSON.stringify(summary, null, 2));
 console.log(`${passed}/${results.length} passed — wrote ${outPath}`);
 process.exit(passed === results.length ? 0 : 1);

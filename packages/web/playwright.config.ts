@@ -6,7 +6,7 @@ import { FAKE_HOST_PORT, WEB_PORT, WEB_URL } from "./e2e/fake-host/ports";
  * (packages/web), on the new TS engine adapter in control-plane mode, against an
  * in-memory fake host (e2e/fake-host) — no real backend, no AI provider.
  *
- * Two web servers boot for a run: the fake host (Bun) and vite with
+ * Two web servers boot for a run: the fake host (Node) and vite with
  * `VITE_NEW_ENGINE=1`. The fake host is a single shared process, so the suite is
  * serial (`workers: 1`) and resets host state per test (see support/fixtures.ts).
  */
@@ -35,7 +35,7 @@ export default defineConfig({
   projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
   webServer: [
     {
-      command: "bun run e2e/fake-host/server.ts",
+      command: "pnpm fake-host",
       port: FAKE_HOST_PORT,
       reuseExistingServer: !process.env.CI,
       stdout: "pipe",

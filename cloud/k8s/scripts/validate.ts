@@ -13,8 +13,9 @@
  * No silent failures: a problem throws; the CLI exits non-zero with the reason.
  */
 import { readdirSync, readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { parseAllDocuments } from "yaml";
 
 const K8S_DIR = join(dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -85,13 +86,7 @@ export type ManifestDoc = Record<string, unknown>;
 
 /** Parse a (possibly multi-doc) YAML string into one object per document. */
 function parseDocs(yaml: string): ManifestDoc[] {
-  // Bun.YAML.parse on a multi-doc stream returns an array of docs; a single doc
-  // returns the object. Normalize to an array.
-  const parsed = (
-    Bun as unknown as { YAML: { parse(s: string): unknown } }
-  ).YAML.parse(yaml);
-  if (Array.isArray(parsed)) return parsed as ManifestDoc[];
-  return [parsed as ManifestDoc];
+  return parseAllDocuments(yaml).map((doc) => doc.toJS() as ManifestDoc);
 }
 
 export interface ValidatedManifest {
@@ -145,7 +140,11 @@ export function validateAll(): ValidatedManifest[] {
 }
 
 /** CLI entry: validate, print a summary, exit non-zero on failure. */
-if (import.meta.main) {
+const isCli = process.argv[1]
+  ? fileURLToPath(import.meta.url) === resolve(process.argv[1])
+  : false;
+
+if (isCli) {
   try {
     const manifests = validateAll();
     let docCount = 0;

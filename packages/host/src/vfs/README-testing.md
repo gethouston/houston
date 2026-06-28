@@ -1,7 +1,7 @@
 # Testing `GcsVfs` against a real object store
 
 `vfs/contract.test.ts` runs the shared `runVfsContract` against `MemoryVfs` and
-`FsVfs` on every `bun test`. `GcsVfs` talks the GCS JSON API and therefore needs
+`FsVfs` on every `pnpm test`. `GcsVfs` talks the GCS JSON API and therefore needs
 a **real object store** — a live bucket or a local emulator — so it runs through
 the *same* contract only when env-gated. With no bucket configured the suite
 emits one explicit `test.skip` (never a fake green).
@@ -29,7 +29,7 @@ cd packages/host
 HOUSTON_GCS_TEST_BUCKET=houston-vfs-test \
 HOUSTON_GCS_TEST_ENDPOINT=http://localhost:4443 \
 STORAGE_EMULATOR_HOST=http://localhost:4443 \
-  bun test src/vfs/contract.test.ts
+  pnpm exec vitest run src/vfs/contract.test.ts
 
 # 3. Tear down.
 docker rm -f fake-gcs
@@ -49,7 +49,7 @@ gcloud storage buckets create gs://houston-vfs-test-$USER --location=us
 
 cd packages/host
 HOUSTON_GCS_TEST_BUCKET=houston-vfs-test-$USER \
-  bun test src/vfs/contract.test.ts
+  pnpm exec vitest run src/vfs/contract.test.ts
 
 gcloud storage rm --recursive gs://houston-vfs-test-$USER
 ```

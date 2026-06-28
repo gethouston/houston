@@ -1,7 +1,7 @@
-import { expect, test } from "bun:test";
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { PROVIDERS } from "../ai/providers";
 import { config } from "../config";
 import {

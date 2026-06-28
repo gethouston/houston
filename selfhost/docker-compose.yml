@@ -13,7 +13,7 @@
 services:
   host:
     build:
-      # Context is the repo root: the image pulls in sibling `file:` packages.
+      # Context is the repo root: the image pulls sibling pnpm workspace packages.
       context: ..
       dockerfile: selfhost/Dockerfile
     image: houston/self-host:local

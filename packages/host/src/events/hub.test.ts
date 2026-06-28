@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import type { HoustonEvent } from "@houston/protocol";
+import { expect, test } from "vitest";
 import { MemoryTurnBus } from "../turn/bus";
 import { BusEventHub } from "./hub";
 

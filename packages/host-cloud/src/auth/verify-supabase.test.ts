@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import { SignJWT } from "jose";
+import { expect, test } from "vitest";
 import { SupabaseTokenVerifier } from "./verify-supabase";
 
 /**

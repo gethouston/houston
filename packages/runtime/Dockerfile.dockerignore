@@ -1,6 +1,6 @@
 # Dockerfile-specific ignores for packages/runtime/Dockerfile. Build context is
 # the repo root (`docker build -f packages/runtime/Dockerfile .`) because the
-# runtime resolves @houston/runtime-client via file:../runtime-client.
+# runtime resolves @houston/runtime-client via the pnpm workspace.
 # Paths are relative to the repo root.
 
 **/node_modules
@@ -25,9 +25,9 @@ teams/
 ui/
 website/
 packages/code-sandbox/
-packages/control-plane/
 packages/domain/
-packages/protocol/
+packages/host/
+packages/host-cloud/
 packages/web/
 
 # Runtime-local dev artifacts that must never leak into the image.

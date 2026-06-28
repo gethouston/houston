@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import type { IncomingMessage, ServerResponse } from "node:http";
+import { expect, test } from "vitest";
 import { MemoryCredentialStore } from "../credentials/store";
 import type { CredentialVault } from "../ports";
 import { handleSandboxCredential } from "./credential";

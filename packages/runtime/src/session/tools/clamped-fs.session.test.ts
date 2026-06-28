@@ -1,4 +1,3 @@
-import { expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -8,6 +7,7 @@ import {
   createAgentSession,
   SessionManager,
 } from "@earendil-works/pi-coding-agent";
+import { expect, test } from "vitest";
 import { CLAMPED_FILE_TOOL_NAMES, makeClampedFileTools } from "./clamped-fs";
 
 /**

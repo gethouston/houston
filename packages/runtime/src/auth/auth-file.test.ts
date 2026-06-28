@@ -1,7 +1,7 @@
-import { expect, test } from "bun:test";
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { applyServedCredential, readAuthFile } from "./auth-file";
 
 /**

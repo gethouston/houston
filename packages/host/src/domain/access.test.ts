@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { canUseAgent, ownsWorkspace } from "./access";
 import type { Agent, Workspace } from "./types";
 

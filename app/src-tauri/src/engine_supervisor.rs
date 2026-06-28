@@ -163,7 +163,7 @@ impl EngineSubprocess {
         // two can never drift. It tells the Bun host's parent-watchdog that the
         // stdin above is a real supervisor pipe to watch for EOF (app death), NOT
         // a closed/`/dev/null` stdin. The watchdog arms ONLY on this marker;
-        // without it (self-host Docker `bun run`, dev, tests) it stays inert, so a
+        // without it (self-host Docker/source-run Node, dev, tests) it stays inert, so a
         // missing supervisor pipe never crash-loops the host at boot (HOU-582).
         // The Rust engine ignores it — it watches stdin EOF directly.
         cmd.env("HOUSTON_SUPERVISED", "1");

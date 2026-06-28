@@ -1,5 +1,5 @@
-import { afterEach, expect, test } from "bun:test";
 import { type ChildProcess, spawn } from "node:child_process";
+import { afterEach, expect, test } from "vitest";
 import type { Agent } from "../domain/types";
 import {
   ProcessLauncher,
@@ -13,7 +13,7 @@ import {
  * LINK 2 of the orphan-prevention chain, proven against REAL processes: when the
  * host shuts down it must kill EVERY child runtime the ProcessLauncher spawned.
  * The unit test in process.test.ts uses a fake handle that only records kills;
- * this one spawns actual short-lived `node`/`bun` children and asserts their
+ * this one spawns actual short-lived `node` children and asserts their
  * pids are dead afterward (the real orphan-leak failure mode). It also proves a
  * crashed runtime is reaped from the live-set, not left as a phantom "running".
  *
@@ -48,7 +48,7 @@ async function waitDead(pid: number, timeoutMs = 5_000): Promise<void> {
 }
 
 /**
- * A real-process spawner that mirrors BunRuntimeSpawner's lifecycle contract
+ * A real-process spawner that mirrors RuntimeProcessSpawner's lifecycle contract
  * (kill via SIGTERM, onExit on real child exit) but launches a trivial sleeper
  * instead of a full runtime, so the test needs no port/health server. We track
  * every child it spawns so the harness can guarantee cleanup even on failure.

@@ -1,4 +1,3 @@
-import { expect, test } from "bun:test";
 import {
   mkdirSync,
   mkdtempSync,
@@ -9,6 +8,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { expect, test } from "vitest";
 import { hydrate, syncBack } from "./hydrate";
 import { LocalDirStore } from "./object-store";
 

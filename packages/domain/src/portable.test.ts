@@ -1,5 +1,5 @@
-import { expect, test } from "bun:test";
 import type { Learning, Routine } from "@houston/protocol";
+import { expect, test } from "vitest";
 import {
   type PortableContent,
   packAgent,

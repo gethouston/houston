@@ -1,4 +1,4 @@
-import { expect, test } from "bun:test";
+import { expect, test } from "vitest";
 import { isApiKeyCredential, type WorkspaceCredential } from "../ports";
 import { isExpiring, refreshCredential } from "./refresh";
 
