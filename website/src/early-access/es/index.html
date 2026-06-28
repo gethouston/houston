@@ -1,0 +1,63 @@
+{% extends "base.njk" %}
+{% set eaLockAnswer = "Responde la pregunta de arriba para continuar." %}
+{% set eaLockPledge = "Asume el compromiso para desbloquear tu descarga." %}
+{% block title %}Sáltate la fila | Houston{% endblock %}
+{% block meta %}
+<meta name="description" content="Acceso anticipado a Houston: responde una pregunta, asume el compromiso y descarga la app hoy.">
+{% endblock %}
+{% block headScripts %}{% include "early-access/scrub.njk" %}{% endblock %}
+{% block inlineStyles %}{% include "early-access/styles.njk" %}{% endblock %}
+{% block body %}
+<div class="page-bg"></div>
+
+<nav>
+  <a href="/" class="nav-logo">Houston</a>
+  <div class="nav-right"><a href="https://gethouston.ai/">Volver al sitio</a></div>
+</nav>
+
+<div class="wrap">
+  <span class="eyebrow"><span class="dot"></span> Uno de los primeros 1,000</span>
+  <h1>Sáltate la <span class="grad">fila.</span></h1>
+  <p class="lede">Eres una de las primeras 1,000 personas en usar Houston, y eso te hace un constructor, no solo un usuario. Tu feedback moldea de verdad lo que creamos. Responde una pregunta, asume el compromiso y la app es tuya.</p>
+
+  <div class="comet-card">
+    <div class="card">
+      <p class="step">UNA PREGUNTA Y ES TUYA</p>
+      <h2>¿Qué tarea haces una y otra vez que te encantaría pasarle a Houston?</h2>
+      <p class="hint">Eres una de las primeras 1,000 personas, así que tu respuesta pesa de verdad: moldea lo que construimos a continuación y cómo llegas a tu primer logro. Con una tarea real basta.</p>
+      <textarea id="answer" placeholder="ej. Cada lunes concilio las facturas de la semana con el estado de cuenta del banco…"></textarea>
+
+      <div class="pledge" id="pledge">
+        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
+        <span class="ptxt"><b>Me sumo como uno de los primeros 1,000.</b> Compartiré feedback honesto e ideas para ayudar a moldear Houston a medida que crece.</span>
+      </div>
+
+      <div class="saved" id="saved">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
+        Listo. Bienvenido a los primeros 1,000, tu descarga está lista.
+      </div>
+
+      <div class="dl-actions locked" id="dlActions">
+        <button id="macBtn" class="btn btn-primary btn-lg" data-dl-trigger>
+          <svg viewBox="0 0 384 512" fill="currentColor" width="16" height="16"><path d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/></svg> Descargar para Mac
+        </button>
+        <button id="winBtn" class="btn btn-secondary btn-lg" data-dl-windows-trigger>
+          <svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Descargar para Windows
+        </button>
+      </div>
+      <p class="lock-note" id="lockNote">Responde la pregunta y asume el compromiso para desbloquear tu descarga.</p>
+    </div>
+  </div>
+</div>
+
+<footer>
+  <div class="fl">Houston. Gratis y de código abierto.</div>
+  <div class="links">
+    <a href="https://gethouston.ai/privacy/">Política de Privacidad</a>
+    <a href="https://gethouston.ai/terms/">Términos del Servicio</a>
+    <a href="https://github.com/gethouston/houston" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</footer>
+
+{% include "early-access/app.njk" %}
+{% endblock %}
