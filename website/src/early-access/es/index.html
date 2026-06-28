@@ -1,9 +1,7 @@
 {% extends "base.njk" %}
-{% set eaLockAnswer = "Responde la pregunta de arriba para continuar." %}
-{% set eaLockPledge = "Asume el compromiso para desbloquear tu descarga." %}
 {% block title %}Sáltate la fila | Houston{% endblock %}
 {% block meta %}
-<meta name="description" content="Acceso anticipado a Houston: responde una pregunta, asume el compromiso y descarga la app hoy.">
+<meta name="description" content="Acceso anticipado a Houston: responde una pregunta y descarga la app hoy.">
 {% endblock %}
 {% block headScripts %}{% include "early-access/scrub.njk" %}{% endblock %}
 {% block inlineStyles %}{% include "early-access/styles.njk" %}{% endblock %}
@@ -18,19 +16,14 @@
 <div class="wrap">
   <span class="eyebrow"><span class="dot"></span> Uno de los primeros 1,000</span>
   <h1>Sáltate la <span class="grad">fila.</span></h1>
-  <p class="lede">Eres una de las primeras 1,000 personas en usar Houston, y eso te hace un constructor, no solo un usuario. Tu feedback moldea de verdad lo que creamos. Responde una pregunta, asume el compromiso y la app es tuya.</p>
+  <p class="lede">Eres una de las primeras 1,000 personas en usar Houston, y eso te hace un constructor, no solo un usuario. Responde una pregunta y descarga la app.</p>
 
   <div class="comet-card">
     <div class="card">
       <p class="step">UNA PREGUNTA Y ES TUYA</p>
-      <h2>¿Qué tarea haces una y otra vez que te encantaría pasarle a Houston?</h2>
-      <p class="hint">Eres una de las primeras 1,000 personas, así que tu respuesta pesa de verdad: moldea lo que construimos a continuación y cómo llegas a tu primer logro. Con una tarea real basta.</p>
+      <h2>¿Qué tarea repetitiva te gustaría automatizar con IA?</h2>
+      <p class="hint">Cuanto más específico, mejor: la tarea, las herramientas que usas y cada cuánto la haces.</p>
       <textarea id="answer" placeholder="ej. Cada lunes concilio las facturas de la semana con el estado de cuenta del banco…"></textarea>
-
-      <div class="pledge" id="pledge">
-        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
-        <span class="ptxt"><b>Me sumo como uno de los primeros 1,000.</b> Compartiré feedback honesto e ideas para ayudar a moldear Houston a medida que crece.</span>
-      </div>
 
       <div class="saved" id="saved">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
@@ -45,7 +38,7 @@
           <svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Descargar para Windows
         </button>
       </div>
-      <p class="lock-note" id="lockNote">Responde la pregunta y asume el compromiso para desbloquear tu descarga.</p>
+      <p class="lock-note" id="lockNote">Responde la pregunta para desbloquear tu descarga.</p>
     </div>
   </div>
 </div>

@@ -1,9 +1,7 @@
 {% extends "base.njk" %}
-{% set eaLockAnswer = "Answer the question above to continue." %}
-{% set eaLockPledge = "Take the pledge to unlock your download." %}
 {% block title %}Skip the line | Houston{% endblock %}
 {% block meta %}
-<meta name="description" content="Houston early access: answer one question, take the pledge, and download the app today.">
+<meta name="description" content="Houston early access: answer one question and download the app today.">
 {% endblock %}
 {% block headScripts %}{% include "early-access/scrub.njk" %}{% endblock %}
 {% block inlineStyles %}{% include "early-access/styles.njk" %}{% endblock %}
@@ -18,19 +16,14 @@
 <div class="wrap">
   <span class="eyebrow"><span class="dot"></span> One of the first 1,000</span>
   <h1>Skip the <span class="grad">line.</span></h1>
-  <p class="lede">You're one of the first 1,000 people to ever use Houston, which makes you a builder, not just a user. Your feedback genuinely shapes what we make. Answer one question, take the pledge, and the app is yours.</p>
+  <p class="lede">You're one of the first 1,000 people to ever use Houston, which makes you a builder, not just a user. Answer one question, download the app.</p>
 
   <div class="comet-card">
     <div class="card">
       <p class="step">ONE QUESTION, THEN IT'S YOURS</p>
-      <h2>What's a task you do over and over that you'd love to just hand to Houston?</h2>
-      <p class="hint">You're one of the first 1,000, so your answer carries real weight, it shapes what we build next and how we get you to your first win. One real task is plenty.</p>
+      <h2>What's a repetitive task you'd like to automate with AI?</h2>
+      <p class="hint">The more specific the better: the task, the tools you use, and how often you do it.</p>
       <textarea id="answer" placeholder="e.g. Every Monday I reconcile last week's invoices against the bank statement…"></textarea>
-
-      <div class="pledge" id="pledge">
-        <span class="box"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg></span>
-        <span class="ptxt"><b>I'm in as one of the first 1,000.</b> I'll share honest feedback and ideas to help shape Houston as it grows.</span>
-      </div>
 
       <div class="saved" id="saved">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M20 6L9 17l-5-5"/></svg>
@@ -45,7 +38,7 @@
           <svg viewBox="0 0 448 512" fill="currentColor" width="16" height="16"><path d="M0 93.7l183.6-25.3v177.4H0V93.7zm0 324.6l183.6 25.3V268.4H0v149.9zm203.8 28L448 480V268.4H203.8v177.9zm0-380.6v180.1H448V32L203.8 65.7z"/></svg> Download for Windows
         </button>
       </div>
-      <p class="lock-note" id="lockNote">Answer the question and take the pledge to unlock your download.</p>
+      <p class="lock-note" id="lockNote">Answer the question to unlock your download.</p>
     </div>
   </div>
 </div>

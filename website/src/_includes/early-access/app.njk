@@ -66,27 +66,15 @@
     else { asPrimary(macBtn); asAlt(winBtn); }
   })();
 
-  // Gate: the download unlocks only once the question is answered AND the pledge taken.
-  var pledge = document.getElementById('pledge');
-  var pledged = false;
+  // Gate: the download unlocks once the question is answered.
   function answered() { return answer.value.trim().length >= 2; }
   function update() {
-    var ok = answered() && pledged;
+    var ok = answered();
     group.classList.toggle('locked', !ok);
     saved.classList.toggle('show', ok);
-    if (ok) {
-      lockNote.style.display = 'none';
-    } else {
-      lockNote.style.display = 'block';
-      lockNote.textContent = !answered() ? '{{ eaLockAnswer }}' : '{{ eaLockPledge }}';
-    }
+    lockNote.style.display = ok ? 'none' : 'block';
   }
   answer.addEventListener('input', update);
-  pledge.addEventListener('click', function () {
-    pledged = !pledged;
-    pledge.classList.toggle('checked', pledged);
-    update();
-  });
   update();
 
   var submitted = false;
@@ -94,7 +82,8 @@
     if (group.classList.contains('locked')) return;
     if (!submitted) {
       submitted = true;
-      rpc('submit_early_access', { p_token: token, p_answer: answer.value.trim().slice(0, 2000), p_pledged: pledged });
+      // Pledge UI removed; anyone who answers + downloads is recorded as an early adopter.
+      rpc('submit_early_access', { p_token: token, p_answer: answer.value.trim().slice(0, 2000), p_pledged: true });
     }
     rpc('mark_download', { p_token: token, p_os: os });
     if (url) window.location.href = url;
