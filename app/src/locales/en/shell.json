@@ -21,7 +21,8 @@
     "needsYouCount_one": "{{count}} issue needs you",
     "needsYouCount_other": "{{count}} issues need you",
     "runningCount_one": "{{count}} issue running",
-    "runningCount_other": "{{count}} issues running"
+    "runningCount_other": "{{count}} issues running",
+    "usage": "Usage"
   },
   "tabActions": {
     "newMission": "New mission",
@@ -396,5 +397,34 @@
     "successWithId": "Mission control is on it. Reference: {{id}}",
     "successNoId": "Mission control is on it.",
     "errorTitle": "Couldn't send report"
+  },
+  "usage": {
+    "title": "Usage",
+    "subtitle": "Cost and token consumption across your agents",
+    "loading": "Loading usage data...",
+    "emptyTitle": "No sessions yet",
+    "emptySubtitle": "Start a conversation with any agent to see usage here.",
+    "totalSpend": "Total spend",
+    "totalSessions": "Sessions",
+    "totalTokens": "Tokens",
+    "cachedTokens": "Cached",
+    "cacheEfficiency": "Cache hit",
+    "avgCostPerSession": "Avg / session",
+    "filterAll": "All agents",
+    "filterAgent": "Agent",
+    "filterModel": "Model",
+    "byAgent": "By agent",
+    "byModel": "By model",
+    "byHour": "Activity by hour",
+    "dailyTrend": "Daily trend",
+    "tokens": "tokens",
+    "cacheHit": "{{pct}}% cache hit",
+    "captionByDay": "Tokens per day (last 14 days)",
+    "captionByDayCost": "Cost per day (last 14 days)",
+    "captionByHour": "Tokens by local hour",
+    "dataNote": "Cost is exact when Claude reports it, otherwise estimated from official published pricing. Gemini shows tokens only.",
+    "loadError": "Failed to load usage data",
+    "sessions_one": "session",
+    "sessions_other": "sessions"
   }
 }

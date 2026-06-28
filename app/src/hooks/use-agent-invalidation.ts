@@ -22,6 +22,7 @@ export function useAgentInvalidation() {
       useSessionStatusStore.getState().clearAll();
       qc.invalidateQueries({ queryKey: ["activity"] });
       qc.invalidateQueries({ queryKey: ["all-conversations"] });
+      qc.invalidateQueries({ queryKey: ["cost-analytics"] });
     });
     const unlisten = subscribeHoustonEvents((p: HoustonEvent) => {
       console.log("[invalidation] event:", p.type, "data" in p ? (p as { data: { agent_path?: string } }).data?.agent_path : "");
@@ -56,11 +57,13 @@ export function useAgentInvalidation() {
         case "LearningsChanged":
           qc.invalidateQueries({ queryKey: queryKeys.learnings(p.data.agent_path) });
           break;
-        // SessionStatus triggers activity invalidation (agent finished → status changed)
+        // SessionStatus triggers activity invalidation (agent finished → status changed).
+        // A finished session also wrote a new final_result, so refresh cost analytics.
         case "SessionStatus":
           if (p.data.status === "completed" || p.data.status === "error") {
             qc.invalidateQueries({ queryKey: ["activity"] });
             qc.invalidateQueries({ queryKey: ["all-conversations"] });
+            qc.invalidateQueries({ queryKey: ["cost-analytics"] });
           }
           break;
         // Composio CLI became available — refresh integrations state.

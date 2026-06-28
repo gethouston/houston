@@ -25,6 +25,8 @@ export const queryKeys = {
     ["conversations", agentPath] as const,
   allConversations: (agentPaths: string[]) =>
     ["all-conversations", ...agentPaths] as const,
+  costAnalytics: (agentPaths: string[]) =>
+    ["cost-analytics", ...agentPaths] as const,
   chatHistory: (agentPath: string, sessionKey: string) =>
     ["chat-history", agentPath, sessionKey] as const,
 
