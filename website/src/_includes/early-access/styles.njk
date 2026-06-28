@@ -69,25 +69,24 @@
   .saved { display:none; align-items:center; justify-content:center; gap:7px; font-size:13.5px; color:var(--success); font-weight:600; margin:18px 0 2px; text-align:center; }
   .saved.show { display:flex; }
 
-  /* Pledge, the early adopter commitment */
-  .pledge { display:flex; gap:13px; align-items:flex-start; margin:18px 0 0; padding:16px 18px; border:1px solid var(--border); border-radius:14px; background:var(--gray-50); cursor:pointer; transition:border-color .15s, background .15s, box-shadow .15s; }
-  .pledge:hover { border-color:var(--gray-300); }
-  .pledge.checked { border-color:var(--gray-950); background:#fff; box-shadow:0 0 0 3px rgba(13,13,13,0.05); }
-  .pledge .box { flex:0 0 22px; width:22px; height:22px; border-radius:7px; border:1.5px solid var(--gray-300); background:#fff; display:inline-flex; align-items:center; justify-content:center; margin-top:1px; transition:all .15s; }
-  .pledge.checked .box { background:var(--gray-950); border-color:var(--gray-950); }
-  .pledge .box svg { width:13px; height:13px; color:#fff; opacity:0; transition:opacity .15s; }
-  .pledge.checked .box svg { opacity:1; }
-  .pledge .ptxt { font-size:14.5px; line-height:1.5; color:var(--gray-700); }
-  .pledge .ptxt b { color:var(--gray-950); font-weight:600; }
-
   footer { max-width:600px; margin:48px auto 0; padding:24px; text-align:center; border-top:1px solid var(--border); }
   footer .fl { font-size:13px; color:var(--gray-500); margin-bottom:10px; }
   footer .links a { font-size:13px; color:var(--gray-600); text-decoration:none; margin:0 8px; }
   footer .links a:hover { color:var(--gray-950); }
 
   @media (max-width:600px) {
-    .wrap { padding:108px 18px 48px; }
-    h1 { font-size:40px; }
-    nav { padding:14px 20px; }
+    nav { padding:12px 18px; }
+    .wrap { padding:78px 18px 24px; }
+    .eyebrow { margin-bottom:12px; padding:6px 13px; font-size:11.5px; }
+    h1 { font-size:33px; margin-bottom:9px; }
+    .lede { font-size:15px; line-height:1.45; margin-bottom:16px; }
+    .card { padding:20px 18px; }
+    .card .step { margin-bottom:7px; }
+    .card h2 { font-size:20px; }
+    .card .hint { margin-bottom:11px; }
+    textarea { min-height:84px; }
+    .dl-actions { margin-top:18px; }
+    .lock-note { margin-top:11px; }
+    footer { margin-top:22px; padding:16px; }
   }
 </style>
