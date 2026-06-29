@@ -48,6 +48,13 @@ export type AnalyticsEventName =
   | "tools_provider_connected"
   | "first_message_sent"
   | "first_email_sent"
+  // Fires once per onboarding screen reached (carries `step`), so a single
+  // funnel shows exactly where people drop off in the redesigned flow.
+  | "onboarding_step_viewed"
+  // Escape hatch: the user bailed out of a stuck onboarding step (HOU-555).
+  // Carries `step`, `provider`, `model` so skip-rate can be broken down by
+  // model — some models send the email but never emit the completion marker.
+  | "onboarding_skipped"
   // Activation funnel
   | "workspace_created"
   | "provider_configured"
@@ -79,6 +86,7 @@ export type AnalyticsEventName =
 
 type AnalyticsProperty =
   | "provider"
+  | "model"
   | "config_id"
   | "agent_mode"
   | "mission"
@@ -98,18 +106,19 @@ type AnalyticsProperty =
   | "from_version"
   | "to_version"
   // Onboarding funnel
-  | "locale";
+  | "locale"
+  | "step";
 
 type Props = Partial<Record<AnalyticsProperty, string | number | boolean>>;
-type UserProfile = {
+type UserIdentity = {
   email?: string | null;
-};
-type PersonProps = {
-  email?: string;
+  /** ISO date (YYYY-MM-DD) from auth.users.created_at — acquisition cohort. */
+  signupDate?: string | null;
 };
 
 const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "provider",
+  "model",
   "config_id",
   "agent_mode",
   "mission",
@@ -128,6 +137,7 @@ const ALLOWED_PROPS = new Set<AnalyticsProperty>([
   "from_version",
   "to_version",
   "locale",
+  "step",
 ]);
 
 // Bootstrap PostHog at module load so a configured build can capture errors
@@ -190,11 +200,6 @@ function cleanEmail(email?: string | null): string | undefined {
   const value = email?.trim().toLowerCase();
   const at = value?.lastIndexOf("@") ?? -1;
   return value && at > 0 && at < value.length - 1 ? value : undefined;
-}
-
-function personProps(profile?: UserProfile): PersonProps | undefined {
-  const email = cleanEmail(profile?.email);
-  return email ? { email } : undefined;
 }
 
 function daysBetween(fromISO: string, toISO: string): number {
@@ -304,10 +309,11 @@ export const analytics = {
     if (!KEY) return;
     try {
       posthog.capture(event, cleanProps(props));
-      // Maintain the `is_activated` person property — flips to true on
-      // first `chat_message_received` and stays true forever. Lets cohort
-      // filters say "activated users" without a complex insight.
-      if (event === "chat_message_received") {
+      // Maintain the `is_activated` person property — flips to true on the
+      // user's first `chat_message_sent` (activation = the user sends a
+      // message) and stays true forever. Lets cohort filters say "activated
+      // users" without a complex insight.
+      if (event === "chat_message_sent") {
         posthog.people.set({ is_activated: true });
       }
     } catch {
@@ -316,16 +322,36 @@ export const analytics = {
   },
 
   /**
-   * Merge anonymous install_id history into an identified user. Call on sign-in.
-   * Email is a person property for lookup/filtering, never an event prop.
-   * Flips the auth_status super property so every event going forward is
-   * tagged as authenticated.
+   * Tie the signed-in user's Supabase identity to their PostHog person.
+   * Call on sign-in. Does two complementary things:
+   *
+   * 1. `alias(userId)` — adds the Supabase user id as an alias of the current
+   *    install_id person. The distinct_id STAYS install_id (so the website
+   *    `/welcome` UTM bridge and the sequential onboarding funnel are untouched),
+   *    but because every device/reinstall aliases the SAME supabase id, PostHog
+   *    stitches a human's separate per-device persons into ONE. alias is the call
+   *    that merges; a second `identify()` with a new distinct_id is ignored once
+   *    a person is identified, so identify is NOT a substitute here.
+   * 2. `setPersonProperties` — also stamps `supabase_user_id` (plus email `$set`,
+   *    signup_date `$set_once`) so the id is a queryable join key to Supabase,
+   *    not only an internal alias. Email is a person property for
+   *    lookup/filtering, never an event prop.
+   *
+   * Finally flips the `auth_status` super property so every event going forward
+   * is tagged authenticated.
    */
-  alias: (userId: string, profile?: UserProfile) => {
+  identifyUser: (userId: string, identity?: UserIdentity) => {
     if (!KEY) return;
     try {
+      const email = cleanEmail(identity?.email);
       posthog.alias(userId);
-      posthog.identify(userId, personProps(profile));
+      posthog.setPersonProperties(
+        {
+          supabase_user_id: userId,
+          ...(email ? { email } : {}),
+        },
+        identity?.signupDate ? { signup_date: identity.signupDate } : undefined,
+      );
       posthog.register({ ...baseSuperProps(), auth_status: "authenticated" });
     } catch {
       // Analytics unavailable

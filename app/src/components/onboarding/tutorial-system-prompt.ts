@@ -1,6 +1,7 @@
 /**
  * Setup-only system-prompt section appended to the agent's CLAUDE.md while the
- * first-run email setup mission is mounted. Stripped on unmount.
+ * first-run email setup mission hands off to the real agent. Stripped on
+ * unmount.
  *
  * Why CLAUDE.md and not the user prompt: when we appended this to the user
  * message, the entire instruction block ended up rendered as the user's own
@@ -8,60 +9,71 @@
  * loaded at session start, so the agent gets the directive without it ever
  * showing up in the chat as a user line.
  *
- * Markers let strip be idempotent and safe even if the user manually edited
- * CLAUDE.md elsewhere; we only touch what we wrote.
+ * The flow now collects the email provider, recipient, and message up front via
+ * a guided (faked) wizard, so the directive is DYNAMIC: it tells the agent the
+ * choices already made and asks it only to (1) connect the email IN the chat,
+ * so the user sees their agent do it, and (2) send one real email. Markers let
+ * strip be idempotent and safe even if the user edited CLAUDE.md elsewhere.
  */
 const BEGIN = "<!-- HOUSTON_SETUP_BEGIN -->";
 const END = "<!-- HOUSTON_SETUP_END -->";
 
-const SETUP_SECTION = `## Set up mode (first run)
+export interface SetupEmailChoices {
+  /** Toolkit slug, e.g. "gmail" / "outlook" / a slug the user typed. */
+  toolkit: string;
+  /** Human label for the toolkit, e.g. "Gmail". */
+  toolkitLabel: string;
+  /** True when the user chose "send it to myself (just to test)". */
+  toMyself: boolean;
+  /** Recipient address when not sending to self. */
+  recipientEmail?: string;
+  /** What the user wants the email to say (optional; may be blank). */
+  message?: string;
+}
 
-This is the user's very first time in Houston. They just clicked the localized "Send an email for me" button. Your whole job right now: connect their email, then actually SEND one real email for them. When the email is sent, setup is done. Move FAST and keep it warm — every step they wait on is a step they may abandon.
+const LANGUAGE_NOTE = `**LANGUAGE — read this first.** Detect the user's language from the chat so far and reply in that same language for the entire flow, including the email subject and body. For Spanish use Latin-American neutral (tú, computador). For Portuguese use Brazilian (você). Every English string below is a TEMPLATE for meaning and tone — translate it idiomatically, do not copy it verbatim. The following are NEVER translated and must stay literal: the \`[TUTORIAL_COMPLETE]\` token, the \`[Sign in to Composio](...)\` link text and URL, all \`#houston_toolkit=...\` markdown links, all \`composio\` CLI commands, and the toolkit slugs (\`gmail\`, \`outlook\`).`;
 
-**LANGUAGE — read this first.** Detect the user's language from their FIRST message and reply in that same language for the entire flow, including the email subject and body. If they switch language mid-flow, follow them. Every English string below is a TEMPLATE for meaning and tone — translate it idiomatically, do not copy it verbatim. For Spanish use Latin-American neutral (tú, computador). For Portuguese use Brazilian (você). The following are NEVER translated and must stay literal: the \`[TUTORIAL_COMPLETE]\` token, the \`[Sign in to Composio](...)\` link text and URL, all \`#houston_toolkit=...\` markdown links, all \`composio\` CLI commands, and the email-provider toolkit slugs (\`gmail\`, \`outlook\`).
+/** Build the dynamic setup directive from the wizard's collected choices. */
+export function buildSetupSection(choices: SetupEmailChoices): string {
+  const { toolkit, toolkitLabel, toMyself, recipientEmail, message } = choices;
+  const recipientLine = toMyself
+    ? `the user themselves — read their own address from the connected ${toolkitLabel} account profile (a get-my-profile call)`
+    : `${recipientEmail}`;
+  const messageLine = message?.trim()
+    ? `"${message.trim()}"`
+    : "a short, warm two-sentence hello from their new Houston agent";
 
-1. FIRST, ask which email they use. Reply with exactly two short lines, then STOP and wait — do not connect or check anything yet:
+  return `## Set up mode (first run)
 
-   - "Which email do you use — **Gmail** or **Outlook**?"
-   - "Just reply **Gmail** or **Outlook** and I'll connect it for you."
+The user just walked a quick guided setup, ALREADY connected their email (${toolkitLabel}), and chose everything below. Do NOT ask anything, and do NOT post a connect card — ${toolkitLabel} is already connected. Your only job: send ONE real email right now, then confirm. Move fast, stay warm.
 
-2. Once they answer, bind MAIL_TOOLKIT:
-   - "Gmail" / "Google" → MAIL_TOOLKIT = \`gmail\`.
-   - "Outlook" / "Microsoft" / "Office" / "365" / "Hotmail" → MAIL_TOOLKIT = \`outlook\`. If a tool call later returns a "no such toolkit" style error, run \`composio search outlook\` ONCE silently and pick the matching slug from the results.
-   - If the answer is ambiguous, default to \`gmail\` and say so in one short line ("Going with Gmail, tell me if you'd rather use Outlook.").
+${LANGUAGE_NOTE}
 
-3. SILENTLY check Composio for the MAIL_TOOLKIT connection (use \`composio search\` / \`composio execute\` per the integrations guide). Do NOT narrate the check.
+CHOICES (already made — never re-ask):
+- Email provider: ${toolkitLabel} (toolkit slug \`${toolkit}\`) — already connected.
+- Recipient: ${recipientLine}
+- Message: ${messageLine}
 
-4. If Composio itself returns an authentication / not-signed-in error (no Composio session at all), STOP. Post the Composio sign-in card by writing exactly \`[Sign in to Composio](https://composio.dev/#houston_composio_signin=1)\` plus one short line ("First, sign in to Composio so I can connect your email."). Wait for the user, then restart from step 3. Never fabricate results when you cannot reach Composio.
+Do exactly this:
 
-5. If MAIL_TOOLKIT is NOT connected, post a connect card for it using the standard #houston_toolkit pattern (one markdown link with the chosen slug in the fragment), plus one short line ("Connect your email and I'll take it from there."). Then wait for the user to come back and re-check. Do NOT continue until the email is connected.
+1. SEND the email immediately with ONE \`composio execute\` ${toolkit} send-email call. This is a REAL send, not a draft. Pass ONLY \`recipient_email\`, \`subject\`, and \`body\`. Do NOT include \`attachment\` or any other file field — an empty attachment path makes the send fail with \`ENOENT: no such file or directory\`. Resolve the recipient and message from the CHOICES above; if the message is the default hello, write a short friendly subject + a two-sentence body signed with their first name if you can read it from their profile.
 
-6. Once the email IS connected, ask who to send to and what to say. Reply with exactly one short line, then STOP and wait:
+2. Tell them in ONE line that this is a real send ("Sending this now, for real — to **{recipient}**."), then after it sends confirm in exactly two short lines:
+   - "✅ Sent to **{recipient}**."
+   - "That's your agent doing real work. You're all set."
+   End your final message with the literal token [TUTORIAL_COMPLETE] on its own line, AFTER the confirmation. Emit it ONLY after a successful real send. If the send fails (for example the email is not actually connected), show the real error in one short line and ask them to try again — do NOT emit the token, and do NOT post a connect card.
 
-   - "Connected! Who should I email, and what should I say? If you just want to see it work, say **email myself** and I'll send you a quick hello."
+Be tight. No apologies, no narration of your process. Send, confirm, token. Done.`;
+}
 
-7. Resolve the recipient and message from their answer:
-   - If they say "email myself" / "send it to me" / anything self-directed: read THEIR OWN email address from the connected account (a MAIL_TOOLKIT get-profile / get-my-profile call), use it as the recipient, and write a short friendly subject + a two-sentence body that says hi from their new Houston assistant.
-   - Otherwise: use the recipient and content they gave you. Keep the body short and warm, two to three sentences, signed with their first name if you can read it from their profile.
-
-8. BEFORE sending, tell them plainly in ONE line that this is a real send: "Sending this now, for real — to **{recipient}**." Then ACTUALLY send the email with ONE \`composio execute\` MAIL_TOOLKIT send-email call. This is a REAL send, NOT a draft.
-
-   Pass ONLY the three fields you actually need: \`recipient_email\`, \`subject\`, and \`body\`. Do NOT include \`attachment\` or any other file/path field — there is no attachment. An empty string for \`attachment\` makes the tool try to open a file at path "" and the send dies with \`ENOENT: no such file or directory\`. Omit every optional field you are not using; never pass it as an empty string.
-
-9. After it sends, confirm in chat with exactly two short lines:
-   - "✅ Sent to **{recipient}** — subject **{subject}**."
-   - "That's your assistant doing real work. You're all set."
-
-10. End your final message with the literal token [TUTORIAL_COMPLETE] on its own line, AFTER the confirmation. The frontend uses this token to finish setup. Emit it ONLY after the email actually sent. If the send fails, show the real error in one short line and ask them to try again — do NOT emit the token.
-
-Be tight. No apologies. No "let me think about that". No narration of your process. Ask which email, wait, connect, ask recipient + message, wait, announce the real send, send, confirm, emit the token. Done.
-`;
-
-/** Append the setup section to CLAUDE.md if not already present. */
-export function appendSetupSection(claudeMd: string): string {
+/** Append the dynamic setup section to CLAUDE.md if not already present. */
+export function appendSetupSection(
+  claudeMd: string,
+  choices: SetupEmailChoices,
+): string {
   if (claudeMd.includes(BEGIN)) return claudeMd;
   const trimmed = claudeMd.replace(/\s+$/, "");
-  return `${trimmed}\n\n${BEGIN}\n${SETUP_SECTION}${END}\n`;
+  return `${trimmed}\n\n${BEGIN}\n${buildSetupSection(choices)}\n${END}\n`;
 }
 
 /** Remove the setup section if present. Idempotent. */

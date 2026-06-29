@@ -1,0 +1,88 @@
+<style>
+  /* ─── Houston design tokens (mirrored from the landing page) ─── */
+  :root {
+    --background:#ffffff; --foreground:#0d0d0d; --secondary:#f9f9f9;
+    --muted-foreground:#5d5d5d; --border:#e5e5e5;
+    --gray-50:#f9f9f9; --gray-100:#ececec; --gray-200:#e3e3e3; --gray-300:#cdcdcd;
+    --gray-400:#b4b4b4; --gray-500:#9b9b9b; --gray-600:#676767; --gray-700:#424242; --gray-950:#0d0d0d;
+    --success:#00a240; --border-medium:rgba(0,0,0,0.15);
+  }
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { font-family: ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,Arial,sans-serif; color:var(--foreground); background:var(--background); -webkit-font-smoothing:antialiased; overflow-x:hidden; }
+  a { color:inherit; }
+
+  @keyframes comet-border { 0% { --angle:0deg; } 100% { --angle:360deg; } }
+  @property --angle { syntax:"<angle>"; initial-value:0deg; inherits:false; }
+  .comet-card { position:relative; border-radius:20px; overflow:hidden; background:white; }
+  .comet-card::before { content:""; position:absolute; inset:-2px; border-radius:22px;
+    background: conic-gradient(from var(--angle), transparent 60%, #3b82f6 72%, #818cf8 80%, #f97316 88%, #eab308 92%, transparent 100%);
+    animation: comet-border 2.5s linear infinite; z-index:0; }
+  .comet-card::after { content:""; position:absolute; inset:2px; border-radius:18px; background:white; z-index:0; }
+  .comet-card > * { position:relative; z-index:1; }
+
+  nav { position:fixed; top:0; left:0; right:0; z-index:100; padding:16px 40px; display:flex; align-items:center; justify-content:space-between;
+    background: linear-gradient(to right, rgba(59,130,246,0.06), rgba(255,255,255,0.88) 40%, rgba(255,255,255,0.88) 60%, rgba(249,115,22,0.05)); backdrop-filter: blur(20px); }
+  .nav-logo { font-family:'General Sans',sans-serif; font-size:22px; font-weight:600; letter-spacing:-0.02em; color:var(--gray-950); text-decoration:none; }
+  .nav-right a { font-size:14px; color:var(--gray-600); text-decoration:none; transition:color .2s; }
+  .nav-right a:hover { color:var(--gray-950); }
+
+  /* Download CTAs, mirrored from the Houston home page */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; padding:0 16px; border-radius:9999px; font-size:14px; font-weight:500; text-decoration:none; border:none; cursor:pointer; transition:all .2s; }
+  .btn svg { flex:0 0 auto; }
+  .btn-primary { background:var(--gray-950); color:#fff; }
+  .btn-primary:hover { background:var(--gray-700); }
+  .btn-secondary { background:#fff; color:var(--gray-950); border:1px solid var(--border-medium); }
+  .btn-secondary:hover { background:var(--gray-50); }
+  .btn-lg { height:48px; padding:0 24px; font-size:16px; }
+  .dl-alt { display:inline-flex; align-items:center; gap:6px; background:none; border:none; padding:4px 2px; cursor:pointer; font-size:13px; color:var(--gray-500); text-decoration:underline; text-underline-offset:2px; font-family:inherit; }
+  .dl-alt svg { width:13px; height:13px; }
+  .dl-alt:hover { color:var(--gray-950); }
+  .dl-actions { display:flex; gap:16px; align-items:center; justify-content:center; flex-wrap:wrap; margin-top:22px; }
+  .dl-actions.locked { opacity:.4; pointer-events:none; }
+
+  .page-bg { position:fixed; inset:0; z-index:-1; pointer-events:none;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -10%, rgba(59,130,246,0.10), transparent),
+      radial-gradient(ellipse 60% 40% at 85% 25%, rgba(249,115,22,0.07), transparent),
+      radial-gradient(ellipse 60% 40% at 15% 75%, rgba(129,140,248,0.06), transparent); }
+
+  .wrap { max-width:600px; margin:0 auto; padding:124px 24px 56px; text-align:center; }
+
+  h1 { font-family:'General Sans',sans-serif; font-size:54px; font-weight:600; letter-spacing:-0.03em; line-height:1.04; color:var(--gray-950); margin-bottom:18px; }
+  h1 .grad { background:linear-gradient(90deg,#3b82f6,#818cf8 40%,#f97316 85%); -webkit-background-clip:text; background-clip:text; color:transparent; }
+  .lede { font-size:18px; color:var(--muted-foreground); line-height:1.6; max-width:480px; margin:0 auto 36px; }
+
+  /* Question card */
+  .card { padding:34px 32px; text-align:left; }
+  .card .step { font-size:12px; font-weight:600; color:#3b82f6; letter-spacing:.06em; margin-bottom:10px; }
+  .card h2 { font-family:'General Sans',sans-serif; font-size:25px; font-weight:600; letter-spacing:-0.02em; line-height:1.2; margin-bottom:8px; color:var(--gray-950); }
+  .card .hint { font-size:14px; color:var(--gray-600); line-height:1.5; margin-bottom:16px; }
+  textarea { width:100%; min-height:110px; resize:vertical; border:1px solid var(--border-medium); border-radius:12px; padding:14px; font-size:15px; font-family:inherit; color:var(--gray-950); background:#fff; outline:none; transition:border-color .15s, box-shadow .15s; }
+  textarea:focus { border-color:var(--gray-950); box-shadow:0 0 0 3px rgba(13,13,13,0.06); }
+  textarea::placeholder { color:var(--gray-400); }
+
+  .lock-note { font-size:13px; color:var(--gray-400); text-align:center; margin-top:14px; transition:opacity .2s; }
+
+  .saved { display:none; align-items:center; justify-content:center; gap:7px; font-size:13.5px; color:var(--success); font-weight:600; margin:18px 0 2px; text-align:center; }
+  .saved.show { display:flex; }
+
+  footer { max-width:600px; margin:48px auto 0; padding:24px; text-align:center; border-top:1px solid var(--border); }
+  footer .fl { font-size:13px; color:var(--gray-500); margin-bottom:10px; }
+  footer .links a { font-size:13px; color:var(--gray-600); text-decoration:none; margin:0 8px; }
+  footer .links a:hover { color:var(--gray-950); }
+
+  @media (max-width:600px) {
+    nav { padding:12px 18px; }
+    .wrap { padding:78px 18px 24px; }
+    h1 { font-size:33px; margin-bottom:9px; }
+    .lede { font-size:15px; line-height:1.45; margin-bottom:16px; }
+    .card { padding:20px 18px; }
+    .card .step { margin-bottom:7px; }
+    .card h2 { font-size:20px; }
+    .card .hint { margin-bottom:11px; }
+    textarea { min-height:84px; }
+    .dl-actions { margin-top:18px; }
+    .lock-note { margin-top:11px; }
+    footer { margin-top:22px; padding:16px; }
+  }
+</style>

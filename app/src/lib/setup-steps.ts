@@ -1,28 +1,36 @@
 /**
- * The single ordered list of numbered setup steps, shared across the gates and
- * the onboarding orchestrator so the "Step N of N" header is consistent
- * everywhere (the totals used to disagree between screens). The rotating
- * Welcome is a hero and sits OUTSIDE this list (unnumbered).
+ * The numbered first-run steps, grouped into the two phases the UI shows. A
+ * "logical step" can span more than one screen (e.g. "Connect your AI" is the
+ * pick screen + the login screen), and each phase numbers its own steps
+ * ("Setup · 1 of 2", "Onboarding · 2 of 3").
  *
- *   1 language → 2 agreement → 3 meet → 4 brain (pick AI) →
- *   5 providerLogin (connect AI) → 6 tools (apps) → 7 email
+ * The language + agreement gates are pre-setup and carry NO step counter, and
+ * the framing/celebration screens (intro, the success screens, the finished
+ * chooser) sit outside this list too.
  */
-export const SETUP_STEPS = [
-  "language",
-  "agreement",
-  "meet",
-  "brain",
-  "providerLogin",
-  "tools",
-  "email",
-] as const;
+export type SetupSection = "setup" | "onboarding";
 
-export type SetupStep = (typeof SETUP_STEPS)[number];
+const LOGICAL_STEPS: { section: SetupSection; screens: readonly string[] }[] = [
+  { section: "setup", screens: ["brain", "providerLogin"] }, // Connect your AI
+  { section: "setup", screens: ["tools"] }, // Connect your apps
+  { section: "onboarding", screens: ["meet"] }, // Create your agent
+  { section: "onboarding", screens: ["connectEmail"] }, // Connect your email
+  { section: "onboarding", screens: ["emailChat"] }, // Send your first email
+];
 
-/** 1-based position + total for a step, for the "Step N of N" eyebrow. */
-export function setupStepNumber(step: SetupStep): {
-  current: number;
-  total: number;
-} {
-  return { current: SETUP_STEPS.indexOf(step) + 1, total: SETUP_STEPS.length };
+/**
+ * The section + 1-based position of a screen WITHIN its section, or null for
+ * screens that aren't numbered steps (gates, success screens).
+ */
+export function stepSection(
+  screen: string,
+): { section: SetupSection; current: number; total: number } | null {
+  const step = LOGICAL_STEPS.find((s) => s.screens.includes(screen));
+  if (!step) return null;
+  const peers = LOGICAL_STEPS.filter((s) => s.section === step.section);
+  return {
+    section: step.section,
+    current: peers.findIndex((s) => s.screens.includes(screen)) + 1,
+    total: peers.length,
+  };
 }

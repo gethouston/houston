@@ -1,0 +1,18 @@
+<script>
+  // Read the secret per-person token (?t=…) from the welcome-email link and
+  // strip it from the URL BEFORE analytics init (PostHog/GA run later in
+  // <head>), so the token is never captured in a pageview or referrer.
+  (function () {
+    try {
+      var t = new URLSearchParams(window.location.search).get('t');
+      if (t) {
+        window.__eaToken = t;
+        window.history.replaceState(null, '', window.location.pathname + window.location.hash);
+      }
+    } catch (e) {
+      // URL APIs unavailable (ancient browser): leave the URL as-is. No token
+      // means feedback simply isn't attributed; the page still works.
+      console.warn('early-access: token scrub skipped:', e);
+    }
+  })();
+</script>

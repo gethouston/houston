@@ -17,8 +17,10 @@
   },
   "tutorial": {
     "brand": "Houston",
-    "nav": { "back": "Back", "continue": "Continue" },
-    "counter": "Step {{current}} of {{total}}",
+    "nav": {
+      "back": "Back",
+      "continue": "Continue"
+    },
     "eyebrow": "Step {{number}}",
     "missionLabel": "Set up: {{title}}",
     "upNext": "Up next",
@@ -27,10 +29,10 @@
     },
     "welcome": {
       "title": "Welcome to Houston",
-      "tagline": "Houston is where you build assistants that work with the same apps you already use.",
-      "stepsTitle": "A quick setup to get your assistant working:",
+      "tagline": "Houston is where you build agents that work with the same apps you already use.",
+      "stepsTitle": "A quick setup to get your agent working:",
       "steps": {
-        "meet": "Meet your assistant",
+        "meet": "Meet your agent",
         "brain": "Connect an AI provider so it can think",
         "tools": "Connect your apps",
         "email": "Send your first real email with it"
@@ -40,58 +42,122 @@
     },
     "defaults": {
       "workspaceName": "Personal",
-      "assistantName": "Personal assistant",
+      "assistantName": "Personal agent",
       "focus": "Help me stay organized, prepare my day, draft messages, protect focus time, and keep track of follow-ups.",
       "approvalRule": "Ask before sending messages, creating calendar events, or changing anything in connected apps.",
       "firstWorkflow": "Set up my first useful daily workflow"
     },
     "missions": {
-      "meet": {
-        "title": "Meet your assistant",
-        "body": "Give your assistant a name and a color. You can change them later.",
-        "begin": "Continue"
+      "intro": {
+        "title": "Let's set up your account",
+        "body": "A few quick steps and your agent is ready to work for you.",
+        "cta": "Start setup",
+        "steps": {
+          "ai": "Connect your AI",
+          "apps": "Connect your apps",
+          "agent": "Create your agent",
+          "email": "Connect your email",
+          "send": "Send your first email"
+        }
       },
       "brain": {
-        "title": "Pick your AI",
-        "body": "Choose the AI that powers your assistant. You bring your own subscription, Houston never sees your credentials."
+        "title": "Log in to your AI subscription",
+        "body": "Choose the AI you already pay for. You bring your own subscription, so Houston never sees your password or your bill."
       },
       "providerLogin": {
-        "title": "Connect {{provider}}",
-        "body": "Sign in once so your assistant can use {{provider}} on your behalf.",
+        "title": "Log in to {{provider}}",
+        "body": "Sign in once so your agent can use {{provider}} on your behalf.",
         "loginButton": "Log in to {{provider}}",
         "waiting": "Waiting for {{provider}}...",
         "cancel": "Cancel",
-        "creating": "Creating your assistant...",
         "connected": {
           "title": "You're all set",
           "body": "We found {{provider}} on this computer. You're signed in with your own subscription, so there's nothing to set up here."
         }
       },
       "tools": {
-        "title": "Sign in once to use your apps",
-        "body": "One sign-in lets your assistant work with your apps. After that it connects each app, like Gmail or your calendar, only when you actually need it, so there's no big setup now.",
+        "title": "Connect your apps",
+        "body": "Your agent works with apps like Gmail and your calendar through Composio, a secure integration provider. One account lets it connect any app, only when you actually need it.",
+        "steps": {
+          "account": "Create your Composio account",
+          "authorize": "Authorize Houston to connect"
+        },
         "allow": "Sign in",
         "waiting": "Waiting for you in your browser...",
         "cancel": "Cancel",
         "connected": {
           "title": "You're all set",
-          "body": "Your assistant can now connect to your apps whenever you need them."
+          "body": "Your agent can now connect to your apps whenever you need them."
         }
       },
+      "meet": {
+        "title": "Create your first agent",
+        "body": "Give your agent a name and a color. You can change them anytime.",
+        "begin": "Create agent",
+        "creating": "Creating..."
+      },
       "email": {
-        "title": "Send your first email",
-        "body": "Connect your email and your assistant will send one real message for you. That is setup done.",
-        "intro": {
-          "title": "Send a real email",
-          "body": "Your assistant connects to your real apps to do actual work. Let's connect your email and send one, for real.",
-          "cta": "Let's do it"
+        "title": "See your agent in action",
+        "offer": {
+          "option": "Send an email to myself"
         },
         "chip": "Send an email for me",
-        "continueChip": "Enter Houston",
-        "skip": "I'll set this up later",
-        "doneTitle": "Sent. You're all set.",
-        "placeholder": "Reply to your assistant..."
+        "placeholder": "Reply to your agent...",
+        "body": "Your agent will send a real email to you, so you can watch it work.",
+        "skip": "Skip for now",
+        "skipHint": "Your agent finished but didn't confirm. You can skip and start using Houston."
+      },
+      "aiConnected": {
+        "title": "Your AI is connected!",
+        "body": "Your agent can think now. You're one step closer.",
+        "cta": "Continue"
+      },
+      "appsConnected": {
+        "title": "Apps connected!",
+        "body": "Setup done, nice work. Now let's create your first agent.",
+        "cta": "Create my agent"
+      },
+      "connectEmail": {
+        "title": "Give your agent access to your email",
+        "body": "Pick your email so your agent can send on your behalf. You connect it once, securely.",
+        "other": "Another provider",
+        "otherPlaceholder": "Which email provider?",
+        "connect": "Connect",
+        "connecting": "Connecting..."
+      },
+      "agentCreated": {
+        "title": "Agent created!",
+        "body": "Meet your new agent. Two quick steps and it's working for you.",
+        "cta": "Continue"
+      },
+      "emailConnected": {
+        "title": "Email connected!",
+        "body": "That's how easy connecting an app is, and your agent can reach 1000+ this way.",
+        "cta": "Continue"
+      },
+      "emailSent": {
+        "title": "Email sent!",
+        "body": "Go check your inbox, your agent just sent you a real email.",
+        "cta": "Continue"
+      },
+      "finished": {
+        "title": "You're all set!",
+        "body": "Your agent is ready. What would you like to do next?",
+        "tour": "Take a tour of Houston",
+        "tourBody": "A quick walkthrough of the basics.",
+        "connectMore": "Connect more apps",
+        "connectMoreBody": "Give your agent access to more of your tools."
+      },
+      "onboardingIntro": {
+        "title": "Now let's put it to work",
+        "body": "Three quick steps to see your agent do something real.",
+        "cta": "Let's go"
       }
+    },
+    "sectionCounter": "{{section}} · {{current}} of {{total}}",
+    "sections": {
+      "setup": "Setup",
+      "onboarding": "Onboarding"
     }
   }
 }

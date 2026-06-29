@@ -22,6 +22,14 @@ fn classify_codex_error_message(message: &str) -> Option<ProviderError> {
         .and_then(|p| p.classify_stderr(message))
 }
 
+fn is_reconnect_progress_noise(message: &str) -> bool {
+    if is_terminal_auth_error(message) {
+        return false;
+    }
+    let lower = message.trim_start().to_lowercase();
+    lower.starts_with("reconnecting...") && lower.contains("/5")
+}
+
 /// Top-level Codex NDJSON event envelope.
 #[derive(Debug, Clone, Deserialize)]
 pub struct CodexEvent {
@@ -322,6 +330,8 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
             if is_auth_retry_noise(&msg) && !is_terminal_auth_error(&msg) {
                 tracing::info!("[codex] auth retry detected — suppressing raw error");
                 items.push(FeedItem::SystemMessage(AUTH_RETRY_MARKER.to_string()));
+            } else if is_reconnect_progress_noise(&msg) {
+                tracing::info!("[codex] transient reconnect detected — suppressing raw error");
             } else if let Some(typed) = classify_codex_error_message(&msg) {
                 // Typed classifier path. Covers ProviderModelUnsupported
                 // (the "is not supported when using Codex with a ChatGPT
@@ -340,7 +350,9 @@ pub fn parse_codex_event(line: &str, acc: &mut CodexAccumulator) -> Vec<FeedItem
                 if matches!(typed, ProviderError::Unauthenticated { .. }) {
                     if !acc.auth_card_emitted {
                         acc.auth_card_emitted = true;
-                        tracing::info!("[codex] auth failure — emitting Unauthenticated reconnect card");
+                        tracing::info!(
+                            "[codex] auth failure — emitting Unauthenticated reconnect card"
+                        );
                         items.push(FeedItem::ProviderError(typed));
                     }
                 } else if !acc.terminal_error_emitted {
@@ -608,7 +620,9 @@ mod tests {
         let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
         let items = parse_codex_event(r#"{"type":"turn.completed"}"#, &mut a);
         assert!(
-            items.iter().any(|i| matches!(i, FeedItem::Thinking(t) if t.is_empty())),
+            items
+                .iter()
+                .any(|i| matches!(i, FeedItem::Thinking(t) if t.is_empty())),
             "expected an empty Thinking() to close the placeholder, got {items:?}"
         );
     }
@@ -719,7 +733,10 @@ mod tests {
                 // accurate value is patched in from the rollout by
                 // `session_io::read_codex_stdout` (see codex_rollout).
                 assert!(result.contains("24885"));
-                assert!(usage.is_none(), "cumulative turn usage must not be trusted as context fill");
+                assert!(
+                    usage.is_none(),
+                    "cumulative turn usage must not be trusted as context fill"
+                );
             }
             other => panic!("expected FinalResult, got {other:?}"),
         }
@@ -744,6 +761,41 @@ mod tests {
         let items = parse_codex_event(line, &mut acc());
         assert_eq!(items.len(), 1);
         assert!(matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("Context window")));
+    }
+
+    #[test]
+    fn parse_reconnect_progress_suppresses_system_message() {
+        // Verbatim production shape from Andres, 2026-06-22: Codex reports
+        // retry progress as `type:error`, then later returns the answer and
+        // exits 0. These lines must not persist as mission-log errors.
+        let line = r#"{"type":"error","message":"Reconnecting... 2/5 (stream disconnected before completion: websocket closed by server before response.completed)"}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert!(
+            items.is_empty(),
+            "retry progress is not user-visible: {items:?}"
+        );
+    }
+
+    #[test]
+    fn parse_reconnect_progress_only_closes_existing_placeholder() {
+        let mut a = acc();
+        let _ = parse_codex_event(r#"{"type":"turn.started"}"#, &mut a);
+        let line = r#"{"type":"error","message":"Reconnecting... 5/5 (stream disconnected before completion: websocket closed by server before response.completed)"}"#;
+
+        let items = parse_codex_event(line, &mut a);
+
+        assert_eq!(items.len(), 1);
+        assert!(matches!(&items[0], FeedItem::Thinking(t) if t.is_empty()));
+    }
+
+    #[test]
+    fn parse_final_network_failure_still_surfaces_error() {
+        let line = r#"{"type":"turn.failed","error":{"message":"stream disconnected before completion: websocket closed by server before response.completed"}}"#;
+        let items = parse_codex_event(line, &mut acc());
+        assert_eq!(items.len(), 1);
+        assert!(
+            matches!(&items[0], FeedItem::SystemMessage(m) if m.contains("stream disconnected"))
+        );
     }
 
     #[test]
@@ -794,7 +846,10 @@ mod tests {
             FeedItem::ProviderError(ProviderError::Unauthenticated { .. })
         ));
         let second = parse_codex_event(line, &mut a);
-        assert!(second.is_empty(), "duplicate terminal-auth retries must be dropped, got {second:?}");
+        assert!(
+            second.is_empty(),
+            "duplicate terminal-auth retries must be dropped, got {second:?}"
+        );
     }
 
     #[test]
@@ -816,7 +871,10 @@ mod tests {
         // Second identical error event (codex repeats it) is dropped — no
         // second card, and crucially no raw "Error: ..." SystemMessage.
         let second = parse_codex_event(line, &mut a);
-        assert!(second.is_empty(), "duplicate auth error must be dropped, got {second:?}");
+        assert!(
+            second.is_empty(),
+            "duplicate auth error must be dropped, got {second:?}"
+        );
     }
 
     #[test]

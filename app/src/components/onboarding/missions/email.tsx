@@ -8,16 +8,14 @@ import { logger } from "../../../lib/logger";
 import { createMission } from "../../../lib/create-mission";
 import { useSessionMessageQueue } from "../../../hooks/use-session-message-queue";
 import { useQueuedMessageLabels } from "../../use-queued-message-labels";
-import {
-  appendSetupSection,
-  stripSetupSection,
-} from "../tutorial-system-prompt";
+import { appendSetupSection, stripSetupSection } from "../tutorial-system-prompt";
 import { useFeedStore } from "../../../stores/feeds";
 import {
   useSessionStatus,
   isActiveSessionStatus,
 } from "../../../stores/session-status";
 import { useChatDisplayLabels } from "../../use-chat-display-labels";
+import { useFileToolRenderer } from "../../../hooks/use-file-tool-renderer";
 import { ComposioLinkCard } from "../../composio-link-card";
 import { parseComposioToolkitFromHref } from "../../composio-card-state";
 import { withComposioWaitingFooter } from "../../composio-waiting-footer";
@@ -27,12 +25,10 @@ import {
 } from "../../composio-signin-card";
 import type { Agent } from "../../../lib/types";
 import { SetupCard } from "../setup-card";
+import { OfferCard } from "./email-cards";
+import { shouldOfferSkip } from "./email-skip";
 
-/**
- * Magic word the agent emits to signal "setup done". (Internal agent↔UI marker,
- * not user-facing copy; the regex is lenient because codex sometimes wraps or
- * escapes it.) When seen, the Continue footer unlocks.
- */
+/** The agent emits this once the email actually sent. */
 const SETUP_END_RE = /\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]/i;
 const SETUP_END_STRIP_RE =
   /\*{0,2}\[\s*\\?TUTORIAL[_\s\\]+COMPLETED?\s*\]\*{0,2}/gi;
@@ -43,18 +39,22 @@ interface EmailMissionProps {
   assistantColor: string;
   provider: string;
   model: string;
+  /** The email toolkit connected in the previous step (e.g. "gmail"). */
+  emailToolkit: string;
+  emailToolkitLabel: string;
   onBack: () => void;
-  /** Finish setup and enter the app (arms the guided tour). */
+  /** Advance to the success screen once the email is sent. */
   onContinue: () => void;
-  /** Escape gate if the agent stalls — lands the user in the app anyway. */
+  /** Escape hatch: leave onboarding and go straight into the app. Shown only
+   *  once the agent ran but never confirmed completion (HOU-555). */
   onSkip: () => void;
 }
 
 /**
- * Final setup step: the assistant sends one real email. Lives in the same
- * SetupCard as every other step (eyebrow "Step N of N" + footer), with the
- * chat as the card content. Continue unlocks once the agent emits its
- * completion token (the email sent).
+ * Final onboarding step: the agent sends one real email to the user themselves.
+ * The email is already connected (previous step), so this is just a single
+ * "Send an email to myself" card; the agent reads the directive from CLAUDE.md
+ * and sends. Auto-advances the moment the agent confirms.
  */
 export function EmailMission({
   eyebrow,
@@ -62,6 +62,8 @@ export function EmailMission({
   assistantColor,
   provider,
   model,
+  emailToolkit,
+  emailToolkitLabel,
   onBack,
   onContinue,
   onSkip,
@@ -69,46 +71,33 @@ export function EmailMission({
   const { t } = useTranslation(["setup", "chat"]);
   const agentPath = agent.folderPath;
 
+  const [started, setStarted] = useState(false);
   const [missionSessionKey, setMissionSessionKey] = useState<string | null>(
     null,
   );
-  const sessionKeyForHooks = missionSessionKey ?? "";
-  const feedItems = useFeedStore(
-    (s) => s.items[agentPath]?.[sessionKeyForHooks],
-  );
-  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
-  const sessionStatus = useSessionStatus(agentPath, sessionKeyForHooks);
-  const isActive = isActiveSessionStatus(sessionStatus);
-  const { processLabels, getThinkingMessage } = useChatDisplayLabels();
-
   const [composerText, setComposerText] = useState("");
   const [composerFiles, setComposerFiles] = useState<File[]>([]);
-  const [pickedAny, setPickedAny] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Append the setup directive to CLAUDE.md while mounted; strip on unmount.
-  const setupPrepRef = useRef<Promise<void>>(Promise.resolve());
+  // Same chat-rendering hooks the real agent chat uses, so the onboarding chat
+  // shows the agent's actual tool calls/results + a proper thinking + end-of-
+  // turn indicator, not just a bare "thinking".
+  const { processLabels, getThinkingMessage, thinkingIndicator, endOfTurnIndicator } =
+    useChatDisplayLabels();
+  const { isSpecialTool, renderToolResult, renderTurnSummary } =
+    useFileToolRenderer(agentPath);
+  const queuedLabels = useQueuedMessageLabels();
+
+  // Strip the setup directive from CLAUDE.md on unmount (idempotent).
   useEffect(() => {
-    let cancelled = false;
-    const prep = (async () => {
-      try {
-        const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
-        const updated = appendSetupSection(current);
-        if (cancelled || updated === current) return;
-        await tauriAgent.writeFile(agentPath, "CLAUDE.md", updated);
-      } catch (e) {
-        logger.warn(`[email-setup] could not append setup section: ${e}`);
-      }
-    })();
-    setupPrepRef.current = prep;
     return () => {
-      cancelled = true;
       void (async () => {
         try {
           const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
           const stripped = stripSetupSection(current);
-          if (stripped === current) return;
-          await tauriAgent.writeFile(agentPath, "CLAUDE.md", stripped);
+          if (stripped !== current) {
+            await tauriAgent.writeFile(agentPath, "CLAUDE.md", stripped);
+          }
         } catch (e) {
           logger.warn(`[email-setup] could not strip setup section: ${e}`);
         }
@@ -116,50 +105,100 @@ export function EmailMission({
     };
   }, [agentPath]);
 
+  const sessionKeyForHooks = missionSessionKey ?? "";
+  const realFeed = useFeedStore((s) => s.items[agentPath]?.[sessionKeyForHooks]);
+  const pushFeedItem = useFeedStore((s) => s.pushFeedItem);
+  const sessionStatus = useSessionStatus(agentPath, sessionKeyForHooks);
+  const isActive = isActiveSessionStatus(sessionStatus);
+
+  // The mission session has gone active at least once (the agent actually ran).
+  // Gates the skip escape hatch so we only offer it after a real attempt.
+  const [hasRun, setHasRun] = useState(false);
+  useEffect(() => {
+    if (isActive) setHasRun(true);
+  }, [isActive]);
+
   const setupDone = useMemo(() => {
-    for (let i = (feedItems ?? []).length - 1; i >= 0; i--) {
-      const item = (feedItems ?? [])[i];
+    const items = realFeed ?? [];
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i];
       if (item.feed_type !== "assistant_text") continue;
       if (typeof item.data === "string" && SETUP_END_RE.test(item.data)) {
         return true;
       }
     }
     return false;
-  }, [feedItems]);
+  }, [realFeed]);
 
-  // Funnel step 12 = CONVERSION (action): the assistant sent the first real
-  // email (the agent emitted its completion token). `setupDone` is derived from
-  // the feed, so guard with a ref to fire exactly once per install — strictly
-  // before `onboarding_completed` (which fires when the user clicks Continue).
-  const emailSentFired = useRef(false);
+  // Offer the skip escape hatch only when the agent ran, went idle, and never
+  // emitted the completion marker — the "stuck" state from HOU-555.
+  const showSkip = shouldOfferSkip({ hasRun, isActive, setupDone });
+
+  // Conversion + auto-advance to the success screen the moment it sends.
+  const doneFired = useRef(false);
   useEffect(() => {
-    if (setupDone && !emailSentFired.current) {
-      emailSentFired.current = true;
+    if (setupDone && !doneFired.current) {
+      doneFired.current = true;
       analytics.track("first_email_sent", { provider });
+      onContinue();
     }
-  }, [setupDone, provider]);
+  }, [setupDone, provider, onContinue]);
 
-  const handleOpenLink = useCallback((url: string) => {
-    tauriSystem.openUrl(url).catch(console.error);
-  }, []);
+  const handleSend = useCallback(async () => {
+    if (started) return;
+    setStarted(true);
+    setError(null);
+    analytics.track("first_message_sent");
+    // Pre-feed the agent (send to self via the already-connected toolkit).
+    try {
+      const current = await tauriAgent.readFile(agentPath, "CLAUDE.md");
+      const updated = appendSetupSection(current, {
+        toolkit: emailToolkit,
+        toolkitLabel: emailToolkitLabel,
+        toMyself: true,
+      });
+      if (updated !== current) {
+        await tauriAgent.writeFile(agentPath, "CLAUDE.md", updated);
+      }
+    } catch (e) {
+      logger.warn(`[email-setup] could not append setup section: ${e}`);
+    }
+    try {
+      // The kickoff IS the user-visible message (the session echoes it into the
+      // feed), so use the button's text — the directive in CLAUDE.md tells the
+      // agent to send to self.
+      const result = await createMission(
+        {
+          id: agent.id,
+          name: agent.name,
+          color: agent.color,
+          folderPath: agent.folderPath,
+        },
+        t("setup:tutorial.missions.email.offer.option"),
+        {
+          title: emailToolkitLabel,
+          providerOverride: provider,
+          modelOverride: model,
+          effortOverride: "medium",
+        },
+      );
+      setMissionSessionKey(result.sessionKey);
+    } catch (e) {
+      setStarted(false);
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [
+    started,
+    agent,
+    agentPath,
+    emailToolkit,
+    emailToolkitLabel,
+    provider,
+    model,
+    t,
+  ]);
 
-  const renderLink = useCallback(
-    ({ href, onOpen }: { href: string; onOpen: () => void }) => {
-      if (isComposioSigninHref(href)) return <ComposioSigninCard />;
-      const toolkit = parseComposioToolkitFromHref(href);
-      if (!toolkit) return undefined;
-      return <ComposioLinkCard toolkit={toolkit} onOpen={onOpen} />;
-    },
-    [],
-  );
-
-  const transformContent = useCallback((content: string) => {
-    const stripped = SETUP_END_RE.test(content)
-      ? content.replace(SETUP_END_STRIP_RE, "").trim()
-      : content;
-    return withComposioWaitingFooter({ content: stripped });
-  }, []);
-
+  // Live composer (only used if the user wants to chat after).
   const sendNow = useCallback(
     async (text: string, _files: File[]) => {
       const trimmed = text.trim();
@@ -187,9 +226,8 @@ export function EmailMission({
     isActive,
     sendNow,
   });
-  const queuedLabels = useQueuedMessageLabels();
 
-  const handleSend = useCallback(
+  const handleComposerSend = useCallback(
     async (text: string, files: File[]) => {
       const trimmed = text.trim();
       if (!trimmed) return;
@@ -205,130 +243,101 @@ export function EmailMission({
     tauriChat.stop(agentPath, missionSessionKey).catch(console.error);
   }, [agentPath, missionSessionKey]);
 
-  const handlePick = useCallback(
-    async (chipLabel: string) => {
-      if (pickedAny) return;
-      setPickedAny(true);
-      await setupPrepRef.current;
-      try {
-        const result = await createMission(
-          {
-            id: agent.id,
-            name: agent.name,
-            color: agent.color,
-            folderPath: agent.folderPath,
-          },
-          chipLabel,
-          {
-            title: chipLabel,
-            providerOverride: provider,
-            modelOverride: model,
-            effortOverride: "medium",
-          },
-        );
-        pushFeedItem(agent.folderPath, result.sessionKey, {
-          feed_type: "user_message",
-          data: chipLabel,
-        });
-        // Funnel step 10 (action): the user sent their first message. Guarded
-        // by `pickedAny` above, so the success path runs once per install.
-        analytics.track("first_message_sent");
-        setMissionSessionKey(result.sessionKey);
-      } catch (e) {
-        setPickedAny(false);
-        setError(e instanceof Error ? e.message : String(e));
-      }
+  const handleOpenLink = useCallback((url: string) => {
+    tauriSystem.openUrl(url).catch(console.error);
+  }, []);
+
+  const renderLink = useCallback(
+    ({ href, onOpen }: { href: string; onOpen: () => void }) => {
+      if (isComposioSigninHref(href)) return <ComposioSigninCard />;
+      const toolkit = parseComposioToolkitFromHref(href);
+      if (!toolkit) return undefined;
+      return <ComposioLinkCard toolkit={toolkit} onOpen={onOpen} />;
     },
-    [
-      agent.id,
-      agent.name,
-      agent.color,
-      agent.folderPath,
-      provider,
-      model,
-      pickedAny,
-      pushFeedItem,
-    ],
+    [],
   );
 
-  const visibleFeed = (feedItems ?? []) as FeedItem[];
+  const transformContent = useCallback((content: string) => {
+    const stripped = SETUP_END_RE.test(content)
+      ? content.replace(SETUP_END_STRIP_RE, "").trim()
+      : content;
+    return withComposioWaitingFooter({ content: stripped });
+  }, []);
+
+  const feedItems = (realFeed ?? []) as FeedItem[];
+  const isLoading = started && isActive;
 
   return (
     <SetupCard
       eyebrow={eyebrow}
       title={t("setup:tutorial.missions.email.title")}
-      subtitle={
-        missionSessionKey ? undefined : t("setup:tutorial.missions.email.body")
-      }
+      subtitle={started ? undefined : t("setup:tutorial.missions.email.body")}
       onBack={onBack}
       backLabel={t("setup:tutorial.nav.back")}
-      onNext={onContinue}
-      nextLabel={t("setup:tutorial.nav.continue")}
-      nextDisabled={!setupDone}
-      helper={
-        <button
-          type="button"
-          onClick={onSkip}
-          className="underline-offset-2 hover:text-foreground hover:underline"
-        >
-          {t("setup:tutorial.missions.email.skip")}
-        </button>
-      }
     >
       {error && (
         <p className="mb-3 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
           {error}
         </p>
       )}
-      {missionSessionKey ? (
+      <div className="flex min-h-0 flex-1 flex-col">
+        <div className="flex shrink-0 items-center gap-2 pb-3">
+          <HoustonAvatar
+            color={resolveAgentColor(assistantColor)}
+            diameter={24}
+            running={isLoading}
+          />
+          <span className="truncate text-xs font-medium text-muted-foreground">
+            {agent.name}
+          </span>
+        </div>
         <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex shrink-0 items-center gap-2 pb-3">
-            <HoustonAvatar
-              color={resolveAgentColor(assistantColor)}
-              diameter={24}
-              running={isActive}
-            />
-            <span className="truncate text-xs font-medium text-muted-foreground">
-              {agent.name}
-            </span>
-          </div>
-          <div className="flex min-h-0 flex-1 flex-col">
-            <ChatPanel
-              sessionKey={missionSessionKey}
-              feedItems={visibleFeed}
-              onSend={handleSend}
-              onStop={isActive ? handleStop : undefined}
-              isLoading={isActive}
-              placeholder={t("setup:tutorial.missions.email.placeholder")}
-              processLabels={processLabels}
-              getThinkingMessage={getThinkingMessage}
-              renderLink={renderLink}
-              onOpenLink={handleOpenLink}
-              transformContent={transformContent}
-              value={composerText}
-              onValueChange={setComposerText}
-              attachments={composerFiles}
-              onAttachmentsChange={setComposerFiles}
-              queuedMessages={messageQueue.queuedMessages}
-              onRemoveQueuedMessage={messageQueue.removeQueuedMessage}
-              queuedLabels={queuedLabels}
-            />
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col items-center justify-center">
-          <Button
-            type="button"
-            onClick={() =>
-              void handlePick(t("setup:tutorial.missions.email.chip"))
+          <ChatPanel
+            sessionKey={missionSessionKey ?? "setup-wizard"}
+            feedItems={feedItems}
+            onSend={handleComposerSend}
+            onStop={started && isActive ? handleStop : undefined}
+            isLoading={isLoading}
+            placeholder={t("setup:tutorial.missions.email.placeholder")}
+            processLabels={processLabels}
+            getThinkingMessage={getThinkingMessage}
+            thinkingIndicator={thinkingIndicator}
+            endOfTurnIndicator={endOfTurnIndicator}
+            isSpecialTool={isSpecialTool}
+            renderToolResult={renderToolResult}
+            renderTurnSummary={renderTurnSummary}
+            renderLink={renderLink}
+            onOpenLink={handleOpenLink}
+            transformContent={transformContent}
+            value={composerText}
+            onValueChange={setComposerText}
+            attachments={composerFiles}
+            onAttachmentsChange={setComposerFiles}
+            queuedMessages={messageQueue.queuedMessages}
+            onRemoveQueuedMessage={messageQueue.removeQueuedMessage}
+            queuedLabels={queuedLabels}
+            composerOverride={
+              started ? undefined : <OfferCard onSend={handleSend} />
             }
-            disabled={pickedAny}
-            className="h-11 rounded-full px-5"
-          >
-            {t("setup:tutorial.missions.email.chip")}
-          </Button>
+          />
         </div>
-      )}
+        {showSkip && (
+          <div className="flex shrink-0 items-center justify-between gap-3 pt-3">
+            <p className="min-w-0 text-xs text-muted-foreground">
+              {t("setup:tutorial.missions.email.skipHint")}
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="shrink-0"
+              onClick={onSkip}
+            >
+              {t("setup:tutorial.missions.email.skip")}
+            </Button>
+          </div>
+        )}
+      </div>
     </SetupCard>
   );
 }

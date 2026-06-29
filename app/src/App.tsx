@@ -74,17 +74,21 @@ export default function App() {
 
   const { data: session, isLoading: sessionLoading } = useSession();
 
-  // Identify / alias the user in PostHog AND Sentry on sign-in; reset on
-  // sign-out. Runs AFTER analytics.init() has claimed the install_id as
-  // distinct_id, so `alias(userId, profile)` correctly merges prior
-  // anonymous history. Sentry gets the same identity so crashes are
-  // attributable to a user when triaging.
+  // Tag the user in PostHog AND Sentry on sign-in; reset on sign-out. The
+  // install_id stays PostHog's distinct_id (the website UTM bridge + onboarding
+  // funnel depend on it); `identifyUser` aliases the Supabase id onto that person
+  // (merging the same human across devices/reinstalls) AND attaches
+  // supabase_user_id / email / signup date as person properties, so every
+  // authenticated person is both one PostHog person and joinable to a Supabase
+  // account. Sentry gets the same identity so crashes are attributable to a user
+  // when triaging.
   const prevUserIdRef = useRef<string | null>(null);
   useEffect(() => {
     const userId = session?.user?.id ?? null;
     const userEmail = session?.user?.email ?? null;
+    const signupDate = session?.user?.created_at?.slice(0, 10) ?? null;
     if (userId && userId !== prevUserIdRef.current) {
-      analytics.alias(userId, { email: userEmail });
+      analytics.identifyUser(userId, { email: userEmail, signupDate });
       setSentryUser({ id: userId, email: userEmail });
       prevUserIdRef.current = userId;
     } else if (!userId && prevUserIdRef.current) {

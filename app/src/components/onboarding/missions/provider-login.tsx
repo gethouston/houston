@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Check, ExternalLink, Loader2 } from "lucide-react";
+import { ExternalLink, Loader2 } from "lucide-react";
 import { AsyncButton } from "@houston-ai/core";
 import { analytics } from "../../../lib/analytics";
 import { tauriProvider, type ProviderStatus } from "../../../lib/tauri";
@@ -9,14 +9,15 @@ import { useClaudeInstall } from "../../../hooks/use-claude-install";
 import { ClaudeInstallHint } from "../../shell/claude-install-hint";
 import { ProviderGlyph } from "../../shell/provider-logos";
 import { SetupCard } from "../setup-card";
+import { SuccessCheck } from "../success-check";
 
 interface ProviderLoginMissionProps {
   eyebrow: string;
   /** The provider id picked on the previous screen. */
   providerId: string;
   onBack: () => void;
-  /** Create the workspace + assistant and advance. Owns the error toast. */
-  onContinue: () => Promise<void> | void;
+  /** Advance to the next setup step once the provider is connected. */
+  onContinue: () => void;
 }
 
 /**
@@ -37,7 +38,6 @@ export function ProviderLoginMission({
   const [status, setStatus] = useState<ProviderStatus | null>(null);
   const [loginLaunched, setLoginLaunched] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
 
   const refresh = useCallback(async () => {
     if (!provider) return;
@@ -51,15 +51,17 @@ export function ProviderLoginMission({
   const installed = status?.cli_installed ?? false;
   const connected = installed && (status?.authenticated ?? false);
 
-  // Funnel step 8 (action): the AI provider became connected. The status poll
-  // re-runs every 3s, so guard with a ref to fire exactly once per install.
+  // The AI provider became connected. Fire the funnel event once, then advance
+  // straight to the success screen — the user shouldn't sit on an inline
+  // "connected" state. (Also fires on mount when the CLI is already signed in.)
   const providerConnectedFired = useRef(false);
   useEffect(() => {
     if (connected && !providerConnectedFired.current) {
       providerConnectedFired.current = true;
       analytics.track("ai_provider_connected", { provider: providerId });
+      onContinue();
     }
-  }, [connected, providerId]);
+  }, [connected, providerId, onContinue]);
 
   // Houston-managed `claude` install (license forbids bundling) — show the real
   // download reason + Retry instead of a Log-in button that would only error.
@@ -98,14 +100,9 @@ export function ProviderLoginMission({
     }
   }, [provider]);
 
-  const handleContinue = useCallback(async () => {
+  const handleContinue = useCallback(() => {
     if (!connected) return;
-    setSubmitting(true);
-    try {
-      await onContinue();
-    } finally {
-      setSubmitting(false);
-    }
+    onContinue();
   }, [connected, onContinue]);
 
   const showInstallHint =
@@ -122,31 +119,30 @@ export function ProviderLoginMission({
       }
       onBack={onBack}
       backLabel={t("setup:tutorial.nav.back")}
-      onNext={() => void handleContinue()}
-      nextLabel={
-        submitting
-          ? t("setup:tutorial.missions.providerLogin.creating")
-          : t("setup:tutorial.nav.continue")
-      }
+      onNext={handleContinue}
+      nextLabel={t("setup:tutorial.nav.continue")}
       nextDisabled={!connected}
-      nextLoading={submitting}
     >
       <div className="flex flex-1 flex-col items-center justify-center gap-5 text-center">
-        <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
-          <ProviderGlyph providerId={providerId} />
-        </span>
+        {!connected && (
+          <span className="flex size-16 items-center justify-center rounded-2xl bg-secondary">
+            <ProviderGlyph providerId={providerId} />
+          </span>
+        )}
 
         {connected ? (
-          <div className="flex flex-col items-center gap-2">
-            <span className="inline-flex items-center gap-1.5 text-sm font-medium text-foreground">
-              <Check className="size-4" />
-              {t("setup:tutorial.missions.providerLogin.connected.title")}
-            </span>
-            <p className="max-w-sm text-sm text-muted-foreground">
-              {t("setup:tutorial.missions.providerLogin.connected.body", {
-                provider: name,
-              })}
-            </p>
+          <div className="flex flex-col items-center gap-3">
+            <SuccessCheck />
+            <div className="flex flex-col items-center gap-1">
+              <span className="text-sm font-medium text-foreground">
+                {t("setup:tutorial.missions.providerLogin.connected.title")}
+              </span>
+              <p className="max-w-sm text-sm text-muted-foreground">
+                {t("setup:tutorial.missions.providerLogin.connected.body", {
+                  provider: name,
+                })}
+              </p>
+            </div>
           </div>
         ) : showInstallHint && claudeInstall ? (
           <div className="w-full max-w-sm">

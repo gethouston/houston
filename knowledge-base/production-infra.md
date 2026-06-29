@@ -20,8 +20,8 @@ Four prod systems. All **dormant by default** — activate only when env vars se
 - **Pure JS:** runs in webview, no Rust plugin. Avoids Tokio runtime conflicts. Works in future Capacitor mobile too.
 - **Init:** `app/src/lib/analytics.ts` — reads `POSTHOG_KEY` + `POSTHOG_HOST` via Vite `define` (baked at build time). Empty key → silent no-op. PostHog `init()` runs at module load for JS exception capture; product events fire after `analytics.init()` identifies the persistent install_id.
 - **PostHog config:** autocapture, pageview/pageleave, session replay, heatmaps, dead clicks, rage clicks, and feature-flag `/flags` calls are disabled in code. Enable any of these only with a specific question.
-- **Install identity:** `app/src/lib/install-id.ts` — mints a UUID on first launch, persists via `tauriPreferences` (`install_id` key). Used as anonymous PostHog `distinct_id` until sign-in, then `analytics.alias/identify` merges history to the Supabase user.
-- **User identity:** `distinct_id` is the stable Supabase user id. `email` and `email_domain` are PostHog person properties only, used for lookup, company-domain filtering, and B2B usage checks.
+- **Install identity:** `app/src/lib/install-id.ts` — mints a UUID on first launch, persists via `tauriPreferences` (`install_id` key). Used as the PostHog `distinct_id` for the whole app lifetime — it STAYS the `distinct_id` after sign-in (the `/welcome` UTM bridge and the sequential onboarding funnel depend on it); sign-in aliases the Supabase id onto it (merging the same human across devices) and attaches the identity as person properties, without re-pointing the distinct_id.
+- **User identity:** on sign-in `analytics.identifyUser` does two things: (1) `alias(supabase_user_id)` stitches a human's per-device / per-reinstall persons into ONE PostHog person (each keeps its own `install_id` distinct_id; the shared alias merges them), so retention/WAU dedupe natively; (2) stamps `supabase_user_id` (the Supabase `auth.users.id`) as a PERSON PROPERTY — the queryable join key to Supabase. `email` and `signup_date` (set-once, from `auth.users.created_at`) are person properties too, used for lookup and company-domain filtering. `distinct_id` stays the device `install_id`.
 - **Debug/Release:** `import.meta.env.DEV` → `is_debug` super property. Filter it out in dashboards to exclude dev activity.
 - **Super properties:** `app_version`, `app_os` (normalized: `macos` / `windows` / `linux` / `unknown`), `os` (raw legacy `navigator.platform`), `install_id`, `is_debug`.
 - **Privacy:** no workspace names, agent names, raw prompts, raw message text, file paths, session keys, or raw error text in PostHog event props. Email is allowed only as a person property after auth, never as an event property.
@@ -33,7 +33,7 @@ Four prod systems. All **dormant by default** — activate only when env vars se
 - **Engagement:** `mission_created`
 - **Reliability:** `session_failed`, `app_error_shown`, PostHog `$exception` from JS global handlers + React error boundary
 
-**Activation milestone:** `chat_message_received` — user sent a message and got a reply. Configure as the activation event in PostHog; all retention/funnel insights key off it.
+**Activation milestone:** `chat_message_sent` — the user sends their first message (activation = the user acts, not the agent's reply). The app flips the `is_activated` person property on this event; configure `chat_message_sent` as the activation event in PostHog so the server-side insights match the person property, and key all retention/funnel insights off it. **Changed from `chat_message_received` in PR #562** — `is_activated` values set before that ship date reflect the old reply-based definition, so treat the cutover as a discontinuity in any longitudinal activation comparison.
 
 ### Web ↔ app journey (one PostHog project)
 The marketing site (`website/`, Eleventy) shares the **same** `POSTHOG_KEY`, so the whole acquisition→activation journey is one project.
@@ -105,7 +105,7 @@ PostHog → BigQuery plugin → target GCP project (burns credits). SQL-queryabl
 - **Session storage:** CI releases use macOS Keychain / Windows Credential Manager via the `keyring` crate (`app/src-tauri/src/auth.rs`). Local builds use browser storage scoped per worktree to avoid macOS Keychain prompts from changing local signatures. Override with `HOUSTON_AUTH_STORAGE=keychain` or `HOUSTON_AUTH_STORAGE=browser`.
 - **Flow:** One-click Google sign-in → system browser → OAuth redirect to `houston://auth-callback` → `tauri-plugin-deep-link` forwards to frontend → Supabase PKCE exchange → session persisted in configured auth storage. Full diagram + code pointers: `knowledge-base/auth.md`.
 - **Gating:** `isAuthConfigured()` checks whether `SUPABASE_URL` + `SUPABASE_ANON_KEY` are baked in. Unconfigured builds skip the sign-in screen entirely.
-- **PostHog merge:** On sign-in, `analytics.alias(userId, { email })` merges anonymous install_id history to the identified user and sets `email` / `email_domain` person properties; on sign-out, `analytics.reset()` returns to anonymous.
+- **PostHog identity:** On sign-in, `analytics.identifyUser(userId, { email, signupDate })` keeps `install_id` as the `distinct_id`, `alias()`es the Supabase id onto the person (merging the human across devices/reinstalls), stamps `supabase_user_id` + `email` (`$set`) and `signup_date` (`$set_once`) as person properties, then flips the `auth_status` super property to `authenticated`; on sign-out, `analytics.reset()` returns to anonymous (a fresh distinct_id, which also prevents a shared device from merging two people).
 
 ## Crash reporting (`sentry` + `tauri-plugin-sentry`)
 
