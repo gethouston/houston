@@ -62,7 +62,7 @@ pub(crate) async fn dispatch(
             )
             .await;
         }
-        "openai" => {
+        "openai" | "openrouter" => {
             spawn_codex(
                 tx,
                 provider,

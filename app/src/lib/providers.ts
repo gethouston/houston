@@ -163,6 +163,52 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     ],
     defaultModel: "claude-sonnet-4-6",
   },
+  {
+    id: "openrouter",
+    name: "OpenRouter",
+    subtitle: "Codex via OpenRouter",
+    cliName: "codex",
+    installUrl: "https://openrouter.ai/docs",
+    loginCommand: "",
+    cost: "Pay-as-you-go OpenRouter credits",
+    // OpenRouter has no CLI sign-in: the user pastes an API key, persisted to
+    // `<houston-home>/providers/openrouter/.env` and injected as
+    // OPENROUTER_API_KEY into the codex subprocess (engine handles the rest).
+    loginKind: "apiKey",
+    apiKeyConsoleUrl: "https://openrouter.ai/keys",
+    apiKeyEnvVar: "OPENROUTER_API_KEY",
+    // Curated cheap + capable OPEN-SOURCE slugs. Context windows are estimates
+    // (the indicator self-corrects upward from observed usage). Effort is
+    // intentionally omitted: these are non-reasoning chat models, so the picker
+    // hides the effort row for all of them.
+    models: [
+      {
+        id: "deepseek/deepseek-chat",
+        label: "DeepSeek V3",
+        description: "Best value. Strong general + coding ability, very cheap.",
+        contextWindow: 64_000,
+      },
+      {
+        id: "meta-llama/llama-3.3-70b-instruct",
+        label: "Llama 3.3 70B",
+        description: "Solid open flagship from Meta. Cheap and reliable.",
+        contextWindow: 128_000,
+      },
+      {
+        id: "qwen/qwen-2.5-72b-instruct",
+        label: "Qwen2.5 72B",
+        description: "Strong multilingual + coding model from Alibaba.",
+        contextWindow: 32_768,
+      },
+      {
+        id: "mistralai/mistral-nemo",
+        label: "Mistral Nemo",
+        description: "Lightweight and very cheap for simple tasks.",
+        contextWindow: 128_000,
+      },
+    ],
+    defaultModel: "deepseek/deepseek-chat",
+  },
 ] as const;
 
 /** Find a provider by id. */

@@ -196,7 +196,7 @@ fn handle_failed_exit(
     // typed `SessionResumeMissing` variant DOES fire from the
     // line-by-line classifier in `read_stderr_lines`, but that surface
     // is an information panel; the retry routing belongs here.
-    if provider.id() == "openai"
+    if matches!(provider.id(), "openai" | "openrouter")
         && stderr_lines
             .iter()
             .any(|line| codex_command::is_missing_rollout_error(line))

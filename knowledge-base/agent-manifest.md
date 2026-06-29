@@ -221,18 +221,38 @@ adapter, see `knowledge-base/architecture.md`).
 |---|---|---|---|---|
 | `anthropic` (alias `claude`) | `claude` (runtime download) | `claude-sonnet-4-6` | `claude-opus-4-8` | OAuth via `claude auth login --claudeai` |
 | `openai` (alias `codex`) | `codex` (bundled) | `gpt-5` | `gpt-5-codex` | OAuth via `codex login` |
+| `openrouter` | `codex` (bundled, reused) | `deepseek/deepseek-chat` | (curated open-source slugs) | API key, no CLI login (see `knowledge-base/auth.md`) |
 | `gemini` (alias `google`) | `gemini` (bundled, macOS only) | `gemini-2.5-flash` | `gemini-2.5-pro` | API key, no CLI login (see `knowledge-base/auth.md`) |
 
 Notes:
-- Gemini has no `gemini login`. The picker short-circuits on
+- **OpenRouter rides the Codex CLI.** Its adapter returns
+  `ProviderAdapter::codex_backend() -> Some(CodexBackend)`; the codex command
+  builder turns that into `-c model_provider="openrouter"` +
+  `model_providers.openrouter.{base_url,env_key,wire_api="responses"}` overrides
+  (`wire_api` MUST be `"responses"` — the bundled codex dropped `"chat"`, codex#7782), and
+  the runner injects `OPENROUTER_API_KEY` into the codex process. Every codex
+  dispatch site (`session_dispatch`, `session_io`, `provider_oneshot`,
+  `cli_process`) treats `"openai" | "openrouter"` identically — no
+  OpenRouter-specific runner/parser. The next OpenAI-compatible provider is one
+  more adapter file returning a `CodexBackend`.
+- **OpenRouter runs codex in an isolated `CODEX_HOME`**
+  (`prompt_scratch::backend_codex_home` → `<houston-home>/codex-home`) so codex
+  never loads the user's personal `~/.codex/config.toml` (their own MCP servers
+  + settings) into a Houston session. Native codex (OpenAI) keeps `~/.codex`
+  (it needs the OAuth `auth.json` there). `codex_rollout` searches both homes
+  for token-usage. Effort is omitted for OpenRouter (its curated models are
+  non-reasoning chat models, so `model_reasoning_effort` is dead overhead).
+- Gemini + OpenRouter have no CLI login. The picker short-circuits on
   `loginKind === "apiKey"` and opens the Connect-API-Key dialog
   (`app/src/components/shell/api-key-connect-dialog.tsx`). Calling
-  `/v1/providers/gemini/login` directly returns `BadRequest`.
+  `/v1/providers/<id>/login` directly returns `BadRequest`.
 - Gemini is macOS-only in v1; Windows users see it as unavailable until
   the phase-2 fork-build lands (see `knowledge-base/cli-bundling.md`).
-- Adding a fourth provider = one new adapter file + one registry entry +
-  three dispatch arms (runner, parser, summarizer). See "Engine boundary"
-  in `CLAUDE.md`.
+- Adding a CLI provider = one new adapter file + one registry entry +
+  three dispatch arms (runner, parser, summarizer). An OpenAI-compatible
+  API-key provider = one adapter file returning `CodexBackend` (no dispatch
+  edits — they already match every codex backend). See "Engine boundary" in
+  `CLAUDE.md`.
 
 ### Switching provider mid-conversation
 

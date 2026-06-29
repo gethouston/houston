@@ -25,6 +25,10 @@ const CODEX_TITLE_MODEL: &str = "gpt-5.5-mini";
 /// Gemini title-summary model. Flash-Lite is the cheapest/fastest GA tier
 /// and gives us a JSON object in well under the 30s SUMMARY_TIMEOUT.
 const GEMINI_TITLE_MODEL: &str = "gemini-3.1-flash-lite";
+/// OpenRouter title-summary model — a cheap open-source slug. If the account
+/// can't reach it the summarize call falls back to the deterministic local
+/// title, so a stale slug degrades gracefully rather than erroring.
+const OPENROUTER_TITLE_MODEL: &str = "deepseek/deepseek-chat";
 
 pub use super::summary_text::SummarizeResult;
 
@@ -69,6 +73,7 @@ fn default_title_model<'a>(provider: Provider, model_override: Option<&'a str>) 
     let default = match provider.id() {
         "anthropic" => CLAUDE_TITLE_MODEL,
         "openai" => CODEX_TITLE_MODEL,
+        "openrouter" => OPENROUTER_TITLE_MODEL,
         "gemini" => GEMINI_TITLE_MODEL,
         _ => return None,
     };

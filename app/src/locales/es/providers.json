@@ -94,5 +94,18 @@
     "saving": "Guardando...",
     "saveFailed": "No se pudo guardar tu llave de {{name}}",
     "cancel": "Cancelar"
+  },
+  "apiKeyConnect": {
+    "title": "Conecta {{name}}",
+    "description": "Pega tu llave de API de {{name}}. Se guarda en este dispositivo y se usa para ejecutar tus agentes.",
+    "openConsole": "Obtener una llave de API",
+    "openConsoleFailed": "No se pudo abrir {{name}}",
+    "placeholder": "Pega aquí tu llave de API",
+    "show": "Mostrar la llave",
+    "hide": "Ocultar la llave",
+    "envHint": "Se guarda como {{envVar}} en este dispositivo.",
+    "saveKey": "Guardar y conectar",
+    "saving": "Guardando...",
+    "saveFailed": "No se pudo guardar tu llave de {{name}}"
   }
 }

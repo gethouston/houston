@@ -23,6 +23,7 @@ mod prompt_scratch;
 pub mod parser;
 pub mod provider;
 pub mod provider_auth;
+pub mod provider_env;
 mod provider_error;
 pub mod provider_error_kind;
 mod session_dispatch;
@@ -30,6 +31,8 @@ pub mod session_io;
 pub mod session_pump;
 mod session_update;
 mod stderr_filter;
+#[cfg(test)]
+mod test_env_lock;
 pub mod types;
 
 // Re-export key types for convenience.

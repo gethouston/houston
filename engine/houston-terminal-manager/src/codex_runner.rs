@@ -45,24 +45,43 @@ pub(crate) async fn spawn_codex(
         }
     }
 
+    // Custom OpenAI-compatible backends (OpenRouter, …) run codex against an
+    // ISOLATED `CODEX_HOME` so codex never loads the user's personal
+    // `~/.codex/config.toml` (their own MCP servers, settings) into a Houston
+    // session. Native codex (OpenAI) keeps the user's `~/.codex` (it needs the
+    // OAuth `auth.json` there). `None` = default home.
+    let codex_home: Option<std::path::PathBuf> = provider
+        .codex_backend()
+        .map(|_| prompt_scratch::backend_codex_home());
+
     // The system prompt travels as a codex profile file, never as argv (the
     // old `-c developer_instructions=…` token broke `CreateProcessW` on
     // Windows once the prompt outgrew the 32,767-char command-line limit).
-    // The profile value owns the file; it is deleted when this fn returns.
+    // The profile value owns the file; it is deleted when this fn returns. It
+    // is written under `codex_home` so the spawned codex (pointed there) finds
+    // it.
     let profile = match system_prompt.as_deref() {
         None => None,
-        Some(sp) => match prompt_scratch::codex_profile(sp) {
-            Ok(p) => Some(p),
-            Err(e) => {
-                let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
-                    "Failed to prepare codex instructions: {e}"
-                ))));
-                return;
+        Some(sp) => {
+            let written = match codex_home.as_deref() {
+                Some(home) => prompt_scratch::codex_profile_at(home, sp),
+                None => prompt_scratch::codex_profile(sp),
+            };
+            match written {
+                Ok(p) => Some(p),
+                Err(e) => {
+                    let _ = tx.send(SessionUpdate::Status(SessionStatus::Error(format!(
+                        "Failed to prepare codex instructions: {e}"
+                    ))));
+                    return;
+                }
             }
-        },
+        }
     };
 
     let mut cmd = build_codex_command(
+        provider,
+        codex_home.as_deref(),
         resume_session_id.as_deref(),
         working_dir.as_deref(),
         model.as_deref(),
@@ -75,6 +94,8 @@ pub(crate) async fn spawn_codex(
         tracing::warn!("[houston:session] codex resume rollout missing; retrying with fresh thread");
         let _ = tx.send(SessionUpdate::ResumeInvalid);
         let mut fresh_cmd = build_codex_command(
+            provider,
+            codex_home.as_deref(),
             None,
             working_dir.as_deref(),
             model.as_deref(),
@@ -96,6 +117,8 @@ fn fresh_retry_prompt<'a>(prompt: &'a str, resume_fallback_prompt: Option<&'a st
 }
 
 fn build_codex_command(
+    provider: Provider,
+    codex_home: Option<&std::path::Path>,
     resume_session_id: Option<&str>,
     working_dir: Option<&std::path::Path>,
     model: Option<&str>,
@@ -114,7 +137,22 @@ fn build_codex_command(
         .unwrap_or_else(|| std::path::PathBuf::from("codex"));
     let mut cmd = Command::new(&bin);
     cmd.env("PATH", super::claude_path::shell_path());
+    // Isolated `CODEX_HOME` for backend providers (OpenRouter) so codex never
+    // reads the user's `~/.codex/config.toml`. `create_dir_all` is best-effort
+    // here; the profile write (`codex_profile_at`) already created it, and an
+    // unwritable home would surface as a spawn error the user sees.
+    if let Some(home) = codex_home {
+        let _ = std::fs::create_dir_all(home);
+        cmd.env("CODEX_HOME", home);
+    }
+    // Custom OpenAI-compatible backends (OpenRouter, …) authenticate via an
+    // env var named by `model_providers.<slug>.env_key`; inject it here.
+    // Native codex (OpenAI) returns `None` and is untouched.
+    if let Some((key, value)) = crate::provider::codex_backend_env(provider) {
+        cmd.env(key, value);
+    }
     cmd.args(codex_command::build_args(
+        provider,
         resume_session_id,
         working_dir,
         model,
