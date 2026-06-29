@@ -107,6 +107,13 @@ security architecture):
 | `houston-code-sandbox` | Cloud Run (untrusted code; zero-IAM SA, deny-all-egress VPC) | `houston/code-sandbox:v2` | `cloud/scripts/05-code-sandbox.sh` |
 | `houston-web` | Cloud Run (nginx SPA + `/api` proxy → control plane) | `houston/web:v11` | build SPA with `VITE_CONTROL_PLANE_URL=/api` + `SUPABASE_URL`/`SUPABASE_ANON_KEY` baked, then `gcloud builds submit packages/web --tag …/web:vN` + `gcloud run services update houston-web --image …` |
 
+Manual TS engine pod image: `.github/workflows/ts-engine-image.yml` is
+`workflow_dispatch` only and publishes `selfhost/Dockerfile --target engine-pod`
+to `ghcr.io/gethouston/houston-engine-pod`. It is separate from the current
+GCP Artifact Registry images above and never runs on `main` pushes. For a
+credential-free POC, set the GHCR package visibility to public after the first
+publish.
+
 Rules learned in production:
 - **`cloud/k8s/control-plane.yaml` IS the live truth** — image tag, turn env
   (`CP_TURN_RUNTIME_URL`, `CP_GCS_BUCKET`, `CP_DEFAULT_RUNTIME`), agent image.

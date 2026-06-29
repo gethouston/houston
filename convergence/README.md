@@ -83,7 +83,9 @@ was verified on a clean-room per-package install; the image build itself wants a
 ## Managed hosted pod POC
 
 The hosted K8s POC reuses the self-host shape, not a new runtime. The public repo
-builds `selfhost/Dockerfile --target engine-pod`: one open host process that
+builds `selfhost/Dockerfile --target engine-pod` (manually publishable via
+`.github/workflows/ts-engine-image.yml` to
+`ghcr.io/gethouston/houston-engine-pod`): one open host process that
 spawns one pi runtime per agent over loopback, with `/data` as `HOUSTON_HOME`,
 `HOUSTON_MANAGED_CLOUD=1`, and `HOUSTON_CODE_EXECUTION=disabled`. Capabilities
 advertise cloud profile, no OS reveal/terminal, the full desktop provider set

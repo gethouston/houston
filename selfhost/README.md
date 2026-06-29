@@ -73,6 +73,42 @@ Expected capabilities include `"codeExecution":"disabled"`,
 private gateway supplies `HOUSTON_HOST_TOKEN`, mounts `/data` on the user's PVC,
 and fronts the pod with Supabase-authenticated proxying.
 
+### Published GHCR Image
+
+The manual GitHub Actions workflow **TS Engine Image** publishes this same
+`engine-pod` target to:
+
+```text
+ghcr.io/gethouston/houston-engine-pod
+```
+
+Run it from Actions only when you want a new image:
+
+1. GitHub → Actions → TS Engine Image → Run workflow.
+2. Pick an optional tag. A `sha-<commit>` tag is always published.
+3. Leave `publish_latest` on if `:latest` should move to this build.
+
+This uses GitHub Container Registry (GHCR), not Google Container Registry (GCR).
+After the first run, make the GHCR package public in GitHub package settings if
+Google Cloud or a local machine should pull it without credentials. A public GHCR
+package can stay public even while the source repo is private.
+
+Local pull/run:
+
+```sh
+docker pull ghcr.io/gethouston/houston-engine-pod:latest
+
+docker run --rm -d --name houston-engine-pod \
+  -p 4318:4318 \
+  -e HOUSTON_HOST_TOKEN=test \
+  -v houston-engine-pod-data:/data \
+  ghcr.io/gethouston/houston-engine-pod:latest
+```
+
+For Google Cloud, prefer a public GHCR package for the first POC. If the package
+stays private, use an authenticated pull path such as a GKE image pull secret or
+an Artifact Registry mirror/remote repository.
+
 Watch live engine logs:
 
 ```sh
