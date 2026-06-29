@@ -21,6 +21,12 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/auth");
   eleventyConfig.addPassthroughCopy("src/_headers");
   eleventyConfig.addPassthroughCopy("src/_redirects");
+  // SEO + AI-crawler files. Served verbatim at the site root (/robots.txt,
+  // /sitemap.xml, /llms.txt). The 404 page is a template with its own
+  // permalink, so it does not need a passthrough entry.
+  eleventyConfig.addPassthroughCopy("src/robots.txt");
+  eleventyConfig.addPassthroughCopy("src/sitemap.xml");
+  eleventyConfig.addPassthroughCopy("src/llms.txt");
 
   return {
     dir: {

@@ -1,6 +1,17 @@
 # Cloudflare Pages headers
 # Keep HTML and CSS short-cached so updates show up fast
 
+# Security headers applied to every response.
+/*
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Frame-Options: SAMEORIGIN
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+
+# Early-access pages must stay out of search.
+/early-access/*
+  X-Robots-Tag: noindex, nofollow
+
 /*.html
   Cache-Control: public, max-age=60, must-revalidate
 
