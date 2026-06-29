@@ -21,9 +21,10 @@ visionPath: "vision/index.html"
 <meta name="twitter:title" content="Houston — AI agents that actually do the work">
 <meta name="twitter:description" content="AI agents that do the work for you. One free desktop app that runs on your GPT subscription. 1000+ integrations.">
 <meta name="twitter:creator" content="@ja818_">
-{% endblock %}
-{% block stylesheets %}
-<link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
+
+<script type="application/ld+json">
+{ "@context":"https://schema.org","@type":"SoftwareApplication","name":"Houston","applicationCategory":"BusinessApplication","operatingSystem":"macOS, Windows","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"description":"Free desktop app that runs AI agents which do real work for you, on your existing ChatGPT or Claude subscription, with over 1,000 integrations." }
+</script>
 {% endblock %}
 {% block inlineStyles %}
 <style>
@@ -1931,7 +1932,7 @@ visionPath: "vision/index.html"
 
     <div class="agent-card reveal reveal-delay-1">
       <div class="agent-avatar" style="background: rgba(59,130,246,0.08);">
-        <img src="houston-black.svg" width="24" height="24" alt="Houston">
+        <img src="houston-black.svg" width="24" height="24" alt="Houston" loading="lazy">
       </div>
       <div class="agent-card-content">
         <h4>Personal Assistant</h4>
@@ -1947,7 +1948,7 @@ visionPath: "vision/index.html"
 
     <div class="agent-card reveal reveal-delay-2">
       <div class="agent-avatar" style="background: rgba(234,179,8,0.08);">
-        <img src="houston-black.svg" width="24" height="24" alt="Houston">
+        <img src="houston-black.svg" width="24" height="24" alt="Houston" loading="lazy">
       </div>
       <div class="agent-card-content">
         <h4>Bookkeeper</h4>
@@ -1962,7 +1963,7 @@ visionPath: "vision/index.html"
 
     <div class="agent-card reveal reveal-delay-1">
       <div class="agent-avatar" style="background: rgba(168,85,247,0.08);">
-        <img src="houston-black.svg" width="24" height="24" alt="Houston">
+        <img src="houston-black.svg" width="24" height="24" alt="Houston" loading="lazy">
       </div>
       <div class="agent-card-content">
         <h4>HR Manager</h4>
@@ -1977,7 +1978,7 @@ visionPath: "vision/index.html"
 
     <div class="agent-card reveal reveal-delay-2">
       <div class="agent-avatar" style="background: rgba(16,185,129,0.08);">
-        <img src="houston-black.svg" width="24" height="24" alt="Houston">
+        <img src="houston-black.svg" width="24" height="24" alt="Houston" loading="lazy">
       </div>
       <div class="agent-card-content">
         <h4>Customer Service Rep</h4>
@@ -1993,7 +1994,7 @@ visionPath: "vision/index.html"
 
     <div class="agent-card reveal reveal-delay-1">
       <div class="agent-avatar" style="background: rgba(239,68,68,0.08);">
-        <img src="houston-black.svg" width="24" height="24" alt="Houston">
+        <img src="houston-black.svg" width="24" height="24" alt="Houston" loading="lazy">
       </div>
       <div class="agent-card-content">
         <h4>Sales Rep</h4>
@@ -2008,7 +2009,7 @@ visionPath: "vision/index.html"
 
     <div class="agent-card reveal reveal-delay-2">
       <div class="agent-avatar" style="background: rgba(59,130,246,0.08);">
-        <img src="houston-black.svg" width="24" height="24" alt="Houston">
+        <img src="houston-black.svg" width="24" height="24" alt="Houston" loading="lazy">
       </div>
       <div class="agent-card-content">
         <h4>Office Manager</h4>
@@ -2023,7 +2024,7 @@ visionPath: "vision/index.html"
 
     <div class="agent-card reveal reveal-delay-1">
       <div class="agent-avatar" style="background: rgba(249,115,22,0.08);">
-        <img src="houston-black.svg" width="24" height="24" alt="Houston">
+        <img src="houston-black.svg" width="24" height="24" alt="Houston" loading="lazy">
       </div>
       <div class="agent-card-content">
         <h4>Financial Analyst</h4>
@@ -2095,7 +2096,7 @@ visionPath: "vision/index.html"
     <!-- Chat (right) -->
     <div style="border-radius: 16px; border: 1px solid var(--border-light); background: white; overflow: hidden; max-width: 480px; width: 100%;">
       <div style="display: flex; align-items: center; gap: 10px; padding: 14px 20px; border-bottom: 1px solid var(--border-light); background: var(--gray-50);">
-        <img src="houston-black.svg" width="22" height="22" alt="Houston" style="opacity: 0.7;">
+        <img src="houston-black.svg" width="22" height="22" alt="Houston" loading="lazy" style="opacity: 0.7;">
         <div>
           <div id="hiw-agent-name" style="font-size: 13px; font-weight: 600; color: var(--gray-950);"></div>
           <div id="hiw-agent-mission" style="font-size: 11px; color: var(--gray-500);"></div>

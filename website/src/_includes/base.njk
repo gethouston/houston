@@ -15,6 +15,16 @@
 <meta name="twitter:image:alt" content="Houston: AI agents that actually do the work.">
 {% block meta %}{% endblock %}
 {% block favicon %}<link rel="icon" type="image/svg+xml" href="/favicon.svg">{% endblock %}
+{% if noindex %}<meta name="robots" content="noindex,nofollow">{% endif %}
+<link rel="canonical" href="https://gethouston.ai{{ page.url }}">
+
+<script type="application/ld+json">
+{ "@context":"https://schema.org","@type":"Organization","name":"Houston","url":"https://gethouston.ai/","logo":"https://gethouston.ai/houston-icon.png","sameAs":["https://github.com/gethouston/houston","https://www.linkedin.com/company/get-houston"] }
+</script>
+
+<script type="application/ld+json">
+{ "@context":"https://schema.org","@type":"WebSite","name":"Houston","url":"https://gethouston.ai/" }
+</script>
 <link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700&display=swap" rel="stylesheet">
 {% block stylesheets %}{% endblock %}
 {% block inlineStyles %}{% endblock %}
