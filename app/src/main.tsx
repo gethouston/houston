@@ -1,15 +1,15 @@
 import { TooltipProvider } from "@houston-ai/core";
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Component, type ReactNode, useEffect, useState } from "react";
+import { Component, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { I18nextProvider } from "react-i18next";
 import App from "./App";
 import { queryClient } from "./lib/query-client";
 import "./styles/globals.css";
 import { DisclaimerGate } from "./components/shell/disclaimer-gate";
+import { EngineGate } from "./components/shell/engine-gate";
 import { LanguageGate } from "./components/shell/language-gate";
 import { analytics, classifyAnalyticsError } from "./lib/analytics";
-import { isEngineReady, whenEngineReady } from "./lib/engine";
 import { showErrorToast } from "./lib/error-toast";
 import { installGlobalErrorHandlers } from "./lib/global-error-handlers";
 import i18n from "./lib/i18n";
@@ -97,54 +97,6 @@ class ErrorBoundary extends Component<
   }
 }
 
-/**
- * Blocks the app from rendering until the Tauri supervisor emits
- * `houston-engine-ready` (or the injection raced in early). Hooks deep in
- * the tree synchronously call `getEngine()` in their first useEffect, so
- * we MUST have the handshake before mounting <App />.
- */
-function EngineGate({ children }: { children: ReactNode }) {
-  const [ready, setReady] = useState(isEngineReady());
-  useEffect(() => {
-    if (ready) return;
-    let cancelled = false;
-    whenEngineReady().then(() => {
-      if (!cancelled) setReady(true);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [ready]);
-
-  // Locale resolution lives in <LanguageGate>: it resolves the effective
-  // locale from the engine (active workspace override → global preference),
-  // applies it to the live i18n instance, and handles the first-run picker.
-  // That gate sits inside <I18nextProvider> and owns the full locale story —
-  // the engine, not localStorage, is the source of truth.
-
-  if (!ready) {
-    // Use the i18n singleton directly — this renders OUTSIDE
-    // <I18nextProvider>, so useTranslation would have no context.
-    // The singleton is already initialized synchronously in i18n.ts.
-    return (
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          height: "100vh",
-          fontFamily: "system-ui, sans-serif",
-          color: "#888",
-          fontSize: 14,
-        }}
-      >
-        {i18n.t("shell:engineGate.starting")}
-      </div>
-    );
-  }
-  return <>{children}</>;
-}
-
 // StrictMode intentionally remounts components to catch bugs. In Tauri's
 // WKWebView that double-mount collides with portal DOM + Tauri event
 // listeners and throws NotFoundError on removeChild. Skipping it for now;
@@ -155,18 +107,18 @@ if (!rootElement) {
 }
 createRoot(rootElement).render(
   <QueryClientProvider client={queryClient}>
-    <ErrorBoundary>
-      <TooltipProvider>
-        <EngineGate>
-          <I18nextProvider i18n={i18n}>
+    <I18nextProvider i18n={i18n}>
+      <ErrorBoundary>
+        <TooltipProvider>
+          <EngineGate>
             <LanguageGate>
               <DisclaimerGate>
                 <App />
               </DisclaimerGate>
             </LanguageGate>
-          </I18nextProvider>
-        </EngineGate>
-      </TooltipProvider>
-    </ErrorBoundary>
+          </EngineGate>
+        </TooltipProvider>
+      </ErrorBoundary>
+    </I18nextProvider>
   </QueryClientProvider>,
 );

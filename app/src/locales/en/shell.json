@@ -255,7 +255,8 @@
     "continueButton": "Continue"
   },
   "engineGate": {
-    "starting": "Starting Houston engine…"
+    "starting": "Starting Houston engine…",
+    "loadFailed": "Couldn't load your available AI models. Check your connection and try again."
   },
   "providerError": {
     "rateLimited": {

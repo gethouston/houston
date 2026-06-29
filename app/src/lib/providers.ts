@@ -1,3 +1,5 @@
+import type { Capabilities } from "@houston-ai/engine-client";
+
 /**
  * Reasoning-effort levels, ordered low→high. The set a given model accepts
  * is model-specific (see `ModelOption.effortLevels`):
@@ -625,6 +627,20 @@ export function getProvider(id: string): ProviderInfo | undefined {
   return PROVIDERS.find((p) => p.id === id);
 }
 
+/** Empty capability set used while hosted capabilities are still loading. */
+export const EMPTY_PROVIDER_CAPABILITIES: Pick<
+  Capabilities,
+  "providers" | "openaiCompatible"
+> = Object.freeze({
+  providers: [],
+  openaiCompatible: false,
+});
+
+function capabilityIdsForProvider(provider: ProviderInfo): readonly string[] {
+  if (provider.id === "openai") return ["openai", "openai-codex"];
+  return [provider.id];
+}
+
 /**
  * Providers to show in connect UIs. API-key providers run
  * only on the new TS engine — they paste a key Houston serves through the host —
@@ -637,9 +653,22 @@ export function getProvider(id: string): ProviderInfo | undefined {
 export function getVisibleProviders(opts: {
   newEngine: boolean;
   desktop?: boolean;
+  capabilities?: Pick<Capabilities, "providers" | "openaiCompatible">;
 }): readonly ProviderInfo[] {
+  const allowed = opts.capabilities
+    ? new Set(opts.capabilities.providers)
+    : null;
   return PROVIDERS.filter((p) => {
-    if (p.auth === "openaiCompatible") return opts.newEngine && !!opts.desktop;
+    if (p.auth === "openaiCompatible") {
+      if (opts.capabilities) {
+        return (
+          opts.newEngine && !!opts.desktop && opts.capabilities.openaiCompatible
+        );
+      }
+      return opts.newEngine && !!opts.desktop;
+    }
+    if (allowed)
+      return capabilityIdsForProvider(p).some((id) => allowed.has(id));
     if (p.auth === "apiKey") return opts.newEngine;
     return true;
   });
@@ -685,6 +714,7 @@ const OPENCODE_ACCOUNT: ProviderInfo = {
 export function getConnectProviders(opts: {
   newEngine: boolean;
   desktop?: boolean;
+  capabilities?: Pick<Capabilities, "providers" | "openaiCompatible">;
 }): readonly ProviderInfo[] {
   const out: ProviderInfo[] = [];
   let mergedOpenCode = false;

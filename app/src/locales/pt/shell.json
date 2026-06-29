@@ -255,7 +255,8 @@
     "continueButton": "Continuar"
   },
   "engineGate": {
-    "starting": "Iniciando o motor do Houston…"
+    "starting": "Iniciando o motor do Houston…",
+    "loadFailed": "Não foi possível carregar seus modelos de IA disponíveis. Verifique sua conexão e tente novamente."
   },
   "providerError": {
     "rateLimited": {

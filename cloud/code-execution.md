@@ -2,6 +2,12 @@
 
 **Status:** MVP built + tested in-repo. Live deploy needs the GCP account (run `cloud/scripts/05-code-sandbox.sh`).
 
+**Managed K8s POC note (2026-06-27):** personal engine pods deliberately set
+`HOUSTON_CODE_EXECUTION=disabled`, so agents get clamped file tools and
+integrations only. The `run_code` Cloud Run sandbox remains the remote
+code-execution path for deployments that set `HOUSTON_CODE_EXECUTION=remote`
+and provide `HOUSTON_CODE_SANDBOX_URL`. Desktop/local defaults to `local`.
+
 The premise that makes Houston Cloud cheap: **an agent is not a server you keep
 running — it's a row in a database.** The expensive thing in v1/v2 was giving
 every agent a permanent, always-on box because the agent has a `bash` tool and

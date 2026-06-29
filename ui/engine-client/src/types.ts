@@ -66,6 +66,17 @@ export interface VersionResponse {
   chatHistoryMigrated?: boolean;
 }
 
+export interface Capabilities {
+  profile: "local" | "cloud";
+  revealInOs: boolean;
+  terminal: boolean;
+  tunnel: boolean;
+  codeExecution: "local-bash" | "remote-sandbox" | "disabled";
+  providers: string[];
+  openaiCompatible: boolean;
+  integrations: string[];
+}
+
 // ---------- Workspaces ----------
 
 export interface Workspace {

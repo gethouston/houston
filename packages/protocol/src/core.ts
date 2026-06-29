@@ -50,8 +50,11 @@ export interface Capabilities {
   terminal: boolean;
   /** Mobile pairing via the reverse tunnel (local profile). */
   tunnel: boolean;
-  /** Where agent code runs: in-process bash (local) or the remote sandbox. */
-  codeExecution: "local-bash" | "remote-sandbox";
+  /**
+   * Where agent code runs: in-process bash, the remote sandbox, or nowhere
+   * beyond clamped file tools.
+   */
+  codeExecution: "local-bash" | "remote-sandbox" | "disabled";
   /** Providers this deployment offers for connect-once login. */
   providers: string[];
   /**

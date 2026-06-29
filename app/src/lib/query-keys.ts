@@ -32,7 +32,11 @@ export const queryKeys = {
    * `ProviderLoginComplete` so a fresh sign-in flips the picker live instead
    * of waiting for the next mount (issue #342).
    */
-  providerStatuses: () => ["provider-statuses"] as const,
+  providerStatuses: (providers?: readonly string[] | null) =>
+    providers
+      ? (["provider-statuses", ...providers] as const)
+      : (["provider-statuses"] as const),
+  capabilities: () => ["capabilities"] as const,
 
   /**
    * The one-time post-migration "reconnect your AI" gate. `migrationReconnect`

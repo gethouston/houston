@@ -65,6 +65,8 @@ export interface LocalHostOptions {
    * is safe to read while the app may hold a WAL lock on the original.
    */
   chatHistoryDbPath?: string;
+  /** Override served capabilities; managed K8s pods use the cloud profile. */
+  capabilities?: ControlPlaneDeps["capabilities"];
 }
 
 export interface LocalHost {
@@ -162,7 +164,7 @@ export function buildLocalHost(opts: LocalHostOptions): LocalHost {
     paths,
     events,
     channels: { local: channel },
-    capabilities: LOCAL_CAPABILITIES,
+    capabilities: opts.capabilities ?? LOCAL_CAPABILITIES,
     chatHistoryMigrated,
     integrations,
     corsOrigin: "*",

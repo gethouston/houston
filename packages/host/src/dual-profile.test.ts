@@ -443,8 +443,14 @@ test("the documented profile asymmetries are exactly the intended ones", async (
     expect([cc.revealInOs, cc.terminal]).toEqual([false, false]);
     expect(lc.codeExecution).toBe("local-bash");
     expect(cc.codeExecution).toBe("remote-sandbox");
-    expect(lc.providers).toEqual(["anthropic", "openai-codex"]);
-    expect(cc.providers).toEqual(["openai-codex"]);
+    expect(lc.providers).toEqual(LOCAL_CAPABILITIES.providers);
+    expect(cc.providers).toEqual(CLOUD_CAPABILITIES.providers);
+    // Cloud offers the SAME model providers as desktop; the only provider-side
+    // asymmetry is the user's own local LLM (openaiCompatible), which needs a
+    // server on the user's machine and so is local-only.
+    expect(cc.providers).toEqual(lc.providers);
+    expect(lc.openaiCompatible).toBe(true);
+    expect(cc.openaiCompatible).toBe(false);
 
     // Shared invariants: mobile/tunnel is gone everywhere; one protocol version.
     expect(lc.tunnel).toBe(false);

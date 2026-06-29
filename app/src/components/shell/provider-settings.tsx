@@ -2,11 +2,13 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { ConfirmDialog, Spinner } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
 import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
+  EMPTY_PROVIDER_CAPABILITIES,
   getConnectProviders,
   PROVIDERS,
   type ProviderInfo,
@@ -64,6 +66,10 @@ export function ProviderSettings() {
   const [customEndpointDialog, setCustomEndpointDialog] =
     useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
+  const { capabilities } = useCapabilities();
+  const newEngine = newEngineActive();
+  const providerCapabilities =
+    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
 
   // API-key providers run only on the new TS engine; hide them on the Rust
   // engine where they can't connect. Computed once — the engine doesn't change
@@ -71,10 +77,11 @@ export function ProviderSettings() {
   const visibleProviders = useMemo(
     () =>
       getConnectProviders({
-        newEngine: newEngineActive(),
+        newEngine,
         desktop: osIsTauri(),
+        capabilities: providerCapabilities,
       }),
-    [],
+    [newEngine, providerCapabilities],
   );
 
   // First scan is treated as the baseline so opening Settings while a

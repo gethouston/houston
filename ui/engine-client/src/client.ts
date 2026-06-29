@@ -17,6 +17,7 @@ import type {
   Agent,
   AttachmentManifest,
   AttachmentUploadResult,
+  Capabilities,
   ChatHistoryEntry,
   ClaudeStatus,
   CommunitySkill,
@@ -179,6 +180,9 @@ export class HoustonClient {
   }
   version(): Promise<VersionResponse> {
     return this.request("GET", "/version");
+  }
+  capabilities(): Promise<Capabilities> {
+    return this.request("GET", "/capabilities");
   }
 
   // ---------- workspaces ----------

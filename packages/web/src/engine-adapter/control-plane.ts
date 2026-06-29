@@ -129,11 +129,10 @@ function toUiAgent(a: CpAgent, colors = colorOverlay()): Agent {
  * picked up without rebuilding the client.
  */
 export function liveToken(fallback: string): string {
-  const t =
-    typeof window !== "undefined"
-      ? window.__HOUSTON_ENGINE__?.token
-      : undefined;
-  return t || fallback;
+  if (typeof window !== "undefined" && window.__HOUSTON_ENGINE__) {
+    return window.__HOUSTON_ENGINE__.token;
+  }
+  return fallback;
 }
 
 async function cpFetch(

@@ -39,6 +39,40 @@ curl http://127.0.0.1:4318/health
 curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
 ```
 
+## Managed Engine Pod Target
+
+Kubernetes hosted POC uses the same open host/runtime stack without Caddy and
+with local process code execution disabled:
+
+```sh
+docker build \
+  -f selfhost/Dockerfile \
+  --target engine-pod \
+  -t houston/engine-pod:local .
+```
+
+Run it locally like the pod template does:
+
+```sh
+docker run --rm -d --name houston-engine-pod \
+  -p 4318:4318 \
+  -e HOUSTON_HOST_TOKEN=test \
+  -v houston-engine-pod-data:/data \
+  houston/engine-pod:local
+```
+
+Verify:
+
+```sh
+curl http://127.0.0.1:4318/health
+curl -H "Authorization: Bearer test" http://127.0.0.1:4318/v1/capabilities
+```
+
+Expected capabilities include `"codeExecution":"disabled"`,
+`"amazon-bedrock"` in `providers`, and `"composio"` in `integrations`. The
+private gateway supplies `HOUSTON_HOST_TOKEN`, mounts `/data` on the user's PVC,
+and fronts the pod with Supabase-authenticated proxying.
+
 Watch live engine logs:
 
 ```sh

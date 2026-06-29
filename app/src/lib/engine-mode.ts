@@ -13,10 +13,12 @@
  */
 export function controlPlaneBuild(env: {
   VITE_NEW_ENGINE_URL?: string;
+  VITE_HOSTED_ENGINE_URL?: string;
   VITE_NEW_ENGINE?: string;
 }): boolean {
   return (
     Boolean(env.VITE_NEW_ENGINE_URL) ||
+    Boolean(env.VITE_HOSTED_ENGINE_URL) ||
     env.VITE_NEW_ENGINE === "1" ||
     env.VITE_NEW_ENGINE === "true"
   );

@@ -17,10 +17,8 @@ import { DEFAULT_REASONING_EFFORT, toThinkingLevel } from "../ai/effort";
 import { providerDefaultModel, safeGetModel } from "../ai/providers";
 import { config } from "../config";
 import { makeAgentLoader } from "../session/resource-loader";
-import {
-  CLAMPED_FILE_TOOL_NAMES,
-  makeClampedFileTools,
-} from "../session/tools/clamped-fs";
+import { buildToolSelection } from "../session/tool-selection";
+import { makeClampedFileTools } from "../session/tools/clamped-fs";
 import { makeIdTokenProvider } from "../session/tools/gcp-id-token";
 import { makeRunCodeTool } from "../session/tools/run-code";
 import { toWire } from "../session/wire";
@@ -113,7 +111,11 @@ export async function runPiTurn(
     const loader = makeAgentLoader(workspaceDir);
     await loader.reload();
 
-    const sandbox = config.codeSandboxUrl
+    const toolSelection = buildToolSelection({
+      codeExecution: config.codeExecution === "remote" ? "remote" : "disabled",
+      integrations: false,
+    });
+    const sandbox = toolSelection.includeRunCode
       ? makeRunCodeTool({
           baseUrl: config.codeSandboxUrl,
           token: config.codeSandboxToken,
@@ -158,8 +160,8 @@ export async function runPiTurn(
         join(dataDir, "sessions", conversationId),
       ),
       resourceLoader: loader as never,
-      // No bash, ever, in the cloud: untrusted code belongs to run_code.
-      tools: [...CLAMPED_FILE_TOOL_NAMES, ...(sandbox ? ["run_code"] : [])],
+      // No bash, ever, in cloud turn mode.
+      tools: toolSelection.toolNames,
       customTools: [
         ...makeClampedFileTools(workspaceDir),
         ...(sandbox ? [sandbox] : []),

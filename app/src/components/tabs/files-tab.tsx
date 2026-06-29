@@ -9,6 +9,7 @@ import {
   useFiles,
   useRenameFile,
 } from "../../hooks/queries";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { saveBlob } from "../../lib/save-blob";
 import { tauriFiles } from "../../lib/tauri";
 import type { TabProps } from "../../lib/types";
@@ -19,6 +20,8 @@ export default function FilesTab({ agent }: TabProps) {
   // Web build: no OS to open/reveal with — double-click previews in-browser,
   // the context menu offers Download, and the file-manager footer goes away.
   const desktop = isTauri();
+  const { capabilities } = useCapabilities();
+  const canUseLocalFiles = desktop && (capabilities?.revealInOs ?? true);
   const [preview, setPreview] = useState<FileEntry | null>(null);
   const browserLabels = {
     columnName: t("files.columns.name"),
@@ -29,7 +32,7 @@ export default function FilesTab({ agent }: TabProps) {
     browseFiles: t("files.browseFiles"),
   };
   const menuLabels = {
-    open: desktop ? t("files.menu.open") : t("files.menu.preview"),
+    open: canUseLocalFiles ? t("files.menu.open") : t("files.menu.preview"),
     rename: t("files.menu.rename"),
     reveal: t("files.menu.reveal"),
     download: t("files.menu.download"),
@@ -55,12 +58,14 @@ export default function FilesTab({ agent }: TabProps) {
         files={files ?? []}
         loading={loading}
         onOpen={(file) =>
-          desktop ? tauriFiles.open(path, file.path) : setPreview(file)
+          canUseLocalFiles ? tauriFiles.open(path, file.path) : setPreview(file)
         }
         onReveal={
-          desktop ? (file) => tauriFiles.reveal(path, file.path) : undefined
+          canUseLocalFiles
+            ? (file) => tauriFiles.reveal(path, file.path)
+            : undefined
         }
-        onDownload={desktop ? undefined : downloadFile}
+        onDownload={canUseLocalFiles ? undefined : downloadFile}
         onDelete={(file) => deleteFile.mutate(file.path)}
         onRename={(file, newName) =>
           renameFile.mutate({ relativePath: file.path, newName })
@@ -71,7 +76,7 @@ export default function FilesTab({ agent }: TabProps) {
         labels={browserLabels}
         menuLabels={menuLabels}
         statusBarAction={
-          desktop ? (
+          canUseLocalFiles ? (
             <button
               type="button"
               onClick={() => tauriFiles.revealAgent(path)}

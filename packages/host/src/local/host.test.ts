@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { Capabilities, Workspace } from "@houston/protocol";
 import { expect, test } from "vitest";
+import { MANAGED_CLOUD_CAPABILITIES } from "../capabilities";
 import type { Agent } from "../domain/types";
 import type { RuntimeSpawner } from "../launcher/process";
 import { buildLocalHost, LOCAL_CAPABILITIES } from "./host";
@@ -31,7 +32,10 @@ const fakeSpawner: RuntimeSpawner = {
   spawn: () => ({ port: 0, kill: () => {} }),
 };
 
-async function setup(opts?: { chatHistoryDbPath?: string }) {
+async function setup(opts?: {
+  chatHistoryDbPath?: string;
+  capabilities?: Capabilities;
+}) {
   const workspacesRoot = mkdtempSync(join(tmpdir(), "houston-localhost-"));
   mkdirSync(join(workspacesRoot, "Work", "Sales"), { recursive: true });
   const port = await freePort();
@@ -46,6 +50,7 @@ async function setup(opts?: { chatHistoryDbPath?: string }) {
     runtimeCommand: ["true"],
     spawner: fakeSpawner,
     chatHistoryDbPath: opts?.chatHistoryDbPath,
+    capabilities: opts?.capabilities,
   });
   await host.start();
   return { host, base: `http://127.0.0.1:${port}`, workspacesRoot };
@@ -65,7 +70,27 @@ test("capabilities report the local profile", async () => {
     expect(caps).toEqual(LOCAL_CAPABILITIES);
     expect(caps.profile).toBe("local");
     expect(caps.codeExecution).toBe("local-bash");
-    expect(caps.providers).toEqual(["anthropic", "openai-codex"]);
+    expect(caps.providers).toContain("anthropic");
+    expect(caps.providers).toContain("amazon-bedrock");
+  } finally {
+    host.stop();
+  }
+});
+
+test("capabilities can report the managed cloud pod profile", async () => {
+  const { host, base } = await setup({
+    capabilities: MANAGED_CLOUD_CAPABILITIES,
+  });
+  try {
+    const r = await fetch(`${base}/v1/capabilities`);
+    expect(r.status).toBe(200);
+    const caps = (await r.json()) as Capabilities;
+    expect(caps).toEqual(MANAGED_CLOUD_CAPABILITIES);
+    expect(caps.codeExecution).toBe("disabled");
+    // Managed pods still offer the full provider set; only the local LLM is cut.
+    expect(caps.providers).toContain("amazon-bedrock");
+    expect(caps.providers).toContain("anthropic");
+    expect(caps.openaiCompatible).toBe(false);
   } finally {
     host.stop();
   }

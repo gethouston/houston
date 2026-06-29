@@ -1,20 +1,9 @@
-/**
- * Engine client bootstrap for the Houston desktop app.
- *
- * The Tauri supervisor spawns the `houston-engine` subprocess, parses its
- * stdout for `HOUSTON_ENGINE_LISTENING port=<p> token=<t>`, and injects
- * `window.__HOUSTON_ENGINE__ = { baseUrl, token }` via
- * `initializationScript` (see `app/src-tauri/tauri.conf.json`).
- *
- * Frontend code should prefer this `engine` singleton over raw Tauri IPC.
- * OS-native calls (file pickers, reveal-in-file-manager) still live on
- * `@tauri-apps/api` — everything else flows through the engine wire.
- */
+/** Engine client bootstrap for the Houston desktop app. */
 
 import { EngineWebSocket, HoustonClient } from "@houston-ai/engine-client";
-import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { pullEngineHandshakeWithRetry } from "./engine-handshake";
 import { controlPlaneBuild } from "./engine-mode";
+import { installRustEngineLifecycleListeners } from "./engine-tauri-events";
 
 declare global {
   interface Window {
@@ -34,9 +23,13 @@ declare global {
  * a downgrade is just "don't set the flag".
  */
 const _env = import.meta.env as Record<string, string | undefined>;
-const HOST_URL: string | undefined = _env.VITE_NEW_ENGINE_URL || undefined;
+const STATIC_HOST_URL: string | undefined =
+  _env.VITE_NEW_ENGINE_URL || undefined;
+const HOSTED_ENGINE_URL: string | undefined =
+  _env.VITE_HOSTED_ENGINE_URL || undefined;
 const HOST_TOKEN: string =
   _env.VITE_NEW_ENGINE_TOKEN ?? _env.VITE_HOUSTON_ENGINE_TOKEN ?? "";
+const REMOTE_HOST_MODE = Boolean(STATIC_HOST_URL || HOSTED_ENGINE_URL);
 
 // When the new-engine adapter is aliased in (VITE_NEW_ENGINE or
 // VITE_NEW_ENGINE_URL — see app/vite.config.ts `useHost`), the desktop ALWAYS
@@ -54,6 +47,7 @@ const HOST_TOKEN: string =
 const NEW_ENGINE = controlPlaneBuild(
   (import.meta.env ?? {}) as unknown as {
     VITE_NEW_ENGINE_URL?: string;
+    VITE_HOSTED_ENGINE_URL?: string;
     VITE_NEW_ENGINE?: string;
   },
 );
@@ -64,7 +58,7 @@ if (NEW_ENGINE && typeof window !== "undefined") {
 function resolveConfig(): { baseUrl: string; token: string } | null {
   // Host mode wins: point at the v3 host, overriding the Tauri-injected Rust
   // engine handshake.
-  if (HOST_URL) return { baseUrl: HOST_URL, token: HOST_TOKEN };
+  if (STATIC_HOST_URL) return { baseUrl: STATIC_HOST_URL, token: HOST_TOKEN };
   if (typeof window !== "undefined" && window.__HOUSTON_ENGINE__) {
     return window.__HOUSTON_ENGINE__;
   }
@@ -80,13 +74,37 @@ let _resolveReady: (() => void) | null = null;
 const _ready: Promise<void> = new Promise((resolve) => {
   _resolveReady = resolve;
 });
-
+/** Lazily-created shared WS instance. */
+let _ws: EngineWebSocket | null = null;
 function applyConfig(config: { baseUrl: string; token: string }) {
   window.__HOUSTON_ENGINE__ = config;
   _client = new HoustonClient(config);
   if (_resolveReady) {
     _resolveReady();
     _resolveReady = null;
+  }
+}
+
+/** True when this build should use Supabase-authenticated hosted engine mode. */
+export function hostedEngineActive(): boolean {
+  return Boolean(HOSTED_ENGINE_URL);
+}
+
+/** Updates the hosted engine bearer token from the current Supabase session. */
+export function setHostedEngineSessionToken(token: string | null): void {
+  if (!HOSTED_ENGINE_URL || typeof window === "undefined") return;
+  const previousToken = window.__HOUSTON_ENGINE__?.token ?? null;
+  const config = { baseUrl: HOSTED_ENGINE_URL, token: token ?? "" };
+  window.__HOUSTON_ENGINE__ = config;
+  if (!token) {
+    _ws?.disconnect();
+    _ws = null;
+    return;
+  }
+  applyConfig(config);
+  if (previousToken !== token && _ws) {
+    _ws.disconnect();
+    _ws.connect();
   }
 }
 
@@ -97,35 +115,12 @@ if (initial) {
   applyConfig(initial);
 }
 
-// Race-safe fallback: pull the handshake directly from Tauri. Wins the race
-// when the one-shot `houston-engine-ready` event fires before `listen()`
-// below registers. The Rust command errors with "engine not ready" until
-// setup() finishes; retry with backoff.
-async function pullHandshakeWithRetry() {
-  const deadline = Date.now() + 60_000;
-  let delay = 100;
-  while (Date.now() < deadline) {
-    if (_client) return;
-    try {
-      const config = await invoke<{ baseUrl: string; token: string }>(
-        "get_engine_handshake",
-      );
-      if (config?.baseUrl && config?.token) {
-        applyConfig(config);
-        return;
-      }
-    } catch {
-      /* engine not ready yet — retry */
-    }
-    await new Promise((r) => setTimeout(r, delay));
-    delay = Math.min(delay * 1.5, 1000);
-  }
-  console.error("[engine] handshake pull timed out after 60s");
-}
-
 // Host mode supplies the config from the env, so skip the Tauri/Rust handshake.
-if (!_client && !HOST_URL) {
-  pullHandshakeWithRetry().catch(() => {
+if (!_client && !REMOTE_HOST_MODE) {
+  pullEngineHandshakeWithRetry({
+    hasClient: () => _client !== null,
+    applyConfig,
+  }).catch(() => {
     /* non-Tauri env — listen() path covers other callers */
   });
 }
@@ -171,8 +166,6 @@ export function getEngine(): HoustonClient {
   return _client;
 }
 
-/** Lazily-created shared WS instance. */
-let _ws: EngineWebSocket | null = null;
 export function getEngineWs(): EngineWebSocket {
   if (!_ws) {
     _ws = new EngineWebSocket(getEngine());
@@ -200,42 +193,19 @@ function notifyEngineRestarted() {
   }
 }
 
-// --- Tauri event wiring ----------------------------------------------
-//
-// `houston-engine-ready` fires ONCE after initial /v1/health passes. This
-// is how the frontend learns the port+token when `window.eval` injection
-// lost the race against React mount.
-//
-// `houston-engine-restarted` fires when the supervisor respawns the
-// engine after a crash — rebuild the client + WS so in-flight hooks pick
-// up the new transport.
-// Rust-engine lifecycle events — skipped entirely in host mode (the host runs
-// as its own sidecar; a Rust `houston-engine-restarted` must never hijack the
-// frontend back onto the Rust transport).
-if (!HOST_URL) {
-  listen<{ baseUrl: string; token: string }>("houston-engine-ready", (ev) => {
-    if (!_client) {
-      applyConfig(ev.payload);
-    }
-  }).catch(() => {
-    // Non-Tauri environment (tests, mobile web) — no-op.
-  });
-
-  listen<{ baseUrl: string; token: string }>(
-    "houston-engine-restarted",
-    (ev) => {
-      applyConfig(ev.payload);
-      if (_ws) {
-        try {
-          _ws.disconnect();
-        } catch {
-          /* ignore */
-        }
-        _ws = null;
+if (!REMOTE_HOST_MODE) {
+  installRustEngineLifecycleListeners({
+    hasClient: () => _client !== null,
+    applyConfig,
+    resetWebSocket: () => {
+      if (!_ws) return;
+      try {
+        _ws.disconnect();
+      } catch {
+        /* ignore */
       }
-      notifyEngineRestarted();
+      _ws = null;
     },
-  ).catch(() => {
-    /* non-Tauri env */
+    notifyRestarted: notifyEngineRestarted,
   });
 }

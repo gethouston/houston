@@ -23,6 +23,13 @@ describe("controlPlaneBuild (HOU-546)", () => {
     );
   });
 
+  it("is on when only VITE_HOSTED_ENGINE_URL is set (managed hosted gateway)", () => {
+    strictEqual(
+      controlPlaneBuild({ VITE_HOSTED_ENGINE_URL: "https://cloud.example" }),
+      true,
+    );
+  });
+
   it("is on when both the flag and the url are set", () => {
     strictEqual(
       controlPlaneBuild({

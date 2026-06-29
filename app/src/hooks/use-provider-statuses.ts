@@ -1,7 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
-import { PROVIDERS } from "../lib/providers";
+import { newEngineActive } from "../lib/engine";
+import { osIsTauri } from "../lib/os-bridge";
+import {
+  EMPTY_PROVIDER_CAPABILITIES,
+  getVisibleProviders,
+} from "../lib/providers";
 import { queryKeys } from "../lib/query-keys";
 import { type ProviderStatus, tauriProvider } from "../lib/tauri";
+import { useCapabilities } from "./use-capabilities";
 
 export interface ProviderStatusesState {
   /** Status by provider id. Empty until the first fetch resolves. */
@@ -28,11 +34,20 @@ export interface ProviderStatusesState {
  * picks up out-of-band auth changes.
  */
 export function useProviderStatuses(): ProviderStatusesState {
+  const { capabilities } = useCapabilities();
+  const newEngine = newEngineActive();
+  const providerCapabilities =
+    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
   const query = useQuery({
-    queryKey: queryKeys.providerStatuses(),
+    queryKey: queryKeys.providerStatuses(capabilities?.providers ?? null),
     queryFn: async (): Promise<Record<string, ProviderStatus>> => {
+      const providers = getVisibleProviders({
+        newEngine,
+        desktop: osIsTauri(),
+        capabilities: providerCapabilities,
+      });
       const entries = await Promise.all(
-        PROVIDERS.map(
+        providers.map(
           async (p) => [p.id, await tauriProvider.checkStatus(p.id)] as const,
         ),
       );

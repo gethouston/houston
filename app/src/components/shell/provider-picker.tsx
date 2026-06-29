@@ -2,12 +2,14 @@ import type { HoustonEvent } from "@houston-ai/core";
 import { ConfirmDialog, Spinner } from "@houston-ai/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../../hooks/use-capabilities";
 import { analytics } from "../../lib/analytics";
 import { newEngineActive } from "../../lib/engine";
 import { subscribeHoustonEvents } from "../../lib/events";
 import { osIsTauri } from "../../lib/os-bridge";
 import {
   COMING_SOON_PROVIDERS,
+  EMPTY_PROVIDER_CAPABILITIES,
   getConnectProviders,
   PROVIDERS,
   type ProviderInfo,
@@ -59,16 +61,21 @@ export function ProviderPicker({ onSelect }: Props) {
   const [customEndpointDialog, setCustomEndpointDialog] =
     useState<ProviderInfo | null>(null);
   const addToast = useUIStore((s) => s.addToast);
+  const { capabilities } = useCapabilities();
+  const newEngine = newEngineActive();
+  const providerCapabilities =
+    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
 
   // API-key providers (OpenCode) run only on the new TS engine; hide them on the
   // Rust engine. Computed once — the engine doesn't change mid-session.
   const visibleProviders = useMemo(
     () =>
       getConnectProviders({
-        newEngine: newEngineActive(),
+        newEngine,
         desktop: osIsTauri(),
+        capabilities: providerCapabilities,
       }),
-    [],
+    [newEngine, providerCapabilities],
   );
 
   const prevStatuses = useRef<Record<string, ProviderStatus>>({});

@@ -22,7 +22,9 @@
 #   docker build -t houston/self-host -f selfhost/Dockerfile .
 #   # or just `docker compose up -d --build` from selfhost/ (wires the proxy + volumes).
 
-FROM node:22-bookworm-slim
+# The bookworm-slim variant ships bash + coreutils, which the agent's bash/file
+# tools rely on. Swap node:22 for a digest for a fully reproducible build.
+FROM node:22-bookworm-slim AS host-base
 ENV PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH
 RUN corepack enable
@@ -70,3 +72,10 @@ HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
 # Exec form → node is PID 1 and gets SIGTERM from `docker stop`; local/main.ts
 # handles it (stops the scheduler/watcher and kills spawned runtimes).
 CMD ["node", "--import", "tsx", "src/local/main.ts"]
+
+FROM host-base AS engine-pod
+
+ENV HOUSTON_MANAGED_CLOUD=1 \
+    HOUSTON_CODE_EXECUTION=disabled
+
+FROM host-base AS selfhost

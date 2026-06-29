@@ -236,17 +236,20 @@ pub fn run() {
             // supervisor thread restarts it with exponential backoff on
             // crash and emits a toast via `houston-event` on each reconnect.
             //
-            // Cutover host mode: when VITE_NEW_ENGINE_URL is set the frontend
-            // talks to an external Houston host (see app/src/lib/engine.ts), so
-            // don't spawn or health-check the Rust engine sidecar at all — the
-            // frontend reads its config from the env, no handshake injection
-            // needed here. Lets `pnpm tauri dev` run without a built engine.
-            let host_mode = std::env::var("VITE_NEW_ENGINE_URL")
-                .map(|v| !v.trim().is_empty())
-                .unwrap_or(false);
+            // Cutover host mode: when VITE_NEW_ENGINE_URL (static token) or
+            // VITE_HOSTED_ENGINE_URL (Supabase bearer) is set, the frontend
+            // talks to an external Houston host/gateway (see app/src/lib/engine.ts),
+            // so don't spawn or health-check the Rust engine sidecar at all.
+            let host_mode = ["VITE_NEW_ENGINE_URL", "VITE_HOSTED_ENGINE_URL"]
+                .iter()
+                .any(|name| {
+                    std::env::var(name)
+                        .map(|v| !v.trim().is_empty())
+                        .unwrap_or(false)
+                });
             if host_mode {
                 tracing::info!(
-                    "[engine] host mode (VITE_NEW_ENGINE_URL) — skipping the Rust engine sidecar"
+                    "[engine] host mode — skipping the Rust engine sidecar"
                 );
                 // Keep get_engine_handshake callable (the frontend skips it here).
                 app.manage(EngineHandshakeState::default());

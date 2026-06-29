@@ -5,12 +5,21 @@ import {
 } from "@houston-ai/core";
 import { ChevronDown } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { useCapabilities } from "../hooks/use-capabilities";
 import { useProviderStatuses } from "../hooks/use-provider-statuses";
+import { newEngineActive } from "../lib/engine";
 import {
   providerPickerState,
   shouldShowProviderInPicker,
 } from "../lib/model-picker";
-import { getModel, getProvider, PROVIDERS } from "../lib/providers";
+import { osIsTauri } from "../lib/os-bridge";
+import {
+  EMPTY_PROVIDER_CAPABILITIES,
+  getModel,
+  getProvider,
+  getVisibleProviders,
+  PROVIDERS,
+} from "../lib/providers";
 import { ProviderIcon, ProviderModelGroup } from "./chat-model-selector-parts";
 
 interface ChatModelSelectorProps {
@@ -43,6 +52,15 @@ export function ChatModelSelector({
 }: ChatModelSelectorProps) {
   const { t } = useTranslation("chat");
   const { statuses, isLoading } = useProviderStatuses();
+  const { capabilities } = useCapabilities();
+  const newEngine = newEngineActive();
+  const providerCapabilities =
+    capabilities ?? (newEngine ? EMPTY_PROVIDER_CAPABILITIES : undefined);
+  const visibleProviders = getVisibleProviders({
+    newEngine,
+    desktop: osIsTauri(),
+    capabilities: providerCapabilities,
+  });
 
   const currentProvider = getProvider(provider);
   const currentModel = getModel(provider, model);
@@ -82,6 +100,7 @@ export function ChatModelSelector({
           onCloseAutoFocus={(e) => e.preventDefault()}
         >
           {PROVIDERS.map((prov, idx) => {
+            if (!visibleProviders.some((p) => p.id === prov.id)) return null;
             const state = providerPickerState(statuses[prov.id], isLoading);
             const isActiveProvider = prov.id === provider;
             // Keep every provider visible while statuses are still loading so

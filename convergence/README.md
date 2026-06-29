@@ -80,6 +80,21 @@ code. Artifacts + guide: `selfhost/` (Dockerfile, Caddy TLS compose, README).
 Replaced the legacy `always-on/` Rust-engine VPS image (now deleted). The host boot
 was verified on a clean-room per-package install; the image build itself wants a Docker host.
 
+## Managed hosted pod POC
+
+The hosted K8s POC reuses the self-host shape, not a new runtime. The public repo
+builds `selfhost/Dockerfile --target engine-pod`: one open host process that
+spawns one pi runtime per agent over loopback, with `/data` as `HOUSTON_HOME`,
+`HOUSTON_MANAGED_CLOUD=1`, and `HOUSTON_CODE_EXECUTION=disabled`. Capabilities
+advertise cloud profile, no OS reveal/terminal, the full desktop provider set
+(only the user's local LLM `openaiCompatible` is dropped), and integration
+`composio`. The private repo supplies the
+Supabase-authenticated gateway, maps user `sub` to the pod service, replaces the
+user bearer with `HOUSTON_HOST_TOKEN`, and owns Kubernetes Deployment/PVC/Secret/
+Service/NetworkPolicy creation. Desktop hosted mode uses `VITE_HOSTED_ENGINE_URL`
+and the existing Supabase session token; `VITE_NEW_ENGINE_URL` static-token mode
+stays for dev/self-host.
+
 ## Host-sidecar release CI
 
 The Rust `release.yml` pipeline is untouched — it still builds the Rust engine on

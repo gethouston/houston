@@ -40,6 +40,7 @@ export default defineConfig(({ mode }) => {
   // real @houston-ai/engine-client (v1 → Rust engine) is untouched.
   const useHost =
     Boolean(env.VITE_NEW_ENGINE_URL) ||
+    Boolean(env.VITE_HOSTED_ENGINE_URL) ||
     env.VITE_NEW_ENGINE === "1" ||
     env.VITE_NEW_ENGINE === "true";
   return {

@@ -8,6 +8,7 @@ import type {
   Activity,
   ActivityUpdate,
   Agent,
+  Capabilities,
   ChatHistoryEntry,
   ConversationEntry,
   CreateAgent,
@@ -82,6 +83,8 @@ export function isHoustonEngineError(e: unknown): e is HoustonEngineError {
  */
 export class HoustonClient {
   private engine: HoustonEngineClient;
+  private baseUrl: string;
+  private token: string;
   /** Non-null in cloud mode: agents + chat go through the control plane. */
   private cp: ControlPlaneConfig | null;
   /** In-flight cloud device-code logins, keyed `${agentId}:${providerId}` — the poll guard. */
@@ -90,6 +93,8 @@ export class HoustonClient {
   private loginWatchers = new Map<string, ReturnType<typeof setInterval>>();
 
   constructor(opts: HoustonClientOptions) {
+    this.baseUrl = opts.baseUrl.replace(/\/+$/, "");
+    this.token = opts.token;
     const useCp =
       opts.controlPlane ??
       (typeof window !== "undefined" && !!window.__HOUSTON_CP__);
@@ -189,6 +194,21 @@ export class HoustonClient {
   }
   async version() {
     return (await this.engine.version()) as never;
+  }
+  async capabilities(): Promise<Capabilities> {
+    // Raw fetch (not `this.engine.capabilities()`) on purpose: the inner engine
+    // client captured its token at construction, but hosted mode rotates the
+    // Supabase bearer mid-session, so we MUST read the live token here.
+    const res = await fetch(`${this.baseUrl}/v1/capabilities`, {
+      headers: {
+        Authorization: `Bearer ${controlPlane.liveToken(this.token)}`,
+      },
+    });
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new HoustonEngineError(res.status, body);
+    }
+    return (await res.json()) as Capabilities;
   }
   async listWorkspaces(): Promise<Workspace[]> {
     const { provider, model } = await this.activeOld();

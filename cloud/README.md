@@ -1,5 +1,16 @@
 # Houston Cloud — Architecture And Operations
 
+> **Architecture update (2026-06-27).** The K8s hosted-engine POC is a
+> **managed personal engine pod**: one open host/runtime container + one PVC per
+> Supabase user, fronted by a private gateway. The public repo supplies the
+> desktop hosted mode (`VITE_HOSTED_ENGINE_URL`) and the `selfhost/Dockerfile`
+> `engine-pod` target (`HOUSTON_MANAGED_CLOUD=1`,
+> `HOUSTON_CODE_EXECUTION=disabled`). The private repo owns Supabase JWT
+> verification, `sub -> engine target` routing, Kubernetes resources, and
+> NetworkPolicy. PVC is primary storage; GCS is backup/export/migration only.
+> Teams/collaborative workspaces later use the same shape, but one pod/PVC per
+> collaborative workspace instead of per user.
+
 > **Architecture update (2026-06-26).** The cloud control-plane role now runs as
 > the Houston **host** cloud profile: shared routes/ports live in `packages/host`,
 > concrete cloud adapters and cloud `main.ts` live in closed `packages/host-cloud`.

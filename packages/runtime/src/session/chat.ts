@@ -23,15 +23,10 @@ import {
 } from "../store/conversations";
 import { publish } from "./bus";
 import { makeAgentLoader } from "./resource-loader";
-import {
-  CLAMPED_FILE_TOOL_NAMES,
-  makeClampedFileTools,
-} from "./tools/clamped-fs";
+import { buildToolSelection } from "./tool-selection";
+import { makeClampedFileTools } from "./tools/clamped-fs";
 import { makeIdTokenProvider } from "./tools/gcp-id-token";
-import {
-  INTEGRATION_TOOL_NAMES,
-  makeIntegrationTools,
-} from "./tools/integrations";
+import { makeIntegrationTools } from "./tools/integrations";
 import { makeRunCodeTool } from "./tools/run-code";
 import { toWire } from "./wire";
 
@@ -39,26 +34,7 @@ import { toWire } from "./wire";
 // by name: pi's defaults resolve absolute paths as-is, so without the clamp a
 // prompt-injected agent could read /etc/passwd or its own auth.json with no
 // bash tool. See tools/clamped-fs.ts.
-const FILE_TOOLS = [...CLAMPED_FILE_TOOL_NAMES];
 const fileTools = makeClampedFileTools(config.workspaceDir);
-
-// The code-execution split. When a remote sandbox is configured (cloud), the
-// agent runs code THERE via `run_code` and we drop the local `bash` tool — the
-// agent process stays cheap and untrusted code executes in a disposable box.
-// With no sandbox configured (desktop), pi keeps its in-process `bash`.
-const useRemoteSandbox = !!config.codeSandboxUrl;
-const runCodeTool = useRemoteSandbox
-  ? makeRunCodeTool({
-      baseUrl: config.codeSandboxUrl,
-      token: config.codeSandboxToken,
-      workspaceDir: config.workspaceDir,
-      limits: {
-        maxConcurrent: config.runCodeMaxConcurrent,
-        maxPerMinute: config.runCodePerMinute,
-      },
-      idToken: makeIdTokenProvider(config.codeSandboxUrl),
-    })
-  : null;
 
 // Integration tools (Composio "for you"): available whenever this runtime can
 // reach its host with a sandbox token (server mode — local desktop + standing
@@ -72,14 +48,22 @@ const integrationTools =
       })
     : [];
 
-// pi filters ALL tools (built-in and custom) against this name allowlist. A
-// built-in like `bash` needs only its name here; a custom tool like `run_code`
-// needs BOTH its name here AND its object in `customTools` (below) — omit either
-// and pi filters it out. This is the pi SDK's design, not accidental duplication.
-const TOOLS = [
-  ...(useRemoteSandbox ? [...FILE_TOOLS, "run_code"] : [...FILE_TOOLS, "bash"]),
-  ...(integrationTools.length ? INTEGRATION_TOOL_NAMES : []),
-];
+const toolSelection = buildToolSelection({
+  codeExecution: config.codeExecution,
+  integrations: integrationTools.length > 0,
+});
+const runCodeTool = toolSelection.includeRunCode
+  ? makeRunCodeTool({
+      baseUrl: config.codeSandboxUrl,
+      token: config.codeSandboxToken,
+      workspaceDir: config.workspaceDir,
+      limits: {
+        maxConcurrent: config.runCodeMaxConcurrent,
+        maxPerMinute: config.runCodePerMinute,
+      },
+      idToken: makeIdTokenProvider(config.codeSandboxUrl),
+    })
+  : null;
 
 /**
  * Headroom kept free when deciding whether the prior conversation can be carried
@@ -150,7 +134,7 @@ async function getConversation(id: string): Promise<Conversation> {
     modelRegistry,
     sessionManager,
     resourceLoader: loader,
-    tools: TOOLS,
+    tools: toolSelection.toolNames,
     customTools: [
       ...fileTools,
       ...(runCodeTool ? [runCodeTool] : []),

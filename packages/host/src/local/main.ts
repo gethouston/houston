@@ -2,6 +2,10 @@ import { randomBytes } from "node:crypto";
 import { homedir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  LOCAL_CAPABILITIES,
+  MANAGED_CLOUD_CAPABILITIES,
+} from "../capabilities";
 import { houstonSystemPrompt } from "../houston-prompt";
 import { installParentWatchdog } from "../parent-watchdog";
 import { buildLocalHost } from "./host";
@@ -26,6 +30,7 @@ import { buildLocalHost } from "./host";
  *                             role via HOUSTON_SIDECAR_ROLE — see host.ts); the
  *                             dev fallback is `node --import tsx <repo>/packages/runtime/src/main.ts`.
  *   HOUSTON_APP_SYSTEM_PROMPT the product voice prompt (from the app)
+ *   HOUSTON_MANAGED_CLOUD=1  serve managed-cloud capabilities (K8s pod)
  */
 function runtimeCommand(): string[] {
   // 1. Explicit override always wins.
@@ -72,6 +77,10 @@ const host = buildLocalHost({
   // The real Tauri app hands over its own product prompt; this is the built-in
   // default so the agent knows how to create Skills/Routines/learnings.
   systemPrompt: process.env.HOUSTON_APP_SYSTEM_PROMPT || houstonSystemPrompt(),
+  capabilities:
+    process.env.HOUSTON_MANAGED_CLOUD === "1"
+      ? MANAGED_CLOUD_CAPABILITIES
+      : LOCAL_CAPABILITIES,
   onRuntimeLog: (line) => process.stderr.write(line),
 });
 

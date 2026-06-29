@@ -26,6 +26,24 @@ function isHeadless(): boolean {
   return /^(1|true|yes|on)$/i.test(flag);
 }
 
+function codeExecutionMode(): "local" | "remote" | "disabled" {
+  const raw = env.HOUSTON_CODE_EXECUTION?.trim().toLowerCase();
+  if (raw) {
+    if (raw !== "local" && raw !== "remote" && raw !== "disabled") {
+      throw new Error(
+        "HOUSTON_CODE_EXECUTION must be local, remote, or disabled",
+      );
+    }
+    if (raw === "remote" && !env.HOUSTON_CODE_SANDBOX_URL) {
+      throw new Error(
+        "HOUSTON_CODE_EXECUTION=remote requires HOUSTON_CODE_SANDBOX_URL",
+      );
+    }
+    return raw;
+  }
+  return env.HOUSTON_CODE_SANDBOX_URL ? "remote" : "local";
+}
+
 /**
  * One houston-runtime instance = one workspace (a single working directory).
  * Everything is single-user; there is no workspace management here.
@@ -119,11 +137,17 @@ export const config = {
   controlPlaneUrl: env.HOUSTON_CONTROL_PLANE_URL || "",
 
   /**
-   * Remote code-execution sandbox (Cloud Run). When set, the agent runs code
-   * THERE via the `run_code` tool instead of holding a local `bash` tool: the
-   * agent process stays cheap and untrusted code executes in a disposable,
-   * isolated box rented per task. Empty on desktop, where pi keeps in-process
-   * bash. See packages/code-sandbox + cloud/code-execution.md.
+   * Code execution policy for long-lived runtime:
+   * - local: clamped file tools + built-in bash
+   * - remote: clamped file tools + run_code via HOUSTON_CODE_SANDBOX_URL
+   * - disabled: clamped file tools only
+   *
+   * Default preserves old behavior: sandbox URL => remote, no URL => local.
+   */
+  codeExecution: codeExecutionMode(),
+  /**
+   * Remote code-execution sandbox (Cloud Run). Used only when codeExecution is
+   * "remote"; managed hosted pods set HOUSTON_CODE_EXECUTION=disabled.
    */
   codeSandboxUrl: env.HOUSTON_CODE_SANDBOX_URL || "",
   /** App-layer token presented to the code sandbox via X-Sandbox-Token. */
