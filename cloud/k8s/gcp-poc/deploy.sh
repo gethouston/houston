@@ -2,19 +2,28 @@
 # Houston GCP POC — deploy to houston-cloud cluster, namespace houston-poc.
 # Run from the MONOREPO ROOT:  bash cloud/k8s/gcp-poc/deploy.sh
 #
-# What it does:
-#   Phase 1 — infra
-#     1. Bind Workload Identity for POC service account
-#     2. Deploy namespace + Postgres, run migrations
-#     3. Deploy control-plane (LoadBalancer) + wait for external IP
-#   Phase 2 — frontend
-#     4. Build web with VITE_CONTROL_PLANE_URL=http://<CP-IP>
-#     5. Push frontend image to Artifact Registry
-#     6. Deploy frontend (LoadBalancer) + wait for external IP
-#     7. Update CP CORS to allow the frontend origin
+# Architecture:
+#   - GKE cluster: houston-cloud (us-east1)
+#   - Namespace: houston-poc
+#   - Static IP: 34.117.171.155 (houston-poc-ip)
+#   - Domains: poc.gethouston.ai / poc-api.gethouston.ai
+#   - TLS: GCP ManagedCertificate (auto-provisions once DNS resolves)
+#   - Services: NodePort → GCE Ingress (no LoadBalancer per service)
+#   - Auth: Supabase SSO (Google OAuth) — project bnveorwpnaepkdchqgzh
 #
-# Rerunnable: existing resources are updated in-place (kubectl apply).
-# To tear down:  kubectl delete namespace houston-poc
+# DNS (must be added in Cloudflare before TLS provisions):
+#   poc      A  34.117.171.155  (DNS only, no proxy)
+#   poc-api  A  34.117.171.155  (DNS only, no proxy)
+#
+# USAGE
+#   Full deploy (builds + pushes images, deploys everything):
+#     ANTHROPIC_API_KEY=sk-ant-... bash cloud/k8s/gcp-poc/deploy.sh
+#
+#   Update only (skip IAM/Postgres/migrations, just rebuild + redeploy):
+#     ANTHROPIC_API_KEY=sk-ant-... bash cloud/k8s/gcp-poc/deploy.sh --update
+#
+# Rerunnable: kubectl apply is idempotent.
+# Teardown:   kubectl delete namespace houston-poc
 
 set -euo pipefail
 
@@ -25,173 +34,158 @@ CLUSTER_CONTEXT="gke_${GCP_PROJECT}_${REGION}_houston-cloud"
 POC_DIR="cloud/k8s/gcp-poc"
 NAMESPACE="houston-poc"
 GCP_SA="houston-control-plane@${GCP_PROJECT}.iam.gserviceaccount.com"
-FRONTEND_TAG="${REGISTRY}/web:poc"
+FRONTEND_TAG="${REGISTRY}/frontend:poc"
 CP_TAG="${REGISTRY}/control-plane:poc"
+STATIC_IP="34.117.171.155"
+FRONTEND_DOMAIN="poc.gethouston.ai"
+CP_DOMAIN="poc-api.gethouston.ai"
+UPDATE_ONLY=false
 
-echo "=== Houston GCP POC deploy ==="
+for arg in "$@"; do
+  case "$arg" in
+    --update) UPDATE_ONLY=true ;;
+    *) echo "Unknown argument: $arg"; exit 1 ;;
+  esac
+done
+
+echo "=== Houston GCP POC — $([ "$UPDATE_ONLY" = true ] && echo "update" || echo "full deploy") ==="
 echo "Cluster:   ${CLUSTER_CONTEXT}"
 echo "Namespace: ${NAMESPACE}"
 echo ""
 
 # ── Prerequisites ─────────────────────────────────────────────────────────────
 for cmd in kubectl gcloud docker pnpm; do
-  if ! command -v "$cmd" &>/dev/null; then
-    echo "ERROR: $cmd not found."
-    exit 1
-  fi
+  command -v "$cmd" &>/dev/null || { echo "ERROR: $cmd not found"; exit 1; }
 done
+
+if [ -z "${ANTHROPIC_API_KEY:-}" ]; then
+  echo "⚠  ANTHROPIC_API_KEY not set — agents won't call Claude"
+  echo "   Re-run with: ANTHROPIC_API_KEY=sk-ant-... bash $0 $([ "$UPDATE_ONLY" = true ] && echo "--update")"
+  echo ""
+fi
 
 kubectl config use-context "${CLUSTER_CONTEXT}"
 
 # ── 1. IAM + Workload Identity ────────────────────────────────────────────────
-# Grant control-plane SA access to the POC GCS bucket (idempotent).
-echo "→ granting GCS access to control-plane SA..."
-gcloud storage buckets add-iam-policy-binding gs://gethouston-poc-workspaces \
-  --member="serviceAccount:${GCP_SA}" \
-  --role="roles/storage.objectAdmin" \
-  --project "${GCP_PROJECT}" > /dev/null
+if [ "$UPDATE_ONLY" = false ]; then
+  echo "→ granting GCS access to control-plane SA..."
+  gcloud storage buckets add-iam-policy-binding gs://gethouston-poc-workspaces \
+    --member="serviceAccount:${GCP_SA}" \
+    --role="roles/storage.objectAdmin" \
+    --project "${GCP_PROJECT}" > /dev/null
 
-# ── Workload Identity binding ─────────────────────────────────────────────────
-echo "→ binding Workload Identity for ${NAMESPACE}/control-plane..."
-gcloud iam service-accounts add-iam-policy-binding "${GCP_SA}" \
-  --role roles/iam.workloadIdentityUser \
-  --member "serviceAccount:${GCP_PROJECT}.svc.id.goog[${NAMESPACE}/control-plane]" \
-  --project "${GCP_PROJECT}" 2>/dev/null || echo "  (binding already exists)"
+  echo "→ binding Workload Identity..."
+  gcloud iam service-accounts add-iam-policy-binding "${GCP_SA}" \
+    --role roles/iam.workloadIdentityUser \
+    --member "serviceAccount:${GCP_PROJECT}.svc.id.goog[${NAMESPACE}/control-plane]" \
+    --project "${GCP_PROJECT}" 2>/dev/null || echo "  (binding already exists)"
+fi
 
-# ── 2. Namespace + Postgres ────────────────────────────────────────────────────
-echo "→ applying namespace..."
-kubectl apply -f "${POC_DIR}/namespace.yaml"
+# ── 2. Namespace + Postgres + migrations ──────────────────────────────────────
+if [ "$UPDATE_ONLY" = false ]; then
+  echo "→ applying namespace..."
+  kubectl apply -f "${POC_DIR}/namespace.yaml"
 
-echo "→ deploying Postgres..."
-kubectl apply -f "${POC_DIR}/postgres.yaml"
-kubectl -n "${NAMESPACE}" wait --for=condition=ready pod \
-  --selector=app=postgres --timeout=120s
+  echo "→ deploying Postgres..."
+  kubectl apply -f "${POC_DIR}/postgres.yaml"
+  kubectl -n "${NAMESPACE}" wait --for=condition=ready pod \
+    --selector=app=postgres --timeout=120s
 
-# ── 3. Migrations ──────────────────────────────────────────────────────────────
-echo "→ running migrations..."
-# Delete completed/failed job so we can re-apply (jobs are immutable).
-kubectl -n "${NAMESPACE}" delete job houston-migrations --ignore-not-found
-kubectl apply -f "${POC_DIR}/migrations-job.yaml"
-kubectl -n "${NAMESPACE}" wait --for=condition=complete job/houston-migrations \
-  --timeout=60s
-echo "✓ migrations done"
+  echo "→ running migrations..."
+  kubectl -n "${NAMESPACE}" delete job houston-migrations --ignore-not-found
+  kubectl apply -f "${POC_DIR}/migrations-job.yaml"
+  kubectl -n "${NAMESPACE}" wait --for=condition=complete job/houston-migrations \
+    --timeout=60s
+  echo "✓ migrations done"
+fi
 
-# ── 4. Build + push control-plane image ────────────────────────────────────────
-echo "→ building control-plane image..."
+# ── 3. Build + push control-plane ─────────────────────────────────────────────
+echo "→ building control-plane image (linux/amd64)..."
 gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 docker build \
   --platform linux/amd64 \
   -t "${CP_TAG}" \
   -f packages/host-cloud/Dockerfile \
   .
-echo "→ pushing control-plane image..."
+echo "→ pushing ${CP_TAG}..."
 docker push "${CP_TAG}"
 
-# ── 5. Deploy control-plane ────────────────────────────────────────────────────
-echo "→ deploying control-plane..."
-kubectl apply -f "${POC_DIR}/control-plane.yaml"
-kubectl -n "${NAMESPACE}" wait --for=condition=available deployment/control-plane \
-  --timeout=120s
-
-echo "→ waiting for control-plane LoadBalancer IP (may take ~60s)..."
-CP_IP=""
-for i in $(seq 1 30); do
-  CP_IP=$(kubectl -n "${NAMESPACE}" get svc control-plane \
-    -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
-  if [[ -n "${CP_IP}" ]]; then
-    echo "✓ control-plane IP: ${CP_IP}"
-    break
-  fi
-  echo "  waiting... (${i}/30)"
-  sleep 5
-done
-
-if [[ -z "${CP_IP}" ]]; then
-  echo "ERROR: timed out waiting for control-plane LoadBalancer IP."
-  echo "Check: kubectl -n ${NAMESPACE} get svc control-plane"
-  exit 1
-fi
-
-CP_URL="http://${CP_IP}"
-
-# ── 6. Build + push frontend ──────────────────────────────────────────────────
-echo ""
-echo "→ building web frontend (VITE_CONTROL_PLANE_URL=${CP_URL})..."
-
-# VITE_CP_DEV_TOKEN must match CP_SERVICE_TOKENS in control-plane.yaml.
-VITE_CONTROL_PLANE_URL="${CP_URL}" \
-VITE_CP_DEV_TOKEN="houston-poc-gcp-service-token-2026" \
+# ── 4. Build + push frontend ──────────────────────────────────────────────────
+echo "→ building web frontend..."
+VITE_CONTROL_PLANE_URL="https://${CP_DOMAIN}" \
   pnpm --filter houston-web build
 
-echo "→ building frontend Docker image..."
-gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+echo "→ building frontend image (linux/amd64)..."
 docker build \
   --platform linux/amd64 \
   -t "${FRONTEND_TAG}" \
   -f "cloud/k8s/poc/frontend.Dockerfile" \
   .
-
-echo "→ pushing frontend image to ${FRONTEND_TAG}..."
+echo "→ pushing ${FRONTEND_TAG}..."
 docker push "${FRONTEND_TAG}"
 
-# ── 7. Deploy frontend ────────────────────────────────────────────────────────
+# ── 5. Deploy control-plane ────────────────────────────────────────────────────
+echo "→ deploying control-plane..."
+kubectl apply -f "${POC_DIR}/control-plane.yaml"
+kubectl -n "${NAMESPACE}" rollout restart deployment/control-plane
+kubectl -n "${NAMESPACE}" wait --for=condition=available deployment/control-plane \
+  --timeout=120s
+
+# ── 6. Seed Anthropic API key ─────────────────────────────────────────────────
+if [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  echo "→ seeding Anthropic API key into all workspaces..."
+  kubectl -n "${NAMESPACE}" exec postgres-0 -- \
+    psql -U houston houston -c \
+    "INSERT INTO workspace_credentials (workspace_id, provider, access_token, refresh_token, account_id, expires_at, updated_at)
+     SELECT id, 'anthropic', '${ANTHROPIC_API_KEY}', '', NULL, 0, 0 FROM workspaces
+     ON CONFLICT (workspace_id, provider) DO UPDATE SET access_token = EXCLUDED.access_token, updated_at = 0;" \
+    > /dev/null
+  echo "✓ Anthropic key seeded"
+fi
+
+# ── 7. Deploy frontend ─────────────────────────────────────────────────────────
 echo "→ deploying frontend..."
 sed "s|FRONTEND_IMAGE_PLACEHOLDER|${FRONTEND_TAG}|g" \
   "${POC_DIR}/frontend.yaml" | kubectl apply -f -
+kubectl -n "${NAMESPACE}" rollout restart deployment/frontend
 kubectl -n "${NAMESPACE}" wait --for=condition=available deployment/frontend \
   --timeout=60s
 
-echo "→ waiting for frontend LoadBalancer IP..."
-FRONTEND_IP=""
-for i in $(seq 1 30); do
-  FRONTEND_IP=$(kubectl -n "${NAMESPACE}" get svc frontend \
-    -o jsonpath='{.status.loadBalancer.ingress[0].ip}' 2>/dev/null || true)
-  if [[ -n "${FRONTEND_IP}" ]]; then
-    echo "✓ frontend IP: ${FRONTEND_IP}"
-    break
-  fi
-  echo "  waiting... (${i}/30)"
-  sleep 5
-done
-
-# ── 8. Update CORS on control-plane ───────────────────────────────────────────
-if [[ -n "${FRONTEND_IP}" ]]; then
-  echo "→ updating CP_CORS_ORIGIN to http://${FRONTEND_IP}..."
-  kubectl -n "${NAMESPACE}" set env deployment/control-plane \
-    "CP_CORS_ORIGIN=http://${FRONTEND_IP}"
+# ── 8. Ingress + ManagedCertificate ───────────────────────────────────────────
+if [ "$UPDATE_ONLY" = false ]; then
+  echo "→ applying ingress + managed certificate..."
+  kubectl apply -f "${POC_DIR}/ingress.yaml"
 fi
 
-# ── Health check ──────────────────────────────────────────────────────────────
+# ── 9. Status ─────────────────────────────────────────────────────────────────
 echo ""
-echo "→ checking control-plane health..."
-if curl -sf --max-time 10 "${CP_URL}/health" | grep -q ok; then
-  echo "✓ control-plane healthy"
-else
-  echo "⚠ /health check failed — check logs:"
-  echo "  kubectl -n ${NAMESPACE} logs deployment/control-plane"
-fi
+CERT_STATUS=$(kubectl -n "${NAMESPACE}" get managedcertificate houston-poc-cert \
+  -o jsonpath='{.status.certificateStatus}' 2>/dev/null || echo "unknown")
 
-echo ""
-echo "╔══════════════════════════════════════════════════════════════════╗"
-echo "║  Houston GCP POC is up                                          ║"
-echo "║                                                                  ║"
-printf  "║  Frontend:      http://%-43s ║\n" "${FRONTEND_IP}"
-printf  "║  Control plane: ${CP_URL}%-$((43 - ${#CP_URL}))s ║\n" ""
-echo "║                                                                  ║"
-echo "║  Dev token (pre-loaded in UI):                                  ║"
-echo "║    houston-poc-gcp-service-token-2026                           ║"
-echo "║                                                                  ║"
-echo "║  Watch agent pods:                                               ║"
-echo "║    kubectl get pods -A -w | grep poc-ws-                        ║"
-echo "║  Control-plane logs:                                             ║"
-printf  "║    kubectl -n %s logs -f deployment/control-plane  ║\n" "${NAMESPACE}"
-echo "╚══════════════════════════════════════════════════════════════════╝"
-echo ""
-echo "To switch to Supabase auth (after adding the frontend IP to Supabase):"
-echo "  kubectl -n ${NAMESPACE} create secret generic supabase-creds \\"
-echo "    --from-literal=jwks-url=https://<project>.supabase.co/auth/v1/.well-known/jwks.json \\"
-echo "    --from-literal=jwt-issuer=https://<project>.supabase.co/auth/v1"
-echo "  kubectl -n ${NAMESPACE} set env deployment/control-plane \\"
-echo "    CP_SERVICE_TOKENS- \\"
-echo "    CP_SUPABASE_JWKS_URL=https://<project>.supabase.co/auth/v1/.well-known/jwks.json \\"
-echo "    CP_SUPABASE_JWT_ISSUER=https://<project>.supabase.co/auth/v1"
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║  Houston GCP POC deployed                               ║"
+echo "║                                                          ║"
+echo "║  Frontend:  https://${FRONTEND_DOMAIN}             ║"
+echo "║  API:       https://${CP_DOMAIN}         ║"
+echo "║  Static IP: ${STATIC_IP}                       ║"
+echo "║                                                          ║"
+printf "║  TLS cert: %-45s ║\n" "${CERT_STATUS}"
+echo "║                                                          ║"
+echo "║  DNS (add in Cloudflare if not done):                   ║"
+echo "║    poc      A  ${STATIC_IP}  (DNS only)          ║"
+echo "║    poc-api  A  ${STATIC_IP}  (DNS only)          ║"
+echo "║                                                          ║"
+echo "║  Watch cert:                                             ║"
+echo "║    kubectl -n houston-poc get managedcertificate -w     ║"
+echo "║  Watch agent pods:                                       ║"
+echo "║    kubectl get pods -A | grep poc-ws-                   ║"
+echo "║  CP logs:                                                ║"
+echo "║    kubectl -n houston-poc logs -f deploy/control-plane  ║"
+echo "╚══════════════════════════════════════════════════════════╝"
+
+if [ "${CERT_STATUS}" != "Active" ]; then
+  echo ""
+  echo "⏳  TLS cert is '${CERT_STATUS}' — HTTPS won't work until it's Active."
+  echo "    This requires DNS to resolve first (Cloudflare records above)."
+  echo "    Check progress: kubectl -n houston-poc get managedcertificate -w"
+fi
