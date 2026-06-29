@@ -1,0 +1,45 @@
+# Frontend image and VITE_CONTROL_PLANE_URL are set by deploy.sh.
+# This file is applied AFTER the image is built and pushed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: houston-poc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: frontend
+          image: FRONTEND_IMAGE_PLACEHOLDER
+          imagePullPolicy: Always
+          ports:
+            - { containerPort: 80, name: http }
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 200m, memory: 128Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: houston-poc
+  annotations:
+    cloud.google.com/backend-config: '{"default": "frontend-backendconfig"}'
+    cloud.google.com/neg: '{"ingress": true}'
+spec:
+  type: NodePort
+  selector:
+    app: frontend
+  ports:
+    - { name: http, port: 80, targetPort: 80 }

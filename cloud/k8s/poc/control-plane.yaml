@@ -1,0 +1,131 @@
+# Houston control-plane — kind POC variant.
+# Auth: CP_SERVICE_TOKENS (no Supabase needed)
+# Storage: Postgres in-cluster, no GCS
+# Agent pods: GkeLauncher against the kind k8s apiserver (in-cluster SA)
+# Bus: in-process MemoryTurnBus (single replica)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: control-plane-secrets
+  namespace: houston-system
+type: Opaque
+stringData:
+  supabase-jwks-url: "https://bnveorwpnaepkdchqgzh.supabase.co/auth/v1/.well-known/jwks.json"
+  supabase-jwt-issuer: "https://bnveorwpnaepkdchqgzh.supabase.co/auth/v1"
+  sandbox-token-secret: "6e3a1c2f4b8d9e7a0f5c2b1d4e6a8f3c7b9d0e2f5a1c3d7e9b0f4a2c6d8e1f3b"
+  # Dev service token — maps to the seeded POC user. Same value baked into the
+  # frontend via VITE_CP_DEV_TOKEN in deploy.sh. Must be ≥32 chars.
+  service-tokens: "houston-poc-dev-token-for-kind-deploy-2026=00000000-0000-0000-0000-000000000001"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: control-plane
+  namespace: houston-system
+---
+# Cluster-wide rights to create/manage per-agent namespaces + workloads.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: houston-control-plane
+rules:
+  - apiGroups: [""]
+    resources: [namespaces, services, persistentvolumeclaims, secrets, pods]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [deployments, deployments/scale]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: houston-control-plane
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: houston-control-plane
+subjects:
+  - kind: ServiceAccount
+    name: control-plane
+    namespace: houston-system
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-plane
+  namespace: houston-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: control-plane
+  template:
+    metadata:
+      labels:
+        app: control-plane
+    spec:
+      serviceAccountName: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: control-plane
+          image: houston/control-plane:local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { containerPort: 8080, name: api }
+          env:
+            - { name: CP_HOST, value: "0.0.0.0" }
+            - { name: CP_PORT, value: "8080" }
+            # Agent pods: GkeLauncher uses the in-cluster SA above.
+            - { name: CP_AGENT_IMAGE, value: "houston/engine-pod:local" }
+            - { name: CP_DEFAULT_RUNTIME, value: "gke" }
+            - { name: CP_NAMESPACE_PREFIX, value: "ws-" }
+            # No gVisor in kind (no RuntimeClass).
+            - { name: CP_RUNTIME_CLASS, value: "" }
+            - name: CP_SUPABASE_JWKS_URL
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: supabase-jwks-url }
+            - name: CP_SUPABASE_JWT_ISSUER
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: supabase-jwt-issuer }
+            # In-cluster URL for agent pods to reach the control plane when they
+            # need to fetch their subscription credential.
+            - { name: CP_INTERNAL_URL, value: "http://control-plane.houston-system.svc.cluster.local:8080" }
+            # Allow requests from the frontend origin (ingress on localhost:8080).
+            - { name: CP_CORS_ORIGIN, value: "http://localhost:9080" }
+            - name: CP_DATABASE_URL
+              value: "postgres://houston:houston-poc@postgres.houston-system.svc.cluster.local:5432/houston"
+            - name: CP_SANDBOX_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: sandbox-token-secret }
+            - name: CP_SERVICE_TOKENS
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: service-tokens }
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: control-plane
+  namespace: houston-system
+spec:
+  selector:
+    app: control-plane
+  ports:
+    - { name: api, port: 8080, targetPort: 8080 }

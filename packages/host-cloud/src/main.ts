@@ -103,7 +103,9 @@ function buildStores(): {
  */
 function buildVfs(): Vfs | undefined {
   if (config.dev) return new MemoryVfs();
-  return config.gcsBucket ? new GcsVfs(config.gcsBucket) : undefined;
+  // Without a GCS bucket (kind/local POC), fall back to in-process MemoryVfs
+  // so file routes answer instead of 503. Data is lost on restart — fine for a POC.
+  return config.gcsBucket ? new GcsVfs(config.gcsBucket) : new MemoryVfs();
 }
 
 /**

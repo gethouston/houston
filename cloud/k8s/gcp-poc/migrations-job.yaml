@@ -1,0 +1,107 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: houston-migrations
+  namespace: houston-poc
+data:
+  migrations.sql: |
+    -- GCP POC migrations — plain Postgres (no Supabase).
+    -- Creates auth.users compat table so the FK in workspaces resolves,
+    -- then drops the FK so any Supabase JWT sub can create a workspace.
+
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE TABLE IF NOT EXISTS auth.users (
+      id         uuid PRIMARY KEY,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    -- seed the service-token user so the control plane can bootstrap
+    INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-000000000001')
+      ON CONFLICT DO NOTHING;
+
+    -- canonical Houston Cloud tables (mirrors supabase/migrations/)
+    CREATE TABLE IF NOT EXISTS public.workspaces (
+      id            text   PRIMARY KEY,
+      owner_user_id uuid   NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+      kind          text   NOT NULL DEFAULT 'personal' CHECK (kind IN ('personal', 'org')),
+      name          text   NOT NULL,
+      slug          text   NOT NULL,
+      created_at    bigint NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS workspaces_one_personal_per_owner_idx
+      ON public.workspaces (owner_user_id)
+      WHERE kind = 'personal';
+
+    CREATE TABLE IF NOT EXISTS public.agents (
+      id           text   PRIMARY KEY,
+      workspace_id text   NOT NULL REFERENCES public.workspaces (id) ON DELETE CASCADE,
+      name         text   NOT NULL,
+      created_at   bigint NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS agents_workspace_id_idx
+      ON public.agents (workspace_id);
+
+    ALTER TABLE public.workspaces
+      ADD COLUMN IF NOT EXISTS runtime TEXT NOT NULL DEFAULT 'gke'
+      CHECK (runtime IN ('gke', 'cloudrun'));
+
+    CREATE TABLE IF NOT EXISTS public.workspace_credentials (
+      workspace_id  text   NOT NULL,
+      provider      text   NOT NULL,
+      access_token  text   NOT NULL,
+      refresh_token text   NOT NULL,
+      account_id    text,
+      expires_at    bigint NOT NULL,
+      updated_at    bigint NOT NULL,
+      PRIMARY KEY (workspace_id, provider)
+    );
+
+    CREATE TABLE IF NOT EXISTS public.integration_credentials (
+      user_id    text   NOT NULL,
+      provider   text   NOT NULL,
+      data       jsonb  NOT NULL,
+      updated_at bigint NOT NULL,
+      PRIMARY KEY (user_id, provider)
+    );
+
+    -- Drop the FK so any Supabase JWT sub (uuid) can create a workspace
+    -- without needing a matching row in auth.users.
+    ALTER TABLE public.workspaces
+      DROP CONSTRAINT IF EXISTS workspaces_owner_user_id_fkey;
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: houston-migrations
+  namespace: houston-poc
+spec:
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -U houston -d houston; do
+                echo "waiting for postgres..."; sleep 2
+              done
+              psql -h postgres -U houston -d houston -f /migrations/migrations.sql
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: houston-migrations

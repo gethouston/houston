@@ -1,0 +1,17 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+# Single-node cluster with ingress-ready configuration.
+# Port 80 inside the kind node maps to host port 8080 so the NGINX ingress
+# controller is reachable at http://localhost:8080 without root.
+nodes:
+  - role: control-plane
+    kubeadmConfigPatches:
+      - |
+        kind: InitConfiguration
+        nodeRegistration:
+          kubeletExtraArgs:
+            node-labels: "ingress-ready=true"
+    extraPortMappings:
+      - containerPort: 80
+        hostPort: 9080
+        protocol: TCP
