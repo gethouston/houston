@@ -20,6 +20,7 @@ import type {
 import { shouldAutocompactForSession } from "./autocompact";
 import { getEngine } from "./engine";
 import { engineCallSurface } from "./engine-call-policy";
+import { providerLoginUsesDeviceAuthByDefault } from "./engine-mode";
 import { logger } from "./logger";
 import { isMissingSkillError } from "./missing-skill";
 import { osIsTauri, osPickDirectory } from "./os-bridge";
@@ -675,17 +676,26 @@ export const tauriProvider = {
     opts?: { deviceAuth?: boolean; toast?: boolean; enterpriseDomain?: string },
   ) =>
     // `deviceAuth` declares whether the client can catch a loopback OAuth
-    // callback. Default it from the platform: the co-located desktop CAN
-    // (false → Codex browser/loopback login), a remote webapp can't (true →
-    // device code). Callers may still override. Centralized here so every
-    // entry point (picker, settings, reconnect card, banner) agrees.
+    // callback. Default it from connection topology: a co-located desktop can
+    // catch the runtime's loopback callback (false → Codex browser login), but
+    // any browser client OR desktop pointed at a remote host cannot (true →
+    // device code). Callers may still override. Centralized here so every entry
+    // point (picker, settings, reconnect card, banner) agrees.
     // `enterpriseDomain` (GitHub Copilot Enterprise) carries the company GitHub
     // domain the user typed on the Enterprise card; absent for every other login.
     call<void>(
       "launch_provider_login",
       () =>
         getEngine().providerLogin(provider, {
-          deviceAuth: opts?.deviceAuth ?? !osIsTauri(),
+          deviceAuth:
+            opts?.deviceAuth ??
+            providerLoginUsesDeviceAuthByDefault(
+              (import.meta.env ?? {}) as {
+                VITE_NEW_ENGINE_URL?: string;
+                VITE_HOSTED_ENGINE_URL?: string;
+              },
+              { isTauri: osIsTauri() },
+            ),
           enterpriseDomain: opts?.enterpriseDomain,
         }),
       undefined,

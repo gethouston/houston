@@ -1,6 +1,9 @@
 import { strictEqual } from "node:assert";
 import { describe, it } from "node:test";
-import { controlPlaneBuild } from "../src/lib/engine-mode.ts";
+import {
+  controlPlaneBuild,
+  providerLoginUsesDeviceAuthByDefault,
+} from "../src/lib/engine-mode.ts";
 
 // HOU-546: the control-plane adapter reads window.__HOUSTON_CP__ at construction.
 // engine.ts derives that flag from this predicate, so it MUST stay in lockstep
@@ -47,5 +50,55 @@ describe("controlPlaneBuild (HOU-546)", () => {
   it("is off for a non-truthy VITE_NEW_ENGINE value", () => {
     strictEqual(controlPlaneBuild({ VITE_NEW_ENGINE: "0" }), false);
     strictEqual(controlPlaneBuild({ VITE_NEW_ENGINE: "" }), false);
+  });
+});
+
+// Provider OAuth loopback only works when the desktop app and runtime are on the
+// same machine. A Tauri desktop pointed at a self-host / managed host must use
+// Codex's device-code flow, otherwise the browser opens against a callback on
+// the remote host and the login strands.
+describe("providerLoginUsesDeviceAuthByDefault", () => {
+  it("uses browser loopback for the default co-located desktop engine", () => {
+    strictEqual(
+      providerLoginUsesDeviceAuthByDefault({}, { isTauri: true }),
+      false,
+    );
+  });
+
+  it("uses browser loopback for the bundled host sidecar desktop path", () => {
+    strictEqual(
+      providerLoginUsesDeviceAuthByDefault(
+        { VITE_NEW_ENGINE_URL: undefined, VITE_HOSTED_ENGINE_URL: undefined },
+        { isTauri: true },
+      ),
+      false,
+    );
+  });
+
+  it("uses device code for a desktop app pointed at an external host", () => {
+    strictEqual(
+      providerLoginUsesDeviceAuthByDefault(
+        { VITE_NEW_ENGINE_URL: "https://houston.example.com/engine" },
+        { isTauri: true },
+      ),
+      true,
+    );
+  });
+
+  it("uses device code for a desktop app pointed at the hosted gateway", () => {
+    strictEqual(
+      providerLoginUsesDeviceAuthByDefault(
+        { VITE_HOSTED_ENGINE_URL: "https://cloud.example" },
+        { isTauri: true },
+      ),
+      true,
+    );
+  });
+
+  it("uses device code for browser clients", () => {
+    strictEqual(
+      providerLoginUsesDeviceAuthByDefault({}, { isTauri: false }),
+      true,
+    );
   });
 });

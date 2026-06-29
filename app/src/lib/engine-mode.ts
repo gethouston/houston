@@ -11,15 +11,35 @@
  * race against the `get_engine_handshake` poll / `houston-engine-ready` event
  * and leave a Rust-wire client pointed at a v3 host. See HOU-546.
  */
-export function controlPlaneBuild(env: {
+type EngineModeEnv = {
   VITE_NEW_ENGINE_URL?: string;
   VITE_HOSTED_ENGINE_URL?: string;
   VITE_NEW_ENGINE?: string;
-}): boolean {
+};
+
+export function controlPlaneBuild(env: EngineModeEnv): boolean {
   return (
     Boolean(env.VITE_NEW_ENGINE_URL) ||
     Boolean(env.VITE_HOSTED_ENGINE_URL) ||
     env.VITE_NEW_ENGINE === "1" ||
     env.VITE_NEW_ENGINE === "true"
+  );
+}
+
+/**
+ * Provider OAuth loopback only works when the browser and runtime are
+ * co-located on the same desktop machine. A Tauri desktop pointed at a remote
+ * host is still a remote client for provider auth: the runtime's localhost
+ * callback is on the remote host, not the user's machine, so Codex/OpenAI must
+ * use the device-code flow.
+ */
+export function providerLoginUsesDeviceAuthByDefault(
+  env: Pick<EngineModeEnv, "VITE_NEW_ENGINE_URL" | "VITE_HOSTED_ENGINE_URL">,
+  client: { isTauri: boolean },
+): boolean {
+  return (
+    !client.isTauri ||
+    Boolean(env.VITE_NEW_ENGINE_URL) ||
+    Boolean(env.VITE_HOSTED_ENGINE_URL)
   );
 }

@@ -143,24 +143,26 @@ expired OAuth/API-key messages) and `houston-agents-conversations` emits
 `codex login` through `/v1/providers/:name/login` and polls provider status
 until the CLI reports authenticated.
 
-**Headless connect uses two completion shapes.** A remote client (the webapp
-or mobile PWA pointed at a hosted engine) can't receive the CLI's `localhost`
-OAuth callback, so the connect surfaces that render `ProviderLoginDialog`
-(`ProviderPicker`, `ProviderSettings`) pass `deviceAuth: !isTauri()`. That
-flips codex to its device-code flow (`codex login --device-auth`): the engine
-surfaces a verification URL plus a one-time `ProviderLoginUrl.user_code`, the
-user enters that code on OpenAI's page, and codex polls + writes
-`~/.codex/auth.json` itself (no paste-back). **codex colourizes stdout even
-over a pipe**, so the relay strips ANSI escape sequences from each line before
-scanning (`login_relay::strip_ansi`): the `\x1b[94m` wrapper's trailing `m`
-otherwise sits flush against the code and defeats the `\b` anchor in the
-device-code regex, leaving `user_code` unset and the dialog wrongly stuck on
-paste-back. Claude has no device variant —
-its standard login already completes headlessly via the paste-back code
+**Headless connect uses two completion shapes.** A remote client (browser
+webapp, or the desktop app pointed at `VITE_NEW_ENGINE_URL` /
+`VITE_HOSTED_ENGINE_URL`) can't receive the runtime's `localhost` OAuth
+callback. The shared app adapter defaults `deviceAuth` through
+`providerLoginUsesDeviceAuthByDefault`: co-located desktop (Rust sidecar or
+bundled host sidecar, no remote URL) passes `false`; browser clients and desktop
+clients using a remote host pass `true`. That flips codex to its device-code
+flow (`codex login --device-auth`): the engine surfaces a verification URL plus
+a one-time `ProviderLoginUrl.user_code`, the user enters that code on OpenAI's
+page, and codex polls + writes `~/.codex/auth.json` itself (no paste-back).
+**codex colourizes stdout even over a pipe**, so the relay strips ANSI escape
+sequences from each line before scanning (`login_relay::strip_ansi`): the
+`\x1b[94m` wrapper's trailing `m` otherwise sits flush against the code and
+defeats the `\b` anchor in the device-code regex, leaving `user_code` unset and
+the dialog wrongly stuck on paste-back. Claude has no device variant — its
+standard login already completes headlessly via the paste-back code
 (`/v1/providers/:name/login/code`), so the flag is a no-op for it. Note the
-mid-chat `ProviderReconnectCard` doesn't render the dialog, so headless
-re-auth currently routes through the picker/settings; the device-code
-requires the user's OpenAI account to have device sign-in enabled.
+mid-chat `ProviderReconnectCard` doesn't render the dialog, so headless re-auth
+currently routes through the picker/settings; the device-code requires the
+user's OpenAI account to have device sign-in enabled.
 
 ### Cancelling / retrying a stuck sign-in
 

@@ -277,9 +277,10 @@ export function ProviderSettings() {
   ) => {
     setPendingId(provider.id);
     try {
-      // launchLogin defaults deviceAuth from the platform — desktop catches the
-      // loopback callback (Codex browser login), a remote webapp can't (device
-      // code) — so no flag is needed here. Claude keys off the runtime's
+      // launchLogin defaults deviceAuth from connection topology: only a
+      // co-located desktop can catch the loopback callback (Codex browser
+      // login); browser clients and desktop clients pointed at a remote host use
+      // device code. No flag is needed here. Claude keys off the runtime's
       // headless mode regardless.
       // `toast: false`: the catch below renders the provider-specific failure
       // toast, so `call` must not also toast the same message (it showed twice).
