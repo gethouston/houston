@@ -14,6 +14,8 @@ export default function (eleventyConfig) {
   eleventyConfig.addPassthroughCopy("src/favicon.svg");
   eleventyConfig.addPassthroughCopy("src/houston-black.svg");
   eleventyConfig.addPassthroughCopy("src/houston-gray.svg");
+  // Square logo (768x768) used by the Organization structured data.
+  eleventyConfig.addPassthroughCopy("src/houston-icon.png");
   eleventyConfig.addPassthroughCopy("src/og-image.jpg");
   eleventyConfig.addPassthroughCopy("src/icons");
   eleventyConfig.addPassthroughCopy("src/learn/style.css");
