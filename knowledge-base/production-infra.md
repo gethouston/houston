@@ -109,10 +109,13 @@ security architecture):
 
 Manual TS engine pod image: `.github/workflows/ts-engine-image.yml` is
 `workflow_dispatch` only and publishes `selfhost/Dockerfile --target engine-pod`
-to `ghcr.io/gethouston/houston-engine-pod`. It is separate from the current
-GCP Artifact Registry images above and never runs on `main` pushes. For a
-credential-free POC, set the GHCR package visibility to public after the first
-publish.
+to `ghcr.io/gethouston/houston-engine-pod` as a multi-arch manifest list
+(`linux/amd64`, `linux/arm64`). It is separate from the current GCP Artifact
+Registry images above and never runs on `main` pushes. Verify a published tag
+with `docker buildx imagetools inspect ghcr.io/gethouston/houston-engine-pod:<tag>`;
+it should show both platforms, and Apple Silicon should be able to
+`docker pull` the tag without `--platform`. For a credential-free POC, set the
+GHCR package visibility to public after the first publish.
 
 Rules learned in production:
 - **`cloud/k8s/control-plane.yaml` IS the live truth** — image tag, turn env

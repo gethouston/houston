@@ -76,7 +76,7 @@ and fronts the pod with Supabase-authenticated proxying.
 ### Published GHCR Image
 
 The manual GitHub Actions workflow **TS Engine Image** publishes this same
-`engine-pod` target to:
+`engine-pod` target as a multi-arch image (`linux/amd64`, `linux/arm64`) to:
 
 ```text
 ghcr.io/gethouston/houston-engine-pod
@@ -92,6 +92,26 @@ This uses GitHub Container Registry (GHCR), not Google Container Registry (GCR).
 After the first run, make the GHCR package public in GitHub package settings if
 Google Cloud or a local machine should pull it without credentials. A public GHCR
 package can stay public even while the source repo is private.
+
+Verify the published manifest list for any tag, including the automatic
+`sha-<commit>` tag:
+
+```sh
+docker buildx imagetools inspect ghcr.io/gethouston/houston-engine-pod:<tag>
+```
+
+Expected output includes both platforms:
+
+```text
+Platform:    linux/amd64
+Platform:    linux/arm64
+```
+
+On Apple Silicon, verify the native pull works without `--platform`:
+
+```sh
+docker pull ghcr.io/gethouston/houston-engine-pod:<tag>
+```
 
 Local pull/run:
 
