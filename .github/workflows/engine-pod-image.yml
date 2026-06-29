@@ -21,11 +21,7 @@ name: Engine Pod Image
 
 on:
   push:
-    # poc/engine-pod-image is here only to debug the pipeline on the branch —
-    # remove it before merging so the image publishes from main alone. (Editing
-    # this workflow file triggers a run via the paths filter below; for ad-hoc
-    # debug runs use the workflow_dispatch button.)
-    branches: [main, poc/engine-pod-image]
+    branches: [main]
     paths:
       - "selfhost/Dockerfile"
       - "packages/protocol/**"
