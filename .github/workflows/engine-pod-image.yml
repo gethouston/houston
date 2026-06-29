@@ -55,6 +55,8 @@ jobs:
     permissions:
       contents: read
       id-token: write # Workload Identity Federation
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
 
     steps:
       - uses: actions/checkout@v4
@@ -89,11 +91,44 @@ jobs:
             --format='value(image_summary.digest)')
           echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
 
-      - name: How to pin in the gateway repo
+      - name: Published tags
         run: |
           echo "Published:"
           echo "  ${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
           echo "  ${{ env.REGISTRY }}/engine-pod:poc"
-          echo ""
-          echo "Pin GW_ENGINE_IMAGE in gethouston/cloud (.github/workflows/deploy-poc.yml) to:"
-          echo "  ${{ env.REGISTRY }}/engine-pod@${{ steps.build.outputs.digest }}"
+          echo "  digest ${{ steps.build.outputs.digest }}"
+
+  # Auto-CD: bump the gateway's pinned engine digest on main, which fires the
+  # gateway deploy (gethouston/cloud deploys on push to main). Git stays the single
+  # source of truth for the deployed engine version — no dispatch, no divergence.
+  # Only main publishes to the hosted POC; debug-branch builds just push the image.
+  # NB: only NEW per-user pods pick up the new engine; existing users keep theirs
+  # until their namespace is recreated.
+  bump-gateway:
+    name: Bump gateway engine pin
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout gethouston/cloud
+        uses: actions/checkout@v4
+        with:
+          repository: gethouston/cloud
+          # PAT / GitHub App token with contents:write on gethouston/cloud.
+          token: ${{ secrets.CLOUD_REPO_TOKEN }}
+
+      - name: Bump GW_ENGINE_IMAGE to the new digest
+        run: |
+          DIGEST="${{ needs.build.outputs.digest }}"   # sha256:...
+          FILE=.github/workflows/deploy-poc.yml
+          sed -i -E "s|(engine-pod@)sha256:[a-f0-9]+|\1${DIGEST}|" "$FILE"
+          if git diff --quiet -- "$FILE"; then
+            echo "Pin already at ${DIGEST} — nothing to do."
+            exit 0
+          fi
+          git config user.name  "houston-ci"
+          git config user.email "ci@gethouston.ai"
+          git add "$FILE"
+          git commit -m "ci: roll engine-pod to ${DIGEST}"
+          git push origin HEAD:main
