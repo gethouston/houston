@@ -1,0 +1,95 @@
+# Engine Pod Image — build + push to Artifact Registry
+#
+# The engine-pod image is the managed-cloud profile of the SAME engine the free
+# desktop app runs (selfhost/Dockerfile --target engine-pod). This repo is its
+# single source of truth; the private gateway repo (gethouston/cloud) only
+# REFERENCES the published image, pinning GW_ENGINE_IMAGE to an immutable
+# per-commit tag from here.
+#
+# Publishes two tags per build:
+#   engine-pod:<git-sha>  — immutable; what the gateway should pin.
+#   engine-pod:poc        — moving pointer to the latest POC build (convenience).
+#
+# ── GCP auth: Workload Identity Federation ────────────────────────────────────
+#   SA: github-deploy@gethouston.iam.gserviceaccount.com
+#   The WIF provider's attribute condition MUST allow this repo
+#   (gethouston/houston-web) to impersonate the SA, and the SA needs Artifact
+#   Registry Writer on the `houston` repo. If the existing pool is locked to the
+#   cloud repo, add a binding for this repo (or give this repo its own provider).
+
+name: Engine Pod Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "selfhost/Dockerfile"
+      - "packages/protocol/**"
+      - "packages/runtime-client/**"
+      - "packages/domain/**"
+      - "packages/runtime/**"
+      - "packages/host/**"
+      - "ui/agent-schemas/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/engine-pod-image.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: engine-pod-image
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: gethouston
+  REGION: us-east1
+  REGISTRY: us-east1-docker.pkg.dev/gethouston/houston
+
+jobs:
+  build:
+    name: Build & push engine-pod
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy@gethouston.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & push engine-pod
+        id: build
+        run: |
+          SHA_TAG="${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
+          POC_TAG="${{ env.REGISTRY }}/engine-pod:poc"
+          docker build \
+            --platform linux/amd64 \
+            --target engine-pod \
+            -f selfhost/Dockerfile \
+            -t "$SHA_TAG" -t "$POC_TAG" \
+            .
+          docker push "$SHA_TAG"
+          docker push "$POC_TAG"
+          # Resolve the immutable digest of the pushed image for the pin below.
+          DIGEST=$(gcloud artifacts docker images describe "$SHA_TAG" \
+            --format='value(image_summary.digest)')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: How to pin in the gateway repo
+        run: |
+          echo "Published:"
+          echo "  ${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
+          echo "  ${{ env.REGISTRY }}/engine-pod:poc"
+          echo ""
+          echo "Pin GW_ENGINE_IMAGE in gethouston/cloud (.github/workflows/deploy-poc.yml) to:"
+          echo "  ${{ env.REGISTRY }}/engine-pod@${{ steps.build.outputs.digest }}"
