@@ -12,6 +12,13 @@
 /early-access/*
   X-Robots-Tag: noindex, nofollow
 
+# Utility callback pages are not content and must stay out of search.
+/auth/*
+  X-Robots-Tag: noindex, nofollow
+
+/slack/*
+  X-Robots-Tag: noindex, nofollow
+
 /*.html
   Cache-Control: public, max-age=60, must-revalidate
 
