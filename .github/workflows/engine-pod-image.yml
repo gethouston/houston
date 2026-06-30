@@ -2,20 +2,19 @@
 #
 # The engine-pod image is the managed-cloud profile of the SAME engine the free
 # desktop app runs (selfhost/Dockerfile --target engine-pod). This repo is its
-# single source of truth; the private gateway repo (gethouston/cloud) only
-# REFERENCES the published image, pinning GW_ENGINE_IMAGE to an immutable
-# per-commit tag from here.
+# single source of truth. On main, this also CDs the engine into the hosted POC:
+# it writes the new image digest into the gateway-config ConfigMap and restarts the
+# gateway directly via kubectl — no cross-repo git, no token. The gateway just reads
+# that ConfigMap.
 #
 # Publishes two tags per build:
-#   engine-pod:<git-sha>  — immutable; what the gateway should pin.
+#   engine-pod:<git-sha>  — immutable, by-digest reference used for the roll.
 #   engine-pod:poc        — moving pointer to the latest POC build (convenience).
 #
 # ── GCP auth: Workload Identity Federation ────────────────────────────────────
-#   SA: github-deploy@gethouston.iam.gserviceaccount.com
-#   The WIF provider's attribute condition MUST allow this repo
-#   (gethouston/houston-web) to impersonate the SA, and the SA needs Artifact
-#   Registry Writer on the `houston` repo. If the existing pool is locked to the
-#   cloud repo, add a binding for this repo (or give this repo its own provider).
+#   SA: github-deploy@gethouston.iam.gserviceaccount.com — needs Artifact Registry
+#   Writer (push) + Kubernetes Engine Developer (roll the gateway). The WIF provider
+#   condition must allow this repo (gethouston/houston-web) to impersonate the SA.
 
 name: Engine Pod Image
 
@@ -94,37 +93,44 @@ jobs:
           echo "  ${{ env.REGISTRY }}/engine-pod:poc"
           echo "  digest ${{ steps.build.outputs.digest }}"
 
-  # Auto-CD: bump the gateway's pinned engine digest on main, which fires the
-  # gateway deploy (gethouston/cloud deploys on push to main). Git stays the single
-  # source of truth for the deployed engine version — no dispatch, no divergence.
-  # Only main publishes to the hosted POC; debug-branch builds just push the image.
+  # Auto-CD on main: point the running gateway at the new engine digest by updating
+  # the gateway-config ConfigMap and restarting it — directly via kubectl, no token,
+  # no cross-repo commit. The cluster ConfigMap is the source of truth for the
+  # deployed engine version. Gated to main; debug-branch builds just push the image.
   # NB: only NEW per-user pods pick up the new engine; existing users keep theirs
   # until their namespace is recreated.
-  bump-gateway:
-    name: Bump gateway engine pin
+  roll-gateway:
+    name: Roll gateway to the new engine
     needs: build
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
     steps:
-      - name: Checkout gethouston/cloud
-        uses: actions/checkout@v4
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
         with:
-          repository: gethouston/cloud
-          # PAT / GitHub App token with contents:write on gethouston/cloud.
-          token: ${{ secrets.CLOUD_REPO_TOKEN }}
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy@gethouston.iam.gserviceaccount.com
 
-      - name: Bump GW_ENGINE_IMAGE to the new digest
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: houston-cloud
+          location: ${{ env.REGION }}
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Point gateway at the new engine + roll
         run: |
-          DIGEST="${{ needs.build.outputs.digest }}"   # sha256:...
-          FILE=.github/workflows/deploy-poc.yml
-          sed -i -E "s|(engine-pod@)sha256:[a-f0-9]+|\1${DIGEST}|" "$FILE"
-          if git diff --quiet -- "$FILE"; then
-            echo "Pin already at ${DIGEST} — nothing to do."
-            exit 0
-          fi
-          git config user.name  "houston-ci"
-          git config user.email "ci@gethouston.ai"
-          git add "$FILE"
-          git commit -m "ci: roll engine-pod to ${DIGEST}"
-          git push origin HEAD:main
+          IMAGE="${{ env.REGISTRY }}/engine-pod@${{ needs.build.outputs.digest }}"
+          echo "Rolling gateway to $IMAGE"
+          kubectl -n houston-gateway create configmap gateway-config \
+            --from-literal=engine-image="$IMAGE" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n houston-gateway rollout restart deployment/gateway
+          kubectl -n houston-gateway rollout status deployment/gateway --timeout=180s
