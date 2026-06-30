@@ -125,7 +125,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "claude-sonnet-5",
         label: "Sonnet 5",
-        description: "Latest Sonnet. Best balance of speed and quality.",
+        description: "Newest Sonnet. Stronger agentic coding and tool use.",
         // Sonnet 5 accepts the full effort range, INCLUDING `xhigh` (unlike
         // Sonnet 4.6, which has `max` but not `xhigh`). API default is `high`.
         effortLevels: ["low", "medium", "high", "xhigh", "max"],
@@ -138,7 +138,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
       {
         id: "claude-sonnet-4-6",
         label: "Sonnet 4.6",
-        description: "Previous Sonnet. Strong balance of speed and quality.",
+        description: "Best balance of speed and quality.",
         // Sonnet 4.6: has `max`, no `xhigh`.
         effortLevels: ["low", "medium", "high", "max"],
         // Sonnet 4.6 in Claude Code defaults to 200k on EVERY plan; the
@@ -174,7 +174,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         contextWindow: 1_000_000,
       },
     ],
-    defaultModel: "claude-sonnet-5",
+    defaultModel: "claude-sonnet-4-6",
   },
 ] as const;
 
@@ -190,7 +190,7 @@ export function getModel(providerId: string, modelId: string): ModelOption | und
 
 /** Get the default provider + model for a provider id. */
 export function getDefaultModel(providerId: string): string {
-  return getProvider(providerId)?.defaultModel ?? "claude-sonnet-5";
+  return getProvider(providerId)?.defaultModel ?? "claude-sonnet-4-6";
 }
 
 /** Default + snap-up ceiling for a model's context window (tokens). */
