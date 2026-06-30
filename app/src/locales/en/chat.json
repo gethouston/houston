@@ -80,6 +80,7 @@
     },
     "modelDescriptions": {
       "gpt-5_5": "OpenAI's frontier model.",
+      "claude-sonnet-5": "Newest Sonnet. Stronger agentic coding and tool use.",
       "claude-sonnet-4-6": "Best balance of speed and quality.",
       "claude-opus-4-8": "Latest Opus. Better alignment and agentic coding than 4.7.",
       "claude-fable-5": "Most capable model. Costs 2x more credits than Opus 4.8.",

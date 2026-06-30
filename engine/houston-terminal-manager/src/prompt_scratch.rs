@@ -15,7 +15,7 @@
 //!   `cli-deps.json` is kept new enough (older codex `-p` only reads
 //!   `[profiles.*]` tables out of the user's own `config.toml`).
 //! - **claude**: a plain temp file passed via `--system-prompt-file`
-//!   (supported by the pinned claude-code 2.1.170).
+//!   (supported by the pinned claude-code 2.1.197).
 //!
 //! Files are unique per spawn (pid + counter), removed on [`Drop`], and any
 //! leftovers from crashes are swept on the first spawn of each engine
