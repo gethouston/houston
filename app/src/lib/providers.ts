@@ -110,6 +110,37 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         contextWindow: 258_400,
         contextWindowMax: 950_000,
       },
+      {
+        id: "gpt-5.4",
+        label: "GPT-5.4",
+        description: "Strong model for everyday coding.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        // Same window math as gpt-5.5: raw context_window 272k × 95%
+        // effective = 258_400 default. gpt-5.4 also exposes the opt-in 1M
+        // variant (max_context_window 1_000_000 in Codex's models_cache.json),
+        // so the snap-up ceiling is 1_000_000 × 95% = 950_000, reached only
+        // once observed usage exceeds the default.
+        contextWindow: 258_400,
+        contextWindowMax: 950_000,
+      },
+      {
+        id: "gpt-5.4-mini",
+        label: "GPT-5.4-Mini",
+        description: "Small, fast, and cost-efficient for simpler tasks.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        // 272k raw × 95% = 258_400. No 1M opt-in (max_context_window == base in
+        // models_cache.json), so no snap-up ceiling.
+        contextWindow: 258_400,
+      },
+      {
+        id: "gpt-5.3-codex-spark",
+        label: "GPT-5.3-Codex-Spark",
+        description: "Ultra-fast coding model.",
+        effortLevels: ["low", "medium", "high", "xhigh"],
+        // Smaller window than the 5.4/5.5 line: 128k raw × 95% = 121_600. No
+        // upward gating (max_context_window == base in models_cache.json).
+        contextWindow: 121_600,
+      },
     ],
     defaultModel: "gpt-5.5",
   },

@@ -80,6 +80,9 @@
     },
     "modelDescriptions": {
       "gpt-5_5": "OpenAI's frontier model.",
+      "gpt-5_4": "Strong model for everyday coding.",
+      "gpt-5_4-mini": "Small, fast, and cost-efficient for simpler tasks.",
+      "gpt-5_3-codex-spark": "Ultra-fast coding model.",
       "claude-sonnet-4-6": "Best balance of speed and quality.",
       "claude-opus-4-8": "Latest Opus. Better alignment and agentic coding than 4.7.",
       "claude-fable-5": "Most capable model. Costs 2x more credits than Opus 4.8.",

@@ -80,6 +80,9 @@
     },
     "modelDescriptions": {
       "gpt-5_5": "O modelo mais avançado da OpenAI.",
+      "gpt-5_4": "Modelo forte para programação do dia a dia.",
+      "gpt-5_4-mini": "Pequeno, rápido e econômico para tarefas mais simples.",
+      "gpt-5_3-codex-spark": "Modelo de programação ultrarrápido.",
       "claude-sonnet-4-6": "Melhor equilibrio entre velocidade e qualidade.",
       "claude-opus-4-8": "Opus mais recente. Melhor alinhamento e codigo agente que 4.7.",
       "claude-fable-5": "O modelo mais capaz. Consome o dobro de creditos que Opus 4.8.",

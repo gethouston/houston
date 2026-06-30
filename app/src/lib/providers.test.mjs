@@ -8,13 +8,15 @@ import {
 } from "./providers.ts";
 
 test("effort levels are per model", () => {
-  // Codex: has xhigh, no max.
-  assert.deepEqual(getEffortLevels("openai", "gpt-5.5"), [
-    "low",
-    "medium",
-    "high",
-    "xhigh",
-  ]);
+  // Codex: has xhigh, no max. Every catalogued GPT model shares this set
+  // (verified against Codex's models_cache.json supported_reasoning_levels).
+  for (const id of ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark"]) {
+    assert.deepEqual(
+      getEffortLevels("openai", id),
+      ["low", "medium", "high", "xhigh"],
+      id,
+    );
+  }
   // Sonnet 4.6: has max, no xhigh.
   assert.deepEqual(getEffortLevels("anthropic", "claude-sonnet-4-6"), [
     "low",
@@ -80,6 +82,12 @@ test("validModelOrNull rejects retired aliases and accepts catalog IDs", () => {
   assert.equal(validModelOrNull("anthropic", "claude-opus-4-8"), "claude-opus-4-8");
   assert.equal(validModelOrNull("anthropic", "claude-opus-4-7"), "claude-opus-4-7");
   assert.equal(validModelOrNull("anthropic", "claude-sonnet-4-6"), "claude-sonnet-4-6");
+  // Full Codex lineup is catalogued (gpt-5.5 + the gpt-5.4 / mini / spark
+  // models added in HOU-589); the phantom gpt-5.5-codex never shipped.
+  for (const id of ["gpt-5.5", "gpt-5.4", "gpt-5.4-mini", "gpt-5.3-codex-spark"]) {
+    assert.equal(validModelOrNull("openai", id), id);
+  }
+  assert.equal(validModelOrNull("openai", "gpt-5.5-codex"), null);
 });
 
 test("normalizeLegacyModel maps retired aliases, passes everything else through", () => {
