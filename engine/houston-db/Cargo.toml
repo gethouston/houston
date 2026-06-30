@@ -1,6 +1,6 @@
 [package]
 name = "houston-db"
-version = "0.4.24"
+version = "0.4.25"
 edition = "2021"
 description = "SQLite database layer for AI agent desktop apps"
 license = "MIT"
