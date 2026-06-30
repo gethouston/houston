@@ -80,7 +80,8 @@
     },
     "modelDescriptions": {
       "gpt-5_5": "El modelo más avanzado de OpenAI.",
-      "claude-sonnet-4-6": "Mejor equilibrio entre velocidad y calidad.",
+      "claude-sonnet-5": "Sonnet mas reciente. Mejor equilibrio entre velocidad y calidad.",
+      "claude-sonnet-4-6": "Sonnet anterior. Buen equilibrio entre velocidad y calidad.",
       "claude-opus-4-8": "Opus mas reciente. Mejor alineamiento y codigo agente que 4.7.",
       "claude-fable-5": "El modelo mas capaz. Consume el doble de creditos que Opus 4.8.",
       "claude-opus-4-7": "Modelo anterior. Autonomia de codigo y razonamiento complejo."

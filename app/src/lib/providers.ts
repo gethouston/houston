@@ -2,7 +2,7 @@
  * Reasoning-effort levels, ordered low→high. The set a given model accepts
  * is model-specific (see `ModelOption.effortLevels`):
  * - Codex `model_reasoning_effort`: low/medium/high/xhigh (no `max`).
- * - Claude `--effort`: Opus 4.7 and 4.8 = all five; Sonnet 4.6 =
+ * - Claude `--effort`: Opus 4.7/4.8 and Sonnet 5 = all five; Sonnet 4.6 =
  *   low/medium/high/max (no `xhigh`). Claude self-clamps an unsupported
  *   value; Codex does not.
  */
@@ -123,9 +123,22 @@ export const PROVIDERS: readonly ProviderInfo[] = [
     cost: "Your Claude subscription",
     models: [
       {
+        id: "claude-sonnet-5",
+        label: "Sonnet 5",
+        description: "Latest Sonnet. Best balance of speed and quality.",
+        // Sonnet 5 accepts the full effort range, INCLUDING `xhigh` (unlike
+        // Sonnet 4.6, which has `max` but not `xhigh`). API default is `high`.
+        effortLevels: ["low", "medium", "high", "xhigh", "max"],
+        // Same window story as Sonnet 4.6: Claude Code starts at 200k on every
+        // plan and the 1M window is opt-in via usage credits, so start at 200k
+        // and snap to 1M once observed usage proves the larger window is active.
+        contextWindow: 200_000,
+        contextWindowMax: 1_000_000,
+      },
+      {
         id: "claude-sonnet-4-6",
         label: "Sonnet 4.6",
-        description: "Best balance of speed and quality.",
+        description: "Previous Sonnet. Strong balance of speed and quality.",
         // Sonnet 4.6: has `max`, no `xhigh`.
         effortLevels: ["low", "medium", "high", "max"],
         // Sonnet 4.6 in Claude Code defaults to 200k on EVERY plan; the
@@ -161,7 +174,7 @@ export const PROVIDERS: readonly ProviderInfo[] = [
         contextWindow: 1_000_000,
       },
     ],
-    defaultModel: "claude-sonnet-4-6",
+    defaultModel: "claude-sonnet-5",
   },
 ] as const;
 
@@ -177,7 +190,7 @@ export function getModel(providerId: string, modelId: string): ModelOption | und
 
 /** Get the default provider + model for a provider id. */
 export function getDefaultModel(providerId: string): string {
-  return getProvider(providerId)?.defaultModel ?? "claude-sonnet-4-6";
+  return getProvider(providerId)?.defaultModel ?? "claude-sonnet-5";
 }
 
 /** Default + snap-up ceiling for a model's context window (tokens). */
