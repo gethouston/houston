@@ -1,0 +1,143 @@
+# Houston GCP POC — Continuous Deployment
+#
+# Builds and deploys to GKE (houston-cloud, namespace houston-poc) on every
+# push to main that touches relevant packages or the POC infra manifests.
+#
+# Required GitHub secrets:
+#   GCP_SA_KEY          — Service account JSON with roles:
+#                           Artifact Registry Writer (registry level)
+#                           Kubernetes Engine Developer (cluster level)
+#   SUPABASE_URL        — https://bnveorwpnaepkdchqgzh.supabase.co
+#   SUPABASE_ANON_KEY   — Supabase anon/public key (safe to expose client-side)
+#   ANTHROPIC_API_KEY   — Seeded into workspace_credentials for all workspaces
+
+name: Deploy POC
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "packages/host-cloud/**"
+      - "packages/host/**"
+      - "packages/domain/**"
+      - "packages/protocol/**"
+      - "packages/runtime/**"
+      - "packages/web/**"
+      - "app/src/**"
+      - "cloud/k8s/gcp-poc/**"
+      - ".github/workflows/deploy-poc.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-poc
+  cancel-in-progress: true
+
+env:
+  GCP_PROJECT: gethouston
+  REGION: us-east1
+  REGISTRY: us-east1-docker.pkg.dev/gethouston/houston
+  CLUSTER: houston-cloud
+  NAMESPACE: houston-poc
+  CP_DOMAIN: poc-api.gethouston.ai
+
+jobs:
+  deploy:
+    name: Build & deploy to GKE
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── GCP auth ────────────────────────────────────────────────────────────
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: ${{ env.CLUSTER }}
+          location: ${{ env.REGION }}
+          project_id: ${{ env.GCP_PROJECT }}
+
+      # ── Build + push control-plane ──────────────────────────────────────────
+      - name: Build & push control-plane
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/control-plane:poc \
+            -t ${{ env.REGISTRY }}/control-plane:${{ github.sha }} \
+            -f packages/host-cloud/Dockerfile \
+            .
+          docker push ${{ env.REGISTRY }}/control-plane:poc
+          docker push ${{ env.REGISTRY }}/control-plane:${{ github.sha }}
+
+      # ── Build + push frontend ────────────────────────────────────────────────
+      - name: Build web frontend
+        env:
+          VITE_CONTROL_PLANE_URL: https://${{ env.CP_DOMAIN }}
+          VITE_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          VITE_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: pnpm --filter houston-web build
+
+      - name: Build & push frontend image
+        run: |
+          docker build \
+            --platform linux/amd64 \
+            -t ${{ env.REGISTRY }}/frontend:poc \
+            -t ${{ env.REGISTRY }}/frontend:${{ github.sha }} \
+            -f cloud/k8s/poc/frontend.Dockerfile \
+            .
+          docker push ${{ env.REGISTRY }}/frontend:poc
+          docker push ${{ env.REGISTRY }}/frontend:${{ github.sha }}
+
+      # ── Deploy to GKE ────────────────────────────────────────────────────────
+      - name: Apply manifests
+        run: kubectl apply -f cloud/k8s/gcp-poc/control-plane.yaml
+
+      - name: Update frontend image
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} set image deployment/frontend \
+            frontend=${{ env.REGISTRY }}/frontend:${{ github.sha }}
+
+      - name: Rollout restart control-plane
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} rollout restart deployment/control-plane
+          kubectl -n ${{ env.NAMESPACE }} rollout status deployment/control-plane \
+            --timeout=120s
+
+      - name: Wait for frontend rollout
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} rollout status deployment/frontend \
+            --timeout=120s
+
+      # ── Seed Anthropic key for any new workspaces ────────────────────────────
+      - name: Seed Anthropic API key
+        if: ${{ secrets.ANTHROPIC_API_KEY != '' }}
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          kubectl -n ${{ env.NAMESPACE }} exec postgres-0 -- \
+            psql -U houston houston -c \
+            "INSERT INTO workspace_credentials
+               (workspace_id, provider, access_token, refresh_token, account_id, expires_at, updated_at)
+             SELECT id, 'anthropic', '${ANTHROPIC_API_KEY}', '', NULL, 0, 0
+               FROM workspaces
+             ON CONFLICT (workspace_id, provider) DO NOTHING;" > /dev/null

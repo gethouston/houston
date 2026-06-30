@@ -1,0 +1,103 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: houston-migrations
+  namespace: houston-system
+data:
+  migrations.sql: |
+    -- Kind POC migrations — runs against plain Postgres (no Supabase).
+    CREATE SCHEMA IF NOT EXISTS auth;
+    CREATE TABLE IF NOT EXISTS auth.users (
+      id         uuid PRIMARY KEY,
+      created_at timestamptz NOT NULL DEFAULT now()
+    );
+
+    INSERT INTO auth.users (id) VALUES ('00000000-0000-0000-0000-000000000001')
+      ON CONFLICT DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS public.workspaces (
+      id            text   PRIMARY KEY,
+      owner_user_id uuid   NOT NULL REFERENCES auth.users (id) ON DELETE CASCADE,
+      kind          text   NOT NULL DEFAULT 'personal' CHECK (kind IN ('personal', 'org')),
+      name          text   NOT NULL,
+      slug          text   NOT NULL,
+      created_at    bigint NOT NULL
+    );
+
+    CREATE UNIQUE INDEX IF NOT EXISTS workspaces_one_personal_per_owner_idx
+      ON public.workspaces (owner_user_id)
+      WHERE kind = 'personal';
+
+    CREATE TABLE IF NOT EXISTS public.agents (
+      id           text   PRIMARY KEY,
+      workspace_id text   NOT NULL REFERENCES public.workspaces (id) ON DELETE CASCADE,
+      name         text   NOT NULL,
+      created_at   bigint NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS agents_workspace_id_idx
+      ON public.agents (workspace_id);
+
+    CREATE TABLE IF NOT EXISTS public.workspace_credentials (
+      workspace_id  text   NOT NULL,
+      provider      text   NOT NULL,
+      access_token  text   NOT NULL,
+      refresh_token text   NOT NULL,
+      account_id    text,
+      expires_at    bigint NOT NULL,
+      updated_at    bigint NOT NULL,
+      PRIMARY KEY (workspace_id, provider)
+    );
+
+    ALTER TABLE workspaces
+      ADD COLUMN IF NOT EXISTS runtime TEXT NOT NULL DEFAULT 'gke'
+      CHECK (runtime IN ('gke', 'cloudrun'));
+
+    -- Fixed dev workspace for the service-token user (deploy.sh seeds credentials here).
+    INSERT INTO public.workspaces (id, owner_user_id, kind, name, slug, runtime, created_at)
+    VALUES ('ws_devpoc', '00000000-0000-0000-0000-000000000001', 'personal', 'Personal', 'poc-dev', 'gke', 0)
+    ON CONFLICT DO NOTHING;
+
+    CREATE TABLE IF NOT EXISTS public.integration_credentials (
+      user_id    text  NOT NULL,
+      provider   text  NOT NULL,
+      data       jsonb NOT NULL,
+      updated_at bigint NOT NULL,
+      PRIMARY KEY (user_id, provider)
+    );
+---
+# Run once: apply schema + seed data. ttlSecondsAfterFinished cleans it up.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: houston-migrations
+  namespace: houston-system
+spec:
+  ttlSecondsAfterFinished: 120
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: postgres:16-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until pg_isready -h postgres -U houston -d houston; do
+                echo "waiting for postgres..."; sleep 2
+              done
+              psql -h postgres -U houston -d houston -f /migrations/migrations.sql
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: postgres-secret
+                  key: POSTGRES_PASSWORD
+          volumeMounts:
+            - name: migrations
+              mountPath: /migrations
+      volumes:
+        - name: migrations
+          configMap:
+            name: houston-migrations

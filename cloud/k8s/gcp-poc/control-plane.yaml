@@ -1,0 +1,142 @@
+# Houston control-plane — GCP POC namespace.
+# Auth:    CP_SERVICE_TOKENS (service-token bypass; swap for Supabase creds post-deploy)
+# Storage: Postgres in-namespace + GCS gethouston-poc-workspaces
+# Agents:  GkeLauncher in-cluster (same houston-cloud cluster, ws-* namespaces)
+# Bus:     MemoryTurnBus (single replica)
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: control-plane-secrets
+  namespace: houston-poc
+type: Opaque
+stringData:
+  # Service token: maps to user 00000000-0000-0000-0000-000000000001 (seeded in migrations).
+  # Format: token=userId. Multiple entries comma-separated.
+  service-tokens: "houston-poc-gcp-service-token-2026=00000000-0000-0000-0000-000000000001"
+  # 64-char hex; signs per-sandbox tokens the runtime carries.
+  sandbox-token-secret: "7f3a9c2e1b4d8f6a0e5c3b7d9f1a4e8c2b6d0f3a7c9e1b5d8f2a6c0e4b7d1f9a"
+  # POC Supabase project (same as kind POC). Required so SupabaseTokenVerifier
+  # constructs without throwing — service-token bypass works on top of it.
+  supabase-jwks-url: "https://bnveorwpnaepkdchqgzh.supabase.co/auth/v1/.well-known/jwks.json"
+  supabase-jwt-issuer: "https://bnveorwpnaepkdchqgzh.supabase.co/auth/v1"
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: control-plane
+  namespace: houston-poc
+  annotations:
+    # Workload Identity: maps to the same GCP SA as production.
+    iam.gke.io/gcp-service-account: houston-control-plane@gethouston.iam.gserviceaccount.com
+---
+# Cluster-wide RBAC: GkeLauncher creates ws-* namespaces + workloads.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: houston-poc-control-plane
+rules:
+  - apiGroups: [""]
+    resources: [namespaces, services, persistentvolumeclaims, secrets, pods]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [apps]
+    resources: [deployments, deployments/scale]
+    verbs: [get, list, watch, create, update, patch, delete]
+  - apiGroups: [networking.k8s.io]
+    resources: [networkpolicies]
+    verbs: [get, list, watch, create, update, patch, delete]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: houston-poc-control-plane
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: houston-poc-control-plane
+subjects:
+  - kind: ServiceAccount
+    name: control-plane
+    namespace: houston-poc
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: control-plane
+  namespace: houston-poc
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: control-plane
+  template:
+    metadata:
+      labels:
+        app: control-plane
+    spec:
+      serviceAccountName: control-plane
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: control-plane
+          image: us-east1-docker.pkg.dev/gethouston/houston/control-plane:poc
+          imagePullPolicy: Always
+          ports:
+            - { containerPort: 8080, name: api }
+          env:
+            - { name: CP_HOST, value: "0.0.0.0" }
+            - { name: CP_PORT, value: "8080" }
+            # GKE standing-pod model (not Cloud Run).
+            - { name: CP_DEFAULT_RUNTIME, value: "gke" }
+            - { name: CP_AGENT_IMAGE, value: "us-east1-docker.pkg.dev/gethouston/houston/runtime:v6" }
+            - { name: CP_NAMESPACE_PREFIX, value: "poc-ws-" }
+            # GCS workspace files.
+            - { name: CP_GCS_BUCKET, value: "gethouston-poc-workspaces" }
+            # No gVisor RuntimeClass for POC.
+            - { name: CP_RUNTIME_CLASS, value: "" }
+            # In-cluster URL agent pods use to fetch their subscription token.
+            - { name: CP_INTERNAL_URL, value: "http://control-plane.houston-poc.svc.cluster.local:8080" }
+            # CORS: updated by deploy.sh once the frontend LoadBalancer IP is known.
+            - { name: CP_CORS_ORIGIN, value: "*" }
+            - name: CP_DATABASE_URL
+              value: "postgres://houston:houston-poc@postgres.houston-poc.svc.cluster.local:5432/houston"
+            - name: CP_SUPABASE_JWKS_URL
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: supabase-jwks-url }
+            - name: CP_SUPABASE_JWT_ISSUER
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: supabase-jwt-issuer }
+            - name: CP_SERVICE_TOKENS
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: service-tokens }
+            - name: CP_SANDBOX_TOKEN_SECRET
+              valueFrom:
+                secretKeyRef: { name: control-plane-secrets, key: sandbox-token-secret }
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 15
+            periodSeconds: 20
+          resources:
+            requests: { cpu: 250m, memory: 256Mi }
+            limits: { cpu: "1", memory: 512Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: control-plane
+  namespace: houston-poc
+  annotations:
+    cloud.google.com/backend-config: '{"default": "cp-backendconfig"}'
+    cloud.google.com/neg: '{"ingress": true}'
+spec:
+  type: NodePort
+  selector:
+    app: control-plane
+  ports:
+    - { name: api, port: 80, targetPort: 8080 }

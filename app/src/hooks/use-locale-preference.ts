@@ -59,9 +59,17 @@ export function useLocalePreference(): LocalePreferenceState {
   const globalQuery = useQuery({
     queryKey: globalKey,
     queryFn: async (): Promise<SupportedLocale | null> => {
-      const raw = await tauriPreferences.get(LOCALE_PREF_KEY);
-      return isSupported(raw) ? raw : null;
+      try {
+        const raw = await tauriPreferences.get(LOCALE_PREF_KEY);
+        return isSupported(raw) ? raw : null;
+      } catch {
+        // Not authenticated yet (401) or engine unavailable — skip the gate
+        // rather than blocking for 3 retries. The sign-in screen handles auth;
+        // locale is re-fetched once a session is established.
+        return null;
+      }
     },
+    retry: false,
     staleTime: 30_000,
   });
 

@@ -1,0 +1,52 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: houston
+  namespace: houston-system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    # Required for SSE (the events stream): disable nginx's own buffering so
+    # chunks flow through immediately. Without this, SSE events are held until
+    # the buffer fills and the UI appears frozen.
+    nginx.ingress.kubernetes.io/proxy-buffering: "off"
+spec:
+  ingressClassName: nginx
+  rules:
+    - http:
+        paths:
+          # Control plane API — v1 versioned routes (workspaces, events, capabilities…)
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: control-plane
+                port: { number: 8080 }
+          # Agent routes (no /v1 prefix): CRUD + conversation proxy + credential.
+          - path: /agents
+            pathType: Prefix
+            backend:
+              service:
+                name: control-plane
+                port: { number: 8080 }
+          # Feedback endpoint.
+          - path: /feedback
+            pathType: Prefix
+            backend:
+              service:
+                name: control-plane
+                port: { number: 8080 }
+          # Sandbox-facing routes (used by agent pods calling home to the CP).
+          - path: /sandbox
+            pathType: Prefix
+            backend:
+              service:
+                name: control-plane
+                port: { number: 8080 }
+          # Frontend SPA (catch-all — must be last).
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: { number: 80 }

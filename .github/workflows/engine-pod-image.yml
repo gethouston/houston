@@ -1,0 +1,136 @@
+# Engine Pod Image — build + push to Artifact Registry
+#
+# The engine-pod image is the managed-cloud profile of the SAME engine the free
+# desktop app runs (selfhost/Dockerfile --target engine-pod). This repo is its
+# single source of truth. On main, this also CDs the engine into the hosted POC:
+# it writes the new image digest into the gateway-config ConfigMap and restarts the
+# gateway directly via kubectl — no cross-repo git, no token. The gateway just reads
+# that ConfigMap.
+#
+# Publishes two tags per build:
+#   engine-pod:<git-sha>  — immutable, by-digest reference used for the roll.
+#   engine-pod:poc        — moving pointer to the latest POC build (convenience).
+#
+# ── GCP auth: Workload Identity Federation ────────────────────────────────────
+#   SA: github-deploy@gethouston.iam.gserviceaccount.com — needs Artifact Registry
+#   Writer (push) + Kubernetes Engine Developer (roll the gateway). The WIF provider
+#   condition must allow this repo (gethouston/houston-web) to impersonate the SA.
+
+name: Engine Pod Image
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "selfhost/Dockerfile"
+      - "packages/protocol/**"
+      - "packages/runtime-client/**"
+      - "packages/domain/**"
+      - "packages/runtime/**"
+      - "packages/host/**"
+      - "ui/agent-schemas/**"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/engine-pod-image.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: engine-pod-image
+  cancel-in-progress: false
+
+env:
+  GCP_PROJECT: gethouston
+  REGION: us-east1
+  REGISTRY: us-east1-docker.pkg.dev/gethouston/houston
+
+jobs:
+  build:
+    name: Build & push engine-pod
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy@gethouston.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & push engine-pod
+        id: build
+        run: |
+          SHA_TAG="${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
+          POC_TAG="${{ env.REGISTRY }}/engine-pod:poc"
+          docker build \
+            --platform linux/amd64 \
+            --target engine-pod \
+            -f selfhost/Dockerfile \
+            -t "$SHA_TAG" -t "$POC_TAG" \
+            .
+          docker push "$SHA_TAG"
+          docker push "$POC_TAG"
+          # Resolve the immutable digest of the pushed image for the pin below.
+          DIGEST=$(gcloud artifacts docker images describe "$SHA_TAG" \
+            --format='value(image_summary.digest)')
+          echo "digest=$DIGEST" >> "$GITHUB_OUTPUT"
+
+      - name: Published tags
+        run: |
+          echo "Published:"
+          echo "  ${{ env.REGISTRY }}/engine-pod:${{ github.sha }}"
+          echo "  ${{ env.REGISTRY }}/engine-pod:poc"
+          echo "  digest ${{ steps.build.outputs.digest }}"
+
+  # Auto-CD on main: point the running gateway at the new engine digest by updating
+  # the gateway-config ConfigMap and restarting it — directly via kubectl, no token,
+  # no cross-repo commit. The cluster ConfigMap is the source of truth for the
+  # deployed engine version. Gated to main; debug-branch builds just push the image.
+  # NB: only NEW per-user pods pick up the new engine; existing users keep theirs
+  # until their namespace is recreated.
+  roll-gateway:
+    name: Roll gateway to the new engine
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      id-token: write # Workload Identity Federation
+    steps:
+      - name: Auth to GCP
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/1056698080170/locations/global/workloadIdentityPools/github/providers/houston
+          service_account: github-deploy@gethouston.iam.gserviceaccount.com
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Get GKE credentials
+        uses: google-github-actions/get-gke-credentials@v2
+        with:
+          cluster_name: houston-cloud
+          location: ${{ env.REGION }}
+          project_id: ${{ env.GCP_PROJECT }}
+
+      - name: Point gateway at the new engine + roll
+        run: |
+          IMAGE="${{ env.REGISTRY }}/engine-pod@${{ needs.build.outputs.digest }}"
+          echo "Rolling gateway to $IMAGE"
+          kubectl -n houston-gateway create configmap gateway-config \
+            --from-literal=engine-image="$IMAGE" \
+            --dry-run=client -o yaml | kubectl apply -f -
+          kubectl -n houston-gateway rollout restart deployment/gateway
+          kubectl -n houston-gateway rollout status deployment/gateway --timeout=180s

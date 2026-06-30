@@ -1,0 +1,47 @@
+# HTTPS Ingress for houston-poc — GCP Managed Certificate + global static IP.
+# Domains: poc.gethouston.ai (frontend) + poc-api.gethouston.ai (control-plane).
+# Uses NodePort routing (no NEGs) for broad GKE compatibility.
+# The ManagedCertificate provisions automatically once DNS propagates (~15-60 min).
+---
+apiVersion: networking.gke.io/v1
+kind: ManagedCertificate
+metadata:
+  name: houston-poc-cert
+  namespace: houston-poc
+spec:
+  domains:
+    - poc.gethouston.ai
+    - poc-api.gethouston.ai
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: houston-poc
+  namespace: houston-poc
+  annotations:
+    kubernetes.io/ingress.class: "gce"
+    kubernetes.io/ingress.global-static-ip-name: "houston-poc-ip"
+    networking.gke.io/managed-certificates: "houston-poc-cert"
+    kubernetes.io/ingress.allow-http: "true"
+spec:
+  rules:
+    - host: poc.gethouston.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port:
+                  number: 80
+    - host: poc-api.gethouston.ai
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: control-plane
+                port:
+                  number: 80

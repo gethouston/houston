@@ -13,6 +13,26 @@
         background: #0d0d0d;
       }
     </style>
+    <!-- crypto.randomUUID is only available in secure contexts (HTTPS/localhost).
+         Polyfill for plain HTTP deployments using getRandomValues, which IS
+         available in insecure contexts. -->
+    <script>
+      if (typeof crypto !== "undefined" && !crypto.randomUUID) {
+        crypto.randomUUID = function () {
+          var b = new Uint8Array(16);
+          crypto.getRandomValues(b);
+          b[6] = (b[6] & 0x0f) | 0x40;
+          b[8] = (b[8] & 0x3f) | 0x80;
+          var h = Array.from(b).map(function (x) {
+            return x.toString(16).padStart(2, "0");
+          }).join("");
+          return (
+            h.slice(0, 8) + "-" + h.slice(8, 12) + "-" +
+            h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20)
+          );
+        };
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
